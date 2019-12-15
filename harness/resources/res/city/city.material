@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Resources>
+    <Material name="None">
+        <Program name="city"/>
+        <Textures>
+            <Texture binding="tex" resource=""/>
+        </Textures>
+        <Uniforms/>
+    </Material>
+</Resources>
