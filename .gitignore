@@ -1,0 +1,12 @@
+*.opensdf
+*.opendb
+*.sdf
+*.suo
+*.log
+*.user
+*.ipch
+**/build/vs*/bin
+**/build/vs*/obj
+**/build/vs*/lib
+**/build/**/.vs
+**/__pycache__

@@ -1,0 +1,226 @@
+#include "mpp/Config.h"
+
+#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#include <Windows.h>
+#endif
+
+#include <cassert>
+#include <glew/glew.h>
+#include <gl/gl.h>
+
+#include "utils/MemTracker.h"
+
+#include "mpp/Model.h"
+#include "mpp/ModelStream.h"
+#include "mpp/ResourceManager.h"
+
+using namespace std;
+
+namespace mpp
+{
+	using namespace mesh;
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	Model::Model(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
+		: Resource(name, "Model", renderSystem, resourceMgr, resourceStream)
+	{
+	}
+
+	/*
+	 * Destructor.
+	 *
+	 */
+	Model::~Model()
+	{
+		for (auto mesh: mMeshes)
+		{
+			delete mesh;
+		}
+	}
+
+	/*
+	 * Create the data required.
+	 *
+	 */
+	void Model::createImpl()
+	{
+		ModelStream* mStr = dynamic_cast<ModelStream*>(getResourceStream().get());
+		if (!mStr)
+		{
+			throw exception("Model::createImpl() could not cast to type 'ModelStream'.");
+		}
+
+		auto resourceMgr = getResourceManager();
+
+		for (int i = 0; i < mStr->getNumMeshDefinitions(); ++i)
+		{
+			MeshDefinition* meshDef = mStr->getMeshDefinition(i);
+
+			ResourcePtr	material = resourceMgr->getResource(meshDef->getMaterial());
+			material->load();
+
+			Mesh* mesh = nullptr;
+
+			// Get index data and convert as required
+			auto storageType = meshDef->getStorageType();
+			auto primitiveType = meshDef->getPrimitiveType();
+			int primitiveSize = mesh::Primitive::size(primitiveType);
+			int primitiveCount = meshDef->getNumPrimitives();
+			float pointSize = meshDef->getPointSize();
+
+			if (meshDef->isIndexed())
+			{
+				int indexWidth = meshDef->getIndexWidth();
+				int indexWidthBytes = indexWidth / 8;
+				int indexSize = primitiveCount * primitiveSize * indexWidthBytes;
+
+				auto indexDataPtr = (uint8*)meshDef->getIndexData().get();
+
+				vector<uint8> indexData;
+				for (int i = 0; i < indexSize; ++i)
+				{
+					indexData.push_back(*indexDataPtr++);
+				}
+
+				mesh = new Mesh(getRenderSystem(), meshDef->getName(), material, primitiveType, primitiveCount, indexWidth, indexData, storageType, pointSize);
+			}
+			else
+			{
+				mesh = new Mesh(getRenderSystem(), meshDef->getName(), material, primitiveType, primitiveCount, storageType, pointSize);
+			}
+
+			for (int j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
+			{
+				VertexBufferDefinition const* bufferDef = meshDef->getVertexBufferDefinition(j);
+
+				VertexBuffer* buffer = mesh->createVertexBuffer(
+					bufferDef->getVertexCount(),
+					bufferDef->getVertexStride(),
+					bufferDef->getStreaming(),
+					bufferDef->getData());
+
+				for (int k = 0; k < bufferDef->getNumAttributes(); ++k)
+				{
+					auto const& attrib = bufferDef->getAttribute(k);
+					buffer->setAttribute(
+						attrib.attributeId,
+						attrib.dataType,
+						Vertex::getComponentSize(attrib.component),
+						attrib.offsetInBytes,
+						attrib.normalised);
+				}
+			}
+
+			mMeshes.push_back(mesh);
+		}
+	}
+
+	/*
+	 * Destroy the model data.
+	 *
+	 */
+	void Model::destroyImpl()
+	{
+		for (auto it: mMeshes)
+		{
+			delete it;
+		}
+		
+		mMeshes.clear();
+	}
+
+	/*
+	 * Create OpenGL model.
+	 *
+	 */
+	void Model::loadImpl()
+	{
+		for (auto it: mMeshes)
+		{
+			it->load();
+		}
+	}
+
+	/*
+	 * Destroy the OpenGL model.
+	 *
+	 */
+	void Model::unloadImpl()
+	{
+		for (auto it: mMeshes)
+		{
+			it->unload();
+		}
+	}
+
+	/*
+	 * Get the number of triangles in the model
+	 *
+	 */
+	int Model::getNumTriangles() const
+	{
+		int tris = 0;
+		for (auto it : mMeshes)
+		{
+			tris += it->getNumPrimitives();
+		}
+
+		return tris;
+	}
+
+	/*
+	 * Get the number of meshes in the model
+	 *
+	 */
+	int Model::getNumMeshes() const
+	{
+		return (int)mMeshes.size();
+	}
+
+	/*
+	 * Get the indexed mesh.
+	 *
+	 */
+	Mesh const* Model::getMesh(int index) const
+	{
+		assert(index >= 0 && "Model::getMesh() 'index' argument out of range!");
+		return mMeshes[index];
+	}
+
+	/*
+	 * Get the indexed mesh.
+	 *
+	 */
+	Mesh* Model::getMesh(int index)
+	{
+		assert(index >= 0 && "Model::getMesh() 'index' argument out of range!");
+		return mMeshes[index];
+	}
+
+	/*
+	 * Set meshes to be dynamically updatable, overriding current settings.  The meshes will have to
+	 * be reloaded if they are currently loaded.
+	 */
+	void Model::setMeshesDynamic()
+	{
+		for (auto const mesh: mMeshes)
+		{
+			mesh->setStorageType(mesh::VertexBufferStorageType::Dynamic);
+		}
+	}
+
+	/*
+	 * Set meshes to be static, overriding current settings.  The meshes will have to
+	 * be reloaded if they are currently loaded.
+	 */
+	void Model::setMeshesStatic()
+	{
+		for (auto const mesh: mMeshes)
+		{
+			mesh->setStorageType(mesh::VertexBufferStorageType::Static);
+		}
+	}
+}
