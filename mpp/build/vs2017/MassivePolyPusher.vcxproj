@@ -62,6 +62,7 @@
     <ClInclude Include="..\..\include\mpp\Texture.h" />
     <ClInclude Include="..\..\include\mpp\TextureStream.h" />
     <ClInclude Include="..\..\include\mpp\TextureTile.h" />
+    <ClInclude Include="..\..\include\mpp\TiledQuadModelStream.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatch.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\UniformCollection.h" />
@@ -111,6 +112,7 @@
     <ClCompile Include="..\..\src\StringProgramStream.cpp" />
     <ClCompile Include="..\..\src\Texture.cpp" />
     <ClCompile Include="..\..\src\TextureStream.cpp" />
+    <ClCompile Include="..\..\src\TiledQuadModelStream.cpp" />
     <ClCompile Include="..\..\src\TriangleBatch.cpp" />
     <ClCompile Include="..\..\src\UniformCollection.cpp" />
     <ClCompile Include="..\..\src\VertexBuffer.cpp" />
@@ -193,7 +195,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <AdditionalDependencies>Utilsd.lib;fmtd.lib;opengl32.lib;glew32d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\..\Utils\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -219,7 +221,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <AdditionalDependencies>Utils.lib;fmt.lib;opengl32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\..\Utils\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>

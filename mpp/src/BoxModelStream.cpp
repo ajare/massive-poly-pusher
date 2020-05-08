@@ -609,7 +609,7 @@ namespace mpp
 							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
 						}
 
-						break; offset += strideInBytes;
+						break;
 
 					case mesh::Vertex::DataType::UnsignedByte:
 						// Top face
