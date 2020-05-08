@@ -1,0 +1,4 @@
+[submodule "ext/utils"]
+	path = ext/utils
+	url = https://wtmrsh@bitbucket.org/wtmrsh/utils.git
+	ignore = dirty
