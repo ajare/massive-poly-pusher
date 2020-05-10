@@ -38,7 +38,8 @@ namespace mpp
 	{
 		utils::XmlReader* reader = utils::XmlReader::fromString(mXmlDefinition);
 
-		auto materialNode = reader->getNode("Material");
+		auto materialNodes = reader->getNode("Materials");
+		auto materialNode = materialNodes->getChild("Material");
 
 		// Get name
 		mName = materialNode->getAttribute("name");

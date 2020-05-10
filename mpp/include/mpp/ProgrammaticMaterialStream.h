@@ -20,10 +20,6 @@ namespace mpp
 
 	public:
 
-		void setProgram(std::string const& program);
-
-		void setProgram(bool is2d, mpp::mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
-
 		void setTexture(std::string const& sampler, std::string const& texture);
 
 		void useDefaultTexture();
