@@ -35,7 +35,7 @@ namespace mpp
 			}
 		}
 
-		const int numVertices = res * 2 + 2; // 2 extra vertices for the centres of the caps.
+		const int numVertices = (res + 1) * 2 + 2; // Two extra for caps centres.
 		int bufferSize = strideInBytes * numVertices / sizeof(float);
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
@@ -58,21 +58,17 @@ namespace mpp
 		setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
 		offset += strideInBytes;
 
-		float angle = 0.0f, angleInc = sin(2 * 3.14159f / res);
-		for (int i = 0; i < res; ++i)
+		float nx, nz, x1, x2, z1, z2, angle = 0.0f, angleInc = 2 * 3.14159f / res;
+		for (int i = 0; i <= res; ++i)
 		{
-			float nx = sin(angle);
-			float nz = cos(angle);
+			nx = sin(angle);
+			nz = cos(angle);
 
-			float d = sqrt(nx * nx + nz * nz);
-			nx /= d;
-			nz /= d;
+			x1 = nx * radius1;
+			z1 = nz * radius1;
 
-			float x1 = nx * radius1;
-			float z1 = nz * radius1;
-
-			float x2 = nx * radius2;
-			float z2 = nz * radius2;
+			x2 = nx * radius2;
+			z2 = nz * radius2;
 
 			// Top vertices
 			setVertexData<float>(offset + 0, { x1, l2, z1 });
@@ -87,29 +83,30 @@ namespace mpp
 			setVertexData<float>(offset + 24, { i / (float)res, 0 });
 			setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
 			offset += strideInBytes;
-		}
 
+			angle += angleInc;
+		}
+		
 		// Top indices
 		for (int i = 0; i < res; ++i)
 		{
-			addTriangle(0, i * 2 + 2, i == (res - 1) ? 2 : (i * 2 + 4));
+			addTriangle(0, i * 2 + 2, i * 2 + 4);
 		}
 
 		// Bottom indices
 		for (int i = 0; i < res; ++i)
 		{
-			addTriangle(1, i * 2 + 3, i == (res - 1) ? 3 : (i * 2 + 5));
+			addTriangle(1, i * 2 + 3, i * 2 + 5);
 		}
 
 		// Side indices
 		for (int i = 0; i < res; ++i)
 		{
 			uint32 v23 = i * 2 + 3;
-			uint32 v31 = i == (res - 1) ? 2 : (i * 2 + 4);
+			uint32 v31 = i * 2 + 4;
 			
 			addTriangle(i * 2 + 2, v23, v31);
-			addTriangle(v31, i == (res - 1) ? 3 : (i * 2 + 5), v23);
+			addTriangle(v31, i * 2 + 5, v23);
 		}
-
 	}
 }
