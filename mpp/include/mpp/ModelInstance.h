@@ -42,6 +42,8 @@ namespace mpp
 		void setUniformCollection(UniformCollection const& uniforms);
 
 		void setUniform(std::string const& name, glm::vec3 const& value);
+
+		void setWireframe(bool wireframe);
 	};
 }
 

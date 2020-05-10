@@ -8,7 +8,7 @@ using namespace std;
 
 namespace mpp
 {
-	TiledQuadModelStream::TiledQuadModelStream(mesh::MeshSpecification const& meshSpec, string const& material, float width, float depth)
+	TiledQuadModelStream::TiledQuadModelStream(mesh::MeshSpecification const& meshSpec, string const& material, float width, float depth, int dimX, int dimZ)
 		: PrimitiveModelStream(meshSpec, material)
 	{
 		int strideInBytes = 0;
@@ -32,8 +32,7 @@ namespace mpp
 		}
 
 		// Preallocate vertex buffer
-		int verticesPerFace = (meshSpec.verticesIndexed() ? 4 : 6);
-		const int numVertices = verticesPerFace * 1;
+		const int numVertices = meshSpec.verticesIndexed() ? (dimX + 1) * (dimZ + 1) : (dimX * dimZ) * 6;
 		int bufferSize = strideInBytes * numVertices;
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
@@ -41,6 +40,8 @@ namespace mpp
 		// Generate vertices
 		float w2 = width / 2;
 		float d2 = depth / 2;
+		float dw = width / dimX;
+		float dh = depth / dimZ;
 
 		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
@@ -59,17 +60,13 @@ namespace mpp
 					switch (attrib.dataType)
 					{
 					case mesh::Vertex::DataType::Float:
-						setVertexData<float>(offset, { -w2, 0, -d2 });	offset += strideInBytes;
-						setVertexData<float>(offset, { -w2, 0, d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, 0, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
+						for (int z = 0; z <= dimZ; ++z)
 						{
-							setVertexData<float>(offset, { w2, 0, d2 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { w2, 0, -d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, 0, -d2 });	offset += strideInBytes;
+							for (int x = 0; x <= dimX; ++x)
+							{
+								setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z });
+								offset += strideInBytes;
+							}
 						}
 						break;
 
@@ -82,17 +79,13 @@ namespace mpp
 					switch (attrib.dataType)
 					{
 					case mesh::Vertex::DataType::Float:
-						setVertexData<float>(offset, { 0, 1, 0 });	offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
+						for (int z = 0; z <= dimZ; ++z)
 						{
-							setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
+							for (int x = 0; x <= dimX; ++x)
+							{
+								setVertexData<float>(offset, { 0, 1, 0 });
+								offset += strideInBytes;
+							}
 						}
 						break;
 
@@ -105,17 +98,13 @@ namespace mpp
 					switch (attrib.dataType)
 					{
 					case mesh::Vertex::DataType::Float:
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
+						for (int z = 0; z <= dimZ; ++z)
 						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
+							for (int x = 0; x <= dimX; ++x)
+							{
+								setVertexData<float>(offset, { (float)x / dimX, (float)z / dimZ });
+								offset += strideInBytes;
+							}
 						}
 						break;
 
@@ -125,95 +114,68 @@ namespace mpp
 					break;
 
 				case mesh::Vertex::Component::Colour3:
-					switch (attrib.dataType)
+					for (int z = 0; z <= dimZ; ++z)
 					{
-					case mesh::Vertex::DataType::Float:
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
+						for (int x = 0; x <= dimX; ++x)
 						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						break;
+							switch (attrib.dataType)
+							{
+							case mesh::Vertex::DataType::Float:
+								setVertexData<float>(offset, { 1, 1, 1 });
+								break;
 
-					case mesh::Vertex::DataType::UnsignedByte:
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						break;
+							case mesh::Vertex::DataType::UnsignedByte:
+								setVertexData<float>(offset, { 255, 255, 255 });
+								break;
 
-					default:
-						throw exception("Primitive ModelStreams only support floats or ubytes for colour data.");
+							default:
+								throw exception("Primitive ModelStreams only support floats or ubytes for colour data.");
+							}
+
+							offset += strideInBytes;
+						}
 					}
 					break;
 
 				case mesh::Vertex::Component::Colour4:
-					switch (attrib.dataType)
+					for (int z = 0; z <= dimZ; ++z)
 					{
-					case mesh::Vertex::DataType::Float:
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
+						for (int x = 0; x <= dimX; ++x)
 						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						break;
+							switch (attrib.dataType)
+							{
+							case mesh::Vertex::DataType::Float:
+								setVertexData<float>(offset, { 1, 1, 1, 1});
+								break;
 
-					case mesh::Vertex::DataType::UnsignedByte:
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						break;
+							case mesh::Vertex::DataType::UnsignedByte:
+								setVertexData<float>(offset, { 255, 255, 255, 255 });
+								break;
 
-					default:
-						throw exception("Primitive ModelStreams only support floats or ubytes for colour data.");
+							default:
+								throw exception("Primitive ModelStreams only support floats or ubytes for colour data.");
+							}
+
+							offset += strideInBytes;
+						}
 					}
 					break;
 
 				default:
 					throw exception("Unsupported component.");
-
 				}
 			}
 		}
 
-		for (int i = 0; i < numVertices; i += verticesPerFace)
+		// Faces
+		for (int z = 0; z < dimZ; ++z)
 		{
-			addTriangle(i + 0, i + 1, i + 2);
-			if (meshSpec.verticesIndexed())
-				addTriangle(i + 2, i + 3, i + 0);
-			else
-				addTriangle(i + 3, i + 4, i + 5);
+			for (int x = 0; x < dimX; ++x)
+			{
+				int offset = (dimX + 1) * z + x;
+				addTriangle(offset, offset + dimX + 1, offset + dimX + 2);
+				addTriangle(offset + dimX + 2, offset + 1, offset);
+			}
 		}
 	}
 }

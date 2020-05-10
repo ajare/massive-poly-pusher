@@ -119,7 +119,7 @@ namespace mpp
 	}
 
 	/*
-	 * Set a uniform value on all the meshes in this model
+	 * Set a uniform value on all the meshes in this model.
 	 *
 	 */
 	void ModelInstance::setUniform(string const& name, glm::vec3 const& value)
@@ -127,6 +127,18 @@ namespace mpp
 		for (auto meshInstance: mMeshInstances)
 		{
 			meshInstance.second->setUniform(name, value);
+		}
+	}
+
+	/*
+	 * Render as wireframe.
+	 *
+	 */
+	void ModelInstance::setWireframe(bool wireframe)
+	{
+		for (auto meshInstance: mMeshInstances)
+		{
+			meshInstance.second->wireframe(wireframe);
 		}
 	}
 }

@@ -10,6 +10,6 @@ namespace mpp
 	{
 	public:
 
-		TiledQuadModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, float width, float depth);
+		TiledQuadModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, float width, float depth, int dimX, int dimZ);
 	};
 }
