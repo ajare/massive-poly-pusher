@@ -530,8 +530,8 @@ namespace mpp
 
 		mDefaultProgram2d = resourceMgr->getOrCreateDefault2dProgram(spec2d, 0, true);
 
-		// Default 2d program
-		mDefaultProgram3d = resourceMgr->getResource("__mpp_p3d_tris_p2t2c4");
+		// Default 3d program
+		mDefaultProgram3d = resourceMgr->getResource("__mpp_p3d_tris_p3n3t2c4");
 
 		mInternalFontTexture = resourceMgr->getResource("__mpp_tex_internalfont");
 		mInternalFont = new Font(mInternalFontTexture);

@@ -202,7 +202,8 @@ namespace mpp
 		int mcpId = mwProgram->getModelCameraProjectionMatrixId();
 		if (mcpId >= 0)
 		{
-			glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mModelCameraProjectionMatrix * mLocalTransform));
+			auto mcpMatrix = mModelCameraProjectionMatrix * mLocalTransform;
+			glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcpMatrix));
 		}
 
 		int normalId = mwProgram->getNormalMatrixId();

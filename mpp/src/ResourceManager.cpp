@@ -42,7 +42,7 @@ namespace mpp
 		// Basic 3d shaders
 		set<string> attribs = { "Normal", "Texture", "TexCoords2", "RGBA" };
 		auto ps = new StringProgramStream(generateShader(VertexShader3dTemplate, attribs), generateShader(FragmentShader3dTemplate, attribs));
-		createResource<Program>("__mpp_p3d_tris_p2t2c4", ResourceStreamPtr(ps))->load();
+		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
 
 		// 2d fullscreen program
 		attribs = { "Diffuse" };

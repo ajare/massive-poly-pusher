@@ -21,6 +21,7 @@
 #include <mpp/BoxModelStream.h>
 #include <mpp/CylinderModelStream.h>
 #include <mpp/SphereModelStream.h>
+#include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
 
@@ -168,69 +169,100 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		string resLoc = gOptions.resourceLocation;
 
 		//
-		// Camera setup
-		//
-		glm::vec3 cameraPos(0, 1000, 0);
-		glm::vec3 cameraTarget(0, 200, 0);
-
-		float cameraPitch = atan2(cameraTarget.z - cameraPos.z, cameraTarget.y - cameraPos.y);
-		cameraPitch += (3.14159f / 2.0f);
-		helper::FreeCamera camera(cameraPos, 315, 0, 0);
-		//helper::OrbitCamera camera(cameraPos, cameraTarget, glm::vec3(0, 1, 0), 45.0f);
-		camera.setClipDistances(0.1f, 1000.0f);
-
-		//
 		// Model setup
 		//
+		mesh::MeshSpecification modelSpec(mesh::Primitive::Type::Triangles);
 
-		// Programs
-		//FileProgramStream* programStream = new FileProgramStream(gOptions.resourceLocation + "test.vert", gOptions.resourceLocation + "test.frag");
-		//gResourceManager->createResource<Program>("test", ResourceStreamPtr(programStream));
-
-		FileProgramStream* programStream = new FileProgramStream(gOptions.resourceLocation + "city.vert", gOptions.resourceLocation + "city.frag");
-		gResourceManager->createResource<Program>("city", ResourceStreamPtr(programStream));
-
-		// Textures
-		//TextureStream* imageStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
-		//gResourceManager->createResource<Texture>("marble_texture", ResourceStreamPtr(imageStream));
-
-		// Materials
-		//ProgrammaticMaterialStream* meshMaterialStream = new ProgrammaticMaterialStream();
-		//meshMaterialStream->setProgram("test");
-		//meshMaterialStream->setTexture("tex", "marble_texture");
-		//gResourceManager->createResource<Material>("statue_material", ResourceStreamPtr(meshMaterialStream))->load();
-
-		ProgrammaticMaterialStream* meshMaterialStream = new ProgrammaticMaterialStream();
-		meshMaterialStream->setProgram("city");
-		gResourceManager->createResource<Material>("None", ResourceStreamPtr(meshMaterialStream))->load();
-
-		// Models
-		//auto modelStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
-		//auto statueModel = gResourceManager->createResource<Model>("Statue", ResourceStreamPtr(modelStream));
-		//statueModel->load();
-
-		auto modelStream = new MppModelStream(gOptions.resourceLocation + "city/city.mppmodel");
-		auto cityModel = gResourceManager->createResource<Model>("City", ResourceStreamPtr(modelStream));
-		cityModel->load();
-
-		/*
-		mesh::MeshSpecification cubeSpec(mesh::Primitive::Type::Triangles);
-
-		mesh::VertexBufferAttributeLayout* attribLayout = cubeSpec.createVertexBufferAttributeLayout();
+		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
 		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
-		cubeSpec.setStorageType(mesh::VertexBufferStorageType::Static);
-		cubeSpec.setIndexedVertices(true);
+		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+		modelSpec.setIndexedVertices(true);
+
+		// Programs
+		FileProgramStream* programStream = new FileProgramStream(gOptions.resourceLocation + "test.vert", gOptions.resourceLocation + "test.frag");
 		
-		// primitive count = 20 * 4 ^ (res - 1)
-		auto cubeStream = new SphereModelStream(cubeSpec, "bubbles_material", 1, 5); // approx 5k tris
+		gResourceManager->createResource<Program>("program_test", ResourceStreamPtr(programStream));
+
+		//
+		// Textures
+		//
+
+		// Marble
+		TextureStream* textureStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
+		
+		gResourceManager->createResource<Texture>("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
+
+		//
+		// Materials
+		//
+
+		// Can we generate material from the meshspec?  Would mean we have to define meshspecs
+		// in advance, ensure all models are using the same, etc.
+		// ...
+
+		// Marble
+		auto meshMaterialStream = new ProgrammaticMaterialStream();
+		
+		//meshMaterialStream->setProgram("Program.Test");
+		meshMaterialStream->setProgram(false, modelSpec, {});
+		
+		meshMaterialStream->setTexture("tex", "marble_texture4662.jpg");
+		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
+
+		FileDataStream fileDatastream(gOptions.resourceLocation + "statue/statue.material");
+		auto fileMaterialStream = new FileMaterialStream(fileDatastream);
+
+		gResourceManager->createResource<Material>("statue_material", ResourceStreamPtr(fileMaterialStream))->load();
+
+		//
+		// Models
+		//
+
+		// Cube
+		auto cubeStream = new BoxModelStream(modelSpec, "Material.Marble", 1, 1, 1);
 
 		auto cubeModel = gResourceManager->createResource<Model>("Model.Cube", ResourceStreamPtr(cubeStream));
 		cubeModel->load();
+		
+		// Statue
+		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
+		auto statueModel = gResourceManager->createResource<Model>("Statue", ResourceStreamPtr(statueStream));
+		statueModel->load();
 
-		*/
+		//
+		// Model transforms
+		//
+		struct ModelTransform
+		{
+			mpp::ResourcePtr model;
+			glm::vec3 position;
+			glm::vec3 scale;
+		};
+
+		enum ModelId
+		{
+			Cube,
+			Statue
+		};
+
+		vector< ModelTransform> modelTranforms =
+		{
+			{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
+			{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
+		};
+
+		//
+		// Camera setup
+		//
+		glm::vec3 cameraPos(0, 0, 400);
+
+		helper::FreeCamera camera(cameraPos, 0.0f, 0.0f, 0.0f);
+		camera.setClipDistances(0.1f, 2000.0f);
+		camera.setFov(45.0f);
+
 		//
 		// Main loop
 		//
@@ -290,70 +322,44 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 				if (gInputMgr->keyDown(Key_LeftArrow))
 				{
-					viewAngle += 2.0f;
+					viewAngle += 2.0f * frameTime;
 				}
 				if (gInputMgr->keyDown(Key_RightArrow))
 				{
-					viewAngle -= 2.0f;
-				}
-				/*
-				if (gInputMgr->keyDown(Key_Q))
-				{
-					lightAngle -= 2.0f;
-					if (lightAngle < 0.0f)
-					{
-						lightAngle += 360.0f;
-					}
-				}
-				if (gInputMgr->keyDown(Key_W))
-				{
-					lightAngle += 2.0f;
-					if (lightAngle > 360.0f)
-					{
-						lightAngle -= 360.0f;
-					}
-				}
-				*/
-				if (gInputMgr->keyDown(Key_A))
-				{
-					lightHeight += 10.0f;
-					if (lightHeight > 750.0f)
-					{
-						lightHeight = 750.0f;
-					}
-				}
-				if (gInputMgr->keyDown(Key_Z))
-				{
-					lightHeight -= 10.0f;
-					if (lightHeight < 0.0f)
-					{
-						lightHeight = 0.0f;
-					}
+					viewAngle -= 2.0f * frameTime;
 				}
 
 				if (gInputMgr->keyDown(Key_W))
 				{
-					camera.up(1.0f);
+					camera.forward(50.0f * frameTime);
 				}
 				if (gInputMgr->keyDown(Key_S))
 				{
-					camera.down(1.0f);
+					camera.backward(50.0f * frameTime);
 				}
 				if (gInputMgr->keyDown(Key_A))
 				{
-					camera.left(1.0f);
+					camera.left(50.0f * frameTime);
 				}
 				if (gInputMgr->keyDown(Key_D))
 				{
-					camera.right(1.0f);
+					camera.right(50.0f * frameTime);
+				}
+				if (gInputMgr->keyDown(Key_R))
+				{
+					camera.up(50.0f * frameTime);
+				}
+				if (gInputMgr->keyDown(Key_V))
+				{
+					camera.down(50.0f * frameTime);
 				}
 				if (gInputMgr->keyDown(Key_Q))
 				{
-					camera.roll(-1.0f);
+					camera.roll(-60.0f * frameTime);
 				}
 				if (gInputMgr->keyDown(Key_E))
 				{
-					camera.roll(1.0f);
+					camera.roll(60.0f * frameTime);
 				}
 
 				// Change video mode to fullscreen
@@ -383,19 +389,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			auto cameraUp = camera.getUp();
 			gRenderSystem->setCamera3d(cameraPos, cameraPos + cameraDir, cameraUp);
 
-			gRenderSystem->resetTransform();
-
 			// Set light position
 			glm::vec3 lightPos(0, lightHeight, 400);
 			lightPos = glm::rotate(lightPos, glm::radians(lightAngle), glm::vec3(0, 1, 0));
 
-			mpp::UniformCollection statueUniforms;
-			statueUniforms.setUniform("light", lightPos);
+			mpp::UniformCollection modelUniforms;
+			modelUniforms.setUniform("light", lightPos);
 
+			// Render model
+			auto modelId = Statue;
+			gRenderSystem->resetTransform();
+			gRenderSystem->translateTransform3d(modelTranforms[modelId].position);
+			gRenderSystem->scaleTransform3d(modelTranforms[modelId].scale);
 			gRenderSystem->rotateTransform3d(viewAngle, glm::vec3(0, 1, 0));
-			//gRenderSystem->renderModelBatched((Model&)*statueModel, true, &statueUniforms);
-			gRenderSystem->renderModelBatched((Model&)*cityModel, true, &statueUniforms);
 
+			gRenderSystem->renderModelBatched((Model&)*modelTranforms[modelId].model, true, &modelUniforms);
 			
 			// Add post-process effects
 			/*

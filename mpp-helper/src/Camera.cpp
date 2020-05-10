@@ -22,6 +22,7 @@ namespace mpp
 
 		Camera::Camera(vec3 const& position) 
 			: mPosition(position)
+			, mFov(90.0f)
 			, mNear(0.1f)
 			, mFar(1000.0f)
 		{
@@ -38,6 +39,7 @@ namespace mpp
 		Camera::Camera(vec3 const& position, quat const& orientation)
 			: mPosition(position)
 			, mOrientation(orientation)
+			, mFov(90.0f)
 			, mNear(0.1f)
 			, mFar(1000.0f)
 		{
@@ -55,6 +57,7 @@ namespace mpp
 		Camera::Camera(vec3 const& position, vec3 const& direction, vec3 const& up)
 			: mPosition(position)
 			, mOrientation(up, direction)
+			, mFov(90.0f)
 			, mNear(0.1f)
 			, mFar(1000.0f)
 		{
@@ -72,6 +75,7 @@ namespace mpp
 		Camera::Camera(vec3 const& position, float yaw, float pitch, float roll)
 			: mPosition(position)
 			, mOrientation(vec3(pitch, yaw, roll))
+			, mFov(90.0f)
 			, mNear(0.1f)
 			, mFar(1000.0f)
 		{

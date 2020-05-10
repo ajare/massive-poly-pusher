@@ -2,9 +2,12 @@
 
 #include <vector>
 #include <map>
+#include <set>
 
 #include "mpp/ResourceStream.h"
 #include "mpp/FileDataStream.h"
+
+#include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
 {
@@ -33,9 +36,19 @@ namespace mpp
 
 		MaterialStream();
 
+		explicit MaterialStream(std::string const& program);
+
+		MaterialStream(bool program2d, mesh::MeshSpecification const& meshSpec);
+
+		MaterialStream(bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
+
 		std::string getType();
 
 		std::string const& getName() const;
+
+		void setProgram(std::string const& program);
+
+		void setProgram(bool is2d, mpp::mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
 
 		std::string const& getProgram() const;
 
