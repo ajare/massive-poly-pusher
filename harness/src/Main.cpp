@@ -21,6 +21,7 @@
 #include <mpp/BoxModelStream.h>
 #include <mpp/CylinderModelStream.h>
 #include <mpp/SphereModelStream.h>
+#include <mpp/TiledQuadModelStream.h>
 #include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
@@ -168,6 +169,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		string resLoc = gOptions.resourceLocation;
 
+		/*
+		Loading resources:
+		0. Create a MeshSpecification if needed for program, or programmatic model
+		   - mesh::MeshSpecification modelSpec(mesh::Primitive::Type::Triangles);
+		   - mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
+		   - attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+		   - attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+		   - attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+		   - attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+		   - modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+		   - modelSpec.setIndexedVertices(true);
+		1. Create programs
+		   - auto STREAM = new FileProgramStream(VERTEX_FILE, FRAGMENT_FILE);
+		   - ResourceManager::createResource<Program>(NAME, ResourceStreamPtr(STREAM));
+		2. Create textures
+		   - auto STREAM = loadImage(IMAGE_FILE, false);
+		   - ResourceManager::createResource<Texture>(NAME, ResourceStreamPtr(STREAM));
+		3. Create materials
+		   - auto STREAM = new ProgrammaticMaterialStream();
+		     - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
+			 - STREAM->setProgram(<2d | 3d>, MODEL_SPEC, PROGRAM_TAGS);
+		   - STREAM->setTexture(SAMPLER_NAME, TEXTURE_RESOURCE_NAME);
+		   - ResourceManager::createResource<Material>(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		   or:
+		  - FileDataStream FILE_STREAM(MATERIAL_FILE);
+		  - auto STREAM = new FileMaterialStream(FILE_STREAM);
+		  - ResourceManager::createResource<Material>(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		4. Create models
+		   - auto STREAM = new BoxModelStream(MODEL_SPEC, MATERIAL_RESOURCE_NAME, ...);
+		   - auto MODEL = ResourceManager::createResource<Model>(MODEL_NAME, ResourceStreamPtr(STREAM));
+		5. Load model
+		   - MODEL->load();
+		*/
+
 		//
 		// Model setup
 		//
@@ -199,10 +234,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Materials
 		//
 
-		// Can we generate material from the meshspec?  Would mean we have to define meshspecs
-		// in advance, ensure all models are using the same, etc.
-		// ...
-
 		// Marble
 		auto meshMaterialStream = new ProgrammaticMaterialStream();
 		
@@ -226,10 +257,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		auto cubeModel = gResourceManager->createResource<Model>("Model.Cube", ResourceStreamPtr(cubeStream));
 		cubeModel->load();
+
+		// Sphere
+		auto sphereStream = new SphereModelStream(modelSpec, "Material.Marble", 15.0f, 5);
 		
+		auto sphereModel = gResourceManager->createResource<Model>("Model.Sphere", ResourceStreamPtr(sphereStream));
+		sphereModel->load();
+
+		// Cylinder
+		auto cylinderStream = new CylinderModelStream(modelSpec, "Material.Marble", 30.0f, 15.0f, 10.0f, 72);
+
+		auto cylinderModel = gResourceManager->createResource<Model>("Model.Cylinder", ResourceStreamPtr(cylinderStream));
+		cylinderModel->load();
+
 		// Statue
 		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
-		auto statueModel = gResourceManager->createResource<Model>("Statue", ResourceStreamPtr(statueStream));
+
+		auto statueModel = gResourceManager->createResource<Model>("Model.Statue", ResourceStreamPtr(statueStream));
 		statueModel->load();
 
 		//
@@ -245,12 +289,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		enum ModelId
 		{
 			Cube,
+			Sphere,
+			Cylinder,
 			Statue
 		};
 
 		vector< ModelTransform> modelTranforms =
 		{
 			{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
+			{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
+			{ cylinderModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
 			{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
 		};
 
@@ -322,11 +370,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 				if (gInputMgr->keyDown(Key_LeftArrow))
 				{
-					viewAngle += 2.0f * frameTime;
+					viewAngle += 60.0f * frameTime;
 				}
 				if (gInputMgr->keyDown(Key_RightArrow))
 				{
-					viewAngle -= 2.0f * frameTime;
+					viewAngle -= 60.0f * frameTime;
 				}
 
 				if (gInputMgr->keyDown(Key_W))
@@ -397,7 +445,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			modelUniforms.setUniform("light", lightPos);
 
 			// Render model
-			auto modelId = Statue;
+			auto modelId = Cylinder;
 			gRenderSystem->resetTransform();
 			gRenderSystem->translateTransform3d(modelTranforms[modelId].position);
 			gRenderSystem->scaleTransform3d(modelTranforms[modelId].scale);
