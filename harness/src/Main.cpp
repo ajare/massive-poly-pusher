@@ -46,6 +46,22 @@
 using namespace std;
 using namespace mpp;
 
+struct ModelTransform
+{
+	mpp::ResourcePtr model;
+	glm::vec3 position;
+	glm::vec3 scale;
+};
+
+enum class ModelId
+{
+	Cube,
+	Sphere,
+	Cylinder,
+	TiledQuad,
+	Statue
+};
+
 ProgramOptions gOptions;
 
 ::Logger* gLogger = nullptr;
@@ -150,7 +166,7 @@ void shutdown()
 	SDL_Quit();
 
 #ifdef DEBUG
-	unhookRenderdoc();
+	//unhookRenderdoc();
 #endif
 
 	delete gLogger;
@@ -270,6 +286,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto cylinderModel = gResourceManager->createResource<Model>("Model.Cylinder", ResourceStreamPtr(cylinderStream));
 		cylinderModel->load();
 
+		// TiledQuad
+		auto tiledQuadStream = new TiledQuadModelStream(modelSpec, "Material.Marble", 256, 256, 8, 8);
+
+		auto tiledQuadModel = gResourceManager->createResource<Model>("Model.TiledQuad", ResourceStreamPtr(tiledQuadStream));
+		tiledQuadModel->load();
+
 		// Statue
 		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
 
@@ -279,35 +301,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// Model transforms
 		//
-		struct ModelTransform
-		{
-			mpp::ResourcePtr model;
-			glm::vec3 position;
-			glm::vec3 scale;
-		};
-
-		enum ModelId
-		{
-			Cube,
-			Sphere,
-			Cylinder,
-			Statue
-		};
-
 		vector< ModelTransform> modelTranforms =
 		{
 			{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
 			{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
 			{ cylinderModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
+			{ tiledQuadModel, glm::vec3(0.0f, -100.0f, 50.0f), glm::vec3(1.0f, 1.0f, 1.0f)},
 			{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
 		};
+
+		auto currentModelId = ModelId::Cube;
 
 		//
 		// Camera setup
 		//
-		glm::vec3 cameraPos(0, 0, 400);
-
-		helper::FreeCamera camera(cameraPos, 0.0f, 0.0f, 0.0f);
+		helper::FreeCamera camera(glm::vec3(0, 0, 400), 0.0f, 0.0f, 0.0f);
 		camera.setClipDistances(0.1f, 2000.0f);
 		camera.setFov(45.0f);
 
@@ -321,6 +329,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		int frameCount = 0;
 
 		bool isFullScreen = gOptions.fullScreen;
+		bool wireframe = false;
 
 		float viewAngle = 0.0f;
 		float lightAngle = 0.0f, lightHeight = 750.0f;
@@ -355,6 +364,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				running = false;
 			}
 
+			if (gInputMgr->keyPressed(Key_F9))
+			{
+				wireframe = !wireframe;
+			}
+
 			if (gInputMgr->keyPressed(Key_F10))
 			{
 				gRenderdocApi->TriggerCapture();
@@ -368,6 +382,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				float yaw = 0.0f, pitch = 0.0f, roll = 0.0f;
 				float forwardBack = 0.0f, upDown = 0.0f, rightLeft = 0.0f;
 
+				// Select model
+				if (gInputMgr->keyPressed(Key_1))
+				{
+					currentModelId = ModelId::Cube;
+				}
+				else if (gInputMgr->keyPressed(Key_2))
+				{
+					currentModelId = ModelId::Sphere;
+				}
+				else if (gInputMgr->keyPressed(Key_3))
+				{
+					currentModelId = ModelId::Cylinder;
+				}
+				else if (gInputMgr->keyPressed(Key_4))
+				{
+					currentModelId = ModelId::TiledQuad;
+				}
+				else if (gInputMgr->keyPressed(Key_5))
+				{
+					currentModelId = ModelId::Statue;
+				}
+
+				// Rotate model
 				if (gInputMgr->keyDown(Key_LeftArrow))
 				{
 					viewAngle += 60.0f * frameTime;
@@ -377,6 +414,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					viewAngle -= 60.0f * frameTime;
 				}
 
+				// Move camera
 				if (gInputMgr->keyDown(Key_W))
 				{
 					camera.forward(50.0f * frameTime);
@@ -444,16 +482,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			mpp::UniformCollection modelUniforms;
 			modelUniforms.setUniform("light", lightPos);
 
+			//
 			// Render model
-			auto modelId = Cylinder;
+			//
 			gRenderSystem->resetTransform();
-			gRenderSystem->translateTransform3d(modelTranforms[modelId].position);
-			gRenderSystem->scaleTransform3d(modelTranforms[modelId].scale);
+			gRenderSystem->translateTransform3d(modelTranforms[(int)currentModelId].position);
+			gRenderSystem->scaleTransform3d(modelTranforms[(int)currentModelId].scale);
 			gRenderSystem->rotateTransform3d(viewAngle, glm::vec3(0, 1, 0));
 
-			gRenderSystem->renderModelBatched((Model&)*modelTranforms[modelId].model, true, &modelUniforms);
+			auto mi = gRenderSystem->renderModelBatched((Model&)*modelTranforms[(int)currentModelId].model, true, &modelUniforms);
+			mi->setWireframe(wireframe);
 			
+			//
 			// Add post-process effects
+			//
 			/*
 			UniformCollection filmGrainUniforms;
 			filmGrainUniforms.setUniform("strength", 32.0f);
@@ -487,6 +529,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("Primitives: " + utils::StringUtils::toString(ri.primitivesRendered));
 			lines.push_back("Program switches: " + utils::StringUtils::toString(ri.programSwitches));
 			lines.push_back("Texture switches: " + utils::StringUtils::toString(ri.textureSwitches));
+			lines.push_back("");
+			lines.push_back("[1] Cube");
+			lines.push_back("[2] Sphere");
+			lines.push_back("[3] Cylinder");
+			lines.push_back("[4] TiledQuad");
+			lines.push_back("[5] Statue");
+
 			gRenderSystem->renderText(lines, 0, 0, Colour::White);
 
 			/*

@@ -2253,6 +2253,8 @@ namespace mpp
 			// Unbind
 			meshInstance.second->mwMesh->bind(false);
 
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 			if (meshInstance.second->mBlend)
 			{
 				glDisable(GL_BLEND);
