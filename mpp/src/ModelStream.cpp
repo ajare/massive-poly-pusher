@@ -5,6 +5,7 @@
 #include "mpp/ModelStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/VertexBuffer.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -150,7 +151,7 @@ namespace mpp
 					break;
 
 				default:
-					throw exception("ModelStream::deinterlaceVertexBufferData() cannot convert data to unsupported type!");
+					THROW_MPP("Cannot convert data to unsupported type.", __LINE__, __FILE__, __FUNCTION__);
 				}
 
 				for (int k = 0; k < attrib.paddingBytes; ++k)

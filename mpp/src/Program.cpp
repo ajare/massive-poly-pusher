@@ -21,6 +21,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/Program.h"
 #include "mpp/ProgramStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -76,9 +77,7 @@ namespace mpp
 			glDeleteShader(*id); 
 			*id = 0;
 
-			getRenderSystem()->logMessage(msg);
-			getRenderSystem()->logMessage(source);
-			throw exception(msg.c_str());
+			THROW_MPP(msg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		getRenderSystem()->logMessage("Compiled " + sourceType + " shader.");
@@ -93,7 +92,7 @@ namespace mpp
 		ProgramStream* pStr = dynamic_cast<ProgramStream*>(getResourceStream().get());
 		if (!pStr)
 		{
-			throw exception("Program::createImpl() could not cast to type 'ProgramStream'.");
+			THROW_MPP("Could not cast to type 'ProgramStream'.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		mVertexSource = pStr->getVertexSource();
@@ -218,7 +217,7 @@ namespace mpp
 						// Check if we hit the end of the file
 						if (commentEnd == -1)
 						{
-							throw exception("COuld not parse multi-line comment.");
+							THROW_MPP("Could not parse multi-line comment.", __LINE__, __FILE__, __FUNCTION__);
 						}
 
 						stripped.erase(commentStart, commentEnd - commentStart + 1);
@@ -316,7 +315,7 @@ namespace mpp
 		{
 			if (stringMatch.size() > 1)
 			{
-				throw exception("Multiple main definitions found in program source.");
+				THROW_MPP("Multiple 'main' definitions found in program source.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			mainLine = 0;
@@ -333,7 +332,7 @@ namespace mpp
 		}
 		else
 		{
-			throw exception("Could not find main() definition in program source.");
+			THROW_MPP("Could not find 'main' definition in program source.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		// See which built-in uniforms are used
@@ -389,7 +388,7 @@ namespace mpp
 				if (spacePos == string::npos)
 				{
 					string errMsg = "Invalid template definition '" + templateSection + "' in program source.";
-					throw exception(errMsg.c_str());
+					THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 				}
 
 				// Variable definition
@@ -401,7 +400,7 @@ namespace mpp
 				if (equalsPos == string::npos)
 				{
 					string errMsg = "Invalid template definition '" + templateSection + "' in program source.";
-					throw exception(errMsg.c_str());
+					THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 				}
 
 				string varName = templateSection.substr(spacePos + 1, equalsPos - (spacePos + 1));
@@ -546,7 +545,7 @@ namespace mpp
 
 				if (templateEnd == string::npos)
 				{
-					throw exception("Could not find closing template bracket in program source.");
+					THROW_MPP("Could not find closing template bracket in program source.", __LINE__, __FILE__, __FUNCTION__);
 				}
 
 				string tokenName = parsedSource.substr(templateStart + token.length(), templateEnd - templateStart - token.length());
@@ -566,7 +565,7 @@ namespace mpp
 					}) == inVars.end())
 					{
 						string errMsg = "In-variable '" + tokenName + "' used but not declared.";
-						throw exception(errMsg.c_str());
+						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 					}
 				}
 				if (token == "@Out(")
@@ -580,7 +579,7 @@ namespace mpp
 					}) == outVars.end())
 					{
 						string errMsg = "Out-variable '" + tokenName + "' used but not declared.";
-						throw exception(errMsg.c_str());
+						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 					}
 				}
 				if (token == "@Uniform(")
@@ -594,7 +593,7 @@ namespace mpp
 					}) == uniformVars.end())
 					{
 						string errMsg = "Uniform '" + tokenName + "' used but not declared.";
-						throw exception(errMsg.c_str());
+						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 					}
 				}
 				if (token == "@Texture(")
@@ -608,7 +607,7 @@ namespace mpp
 					}) == textureVars.end())
 					{
 						string errMsg = "Uniform (texture) '" + tokenName + "' used but not declared.";
-						throw exception(errMsg.c_str());
+						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 					}
 				}
 
@@ -678,7 +677,7 @@ namespace mpp
 			mVertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 			if (mVertexShaderId == 0)
 			{
-				throw exception("Could not create vertex shader id.");
+				THROW_MPP("Could not create vertex shader id.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			compileShader(&mVertexShaderId, mVertexSource, "vertex");
@@ -687,7 +686,7 @@ namespace mpp
 			mFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 			if (mFragmentShaderId == 0)
 			{
-				throw exception("Could not create fragment shader id.");
+				THROW_MPP("Could not create fragment shader id.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			compileShader(&mFragmentShaderId, mFragmentSource, "fragment");
@@ -696,7 +695,7 @@ namespace mpp
 			GLuint programId = glCreateProgram();
 			if (programId == 0)
 			{
-				throw exception("Could not create program id.");
+				THROW_MPP("Could not create program id.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			// Attach shaders
@@ -742,8 +741,7 @@ namespace mpp
 				glDeleteProgram(programId);
 				programId = 0;
 
-				rs->logMessage(msg);
-				throw exception(msg.c_str());
+				THROW_MPP(msg, __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			setId(programId);
@@ -836,7 +834,7 @@ namespace mpp
 					{
 						// Uniform used but not declared in metadata
 						string errMsg = "Uniform '" + uniformName + "' was used in program '" + getName() + "' but not declared in metadata.";
-						throw exception(errMsg.c_str());
+						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 					}
 				}
 			}
@@ -969,6 +967,15 @@ namespace mpp
 	string const& Program::getSamplerName(int index) const
 	{
 		return mTextures[index].samplerName;
+	}
+
+	/*
+	 * Get vertex attributes.
+	 *
+	 */
+	vector<Program::VariableInfo> const& Program::getVertexAttributes() const
+	{
+		return mVertexAttributes;
 	}
 
 	/*

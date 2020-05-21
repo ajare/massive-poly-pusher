@@ -183,7 +183,10 @@
     <ClInclude Include="..\..\include\mpp\Memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\TiledQuadModelStream.h">
+    <ClInclude Include="..\..\include\mpp\GridModelStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\MppException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -323,7 +326,7 @@
     <ClCompile Include="..\..\src\Memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\TiledQuadModelStream.cpp">
+    <ClCompile Include="..\..\src\GridModelStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

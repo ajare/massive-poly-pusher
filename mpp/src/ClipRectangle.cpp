@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "mpp/ClipRectangle.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -37,11 +38,7 @@ namespace mpp
 	 */
 	ClipRectangle ClipRectangle::intersect(ClipRectangle const& clipper) const
 	{
-		ClipRectangle clipped;
-
-		throw std::exception("Function 'ClipRectangle ClipRectangle::intersect(ClipRectangle const& clipper)' not yet implemented!");
-
-		return clipped;
+		THROW_MPP_FN_NOTIMP(__LINE__, __FILE__, __FUNCTION__);
 	}
 
 }

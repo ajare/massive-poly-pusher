@@ -3,6 +3,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/ProgrammaticModelStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -181,12 +182,12 @@ namespace mpp
 		if (getMeshId(name) >= 0)
 		{
 			string errMsg = "Mesh '" + name + "' already defined in programmatic model stream.";
-			throw exception(errMsg.c_str());
+			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		if (indexWidth != 16 && indexWidth != 32)
 		{
-			throw exception("Index width must be either 16 or 32.");
+			THROW_MPP("Index width must be either 16 or 32.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		int index = mMeshDataDefinitions.size();

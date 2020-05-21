@@ -12,6 +12,7 @@
 #include "utils/XmlReader.h"
 #include "utils/XmlWriter.h"
 
+#include "mpp/MppException.h"
 #include "mpp/mesh/Vertex.h"
 
 #include "AssImpModelLoader.h"
@@ -728,7 +729,7 @@ void AssImpModelLoader::load()
 			auto primitiveType = meshSpec.getPrimitiveType();
 			if (primitiveType != mpp::mesh::Primitive::Type::Triangles)
 			{
-				throw exception("Converting to non-triangle primitives is not yet implemented.");
+				THROW_MPP_NOTIMP("conversion to non-triangle primitives", __LINE__, __FILE__, __FUNCTION__);
 
 				if (primitiveType == mpp::mesh::Primitive::Type::Points)
 				{

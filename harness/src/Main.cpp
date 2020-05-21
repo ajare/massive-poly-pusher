@@ -21,7 +21,7 @@
 #include <mpp/BoxModelStream.h>
 #include <mpp/CylinderModelStream.h>
 #include <mpp/SphereModelStream.h>
-#include <mpp/TiledQuadModelStream.h>
+#include <mpp/GridModelStream.h>
 #include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
@@ -58,7 +58,7 @@ enum class ModelId
 	Cube,
 	Sphere,
 	Cylinder,
-	TiledQuad,
+	Grid,
 	Statue
 };
 
@@ -229,6 +229,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+
 		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		modelSpec.setIndexedVertices(true);
 
@@ -253,8 +254,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Marble
 		auto meshMaterialStream = new ProgrammaticMaterialStream();
 		
-		//meshMaterialStream->setProgram("Program.Test");
-		meshMaterialStream->setProgram(false, modelSpec, {});
+		meshMaterialStream->setProgram("program_test");
+		//meshMaterialStream->setProgram(false, modelSpec, {});
 		
 		meshMaterialStream->setTexture("tex", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
@@ -269,6 +270,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 
 		// Cube
+		/*
 		auto cubeStream = new BoxModelStream(modelSpec, "Material.Marble", 1, 1, 1);
 
 		auto cubeModel = gResourceManager->createResource<Model>("Model.Cube", ResourceStreamPtr(cubeStream));
@@ -285,32 +287,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		auto cylinderModel = gResourceManager->createResource<Model>("Model.Cylinder", ResourceStreamPtr(cylinderStream));
 		cylinderModel->load();
+		*/
+		// Grid
+		auto gridStream = new GridModelStream(modelSpec, "Material.Marble", 256, 256, 8, 8);
 
-		// TiledQuad
-		auto tiledQuadStream = new TiledQuadModelStream(modelSpec, "Material.Marble", 256, 256, 8, 8);
-
-		auto tiledQuadModel = gResourceManager->createResource<Model>("Model.TiledQuad", ResourceStreamPtr(tiledQuadStream));
-		tiledQuadModel->load();
-
+		auto gridModel = gResourceManager->createResource<Model>("Model.Grid", ResourceStreamPtr(gridStream));
+		gridModel->load();
+		
 		// Statue
+		/*
 		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
 
 		auto statueModel = gResourceManager->createResource<Model>("Model.Statue", ResourceStreamPtr(statueStream));
 		statueModel->load();
-
+		*/
+		
 		//
 		// Model transforms
 		//
 		vector< ModelTransform> modelTranforms =
 		{
-			{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
-			{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
-			{ cylinderModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
-			{ tiledQuadModel, glm::vec3(0.0f, -100.0f, 50.0f), glm::vec3(1.0f, 1.0f, 1.0f)},
-			{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
+			//{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
+			//{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
+			//{ cylinderModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
+			{ gridModel, glm::vec3(0.0f, -100.0f, 50.0f), glm::vec3(1.0f, 1.0f, 1.0f)},
+			//{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
 		};
 
-		auto currentModelId = ModelId::Cube;
+		auto currentModelId = 0;// = ModelId::Grid;
 
 		//
 		// Camera setup
@@ -383,6 +387,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				float forwardBack = 0.0f, upDown = 0.0f, rightLeft = 0.0f;
 
 				// Select model
+				/*
 				if (gInputMgr->keyPressed(Key_1))
 				{
 					currentModelId = ModelId::Cube;
@@ -397,13 +402,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 				else if (gInputMgr->keyPressed(Key_4))
 				{
-					currentModelId = ModelId::TiledQuad;
+					currentModelId = ModelId::Grid;
 				}
 				else if (gInputMgr->keyPressed(Key_5))
 				{
 					currentModelId = ModelId::Statue;
 				}
-
+				*/
 				// Rotate model
 				if (gInputMgr->keyDown(Key_LeftArrow))
 				{
@@ -446,6 +451,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (gInputMgr->keyDown(Key_E))
 				{
 					camera.roll(60.0f * frameTime);
+				}
+
+				// Light
+				if (gInputMgr->keyDown(Key_T))
+				{
+					lightAngle -= 50 * frameTime;
+				}
+				if (gInputMgr->keyDown(Key_Y))
+				{
+					lightAngle += 50 * frameTime;
+				}
+				if (gInputMgr->keyDown(Key_G))
+				{
+					lightHeight += 60 * frameTime;
+				}
+				if (gInputMgr->keyDown(Key_B))
+				{
+					lightHeight -= 60 * frameTime;
 				}
 
 				// Change video mode to fullscreen
@@ -533,7 +556,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("[1] Cube");
 			lines.push_back("[2] Sphere");
 			lines.push_back("[3] Cylinder");
-			lines.push_back("[4] TiledQuad");
+			lines.push_back("[4] Grid");
 			lines.push_back("[5] Statue");
 
 			gRenderSystem->renderText(lines, 0, 0, Colour::White);
@@ -546,9 +569,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gWindow->show();
 		}
 	}
+	catch (mpp::MppException const& e)
+	{
+		gLogger->message(e.what());
+		gLogger->message(" - thrown by " + e.getFunction());
+		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
+		return 1;
+	}
 	catch (exception const& e)
 	{
-		cout << e.what() << endl;
 		gLogger->message(e.what());
 		return 1;
 	}

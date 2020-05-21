@@ -365,7 +365,7 @@ namespace mpp
 		if (use)
 		{
 			glBindVertexArray(mVAO);
-			}
+		}
 		else
 		{
 			glBindVertexArray(0);

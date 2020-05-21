@@ -14,6 +14,7 @@
 #include "mpp/ResourceStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/MeshSortFlags.h"
+#include "mpp/MppException.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -43,8 +44,9 @@ namespace mpp
 		{
 			if (mResources.find(name) != mResources.end())
 			{
-				std::string errMsg = "Resource '" + name + "' already exists.";
-				throw std::exception(errMsg.c_str());
+				THROW_MPP(
+					utils::StringUtils::format("Resource '{}' already exists.", name),
+					__LINE__, __FILE__, __FUNCTION__);
 			}
 
 			if (resourceStream)
@@ -162,8 +164,8 @@ namespace mpp
 		uint64 maxBits = std::min<uint64>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
 		if (msSortableTextureId == (uint32)(1 << maxBits))
 		{
-			std::string errMsg = "Cannot create Texture resource '" + name + "'.  Limit reached!";
-			throw std::exception(errMsg.c_str());
+			std::string errMsg = utils::StringUtils::format("Cannot create Texture resource '{}'.  Limit reached!", name);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		auto resourcePtr = createResourceImpl<Texture>(name, resourceStream);
@@ -181,8 +183,8 @@ namespace mpp
 	{
 		if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
 		{
-			std::string errMsg = "Cannot create Program resource '" + name + "'.  Limit reached!";
-			throw std::exception(errMsg.c_str());
+			std::string errMsg = utils::StringUtils::format("Cannot create Program resource '{}'.  Limit reached!", name);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		auto resourcePtr = createResourceImpl<Program>(name, resourceStream);

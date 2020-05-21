@@ -8,6 +8,7 @@
 #include "mpp/TextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -162,8 +163,7 @@ namespace mpp
 			}
 			else
 			{
-				std::string errMsg = "Resource '" + name + "' does not exist.";
-				throw std::exception(errMsg.c_str());
+				THROW_MPP(utils::StringUtils::format("Resource '{}' not found.", name), __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
 
@@ -327,7 +327,7 @@ namespace mpp
 			trimmedLine = trim_copy(trimmedLine.substr(1));
 			if (trimmedLine == "")
 			{
-				throw exception("Cannot have ! without an attribute in shader template.");
+				THROW_MPP("Cannot have ! without an attribute in shader template.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			invert = true;
@@ -368,7 +368,7 @@ namespace mpp
 		}
 		else
 		{
-			throw exception("Could not evaluate ## directive in shader template.");
+			THROW_MPP("Could not evaluate ## directive in shader template.", __LINE__, __FILE__, __FUNCTION__);
 		}
 	}
 

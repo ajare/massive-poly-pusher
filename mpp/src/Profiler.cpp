@@ -13,6 +13,7 @@
 
 #include "mpp/Profiler.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/MppException.h"
 
 #define NVPM_INITGUID
 #include "NvPmApi.Manager.h"
@@ -49,14 +50,14 @@ namespace mpp
 		// Load DLL
 		if (sNVPMManager.Construct(L"NvPmApi.Core.dll") != S_OK)
 		{
-			throw exception("Could not load profiler DLL!");
+			THROW_MPP_IO("Could not open NvPmApi.Core.dll", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		// Initialise profiler
 		NVPMRESULT nvResult;
 		if ((nvResult = sNVPMManager.Api()->Init()) != NVPM_OK)
 		{
-			throw exception("Could not initialise profiler!");
+			THROW_MPP("Could not initialise profiler.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		// Create context
@@ -64,7 +65,7 @@ namespace mpp
 
 		if ((nvResult = sNVPMManager.Api()->CreateContextFromOGLContext((APIContextHandle)ctx, &sNVPMContext)) != NVPM_OK)
 		{
-			throw exception("Could not create profiler context!");
+			THROW_MPP("Could not create profiler context.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		for (auto counterName: mCounterNames)
@@ -74,13 +75,13 @@ namespace mpp
 			auto result = sNVPMManager.Api()->GetCounterIDByContext(sNVPMContext, counterName.c_str(), &counterID);
 			if (result != NVPM_OK)
 			{
-				throw exception(("Profiler could not get '" + counterName + "' counter ID!").c_str());
+				THROW_MPP(utils::StringUtils::format("Profiler could not get '{}' counter ID", counterName), __LINE__, __FILE__, __FUNCTION__);
 			}
 			else
 			{
 				if (sNVPMManager.Api()->AddCounter(sNVPMContext, counterID) != NVPM_OK)
 				{
-					throw exception(("Profiler could not enable '" + counterName + "' counter!").c_str());
+					THROW_MPP(utils::StringUtils::format("Profiler could not enable '{}' counter ID", counterName), __LINE__, __FILE__, __FUNCTION__);
 				}
 			}
 		}
@@ -124,7 +125,7 @@ namespace mpp
 			}
 			else
 			{
-				throw exception(("Profiler could not get value of '" + counterName + "' counter!").c_str());
+				THROW_MPP(utils::StringUtils::format("Profiler could not get value of '{}' counter ID", counterName), __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
 

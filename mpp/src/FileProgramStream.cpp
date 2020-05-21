@@ -1,4 +1,5 @@
 #include "mpp/FileProgramStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -26,7 +27,7 @@ namespace mpp
 		vf.open(mVertFile);
 		if (!vf.is_open())
 		{
-			throw exception("ProgramStream::ProgramStream() vertFile is not open.");
+			THROW_MPP_IO("Could not open " + mVertFile, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		setVertexSource(string((istreambuf_iterator<char>(vf)), istreambuf_iterator<char>()));
@@ -36,7 +37,7 @@ namespace mpp
 		ff.open(mFragFile);
 		if (!ff.is_open())
 		{
-			throw exception("ProgramStream::ProgramStream() fragFile is not open.");
+			THROW_MPP_IO("Could not open " + mFragFile, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		setFragmentSource(string((istreambuf_iterator<char>(ff)), istreambuf_iterator<char>()));

@@ -1,11 +1,10 @@
-#include <exception>
-
 #undef min
 #undef max
 
 #include "half/half.hpp"
 
 #include "mpp/mesh/Vertex.h"
+#include "mpp/mesh/MppMeshException.h"
 
 using namespace std;
 
@@ -39,7 +38,7 @@ namespace mpp
 			case Vertex::Component::Colour4:
 				return 4;
 			default:
-				throw exception("Vertex::getComponentSize() unknown component!");
+				throw MppMeshException("Vertex::getComponentSize() unknown component!");
 			}
 		}
 
@@ -77,7 +76,7 @@ namespace mpp
 			case Vertex::DataType::Pad4:
 				return 4;
 			default:
-				throw exception("Vertex::getDataTypeSize() could not get size of data type!");
+				throw MppMeshException("Vertex::getDataTypeSize() could not get size of data type!");
 			}
 		}
 

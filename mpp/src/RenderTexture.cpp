@@ -2,6 +2,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderTexture.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -62,7 +63,7 @@ namespace mpp
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			throw exception("Could not create FrameBuffer!");
+			THROW_MPP("Could not create framebuffer.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);

@@ -3,6 +3,7 @@
 
 #include "mpp/VertexBuffer.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -63,7 +64,8 @@ namespace mpp
 		case Vertex::DataType::HalfFloat:		attr.dataType = GL_HALF_FLOAT; break;
 		case Vertex::DataType::Float:			attr.dataType = GL_FLOAT; break;
 		case Vertex::DataType::Double:			attr.dataType = GL_DOUBLE; break;
-		default:								throw std::exception("VertexBuffer::VertexBuffer() unknown datatype!");
+		default:								
+			THROW_MPP("Unsupported datatype.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		attr.componentSize = componentSize;
@@ -151,7 +153,7 @@ namespace mpp
 
 		if (mStreaming)
 		{
-			throw exception("Geometry streaming not yet implemented.");
+			THROW_MPP_NOTIMP("geometry streaming", __LINE__, __FILE__, __FUNCTION__);
 
 			//GLbitfield fMap = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 			//GLbitfield fCreate = fMap | GL_DYNAMIC_STORAGE_BIT;

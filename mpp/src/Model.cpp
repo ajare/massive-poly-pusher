@@ -13,6 +13,7 @@
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -50,7 +51,7 @@ namespace mpp
 		ModelStream* mStr = dynamic_cast<ModelStream*>(getResourceStream().get());
 		if (!mStr)
 		{
-			throw exception("Model::createImpl() could not cast to type 'ModelStream'.");
+			THROW_MPP("Could not cast to type 'ModelStream'", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		auto resourceMgr = getResourceManager();
@@ -61,6 +62,17 @@ namespace mpp
 
 			ResourcePtr	material = resourceMgr->getResource(meshDef->getMaterial());
 			material->load();
+
+			// Don't check vertex attribute mapping for internal resources as they may not
+			// actually have a mapping yet.
+			if (!utils::StringUtils::startsWith(getName(), "__mpp") &&
+				!checkVertexAttributeMapping(material, meshDef))
+			{
+				THROW_MPP(
+					utils::StringUtils::format("Vertex attribute mismatch between material '{}' and mesh '{}' of model '{}'.",
+						material->getName(), meshDef->getName(), getName()),
+					__LINE__, __FILE__, __FUNCTION__);
+			}
 
 			Mesh* mesh = nullptr;
 
@@ -154,6 +166,45 @@ namespace mpp
 		{
 			it->unload();
 		}
+	}
+
+	/*
+	 * Check that the material's program vertex attributes match the mesh's.
+	 *
+	 */
+	bool Model::checkVertexAttributeMapping(ResourcePtr material, MeshDefinition* meshDef)
+	{
+		// Get mesh attributes
+		vector<size_t> meshComponentSizes;
+		for (int i = 0; i < meshDef->getNumVertexBufferDefinitions(); ++i)
+		{
+			auto vbDef = meshDef->getVertexBufferDefinition(i);
+			for (int j = 0; j < vbDef->getNumAttributes(); ++j)
+			{
+				auto attrib = vbDef->getAttribute(j);
+				meshComponentSizes.push_back(Vertex::getComponentSize(attrib.component));
+			}
+		}
+
+		// Compare against program attributes
+		auto programRes = static_cast<Material*>(material.get())->getProgram();
+		auto program = static_cast<Program*>(programRes.get());
+
+		auto const& programAttrs = program->getVertexAttributes();
+		if (meshComponentSizes.size() != programAttrs.size())
+		{
+			return false;
+		}
+
+		for (size_t i = 0; i < programAttrs.size(); ++i)
+		{
+			if (programAttrs[i].numComponents != meshComponentSizes[i])
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/*

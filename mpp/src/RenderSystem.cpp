@@ -34,6 +34,7 @@
 #include "mpp/RenderTexture.h"
 #include "mpp/Profiler.h"
 #include "mpp/MeshSortFlags.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -66,7 +67,7 @@ namespace mpp
 		mLogger = new Logger();
 		if (!mLogger->initialise("mpp.log"))
 		{
-			throw exception("Could not initialise RenderSystem logger.");
+			THROW_MPP("Could not initialise RenderSystem logger", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		initialise();
@@ -98,8 +99,6 @@ namespace mpp
 	                                  GLsizei length, const GLchar* message, GLvoid const* userParam)
 	{
 		RenderSystem* renderSystem = const_cast<RenderSystem*>((RenderSystem const*)(userParam));
-
-		//throw exception(message);
 
 		string msg(message);
 		
@@ -177,7 +176,7 @@ namespace mpp
 		{
 		case GL_DEBUG_SEVERITY_HIGH_ARB:
 			svrty = RenderSystem::OpenGLError::Severity::High;
-			throw exception("OpenGL error caught: check log.");
+			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __FUNCTION__);
 			break;
 
 		case GL_DEBUG_SEVERITY_MEDIUM_ARB:
@@ -190,7 +189,7 @@ namespace mpp
 
 		default:
 			svrty = RenderSystem::OpenGLError::Severity::High;
-			throw exception("OpenGL error caught: check log.");
+			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __FUNCTION__);
 			break;
 		}
 
@@ -278,7 +277,7 @@ namespace mpp
 		if (err != GLEW_OK)
 		{
 			string msg = "GLEW initialisation failed.  " + string((char*)glewGetErrorString(err));
-			throw exception(msg.c_str());
+			THROW_MPP(msg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		checkExtensions();
@@ -371,7 +370,7 @@ namespace mpp
 		// Check we have the extensions we need.
 		if (!GLEW_VERSION_3_2)
 		{
-			throw exception("OpenGL 3.2 was not found.");
+			THROW_MPP("OpenGL 3.2 was not found.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 
@@ -746,7 +745,7 @@ namespace mpp
 			break;
 
 		default:
-			throw exception("RenderSystem::_useDefaultProgram() Unknown projection!");
+			THROW_MPP("Unsupported projection.", __LINE__, __FILE__, __FUNCTION__);
 		}
 	}
 
@@ -892,7 +891,7 @@ namespace mpp
 		if (mTextureTiles.find(name) != mTextureTiles.end())
 		{
 			string errMsg = "Texture tile named '" + name + "' already exists.";
-			throw exception(errMsg.c_str());
+			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		mTextureTiles[name] = TextureTile(texture, u0, v0, u1, v1);
@@ -909,7 +908,7 @@ namespace mpp
 		if (it == mTextureTiles.end())
 		{
 			string errMsg = "Texture tile named '" + name + "' does not exist.";
-			throw exception(errMsg.c_str());
+			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		mTextureTiles.erase(it);
@@ -924,7 +923,7 @@ namespace mpp
 		if (mTextureTiles.find(name) == mTextureTiles.end())
 		{
 			string errMsg = "Texture tile named '" + name + "' does not exist.";
-			throw exception(errMsg.c_str());
+			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		return mTextureTiles.at(name);

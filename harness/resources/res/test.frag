@@ -18,5 +18,5 @@ void main()
 	d = clamp(d, 0.0, 1.0); 
 
 	vec3 shadedColour = @In(colour).xyz * d;
-	@Out(colour) = texture(@Texture(tex), @In(uv)) * vec4(shadedColour, 1.0);
+	@Out(colour) = texture(@Texture(tex), @In(uv).xy) * vec4(shadedColour, 1.0);
 }

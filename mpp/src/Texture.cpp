@@ -11,6 +11,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/Texture.h"
 #include "mpp/TextureStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -40,7 +41,7 @@ namespace mpp
 		TextureStream* tStr = dynamic_cast<TextureStream*>(getResourceStream().get());
 		if (!tStr)
 		{
-			throw exception("Texture::createImpl() could not cast to type 'TextureStream'.");
+			THROW_MPP("Could not cast to type 'TextureStream'.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		int dataSize = tStr->getDataSize();

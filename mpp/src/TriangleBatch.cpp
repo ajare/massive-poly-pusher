@@ -5,6 +5,7 @@
 #include "mpp/TriangleBatch.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -243,7 +244,7 @@ namespace mpp
 				normaliseColours = true;
 				break;
 			default:
-				throw exception("Unknown colour options.");
+				THROW_MPP("Unsupported colour options.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			layout->createAttribute(colourComponent, colourType, normaliseColours);
