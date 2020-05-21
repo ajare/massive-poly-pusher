@@ -15,9 +15,12 @@ namespace mpp
 			mesh::MeshSpecification specification;
 			std::string name;
 			std::string material;
+
 			std::vector<float> vertexData;
-			int indexWidth;
+			
 			float pointSize;
+			
+			int indexWidth;
 			std::vector<uint32> indexData;
 
 			// Component data

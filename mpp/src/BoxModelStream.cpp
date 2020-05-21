@@ -2,6 +2,7 @@
 #include <cassert>
 
 #include "mpp/Config.h"
+#include "mpp/MppException.h"
 #include "mpp/BoxModelStream.h"
 
 using namespace std;
@@ -149,7 +150,8 @@ namespace mpp
 						break;
 
 					default:
-						throw exception("Primitive ModelStreams only support floats for position data.");
+						THROW_MPP("Primitive ModelStreams only support floats for position data.", 
+							__LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -243,7 +245,8 @@ namespace mpp
 						break;
 
 					default:
-						throw exception("Primitive ModelStreams only support floats for normal data.");
+						THROW_MPP("Primitive ModelStreams only support floats for normal data.",
+							__LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -337,7 +340,9 @@ namespace mpp
 						break;
 
 					default:
-						throw exception("Primitive ModelStreams only support floats for texcoord data.");
+						THROW_MPP("Primitive ModelStreams only support floats for texcoord data.",
+							__LINE__, __FILE__, __FUNCTION__);
+
 					}
 					break;
 
@@ -517,7 +522,8 @@ namespace mpp
 						break;
 
 					default:
-						throw exception("Primitive ModelStreams only support floats or ubytes for colour data.");
+						THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.",
+							__LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -698,13 +704,14 @@ namespace mpp
 						break;
 
 					default:
-						throw exception("Primitive ModelStreams only support floats or ubytes for colour data.");
+						THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.",
+							__LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
 				default:
-					throw exception("Unsupported component.");
-
+					THROW_MPP("Unsupported component: " + mesh::Vertex::getComponentName(attrib.component),
+						__LINE__, __FILE__, __FUNCTION__);
 				}
 			}
 		}

@@ -33,6 +33,9 @@
     <ClCompile Include="..\..\src\MeshSpecification.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\include\mpp\mesh\MppMeshException.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\mesh\Config.h">

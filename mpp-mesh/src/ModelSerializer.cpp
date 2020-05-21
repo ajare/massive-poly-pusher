@@ -1,4 +1,5 @@
 #include "mpp/mesh/ModelSerializer.h"
+#include "mpp/mesh/MppMeshException.h"
 
 #define FLAG_INDEXED_VERTICES 0x0001
 
@@ -36,7 +37,7 @@ namespace mpp
 
 			if (magic[0] != 'M' || magic[1] != 'P' || magic[2] != 'P' || magic[3] != 'M')
 			{
-				throw exception("File is not a valid model file.");
+				throw MppMeshException("File is not a valid model file.");
 			}
 
 			// Version major

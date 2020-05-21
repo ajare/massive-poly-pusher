@@ -2,6 +2,7 @@
 #include "mpp/MaterialStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -25,7 +26,7 @@ namespace mpp
 		MaterialStream* mStr = dynamic_cast<MaterialStream*>(getResourceStream().get());
 		if (!mStr)
 		{
-			throw exception("Material::createImpl() could not cast to type 'MaterialStream'.");
+			THROW_MPP("Could not cast to type 'MaterialStream'", __LINE__, __FILE__, __FUNCTION__);
 		}
 
 		auto resourceMgr = getResourceManager();
@@ -70,8 +71,9 @@ namespace mpp
 			auto it = materialTextures.find(samplerName);
 			if (it == materialTextures.end())
 			{
-				string errMsg = "Sampler '" + samplerName + "' declared in program '" + program->getName() + "' is not bound by material '" + getName() + "'.";
-				throw exception(errMsg.c_str());
+				string errMsg = utils::StringUtils::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
+					samplerName, program->getName(), getName());
+				THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			mTextures.push_back(resourceMgr->getResource(it->second));

@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include "mpp/FileDataStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -27,8 +28,7 @@ namespace mpp
 		}
 		else
 		{
-			string errMsg = "Could not open '" + filename + "'.";
-			throw exception(errMsg.c_str());
+			THROW_MPP_IO("Could not open " + filename, __LINE__, __FILE__, __FUNCTION__);
 		}
 	}
 

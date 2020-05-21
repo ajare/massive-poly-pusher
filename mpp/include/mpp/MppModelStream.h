@@ -12,11 +12,16 @@ namespace mpp
 			mesh::MeshSpecification specification;
 			std::string name;
 			std::string material;
+
 			mesh::Primitive::Type primitiveType;
-			int primitiveCount, vertexCount;
-			int indexWidth;
+
 			float pointSize;
+			
+			int indexWidth;
 			std::shared_ptr<const uint8> indexData;
+
+			// Component data
+			int vertexCount, primitiveCount;
 			std::map<mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
 		};
 

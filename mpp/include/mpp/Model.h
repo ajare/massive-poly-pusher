@@ -6,6 +6,8 @@
 #include "mpp/Mesh.h"
 #include "mpp/Program.h"
 
+#include "mpp/mesh/MeshDefinition.h"
+
 namespace mpp
 {
 	class _MPPAPI Model : public Resource
@@ -23,6 +25,8 @@ namespace mpp
 		void loadImpl();
 
 		void unloadImpl();
+
+		bool checkVertexAttributeMapping(ResourcePtr material, mesh::MeshDefinition* meshDef);
 
 	public:
 

@@ -39,6 +39,7 @@
     <ClInclude Include="..\..\include\mpp\Model.h" />
     <ClInclude Include="..\..\include\mpp\ModelInstance.h" />
     <ClInclude Include="..\..\include\mpp\ModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\MppException.h" />
     <ClInclude Include="..\..\include\mpp\MppModelStream.h" />
     <ClInclude Include="..\..\include\mpp\PrimitiveModelStream.h" />
     <ClInclude Include="..\..\include\mpp\Profiler.h" />
@@ -62,7 +63,7 @@
     <ClInclude Include="..\..\include\mpp\Texture.h" />
     <ClInclude Include="..\..\include\mpp\TextureStream.h" />
     <ClInclude Include="..\..\include\mpp\TextureTile.h" />
-    <ClInclude Include="..\..\include\mpp\TiledQuadModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\GridModelStream.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatch.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\UniformCollection.h" />
@@ -112,7 +113,7 @@
     <ClCompile Include="..\..\src\StringProgramStream.cpp" />
     <ClCompile Include="..\..\src\Texture.cpp" />
     <ClCompile Include="..\..\src\TextureStream.cpp" />
-    <ClCompile Include="..\..\src\TiledQuadModelStream.cpp" />
+    <ClCompile Include="..\..\src\GridModelStream.cpp" />
     <ClCompile Include="..\..\src\TriangleBatch.cpp" />
     <ClCompile Include="..\..\src\UniformCollection.cpp" />
     <ClCompile Include="..\..\src\VertexBuffer.cpp" />

@@ -372,7 +372,7 @@ namespace mpp
 				dataType = mesh::Vertex::DataType::UnsignedByte;
 				break;
 			default:
-				throw exception("Unknown colour options.");
+				THROW_MPP("Unsupported colour options.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			layout->createAttribute(component, dataType, true);

@@ -41,6 +41,8 @@ namespace mpp
 {
 	class _MPPAPI Program : public Resource
 	{
+	public:
+
 		struct VariableInfo
 		{
 			std::string def;
@@ -125,6 +127,8 @@ namespace mpp
 		int getNumSamplers() const;
 
 		std::string const& getSamplerName(int index) const;
+
+		std::vector<VariableInfo> const& getVertexAttributes() const;
 
 		void bind();
 	};

@@ -61,7 +61,7 @@ namespace mpp
 				VertexDataStreamDefinition vertexStreamDef;
 
 				vertexStreamDef.data = sharedDataPtr;
-				vertexStreamDef.dataType = mpp::mesh::Vertex::DataType::Float;
+				vertexStreamDef.dataType = attrib.dataType;
 				vertexStreamDef.offset = vertexOffset;
 				vertexStreamDef.stride = vertexStride;
 

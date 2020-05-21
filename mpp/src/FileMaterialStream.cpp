@@ -4,6 +4,7 @@
 #include "utils/XmlReader.h"
 
 #include "mpp/FileMaterialStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -86,7 +87,8 @@ namespace mpp
 						string errMsg = utils::StringUtils::format(
 							"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional float are supported.",
 							componentCount, uniformName, mName);
-						throw exception(errMsg.c_str());
+
+						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
 					}
 
 					Uniform<float> u;
