@@ -704,7 +704,7 @@ namespace mpp
 		mFullscreenQuad = resourceMgr->getResource("__mpp_mesh_fullscreen_quad");
 
 		// Render targets
-		mSceneTarget = createRenderTexture(getWindowWidth(), getWindowHeight(), 2, true);
+		mSceneTarget = createRenderTexture(getWindowWidth(), getWindowHeight(), 1, true);
 		mFullscreenFxTarget = createRenderTexture(getWindowWidth(), getWindowHeight(), 1, false);
 
 		// Blur textures: should use cascading sizes based on blur kernel size.
@@ -2311,7 +2311,7 @@ namespace mpp
 		resetTransform();
 
 		renderToScreen();
-		renderFullscreenQuad((mpp::RenderTexture*)mSceneTarget.get(), 1, mpp::BlendMode::One, mpp::BlendMode::Zero);
+		renderFullscreenQuad((mpp::RenderTexture*)mSceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
 
 		// Post process
 		for (auto& effect: mPostProcessEffects)
