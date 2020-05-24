@@ -188,7 +188,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\..\Utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -212,7 +212,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\..\Utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
