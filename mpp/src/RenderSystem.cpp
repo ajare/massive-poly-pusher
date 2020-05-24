@@ -793,7 +793,8 @@ namespace mpp
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
 
-		glEnable(GL_PROGRAM_POINT_SIZE);
+		//glEnable(GL_PROGRAM_POINT_SIZE);
+		glDisable(GL_PROGRAM_POINT_SIZE);
 
 		// Set matrices to identity
 		m3dCameraMatrix = glm::mat4();
