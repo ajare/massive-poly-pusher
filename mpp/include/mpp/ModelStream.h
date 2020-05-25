@@ -40,7 +40,7 @@ namespace mpp
 
 		int8* copyVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
 
-		int8* deinterlaceVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams, int vertexCount, int vertexStride);
+		int8* deinterlaceVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride);
 
 	protected:
 
