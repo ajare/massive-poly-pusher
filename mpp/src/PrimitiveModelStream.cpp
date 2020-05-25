@@ -30,7 +30,7 @@ namespace mpp
 			for (int j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto attrib = layout.getAttribute(j);
-				vertexStride += mesh::Vertex::getComponentSize(attrib.component);
+				vertexStride += ((mesh::Vertex::getComponentSize(attrib.component) * mesh::Vertex::getDataTypeSize(attrib.dataType)) + attrib.paddingBytes);
 			}
 		}
 
