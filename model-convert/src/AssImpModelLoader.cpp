@@ -614,7 +614,7 @@ int8* AssImpModelLoader::copyVertexBufferData(VertexBufferAttributeLayout const&
  * Split interlaced vertex data into one stream.
  *
  */
-int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> componentStreams, int vertexCount, int vertexStride)
+int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride)
 {
 	int8* bufData = new int8[vertexStride * vertexCount];
 	int8* bufDataPtr = bufData;
@@ -624,7 +624,7 @@ int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout
 		for (int j = 0; j < bufferSpec.getNumAttributes(); ++j)
 		{
 			auto const& attrib = bufferSpec.getAttribute(j);
-			auto const& stream = componentStreams[attrib.component];
+			auto const& stream = componentStreams.at(attrib.component);
 
 			int vertexOffset = (stream.stride * i + stream.offset);
 			int vertexWidth = Vertex::getComponentSize(attrib.component);
