@@ -37,6 +37,8 @@ namespace mpp
 
 			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes = 0);
 
+			void createAttribute(uint32_t attribId, Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes = 0);
+
 			int getNumAttributes() const;
 
 			Attribute const& getAttribute(int index) const;

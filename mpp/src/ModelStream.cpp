@@ -46,7 +46,7 @@ namespace mpp
 	 * Are the streams tightly packed?
 	 *
 	 */
-	bool ModelStream::streamsAreTightlyPacked(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> componentStreams)
+	bool ModelStream::streamsAreTightlyPacked(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams)
 	{
 		int8 const* streamData1 = (componentStreams.begin())->second.data.get();
 		int streamStride1 = (componentStreams.begin())->second.stride;
@@ -73,7 +73,7 @@ namespace mpp
 		for (int i = 0; i < bufferSpec.getNumAttributes(); ++i)
 		{
 			auto const& attrib = bufferSpec.getAttribute(i);
-			auto const& stream = componentStreams[attrib.component];
+			auto const& stream = componentStreams.at(attrib.component);
 			if (stream.dataType != attrib.dataType)
 			{
 				return false;
@@ -125,29 +125,30 @@ namespace mpp
 				auto const& attrib = bufferSpec.getAttribute(j);
 				auto const& stream = componentStreams.at(attrib.component);
 
-				int vertexOffset = (stream.stride * i + stream.offset);
-				int vertexWidth = Vertex::getComponentSize(attrib.component);
+				auto componentOffset = (stream.stride * i + stream.offset);
+				auto componentCount = Vertex::getComponentSize(attrib.component);
+				auto componentSize = componentCount * Vertex::getDataTypeSize(attrib.dataType);
 
 				// Convert to desired datatype.
 				switch (attrib.dataType)
 				{
 				case Vertex::DataType::Byte:
-					for (int k = 0; k < vertexWidth; ++k)
+					for (int k = 0; k < componentCount; ++k)
 					{
-						*bufDataPtr++ = ((int8 const*)stream.data.get())[vertexOffset + k];
+						*bufDataPtr++ = ((int8 const*)stream.data.get())[componentOffset + k];
 					}
 					break;
 
 				case Vertex::DataType::UnsignedByte:
-					for (int k = 0; k < vertexWidth; ++k)
+					for (int k = 0; k < componentCount; ++k)
 					{
-						*bufDataPtr++ = ((uint8 const*)stream.data.get())[vertexOffset + k];
+						*bufDataPtr++ = ((uint8 const*)stream.data.get())[componentOffset + k];
 					}
 					break;
 
 				case Vertex::DataType::Float:
-					memcpy(bufDataPtr, stream.data.get() + vertexOffset * Vertex::getDataTypeSize(attrib.dataType), vertexWidth * Vertex::getDataTypeSize(attrib.dataType));
-					bufDataPtr += vertexWidth * Vertex::getDataTypeSize(attrib.dataType);
+					memcpy(bufDataPtr, stream.data.get() + componentOffset * Vertex::getDataTypeSize(attrib.dataType), componentSize);
+					bufDataPtr += componentSize;
 					break;
 
 				default:

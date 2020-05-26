@@ -82,7 +82,7 @@ private:
 
 	MaterialDefinition createMaterialDefinition(std::string const& name, aiMaterial* material);
 
-	bool streamsAreTightlyPacked(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams);
+	bool streamsAreTightlyPacked(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams);
 
 	int8* copyVertexBufferData(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
 

@@ -51,7 +51,7 @@ namespace mpp
 
 			MeshSpecification readMeshSpecification(FILE* fp);
 
-			void readVertexBufferAttributeLayout(FILE* fp, VertexBufferAttributeLayout* layout);
+			void readVertexBufferAttributeLayout(FILE* fp, VertexBufferAttributeLayout* layout, uint32_t attribOffset);
 
 			void readVertexBuffer(FILE* fp, int meshIndex);
 

@@ -36,7 +36,7 @@ namespace mpp
 
 		mesh::MeshDefinition* createMeshDefinition(std::string const& name, mesh::Primitive::Type type, int primitiveCount, mesh::VertexBufferStorageType storageType, std::string const& material, int indexWidth, float pointSize = -1.0f);
 
-		bool streamsAreTightlyPacked(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams);
+		bool streamsAreTightlyPacked(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams);
 
 		int8* copyVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
 

@@ -550,7 +550,7 @@ MeshDefinition* AssImpModelLoader::getMeshDefinition(int index)
  * See if streams are tightly packed.  This lets us load in one big transfer.
  *
  */
-bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> componentStreams)
+bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams)
 {
 	int8 const* streamData1 = (componentStreams.begin())->second.data;
 	int streamStride1 = (componentStreams.begin())->second.stride;
@@ -576,7 +576,7 @@ bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout cons
 	for (int i = 0; i < bufferSpec.getNumAttributes(); ++i)
 	{
 		auto const& attrib = bufferSpec.getAttribute(i);
-		auto const& stream = componentStreams[attrib.component];
+		auto const& stream = componentStreams.at(attrib.component);
 		if (stream.dataType != attrib.dataType)
 		{
 			return false;
