@@ -121,7 +121,7 @@ namespace mpp
 				char normalised;
 				fread(&normalised, sizeof(char), 1, fp);
 
-				layout->createAttribute(attribOffset + i, component, dataType, normalised == 1, paddingBytes);
+				layout->createAttribute(component, dataType, normalised == 1, paddingBytes);
 			}
 		}
 

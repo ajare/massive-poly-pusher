@@ -112,7 +112,9 @@ namespace mpp
 		 */
 		VertexBufferAttributeLayout* MeshSpecification::createVertexBufferAttributeLayout()
 		{
-			mVertexBufferAttributeLayouts.push_back(VertexBufferAttributeLayout());
+			int baseId = mVertexBufferAttributeLayouts.empty() ? 0 
+				: mVertexBufferAttributeLayouts.back().getBaseId() + mVertexBufferAttributeLayouts.back().getNumAttributes();
+			mVertexBufferAttributeLayouts.push_back(VertexBufferAttributeLayout(baseId));
 			return &(mVertexBufferAttributeLayouts.back());
 		}
 

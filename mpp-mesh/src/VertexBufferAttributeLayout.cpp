@@ -7,8 +7,9 @@ namespace mpp
 	namespace mesh
 	{
 
-		VertexBufferAttributeLayout::VertexBufferAttributeLayout()
+		VertexBufferAttributeLayout::VertexBufferAttributeLayout(int baseId)
 			: mVertexSize(0)
+			, mBaseId(baseId)
 		{
 		}
 
@@ -16,24 +17,44 @@ namespace mpp
 		 * Create a channel in the vertex buffer specification.
 		 *
 		 */
-		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes)
-		{
-			createAttribute(mAttributes.size(), component, dataType, normalised, paddingBytes);
-		}
-
-		void VertexBufferAttributeLayout::createAttribute(uint32_t attribId, Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes)
+		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary)
 		{
 			Attribute attrib;
 
-			attrib.attributeId = attribId;
+			attrib.attributeId = mBaseId + mAttributes.size();
 			attrib.component = component;
 			attrib.dataType = dataType;
 			attrib.normalised = normalised;
-			attrib.paddingBytes = paddingBytes;
-			attrib.offsetInBytes = mAttributes.empty() ? 0 : mAttributes.back().offsetInBytes + mAttributes.back().sizeInBytes();
+
+			if (padToBoundary < 2)
+			{
+				attrib.paddingBytes = 0;
+			}
+			else
+			{
+				auto byteSize = Vertex::getComponentSize(component) * Vertex::getDataTypeSize(dataType);
+				auto padding = padToBoundary;
+				while (padding < byteSize)
+				{
+					padding += padToBoundary;
+				}
+				
+				attrib.paddingBytes = padding - byteSize;
+			}
+
+			attrib.offsetInBytes = mVertexSize;
 
 			mAttributes.push_back(attrib);
-			mVertexSize += (Vertex::getComponentSize(component) * Vertex::getDataTypeSize(dataType));
+			mVertexSize += attrib.sizeInBytes();
+		}
+
+		/*
+		 * Get the base id.
+		 *
+		 */
+		int VertexBufferAttributeLayout::getBaseId() const
+		{
+			return mBaseId;
 		}
 
 		/*

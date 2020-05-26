@@ -22,7 +22,7 @@ namespace mpp
 			{
 				auto const& attrib = layout.getAttribute(j);
 
-				int componentSize = mesh::Vertex::getComponentSize(attrib.component) * mesh::Vertex::getDataTypeSize(attrib.dataType);
+				int componentSize = attrib.sizeInBytes();
 
 				// Get offset for this component
 				componentOffsets[mesh::Vertex::getComponentName(attrib.component)] = strideInBytes;
