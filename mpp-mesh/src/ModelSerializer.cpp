@@ -92,7 +92,7 @@ namespace mpp
 		 * Read Vertex Layout
 		 *
 		 */
-		void ModelSerializer::readVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout* layout)
+		void ModelSerializer::readVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset)
 		{
 			/*
 			2 bytes: attribute count
@@ -121,7 +121,7 @@ namespace mpp
 				char normalised;
 				fread(&normalised, sizeof(char), 1, fp);
 
-				layout->createAttribute(component, dataType, normalised == 1, paddingBytes);
+				layout->createAttribute(attribOffset + i, component, dataType, normalised == 1, paddingBytes);
 			}
 		}
 
@@ -191,10 +191,12 @@ namespace mpp
 			uint16 layoutCount;
 			fread(&layoutCount, sizeof(uint16), 1, fp);
 
+			uint32_t attribOffset = 0;
 			for (int i = 0; i < layoutCount; ++i)
 			{
 				auto layout = meshSpec.createVertexBufferAttributeLayout();
-				readVertexBufferAttributeLayout(fp, layout);
+				readVertexBufferAttributeLayout(fp, layout, attribOffset);
+				attribOffset += layout->getNumAttributes();
 			}
 
 			return meshSpec;

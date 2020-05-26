@@ -225,10 +225,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		mesh::MeshSpecification modelSpec(mesh::Primitive::Type::Triangles);
 
 		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
-		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+		attribLayout->createAttribute(0, mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+		attribLayout->createAttribute(1, mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+		attribLayout->createAttribute(2, mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+
+		//attribLayout = modelSpec.createVertexBufferAttributeLayout();
+		attribLayout->createAttribute(3, mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
 
 		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		modelSpec.setIndexedVertices(true);

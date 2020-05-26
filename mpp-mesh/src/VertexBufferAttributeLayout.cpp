@@ -18,11 +18,14 @@ namespace mpp
 		 */
 		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes)
 		{
+			createAttribute(mAttributes.size(), component, dataType, normalised, paddingBytes);
+		}
+
+		void VertexBufferAttributeLayout::createAttribute(uint32_t attribId, Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes)
+		{
 			Attribute attrib;
 
-			int attributeId = (int)mAttributes.size();
-
-			attrib.attributeId = attributeId;
+			attrib.attributeId = attribId;
 			attrib.component = component;
 			attrib.dataType = dataType;
 			attrib.normalised = normalised;

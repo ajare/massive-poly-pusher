@@ -193,6 +193,7 @@ mpp::mesh::MeshSpecification SpecificationParser::parseMeshSpecification(uint32&
 	}
 
 	auto bufferNode = buffersNode->getChild("Buffer");
+	uint32_t attribIndex = 0;
 	if (bufferNode)
 	{
 		do
@@ -233,7 +234,7 @@ mpp::mesh::MeshSpecification SpecificationParser::parseMeshSpecification(uint32&
 						isNormalised = false;
 					}
 
-					attribLayout->createAttribute(mComponentTypes[data], mDataTypes[type], isNormalised);
+					attribLayout->createAttribute(attribIndex++, mComponentTypes[data], mDataTypes[type], isNormalised);
 					channelId++;
 				} while (channelNode->next());
 			}
