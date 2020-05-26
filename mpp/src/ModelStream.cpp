@@ -145,6 +145,7 @@ namespace mpp
 					break;
 
 				case Vertex::DataType::Float:
+				case Vertex::DataType::Int:
 					memcpy(bufDataPtr, stream.data.get() + componentOffset, componentSize);
 					bufDataPtr += componentSize;
 					break;

@@ -116,7 +116,37 @@ namespace mpp
 		if (enable)
 		{
 			glEnableVertexAttribArray(attrib.id);
-			glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+
+			switch (attrib.dataType)
+			{
+			case GL_BYTE:
+			case GL_UNSIGNED_BYTE:
+			case GL_SHORT:
+			case GL_UNSIGNED_SHORT:
+			case GL_INT:
+			case GL_UNSIGNED_INT:
+				if (attrib.normalise)
+				{
+					glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+				}
+				else
+				{
+					glVertexAttribIPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+				}
+				break;
+
+			case GL_FLOAT:
+			case GL_HALF_FLOAT:
+				glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+				break;
+
+			case GL_DOUBLE:
+				glVertexAttribLPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+				break;
+
+			default:
+				THROW_MPP("Unsupported GL data in databuffer.", __LINE__, __FILE__, __FUNCTION__);
+			}
 		}
 		else
 		{
