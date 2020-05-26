@@ -286,7 +286,7 @@ void debug(string const& inFile, string const& outFile)
 					 << mpp::mesh::Vertex::getComponentName(attrib.component) << "\t"
 					 << mpp::mesh::Vertex::getDataTypeName(attrib.dataType) << "\t" 
 					 << (attrib.normalised ? "yes" : "no") << "\t\t" 
-					 << attrib.sizeInBytes << endl;
+					 << attrib.sizeInBytes() << endl;
 			}
 
 			cout << endl;
@@ -304,7 +304,7 @@ void debug(string const& inFile, string const& outFile)
 					auto const& attrib = layout.getAttribute(l);
 
 					// Print component
-					int componentCount = attrib.sizeInBytes / mpp::mesh::Vertex::getDataTypeSize(attrib.dataType);
+					int componentCount = mpp::mesh::Vertex::getComponentSize(attrib.component);
 					for (int m = 0; m < componentCount; ++m)
 					{
 						switch (attrib.dataType)

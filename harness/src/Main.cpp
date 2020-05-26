@@ -229,7 +229,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		attribLayout->createAttribute(1, mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(2, mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
-		//attribLayout = modelSpec.createVertexBufferAttributeLayout();
+		attribLayout = modelSpec.createVertexBufferAttributeLayout();
 		attribLayout->createAttribute(3, mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
 
 		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);

@@ -685,12 +685,7 @@ namespace mpp
 		quadSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		quadSpec.setIndexedVertices(false);
 
-		mesh::MeshSpecification specFullscreen(mesh::Primitive::Type::Triangles);
-		layout = specFullscreen.createVertexBufferAttributeLayout();
-		layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-
-		auto fullscreenProgram = resourceMgr->getOrCreateDefault2dProgram(specFullscreen, 0, true);
+		auto fullscreenProgram = resourceMgr->getOrCreateDefault2dProgram(quadSpec, 0, true);
 		auto quadMesh = quadStream->createMesh("0", quadSpec, fullscreenProgram->getName(), 32, -1.0f);
 
 		quadStream->addVertexData<float>(quadMesh, { 0.0f, 0.0f, 0.0f, 0.0f });

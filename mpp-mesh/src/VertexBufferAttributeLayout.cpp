@@ -30,9 +30,7 @@ namespace mpp
 			attrib.dataType = dataType;
 			attrib.normalised = normalised;
 			attrib.paddingBytes = paddingBytes;
-
-			attrib.sizeInBytes = Vertex::getComponentSize(component) * Vertex::getDataTypeSize(dataType) + paddingBytes;
-			attrib.offsetInBytes = mAttributes.empty() ? 0 : mAttributes.back().offsetInBytes + mAttributes.back().sizeInBytes;
+			attrib.offsetInBytes = mAttributes.empty() ? 0 : mAttributes.back().offsetInBytes + mAttributes.back().sizeInBytes();
 
 			mAttributes.push_back(attrib);
 			mVertexSize += (Vertex::getComponentSize(component) * Vertex::getDataTypeSize(dataType));

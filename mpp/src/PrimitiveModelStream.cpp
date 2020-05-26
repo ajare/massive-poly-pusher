@@ -30,7 +30,7 @@ namespace mpp
 			for (int j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto attrib = layout.getAttribute(j);
-				vertexStride += ((mesh::Vertex::getComponentSize(attrib.component) * mesh::Vertex::getDataTypeSize(attrib.dataType)) + attrib.paddingBytes);
+				vertexStride += attrib.sizeInBytes();
 			}
 		}
 
@@ -65,64 +65,56 @@ namespace mpp
 				vertexStreamDef.offset = vertexOffset;
 				vertexStreamDef.stride = vertexStride;
 
+				vertexOffset += attrib.sizeInBytes();
+
 				switch (attrib.component)
 				{
 				case mesh::Vertex::Component::Position2:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
-					vertexOffset += 2;
 					break;
 
 				case mesh::Vertex::Component::Position3:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
-					vertexOffset += 3;
 					break;
 
 				case mesh::Vertex::Component::Position4:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Position4] = vertexStreamDef;
-					vertexOffset += 4;
 					break;
 
 				case mesh::Vertex::Component::TexCoord2:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
-					vertexOffset += 2;
 					break;
 
 				case mesh::Vertex::Component::TexCoord3:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
-					vertexOffset += 3;
 					break;
 
 				case mesh::Vertex::Component::TexCoord4:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::TexCoord4] = vertexStreamDef;
-					vertexOffset += 4;
 					break;
 
 				case mesh::Vertex::Component::Colour1:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
-					vertexOffset += 1;
 					break;
 
 				case mesh::Vertex::Component::Colour3:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
-					vertexOffset += 3;
 					break;
 
 				case mesh::Vertex::Component::Colour4:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Colour4] = vertexStreamDef;
-					vertexOffset += 4;
 					break;
 
 				case mesh::Vertex::Component::Normal3:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
-					vertexOffset += 3;
 					break;
 				}
 			}

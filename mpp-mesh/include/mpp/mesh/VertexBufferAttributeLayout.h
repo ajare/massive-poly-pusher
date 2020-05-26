@@ -22,7 +22,13 @@ namespace mpp
 				bool normalised;
 
 				int offsetInBytes;
-				int sizeInBytes;
+
+			public:
+
+				size_t sizeInBytes() const
+				{
+					return Vertex::getComponentSize(component) * Vertex::getDataTypeSize(dataType) + paddingBytes;
+				}
 			};
 
 		private:
