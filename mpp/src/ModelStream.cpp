@@ -48,19 +48,19 @@ namespace mpp
 	 */
 	bool ModelStream::streamsAreTightlyPacked(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams)
 	{
-		int8 const* streamData1 = (componentStreams.begin())->second.data.get();
+		auto streamData1 = (componentStreams.begin())->second.data.get();
 		int streamStride1 = (componentStreams.begin())->second.stride;
 
-		for (auto it = componentStreams.begin(); it != componentStreams.end(); ++it)
+		for (auto stream: componentStreams)
 		{
 			// Are the sources the same?
-			if (it->second.data.get() != streamData1)
+			if (stream.second.data.get() != streamData1)
 			{
 				return false;
 			}
 
 			// Are the strides all the same?
-			if (it->second.stride != streamStride1)
+			if (stream.second.stride != streamStride1)
 			{
 				return false;
 			}
@@ -68,7 +68,6 @@ namespace mpp
 
 		// Do our channels have the same data type as the stream, and do they map
 		// in the same order?
-		int vertexStride = 0;
 		int vertexOffset = 0;
 		for (int i = 0; i < bufferSpec.getNumAttributes(); ++i)
 		{
@@ -84,11 +83,10 @@ namespace mpp
 				return false;
 			}
 
-			vertexStride += Vertex::getComponentSize(attrib.component) * Vertex::getDataTypeSize(attrib.dataType) + attrib.paddingBytes;
-			vertexOffset += Vertex::getComponentSize(attrib.component) + attrib.paddingBytes;
+			vertexOffset += attrib.sizeInBytes();
 		}
 
-		if (vertexStride != streamStride1)
+		if (vertexOffset != streamStride1)
 		{
 			return false;
 		}
@@ -127,7 +125,7 @@ namespace mpp
 
 				auto componentOffset = (stream.stride * i + stream.offset);
 				auto componentCount = Vertex::getComponentSize(attrib.component);
-				auto componentSize = componentCount * Vertex::getDataTypeSize(attrib.dataType);
+				auto componentSize = attrib.sizeInBytes();
 
 				// Convert to desired datatype.
 				switch (attrib.dataType)
@@ -147,7 +145,7 @@ namespace mpp
 					break;
 
 				case Vertex::DataType::Float:
-					memcpy(bufDataPtr, stream.data.get() + componentOffset * Vertex::getDataTypeSize(attrib.dataType), componentSize);
+					memcpy(bufDataPtr, stream.data.get() + componentOffset, componentSize);
 					bufDataPtr += componentSize;
 					break;
 

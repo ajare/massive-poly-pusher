@@ -334,7 +334,7 @@ void AssImpModelLoader::createMeshDataStreams()
 
 			dataStreamDef->componentStreams[Vertex::Component::Position2] = vertexStreamDef;
 			dataStreamDef->componentStreams[Vertex::Component::Position3] = vertexStreamDef;
-			vertexOffset += 3;
+			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 3;
 		}
 
 		if (hasNormals)
@@ -347,7 +347,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStreamDef.stride = vertexStride;
 
 			dataStreamDef->componentStreams[Vertex::Component::Normal3] = vertexStreamDef;
-			vertexOffset += 3;
+			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 3;
 		}
 
 		if (hasTexCoords)
@@ -360,7 +360,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStreamDef.stride = vertexStride;
 
 			dataStreamDef->componentStreams[Vertex::Component::TexCoord2] = vertexStreamDef;
-			vertexOffset += 2;
+			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 2;
 		}
 
 		if (hasColours || mGenerateColours)
@@ -375,7 +375,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			dataStreamDef->componentStreams[Vertex::Component::Colour1] = vertexStreamDef;
 			dataStreamDef->componentStreams[Vertex::Component::Colour3] = vertexStreamDef;
 			dataStreamDef->componentStreams[Vertex::Component::Colour4] = vertexStreamDef;
-			vertexOffset += 4;
+			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 4;
 		}
 
 		// Set index data

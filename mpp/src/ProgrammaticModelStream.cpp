@@ -29,12 +29,12 @@ namespace mpp
 				for (int j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto attrib = layout.getAttribute(j);
-					vertexStride += mesh::Vertex::getComponentSize(attrib.component);
+					vertexStride += attrib.sizeInBytes();
 				}
 			}
 
 			// Set counts
-			meshDef.vertexCount = (int)meshDef.vertexData.size() / vertexStride;
+			meshDef.vertexCount = (int)(meshDef.vertexData.size() * sizeof(float)) / vertexStride;
 
 			int elementSize = mesh::Primitive::size(meshDef.specification.getPrimitiveType());
 			int indexWidthBytes = meshDef.indexWidth / 8;
@@ -64,29 +64,27 @@ namespace mpp
 					vertexStreamDef.offset = vertexOffset;
 					vertexStreamDef.stride = vertexStride;
 
+					vertexOffset += attrib.sizeInBytes();
+
 					switch (attrib.component)
 					{
 					case mesh::Vertex::Component::Position2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
-						vertexOffset += 2;
 						break;
 
 					case mesh::Vertex::Component::Position3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
-						vertexOffset += 3;
 						break;
 
 					case mesh::Vertex::Component::Position4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position4] = vertexStreamDef;
-						vertexOffset += 4;
 						break;
 
 					case mesh::Vertex::Component::TexCoord2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
-						vertexOffset += 2;
 						break;
 
 					case mesh::Vertex::Component::TexCoord3:
@@ -99,29 +97,24 @@ namespace mpp
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord4] = vertexStreamDef;
-						vertexOffset += 4;
 						break;
 
 					case mesh::Vertex::Component::Colour1:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
-						vertexOffset += 1;
 						break;
 
 					case mesh::Vertex::Component::Colour3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
-						vertexOffset += 3;
 						break;
 
 					case mesh::Vertex::Component::Colour4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour4] = vertexStreamDef;
-						vertexOffset += 4;
 						break;
 
 					case mesh::Vertex::Component::Normal3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
-						vertexOffset += 3;
 						break;
 					}
 				}

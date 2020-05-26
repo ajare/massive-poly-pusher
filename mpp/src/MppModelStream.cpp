@@ -69,7 +69,7 @@ namespace mpp
 
 					dataStreamDef->componentStreams[attrib.component] = vertexStreamDef;
 
-					offset += mesh::Vertex::getComponentSize(attrib.component);
+					offset += attrib.sizeInBytes();
 				}
 			}
 		}
