@@ -234,7 +234,7 @@ mpp::mesh::MeshSpecification SpecificationParser::parseMeshSpecification(uint32&
 						isNormalised = false;
 					}
 
-					attribLayout->createAttribute(attribIndex++, mComponentTypes[data], mDataTypes[type], isNormalised);
+					attribLayout->createAttribute(mComponentTypes[data], mDataTypes[type], isNormalised);
 					channelId++;
 				} while (channelNode->next());
 			}

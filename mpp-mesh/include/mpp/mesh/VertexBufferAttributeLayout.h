@@ -37,13 +37,15 @@ namespace mpp
 
 			int mVertexSize;
 
+			int mBaseId;
+
 		public:
 
-			VertexBufferAttributeLayout();
+			explicit VertexBufferAttributeLayout(int baseId);
 
-			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes = 0);
+			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary = 1);
 
-			void createAttribute(uint32_t attribId, Vertex::Component component, Vertex::DataType dataType, bool normalised, int paddingBytes = 0);
+			int getBaseId() const;
 
 			int getNumAttributes() const;
 

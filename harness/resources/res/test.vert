@@ -4,7 +4,7 @@
 @@In normal = vec3
 
 @@Passthrough uv = vec2
-@@Passthrough colour = vec4
+@@Passthrough colour = vec3
 
 @@Out pos = vec3
 @@Out normal = vec3
