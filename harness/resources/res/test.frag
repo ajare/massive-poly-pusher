@@ -5,7 +5,7 @@
 @@Texture tex = sampler2D
 
 @@In uv = vec2
-@@In colour = vec3
+@@In colour = vec4
 @@In pos = vec3
 @@In normal = vec3
 
