@@ -1009,14 +1009,14 @@ namespace mpp
 							case mesh::Vertex::DataType::Float:
 								if (meshSpec.verticesIndexed())
 								{
-									setVertexData<float>(offset, { 1, 1, 1 });
+									setVertexData<float>(offset, { 1.0f, 1.0f, 1.0f });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
 								{
 									for (int k = 0; k < 6; ++k)
 									{
-										setVertexData<float>(offset, { 1, 1, 1 });
+										setVertexData<float>(offset, { 1.0f, 1.0f, 1.0f });
 										offset += strideInBytes;
 									}
 								}
@@ -1025,14 +1025,46 @@ namespace mpp
 							case mesh::Vertex::DataType::UnsignedByte:
 								if (meshSpec.verticesIndexed())
 								{
-									setVertexData<uint8>(offset, { 255, 255, 255 });
+									setVertexData<uint8>(offset, { 0xff, 0xff, 0xff });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
 								{
 									for (int k = 0; k < 6; ++k)
 									{
-										setVertexData<uint8>(offset, { 255, 255, 255 });
+										setVertexData<uint8>(offset, { 0xff, 0xff, 0xff });
+										offset += strideInBytes;
+									}
+								}
+								break;
+
+							case mesh::Vertex::DataType::UnsignedShort:
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint16>(offset, { 0xffff, 0xffff, 0xffff });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									for (int k = 0; k < 6; ++k)
+									{
+										setVertexData<uint16>(offset, { 0xffff, 0xffff, 0xffff });
+										offset += strideInBytes;
+									}
+								}
+								break;
+
+							case mesh::Vertex::DataType::UnsignedInt:
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint32>(offset, { 0xffffffff, 0xffffffff, 0xffffffff });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									for (int k = 0; k < 6; ++k)
+									{
+										setVertexData<uint32>(offset, { 0xffffffff, 0xffffffff, 0xffffffff });
 										offset += strideInBytes;
 									}
 								}
@@ -1055,14 +1087,14 @@ namespace mpp
 							case mesh::Vertex::DataType::Float:
 								if (meshSpec.verticesIndexed())
 								{
-									setVertexData<float>(offset, { 1, 1, 1, 1 });
+									setVertexData<float>(offset, { 1.0f, 1.0f, 1.0f, 1.0f });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
 								{
 									for (int k = 0; k < 6; ++k)
 									{
-										setVertexData<float>(offset, { 1, 1, 1, 1 });
+										setVertexData<float>(offset, { 1.0f, 1.0f, 1.0f, 1.0f });
 										offset += strideInBytes;
 									}
 								}
@@ -1071,14 +1103,46 @@ namespace mpp
 							case mesh::Vertex::DataType::UnsignedByte:
 								if (meshSpec.verticesIndexed())
 								{
-									setVertexData<uint8>(offset, { 255, 255, 255, 255 });
+									setVertexData<uint8>(offset, { 0xff, 0xff, 0xff, 0xff });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
 								{
 									for (int k = 0; k < 6; ++k)
 									{
-										setVertexData<uint8>(offset, { 255, 255, 255, 255 });
+										setVertexData<uint8>(offset, { 0xff, 0xff, 0xff, 0xff });
+										offset += strideInBytes;
+									}
+								}
+								break;
+
+							case mesh::Vertex::DataType::UnsignedShort:
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint16>(offset, { 0xffff, 0xffff, 0xffff, 0xffff });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									for (int k = 0; k < 6; ++k)
+									{
+										setVertexData<uint16>(offset, { 0xffff, 0xffff, 0xffff, 0xffff });
+										offset += strideInBytes;
+									}
+								}
+								break;
+
+							case mesh::Vertex::DataType::UnsignedInt:
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint32>(offset, { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									for (int k = 0; k < 6; ++k)
+									{
+										setVertexData<uint32>(offset, { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff });
 										offset += strideInBytes;
 									}
 								}
