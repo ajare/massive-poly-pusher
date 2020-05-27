@@ -17,6 +17,7 @@ SpecificationParser::SpecificationParser(string const& filename)
 	mComponentTypes["position3"] = mpp::mesh::Vertex::Component::Position3;
 	mComponentTypes["position4"] = mpp::mesh::Vertex::Component::Position4;
 	mComponentTypes["normal3"] = mpp::mesh::Vertex::Component::Normal3;
+	mComponentTypes["normal4"] = mpp::mesh::Vertex::Component::Normal4;
 	mComponentTypes["texcoord2"] = mpp::mesh::Vertex::Component::TexCoord2;
 	mComponentTypes["texcoord3"] = mpp::mesh::Vertex::Component::TexCoord3;
 	mComponentTypes["texcoord4"] = mpp::mesh::Vertex::Component::TexCoord4;

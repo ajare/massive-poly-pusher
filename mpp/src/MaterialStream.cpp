@@ -110,6 +110,9 @@ namespace mpp
 				case mesh::Vertex::Component::Normal3:
 					mProgram += "n3";
 					break;
+				case mesh::Vertex::Component::Normal4:
+					mProgram += "n4";
+					break;
 				case mesh::Vertex::Component::TexCoord2:
 					mProgram += "t2";
 					break;

@@ -116,6 +116,11 @@ namespace mpp
 				case mesh::Vertex::Component::Normal3:
 					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
 					break;
+
+				case mesh::Vertex::Component::Normal4:
+					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
+					mMeshDataDefinition.componentStreams[mpp::mesh::Vertex::Component::Normal4] = vertexStreamDef;
+					break;
 				}
 			}
 		}

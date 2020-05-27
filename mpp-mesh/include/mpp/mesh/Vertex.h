@@ -39,12 +39,13 @@ namespace mpp
 				Position3 = 1 << 1,
 				Position4 = 1 << 2,
 				Normal3 = 1 << 3,
-				TexCoord2 = 1 << 4,
-				TexCoord3 = 1 << 5,
-				TexCoord4 = 1 << 6,
-				Colour1 = 1 << 7,
-				Colour3 = 1 << 8,
-				Colour4 = 1 << 9,
+				Normal4 = 1 << 4,
+				TexCoord2 = 1 << 5,
+				TexCoord3 = 1 << 6,
+				TexCoord4 = 1 << 7,
+				Colour1 = 1 << 8,
+				Colour3 = 1 << 9,
+				Colour4 = 1 << 10,
 			};
 
 			static int getComponentSize(Component component);
