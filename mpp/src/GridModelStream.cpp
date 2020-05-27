@@ -299,7 +299,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Primitive ModelStreams only support floats and integers for position data.", __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -340,10 +340,214 @@ namespace mpp
 						}
 						break;
 
+					case mesh::Vertex::DataType::Byte:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * x), 0, (int8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * x), 0, (int8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * x), 0, (int8_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * (x + 1)), 0, (int8_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * (x + 1)), 0, (int8_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * (x + 1)), 0, (int8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int8_t>(offset, { (int8_t)(-w2 + dw * x), 0, (int8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::UnsignedByte:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * x), 0, (uint8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * x), 0, (uint8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * x), 0, (uint8_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * (x + 1)), 0, (uint8_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * (x + 1)), 0, (uint8_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * (x + 1)), 0, (uint8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint8_t>(offset, { (uint8_t)(-w2 + dw * x), 0, (uint8_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::Short:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * x), 0, (int16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * x), 0, (int16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * x), 0, (int16_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * (x + 1)), 0, (int16_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * (x + 1)), 0, (int16_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * (x + 1)), 0, (int16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int16_t>(offset, { (int16_t)(-w2 + dw * x), 0, (int16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::UnsignedShort:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * x), 0, (uint16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * x), 0, (uint16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * x), 0, (uint16_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * (x + 1)), 0, (uint16_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * (x + 1)), 0, (uint16_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * (x + 1)), 0, (uint16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint16_t>(offset, { (uint16_t)(-w2 + dw * x), 0, (uint16_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::Int:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * x), 0, (int32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * x), 0, (int32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * x), 0, (int32_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * (x + 1)), 0, (int32_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * (x + 1)), 0, (int32_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * (x + 1)), 0, (int32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<int32_t>(offset, { (int32_t)(-w2 + dw * x), 0, (int32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::UnsignedInt:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * x), 0, (uint32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * x), 0, (uint32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * x), 0, (uint32_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * (x + 1)), 0, (uint32_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * (x + 1)), 0, (uint32_t)(-d2 + dh * (z + 1)), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * (x + 1)), 0, (uint32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+
+									setVertexData<uint32_t>(offset, { (uint32_t)(-w2 + dw * x), 0, (uint32_t)(-d2 + dh * z), 1 });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
 					default:
-						THROW_MPP("Primitive ModelStreams only support floats for position data.", __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
-				break;
+					break;
 
 				case mesh::Vertex::Component::Normal3:
 					switch (attrib.dataType)
@@ -371,7 +575,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Primitive ModelStreams only support floats for normal data.", __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -413,7 +617,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Primitive ModelStreams only support floats for texcoord data.", __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -455,7 +659,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Primitive ModelStreams only support floats for texcoord data.", __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -497,7 +701,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Primitive ModelStreams only support floats for texcoord data.", __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
 					break;
 
@@ -541,7 +745,7 @@ namespace mpp
 								break;
 
 							default:
-								THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.", __LINE__, __FILE__, __FUNCTION__);
+								THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 							}
 						}
 					}
@@ -587,14 +791,14 @@ namespace mpp
 								break;
 
 							default:
-								THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.", __LINE__, __FILE__, __FUNCTION__);
+								THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 							}
 						}
 					}
 					break;
 
 				default:
-					THROW_MPP("Unsupported component.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP("Unsupported datatype: " + mesh::Vertex::getComponentName(attrib.component), __LINE__, __FILE__, __FUNCTION__);
 				}
 			}
 		}
