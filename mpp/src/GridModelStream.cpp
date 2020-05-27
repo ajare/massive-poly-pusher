@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cassert>
 
+#include <half/half.hpp>
+
 #include "mpp/Config.h"
 #include "mpp/GridModelStream.h"
 #include "mpp/MppException.h"
@@ -88,6 +90,40 @@ namespace mpp
 									offset += strideInBytes;
 
 									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::HalfFloat:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<half_float::half>(offset, { (half_float::half )(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * z) });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * z) });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * (z + 1)) });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * (x + 1)), (half_float::half)0, (half_float::half)(-d2 + dh * (z + 1)) });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * (x + 1)), (half_float::half)0, (half_float::half)(-d2 + dh * (z + 1)) });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * (x + 1)), (half_float::half)0, (half_float::half)(-d2 + dh * z) });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * z) });
 									offset += strideInBytes;
 								}
 							}
@@ -334,6 +370,40 @@ namespace mpp
 									offset += strideInBytes;
 
 									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z, 1.0f });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
+					case mesh::Vertex::DataType::HalfFloat:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * z), (half_float::half)0 });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * z), (half_float::half)0 });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * (z + 1)), (half_float::half)0 });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * (x + 1)), (half_float::half)0, (half_float::half)(-d2 + dh * (z + 1)), (half_float::half)0 });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * (x + 1)), (half_float::half)0, (half_float::half)(-d2 + dh * (z + 1)), (half_float::half)0 });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * (x + 1)), (half_float::half)0, (half_float::half)(-d2 + dh * z), (half_float::half)0 });
+									offset += strideInBytes;
+
+									setVertexData<half_float::half>(offset, { (half_float::half)(-w2 + dw * x), (half_float::half)0, (half_float::half)(-d2 + dh * z), (half_float::half)0 });
 									offset += strideInBytes;
 								}
 							}
