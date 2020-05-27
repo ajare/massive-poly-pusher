@@ -19,7 +19,7 @@ Mesh specification:
 	The 'Buffers' element has 'Buffer' children, which are used to specify (in order) different VBO definitions.
 		The 'Buffer' element has 'Channel' children, which are used to specify (in order) the vertex attributes.
 			Channel attributes:
-				@data: 'position2', 'position3', 'position4', 'normal3', 'texcoord2', 'texcoord3', 'texcoord4', 'colour3', 'colour4'
+				@data: 'position2', 'position3', 'position4', 'normal3', 'normal4', 'texcoord2', 'texcoord3', 'texcoord4', 'colour3', 'colour4'
 					Specifies the component type.
 				@type: 'float', 'ubyte', 'ushort'
 					Specifies the data type.

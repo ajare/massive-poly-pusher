@@ -34,6 +34,7 @@ namespace mpp
 			case Vertex::Component::Colour3:
 				return 3;
 			case Vertex::Component::Position4:
+			case Vertex::Component::Normal4:
 			case Vertex::Component::TexCoord4:
 			case Vertex::Component::Colour4:
 				return 4;
@@ -92,6 +93,8 @@ namespace mpp
 				return "Position3";
 			case Component::Normal3:
 				return "Normal3";
+			case Component::Normal4:
+				return "Normal4";
 			case Component::TexCoord3:
 				return "TexCoord3";
 			case Component::Colour1:

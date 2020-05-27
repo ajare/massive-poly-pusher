@@ -232,6 +232,10 @@ namespace mpp
 					specName += "n3";
 					tags.insert("Normal");
 					break;
+				case mesh::Vertex::Component::Normal4:
+					specName += "n4";
+					tags.insert("Normal");
+					break;
 				case mesh::Vertex::Component::TexCoord2:
 					specName += "t2";
 					tags.insert("Texture");

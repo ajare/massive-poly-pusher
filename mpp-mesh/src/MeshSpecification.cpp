@@ -178,6 +178,9 @@ namespace mpp
 					case Vertex::Component::Normal3:
 						normalBits = 3;
 						break;
+					case Vertex::Component::Normal4:
+						normalBits = 4;
+						break;
 					case Vertex::Component::TexCoord2:
 						texBits = 2;
 						break;
