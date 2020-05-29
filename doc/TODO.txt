@@ -1,0 +1,78 @@
+New mesh system
+---------------
+
+Goal:
+- To be able to specify a Mesh entirely based on:
+  - Mesh specification
+  - Functions to set components, eg
+      auto vi = addVertex();
+	  setVertexPosition(vi, 0, 0, 0);
+	  
+	  and so on
+
+- The idea is to simplify Mesh creation and wrap it all.
+- Shaders are generated based on the Mesh specification.
+  - Either write them manually, or use defaults
+  - Just specify Position2/3/4 etc as the variable names.  The type is deduced & generated from the Mesh specification
+- Might be able to use templating, eg like in Willpower to have a specialised class
+  with correct types.  Would have to use GL datatype values though, can't use C types
+  for template arguments, in order to be able to use half floats, dvec4 etc.  So template
+  params would be a set of integers, not types: check this is possible.
+- See about passing in data other than pos/normal/tex/colour, and how that would work
+
+Current work
+------------
+
+- Fix grid vertices [DONE]
+- Make sure padding bytes work [DONE]
+  - Try with an unsigned byte Colour3 [DONE]
+    - VertexBufferAttributeLayout::createAttribute should have optional param for 'pad to multiple of' (default is 1) [DONE]
+- MeshSpecification has issues:
+  - MeshSpecification::createVertexBufferAttributeLayout() returns pointer to end of vector, which
+    can be invalidated if resized by adding new layout
+  - Attribute baseid relies on each layout being complete before the next one is started
+- Get non-float datatypes working
+  - Use test shader not built-in [DONE]
+  - Get (u)byte working normalised & unnormalised [DONE]
+  - Get (u)short working normalised & unnormalised [DONE]
+  - Get (u)int working normalised & unnormalised [DONE]
+  - Get halffloat working [DONE]
+  - Get double working
+  - Look into GL_FIXED, GL_INT_2_10_10_10_REV, GL_UNSIGNED_INT_2_10_10_10_REV and GL_UNSIGNED_INT_10F_11F_11F_REV
+- Fix other Primitives (box/sphere)
+  - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
+    So PrimitiveModelStream has struct and function like:
+	class Vertex
+	{
+		double pos[3];
+		double normal[3];
+		double uv[2];
+
+ 	public:
+	
+		Vertex& position(double x, double y, double z)
+		{
+			pos[0] = x; pos[1] = y; pos[2] = z;
+			return *this;
+		}
+		
+		Vertex& normal(double x, double y, double z);
+		Vertex& uv(double u, double v);
+		void build();
+	};
+	
+	Then we call addVertex().position(x, y, z).normal(nx, ny, nz).uv(u, v).build();
+	
+- Serialization is now almost certainly broken.
+  - Get model being saved to .mppmodel and loaded in
+  - Ensure multiple buffers work
+  - Ensure padding is saved/loaded
+  - Create model inspector?
+- Get generic attributes working (can we do structs?)
+  - Check max number of vertex attribs
+  - Check max vertex stride
+- Look into separate attribute format:
+  - https://www.khronos.org/opengl/wiki/Vertex_Specification#Separate_attribute_format
+- Don't use varying, use attribs with location
+    
+- Ensure 2d batches work

@@ -11,7 +11,7 @@ using namespace std;
 
 namespace mpp
 {
-	GridModelStream::GridModelStream(mesh::MeshSpecification const& meshSpec, string const& material, float width, float depth, int dimX, int dimZ)
+	GridModelStream::GridModelStream(mesh::MeshSpecification const& meshSpec, string const& material, double width, double depth, int dimX, int dimZ)
 		: PrimitiveModelStream(meshSpec, material)
 	{
 		int strideInBytes = 0;
@@ -41,10 +41,10 @@ namespace mpp
 		mMeshDataDefinition.vertexData.resize(bufferSize);
 
 		// Generate vertices
-		float w2 = width / 2;
-		float d2 = depth / 2;
-		float dw = width / dimX;
-		float dh = depth / dimZ;
+		double w2 = width / 2;
+		double d2 = depth / 2;
+		double dw = width / dimX;
+		double dh = depth / dimZ;
 
 		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
@@ -62,6 +62,40 @@ namespace mpp
 				case mesh::Vertex::Component::Position3:
 					switch (attrib.dataType)
 					{
+					case mesh::Vertex::DataType::Double:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<double>(offset, { -w2 + dw * x, 0.0, -d2 + dh * z });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									setVertexData<double>(offset, { -w2 + dw * x, 0.0, -d2 + dh * z });
+									offset += strideInBytes;
+
+									setVertexData<double>(offset, { -w2 + dw * x, 0.0, -d2 + dh * (z + 1) });
+									offset += strideInBytes;
+
+									setVertexData<double>(offset, { -w2 + dw * (x + 1), 0.0, -d2 + dh * (z + 1) });
+									offset += strideInBytes;
+
+									setVertexData<double>(offset, { -w2 + dw * (x + 1), 0.0, -d2 + dh * (z + 1) });
+									offset += strideInBytes;
+
+									setVertexData<double>(offset, { -w2 + dw * (x + 1), 0.0, -d2 + dh * z });
+									offset += strideInBytes;
+
+									setVertexData<double>(offset, { -w2 + dw * x, 0.0, -d2 + dh * z });
+									offset += strideInBytes;
+								}
+							}
+						}
+						break;
+
 					case mesh::Vertex::DataType::Float:
 						for (int z = 0; z <= dimZ; ++z)
 						{
@@ -69,27 +103,27 @@ namespace mpp
 							{
 								if (meshSpec.verticesIndexed())
 								{
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * z) });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
 								{
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * z) });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * (z + 1) });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * (z + 1)) });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * (x + 1), 0, -d2 + dh * (z + 1) });
+									setVertexData<float>(offset, { (float)(-w2 + dw * (x + 1)), 0.0f, (float)(-d2 + dh * (z + 1)) });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * (x + 1), 0, -d2 + dh * (z + 1) });
+									setVertexData<float>(offset, { (float)(-w2 + dw * (x + 1)), 0.0f, (float)(-d2 + dh * (z + 1)) });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * (x + 1), 0, -d2 + dh * z });
+									setVertexData<float>(offset, { (float)(-w2 + dw * (x + 1)), 0.0f, (float)(-d2 + dh * z) });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * z) });
 									offset += strideInBytes;
 								}
 							}
@@ -349,27 +383,27 @@ namespace mpp
 							{
 								if (meshSpec.verticesIndexed())
 								{
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z, 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * z), 1.0f });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
 								{
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z, 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * z), 1.0f });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * (z + 1), 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * (z + 1)), 1.0f });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * (x + 1), 0, -d2 + dh * (z + 1), 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * (x + 1)), 0.0f, (float)(-d2 + dh * (z + 1)), 1.0f });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * (x + 1), 0, -d2 + dh * (z + 1), 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * (x + 1)), 0.0f, (float)(-d2 + dh * (z + 1)), 1.0f });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * (x + 1), 0, -d2 + dh * z, 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * (x + 1)), 0.0f, (float)(-d2 + dh * z), 1.0f });
 									offset += strideInBytes;
 
-									setVertexData<float>(offset, { -w2 + dw * x, 0, -d2 + dh * z, 1.0f });
+									setVertexData<float>(offset, { (float)(-w2 + dw * x), 0.0f, (float)(-d2 + dh * z), 1.0f });
 									offset += strideInBytes;
 								}
 							}
