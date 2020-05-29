@@ -10,6 +10,6 @@ namespace mpp
 	{
 	public:
 
-		GridModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, float width, float depth, int dimX, int dimZ);
+		GridModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, double width, double depth, int dimX, int dimZ);
 	};
 }
