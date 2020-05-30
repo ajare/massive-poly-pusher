@@ -1,6 +1,6 @@
 @@Version
 
-@@In pos = dvec3
+@@In pos = vec3
 @@In normal = vec3
 
 @@Passthrough uv = vec2
