@@ -11,6 +11,7 @@
 #pragma warning(pop)
 
 #include "mpp/UniformCollection.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -66,27 +67,27 @@ namespace mpp
 	{
 		for (auto it: mIntegerUniforms)
 		{
-			glUniform1i(program->getUniformId(it.first), it.second);
+			GL_CHECK(glUniform1i(program->getUniformId(it.first), it.second));
 		}
 
 		for (auto it: mFloatUniforms)
 		{
-			glUniform1f(program->getUniformId(it.first), it.second);
+			GL_CHECK(glUniform1f(program->getUniformId(it.first), it.second));
 		}
 
 		for (auto it: mVec2Uniforms)
 		{
-			glUniform2f(program->getUniformId(it.first), it.second.x, it.second.y);
+			GL_CHECK(glUniform2f(program->getUniformId(it.first), it.second.x, it.second.y));
 		}
 
 		for (auto it: mVec3Uniforms)
 		{
-			glUniform3f(program->getUniformId(it.first), it.second.x, it.second.y, it.second.z);
+			GL_CHECK(glUniform3f(program->getUniformId(it.first), it.second.x, it.second.y, it.second.z));
 		}
 
 		for (auto it: mVec4Uniforms)
 		{
-			glUniform4f(program->getUniformId(it.first), it.second.x, it.second.y, it.second.z, it.second.w);
+			GL_CHECK(glUniform4f(program->getUniformId(it.first), it.second.x, it.second.y, it.second.z, it.second.w));
 		}
 	}
 

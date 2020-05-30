@@ -8,6 +8,7 @@
 #include <gl/gl.h>
 
 #include "mpp/RenderTarget.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -40,7 +41,7 @@ namespace mpp
 	{
 		mWidth = width;
 		mHeight = height;
-		glViewport(0, 0, mWidth, mHeight);
+		GL_CHECK(glViewport(0, 0, mWidth, mHeight));
 	}
 
 	/*

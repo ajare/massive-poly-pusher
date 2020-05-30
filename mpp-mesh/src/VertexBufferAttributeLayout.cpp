@@ -1,6 +1,7 @@
 #include <cassert>
 
 #include "mpp/mesh/VertexBufferAttributeLayout.h"
+#include "mpp/mesh/MppMeshException.h"
 
 namespace mpp
 {
@@ -19,6 +20,22 @@ namespace mpp
 		 */
 		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary)
 		{
+			// Certain datatypes must be normalised for glVertexAttribPointer
+			if ((dataType == Vertex::DataType::UnsignedInt_2_10_10_10_REV || dataType == Vertex::DataType::Int_2_10_10_10_REV) && !normalised)
+			{
+				THROW_MPP_MESH(Vertex::getDataTypeName(dataType) + " vertex attributes must be normalised.", __LINE__, __FILE__, __FUNCTION__);
+			}
+
+			// Certain datatypes must have a particular size
+			if ((dataType == Vertex::DataType::UnsignedInt_2_10_10_10_REV || dataType == Vertex::DataType::Int_2_10_10_10_REV) && Vertex::getComponentSize(component) != 4)
+			{
+				THROW_MPP_MESH(Vertex::getDataTypeName(dataType) + " vertex attributes must have 4 components.", __LINE__, __FILE__, __FUNCTION__);
+			}
+
+			// TODO: check caps to ensure GL_MAX_VERTEX_ATTRIBS and  GL_MAX_VERTEX_ATTRIB_STRIDE
+			// ...
+
+			// Add attrib
 			Attribute attrib;
 
 			attrib.attributeId = mBaseId + mAttributes.size();

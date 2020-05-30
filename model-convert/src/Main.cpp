@@ -333,6 +333,10 @@ void debug(string const& inFile, string const& outFile)
 							cout << "Pad3"; break;
 						case mpp::mesh::Vertex::DataType::Pad4:
 							cout << "Pad4"; break;
+						case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
+							cout << *(int32*)v; break;
+						case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
+							cout << *(uint32*)v; break;
 						default:
 							cout << "Unknown"; break;
 						}

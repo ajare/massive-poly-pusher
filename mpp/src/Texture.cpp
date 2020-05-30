@@ -12,6 +12,7 @@
 #include "mpp/Texture.h"
 #include "mpp/TextureStream.h"
 #include "mpp/MppException.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -79,22 +80,22 @@ namespace mpp
 	{
 		uint32 texId;
 
-		glGenTextures(1, &texId);
+		GL_CHECK(glGenTextures(1, &texId));
 
-		glBindTexture(GL_TEXTURE_2D, texId);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mFiltered ? GL_LINEAR : GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mFiltered ? GL_LINEAR : GL_NEAREST);
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mFiltered ? GL_LINEAR : GL_NEAREST));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mFiltered ? GL_LINEAR : GL_NEAREST));
 
 		if (mBitsPerPixel == 24)
 		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, mWidth, mHeight, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, mData);
+			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, mWidth, mHeight, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, mData));
 		}
 		else if (mBitsPerPixel == 32)
 		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, mWidth, mHeight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mData);
+			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, mWidth, mHeight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mData));
 		}
 
-		glBindTexture(GL_TEXTURE_2D, 0);
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 		setId(texId);
 	}
 
@@ -107,7 +108,7 @@ namespace mpp
 		GLuint id = getId();
 		if (id != 0)
 		{
-			glDeleteTextures(1, &id);
+			GL_CHECK(glDeleteTextures(1, &id));
 			setId(0);
 		}
 	}
@@ -150,8 +151,8 @@ namespace mpp
 			load();
 		}
 
-		glActiveTexture(GL_TEXTURE0 + unit);
-		glBindTexture(GL_TEXTURE_2D, getId());
+		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, getId()));
 	}
 
 	/*
@@ -189,13 +190,13 @@ namespace mpp
 
 		if (mBitsPerPixel == 24)
 		{
-			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, data);
+			GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, data));
 		}
 		else if (mBitsPerPixel == 32)
 		{
-			glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data));
 		}
 
-		glBindTexture(GL_TEXTURE_2D, 0);
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
 }

@@ -1,7 +1,7 @@
 @@Version
 
 @@In pos = vec3
-@@In normal = vec3
+@@In normal = vec4
 
 @@Passthrough uv = vec2
 @@Passthrough colour = vec4
@@ -11,7 +11,7 @@
 
 void main()
 {
-	@Out(normal) = normalize(@NormalMatrix * @In(normal));
+	@Out(normal) = normalize(@NormalMatrix * @In(normal).xyz);
 
 	vec4 vertPos = @MCPMatrix * vec4(@In(pos), 1);
 	@Out(pos) = vertPos.xyz;

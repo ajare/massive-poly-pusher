@@ -3,6 +3,7 @@
 #include "mpp/Config.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/MppException.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -16,22 +17,22 @@ namespace mpp
 		: RenderTarget(width, height)
 	{
 		// Create framebuffer
-		glGenFramebuffers(1, &mFrameBuffer);
-		glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer);
+		GL_CHECK(glGenFramebuffers(1, &mFrameBuffer));
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
 
 		// Create textures
 		for (int i = 0; i < numAttachments; ++i)
 		{
 			GLuint texId;
-			glGenTextures(1, &texId);
-			glBindTexture(GL_TEXTURE_2D, texId);
+			GL_CHECK(glGenTextures(1, &texId));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, nullptr);
+			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, nullptr));
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
 
-			glBindTexture(GL_TEXTURE_2D, 0);
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 
 			mTextureIds.push_back(texId);
 		}
@@ -39,11 +40,11 @@ namespace mpp
 		// Create depth buffer
 		if (depthBuffer)
 		{
-			glGenRenderbuffers(1, &mDepthBuffer);
-			glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer);
+			GL_CHECK(glGenRenderbuffers(1, &mDepthBuffer));
+			GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer));
 
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer);
+			GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height));
+			GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer));
 		}
 		else
 		{
@@ -54,11 +55,11 @@ namespace mpp
 		for (int i = 0; i < numAttachments; ++i)
 		{
 			GLenum attachment = GL_COLOR_ATTACHMENT0 + i;
-			glFramebufferTexture(GL_FRAMEBUFFER, attachment, mTextureIds[i], 0);
+			GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, mTextureIds[i], 0));
 			drawBuffers[i] = attachment;
 		}
 
-		glDrawBuffers(numAttachments, drawBuffers);
+		GL_CHECK(glDrawBuffers(numAttachments, drawBuffers));
 		delete[] drawBuffers;
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -66,7 +67,7 @@ namespace mpp
 			THROW_MPP("Could not create framebuffer.", __LINE__, __FILE__, __FUNCTION__);
 		}
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
 	/*
@@ -75,7 +76,7 @@ namespace mpp
 	 */
 	RenderTexture::~RenderTexture()
 	{
-		glDeleteFramebuffers(1, &mFrameBuffer);
+		GL_CHECK(glDeleteFramebuffers(1, &mFrameBuffer));
 	}
 
 	/*
@@ -84,8 +85,8 @@ namespace mpp
 	 */
 	void RenderTexture::activate()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer);
-		glViewport(0, 0, getWidth(), getHeight());
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
+		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
 	}
 
 	/*
@@ -94,7 +95,7 @@ namespace mpp
 	 */
 	void RenderTexture::deactivate()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
 	/*
@@ -112,8 +113,8 @@ namespace mpp
 	 */
 	void RenderTexture::bind(int attachment, int unit)
 	{
-		glActiveTexture(GL_TEXTURE0 + unit);
-		glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]);
+		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
 	}
 
 }

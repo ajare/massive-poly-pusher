@@ -76,6 +76,9 @@ namespace mpp
 				return 3;
 			case Vertex::DataType::Pad4:
 				return 4;
+			case Vertex::DataType::Int_2_10_10_10_REV:
+			case Vertex::DataType::UnsignedInt_2_10_10_10_REV:
+				return sizeof(int);
 			default:
 				throw MppMeshException("Vertex::getDataTypeSize() could not get size of data type!");
 			}
@@ -140,6 +143,10 @@ namespace mpp
 				return "Pad3";
 			case DataType::Pad4:
 				return "Pad4";
+			case DataType::Int_2_10_10_10_REV:
+				return "Int_2_10_10_10_REV";
+			case DataType::UnsignedInt_2_10_10_10_REV:
+				return "UnsignedInt_2_10_10_10_REV";
 			default:
 				return "Unknown";
 			}

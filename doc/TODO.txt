@@ -37,8 +37,19 @@ Current work
   - Get (u)short working normalised & unnormalised [DONE]
   - Get (u)int working normalised & unnormalised [DONE]
   - Get halffloat working [DONE]
-  - Get double working
-  - Look into GL_FIXED, GL_INT_2_10_10_10_REV, GL_UNSIGNED_INT_2_10_10_10_REV and GL_UNSIGNED_INT_10F_11F_11F_REV
+  - Get double working [DONE]
+  - Look into:
+    - GL_FIXED
+	- GL_UNSIGNED_INT_2_10_10_10_REV: useful for colours when your alpha is 1, and you want extra precision on the RGB for the same size as a padded ubyte[3]
+	- GL_INT_2_10_10_10_REV
+	- GL_UNSIGNED_INT_10F_11F_11F_REV
+- Don't use varying [DONE]
+- Use layout(location=...)
+- Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
+- Uniform Buffer Objects
+- Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification
+- Check max number of vertex attribs
+- Check max vertex stride
 - Fix other Primitives (box/sphere)
   - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
     So PrimitiveModelStream has struct and function like:
@@ -62,17 +73,12 @@ Current work
 	};
 	
 	Then we call addVertex().position(x, y, z).normal(nx, ny, nz).uv(u, v).build();
-	
+
 - Serialization is now almost certainly broken.
   - Get model being saved to .mppmodel and loaded in
   - Ensure multiple buffers work
   - Ensure padding is saved/loaded
   - Create model inspector?
-- Get generic attributes working (can we do structs?)
-  - Check max number of vertex attribs
-  - Check max vertex stride
 - Look into separate attribute format:
   - https://www.khronos.org/opengl/wiki/Vertex_Specification#Separate_attribute_format
-- Don't use varying, use attribs with location
-    
 - Ensure 2d batches work

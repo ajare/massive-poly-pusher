@@ -27,8 +27,8 @@ namespace mpp
 				Pad2,
 				Pad3,
 				Pad4,
-				// GL_INT_2_10_10_10_REV
-				// GL_UNSIGNED_INT_2_10_10_10_REV
+				Int_2_10_10_10_REV,
+				UnsignedInt_2_10_10_10_REV
 				// GL_UNSIGNED_INT_10F_11F_11F_REV
 			};
 

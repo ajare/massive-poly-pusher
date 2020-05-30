@@ -27,6 +27,7 @@
 #include <mpp/MppModelStream.h>
 
 #include <mpp/mesh/MeshSpecification.h>
+#include <mpp/mesh/MppMeshException.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/OrbitCamera.h>
@@ -226,11 +227,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
 		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+		attribLayout->createAttribute(mesh::Vertex::Component::Normal4, mesh::Vertex::DataType::Int_2_10_10_10_REV, true);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
 		//attribLayout = modelSpec.createVertexBufferAttributeLayout();
-		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedInt, true);
+		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV, true);
 
 		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		modelSpec.setIndexedVertices(true);
@@ -572,6 +573,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 	}
 	catch (mpp::MppException const& e)
+	{
+		gLogger->message(e.what());
+		gLogger->message(" - thrown by " + e.getFunction());
+		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
+		return 1;
+	}
+	catch (mpp::mesh::MppMeshException const& e)
 	{
 		gLogger->message(e.what());
 		gLogger->message(" - thrown by " + e.getFunction());
