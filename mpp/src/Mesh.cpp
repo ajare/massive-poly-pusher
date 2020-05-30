@@ -11,6 +11,7 @@
 #include "mpp/Mesh.h"
 #include "mpp/ModelStream.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -228,7 +229,7 @@ namespace mpp
 	 */
 	void Mesh::mapIndexData(int numPrimitives)
 	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
+		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 		// If the data has increased in size, then reallocate
 		int newSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
@@ -239,9 +240,11 @@ namespace mpp
 		}
 		else
 		{
-			int8* bufferPtr = (int8*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+			int8* bufferPtr{ nullptr };
+			GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY));
+
 			memcpy(bufferPtr, &(mIndexData[0]), mIndexDataSize);
-			glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+			GL_CHECK(glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER));
 		}
 	}
 
@@ -251,7 +254,7 @@ namespace mpp
 	 */
 	void Mesh::mapIndexData(int startPrimitive, int numPrimitives)
 	{
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
+		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 		// If the data has increased in size, then reallocate
 		int indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
@@ -263,7 +266,7 @@ namespace mpp
 		}
 		else
 		{
-			glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, startPrimitive * indexStride, numPrimitives * indexStride, &(mIndexData[startPrimitive * indexStride]));
+			GL_CHECK(glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, startPrimitive * indexStride, numPrimitives * indexStride, &(mIndexData[startPrimitive * indexStride])));
 		}
 	}
 
@@ -289,11 +292,11 @@ namespace mpp
 
 		if (mIndexDataSize == 0)
 		{
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, nullptr, glStorageType);
+			GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, nullptr, glStorageType));
 		}
 		else
 		{
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, mIndexDataSize, &(mIndexData[0]), glStorageType);
+			GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, mIndexDataSize, &(mIndexData[0]), glStorageType));
 		}
 	}
 
@@ -304,14 +307,14 @@ namespace mpp
 	void Mesh::load()
 	{
 		// Load into one vertex buffer
-		glGenVertexArrays(1, &mVAO);
-		glBindVertexArray(mVAO);
+		GL_CHECK(glGenVertexArrays(1, &mVAO));
+		GL_CHECK(glBindVertexArray(mVAO));
 
 		// Create index buffer
 		if (isIndexed())
 		{
-			glGenBuffers(1, &mIBO);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO);
+			GL_CHECK(glGenBuffers(1, &mIBO));
+			GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 			allocateIndexData(mPrimitiveCount);
 		}
@@ -322,8 +325,8 @@ namespace mpp
 			vertexBuffer->load();
 		}
 
-		// Release VAO
-		glBindVertexArray(0);
+		// Unbind VAO
+		GL_CHECK(glBindVertexArray(0));
 
 		// Load material
 		mMaterial->load();
@@ -339,12 +342,12 @@ namespace mpp
 	{
 		if (mVAO != 0)
 		{
-			glDeleteVertexArrays(1, &mVAO);
+			GL_CHECK(glDeleteVertexArrays(1, &mVAO));
 			mVAO = 0;
 		}
 		if (mIBO != 0)
 		{
-			glDeleteBuffers(1, &mIBO);
+			GL_CHECK(glDeleteBuffers(1, &mIBO));
 			mIBO = 0;
 		}
 
@@ -364,11 +367,11 @@ namespace mpp
 	{
 		if (use)
 		{
-			glBindVertexArray(mVAO);
+			GL_CHECK(glBindVertexArray(mVAO));
 		}
 		else
 		{
-			glBindVertexArray(0);
+			GL_CHECK(glBindVertexArray(0));
 		}
 	}
 
@@ -389,17 +392,17 @@ namespace mpp
 	{
 		if (mPrimitiveType == mesh::Primitive::Type::Points)
 		{
-			glPointSize(mPointSize);
+			GL_CHECK(glPointSize(mPointSize));
 		}
 
 		if (mIsIndexed)
 		{
 			GLenum indexType = mIndexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-			glDrawElements(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0);
+			GL_CHECK(glDrawElements(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0));
 		}
 		else
 		{
-			glDrawArrays(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize);
+			GL_CHECK(glDrawArrays(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize));
 		}
 	}
 

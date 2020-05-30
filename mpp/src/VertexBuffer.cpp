@@ -4,6 +4,7 @@
 #include "mpp/VertexBuffer.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/MppException.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -55,15 +56,17 @@ namespace mpp
 
 		switch (dataType)
 		{
-		case Vertex::DataType::Byte:			attr.dataType = GL_BYTE; break;
-		case Vertex::DataType::UnsignedByte:	attr.dataType = GL_UNSIGNED_BYTE; break;
-		case Vertex::DataType::Short:			attr.dataType = GL_SHORT; break;
-		case Vertex::DataType::UnsignedShort:	attr.dataType = GL_UNSIGNED_SHORT; break;
-		case Vertex::DataType::Int:				attr.dataType = GL_INT; break;
-		case Vertex::DataType::UnsignedInt:		attr.dataType = GL_UNSIGNED_INT; break;
-		case Vertex::DataType::HalfFloat:		attr.dataType = GL_HALF_FLOAT; break;
-		case Vertex::DataType::Float:			attr.dataType = GL_FLOAT; break;
-		case Vertex::DataType::Double:			attr.dataType = GL_DOUBLE; break;
+		case Vertex::DataType::Byte:							attr.dataType = GL_BYTE; break;
+		case Vertex::DataType::UnsignedByte:					attr.dataType = GL_UNSIGNED_BYTE; break;
+		case Vertex::DataType::Short:							attr.dataType = GL_SHORT; break;
+		case Vertex::DataType::UnsignedShort:					attr.dataType = GL_UNSIGNED_SHORT; break;
+		case Vertex::DataType::Int:								attr.dataType = GL_INT; break;
+		case Vertex::DataType::UnsignedInt:						attr.dataType = GL_UNSIGNED_INT; break;
+		case Vertex::DataType::HalfFloat:						attr.dataType = GL_HALF_FLOAT; break;
+		case Vertex::DataType::Float:							attr.dataType = GL_FLOAT; break;
+		case Vertex::DataType::Double:							attr.dataType = GL_DOUBLE; break;
+		case Vertex::DataType::Int_2_10_10_10_REV:				attr.dataType = GL_INT_2_10_10_10_REV; break;
+		case Vertex::DataType::UnsignedInt_2_10_10_10_REV:		attr.dataType = GL_UNSIGNED_INT_2_10_10_10_REV; break;
 		default:								
 			THROW_MPP("Unsupported datatype.", __LINE__, __FILE__, __FUNCTION__);
 		}
@@ -115,7 +118,7 @@ namespace mpp
 
 		if (enable)
 		{
-			glEnableVertexAttribArray(attrib.id);
+			GL_CHECK(glEnableVertexAttribArray(attrib.id));
 
 			switch (attrib.dataType)
 			{
@@ -125,23 +128,25 @@ namespace mpp
 			case GL_UNSIGNED_SHORT:
 			case GL_INT:
 			case GL_UNSIGNED_INT:
+			case GL_INT_2_10_10_10_REV:
+			case GL_UNSIGNED_INT_2_10_10_10_REV:
 				if (attrib.normalise)
 				{
-					glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+					GL_CHECK(glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				}
 				else
 				{
-					glVertexAttribIPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+					GL_CHECK(glVertexAttribIPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				}
 				break;
 
 			case GL_FLOAT:
 			case GL_HALF_FLOAT:
-				glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+				GL_CHECK(glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				break;
 
 			case GL_DOUBLE:
-				glVertexAttribLPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes));
+				GL_CHECK(glVertexAttribLPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				break;
 
 			default:
@@ -150,7 +155,7 @@ namespace mpp
 		}
 		else
 		{
-			glDisableVertexAttribArray(attrib.id);
+			GL_CHECK(glDisableVertexAttribArray(attrib.id));
 		}
 	}
 
@@ -201,11 +206,11 @@ namespace mpp
 		{
 			if (size == 0)
 			{
-				glBufferData(GL_ARRAY_BUFFER, size, nullptr, glStorageType);
+				GL_CHECK(glBufferData(GL_ARRAY_BUFFER, size, nullptr, glStorageType));
 			}
 			else
 			{
-				glBufferData(GL_ARRAY_BUFFER, size, &(mData[0]), glStorageType);
+				GL_CHECK(glBufferData(GL_ARRAY_BUFFER, size, &(mData[0]), glStorageType));
 			}
 		}
 
@@ -229,9 +234,11 @@ namespace mpp
 			allocate(curSize);
 		}
 		
-		int8* bufferPtr = (int8*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		int8* bufferPtr{ nullptr };
+		GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
+
 		memcpy(bufferPtr, &(mData[0]), curSize);
-		glUnmapBuffer(GL_ARRAY_BUFFER);
+		GL_CHECK(glUnmapBuffer(GL_ARRAY_BUFFER));
 	}
 
 	/*
@@ -250,7 +257,7 @@ namespace mpp
 			allocate(curSize);
 		}
 		
-		glBufferSubData(GL_ARRAY_BUFFER, startVertex * mVertexStride, numVertices * mVertexStride, &(mData[startVertex * mVertexStride]));
+		GL_CHECK(glBufferSubData(GL_ARRAY_BUFFER, startVertex * mVertexStride, numVertices * mVertexStride, &(mData[startVertex * mVertexStride])));
 	}
 
 	/*
@@ -259,7 +266,7 @@ namespace mpp
 	 */
 	void VertexBuffer::bind()
 	{
-		glBindBuffer(GL_ARRAY_BUFFER, mVBO);
+		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, mVBO));
 	}
 
 	/*
@@ -268,7 +275,7 @@ namespace mpp
 	 */
 	void VertexBuffer::unbind()
 	{
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
 	}
 
 	/*
@@ -278,7 +285,7 @@ namespace mpp
 	void VertexBuffer::load()
 	{
 		unload();
-		glGenBuffers(1, &mVBO);
+		GL_CHECK(glGenBuffers(1, &mVBO));
 	
 		bind();
 		allocate(mVertexStride * mVertexCount);
@@ -297,7 +304,7 @@ namespace mpp
 	{
 		if (mVBO != 0)
 		{
-			glDeleteBuffers(1, &mVBO);
+			GL_CHECK(glDeleteBuffers(1, &mVBO));
 			mVBO = 0;
 		}
 	}

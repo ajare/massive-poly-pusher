@@ -189,6 +189,9 @@
     <ClInclude Include="..\..\include\mpp\MppException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\GLErrorCheck.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\ClipRectangle.cpp">
@@ -327,6 +330,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\GridModelStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\GLErrorCheck.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <algorithm>
 #include <string>
+#include <regex>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -35,6 +36,7 @@
 #include "mpp/Profiler.h"
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -385,7 +387,7 @@ namespace mpp
 #ifdef MPP_DEBUG_BUILD
 				glDebugMessageCallbackARB = (PFNGLDEBUGMESSAGECALLBACKARBPROC)wglGetProcAddress("glDebugMessageCallbackARB");
 
-				glDebugMessageCallbackARB(&debugOutputCallback, this);
+				GL_CHECK(glDebugMessageCallbackARB(&debugOutputCallback, this));
 #endif
 				logMessage("GL_ARB_debug_output initialised.");
 			}
@@ -423,38 +425,57 @@ namespace mpp
 		string glRenderer((char*)glGetString(GL_RENDERER));
 		string vendorInfo((char*)glGetString(GL_VENDOR));
 
-		utils::StringUtils::trim(glslVersion);
-		int period1Pos = glslVersion.find_first_of('.');
-		int period2Pos = glslVersion.find_first_of('.', period1Pos + 1);
-		int endPos = glslVersion.find_first_of(' ');
+		// GL_VERSION
+		regex glVersionRe(R"(^(\d+)\.(\d+)\.?(\d+)?\s?(.*)?)");
+		smatch matches;
 
-		if (period2Pos > 0 && period2Pos < endPos)
+		if (regex_search(glVersion, matches, glVersionRe))
 		{
-			endPos = period2Pos;
+			string vMajor = matches[1];
+			string vMinor = matches[2];
+			string vRelease = matches[3];
+			string vendorSpecific = matches[4];
+
+			mCaps.glVersionMajor = utils::StringUtils::parseInt(vMajor);
+			mCaps.glVersionMinor = utils::StringUtils::parseInt(vMinor);
+		}
+		else 
+		{
+			THROW_MPP("Could not parse GL_VERSION: " + glVersion, __LINE__, __FILE__, __FUNCTION__);
 		}
 
-		int glslMajor = utils::StringUtils::parseInt(glslVersion.substr(0, period1Pos));
-		int glslMinor = utils::StringUtils::parseInt(glslVersion.substr(period1Pos + 1, endPos - period1Pos - 1));
+		// GL_SHADING_LANGUAGE_VERSION
+		if (regex_search(glslVersion, matches, glVersionRe))
+		{
+			string vMajor = matches[1];
+			string vMinor = matches[2];
+			string vRelease = matches[3];
+			string vendorSpecific = matches[4];
 
-		mCaps.glslVersionMajor = glslMajor;
-		mCaps.glslVersionMinor = glslMinor;
+			mCaps.glslVersionMajor = utils::StringUtils::parseInt(vMajor);
+			mCaps.glslVersionMinor = utils::StringUtils::parseInt(vMinor);
+		}
+		else
+		{
+			THROW_MPP("Could not parse GL_SHADING_LANGUAGE_VERSION: " + glslVersion, __LINE__, __FILE__, __FUNCTION__);
+		}
 
 		logMessage("GL version: " + glVersion);
-		logMessage("GLSL version: " + glslVersion + " (" + utils::StringUtils::toString(glslMajor)+"." + utils::StringUtils::toString(glslMinor)+")");
+		logMessage("GLSL version: " + glslVersion);
 		logMessage("Renderer: " + glRenderer);
 		logMessage("Vendor: " + vendorInfo);
 		logMessage("");
 
 		// Get point size render range
 		GLfloat sizeRange[2] = { 0.0f, 0.0f };
-		glGetFloatv(GL_SMOOTH_POINT_SIZE_RANGE, sizeRange);
+		GL_CHECK(glGetFloatv(GL_SMOOTH_POINT_SIZE_RANGE, sizeRange));
 
 		mCaps.pointSizeRange[0] = sizeRange[0];
 		mCaps.pointSizeRange[1] = sizeRange[1];
 
 		// Get aliased line width range
 		GLfloat lineRange[2] = { 0.0f, 0.0f };
-		glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineRange);
+		GL_CHECK(glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineRange));
 
 		mCaps.aliasedLineWidthRange[0] = lineRange[0];
 		mCaps.aliasedLineWidthRange[1] = lineRange[1];
@@ -464,12 +485,12 @@ namespace mpp
 		GLint maxTextureSize;
 		GLint maxRectTextureSize = 0;
 
-		glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
-		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
+		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits));
+		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize));
 
 		if (glewIsSupported("GL_EXT_texture_rectangle"))
 		{
-			glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxRectTextureSize);
+			GL_CHECK(glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxRectTextureSize));
 		}
 
 		mCaps.maxTextureUnits = maxTextureUnits;
@@ -485,8 +506,8 @@ namespace mpp
 
 		// Primitive counts
 		GLint maxElements, maxVertices;
-		glGetIntegerv(GL_MAX_ELEMENTS_INDICES, &maxElements);
-		glGetIntegerv(GL_MAX_ELEMENTS_VERTICES, &maxVertices);
+		GL_CHECK(glGetIntegerv(GL_MAX_ELEMENTS_INDICES, &maxElements));
+		GL_CHECK(glGetIntegerv(GL_MAX_ELEMENTS_VERTICES, &maxVertices));
 
 		mCaps.maxRecommendedElements = maxElements;
 		mCaps.maxRecommendedVertices = maxVertices;
@@ -775,8 +796,8 @@ namespace mpp
 	 */
 	void RenderSystem::setDefaultTexture()
 	{
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		GL_CHECK(glActiveTexture(GL_TEXTURE0));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
 
 	/*
@@ -785,11 +806,10 @@ namespace mpp
 	*/
 	void RenderSystem::setDefaultState()
 	{
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
+		GL_CHECK(glEnable(GL_DEPTH_TEST));
+		GL_CHECK(glDepthFunc(GL_LESS));
 
-		//glEnable(GL_PROGRAM_POINT_SIZE);
-		glDisable(GL_PROGRAM_POINT_SIZE);
+		GL_CHECK(glDisable(GL_PROGRAM_POINT_SIZE));
 
 		// Set matrices to identity
 		m3dCameraMatrix = glm::mat4();
@@ -939,7 +959,7 @@ namespace mpp
 		}
 
 		mClipStack.push(cr);
-		glScissor(cr.x, cr.y, cr.width, cr.height);
+		GL_CHECK(glScissor(cr.x, cr.y, cr.width, cr.height));
 	}
 
 	/*
@@ -955,12 +975,12 @@ namespace mpp
 		if (mClipStack.empty())
 		{
 			// Set to target size.
-			glScissor(0, 0, mRenderTarget->getWidth(), mRenderTarget->getHeight());
+			GL_CHECK(glScissor(0, 0, mRenderTarget->getWidth(), mRenderTarget->getHeight()));
 		}
 		else
 		{
 			ClipRectangle const& cr = mClipStack.top();
-			glScissor(cr.x, cr.y, cr.width, cr.height);
+			GL_CHECK(glScissor(cr.x, cr.y, cr.width, cr.height));
 		}
 	}
 
@@ -1100,7 +1120,7 @@ namespace mpp
 	{
 		flushVertexBuffers();
 
-		glEnable(GL_DEPTH_TEST);
+		GL_CHECK(glEnable(GL_DEPTH_TEST));
 
 		mProjectionType = ProjectionType::Perspective3D;
 		mFarPlaneDistance = farDist;
@@ -1174,7 +1194,7 @@ namespace mpp
 	{
 		flushVertexBuffers();
 
-		glDisable(GL_DEPTH_TEST);
+		GL_CHECK(glDisable(GL_DEPTH_TEST));
 
 		mProjectionType = ProjectionType::Ortho2D;
 
@@ -1221,8 +1241,8 @@ namespace mpp
 	 */
 	void RenderSystem::clearScreen(Colour const& colour)
 	{
-		glClearColor(colour.red, colour.green, colour.blue, colour.alpha);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		GL_CHECK(glClearColor(colour.red, colour.green, colour.blue, colour.alpha));
+		GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 	}
 
 	/*
@@ -1570,10 +1590,10 @@ namespace mpp
 		}
 
 		int mcpId = p->getModelCameraProjectionMatrixId();
-		glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix));
+		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 
 		int hwsId = p->getHalfWindowSizeId();
-		glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
 		// Set texture
 		for (int i = 0; i < m->getNumTextures(); ++i)
@@ -1615,21 +1635,21 @@ namespace mpp
 		}
 
 		int mcpId = p->getModelCameraProjectionMatrixId();
-		glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix));
+		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 
 		int hwsId = p->getHalfWindowSizeId();
-		glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
 		int diffuseId = p->getUniformId("diffuse");
-		glUniform4f(diffuseId, 1, 1, 1, 1);
+		GL_CHECK(glUniform4f(diffuseId, 1, 1, 1, 1));
 
 		// Set texture
 		texture->bind(attachment, 0);
 		mRenderInfo.textureSwitches++;
 
 		// Set blend
-		glEnable(GL_BLEND);
-		glBlendFunc((int)srcBlend, (int)dstBlend);
+		GL_CHECK(glEnable(GL_BLEND));
+		GL_CHECK(glBlendFunc((int)srcBlend, (int)dstBlend));
 
 		// Bind mesh
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
@@ -1671,16 +1691,16 @@ namespace mpp
 
 		pushModelMatrix();
 		translateTransform2d(glm::vec2(x, mWindowHeight - y));
-		scaleTransform2d(glm::vec2(width / (float)mWindowWidth, height / (float)mWindowHeight));
+		GL_CHECK(scaleTransform2d(glm::vec2(width / (float)mWindowWidth, height / (float)mWindowHeight)));
 
 		int mcpId = p->getModelCameraProjectionMatrixId();
-		glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix));
+		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 
 		int hwsId = p->getHalfWindowSizeId();
-		glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
 		int diffuseId = p->getUniformId("diffuse");
-		glUniform4f(diffuseId, colour.red, colour.green, colour.blue, colour.alpha);
+		GL_CHECK(glUniform4f(diffuseId, colour.red, colour.green, colour.blue, colour.alpha));
 
 		// Set texture
 		((Texture*)texture.get())->bind(0);
@@ -1689,13 +1709,13 @@ namespace mpp
 		// Bind mesh
 		if (alphaBlend)
 		{
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			GL_CHECK(glEnable(GL_BLEND));
+			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 		}
 
 		if (wireFrame)
 		{
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
 		}
 
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
@@ -1707,12 +1727,12 @@ namespace mpp
 
 		if (alphaBlend)
 		{
-			glDisable(GL_BLEND);
+			GL_CHECK(glDisable(GL_BLEND));
 		}
 
 		if (wireFrame)
 		{
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 		}
 
 		popModelMatrix();
@@ -2222,13 +2242,13 @@ namespace mpp
 			meshInstance.second->bindUniforms();
 
 			// Wireframe?
-			glPolygonMode(GL_FRONT_AND_BACK, meshInstance.second->mWireframe ? GL_LINE : GL_FILL);
+			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance.second->mWireframe ? GL_LINE : GL_FILL));
 
 			// Blend?
 			if (meshInstance.second->mBlend)
 			{
-				glEnable(GL_BLEND);
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				GL_CHECK(glEnable(GL_BLEND));
+				GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 			}
 
 			// Render
@@ -2248,11 +2268,11 @@ namespace mpp
 			// Unbind
 			meshInstance.second->mwMesh->bind(false);
 
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
 			if (meshInstance.second->mBlend)
 			{
-				glDisable(GL_BLEND);
+				GL_CHECK(glDisable(GL_BLEND));
 			}
 		}
 

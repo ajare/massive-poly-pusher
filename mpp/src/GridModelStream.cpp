@@ -972,6 +972,39 @@ namespace mpp
 						}
 						break;
 
+					case mesh::Vertex::DataType::Int_2_10_10_10_REV:
+						for (int z = 0; z <= dimZ; ++z)
+						{
+							for (int x = 0; x <= dimX; ++x)
+							{
+								uint32_t xs = 0;
+								uint32_t ys = 0;
+								uint32_t zs = 0;
+								uint32_t ws = 0;
+
+								int32_t val = 
+									ws << 31 | ((uint32_t)(1.0f + (ws << 1)) & 1) << 30 |
+									zs << 29 | ((uint32_t)(0.0f * 511 + (zs << 9)) & 511) << 20 |
+									ys << 19 | ((uint32_t)(1.0f * 511 + (ys << 9)) & 511) << 10 |
+									xs <<  9 | ((uint32_t)(0.0f * 511 + (xs << 9)) & 511);
+
+								if (meshSpec.verticesIndexed())
+								{
+									setVertexData<int32_t>(offset, { val });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									for (int k = 0; k < 6; ++k)
+									{
+										setVertexData<int32_t>(offset, { val });
+										offset += strideInBytes;
+									}
+								}
+							}
+						}
+						break;
+
 					default:
 						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
 					}
@@ -1247,6 +1280,24 @@ namespace mpp
 									for (int k = 0; k < 6; ++k)
 									{
 										setVertexData<uint32>(offset, { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff });
+										offset += strideInBytes;
+									}
+								}
+								break;
+
+							case mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
+								if (meshSpec.verticesIndexed())
+								{
+									uint32_t val = (3 << 30) + (1023 << 20) + (1023 << 10) + (1023 << 0);
+									setVertexData<uint32>(offset, { val, val, val, val });
+									offset += strideInBytes;
+								}
+								else if (x != dimX && z != dimZ)
+								{
+									uint32_t val = (3 << 30) + (1023 << 20) + (1023 << 10) + (1023 << 0);
+									for (int k = 0; k < 6; ++k)
+									{
+										setVertexData<uint32>(offset, { val, val, val, val });
 										offset += strideInBytes;
 									}
 								}

@@ -3,7 +3,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #pragma warning(pop)
 
-#include <mpp/MeshInstance.h>
+#include "mpp/MeshInstance.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -203,19 +204,19 @@ namespace mpp
 		if (mcpId >= 0)
 		{
 			auto mcpMatrix = mModelCameraProjectionMatrix * mLocalTransform;
-			glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcpMatrix));
+			GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcpMatrix)));
 		}
 
 		int normalId = mwProgram->getNormalMatrixId();
 		if (normalId >= 0)
 		{
-			glUniformMatrix3fv(normalId, 1, GL_FALSE, glm::value_ptr(mNormalMatrix));
+			GL_CHECK(glUniformMatrix3fv(normalId, 1, GL_FALSE, glm::value_ptr(mNormalMatrix)));
 		}
 
 		int hwsId = mwProgram->getHalfWindowSizeId();
 		if (hwsId >= 0)
 		{
-			glUniform2fv(hwsId, 1, glm::value_ptr(mHalfWindowSize));
+			GL_CHECK(glUniform2fv(hwsId, 1, glm::value_ptr(mHalfWindowSize)));
 		}
 	}
 

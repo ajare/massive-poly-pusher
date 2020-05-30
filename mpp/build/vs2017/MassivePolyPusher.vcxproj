@@ -25,6 +25,7 @@
     <ClInclude Include="..\..\include\mpp\FileMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\FileProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\Font.h" />
+    <ClInclude Include="..\..\include\mpp\GLErrorCheck.h" />
     <ClInclude Include="..\..\include\mpp\IndexedTriangleBatch.h" />
     <ClInclude Include="..\..\include\mpp\IndexedTriangleBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\InternalFont.h" />
@@ -82,6 +83,7 @@
     <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FileProgramStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
+    <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
     <ClCompile Include="..\..\src\InternalFont.cpp" />
     <ClCompile Include="..\..\src\LineBatch.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />
@@ -187,7 +189,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -211,7 +213,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

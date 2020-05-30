@@ -10,6 +10,7 @@
 #include <gl/gl.h>
 
 #include "mpp/Screen.h"
+#include "mpp/GLErrorCheck.h"
 
 namespace mpp
 {
@@ -28,8 +29,8 @@ namespace mpp
 	 */
 	void Screen::activate()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, getWidth(), getHeight());
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
 	}
 
 	/*
@@ -38,8 +39,8 @@ namespace mpp
 	 */
 	void Screen::deactivate()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, getWidth(), getHeight());
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
 	}
 }
 
