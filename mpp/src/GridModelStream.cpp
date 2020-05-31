@@ -1289,7 +1289,7 @@ namespace mpp
 								if (meshSpec.verticesIndexed())
 								{
 									uint32_t val = (3 << 30) + (1023 << 20) + (1023 << 10) + (1023 << 0);
-									setVertexData<uint32>(offset, { val, val, val, val });
+									setVertexData<uint32>(offset, { val  });
 									offset += strideInBytes;
 								}
 								else if (x != dimX && z != dimZ)
@@ -1297,7 +1297,7 @@ namespace mpp
 									uint32_t val = (3 << 30) + (1023 << 20) + (1023 << 10) + (1023 << 0);
 									for (int k = 0; k < 6; ++k)
 									{
-										setVertexData<uint32>(offset, { val, val, val, val });
+										setVertexData<uint32>(offset, { val });
 										offset += strideInBytes;
 									}
 								}

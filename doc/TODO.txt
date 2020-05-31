@@ -31,6 +31,7 @@ Current work
   - MeshSpecification::createVertexBufferAttributeLayout() returns pointer to end of vector, which
     can be invalidated if resized by adding new layout
   - Attribute baseid relies on each layout being complete before the next one is started
+- Don't use varying [DONE]  
 - Get non-float datatypes working
   - Use test shader not built-in [DONE]
   - Get (u)byte working normalised & unnormalised [DONE]
@@ -39,17 +40,16 @@ Current work
   - Get halffloat working [DONE]
   - Get double working [DONE]
   - Look into:
-    - GL_FIXED
-	- GL_UNSIGNED_INT_2_10_10_10_REV: useful for colours when your alpha is 1, and you want extra precision on the RGB for the same size as a padded ubyte[3]
-	- GL_INT_2_10_10_10_REV
-	- GL_UNSIGNED_INT_10F_11F_11F_REV
-- Don't use varying [DONE]
+	- GL_UNSIGNED_INT_2_10_10_10_REV [DONE]
+	- GL_INT_2_10_10_10_REV [DONE]
+- Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.
 - Use layout(location=...)
+  - Remove deprecated 'varying' stuff
 - Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
 - Uniform Buffer Objects
 - Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification
-- Check max number of vertex attribs
-- Check max vertex stride
+- Check max number of vertex attribs in createAttribute
+- Check max vertex stride in createAttribute
 - Fix other Primitives (box/sphere)
   - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
     So PrimitiveModelStream has struct and function like:
