@@ -46,7 +46,10 @@ Current work
   - Remove deprecated 'varying' stuff [DONE]
 - Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
 - Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification
+  - Make sure we can still specify it if we want (for custom shaders)
+    - Check that the MeshSpecification matches the shader, if it is specified
 - Check max number of vertex attribs in createAttribute
+  - Add to caps / pass in
 - Check max vertex stride in createAttribute
 - Fix other Primitives (box/sphere)
   - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
