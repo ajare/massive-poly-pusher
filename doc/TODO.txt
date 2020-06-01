@@ -42,10 +42,8 @@ Current work
   - GL_UNSIGNED_INT_2_10_10_10_REV [DONE]
   - GL_INT_2_10_10_10_REV [DONE]
 - Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.
-- Use layout(location=...)
-  - Remove deprecated 'varying' stuff
-- Look at https://learnopengl.com/Advanced-OpenGL/Advanced-GLSL
-  - Interface blocks
+- Use layout(location=...) [DONE]
+  - Remove deprecated 'varying' stuff [DONE]
 - Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
 - Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification
 - Check max number of vertex attribs in createAttribute

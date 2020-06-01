@@ -500,18 +500,20 @@ namespace mpp
 		{
 			auto const& vi = *vit;
 
-			parsedLines.insert(it, utils::StringUtils::format("{} {} {}{}_;\n", inDecl, vi.type, inPrefix, vi.name));
+			parsedLines.insert(it, utils::StringUtils::format("layout(location={}) {} {} {}{}_;\n", layoutLocation, inDecl, vi.type, inPrefix, vi.name));
 			layoutLocation++;
 		}
 
 		parsedLines.insert(it, "\n");
 
 		// Insert out-var definitions
+		layoutLocation = 0;
 		for (auto vit = outVars.begin(); vit != outVars.end(); ++vit)
 		{
 			auto const& vi = *vit;
 
-			parsedLines.insert(it, utils::StringUtils::format("{} {} {}{}_;\n", outDecl, vi.type, outPrefix, vi.name));
+			parsedLines.insert(it, utils::StringUtils::format("layout(location={}) {} {} {}{}_;\n", layoutLocation, outDecl, vi.type, outPrefix, vi.name));
+			layoutLocation++;
 		}
 
 		parsedLines.insert(it, "\n");
@@ -700,15 +702,6 @@ namespace mpp
 			// Attach shaders
 			glAttachShader(programId, mVertexShaderId);
 			glAttachShader(programId, mFragmentShaderId);
-
-			// Bind attributes
-			for (uint32 i = 0; i < mVertexAttributes.size(); ++i)
-			{
-				auto const& vertexAttrib = mVertexAttributes[i];
-
-				string markedUpName = MPP_PROGRAM_VS_IN_PREFIX + vertexAttrib.name + "_";
-				glBindAttribLocation(programId, i, markedUpName.c_str());
-			}
 
 			// Link shaders
 			glLinkProgram(programId);
