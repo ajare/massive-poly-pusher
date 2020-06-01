@@ -1,44 +1,5 @@
 #pragma once
 
-// Vignette shader
-char const* __vignetteFragmentShader_2d =
-"	@@Version\n"
-
-"	@@Uniform intensity = float\n"
-"	@@Uniform extent = float\n"
-
-"	@@In uv = vec2\n"
-"   @@Out colour = vec4\n"
-
-"	void main()"
-"	{"
-"		vec2 coord = @In(uv);"
-"		coord *= 1.0 - coord.yx;"
-
-"		float v = coord.x * coord.y * @Uniform(intensity);"
-"		v = pow(v, @Uniform(extent));"
-"		@Out(colour) = vec4(v);"
-"	}"
-;
-
-// Film grain shader
-char const* __filmGrainFragmentShader_2d =
-"	@@Version\n"
-
-"	@@Uniform strength = float\n"
-"	@@Uniform time = float\n"
-
-"	@@In uv = vec2\n"
-"   @@Out colour = vec4\n"
-
-"	void main()"
-"	{"
-"		float x = (@In(uv).x + 4.0) * (@In(uv).y + 4.0) * (@Uniform(time) * 10.0);"
-"		vec4 grain = vec4(mod((mod(x, 13.0) + 1.0) * (mod(x, 123.0) + 1.0), 0.01) - 0.005) * @Uniform(strength);"
-"		@Out(colour) = 1.0 - grain;"
-"   }"
-;
-
 /*
  * Default 3d shader.
  *
@@ -78,8 +39,6 @@ R"(
 
 ## Texture
 @@Texture tex = sampler2D
-## Normal
-@@In normal = vec3
 ## TexCoords2
 @@In uv = vec2
 ## Alpha
@@ -88,6 +47,8 @@ R"(
 @@In colour = vec3
 ## RGBA
 @@In colour = vec4
+## Normal
+@@In normal = vec3
 ##
 @@Out colour = vec4
 
