@@ -277,26 +277,25 @@ namespace mpp
 		auto const& caps = rs->getCaps();
 
 		string inDecl, outDecl;
-		bool useDeprecated = caps.glslVersionMajor < 3;
 		string inPrefix, outPrefix;
 		switch (shaderType)
 		{
 		case ShaderType::Vertex:
-			inDecl = useDeprecated ? "attribute" : "in";
-			outDecl = useDeprecated ? "varying" : "out";
+			inDecl = "in";
+			outDecl = "out";
 			inPrefix = MPP_PROGRAM_VS_IN_PREFIX;
 			outPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
 			break;
 
 		case ShaderType::Geometry:
-			inDecl = useDeprecated ? "varying" : "in";
-			outDecl = useDeprecated ? "varying" : "out";
+			inDecl = "in";
+			outDecl = "out";
 			inPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
 			outPrefix = MPP_PROGRAM_GS_OUT_PREFIX;
 			break;
 
 		case ShaderType::Fragment:
-			inDecl = useDeprecated ? "varying" : "in";
+			inDecl = "in";
 			outDecl = "out";
 			inPrefix = usingGeometryShader ? MPP_PROGRAM_GS_OUT_PREFIX : MPP_PROGRAM_VS_OUT_PREFIX;
 			outPrefix = MPP_PROGRAM_FS_OUT_PREFIX;

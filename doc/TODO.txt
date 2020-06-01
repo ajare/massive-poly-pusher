@@ -39,41 +39,20 @@ Current work
   - Get (u)int working normalised & unnormalised [DONE]
   - Get halffloat working [DONE]
   - Get double working [DONE]
-  - Look into:
-	- GL_UNSIGNED_INT_2_10_10_10_REV [DONE]
-	- GL_INT_2_10_10_10_REV [DONE]
+  - GL_UNSIGNED_INT_2_10_10_10_REV [DONE]
+  - GL_INT_2_10_10_10_REV [DONE]
 - Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.
 - Use layout(location=...)
   - Remove deprecated 'varying' stuff
+- Look at https://learnopengl.com/Advanced-OpenGL/Advanced-GLSL
+  - Interface blocks
 - Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
-- Uniform Buffer Objects
 - Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification
 - Check max number of vertex attribs in createAttribute
 - Check max vertex stride in createAttribute
 - Fix other Primitives (box/sphere)
   - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
-    So PrimitiveModelStream has struct and function like:
-	class Vertex
-	{
-		double pos[3];
-		double normal[3];
-		double uv[2];
-
- 	public:
-	
-		Vertex& position(double x, double y, double z)
-		{
-			pos[0] = x; pos[1] = y; pos[2] = z;
-			return *this;
-		}
-		
-		Vertex& normal(double x, double y, double z);
-		Vertex& uv(double u, double v);
-		void build();
-	};
-	
-	Then we call addVertex().position(x, y, z).normal(nx, ny, nz).uv(u, v).build();
-
+  - Use OpenGL immediate mode-style calls to specify colour, uvs, normal, vertex pos`
 - Serialization is now almost certainly broken.
   - Get model being saved to .mppmodel and loaded in
   - Ensure multiple buffers work

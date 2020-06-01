@@ -49,7 +49,7 @@ namespace mpp
 		, mTextureAtlas(textureAtlas)
 		, mTexCoordBufferStride(0)
 		, mIndexWidth(indexWidth)
-		, mPointSize(mMaxDimX)
+		, mPointSize((float)maxDimX)
 	{
 	}
 
