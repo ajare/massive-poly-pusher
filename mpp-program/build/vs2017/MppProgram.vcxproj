@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{4201332E-DD6A-40B6-8BCD-73AD3008D9C8}</ProjectGuid>
+    <ProjectGuid>{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>MppMesh</RootNamespace>
+    <RootNamespace>MppProgram</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition="'$(WindowsTargetPlatformVersion)'==''">
     <!-- Latest Target Version property -->
@@ -62,7 +62,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;MPP_MESH_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;MPP_PROGRAM_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp\3rd party\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -84,7 +84,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;MPP_MESH_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;MPP_PROGRAM_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp\3rd party\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -100,28 +100,14 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\MeshDefinition.cpp" />
-    <ClCompile Include="..\..\src\MeshSpecification.cpp" />
-    <ClCompile Include="..\..\src\ModelSerializer.cpp" />
-    <ClCompile Include="..\..\src\Vertex.cpp" />
-    <ClCompile Include="..\..\src\VertexBufferAttributeLayout.cpp" />
-    <ClCompile Include="..\..\src\VertexBufferDefinition.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\include\mpp\mesh\Config.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\MeshDefinition.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\MeshSpecification.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\ModelSerializer.h" />
-	<ClCompile Include="..\..\include\mpp\mesh\MppMeshException.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\Primitive.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\Vertex.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\VertexBufferAttributeLayout.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\VertexBufferDefinition.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\VertexBufferStorageType.h" />
-    <ClInclude Include="..\..\include\mpp\mesh\VertexTypeSpecification.h" />
+    <ClInclude Include="..\..\include\mpp\program\Config.h" />
+    <ClInclude Include="..\..\include\mpp\program\Parser.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\Parser.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

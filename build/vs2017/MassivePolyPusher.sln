@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.27703.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MassivePolyPusher", "..\..\mpp\build\vs2017\MassivePolyPusher.vcxproj", "{9EE39F33-DF1C-4120-8CF5-5865CC11E152}"
+	ProjectSection(ProjectDependencies) = postProject
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE} = {34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppMesh", "..\..\mpp-mesh\build\vs2017\MppMesh.vcxproj", "{4201332E-DD6A-40B6-8BCD-73AD3008D9C8}"
 EndProject
@@ -18,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Harness", "..\..\harness\bu
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppHelper", "..\..\mpp-helper\build\vs2017\MppHelper.vcxproj", "{E8661EA0-8356-483B-8446-CC0DB67852B8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppProgram", "..\..\mpp-program\build\vs2017\MppProgram.vcxproj", "{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,6 +64,12 @@ Global
 		{E8661EA0-8356-483B-8446-CC0DB67852B8}.Release|Win32.Build.0 = Release|Win32
 		{E8661EA0-8356-483B-8446-CC0DB67852B8}.Release|x64.ActiveCfg = Release|x64
 		{E8661EA0-8356-483B-8446-CC0DB67852B8}.Release|x64.Build.0 = Release|x64
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}.Debug|Win32.Build.0 = Debug|Win32
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}.Debug|x64.ActiveCfg = Debug|Win32
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}.Release|Win32.ActiveCfg = Release|Win32
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}.Release|Win32.Build.0 = Release|Win32
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

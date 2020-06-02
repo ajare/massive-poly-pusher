@@ -1,0 +1,72 @@
+#pragma once
+
+#include <stdint.h>
+
+// Platform settings - based off OGRE3D (www.ogre3d.org)
+#define MPP_PLATFORM_WIN32 1
+#define MPP_PLATFORM_LINUX 2
+#define MPP_PLATFORM_APPLE 3
+
+#define MPP_COMPILER_MSVC 1
+#define MPP_COMPILER_GNUC 2
+#define MPP_COMPILER_BORL 3
+
+// Find compiler information
+#if defined( _MSC_VER )
+#   define MPP_COMPILER MPP_COMPILER_MSVC
+#   define MPP_COMP_VER _MSC_VER
+#elif defined( __GNUC__ )
+#   define MPP_COMPILER MPP_COMPILER_GNUC
+#   define MPP_COMP_VER (((__GNUC__)*100) + \
+        (__GNUC_MINOR__*10) + \
+        __GNUC_PATCHLEVEL__)
+#elif defined( __BORLANDC__ )
+#   define MPP_COMPILER MPP_COMPILER_BORL
+#   define MPP_COMP_VER __BCPLUSPLUS__
+#else
+#   pragma error "Unknown compiler."
+
+#endif
+
+// Set platform
+#if defined( __WIN32__ ) || defined( _WIN32 )
+#   define MPP_PLATFORM MPP_PLATFORM_WIN32
+#elif defined( __APPLE_CC__)
+#   define MPP_PLATFORM MPP_PLATFORM_APPLE
+#else
+#   define MPP_PLATFORM MPP_PLATFORM_LINUX
+#endif
+
+// DLL Export
+#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#	if defined(MPP_PROGRAM_DLL_EXPORT)
+#		define _MPPPROGRAMAPI __declspec( dllexport )
+#	elif defined(MPP_PROGRAM_STATIC_LIB)
+#		define _MPPPROGRAMAPI
+#	else
+#		if defined(__MINGW32__)
+#			define _MPPPROGRAMAPI
+#		else
+#			define _MPPPROGRAMAPI __declspec( dllimport )
+#		endif
+#	endif
+#elif MPP_PLATFORM == MPP_PLATFORM_LINUX
+#	if defined(MPP_PROGRAM_DLL_EXPORT)
+#		define _MPPPROGRAMAPI __attribute__((visibility("default")))
+#	else
+#		define _MPPPROGRAMAPI
+#	endif
+#endif
+
+// Disable warning on non-exported templates.
+#pragma warning( disable: 4251 )
+
+// Typedefs
+typedef signed char int8;
+typedef unsigned char uint8;
+typedef signed short int16;
+typedef unsigned short uint16;
+typedef signed int int32;
+typedef unsigned int uint32;
+typedef int64_t int64;
+typedef uint64_t uint64;
