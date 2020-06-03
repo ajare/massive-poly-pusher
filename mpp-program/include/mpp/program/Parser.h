@@ -13,13 +13,31 @@ namespace mpp
 
 		class _MPPPROGRAMAPI Parser
 		{
-			std::string mVertexSource, mFragmentSource;
+			enum class ShaderStage
+			{
+				Vertex,
+				Geometry,
+				Fragment,
+				NumStages,
+			};
+
+		private:
+
+			std::string mName;
+
+			std::string mSources[(int)ShaderStage::NumStages];
 
 			mesh::MeshSpecification mSpecification;
+
+		private:
+
+			void parseAttributeUsage(ShaderStage stage);
 
 		public:
 
 			Parser();
+
+			explicit Parser(std::string const& name);
 
 			void setVertexSource(std::string const& src);
 
