@@ -25,22 +25,11 @@ set TargetBinDir="%Root%.\build\%Solution%\bin\%Platform%\%Configuration%"
 
 if not exist %TargetBinDir% mkdir %TargetBinDir%
 
-@rem Copy harness 3rd party
-copy /Y "%Root%\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
-
-@rem Copy mpp
-copy /Y "%Root%\..\mpp\\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
-copy /Y "%Root%\..\mpp\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
-
 @rem Copy mpp-mesh
 copy /Y "%Root%\..\mpp-mesh\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
 @rem Copy mpp-program
 copy /Y "%Root%\..\mpp-program\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
-
-@rem Copy resources
-copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
-copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%
 
 goto exit_success
 
@@ -54,4 +43,3 @@ exit 1
 
 :exit_success
 exit 0
-f

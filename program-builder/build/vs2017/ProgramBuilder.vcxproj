@@ -112,6 +112,9 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>MppMesh.lib;MppProgram.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>"$(ProjectDir)..\..\CopyBin.bat" vs2017 $(Platform) $(Configuration)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -131,6 +134,9 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>MppMeshd.lib;MppProgramd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>"$(ProjectDir)..\..\CopyBin.bat" vs2017 $(Platform) $(Configuration)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
