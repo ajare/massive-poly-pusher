@@ -1,5 +1,4 @@
 #include <iostream>
-#include <Windows.h>
 
 #include "mpp/mesh/MeshSpecification.h"
 #include "mpp/mesh/MppMeshException.h"
@@ -8,11 +7,16 @@
 
 using namespace std;
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+int main(int argc, char** argv)
 {
+	// Parse arguments
+	// ...
+
 	try
 	{
+		mpp::program::Parser parser;
 
+		parser.build();
 	}
 	catch (mpp::program::MppProgramException const& e)
 	{
