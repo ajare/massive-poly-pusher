@@ -109,8 +109,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MppMesh.lib;MppProgram.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>MppMesh.lib;MppProgram.lib;MppMeshSpecificationParser.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)..\..\CopyBin.bat" vs2017 $(Platform) $(Configuration)</Command>
@@ -131,8 +131,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MppMeshd.lib;MppProgramd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>MppMeshd.lib;MppProgramd.lib;MppMeshSpecificationParserd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)..\..\CopyBin.bat" vs2017 $(Platform) $(Configuration)</Command>

@@ -76,8 +76,11 @@ Materials specification
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/ModelSerializer.h>
 
+#include <mpp/mesh-specification-parser/SpecificationParser.h>
+#include <mpp/mesh-specification-parser/ProgramInformation.h>
+#include <mpp/mesh-specification-parser/MaterialInformation.h>
+
 #include "AssImpModelLoader.h"
-#include "SpecificationParser.h"
 
 #define MPPMODEL_FILEEXT ".mppmodel"
 #define MATERIAL_FILEEXT ".material"
@@ -183,6 +186,8 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 void convert(string const& inFile, string const& outFile, string const& specFile, string const& matFile)
 {
+	using namespace mpp::mesh_specification_parser;
+
 	SpecificationParser parser(specFile);
 
 	uint32 maxVerticesPerMesh;
