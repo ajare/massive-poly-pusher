@@ -140,6 +140,23 @@ int main(int argc, char** argv)
 		sourceParser.setFragmentSource(fsContent);
 
 		sourceParser.build();
+
+		auto const& warnings = sourceParser.getWarnings();
+		for (auto const& warning: warnings)
+		{
+			cout << "Warning: " << warning << "\n";
+		}
+
+		auto const& errors = sourceParser.getErrors();
+		for (auto const& error : errors)
+		{
+			cout << "Error: " << error << "\n";
+		}
+
+		if (!errors.empty())
+		{
+			throw exception("Errors were found during parsing.");
+		}
 	}
 	catch (mpp::program::MppProgramException const& e)
 	{
