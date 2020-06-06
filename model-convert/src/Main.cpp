@@ -98,9 +98,9 @@ struct ProgramArgs
  */
 void printHelp()
 {
-	cout << "Syntax: model-convert <file> /s specfile [/o <outfile>] " << endl;
-	cout << endl;
+	cout << "Syntax: model-convert <file> -s specfile [-o <outfile>]\n\n";
 }
+
 /*
  * Parse command line arguments.
  *
@@ -121,7 +121,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 	{
 		string arg = argv[i];
 		
-		if (arg == "/d")
+		if (arg == "-d")
 		{
 			if (pArgs.mode == "convert")
 			{
@@ -131,7 +131,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 			pArgs.mode = "debug";
 		}
 
-		if (arg == "/o")
+		if (arg == "-o")
 		{
 			if (i == (argc - 1))
 			{
@@ -142,7 +142,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 				pArgs.outFile = argv[++i];
 			}
 		}
-		else if (arg == "/s")
+		else if (arg == "-s")
 		{
 			if (pArgs.mode == "debug")
 			{
@@ -160,7 +160,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 				pArgs.specFile = argv[++i];
 			}
 		}
-		else if (arg == "/m")
+		else if (arg == "-m")
 		{
 			if (i == (argc - 1))
 			{
@@ -175,7 +175,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 	if (pArgs.mode == "convert" && pArgs.specFile == "")
 	{
-		throw exception("No specification file (/s) given.");
+		throw exception("No specification file (-s) given.");
 	}
 
 	return pArgs;
