@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 
 #include "mpp/mesh/MeshSpecification.h"
@@ -36,15 +37,15 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 		if (arg == "-v" || arg == "--vertex")
 		{
-			pArgs.vertexSource = argv[i + 1];
+			pArgs.vertexSource = argv[++i];
 		}
 		else if (arg == "-g" || arg == "--geometry")
 		{
-			pArgs.geometrySource = argv[i + 1];
+			pArgs.geometrySource = argv[++i];
 		}
 		else if (arg == "-f" || arg == "--fragment")
 		{
-			pArgs.fragmentSource = argv[i + 1];
+			pArgs.fragmentSource = argv[++i];
 		}
 		else
 		{
@@ -78,11 +79,46 @@ int main(int argc, char** argv)
 
 	try
 	{
+		// Load in files
+		ifstream vsFile, gsFile, fsFile;
+		string vsContent, gsContent, fsContent;
+		
+		vsFile.open(pArgs.vertexSource, ifstream::in);
+		if (!vsFile.is_open())
+		{
+			string errMsg = "Could not open " + pArgs.vertexSource;
+			throw exception(errMsg.c_str());
+		}
+
+		vsContent = string((istreambuf_iterator<char>(vsFile)), (istreambuf_iterator<char>()));
+
+		if (pArgs.geometrySource != "")
+		{
+			gsFile.open(pArgs.geometrySource, ifstream::in);
+			if (!gsFile.is_open())
+			{
+				string errMsg = "Could not open " + pArgs.geometrySource;
+				throw exception(errMsg.c_str());
+			}
+
+			gsContent = string((istreambuf_iterator<char>(gsFile)), (istreambuf_iterator<char>()));
+		}
+
+		fsFile.open(pArgs.fragmentSource, ifstream::in);
+		if (!fsFile.is_open())
+		{
+			string errMsg = "Could not open " + pArgs.fragmentSource;
+			throw exception(errMsg.c_str());
+		}
+
+		fsContent = string((istreambuf_iterator<char>(fsFile)), (istreambuf_iterator<char>()));
+
+		// Parse
 		mpp::program::Parser parser;
 		
-		parser.setVertexSource(pArgs.vertexSource);
-		parser.setGeometrySource(pArgs.geometrySource);
-		parser.setFragmentSource(pArgs.fragmentSource);
+		parser.setVertexSource(vsContent);
+		parser.setGeometrySource(gsContent);
+		parser.setFragmentSource(fsContent);
 
 		parser.build();
 	}
