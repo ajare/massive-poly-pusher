@@ -28,6 +28,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppProgram", "..\..\mpp-pro
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProgramBuilder", "..\..\program-builder\build\vs2017\ProgramBuilder.vcxproj", "{3E6C193F-60D9-4C3F-A838-0F18557175E9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4201332E-DD6A-40B6-8BCD-73AD3008D9C8} = {4201332E-DD6A-40B6-8BCD-73AD3008D9C8}
+		{34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE} = {34D2D83B-C345-4189-ADBD-FB4B2B8CF3DE}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

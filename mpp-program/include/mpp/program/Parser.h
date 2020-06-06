@@ -41,6 +41,8 @@ namespace mpp
 
 			void setVertexSource(std::string const& src);
 
+			void setGeometrySource(std::string const& src);
+
 			void setFragmentSource(std::string const& src);
 
 			void setMeshSpecification(mesh::MeshSpecification const& spec);

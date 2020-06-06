@@ -41,6 +41,15 @@ namespace mpp
 		}
 
 		/*
+		 * Set geometry shader source.
+		 *
+		 */
+		void Parser::setGeometrySource(string const& src)
+		{
+			mSources[(int)ShaderStage::Geometry] = src;
+		}
+
+		/*
 		 * Set fragment shader source.
 		 *
 		 */		
