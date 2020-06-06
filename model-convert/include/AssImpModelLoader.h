@@ -7,9 +7,10 @@
 #include "mpp/mesh/MeshDefinition.h"
 #include "mpp/mesh/MeshSpecification.h"
 
+#include <mpp/mesh-specification-parser/ProgramInformation.h>
+#include <mpp/mesh-specification-parser/MaterialInformation.h>
+
 #include "MaterialDefinition.h"
-#include "ProgramInformation.h"
-#include "MaterialInformation.h"
 
 class AssImpModelLoader
 {
@@ -40,9 +41,9 @@ private:
 
 	mpp::mesh::MeshSpecification mSpecification;
 
-	std::map<std::string, ProgramInformation> mProgramInfo;
+	std::map<std::string, mpp::mesh_specification_parser::ProgramInformation> mProgramInfo;
 
-	std::map<std::string, MaterialInformation> mMaterialInfo;
+	std::map<std::string, mpp::mesh_specification_parser::MaterialInformation> mMaterialInfo;
 
 	uint32 mMaxVerticesPerMesh;
 
@@ -90,7 +91,7 @@ private:
 
 public:
 
-	AssImpModelLoader(std::string const& filename, mpp::mesh::MeshSpecification const& meshSpec, std::map<std::string, ProgramInformation> const& programInfo, std::map<std::string, MaterialInformation> const& materialInfo, uint32 maxVerticesPerMesh, bool generateColours);
+	AssImpModelLoader(std::string const& filename, mpp::mesh::MeshSpecification const& meshSpec, std::map<std::string, mpp::mesh_specification_parser::ProgramInformation> const& programInfo, std::map<std::string, mpp::mesh_specification_parser::MaterialInformation> const& materialInfo, uint32 maxVerticesPerMesh, bool generateColours);
 
 	~AssImpModelLoader();
 

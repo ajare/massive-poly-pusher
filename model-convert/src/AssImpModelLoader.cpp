@@ -26,7 +26,7 @@ using namespace mpp::mesh;
  * Constructor.
  *
  */
-AssImpModelLoader::AssImpModelLoader(string const& filename, MeshSpecification const& meshSpec, map<string, ProgramInformation> const& programInfo, map<string, MaterialInformation> const& materialInfo, uint32 maxVerticesPerMesh, bool generateColours) :
+AssImpModelLoader::AssImpModelLoader(string const& filename, MeshSpecification const& meshSpec, map<string, mpp::mesh_specification_parser::ProgramInformation> const& programInfo, map<string, mpp::mesh_specification_parser::MaterialInformation> const& materialInfo, uint32 maxVerticesPerMesh, bool generateColours) :
 	mFilename(filename),
 	mSpecification(meshSpec),
 	mProgramInfo(programInfo),
@@ -444,7 +444,7 @@ MaterialDefinition AssImpModelLoader::createMaterialDefinition(string const& nam
 		return regex_match(name, regex(kvp.first));
 	});
 
-	MaterialInformation mi;
+	mpp::mesh_specification_parser::MaterialInformation mi;
 	if (it == mMaterialInfo.end())
 	{
 		auto defIt = mMaterialInfo.find("");
@@ -474,7 +474,7 @@ MaterialDefinition AssImpModelLoader::createMaterialDefinition(string const& nam
 		throw exception(errMsg.c_str());
 	}
 
-	ProgramInformation pi = pit->second;
+	mpp::mesh_specification_parser::ProgramInformation pi = pit->second;
 
 	// Get texture and uniform information
 	map<string, MaterialTransformer> matTokens =
