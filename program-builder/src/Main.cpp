@@ -4,14 +4,19 @@
 
 #include "mpp/mesh/MeshSpecification.h"
 #include "mpp/mesh/MppMeshException.h"
+
+#include "mpp/mesh-specification-parser/SpecificationParser.h"
+
 #include "mpp/program/Parser.h"
 #include "mpp/program/MppProgramException.h"
+
 
 using namespace std;
 
 struct ProgramArgs
 {
 	string vertexSource, geometrySource, fragmentSource;
+	string meshSpec;
 };
 
 /*
@@ -20,7 +25,7 @@ struct ProgramArgs
  */
 void printHelp()
 {
-	cout << "Syntax: program-builder -v <vertex-source> [-g <geometry-source>] -f <fragment-source>\n\n";
+	cout << "Syntax: program-builder -v <vertex-source> [-g <geometry-source>] -f <fragment-source> -m <mesh-spec>\n\n";
 }
 
 /*
@@ -47,6 +52,10 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			pArgs.fragmentSource = argv[++i];
 		}
+		else if (arg == "-m" || arg == "--meshspec")
+		{
+			pArgs.meshSpec = argv[++i];
+		}
 		else
 		{
 			string errMsg = "Unknown argument: " + arg;
@@ -56,11 +65,15 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 	if (pArgs.vertexSource == "")
 	{
-		throw exception("No vertex source (-v/--vertex) specified.");
+		throw exception("No vertex source (-v/--vertex) given.");
 	}
 	if (pArgs.fragmentSource == "")
 	{
-		throw exception("No fragment source (-f/--fragment) specified.");
+		throw exception("No fragment source (-f/--fragment) given.");
+	}
+	if (pArgs.meshSpec == "")
+	{
+		throw exception("No mesh specification (-m/--meshspec) given.");
 	}
 
 	return pArgs;
@@ -114,13 +127,19 @@ int main(int argc, char** argv)
 		fsContent = string((istreambuf_iterator<char>(fsFile)), (istreambuf_iterator<char>()));
 
 		// Parse
-		mpp::program::Parser parser;
+		mpp::mesh_specification_parser::SpecificationParser specParser(pArgs.meshSpec);
+		uint32 maxVerticesPerMesh;
 		
-		parser.setVertexSource(vsContent);
-		parser.setGeometrySource(gsContent);
-		parser.setFragmentSource(fsContent);
+		mpp::mesh::MeshSpecification meshSpec = specParser.parseMeshSpecification(maxVerticesPerMesh);
 
-		parser.build();
+		mpp::program::Parser sourceParser;
+		
+		sourceParser.setMeshSpecification(meshSpec);
+		sourceParser.setVertexSource(vsContent);
+		sourceParser.setGeometrySource(gsContent);
+		sourceParser.setFragmentSource(fsContent);
+
+		sourceParser.build();
 	}
 	catch (mpp::program::MppProgramException const& e)
 	{
