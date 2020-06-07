@@ -50,16 +50,12 @@ done @Out(vec4 COLOUR).
 
 @@Version
 
-@@Out(POSITION) = vec3
-@@Out(NORMAL) = vec3
-@@Out(TEXCOORDS) = vec2
-@@Out(COLOUR) = vec4
-
 void main()
 {
-	@Out(NORMAL) = normalize(@NormalMatrix * @In(NORMAL).xyz);
+	@Out(vec3 NORMAL) = normalize(@NormalMatrix * @In(NORMAL).xyz);
 
 	vec4 vertPos = @MCPMatrix * vec4(@In(POSITION), 1);
+	@Out(vec3 POSITION) = vertPos.xyz;
 	@Out(POSITION) = vertPos.xyz;
 	
 	gl_Position = vertPos;
