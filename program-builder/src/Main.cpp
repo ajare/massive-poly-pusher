@@ -160,21 +160,21 @@ int main(int argc, char** argv)
 	}
 	catch (mpp::program::MppProgramException const& e)
 	{
-		cout << e.what() << "\n";
+		cout << "\n" << e.what() << "\n";
 		cout << " - thrown by " + e.getFunction() << "\n";
 		cout << " - thrown at " + e.getFile() + ":" + to_string(e.getLine()) << "\n";
 		return 1;
 	}
 	catch (mpp::mesh::MppMeshException const& e)
 	{
-		cout << e.what() << "\n";
+		cout << "\n" << e.what() << "\n";
 		cout << " - thrown by " + e.getFunction() << "\n";
 		cout << " - thrown at " + e.getFile() + ":" + to_string(e.getLine()) << "\n";
 		return 1;
 	}
 	catch (exception const& e)
 	{
-		cout << e.what() << "\n";
+		cout << "\n" << e.what() << "\n";
 		return 1;
 	}
 
