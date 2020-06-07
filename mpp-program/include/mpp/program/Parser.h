@@ -23,6 +23,13 @@ namespace mpp
 				UserDefined
 			};
 
+			struct Attribute
+			{
+				mpp::mesh::Vertex::Component component;
+				mpp::mesh::Vertex::DataType dataType;
+				bool normalised;
+			};
+
 		private:
 
 			struct ShaderStage
@@ -38,8 +45,7 @@ namespace mpp
 				Type type;
 				std::string source;
 
-				std::map<std::string, AttributeType> definedAttributes;
-				std::set<AttributeType> in, out;
+				std::vector<Attribute> inAttribs, outAttribs;
 			};
 
 		private:
@@ -52,21 +58,19 @@ namespace mpp
 
 			mesh::MeshSpecification mSpecification;
 
-			std::set<AttributeType> mSpecificationAttributes;
-
 			std::vector<std::string> mErrors;
 
 			std::vector<std::string> mWarnings;
 
 		private:
 
-			void getDeclaredAttributes(ShaderStage& stage);
+			void getInAttributes(ShaderStage& stage);
 
-			void getUsedAttributes(ShaderStage& stage);
+			void getOutAttributes(ShaderStage& stage);
 
 			void parseAttributeUsage(ShaderStage::Type stageType);
 
-			void checkUnusedAttributes(std::set<AttributeType> const& attribs);
+			std::string stripComments(std::string const& src);
 
 		public:
 

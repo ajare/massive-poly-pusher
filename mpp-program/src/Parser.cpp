@@ -57,9 +57,9 @@ namespace mpp
 			auto& stage = mStages[(int)ShaderStage::Type::Vertex];
 			
 			stage.type = ShaderStage::Type::Vertex;
-			stage.source = src;
-			stage.in.clear();
-			stage.out.clear();
+			stage.source = stripComments(src);
+			stage.inAttribs.clear();
+			stage.outAttribs.clear();
 		}
 
 		/*
@@ -71,9 +71,9 @@ namespace mpp
 			auto& stage = mStages[(int)ShaderStage::Type::Geometry];
 
 			stage.type = ShaderStage::Type::Geometry;
-			stage.source = src;
-			stage.in.clear();
-			stage.out.clear();
+			stage.source = stripComments(src);
+			stage.inAttribs.clear();
+			stage.outAttribs.clear();
 		}
 
 		/*
@@ -85,9 +85,9 @@ namespace mpp
 			auto& stage = mStages[(int)ShaderStage::Type::Fragment];
 
 			stage.type = ShaderStage::Type::Fragment;
-			stage.source = src;
-			stage.in.clear();
-			stage.out.clear();
+			stage.source = stripComments(src);
+			stage.inAttribs.clear();
+			stage.outAttribs.clear();
 		}
 
 		/*
@@ -97,186 +97,73 @@ namespace mpp
 		void Parser::setMeshSpecification(mesh::MeshSpecification const& spec)
 		{
 			mSpecification = spec;
-
-			// Read in attributes
-			mSpecificationAttributes.clear();
-			for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-			{
-				auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
-
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
-				{
-					auto const& attrib = layout.getAttribute(j);
-
-					switch (attrib.component)
-					{
-					case mpp::mesh::Vertex::Component::Position2:
-					case mpp::mesh::Vertex::Component::Position3:
-					case mpp::mesh::Vertex::Component::Position4:
-						mSpecificationAttributes.insert(AttributeType::Position);
-						break;
-
-					case mpp::mesh::Vertex::Component::Normal3:
-					case mpp::mesh::Vertex::Component::Normal4:
-						mSpecificationAttributes.insert(AttributeType::Normal);
-						break;
-
-					case mpp::mesh::Vertex::Component::TexCoord2:
-					case mpp::mesh::Vertex::Component::TexCoord3:
-					case mpp::mesh::Vertex::Component::TexCoord4:
-						mSpecificationAttributes.insert(AttributeType::TexCoords);
-						break;
-
-					case mpp::mesh::Vertex::Component::Colour1:
-					case mpp::mesh::Vertex::Component::Colour3:
-					case mpp::mesh::Vertex::Component::Colour4:
-						mSpecificationAttributes.insert(AttributeType::Colour);
-						break;
-					}
-				}
-			}
 		}
 
 		/*
-		 * Check which attributes have been declared in the mesh specification, but
-		 * are not actually used in the shader.  This is not an error, but will
-		 * generate a warning.
+		 * Remove comments from GLSL source code.
 		 *
 		 */
-		void Parser::checkUnusedAttributes(set<AttributeType> const& attribs)
+		string Parser::stripComments(std::string const& src)
 		{
-			for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-			{
-				auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			string stripped = src;
 
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
-				{
-					auto const& attrib = layout.getAttribute(j);
+			regex re(R"(\/\*.*\*\/)");
 
-					switch (attrib.component)
-					{
-					case mpp::mesh::Vertex::Component::Position2:
-					case mpp::mesh::Vertex::Component::Position3:
-					case mpp::mesh::Vertex::Component::Position4:
-						if (find(attribs.begin(), attribs.end(), AttributeType::Position) == attribs.end())
-						{
-							mWarnings.push_back(mpp::mesh::Vertex::getComponentName(attrib.component) + " is not used.");
-						}
-						break;
+			regex_replace(stripped, re, src);
 
-					case mpp::mesh::Vertex::Component::Normal3:
-					case mpp::mesh::Vertex::Component::Normal4:
-						if (find(attribs.begin(), attribs.end(), AttributeType::Normal) == attribs.end())
-						{
-							mWarnings.push_back(mpp::mesh::Vertex::getComponentName(attrib.component) + " is not used.");
-						}
-						break;
-
-					case mpp::mesh::Vertex::Component::TexCoord2:
-					case mpp::mesh::Vertex::Component::TexCoord3:
-					case mpp::mesh::Vertex::Component::TexCoord4:
-						if (find(attribs.begin(), attribs.end(), AttributeType::TexCoords) == attribs.end())
-						{
-							mWarnings.push_back(mpp::mesh::Vertex::getComponentName(attrib.component) + " is not used.");
-						}
-						break;
-
-					case mpp::mesh::Vertex::Component::Colour1:
-					case mpp::mesh::Vertex::Component::Colour3:
-					case mpp::mesh::Vertex::Component::Colour4:
-						if (find(attribs.begin(), attribs.end(), AttributeType::Colour) == attribs.end())
-						{
-							mWarnings.push_back(mpp::mesh::Vertex::getComponentName(attrib.component) + " is not used.");
-						}
-						break;
-					}
-				}
-			}
+			return stripped;
 		}
 
 		/*
-		 * Get the attributes which are spcecifically declared
-		 *
-		 */
-		void Parser::getDeclaredAttributes(ShaderStage& stage)
-		{
-			regex re(R"(@@(In|Out)\s*\(\s*([\w\d]+)\s*\)\s*=\s*([\w\d]+))");
-			smatch match;
-
-			auto src = stage.source;
-			while (regex_search(src, match, re))
-			{
-				auto qualifier = match.str(1);
-				auto attrib = match.str(2);
-				auto type = match.str(3);
-
-				// If this is an in attribute, then it must be in the spec if
-				// a vertex shader, or in the out attributes of the previous stage.
-				if (qualifier == "In")
-				{
-					mErrors.push_back("@In attributes should not be declared.");
-				}
-				else if (qualifier == "Out")
-				{
-					// TODO: add to out list
-				}
-				else
-				{
-					THROW_MPP_PROGRAM("Unknown qualifier: " + qualifier, __LINE__, __FILE__, __FUNCTION__);
-				}
-
-				// Look for next match
-				src = match.suffix().str();
-			}
-		}
-
-		/*
-		 * Get the attributes which are used, and hence require
+		 * Get the in attributes which are used, and hence require
 		 * a declaration.
 		 *
 		 */
-		void Parser::getUsedAttributes(ShaderStage& stage)
+		void Parser::getInAttributes(ShaderStage& stage)
 		{
-			regex re(R"([^@]@(In|Out)\s*\(\s*([\w\d]+)\s*\))");
+			stage.inAttribs.clear();
+
+			regex re(R"(@In\s*\(\s*([\w\d]+)\s*\))");
 			smatch match;
 
 			auto src = stage.source;
 			while (regex_search(src, match, re))
 			{
-				auto qualifier = match.str(1);
-				auto attrib = match.str(2);
+				auto attrib = match.str(1);
 
-				// Check attrib is one of the allowed ones, and if so,
-				// get its corresponding AttributeType
-				auto attribIt = stage.definedAttributes.find(attrib);
-				if (attribIt == stage.definedAttributes.end())
-				{
-					mErrors.push_back("Unknown attribute '" + attrib + "' used.");
-					goto next_match;
-				}
+				// Look for next match
+				next_match:	src = match.suffix().str();
+			}
+		}
 
-				// Check attribs is in the mesh specification
-				if (stage.type == ShaderStage::Type::Vertex && qualifier == "In")
-				{
-					auto attribIdIt = mSpecificationAttributes.find(attribIt->second);
-					if (attribIdIt == mSpecificationAttributes.end())
-					{
-						mErrors.push_back("Attribute '" + attrib + "' is not part of the mesh specification.");
-						goto next_match;
-					}
-				}
+		/*
+		 * Get the out attributes which are used, and hence require
+		 * a declaration.  These require a type.
+		 *
+		 */
+		void Parser::getOutAttributes(ShaderStage& stage)
+		{
+			stage.outAttribs.clear();
 
-				if (qualifier == "In")
+			regex re(R"(@Out\s*\(\s*([\w\d]+\s+)?([\w\d]+)\s*\))");
+			smatch match;
+
+			auto src = stage.source;
+			while (regex_search(src, match, re))
+			{
+				if (match.size() == 2)
 				{
-					stage.in.insert(attribIt->second);
+					// Type not declared.
+					auto attrib = match.str(1);
 				}
-				else if (qualifier == "Out")
+				else
 				{
-					stage.out.insert(attribIt->second);
+					auto type = match.str(1);
+					auto attrib = match.str(2);
 				}
 
 				// Look for next match
-			next_match:	src = match.suffix().str();
+				next_match:	src = match.suffix().str();
 			}
 		}
 
@@ -287,10 +174,6 @@ namespace mpp
 		void Parser::parseAttributeUsage(ShaderStage::Type stageType)
 		{
 			auto& stage = mStages[(int)stageType];
-			
-			stage.definedAttributes = mStandardAttributes;
-			stage.in.clear();
-			stage.out.clear();
 			
 			if (stage.source == "")
 			{
@@ -318,8 +201,10 @@ namespace mpp
 				}
 			}
 
-			getDeclaredAttributes(stage);
-			getUsedAttributes(stage);
+			// Remove comments
+
+			getInAttributes(stage);
+			getOutAttributes(stage);
 		}
 
 		/*
