@@ -19,7 +19,8 @@ namespace mpp
 				Position,
 				Normal,
 				TexCoords,
-				Colour
+				Colour,
+				UserDefined
 			};
 
 		private:
@@ -37,6 +38,7 @@ namespace mpp
 				Type type;
 				std::string source;
 
+				std::map<std::string, AttributeType> definedAttributes;
 				std::set<AttributeType> in, out;
 			};
 
@@ -45,6 +47,8 @@ namespace mpp
 			std::string mName;
 
 			ShaderStage mStages[(int)ShaderStage::Type::NumStages];
+
+			std::map<std::string, AttributeType> mStandardAttributes;
 
 			mesh::MeshSpecification mSpecification;
 
@@ -55,6 +59,10 @@ namespace mpp
 			std::vector<std::string> mWarnings;
 
 		private:
+
+			void getDeclaredAttributes(ShaderStage& stage);
+
+			void getUsedAttributes(ShaderStage& stage);
 
 			void parseAttributeUsage(ShaderStage::Type stageType);
 

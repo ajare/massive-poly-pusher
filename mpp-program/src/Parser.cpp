@@ -19,7 +19,7 @@ namespace mpp
 		 *
 		 */
 		Parser::Parser()
-			: mName("")
+			: Parser("<unnamed program>")
 		{
 		}
 
@@ -30,6 +30,13 @@ namespace mpp
 		Parser::Parser(std::string const& name)
 			: mName(name)
 		{
+			mStandardAttributes =
+			{
+				{"POSITION", AttributeType::Position},
+				{"NORMAL", AttributeType::Normal},
+				{"TEXCOORDS", AttributeType::TexCoords},
+				{"COLOUR", AttributeType::Colour}
+			};
 		}
 
 		/*
@@ -188,17 +195,104 @@ namespace mpp
 		}
 
 		/*
+		 * Get the attributes which are spcecifically declared
+		 *
+		 */
+		void Parser::getDeclaredAttributes(ShaderStage& stage)
+		{
+			regex re(R"(@@(In|Out)\s*\(\s*([\w\d]+)\s*\)\s*=\s*([\w\d]+))");
+			smatch match;
+
+			auto src = stage.source;
+			while (regex_search(src, match, re))
+			{
+				auto qualifier = match.str(1);
+				auto attrib = match.str(2);
+				auto type = match.str(3);
+
+				// If this is an in attribute, then it must be in the spec if
+				// a vertex shader, or in the out attributes of the previous stage.
+				if (qualifier == "In")
+				{
+					mErrors.push_back("@In attributes should not be declared.");
+				}
+				else if (qualifier == "Out")
+				{
+					// TODO: add to out list
+				}
+				else
+				{
+					THROW_MPP_PROGRAM("Unknown qualifier: " + qualifier, __LINE__, __FILE__, __FUNCTION__);
+				}
+
+				// Look for next match
+				src = match.suffix().str();
+			}
+		}
+
+		/*
+		 * Get the attributes which are used, and hence require
+		 * a declaration.
+		 *
+		 */
+		void Parser::getUsedAttributes(ShaderStage& stage)
+		{
+			regex re(R"([^@]@(In|Out)\s*\(\s*([\w\d]+)\s*\))");
+			smatch match;
+
+			auto src = stage.source;
+			while (regex_search(src, match, re))
+			{
+				auto qualifier = match.str(1);
+				auto attrib = match.str(2);
+
+				// Check attrib is one of the allowed ones, and if so,
+				// get its corresponding AttributeType
+				auto attribIt = stage.definedAttributes.find(attrib);
+				if (attribIt == stage.definedAttributes.end())
+				{
+					mErrors.push_back("Unknown attribute '" + attrib + "' used.");
+					goto next_match;
+				}
+
+				// Check attribs is in the mesh specification
+				if (stage.type == ShaderStage::Type::Vertex && qualifier == "In")
+				{
+					auto attribIdIt = mSpecificationAttributes.find(attribIt->second);
+					if (attribIdIt == mSpecificationAttributes.end())
+					{
+						mErrors.push_back("Attribute '" + attrib + "' is not part of the mesh specification.");
+						goto next_match;
+					}
+				}
+
+				if (qualifier == "In")
+				{
+					stage.in.insert(attribIt->second);
+				}
+				else if (qualifier == "Out")
+				{
+					stage.out.insert(attribIt->second);
+				}
+
+				// Look for next match
+			next_match:	src = match.suffix().str();
+			}
+		}
+
+		/*
 		 * Get attributes used from the source code.
 		 *
 		 */
 		void Parser::parseAttributeUsage(ShaderStage::Type stageType)
 		{
-			// Get source
 			auto& stage = mStages[(int)stageType];
 			
-			auto src = stage.source;
-
-			if (src == "")
+			stage.definedAttributes = mStandardAttributes;
+			stage.in.clear();
+			stage.out.clear();
+			
+			if (stage.source == "")
 			{
 				if (stageType == ShaderStage::Type::Vertex)
 				{
@@ -224,53 +318,8 @@ namespace mpp
 				}
 			}
 
-			// Get used attribs
-			map<string, AttributeType> definedAttribs =
-			{ 
-				{"POS", AttributeType::Position},
-				{"NORMAL", AttributeType::Normal},
-				{"TEXCOORDS", AttributeType::TexCoords},
-				{"COLOUR", AttributeType::Colour}
-			};
-
-			regex re(R"(@(In|Out)\s*\(\s*([\w\d]+)\s*\))");
-			smatch match;
-
-			while (regex_search(src, match, re))
-			{
-				auto qualifier = match.str(1);
-				auto attrib = match.str(2);
-
-				// Check attrib is one of the predefined ones, and if so,
-				// get its corresponding AttributeType
-				auto attribIt = definedAttribs.find(attrib);
-				if (attribIt == definedAttribs.end())
-				{
-					mErrors.push_back("Unknown attribute '" + attrib + "' used.");
-				}
-
-				// Check attribs is in the mesh specification
-				auto attribIdIt = mSpecificationAttributes.find(attribIt->second);
-				if (attribIdIt == mSpecificationAttributes.end())
-				{
-					mErrors.push_back("Attribute '" + attrib + "' is not part of the mesh specification.");
-				}
-
-				if (qualifier == "In")
-				{
-					stage.in.insert(attribIt->second);
-				}
-				else if (qualifier == "Out")
-				{
-					stage.out.insert(attribIt->second);
-				}
-
-				// Look for next match
-				src = match.suffix().str();
-			}
-
-			// Find unused attributes
-			checkUnusedAttributes(stage.in);
+			getDeclaredAttributes(stage);
+			getUsedAttributes(stage);
 		}
 
 		/*
@@ -279,11 +328,18 @@ namespace mpp
 		 */
 		void Parser::build()
 		{
+			mErrors.clear();
 			mWarnings.clear();
 
 			// Parse shaders and determine which attributes they use
 			parseAttributeUsage(ShaderStage::Type::Vertex);
 			parseAttributeUsage(ShaderStage::Type::Fragment);
+
+			// Find unused attributes.  Some attributes may not be used in earlier
+			// shaders (vertex/geometry) and simply be passed through to be used by
+			// later stages.  But we need to ensure these are not explicitly declared
+			// as "non-attribute" outputs in an earlier stage.
+			//checkUnusedAttributes(...);
 		}
 
 		vector<string> const& Parser::getErrors() const
