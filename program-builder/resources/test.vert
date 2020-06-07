@@ -2,7 +2,7 @@
 For vertex shader, in declarations aren't required as we generate them all from the mesh spec
 
 Work backwards from last shader: find the in variables it uses and generate a typeless declaration, eg
-for fragment shader
+for fragment shader.
 
 layout(location=0) in <type> POSITION;
 layout(location=1) in <type> NORMAL;
@@ -37,7 +37,15 @@ Then, we need to check, going forwards from vertex shader, that the following ar
   - Warning if not.  It may be that they are not used in this stage but are in a later one, but then they should
     be explicitly passed through.
   
-Then we just need to determine the types.
+Then we just need to determine the types.  For this we probably need to declare out variable types.  And if we do
+this, this acts as our out variable declaration, so we support multiple out vars for fragment shader, and know the
+in var types of the next stage.  Or could declare type in usage, eg:
+
+@Out(vec4 COLOUR) = @In(COLOUR);
+
+This is better.  In vars we don't need to know the type as they are coming in, but out vars we are creating, so need
+to define.  If we use the out var again then we don't need to specify the type, so @Out(COLOUR) works if we've already
+done @Out(vec4 COLOUR).
 */
 
 @@Version
