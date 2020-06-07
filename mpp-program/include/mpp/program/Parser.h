@@ -64,11 +64,13 @@ namespace mpp
 
 		private:
 
-			void getInAttributes(ShaderStage& stage);
+			void setInAttributesToMeshSpecification(ShaderStage::Type stageType);
 
-			void getOutAttributes(ShaderStage& stage);
+			void setInAttributesToPreviousStage(ShaderStage::Type stageType);
 
-			void parseAttributeUsage(ShaderStage::Type stageType);
+			void setOutAttributesToUsage(ShaderStage::Type stageType);
+
+			void parseInAttributeUsage(ShaderStage::Type stageType);
 
 			std::string stripComments(std::string const& src);
 
