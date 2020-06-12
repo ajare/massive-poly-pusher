@@ -37,6 +37,10 @@ namespace mpp
 				{"TEXCOORDS", AttributeType::TexCoords},
 				{"COLOUR", AttributeType::Colour}
 			};
+
+			mStages[(int)ShaderStage::Type::Vertex].type = ShaderStage::Type::Vertex;
+			mStages[(int)ShaderStage::Type::Geometry].type = ShaderStage::Type::Geometry;
+			mStages[(int)ShaderStage::Type::Fragment].type = ShaderStage::Type::Fragment;
 		}
 
 		/*
@@ -56,7 +60,6 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)ShaderStage::Type::Vertex];
 			
-			stage.type = ShaderStage::Type::Vertex;
 			stage.source = stripComments(src);
 			stage.inAttribs.clear();
 			stage.outAttribs.clear();
@@ -70,7 +73,6 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)ShaderStage::Type::Geometry];
 
-			stage.type = ShaderStage::Type::Geometry;
 			stage.source = stripComments(src);
 			stage.inAttribs.clear();
 			stage.outAttribs.clear();
@@ -84,7 +86,6 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)ShaderStage::Type::Fragment];
 
-			stage.type = ShaderStage::Type::Fragment;
 			stage.source = stripComments(src);
 			stage.inAttribs.clear();
 			stage.outAttribs.clear();
@@ -192,7 +193,7 @@ namespace mpp
 			auto& stage = mStages[(int)stageType];
 
 			int prevStage = (int)stageType - 1;
-			while (mStages[prevStage].source == "")
+			while (!mStages[prevStage].provided())
 			{
 				prevStage--;
 			}
@@ -250,6 +251,12 @@ namespace mpp
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Float });
+						else if (type == "ivec2")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position2, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "ivec3")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position3, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "ivec4")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Int });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
@@ -258,6 +265,10 @@ namespace mpp
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Float });
+						else if (type == "ivec3")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal3, mpp::mesh::Vertex::DataType::Int, true });
+						else if (type == "ivec4")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Int, true });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
@@ -268,6 +279,12 @@ namespace mpp
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Float });
+						else if (type == "ivec2")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord2, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "ivec3")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord3, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "ivec4")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Int });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
@@ -278,6 +295,12 @@ namespace mpp
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
 							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Float });
+						else if (type == "int")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour1, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "vec3")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour3, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "vec4")
+							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Int });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
@@ -305,6 +328,9 @@ namespace mpp
 			{
 				auto attrib = match.str(1);
 
+				// Check if unused.
+				// TODO: ...
+
 				// Look for next match
 				src = match.suffix().str();
 			}
@@ -320,46 +346,36 @@ namespace mpp
 			mWarnings.clear();
 
 			// Check required stages are present
-			if (mStages[(int)ShaderStage::Type::Vertex].source == "")
+			if (mStages[(int)ShaderStage::Type::Vertex].required() && !mStages[(int)ShaderStage::Type::Vertex].provided())
 			{
-				if (mName == "")
-				{
-					THROW_MPP_PROGRAM("No vertex shader was given for this program.", __LINE__, __FILE__, __FUNCTION__);
-				}
-				else
-				{
-					THROW_MPP_PROGRAM("No vertex shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
+				THROW_MPP_PROGRAM("No vertex shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
 			}
-			if (mStages[(int)ShaderStage::Type::Fragment].source == "")
+			if (mStages[(int)ShaderStage::Type::Geometry].required() && !mStages[(int)ShaderStage::Type::Geometry].provided())
 			{
-				if (mName == "")
-				{
-					THROW_MPP_PROGRAM("No fragment shader was given for this program.", __LINE__, __FILE__, __FUNCTION__);
-				}
-				else
-				{
-					THROW_MPP_PROGRAM("No fragment shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
+				THROW_MPP_PROGRAM("No geometry shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+			}
+			if (mStages[(int)ShaderStage::Type::Fragment].required() && !mStages[(int)ShaderStage::Type::Fragment].provided())
+			{
+				THROW_MPP_PROGRAM("No fragment shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
 			// Set vertex shader attributes
 			setInAttributesToMeshSpecification(ShaderStage::Type::Vertex);
 			setOutAttributesToUsage(ShaderStage::Type::Vertex);
+			parseInAttributeUsage(ShaderStage::Type::Vertex);
 
 			// Set geometry shader attributes (if required)
-			if (mStages[(int)ShaderStage::Type::Geometry].source != "")
+			if (mStages[(int)ShaderStage::Type::Geometry].provided())
 			{
 				setInAttributesToPreviousStage(ShaderStage::Type::Geometry);
 				setOutAttributesToUsage(ShaderStage::Type::Geometry);
+				parseInAttributeUsage(ShaderStage::Type::Geometry);
 			}
 
 			// Set fragment shader attributes
 			setInAttributesToPreviousStage(ShaderStage::Type::Fragment);
 			setOutAttributesToUsage(ShaderStage::Type::Fragment);
-
-			// Check unused attributes
-			// TODO: ...
+			parseInAttributeUsage(ShaderStage::Type::Fragment);
 
 			// Add attributes in and do token replacements
 			// TODO: ...

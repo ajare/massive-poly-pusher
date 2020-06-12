@@ -27,7 +27,7 @@ namespace mpp
 			{
 				mpp::mesh::Vertex::Component component;
 				mpp::mesh::Vertex::DataType dataType;
-				bool normalised;
+				bool normalised{ false };
 			};
 
 		private:
@@ -46,6 +46,12 @@ namespace mpp
 				std::string source;
 
 				std::vector<Attribute> inAttribs, outAttribs;
+
+			public:
+
+				bool required() const { return type == Type::Vertex || type == Type::Fragment; }
+
+				bool provided() const { return source != ""; }
 			};
 
 		private:
