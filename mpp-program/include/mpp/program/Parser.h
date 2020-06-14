@@ -61,6 +61,12 @@ namespace mpp
 				std::string type;
 			};
 
+			struct Texture
+			{
+				std::string name;
+				std::string type;
+			};
+
 		private:
 
 			struct ShaderStage
@@ -80,6 +86,7 @@ namespace mpp
 
 				std::vector<Attribute> inAttribs, outAttribs;
 				std::vector<Uniform> uniforms;
+				std::vector<Texture> textures;
 
 			public:
 
@@ -123,6 +130,8 @@ namespace mpp
 			void parseSource(ShaderStage::Type stageType);
 
 			void parseUniformUsage(ShaderStage::Type stageType);
+
+			void parseTextureUsage(ShaderStage::Type stageType);
 
 			void setInAttributesToMeshSpecification(ShaderStage::Type stageType);
 
