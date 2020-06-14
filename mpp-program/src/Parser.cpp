@@ -431,6 +431,15 @@ namespace mpp
 			}
 		}
 
+		string Parser::generateShader(ShaderStage::Type stageType)
+		{
+			auto& stage = mStages[(int)stageType];
+			
+			string shader = stage.source;
+
+			return shader;
+		}
+
 		/*
 		 * Parse files and get information, check against spec, and build final sources.
 		 *
@@ -472,8 +481,15 @@ namespace mpp
 			setOutAttributesToUsage(ShaderStage::Type::Fragment);
 			parseInAttributeUsage(ShaderStage::Type::Fragment);
 
-			// Add attributes in and do token replacements
-			// TODO: ...
+			// Generate shaders
+			generateShader(ShaderStage::Type::Vertex);
+
+			if (mStages[(int)ShaderStage::Type::Geometry].provided())
+			{
+				 generateShader(ShaderStage::Type::Geometry);
+			}
+
+			generateShader(ShaderStage::Type::Fragment);
 		}
 
 		vector<string> const& Parser::getErrors() const
