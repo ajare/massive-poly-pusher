@@ -1,12 +1,12 @@
 @@Version
 
-@@Uniform light = vec3
+@@Uniform(vec3, LIGHT)
 
-@@Texture tex = sampler2D
+@@Texture(sampler2D, tex)
 
 void main()
 {
-	vec3 l = normalize(@Uniform(light) - @In(POSITION));   
+	vec3 l = normalize(@Uniform(LIGHT) - @In(POSITION));   
 	float d = max(dot(@In(NORMAL),l), 0.0);  
 	d = clamp(d, 0.0, 1.0); 
 

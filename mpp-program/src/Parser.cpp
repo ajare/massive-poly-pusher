@@ -260,6 +260,8 @@ namespace mpp
 			regex re(R"(@@Uniform\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))");
 			smatch match;
 
+			stage.uniforms.clear();
+
 			auto src = stage.source;
 			while (regex_search(src, match, re))
 			{
@@ -267,6 +269,32 @@ namespace mpp
 				auto name = utils::StringUtils::trim(match.str(2));
 
 				stage.uniforms.push_back({ name, type });
+
+				// Look for next match
+				src = match.suffix().str();
+			}
+		}
+
+		/*
+		 * Get texture data.
+		 *
+		 */
+		void Parser::parseTextureUsage(ShaderStage::Type stageType)
+		{
+			auto& stage = mStages[(int)stageType];
+
+			regex re(R"(@@Texture\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))");
+			smatch match;
+
+			stage.textures.clear();
+
+			auto src = stage.source;
+			while (regex_search(src, match, re))
+			{
+				auto type = utils::StringUtils::trim(match.str(1));
+				auto name = utils::StringUtils::trim(match.str(2));
+
+				stage.textures.push_back({ name, type });
 
 				// Look for next match
 				src = match.suffix().str();
@@ -636,6 +664,7 @@ namespace mpp
 					setOutAttributesToUsage((ShaderStage::Type)i);
 					parseInAttributeUsage((ShaderStage::Type)i);
 					parseUniformUsage((ShaderStage::Type)i);
+					parseTextureUsage((ShaderStage::Type)i);
 				}
 			}
 
