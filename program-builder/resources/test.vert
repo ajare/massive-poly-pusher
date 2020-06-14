@@ -20,6 +20,7 @@ TODO:
 	  describing the potential issues.
 	  This should be done during token replacement/code generation.
 
+- Do uniforms: @@Uniform(vec4 LIGHT) and @Uniform(LIGHT) etc.
 - Add attributes in and do token replacement
 */
 

@@ -1,5 +1,6 @@
 #include <set>
 #include <map>
+#include <list>
 #include <regex>
 
 #include <utils/StringUtils.h>
@@ -100,6 +101,56 @@ namespace mpp
 			mSpecification = spec;
 		}
 
+		/*.
+		 * Helper to add an error
+		 *
+		 */
+		void Parser::addError(ShaderStage::Type stageType, string const& error)
+		{
+			switch (stageType)
+			{
+			case ShaderStage::Type::Vertex:
+				mErrors.push_back(mName + ":: vertex shader: " + error);
+				break;
+
+			case ShaderStage::Type::Geometry:
+				mErrors.push_back(mName + ":: geometry shader: " + error);
+				break;
+
+			case ShaderStage::Type::Fragment:
+				mErrors.push_back(mName + ":: fragment shader: " + error);
+				break;
+
+			default:
+				THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+			}
+		}
+
+		/*
+		 * Helper to add a warning.
+		 *
+		 */
+		void Parser::addWarning(ShaderStage::Type stageType, string const& error)
+		{
+			switch (stageType)
+			{
+			case ShaderStage::Type::Vertex:
+				mWarnings.push_back(mName + ":: vertex shader: " + error);
+				break;
+
+			case ShaderStage::Type::Geometry:
+				mWarnings.push_back(mName + ":: geometry shader: " + error);
+				break;
+
+			case ShaderStage::Type::Fragment:
+				mWarnings.push_back(mName + ":: fragment shader: " + error);
+				break;
+
+			default:
+				THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+			}
+		}
+
 		/*
 		 * Remove comments from GLSL source code.
 		 *
@@ -159,6 +210,43 @@ namespace mpp
 			}
 
 			return stripped;
+		}
+
+		/*
+		 * Parse source for basic information.
+		 *
+		 */
+		void Parser::parseSource(ShaderStage::Type stageType)
+		{
+			auto& stage = mStages[(int)stageType];
+			
+			// Find entry point
+			regex entryPointRegex("void\\smain");
+			smatch stringMatch;
+
+			if (regex_search(stage.source, stringMatch, entryPointRegex))
+			{
+				if (stringMatch.size() > 1)
+				{
+					addError(stageType, "multiple 'main' definitions found.");
+				}
+
+				stage.mainLine = 0;
+				int stringPos = stringMatch.position(0);
+				while (stringPos >= 0)
+				{
+					if (stage.source[stringPos] == '\n' || stage.source[stringPos] == ';')
+					{
+						stage.mainLine++;
+					}
+
+					stringPos--;
+				}
+			}
+			else
+			{
+				addError(stageType, "no 'main' definition found.");
+			}
 		}
 
 		/*
@@ -252,23 +340,7 @@ namespace mpp
 					}
 					else
 					{
-						switch (stage.type)
-						{
-						case ShaderStage::Type::Vertex:
-							mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in vertex shader for '" + mName + "'.");
-							break;
-
-						case ShaderStage::Type::Geometry:
-							mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in geometry shader for '" + mName + "'.");
-							break;
-
-						case ShaderStage::Type::Fragment:
-							mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in fragment shader for '" + mName + "'.");
-							break;
-
-						default:
-							THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
-						}
+						addError(stageType, "out-attribute '" + attrib + "' has no type declaration.");
 					}
 				}
 				else
@@ -285,30 +357,14 @@ namespace mpp
 						}
 						else
 						{
-							switch (stage.type)
-							{
-							case ShaderStage::Type::Vertex:
-								mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in vertex shader for '" + mName + "'.");
-								break;
-
-							case ShaderStage::Type::Geometry:
-								mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in geometry shader for '" + mName + "'.");
-								break;
-
-							case ShaderStage::Type::Fragment:
-								mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in fragment shader for '" + mName + "'.");
-								break;
-
-							default:
-								THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
-							}
+							addError(stageType, "out-attribute '" + attrib + "' has no type declaration.");
 						}
 					}
 
 					auto it = mStandardAttributes.find(attrib);
 					if (it == mStandardAttributes.end())
 					{
-						mErrors.push_back("Unknown out attribute '" + attrib + "' used.");
+						addError(stageType, "unknown out-attribute '" + attrib + "' used.");
 						goto next_match;
 					}
 
@@ -330,7 +386,7 @@ namespace mpp
 						else if (type == "ivec4")
 							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Int });
 						else
-							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
+							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
 						break;
 					case AttributeType::Normal:
 						if (type == "vec3")
@@ -342,7 +398,7 @@ namespace mpp
 						else if (type == "ivec4")
 							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Int, true });
 						else
-							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
+							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
 						break;
 					case AttributeType::TexCoords:
 						if (type == "vec2")
@@ -358,7 +414,7 @@ namespace mpp
 						else if (type == "ivec4")
 							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Int });
 						else
-							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
+							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
 						break;
 					case AttributeType::Colour:
 						if (type == "float")
@@ -374,7 +430,7 @@ namespace mpp
 						else if (type == "ivec4")
 							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Int });
 						else
-							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
+							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
 						break;
 					}
 				}
@@ -410,34 +466,118 @@ namespace mpp
 			{
 				if (usedAttribs.find(attrib.name) == usedAttribs.end())
 				{
-					switch (stage.type)
-					{
-					case ShaderStage::Type::Vertex:
-						mWarnings.push_back("In-attribute '" + attrib.name + "' is not used in vertex shader for '" + mName + "'.");
-						break;
-
-					case ShaderStage::Type::Geometry:
-						mWarnings.push_back("In-attribute '" + attrib.name + "' is not used in geometry shader for '" + mName + "'.");
-						break;
-
-					case ShaderStage::Type::Fragment:
-						mWarnings.push_back("In-attribute '" + attrib.name + "' is not used in fragment shader for '" + mName + "'.");
-						break;
-
-					default:
-						THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'." , __LINE__, __FILE__, __FUNCTION__);
-					}
+					addWarning(stageType, "in-attribute '" + attrib.name + "' is not used.");
 				}
 			}
 		}
 
-		string Parser::generateShader(ShaderStage::Type stageType)
+
+		/*
+		 * Split into lines by statement and newline
+		 *
+		 */
+		vector<string> Parser::splitSourceIntoLines(string const& src)
+		{
+			vector<string> lines;
+
+			uint32 i = 0, j = 0;
+			while (i != src.length())
+			{
+				char ch = src[i];
+				if (ch == ';' || ch == '\n')
+				{
+					string line = src.substr(j, i - j);
+					if (!line.empty())
+					{
+						lines.push_back(line);
+					}
+
+					lines.push_back(string(&ch, 1));
+					j = i + 1;
+				}
+
+				i++;
+			}
+
+			string line = src.substr(j, i - j);
+			if (!line.empty())
+			{
+				lines.push_back(line);
+			}
+
+			return lines;
+		}
+		/*
+		 * Do token replacement, and add uniform and attribute definitions.
+		 *
+		 */
+		void Parser::generateShader(ShaderStage::Type stageType)
 		{
 			auto& stage = mStages[(int)stageType];
+			bool usingGeometryShader = mStages[(int)ShaderStage::Type::Geometry].provided();
 			
-			string shader = stage.source;
+			stage.generated.clear();
 
-			return shader;
+			// Specify declaration types.
+			string inDecl, outDecl, inPrefix, outPrefix;
+			switch (stageType)
+			{
+			case ShaderStage::Type::Vertex:
+				inDecl = "in";
+				outDecl = "out";
+				inPrefix = MPP_PROGRAM_VS_IN_PREFIX;
+				outPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
+				break;
+
+			case ShaderStage::Type::Geometry:
+				inDecl = "in";
+				outDecl = "out";
+				inPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
+				outPrefix = MPP_PROGRAM_GS_OUT_PREFIX;
+				break;
+
+			case ShaderStage::Type::Fragment:
+				inDecl = "in";
+				outDecl = "out";
+				inPrefix = usingGeometryShader ? MPP_PROGRAM_GS_OUT_PREFIX : MPP_PROGRAM_VS_OUT_PREFIX;
+				outPrefix = MPP_PROGRAM_FS_OUT_PREFIX;
+				break;
+			}
+
+			// Check for special uniforms
+			bool mcpUsed{ false }, normalUsed{ false }, halfWindowSizeUsed{ false };
+			if (stage.source.find(MPP_PROGRAM_MCPMATRIX_TOKEN) != string::npos)
+			{
+				mcpUsed = true;
+			}
+
+			if (stage.source.find(MPP_PROGRAM_NORMALMATRIX_TOKEN) != string::npos)
+			{
+				normalUsed = true;
+			}
+
+			if (stage.source.find(MPP_PROGRAM_HALFWINDOWSIZE_TOKEN) != string::npos)
+			{
+				halfWindowSizeUsed = true;
+			}
+			
+			// Parse line by line
+			/* TODO:
+			   - Look for and replace @@Version.  It should be the first declaration.
+			   - Look for explicit attribute defs.  There should be none.
+			   - Look for explicit uniform defs. There should be none.
+			*/
+			auto lines = splitSourceIntoLines(stage.source);
+			list<string> parsedLines;
+			for (auto const& line: lines)
+			{
+				// If it's semicolon or '\n', ignore
+				if (line == "\n" || line == ";")
+				{
+					parsedLines.push_back(line);
+					continue;
+				}
+			}
 		}
 
 		/*
