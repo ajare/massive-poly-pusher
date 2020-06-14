@@ -55,6 +55,12 @@ namespace mpp
 				bool normalised{ false };
 			};
 
+			struct Uniform
+			{
+				std::string name;
+				std::string type;
+			};
+
 		private:
 
 			struct ShaderStage
@@ -73,6 +79,7 @@ namespace mpp
 				int mainLine{ -1 };
 
 				std::vector<Attribute> inAttribs, outAttribs;
+				std::vector<Uniform> uniforms;
 
 			public:
 
@@ -114,6 +121,8 @@ namespace mpp
 		private:
 
 			void parseSource(ShaderStage::Type stageType);
+
+			void parseUniformUsage(ShaderStage::Type stageType);
 
 			void setInAttributesToMeshSpecification(ShaderStage::Type stageType);
 
