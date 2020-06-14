@@ -178,7 +178,31 @@ namespace mpp
 				{
 					auto const& meshAttrib = layout.getAttribute(j);
 
-					Attribute inAttrib{ meshAttrib.component, meshAttrib.dataType, meshAttrib.normalised };
+					string attribName;
+					switch (meshAttrib.component)
+					{
+					case mesh::Vertex::Component::Position2:
+					case mesh::Vertex::Component::Position3:
+					case mesh::Vertex::Component::Position4:
+						attribName = "COLOUR";
+						break;
+					case mesh::Vertex::Component::Normal3:
+					case mesh::Vertex::Component::Normal4:
+						attribName = "NORMAL";
+						break;
+					case mesh::Vertex::Component::TexCoord2:
+					case mesh::Vertex::Component::TexCoord3:
+					case mesh::Vertex::Component::TexCoord4:
+						attribName = "TEXCOORDS";
+						break;
+					case mesh::Vertex::Component::Colour1:
+					case mesh::Vertex::Component::Colour3:
+					case mesh::Vertex::Component::Colour4:
+						attribName = "COLOUR";
+						break;
+					}
+
+					Attribute inAttrib{ attribName, meshAttrib.component, meshAttrib.dataType, meshAttrib.normalised };
 					stage.inAttribs.push_back(inAttrib);
 				}
 			}
@@ -222,16 +246,64 @@ namespace mpp
 					auto attrib = utils::StringUtils::trim(match.str(1));
 
 					// Type not defined: see if it's already been so.
-					// TODO: ...
+					if (stage.outAttributeExists(attrib))
+					{
+						goto next_match;
+					}
+					else
+					{
+						switch (stage.type)
+						{
+						case ShaderStage::Type::Vertex:
+							mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in vertex shader for '" + mName + "'.");
+							break;
+
+						case ShaderStage::Type::Geometry:
+							mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in geometry shader for '" + mName + "'.");
+							break;
+
+						case ShaderStage::Type::Fragment:
+							mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in fragment shader for '" + mName + "'.");
+							break;
+
+						default:
+							THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+						}
+					}
 				}
 				else
 				{
 					auto type = utils::StringUtils::trim(match.str(1));
 					auto attrib = utils::StringUtils::trim(match.str(2));
 
-					// If type is empty, then there is no type declaration, so check it's
-					// already been defined.
-					// TODO: ...
+					// Type not defined: see if it's already been so.
+					if (type == "")
+					{
+						if (stage.outAttributeExists(attrib))
+						{
+							goto next_match;
+						}
+						else
+						{
+							switch (stage.type)
+							{
+							case ShaderStage::Type::Vertex:
+								mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in vertex shader for '" + mName + "'.");
+								break;
+
+							case ShaderStage::Type::Geometry:
+								mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in geometry shader for '" + mName + "'.");
+								break;
+
+							case ShaderStage::Type::Fragment:
+								mErrors.push_back("Out-attribute '" + attrib + "' has no type declaration in fragment shader for '" + mName + "'.");
+								break;
+
+							default:
+								THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+							}
+						}
+					}
 
 					auto it = mStandardAttributes.find(attrib);
 					if (it == mStandardAttributes.end())
@@ -246,61 +318,61 @@ namespace mpp
 					{
 					case AttributeType::Position:
 						if (type == "vec2")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position2, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position2, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position3, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "ivec2")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position2, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position2, mpp::mesh::Vertex::DataType::Int });
 						else if (type == "ivec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position3, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position3, mpp::mesh::Vertex::DataType::Int });
 						else if (type == "ivec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Position4, mpp::mesh::Vertex::DataType::Int });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
 					case AttributeType::Normal:
 						if (type == "vec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal3, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Normal3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "ivec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal3, mpp::mesh::Vertex::DataType::Int, true });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Normal3, mpp::mesh::Vertex::DataType::Int, true });
 						else if (type == "ivec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Int, true });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Normal4, mpp::mesh::Vertex::DataType::Int, true });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
 					case AttributeType::TexCoords:
 						if (type == "vec2")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord2, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord2, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord3, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "ivec2")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord2, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord2, mpp::mesh::Vertex::DataType::Int });
 						else if (type == "ivec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord3, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord3, mpp::mesh::Vertex::DataType::Int });
 						else if (type == "ivec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::TexCoord4, mpp::mesh::Vertex::DataType::Int });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
 					case AttributeType::Colour:
 						if (type == "float")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour1, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour1, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour3, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour3, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "vec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Float });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Float });
 						else if (type == "int")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour1, mpp::mesh::Vertex::DataType::Int });
-						else if (type == "vec3")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour3, mpp::mesh::Vertex::DataType::Int });
-						else if (type == "vec4")
-							stage.outAttribs.push_back({ mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Int });
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour1, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "ivec3")
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour3, mpp::mesh::Vertex::DataType::Int });
+						else if (type == "ivec4")
+							stage.outAttribs.push_back({ attrib, mpp::mesh::Vertex::Component::Colour4, mpp::mesh::Vertex::DataType::Int });
 						else
 							mErrors.push_back("Unsupported out attribute type '" + type + "' used for " + attrib);
 						break;
@@ -323,16 +395,39 @@ namespace mpp
 			regex re(R"(@In\s*\(\s*([\w\d]+)\s*\))");
 			smatch match;
 
+			set<string> usedAttribs;
 			auto src = stage.source;
 			while (regex_search(src, match, re))
 			{
 				auto attrib = match.str(1);
-
-				// Check if unused.
-				// TODO: ...
+				usedAttribs.insert(attrib);
 
 				// Look for next match
 				src = match.suffix().str();
+			}
+
+			for (auto const& attrib: stage.inAttribs)
+			{
+				if (usedAttribs.find(attrib.name) == usedAttribs.end())
+				{
+					switch (stage.type)
+					{
+					case ShaderStage::Type::Vertex:
+						mWarnings.push_back("In-attribute '" + attrib.name + "' is not used in vertex shader for '" + mName + "'.");
+						break;
+
+					case ShaderStage::Type::Geometry:
+						mWarnings.push_back("In-attribute '" + attrib.name + "' is not used in geometry shader for '" + mName + "'.");
+						break;
+
+					case ShaderStage::Type::Fragment:
+						mWarnings.push_back("In-attribute '" + attrib.name + "' is not used in fragment shader for '" + mName + "'.");
+						break;
+
+					default:
+						THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'." , __LINE__, __FILE__, __FUNCTION__);
+					}
+				}
 			}
 		}
 

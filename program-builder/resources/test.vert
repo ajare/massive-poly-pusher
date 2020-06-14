@@ -1,14 +1,25 @@
 /*
 TODO:
-- Check if out vars with no type have already been declared.
 - Non-float types for out vars, eg ivec2, bvec2, dvec2, etc
   - This may force incompatibility.  If a meshspec declares an in attribute
     as unnormalised integer, and this gets passed to an out variable, how does
 	the out variable know its type (which should be int/ivec)?
-- Vertex shader in attributes may need to match out attributes, eg
-  in the case of passthrough.  But we can't catch mismatches here,
-  too hard.  Or is it?
-- Check for unused in attributes
+	- During compilation, do these conversions:
+	  
+	  Example code: @Out(vec4 COLOUR) = @In(COLOUR)
+	  
+	  In          Out        Code
+	  float       float      _out_colour = _in_colour
+	  float       int        _out_colour = int(_in_colour)
+	  int(norm)   int        _out_colour = float(_in_colour)
+	  int(unorm)  int        _out_colour = _in_colour
+	  int(norm)   float      _out_colour = _in_colour
+	  int(unorm)  float      _out_colour = float(_in_colour)
+	  
+	  Where there are casts, emit a warning specific to the conversion,
+	  describing the potential issues.
+	  This should be done during token replacement/code generation.
+
 - Add attributes in and do token replacement
 */
 
