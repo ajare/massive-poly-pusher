@@ -2,6 +2,7 @@
 
 #include <string>
 #include <set>
+#include <algorithm>
 
 #include <mpp/mesh/MeshSpecification.h>
 
@@ -25,6 +26,7 @@ namespace mpp
 
 			struct Attribute
 			{
+				std::string name;
 				mpp::mesh::Vertex::Component component;
 				mpp::mesh::Vertex::DataType dataType;
 				bool normalised{ false };
@@ -52,6 +54,22 @@ namespace mpp
 				bool required() const { return type == Type::Vertex || type == Type::Fragment; }
 
 				bool provided() const { return source != ""; }
+
+				bool inAttributeExists(std::string const& attrib) const
+				{
+					return std::find_if(inAttribs.begin(), inAttribs.end(), [attrib](auto const& attrStruct)
+					{
+						return attrStruct.name == attrib;
+					}) != inAttribs.end();
+				}
+
+				bool outAttributeExists(std::string const& attrib) const
+				{
+					return std::find_if(outAttribs.begin(), outAttribs.end(), [attrib](auto const& attrStruct)
+					{
+						return attrStruct.name == attrib;
+					}) != outAttribs.end();
+				}
 			};
 
 		private:
