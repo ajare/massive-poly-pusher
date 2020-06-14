@@ -96,6 +96,8 @@ namespace mpp
 
 			void parseInAttributeUsage(ShaderStage::Type stageType);
 
+			std::string generateShader(ShaderStage::Type stageType);
+
 			std::string stripComments(std::string const& src);
 
 		public:
