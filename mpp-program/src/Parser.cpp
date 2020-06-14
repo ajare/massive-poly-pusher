@@ -250,6 +250,30 @@ namespace mpp
 		}
 
 		/*
+		 * Get uniform data.
+		 *
+		 */
+		void Parser::parseUniformUsage(ShaderStage::Type stageType)
+		{
+			auto& stage = mStages[(int)stageType];
+
+			regex re(R"(@@Uniform\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))");
+			smatch match;
+
+			auto src = stage.source;
+			while (regex_search(src, match, re))
+			{
+				auto type = utils::StringUtils::trim(match.str(1));
+				auto name = utils::StringUtils::trim(match.str(2));
+
+				stage.uniforms.push_back({ name, type });
+
+				// Look for next match
+				src = match.suffix().str();
+			}
+		}
+
+		/*
 		 * Set in attributes based on mesh specification.
 		 *
 		 */
@@ -603,23 +627,17 @@ namespace mpp
 				THROW_MPP_PROGRAM("No fragment shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
-			// Set vertex shader attributes
-			setInAttributesToMeshSpecification(ShaderStage::Type::Vertex);
-			setOutAttributesToUsage(ShaderStage::Type::Vertex);
-			parseInAttributeUsage(ShaderStage::Type::Vertex);
-
-			// Set geometry shader attributes (if required)
-			if (mStages[(int)ShaderStage::Type::Geometry].provided())
+			// Set vertex shader attributes and uniforms
+			for (int i = 0; i < (int)ShaderStage::Type::NumStages; ++i)
 			{
-				setInAttributesToPreviousStage(ShaderStage::Type::Geometry);
-				setOutAttributesToUsage(ShaderStage::Type::Geometry);
-				parseInAttributeUsage(ShaderStage::Type::Geometry);
+				if (mStages[i].provided())
+				{
+					setInAttributesToMeshSpecification((ShaderStage::Type)i);
+					setOutAttributesToUsage((ShaderStage::Type)i);
+					parseInAttributeUsage((ShaderStage::Type)i);
+					parseUniformUsage((ShaderStage::Type)i);
+				}
 			}
-
-			// Set fragment shader attributes
-			setInAttributesToPreviousStage(ShaderStage::Type::Fragment);
-			setOutAttributesToUsage(ShaderStage::Type::Fragment);
-			parseInAttributeUsage(ShaderStage::Type::Fragment);
 
 			// Generate shaders
 			generateShader(ShaderStage::Type::Vertex);
