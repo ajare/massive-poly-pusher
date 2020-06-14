@@ -8,6 +8,29 @@
 
 #include "Config.h"
 
+#define MPP_PROGRAM_VS_IN_PREFIX			"_mpp_vs_in_"
+#define MPP_PROGRAM_VS_OUT_PREFIX			"_mpp_vs_out_"
+
+#define MPP_PROGRAM_GS_IN_PREFIX			"_mpp_gs_in_"
+#define MPP_PROGRAM_GS_OUT_PREFIX			"_mpp_gs_out_"
+
+#define MPP_PROGRAM_FS_IN_PREFIX			"_mpp_fs_in_"
+#define MPP_PROGRAM_FS_OUT_PREFIX			"_mpp_fs_out_"
+
+#define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
+#define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
+#define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
+
+#define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
+#define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
+
+#define MPP_PROGRAM_MCPMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "modelCameraProjection_")
+#define MPP_PROGRAM_NORMALMATRIX_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "normal_")
+#define MPP_PROGRAM_HALFWINDOWSIZE_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "halfWindowSize_")
+
+#define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token + "_")
+#define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token + "_")
+
 namespace mpp
 {
 	namespace program
@@ -46,6 +69,8 @@ namespace mpp
 
 				Type type;
 				std::string source;
+				std::string generated;
+				int mainLine{ -1 };
 
 				std::vector<Attribute> inAttribs, outAttribs;
 
@@ -88,6 +113,8 @@ namespace mpp
 
 		private:
 
+			void parseSource(ShaderStage::Type stageType);
+
 			void setInAttributesToMeshSpecification(ShaderStage::Type stageType);
 
 			void setInAttributesToPreviousStage(ShaderStage::Type stageType);
@@ -96,9 +123,15 @@ namespace mpp
 
 			void parseInAttributeUsage(ShaderStage::Type stageType);
 
-			std::string generateShader(ShaderStage::Type stageType);
+			void generateShader(ShaderStage::Type stageType);
 
 			std::string stripComments(std::string const& src);
+
+			std::vector<std::string> splitSourceIntoLines(std::string const& src);
+
+			void addError(ShaderStage::Type stageType, std::string const& error);
+
+			void addWarning(ShaderStage::Type stageType, std::string const& error);
 
 		public:
 
