@@ -68,14 +68,6 @@ namespace mpp
 				return sizeof(float);
 			case Vertex::DataType::Double:
 				return sizeof(double);
-			case Vertex::DataType::Pad1:
-				return 1;
-			case Vertex::DataType::Pad2:
-				return 2;
-			case Vertex::DataType::Pad3:
-				return 3;
-			case Vertex::DataType::Pad4:
-				return 4;
 			case Vertex::DataType::Int_2_10_10_10_REV:
 			case Vertex::DataType::UnsignedInt_2_10_10_10_REV:
 				return sizeof(int);
@@ -135,14 +127,6 @@ namespace mpp
 				return "Float";
 			case DataType::Double:
 				return "Double";
-			case DataType::Pad1:
-				return "Pad1";
-			case DataType::Pad2:
-				return "Pad2";
-			case DataType::Pad3:
-				return "Pad3";
-			case DataType::Pad4:
-				return "Pad4";
 			case DataType::Int_2_10_10_10_REV:
 				return "Int_2_10_10_10_REV";
 			case DataType::UnsignedInt_2_10_10_10_REV:
