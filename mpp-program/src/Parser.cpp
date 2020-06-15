@@ -5,8 +5,34 @@
 
 #include <utils/StringUtils.h>
 
-#include "mpp/program/Parser.h"
-#include "mpp/program/MppProgramException.h"
+#include "Parser.h"
+#include "Attribute.h"
+#include "Uniform.h"
+#include "Texture.h"
+#include "MppProgramException.h"
+
+#define MPP_PROGRAM_VS_IN_PREFIX			"_mpp_vs_in_"
+#define MPP_PROGRAM_VS_OUT_PREFIX			"_mpp_vs_out_"
+
+#define MPP_PROGRAM_GS_IN_PREFIX			"_mpp_gs_in_"
+#define MPP_PROGRAM_GS_OUT_PREFIX			"_mpp_gs_out_"
+
+#define MPP_PROGRAM_FS_IN_PREFIX			"_mpp_fs_in_"
+#define MPP_PROGRAM_FS_OUT_PREFIX			"_mpp_fs_out_"
+
+#define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
+#define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
+#define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
+
+#define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
+#define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
+
+#define MPP_PROGRAM_MCPMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "modelCameraProjection_")
+#define MPP_PROGRAM_NORMALMATRIX_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "normal_")
+#define MPP_PROGRAM_HALFWINDOWSIZE_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "halfWindowSize_")
+
+#define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token + "_")
+#define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token + "_")
 
 using namespace std;
 
@@ -623,11 +649,32 @@ namespace mpp
 			list<string> parsedLines;
 			for (auto const& line: lines)
 			{
+				auto trimmed = line;
+				utils::StringUtils::trim(trimmed);
+
 				// If it's semicolon or '\n', ignore
-				if (line == "\n" || line == ";")
+				if (trimmed == "" || line == ";")
 				{
 					parsedLines.push_back(line);
 					continue;
+				}
+
+				if (trimmed == "@@Version")
+				{
+					parsedLines.push_back("#version 440");
+
+					// Add in attributes
+					int location = 0;
+					for (auto const& attrib: stage.inAttribs)
+					{
+						//string attribLine = utils::StringUtils::format("layout(location = {}) in {} {}", location, );
+					}
+
+					// Add out attributes
+					// ...
+
+					// Add built-in uniforms
+					// ...
 				}
 			}
 		}

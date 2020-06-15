@@ -330,14 +330,6 @@ void debug(string const& inFile, string const& outFile)
 							cout << *(float*)v; break;
 						case mpp::mesh::Vertex::DataType::Double:
 							cout << *(double*)v; break;
-						case mpp::mesh::Vertex::DataType::Pad1:
-							cout << "Pad1"; break;
-						case mpp::mesh::Vertex::DataType::Pad2:
-							cout << "Pad2"; break;
-						case mpp::mesh::Vertex::DataType::Pad3:
-							cout << "Pad3"; break;
-						case mpp::mesh::Vertex::DataType::Pad4:
-							cout << "Pad4"; break;
 						case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
 							cout << *(int32*)v; break;
 						case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:

@@ -23,10 +23,6 @@ namespace mpp
 				HalfFloat,
 				Float,
 				Double,
-				Pad1,
-				Pad2,
-				Pad3,
-				Pad4,
 				Int_2_10_10_10_REV,
 				UnsignedInt_2_10_10_10_REV
 			};
