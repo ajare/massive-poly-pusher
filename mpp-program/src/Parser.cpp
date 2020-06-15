@@ -344,7 +344,7 @@ namespace mpp
 					case mesh::Vertex::Component::Position2:
 					case mesh::Vertex::Component::Position3:
 					case mesh::Vertex::Component::Position4:
-						attribName = "COLOUR";
+						attribName = "POSITION";
 						break;
 					case mesh::Vertex::Component::Normal3:
 					case mesh::Vertex::Component::Normal4:
@@ -681,8 +681,24 @@ namespace mpp
 				}
 				else
 				{
-					// Parse and add line
-					parsedLines.push_back(line);
+					// Parse @In
+					regex inre(R"(@In\s*\(\s*([\w\d]+)\s*\))");
+					auto replaced = regex_replace(line, inre, MPP_PROGRAM_IN_PREFIX "$1");
+
+					// Parse @Out
+					regex outre(R"(@Out\s*\(\s*([\w\d]+\s+)?([\w\d]+)\s*\))");
+					replaced = regex_replace(replaced, outre, MPP_PROGRAM_OUT_PREFIX "$2");
+
+					// Parse @Uniform
+					regex uniformre(R"(@Uniform\s*\(\s*([\w\d]+)\s*\))");
+					replaced = regex_replace(line, inre, MPP_PROGRAM_UNIFORM_PREFIX "$1");
+
+					// Parse @Texture
+					regex texturere(R"(@Texture\s*\(\s*([\w\d]+)\s*\))");
+					replaced = regex_replace(line, texturere, MPP_PROGRAM_TEXTURE_PREFIX "$1");
+
+					// Add line
+					parsedLines.push_back(replaced);
 				}
 			}
 
@@ -715,18 +731,27 @@ namespace mpp
 				THROW_MPP_PROGRAM("No fragment shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
 			}
 
-			// Set vertex shader attributes and uniforms
-			for (int i = 0; i < (int)ShaderStage::Type::NumStages; ++i)
+			// Set shader attributes and uniforms
+			setInAttributesToMeshSpecification(ShaderStage::Type::Vertex);
+			setOutAttributesToUsage(ShaderStage::Type::Vertex);
+			parseInAttributeUsage(ShaderStage::Type::Vertex);
+			parseUniformUsage(ShaderStage::Type::Vertex);
+			parseTextureUsage(ShaderStage::Type::Vertex);
+
+			if (mStages[(int)ShaderStage::Type::Geometry].provided())
 			{
-				if (mStages[i].provided())
-				{
-					setInAttributesToMeshSpecification((ShaderStage::Type)i);
-					setOutAttributesToUsage((ShaderStage::Type)i);
-					parseInAttributeUsage((ShaderStage::Type)i);
-					parseUniformUsage((ShaderStage::Type)i);
-					parseTextureUsage((ShaderStage::Type)i);
-				}
+				setInAttributesToPreviousStage(ShaderStage::Type::Geometry);
+				setOutAttributesToUsage(ShaderStage::Type::Geometry);
+				parseInAttributeUsage(ShaderStage::Type::Geometry);
+				parseUniformUsage(ShaderStage::Type::Geometry);
+				parseTextureUsage(ShaderStage::Type::Geometry);
 			}
+
+			setInAttributesToPreviousStage(ShaderStage::Type::Fragment);
+			setOutAttributesToUsage(ShaderStage::Type::Fragment);
+			parseInAttributeUsage(ShaderStage::Type::Fragment);
+			parseUniformUsage(ShaderStage::Type::Fragment);
+			parseTextureUsage(ShaderStage::Type::Fragment);
 
 			// Generate shaders
 			generateShader(ShaderStage::Type::Vertex);
