@@ -608,11 +608,6 @@ namespace mpp
 			}
 			
 			// Parse line by line
-			/* TODO:
-			   - Look for and replace @@Version.  It should be the first declaration.
-			   - Look for explicit attribute defs.  There should be none.
-			   - Look for explicit uniform defs. There should be none.
-			*/
 			auto lines = splitSourceIntoLines(stage.source);
 			list<string> parsedLines;
 			bool versionFound{ false };
@@ -634,6 +629,7 @@ namespace mpp
 
 					parsedLines.push_back("#version 440");
 					parsedLines.push_back("\n");
+					parsedLines.push_back("\n");
 
 					// Add in attributes
 					int location = 0;
@@ -645,6 +641,7 @@ namespace mpp
 							MPP_PROGRAM_IN_PREFIX + attrib.name);
 
 						parsedLines.push_back(attribLine);
+						parsedLines.push_back("\n");
 						location++;
 					}
 
@@ -660,6 +657,7 @@ namespace mpp
 							MPP_PROGRAM_OUT_PREFIX + attrib.name);
 
 						parsedLines.push_back(attribLine);
+						parsedLines.push_back("\n");
 						location++;
 					}
 
@@ -669,33 +667,53 @@ namespace mpp
 					if (mcpUsed)
 					{
 						parsedLines.push_back(utils::StringUtils::format("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
+						parsedLines.push_back("\n");
 					}
 					if (normalUsed)
 					{
 						parsedLines.push_back(utils::StringUtils::format("uniform mat3 {};", MPP_PROGRAM_NORMALMATRIX_NAME));
+						parsedLines.push_back("\n");
 					}
 					if (halfWindowSizeUsed)
 					{
 						parsedLines.push_back(utils::StringUtils::format("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
+						parsedLines.push_back("\n");
 					}
 				}
 				else
 				{
-					// Parse @In
-					regex inre(R"(@In\s*\(\s*([\w\d]+)\s*\))");
-					auto replaced = regex_replace(line, inre, MPP_PROGRAM_IN_PREFIX "$1");
+					// Parse in attributes
+					auto replaced = regex_replace(line, 
+						regex(R"(@In\s*\(\s*([\w\d]+)\s*\))"), 
+						MPP_PROGRAM_IN_PREFIX "$1");
 
-					// Parse @Out
-					regex outre(R"(@Out\s*\(\s*([\w\d]+\s+)?([\w\d]+)\s*\))");
-					replaced = regex_replace(replaced, outre, MPP_PROGRAM_OUT_PREFIX "$2");
+					// Parse out attributes
+					replaced = regex_replace(replaced, 
+						regex(R"(@Out\s*\(\s*([\w\d]+\s+)?([\w\d]+)\s*\))"), 
+						MPP_PROGRAM_OUT_PREFIX "$2");
 
-					// Parse @Uniform
-					regex uniformre(R"(@Uniform\s*\(\s*([\w\d]+)\s*\))");
-					replaced = regex_replace(line, inre, MPP_PROGRAM_UNIFORM_PREFIX "$1");
+					// Parse built-in uniforms
+					utils::StringUtils::replaceAll(replaced, "@MCPMatrix", MPP_PROGRAM_MCPMATRIX_NAME);
+					utils::StringUtils::replaceAll(replaced, "@NormalMatrix", MPP_PROGRAM_NORMALMATRIX_NAME);
+					utils::StringUtils::replaceAll(replaced, "@HalfWindowSize", MPP_PROGRAM_HALFWINDOWSIZE_NAME);
 
-					// Parse @Texture
-					regex texturere(R"(@Texture\s*\(\s*([\w\d]+)\s*\))");
-					replaced = regex_replace(line, texturere, MPP_PROGRAM_TEXTURE_PREFIX "$1");
+					// Parse user-defined uniforms
+					replaced = regex_replace(replaced,
+						regex(R"(@@Uniform\s*\(\s*([\w\d]+)\s*,\s*([\w\d]+)\s*\))"),
+						"uniform $1 " MPP_PROGRAM_UNIFORM_PREFIX "$2");
+
+					replaced = regex_replace(replaced,
+						regex(R"(@Uniform\s*\(\s*([\w\d]+)\s*\))"), 
+						MPP_PROGRAM_UNIFORM_PREFIX "$1");
+
+					// Parse textures
+					replaced = regex_replace(replaced,
+						regex(R"(@@Texture\s*\(\s*([\w\d]+)\s*,\s*([\w\d]+)\s*\))"),
+						"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2");
+
+					replaced = regex_replace(replaced,
+						regex(R"(@Texture\s*\(\s*([\w\d]+)\s*\))"), 
+						MPP_PROGRAM_TEXTURE_PREFIX "$1");
 
 					// Add line
 					parsedLines.push_back(replaced);
@@ -706,6 +724,8 @@ namespace mpp
 			{
 				addError(stageType, "no @@Version directive found.");
 			}
+
+			stage.generated = utils::StringUtils::join(parsedLines.begin(), parsedLines.end(), "");
 		}
 
 		/*
