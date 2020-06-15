@@ -11,18 +11,12 @@
 #include "Texture.h"
 #include "MppProgramException.h"
 
-#define MPP_PROGRAM_VS_IN_PREFIX			"_mpp_vs_in_"
-#define MPP_PROGRAM_VS_OUT_PREFIX			"_mpp_vs_out_"
-
-#define MPP_PROGRAM_GS_IN_PREFIX			"_mpp_gs_in_"
-#define MPP_PROGRAM_GS_OUT_PREFIX			"_mpp_gs_out_"
-
-#define MPP_PROGRAM_FS_IN_PREFIX			"_mpp_fs_in_"
-#define MPP_PROGRAM_FS_OUT_PREFIX			"_mpp_fs_out_"
-
 #define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
 #define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
 #define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
+
+#define MPP_PROGRAM_IN_PREFIX				"_mpp_i_"
+#define MPP_PROGRAM_OUT_PREFIX				"_mpp_o_"
 
 #define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
 #define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
@@ -596,32 +590,6 @@ namespace mpp
 			
 			stage.generated.clear();
 
-			// Specify declaration types.
-			string inDecl, outDecl, inPrefix, outPrefix;
-			switch (stageType)
-			{
-			case ShaderStage::Type::Vertex:
-				inDecl = "in";
-				outDecl = "out";
-				inPrefix = MPP_PROGRAM_VS_IN_PREFIX;
-				outPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
-				break;
-
-			case ShaderStage::Type::Geometry:
-				inDecl = "in";
-				outDecl = "out";
-				inPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
-				outPrefix = MPP_PROGRAM_GS_OUT_PREFIX;
-				break;
-
-			case ShaderStage::Type::Fragment:
-				inDecl = "in";
-				outDecl = "out";
-				inPrefix = usingGeometryShader ? MPP_PROGRAM_GS_OUT_PREFIX : MPP_PROGRAM_VS_OUT_PREFIX;
-				outPrefix = MPP_PROGRAM_FS_OUT_PREFIX;
-				break;
-			}
-
 			// Check for special uniforms
 			bool mcpUsed{ false }, normalUsed{ false }, halfWindowSizeUsed{ false };
 			if (stage.source.find(MPP_PROGRAM_MCPMATRIX_TOKEN) != string::npos)
@@ -647,6 +615,7 @@ namespace mpp
 			*/
 			auto lines = splitSourceIntoLines(stage.source);
 			list<string> parsedLines;
+			bool versionFound{ false };
 			for (auto const& line: lines)
 			{
 				auto trimmed = line;
@@ -661,21 +630,65 @@ namespace mpp
 
 				if (trimmed == "@@Version")
 				{
+					versionFound = true;
+
 					parsedLines.push_back("#version 440");
+					parsedLines.push_back("\n");
 
 					// Add in attributes
 					int location = 0;
 					for (auto const& attrib: stage.inAttribs)
 					{
-						//string attribLine = utils::StringUtils::format("layout(location = {}) in {} {}", location, );
+						string attribLine = utils::StringUtils::format("layout(location = {}) in {} {};", 
+							location, 
+							attrib.getGlslType(), 
+							MPP_PROGRAM_IN_PREFIX + attrib.name);
+
+						parsedLines.push_back(attribLine);
+						location++;
 					}
 
-					// Add out attributes
-					// ...
+					parsedLines.push_back("\n");
 
+					// Add out attributes
+					location = 0;
+					for (auto const& attrib: stage.outAttribs)
+					{
+						string attribLine = utils::StringUtils::format("layout(location = {}) out {} {};",
+							location,
+							attrib.getGlslType(),
+							MPP_PROGRAM_OUT_PREFIX + attrib.name);
+
+						parsedLines.push_back(attribLine);
+						location++;
+					}
+
+					parsedLines.push_back("\n");
+				
 					// Add built-in uniforms
-					// ...
+					if (mcpUsed)
+					{
+						parsedLines.push_back(utils::StringUtils::format("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
+					}
+					if (normalUsed)
+					{
+						parsedLines.push_back(utils::StringUtils::format("uniform mat3 {};", MPP_PROGRAM_NORMALMATRIX_NAME));
+					}
+					if (halfWindowSizeUsed)
+					{
+						parsedLines.push_back(utils::StringUtils::format("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
+					}
 				}
+				else
+				{
+					// Parse and add line
+					parsedLines.push_back(line);
+				}
+			}
+
+			if (!versionFound)
+			{
+				addError(stageType, "no @@Version directive found.");
 			}
 		}
 
