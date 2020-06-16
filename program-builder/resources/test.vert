@@ -20,8 +20,22 @@ TODO:
 	  describing the potential issues.
 	  This should be done during token replacement/code generation.
 
-- Do uniforms: @@Uniform(vec4 LIGHT) and @Uniform(LIGHT) etc.
-- Add attributes in and do token replacement
+- Do uniforms: @@Uniform(vec4 LIGHT) and @Uniform(LIGHT) etc. [DONE]
+- Add attributes in and do token replacement [DONE]
+- Uniforms should be before attributes
+- Do @Vec2 / @Vec3 / @Vec4 to cast vectors (and scalars, eg Colour1) to right type
+  Eg, if position is a vec3, then:
+  @Vec4(@In(POSITION))
+  would translate to vec4(_mpp_i_POSITION, 1)
+  - Use padding values based on component, eg X,Y,0,1 for position, X,Y,Z,1 for normal, U,V,0,0 for texcoords and 1 for padding any colour
+  - Need to be able to shorten as well, eg:
+    @Vec2(@In(POSITION))
+	would translate to vec2(_mpp_i_POSITION.xy)
+	
+  To implement this, first do replacement of normal attributes/uniforms, eg so end up with:
+  @Vec4(_mpp_i_POSITION)
+  Then search for regex @Vec[2-4]\s*\(
+  Then recursively search from that point onwards, counting ( and ) and stopping when we reach 0
 */
 
 @@Version
@@ -30,7 +44,7 @@ void main()
 {
 	@Out(vec3 NORMAL) = normalize(@NormalMatrix * @In(NORMAL).xyz);
 
-	vec4 vertPos = @MCPMatrix * vec4(@In(POSITION), 1);
+	vec4 vertPos = @MCPMatrix * @Vec4(@In(POSITION));
 	
 	@Out(vec3 POSITION) = vertPos.xyz;
 	@Out(POSITION) = vertPos.xyz;

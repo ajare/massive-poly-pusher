@@ -33,6 +33,23 @@ void main()
 }
 )";
 
+const std::string VertexShader3dTemplate2 =
+R"(
+@@Version
+
+void main()
+{
+    @Out(vec3 NORMAL) = normalize(@NormalMatrix * @In(NORMAL).xyz);
+
+    vec4 vertPos = @MCPMatrix * vec4(@In(POSITION), 1);
+
+    @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
+    @Out(vec4 COLOUR) = @In(COLOUR);
+
+    gl_Position = vertPos;
+}
+)";
+
 const std::string FragmentShader3dTemplate =
 R"(
 @@Version
@@ -68,6 +85,19 @@ void main()
 ## Else
 	@Out(colour) = colour;
 ##
+}
+)";
+
+const std::string FragmentShader3dTemplate2 = 
+R"(
+@@Version
+
+@@Texture(sampler2D, tex)
+
+void main()
+{
+    vec3 shadedColour = @In(COLOUR).xyz;
+    @Out(vec4 COLOUR) = texture(@Texture(tex), @In(TEXCOORDS).xy) * vec4(shadedColour, 1.0);
 }
 )";
 

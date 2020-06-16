@@ -233,6 +233,66 @@ namespace mpp
 		}
 
 		/*
+		 * Replace casts such as @Vec4 with correct generated code
+		 *
+		 */
+		string Parser::replaceCasts(ShaderStage::Type stageType, string const& src)
+		{
+			auto& stage = mStages[(int)stageType];
+
+			regex re(R"(@Vec([2-4])\s*\()");
+			smatch match;
+
+			auto parsedSrc = src;
+			while (regex_search(parsedSrc, match, re))
+			{
+				auto dim = utils::StringUtils::parseInt(match.str(1));
+
+				// Find closing bracket
+				auto brackets{ 0 };
+				auto pos = match.position();
+				while (true)
+				{
+					if (parsedSrc[pos] == '(')
+					{
+						brackets++;
+					}
+					else if (parsedSrc[pos] == ')')
+					{
+						brackets--;
+						if (brackets == 0)
+						{
+							break;
+						}
+					}
+
+					pos++;
+					if (pos == parsedSrc.size())
+					{
+						break;
+					}
+				}
+
+				if (pos == parsedSrc.size())
+				{
+					addError(stageType, "mismatched brackets after @Vec directive");
+					break;
+				}
+
+				// Replace from match.position (plus matched regex length) to pos
+				auto start = match.position() + match.length() + 1;
+				auto captured = parsedSrc.substr(start, pos - start);
+				
+				// Look for _mpp_i_POSITION etc, including swizzles, eg
+				// for @Vec4, even if position is a vec3, if it's @In(POSITION).xy
+				// then we want vec4(_mpp_i_POSITION.xy, 0, 1)
+				// ...
+			}
+
+			return parsedSrc;
+		}
+
+		/*
 		 * Parse source for basic information.
 		 *
 		 */
@@ -725,7 +785,11 @@ namespace mpp
 				addError(stageType, "no @@Version directive found.");
 			}
 
-			stage.generated = utils::StringUtils::join(parsedLines.begin(), parsedLines.end(), "");
+			// Now look for @Vec2/3/4, joining the lines as these expressions may be split across
+			// multiple lines.
+			string joined = utils::StringUtils::join(parsedLines.begin(), parsedLines.end(), "");
+
+			stage.generated = replaceCasts(stageType, joined);
 		}
 
 		/*
@@ -782,6 +846,21 @@ namespace mpp
 			}
 
 			generateShader(ShaderStage::Type::Fragment);
+		}
+
+		string const& Parser::getGeneratedVertexSource() const
+		{
+			return mStages[(int)ShaderStage::Type::Vertex].generated;
+		}
+
+		string const& Parser::getGeneratedGeometrySource() const
+		{
+			return mStages[(int)ShaderStage::Type::Geometry].generated;
+		}
+
+		string const& Parser::getGeneratedFragmentSource() const
+		{
+			return mStages[(int)ShaderStage::Type::Fragment].generated;
 		}
 
 		vector<string> const& Parser::getErrors() const
