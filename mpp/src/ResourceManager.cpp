@@ -1,5 +1,7 @@
 #include <cassert>
 
+#include "mpp/program/Parser.h"
+
 #include "mpp/ResourceManager.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/InternalFont.h"
@@ -41,6 +43,24 @@ namespace mpp
 		//
 
 		// Basic 3d shaders
+		mesh::MeshSpecification meshSpec;
+		auto layout = meshSpec.createVertexBufferAttributeLayout();
+		layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+		program::Parser parser;
+
+		parser.setMeshSpecification(meshSpec);
+		parser.setVertexSource(VertexShader3dTemplate2);
+		parser.setFragmentSource(FragmentShader3dTemplate2);
+
+		parser.build();
+/*
+		auto ps = new StringProgramStream(parser.getGeneratedVertexSource(), parser.getGeneratedFragmentSource());
+		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
+*/
 		set<string> attribs = { "Normal", "Texture", "TexCoords2", "RGBA" };
 		auto ps = new StringProgramStream(generateShader(VertexShader3dTemplate, attribs), generateShader(FragmentShader3dTemplate, attribs));
 		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();

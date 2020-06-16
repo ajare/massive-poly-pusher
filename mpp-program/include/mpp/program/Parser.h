@@ -2,6 +2,7 @@
 
 #include <string>
 #include <set>
+#include <map>
 #include <algorithm>
 
 #include <mpp/mesh/MeshSpecification.h>
@@ -54,6 +55,8 @@ namespace mpp
 
 			std::string stripComments(std::string const& src);
 
+			std::string replaceCasts(ShaderStage::Type stageType, std::string const& src);
+
 			std::vector<std::string> splitSourceIntoLines(std::string const& src);
 
 			void addError(ShaderStage::Type stageType, std::string const& error);
@@ -77,6 +80,12 @@ namespace mpp
 			void setMeshSpecification(mesh::MeshSpecification const& spec);
 
 			void build();
+
+			std::string const& getGeneratedVertexSource() const;
+
+			std::string const& getGeneratedGeometrySource() const;
+
+			std::string const& getGeneratedFragmentSource() const;
 
 			std::vector<std::string> const& getErrors() const;
 
