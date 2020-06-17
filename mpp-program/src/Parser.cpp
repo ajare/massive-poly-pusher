@@ -287,6 +287,10 @@ namespace mpp
 				// for @Vec4, even if position is a vec3, if it's @In(POSITION).xy
 				// then we want vec4(_mpp_i_POSITION.xy, 0, 1)
 				// ...
+
+				// Then when we've built the replacement string, insert it between the
+				// two halves to join them together.
+				// ...
 			}
 
 			return parsedSrc;
