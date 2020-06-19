@@ -1,6 +1,12 @@
 #include "ShaderStage.h"
 #include "MppProgramException.h"
 
+#define MPP_PROGRAM_IN_PREFIX				"_mpp_i_"
+#define MPP_PROGRAM_OUT_PREFIX				"_mpp_o_"
+
+#define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
+#define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
+
 using namespace std;
 
 namespace mpp
@@ -33,6 +39,31 @@ namespace mpp
 			{
 				return attrStruct.name == attrib;
 			}) != outAttribs.end();
+		}
+
+		size_t ShaderStage::getVariableSize(string const& attrib) const
+		{
+			auto inIt = find_if(inAttribs.begin(), inAttribs.end(), [attrib](auto const& attrStruct)
+			{
+				return (MPP_PROGRAM_IN_PREFIX + attrStruct.name) == attrib;
+			});
+
+			if (inIt != inAttribs.end())
+			{
+				return mesh::Vertex::getComponentSize(inIt->component);
+			}
+
+			auto outIt = find_if(outAttribs.begin(), outAttribs.end(), [attrib](auto const& attrStruct)
+			{
+				return (MPP_PROGRAM_OUT_PREFIX + attrStruct.name) == attrib;
+			});
+
+			if (outIt != outAttribs.end())
+			{
+				return mesh::Vertex::getComponentSize(outIt->component);
+			}
+
+			return 0;
 		}
 
 	}

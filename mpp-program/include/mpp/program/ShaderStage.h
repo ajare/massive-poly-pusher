@@ -41,6 +41,8 @@ namespace mpp
 			bool inAttributeExists(std::string const& attrib) const;
 
 			bool outAttributeExists(std::string const& attrib) const;
+
+			size_t getVariableSize(std::string const& attrib) const;
 		};
 
 	}
