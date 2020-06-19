@@ -240,57 +240,56 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)stageType];
 
-			regex re(R"(@Vec([2-4])\s*\()");
+			regex re(R"(@Vec([2-4])\s*\(\s*(.*?)\s*\))");
 			smatch match;
 
 			auto parsedSrc = src;
 			while (regex_search(parsedSrc, match, re))
 			{
-				auto dim = utils::StringUtils::parseInt(match.str(1));
+				auto dim = utils::StringUtils::parseUInt(match.str(1));
+				string token, ftoken = match.str(2);
+				string swizzle = "";
 
-				// Find closing bracket
-				auto brackets{ 0 };
-				auto pos = match.position();
-				while (true)
+				token = ftoken;
+				auto dotPos = ftoken.find('.');
+				if (dotPos != string::npos)
 				{
-					if (parsedSrc[pos] == '(')
-					{
-						brackets++;
-					}
-					else if (parsedSrc[pos] == ')')
-					{
-						brackets--;
-						if (brackets == 0)
-						{
-							break;
-						}
-					}
-
-					pos++;
-					if (pos == parsedSrc.size())
-					{
-						break;
-					}
+					ftoken = token.substr(0, dotPos);
+					swizzle = token.substr(dotPos + 1);
 				}
 
-				if (pos == parsedSrc.size())
+				// Look up token in list of vars
+				auto varSize = stage.getVariableSize(ftoken);
+				if (varSize == 0)
 				{
-					addError(stageType, "mismatched brackets after @Vec directive");
-					break;
+					addError(stageType, "unknown variable in cast: " + token);
 				}
 
-				// Replace from match.position (plus matched regex length) to pos
-				auto start = match.position() + match.length() + 1;
-				auto captured = parsedSrc.substr(start, pos - start);
-				
-				// Look for _mpp_i_POSITION etc, including swizzles, eg
-				// for @Vec4, even if position is a vec3, if it's @In(POSITION).xy
-				// then we want vec4(_mpp_i_POSITION.xy, 0, 1)
+				string replacement = utils::StringUtils::format("vec{}({}", dim, token);
+
+				if (swizzle.length() != 0)
+				{
+					varSize = swizzle.length();
+				}
+
+				// TODO: if it's swizzled, and is smaller than it's actual size, throw
+				// warning and pad according to type.
 				// ...
 
-				// Then when we've built the replacement string, insert it between the
-				// two halves to join them together.
+				// TODO: if i==2 and it's position, then pad with zero.
 				// ...
+
+				// TODO: if varSize > dim, do we truncare, ie use first x/y/whatever components?
+				// Throw warning if so.
+				// ...
+				for (size_t i = varSize; i < dim; ++i)
+				{
+					int value = 1;
+					replacement += ", " + utils::StringUtils::toString(value);
+				}
+				replacement += ")";
+
+				parsedSrc = parsedSrc.substr(0, match.position()) + replacement + parsedSrc.substr(match.position() + match.length());
 			}
 
 			return parsedSrc;
