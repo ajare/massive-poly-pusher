@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "glslTypes.h"
+
 namespace mpp
 {
 	namespace program
@@ -10,7 +12,7 @@ namespace mpp
 		struct Texture
 		{
 			std::string name;
-			std::string type;
+			GLSLTypeDecl type;
 		};
 
 	}

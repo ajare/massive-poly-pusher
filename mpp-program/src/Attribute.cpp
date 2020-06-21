@@ -32,19 +32,23 @@ namespace mpp
 				{
 				case mpp::mesh::Vertex::DataType::Float:
 				case mpp::mesh::Vertex::DataType::HalfFloat:
-					type = "float"; break;
+					type = "float"; 
+					break;
 				case mpp::mesh::Vertex::DataType::Double:
-					type = "double"; break;
+					type = "double"; 
+					break;
 				case mpp::mesh::Vertex::DataType::Byte:
 				case mpp::mesh::Vertex::DataType::Short:
 				case mpp::mesh::Vertex::DataType::Int:
 				case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
-					type = "int"; break;
+					type = normalised ? "float" : "int";
+					break;
 				case mpp::mesh::Vertex::DataType::UnsignedByte:
 				case mpp::mesh::Vertex::DataType::UnsignedShort:
 				case mpp::mesh::Vertex::DataType::UnsignedInt:
 				case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
-					type = "uint"; break;
+					type = normalised ? "float" : "int";
+					break;
 				default:
 					THROW_MPP_PROGRAM("Unknown data type.", __LINE__, __FILE__, __FUNCTION__);
 				}

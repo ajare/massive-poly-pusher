@@ -43,6 +43,8 @@ namespace mpp
 			bool outAttributeExists(std::string const& attrib) const;
 
 			size_t getVariableSize(std::string const& attrib) const;
+
+			mesh::Vertex::Component getVariableComponent(std::string const& attrib) const;
 		};
 
 	}

@@ -43,6 +43,7 @@ namespace mpp
 
 		size_t ShaderStage::getVariableSize(string const& attrib) const
 		{
+			// In vars
 			auto inIt = find_if(inAttribs.begin(), inAttribs.end(), [attrib](auto const& attrStruct)
 			{
 				return (MPP_PROGRAM_IN_PREFIX + attrStruct.name) == attrib;
@@ -53,6 +54,7 @@ namespace mpp
 				return mesh::Vertex::getComponentSize(inIt->component);
 			}
 
+			// Out vars
 			auto outIt = find_if(outAttribs.begin(), outAttribs.end(), [attrib](auto const& attrStruct)
 			{
 				return (MPP_PROGRAM_OUT_PREFIX + attrStruct.name) == attrib;
@@ -61,6 +63,17 @@ namespace mpp
 			if (outIt != outAttribs.end())
 			{
 				return mesh::Vertex::getComponentSize(outIt->component);
+			}
+
+			// Uniform vars
+			auto unIt = find_if(uniforms.begin(), uniforms.end(), [attrib](auto const& uniform)
+			{
+				return (MPP_PROGRAM_UNIFORM_PREFIX + uniform.name) == attrib;
+			});
+
+			if (unIt != uniforms.end())
+			{
+				// Parse uniform.type.  If it ends in a number, it's that number, else 1
 			}
 
 			return 0;
