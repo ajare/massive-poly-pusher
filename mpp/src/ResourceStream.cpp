@@ -45,4 +45,14 @@ namespace mpp
 			mLoaded = false;
 		}
 	}
+
+	void ResourceStream::setFlags(uint32_t flags)
+	{
+		mFlags = flags;
+	}
+
+	uint32_t ResourceStream::getFlags() const
+	{
+		return mFlags;
+	}
 }

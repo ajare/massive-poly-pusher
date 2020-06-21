@@ -11,6 +11,8 @@ namespace mpp
 	{
 		bool mLoaded;
 
+		uint32_t mFlags{ 0 };
+
 	private:
 
 		virtual void loadImpl() = 0;
@@ -30,6 +32,10 @@ namespace mpp
 		void load();
 
 		void unload();
+
+		void setFlags(uint32_t flags);
+
+		uint32_t getFlags() const;
 	};
 
 	typedef std::shared_ptr<ResourceStream> ResourceStreamPtr;

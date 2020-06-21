@@ -6,8 +6,6 @@ namespace mpp
 {
 	class _MPPAPI StringProgramStream : public ProgramStream
 	{
-	private:
-
 		void loadImpl();
 
 	public:

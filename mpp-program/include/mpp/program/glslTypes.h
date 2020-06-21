@@ -30,10 +30,6 @@ namespace mpp
 			bool isSigned;
 		};
 
-		float getRealComponentIndexDefault(std::string const& component, int index, float def);
-
-		int getSignedComponentIndexDefault(std::string const& component, int index, int def);
-
-		unsigned int getUnsignedComponentIndexDefault(std::string const& component, int index, unsigned int def);
+		std::string getComponentIndexDefault(std::string const& component, bool isFloating, int index, std::string def = "");
 	}
 }

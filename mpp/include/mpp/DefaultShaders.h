@@ -39,9 +39,9 @@ R"(
 
 void main()
 {
-    @Out(vec3 NORMAL) = normalize(@NormalMatrix * @In(NORMAL).xyz);
+    @Out(vec3 NORMAL) = normalize(@NormalMatrix * @Vec3(@In(NORMAL)));
 
-    vec4 vertPos = @MCPMatrix * vec4(@In(POSITION), 1);
+    vec4 vertPos = @MCPMatrix * @Vec4(@In(POSITION));
 
     @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
     @Out(vec4 COLOUR) = @In(COLOUR);
@@ -92,7 +92,7 @@ const std::string FragmentShader3dTemplate2 =
 R"(
 @@Version
 
-@@Texture(sampler2D, tex)
+@@Texture(sampler2D tex)
 
 void main()
 {

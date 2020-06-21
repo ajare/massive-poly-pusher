@@ -4,7 +4,7 @@
 	<Buffers indexed="true" primitive="triangles" storage="static">
 		<Buffer>
 			<Channel data="position3" type="float32" />
-			<Channel data="normal3" type="float32" />
+			<Channel data="normal4" type="float32" />
 			<Channel data="texcoord2" type="float32" />
 			<Channel data="colour4" type="uint8" normalised="true" />
 		</Buffer>

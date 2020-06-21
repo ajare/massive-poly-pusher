@@ -21,6 +21,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/Program.h"
 #include "mpp/ProgramStream.h"
+#include "mpp/ProgramProgramStream.h"
 #include "mpp/MppException.h"
 
 using namespace std;
@@ -97,6 +98,7 @@ namespace mpp
 
 		mVertexSource = pStr->getVertexSource();
 		mFragmentSource = pStr->getFragmentSource();
+		mFlags = pStr->getFlags();
 	}
 
 	/*
@@ -671,10 +673,36 @@ namespace mpp
 		auto rs = getRenderSystem();
 		try
 		{
-			// Create vertex shader
-			mVertexSource = parseSource(mVertexSource, ShaderType::Vertex, false);
-			mFragmentSource = parseSource(mFragmentSource, ShaderType::Fragment, false);
+			// Parse shader source
+			if (!(mFlags & MPP_PROGRAM_LOADER_NEWSTYLE))
+			{
+				mVertexSource = parseSource(mVertexSource, ShaderType::Vertex, false);
+				mFragmentSource = parseSource(mFragmentSource, ShaderType::Fragment, false);
+			}
+			else
+			{
+				// Set up uniforms and textures
+				ProgramProgramStream* pStr = dynamic_cast<ProgramProgramStream*>(getResourceStream().get());
+				
+				auto uniforms = pStr->getUniforms();
+				for (auto const& uniform : uniforms)
+				{
+					mUniformIds[uniform] = -1;
+				}
 
+				auto textures = pStr->getTextures();
+				for (auto const& texture: textures)
+				{
+					TextureInfo ti;
+					ti.samplerName = texture;
+					ti.markedUpName = MPP_PROGRAM_TEXTURE_PREFIX + texture;
+					ti.uniformId = -1;
+
+					mTextures.push_back(ti);
+				}
+			}
+
+			// Create vertex shader
 			mVertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 			if (mVertexShaderId == 0)
 			{
@@ -760,12 +788,40 @@ namespace mpp
 				string typeName;
 				switch (varType)
 				{
-				case GL_FLOAT_VEC2: typeName = "vec2"; break;
+				case GL_FLOAT: typeName = "float"; break;
+				case GL_FLOAT_VEC2: typeName = "vec2";  break;
 				case GL_FLOAT_VEC3: typeName = "vec3"; break;
 				case GL_FLOAT_VEC4: typeName = "vec4"; break;
 				case GL_FLOAT_MAT2: typeName = "mat2"; break;
+				case GL_FLOAT_MAT2x3: typeName = "mat2x3"; break;
+				case GL_FLOAT_MAT2x4: typeName = "mat2x4"; break;
+				case GL_FLOAT_MAT3x2: typeName = "mat3x2"; break;
 				case GL_FLOAT_MAT3: typeName = "mat3"; break;
+				case GL_FLOAT_MAT3x4: typeName = "mat3x4"; break;
+				case GL_FLOAT_MAT4x2: typeName = "mat4x2"; break;
+				case GL_FLOAT_MAT4x3: typeName = "mat4x3"; break;
 				case GL_FLOAT_MAT4: typeName = "mat4"; break;
+				case GL_INT: typeName = "int"; break;
+				case GL_INT_VEC2: typeName = "ivec2";  break;
+				case GL_INT_VEC3: typeName = "ivec3"; break;
+				case GL_INT_VEC4: typeName = "ivec4"; break;
+				case GL_UNSIGNED_INT: typeName = "uint"; break;
+				case GL_UNSIGNED_INT_VEC2: typeName = "uvec2";  break;
+				case GL_UNSIGNED_INT_VEC3: typeName = "uvec3"; break;
+				case GL_UNSIGNED_INT_VEC4: typeName = "uvec4"; break;
+				case GL_DOUBLE: typeName = "double"; break;
+				case GL_DOUBLE_VEC2: typeName = "dvec2";  break;
+				case GL_DOUBLE_VEC3: typeName = "dvec3"; break;
+				case GL_DOUBLE_VEC4: typeName = "dvec4"; break;
+				case GL_DOUBLE_MAT2: typeName = "dmat2"; break;
+				case GL_DOUBLE_MAT2x3: typeName = "dmat2x3"; break;
+				case GL_DOUBLE_MAT2x4: typeName = "dmat2x4"; break;
+				case GL_DOUBLE_MAT3x2: typeName = "dmat3x2"; break;
+				case GL_DOUBLE_MAT3: typeName = "dmat3"; break;
+				case GL_DOUBLE_MAT3x4: typeName = "dmat3x4"; break;
+				case GL_DOUBLE_MAT4x2: typeName = "dmat4x2"; break;
+				case GL_DOUBLE_MAT4x3: typeName = "dmat4x3"; break;
+				case GL_DOUBLE_MAT4: typeName = "dmat4"; break;
 				default: typeName = "unknown type"; break;
 				}
 				
@@ -793,22 +849,22 @@ namespace mpp
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
 					mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("ModelCameraProjection matrix id: " + utils::StringUtils::toString(mMcpMatrixId));
+					rs->logMessage("- Uniform: ModelCameraProjection matrix id: " + utils::StringUtils::toString(mMcpMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
 					mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("Normal matrix id: " + utils::StringUtils::toString(mNormalMatrixId));
+					rs->logMessage("- Uniform normal matrix id: " + utils::StringUtils::toString(mNormalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
 					mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
-					rs->logMessage("Half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
+					rs->logMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
 				}
 				else if (mUniformIds.find(uniformName) != mUniformIds.end())
 				{
 					mUniformIds[uniformName] = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("Uniform '" + uniformName + "' id: " + utils::StringUtils::toString(mUniformIds[uniformName]));
+					rs->logMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(mUniformIds[uniformName]));
 				}
 				else
 				{
@@ -820,7 +876,7 @@ namespace mpp
 					if (it != mTextures.end())
 					{
 						it->uniformId = glGetUniformLocation(programId, uniformNameBuffer);
-						rs->logMessage("Texture (uniform) '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
+						rs->logMessage("- Uniform (texture): '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
 					}
 					else
 					{
@@ -867,17 +923,6 @@ namespace mpp
 		}
 	}
 
-	/*
-	 * Get attribute index.
-	 *
-	 */
-	int32 Program::getAttrib(char const* name) const
-	{
-		GLint attrib = glGetAttribLocation(getId(), name);
-		/*assert(attrib >= 0 && "Program::getAttrib() attribute not found!");*/
-		return attrib;
-	}
-	
 	/*
 	 * Get index for specified uniform.
 	 *

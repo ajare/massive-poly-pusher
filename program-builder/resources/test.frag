@@ -1,8 +1,8 @@
 @@Version
 
-@@Uniform(vec3, LIGHT)
+@@Uniform(vec3 LIGHT)
 
-@@Texture(sampler2D, tex)
+@@Texture(sampler2D tex)
 
 void main()
 {

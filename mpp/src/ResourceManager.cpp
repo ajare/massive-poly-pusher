@@ -7,6 +7,7 @@
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
 #include "mpp/StringProgramStream.h"
+#include "mpp/ProgramProgramStream.h"
 #include "mpp/TextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
@@ -50,24 +51,27 @@ namespace mpp
 		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
+		set<string> attribs = { "Normal", "Texture", "TexCoords2", "RGBA" };
+
+		// Old-style
+//		auto ps = new StringProgramStream(generateShader(VertexShader3dTemplate, attribs), generateShader(FragmentShader3dTemplate, attribs));
+//		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
+
+		// New-style
 		program::Parser parser;
 
 		parser.setMeshSpecification(meshSpec);
 		parser.setVertexSource(VertexShader3dTemplate2);
 		parser.setFragmentSource(FragmentShader3dTemplate2);
 
-		parser.build();
-/*
-		auto ps = new StringProgramStream(parser.getGeneratedVertexSource(), parser.getGeneratedFragmentSource());
-		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
-*/
-		set<string> attribs = { "Normal", "Texture", "TexCoords2", "RGBA" };
-		auto ps = new StringProgramStream(generateShader(VertexShader3dTemplate, attribs), generateShader(FragmentShader3dTemplate, attribs));
-		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
+		auto ps1 = new ProgramProgramStream(&parser);
+		ps1->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps1))->load();
 
 		// 2d fullscreen program
 		attribs = { "Diffuse" };
-		ps = new StringProgramStream(generateShader(VertexShaderFullscreenTemplate, attribs), generateShader(FragmentShaderFullscreenTemplate, attribs));
+		auto ps = new StringProgramStream(generateShader(VertexShaderFullscreenTemplate, attribs), generateShader(FragmentShaderFullscreenTemplate, attribs));
 		createResource<Program>("__mpp_p2d_fullscreen", ResourceStreamPtr(ps))->load();
 
 		// Internal text programs

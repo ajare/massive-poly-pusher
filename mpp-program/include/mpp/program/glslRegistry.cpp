@@ -65,17 +65,17 @@ namespace mpp
 			{"dmat4x3", {GLSLType::DoubleMatrix, {4, 3}, true, true}}
 		};
 
-		float getRealComponentIndexDefault(string const& component, int index, float def)
+		string getComponentIndexDefault(string const& component, bool isFloating, int index, string def)
 		{
 			if (component == "POSITION")
 			{
 				switch (index)
 				{
 				case 2: 
-					return 0.0f;
+					return isFloating ? "0.0" : "0";
 
 				case 3: 
-					return 1.0f;
+					return isFloating ? "1.0" : "1";
 
 				default:
 					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
@@ -86,7 +86,7 @@ namespace mpp
 				switch (index)
 				{
 				case 3:
-					return 1.0f;
+					return isFloating ? "1.0" : "1";
 
 				default:
 					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
@@ -98,10 +98,8 @@ namespace mpp
 				switch (index)
 				{
 				case 2:
-					return 1.0f;
-
 				case 3:
-					return 1.0f;
+					return isFloating ? "1.0" : "1";
 
 				default:
 					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
@@ -113,13 +111,11 @@ namespace mpp
 				switch (index)
 				{
 				case 1:
-					return def;
-
 				case 2:
 					return def;
 
 				case 3:
-					return 1.0f;
+					return isFloating ? "1.0" : "1";
 
 				default:
 					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
@@ -127,140 +123,9 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP_PROGRAM("Unknown component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
+				return isFloating ? "1.0" : "1";;
 			}
 		}
 
-		int getSignedComponentIndexDefault(string const& component, int index, int def)
-		{
-			if (component == "POSITION")
-			{
-				switch (index)
-				{
-				case 2:
-					return 0;
-
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-			}
-			else if (component == "NORMAL")
-			{
-				switch (index)
-				{
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-
-			}
-			else if (component == "TEXCOORDS")
-			{
-				switch (index)
-				{
-				case 2:
-					return 1;
-
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-
-			}
-			else if (component == "COLOUR")
-			{
-				switch (index)
-				{
-				case 1:
-					return def;
-
-				case 2:
-					return def;
-
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-			}
-			else
-			{
-				THROW_MPP_PROGRAM("Unknown component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-			}
-		}
-
-		unsigned int getUnsignedComponentIndexDefault(string const& component, int index, unsigned int def)
-		{
-			if (component == "POSITION")
-			{
-				switch (index)
-				{
-				case 2:
-					return 0;
-
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-			}
-			else if (component == "NORMAL")
-			{
-				switch (index)
-				{
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-
-			}
-			else if (component == "TEXCOORDS")
-			{
-				switch (index)
-				{
-				case 2:
-					return 1;
-
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-
-			}
-			else if (component == "COLOUR")
-			{
-				switch (index)
-				{
-				case 1:
-					return def;
-
-				case 2:
-					return def;
-
-				case 3:
-					return 1;
-
-				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-				}
-			}
-			else
-			{
-				THROW_MPP_PROGRAM("Unknown component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
-			}
-		}
 	}
 }

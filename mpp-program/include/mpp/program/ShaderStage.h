@@ -34,6 +34,8 @@ namespace mpp
 
 		public:
 
+			void clear();
+
 			bool required() const;
 
 			bool provided() const;
