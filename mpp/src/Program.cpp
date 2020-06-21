@@ -157,7 +157,7 @@ namespace mpp
 				}
 				else
 				{
-					vi.streamOffset = mVertexAttributes.back().streamOffset + vi.numComponents;
+					vi.streamOffset = mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;
 				}
 
 				mVertexAttributes.push_back(vi);
@@ -699,6 +699,22 @@ namespace mpp
 					ti.uniformId = -1;
 
 					mTextures.push_back(ti);
+				}
+
+				// Set up vertex attributes
+				auto inAttribs = pStr->getInAttributes();
+				for (auto const& inAttrib: inAttribs)
+				{
+					VariableInfo vi;
+					
+					vi.def = "in";
+					vi.name = inAttrib.name;
+					vi.type = inAttrib.getGlslType();
+					vi.numComponents = inAttrib.type.size[0] * inAttrib.type.size[1];
+					vi.streamOffset = mVertexAttributes.empty() ? 0 :
+						mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;
+					
+					mVertexAttributes.push_back(vi);
 				}
 			}
 

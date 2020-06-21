@@ -4,6 +4,7 @@
 
 #include "mpp/mesh/Vertex.h"
 
+#include "Config.h"
 #include "glslTypes.h"
 
 namespace mpp
@@ -20,7 +21,7 @@ namespace mpp
 			UserDefined
 		};
 
-		struct Attribute
+		struct _MPPPROGRAMAPI Attribute
 		{
 			std::string name;
 			GLSLTypeDecl type;

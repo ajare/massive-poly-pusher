@@ -62,12 +62,20 @@ namespace mpp
 				case mpp::mesh::Vertex::DataType::Short:
 				case mpp::mesh::Vertex::DataType::Int:
 				case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
-					type = "i" + type; break;
+					if (!normalised)
+					{
+						type = "i" + type;
+					}
+					break;
 				case mpp::mesh::Vertex::DataType::UnsignedByte:
 				case mpp::mesh::Vertex::DataType::UnsignedShort:
 				case mpp::mesh::Vertex::DataType::UnsignedInt:
 				case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
-					type = "u" + type; break;
+					if (!normalised)
+					{
+						type = "u" + type;
+					}
+					break;
 				}
 			}
 

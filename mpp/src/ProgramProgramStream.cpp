@@ -37,6 +37,11 @@ namespace mpp
 		setFragmentSource(mParser->getGeneratedFragmentSource());
 	}
 
+	vector<program::Attribute> ProgramProgramStream::getInAttributes() const
+	{
+		return mParser->getInAttributes();
+	}
+
 	vector<string> ProgramProgramStream::getUniforms() const
 	{
 		return mParser->getUniforms();
