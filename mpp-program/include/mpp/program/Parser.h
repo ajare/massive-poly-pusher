@@ -17,9 +17,13 @@ namespace mpp
 
 		class _MPPPROGRAMAPI Parser
 		{
-
-		private:
-
+			enum class VariableType
+			{
+				InAttribute,
+				OutAttribute,
+				Uniform,
+				Texture
+			};
 
 		private:
 

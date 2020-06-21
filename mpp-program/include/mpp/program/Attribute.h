@@ -4,6 +4,8 @@
 
 #include "mpp/mesh/Vertex.h"
 
+#include "glslTypes.h"
+
 namespace mpp
 {
 	namespace program
@@ -21,6 +23,7 @@ namespace mpp
 		struct Attribute
 		{
 			std::string name;
+			GLSLTypeDecl type;
 			mpp::mesh::Vertex::Component component;
 			mpp::mesh::Vertex::DataType dataType;
 			bool normalised{ false };
