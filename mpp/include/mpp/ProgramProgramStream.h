@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "mpp/program/Parser.h"
+#include "mpp/program/Attribute.h"
 
 #include "mpp/ProgramStream.h"
 
@@ -22,6 +23,8 @@ namespace mpp
 		explicit ProgramProgramStream(program::Parser* parser);
 
 		std::string getType();
+
+		std::vector<program::Attribute> getInAttributes() const;
 
 		std::vector<std::string> getUniforms() const;
 

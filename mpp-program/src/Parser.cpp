@@ -1157,6 +1157,11 @@ namespace mpp
 			return mStages[(int)ShaderStage::Type::Fragment].generated;
 		}
 
+		vector<Attribute> Parser::getInAttributes() const
+		{
+			return mStages[(int)ShaderStage::Type::Vertex].inAttribs;
+		}
+
 		vector<string> Parser::getUniforms() const
 		{
 			set<string> uniformSet;
