@@ -227,11 +227,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
 		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::Normal4, mesh::Vertex::DataType::Int_2_10_10_10_REV, true);
+		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
 		//attribLayout = modelSpec.createVertexBufferAttributeLayout();
-		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV, true);
+		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
 		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		modelSpec.setIndexedVertices(true);
@@ -257,8 +257,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Marble
 		auto meshMaterialStream = new ProgrammaticMaterialStream();
 		
-		meshMaterialStream->setProgram("program_test");
-		//meshMaterialStream->setProgram(false, modelSpec, {});
+		//meshMaterialStream->setProgram("program_test");
+		meshMaterialStream->setProgram(false, modelSpec, {});
 		
 		meshMaterialStream->setTexture("tex", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();

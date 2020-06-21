@@ -91,6 +91,10 @@ namespace mpp
 
 			std::string const& getGeneratedFragmentSource() const;
 
+			std::vector<std::string> getUniforms() const;
+
+			std::vector<std::string> getTextures() const;
+
 			std::vector<std::string> const& getErrors() const;
 
 			std::vector<std::string> const& getWarnings() const;

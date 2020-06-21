@@ -47,6 +47,7 @@
     <ClInclude Include="..\..\include\mpp\Program.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgramProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\QuadBatch.h" />
     <ClInclude Include="..\..\include\mpp\QuadBatchSpecification.h" />
@@ -101,6 +102,7 @@
     <ClCompile Include="..\..\src\Program.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticMaterialStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp" />
+    <ClCompile Include="..\..\src\ProgramProgramStream.cpp" />
     <ClCompile Include="..\..\src\ProgramStream.cpp" />
     <ClCompile Include="..\..\src\QuadBatch.cpp" />
     <ClCompile Include="..\..\src\RenderSystem.cpp" />

@@ -87,8 +87,7 @@ namespace mpp
 			auto& stage = mStages[(int)ShaderStage::Type::Vertex];
 			
 			stage.source = stripComments(src);
-			stage.inAttribs.clear();
-			stage.outAttribs.clear();
+			stage.clear();
 		}
 
 		/*
@@ -304,28 +303,36 @@ namespace mpp
 					continue;
 				}
 
-				string replacement = utils::StringUtils::format("vec{}({}", dim, fullVar);
-
 				if (swizzle.length() != 0)
 				{
 					varSize = swizzle.length();
 				}
 
-				// TODO: if it's swizzled, and is smaller than it's actual size, throw
-				// warning and pad according to type.
-				// ...
+				// If variable size is greater than dimension, or its swizzle is greater,
+				// truncate/set the swizzle, and modify the varSize to be dim.
+				auto varSizeDiff = (int)varSize - (int)dim;
+				if (varSizeDiff > 0)
+				{
+					if (swizzle == "")
+					{
+						// Set the swizzle
+						char* swizzleChars{ "xyzw" };
+						for (size_t i = 0; i < dim; ++i)
+						{
+							swizzle += swizzleChars[i];
+						}
+					}
+					else
+					{
+						// Truncate the swizzle
+						swizzle = swizzle.substr(0, dim);
+					}
 
-				// TODO: if it's uniform or texture (ie not a standard var) and we have
-				// to pad, then throw warning and pad with 0.
+					varSize = dim;
+					fullVar = bareVar + "." + swizzle;
+				}
 
-				// TODO: if i==2 and it's POSITION3/4, then pad with 0.
-				//       if i==1 or 2 and it's COLOUR1, then pad with colour.
-				//       else pad with 1
-				// ...
-
-				// TODO: if varSize > dim, do we truncare, ie use first x/y/whatever components?
-				// Throw warning if so.
-				// ...
+				string replacement = utils::StringUtils::format("vec{}({}", dim, fullVar);
 
 				GLSLTypeDecl varDeclType;
 				switch (varType)
@@ -361,24 +368,8 @@ namespace mpp
 
 				for (size_t i = varSize; i < dim; ++i)
 				{
-					if (varDeclType.isFloatingPoint)
-					{
-						auto value = getRealComponentIndexDefault(varName, i, 1.0f);
-						replacement += ", " + utils::StringUtils::toString(value);
-					}
-					else
-					{
-						if (varDeclType.isSigned)
-						{
-							auto value = getSignedComponentIndexDefault(varName, i, 1);
-							replacement += ", " + utils::StringUtils::toString(value);
-						}
-						else
-						{
-							auto value = getUnsignedComponentIndexDefault(varName, i, 1);
-							replacement += ", " + utils::StringUtils::toString(value);
-						}
-					}
+					auto value = getComponentIndexDefault(varName, varDeclType.isFloatingPoint, i, varName + ".x");
+					replacement += ", " + value;
 				}
 
 				replacement += ")";
@@ -1057,7 +1048,7 @@ namespace mpp
 					// Parse user-defined uniforms
 					replaced = regex_replace(replaced,
 						regex(R"(@@Uniform\s*\(\s*([\w\d]+)\s*,\s*([\w\d]+)\s*\))"),
-						"uniform $1 " MPP_PROGRAM_UNIFORM_PREFIX "$2");
+						"uniform $1 " MPP_PROGRAM_UNIFORM_PREFIX "$2;");
 
 					replaced = regex_replace(replaced,
 						regex(R"(@Uniform\s*\(\s*([\w\d]+)\s*\))"), 
@@ -1065,8 +1056,8 @@ namespace mpp
 
 					// Parse textures
 					replaced = regex_replace(replaced,
-						regex(R"(@@Texture\s*\(\s*([\w\d]+)\s*,\s*([\w\d]+)\s*\))"),
-						"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2");
+						regex(R"(@@Texture\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))"),
+						"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2;");
 
 					replaced = regex_replace(replaced,
 						regex(R"(@Texture\s*\(\s*([\w\d]+)\s*\))"), 
@@ -1095,6 +1086,12 @@ namespace mpp
 		 */
 		void Parser::build()
 		{
+			// Clear
+			for (int i = 0; i < (int)ShaderStage::Type::NumStages; ++i)
+			{
+				mStages[i].clear();
+			}
+
 			mErrors.clear();
 			mWarnings.clear();
 
@@ -1158,6 +1155,42 @@ namespace mpp
 		string const& Parser::getGeneratedFragmentSource() const
 		{
 			return mStages[(int)ShaderStage::Type::Fragment].generated;
+		}
+
+		vector<string> Parser::getUniforms() const
+		{
+			set<string> uniformSet;
+
+			for (int i = 0; i < (int)ShaderStage::Type::NumStages; ++i)
+			{
+				if (mStages[i].provided())
+				{
+					for (auto const& uniform : mStages[i].uniforms)
+					{
+						uniformSet.insert(uniform.name);
+					}
+				}
+			}
+			
+			return vector<string>(uniformSet.begin(), uniformSet.end());
+		}
+
+		vector<string> Parser::getTextures() const
+		{
+			set<string> textureSet;
+
+			for (int i = 0; i < (int)ShaderStage::Type::NumStages; ++i)
+			{
+				if (mStages[i].provided())
+				{
+					for (auto const& texture : mStages[i].textures)
+					{
+						textureSet.insert(texture.name);
+					}
+				}
+			}
+
+			return vector<string>(textureSet.begin(), textureSet.end());
 		}
 
 		vector<string> const& Parser::getErrors() const

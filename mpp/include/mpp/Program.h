@@ -8,6 +8,8 @@
 #include <map>
 #include <vector>
 
+#include "mpp/program/Parser.h"
+
 #include "mpp/Resource.h"
 
 #define MPP_PROGRAM_VS_IN_PREFIX			"_mpp_vs_in_"
@@ -36,6 +38,9 @@
 // These must start from above MeshSpecification's maximum hash value
 #define MPP_PROGRAM_TAGS_DIFFUSE			0x0800
 #define MPP_PROGRAM_TAGS_ROTATION			0x1000
+
+// Loader flags
+#define MPP_PROGRAM_LOADER_NEWSTYLE			0x0001
 
 namespace mpp
 {
@@ -84,6 +89,8 @@ namespace mpp
 
 		uint32 mSortId;
 
+		uint32_t mFlags{ 0 };
+
 	private:
 
 		void compileShader(uint32* id, std::string const& source, std::string const& sourceType);
@@ -109,8 +116,6 @@ namespace mpp
 		Program(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
 		bool operator==(Program const& other);
-
-		int32 getAttrib(char const* name) const;
 
 		int getUniformId(std::string const& name) const;
 

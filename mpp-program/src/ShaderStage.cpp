@@ -15,6 +15,16 @@ namespace mpp
 	{
 		using namespace std;
 
+		void ShaderStage::clear()
+		{
+			inAttribs.clear();
+			outAttribs.clear();
+			uniforms.clear();
+			textures.clear();
+			mainLine = -1;
+			generated = "";
+		}
+
 		bool ShaderStage::required() const 
 		{ 
 			return type == Type::Vertex || type == Type::Fragment; 
