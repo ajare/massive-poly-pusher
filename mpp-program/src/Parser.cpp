@@ -1047,7 +1047,7 @@ namespace mpp
 
 					// Parse user-defined uniforms
 					replaced = regex_replace(replaced,
-						regex(R"(@@Uniform\s*\(\s*([\w\d]+)\s*,\s*([\w\d]+)\s*\))"),
+						regex(R"(@@Uniform\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))"),
 						"uniform $1 " MPP_PROGRAM_UNIFORM_PREFIX "$2;");
 
 					replaced = regex_replace(replaced,

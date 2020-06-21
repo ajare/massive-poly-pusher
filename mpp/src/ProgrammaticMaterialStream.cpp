@@ -13,7 +13,7 @@ namespace mpp
 
 	void ProgrammaticMaterialStream::useDefaultTexture()
 	{
-		mTextures["tex"] = "__mpp_tex_none";
+		mTextures["TEX"] = "__mpp_tex_none";
 	}
 
 	void ProgrammaticMaterialStream::setFloatUniform(string const& name, float value)

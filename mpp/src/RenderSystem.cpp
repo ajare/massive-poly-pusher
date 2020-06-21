@@ -560,7 +560,7 @@ namespace mpp
 		ProgrammaticMaterialStream* defaultMatStream = new ProgrammaticMaterialStream();
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
-		defaultMatStream->setTexture("tex", "__mpp_tex_none");
+		defaultMatStream->setTexture("TEX", "__mpp_tex_none");
 		resourceMgr->createResource<mpp::Material>("__mpp_mat_default", mpp::ResourceStreamPtr(defaultMatStream))->load();
 
 		// Internal font
@@ -568,14 +568,14 @@ namespace mpp
 		ProgrammaticMaterialStream* textMatStream = new ProgrammaticMaterialStream();
 
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text" : "__mpp_p2d_tris_text");
-		textMatStream->setFloatUniform("colour", glm::vec4(1, 1, 1, 1));
-		textMatStream->setTexture("tex", "__mpp_tex_internalfont");
+		textMatStream->setFloatUniform("COLOUR", glm::vec4(1, 1, 1, 1));
+		textMatStream->setTexture("TEX", "__mpp_tex_internalfont");
 		resourceMgr->createResource<mpp::Material>("__mpp_mat_text_pt", mpp::ResourceStreamPtr(textMatStream))->load();
 
 		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream();
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured" : "__mpp_p2d_tris_text_coloured");
-		textMatStreamColoured->setFloatUniform("colour", glm::vec4(1, 1, 1, 1));
-		textMatStreamColoured->setTexture("tex", "__mpp_tex_internalfont");
+		textMatStreamColoured->setFloatUniform("COLOUR", glm::vec4(1, 1, 1, 1));
+		textMatStreamColoured->setTexture("TEX", "__mpp_tex_internalfont");
 		resourceMgr->createResource<mpp::Material>("__mpp_mat_text_ptc", mpp::ResourceStreamPtr(textMatStreamColoured))->load();
 
 		int fontTextureWidth = ((Texture&)*mInternalFontTexture).getWidth();
@@ -1758,7 +1758,7 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 		
 		UniformCollection uc;
-		uc.setUniform("colour", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+		uc.setUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 		
 		Model* model = (Model*)mTextMesh.get();
 		renderModelImmediate(*model, true, &uc, count);
@@ -1785,7 +1785,7 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 
 		UniformCollection uc;
-		uc.setUniform("colour", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+		uc.setUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 
 		Model* model = (Model*)mTextMesh.get();
 		renderModelImmediate(*model, true, &uc, count);
@@ -1808,7 +1808,7 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 
 		UniformCollection uc;
-		uc.setUniform("colour", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		uc.setUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 		renderModelImmediate(*textModel, true, &uc, count);
 	}
