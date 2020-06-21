@@ -43,42 +43,53 @@ namespace mpp
 		// Create built-in resources
 		//
 
-		// Basic 3d shaders
-		mesh::MeshSpecification meshSpec;
-		auto layout = meshSpec.createVertexBufferAttributeLayout();
-		layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-		layout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
-		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+		// Default 3d program
+		{
+			mesh::MeshSpecification meshSpec;
+			
+			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-		set<string> attribs = { "Normal", "Texture", "TexCoords2", "RGBA" };
+			program::Parser parser;
 
-		// Old-style
-//		auto ps = new StringProgramStream(generateShader(VertexShader3dTemplate, attribs), generateShader(FragmentShader3dTemplate, attribs));
-//		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
+			parser.setMeshSpecification(meshSpec);
+			parser.setVertexSource(VertexShader3dTemplate);
+			parser.setFragmentSource(FragmentShader3dTemplate);
 
-		// New-style
-		program::Parser parser;
+			auto ps = new ProgramProgramStream(&parser);
+			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-		parser.setMeshSpecification(meshSpec);
-		parser.setVertexSource(VertexShader3dTemplate2);
-		parser.setFragmentSource(FragmentShader3dTemplate2);
-
-		auto ps1 = new ProgramProgramStream(&parser);
-		ps1->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
-		createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps1))->load();
+			createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
+		}
 
 		// 2d fullscreen program
-		attribs = { "Diffuse" };
+		set<string> attribs = { "Diffuse" };
 		auto ps = new StringProgramStream(generateShader(VertexShaderFullscreenTemplate, attribs), generateShader(FragmentShaderFullscreenTemplate, attribs));
 		createResource<Program>("__mpp_p2d_fullscreen", ResourceStreamPtr(ps))->load();
 
 		// Internal text programs
-		attribs = { "Diffuse", "Points" };
-		ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
-		createResource<Program>("__mpp_p2d_points_text", ResourceStreamPtr(ps))->load();
+		{
+			mesh::MeshSpecification meshSpec;
 
+			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
+
+			program::Parser parser;
+
+			parser.setMeshSpecification(meshSpec);
+			parser.setVertexSource(VertexShaderPointTextTemplate);
+			parser.setFragmentSource(FragmentShaderPointTextTemplate);
+
+			auto ps = new ProgramProgramStream(&parser);
+			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+			createResource<Program>("__mpp_p2d_points_text", ResourceStreamPtr(ps))->load();
+		}
+		
 		attribs = { "Diffuse", "Points", "RGBA" };
 		ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
 		createResource<Program>("__mpp_p2d_points_text_coloured", ResourceStreamPtr(ps))->load();

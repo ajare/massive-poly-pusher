@@ -687,7 +687,8 @@ namespace mpp
 				auto uniforms = pStr->getUniforms();
 				for (auto const& uniform : uniforms)
 				{
-					mUniformIds[uniform] = -1;
+					auto markedUpUniform = MPP_PROGRAM_UNIFORM_PREFIX + uniform;
+					mUniformIds[markedUpUniform] = -1;
 				}
 
 				auto textures = pStr->getTextures();

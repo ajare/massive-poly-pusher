@@ -260,7 +260,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//meshMaterialStream->setProgram("program_test");
 		meshMaterialStream->setProgram(false, modelSpec, {});
 		
-		meshMaterialStream->setTexture("tex", "marble_texture4662.jpg");
+		meshMaterialStream->setTexture("TEX", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
 		FileDataStream fileDatastream(gOptions.resourceLocation + "statue/statue.material");

@@ -1,39 +1,6 @@
 #pragma once
 
-/*
- * Default 3d shader.
- *
- */
 const std::string VertexShader3dTemplate =
-R"(
-@@Version
-
-@@In pos = vec3
-## Normal
-@@In normal = vec3
-## TexCoords2
-@@Passthrough uv = vec2
-## Alpha
-@@Passthrough colour = float
-## RGB
-@@Passthrough colour = vec3
-## RGBA
-@@Passthrough colour = vec4
-## Normal
-@@Out normal = vec3
-## 
-
-void main()
-{
-## Normal
-	@Out(normal) = normalize(@NormalMatrix * @In(normal));
-##
-	vec4 vertPos = @MCPMatrix * vec4(@In(pos), 1);
-	gl_Position = vertPos;
-}
-)";
-
-const std::string VertexShader3dTemplate2 =
 R"(
 @@Version
 
@@ -54,50 +21,12 @@ const std::string FragmentShader3dTemplate =
 R"(
 @@Version
 
-## Texture
-@@Texture tex = sampler2D
-## TexCoords2
-@@In uv = vec2
-## Alpha
-@@In colour = float
-## RGB
-@@In colour = vec3
-## RGBA
-@@In colour = vec4
-## Normal
-@@In normal = vec3
-##
-@@Out colour = vec4
-
-void main()
-{
-	vec4 colour = vec4(1.0, 1.0, 1.0, 1.0);
-## Alpha
-	colour = vec4(1.0, 1.0, 1.0, @In(colour));
-## RGB
-	colour = vec4(@In(colour), 1.0);
-## RGBA
-	colour = @In(colour);
-##
-
-## Texture
-	@Out(colour) = texture(@Texture(tex), @In(uv)) * colour;
-## Else
-	@Out(colour) = colour;
-##
-}
-)";
-
-const std::string FragmentShader3dTemplate2 = 
-R"(
-@@Version
-
-@@Texture(sampler2D tex)
+@@Texture(sampler2D TEX)
 
 void main()
 {
     vec3 shadedColour = @In(COLOUR).xyz;
-    @Out(vec4 COLOUR) = texture(@Texture(tex), @In(TEXCOORDS).xy) * vec4(shadedColour, 1.0);
+    @Out(vec4 COLOUR) = texture(@Texture(TEX), @In(TEXCOORDS).xy) * vec4(shadedColour, 1.0);
 }
 )";
 
@@ -128,7 +57,7 @@ R"(
 @@Uniform diffuse = vec4
 ##
 
-@@Texture tex = sampler2D
+@@Texture TEX = sampler2D
 
 @@In uv = vec2
 @@Out colour = vec4
@@ -136,9 +65,9 @@ R"(
 void main()
 {
 ## Diffuse
-	@Out(colour) = texture(@Texture(tex), @In(uv)) * @Uniform(diffuse);
+	@Out(colour) = texture(@Texture(TEX), @In(uv)) * @Uniform(diffuse);
 ## Else
-	@Out(colour) = texture(@Texture(tex), @In(uv));
+	@Out(colour) = texture(@Texture(TEX), @In(uv));
 ##
 }
 )";
@@ -173,12 +102,33 @@ void main()
 }
 )";
 
+/*
+ * Text shader.
+ *
+ */
+const std::string VertexShaderPointTextTemplate =
+R"(
+@@Version
+
+void main()
+{
+	vec4 transVertex = @MCPMatrix * @Vec4(@In(POSITION));
+
+	vec2 centredPos = transVertex.xy - @HalfWindowSize;
+	centredPos += gl_PointSize / 2.0;
+
+    @Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
+
+	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
+}
+)";
+
 const std::string FragmentShaderTextTemplate =
 R"(
 @@Version
 
-@@Uniform colour = vec4
-@@Texture tex = sampler2D
+@@Uniform COLOUR = vec4
+@@Texture TEX = sampler2D
 
 ## Points
 @@In uvs = vec4
@@ -196,14 +146,28 @@ void main()
 {
 ## Points
 	vec2 uv = mix(@In(uvs).xy, @In(uvs).zw, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
-	@Out(colour) = texture(@Texture(tex), uv) * @Uniform(colour);
+	@Out(colour) = texture(@Texture(TEX), uv) * @Uniform(COLOUR);
 ## Else
-	@Out(colour) = texture(@Texture(tex), @In(uvs)) * @Uniform(colour);
+	@Out(colour) = texture(@Texture(TEX), @In(uvs)) * @Uniform(COLOUR);
 ##
 
 ## RGBA
 	@Out(colour) *= @In(colour);
 ##
+}
+)";
+
+const std::string FragmentShaderPointTextTemplate =
+R"(
+@@Version
+
+@@Uniform(vec4 COLOUR);
+@@Texture(sampler2D TEX)
+
+void main()
+{
+	vec2 uv = mix(@In(TEXCOORDS).xy, @In(TEXCOORDS).zw, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
+	@Out(vec4 COLOUR) = texture(@Texture(TEX), uv) * @Uniform(COLOUR);
 }
 )";
 
@@ -257,7 +221,7 @@ R"(
 ## Diffuse
 @@Uniform diffuse = vec4
 ## Texture
-@@Texture tex = sampler2D
+@@Texture TEX = sampler2D
 ## TexCoords2
 @@In uv = vec2
 ## TexCoords4
@@ -302,7 +266,7 @@ void main()
 	tc += offset;
 	tc = vec2(mix(@In(uv).s, @In(uv).p, tc.s), mix(@In(uv).t, @In(uv).q, tc.t));
 ## Texture
-	@Out(colour) = texture(@Texture(tex), tc) * colour;
+	@Out(colour) = texture(@Texture(TEX), tc) * colour;
 ## Else
 	@Out(colour) = colour;
 ##
