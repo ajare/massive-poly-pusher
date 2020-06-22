@@ -25,6 +25,7 @@
 #include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
+#include <mpp/LineBatch.h>
 
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
@@ -205,7 +206,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		   - ResourceManager::createResource<Texture>(NAME, ResourceStreamPtr(STREAM));
 		3. Create materials
 		   - auto STREAM = new ProgrammaticMaterialStream();
-		     - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
+			 - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
 			 - STREAM->setProgram(<2d | 3d>, MODEL_SPEC, PROGRAM_TAGS);
 		   - STREAM->setTexture(SAMPLER_NAME, TEXTURE_RESOURCE_NAME);
 		   - ResourceManager::createResource<Material>(MATERIAL_NAME, ResourceStreamPtr(STREAM));
@@ -238,7 +239,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// Programs
 		FileProgramStream* programStream = new FileProgramStream(gOptions.resourceLocation + "test.vert", gOptions.resourceLocation + "test.frag");
-		
+
 		gResourceManager->createResource<Program>("program_test", ResourceStreamPtr(programStream));
 
 		//
@@ -247,7 +248,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// Marble
 		TextureStream* textureStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
-		
+
 		gResourceManager->createResource<Texture>("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
 
 		//
@@ -256,10 +257,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// Marble
 		auto meshMaterialStream = new ProgrammaticMaterialStream();
-		
+
 		//meshMaterialStream->setProgram("program_test");
 		meshMaterialStream->setProgram(false, modelSpec, {});
-		
+
 		meshMaterialStream->setTexture("TEX", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
@@ -281,7 +282,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// Sphere
 		auto sphereStream = new SphereModelStream(modelSpec, "Material.Marble", 15.0f, 5);
-		
+
 		auto sphereModel = gResourceManager->createResource<Model>("Model.Sphere", ResourceStreamPtr(sphereStream));
 		sphereModel->load();
 
@@ -296,7 +297,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		auto gridModel = gResourceManager->createResource<Model>("Model.Grid", ResourceStreamPtr(gridStream));
 		gridModel->load();
-		
+
 		// Statue
 		/*
 		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
@@ -304,7 +305,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto statueModel = gResourceManager->createResource<Model>("Model.Statue", ResourceStreamPtr(statueStream));
 		statueModel->load();
 		*/
-		
+
 		//
 		// Model transforms
 		//
@@ -318,6 +319,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		};
 
 		auto currentModelId = 0;// = ModelId::Grid;
+
+		//
+		// 2d batch objects
+		//
+		const size_t lineBatchCount{ 100 };
+		auto lineBatch = new LineBatch(
+			"TestLines",
+			mpp::mesh::Vertex::DataType::Float,
+			Batch::ColourOptions::FloatRGBA,
+			false,
+			lineBatchCount,
+			gRenderSystem,
+			gResourceManager);
+
+		lineBatch->load();
 
 		//
 		// Camera setup
@@ -492,10 +508,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem->clearScreen(Colour::Grey50);
 
 			gRenderSystem->setProjection3dPerspective(
-				camera.getFov(), 
-				camera.getNearClipDistance(), 
+				camera.getFov(),
+				camera.getNearClipDistance(),
 				camera.getFarClipDistance());
-			
+
 			auto cameraPos = camera.getPosition();
 			auto cameraDir = camera.getDirection();
 			auto cameraUp = camera.getUp();
@@ -518,7 +534,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			auto mi = gRenderSystem->renderModelBatched((Model&)*modelTranforms[(int)currentModelId].model, true, &modelUniforms);
 			mi->setWireframe(wireframe);
-			
+
 			//
 			// Add post-process effects
 			//
@@ -546,6 +562,48 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem->addPostEffect("__mpp_mat_vignette", vignetteUniforms, 0, BlendMode::Zero, BlendMode::SrcColour);
 			*/
 
+			//
+			// Batches
+			//
+			gRenderSystem->setProjection2dOrthographic();
+
+			lineBatch->startUpdate(lineBatchCount);
+			float* posDataDst = (float*)lineBatch->getPositionData();
+
+			float linesX = gRenderSystem->getWindowWidth() * 0.25f;
+			float linesW = gRenderSystem->getWindowWidth() * 0.5f;
+			float linesY = gRenderSystem->getWindowWidth() * 0.5f;
+			for (uint32 i = 0; i < lineBatchCount; ++i)
+			{
+				float y0 =
+					sinf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
+					sinf(((float)i / (lineBatchCount / 2)) * 6.2832f + 1.2f - totalTime) +
+					sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 2.4f - totalTime) * 0.75f;
+
+				*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
+				*posDataDst++ = linesY + 100 + y0 * 10;
+				*posDataDst++ = 1.0f;
+				*posDataDst++ = 1.0f;
+				*posDataDst++ = 1.0f;
+				*posDataDst++ = 1.0f;
+
+				float y1 =
+					cosf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
+					sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 3.2f - totalTime) * 0.5f +
+					cosf(((float)i / (lineBatchCount / 3)) * 6.2832f + 5.4f - totalTime) * 0.5f;
+
+				*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
+				*posDataDst++ = linesY - 100 - y1 * 10;
+				*posDataDst++ = 1.0f;
+				*posDataDst++ = 1.0f;
+				*posDataDst++ = 1.0f;
+				*posDataDst++ = 1.0f;
+			}
+
+			lineBatch->finishUpdate(lineBatchCount, false);
+
+			gRenderSystem->renderModelImmediate(*lineBatch, false);
+
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
 
@@ -571,6 +629,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			gWindow->show();
 		}
+
+		//
+		// Clean up
+		//
+		delete lineBatch;
 	}
 	catch (mpp::MppException const& e)
 	{
