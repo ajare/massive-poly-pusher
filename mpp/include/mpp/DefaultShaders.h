@@ -38,13 +38,12 @@ const std::string VertexShaderFullscreenTemplate =
 R"(
 @@Version
 
-@@In pos = vec2
-@@Passthrough uv = vec2
-
 void main()
 {
-	vec4 transVertex = @MCPMatrix * vec4(@In(pos), 0, 1);
+	vec4 transVertex = @MCPMatrix * @Vec4(@In(POSITION));
 	vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
+
+	@Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
 }
 )";
@@ -53,22 +52,12 @@ const std::string FragmentShaderFullscreenTemplate =
 R"(
 @@Version
 
-## Diffuse
-@@Uniform diffuse = vec4
-##
-
-@@Texture TEX = sampler2D
-
-@@In uv = vec2
-@@Out colour = vec4
+@@Uniform(vec4 DIFFUSE)
+@@Texture(sampler2D TEX)
 
 void main()
 {
-## Diffuse
-	@Out(colour) = texture(@Texture(TEX), @In(uv)) * @Uniform(diffuse);
-## Else
-	@Out(colour) = texture(@Texture(TEX), @In(uv));
-##
+	@Out(vec4 COLOUR) = texture(@Texture(TEX), @In(TEXCOORDS)) * @Uniform(DIFFUSE);
 }
 )";
 
