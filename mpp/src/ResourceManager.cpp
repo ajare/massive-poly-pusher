@@ -66,9 +66,24 @@ namespace mpp
 		}
 
 		// 2d fullscreen program
-		set<string> attribs = { "Diffuse" };
-		auto ps = new StringProgramStream(generateShader(VertexShaderFullscreenTemplate, attribs), generateShader(FragmentShaderFullscreenTemplate, attribs));
-		createResource<Program>("__mpp_p2d_fullscreen", ResourceStreamPtr(ps))->load();
+		{
+			mesh::MeshSpecification meshSpec;
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+
+			program::Parser parser;
+
+			parser.setMeshSpecification(meshSpec);
+			parser.setVertexSource(VertexShaderFullscreenTemplate);
+			parser.setFragmentSource(FragmentShaderFullscreenTemplate);
+
+			auto ps = new ProgramProgramStream(&parser);
+			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+			createResource<Program>("__mpp_p2d_fullscreen", ResourceStreamPtr(ps))->load();
+		}
 
 		// Internal text programs
 		{
@@ -90,8 +105,8 @@ namespace mpp
 			createResource<Program>("__mpp_p2d_points_text", ResourceStreamPtr(ps))->load();
 		}
 		
-		attribs = { "Diffuse", "Points", "RGBA" };
-		ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
+		set<string> attribs = { "Diffuse", "Points", "RGBA" };
+		auto ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
 		createResource<Program>("__mpp_p2d_points_text_coloured", ResourceStreamPtr(ps))->load();
 
 		attribs = { "Diffuse" };

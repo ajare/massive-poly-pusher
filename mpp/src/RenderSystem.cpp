@@ -1640,7 +1640,7 @@ namespace mpp
 		int hwsId = p->getHalfWindowSizeId();
 		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
-		int diffuseId = p->getUniformId("diffuse");
+		int diffuseId = p->getUniformId("DIFFUSE");
 		GL_CHECK(glUniform4f(diffuseId, 1, 1, 1, 1));
 
 		// Set texture
@@ -1699,7 +1699,7 @@ namespace mpp
 		int hwsId = p->getHalfWindowSizeId();
 		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
-		int diffuseId = p->getUniformId("diffuse");
+		int diffuseId = p->getUniformId("DIFFUSE");
 		GL_CHECK(glUniform4f(diffuseId, colour.red, colour.green, colour.blue, colour.alpha));
 
 		// Set texture
