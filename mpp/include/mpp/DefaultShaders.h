@@ -81,11 +81,13 @@ void main()
 
 ## Points
 	centredPos += gl_PointSize / 2.0;
+	@Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
+## Else
+    @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
 ##
-    @Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
 
 ## Colours
-	@Out(vec4 COLOUR) = @In(COLOURS);
+	@Out(vec4 COLOUR) = @In(COLOUR);
 ##
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
 }
@@ -108,7 +110,7 @@ void main()
 ##
 
 ## Colours
-	@Out(COLOUR) *= @In(COLOURS);
+	@Out(COLOUR) *= @In(COLOUR);
 ##
 }
 )";
