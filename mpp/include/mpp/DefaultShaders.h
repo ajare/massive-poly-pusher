@@ -1,5 +1,9 @@
 #pragma once
 
+/*
+ * Default 3d program.
+ *
+ */
 const std::string VertexShader3dTemplate =
 R"(
 @@Version

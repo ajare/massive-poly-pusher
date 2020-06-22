@@ -17,6 +17,7 @@ struct ProgramArgs
 {
 	string vertexSource, geometrySource, fragmentSource;
 	string meshSpec;
+	set<string> attribs;
 };
 
 /*
@@ -58,8 +59,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 		}
 		else
 		{
-			string errMsg = "Unknown argument: " + arg;
-			throw exception(errMsg.c_str());
+			pArgs.attribs.insert(argv[i]);
 		}
 	}
 
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
 		sourceParser.setGeometrySource(gsContent);
 		sourceParser.setFragmentSource(fsContent);
 
-		sourceParser.build();
+		sourceParser.build(pArgs.attribs);
 
 		auto const& warnings = sourceParser.getWarnings();
 		for (auto const& warning: warnings)

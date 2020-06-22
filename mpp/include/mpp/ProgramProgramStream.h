@@ -14,13 +14,15 @@ namespace mpp
 	{
 		program::Parser* mParser{ nullptr };
 
+		std::set<std::string> mAttribs;
+
 	private:
 
 		void loadImpl();
 
 	public:
 
-		explicit ProgramProgramStream(program::Parser* parser);
+		ProgramProgramStream(program::Parser* parser, std::set<std::string> const& attribs);
 
 		std::string getType();
 
