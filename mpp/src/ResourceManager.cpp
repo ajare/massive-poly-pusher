@@ -59,7 +59,7 @@ namespace mpp
 			parser.setVertexSource(VertexShader3dTemplate);
 			parser.setFragmentSource(FragmentShader3dTemplate);
 
-			auto ps = new ProgramProgramStream(&parser);
+			auto ps = new ProgramProgramStream(&parser, {});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
 			createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
@@ -79,7 +79,7 @@ namespace mpp
 			parser.setVertexSource(VertexShaderFullscreenTemplate);
 			parser.setFragmentSource(FragmentShaderFullscreenTemplate);
 
-			auto ps = new ProgramProgramStream(&parser);
+			auto ps = new ProgramProgramStream(&parser, {});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
 			createResource<Program>("__mpp_p2d_fullscreen", ResourceStreamPtr(ps))->load();
@@ -99,7 +99,7 @@ namespace mpp
 			parser.setVertexSource(VertexShaderPointTextTemplate);
 			parser.setFragmentSource(FragmentShaderPointTextTemplate);
 
-			auto ps = new ProgramProgramStream(&parser);
+			auto ps = new ProgramProgramStream(&parser, {});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
 			createResource<Program>("__mpp_p2d_points_text", ResourceStreamPtr(ps))->load();

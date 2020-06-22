@@ -2,6 +2,7 @@
 #include <map>
 #include <list>
 #include <regex>
+#include <sstream>
 
 #include <utils/StringUtils.h>
 
@@ -927,6 +928,95 @@ namespace mpp
 
 			return lines;
 		}
+
+		/*
+		 * Determine whether or not to write a shader line based on this fragment.
+		 *
+		 */
+		bool Parser::evaluateShaderDirective(string const& expression, set<string> const& attribs)
+		{
+			bool invert = false;
+			string trimmedLine = utils::StringUtils::trim(expression);
+
+			if (trimmedLine[0] == '!')
+			{
+				trimmedLine = utils::StringUtils::trim(trimmedLine.substr(1));
+				if (trimmedLine == "")
+				{
+					THROW_MPP_PROGRAM("Cannot have ! without an attribute in shader template.", __LINE__, __FILE__, __FUNCTION__);
+				}
+
+				invert = true;
+			}
+
+			return (attribs.find(trimmedLine) != attribs.end()) != invert;
+		}
+
+		bool Parser::processShaderLine(string const& lineFragment, set<string> const& attribs, bool prev)
+		{
+			if (lineFragment == "Else")
+			{
+				return !prev;
+			}
+
+			uint32 orPos = lineFragment.find_first_of('|');
+			uint32 andPos = lineFragment.find_first_of('&');
+
+			if (orPos == -1 && andPos == -1)
+			{
+				return evaluateShaderDirective(lineFragment, attribs);
+			}
+			else if (orPos < andPos)
+			{
+				bool left = evaluateShaderDirective(lineFragment.substr(0, orPos), attribs);
+				bool right = processShaderLine(lineFragment.substr(orPos + 1), attribs, prev);
+				return left || right;
+			}
+			else if (andPos < orPos)
+			{
+				bool left = evaluateShaderDirective(lineFragment.substr(0, andPos), attribs);
+				bool right = processShaderLine(lineFragment.substr(andPos + 1), attribs, prev);
+				return left && right;
+			}
+			else
+			{
+				THROW_MPP_PROGRAM("Could not evaluate ## directive in shader template.", __LINE__, __FILE__, __FUNCTION__);
+			}
+		}
+
+		/*
+		 * Generate shader for given attributes.
+		 *
+		 */
+		void Parser::processConditionals(ShaderStage::Type stageType, set<string> const& attribs)
+		{
+			auto& stage = mStages[(int)stageType];
+
+			stringstream ss(stage.source);
+			string line, output;
+
+			bool writeLine = true;
+			while (getline(ss, line, '\n'))
+			{
+				string trimmedLine = utils::StringUtils::trim(as_const(line));
+				if (trimmedLine.size() < 2 && writeLine)
+				{
+					output += line + "\n";
+				}
+				else if (trimmedLine[0] == '#' && trimmedLine[1] == '#')
+				{
+					trimmedLine = utils::StringUtils::trim(trimmedLine.substr(2));
+					writeLine = trimmedLine != "" ? processShaderLine(trimmedLine, attribs, writeLine) : true;
+				}
+				else if (writeLine)
+				{
+					output += line + "\n";
+				}
+			}
+
+			stage.source = output;
+		}
+
 		/*
 		 * Do token replacement, and add uniform and attribute definitions.
 		 *
@@ -1084,7 +1174,7 @@ namespace mpp
 		 * Parse files and get information, check against spec, and build final sources.
 		 *
 		 */
-		void Parser::build()
+		void Parser::build(set<string> const& attribs)
 		{
 			// Clear
 			for (int i = 0; i < (int)ShaderStage::Type::NumStages; ++i)
@@ -1110,6 +1200,7 @@ namespace mpp
 			}
 
 			// Set shader attributes and uniforms
+			processConditionals(ShaderStage::Type::Vertex, attribs);
 			setInAttributesToMeshSpecification(ShaderStage::Type::Vertex);
 			setOutAttributesToUsage(ShaderStage::Type::Vertex);
 			parseInAttributeUsage(ShaderStage::Type::Vertex);
@@ -1118,6 +1209,7 @@ namespace mpp
 
 			if (mStages[(int)ShaderStage::Type::Geometry].provided())
 			{
+				processConditionals(ShaderStage::Type::Geometry, attribs);
 				setInAttributesToPreviousStage(ShaderStage::Type::Geometry);
 				setOutAttributesToUsage(ShaderStage::Type::Geometry);
 				parseInAttributeUsage(ShaderStage::Type::Geometry);
@@ -1125,6 +1217,7 @@ namespace mpp
 				parseTextureUsage(ShaderStage::Type::Geometry);
 			}
 
+			processConditionals(ShaderStage::Type::Fragment, attribs);
 			setInAttributesToPreviousStage(ShaderStage::Type::Fragment);
 			setOutAttributesToUsage(ShaderStage::Type::Fragment);
 			parseInAttributeUsage(ShaderStage::Type::Fragment);

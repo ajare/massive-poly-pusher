@@ -55,6 +55,12 @@ namespace mpp
 
 			void parseInAttributeUsage(ShaderStage::Type stageType);
 
+			bool evaluateShaderDirective(std::string const& expression, std::set<std::string> const& attribs);
+				
+			bool processShaderLine(std::string const& lineFragment, std::set<std::string> const& attribs, bool prev);
+
+			void processConditionals(ShaderStage::Type stageType, std::set<std::string> const& attribs);
+
 			void generateShader(ShaderStage::Type stageType);
 
 			std::string stripComments(std::string const& src);
@@ -83,7 +89,7 @@ namespace mpp
 
 			void setMeshSpecification(mesh::MeshSpecification const& spec);
 
-			void build();
+			void build(std::set<std::string> const& attribs);
 
 			std::string const& getGeneratedVertexSource() const;
 
