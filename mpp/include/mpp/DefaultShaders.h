@@ -73,45 +73,20 @@ const std::string VertexShaderTextTemplate =
 R"(
 @@Version
 
-@@In pos = vec2
-## Points
-@@Passthrough uvs = vec4
-## Else
-@@Passthrough uvs = vec2
-##
-
-## RGBA
-@@Passthrough colour = vec4
-##
-
-void main()
-{
-	vec4 transVertex = @MCPMatrix * vec4(@In(pos), 0, 1);
-	vec2 centredPos = transVertex.xy - @HalfWindowSize;
-## Points
-	centredPos += gl_PointSize / 2.0; // Rendering as points, which generate vertices from centre, so offset to get bottom-left.
-##
-	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
-}
-)";
-
-/*
- * Text shader.
- *
- */
-const std::string VertexShaderPointTextTemplate =
-R"(
-@@Version
-
 void main()
 {
 	vec4 transVertex = @MCPMatrix * @Vec4(@In(POSITION));
 
 	vec2 centredPos = transVertex.xy - @HalfWindowSize;
-	centredPos += gl_PointSize / 2.0;
 
+## Points
+	centredPos += gl_PointSize / 2.0;
+##
     @Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
 
+## Colours
+	@Out(vec4 COLOUR) = @In(COLOURS);
+##
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
 }
 )";
@@ -120,47 +95,21 @@ const std::string FragmentShaderTextTemplate =
 R"(
 @@Version
 
-@@Uniform COLOUR = vec4
-@@Texture TEX = sampler2D
-
-## Points
-@@In uvs = vec4
-## Else
-@@In uvs = vec2
-##
-
-## RGBA
-@@In colour = vec4
-##
-
-@@Out colour = vec4
-
-void main()
-{
-## Points
-	vec2 uv = mix(@In(uvs).xy, @In(uvs).zw, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
-	@Out(colour) = texture(@Texture(TEX), uv) * @Uniform(COLOUR);
-## Else
-	@Out(colour) = texture(@Texture(TEX), @In(uvs)) * @Uniform(COLOUR);
-##
-
-## RGBA
-	@Out(colour) *= @In(colour);
-##
-}
-)";
-
-const std::string FragmentShaderPointTextTemplate =
-R"(
-@@Version
-
 @@Uniform(vec4 COLOUR);
 @@Texture(sampler2D TEX)
 
 void main()
 {
+## Points
 	vec2 uv = mix(@In(TEXCOORDS).xy, @In(TEXCOORDS).zw, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
 	@Out(vec4 COLOUR) = texture(@Texture(TEX), uv) * @Uniform(COLOUR);
+## Else
+	@Out(vec4 COLOUR) = texture(@Texture(TEX), @In(TEXCOORDS)) * @Uniform(COLOUR);
+##
+
+## Colours
+	@Out(COLOUR) *= @In(COLOURS);
+##
 }
 )";
 

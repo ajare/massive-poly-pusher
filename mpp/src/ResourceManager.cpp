@@ -96,26 +96,70 @@ namespace mpp
 			program::Parser parser;
 
 			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShaderPointTextTemplate);
-			parser.setFragmentSource(FragmentShaderPointTextTemplate);
+			parser.setVertexSource(VertexShaderTextTemplate);
+			parser.setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, {});
+			auto ps = new ProgramProgramStream(&parser, {"Points"});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
 			createResource<Program>("__mpp_p2d_points_text", ResourceStreamPtr(ps))->load();
 		}
-		
-		set<string> attribs = { "Diffuse", "Points", "RGBA" };
-		auto ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
-		createResource<Program>("__mpp_p2d_points_text_coloured", ResourceStreamPtr(ps))->load();
+		{
+			mesh::MeshSpecification meshSpec;
 
-		attribs = { "Diffuse" };
-		ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
-		createResource<Program>("__mpp_p2d_tris_text", ResourceStreamPtr(ps))->load();
+			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
-		attribs = { "Diffuse", "RGBA" };
-		ps = new StringProgramStream(generateShader(VertexShaderTextTemplate, attribs), generateShader(FragmentShaderTextTemplate, attribs));
-		createResource<Program>("__mpp_p2d_tris_text_coloured", ResourceStreamPtr(ps))->load();
+			program::Parser parser;
+
+			parser.setMeshSpecification(meshSpec);
+			parser.setVertexSource(VertexShaderTextTemplate);
+			parser.setFragmentSource(FragmentShaderTextTemplate);
+
+			auto ps = new ProgramProgramStream(&parser, {});
+			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+			createResource<Program>("__mpp_p2d_tris_text", ResourceStreamPtr(ps))->load();
+		}
+		{
+			mesh::MeshSpecification meshSpec;
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+			program::Parser parser;
+
+			parser.setMeshSpecification(meshSpec);
+			parser.setVertexSource(VertexShaderTextTemplate);
+			parser.setFragmentSource(FragmentShaderTextTemplate);
+
+			auto ps = new ProgramProgramStream(&parser, { "Points", "Colours" });
+			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+			createResource<Program>("__mpp_p2d_points_text_coloured", ResourceStreamPtr(ps))->load();
+		}
+		{
+			mesh::MeshSpecification meshSpec;
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+			program::Parser parser;
+
+			parser.setMeshSpecification(meshSpec);
+			parser.setVertexSource(VertexShaderTextTemplate);
+			parser.setFragmentSource(FragmentShaderTextTemplate);
+
+			auto ps = new ProgramProgramStream(&parser, { "Colours" });
+			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+			createResource<Program>("__mpp_p2d_tris_text_coloured", ResourceStreamPtr(ps))->load();
+		}
 
 		// Default texture
 		vector<uint8> whiteData(16, 255);
