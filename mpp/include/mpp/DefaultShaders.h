@@ -163,7 +163,7 @@ R"(
 @@Version
 
 ## Diffuse
-@@Uniform diffuse = vec4
+@@Uniform DIFFUSE = vec4
 ## Texture
 @@Texture TEX = sampler2D
 ## TexCoords2
@@ -191,7 +191,7 @@ void main()
 ## RGBA
 	colour = @In(colour);
 ## Diffuse
-    colour *= @Uniform(diffuse);
+    colour *= @Uniform(DIFFUSE);
 ##
 
 ## Points&Rotation&!TexCoords2&!TexCoords4

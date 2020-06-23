@@ -26,6 +26,7 @@
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
 #include <mpp/LineBatch.h>
+#include <mpp/QuadBatch.h>
 
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
@@ -174,6 +175,78 @@ void shutdown()
 	delete gLogger;
 }
 
+void updateLineBatch(mpp::LineBatch* lineBatch, size_t lineBatchCount, float totalTime)
+{
+	lineBatch->startUpdate(lineBatchCount);
+	float* posDataDst = (float*)lineBatch->getPositionData();
+
+	float linesX = gRenderSystem->getWindowWidth() * 0.25f;
+	float linesW = gRenderSystem->getWindowWidth() * 0.5f;
+	float linesY = gRenderSystem->getWindowWidth() * 0.5f;
+	for (uint32 i = 0; i < lineBatchCount; ++i)
+	{
+		float y0 =
+			sinf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
+			sinf(((float)i / (lineBatchCount / 2)) * 6.2832f + 1.2f - totalTime) +
+			sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 2.4f - totalTime) * 0.75f;
+
+		*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
+		*posDataDst++ = linesY + 100 + y0 * 10;
+		*posDataDst++ = 1.0f;
+		*posDataDst++ = 1.0f;
+		*posDataDst++ = 1.0f;
+		*posDataDst++ = 1.0f;
+
+		float y1 =
+			cosf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
+			sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 3.2f - totalTime) * 0.5f +
+			cosf(((float)i / (lineBatchCount / 3)) * 6.2832f + 5.4f - totalTime) * 0.5f;
+
+		*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
+		*posDataDst++ = linesY - 100 - y1 * 10;
+		*posDataDst++ = 1.0f;
+		*posDataDst++ = 1.0f;
+		*posDataDst++ = 1.0f;
+		*posDataDst++ = 1.0f;
+	}
+
+	lineBatch->finishUpdate(lineBatchCount, false);
+
+	gRenderSystem->renderModelImmediate(*lineBatch, false);
+}
+
+void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float totalTime)
+{
+	auto posBuffer = (float*)quadBatch->getPositionData();
+	auto texBuffer = (float*)quadBatch->getTexCoordData();
+	auto colBuffer = (uint8_t*)quadBatch->getColourData();
+
+	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < quadBatchCount; ++i)
+	{
+		// Position/rotation data
+		posBuffer[pOffset + 0] = 400;
+		posBuffer[pOffset + 1] = 200;
+
+		// Texture data
+		texBuffer[tOffset + 0] = 0.5f;
+		texBuffer[tOffset + 1] = 0.5f;
+
+		// Colour data
+		colBuffer[cOffset + 0] = 255;
+		colBuffer[cOffset + 1] = 255;
+		colBuffer[cOffset + 2] = 255;
+		colBuffer[cOffset + 3] = 255;
+
+		pOffset += 2;
+		tOffset += 2;
+		cOffset += 4;
+	}
+
+	quadBatch->finishUpdate(quadBatchCount, true);
+
+	gRenderSystem->renderModelImmediate(*quadBatch, false);
+}
+
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	atexit(shutdown);
@@ -248,8 +321,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// Marble
 		TextureStream* textureStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
-
 		gResourceManager->createResource<Texture>("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
+
+		// Arrow
+		textureStream = loadImage(gOptions.resourceLocation + "arrow.png", false);
+		gResourceManager->createResource<Texture>("arrow.png", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
@@ -334,6 +410,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gResourceManager);
 
 		lineBatch->load();
+
+		const size_t quadBatchCount{ 1 };
+		auto quadBatch = new QuadBatch(
+			"TestQuads",
+			QuadBatch::VertexOptions::Auto,
+			mesh::Vertex::DataType::Float,
+			mesh::Vertex::DataType::Float,
+			Batch::ColourOptions::UByteRGBA,
+			QuadBatch::RotationOptions::None,
+			true,
+			32,
+			32,
+			nullptr,
+			gResourceManager->getResource("arrow.png"),
+			false,
+			32,
+			quadBatchCount,
+			gRenderSystem,
+			gResourceManager);
+
+		quadBatch->load();
 
 		//
 		// Camera setup
@@ -567,42 +664,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->setProjection2dOrthographic();
 
-			lineBatch->startUpdate(lineBatchCount);
-			float* posDataDst = (float*)lineBatch->getPositionData();
-
-			float linesX = gRenderSystem->getWindowWidth() * 0.25f;
-			float linesW = gRenderSystem->getWindowWidth() * 0.5f;
-			float linesY = gRenderSystem->getWindowWidth() * 0.5f;
-			for (uint32 i = 0; i < lineBatchCount; ++i)
-			{
-				float y0 =
-					sinf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
-					sinf(((float)i / (lineBatchCount / 2)) * 6.2832f + 1.2f - totalTime) +
-					sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 2.4f - totalTime) * 0.75f;
-
-				*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
-				*posDataDst++ = linesY + 100 + y0 * 10;
-				*posDataDst++ = 1.0f;
-				*posDataDst++ = 1.0f;
-				*posDataDst++ = 1.0f;
-				*posDataDst++ = 1.0f;
-
-				float y1 =
-					cosf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
-					sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 3.2f - totalTime) * 0.5f +
-					cosf(((float)i / (lineBatchCount / 3)) * 6.2832f + 5.4f - totalTime) * 0.5f;
-
-				*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
-				*posDataDst++ = linesY - 100 - y1 * 10;
-				*posDataDst++ = 1.0f;
-				*posDataDst++ = 1.0f;
-				*posDataDst++ = 1.0f;
-				*posDataDst++ = 1.0f;
-			}
-
-			lineBatch->finishUpdate(lineBatchCount, false);
-
-			gRenderSystem->renderModelImmediate(*lineBatch, false);
+			//updateLineBatch(lineBatch, lineBatchCount, totalTime);
+			updateQuadBatch(quadBatch, quadBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
