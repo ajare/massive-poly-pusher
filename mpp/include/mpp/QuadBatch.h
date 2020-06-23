@@ -17,6 +17,13 @@ namespace mpp
 			Auto,
 			PreferTrianglesToPoints
 		};
+
+		enum class TexCoordsOptions
+		{
+			None,
+			TexCoords2,
+			TexCoords4
+		};
 		
 		enum class RotationOptions
 		{
@@ -32,6 +39,8 @@ namespace mpp
 
 		mpp::mesh::Vertex::DataType mTexcoordType;
 
+		TexCoordsOptions mTexCoordOptions;
+
 		RotationOptions mRotationOptions;
 
 		bool mSameSize;
@@ -42,7 +51,7 @@ namespace mpp
 
 		bool mUsePointSprites;
 
-		bool mUseTexCoords, mTextureAtlas;
+		bool mTextureAtlas;
 
 		int mTexCoordBufferStride;
 
@@ -78,7 +87,6 @@ namespace mpp
 			mpp::mesh::Vertex::DataType texcoordType,
 			ColourOptions colourOptions,
 			RotationOptions rotationOptions,
-			bool useDiffuseColour,
 			bool sameSize,
 			int maxDimX,
 			int maxDimY,

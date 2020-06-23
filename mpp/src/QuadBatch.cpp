@@ -19,10 +19,9 @@ namespace mpp
 	QuadBatch::QuadBatch(string const& name,
 		VertexOptions vertexOptions,
 		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType, 
+		mpp::mesh::Vertex::DataType texcoordType,
 		ColourOptions colourOptions,
 		RotationOptions rotationOptions,
-		bool useDiffuseColour,
 		bool sameSize,
 		int maxDimX,
 		int maxDimY,
@@ -33,7 +32,7 @@ namespace mpp
 		uint32 initialCount,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, colourOptions, useDiffuseColour, initialCount, renderSystem, resourceMgr)
+		: Batch(name, colourOptions, false, initialCount, renderSystem, resourceMgr)
 		, mRotate(false)
 		, mVertexOptions(vertexOptions)
 		, mPositionType(positionType)
@@ -43,7 +42,6 @@ namespace mpp
 		, mMaxDimX(maxDimX)
 		, mMaxDimY(maxDimY)
 		, mUsePointSprites(false)
-		, mUseTexCoords(false)
 		, mProgram(program)
 		, mTexture(texture)
 		, mTextureAtlas(textureAtlas)
@@ -71,7 +69,7 @@ namespace mpp
 		}
 
 		// Tex coords
-		if (mUseTexCoords)
+		if (mTexCoordOptions == TexCoordsOptions::TexCoords2)
 		{
 			writeFloat(u, texCoordPtr);
 			writeFloat(v, texCoordPtr);
@@ -119,7 +117,7 @@ namespace mpp
 		}
 
 		// Tex coords
-		if (mUseTexCoords)
+		if (mTexCoordOptions == TexCoordsOptions::TexCoords4)
 		{
 			writeFloat(u0, texCoordPtr);
 			writeFloat(v0, texCoordPtr);
@@ -193,16 +191,13 @@ namespace mpp
 	 */
 	void QuadBatch::setTexCoordBufferStride()
 	{
-		if (mUseTexCoords)
+		if (mTexCoordOptions == TexCoordsOptions::TexCoords2)
 		{
-			if (mUsePointSprites && mTextureAtlas)
-			{
-				mTexCoordBufferStride = Vertex::getDataTypeSize(mTexcoordType) * 4; // U0,V0,U1,V1
-			}
-			else
-			{
-				mTexCoordBufferStride = Vertex::getDataTypeSize(mTexcoordType) * 2; // U,V
-			}
+			mTexCoordBufferStride = Vertex::getDataTypeSize(mTexcoordType) * 2; // U,V
+		}
+		else if (mTexCoordOptions == TexCoordsOptions::TexCoords4)
+		{
+			mTexCoordBufferStride = Vertex::getDataTypeSize(mTexcoordType) * 4; // U0,V0,U1,V1
 		}
 	}
 
@@ -305,9 +300,37 @@ namespace mpp
 			caps.pointSizeRange[0] < mMaxDimX && caps.pointSizeRange[1] > mMaxDimX;
 
 		mUsePointSprites = canUsePointSprites && !useTriangles;
-		mUseTexCoords = mTexture != nullptr;
-
 		mRotate = mRotationOptions != RotationOptions::None && mUsePointSprites;
+
+		// We use texture coords if:
+		// - We are using triangles (texcoords2)
+		// - If we are using points:
+		//   - If are using a texture atlas (texcoords4)
+		//   - If we are rotating:
+		//     - If we are not using an atlas (texcoords2)
+		//     - If we are using an atlas (texcoords4)
+		if (!mTexture)
+		{
+			mTexCoordOptions = TexCoordsOptions::None;
+		}
+		else
+		{
+			if (!mUsePointSprites)
+			{
+				mTexCoordOptions = TexCoordsOptions::TexCoords2;
+			}
+			else
+			{
+				if (mTextureAtlas)
+				{
+					mTexCoordOptions = TexCoordsOptions::TexCoords4;
+				}
+				else if (mRotate)
+				{
+					mTexCoordOptions = TexCoordsOptions::TexCoords2;
+				}
+			}
+		}
 
 		auto primitiveType = mUsePointSprites ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
@@ -378,17 +401,11 @@ namespace mpp
 			layout->createAttribute(component, dataType, true);
 		}
 
-		// Allow diffuse colouring
-		if (mUseDiffuse)
-		{
-			flags |= MPP_PROGRAM_TAGS_DIFFUSE;
-		}
-
 		// Create material
 		auto materialResource = mProgram
-			? createMaterial(getName() + "_LineBatch", mProgram, mTexture ? mTexture->getName() : "__mpp_tex_none", flags)
-			: createMaterial(getName() + "_LineBatch", mTexture ? mTexture->getName() : "__mpp_tex_none", flags);
-		
+			? createMaterial(getName() + "_QuadBatch", mProgram, mTexture ? mTexture->getName() : "__mpp_tex_none", flags)
+			: createMaterial(getName() + "_QuadBatch", mTexture ? mTexture->getName() : "__mpp_tex_none", flags);
+
 		// Set up vertex data.
 		int primitiveCount = mUsePointSprites ? mMaxCount * 1 : mMaxCount * 2;
 		int vertexCount = getVertexCount(primitiveCount);
