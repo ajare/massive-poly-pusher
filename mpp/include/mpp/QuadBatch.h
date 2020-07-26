@@ -79,6 +79,8 @@ namespace mpp
 
 		int getVertexCount(int primitiveCount);
 
+		bool useTexCoords() const;
+
 	public:
 
 		QuadBatch(std::string const& name, 

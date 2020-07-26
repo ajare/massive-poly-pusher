@@ -35,6 +35,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProgramBuilder", "..\..\pro
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppMeshSpecificationParser", "..\..\mpp-mesh-specification-parser\build\vs2017\MppMeshSpecificationParser.vcxproj", "{94976D27-EA69-45F8-8C69-C98F28BA5CC9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4201332E-DD6A-40B6-8BCD-73AD3008D9C8} = {4201332E-DD6A-40B6-8BCD-73AD3008D9C8}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
