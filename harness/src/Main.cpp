@@ -228,8 +228,11 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 		posBuffer[pOffset + 1] = 200;
 
 		// Texture data
-		texBuffer[tOffset + 0] = 0.5f;
-		texBuffer[tOffset + 1] = 0.5f;
+		if (texBuffer)
+		{
+			texBuffer[tOffset + 0] = 0.5f;
+			texBuffer[tOffset + 1] = 0.5f;
+		}
 
 		// Colour data
 		colBuffer[cOffset + 0] = 255;

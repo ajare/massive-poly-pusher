@@ -35,6 +35,7 @@ namespace mpp
 		: Batch(name, colourOptions, false, initialCount, renderSystem, resourceMgr)
 		, mRotate(false)
 		, mVertexOptions(vertexOptions)
+		, mTexCoordOptions(TexCoordsOptions::None)
 		, mPositionType(positionType)
 		, mTexcoordType(texcoordType)
 		, mRotationOptions(rotationOptions)
@@ -286,6 +287,15 @@ namespace mpp
 	}
 
 	/*
+	 * Is this batch using texture coordinates?
+	 *
+	 */
+	bool QuadBatch::useTexCoords() const
+	{
+		return mTexCoordOptions != TexCoordsOptions::None;
+	}
+
+	/*
 	 * Create the data required.
 	 *
 	 */
@@ -309,11 +319,8 @@ namespace mpp
 		//   - If we are rotating:
 		//     - If we are not using an atlas (texcoords2)
 		//     - If we are using an atlas (texcoords4)
-		if (!mTexture)
-		{
-			mTexCoordOptions = TexCoordsOptions::None;
-		}
-		else
+		mTexCoordOptions = TexCoordsOptions::None;
+		if (mTexture)
 		{
 			if (!mUsePointSprites)
 			{
@@ -352,16 +359,20 @@ namespace mpp
 		{
 			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
 		}
-		if (mUseTexCoords)
+#
+		switch (mTexCoordOptions)
 		{
-			if (mUsePointSprites && mTextureAtlas)
-			{
-				layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, false);
-			}
-			else
-			{
-				layout->createAttribute(mesh::Vertex::Component::TexCoord2, mTexcoordType, false);
-			}
+		case TexCoordsOptions::TexCoords2:
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mTexcoordType, false);
+			break;
+
+		case TexCoordsOptions::TexCoords4:
+			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, false);
+			break;
+
+		case TexCoordsOptions::None:
+		default:
+			break;
 		}
 
 		if (useColours)
@@ -418,7 +429,7 @@ namespace mpp
 		int8* texCoordData = nullptr;
 
 		mainData = new int8[vertexCount * mMainBufferStride];
-		if (mUseTexCoords)
+		if (useTexCoords())
 		{
 			texCoordData = new int8[vertexCount * mTexCoordBufferStride];
 		}
@@ -426,7 +437,7 @@ namespace mpp
 		shared_ptr<const int8> mainDataPtr(mainData, [](int8*p) { delete[] p; });
 		shared_ptr<const int8> texCoordDataPtr(nullptr, [](int8*p) { delete[] p; });;
 
-		if (mUseTexCoords)
+		if (useTexCoords())
 		{
 			texCoordDataPtr.reset(texCoordData);
 		}
@@ -451,7 +462,7 @@ namespace mpp
 			: new Mesh(getRenderSystem(), getName(), materialResource, primitiveType, primitiveCount, mIndexWidth, indices, storageType, (float)mMaxDimX);
 
 		VertexBuffer* mainBuffer = mesh->createVertexBuffer(vertexCount, mMainBufferStride, false, mainDataPtr);
-		VertexBuffer* texCoordBuffer = mUseTexCoords ? mesh->createVertexBuffer(vertexCount, mTexCoordBufferStride, false, texCoordDataPtr) : nullptr;
+		VertexBuffer* texCoordBuffer = mTexCoordOptions != TexCoordsOptions::None ? mesh->createVertexBuffer(vertexCount, mTexCoordBufferStride, false, texCoordDataPtr) : nullptr;
 
 		// Set specification buffers
 		setSpecificationPointers(mainBuffer, texCoordBuffer);
@@ -473,19 +484,21 @@ namespace mpp
 
 		curAttrib++;
 
-		if (mUseTexCoords)
+		switch (mTexCoordOptions)
 		{
-			if (mUsePointSprites && mTextureAtlas)
-			{
-				// TexCoords4
-				texCoordBuffer->setAttribute(curAttrib, mTexcoordType, 4, 0, false);
-			}
-			else
-			{
-				// TexCoord2
-				texCoordBuffer->setAttribute(curAttrib, mTexcoordType, 2, 0, false);
-			}
+		case TexCoordsOptions::TexCoords2:
+			texCoordBuffer->setAttribute(curAttrib, mTexcoordType, 2, 0, false);
 			curAttrib++;
+			break;
+
+		case TexCoordsOptions::TexCoords4:
+			texCoordBuffer->setAttribute(curAttrib, mTexcoordType, 4, 0, false);
+			curAttrib++;
+			break;
+
+		case TexCoordsOptions::None:
+		default:
+			break;
 		}
 
 		if (useColours)
@@ -536,7 +549,7 @@ namespace mpp
 			int newSize = getVertexCount(count) * mMainBufferStride;
 			data.resize(newSize);
 
-			if (mUseTexCoords)
+			if (useTexCoords())
 			{
 				vertexBuffer1 = mMeshes[0]->getVertexBuffer(1);
 				auto& data = vertexBuffer1->getBufferData();
@@ -580,7 +593,7 @@ namespace mpp
 		vertexBuffer0->mapBufferData(getVertexCount(count));
 		mMeshes[0]->setNumPrimitives(mUsePointSprites ? count : count * 2);
 
-		if (updateTexCoords && mUseTexCoords)
+		if (updateTexCoords && useTexCoords())
 		{
 			mpp::VertexBuffer* vertexBuffer1 = mMeshes[0]->getVertexBuffer(1);
 			vertexBuffer1->mapBufferData(getVertexCount(count));
