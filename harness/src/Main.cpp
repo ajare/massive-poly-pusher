@@ -224,8 +224,8 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < quadBatchCount; ++i)
 	{
 		// Position/rotation data
-		posBuffer[pOffset + 0] = 400;
-		posBuffer[pOffset + 1] = 200;
+		posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
+		posBuffer[pOffset + 1] = 200 + cosf(totalTime * (i + 2)) * 100;
 
 		// Texture data
 		if (texBuffer)
@@ -240,9 +240,9 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 		colBuffer[cOffset + 2] = 255;
 		colBuffer[cOffset + 3] = 255;
 
-		pOffset += 2;
-		tOffset += 2;
-		cOffset += 4;
+		pOffset += quadBatch->getPositionStride() / sizeof(float);
+		tOffset += quadBatch->getTexCoordStride() / sizeof(float);
+		cOffset += quadBatch->getColourStride() / sizeof(uint8_t);
 	}
 
 	quadBatch->finishUpdate(quadBatchCount, true);
@@ -414,7 +414,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		lineBatch->load();
 
-		const size_t quadBatchCount{ 1 };
+		const size_t quadBatchCount{ 8 };
 		auto quadBatch = new QuadBatch(
 			"TestQuads",
 			QuadBatch::VertexOptions::Auto,
