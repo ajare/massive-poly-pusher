@@ -614,6 +614,21 @@ namespace mpp
 		return mPointSize;
 	}
 
+	size_t QuadBatch::getPositionStride() const
+	{
+		return mMainBufferStride;
+	}
+
+	size_t QuadBatch::getTexCoordStride() const
+	{
+		return mTexCoordBufferStride;
+	}
+
+	size_t QuadBatch::getColourStride() const
+	{
+		return mMainBufferStride;
+	}
+
 	bool QuadBatch::usePointSprites() const
 	{
 		return mUsePointSprites;

@@ -109,5 +109,11 @@ namespace mpp
 		void setPointSize(float size);
 
 		float getPointSize() const;
+
+		size_t getPositionStride() const;
+
+		size_t getTexCoordStride() const;
+
+		size_t getColourStride() const;
 	};
 }

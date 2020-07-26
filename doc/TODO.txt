@@ -46,6 +46,16 @@ Current work
 - Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification [DONE]
 - Create a separate lib to do shader parsing and generation [DONE]
   - Create app which uses this to generate programs from a template, based on a MeshSpecification [DONE]
+- Ensure all 2d batches work, for all options:
+  - IndexedTriangleBatch
+  - TriangleBatch
+  - LineBatch
+  - QuadBatch
+    - With texture
+	- With texture atlas
+	- With rotation
+	- Using triangles
+	- Using point sprites
 - Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.
 - Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
   - Check max number of vertex attribs in createAttribute
@@ -61,4 +71,4 @@ Current work
   - Create model inspector?
 - Look into separate attribute format:
   - https://www.khronos.org/opengl/wiki/Vertex_Specification#Separate_attribute_format
-- Ensure 2d batches work
+
