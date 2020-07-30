@@ -258,8 +258,8 @@ namespace mpp
 
 		// Create material
 		auto materialResource = mProgram
-			? createMaterial(getName() + "_TriangleBatch", mProgram, mTexture ? mTexture->getName() : "__mpp_tex_none", flags)
-			: createMaterial(getName() + "_TriangleBatch", mTexture ? mTexture->getName() : "__mpp_tex_none", flags);
+			? createMaterial(getName() + "_TriangleBatch", mProgram, mTexture ? mTexture->getName() : "__mpp_tex_none__", flags)
+			: createMaterial(getName() + "_TriangleBatch", mTexture ? mTexture->getName() : "__mpp_tex_none__", flags);
 
 		// Set up vertex data.
 		int primitiveCount = mMaxCount;

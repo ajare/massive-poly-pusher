@@ -8,14 +8,18 @@ namespace mpp
 {
 	class _MPPAPI QuadBatch : public Batch
 	{
-		bool mRotate;
-
 	public:
 
 		enum class VertexOptions
 		{
 			Auto,
 			PreferTrianglesToPoints
+		};
+
+		enum class PositionOptions
+		{
+			Position2,
+			Position4
 		};
 
 		enum class TexCoordsOptions
@@ -33,6 +37,8 @@ namespace mpp
 
 	private:
 
+		PositionOptions mPositionOptions;
+
 		VertexOptions mVertexOptions;
 
 		mpp::mesh::Vertex::DataType mPositionType;
@@ -43,6 +49,8 @@ namespace mpp
 
 		RotationOptions mRotationOptions;
 
+		bool mRotate;
+		
 		bool mSameSize;
 
 		int mMaxDimX, mMaxDimY;
@@ -115,5 +123,11 @@ namespace mpp
 		size_t getTexCoordStride() const;
 
 		size_t getColourStride() const;
+
+		bool getRotate() const;
+
+		TexCoordsOptions getTexCoordOptions() const;
+
+		PositionOptions getPositionOptions() const;
 	};
 }

@@ -49,13 +49,13 @@
     <ClCompile Include="..\..\src\Parser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\Attribute.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\ShaderStage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\include\mpp\program\glslRegistry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Attribute.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

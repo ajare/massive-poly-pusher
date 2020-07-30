@@ -212,7 +212,7 @@ namespace mpp
 		}
 
 		// Create material
-		auto materialResource = createMaterial(getName() + "_LineBatch", "__mpp_tex_none", flags);
+		auto materialResource = createMaterial(getName() + "_LineBatch", "__mpp_tex_none__", flags);
 
 		// Set up vertex data.
 		int primitiveCount = mMaxCount;

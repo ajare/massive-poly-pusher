@@ -310,6 +310,12 @@ namespace mpp
 			caps.pointSizeRange[0] < mMaxDimX && caps.pointSizeRange[1] > mMaxDimX;
 
 		mUsePointSprites = canUsePointSprites && !useTriangles;
+
+		if (mRotationOptions != RotationOptions::None && !mUsePointSprites)
+		{
+			THROW_MPP("Cannot rotate unless using point sprites.", __LINE__, __FILE__, __FUNCTION__);
+		}
+
 		mRotate = mRotationOptions != RotationOptions::None && mUsePointSprites;
 
 		// We use texture coords if:
@@ -332,19 +338,30 @@ namespace mpp
 				{
 					mTexCoordOptions = TexCoordsOptions::TexCoords4;
 				}
-				else if (mRotate)
-				{
-					mTexCoordOptions = TexCoordsOptions::TexCoords2;
-				}
 			}
 		}
 
 		auto primitiveType = mUsePointSprites ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
-		uint32 flags = 0;
+		// Set program flags
+		uint32 flags{ 0 };
 
-		// Create material.
+		if (mTexture)
+		{
+			flags |= MPP_PROGRAM_TAGS_TEXTURE1;
+		}
+
+		if (mUsePointSprites)
+		{
+			flags |= MPP_PROGRAM_TAGS_PRIM_POINTS;
+		}
+		else
+		{
+			flags |= MPP_PROGRAM_TAGS_PRIM_TRIANGLES;
+		}
+
+		// Create material
 		string materialName = getName() + "_QuadBatch";
 
 		mSpecification = mesh::MeshSpecification(primitiveType);
@@ -353,10 +370,12 @@ namespace mpp
 		if (mUsePointSprites && mRotate)
 		{
 			flags |= MPP_PROGRAM_TAGS_ROTATION;
+			mPositionOptions = PositionOptions::Position4;
 			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
 		}
 		else
 		{
+			mPositionOptions = PositionOptions::Position2;
 			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
 		}
 #
@@ -414,8 +433,8 @@ namespace mpp
 
 		// Create material
 		auto materialResource = mProgram
-			? createMaterial(getName() + "_QuadBatch", mProgram, mTexture ? mTexture->getName() : "__mpp_tex_none", flags)
-			: createMaterial(getName() + "_QuadBatch", mTexture ? mTexture->getName() : "__mpp_tex_none", flags);
+			? createMaterial(getName() + "_QuadBatch", mProgram, mTexture ? mTexture->getName() : "__mpp_tex_none__", flags)
+			: createMaterial(getName() + "_QuadBatch", mTexture ? mTexture->getName() : "__mpp_tex_none__", flags);
 
 		// Set up vertex data.
 		int primitiveCount = mUsePointSprites ? mMaxCount * 1 : mMaxCount * 2;
@@ -637,6 +656,21 @@ namespace mpp
 	int QuadBatch::getPrimitiveCount() const
 	{
 		return getCount() * (mUsePointSprites ? 1 : 2);
+	}
+
+	bool QuadBatch::getRotate() const
+	{
+		return mRotate;
+	}
+
+	QuadBatch::TexCoordsOptions QuadBatch::getTexCoordOptions() const
+	{
+		return mTexCoordOptions;
+	}
+
+	QuadBatch::PositionOptions QuadBatch::getPositionOptions() const
+	{
+		return mPositionOptions;
 	}
 
 }

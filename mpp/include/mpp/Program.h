@@ -35,9 +35,18 @@
 #define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token)
 #define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token)
 
+// These must match (Vertex::Primitive::Type + 1)
+#define MPP_PROGRAM_TAGS_PRIM_POINTS		(1 << 0)
+#define MPP_PROGRAM_TAGS_PRIM_LINES			(1 << 1)
+#define MPP_PROGRAM_TAGS_PRIM_TRIANGLES		(MPP_PROGRAM_TAGS_PRIM_POINTS + MPP_PROGRAM_TAGS_PRIM_LINES)
+
 // These must start from above MeshSpecification's maximum hash value
-#define MPP_PROGRAM_TAGS_DIFFUSE			0x0800
-#define MPP_PROGRAM_TAGS_ROTATION			0x1000
+#define MPP_PROGRAM_TAGS_TEXTURE1			(1 << 10)
+#define MPP_PROGRAM_TAGS_TEXTURE2			(1 << 11)
+#define MPP_PROGRAM_TAGS_TEXTURE3			(1 << 12)
+#define MPP_PROGRAM_TAGS_TEXTURE4			(1 << 13)
+#define MPP_PROGRAM_TAGS_DIFFUSE			(1 << 14)
+#define MPP_PROGRAM_TAGS_ROTATION			(1 << 15)
 
 // Loader flags
 #define MPP_PROGRAM_LOADER_NEWSTYLE			0x0001
