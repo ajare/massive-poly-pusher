@@ -12,7 +12,7 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	ProgramProgramStream::ProgramProgramStream(program::Parser* parser, set<string> const& attribs)
+	ProgramProgramStream::ProgramProgramStream(std::shared_ptr<program::Parser> parser, set<string> const& attribs)
 		: mParser(parser)
 		, mAttribs(attribs)
 	{

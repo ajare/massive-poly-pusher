@@ -120,7 +120,7 @@ namespace mpp
 
 		matStream->setProgram(program->getName());
 
-		matStream->setTexture("TEX", texture);
+		matStream->setTexture("TEX1", texture);
 
 		auto materialResource = resourceMgr->getResource(name, true);
 		if (materialResource)

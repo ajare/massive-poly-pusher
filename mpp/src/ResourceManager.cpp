@@ -53,16 +53,16 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-			program::Parser parser;
+			auto parser = make_shared<program::Parser>();
 
-			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShader3dTemplate);
-			parser.setFragmentSource(FragmentShader3dTemplate);
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShader3dTemplate);
+			parser->setFragmentSource(FragmentShader3dTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, {});
+			auto ps = new ProgramProgramStream(parser, {});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-			createResource<Program>("__mpp_p3d_tris_p3n3t2c4", ResourceStreamPtr(ps))->load();
+			createResource<Program>("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
 		// 2d fullscreen program
@@ -73,16 +73,16 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
-			program::Parser parser;
+			auto parser = make_shared<program::Parser>();
 
-			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShaderFullscreenTemplate);
-			parser.setFragmentSource(FragmentShaderFullscreenTemplate);
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderFullscreenTemplate);
+			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, {});
+			auto ps = new ProgramProgramStream(parser, {});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-			createResource<Program>("__mpp_p2d_fullscreen", ResourceStreamPtr(ps))->load();
+			createResource<Program>("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Internal text programs
@@ -93,16 +93,16 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 
-			program::Parser parser;
+			auto parser = make_shared<program::Parser>();
 
-			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShaderTextTemplate);
-			parser.setFragmentSource(FragmentShaderTextTemplate);
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderTextTemplate);
+			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, {"Points"});
+			auto ps = new ProgramProgramStream(parser, {"Points"});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-			createResource<Program>("__mpp_p2d_points_text", ResourceStreamPtr(ps))->load();
+			createResource<Program>("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -111,16 +111,16 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
-			program::Parser parser;
+			auto parser = make_shared<program::Parser>();
 
-			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShaderTextTemplate);
-			parser.setFragmentSource(FragmentShaderTextTemplate);
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderTextTemplate);
+			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, {});
+			auto ps = new ProgramProgramStream(parser, {});
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-			createResource<Program>("__mpp_p2d_tris_text", ResourceStreamPtr(ps))->load();
+			createResource<Program>("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -130,16 +130,16 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-			program::Parser parser;
+			auto parser = make_shared<program::Parser>();
 
-			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShaderTextTemplate);
-			parser.setFragmentSource(FragmentShaderTextTemplate);
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderTextTemplate);
+			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, { "Points", "Colours" });
+			auto ps = new ProgramProgramStream(parser, { "Points", "Colours" });
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-			createResource<Program>("__mpp_p2d_points_text_coloured", ResourceStreamPtr(ps))->load();
+			createResource<Program>("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -149,23 +149,23 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-			program::Parser parser;
+			auto parser = make_shared<program::Parser>();
 
-			parser.setMeshSpecification(meshSpec);
-			parser.setVertexSource(VertexShaderTextTemplate);
-			parser.setFragmentSource(FragmentShaderTextTemplate);
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderTextTemplate);
+			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(&parser, { "Colours" });
+			auto ps = new ProgramProgramStream(parser, { "Colours" });
 			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
-			createResource<Program>("__mpp_p2d_tris_text_coloured", ResourceStreamPtr(ps))->load();
+			createResource<Program>("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Default texture
 		vector<uint8> whiteData(16, 255);
 
 		TextureStream* blankStream = new TextureStream(&(whiteData[0]), 2, 2, 32, false);
-		createResource<Texture>("__mpp_tex_none", ResourceStreamPtr(blankStream))->load();
+		createResource<Texture>("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
 		InternalFont internalFont;
@@ -177,7 +177,7 @@ namespace mpp
 			32,
 			false);
 
-		createResource<Texture>("__mpp_tex_internalfont", ResourceStreamPtr(ts))->load();
+		createResource<Texture>("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
 
 		// 2D materials
 		// ...
@@ -264,43 +264,11 @@ namespace mpp
 		return mResources[name];
 	}
 
-	/*
-	 * Gets (or creates if not existing) a 2d program based on the given spec and flags.
-	 *
-	 */
-	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load)
+	set<std::string> ResourceManager::getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const
 	{
-		uint32 specHash = spec.getHashCode();
-		specHash |= flags;
+		set<string> attribs;
 
-		// Does it already exist?
-		auto createdProgram = mDefaultPrograms.find(specHash);
-		if (createdProgram != mDefaultPrograms.end())
-		{
-			return createdProgram->second;
-		}
-
-		// Get spec name and tags
-		set<string> tags;
-		string specName = "__mpp_p2d_";
-
-		auto primType = spec.getPrimitiveType();
-		switch (primType)
-		{
-		case mesh::Primitive::Type::Points:
-			specName += "points_";
-			tags.insert("Points");
-			break;
-		case mesh::Primitive::Type::Lines:
-			specName += "lines_";
-			break;
-		case mesh::Primitive::Type::Triangles:
-			specName += "tris_";
-			break;
-		default:
-			break;
-		}
-
+		// Mesh specification
 		for (int i = 0; i < spec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto const& layout = spec.getVertexBufferAttributeLayout(i);
@@ -311,51 +279,43 @@ namespace mpp
 				switch (attrib.component)
 				{
 				case mesh::Vertex::Component::Position2:
-					specName += "p2";
-					tags.insert("Position2");
+					attribs.insert("Position2");
 					break;
 				case mesh::Vertex::Component::Position3:
-					specName += "p3";
-					tags.insert("Position3");
+					attribs.insert("Position3");
 					break;
 				case mesh::Vertex::Component::Position4:
-					specName += "p4";
-					tags.insert("Position4");
+					attribs.insert("Position4");
 					break;
 				case mesh::Vertex::Component::Normal3:
-					specName += "n3";
-					tags.insert("Normal");
+					attribs.insert("Normal3");
 					break;
 				case mesh::Vertex::Component::Normal4:
-					specName += "n4";
-					tags.insert("Normal");
+					attribs.insert("Normal4");
 					break;
 				case mesh::Vertex::Component::TexCoord2:
-					specName += "t2";
-					tags.insert("Texture");
-					tags.insert("TexCoords2");
+					attribs.insert("TexCoords2");
 					break;
 				case mesh::Vertex::Component::TexCoord3:
-					specName += "t3";
-					tags.insert("Texture");
-					tags.insert("TexCoords3");
+					attribs.insert("TexCoords3");
 					break;
 				case mesh::Vertex::Component::TexCoord4:
-					specName += "t4";
-					tags.insert("Texture");
-					tags.insert("TexCoords4");
+					attribs.insert("TexCoords4");
 					break;
 				case mesh::Vertex::Component::Colour1:
-					specName += "c1";
-					tags.insert("Alpha");
+					attribs.insert("Colour1");
+					attribs.insert("Alpha");
+					attribs.insert("Colour");
 					break;
 				case mesh::Vertex::Component::Colour3:
-					specName += "c3";
-					tags.insert("RGB");
+					attribs.insert("Colour3");
+					attribs.insert("RGB");
+					attribs.insert("Colour");
 					break;
 				case mesh::Vertex::Component::Colour4:
-					specName += "c4";
-					tags.insert("RGBA");
+					attribs.insert("Colour4");
+					attribs.insert("RGBA");
+					attribs.insert("Colour");
 					break;
 				default:
 					break;
@@ -363,33 +323,119 @@ namespace mpp
 			}
 		}
 
-		// Give each flag a character
-		if (flags != 0)
+		// Flags
+		if (flags & MPP_PROGRAM_TAGS_PRIM_POINTS)
 		{
-			specName += "_";
-
-			if (flags & MPP_PROGRAM_TAGS_DIFFUSE)
-			{
-				specName += "d";
-				tags.insert("Diffuse");
-			}
-			if (flags & MPP_PROGRAM_TAGS_ROTATION)
-			{
-				specName += "r";
-				tags.insert("Rotation");
-			}
+			attribs.insert("Points");
 		}
 
-		// Generate shaders
-		auto ps = new StringProgramStream(generateShader(VertexShader2dTemplate, tags), generateShader(FragmentShader2dTemplate, tags));
+		if (flags & MPP_PROGRAM_TAGS_PRIM_LINES)
+		{
+			attribs.insert("Lines");
+		}
+
+		if (flags & MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
+		{
+			attribs.insert("Triangles");
+		}
+
+		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
+		{
+			attribs.insert("Texture");
+		}
+
+		// See MeshSpecification::getHashCode()
+		if (flags & 0x300) // Colour bits
+		{
+			attribs.insert("Colours");
+		}
+
+		if (flags & MPP_PROGRAM_TAGS_ROTATION)
+		{
+			attribs.insert("Rotation");
+		}
+
+		if (flags & MPP_PROGRAM_TAGS_DIFFUSE)
+		{
+			attribs.insert("Diffuse");
+		}
+
+		return attribs;
+	}
+
+	/*
+	 * Gets (or creates if not existing) a 2d program based on the given spec and flags.
+	 *
+	 */
+	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load)
+	{
+		// Calculate hash
+		uint32 specHash = spec.getHashCode() | flags;
+		
+		// Does it already exist?
+		auto createdProgram = mDefaultPrograms.find(specHash);
+		if (createdProgram != mDefaultPrograms.end())
+		{
+			return createdProgram->second;
+		}
+
+		auto parser = make_shared<program::Parser>();
+
+		parser->setMeshSpecification(spec);
+		parser->setVertexSource(VertexShader2dTemplate);
+		parser->setFragmentSource(FragmentShader2dTemplate);
+
+		auto ps = new ProgramProgramStream(parser, getProgramAttributes(spec, flags));
+		ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
+
+		// Generate name
+		string specName = spec.getDescriptor("__mpp_p2d_");
+
+		// Add texture units, diffuse, rotation.
+		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
+		{
+			specName += "_s";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE1)
+		{
+			specName += "1";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE2)
+		{
+			specName += "2";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE3)
+		{
+			specName += "3";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE4)
+		{
+			specName += "4";
+		}
+
+		if (flags & (MPP_PROGRAM_TAGS_DIFFUSE | MPP_PROGRAM_TAGS_ROTATION))
+		{
+			specName += "_";
+		}
+		if (flags & MPP_PROGRAM_TAGS_DIFFUSE)
+		{
+			specName += "d";
+		}
+		if (flags & MPP_PROGRAM_TAGS_ROTATION)
+		{
+			specName += "r";
+		}
+
+		specName += "__";
+
 		auto res = createResource<Program>(specName, ResourceStreamPtr(ps));
+		mDefaultPrograms[specHash] = res;
 
 		if (load)
 		{
 			res->load();
 		}
 
-		mDefaultPrograms[specHash] = res;
 		return res;
 	}
 

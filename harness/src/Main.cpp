@@ -227,6 +227,12 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 		posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
 		posBuffer[pOffset + 1] = 200 + cosf(totalTime * (i + 2)) * 100;
 
+		if (quadBatch->getRotate())
+		{
+			posBuffer[pOffset + 2] = 0.0f;
+			posBuffer[pOffset + 3] = 1.0f;
+		}
+
 		// Texture data
 		if (texBuffer)
 		{
@@ -235,10 +241,13 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 		}
 
 		// Colour data
-		colBuffer[cOffset + 0] = 255;
-		colBuffer[cOffset + 1] = 255;
-		colBuffer[cOffset + 2] = 255;
-		colBuffer[cOffset + 3] = 255;
+		if (colBuffer)
+		{
+			colBuffer[cOffset + 0] = 255;
+			colBuffer[cOffset + 1] = 255;
+			colBuffer[cOffset + 2] = 255;
+			colBuffer[cOffset + 3] = 255;
+		}
 
 		pOffset += quadBatch->getPositionStride() / sizeof(float);
 		tOffset += quadBatch->getTexCoordStride() / sizeof(float);
@@ -340,7 +349,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//meshMaterialStream->setProgram("program_test");
 		meshMaterialStream->setProgram(false, modelSpec, {});
 
-		meshMaterialStream->setTexture("TEX", "marble_texture4662.jpg");
+		meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
 		FileDataStream fileDatastream(gOptions.resourceLocation + "statue/statue.material");
@@ -402,6 +411,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
+		/*
 		const size_t lineBatchCount{ 100 };
 		auto lineBatch = new LineBatch(
 			"TestLines",
@@ -413,7 +423,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gResourceManager);
 
 		lineBatch->load();
-
+		*/
 		const size_t quadBatchCount{ 8 };
 		auto quadBatch = new QuadBatch(
 			"TestQuads",
@@ -434,6 +444,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gResourceManager);
 
 		quadBatch->load();
+		
 
 		//
 		// Camera setup
@@ -699,7 +710,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// Clean up
 		//
-		delete lineBatch;
+		//delete lineBatch;
+		//delete quadBatch
 	}
 	catch (mpp::MppException const& e)
 	{

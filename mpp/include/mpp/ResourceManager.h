@@ -128,6 +128,8 @@ namespace mpp
 
 		std::string generateShader(std::string const& templ, std::set<std::string> const& attribs);
 
+		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
+
 	public:
 
 		explicit ResourceManager(RenderSystem* renderSystem);
