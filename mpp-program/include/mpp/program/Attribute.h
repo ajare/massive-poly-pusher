@@ -25,13 +25,11 @@ namespace mpp
 		{
 			std::string name;
 			GLSLTypeDecl type;
-			mpp::mesh::Vertex::Component component;
-			mpp::mesh::Vertex::DataType dataType;
 			bool normalised{ false };
 
 		public:
 
-			std::string getGlslType() const;
+			std::string getGlslType(mesh::Vertex::DataType dataType, size_t size[2]) const;
 		};
 
 	}

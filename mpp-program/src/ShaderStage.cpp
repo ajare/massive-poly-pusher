@@ -61,7 +61,7 @@ namespace mpp
 
 			if (inIt != inAttribs.end())
 			{
-				return mesh::Vertex::getComponentSize(inIt->component);
+				return inIt->type.size[0] * inIt->type.size[1];
 			}
 
 			// Out vars
@@ -72,7 +72,7 @@ namespace mpp
 
 			if (outIt != outAttribs.end())
 			{
-				return mesh::Vertex::getComponentSize(outIt->component);
+				return outIt->type.size[0] * outIt->type.size[1];
 			}
 
 			// Uniform vars

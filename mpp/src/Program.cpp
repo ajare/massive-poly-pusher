@@ -65,7 +65,7 @@ namespace mpp
 
 		if (status == GL_FALSE) 
 		{
-			string msg = "Could not compile " + sourceType + " shader.";
+			string msg = "Could not compile " + sourceType + " shader for program '" + getName() + "'.\n";
 			
 			GLint infoLogLength;
 			glGetShaderiv(*id, GL_INFO_LOG_LENGTH, &infoLogLength);
@@ -73,6 +73,10 @@ namespace mpp
 			
 			glGetShaderInfoLog(*id, infoLogLength, NULL, strInfoLog);
 			msg += strInfoLog;
+
+			msg += "\n";
+			msg += "--------------------------------\n";
+			msg += source;
 			
 			delete[] strInfoLog;
 			glDeleteShader(*id); 
@@ -710,7 +714,7 @@ namespace mpp
 					
 					vi.def = "in";
 					vi.name = inAttrib.name;
-					vi.type = inAttrib.getGlslType();
+					vi.type = inAttrib.type.name;
 					vi.numComponents = inAttrib.type.size[0] * inAttrib.type.size[1];
 					vi.streamOffset = mVertexAttributes.empty() ? 0 :
 						mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;

@@ -229,8 +229,8 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 
 		if (quadBatch->getRotate())
 		{
-			posBuffer[pOffset + 2] = 0.0f;
-			posBuffer[pOffset + 3] = 1.0f;
+			posBuffer[pOffset + 2] = sinf(totalTime);
+			posBuffer[pOffset + 3] = cosf(totalTime);
 		}
 
 		// Texture data
@@ -431,7 +431,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			mesh::Vertex::DataType::Float,
 			mesh::Vertex::DataType::Float,
 			Batch::ColourOptions::UByteRGBA,
-			QuadBatch::RotationOptions::None,
+			QuadBatch::RotationOptions::TexCoords,
 			true,
 			32,
 			32,

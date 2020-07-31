@@ -10,18 +10,18 @@ namespace mpp
 
 		using namespace std;
 
-		string Attribute::getGlslType() const
+		string Attribute::getGlslType(mesh::Vertex::DataType dataType, size_t size[2]) const
 		{
-			string type;
-			int componentSize = mesh::Vertex::getComponentSize(component);
+			string glslType;
+			int componentSize = size[0] * size[1];
 
 			// Get dimension
 			switch (componentSize)
 			{
 			case 1:
-				type = ""; break;
+				glslType = ""; break;
 			default:
-				type = "vec" + utils::StringUtils::toString(componentSize);
+				glslType = "vec" + utils::StringUtils::toString(componentSize);
 			}
 
 			// Get type
@@ -32,22 +32,22 @@ namespace mpp
 				{
 				case mpp::mesh::Vertex::DataType::Float:
 				case mpp::mesh::Vertex::DataType::HalfFloat:
-					type = "float"; 
+					glslType = "float";
 					break;
 				case mpp::mesh::Vertex::DataType::Double:
-					type = "double"; 
+					glslType = "double";
 					break;
 				case mpp::mesh::Vertex::DataType::Byte:
 				case mpp::mesh::Vertex::DataType::Short:
 				case mpp::mesh::Vertex::DataType::Int:
 				case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
-					type = normalised ? "float" : "int";
+					glslType = normalised ? "float" : "int";
 					break;
 				case mpp::mesh::Vertex::DataType::UnsignedByte:
 				case mpp::mesh::Vertex::DataType::UnsignedShort:
 				case mpp::mesh::Vertex::DataType::UnsignedInt:
 				case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
-					type = normalised ? "float" : "int";
+					glslType = normalised ? "float" : "int";
 					break;
 				default:
 					THROW_MPP_PROGRAM("Unknown data type.", __LINE__, __FILE__, __FUNCTION__);
@@ -57,14 +57,14 @@ namespace mpp
 				switch (dataType)
 				{
 				case mpp::mesh::Vertex::DataType::Double:
-					type = "d" + type; break;
+					glslType = "d" + glslType; break;
 				case mpp::mesh::Vertex::DataType::Byte:
 				case mpp::mesh::Vertex::DataType::Short:
 				case mpp::mesh::Vertex::DataType::Int:
 				case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
 					if (!normalised)
 					{
-						type = "i" + type;
+						glslType = "i" + glslType;
 					}
 					break;
 				case mpp::mesh::Vertex::DataType::UnsignedByte:
@@ -73,13 +73,13 @@ namespace mpp
 				case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
 					if (!normalised)
 					{
-						type = "u" + type;
+						glslType = "u" + glslType;
 					}
 					break;
 				}
 			}
 
-			return type;
+			return glslType;
 		}
 
 	}
