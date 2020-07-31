@@ -55,6 +55,7 @@ namespace mpp
 		Parser::Parser(std::string const& name)
 			: mName(name)
 		{
+			/*
 			mStandardAttributes =
 			{
 				{"POSITION", AttributeType::Position},
@@ -62,6 +63,7 @@ namespace mpp
 				{"TEXCOORDS", AttributeType::TexCoords},
 				{"COLOUR", AttributeType::Colour}
 			};
+			*/
 
 			// Shader stages
 			mStages[(int)ShaderStage::Type::Vertex].type = ShaderStage::Type::Vertex;
@@ -488,6 +490,8 @@ namespace mpp
 					auto const& meshAttrib = layout.getAttribute(j);
 
 					string attribName;
+					size_t size[2];
+
 					switch (meshAttrib.component)
 					{
 					case mesh::Vertex::Component::Position2:
@@ -511,14 +515,34 @@ namespace mpp
 						break;
 					}
 
-					Attribute inAttrib;
-					inAttrib.name = attribName;
-					inAttrib.component = meshAttrib.component;
-					inAttrib.dataType = meshAttrib.dataType;
-					inAttrib.normalised = meshAttrib.normalised;
+					switch (meshAttrib.component)
+					{
+					case mesh::Vertex::Component::Colour1:
+						size[0] = 1; size[1] = 1;
+						break;
+					case mesh::Vertex::Component::Position2:
+					case mesh::Vertex::Component::TexCoord2:
+						size[0] = 1; size[1] = 2;
+						break;
+					case mesh::Vertex::Component::Position3:
+					case mesh::Vertex::Component::Normal3:
+					case mesh::Vertex::Component::TexCoord3:
+					case mesh::Vertex::Component::Colour3:
+						size[0] = 1; size[1] = 3;
+						break;
+					case mesh::Vertex::Component::Position4:
+					case mesh::Vertex::Component::Normal4:
+					case mesh::Vertex::Component::TexCoord4:
+					case mesh::Vertex::Component::Colour4:
+						size[0] = 1; size[1] = 4;
+						break;
+					}
 
-					auto glslType = inAttrib.getGlslType();
-					inAttrib.type = gsGLSLTypeDecls[glslType];
+					Attribute inAttrib;
+					
+					inAttrib.name = attribName;
+					inAttrib.normalised = meshAttrib.normalised;
+					inAttrib.type = gsGLSLTypeDecls[inAttrib.getGlslType(meshAttrib.dataType, size)];
 					
 					stage.inAttribs.push_back(inAttrib);
 				}
@@ -590,268 +614,19 @@ namespace mpp
 						}
 					}
 
+					/*
 					auto it = mStandardAttributes.find(attrib);
 					if (it == mStandardAttributes.end())
 					{
 						addError(stageType, "unknown out-attribute '" + attrib + "' used.");
 						goto next_match;
 					}
-
-					auto cType = it->second;
+					*/
 
 					Attribute outAttrib;
+
 					outAttrib.name = attrib;
-
-					switch (cType)
-					{
-					case AttributeType::Position:
-						if (type == "vec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "dvec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "ivec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "uvec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else
-						{
-							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
-						}
-						break;
-					case AttributeType::Normal:
-						if (type == "vec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "dvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "ivec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "uvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Normal3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Position4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else
-						{
-							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
-						}
-						break;
-					case AttributeType::TexCoords:
-						if (type == "vec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "dvec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "ivec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "uvec2")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord2;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::TexCoord4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else
-						{
-							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
-						}
-						break;
-					case AttributeType::Colour:
-						if (type == "float")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour1;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "vec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Float;
-						}
-						else if (type == "double")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour1;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "dvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Double;
-						}
-						else if (type == "int")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour1;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "ivec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::Int;
-						}
-						else if (type == "uint")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour1;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec3")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour3;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else if (type == "uvec4")
-						{
-							outAttrib.component = mpp::mesh::Vertex::Component::Colour4;
-							outAttrib.dataType = mpp::mesh::Vertex::DataType::UnsignedInt;
-						}
-						else
-						{
-							addError(stageType, "unsupported type used for out-attribute '" + attrib + "'.");
-						}
-						break;
-					}
-
-					auto glslType = outAttrib.getGlslType();
-					outAttrib.type = gsGLSLTypeDecls[glslType];
+					outAttrib.type = gsGLSLTypeDecls[type];
 
 					stage.outAttribs.push_back(outAttrib);
 				}
@@ -1075,12 +850,12 @@ namespace mpp
 					{
 						string attribLine = utils::StringUtils::format("layout(location = {}) in {} {};", 
 							location, 
-							attrib.getGlslType(), 
+							attrib.type.name,
 							MPP_PROGRAM_IN_PREFIX + attrib.name);
 
 						parsedLines.push_back(attribLine);
 						parsedLines.push_back("\n");
-						location++;
+						location += attrib.type.size[0];
 					}
 
 					parsedLines.push_back("\n");
@@ -1091,12 +866,12 @@ namespace mpp
 					{
 						string attribLine = utils::StringUtils::format("layout(location = {}) out {} {};",
 							location,
-							attrib.getGlslType(),
+							attrib.type.name,
 							MPP_PROGRAM_OUT_PREFIX + attrib.name);
 
 						parsedLines.push_back(attribLine);
 						parsedLines.push_back("\n");
-						location++;
+						location += attrib.type.size[0];
 					}
 
 					parsedLines.push_back("\n");

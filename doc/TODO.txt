@@ -53,9 +53,9 @@ Current work
   - TriangleBatch
   - LineBatch
   - QuadBatch
-    - With texture
+    - With texture [DONE]
 	- With texture atlas
-	- With rotation
+	- With rotation [DONE]
 	- Using triangles
 	- Using point sprites [DONE]
 	- Create Particle2dBatch and Sprite2dBatch

@@ -24,7 +24,9 @@ namespace mpp
 
 		struct GLSLTypeDecl
 		{
+			std::string name;
 			GLSLType type;
+			mesh::Vertex::DataType dataType;
 			size_t size[2];
 			bool isFloatingPoint;
 			bool isSigned;

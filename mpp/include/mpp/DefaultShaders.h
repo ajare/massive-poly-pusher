@@ -128,8 +128,8 @@ void main()
 ## Rotation
 	vec2 d = normalize(@In(POSITION).zw);
 	@Out(mat4 TEXROTATION) =
-	mat4(d.y, d.x, 0.0, 0.0,
-		-d.x, d.y, 0.0, 0.0,
+	mat4(d.x, d.y, 0.0, 0.0,
+		-d.y, d.x, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0);
 ##
@@ -170,7 +170,11 @@ void main()
 ##
 
 ## Points&Rotation&!TexCoords2&!TexCoords4
-	vec2 tc = vec2(@In(TEXROTATION) * vec4(gl_PointCoord.x, 1.0 - gl_PointCoord.y, 0.0, 1.0));
+	const vec2 offset = vec2(0.5, 0.5);
+	vec2 tc = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y);
+	tc -= offset;
+	tc = vec2(@In(TEXROTATION) * vec4(tc, 0.0, 1.0));
+	tc += offset;
 ## Points&!Rotation&!TexCoords2&!TexCoords4
 	vec2 tc = gl_PointCoord;
 ## TexCoords2
@@ -178,10 +182,10 @@ void main()
 ## Points&TexCoords4&!Rotation
 	vec2 tc = mix(@In(TEXCOORDS).st, @In(TEXCOORDS).pq, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
 ## Points&TexCoords4&Rotation
+	const vec2 offset = vec2(0.5, 0.5);
 	vec2 tc = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y);
-	const vec2 offset = vec2(0.5,0.5);
 	tc -= offset;
-	tc = vec2(@In(TEXROTATION) * vec4(tc, 0, 1));
+	tc = vec2(@In(TEXROTATION) * vec4(tc, 0.0, 1.0));
 	tc += offset;
 	tc = vec2(mix(@In(TEXCOORDS).s, @In(TEXCOORDS).p, tc.s), mix(@In(TEXCOORDS).t, @In(TEXCOORDS).q, tc.t));
 ## Texture
