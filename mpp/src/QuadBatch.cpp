@@ -33,7 +33,6 @@ namespace mpp
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch(name, colourOptions, false, initialCount, renderSystem, resourceMgr)
-		, mRotate(false)
 		, mVertexOptions(vertexOptions)
 		, mTexCoordOptions(TexCoordsOptions::None)
 		, mPositionType(positionType)
@@ -42,7 +41,6 @@ namespace mpp
 		, mSameSize(sameSize)
 		, mMaxDimX(maxDimX)
 		, mMaxDimY(maxDimY)
-		, mUsePointSprites(false)
 		, mProgram(program)
 		, mTexture(texture)
 		, mTextureAtlas(textureAtlas)
@@ -158,7 +156,7 @@ namespace mpp
 	{
 		mMainBufferStride = Vertex::getDataTypeSize(mPositionType) * 2; // X,Y
 
-		if (mRotate && mUsePointSprites)
+		if (rotating() && usingPointSprites())
 		{
 			mMainBufferStride += Vertex::getDataTypeSize(mPositionType) * 2; // Rotation data
 		}
@@ -283,7 +281,7 @@ namespace mpp
 	 */
 	int QuadBatch::getVertexCount(int primitiveCount)
 	{
-		return primitiveCount * (mUsePointSprites ? 1 : 4);
+		return primitiveCount * (usingPointSprites() ? 1 : 4);
 	}
 
 	/*
@@ -304,6 +302,7 @@ namespace mpp
 		bool square = mSameSize && mMaxDimX == mMaxDimY;
 		bool useColours = mColourOptions != ColourOptions::None;
 
+		// Set vertex options
 		Caps const& caps = getRenderSystem()->getCaps();
 		bool canUsePointSprites = square &&
 			caps.pointSizeRange[0] < mMaxDimX && caps.pointSizeRange[1] > mMaxDimX;
@@ -312,58 +311,45 @@ namespace mpp
 		{
 			THROW_MPP("Cannot use point sprites for this QuadBatch.", __LINE__, __FILE__, __func__);
 		}
+		
+		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		{
+			mVertexOptions = VertexOptions::Points;
+		}
+		else
+		{
+			mVertexOptions = VertexOptions::Triangles;
+		}
 
-		mUsePointSprites = canUsePointSprites && mVertexOptions != VertexOptions::Triangles;
-
-		if (mRotationOptions != RotationOptions::None && !mUsePointSprites)
+		// Set rotation options
+		if (mRotationOptions != RotationOptions::None && !usingPointSprites())
 		{
 			THROW_MPP("Cannot rotate this QuadBatch unless using point sprites.", __LINE__, __FILE__, __func__);
 		}
 
-		mRotate = mRotationOptions != RotationOptions::None && mUsePointSprites;
-
-		// We use texture coords if:
-		// - We are using triangles (texcoords2)
-		// - If we are using points:
-		//   - If are using a texture atlas (texcoords4)
-		//   - If we are rotating:
-		//     - If we are not using an atlas (texcoords2)
-		//     - If we are using an atlas (texcoords4)
+		// Set texcoord options
 		mTexCoordOptions = TexCoordsOptions::None;
 		if (mTexture)
 		{
-			if (!mUsePointSprites)
+			if (!usingPointSprites())
 			{
 				mTexCoordOptions = TexCoordsOptions::TexCoords2;
 			}
-			else
+			else if (mTextureAtlas)
 			{
-				if (mTextureAtlas)
-				{
-					mTexCoordOptions = TexCoordsOptions::TexCoords4;
-				}
+				mTexCoordOptions = TexCoordsOptions::TexCoords4;
 			}
 		}
 
-		auto primitiveType = mUsePointSprites ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
+		// Set primitive options
+		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		// Set program flags
-		uint32 flags{ 0 };
-
-		if (mTexture)
-		{
-			flags |= MPP_PROGRAM_TAGS_TEXTURE1;
-		}
-
-		if (mUsePointSprites)
-		{
-			flags |= MPP_PROGRAM_TAGS_PRIM_POINTS;
-		}
-		else
-		{
-			flags |= MPP_PROGRAM_TAGS_PRIM_TRIANGLES;
-		}
+		uint32 flags = 0
+			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
+			| (mTexture ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
+			| (mTextureAtlas ? MPP_PROGRAM_TAGS_ATLAS : 0);
 
 		// Create material
 		string materialName = getName() + "_QuadBatch";
@@ -371,14 +357,9 @@ namespace mpp
 		mSpecification = mesh::MeshSpecification(primitiveType);
 		auto layout = mSpecification.createVertexBufferAttributeLayout();
 
-		if (mUsePointSprites && mRotate)
+		if (usingPointSprites() && rotating())
 		{
 			flags |= MPP_PROGRAM_TAGS_ROTATION;
-			if (mTextureAtlas)
-			{
-				flags |= MPP_PROGRAM_TAGS_ATLAS;
-			}
-
 			mPositionOptions = PositionOptions::Position4;
 			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
 		}
@@ -387,7 +368,7 @@ namespace mpp
 			mPositionOptions = PositionOptions::Position2;
 			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
 		}
-#
+
 		switch (mTexCoordOptions)
 		{
 		case TexCoordsOptions::TexCoords2:
@@ -446,7 +427,7 @@ namespace mpp
 			: createMaterial(getName() + "_QuadBatch", mTexture ? mTexture->getName() : "__mpp_tex_none__", flags);
 
 		// Set up vertex data.
-		int primitiveCount = mUsePointSprites ? mMaxCount * 1 : mMaxCount * 2;
+		int primitiveCount = usingPointSprites() ? mMaxCount * 1 : mMaxCount * 2;
 		int vertexCount = getVertexCount(primitiveCount);
 
 		// Get stride
@@ -472,7 +453,7 @@ namespace mpp
 
 		// Index data
 		vector<uint8> indices;
-		if (!mUsePointSprites)
+		if (!usingPointSprites())
 		{
 			indices.resize(mMaxCount * 6 * (mIndexWidth / 8));
 			uint32* iPtr = (uint32*)&indices[0]; // Indices will be 16 or 32-bit, so use 32 to cover both
@@ -485,7 +466,7 @@ namespace mpp
 
 		// TODO: optional hint to give a hard maximum count, so if using triangles we can use 16-bit
 		// indices if allowed.
-		Mesh* mesh = mUsePointSprites
+		Mesh* mesh = usingPointSprites()
 			? new Mesh(getRenderSystem(), getName(), materialResource, primitiveType, primitiveCount, storageType, (float)mMaxDimX)
 			: new Mesh(getRenderSystem(), getName(), materialResource, primitiveType, primitiveCount, mIndexWidth, indices, storageType, (float)mMaxDimX);
 
@@ -499,7 +480,7 @@ namespace mpp
 		int mainBufferOffset = 0;
 		int curAttrib = 0;
 
-		if (mRotate)
+		if (rotating())
 		{
 			mainBuffer->setAttribute(curAttrib, mPositionType, 4, mainBufferOffset, false); // Pos4
 			mainBufferOffset += 4 * Vertex::getDataTypeSize(mPositionType);
@@ -587,7 +568,7 @@ namespace mpp
 			}
 
 			// Index data
-			if (!mUsePointSprites)
+			if (!usingPointSprites())
 			{
 				const int indexStride = 6 * (mIndexWidth / 8);
 				newSize = count * indexStride;
@@ -614,12 +595,12 @@ namespace mpp
 
 		if (mMeshes[0]->isIndexed())
 		{
-			mMeshes[0]->mapIndexData(count * (mUsePointSprites ? 1 : 2));
+			mMeshes[0]->mapIndexData(count * (usingPointSprites() ? 1 : 2));
 		}
 
 		mpp::VertexBuffer* vertexBuffer0 = mMeshes[0]->getVertexBuffer(0);
 		vertexBuffer0->mapBufferData(getVertexCount(count));
-		mMeshes[0]->setNumPrimitives(mUsePointSprites ? count : count * 2);
+		mMeshes[0]->setNumPrimitives(usingPointSprites() ? count : count * 2);
 
 		if (updateTexCoords && useTexCoords())
 		{
@@ -657,19 +638,24 @@ namespace mpp
 		return mMainBufferStride;
 	}
 
-	bool QuadBatch::usePointSprites() const
-	{
-		return mUsePointSprites;
-	}
-
 	int QuadBatch::getPrimitiveCount() const
 	{
-		return getCount() * (mUsePointSprites ? 1 : 2);
+		return getCount() * (usingPointSprites() ? 1 : 2);
 	}
 
-	bool QuadBatch::getRotate() const
+	bool QuadBatch::usingPointSprites() const
 	{
-		return mRotate;
+		return mVertexOptions == VertexOptions::Points;
+	}
+
+	bool QuadBatch::rotating() const
+	{
+		return mRotationOptions != RotationOptions::None;
+	}
+
+	bool QuadBatch::usingTextureAtlas() const
+	{
+		return mTextureAtlas;
 	}
 
 	QuadBatch::TexCoordsOptions QuadBatch::getTexCoordOptions() const
