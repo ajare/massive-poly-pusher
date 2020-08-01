@@ -1660,7 +1660,7 @@ namespace mpp
 		quadMesh->bind(false);
 
 		// Disable blend
-		glDisable(GL_BLEND);
+		GL_CHECK(glDisable(GL_BLEND));
 
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;

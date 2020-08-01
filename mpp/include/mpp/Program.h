@@ -47,6 +47,7 @@
 #define MPP_PROGRAM_TAGS_TEXTURE4			(1 << 13)
 #define MPP_PROGRAM_TAGS_DIFFUSE			(1 << 14)
 #define MPP_PROGRAM_TAGS_ROTATION			(1 << 15)
+#define MPP_PROGRAM_TAGS_ATLAS				(1 << 16)
 
 // Loader flags
 #define MPP_PROGRAM_LOADER_NEWSTYLE			0x0001

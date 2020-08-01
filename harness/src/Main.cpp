@@ -236,8 +236,11 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 		// Texture data
 		if (texBuffer)
 		{
-			texBuffer[tOffset + 0] = 0.5f;
-			texBuffer[tOffset + 1] = 0.5f;
+			const float txWidth = 1.0f / 8;
+			texBuffer[tOffset + 0] = txWidth * 2;
+			texBuffer[tOffset + 1] = 0.0f;
+			texBuffer[tOffset + 2] = txWidth * 3;
+			texBuffer[tOffset + 3] = 1.0f;
 		}
 
 		// Colour data
@@ -256,7 +259,7 @@ void updateQuadBatch(mpp::QuadBatch* quadBatch, size_t quadBatchCount, float tot
 
 	quadBatch->finishUpdate(quadBatchCount, true);
 
-	gRenderSystem->renderModelImmediate(*quadBatch, false);
+	gRenderSystem->renderModelImmediate(*quadBatch, true);
 }
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -335,9 +338,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		TextureStream* textureStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
 		gResourceManager->createResource<Texture>("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
 
-		// Arrow
-		textureStream = loadImage(gOptions.resourceLocation + "arrow.png", false);
-		gResourceManager->createResource<Texture>("arrow.png", ResourceStreamPtr(textureStream));
+		// Bullet
+		textureStream = loadImage(gOptions.resourceLocation + "bullets.png", false);
+		gResourceManager->createResource<Texture>("bullets.png", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
@@ -436,8 +439,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			32,
 			32,
 			nullptr,
-			gResourceManager->getResource("arrow.png"),
-			false,
+			gResourceManager->getResource("bullets.png"),
+			true,
 			32,
 			quadBatchCount,
 			gRenderSystem,
