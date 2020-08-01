@@ -54,7 +54,7 @@ Current work
   - LineBatch
   - QuadBatch
     - With texture [DONE]
-	- With texture atlas
+	- With texture atlas [DONE]
 	- With rotation [DONE]
 	- Using triangles
 	- Using point sprites [DONE]
