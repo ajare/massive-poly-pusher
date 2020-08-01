@@ -50,15 +50,11 @@ namespace mpp
 
 		RotationOptions mRotationOptions;
 
-		bool mRotate;
-		
 		bool mSameSize;
 
 		int mMaxDimX, mMaxDimY;
 
 		ResourcePtr mProgram, mTexture;
-
-		bool mUsePointSprites;
 
 		bool mTextureAtlas;
 
@@ -86,8 +82,6 @@ namespace mpp
 
 		int setIndices(uint32* ptr, uint32 base);
 
-		int getVertexCount(int primitiveCount);
-
 		bool useTexCoords() const;
 
 	public:
@@ -111,9 +105,9 @@ namespace mpp
 
 		void finishUpdate(int count, bool updateTexCoords);
 
-		bool usePointSprites() const;
-
 		int getPrimitiveCount() const;
+
+		int getVertexCount(int primitiveCount);
 
 		void setPointSize(float size);
 
@@ -124,8 +118,12 @@ namespace mpp
 		size_t getTexCoordStride() const;
 
 		size_t getColourStride() const;
+		
+		bool usingPointSprites() const;
+		
+		bool rotating() const;
 
-		bool getRotate() const;
+		bool usingTextureAtlas() const;
 
 		TexCoordsOptions getTexCoordOptions() const;
 
