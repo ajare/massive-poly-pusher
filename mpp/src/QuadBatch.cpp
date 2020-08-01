@@ -370,6 +370,11 @@ namespace mpp
 		if (mUsePointSprites && mRotate)
 		{
 			flags |= MPP_PROGRAM_TAGS_ROTATION;
+			if (mTextureAtlas)
+			{
+				flags |= MPP_PROGRAM_TAGS_ATLAS;
+			}
+
 			mPositionOptions = PositionOptions::Position4;
 			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
 		}

@@ -280,27 +280,35 @@ namespace mpp
 				{
 				case mesh::Vertex::Component::Position2:
 					attribs.insert("Position2");
+					attribs.insert("Position");
 					break;
 				case mesh::Vertex::Component::Position3:
 					attribs.insert("Position3");
+					attribs.insert("Position");
 					break;
 				case mesh::Vertex::Component::Position4:
 					attribs.insert("Position4");
+					attribs.insert("Position");
 					break;
 				case mesh::Vertex::Component::Normal3:
 					attribs.insert("Normal3");
+					attribs.insert("Normal");
 					break;
 				case mesh::Vertex::Component::Normal4:
 					attribs.insert("Normal4");
+					attribs.insert("Normal");
 					break;
 				case mesh::Vertex::Component::TexCoord2:
 					attribs.insert("TexCoords2");
+					attribs.insert("TexCoords");
 					break;
 				case mesh::Vertex::Component::TexCoord3:
 					attribs.insert("TexCoords3");
+					attribs.insert("TexCoords");
 					break;
 				case mesh::Vertex::Component::TexCoord4:
 					attribs.insert("TexCoords4");
+					attribs.insert("TexCoords");
 					break;
 				case mesh::Vertex::Component::Colour1:
 					attribs.insert("Colour1");
@@ -358,6 +366,11 @@ namespace mpp
 		if (flags & MPP_PROGRAM_TAGS_DIFFUSE)
 		{
 			attribs.insert("Diffuse");
+		}
+
+		if (flags & MPP_PROGRAM_TAGS_ATLAS)
+		{
+			attribs.insert("Atlas");
 		}
 
 		return attribs;
@@ -424,6 +437,10 @@ namespace mpp
 		if (flags & MPP_PROGRAM_TAGS_ROTATION)
 		{
 			specName += "r";
+		}
+		if (flags & MPP_PROGRAM_TAGS_ATLAS)
+		{
+			specName += "a";
 		}
 
 		specName += "__";
