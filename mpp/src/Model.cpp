@@ -51,7 +51,7 @@ namespace mpp
 		ModelStream* mStr = dynamic_cast<ModelStream*>(getResourceStream().get());
 		if (!mStr)
 		{
-			THROW_MPP("Could not cast to type 'ModelStream'", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not cast to type 'ModelStream'", __LINE__, __FILE__, __func__);
 		}
 
 		auto resourceMgr = getResourceManager();
@@ -71,7 +71,7 @@ namespace mpp
 				THROW_MPP(
 					utils::StringUtils::format("Vertex attribute mismatch between material '{}' and mesh '{}' of model '{}'.",
 						material->getName(), meshDef->getName(), getName()),
-					__LINE__, __FILE__, __FUNCTION__);
+					__LINE__, __FILE__, __func__);
 			}
 
 			Mesh* mesh = nullptr;

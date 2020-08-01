@@ -151,7 +151,7 @@ namespace mpp
 					break;
 
 				default:
-					THROW_MPP("Cannot convert data to unsupported type.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP("Cannot convert data to unsupported type.", __LINE__, __FILE__, __func__);
 				}
 
 				for (int k = 0; k < attrib.paddingBytes; ++k)

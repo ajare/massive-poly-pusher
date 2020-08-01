@@ -26,7 +26,7 @@ namespace mpp
 		MaterialStream* mStr = dynamic_cast<MaterialStream*>(getResourceStream().get());
 		if (!mStr)
 		{
-			THROW_MPP("Could not cast to type 'MaterialStream'", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not cast to type 'MaterialStream'", __LINE__, __FILE__, __func__);
 		}
 
 		auto resourceMgr = getResourceManager();
@@ -73,7 +73,7 @@ namespace mpp
 			{
 				string errMsg = utils::StringUtils::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
 					samplerName, program->getName(), getName());
-				THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			mTextures.push_back(resourceMgr->getResource(it->second));

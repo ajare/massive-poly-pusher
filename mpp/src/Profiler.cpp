@@ -50,14 +50,14 @@ namespace mpp
 		// Load DLL
 		if (sNVPMManager.Construct(L"NvPmApi.Core.dll") != S_OK)
 		{
-			THROW_MPP_IO("Could not open NvPmApi.Core.dll", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP_IO("Could not open NvPmApi.Core.dll", __LINE__, __FILE__, __func__);
 		}
 
 		// Initialise profiler
 		NVPMRESULT nvResult;
 		if ((nvResult = sNVPMManager.Api()->Init()) != NVPM_OK)
 		{
-			THROW_MPP("Could not initialise profiler.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not initialise profiler.", __LINE__, __FILE__, __func__);
 		}
 
 		// Create context
@@ -65,7 +65,7 @@ namespace mpp
 
 		if ((nvResult = sNVPMManager.Api()->CreateContextFromOGLContext((APIContextHandle)ctx, &sNVPMContext)) != NVPM_OK)
 		{
-			THROW_MPP("Could not create profiler context.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not create profiler context.", __LINE__, __FILE__, __func__);
 		}
 
 		for (auto counterName: mCounterNames)
@@ -75,13 +75,13 @@ namespace mpp
 			auto result = sNVPMManager.Api()->GetCounterIDByContext(sNVPMContext, counterName.c_str(), &counterID);
 			if (result != NVPM_OK)
 			{
-				THROW_MPP(utils::StringUtils::format("Profiler could not get '{}' counter ID", counterName), __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP(utils::StringUtils::format("Profiler could not get '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
 			}
 			else
 			{
 				if (sNVPMManager.Api()->AddCounter(sNVPMContext, counterID) != NVPM_OK)
 				{
-					THROW_MPP(utils::StringUtils::format("Profiler could not enable '{}' counter ID", counterName), __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP(utils::StringUtils::format("Profiler could not enable '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
 				}
 			}
 		}
@@ -125,7 +125,7 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP(utils::StringUtils::format("Profiler could not get value of '{}' counter ID", counterName), __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP(utils::StringUtils::format("Profiler could not get value of '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
 			}
 		}
 

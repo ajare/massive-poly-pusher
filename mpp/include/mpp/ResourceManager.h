@@ -46,7 +46,7 @@ namespace mpp
 			{
 				THROW_MPP(
 					utils::StringUtils::format("Resource '{}' already exists.", name),
-					__LINE__, __FILE__, __FUNCTION__);
+					__LINE__, __FILE__, __func__);
 			}
 
 			if (resourceStream)
@@ -167,7 +167,7 @@ namespace mpp
 		if (msSortableTextureId == (uint32)(1 << maxBits))
 		{
 			std::string errMsg = utils::StringUtils::format("Cannot create Texture resource '{}'.  Limit reached!", name);
-			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
 		auto resourcePtr = createResourceImpl<Texture>(name, resourceStream);
@@ -186,7 +186,7 @@ namespace mpp
 		if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
 		{
 			std::string errMsg = utils::StringUtils::format("Cannot create Program resource '{}'.  Limit reached!", name);
-			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
 		auto resourcePtr = createResourceImpl<Program>(name, resourceStream);

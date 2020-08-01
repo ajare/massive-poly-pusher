@@ -729,7 +729,7 @@ void AssImpModelLoader::load()
 			auto primitiveType = meshSpec.getPrimitiveType();
 			if (primitiveType != mpp::mesh::Primitive::Type::Triangles)
 			{
-				THROW_MPP_NOTIMP("conversion to non-triangle primitives", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_NOTIMP("conversion to non-triangle primitives", __LINE__, __FILE__, __func__);
 
 				if (primitiveType == mpp::mesh::Primitive::Type::Points)
 				{

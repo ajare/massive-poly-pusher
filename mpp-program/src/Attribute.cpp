@@ -50,7 +50,7 @@ namespace mpp
 					glslType = normalised ? "float" : "int";
 					break;
 				default:
-					THROW_MPP_PROGRAM("Unknown data type.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP_PROGRAM("Unknown data type.", __LINE__, __FILE__, __func__);
 				}
 
 			default:

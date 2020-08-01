@@ -42,7 +42,7 @@ namespace mpp
 		TextureStream* tStr = dynamic_cast<TextureStream*>(getResourceStream().get());
 		if (!tStr)
 		{
-			THROW_MPP("Could not cast to type 'TextureStream'.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not cast to type 'TextureStream'.", __LINE__, __FILE__, __func__);
 		}
 
 		int dataSize = tStr->getDataSize();

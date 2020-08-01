@@ -151,7 +151,7 @@ namespace mpp
 
 					default:
 						THROW_MPP("Primitive ModelStreams only support floats for position data.", 
-							__LINE__, __FILE__, __FUNCTION__);
+							__LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -246,7 +246,7 @@ namespace mpp
 
 					default:
 						THROW_MPP("Primitive ModelStreams only support floats for normal data.",
-							__LINE__, __FILE__, __FUNCTION__);
+							__LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -341,7 +341,7 @@ namespace mpp
 
 					default:
 						THROW_MPP("Primitive ModelStreams only support floats for texcoord data.",
-							__LINE__, __FILE__, __FUNCTION__);
+							__LINE__, __FILE__, __func__);
 
 					}
 					break;
@@ -523,7 +523,7 @@ namespace mpp
 
 					default:
 						THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.",
-							__LINE__, __FILE__, __FUNCTION__);
+							__LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -705,13 +705,13 @@ namespace mpp
 
 					default:
 						THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.",
-							__LINE__, __FILE__, __FUNCTION__);
+							__LINE__, __FILE__, __func__);
 					}
 					break;
 
 				default:
 					THROW_MPP("Unsupported component: " + mesh::Vertex::getComponentName(attrib.component),
-						__LINE__, __FILE__, __FUNCTION__);
+						__LINE__, __FILE__, __func__);
 				}
 			}
 		}

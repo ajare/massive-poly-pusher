@@ -149,7 +149,7 @@ namespace mpp
 				break;
 
 			default:
-				THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -174,7 +174,7 @@ namespace mpp
 				break;
 
 			default:
-				THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("Unknown shader stage for '" + mName + "'.", __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -233,7 +233,7 @@ namespace mpp
 
 			if (mode != Mode::Copy)
 			{
-				THROW_MPP_PROGRAM("Invalid comment found in '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("Invalid comment found in '" + mName + "'.", __LINE__, __FILE__, __func__);
 			}
 
 			return stripped;
@@ -718,7 +718,7 @@ namespace mpp
 				trimmedLine = utils::StringUtils::trim(trimmedLine.substr(1));
 				if (trimmedLine == "")
 				{
-					THROW_MPP_PROGRAM("Cannot have ! without an attribute in shader template.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP_PROGRAM("Cannot have ! without an attribute in shader template.", __LINE__, __FILE__, __func__);
 				}
 
 				invert = true;
@@ -755,7 +755,7 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP_PROGRAM("Could not evaluate ## directive in shader template.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("Could not evaluate ## directive in shader template.", __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -963,15 +963,15 @@ namespace mpp
 			// Check required stages are present
 			if (mStages[(int)ShaderStage::Type::Vertex].required() && !mStages[(int)ShaderStage::Type::Vertex].provided())
 			{
-				THROW_MPP_PROGRAM("No vertex shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("No vertex shader was given for program '" + mName + "'.", __LINE__, __FILE__, __func__);
 			}
 			if (mStages[(int)ShaderStage::Type::Geometry].required() && !mStages[(int)ShaderStage::Type::Geometry].provided())
 			{
-				THROW_MPP_PROGRAM("No geometry shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("No geometry shader was given for program '" + mName + "'.", __LINE__, __FILE__, __func__);
 			}
 			if (mStages[(int)ShaderStage::Type::Fragment].required() && !mStages[(int)ShaderStage::Type::Fragment].provided())
 			{
-				THROW_MPP_PROGRAM("No fragment shader was given for program '" + mName + "'.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP_PROGRAM("No fragment shader was given for program '" + mName + "'.", __LINE__, __FILE__, __func__);
 			}
 
 			// Set shader attributes and uniforms

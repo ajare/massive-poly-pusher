@@ -13,7 +13,8 @@ namespace mpp
 		enum class VertexOptions
 		{
 			Auto,
-			PreferTrianglesToPoints
+			Points,
+			Triangles
 		};
 
 		enum class PositionOptions

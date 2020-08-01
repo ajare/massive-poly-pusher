@@ -257,7 +257,7 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP(utils::StringUtils::format("Resource '{}' not found.", name), __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP(utils::StringUtils::format("Resource '{}' not found.", name), __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -488,7 +488,7 @@ namespace mpp
 			trimmedLine = trim_copy(trimmedLine.substr(1));
 			if (trimmedLine == "")
 			{
-				THROW_MPP("Cannot have ! without an attribute in shader template.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP("Cannot have ! without an attribute in shader template.", __LINE__, __FILE__, __func__);
 			}
 
 			invert = true;
@@ -529,7 +529,7 @@ namespace mpp
 		}
 		else
 		{
-			THROW_MPP("Could not evaluate ## directive in shader template.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not evaluate ## directive in shader template.", __LINE__, __FILE__, __func__);
 		}
 	}
 
