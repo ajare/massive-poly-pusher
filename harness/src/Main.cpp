@@ -430,7 +430,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		const size_t quadBatchCount{ 8 };
 		auto quadBatch = new QuadBatch(
 			"TestQuads",
-			QuadBatch::VertexOptions::Auto,
+			QuadBatch::VertexOptions::Triangles,
 			mesh::Vertex::DataType::Float,
 			mesh::Vertex::DataType::Float,
 			Batch::ColourOptions::UByteRGBA,

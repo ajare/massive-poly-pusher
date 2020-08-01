@@ -199,7 +199,7 @@ namespace mpp
 				normaliseColours = true;
 				break;
 			default:
-				THROW_MPP("Unknown colour options.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP("Unknown colour options.", __LINE__, __FILE__, __func__);
 			}
 
 			layout->createAttribute(colourComponent, colourType, normaliseColours);

@@ -88,7 +88,7 @@ namespace mpp
 							"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional float are supported.",
 							componentCount, uniformName, mName);
 
-						THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 					}
 
 					Uniform<float> u;

@@ -302,18 +302,22 @@ namespace mpp
 	void QuadBatch::createImpl()
 	{
 		bool square = mSameSize && mMaxDimX == mMaxDimY;
-		bool useTriangles = mVertexOptions == VertexOptions::PreferTrianglesToPoints;
 		bool useColours = mColourOptions != ColourOptions::None;
 
 		Caps const& caps = getRenderSystem()->getCaps();
 		bool canUsePointSprites = square &&
 			caps.pointSizeRange[0] < mMaxDimX && caps.pointSizeRange[1] > mMaxDimX;
 
-		mUsePointSprites = canUsePointSprites && !useTriangles;
+		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		{
+			THROW_MPP("Cannot use point sprites for this QuadBatch.", __LINE__, __FILE__, __func__);
+		}
+
+		mUsePointSprites = canUsePointSprites && mVertexOptions != VertexOptions::Triangles;
 
 		if (mRotationOptions != RotationOptions::None && !mUsePointSprites)
 		{
-			THROW_MPP("Cannot rotate unless using point sprites.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Cannot rotate this QuadBatch unless using point sprites.", __LINE__, __FILE__, __func__);
 		}
 
 		mRotate = mRotationOptions != RotationOptions::None && mUsePointSprites;
@@ -430,7 +434,7 @@ namespace mpp
 				dataType = mesh::Vertex::DataType::UnsignedByte;
 				break;
 			default:
-				THROW_MPP("Unsupported colour options.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP("Unsupported colour options.", __LINE__, __FILE__, __func__);
 			}
 
 			layout->createAttribute(component, dataType, true);

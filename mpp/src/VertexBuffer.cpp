@@ -68,7 +68,7 @@ namespace mpp
 		case Vertex::DataType::Int_2_10_10_10_REV:				attr.dataType = GL_INT_2_10_10_10_REV; break;
 		case Vertex::DataType::UnsignedInt_2_10_10_10_REV:		attr.dataType = GL_UNSIGNED_INT_2_10_10_10_REV; break;
 		default:								
-			THROW_MPP("Unsupported datatype.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Unsupported datatype.", __LINE__, __FILE__, __func__);
 		}
 
 		attr.componentSize = componentSize;
@@ -150,7 +150,7 @@ namespace mpp
 				break;
 
 			default:
-				THROW_MPP("Unsupported GL data in databuffer.", __LINE__, __FILE__, __FUNCTION__);
+				THROW_MPP("Unsupported GL data in databuffer.", __LINE__, __FILE__, __func__);
 			}
 		}
 		else
@@ -188,7 +188,7 @@ namespace mpp
 
 		if (mStreaming)
 		{
-			THROW_MPP_NOTIMP("geometry streaming", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP_NOTIMP("geometry streaming", __LINE__, __FILE__, __func__);
 
 			//GLbitfield fMap = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 			//GLbitfield fCreate = fMap | GL_DYNAMIC_STORAGE_BIT;

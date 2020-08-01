@@ -78,7 +78,7 @@ namespace mpp
 					return isFloating ? "1.0" : "1";
 
 				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __func__);
 				}
 			}
 			else if (component == "NORMAL")
@@ -89,7 +89,7 @@ namespace mpp
 					return isFloating ? "1.0" : "1";
 
 				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __func__);
 				}
 
 			}
@@ -102,7 +102,7 @@ namespace mpp
 					return isFloating ? "1.0" : "1";
 
 				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __func__);
 				}
 
 			}
@@ -118,7 +118,7 @@ namespace mpp
 					return isFloating ? "1.0" : "1";
 
 				default:
-					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __func__);
 				}
 			}
 			else

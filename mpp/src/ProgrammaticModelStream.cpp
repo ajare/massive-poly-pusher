@@ -180,12 +180,12 @@ namespace mpp
 		if (getMeshId(name) >= 0)
 		{
 			string errMsg = "Mesh '" + name + "' already defined in programmatic model stream.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
 		if (indexWidth != 16 && indexWidth != 32)
 		{
-			THROW_MPP("Index width must be either 16 or 32.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Index width must be either 16 or 32.", __LINE__, __FILE__, __func__);
 		}
 
 		int index = mMeshDataDefinitions.size();

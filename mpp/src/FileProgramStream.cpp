@@ -27,7 +27,7 @@ namespace mpp
 		vf.open(mVertFile);
 		if (!vf.is_open())
 		{
-			THROW_MPP_IO("Could not open " + mVertFile, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP_IO("Could not open " + mVertFile, __LINE__, __FILE__, __func__);
 		}
 
 		setVertexSource(string((istreambuf_iterator<char>(vf)), istreambuf_iterator<char>()));
@@ -37,7 +37,7 @@ namespace mpp
 		ff.open(mFragFile);
 		if (!ff.is_open())
 		{
-			THROW_MPP_IO("Could not open " + mFragFile, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP_IO("Could not open " + mFragFile, __LINE__, __FILE__, __func__);
 		}
 
 		setFragmentSource(string((istreambuf_iterator<char>(ff)), istreambuf_iterator<char>()));

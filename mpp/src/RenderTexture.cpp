@@ -64,7 +64,7 @@ namespace mpp
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			THROW_MPP("Could not create framebuffer.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not create framebuffer.", __LINE__, __FILE__, __func__);
 		}
 
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));

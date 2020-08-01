@@ -69,7 +69,7 @@ namespace mpp
 		mLogger = new Logger();
 		if (!mLogger->initialise("mpp.log"))
 		{
-			THROW_MPP("Could not initialise RenderSystem logger", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not initialise RenderSystem logger", __LINE__, __FILE__, __func__);
 		}
 
 		initialise();
@@ -178,7 +178,7 @@ namespace mpp
 		{
 		case GL_DEBUG_SEVERITY_HIGH_ARB:
 			svrty = RenderSystem::OpenGLError::Severity::High;
-			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __func__);
 			break;
 
 		case GL_DEBUG_SEVERITY_MEDIUM_ARB:
@@ -191,7 +191,7 @@ namespace mpp
 
 		default:
 			svrty = RenderSystem::OpenGLError::Severity::High;
-			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __func__);
 			break;
 		}
 
@@ -279,7 +279,7 @@ namespace mpp
 		if (err != GLEW_OK)
 		{
 			string msg = "GLEW initialisation failed.  " + string((char*)glewGetErrorString(err));
-			THROW_MPP(msg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(msg, __LINE__, __FILE__, __func__);
 		}
 
 		checkExtensions();
@@ -372,7 +372,7 @@ namespace mpp
 		// Check we have the extensions we need.
 		if (!GLEW_VERSION_3_2)
 		{
-			THROW_MPP("OpenGL 3.2 was not found.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("OpenGL 3.2 was not found.", __LINE__, __FILE__, __func__);
 		}
 
 
@@ -441,7 +441,7 @@ namespace mpp
 		}
 		else 
 		{
-			THROW_MPP("Could not parse GL_VERSION: " + glVersion, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not parse GL_VERSION: " + glVersion, __LINE__, __FILE__, __func__);
 		}
 
 		// GL_SHADING_LANGUAGE_VERSION
@@ -457,7 +457,7 @@ namespace mpp
 		}
 		else
 		{
-			THROW_MPP("Could not parse GL_SHADING_LANGUAGE_VERSION: " + glslVersion, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Could not parse GL_SHADING_LANGUAGE_VERSION: " + glslVersion, __LINE__, __FILE__, __func__);
 		}
 
 		logMessage("GL version: " + glVersion);
@@ -761,7 +761,7 @@ namespace mpp
 			break;
 
 		default:
-			THROW_MPP("Unsupported projection.", __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP("Unsupported projection.", __LINE__, __FILE__, __func__);
 		}
 	}
 
@@ -907,7 +907,7 @@ namespace mpp
 		if (mTextureTiles.find(name) != mTextureTiles.end())
 		{
 			string errMsg = "Texture tile named '" + name + "' already exists.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
 		mTextureTiles[name] = TextureTile(texture, u0, v0, u1, v1);
@@ -924,7 +924,7 @@ namespace mpp
 		if (it == mTextureTiles.end())
 		{
 			string errMsg = "Texture tile named '" + name + "' does not exist.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
 		mTextureTiles.erase(it);
@@ -939,7 +939,7 @@ namespace mpp
 		if (mTextureTiles.find(name) == mTextureTiles.end())
 		{
 			string errMsg = "Texture tile named '" + name + "' does not exist.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
 		return mTextureTiles.at(name);

@@ -369,7 +369,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -649,7 +649,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -811,7 +811,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -1006,7 +1006,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -1048,7 +1048,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -1090,7 +1090,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -1132,7 +1132,7 @@ namespace mpp
 						break;
 
 					default:
-						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+						THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 					}
 					break;
 
@@ -1208,7 +1208,7 @@ namespace mpp
 								break;
 
 							default:
-								THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+								THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 							}
 						}
 					}
@@ -1304,14 +1304,14 @@ namespace mpp
 								break;
 
 							default:
-								THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __FUNCTION__);
+								THROW_MPP("Unsupported datatype: " + mesh::Vertex::getDataTypeName(attrib.dataType), __LINE__, __FILE__, __func__);
 							}
 						}
 					}
 					break;
 
 				default:
-					THROW_MPP("Unsupported datatype: " + mesh::Vertex::getComponentName(attrib.component), __LINE__, __FILE__, __FUNCTION__);
+					THROW_MPP("Unsupported datatype: " + mesh::Vertex::getComponentName(attrib.component), __LINE__, __FILE__, __func__);
 				}
 			}
 		}

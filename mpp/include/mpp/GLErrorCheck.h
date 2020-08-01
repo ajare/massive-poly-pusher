@@ -11,7 +11,7 @@ namespace mpp
 #ifdef _DEBUG
 #define GL_CHECK(stmt) do { \
             stmt; \
-            CheckOpenGLError(#stmt, __LINE__, __FILE__, __FUNCTION__); \
+            CheckOpenGLError(#stmt, __LINE__, __FILE__, __func__); \
         } while (0)
 #else
 #define GL_CHECK(stmt) stmt

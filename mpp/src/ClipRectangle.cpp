@@ -38,7 +38,7 @@ namespace mpp
 	 */
 	ClipRectangle ClipRectangle::intersect(ClipRectangle const& clipper) const
 	{
-		THROW_MPP_FN_NOTIMP(__LINE__, __FILE__, __FUNCTION__);
+		THROW_MPP_FN_NOTIMP(__LINE__, __FILE__, __func__);
 	}
 
 }

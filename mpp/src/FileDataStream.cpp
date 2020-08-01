@@ -28,7 +28,7 @@ namespace mpp
 		}
 		else
 		{
-			THROW_MPP_IO("Could not open " + filename, __LINE__, __FILE__, __FUNCTION__);
+			THROW_MPP_IO("Could not open " + filename, __LINE__, __FILE__, __func__);
 		}
 	}
 
