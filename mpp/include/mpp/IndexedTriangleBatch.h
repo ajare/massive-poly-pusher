@@ -10,7 +10,7 @@ namespace mpp
 	{
 	public:
 
-		typedef std::function<int(int, int)> VertexCountFunction;
+		typedef std::function<int(int)> VertexCountFunction;
 
 	private:
 
@@ -18,13 +18,9 @@ namespace mpp
 
 		int mIndexWidth;
 
-		int mBatchCount;
-
 	private:
 
 		void setMinimumCount(int count);
-
-		int getVertexCount(int primitiveCount);
 
 		void resizeIndexData(int count);
 
@@ -48,7 +44,8 @@ namespace mpp
 
 		uint8* getIndexData();
 
-		void setBatchCount(int count);
+		int getVertexCount(int primitiveCount);
+
 	};
 }
 #pragma once

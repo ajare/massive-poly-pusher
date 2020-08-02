@@ -149,7 +149,7 @@ void main()
 	// Rotate around TEXCOORDS.zw
 	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
 	vec4 transCentroid = @MCPMatrix * vec4(@In(TEXCOORDS).zw, 0, 1);
-	vec2 offset = vec2(transVertex.x - transCentroid.x, transVertex.y - transCentroid.y);
+	vec2 offset = transVertex.xy - transCentroid.xy;
 	offset = vec2(rotationMatrix * vec4(offset, 0.0, 1.0));
 	transVertex.x = transCentroid.x + offset.x;
 	transVertex.y = transCentroid.y + offset.y;
