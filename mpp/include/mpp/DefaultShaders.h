@@ -125,25 +125,38 @@ R"(
 
 void main()
 {
-## Rotation
+## Points&Rotation
 	vec2 d = normalize(@In(POSITION).zw);
 	@Out(mat4 TEXROTATION) =
 	mat4(d.x, d.y, 0.0, 0.0,
 		-d.y, d.x, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0);
-##
-
-	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
-	vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
-
+## Triangles&Rotation
+	vec2 d = normalize(@In(POSITION).zw);
+	mat4 rotationMatrix =
+	mat4(d.x, d.y, 0.0, 0.0,
+		-d.y, d.x, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0);
 ## Colour
 	@Out(vec4 COLOUR) = @Vec4(@In(COLOUR));
 ## TexCoords2
 	@Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
 ## TexCoords4
 	@Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
+## Triangles&Rotation
+	// Rotate around TEXCOORDS.zw
+	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
+	vec4 transCentroid = @MCPMatrix * vec4(@In(TEXCOORDS).zw, 0, 1);
+	vec2 offset = vec2(transVertex.x - transCentroid.x, transVertex.y - transCentroid.y);
+	offset = vec2(rotationMatrix * vec4(offset, 0.0, 1.0));
+	transVertex.x = transCentroid.x + offset.x;
+	transVertex.y = transCentroid.y + offset.y;
+## Else
+	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
 ##
+	vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
 }
 )";
@@ -175,6 +188,9 @@ void main()
 ## TexCoords2
 	// Use supplied texture coords for a single image
 	vec2 tc = @In(TEXCOORDS);
+## Triangles&Rotation
+	// Use first part of texcoords
+	vec2 tc = vec2(@In(TEXCOORDS));
 ## Points&!Rotation&TexCoords4
 	// Use supplied texture coords for an atlas
 	vec2 tc = mix(@In(TEXCOORDS).st, @In(TEXCOORDS).pq, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));

@@ -50,7 +50,6 @@
     <ClInclude Include="..\..\include\mpp\ProgramProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\QuadBatch.h" />
-    <ClInclude Include="..\..\include\mpp\QuadBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\QuadDefinition.h" />
     <ClInclude Include="..\..\include\mpp\RenderSystem.h" />
     <ClInclude Include="..\..\include\mpp\RenderTarget.h" />

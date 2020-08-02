@@ -31,8 +31,6 @@ namespace mpp
 
 			ShaderStage mStages[(int)ShaderStage::Type::NumStages];
 
-			//std::map<std::string, AttributeType> mStandardAttributes;
-
 			mesh::MeshSpecification mSpecification;
 
 			std::vector<std::string> mErrors;

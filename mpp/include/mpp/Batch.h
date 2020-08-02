@@ -87,6 +87,8 @@ namespace mpp
 
 		char* getColourData();
 
+		bool usingColour() const;
+
 		void setCount(int count);
 
 		int getCount() const;

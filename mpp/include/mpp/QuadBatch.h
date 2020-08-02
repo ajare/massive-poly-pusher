@@ -48,7 +48,7 @@ namespace mpp
 
 		TexCoordsOptions mTexCoordOptions;
 
-		RotationOptions mRotationOptions;
+		bool mRotate;
 
 		bool mSameSize;
 
@@ -91,7 +91,7 @@ namespace mpp
 			mpp::mesh::Vertex::DataType positionType,
 			mpp::mesh::Vertex::DataType texcoordType,
 			ColourOptions colourOptions,
-			RotationOptions rotationOptions,
+			bool rotate,
 			bool sameSize,
 			int maxDimX,
 			int maxDimY,
@@ -122,6 +122,8 @@ namespace mpp
 		bool usingPointSprites() const;
 		
 		bool rotating() const;
+
+		bool usingTexture() const;
 
 		bool usingTextureAtlas() const;
 

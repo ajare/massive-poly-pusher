@@ -232,12 +232,6 @@ size_t updateQuadBatch(mpp::QuadBatch* quadBatch, size_t count, float totalTime)
 			// One vertex per quad
 			posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
 			posBuffer[pOffset + 1] = 300 + cosf(totalTime * (i + 2)) * 100;
-
-			if (quadBatch->rotating())
-			{
-				posBuffer[pOffset + 2] = sinf(totalTime);
-				posBuffer[pOffset + 3] = cosf(totalTime);
-			}
 		}
 		else
 		{
@@ -269,8 +263,27 @@ size_t updateQuadBatch(mpp::QuadBatch* quadBatch, size_t count, float totalTime)
 			}
 		}
 
+		// Set rotation: combination of position and texcoord data
+		if (quadBatch->rotating())
+		{
+			posBuffer[pOffset + 2] = sinf(totalTime);
+			posBuffer[pOffset + 3] = cosf(totalTime);
+
+			if (!quadBatch->usingPointSprites())
+			{
+				int primitiveIndex = i / 4;
+				int vertexIndex = i % 4;
+
+				auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
+				auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
+
+				texBuffer[tOffset + 2] = xc;
+				texBuffer[tOffset + 3] = yc;
+			}
+		}
+
 		// Texture data
-		if (texBuffer)
+		if (quadBatch->usingPointSprites())
 		{
 			if (quadBatch->usingTextureAtlas())
 			{
@@ -280,35 +293,64 @@ size_t updateQuadBatch(mpp::QuadBatch* quadBatch, size_t count, float totalTime)
 				texBuffer[tOffset + 2] = txWidth * 3;
 				texBuffer[tOffset + 3] = 1.0f;
 			}
-			else
+		}
+		else
+		{
+			if (quadBatch->usingTexture())
 			{
 				// Indexed, four vertices per quad
 				int vertexIndex = i % 4;
 
-				switch (vertexIndex)
+				if (quadBatch->usingTextureAtlas())
 				{
-				case 0:
-					texBuffer[tOffset + 0] = 0.0f;
-					texBuffer[tOffset + 1] = 0.0f;
-					break;
-				case 1:
-					texBuffer[tOffset + 0] = 1.0f;
-					texBuffer[tOffset + 1] = 0.0f;
-					break;
-				case 2:
-					texBuffer[tOffset + 0] = 1.0f;
-					texBuffer[tOffset + 1] = 1.0f;
-					break;
-				case 3:
-					texBuffer[tOffset + 0] = 0.0f;
-					texBuffer[tOffset + 1] = 1.0f;
-					break;
+					const float txWidth = 1.0f / 8;
+					switch (vertexIndex)
+					{
+					case 0:
+						texBuffer[tOffset + 0] = txWidth * 2;
+						texBuffer[tOffset + 1] = 0.0f;
+						break;
+					case 1:
+						texBuffer[tOffset + 0] = txWidth * 3;
+						texBuffer[tOffset + 1] = 0.0f;
+						break;
+					case 2:
+						texBuffer[tOffset + 0] = txWidth * 3;
+						texBuffer[tOffset + 1] = 1.0f;
+						break;
+					case 3:
+						texBuffer[tOffset + 0] = txWidth * 2;
+						texBuffer[tOffset + 1] = 1.0f;
+						break;
+					}
+				}
+				else
+				{
+					switch (vertexIndex)
+					{
+					case 0:
+						texBuffer[tOffset + 0] = 0.0f;
+						texBuffer[tOffset + 1] = 0.0f;
+						break;
+					case 1:
+						texBuffer[tOffset + 0] = 1.0f;
+						texBuffer[tOffset + 1] = 0.0f;
+						break;
+					case 2:
+						texBuffer[tOffset + 0] = 1.0f;
+						texBuffer[tOffset + 1] = 1.0f;
+						break;
+					case 3:
+						texBuffer[tOffset + 0] = 0.0f;
+						texBuffer[tOffset + 1] = 1.0f;
+						break;
+					}
 				}
 			}
 		}
 
 		// Colour data
-		if (colBuffer)
+		if (quadBatch->usingColour())
 		{
 			colBuffer[cOffset + 0] = 255;
 			colBuffer[cOffset + 1] = 255;
@@ -410,6 +452,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		textureStream = loadImage(gOptions.resourceLocation + "bullets.png", false);
 		gResourceManager->createResource<Texture>("bullets.png", ResourceStreamPtr(textureStream));
 
+		// RGBA test
+		textureStream = loadImage(gOptions.resourceLocation + "rgba.png", false);
+		gResourceManager->createResource<Texture>("rgba.png", ResourceStreamPtr(textureStream));
+
 		//
 		// Materials
 		//
@@ -502,14 +548,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			mesh::Vertex::DataType::Float,
 			mesh::Vertex::DataType::Float,
 			Batch::ColourOptions::UByteRGBA,
-			QuadBatch::RotationOptions::None,
+			true,
 			true,
 			16,
 			16,
 			nullptr,
-			gResourceManager->getResource("bullet1.png"),
-			false,
-			32,
+			gResourceManager->getResource("bullets.png"),
+			true,
+			16,
 			quadBatchCount,
 			gRenderSystem,
 			gResourceManager);

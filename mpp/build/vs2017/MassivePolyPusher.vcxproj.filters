@@ -171,9 +171,6 @@
     <ClInclude Include="..\..\include\mpp\IndexedTriangleBatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\QuadBatchSpecification.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\IndexedTriangleBatchSpecification.h">
       <Filter>Header Files</Filter>
     </ClInclude>
