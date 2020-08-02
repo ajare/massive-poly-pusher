@@ -33,8 +33,6 @@ namespace mpp
 
 		void setTexCoordBufferStride();
 
-		int getVertexCount(int primitiveCount);
-
 	protected:
 
 		void setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer);
@@ -55,5 +53,13 @@ namespace mpp
 			ResourceManager* resourceMgr);
 
 		void finishUpdate(int count, bool updateTexCoords);
+
+		size_t getPositionStride() const;
+
+		size_t getTexCoordStride() const;
+
+		size_t getColourStride() const;
+
+		int getVertexCount(int primitiveCount);
 	};
 }

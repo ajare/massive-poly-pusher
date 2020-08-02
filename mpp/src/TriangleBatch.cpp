@@ -354,6 +354,21 @@ namespace mpp
 		}
 	}
 
+	size_t TriangleBatch::getPositionStride() const
+	{
+		return mMainBufferStride;
+	}
+
+	size_t TriangleBatch::getTexCoordStride() const
+	{
+		return mTexCoordBufferStride;
+	}
+
+	size_t TriangleBatch::getColourStride() const
+	{
+		return mMainBufferStride;
+	}
+
 	void TriangleBatch::finishUpdate(int count, bool updateTexCoords)
 	{
 		mCurCount = count;

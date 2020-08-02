@@ -28,7 +28,6 @@ namespace mpp
 		: TriangleBatch(name, positionType, texcoordType, colourOptions, useDiffuseColour, program, texture, 0, renderSystem, resourceMgr)
 		, mIndexWidth(indexWidth)
 		, mVertexCountFn(vertexCountFn)
-		, mBatchCount(0)
 	{
 	}
 
@@ -38,7 +37,7 @@ namespace mpp
 	 */
 	int IndexedTriangleBatch::getVertexCount(int primitiveCount)
 	{
-		return mVertexCountFn(primitiveCount, mBatchCount);
+		return mVertexCountFn(primitiveCount);
 	}
 
 	/*
@@ -73,15 +72,6 @@ namespace mpp
 	{
 		auto& indexData = mMeshes[0]->getIndexData();
 		return (uint8*)&(indexData[0]);
-	}
-
-	/*
-	 * Set the number of batches of triangles to be rendered.
-	 *
-	 */
-	void IndexedTriangleBatch::setBatchCount(int count)
-	{
-		mBatchCount = count;
 	}
 
 	void IndexedTriangleBatch::setMinimumCount(int count)

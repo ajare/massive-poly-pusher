@@ -46,26 +46,25 @@ Current work
 - Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification [DONE]
 - Create a separate lib to do shader parsing and generation [DONE]
   - Create app which uses this to generate programs from a template, based on a MeshSpecification [DONE]
-- Generate default 2d shaders for batches, etc
-  - Use bitfield for hashing
+- Generate default 2d shaders for batches, etc [DONE]
+  - Use bitfield for hashing [DONE]
 - Ensure all 2d batches work, for all options:
   - IndexedTriangleBatch
-  - TriangleBatch
-  - LineBatch
+  - TriangleBatch [DONE]
+  - LineBatch [DONE]
   - QuadBatch
     - With texture [DONE]
 	- With texture atlas [DONE]
 	- With rotation [DONE]
 	- Using triangles [DONE]
-	  - Can we rotate these by adding the centre in texcoord, and rotating around it in the vertex shader?
-	    - So position4: position, rotation, texcoord4: texcoord, centre
-		  - But then can't use an atlas
 	- Using point sprites [DONE]
-	- Create Particle2dBatch and Sprite2dBatch
+	- Tidy up shader template
+	- Tidy up batch update function
+- New batch types
+  - TriangleFanBatch, for circles
+  - TriangleStripBatch, for rings, chunky lines, etc
+- Create demo programs (aside from harness - or within as a module) to show how to use batches
 - Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.
-- Make sure we can generate a default 2d and 3d program based on a MeshSpecification, if it doesn't exist.
-  - Check max number of vertex attribs in createAttribute
-  - Add to caps / pass in
 - Check max vertex stride in createAttribute
 - Fix other Primitives (box/sphere)
   - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec

@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\Batches.h" />
     <ClInclude Include="..\..\include\Helper.h" />
     <ClInclude Include="..\..\include\Input.h" />
     <ClInclude Include="..\..\include\InputManager.h" />
@@ -24,6 +25,7 @@
     <ClInclude Include="..\..\include\Window.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\Batches.cpp" />
     <ClCompile Include="..\..\src\Helper.cpp" />
     <ClCompile Include="..\..\src\Input.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />

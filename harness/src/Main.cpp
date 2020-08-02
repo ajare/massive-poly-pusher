@@ -25,8 +25,6 @@
 #include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
-#include <mpp/LineBatch.h>
-#include <mpp/QuadBatch.h>
 
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
@@ -37,7 +35,7 @@
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
-#include "Particle.h"
+#include "Batches.h"
 
 // Platform
 #include "sdl/WindowSDL.h"
@@ -77,8 +75,6 @@ ResourceManager* gResourceManager = nullptr;
 // Renderdoc
 HINSTANCE gRenderdocProc = 0;
 RENDERDOC_API_1_1_1* gRenderdocApi = nullptr;
-
-vector<Particle> gParticles;
 
 typedef int(*renderDocEntryFunc)(RENDERDOC_Version, void**);
 
@@ -175,199 +171,6 @@ void shutdown()
 	delete gLogger;
 }
 
-void updateLineBatch(mpp::LineBatch* lineBatch, size_t lineBatchCount, float totalTime)
-{
-	lineBatch->startUpdate(lineBatchCount);
-	float* posDataDst = (float*)lineBatch->getPositionData();
-
-	float linesX = gRenderSystem->getWindowWidth() * 0.25f;
-	float linesW = gRenderSystem->getWindowWidth() * 0.5f;
-	float linesY = gRenderSystem->getWindowWidth() * 0.5f;
-	for (uint32 i = 0; i < lineBatchCount; ++i)
-	{
-		float y0 =
-			sinf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
-			sinf(((float)i / (lineBatchCount / 2)) * 6.2832f + 1.2f - totalTime) +
-			sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 2.4f - totalTime) * 0.75f;
-
-		*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
-		*posDataDst++ = linesY + 100 + y0 * 10;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-
-		float y1 =
-			cosf(((float)i / lineBatchCount) * 6.2832f - totalTime) +
-			sinf(((float)i / (lineBatchCount / 4)) * 6.2832f + 3.2f - totalTime) * 0.5f +
-			cosf(((float)i / (lineBatchCount / 3)) * 6.2832f + 5.4f - totalTime) * 0.5f;
-
-		*posDataDst++ = linesX + linesW * ((float)i / lineBatchCount);
-		*posDataDst++ = linesY - 100 - y1 * 10;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-	}
-
-	lineBatch->finishUpdate(lineBatchCount, false);
-
-	gRenderSystem->renderModelImmediate(*lineBatch, false);
-}
-
-size_t updateQuadBatch(mpp::QuadBatch* quadBatch, size_t count, float totalTime)
-{
-	quadBatch->startUpdate(count);
-
-	auto posBuffer = (float*)quadBatch->getPositionData();
-	auto texBuffer = (float*)quadBatch->getTexCoordData();
-	auto colBuffer = (uint8_t*)quadBatch->getColourData();
-
-	size_t vertexCount = quadBatch->getVertexCount(count);
-	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
-	{
-		// Position/rotation data
-		if (quadBatch->usingPointSprites())
-		{
-			// One vertex per quad
-			posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
-			posBuffer[pOffset + 1] = 300 + cosf(totalTime * (i + 2)) * 100;
-		}
-		else
-		{
-			// Indexed, four vertices per quad
-			int primitiveIndex = i / 4;
-			int vertexIndex = i % 4;
-			
-			auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
-			auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
-
-			switch (vertexIndex)
-			{
-			case 0:
-				posBuffer[pOffset + 0] = xc - 16.0f;
-				posBuffer[pOffset + 1] = yc - 16.0f;
-				break;
-			case 1:
-				posBuffer[pOffset + 0] = xc + 16.0f;
-				posBuffer[pOffset + 1] = yc - 16.0f;
-				break;
-			case 2:
-				posBuffer[pOffset + 0] = xc + 16.0f;
-				posBuffer[pOffset + 1] = yc + 16.0f;
-				break;
-			case 3:
-				posBuffer[pOffset + 0] = xc - 16.0f;
-				posBuffer[pOffset + 1] = yc + 16.0f;
-				break;
-			}
-		}
-
-		// Set rotation: combination of position and texcoord data
-		if (quadBatch->rotating())
-		{
-			posBuffer[pOffset + 2] = sinf(totalTime);
-			posBuffer[pOffset + 3] = cosf(totalTime);
-
-			if (!quadBatch->usingPointSprites())
-			{
-				int primitiveIndex = i / 4;
-				int vertexIndex = i % 4;
-
-				auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
-				auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
-
-				texBuffer[tOffset + 2] = xc;
-				texBuffer[tOffset + 3] = yc;
-			}
-		}
-
-		// Texture data
-		if (quadBatch->usingPointSprites())
-		{
-			if (quadBatch->usingTextureAtlas())
-			{
-				const float txWidth = 1.0f / 8;
-				texBuffer[tOffset + 0] = txWidth * 2;
-				texBuffer[tOffset + 1] = 0.0f;
-				texBuffer[tOffset + 2] = txWidth * 3;
-				texBuffer[tOffset + 3] = 1.0f;
-			}
-		}
-		else
-		{
-			if (quadBatch->usingTexture())
-			{
-				// Indexed, four vertices per quad
-				int vertexIndex = i % 4;
-
-				if (quadBatch->usingTextureAtlas())
-				{
-					const float txWidth = 1.0f / 8;
-					switch (vertexIndex)
-					{
-					case 0:
-						texBuffer[tOffset + 0] = txWidth * 2;
-						texBuffer[tOffset + 1] = 0.0f;
-						break;
-					case 1:
-						texBuffer[tOffset + 0] = txWidth * 3;
-						texBuffer[tOffset + 1] = 0.0f;
-						break;
-					case 2:
-						texBuffer[tOffset + 0] = txWidth * 3;
-						texBuffer[tOffset + 1] = 1.0f;
-						break;
-					case 3:
-						texBuffer[tOffset + 0] = txWidth * 2;
-						texBuffer[tOffset + 1] = 1.0f;
-						break;
-					}
-				}
-				else
-				{
-					switch (vertexIndex)
-					{
-					case 0:
-						texBuffer[tOffset + 0] = 0.0f;
-						texBuffer[tOffset + 1] = 0.0f;
-						break;
-					case 1:
-						texBuffer[tOffset + 0] = 1.0f;
-						texBuffer[tOffset + 1] = 0.0f;
-						break;
-					case 2:
-						texBuffer[tOffset + 0] = 1.0f;
-						texBuffer[tOffset + 1] = 1.0f;
-						break;
-					case 3:
-						texBuffer[tOffset + 0] = 0.0f;
-						texBuffer[tOffset + 1] = 1.0f;
-						break;
-					}
-				}
-			}
-		}
-
-		// Colour data
-		if (quadBatch->usingColour())
-		{
-			colBuffer[cOffset + 0] = 255;
-			colBuffer[cOffset + 1] = 255;
-			colBuffer[cOffset + 2] = 255;
-			colBuffer[cOffset + 3] = 255;
-		}
-
-		pOffset += quadBatch->getPositionStride() / sizeof(float);
-		tOffset += quadBatch->getTexCoordStride() / sizeof(float);
-		cOffset += quadBatch->getColourStride() / sizeof(uint8_t);
-	}
-
-	quadBatch->finishUpdate(count, true);
-
-	gRenderSystem->renderModelImmediate(*quadBatch, true);
-	return quadBatch->getCount();
-}
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -528,39 +331,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
-		/*
-		const size_t lineBatchCount{ 100 };
-		auto lineBatch = new LineBatch(
-			"TestLines",
-			mpp::mesh::Vertex::DataType::Float,
-			Batch::ColourOptions::FloatRGBA,
-			false,
-			lineBatchCount,
-			gRenderSystem,
+		size_t indexedTriangleBatchCount{ 16 };
+		auto indexedTriangleBatch = createIndexedTriangleBatch(
+			"TestTris", 
+			"rgba.png", 
+			indexedTriangleBatchCount, 
+			gRenderSystem, 
 			gResourceManager);
-
-		lineBatch->load();
-		*/
-		size_t quadBatchCount{ 8 };
-		auto quadBatch = new QuadBatch(
-			"TestQuads",
-			QuadBatch::VertexOptions::Triangles,
-			mesh::Vertex::DataType::Float,
-			mesh::Vertex::DataType::Float,
-			Batch::ColourOptions::UByteRGBA,
-			true,
-			true,
-			16,
-			16,
-			nullptr,
-			gResourceManager->getResource("bullets.png"),
-			true,
-			16,
-			quadBatchCount,
-			gRenderSystem,
-			gResourceManager);
-
-		quadBatch->load();
 
 		//
 		// Camera setup
@@ -794,8 +571,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->setProjection2dOrthographic();
 
-			//updateLineBatch(lineBatch, lineBatchCount, totalTime);
-			quadBatchCount = updateQuadBatch(quadBatch, quadBatchCount, totalTime);
+			indexedTriangleBatchCount = updateIndexedTriangleBatch(gRenderSystem, indexedTriangleBatch, indexedTriangleBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
@@ -814,11 +590,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("[5] Statue");
 
 			gRenderSystem->renderText(lines, 0, 0, Colour::White);
-
-			/*
-			auto particleInstance = gRenderSystem->renderModelBatched(particleModel);
-			particleInstance->getMeshInstance("Particles")->setRenderCount(numParticles);
-			*/
 
 			gWindow->show();
 		}
