@@ -84,6 +84,11 @@ namespace mpp
 		return mColourData;
 	}
 
+	bool Batch::usingColour() const
+	{
+		return mColourOptions != ColourOptions::None;
+	}
+
 	void Batch::setCount(int count)
 	{
 		mCurCount = count;

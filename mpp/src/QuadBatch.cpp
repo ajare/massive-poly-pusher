@@ -21,7 +21,7 @@ namespace mpp
 		mpp::mesh::Vertex::DataType positionType,
 		mpp::mesh::Vertex::DataType texcoordType,
 		ColourOptions colourOptions,
-		RotationOptions rotationOptions,
+		bool rotate,
 		bool sameSize,
 		int maxDimX,
 		int maxDimY,
@@ -37,7 +37,7 @@ namespace mpp
 		, mTexCoordOptions(TexCoordsOptions::None)
 		, mPositionType(positionType)
 		, mTexcoordType(texcoordType)
-		, mRotationOptions(rotationOptions)
+		, mRotate(rotate)
 		, mSameSize(sameSize)
 		, mMaxDimX(maxDimX)
 		, mMaxDimY(maxDimY)
@@ -156,7 +156,7 @@ namespace mpp
 	{
 		mMainBufferStride = Vertex::getDataTypeSize(mPositionType) * 2; // X,Y
 
-		if (rotating() && usingPointSprites())
+		if (rotating())
 		{
 			mMainBufferStride += Vertex::getDataTypeSize(mPositionType) * 2; // Rotation data
 		}
@@ -321,23 +321,20 @@ namespace mpp
 			mVertexOptions = VertexOptions::Triangles;
 		}
 
-		// Set rotation options
-		if (mRotationOptions != RotationOptions::None && !usingPointSprites())
-		{
-			THROW_MPP("Cannot rotate this QuadBatch unless using point sprites.", __LINE__, __FILE__, __func__);
-		}
-
 		// Set texcoord options
 		mTexCoordOptions = TexCoordsOptions::None;
-		if (mTexture)
+		if (usingPointSprites())
 		{
-			if (!usingPointSprites())
-			{
-				mTexCoordOptions = TexCoordsOptions::TexCoords2;
-			}
-			else if (mTextureAtlas)
+			if (mTexture && mTextureAtlas)
 			{
 				mTexCoordOptions = TexCoordsOptions::TexCoords4;
+			}
+		}
+		else
+		{
+			if (mTexture)
+			{
+				mTexCoordOptions = rotating() ? TexCoordsOptions::TexCoords4 : TexCoordsOptions::TexCoords2;
 			}
 		}
 
@@ -357,7 +354,7 @@ namespace mpp
 		mSpecification = mesh::MeshSpecification(primitiveType);
 		auto layout = mSpecification.createVertexBufferAttributeLayout();
 
-		if (usingPointSprites() && rotating())
+		if (rotating())
 		{
 			flags |= MPP_PROGRAM_TAGS_ROTATION;
 			mPositionOptions = PositionOptions::Position4;
@@ -650,7 +647,12 @@ namespace mpp
 
 	bool QuadBatch::rotating() const
 	{
-		return mRotationOptions != RotationOptions::None;
+		return mRotate;
+	}
+
+	bool QuadBatch::usingTexture() const
+	{
+		return mTexture != nullptr;
 	}
 
 	bool QuadBatch::usingTextureAtlas() const

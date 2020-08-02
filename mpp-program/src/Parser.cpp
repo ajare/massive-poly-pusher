@@ -55,16 +55,6 @@ namespace mpp
 		Parser::Parser(std::string const& name)
 			: mName(name)
 		{
-			/*
-			mStandardAttributes =
-			{
-				{"POSITION", AttributeType::Position},
-				{"NORMAL", AttributeType::Normal},
-				{"TEXCOORDS", AttributeType::TexCoords},
-				{"COLOUR", AttributeType::Colour}
-			};
-			*/
-
 			// Shader stages
 			mStages[(int)ShaderStage::Type::Vertex].type = ShaderStage::Type::Vertex;
 			mStages[(int)ShaderStage::Type::Geometry].type = ShaderStage::Type::Geometry;
@@ -613,15 +603,6 @@ namespace mpp
 							addError(stageType, "out-attribute '" + attrib + "' has no type declaration.");
 						}
 					}
-
-					/*
-					auto it = mStandardAttributes.find(attrib);
-					if (it == mStandardAttributes.end())
-					{
-						addError(stageType, "unknown out-attribute '" + attrib + "' used.");
-						goto next_match;
-					}
-					*/
 
 					Attribute outAttrib;
 
