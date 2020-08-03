@@ -58,660 +58,354 @@ namespace mpp
 				switch (attrib.component)
 				{
 				case mesh::Vertex::Component::Position3:
-					switch (attrib.dataType)
+				case mesh::Vertex::Component::Position4:
+					// Top face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
 					{
-					case mesh::Vertex::DataType::Float:
-						// Top face
-						setVertexData<float>(offset, { -w2, h2, -d2 });	offset += strideInBytes;
-						setVertexData<float>(offset, { -w2, h2, d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { w2, h2, d2 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { w2, h2, -d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, h2, -d2 });	offset += strideInBytes;
-						}
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
+					}
 
-						// Bottom face
-						setVertexData<float>(offset, { -w2, -h2, -d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, -h2, -d2 });	offset += strideInBytes;
-						setVertexData<float>(offset, { w2, -h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { w2, -h2, d2 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { -w2, -h2, d2 });	offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, -h2, -d2 }); offset += strideInBytes;
-						}
+					// Bottom face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					}
 
-						// Front face
-						setVertexData<float>(offset, { -w2, -h2, d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { -w2, h2, d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { w2, h2, d2 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { w2, -h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, -h2, d2 }); offset += strideInBytes;
-						}
+					// Front face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
+					}
 
-						// Back face
-						setVertexData<float>(offset, { -w2, -h2, -d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, -h2, -d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, h2, -d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { w2, h2, -d2 }); offset += strideInBytes;
-						}
+					// Back face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
+					}
 
-						setVertexData<float>(offset, { -w2, h2, -d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, -h2, -d2 }); offset += strideInBytes;
-						}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					}
 
-						// Right face
-						setVertexData<float>(offset, { w2, -h2, -d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, -h2, d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { w2, h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { w2, h2, d2 }); offset += strideInBytes;
-						}
+					// Right face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					}
 
-						setVertexData<float>(offset, { w2, h2, -d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { w2, -h2, -d2 }); offset += strideInBytes;
-						}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					}
 
-						// Left face
-						setVertexData<float>(offset, { -w2, -h2, -d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { -w2, h2, -d2 }); offset += strideInBytes;
-						setVertexData<float>(offset, { -w2, h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, h2, d2 }); offset += strideInBytes;
-						}
+					// Left face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
+					}
 
-						setVertexData<float>(offset, { -w2, -h2, d2 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -w2, -h2, -d2 }); offset += strideInBytes;
-						}
-						break;
-
-					default:
-						THROW_MPP("Primitive ModelStreams only support floats for position data.", 
-							__LINE__, __FILE__, __func__);
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
 					}
 					break;
-
 				case mesh::Vertex::Component::Normal3:
-					switch (attrib.dataType)
+				case mesh::Vertex::Component::Normal4:
+					// Top face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0);	offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
 					{
-					case mesh::Vertex::DataType::Float:
-						// Top face
-						setVertexData<float>(offset, { 0, 1, 0 });	offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 1, 0 }); offset += strideInBytes;
-						}
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					}
 
-						// Bottom face
-						setVertexData<float>(offset, { 0, -1, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, -1, 0 });	offset += strideInBytes;
-						setVertexData<float>(offset, { 0, -1, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, -1, 0 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, -1, 0 });	offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, -1, 0 }); offset += strideInBytes;
-						}
+					// Bottom face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0);	offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0);	offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					}
 
-						// Front face
-						setVertexData<float>(offset, { 0, 0, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 0, 1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 0, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 0, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0, 1 }); offset += strideInBytes;
-						}
+					// Front face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					}
 
-						// Back face
-						setVertexData<float>(offset, { 0, 0, -1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 0, -1 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 0, 0, -1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0, -1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 0, -1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0, -1 }); offset += strideInBytes;
-						}
+					// Back face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					}
 
-						// Right face
-						setVertexData<float>(offset, { 1, 0, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 0, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { 1, 0, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 0, 0 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 0, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 0, 0 }); offset += strideInBytes;
-						}
+					// Right face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					}
 
-						// Left face
-						setVertexData<float>(offset, { -1, 0, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { -1, 0, 0 }); offset += strideInBytes;
-						setVertexData<float>(offset, { -1, 0, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -1, 0, 0 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { -1, 0, 0 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { -1, 0, 0 }); offset += strideInBytes;
-						}
-						break;
-
-					default:
-						THROW_MPP("Primitive ModelStreams only support floats for normal data.",
-							__LINE__, __FILE__, __func__);
+					// Left face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
 					}
 					break;
-
 				case mesh::Vertex::Component::TexCoord2:
-					switch (attrib.dataType)
+				case mesh::Vertex::Component::TexCoord3:
+				case mesh::Vertex::Component::TexCoord4:
+					// Top face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
 					{
-					case mesh::Vertex::DataType::Float:
-						// Top face
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;	
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						}
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					}
 
-						// Bottom face
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;	
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						}
+					// Bottom face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					}
 
-						// Front face
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;	
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						}
+					// Front face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					}
 
-						// Back face
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;	
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						}
+					// Back face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					}
 
-						// Right face
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;	
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						}
+					// Right face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					}
 
-						// Left face
-						setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;	
-						setVertexData<float>(offset, { 1, 0 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 0, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 0, 0 }); offset += strideInBytes;
-						}
-						break;
-
-					default:
-						THROW_MPP("Primitive ModelStreams only support floats for texcoord data.",
-							__LINE__, __FILE__, __func__);
-
+					// Left face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
 					}
 					break;
-
+				case mesh::Vertex::Component::Colour1:
 				case mesh::Vertex::Component::Colour3:
-					switch (attrib.dataType)
-					{
-					case mesh::Vertex::DataType::Float:
-						// Top face
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-
-						// Bottom face
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-
-						// Front face
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-
-						// Back face
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-
-						// Right face
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-
-						// Left face
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1 }); offset += strideInBytes;
-						}
-						break;
-
-					case mesh::Vertex::DataType::UnsignedByte:
-						// Top face
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Bottom face
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Front face
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Back face
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Right face
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Left face
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255 }); offset += strideInBytes;
-						}
-						break;
-
-					default:
-						THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.",
-							__LINE__, __FILE__, __func__);
-					}
-					break;
-
 				case mesh::Vertex::Component::Colour4:
-					switch (attrib.dataType)
+					// Top face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
 					{
-					case mesh::Vertex::DataType::Float:
-						// Top face
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
 
-						// Bottom face
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
+					// Bottom face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
 
-						// Front face
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
+					// Front face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
 
-						// Back face
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
+					// Back face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
 
-						// Right face
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
+					// Right face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
 
-						// Left face
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 1, 1, 1, 1 }); offset += strideInBytes;
-						}
-
-						break;
-
-					case mesh::Vertex::DataType::UnsignedByte:
-						// Top face
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Bottom face
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Front face
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Back face
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Right face
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-
-						// Left face
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes; 
-						if (!meshSpec.verticesIndexed())
-						{
-							setVertexData<float>(offset, { 255, 255, 255, 255 }); offset += strideInBytes;
-						}
-						break;
-
-					default:
-						THROW_MPP("Primitive ModelStreams only support floats or ubytes for colour data.",
-							__LINE__, __FILE__, __func__);
+					// Left face
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					}
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					if (!meshSpec.verticesIndexed())
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 					}
 					break;
-
-				default:
-					THROW_MPP("Unsupported component: " + mesh::Vertex::getComponentName(attrib.component),
-						__LINE__, __FILE__, __func__);
 				}
 			}
 		}

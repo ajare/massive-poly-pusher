@@ -28,6 +28,10 @@ namespace mpp
 			std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
 		};
 
+	private:
+
+		size_t mStrideInBytes;
+
 	protected:
 
 		MeshDataStreamDefinition mMeshDataDefinition;

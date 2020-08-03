@@ -13,6 +13,7 @@ namespace mpp
 {
 	PrimitiveModelStream::PrimitiveModelStream(mesh::MeshSpecification const& meshSpec, string const& material)
 		: ModelStream()
+		, mStrideInBytes(0)
 	{
 		mMeshDataDefinition.specification = meshSpec;
 
@@ -24,7 +25,7 @@ namespace mpp
 	void PrimitiveModelStream::createMeshDataStreams()
 	{
 		int vertexOffset = 0;
-		int vertexStride = 0;
+		mStrideInBytes = 0;
 
 		for (int i = 0; i < mMeshDataDefinition.specification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
@@ -33,12 +34,12 @@ namespace mpp
 			for (int j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto attrib = layout.getAttribute(j);
-				vertexStride += attrib.sizeInBytes();
+				mStrideInBytes += attrib.sizeInBytes();
 			}
 		}
 
 		// Set counts
-		mMeshDataDefinition.vertexCount = (int)mMeshDataDefinition.vertexData.size() / vertexStride;
+		mMeshDataDefinition.vertexCount = (int)mMeshDataDefinition.vertexData.size() / mStrideInBytes;
 
 		int elementSize = mesh::Primitive::size(mMeshDataDefinition.specification.getPrimitiveType());
 		int indexWidthBytes = mMeshDataDefinition.indexWidth / 8;
@@ -66,7 +67,7 @@ namespace mpp
 				vertexStreamDef.data = sharedDataPtr;
 				vertexStreamDef.dataType = attrib.dataType;
 				vertexStreamDef.offset = vertexOffset;
-				vertexStreamDef.stride = vertexStride;
+				vertexStreamDef.stride = mStrideInBytes;
 
 				vertexOffset += attrib.sizeInBytes();
 
