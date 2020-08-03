@@ -71,6 +71,8 @@ Current work
 - Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.  
 - Look into separate attribute format:
   - https://www.khronos.org/opengl/wiki/Vertex_Specification#Separate_attribute_format
-- Fix other Primitives (box/sphere)
-  - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
-  - Use OpenGL immediate mode-style calls to specify colour, uvs, normal, vertex pos`
+- Fix Primitives (box/sphere)
+  - Grid [DONE]
+  - Box [DONE]
+  - Cylinder
+  - Sphere
