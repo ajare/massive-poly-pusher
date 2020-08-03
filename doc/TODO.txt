@@ -58,18 +58,19 @@ Current work
 	- With rotation [DONE]
 	- Using triangles [DONE]
 	- Using point sprites [DONE]
-	- Tidy up shader template
-	- Tidy up batch update function
-- Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.
-- Check max vertex stride in createAttribute
-- Fix other Primitives (box/sphere)
-  - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
-  - Use OpenGL immediate mode-style calls to specify colour, uvs, normal, vertex pos`
+	- Tidy up shader template [DONE]
+	- Tidy up batch update function [DONE]
+- Replacement for FreeImage, for size
+  - Just read/write PNG	(http://www.nongnu.org/pngpp/)
+  - Make pluggable by client (eg Harness)
 - Serialization is now almost certainly broken.
   - Get model being saved to .mppmodel and loaded in
   - Ensure multiple buffers work
   - Ensure padding is saved/loaded
   - Create model inspector?
+- Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.  
 - Look into separate attribute format:
   - https://www.khronos.org/opengl/wiki/Vertex_Specification#Separate_attribute_format
-
+- Fix other Primitives (box/sphere)
+  - Refactor to specify raw data as doubles in subclass, and then convert in base class based on spec
+  - Use OpenGL immediate mode-style calls to specify colour, uvs, normal, vertex pos`

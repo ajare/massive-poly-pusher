@@ -331,6 +331,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
+		/*
 		size_t indexedTriangleBatchCount{ 16 };
 		auto indexedTriangleBatch = createIndexedTriangleBatch(
 			"TestTris", 
@@ -338,6 +339,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			indexedTriangleBatchCount, 
 			gRenderSystem, 
 			gResourceManager);
+		*/
 
 		//
 		// Camera setup
@@ -569,9 +571,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Batches
 			//
-			gRenderSystem->setProjection2dOrthographic();
-
-			indexedTriangleBatchCount = updateIndexedTriangleBatch(gRenderSystem, indexedTriangleBatch, indexedTriangleBatchCount, totalTime);
+			//gRenderSystem->setProjection2dOrthographic();
+			//indexedTriangleBatchCount = updateIndexedTriangleBatch(gRenderSystem, indexedTriangleBatch, indexedTriangleBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
@@ -599,6 +600,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		//delete lineBatch;
 		//delete quadBatch
+		//delete triangleBatch;
+		//delete tndexedTriangleBatch;
 	}
 	catch (mpp::MppException const& e)
 	{

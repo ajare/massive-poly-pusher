@@ -56,7 +56,6 @@ namespace mpp
 	{
 		setPrimitiveData(type);
 		mIndexData = indices;
-		//mIndexDataSize = (int)mIndexData.size();
 	}
 
 	/*
