@@ -288,7 +288,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		cubeModel->load();
 
 		// Sphere
-		auto sphereStream = new SphereModelStream(modelSpec, "Material.Marble", 15.0f, 5);
+		auto sphereStream = new SphereModelStream(modelSpec, "Material.Marble", 15.0f, 1);
 
 		auto sphereModel = gResourceManager->createResource<Model>("Model.Sphere", ResourceStreamPtr(sphereStream));
 		sphereModel->load();
