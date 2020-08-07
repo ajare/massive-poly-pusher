@@ -100,6 +100,10 @@ namespace mpp
 		addTriangle(5, 2, 9);
 		addTriangle(11, 2, 7);
 
+		// Resize data here, to stop this happening in subdivide
+		size_t scaleFactor = pow(4, (res - 1));
+		//mMeshDataDefinition.vertexData.resize(mMeshDataDefinition.vertexData.size() * scaleFactor);
+		//mMeshDataDefinition.indexData.resize(mMeshDataDefinition.indexData.size() * scaleFactor);
 		for (int i = 1; i < res; ++i)
 		{
 			subdivide(strideInBytes / sizeof(float));
