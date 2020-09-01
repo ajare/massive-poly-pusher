@@ -282,6 +282,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 
 		// Cube
+		/*
 		auto cubeStream = new BoxModelStream(modelSpec, "Material.Marble", 1, 1, 1);
 
 		auto cubeModel = gResourceManager->createResource<Model>("Model.Cube", ResourceStreamPtr(cubeStream));
@@ -292,8 +293,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		auto sphereModel = gResourceManager->createResource<Model>("Model.Sphere", ResourceStreamPtr(sphereStream));
 		sphereModel->load();
-
-		/*
+		
 		// Cylinder
 		auto cylinderStream = new CylinderModelStream(modelSpec, "Material.Marble", 30.0f, 15.0f, 10.0f, 72);
 
@@ -320,14 +320,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		vector< ModelTransform> modelTranforms =
 		{
-			{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
-			{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
+			//{ cubeModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(150.0f, 150.0f, 150.0f)},
+			//{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
 			//{ cylinderModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
 			{ gridModel, glm::vec3(0.0f, -100.0f, 50.0f), glm::vec3(1.0f, 1.0f, 1.0f)},
 			//{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
 		};
 
-		auto currentModelId = 1;
+		auto currentModelId = 0;
 
 		//
 		// 2d batch objects
