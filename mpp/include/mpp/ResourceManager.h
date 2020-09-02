@@ -60,76 +60,6 @@ namespace mpp
 			return resourcePtr;
 		}
 
-		template<typename Out>
-		void split(std::string const &s, char delim, Out result)
-		{
-			std::stringstream ss(s);
-			std::string item;
-			while (getline(ss, item, delim))
-			{
-				*(result++) = item;
-			}
-		}
-
-		std::vector<std::string> split(std::string const& s, char delim) 
-		{
-			std::vector<std::string> elems;
-			split(s, delim, std::back_inserter(elems));
-			return elems;
-		}
-
-		void ltrim(std::string& s)
-		{
-			s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
-				return !std::isspace(ch);
-			}));
-		}
-
-		// trim from end (in place)
-		void rtrim(std::string& s) 
-		{
-			s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
-				return !std::isspace(ch);
-			}).base(), s.end());
-		}
-
-		// trim from both ends (in place)
-		void trim(std::string& s) 
-		{
-			ltrim(s);
-			rtrim(s);
-		}
-
-		// trim from start (copying)
-		std::string ltrim_copy(std::string s) 
-		{
-			ltrim(s);
-			return s;
-		}
-
-		// trim from end (copying)
-		std::string rtrim_copy(std::string s) 
-		{
-			rtrim(s);
-			return s;
-		}
-
-		// trim from both ends (copying)
-		std::string trim_copy(std::string s) 
-		{
-			trim(s);
-			return s;
-		}
-
-		// Shader templates
-		bool evaluateShaderDirective(std::string const& expression, std::set<std::string> const& attribs);
-
-		bool processShaderLine(std::string const& lineFragment, std::set<std::string> const& attribs, bool prev);
-
-		std::string generateShader(std::string const& templ, std::set<std::string> const& attribs);
-
-		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
-
 	public:
 
 		explicit ResourceManager(RenderSystem* renderSystem);
@@ -157,6 +87,8 @@ namespace mpp
 		Texture* getTextureBySortId(uint32 id);
 
 		Program* getProgramBySortId(uint32 id);
+
+		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
 	};
 
 	// Texture and Program can be sorted on for render order.
