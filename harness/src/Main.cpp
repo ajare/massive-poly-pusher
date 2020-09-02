@@ -235,10 +235,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		modelSpec.setIndexedVertices(true);
 
+		//
 		// Programs
-		FileProgramStream* programStream = new FileProgramStream(gOptions.resourceLocation + "test.vert", gOptions.resourceLocation + "test.frag");
-
-		gResourceManager->createResource<Program>("program_test", ResourceStreamPtr(programStream));
+		//
 
 		//
 		// Textures
@@ -266,16 +265,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Marble
 		auto meshMaterialStream = new ProgrammaticMaterialStream();
 
-		//meshMaterialStream->setProgram("program_test");
 		meshMaterialStream->setProgram(false, modelSpec, {});
 
 		meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
-
-		FileDataStream fileDatastream(gOptions.resourceLocation + "statue/statue.material");
-		auto fileMaterialStream = new FileMaterialStream(fileDatastream);
-
-		gResourceManager->createResource<Material>("statue_material", ResourceStreamPtr(fileMaterialStream))->load();
 
 		//
 		// Models

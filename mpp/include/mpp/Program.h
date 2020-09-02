@@ -47,9 +47,6 @@
 #define MPP_PROGRAM_TAGS_PRIM_LINES			(1 << 18)
 #define MPP_PROGRAM_TAGS_PRIM_TRIANGLES		(1 << 19)
 
-// Loader flags
-#define MPP_PROGRAM_LOADER_NEWSTYLE			0x0001
-
 namespace mpp
 {
 	class _MPPAPI Program : public Resource

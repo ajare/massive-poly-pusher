@@ -677,50 +677,41 @@ namespace mpp
 		auto rs = getRenderSystem();
 		try
 		{
-			// Parse shader source
-			if (!(mFlags & MPP_PROGRAM_LOADER_NEWSTYLE))
-			{
-				mVertexSource = parseSource(mVertexSource, ShaderType::Vertex, false);
-				mFragmentSource = parseSource(mFragmentSource, ShaderType::Fragment, false);
-			}
-			else
-			{
-				// Set up uniforms and textures
-				ProgramProgramStream* pStr = dynamic_cast<ProgramProgramStream*>(getResourceStream().get());
+			// Set up uniforms and textures
+			ProgramProgramStream* pStr = dynamic_cast<ProgramProgramStream*>(getResourceStream().get());
 				
-				auto uniforms = pStr->getUniforms();
-				for (auto const& uniform : uniforms)
-				{
-					auto markedUpUniform = MPP_PROGRAM_UNIFORM_PREFIX + uniform;
-					mUniformIds[markedUpUniform] = -1;
-				}
+			auto uniforms = pStr->getUniforms();
+			for (auto const& uniform : uniforms)
+			{
+				auto markedUpUniform = MPP_PROGRAM_UNIFORM_PREFIX + uniform;
+				mUniformIds[markedUpUniform] = -1;
+			}
 
-				auto textures = pStr->getTextures();
-				for (auto const& texture: textures)
-				{
-					TextureInfo ti;
-					ti.samplerName = texture;
-					ti.markedUpName = MPP_PROGRAM_TEXTURE_PREFIX + texture;
-					ti.uniformId = -1;
+			auto textures = pStr->getTextures();
+			for (auto const& texture: textures)
+			{
+				TextureInfo ti;
+				ti.samplerName = texture;
+				ti.markedUpName = MPP_PROGRAM_TEXTURE_PREFIX + texture;
+				ti.uniformId = -1;
 
-					mTextures.push_back(ti);
-				}
+				mTextures.push_back(ti);
+			}
 
-				// Set up vertex attributes
-				auto inAttribs = pStr->getInAttributes();
-				for (auto const& inAttrib: inAttribs)
-				{
-					VariableInfo vi;
+			// Set up vertex attributes
+			auto inAttribs = pStr->getInAttributes();
+			for (auto const& inAttrib: inAttribs)
+			{
+				VariableInfo vi;
 					
-					vi.def = "in";
-					vi.name = inAttrib.name;
-					vi.type = inAttrib.type.name;
-					vi.numComponents = inAttrib.type.size[0] * inAttrib.type.size[1];
-					vi.streamOffset = mVertexAttributes.empty() ? 0 :
-						mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;
+				vi.def = "in";
+				vi.name = inAttrib.name;
+				vi.type = inAttrib.type.name;
+				vi.numComponents = inAttrib.type.size[0] * inAttrib.type.size[1];
+				vi.streamOffset = mVertexAttributes.empty() ? 0 :
+					mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;
 					
-					mVertexAttributes.push_back(vi);
-				}
+				mVertexAttributes.push_back(vi);
 			}
 
 			// Create vertex shader

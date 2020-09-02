@@ -60,8 +60,6 @@ namespace mpp
 			parser->setFragmentSource(FragmentShader3dTemplate);
 
 			auto ps = new ProgramProgramStream(parser, {});
-			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
 			createResource<Program>("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -80,8 +78,6 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
 			auto ps = new ProgramProgramStream(parser, {});
-			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
 			createResource<Program>("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -100,8 +96,6 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramProgramStream(parser, {"Points"});
-			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
 			createResource<Program>("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -118,8 +112,6 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramProgramStream(parser, {});
-			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
 			createResource<Program>("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -137,8 +129,6 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramProgramStream(parser, { "Points", "Colours" });
-			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
 			createResource<Program>("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -156,8 +146,6 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramProgramStream(parser, { "Colours" });
-			ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
-
 			createResource<Program>("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -399,7 +387,6 @@ namespace mpp
 		parser->setFragmentSource(FragmentShader2dTemplate);
 
 		auto ps = new ProgramProgramStream(parser, getProgramAttributes(spec, flags));
-		ps->setFlags(MPP_PROGRAM_LOADER_NEWSTYLE);
 
 		// Generate name
 		string specName = spec.getDescriptor("__mpp_p2d_");
