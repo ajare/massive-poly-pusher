@@ -518,7 +518,7 @@ namespace mpp
 
 		// Print caps
 		logMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
-		logMessage(utils::StringUtils::format("Supported aliased line width range: %2.1 to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
+		logMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
 		logMessage(utils::StringUtils::format("Supported texture units: {}", mCaps.maxTextureUnits));
 		logMessage(utils::StringUtils::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
 		logMessage(utils::StringUtils::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));

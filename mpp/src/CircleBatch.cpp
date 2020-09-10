@@ -22,7 +22,7 @@ namespace mpp
 		mpp::mesh::Vertex::DataType positionType,
 		mpp::mesh::Vertex::DataType texcoordType,
 		mpp::mesh::Vertex::DataType colourType,
-		float radius,
+		float maxRadius,
 		float borderSize,
 		int indexWidth,
 		uint32 initialCount,
@@ -34,9 +34,9 @@ namespace mpp
 			texcoordType,
 			ColourOptions::FloatRGBA, 
 			false, 
-			true,
-			(int)(radius * 2),
-			(int)(radius * 2),
+			false,
+			(int)(maxRadius * 2),
+			(int)(maxRadius * 2),
 			nullptr,
 			nullptr,
 			false,
@@ -47,7 +47,7 @@ namespace mpp
 			"circle",
 			renderSystem, 
 			resourceMgr)
-		, mRadius(radius)
+		, mRadius(maxRadius)
 		, mBorderSize(borderSize)
 		, mColourType(colourType)
 		, mNormalOffset(0)
