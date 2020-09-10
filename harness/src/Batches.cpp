@@ -86,7 +86,7 @@ mpp::CircleBatch* createCircleBatch(string const& name, size_t circleBatchCount,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::UnsignedByte,
 		mpp::mesh::Vertex::DataType::UnsignedByte,
-		16.0f,
+		32.0f,
 		4.0f,
 		16,
 		circleBatchCount,
@@ -430,6 +430,8 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 		// generate it (we don't need to store it)
 		// But then need to store border
 
+		float radius = 20 + sinf(totalTime) * 12;
+
 		// Position/rotation data
 		if (circleBatch->usingPointSprites())
 		{
@@ -449,26 +451,26 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 			switch (vertexIndex)
 			{
 			case 0:
-				posBuffer[pOffset + 0] = xc - 16.0f;
-				posBuffer[pOffset + 1] = yc - 16.0f;
+				posBuffer[pOffset + 0] = xc - radius;
+				posBuffer[pOffset + 1] = yc - radius;
 				posBuffer[pOffset + 2] = 0.0f;
 				posBuffer[pOffset + 3] = 0.0f;
 				break;
 			case 1:
-				posBuffer[pOffset + 0] = xc + 16.0f;
-				posBuffer[pOffset + 1] = yc - 16.0f;
+				posBuffer[pOffset + 0] = xc + radius;
+				posBuffer[pOffset + 1] = yc - radius;
 				posBuffer[pOffset + 2] = 1.0f;
 				posBuffer[pOffset + 3] = 0.0f;
 				break;
 			case 2:
-				posBuffer[pOffset + 0] = xc + 16.0f;
-				posBuffer[pOffset + 1] = yc + 16.0f;
+				posBuffer[pOffset + 0] = xc + radius;
+				posBuffer[pOffset + 1] = yc + radius;
 				posBuffer[pOffset + 2] = 1.0f;
 				posBuffer[pOffset + 3] = 1.0f;
 				break;
 			case 3:
-				posBuffer[pOffset + 0] = xc - 16.0f;
-				posBuffer[pOffset + 1] = yc + 16.0f;
+				posBuffer[pOffset + 0] = xc - radius;
+				posBuffer[pOffset + 1] = yc + radius;
 				posBuffer[pOffset + 2] = 0.0f;
 				posBuffer[pOffset + 3] = 1.0f;
 				break;
@@ -476,7 +478,7 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 		}
 
 		// Size data
-		norBuffer[nOffset + 0] = 16.0f;
+		norBuffer[nOffset + 0] = radius;
 		norBuffer[nOffset + 1] = 8.0f + sinf(totalTime) * 4;
 		norBuffer[nOffset + 2] = 0.0f;
 		norBuffer[nOffset + 3] = 0.0f;

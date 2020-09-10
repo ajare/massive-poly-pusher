@@ -35,7 +35,7 @@ namespace mpp
 			mpp::mesh::Vertex::DataType positionType,
 			mpp::mesh::Vertex::DataType texcoordType,
 			mpp::mesh::Vertex::DataType colourType,
-			float radius,
+			float maxRadius,
 			float borderSize,
 			int indexWidth,
 			uint32 initialCount,
