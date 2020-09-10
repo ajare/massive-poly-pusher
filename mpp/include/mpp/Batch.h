@@ -24,6 +24,12 @@ namespace mpp
 			UByteRGBA
 		};
 
+	private:
+
+		std::string mDefaultVertexShader, mDefaultFragmentShader;
+
+		std::string mProgramDescriptor;
+
 	protected:
 
 		int mCurCount, mMaxCount;
@@ -70,6 +76,9 @@ namespace mpp
 			ColourOptions colourOptions,
 			bool useDiffuseColour,
 			uint32 initialCount,
+			std::string const& defaultVertexShader,
+			std::string const& defaultFragmentShader,
+			std::string const& descriptor,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 

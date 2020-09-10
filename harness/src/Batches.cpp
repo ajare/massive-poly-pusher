@@ -1,6 +1,8 @@
 #include "Batches.h"
 
-mpp::IndexedTriangleBatch* createIndexedTriangleBatch(std::string const& name, std::string const& texture, size_t indexedTriangleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+using namespace std;
+
+mpp::IndexedTriangleBatch* createIndexedTriangleBatch(string const& name, string const& texture, size_t indexedTriangleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
 	auto indexedTriangleBatch = new mpp::IndexedTriangleBatch(
 		"TestIndexedTriangles",
@@ -19,7 +21,7 @@ mpp::IndexedTriangleBatch* createIndexedTriangleBatch(std::string const& name, s
 	return indexedTriangleBatch;
 }
 
-mpp::TriangleBatch* createTriangleBatch(std::string const& name, std::string const& texture, size_t triangleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+mpp::TriangleBatch* createTriangleBatch(string const& name, string const& texture, size_t triangleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
 	auto triangleBatch = new mpp::TriangleBatch(
 		"TestTriangles",
@@ -37,7 +39,7 @@ mpp::TriangleBatch* createTriangleBatch(std::string const& name, std::string con
 	return triangleBatch;
 }
 
-mpp::LineBatch* createLineBatch(std::string const& name, size_t lineBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
 	auto lineBatch = new mpp::LineBatch(
 		name,
@@ -52,11 +54,11 @@ mpp::LineBatch* createLineBatch(std::string const& name, size_t lineBatchCount, 
 	return lineBatch;
 }
 
-mpp::QuadBatch* createQuadBatch(std::string const& name, std::string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+mpp::QuadBatch* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
 	auto quadBatch = new mpp::QuadBatch(
 		name,
-		mpp::QuadBatch::VertexOptions::Triangles,
+		mpp::QuadBatch::VertexOptions::Auto,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::Batch::ColourOptions::UByteRGBA,
@@ -74,6 +76,25 @@ mpp::QuadBatch* createQuadBatch(std::string const& name, std::string const& text
 
 	quadBatch->load();
 	return quadBatch;
+}
+
+mpp::CircleBatch* createCircleBatch(string const& name, size_t circleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+{
+	auto circleBatch = new mpp::CircleBatch(
+		name,
+		mpp::QuadBatch::VertexOptions::Triangles,
+		mpp::mesh::Vertex::DataType::Float,
+		mpp::mesh::Vertex::DataType::UnsignedByte,
+		mpp::mesh::Vertex::DataType::UnsignedByte,
+		16.0f,
+		4.0f,
+		16,
+		circleBatchCount,
+		renderSystem,
+		resourceMgr);
+
+	circleBatch->load();
+	return circleBatch;
 }
 
 size_t updateTriangleBatch(mpp::RenderSystem* renderSystem, mpp::TriangleBatch* triBatch, size_t count, float totalTime)
@@ -391,4 +412,95 @@ size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatc
 
 	renderSystem->renderModelImmediate(*quadBatch, true);
 	return quadBatch->getCount();
+}
+
+size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circleBatch, size_t count, float totalTime)
+{
+	circleBatch->startUpdate(count);
+
+	auto posBuffer = (float*)circleBatch->getPositionData();
+	auto norBuffer = (float*)circleBatch->getNormalData();
+	auto texBuffer = (uint8_t*)circleBatch->getTexCoordData();
+	auto colBuffer = (uint8_t*)circleBatch->getColourData();
+
+	size_t vertexCount = circleBatch->getVertexCount(count);
+	for (size_t pOffset = 0, nOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
+	{
+		// If we're using points, then store size in position.z, and if not, then
+		// generate it (we don't need to store it)
+		// But then need to store border
+
+		// Position/rotation data
+		if (circleBatch->usingPointSprites())
+		{
+			// One vertex per quad
+			posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
+			posBuffer[pOffset + 1] = 300 + cosf(totalTime * (i + 2)) * 100;
+		}
+		else
+		{
+			// Indexed, four vertices per quad
+			int primitiveIndex = i / 4;
+			int vertexIndex = i % 4;
+
+			auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
+			auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
+
+			switch (vertexIndex)
+			{
+			case 0:
+				posBuffer[pOffset + 0] = xc - 16.0f;
+				posBuffer[pOffset + 1] = yc - 16.0f;
+				posBuffer[pOffset + 2] = 0.0f;
+				posBuffer[pOffset + 3] = 0.0f;
+				break;
+			case 1:
+				posBuffer[pOffset + 0] = xc + 16.0f;
+				posBuffer[pOffset + 1] = yc - 16.0f;
+				posBuffer[pOffset + 2] = 1.0f;
+				posBuffer[pOffset + 3] = 0.0f;
+				break;
+			case 2:
+				posBuffer[pOffset + 0] = xc + 16.0f;
+				posBuffer[pOffset + 1] = yc + 16.0f;
+				posBuffer[pOffset + 2] = 1.0f;
+				posBuffer[pOffset + 3] = 1.0f;
+				break;
+			case 3:
+				posBuffer[pOffset + 0] = xc - 16.0f;
+				posBuffer[pOffset + 1] = yc + 16.0f;
+				posBuffer[pOffset + 2] = 0.0f;
+				posBuffer[pOffset + 3] = 1.0f;
+				break;
+			}
+		}
+
+		// Size data
+		norBuffer[nOffset + 0] = 16.0f;
+		norBuffer[nOffset + 1] = 8.0f + sinf(totalTime) * 4;
+		norBuffer[nOffset + 2] = 0.0f;
+		norBuffer[nOffset + 3] = 0.0f;
+
+		// Border colour data
+		texBuffer[tOffset + 0] = 0;
+		texBuffer[tOffset + 1] = 0;
+		texBuffer[tOffset + 2] = 255;
+		texBuffer[tOffset + 3] = 255;
+
+		// Inner colour data
+		colBuffer[cOffset + 0] = 255;
+		colBuffer[cOffset + 1] = 255;
+		colBuffer[cOffset + 2] = 255;
+		colBuffer[cOffset + 3] = 255;
+
+		pOffset += circleBatch->getPositionStride() / sizeof(float);
+		nOffset += circleBatch->getNormalStride() / sizeof(float);
+		tOffset += circleBatch->getTexCoordStride() / sizeof(uint8_t);
+		cOffset += circleBatch->getColourStride() / sizeof(uint8_t);
+	}
+
+	circleBatch->finishUpdate(count, true);
+
+	renderSystem->renderModelImmediate(*circleBatch, true);
+	return circleBatch->getCount();
 }

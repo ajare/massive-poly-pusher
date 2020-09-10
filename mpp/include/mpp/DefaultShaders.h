@@ -215,3 +215,74 @@ void main()
 ##
 }
 )";
+
+/*
+ * Circle
+ *
+ */
+
+const std::string VertexShader2dCircle =
+R"(
+@@Version
+
+void main()
+{
+## Triangles
+    @Out(vec4 NORMAL) = vec4(@In(POSITION).zw, @In(NORMAL).xy);
+## Else
+	@Out(vec4 NORMAL) = vec4(0.0, 0.0, @In(NORMAL).xy);
+##
+
+	@Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
+	@Out(vec4 COLOUR) = @Vec4(@In(COLOUR));
+
+	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
+	vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
+	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
+}
+)";
+
+const std::string FragmentShader2dCircle =
+R"(
+@@Version
+
+## Diffuse
+@@Uniform(vec4 DIFFUSE);
+##
+
+void main()
+{
+	vec4 borderColour = @In(TEXCOORDS);
+	vec4 innerColour = @In(COLOUR);
+	vec2 sizes = vec2(@In(NORMAL).zw);
+
+## Diffuse
+	borderColour *= @Uniform(DIFFUSE);
+	innerColour *= @Uniform(DIFFUSE);
+##
+
+## Points
+	vec2 tc = gl_PointCoord;
+## Else
+	vec2 tc = @In(NORMAL).xy;
+##
+	tc -= 0.5;
+
+	float outerBorder = 0.25;
+	float innerBorder = (sizes.x - sizes.y) / (sizes.x * 4);
+
+	float d = dot(tc, tc);
+	if (d <= innerBorder)
+	{
+		@Out(vec4 COLOUR) = innerColour;
+	}
+	else if (d <= outerBorder)
+	{
+		@Out(COLOUR) = borderColour;
+	}
+	else
+	{
+		@Out(COLOUR) = vec4(0.0);
+	}
+}
+)";

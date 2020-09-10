@@ -26,6 +26,8 @@
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
 
+#include <mpp/QuadBatch.h>
+
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
 
@@ -325,15 +327,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
-		/*
-		size_t indexedTriangleBatchCount{ 16 };
-		auto indexedTriangleBatch = createIndexedTriangleBatch(
-			"TestTris", 
-			"rgba.png", 
-			indexedTriangleBatchCount, 
+		
+		size_t circleBatchCount{ 16 };
+		auto circleBatch = createCircleBatch(
+			"TestCircles", 
+			circleBatchCount,
 			gRenderSystem, 
 			gResourceManager);
-		*/
 
 		//
 		// Camera setup
@@ -565,8 +565,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Batches
 			//
-			//gRenderSystem->setProjection2dOrthographic();
-			//indexedTriangleBatchCount = updateIndexedTriangleBatch(gRenderSystem, indexedTriangleBatch, indexedTriangleBatchCount, totalTime);
+			gRenderSystem->setProjection2dOrthographic();
+			circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();

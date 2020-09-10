@@ -3,6 +3,7 @@
 #include "utils/MemTracker.h"
 
 #include "mpp/TriangleBatch.h"
+#include "mpp/DefaultShaders.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/MppException.h"
@@ -27,7 +28,7 @@ namespace mpp
 		uint32 initialCount,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, colourOptions, useDiffuseColour, initialCount, renderSystem, resourceMgr)
+		: Batch(name, colourOptions, useDiffuseColour, initialCount, VertexShader2dTemplate, FragmentShader2dTemplate, "", renderSystem, resourceMgr)
 		, mPositionType(positionType)
 		, mTexcoordType(texcoordType)
 		, mProgram(program)

@@ -368,11 +368,16 @@ namespace mpp
 	 * Gets (or creates if not existing) a 2d program based on the given spec and flags.
 	 *
 	 */
-	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load)
+	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	{
+		return getOrCreateDefault2dProgram(VertexShader2dTemplate, FragmentShader2dTemplate, spec, flags, load, descriptor);
+	}
+
+	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
 	{
 		// Calculate hash
 		uint32 specHash = spec.getHashCode() | flags;
-		
+
 		// Does it already exist?
 		auto createdProgram = mDefaultPrograms.find(specHash);
 		if (createdProgram != mDefaultPrograms.end())
@@ -383,8 +388,8 @@ namespace mpp
 		auto parser = make_shared<program::Parser>();
 
 		parser->setMeshSpecification(spec);
-		parser->setVertexSource(VertexShader2dTemplate);
-		parser->setFragmentSource(FragmentShader2dTemplate);
+		parser->setVertexSource(defaultVertexShader);
+		parser->setFragmentSource(defaultFragmentShader);
 
 		auto ps = new ProgramProgramStream(parser, getProgramAttributes(spec, flags));
 
@@ -430,7 +435,13 @@ namespace mpp
 			specName += "a";
 		}
 
+		if (descriptor != "")
+		{
+			specName += "_" + descriptor;
+		}
+
 		specName += "__";
+
 
 		auto res = createResource<Program>(specName, ResourceStreamPtr(ps));
 		mDefaultPrograms[specHash] = res;
