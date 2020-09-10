@@ -14,6 +14,7 @@
     <ClInclude Include="..\..\include\mpp\Batch.h" />
     <ClInclude Include="..\..\include\mpp\BoxModelStream.h" />
     <ClInclude Include="..\..\include\mpp\Caps.h" />
+    <ClInclude Include="..\..\include\mpp\CircleBatch.h" />
     <ClInclude Include="..\..\include\mpp\ClipRectangle.h" />
     <ClInclude Include="..\..\include\mpp\Colour.h" />
     <ClInclude Include="..\..\include\mpp\Config.h" />
@@ -77,6 +78,7 @@
     <ClCompile Include="..\..\include\mpp\IndexedTriangleBatch.cpp" />
     <ClCompile Include="..\..\src\Batch.cpp" />
     <ClCompile Include="..\..\src\BoxModelStream.cpp" />
+    <ClCompile Include="..\..\src\CircleBatch.cpp" />
     <ClCompile Include="..\..\src\ClipRectangle.cpp" />
     <ClCompile Include="..\..\src\Colour.cpp" />
     <ClCompile Include="..\..\src\DebugStackWalker.cpp" />

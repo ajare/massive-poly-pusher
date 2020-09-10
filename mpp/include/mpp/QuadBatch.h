@@ -38,16 +38,6 @@ namespace mpp
 
 	private:
 
-		PositionOptions mPositionOptions;
-
-		VertexOptions mVertexOptions;
-
-		mpp::mesh::Vertex::DataType mPositionType;
-
-		mpp::mesh::Vertex::DataType mTexcoordType;
-
-		TexCoordsOptions mTexCoordOptions;
-
 		bool mRotate;
 
 		bool mSameSize;
@@ -58,11 +48,23 @@ namespace mpp
 
 		bool mTextureAtlas;
 
+		float mPointSize;
+
+	protected:
+
+		PositionOptions mPositionOptions;
+
+		VertexOptions mVertexOptions;
+
+		mpp::mesh::Vertex::DataType mPositionType;
+
+		mpp::mesh::Vertex::DataType mTexcoordType;
+
+		TexCoordsOptions mTexCoordOptions;
+
 		int mTexCoordBufferStride;
 
 		int mIndexWidth;
-
-		float mPointSize;
 
 	private:
 
@@ -72,21 +74,23 @@ namespace mpp
 
 		void writeVertex(float x, float y, float u0, float v0, float u1, float v1, bool rotate, int8** mainPtr, int8** texCoordPtr);
 
-		void setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer);
-
 		void setMinimumCount(int count);
+
+		bool useTexCoords() const;
 
 		void setMainBufferStride();
 
 		void setTexCoordBufferStride();
 
+	protected:
+
 		int setIndices(uint32* ptr, uint32 base);
 
-		bool useTexCoords() const;
+		void setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer);
 
 	public:
 
-		QuadBatch(std::string const& name, 
+		QuadBatch(std::string const& name,
 			VertexOptions vertexOptions,
 			mpp::mesh::Vertex::DataType positionType,
 			mpp::mesh::Vertex::DataType texcoordType,
@@ -100,7 +104,27 @@ namespace mpp
 			bool textureAtlas,
 			int indexWidth,
 			uint32 initialCount,
-			RenderSystem* renderSystem, 
+			RenderSystem* renderSystem,
+			ResourceManager* resourceMgr);
+
+		QuadBatch(std::string const& name,
+			VertexOptions vertexOptions,
+			mpp::mesh::Vertex::DataType positionType,
+			mpp::mesh::Vertex::DataType texcoordType,
+			ColourOptions colourOptions,
+			bool rotate,
+			bool sameSize,
+			int maxDimX,
+			int maxDimY,
+			ResourcePtr program,
+			ResourcePtr texture,
+			bool textureAtlas,
+			int indexWidth,
+			uint32 initialCount,
+			std::string const& defaultVertexShader,
+			std::string const& defaultFragmentShader,
+			std::string const& descriptor,
+			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
 		void finishUpdate(int count, bool updateTexCoords);

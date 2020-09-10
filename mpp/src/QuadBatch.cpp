@@ -3,6 +3,7 @@
 #include "utils/MemTracker.h"
 
 #include "mpp/QuadBatch.h"
+#include "mpp/DefaultShaders.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/ResourceManager.h"
 
@@ -32,7 +33,48 @@ namespace mpp
 		uint32 initialCount,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, colourOptions, false, initialCount, renderSystem, resourceMgr)
+		: Batch(name, colourOptions, false, initialCount, VertexShader2dTemplate, FragmentShader2dTemplate, "", renderSystem, resourceMgr)
+		, mVertexOptions(vertexOptions)
+		, mTexCoordOptions(TexCoordsOptions::None)
+		, mPositionType(positionType)
+		, mTexcoordType(texcoordType)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mMaxDimX(maxDimX)
+		, mMaxDimY(maxDimY)
+		, mProgram(program)
+		, mTexture(texture)
+		, mTextureAtlas(textureAtlas)
+		, mTexCoordBufferStride(0)
+		, mIndexWidth(indexWidth)
+		, mPointSize((float)maxDimX)
+	{
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch::QuadBatch(string const& name,
+		VertexOptions vertexOptions,
+		mpp::mesh::Vertex::DataType positionType,
+		mpp::mesh::Vertex::DataType texcoordType,
+		ColourOptions colourOptions,
+		bool rotate,
+		bool sameSize,
+		int maxDimX,
+		int maxDimY,
+		ResourcePtr program,
+		ResourcePtr texture,
+		bool textureAtlas,
+		int indexWidth,
+		uint32 initialCount,
+		string const& defaultVertexShader,
+		string const& defaultFragmentShader,
+		string const& descriptor,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Batch(name, colourOptions, false, initialCount, defaultVertexShader, defaultFragmentShader, descriptor, renderSystem, resourceMgr)
 		, mVertexOptions(vertexOptions)
 		, mTexCoordOptions(TexCoordsOptions::None)
 		, mPositionType(positionType)
@@ -332,10 +374,7 @@ namespace mpp
 		}
 		else
 		{
-			if (mTexture)
-			{
-				mTexCoordOptions = rotating() ? TexCoordsOptions::TexCoords4 : TexCoordsOptions::TexCoords2;
-			}
+			mTexCoordOptions = rotating() ? TexCoordsOptions::TexCoords4 : TexCoordsOptions::TexCoords2;
 		}
 
 		// Set primitive options

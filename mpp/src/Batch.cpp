@@ -18,9 +18,15 @@ namespace mpp
 		ColourOptions colourOptions,
 		bool useDiffuseColour,
 		uint32 initialCount,
+		string const& defaultVertexShader,
+		string const& defaultFragmentShader,
+		string const& descriptor,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Model(name, renderSystem, resourceMgr, nullptr)
+		, mDefaultVertexShader(defaultVertexShader)
+		, mDefaultFragmentShader(defaultFragmentShader)
+		, mProgramDescriptor(descriptor)
 		, mColourOptions(colourOptions)
 		, mUseDiffuse(useDiffuseColour)
 		, mCurCount(0)
@@ -112,7 +118,7 @@ namespace mpp
 	ResourcePtr Batch::createMaterial(string const& name, string const& texture, uint32 programFlags)
 	{
 		auto resourceMgr = getResourceManager();
-		auto programResource = resourceMgr->getOrCreateDefault2dProgram(mSpecification, programFlags, false);
+		auto programResource = resourceMgr->getOrCreateDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
 
 		return createMaterial(name, programResource, texture, programFlags);
 	}

@@ -82,7 +82,9 @@ namespace mpp
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
 
-		ResourcePtr getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load);
+		ResourcePtr getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+
+		ResourcePtr getOrCreateDefault2dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
 
 		Texture* getTextureBySortId(uint32 id);
 
