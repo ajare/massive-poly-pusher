@@ -25,6 +25,10 @@ namespace mpp
 			mComponentTypes["colour1"] = mpp::mesh::Vertex::Component::Colour1;
 			mComponentTypes["colour3"] = mpp::mesh::Vertex::Component::Colour3;
 			mComponentTypes["colour4"] = mpp::mesh::Vertex::Component::Colour4;
+			mComponentTypes["user1"] = mpp::mesh::Vertex::Component::UserDefined1;
+			mComponentTypes["user2"] = mpp::mesh::Vertex::Component::UserDefined2;
+			mComponentTypes["user3"] = mpp::mesh::Vertex::Component::UserDefined3;
+			mComponentTypes["user4"] = mpp::mesh::Vertex::Component::UserDefined4;
 
 			mDataTypes["float32"] = mpp::mesh::Vertex::DataType::Float;
 			mDataTypes["float16"] = mpp::mesh::Vertex::DataType::HalfFloat;

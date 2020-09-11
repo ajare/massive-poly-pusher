@@ -20,7 +20,6 @@ namespace mpp
 	CircleBatch::CircleBatch(string const& name,
 		VertexOptions vertexOptions,
 		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType,
 		mpp::mesh::Vertex::DataType colourType,
 		float maxRadius,
 		float borderSize,
@@ -28,116 +27,87 @@ namespace mpp
 		uint32 initialCount,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: QuadBatch(name, 
-			vertexOptions,
-			positionType,
-			texcoordType,
-			ColourOptions::FloatRGBA, 
-			false, 
-			false,
-			(int)(maxRadius * 2),
-			(int)(maxRadius * 2),
-			nullptr,
-			nullptr,
-			false,
-			indexWidth,
-			initialCount, 
-			VertexShader2dCircle,
-			FragmentShader2dCircle,
-			"circle",
-			renderSystem, 
-			resourceMgr)
+		: Batch2(name, initialCount, VertexShader2dCircle, FragmentShader2dCircle, "circle", renderSystem, resourceMgr)
 		, mRadius(maxRadius)
 		, mBorderSize(borderSize)
+		, mPointSize(maxRadius * 2)
+		, mVertexOptions(vertexOptions)
+		, mPositionType(positionType)
 		, mColourType(colourType)
-		, mNormalOffset(0)
-		, mNormalData(nullptr)
+		, mIndexWidth(indexWidth)
 	{
 	}
 
 	/*
-	 * Set stride for main (non-texture) buffer
+	 * Create indices for a primitive.
 	 *
 	 */
-	void CircleBatch::setMainBufferStride()
+	int CircleBatch::setIndices(uint32* ptr, uint32 base)
 	{
-		// Position size
-		if (usingPointSprites())
+		int indexBytes = mIndexWidth / 8;
+		if (indexBytes == 2)
 		{
-			mMainBufferStride += Vertex::getDataTypeSize(mPositionType) * 2;
+			*ptr = (base * 4 + 0) + ((base * 4 + 1) << 16); ptr++;
+			*ptr = (base * 4 + 2) + ((base * 4 + 2) << 16); ptr++;
+			*ptr = (base * 4 + 3) + ((base * 4 + 0) << 16); ptr++;
+			return 3;
+		}
+		else if (indexBytes == 4)
+		{
+			*ptr = base * 4 + 0; ptr++;
+			*ptr = base * 4 + 1; ptr++;
+			*ptr = base * 4 + 2; ptr++;
+			*ptr = base * 4 + 2; ptr++;
+			*ptr = base * 4 + 3; ptr++;
+			*ptr = base * 4 + 0; ptr++;
+			return 6;
 		}
 		else
 		{
-			mMainBufferStride += Vertex::getDataTypeSize(mPositionType) * 4;
+			return 0;
+		}
+	}
+
+	void CircleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
+	{
+		mSpecification = mesh::MeshSpecification(primitiveType);
+		auto layout = mSpecification.createVertexBufferAttributeLayout();
+
+		if (usingPointSprites())
+		{
+			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
+		}
+		else
+		{
+			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
 		}
 
-		// Radius/border size
-		mNormalOffset = mMainBufferStride;
-		mMainBufferStride += Vertex::getDataTypeSize(mesh::Vertex::DataType::Float) * 4;
-
-		// Colour size
-		mColourOffset = mMainBufferStride;
-		mMainBufferStride += Vertex::getDataTypeSize(mColourType) * 4;
+		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "SIZES", mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "BORDERCOLOUR", mColourType, true);
+		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "INNERCOLOUR", mColourType, true);
 	}
 
-	/*
-	 * Set stride for texture buffer
-	 *
-	 */
-	void CircleBatch::setTexCoordBufferStride()
-	{
-		mTexCoordBufferStride = Vertex::getDataTypeSize(mTexcoordType) * 4;
-	}
-
-	/*
-	 * Set the data pointers for the mesh specification.
-	 *
-	 */
-	void CircleBatch::setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer)
+	void CircleBatch::createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, shared_ptr<const int8> dataPtr)
 	{
 		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, dataPtr);
+
 			for (int j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto& attrib = layout.getAttribute(j);
-
-				switch (attrib.component)
-				{
-				case Vertex::Component::Position2:
-				case Vertex::Component::Position4:
-					if (mainBuffer->getBufferData().size() > 0)
-						mPositionData = (char*)&((mainBuffer->getBufferData()[0]));
-					else
-						mPositionData = nullptr;
-					break;
-
-				case Vertex::Component::Normal4:
-					if (mainBuffer->getBufferData().size() > 0)
-						mNormalData = (char*)&((mainBuffer->getBufferData()[0])) + mNormalOffset;
-					else
-						mPositionData = nullptr;
-					break;
-
-				case Vertex::Component::TexCoord2:
-				case Vertex::Component::TexCoord4:
-					if (texCoordBuffer->getBufferData().size() > 0)
-						mTexCoordData = (char*)&((texCoordBuffer->getBufferData()[0]));
-					else
-						mTexCoordData = nullptr;
-					break;
-
-				case Vertex::Component::Colour1:
-				case Vertex::Component::Colour3:
-				case Vertex::Component::Colour4:
-					if (mainBuffer->getBufferData().size() > 0)
-						mColourData = (char*)&((mainBuffer->getBufferData()[0])) + mColourOffset;
-					else
-						mColourData = nullptr;
-					break;
-				}
+				vb->setAttribute(
+					attrib.attributeId,
+					attrib.dataType,
+					mesh::Vertex::getComponentSize(attrib.component),
+					attrib.offsetInBytes,
+					attrib.normalised);
 			}
 		}
+
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
 	}
 
 	/*
@@ -146,6 +116,9 @@ namespace mpp
 	 */
 	void CircleBatch::createImpl()
 	{
+		//
+		// Set up options for this batch
+		//
 		float size = mRadius * 2;
 
 		// Set vertex options
@@ -166,131 +139,152 @@ namespace mpp
 			mVertexOptions = VertexOptions::Triangles;
 		}
 
-		// Set position options: if we're using point sprites, we don't
-		// need to store texcoords in the position
-		if (usingPointSprites())
-		{
-			mPositionOptions = PositionOptions::Position2;
-		}
-		else
-		{
-			mPositionOptions = PositionOptions::Position4;
-		}
-
-		mTexCoordOptions = TexCoordsOptions::TexCoords4;
-
-		// Set primitive options
+		//
+		// Create Mesh specification
+		//
 		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
-		// Set program flags
+		createMeshSpecification(primitiveType);
+
+		//
+		// Create material
+		//
 		uint32 flags = 0
 			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
 
-		// Create material
 		string materialName = getName() + "_CircleBatch";
 
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout();
-
-		if (mPositionOptions == PositionOptions::Position2)
-		{
-			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
-		}
-		else
-		{
-			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
-		}
-
-		// Radius/border size/etc is stored in normal
-		layout->createAttribute(mesh::Vertex::Component::Normal4, mesh::Vertex::DataType::Float, false);
-
-		// Border colour is stored in texcoords, main colour in colour
-		layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, true);
-		layout->createAttribute(mesh::Vertex::Component::Colour4, mColourType, true);
-
-		// Create material
 		auto materialResource = createMaterial(getName() + "_CircleBatch", "__mpp_tex_none__", flags);
 
-		// Set up vertex data.
+		//
+		// Create mesh
+		//
 		int primitiveCount = usingPointSprites() ? mMaxCount * 1 : mMaxCount * 2;
 		int vertexCount = getVertexCount(primitiveCount);
 
-		// Get stride
-		setMainBufferStride();
-		setTexCoordBufferStride();
-
-		int8* mainData = new int8[vertexCount * mMainBufferStride];
-		int8* texCoordData = new int8[vertexCount * mTexCoordBufferStride];
-
-		shared_ptr<const int8> mainDataPtr(mainData, [](int8*p) { delete[] p; });
-		shared_ptr<const int8> texCoordDataPtr(texCoordData, [](int8*p) { delete[] p; });;
-
-		// Index data
-		vector<uint8> indices;
-		if (!usingPointSprites())
+		Mesh* mesh{ nullptr };
+		if (usingPointSprites())
 		{
-			indices.resize(mMaxCount * 6 * (mIndexWidth / 8));
+			mesh = new Mesh(
+				getRenderSystem(), 
+				getName(), 
+				materialResource, 
+				primitiveType, 
+				primitiveCount, 
+				storageType, 
+				size);
+		}
+		else
+		{
+			// Index data
+			vector<uint8> indices(mMaxCount * 6 * (mIndexWidth / 8));
 			uint32* iPtr = (uint32*)&indices[0]; // Indices will be 16 or 32-bit, so use 32 to cover both
 
 			for (int i = 0; i < mMaxCount; ++i)
 			{
 				iPtr += setIndices(iPtr, i);
 			}
+
+			mesh = new Mesh(
+				getRenderSystem(), 
+				getName(), 
+				materialResource, 
+				primitiveType, 
+				primitiveCount, 
+				mIndexWidth, 
+				indices, 
+				storageType, 
+				size);
 		}
 
-		// TODO: optional hint to give a hard maximum count, so if using triangles we can use 16-bit
-		// indices if allowed.
-		Mesh* mesh = usingPointSprites()
-			? new Mesh(getRenderSystem(), getName(), materialResource, primitiveType, primitiveCount, storageType, size)
-			: new Mesh(getRenderSystem(), getName(), materialResource, primitiveType, primitiveCount, mIndexWidth, indices, storageType, size);
+		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
+		int8* data = new int8[vertexCount * bufferSize];
+		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
 
-		VertexBuffer* mainBuffer = mesh->createVertexBuffer(vertexCount, mMainBufferStride, false, mainDataPtr);
-		VertexBuffer* texCoordBuffer = mTexCoordOptions != TexCoordsOptions::None ? mesh->createVertexBuffer(vertexCount, mTexCoordBufferStride, false, texCoordDataPtr) : nullptr;
+		createMesh(mesh, vertexCount, bufferSize, dataPtr);
+	}
 
-		// Set specification buffers
-		setSpecificationPointers(mainBuffer, texCoordBuffer);
+	void CircleBatch::finishUpdate(int count, bool updateTexCoords)
+	{
+		mCurCount = count;
 
-		// Add attributes to buffer
-		int mainBufferOffset = 0;
-
-		// Position/texcoords
-		if (usingPointSprites())
+		if (mMeshes[0]->isIndexed())
 		{
-			mainBuffer->setAttribute(0, mPositionType, 2, mainBufferOffset, false); // Pos4
-			mainBufferOffset += 2 * Vertex::getDataTypeSize(mPositionType);
+			mMeshes[0]->mapIndexData(count * (usingPointSprites() ? 1 : 2));
 		}
-		else
+
+		for (size_t i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
 		{
-			mainBuffer->setAttribute(0, mPositionType, 4, mainBufferOffset, false); // Pos4
-			mainBufferOffset += 4 * Vertex::getDataTypeSize(mPositionType);
+			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+			vertexBuffer->mapBufferData(getVertexCount(count));
 		}
 
-		// Radius/border
-		mainBuffer->setAttribute(1, mesh::Vertex::DataType::Float, 4, mainBufferOffset, false); // Normal4
-		mainBufferOffset += 4 * Vertex::getDataTypeSize(mesh::Vertex::DataType::Float);
+		mMeshes[0]->setNumPrimitives(usingPointSprites() ? count : count * 2);
+	}
 
-		// Border colour
-		texCoordBuffer->setAttribute(2, mTexcoordType, 4, 0, true);
+	void CircleBatch::setPointSize(float size)
+	{
+		mPointSize = size;
+		for (auto mesh : mMeshes)
+		{
+			mesh->setPointSize(size);
+		}
+	}
 
-		// Inner colour
-		mainBuffer->setAttribute(3, mColourType, 4, mainBufferOffset, true);
-		mainBufferOffset += 4 * Vertex::getDataTypeSize(mColourType);
+	float CircleBatch::getPointSize() const
+	{
+		return mPointSize;
+	}
 
-		mMeshes.push_back(mesh);
+	int CircleBatch::getPrimitiveCount() const
+	{
+		return getCount() * (usingPointSprites() ? 1 : 2);
+	}
+
+	bool CircleBatch::usingPointSprites() const
+	{
+		return mVertexOptions == VertexOptions::Points;
 	}
 
 	/*
-	 * Get normal data.
+	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	char* CircleBatch::getNormalData()
+	int CircleBatch::getVertexCount(int primitiveCount)
 	{
-		return mNormalData;
+		return primitiveCount * (usingPointSprites() ? 1 : 4);
 	}
 
-	size_t CircleBatch::getNormalStride() const
+	void CircleBatch::setMinimumCount(int count)
 	{
-		return mMainBufferStride;
+		if (count > mMaxCount)
+		{
+			mpp::VertexBuffer* vertexBuffer0 = mMeshes[0]->getVertexBuffer(0), *vertexBuffer1 = nullptr;
+			auto& data = vertexBuffer0->getBufferData();
+
+			int newSize = getVertexCount(count) * vertexBuffer0->getVertexStride();
+			data.resize(newSize);
+
+			// Index data
+			if (!usingPointSprites())
+			{
+				const int indexStride = 6 * (mIndexWidth / 8);
+				newSize = count * indexStride;
+
+				auto& indices = mMeshes[0]->getIndexData();
+				indices.resize(newSize);
+
+				uint32* iPtr = (uint32*)&(indices[mMaxCount * indexStride]);
+
+				for (int i = mMaxCount; i < count; ++i)
+				{
+					iPtr += setIndices(iPtr, i);
+				}
+			}
+
+			mMaxCount = count;
+			setSpecificationPointers(mMeshes[0]);
+		}
 	}
 }

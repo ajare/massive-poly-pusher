@@ -2,38 +2,54 @@
 
 #include <vector>
 
-#include "mpp/QuadBatch.h"
+#include "mpp/Batch.h"
 
 namespace mpp
 {
-	class _MPPAPI CircleBatch : public QuadBatch
+	class _MPPAPI CircleBatch : public Batch2
 	{
+	public:
+
+		enum class VertexOptions
+		{
+			Auto,
+			Points,
+			Triangles
+		};
+
+	private:
+
 		float mRadius;
 
 		float mBorderSize;
 
+		float mPointSize;
+
+		VertexOptions mVertexOptions;
+
+		mpp::mesh::Vertex::DataType mPositionType;
+
 		mpp::mesh::Vertex::DataType mColourType;
 
-		int mNormalOffset;
-
-		char* mNormalData;
+		int mIndexWidth;
 
 	private:
 
 		void createImpl();
 
-		void setMainBufferStride();
+		int setIndices(uint32* ptr, uint32 base);
 
-		void setTexCoordBufferStride();
+		void setMinimumCount(int count);
 
-		void setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer);
+		void createMeshSpecification(mesh::Primitive::Type primitiveType);
+
+		void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr);
 
 	public:
 
 		CircleBatch(std::string const& name,
 			VertexOptions vertexOptions,
 			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType texcoordType,
 			mpp::mesh::Vertex::DataType colourType,
 			float maxRadius,
 			float borderSize,
@@ -42,10 +58,17 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		char* getNormalData();
+		void finishUpdate(int count, bool updateTexCoords);
 
-		size_t getNormalStride() const;
+		int getPrimitiveCount() const;
 
+		int getVertexCount(int primitiveCount);
+
+		void setPointSize(float size);
+
+		float getPointSize() const;
+
+		bool usingPointSprites() const;
 	};
 
 }

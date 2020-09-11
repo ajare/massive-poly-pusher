@@ -41,6 +41,10 @@ namespace mpp
 				Colour1 = 1 << 8,
 				Colour3 = 1 << 9,
 				Colour4 = 1 << 10,
+				UserDefined1 = 1 << 11,
+				UserDefined2 = 1 << 12,
+				UserDefined3 = 1 << 13,
+				UserDefined4 = 1 << 14
 			};
 
 			static int getComponentSize(Component component);

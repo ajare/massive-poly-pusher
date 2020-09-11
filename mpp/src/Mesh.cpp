@@ -213,6 +213,11 @@ namespace mpp
 		return mVertexBuffers[index];
 	}
 
+	vector<VertexBuffer*> const& Mesh::getVertexBuffers() const
+	{
+		return mVertexBuffers;
+	}
+
 	/*
 	 * Return index data for potential modification.
 	 *

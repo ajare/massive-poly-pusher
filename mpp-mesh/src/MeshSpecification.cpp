@@ -212,7 +212,7 @@ namespace mpp
 			auto primType = getPrimitiveType();
 			int primBits = (int)primType + 1;
 
-			int posBits = 0, normalBits = 0, texBits = 0, colBits = 0;
+			int posBits = 0, normalBits = 0, texBits = 0, colBits = 0, userBits = 0;
 			for (int i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
 				auto const& layout = getVertexBufferAttributeLayout(i);
@@ -255,6 +255,18 @@ namespace mpp
 					case Vertex::Component::Colour4:
 						colBits = 4;
 						break;
+					case Vertex::Component::UserDefined1:
+						userBits = 1;
+						break;
+					case Vertex::Component::UserDefined2:
+						userBits = 2;
+						break;
+					case Vertex::Component::UserDefined3:
+						userBits = 3;
+						break;
+					case Vertex::Component::UserDefined4:
+						userBits = 4;
+						break;
 					default:
 						break;
 					}
@@ -267,7 +279,8 @@ namespace mpp
 				(posBits << 2) +
 				(normalBits << 5) +
 				(texBits << 8) +
-				(colBits << 11);
+				(colBits << 11) +
+				(userBits << 14);
 		}
 	}
 }
