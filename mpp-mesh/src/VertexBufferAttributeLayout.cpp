@@ -8,6 +8,8 @@ namespace mpp
 	namespace mesh
 	{
 
+		using namespace std;
+
 		VertexBufferAttributeLayout::VertexBufferAttributeLayout(int baseId)
 			: mVertexSize(0)
 			, mBaseId(baseId)
@@ -19,6 +21,47 @@ namespace mpp
 		 *
 		 */
 		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary)
+		{
+			// Get identifier name
+			string identifier;
+
+			switch (component)
+			{
+			case mesh::Vertex::Component::Position2:
+			case mesh::Vertex::Component::Position3:
+			case mesh::Vertex::Component::Position4:
+				identifier = "POSITION";
+				break;
+			case mesh::Vertex::Component::Normal3:
+			case mesh::Vertex::Component::Normal4:
+				identifier = "NORMAL";
+				break;
+			case mesh::Vertex::Component::TexCoord2:
+			case mesh::Vertex::Component::TexCoord3:
+			case mesh::Vertex::Component::TexCoord4:
+				identifier = "TEXCOORDS";
+				break;
+			case mesh::Vertex::Component::Colour1:
+			case mesh::Vertex::Component::Colour3:
+			case mesh::Vertex::Component::Colour4:
+				identifier = "COLOUR";
+				break;
+			case mesh::Vertex::Component::UserDefined1:
+			case mesh::Vertex::Component::UserDefined2:
+			case mesh::Vertex::Component::UserDefined3:
+			case mesh::Vertex::Component::UserDefined4:
+				identifier = "USER";
+				break;
+			}
+
+			createAttribute(component, identifier, dataType, normalised, padToBoundary);
+		}
+
+		/*
+		 * Create a channel in the vertex buffer specification.
+		 *
+		 */
+		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, string const& identifier, Vertex::DataType dataType, bool normalised, int padToBoundary)
 		{
 			// Certain datatypes must be normalised for glVertexAttribPointer
 			if ((dataType == Vertex::DataType::UnsignedInt_2_10_10_10_REV || dataType == Vertex::DataType::Int_2_10_10_10_REV) && !normalised)
@@ -39,6 +82,7 @@ namespace mpp
 			Attribute attrib;
 
 			attrib.attributeId = mBaseId + mAttributes.size();
+			attrib.identifier = identifier;
 			attrib.component = component;
 			attrib.dataType = dataType;
 			attrib.normalised = normalised;
@@ -55,7 +99,7 @@ namespace mpp
 				{
 					padding += padToBoundary;
 				}
-				
+
 				attrib.paddingBytes = padding - byteSize;
 			}
 

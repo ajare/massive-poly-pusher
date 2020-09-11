@@ -121,6 +121,20 @@ namespace mpp
 					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __func__);
 				}
 			}
+			else if (component == "USER")
+			{
+				switch (index)
+				{
+				case 1:
+				case 2:
+				case 3:
+				case 4:
+					return isFloating ? "1.0" : "1";
+
+				default:
+					THROW_MPP_PROGRAM("Bad index for component '" + component + "'.", __LINE__, __FILE__, __func__);
+				}
+			}
 			else
 			{
 				return isFloating ? "1.0" : "1";;

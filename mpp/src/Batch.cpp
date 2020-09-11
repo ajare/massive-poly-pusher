@@ -151,4 +151,120 @@ namespace mpp
 	{
 		return getCount() * 1;
 	}
+
+	/************************************************************************************/
+	/************************************************************************************/
+	/************************************************************************************/
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	Batch2::Batch2(std::string const& name,
+		uint32 initialCount,
+		string const& defaultVertexShader,
+		string const& defaultFragmentShader,
+		string const& descriptor,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Model(name, renderSystem, resourceMgr, nullptr)
+		, mDefaultVertexShader(defaultVertexShader)
+		, mDefaultFragmentShader(defaultFragmentShader)
+		, mProgramDescriptor(descriptor)
+		, mCurCount(0)
+		, mMaxCount(initialCount)
+	{
+	}
+
+	mesh::MeshSpecification const& Batch2::getSpecification() const
+	{
+		return mSpecification;
+	}
+
+	const pair<char*, size_t>& Batch2::getAttributeData(string const& name) const
+	{
+		return mDataPointers.at(name);
+	}
+
+	void Batch2::setCount(int count)
+	{
+		mCurCount = count;
+	}
+
+	int Batch2::getCount() const
+	{
+		return mCurCount;
+	}
+
+	int Batch2::getMaxCount() const
+	{
+		return mMaxCount;
+	}
+
+	void Batch2::startUpdate(int minimumCount)
+	{
+		setMinimumCount(minimumCount);
+	}
+
+	ResourcePtr Batch2::createMaterial(string const& name, string const& texture, uint32 programFlags)
+	{
+		auto resourceMgr = getResourceManager();
+		auto programResource = resourceMgr->getOrCreateDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
+
+		return createMaterial(name, programResource, texture, programFlags);
+	}
+
+	ResourcePtr Batch2::createMaterial(string const& name, ResourcePtr program, string const& texture, uint32 programFlags)
+	{
+		auto resourceMgr = getResourceManager();
+
+		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream();
+
+		matStream->setProgram(program->getName());
+
+		matStream->setTexture("TEX1", texture);
+
+		auto materialResource = resourceMgr->getResource(name, true);
+		if (materialResource)
+		{
+			materialResource->load();
+		}
+		else
+		{
+			materialResource = resourceMgr->createResource<mpp::Material>(name, mpp::ResourceStreamPtr(matStream));
+			materialResource->load();
+		}
+
+		return materialResource;
+	}
+
+	int Batch2::getPrimitiveCount() const
+	{
+		return getCount() * 1;
+	}
+
+	/*
+	 * Set the data pointers for the mesh specification.
+	 *
+	 */
+	void Batch2::setSpecificationPointers(Mesh* mesh)
+	{
+		auto buffers = mesh->getVertexBuffers();
+
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
+
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto& attrib = layout.getAttribute(j);
+				if (buffers[i]->getBufferData().size() > 0)
+				{
+					auto dataPtr = (char*)&((buffers[i]->getBufferData()[0])) + attrib.offsetInBytes;
+					mDataPointers[attrib.identifier] = make_pair(dataPtr, layout.getVertexSize());
+				}
+			}
+		}
+	}
+
 }

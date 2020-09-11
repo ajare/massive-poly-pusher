@@ -16,6 +16,7 @@ namespace mpp
 			struct Attribute
 			{
 				int attributeId;
+				std::string identifier;
 				Vertex::Component component;
 				Vertex::DataType dataType;
 				int paddingBytes;
@@ -44,6 +45,8 @@ namespace mpp
 			explicit VertexBufferAttributeLayout(int baseId);
 
 			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary = 1);
+
+			void createAttribute(Vertex::Component component, std::string const& identifier, Vertex::DataType dataType, bool normalised, int padToBoundary = 1);
 
 			int getBaseId() const;
 

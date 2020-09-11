@@ -479,8 +479,8 @@ namespace mpp
 				{
 					auto const& meshAttrib = layout.getAttribute(j);
 
+					/*
 					string attribName;
-					size_t size[2];
 
 					switch (meshAttrib.component)
 					{
@@ -503,34 +503,47 @@ namespace mpp
 					case mesh::Vertex::Component::Colour4:
 						attribName = "COLOUR";
 						break;
+					case mesh::Vertex::Component::UserDefined1:
+					case mesh::Vertex::Component::UserDefined2:
+					case mesh::Vertex::Component::UserDefined3:
+					case mesh::Vertex::Component::UserDefined4:
+						attribName = "USER";
+						break;
 					}
+					*/
+
+					size_t size[2];
 
 					switch (meshAttrib.component)
 					{
 					case mesh::Vertex::Component::Colour1:
+					case mesh::Vertex::Component::UserDefined1:
 						size[0] = 1; size[1] = 1;
 						break;
 					case mesh::Vertex::Component::Position2:
 					case mesh::Vertex::Component::TexCoord2:
+					case mesh::Vertex::Component::UserDefined2:
 						size[0] = 1; size[1] = 2;
 						break;
 					case mesh::Vertex::Component::Position3:
 					case mesh::Vertex::Component::Normal3:
 					case mesh::Vertex::Component::TexCoord3:
 					case mesh::Vertex::Component::Colour3:
+					case mesh::Vertex::Component::UserDefined3:
 						size[0] = 1; size[1] = 3;
 						break;
 					case mesh::Vertex::Component::Position4:
 					case mesh::Vertex::Component::Normal4:
 					case mesh::Vertex::Component::TexCoord4:
 					case mesh::Vertex::Component::Colour4:
+					case mesh::Vertex::Component::UserDefined4:
 						size[0] = 1; size[1] = 4;
 						break;
 					}
 
 					Attribute inAttrib;
 					
-					inAttrib.name = attribName;
+					inAttrib.name = meshAttrib.identifier;
 					inAttrib.normalised = meshAttrib.normalised;
 					inAttrib.type = gsGLSLTypeDecls[inAttrib.getGlslType(meshAttrib.dataType, size)];
 					

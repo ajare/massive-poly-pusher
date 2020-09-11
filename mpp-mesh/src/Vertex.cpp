@@ -24,19 +24,23 @@ namespace mpp
 			case Vertex::Component::Unused:
 				return 0;
 			case Vertex::Component::Colour1:
+			case Vertex::Component::UserDefined1:
 				return 1;
 			case Vertex::Component::Position2:
 			case Vertex::Component::TexCoord2:
+			case Vertex::Component::UserDefined2:
 				return 2;
 			case Vertex::Component::Position3:
 			case Vertex::Component::Normal3:
 			case Vertex::Component::TexCoord3:
 			case Vertex::Component::Colour3:
+			case Vertex::Component::UserDefined3:
 				return 3;
 			case Vertex::Component::Position4:
 			case Vertex::Component::Normal4:
 			case Vertex::Component::TexCoord4:
 			case Vertex::Component::Colour4:
+			case Vertex::Component::UserDefined4:
 				return 4;
 			default:
 				throw MppMeshException("Vertex::getComponentSize() unknown component!");
@@ -100,6 +104,14 @@ namespace mpp
 				return "Position4";
 			case Component::Colour4:
 				return "Colour4";
+			case Component::UserDefined1:
+				return "UserDefined1";
+			case Component::UserDefined2:
+				return "UserDefined2";
+			case Component::UserDefined3:
+				return "UserDefined3";
+			case Component::UserDefined4:
+				return "UserDefined4";
 			default:
 				return "Unknown";
 			}

@@ -88,6 +88,8 @@ namespace mpp
 
 		VertexBuffer* getVertexBuffer(int index);
 
+		std::vector<VertexBuffer*> const& getVertexBuffers() const;
+
 		std::vector<uint8>& getIndexData();
 
 		void mapIndexData(int numVertices);
