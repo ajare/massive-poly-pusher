@@ -146,17 +146,19 @@ namespace mpp
 
 	private:
 
-		virtual int getVertexCount(int primitiveCount) = 0;
+		virtual bool indexedVertices() const = 0;
 
 		virtual void createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
 
-		virtual void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr) = 0;
+		virtual void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
 
 	protected:
 
+		void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr);
+
 		void setSpecificationPointers(Mesh* mesh);
 
-		virtual void setMinimumCount(int count) = 0;
+		void setMinimumCount(int count);
 
 		ResourcePtr createMaterial(std::string const& name, std::string const& texture, uint32 programFlags);
 
@@ -184,7 +186,9 @@ namespace mpp
 
 		int getMaxCount() const;
 
-		virtual int getPrimitiveCount() const;
+		virtual int getPrimitiveCount(int objectCount) const;
+
+		virtual int getVertexCount(int primitiveCount) = 0;
 
 		void startUpdate(int minimumCount);
 

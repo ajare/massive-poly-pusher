@@ -23,14 +23,13 @@ namespace mpp
 		mpp::mesh::Vertex::DataType colourType,
 		float maxRadius,
 		float borderSize,
-		int indexWidth,
+		size_t indexWidth,
 		uint32 initialCount,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch2(name, initialCount, VertexShader2dCircle, FragmentShader2dCircle, "circle", renderSystem, resourceMgr)
 		, mRadius(maxRadius)
 		, mBorderSize(borderSize)
-		, mPointSize(maxRadius * 2)
 		, mVertexOptions(vertexOptions)
 		, mPositionType(positionType)
 		, mColourType(colourType)
@@ -38,33 +37,40 @@ namespace mpp
 	{
 	}
 
+	bool CircleBatch::indexedVertices() const
+	{
+		return !usingPointSprites();
+	}
+
 	/*
-	 * Create indices for a primitive.
+	 * Create indices for an object.
 	 *
 	 */
-	int CircleBatch::setIndices(uint32* ptr, uint32 base)
+	void CircleBatch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
 	{
+		size_t vertexSize{ 6 * (mIndexWidth / 8) };
+		data.resize(count * vertexSize);
+
+		uint32* ptr = (uint32*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
 		int indexBytes = mIndexWidth / 8;
-		if (indexBytes == 2)
+
+		for (uint32_t i = start; i < count; ++i)
 		{
-			*ptr = (base * 4 + 0) + ((base * 4 + 1) << 16); ptr++;
-			*ptr = (base * 4 + 2) + ((base * 4 + 2) << 16); ptr++;
-			*ptr = (base * 4 + 3) + ((base * 4 + 0) << 16); ptr++;
-			return 3;
-		}
-		else if (indexBytes == 4)
-		{
-			*ptr = base * 4 + 0; ptr++;
-			*ptr = base * 4 + 1; ptr++;
-			*ptr = base * 4 + 2; ptr++;
-			*ptr = base * 4 + 2; ptr++;
-			*ptr = base * 4 + 3; ptr++;
-			*ptr = base * 4 + 0; ptr++;
-			return 6;
-		}
-		else
-		{
-			return 0;
+			if (indexBytes == 2)
+			{
+				*ptr = (i * 4 + 0) + ((i * 4 + 1) << 16); ptr++;
+				*ptr = (i * 4 + 2) + ((i * 4 + 2) << 16); ptr++;
+				*ptr = (i * 4 + 3) + ((i * 4 + 0) << 16); ptr++;
+			}
+			else if (indexBytes == 4)
+			{
+				*ptr = i * 4 + 0; ptr++;
+				*ptr = i * 4 + 1; ptr++;
+				*ptr = i * 4 + 2; ptr++;
+				*ptr = i * 4 + 2; ptr++;
+				*ptr = i * 4 + 3; ptr++;
+				*ptr = i * 4 + 0; ptr++;
+			}
 		}
 	}
 
@@ -85,29 +91,6 @@ namespace mpp
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "SIZES", mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "BORDERCOLOUR", mColourType, true);
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "INNERCOLOUR", mColourType, true);
-	}
-
-	void CircleBatch::createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, shared_ptr<const int8> dataPtr)
-	{
-		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
-			auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, dataPtr);
-
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto& attrib = layout.getAttribute(j);
-				vb->setAttribute(
-					attrib.attributeId,
-					attrib.dataType,
-					mesh::Vertex::getComponentSize(attrib.component),
-					attrib.offsetInBytes,
-					attrib.normalised);
-			}
-		}
-
-		setSpecificationPointers(mesh);
-		mMeshes.push_back(mesh);
 	}
 
 	/*
@@ -139,61 +122,39 @@ namespace mpp
 			mVertexOptions = VertexOptions::Triangles;
 		}
 
-		//
-		// Create Mesh specification
-		//
 		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
+		int primitiveCount = getPrimitiveCount(mMaxCount);
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		createMeshSpecification(primitiveType);
-
-		//
-		// Create material
-		//
-		uint32 flags = 0
-			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
-
-		string materialName = getName() + "_CircleBatch";
-
-		auto materialResource = createMaterial(getName() + "_CircleBatch", "__mpp_tex_none__", flags);
-
-		//
-		// Create mesh
-		//
-		int primitiveCount = usingPointSprites() ? mMaxCount * 1 : mMaxCount * 2;
+		auto materialResource = createMaterial(getName() + "_CircleBatch", "__mpp_tex_none__", usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		Mesh* mesh{ nullptr };
-		if (usingPointSprites())
+		if (indexedVertices())
 		{
+			vector<uint8> indices;
+			createIndexData(indices, 0, getMaxCount());
+
 			mesh = new Mesh(
-				getRenderSystem(), 
-				getName(), 
-				materialResource, 
-				primitiveType, 
-				primitiveCount, 
-				storageType, 
+				getRenderSystem(),
+				getName(),
+				materialResource,
+				primitiveType,
+				primitiveCount,
+				mIndexWidth,
+				indices,
+				storageType,
 				size);
 		}
 		else
 		{
-			// Index data
-			vector<uint8> indices(mMaxCount * 6 * (mIndexWidth / 8));
-			uint32* iPtr = (uint32*)&indices[0]; // Indices will be 16 or 32-bit, so use 32 to cover both
-
-			for (int i = 0; i < mMaxCount; ++i)
-			{
-				iPtr += setIndices(iPtr, i);
-			}
-
 			mesh = new Mesh(
 				getRenderSystem(), 
 				getName(), 
 				materialResource, 
 				primitiveType, 
 				primitiveCount, 
-				mIndexWidth, 
-				indices, 
 				storageType, 
 				size);
 		}
@@ -214,32 +175,25 @@ namespace mpp
 			mMeshes[0]->mapIndexData(count * (usingPointSprites() ? 1 : 2));
 		}
 
-		for (size_t i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+		auto numPrimitives = getPrimitiveCount(count);
+		for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
 		{
 			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
-			vertexBuffer->mapBufferData(getVertexCount(count));
+			vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
 		}
 
-		mMeshes[0]->setNumPrimitives(usingPointSprites() ? count : count * 2);
+		mMeshes[0]->setNumPrimitives(numPrimitives);
 	}
 
-	void CircleBatch::setPointSize(float size)
+	int CircleBatch::getPrimitiveCount(int objectCount) const
 	{
-		mPointSize = size;
-		for (auto mesh : mMeshes)
-		{
-			mesh->setPointSize(size);
-		}
+		return objectCount * (usingPointSprites() ? 1 : 2);
 	}
 
-	float CircleBatch::getPointSize() const
+	int CircleBatch::getVertexCount(int primitiveCount)
 	{
-		return mPointSize;
-	}
-
-	int CircleBatch::getPrimitiveCount() const
-	{
-		return getCount() * (usingPointSprites() ? 1 : 2);
+		// If using triangles, we expect primitiveCount to be a multiple of 2
+		return primitiveCount * (usingPointSprites() ? 1 : 2);
 	}
 
 	bool CircleBatch::usingPointSprites() const
@@ -247,44 +201,8 @@ namespace mpp
 		return mVertexOptions == VertexOptions::Points;
 	}
 
-	/*
-	 * Get the number of vertices required, given the number of primitives.
-	 *
-	 */
-	int CircleBatch::getVertexCount(int primitiveCount)
+	float CircleBatch::getRadius() const
 	{
-		return primitiveCount * (usingPointSprites() ? 1 : 4);
-	}
-
-	void CircleBatch::setMinimumCount(int count)
-	{
-		if (count > mMaxCount)
-		{
-			mpp::VertexBuffer* vertexBuffer0 = mMeshes[0]->getVertexBuffer(0), *vertexBuffer1 = nullptr;
-			auto& data = vertexBuffer0->getBufferData();
-
-			int newSize = getVertexCount(count) * vertexBuffer0->getVertexStride();
-			data.resize(newSize);
-
-			// Index data
-			if (!usingPointSprites())
-			{
-				const int indexStride = 6 * (mIndexWidth / 8);
-				newSize = count * indexStride;
-
-				auto& indices = mMeshes[0]->getIndexData();
-				indices.resize(newSize);
-
-				uint32* iPtr = (uint32*)&(indices[mMaxCount * indexStride]);
-
-				for (int i = mMaxCount; i < count; ++i)
-				{
-					iPtr += setIndices(iPtr, i);
-				}
-			}
-
-			mMaxCount = count;
-			setSpecificationPointers(mMeshes[0]);
-		}
+		return mRadius;
 	}
 }

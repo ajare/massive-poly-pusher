@@ -422,7 +422,7 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 	auto borderBuffer = (uint8_t*)circleBatch->getAttributeData("BORDERCOLOUR").first;
 	auto colourBuffer = (uint8_t*)circleBatch->getAttributeData("INNERCOLOUR").first;
 
-	size_t vertexCount = circleBatch->getVertexCount(count);
+	size_t vertexCount = circleBatch->getVertexCount(circleBatch->getPrimitiveCount(count));
 	for (size_t pOffset = 0, sOffset = 0, bOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
 	{
 		// If we're using points, then store size in position.z, and if not, then
@@ -435,8 +435,8 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 		if (circleBatch->usingPointSprites())
 		{
 			// One vertex per quad
-			posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
-			posBuffer[pOffset + 1] = 300 + cosf(totalTime * (i + 2)) * 100;
+			posBuffer[pOffset + 0] = 400 + sinf(totalTime * 0.1f * (i + 1)) * 100;
+			posBuffer[pOffset + 1] = 300 + cosf(totalTime * 0.1f * (i + 2)) * 100;
 		}
 		else
 		{
@@ -478,7 +478,7 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 
 		// Size data
 		sizeBuffer[sOffset + 0] = radius;
-		sizeBuffer[sOffset + 1] = 8.0f + sinf(totalTime) * 4;
+		sizeBuffer[sOffset + 1] = 8.0f;
 		sizeBuffer[sOffset + 2] = 0.0f;
 		sizeBuffer[sOffset + 3] = 0.0f;
 
