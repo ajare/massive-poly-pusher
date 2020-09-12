@@ -328,7 +328,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// 2d batch objects
 		//
 		
-		size_t circleBatchCount{ 16 };
+		size_t circleBatchCount{ 1 };
 		auto circleBatch = createCircleBatch(
 			"TestCircles", 
 			circleBatchCount,
@@ -395,6 +395,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (gInputMgr->keyPressed(Key_F10))
 			{
 				gRenderdocApi->TriggerCapture();
+			}
+
+			if (gInputMgr->keyPressed(Key_O))
+			{
+				circleBatchCount++;
+			}
+			if (gInputMgr->keyPressed(Key_P))
+			{
+				circleBatchCount = max(0, circleBatchCount - 1);
 			}
 
 			// Update current state

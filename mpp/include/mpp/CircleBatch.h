@@ -23,27 +23,23 @@ namespace mpp
 
 		float mBorderSize;
 
-		float mPointSize;
-
 		VertexOptions mVertexOptions;
 
 		mpp::mesh::Vertex::DataType mPositionType;
 
 		mpp::mesh::Vertex::DataType mColourType;
 
-		int mIndexWidth;
+		size_t mIndexWidth;
 
 	private:
 
-		void createImpl();
-
-		int setIndices(uint32* ptr, uint32 base);
-
-		void setMinimumCount(int count);
+		bool indexedVertices() const;
 
 		void createMeshSpecification(mesh::Primitive::Type primitiveType);
 
-		void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr);
+		void createImpl();
+
+		void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
 
 	public:
 
@@ -53,22 +49,20 @@ namespace mpp
 			mpp::mesh::Vertex::DataType colourType,
 			float maxRadius,
 			float borderSize,
-			int indexWidth,
+			size_t indexWidth,
 			uint32 initialCount,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
 		void finishUpdate(int count, bool updateTexCoords);
 
-		int getPrimitiveCount() const;
+		int getPrimitiveCount(int objectCount) const;
 
 		int getVertexCount(int primitiveCount);
 
-		void setPointSize(float size);
-
-		float getPointSize() const;
-
 		bool usingPointSprites() const;
+
+		float getRadius() const;
 	};
 
 }

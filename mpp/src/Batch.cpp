@@ -186,6 +186,33 @@ namespace mpp
 		return mDataPointers.at(name);
 	}
 
+	void Batch2::createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, shared_ptr<const int8> dataPtr)
+	{
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, dataPtr);
+
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto& attrib = layout.getAttribute(j);
+				vb->setAttribute(
+					attrib.attributeId,
+					attrib.dataType,
+					mesh::Vertex::getComponentSize(attrib.component),
+					attrib.offsetInBytes,
+					attrib.normalised);
+			}
+		}
+
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
+	}
+
+	void Batch2::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
+	{
+	}
+
 	void Batch2::setCount(int count)
 	{
 		mCurCount = count;
@@ -238,9 +265,9 @@ namespace mpp
 		return materialResource;
 	}
 
-	int Batch2::getPrimitiveCount() const
+	int Batch2::getPrimitiveCount(int objectCount) const
 	{
-		return getCount() * 1;
+		return objectCount;
 	}
 
 	/*
@@ -267,4 +294,27 @@ namespace mpp
 		}
 	}
 
+	void Batch2::setMinimumCount(int count)
+	{
+		if (count > mMaxCount)
+		{
+			for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+			{
+				auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+				auto& data = vertexBuffer->getBufferData();
+
+				int newSize = getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride();
+				data.resize(newSize);
+
+				// Index data
+				if (indexedVertices())
+				{
+					createIndexData(mMeshes[0]->getIndexData(), mMaxCount, count);
+				}
+			}
+
+			mMaxCount = count;
+			setSpecificationPointers(mMeshes[0]);
+		}
+	}
 }
