@@ -327,12 +327,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
-		
+		/*
 		size_t circleBatchCount{ 1 };
 		auto circleBatch = createCircleBatch(
 			"TestCircles", 
 			circleBatchCount,
 			gRenderSystem, 
+			gResourceManager);
+		*/
+		size_t lineBatchCount{ 100 };
+		auto lineBatch = createLineBatch(
+			"TestLines",
+			lineBatchCount,
+			gRenderSystem,
 			gResourceManager);
 
 		//
@@ -399,11 +406,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (gInputMgr->keyPressed(Key_O))
 			{
-				circleBatchCount++;
+				lineBatchCount++;
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				circleBatchCount = max(0, circleBatchCount - 1);
+				lineBatchCount = max(0, lineBatchCount - 1);
 			}
 
 			// Update current state
@@ -575,7 +582,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Batches
 			//
 			gRenderSystem->setProjection2dOrthographic();
-			circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
+			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
+			lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();

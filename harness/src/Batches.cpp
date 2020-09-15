@@ -44,8 +44,7 @@ mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::
 	auto lineBatch = new mpp::LineBatch(
 		name,
 		mpp::mesh::Vertex::DataType::Float,
-		mpp::Batch::ColourOptions::FloatRGBA,
-		false,
+		mpp::mesh::Vertex::DataType::UnsignedByte,
 		lineBatchCount,
 		renderSystem,
 		resourceMgr);
@@ -222,7 +221,12 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatch, size_t count, float totalTime)
 {
 	lineBatch->startUpdate(count);
-	float* posDataDst = (float*)lineBatch->getPositionData();
+
+	auto posBuffer = (float*)lineBatch->getAttributeData("POSITION").first;
+	auto posStride = lineBatch->getAttributeData("POSITION").second / sizeof(float);
+
+	auto colBuffer = (uint8*)lineBatch->getAttributeData("COLOUR").first;
+	auto colStride = lineBatch->getAttributeData("COLOUR").second / sizeof(uint8);
 
 	float linesX = renderSystem->getWindowWidth() * 0.25f;
 	float linesW = renderSystem->getWindowWidth() * 0.5f;
@@ -234,24 +238,30 @@ size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatc
 			sinf(((float)i / (count / 2)) * 6.2832f + 1.2f - totalTime) +
 			sinf(((float)i / (count / 4)) * 6.2832f + 2.4f - totalTime) * 0.75f;
 
-		*posDataDst++ = linesX + linesW * ((float)i / count);
-		*posDataDst++ = linesY + 100 + y0 * 10;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
+		*(posBuffer + 0) = linesX + linesW * ((float)i / count);
+		*(posBuffer + 1) = linesY + 100 + y0 * 10;
+		*(colBuffer + 0) = 255;
+		*(colBuffer + 1) = 255;
+		*(colBuffer + 2) = 255;
+		*(colBuffer + 3) = 255;
+
+		posBuffer += posStride;
+		colBuffer += colStride;
 
 		float y1 =
 			cosf(((float)i / count) * 6.2832f - totalTime) +
 			sinf(((float)i / (count / 4)) * 6.2832f + 3.2f - totalTime) * 0.5f +
 			cosf(((float)i / (count / 3)) * 6.2832f + 5.4f - totalTime) * 0.5f;
 
-		*posDataDst++ = linesX + linesW * ((float)i / count);
-		*posDataDst++ = linesY - 100 - y1 * 10;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
-		*posDataDst++ = 1.0f;
+		*(posBuffer + 0) = linesX + linesW * ((float)i / count);
+		*(posBuffer + 1) = linesY - 100 - y1 * 10;
+		*(colBuffer + 0) = 255;
+		*(colBuffer + 1) = 255;
+		*(colBuffer + 2) = 255;
+		*(colBuffer + 3) = 255;
+
+		posBuffer += posStride;
+		colBuffer += colStride;
 	}
 
 	lineBatch->finishUpdate(count, false);

@@ -289,7 +289,7 @@ namespace mpp
 		}
 	}
 
-	void Batch2::setMinimumCount(int count)
+	void Batch2::setMinimumCount(size_t count)
 	{
 		if (count > mMaxCount)
 		{
