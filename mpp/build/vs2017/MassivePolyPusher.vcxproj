@@ -75,7 +75,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\include\mpp\CylinderModelStream.cpp" />
-    <ClCompile Include="..\..\include\mpp\IndexedTriangleBatch.cpp" />
     <ClCompile Include="..\..\src\Batch.cpp" />
     <ClCompile Include="..\..\src\BoxModelStream.cpp" />
     <ClCompile Include="..\..\src\CircleBatch.cpp" />
@@ -87,6 +86,7 @@
     <ClCompile Include="..\..\src\FileProgramStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
     <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
+    <ClCompile Include="..\..\src\IndexedTriangleBatch.cpp" />
     <ClCompile Include="..\..\src\InternalFont.cpp" />
     <ClCompile Include="..\..\src\LineBatch.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />

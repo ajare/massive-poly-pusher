@@ -16,36 +16,34 @@ namespace mpp
 
 		VertexCountFunction mVertexCountFn;
 
-		int mIndexWidth;
+		size_t mIndexWidth;
 
 	private:
 
-		void setMinimumCount(int count);
+		bool indexedVertices() const;
 
-		void resizeIndexData(int count);
+		void createImpl();
 
-	protected:
-
-		void postCreate();
+		void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
 
 	public:
 
 		IndexedTriangleBatch(std::string const& name,
 			mpp::mesh::Vertex::DataType positionType,
 			mpp::mesh::Vertex::DataType texcoordType,
-			ColourOptions colourOptions,
-			bool useDiffuseColour,
-			ResourcePtr program,
-			ResourcePtr texture,
+			mpp::mesh::Vertex::DataType colourType,
 			int indexWidth,
+			size_t initialCapacity,
+			std::string const& texture,
 			VertexCountFunction vertexCountFn,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		uint8* getIndexData();
+		void finishUpdate(int count, bool updateTexCoords);
 
 		int getVertexCount(int primitiveCount);
 
+		uint8* getIndexData();
 	};
 }
 #pragma once

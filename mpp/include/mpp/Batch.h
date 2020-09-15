@@ -148,17 +148,17 @@ namespace mpp
 
 		virtual bool indexedVertices() const = 0;
 
-		virtual void createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
-
 		virtual void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
 
 	protected:
 
+		virtual void createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
+		
 		void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr);
 
 		void setSpecificationPointers(Mesh* mesh);
 
-		void setMinimumCount(size_t count);
+		virtual void setMinimumCount(size_t count);
 
 		ResourcePtr createMaterial(std::string const& name, std::string const& texture, uint32 programFlags);
 

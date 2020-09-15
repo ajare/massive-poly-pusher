@@ -1,12 +1,8 @@
 #include <cmath>
 
-#include "utils/MemTracker.h"
-
-#include "mpp/TriangleBatch.h"
-#include "mpp/DefaultShaders.h"
+#include "mpp/IndexedTriangleBatch.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/ResourceManager.h"
-#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -18,42 +14,32 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TriangleBatch::TriangleBatch(string const& name,
+	IndexedTriangleBatch::IndexedTriangleBatch(string const& name,
 		mpp::mesh::Vertex::DataType positionType,
 		mpp::mesh::Vertex::DataType texcoordType,
 		mpp::mesh::Vertex::DataType colourType,
+		int indexWidth,
 		size_t initialCapacity,
 		string const& texture,
+		VertexCountFunction vertexCountFn,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch2(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "tris", renderSystem, resourceMgr)
-		, mPositionType(positionType)
-		, mTexcoordType(texcoordType)
-		, mColourType(colourType)
-		, mTexture(texture)
+		: TriangleBatch(name, positionType, texcoordType, colourType, initialCapacity, texture, renderSystem, resourceMgr) 
+		, mIndexWidth(indexWidth)
+		, mVertexCountFn(vertexCountFn)
 	{
 	}
 
-	bool TriangleBatch::indexedVertices() const
+	bool IndexedTriangleBatch::indexedVertices() const
 	{
-		return false;
-	}
-
-	void TriangleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
-	{
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout();
-
-		layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
-		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mTexcoordType, false);
-		layout->createAttribute(mesh::Vertex::Component::Colour4, mColourType, true);
+		return true;
 	}
 
 	/*
 	 * Create the data required.
 	 *
 	 */
-	void TriangleBatch::createImpl()
+	void IndexedTriangleBatch::createImpl()
 	{
 		auto primitiveType = mesh::Primitive::Type::Triangles;
 		int primitiveCount = getPrimitiveCount(getCapacity());
@@ -63,12 +49,17 @@ namespace mpp
 		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
 		int vertexCount = getVertexCount(primitiveCount);
 
+		const int indexStride = 3 * (mIndexWidth / 8);
+		vector<uint8> indices(mMaxCount * indexStride, 0);
+
 		auto mesh = new Mesh(
 			getRenderSystem(),
 			getName(),
 			materialResource,
 			primitiveType,
 			primitiveCount,
+			mIndexWidth,
+			indices,
 			storageType);
 
 		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
@@ -78,26 +69,40 @@ namespace mpp
 		createMesh(mesh, vertexCount, bufferSize, dataPtr);
 	}
 
-	void TriangleBatch::finishUpdate(int count, bool updateTexCoords)
+	void IndexedTriangleBatch::finishUpdate(int count, bool updateTexCoords)
 	{
 		mCurCount = count;
+
+		mMeshes[0]->mapIndexData(count);
 
 		mpp::VertexBuffer* vertexBuffer0 = mMeshes[0]->getVertexBuffer(0);
 		vertexBuffer0->mapBufferData(getVertexCount(count));
 		mMeshes[0]->setNumPrimitives(count);
 	}
 
-	int TriangleBatch::getPrimitiveCount(int objectCount) const
+	/*
+	 * Create indices for an object.
+	 *
+	 */
+	void IndexedTriangleBatch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
 	{
-		return objectCount;
+		size_t vertexSize{ 6 * (mIndexWidth / 8) };
+		data.resize(count * vertexSize);
+	}
+
+	uint8* IndexedTriangleBatch::getIndexData()
+	{
+		auto& indexData = mMeshes[0]->getIndexData();
+		return (uint8*)&(indexData[0]);
 	}
 
 	/*
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	int TriangleBatch::getVertexCount(int primitiveCount)
+	int IndexedTriangleBatch::getVertexCount(int primitiveCount)
 	{
-		return primitiveCount * 3;
+		return mVertexCountFn(primitiveCount);
 	}
+
 }

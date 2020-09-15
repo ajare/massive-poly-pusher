@@ -7,58 +7,43 @@
 
 namespace mpp
 {
-	class _MPPAPI TriangleBatch : public Batch
-	{
-		ResourcePtr mProgram, mTexture;
 
+	class _MPPAPI TriangleBatch : public Batch2
+	{
 	protected:
 
 		mpp::mesh::Vertex::DataType mPositionType;
 
 		mpp::mesh::Vertex::DataType mTexcoordType;
 
-		bool mUseTexCoords;
+		mpp::mesh::Vertex::DataType mColourType;
 
-		int mTexCoordBufferStride;
+		std::string mTexture;
 
 	private:
 
 		void createImpl();
 
-		void writeVertex(float x, float y, float u, float v, int8** mainPtr, int8** texCoordPtr);
-
-		void setMinimumCount(int count);
-
-		void setMainBufferStride();
-
-		void setTexCoordBufferStride();
+		bool indexedVertices() const;
 
 	protected:
 
-		void setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer);
-
-		virtual void postCreate() {}
+		void createMeshSpecification(mesh::Primitive::Type primitiveType);
 
 	public:
 
 		TriangleBatch(std::string const& name,
 			mpp::mesh::Vertex::DataType positionType,
 			mpp::mesh::Vertex::DataType texcoordType,
-			ColourOptions colourOptions,
-			bool useDiffuseColour,
-			ResourcePtr program,
-			ResourcePtr texture,
-			uint32 initialCount,
+			mpp::mesh::Vertex::DataType colourType,
+			size_t initialCapacity,
+			std::string const& texture,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
 		void finishUpdate(int count, bool updateTexCoords);
 
-		size_t getPositionStride() const;
-
-		size_t getTexCoordStride() const;
-
-		size_t getColourStride() const;
+		int getPrimitiveCount(int objectCount) const;
 
 		int getVertexCount(int primitiveCount);
 	};

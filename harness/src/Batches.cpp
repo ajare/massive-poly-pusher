@@ -8,11 +8,10 @@ mpp::IndexedTriangleBatch* createIndexedTriangleBatch(string const& name, string
 		"TestIndexedTriangles",
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::Float,
-		mpp::Batch::ColourOptions::UByteRGBA,
-		false,
-		nullptr,
-		resourceMgr->getResource(texture),
+		mpp::mesh::Vertex::DataType::UnsignedByte,
 		16,
+		indexedTriangleBatchCount,
+		texture,
 		[](int primCount) { return primCount + 1; },
 		renderSystem,
 		resourceMgr);
@@ -27,11 +26,9 @@ mpp::TriangleBatch* createTriangleBatch(string const& name, string const& textur
 		"TestTriangles",
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::Float,
-		mpp::Batch::ColourOptions::UByteRGBA,
-		false,
-		nullptr,
-		resourceMgr->getResource(texture),
+		mpp::mesh::Vertex::DataType::UnsignedByte,
 		triangleBatchCount,
+		texture,
 		renderSystem,
 		resourceMgr);
 
@@ -100,9 +97,14 @@ size_t updateTriangleBatch(mpp::RenderSystem* renderSystem, mpp::TriangleBatch* 
 {
 	triBatch->startUpdate(count);
 
-	auto posBuffer = (float*)triBatch->getPositionData();
-	auto texBuffer = (float*)triBatch->getTexCoordData();
-	auto colBuffer = (uint8_t*)triBatch->getColourData();
+	auto posBuffer = (float*)triBatch->getAttributeData("POSITION").first;
+	auto posStride = triBatch->getAttributeData("POSITION").second / sizeof(float);
+
+	auto texBuffer = (uint8*)triBatch->getAttributeData("TEXCOORDS").first;
+	auto texStride = triBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
+
+	auto colBuffer = (uint8*)triBatch->getAttributeData("COLOUR").first;
+	auto colStride = triBatch->getAttributeData("COLOUR").second / sizeof(uint8);
 
 	size_t vertexCount = triBatch->getVertexCount(count);
 	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
@@ -137,17 +139,14 @@ size_t updateTriangleBatch(mpp::RenderSystem* renderSystem, mpp::TriangleBatch* 
 		}
 
 		// Colour data
-		if (triBatch->usingColour())
-		{
-			colBuffer[cOffset + 0] = 255;
-			colBuffer[cOffset + 1] = 255;
-			colBuffer[cOffset + 2] = 255;
-			colBuffer[cOffset + 3] = 255;
-		}
+		colBuffer[cOffset + 0] = 255;
+		colBuffer[cOffset + 1] = 255;
+		colBuffer[cOffset + 2] = 255;
+		colBuffer[cOffset + 3] = 255;
 
-		pOffset += triBatch->getPositionStride() / sizeof(float);
-		tOffset += triBatch->getTexCoordStride() / sizeof(float);
-		cOffset += triBatch->getColourStride() / sizeof(uint8_t);
+		pOffset += posStride;
+		tOffset += texStride;
+		cOffset += colStride;
 	}
 
 	triBatch->finishUpdate(count, false);
@@ -160,9 +159,14 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 {
 	triBatch->startUpdate(count);
 
-	auto posBuffer = (float*)triBatch->getPositionData();
-	auto texBuffer = (float*)triBatch->getTexCoordData();
-	auto colBuffer = (uint8_t*)triBatch->getColourData();
+	auto posBuffer = (float*)triBatch->getAttributeData("POSITION").first;
+	auto posStride = triBatch->getAttributeData("POSITION").second / sizeof(float);
+
+	auto texBuffer = (float*)triBatch->getAttributeData("TEXCOORDS").first;
+	auto texStride = triBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
+
+	auto colBuffer = (uint8*)triBatch->getAttributeData("COLOUR").first;
+	auto colStride = triBatch->getAttributeData("COLOUR").second / sizeof(uint8);
 
 	size_t vertexCount = triBatch->getVertexCount(count);
 	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
@@ -187,17 +191,14 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 			texBuffer[tOffset + 1] = dy * 0.5f + 0.5f;
 		}
 
-		if (triBatch->usingColour())
-		{
-			colBuffer[cOffset + 0] = 255;
-			colBuffer[cOffset + 1] = 255;
-			colBuffer[cOffset + 2] = 255;
-			colBuffer[cOffset + 3] = 255;
-		}
+		colBuffer[cOffset + 0] = 255;
+		colBuffer[cOffset + 1] = 255;
+		colBuffer[cOffset + 2] = 255;
+		colBuffer[cOffset + 3] = 255;
 
-		pOffset += triBatch->getPositionStride() / sizeof(float);
-		tOffset += triBatch->getTexCoordStride() / sizeof(float);
-		cOffset += triBatch->getColourStride() / sizeof(uint8_t);
+		pOffset += posStride;
+		tOffset += texStride;
+		cOffset += colStride;
 	}
 
 	uint16_t* indexData = (uint16_t*)triBatch->getIndexData();

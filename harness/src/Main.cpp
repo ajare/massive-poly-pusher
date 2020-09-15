@@ -335,10 +335,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem, 
 			gResourceManager);
 		*/
+		/*
 		size_t lineBatchCount{ 100 };
 		auto lineBatch = createLineBatch(
 			"TestLines",
 			lineBatchCount,
+			gRenderSystem,
+			gResourceManager);
+		*/
+
+		size_t triBatchCount{ 32 };
+		auto triBatch = createIndexedTriangleBatch(
+			"TestTris",
+			"__mpp_tex_none__",
+			triBatchCount,
 			gRenderSystem,
 			gResourceManager);
 
@@ -406,11 +416,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (gInputMgr->keyPressed(Key_O))
 			{
-				lineBatchCount++;
+				triBatchCount++;
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				lineBatchCount = max(0, lineBatchCount - 1);
+				triBatchCount = max(0, triBatchCount - 1);
 			}
 
 			// Update current state
@@ -583,7 +593,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->setProjection2dOrthographic();
 			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
-			lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
+			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
+			triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
