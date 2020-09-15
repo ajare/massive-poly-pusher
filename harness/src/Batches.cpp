@@ -82,12 +82,13 @@ mpp::CircleBatch* createCircleBatch(string const& name, size_t circleBatchCount,
 {
 	auto circleBatch = new mpp::CircleBatch(
 		name,
-		mpp::CircleBatch::VertexOptions::Triangles,
+		mpp::CircleBatch::VertexOptions::Auto,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::UnsignedByte,
+		16,
 		32.0f,
 		4.0f,
-		16,
+		true,
 		circleBatchCount,
 		renderSystem,
 		resourceMgr);
@@ -418,9 +419,16 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 	circleBatch->startUpdate(count);
 
 	auto posBuffer = (float*)circleBatch->getAttributeData("POSITION").first;
-	auto sizeBuffer = (float*)circleBatch->getAttributeData("SIZES").first;
+	auto posStride = circleBatch->getAttributeData("POSITION").second / sizeof(float);
+
+	auto optBuffer = (float*)circleBatch->getAttributeData("OPTIONS").first;
+	auto optStride = circleBatch->getAttributeData("OPTIONS").second / sizeof(float);
+
 	auto borderBuffer = (uint8_t*)circleBatch->getAttributeData("BORDERCOLOUR").first;
+	auto borderStride = circleBatch->getAttributeData("BORDERCOLOUR").second / sizeof(uint8_t);
+
 	auto colourBuffer = (uint8_t*)circleBatch->getAttributeData("INNERCOLOUR").first;
+	auto colourStride = circleBatch->getAttributeData("INNERCOLOUR").second / sizeof(uint8_t);
 
 	size_t vertexCount = circleBatch->getVertexCount(circleBatch->getPrimitiveCount(count));
 	for (size_t pOffset = 0, sOffset = 0, bOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
@@ -429,7 +437,7 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 		// generate it (we don't need to store it)
 		// But then need to store border
 
-		float radius = 20 + sinf(totalTime) * 12;
+		float radius = 32;// +sinf(totalTime) * 12;
 
 		// Position/rotation data
 		if (circleBatch->usingPointSprites())
@@ -476,11 +484,11 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 			}
 		}
 
-		// Size data
-		sizeBuffer[sOffset + 0] = radius;
-		sizeBuffer[sOffset + 1] = 8.0f;
-		sizeBuffer[sOffset + 2] = 0.0f;
-		sizeBuffer[sOffset + 3] = 0.0f;
+		// Options data
+		optBuffer[sOffset + 0] = radius;
+		optBuffer[sOffset + 1] = 4.0f;
+		optBuffer[sOffset + 2] = 0.5f;
+		optBuffer[sOffset + 3] = 0.0f;
 
 		// Border colour data
 		borderBuffer[bOffset + 0] = 0;
@@ -494,14 +502,14 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 		colourBuffer[cOffset + 2] = 255;
 		colourBuffer[cOffset + 3] = 255;
 
-		pOffset += circleBatch->getAttributeData("POSITION").second / sizeof(float);
-		sOffset += circleBatch->getAttributeData("SIZES").second / sizeof(float);
-		bOffset += circleBatch->getAttributeData("BORDERCOLOUR").second / sizeof(uint8_t);
-		cOffset += circleBatch->getAttributeData("INNERCOLOUR").second / sizeof(uint8_t);
+		pOffset += posStride;
+		sOffset += optStride;
+		bOffset += borderStride;
+		cOffset += colourStride;
 	}
 
 	circleBatch->finishUpdate(count, true);
 
-	renderSystem->renderModelImmediate(*circleBatch, true);
+	renderSystem->renderModelImmediate(*circleBatch, true, nullptr, circleBatch->getPrimitiveCount(circleBatch->getCount()));
 	return circleBatch->getCount();
 }

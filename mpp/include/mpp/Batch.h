@@ -138,7 +138,7 @@ namespace mpp
 
 	protected:
 
-		int mCurCount, mMaxCount;
+		size_t mCurCount, mMaxCount;
 
 		mesh::MeshSpecification mSpecification;
 
@@ -167,7 +167,7 @@ namespace mpp
 	public:
 
 		Batch2(std::string const& name,
-			uint32 initialCount,
+			size_t initialCapacity,
 			std::string const& defaultVertexShader,
 			std::string const& defaultFragmentShader,
 			std::string const& descriptor,
@@ -180,11 +180,9 @@ namespace mpp
 
 		const std::pair<char*, size_t>& getAttributeData(std::string const& name) const;
 
-		void setCount(int count);
-
 		int getCount() const;
 
-		int getMaxCount() const;
+		int getCapacity() const;
 
 		virtual int getPrimitiveCount(int objectCount) const;
 

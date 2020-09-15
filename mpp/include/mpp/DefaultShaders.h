@@ -228,9 +228,9 @@ R"(
 void main()
 {
 ## Triangles
-    @Out(vec4 SIZES) = vec4(@In(POSITION).zw, @In(SIZES).xy);
+    @Out(vec4 OPTIONS) = vec4(@In(POSITION).zw, @In(OPTIONS).xy);
 ## Else
-	@Out(vec4 SIZES) = vec4(0.0, 0.0, @In(SIZES).xy);
+	@Out(vec4 OPTIONS) = vec4(0.0, 0.0, @In(OPTIONS).xy);
 ##
 
 	@Out(vec4 BORDERCOLOUR) = @In(BORDERCOLOUR);
@@ -254,7 +254,7 @@ void main()
 {
 	vec4 borderColour = @In(BORDERCOLOUR);
 	vec4 innerColour = @In(INNERCOLOUR);
-	vec2 sizes = vec2(@In(SIZES).zw);
+	vec2 options = vec2(@In(OPTIONS).zw);
 
 ## Diffuse
 	borderColour *= @Uniform(DIFFUSE);
@@ -264,12 +264,12 @@ void main()
 ## Points
 	vec2 tc = gl_PointCoord;
 ## Else
-	vec2 tc = @In(SIZES).xy;
+	vec2 tc = @In(OPTIONS).xy;
 ##
 	tc -= 0.5;
 
 	float outerBorder = 0.25;
-	float innerBorder = (sizes.x - sizes.y) / (sizes.x * 4);
+	float innerBorder = (options.x - options.y) / (options.x * 4);
 
 	float d = dot(tc, tc);
 	if (d <= innerBorder)
@@ -279,6 +279,60 @@ void main()
 	else if (d <= outerBorder)
 	{
 		@Out(COLOUR) = borderColour;
+	}
+	else
+	{
+		@Out(COLOUR) = vec4(0.0);
+	}
+}
+)";
+
+const std::string FragmentShader2dCircleAntialiased =
+R"(
+@@Version
+
+## Diffuse
+@@Uniform(vec4 DIFFUSE);
+##
+
+void main()
+{
+	vec4 borderColour = @In(BORDERCOLOUR);
+	vec4 innerColour = @In(INNERCOLOUR);
+	vec2 options = vec2(@In(OPTIONS).zw);
+
+## Diffuse
+	borderColour *= @Uniform(DIFFUSE);
+	innerColour *= @Uniform(DIFFUSE);
+##
+
+## Points
+	vec2 tc = gl_PointCoord;
+## Else
+	vec2 tc = @In(OPTIONS).xy;
+##
+	tc -= 0.5;
+
+	float outerBorder = 0.25;
+	float innerBorder = (options.x - options.y) / (options.x * 4);
+	float alphaBorder = outerBorder - (outerBorder * 2 / options.x);
+
+	float d = dot(tc, tc);
+	if (d <= innerBorder)
+	{
+		@Out(vec4 COLOUR) = innerColour;
+	}
+	else if (d <= outerBorder)
+	{
+		if (d < alphaBorder)
+		{
+			@Out(COLOUR) = borderColour;
+		}
+		else
+		{
+			float blend = 1.0 - (d - alphaBorder) / (outerBorder - alphaBorder);
+			@Out(COLOUR) = vec4(borderColour.xyz, blend);
+		}
 	}
 	else
 	{
