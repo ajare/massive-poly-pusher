@@ -7,36 +7,33 @@
 
 namespace mpp
 {
-	class _MPPAPI LineBatch : public Batch
+	class _MPPAPI LineBatch : public Batch2
 	{
 		mpp::mesh::Vertex::DataType mPositionType;
+
+		mpp::mesh::Vertex::DataType mColourType;
 
 	private:
 
 		void createImpl();
 
-		void writeVertex(float x, float y, int8** mainPtr);
+		void createMeshSpecification(mesh::Primitive::Type primitiveType);
 
-		void setSpecificationPointers(VertexBuffer* mainBuffer, VertexBuffer* texCoordBuffer);
-
-		void setMinimumCount(int count);
-
-		void setMainBufferStride();
-
-		void setTexCoordBufferStride();
-
-		int getVertexCount(int primitiveCount);
+		bool indexedVertices() const;
 
 	public:
 
 		LineBatch(std::string const& name,
 			mpp::mesh::Vertex::DataType positionType,
-			ColourOptions colourOptions,
-			bool useDiffuseColour,
-			uint32 initialCount,
+			mpp::mesh::Vertex::DataType colourType,
+			size_t initialCapacity,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
 		void finishUpdate(int count, bool updateTexCoords);
+
+		int getPrimitiveCount(int objectCount) const;
+
+		int getVertexCount(int primitiveCount);
 	};
 }

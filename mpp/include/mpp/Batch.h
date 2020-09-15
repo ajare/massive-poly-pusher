@@ -158,7 +158,7 @@ namespace mpp
 
 		void setSpecificationPointers(Mesh* mesh);
 
-		void setMinimumCount(int count);
+		void setMinimumCount(size_t count);
 
 		ResourcePtr createMaterial(std::string const& name, std::string const& texture, uint32 programFlags);
 
