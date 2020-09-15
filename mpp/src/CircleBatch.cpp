@@ -21,15 +21,24 @@ namespace mpp
 		VertexOptions vertexOptions,
 		mpp::mesh::Vertex::DataType positionType,
 		mpp::mesh::Vertex::DataType colourType,
+		size_t indexWidth,
 		float maxRadius,
 		float borderSize,
-		size_t indexWidth,
-		uint32 initialCount,
+		bool antiAlias,
+		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch2(name, initialCount, VertexShader2dCircle, FragmentShader2dCircle, "circle", renderSystem, resourceMgr)
+		: Batch2(
+			name, 
+			initialCapacity, 
+			VertexShader2dCircle, 
+			antiAlias ? FragmentShader2dCircleAntialiased : FragmentShader2dCircle, 
+			"circle", 
+			renderSystem, 
+			resourceMgr)
 		, mRadius(maxRadius)
 		, mBorderSize(borderSize)
+		, mAntiAlias(antiAlias)
 		, mVertexOptions(vertexOptions)
 		, mPositionType(positionType)
 		, mColourType(colourType)
@@ -88,7 +97,7 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
 		}
 
-		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "SIZES", mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "OPTIONS", mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "BORDERCOLOUR", mColourType, true);
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "INNERCOLOUR", mColourType, true);
 	}
@@ -123,7 +132,7 @@ namespace mpp
 		}
 
 		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
-		int primitiveCount = getPrimitiveCount(mMaxCount);
+		int primitiveCount = getPrimitiveCount(getCapacity());
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		createMeshSpecification(primitiveType);
@@ -134,7 +143,7 @@ namespace mpp
 		if (indexedVertices())
 		{
 			vector<uint8> indices;
-			createIndexData(indices, 0, getMaxCount());
+			createIndexData(indices, 0, getCapacity());
 
 			mesh = new Mesh(
 				getRenderSystem(),

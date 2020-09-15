@@ -17,7 +17,7 @@ namespace mpp
 	Batch::Batch(std::string const& name,
 		ColourOptions colourOptions,
 		bool useDiffuseColour,
-		uint32 initialCount,
+		uint32_t initialCount,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
 		string const& descriptor,
@@ -161,7 +161,7 @@ namespace mpp
 	 *
 	 */
 	Batch2::Batch2(std::string const& name,
-		uint32 initialCount,
+		size_t initialCapacity,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
 		string const& descriptor,
@@ -172,7 +172,7 @@ namespace mpp
 		, mDefaultFragmentShader(defaultFragmentShader)
 		, mProgramDescriptor(descriptor)
 		, mCurCount(0)
-		, mMaxCount(initialCount)
+		, mMaxCount(initialCapacity)
 	{
 	}
 
@@ -213,17 +213,12 @@ namespace mpp
 	{
 	}
 
-	void Batch2::setCount(int count)
-	{
-		mCurCount = count;
-	}
-
 	int Batch2::getCount() const
 	{
 		return mCurCount;
 	}
 
-	int Batch2::getMaxCount() const
+	int Batch2::getCapacity() const
 	{
 		return mMaxCount;
 	}

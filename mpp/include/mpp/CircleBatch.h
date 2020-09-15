@@ -23,6 +23,8 @@ namespace mpp
 
 		float mBorderSize;
 
+		bool mAntiAlias;
+
 		VertexOptions mVertexOptions;
 
 		mpp::mesh::Vertex::DataType mPositionType;
@@ -47,10 +49,11 @@ namespace mpp
 			VertexOptions vertexOptions,
 			mpp::mesh::Vertex::DataType positionType,
 			mpp::mesh::Vertex::DataType colourType,
+			size_t indexWidth,
 			float maxRadius,
 			float borderSize,
-			size_t indexWidth,
-			uint32 initialCount,
+			bool antiAlias,
+			size_t initialCapacity,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
