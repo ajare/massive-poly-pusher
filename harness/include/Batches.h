@@ -14,7 +14,7 @@ mpp::IndexedTriangleBatch* createIndexedTriangleBatch(std::string const& name, s
 
 mpp::LineBatch* createLineBatch(std::string const& name, size_t lineBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr);
 
-mpp::QuadBatch* createQuadBatch(std::string const& name, std::string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr);
+mpp::QuadBatch2* createQuadBatch(std::string const& name, std::string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr);
 
 mpp::CircleBatch* createCircleBatch(std::string const& name, size_t circleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr);
 
@@ -24,6 +24,6 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 
 size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatch, size_t count, float totalTime);
 
-size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count, float totalTime);
+size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch2* quadBatch, size_t count, float totalTime);
 
 size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circleBatch, size_t count, float totalTime);

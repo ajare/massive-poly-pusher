@@ -50,21 +50,20 @@ mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::
 	return lineBatch;
 }
 
-mpp::QuadBatch* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+mpp::QuadBatch2* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
-	auto quadBatch = new mpp::QuadBatch(
+	auto quadBatch = new mpp::QuadBatch2(
 		name,
-		mpp::QuadBatch::VertexOptions::Auto,
+		mpp::QuadBatch2::VertexOptions::Auto,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::Float,
-		mpp::Batch::ColourOptions::UByteRGBA,
+		mpp::mesh::Vertex::DataType::UnsignedByte,
 		true,
 		true,
 		16,
 		16,
-		nullptr,
-		resourceMgr->getResource(texture),
-		true,
+		"__mpp_tex_none__",
+		false,
 		16,
 		quadBatchCount,
 		renderSystem,
@@ -100,7 +99,7 @@ size_t updateTriangleBatch(mpp::RenderSystem* renderSystem, mpp::TriangleBatch* 
 	auto posBuffer = (float*)triBatch->getAttributeData("POSITION").first;
 	auto posStride = triBatch->getAttributeData("POSITION").second / sizeof(float);
 
-	auto texBuffer = (uint8*)triBatch->getAttributeData("TEXCOORDS").first;
+	auto texBuffer = (float*)triBatch->getAttributeData("TEXCOORDS").first;
 	auto texStride = triBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
 
 	auto colBuffer = (uint8*)triBatch->getAttributeData("COLOUR").first;
@@ -271,13 +270,18 @@ size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatc
 	return lineBatch->getCount();
 }
 
-size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count, float totalTime)
+size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch2* quadBatch, size_t count, float totalTime)
 {
 	quadBatch->startUpdate(count);
 
-	auto posBuffer = (float*)quadBatch->getPositionData();
-	auto texBuffer = (float*)quadBatch->getTexCoordData();
-	auto colBuffer = (uint8_t*)quadBatch->getColourData();
+	auto posBuffer = (float*)quadBatch->getAttributeData("POSITION").first;
+	auto posStride = quadBatch->getAttributeData("POSITION").second / sizeof(float);
+
+	auto texBuffer = (float*)nullptr; // (float*)quadBatch->getAttributeData("TEXCOORDS").first;
+	auto texStride = 0; // quadBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
+
+	auto colBuffer = (uint8*)quadBatch->getAttributeData("COLOUR").first;
+	auto colStride = quadBatch->getAttributeData("COLOUR").second / sizeof(uint8);
 
 	size_t vertexCount = quadBatch->getVertexCount(count);
 	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
@@ -406,17 +410,14 @@ size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatc
 		}
 
 		// Colour data
-		if (quadBatch->usingColour())
-		{
-			colBuffer[cOffset + 0] = 255;
-			colBuffer[cOffset + 1] = 255;
-			colBuffer[cOffset + 2] = 255;
-			colBuffer[cOffset + 3] = 255;
-		}
+		colBuffer[cOffset + 0] = 255;
+		colBuffer[cOffset + 1] = 255;
+		colBuffer[cOffset + 2] = 255;
+		colBuffer[cOffset + 3] = 255;
 
-		pOffset += quadBatch->getPositionStride() / sizeof(float);
-		tOffset += quadBatch->getTexCoordStride() / sizeof(float);
-		cOffset += quadBatch->getColourStride() / sizeof(uint8_t);
+		pOffset += posStride;
+		tOffset += texStride;
+		cOffset += colStride;
 	}
 
 	quadBatch->finishUpdate(count, true);

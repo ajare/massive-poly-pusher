@@ -709,4 +709,269 @@ namespace mpp
 		return mPositionOptions;
 	}
 
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch2::QuadBatch2(string const& name,
+		VertexOptions vertexOptions,
+		mpp::mesh::Vertex::DataType positionType,
+		mpp::mesh::Vertex::DataType texcoordType,
+		mpp::mesh::Vertex::DataType colourType,
+		bool rotate,
+		bool sameSize,
+		int maxDimX,
+		int maxDimY,
+		string const& texture,
+		bool textureAtlas,
+		size_t indexWidth,
+		size_t initialCapacity,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Batch2(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", renderSystem, resourceMgr)
+		, mVertexOptions(vertexOptions)
+		, mPositionType(positionType)
+		, mTexcoordType(texcoordType)
+		, mColourType(colourType)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mMaxDimX(maxDimX)
+		, mMaxDimY(maxDimY)
+		, mTexture(texture)
+		, mTextureAtlas(textureAtlas)
+		, mIndexWidth(indexWidth)
+		, mPointSize((float)maxDimX)
+	{
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch2::QuadBatch2(string const& name,
+		VertexOptions vertexOptions,
+		mpp::mesh::Vertex::DataType positionType,
+		mpp::mesh::Vertex::DataType texcoordType,
+		mpp::mesh::Vertex::DataType colourType,
+		bool rotate,
+		bool sameSize,
+		int maxDimX,
+		int maxDimY,
+		string const& texture,
+		bool textureAtlas,
+		size_t indexWidth,
+		size_t initialCapacity,
+		string const& defaultVertexShader,
+		string const& defaultFragmentShader,
+		string const& descriptor,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Batch2(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", renderSystem, resourceMgr)
+		, mVertexOptions(vertexOptions)
+		, mPositionType(positionType)
+		, mTexcoordType(texcoordType)
+		, mColourType(colourType)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mMaxDimX(maxDimX)
+		, mMaxDimY(maxDimY)
+		, mTexture(texture)
+		, mTextureAtlas(textureAtlas)
+		, mIndexWidth(indexWidth)
+		, mPointSize((float)maxDimX)
+	{
+	}
+
+	bool QuadBatch2::indexedVertices() const
+	{
+		return !usingPointSprites();
+	}
+
+	/*
+	 * Create indices for a primitive.
+	 *
+	 */
+	void QuadBatch2::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
+	{
+		size_t vertexSize{ 6 * (mIndexWidth / 8) };
+		data.resize(count * vertexSize);
+
+		uint32* ptr = (uint32*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
+		int indexBytes = mIndexWidth / 8;
+
+		for (uint32_t i = start; i < count; ++i)
+		{
+			if (indexBytes == 2)
+			{
+				*ptr = (i * 4 + 0) + ((i * 4 + 1) << 16); ptr++;
+				*ptr = (i * 4 + 2) + ((i * 4 + 2) << 16); ptr++;
+				*ptr = (i * 4 + 3) + ((i * 4 + 0) << 16); ptr++;
+			}
+			else if (indexBytes == 4)
+			{
+				*ptr = i * 4 + 0; ptr++;
+				*ptr = i * 4 + 1; ptr++;
+				*ptr = i * 4 + 2; ptr++;
+				*ptr = i * 4 + 2; ptr++;
+				*ptr = i * 4 + 3; ptr++;
+				*ptr = i * 4 + 0; ptr++;
+			}
+		}
+	}
+
+	/*
+	 * Get the number of vertices required, given the number of primitives.
+	 *
+	 */
+	int QuadBatch2::getVertexCount(int primitiveCount)
+	{
+		return primitiveCount * (usingPointSprites() ? 1 : 4);
+	}
+
+	void QuadBatch2::createMeshSpecification(mesh::Primitive::Type primitiveType)
+	{
+		mSpecification = mesh::MeshSpecification(primitiveType);
+		auto layout = mSpecification.createVertexBufferAttributeLayout();
+
+		if (rotating())
+		{
+			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
+		}
+		else
+		{
+			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
+		}
+
+		if (usingPointSprites())
+		{
+			if (mTexture != "" && mTextureAtlas)
+			{
+				layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, false);
+			}
+		}
+		else if (rotating())
+		{
+			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, false);
+		}
+		else
+		{
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mTexcoordType, false);
+		}
+		
+		layout->createAttribute(mesh::Vertex::Component::Colour4, mColourType, true);
+	}
+
+	/*
+	 * Create the data required.
+	 *
+	 */
+	void QuadBatch2::createImpl()
+	{
+		//
+		// Set up options for this batch
+		//
+		bool square = mSameSize && mMaxDimX == mMaxDimY;
+
+		// Set vertex options
+		Caps const& caps = getRenderSystem()->getCaps();
+		bool canUsePointSprites = square &&
+			caps.pointSizeRange[0] < mMaxDimX && caps.pointSizeRange[1] > mMaxDimX;
+
+		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		{
+			THROW_MPP("Cannot use point sprites for this QuadBatch.", __LINE__, __FILE__, __func__);
+		}
+
+		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		{
+			mVertexOptions = VertexOptions::Points;
+		}
+		else
+		{
+			mVertexOptions = VertexOptions::Triangles;
+		}
+
+		// Set primitive options
+		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
+		int primitiveCount = getPrimitiveCount(getCapacity());
+		auto storageType = mesh::VertexBufferStorageType::Dynamic;
+
+		createMeshSpecification(primitiveType);
+
+		// Set program flags
+		uint32 flags = 0
+			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
+			| (mTexture != "" ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
+			| (mTextureAtlas ? MPP_PROGRAM_TAGS_ATLAS : 0)
+			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0);
+
+		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture, flags);
+		int vertexCount = getVertexCount(primitiveCount);
+
+		vector<uint8> indices;
+		createIndexData(indices, 0, getCapacity());
+
+		auto mesh = new Mesh(
+			getRenderSystem(),
+			getName(),
+			materialResource,
+			primitiveType,
+			primitiveCount,
+			mIndexWidth,
+			indices,
+			storageType,
+			mPointSize);
+
+		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
+		int8* data = new int8[vertexCount * bufferSize];
+		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
+
+		createMesh(mesh, vertexCount, bufferSize, dataPtr);
+	}
+
+	void QuadBatch2::finishUpdate(int count, bool updateTexCoords)
+	{
+		mCurCount = count;
+
+		if (mMeshes[0]->isIndexed())
+		{
+			mMeshes[0]->mapIndexData(count * (usingPointSprites() ? 1 : 2));
+		}
+
+		auto numPrimitives = getPrimitiveCount(count);
+		for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+		{
+			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+			vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
+		}
+
+		mMeshes[0]->setNumPrimitives(numPrimitives);
+	}
+
+	int QuadBatch2::getPrimitiveCount(int objectCount) const
+	{
+		return objectCount * (usingPointSprites() ? 1 : 2);
+	}
+
+	bool QuadBatch2::usingPointSprites() const
+	{
+		return mVertexOptions == VertexOptions::Points;
+	}
+
+	bool QuadBatch2::rotating() const
+	{
+		return mRotate;
+	}
+
+	bool QuadBatch2::usingTexture() const
+	{
+		return mTexture != "";
+	}
+
+	bool QuadBatch2::usingTextureAtlas() const
+	{
+		return mTextureAtlas;
+	}
+
 }
