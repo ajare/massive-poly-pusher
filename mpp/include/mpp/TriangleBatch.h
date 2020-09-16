@@ -28,6 +28,8 @@ namespace mpp
 
 	protected:
 
+		mesh::Primitive::Type getPrimitiveType() const;
+
 		void createMeshSpecification(mesh::Primitive::Type primitiveType);
 
 	public:

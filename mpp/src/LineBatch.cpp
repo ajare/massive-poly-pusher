@@ -19,29 +19,44 @@ namespace mpp
 	 *
 	 */
 	LineBatch::LineBatch(string const& name,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType colourType,
+		LineBatchOptions const& options,
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "line", renderSystem, resourceMgr)
-		, mPositionType(positionType)
-		, mColourType(colourType)
+		, mOptions(options)
 	{
 	}
 
+	/*
+	 * Create mesh specification.
+	 *
+	 */
 	void LineBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
 		mSpecification = mesh::MeshSpecification(primitiveType);
 		auto layout = mSpecification.createVertexBufferAttributeLayout();
 
-		layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
-		layout->createAttribute(mesh::Vertex::Component::Colour4, mColourType, true);
+		layout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
+
+		if (mOptions.colourType != mesh::Vertex::DataType::None)
+		{
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourType, true);
+		}
 	}
 
+	/*
+	 * We don't use indexed vertices for line batches, even though we could.
+	 *
+	 */
 	bool LineBatch::indexedVertices() const
 	{
 		return false;
+	}
+
+	mesh::Primitive::Type LineBatch::getPrimitiveType() const
+	{
+		return mesh::Primitive::Type::Lines;
 	}
 
 	/*
@@ -50,12 +65,15 @@ namespace mpp
 	 */
 	void LineBatch::createImpl()
 	{
-		auto primitiveType = mesh::Primitive::Type::Lines;
+		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
-		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		createMeshSpecification(primitiveType);
-		auto materialResource = createMaterial(getName() + "_LineBatch", "__mpp_tex_none__", MPP_PROGRAM_TAGS_PRIM_LINES);
+
+		uint32 flags = MPP_PROGRAM_TAGS_PRIM_LINES
+			| (mOptions.useDiffuse ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
+
+		auto materialResource = createMaterial(getName() + "_LineBatch", "__mpp_tex_none__", flags);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		auto mesh = new Mesh(
@@ -64,7 +82,7 @@ namespace mpp
 			materialResource,
 			primitiveType,
 			primitiveCount,
-			storageType);
+			mesh::VertexBufferStorageType::Dynamic);
 
 		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
 		int8* data = new int8[vertexCount * bufferSize];

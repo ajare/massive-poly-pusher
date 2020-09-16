@@ -40,8 +40,11 @@ mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::
 {
 	auto lineBatch = new mpp::LineBatch(
 		name,
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::UnsignedByte,
+		{
+			mpp::mesh::Vertex::DataType::Float,
+			mpp::mesh::Vertex::DataType::UnsignedByte,
+			false
+		},
 		lineBatchCount,
 		renderSystem,
 		resourceMgr);

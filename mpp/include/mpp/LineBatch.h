@@ -7,11 +7,16 @@
 
 namespace mpp
 {
+	struct LineBatchOptions
+	{
+		mpp::mesh::Vertex::DataType positionType;
+		mpp::mesh::Vertex::DataType colourType;
+		bool useDiffuse;
+	};
+
 	class _MPPAPI LineBatch : public Batch
 	{
-		mpp::mesh::Vertex::DataType mPositionType;
-
-		mpp::mesh::Vertex::DataType mColourType;
+		LineBatchOptions mOptions;
 
 	private:
 
@@ -21,11 +26,14 @@ namespace mpp
 
 		bool indexedVertices() const;
 
+	protected:
+
+		mesh::Primitive::Type getPrimitiveType() const;
+
 	public:
 
 		LineBatch(std::string const& name,
-			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType colourType,
+			LineBatchOptions const& options,
 			size_t initialCapacity,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);

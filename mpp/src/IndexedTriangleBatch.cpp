@@ -41,9 +41,8 @@ namespace mpp
 	 */
 	void IndexedTriangleBatch::createImpl()
 	{
-		auto primitiveType = mesh::Primitive::Type::Triangles;
+		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
-		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		createMeshSpecification(primitiveType);
 		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
@@ -60,7 +59,7 @@ namespace mpp
 			primitiveCount,
 			mIndexWidth,
 			indices,
-			storageType);
+			mesh::VertexBufferStorageType::Dynamic);
 
 		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
 		int8* data = new int8[vertexCount * bufferSize];
