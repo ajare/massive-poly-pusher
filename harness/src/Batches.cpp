@@ -50,11 +50,11 @@ mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::
 	return lineBatch;
 }
 
-mpp::QuadBatch2* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+mpp::QuadBatch* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
-	auto quadBatch = new mpp::QuadBatch2(
+	auto quadBatch = new mpp::QuadBatch(
 		name,
-		mpp::QuadBatch2::VertexOptions::Auto,
+		mpp::QuadBatch::VertexOptions::Auto,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::Float,
 		mpp::mesh::Vertex::DataType::UnsignedByte,
@@ -270,7 +270,7 @@ size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatc
 	return lineBatch->getCount();
 }
 
-size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch2* quadBatch, size_t count, float totalTime)
+size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count, float totalTime)
 {
 	quadBatch->startUpdate(count);
 

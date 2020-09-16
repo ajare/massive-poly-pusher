@@ -28,7 +28,7 @@ namespace mpp
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch2(
+		: Batch(
 			name, 
 			initialCapacity, 
 			VertexShader2dCircle, 

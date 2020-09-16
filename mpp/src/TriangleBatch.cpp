@@ -26,7 +26,7 @@ namespace mpp
 		string const& texture,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch2(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "tris", renderSystem, resourceMgr)
+		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "tris", renderSystem, resourceMgr)
 		, mPositionType(positionType)
 		, mTexcoordType(texcoordType)
 		, mColourType(colourType)

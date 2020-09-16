@@ -8,7 +8,7 @@
 namespace mpp
 {
 
-	class _MPPAPI TriangleBatch : public Batch2
+	class _MPPAPI TriangleBatch : public Batch
 	{
 	protected:
 
