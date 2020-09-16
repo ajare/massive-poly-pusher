@@ -15,9 +15,7 @@ namespace mpp
 	 *
 	 */
 	Batch::Batch(std::string const& name,
-		ColourOptions colourOptions,
-		bool useDiffuseColour,
-		uint32_t initialCount,
+		size_t initialCapacity,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
 		string const& descriptor,
@@ -27,37 +25,9 @@ namespace mpp
 		, mDefaultVertexShader(defaultVertexShader)
 		, mDefaultFragmentShader(defaultFragmentShader)
 		, mProgramDescriptor(descriptor)
-		, mColourOptions(colourOptions)
-		, mUseDiffuse(useDiffuseColour)
 		, mCurCount(0)
-		, mMaxCount(initialCount)
-		, mMainBufferStride(0)
-		, mColourOffset(0)
-		, mPositionData(nullptr)
-		, mTexCoordData(nullptr)
-		, mColourData(nullptr)
+		, mMaxCount(initialCapacity)
 	{
-	}
-
-	/*
-	 * Write a byte to a datastream.
-	 *
-	 */
-	void Batch::writeUByte(uint8 value, int8** ptr)
-	{
-		**ptr = value;
-		*ptr += sizeof(uint8);
-	}
-
-	/*
-	 * Write a float to a datastream.
-	 *
-	 */
-	void Batch::writeFloat(float value, int8** ptr)
-	{
-		float* fPtr = (float*)*ptr;
-		*fPtr = value;
-		*ptr += sizeof(float);
 	}
 
 	mesh::MeshSpecification const& Batch::getSpecification() const
@@ -65,39 +35,36 @@ namespace mpp
 		return mSpecification;
 	}
 
-	char* Batch::getPositionData()
+	const pair<char*, size_t>& Batch::getAttributeData(string const& name) const
 	{
-		return mPositionData;
+		return mDataPointers.at(name);
 	}
 
-	int Batch::getPositionDataSize() const
+	void Batch::createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, shared_ptr<const int8> dataPtr)
 	{
-		return (int)mMeshes[0]->getVertexBuffer(0)->getBufferData().size();
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, dataPtr);
+
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto& attrib = layout.getAttribute(j);
+				vb->setAttribute(
+					attrib.attributeId,
+					attrib.dataType,
+					mesh::Vertex::getComponentSize(attrib.component),
+					attrib.offsetInBytes,
+					attrib.normalised);
+			}
+		}
+
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
 	}
 
-	char* Batch::getTexCoordData()
+	void Batch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
 	{
-		return mTexCoordData;
-	}
-
-	int Batch::getTexcoordDataSize() const
-	{
-		return (int)mMeshes[0]->getVertexBuffer(1)->getBufferData().size();
-	}
-
-	char* Batch::getColourData()
-	{
-		return mColourData;
-	}
-
-	bool Batch::usingColour() const
-	{
-		return mColourOptions != ColourOptions::None;
-	}
-
-	void Batch::setCount(int count)
-	{
-		mCurCount = count;
 	}
 
 	int Batch::getCount() const
@@ -105,7 +72,7 @@ namespace mpp
 		return mCurCount;
 	}
 
-	int Batch::getMaxCount() const
+	int Batch::getCapacity() const
 	{
 		return mMaxCount;
 	}
@@ -147,120 +114,7 @@ namespace mpp
 		return materialResource;
 	}
 
-	int Batch::getPrimitiveCount() const
-	{
-		return getCount() * 1;
-	}
-
-	/************************************************************************************/
-	/************************************************************************************/
-	/************************************************************************************/
-
-	/*
-	 * Constructor.
-	 *
-	 */
-	Batch2::Batch2(std::string const& name,
-		size_t initialCapacity,
-		string const& defaultVertexShader,
-		string const& defaultFragmentShader,
-		string const& descriptor,
-		RenderSystem* renderSystem,
-		ResourceManager* resourceMgr)
-		: Model(name, renderSystem, resourceMgr, nullptr)
-		, mDefaultVertexShader(defaultVertexShader)
-		, mDefaultFragmentShader(defaultFragmentShader)
-		, mProgramDescriptor(descriptor)
-		, mCurCount(0)
-		, mMaxCount(initialCapacity)
-	{
-	}
-
-	mesh::MeshSpecification const& Batch2::getSpecification() const
-	{
-		return mSpecification;
-	}
-
-	const pair<char*, size_t>& Batch2::getAttributeData(string const& name) const
-	{
-		return mDataPointers.at(name);
-	}
-
-	void Batch2::createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, shared_ptr<const int8> dataPtr)
-	{
-		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
-			auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, dataPtr);
-
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto& attrib = layout.getAttribute(j);
-				vb->setAttribute(
-					attrib.attributeId,
-					attrib.dataType,
-					mesh::Vertex::getComponentSize(attrib.component),
-					attrib.offsetInBytes,
-					attrib.normalised);
-			}
-		}
-
-		setSpecificationPointers(mesh);
-		mMeshes.push_back(mesh);
-	}
-
-	void Batch2::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
-	{
-	}
-
-	int Batch2::getCount() const
-	{
-		return mCurCount;
-	}
-
-	int Batch2::getCapacity() const
-	{
-		return mMaxCount;
-	}
-
-	void Batch2::startUpdate(int minimumCount)
-	{
-		setMinimumCount(minimumCount);
-	}
-
-	ResourcePtr Batch2::createMaterial(string const& name, string const& texture, uint32 programFlags)
-	{
-		auto resourceMgr = getResourceManager();
-		auto programResource = resourceMgr->getOrCreateDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
-
-		return createMaterial(name, programResource, texture, programFlags);
-	}
-
-	ResourcePtr Batch2::createMaterial(string const& name, ResourcePtr program, string const& texture, uint32 programFlags)
-	{
-		auto resourceMgr = getResourceManager();
-
-		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream();
-
-		matStream->setProgram(program->getName());
-
-		matStream->setTexture("TEX1", texture);
-
-		auto materialResource = resourceMgr->getResource(name, true);
-		if (materialResource)
-		{
-			materialResource->load();
-		}
-		else
-		{
-			materialResource = resourceMgr->createResource<mpp::Material>(name, mpp::ResourceStreamPtr(matStream));
-			materialResource->load();
-		}
-
-		return materialResource;
-	}
-
-	int Batch2::getPrimitiveCount(int objectCount) const
+	int Batch::getPrimitiveCount(int objectCount) const
 	{
 		return objectCount;
 	}
@@ -269,7 +123,7 @@ namespace mpp
 	 * Set the data pointers for the mesh specification.
 	 *
 	 */
-	void Batch2::setSpecificationPointers(Mesh* mesh)
+	void Batch::setSpecificationPointers(Mesh* mesh)
 	{
 		auto buffers = mesh->getVertexBuffers();
 
@@ -289,7 +143,7 @@ namespace mpp
 		}
 	}
 
-	void Batch2::setMinimumCount(size_t count)
+	void Batch::setMinimumCount(size_t count)
 	{
 		if (count > mMaxCount)
 		{

@@ -6,7 +6,7 @@
 
 namespace mpp
 {
-	class _MPPAPI CircleBatch : public Batch2
+	class _MPPAPI CircleBatch : public Batch
 	{
 	public:
 

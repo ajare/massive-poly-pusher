@@ -7,7 +7,7 @@
 
 namespace mpp
 {
-	class _MPPAPI LineBatch : public Batch2
+	class _MPPAPI LineBatch : public Batch
 	{
 		mpp::mesh::Vertex::DataType mPositionType;
 

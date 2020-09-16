@@ -24,7 +24,7 @@ namespace mpp
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch2(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "line", renderSystem, resourceMgr)
+		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "line", renderSystem, resourceMgr)
 		, mPositionType(positionType)
 		, mColourType(colourType)
 	{
