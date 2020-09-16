@@ -343,12 +343,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem,
 			gResourceManager);
 		*/
-
+		/*
 		size_t triBatchCount{ 32 };
 		auto triBatch = createIndexedTriangleBatch(
 			"TestTris",
 			"__mpp_tex_none__",
 			triBatchCount,
+			gRenderSystem,
+			gResourceManager);
+		*/
+
+		size_t quadBatchCount{ 32 };
+		auto quadBatch = createQuadBatch(
+			"TestQuads",
+			"__mpp_tex_none__",
+			quadBatchCount,
 			gRenderSystem,
 			gResourceManager);
 
@@ -416,11 +425,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (gInputMgr->keyPressed(Key_O))
 			{
-				triBatchCount++;
+				quadBatchCount++;
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				triBatchCount = max(0, triBatchCount - 1);
+				quadBatchCount = max(0, quadBatchCount - 1);
 			}
 
 			// Update current state
@@ -594,7 +603,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem->setProjection2dOrthographic();
 			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
 			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
-			triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
+			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
+			quadBatchCount = updateQuadBatch(gRenderSystem, quadBatch, quadBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();

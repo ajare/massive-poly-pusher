@@ -37,11 +37,13 @@ namespace mpp
 
 		bool indexedVertices() const;
 
+		void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
+
+	protected:
+
 		void createMeshSpecification(mesh::Primitive::Type primitiveType);
 
 		void createImpl();
-
-		void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
 
 	public:
 
