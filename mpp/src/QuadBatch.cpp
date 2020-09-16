@@ -30,41 +30,6 @@ namespace mpp
 		bool textureAtlas,
 		size_t indexWidth,
 		size_t initialCapacity,
-		RenderSystem* renderSystem,
-		ResourceManager* resourceMgr)
-		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", renderSystem, resourceMgr)
-		, mVertexOptions(vertexOptions)
-		, mPositionType(positionType)
-		, mTexcoordType(texcoordType)
-		, mColourType(colourType)
-		, mRotate(rotate)
-		, mSameSize(sameSize)
-		, mMaxDimX(maxDimX)
-		, mMaxDimY(maxDimY)
-		, mTexture(texture)
-		, mTextureAtlas(textureAtlas)
-		, mIndexWidth(indexWidth)
-		, mPointSize((float)maxDimX)
-	{
-	}
-
-	/*
-	 * Constructor.
-	 *
-	 */
-	QuadBatch::QuadBatch(string const& name,
-		VertexOptions vertexOptions,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType,
-		mpp::mesh::Vertex::DataType colourType,
-		bool rotate,
-		bool sameSize,
-		int maxDimX,
-		int maxDimY,
-		string const& texture,
-		bool textureAtlas,
-		size_t indexWidth,
-		size_t initialCapacity,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
 		string const& descriptor,
@@ -84,6 +49,90 @@ namespace mpp
 		, mIndexWidth(indexWidth)
 		, mPointSize((float)maxDimX)
 	{
+		// Set vertex options
+		float size = max(maxDimX, maxDimY);
+		bool square = mSameSize && mMaxDimX == mMaxDimY;
+
+		Caps const& caps = getRenderSystem()->getCaps();
+		bool canUsePointSprites = square &&
+			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
+
+		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		{
+			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
+		}
+
+		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		{
+			mVertexOptions = VertexOptions::Points;
+		}
+		else
+		{
+			mVertexOptions = VertexOptions::Triangles;
+		}
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch::QuadBatch(string const& name,
+		VertexOptions vertexOptions,
+		mpp::mesh::Vertex::DataType positionType,
+		mpp::mesh::Vertex::DataType texcoordType,
+		mpp::mesh::Vertex::DataType colourType,
+		bool rotate,
+		bool sameSize,
+		int maxDimX,
+		int maxDimY,
+		string const& texture,
+		bool textureAtlas,
+		size_t indexWidth,
+		size_t initialCapacity,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", renderSystem, resourceMgr)
+		, mVertexOptions(vertexOptions)
+		, mPositionType(positionType)
+		, mTexcoordType(texcoordType)
+		, mColourType(colourType)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mMaxDimX(maxDimX)
+		, mMaxDimY(maxDimY)
+		, mTexture(texture)
+		, mTextureAtlas(textureAtlas)
+		, mIndexWidth(indexWidth)
+		, mPointSize((float)maxDimX)
+	{
+		// Set vertex options
+		float size = max(maxDimX, maxDimY);
+		bool square = mSameSize && mMaxDimX == mMaxDimY;
+
+		Caps const& caps = getRenderSystem()->getCaps();
+		bool canUsePointSprites = square &&
+			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
+
+
+		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		{
+			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
+		}
+
+		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		{
+			mVertexOptions = VertexOptions::Points;
+		}
+		else
+		{
+			mVertexOptions = VertexOptions::Triangles;
+		}
+
+	}
+
+	mesh::Primitive::Type QuadBatch::getPrimitiveType() const
+	{
+		return usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
 	}
 
 	bool QuadBatch::indexedVertices() const
@@ -171,34 +220,9 @@ namespace mpp
 	 */
 	void QuadBatch::createImpl()
 	{
-		//
-		// Set up options for this batch
-		//
-		bool square = mSameSize && mMaxDimX == mMaxDimY;
-
-		// Set vertex options
-		Caps const& caps = getRenderSystem()->getCaps();
-		bool canUsePointSprites = square &&
-			caps.pointSizeRange[0] < mMaxDimX && caps.pointSizeRange[1] > mMaxDimX;
-
-		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
-		{
-			THROW_MPP("Cannot use point sprites for this QuadBatch.", __LINE__, __FILE__, __func__);
-		}
-
-		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
-		{
-			mVertexOptions = VertexOptions::Points;
-		}
-		else
-		{
-			mVertexOptions = VertexOptions::Triangles;
-		}
-
 		// Set primitive options
-		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
+		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
-		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		createMeshSpecification(primitiveType);
 
@@ -223,7 +247,7 @@ namespace mpp
 			primitiveCount,
 			mIndexWidth,
 			indices,
-			storageType,
+			mesh::VertexBufferStorageType::Dynamic,
 			mPointSize);
 
 		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();

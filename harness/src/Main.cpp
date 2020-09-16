@@ -335,14 +335,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem, 
 			gResourceManager);
 		*/
-		/*
+		
 		size_t lineBatchCount{ 100 };
 		auto lineBatch = createLineBatch(
 			"TestLines",
 			lineBatchCount,
 			gRenderSystem,
 			gResourceManager);
-		*/
+		
 		/*
 		size_t triBatchCount{ 32 };
 		auto triBatch = createIndexedTriangleBatch(
@@ -352,7 +352,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem,
 			gResourceManager);
 		*/
-
+		/*
 		size_t quadBatchCount{ 32 };
 		auto quadBatch = createQuadBatch(
 			"TestQuads",
@@ -360,7 +360,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			quadBatchCount,
 			gRenderSystem,
 			gResourceManager);
-
+		*/
 		//
 		// Camera setup
 		//
@@ -425,11 +425,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (gInputMgr->keyPressed(Key_O))
 			{
-				quadBatchCount++;
+				lineBatchCount++;
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				quadBatchCount = max(0, quadBatchCount - 1);
+				lineBatchCount = max(0, lineBatchCount - 1);
 			}
 
 			// Update current state
@@ -601,10 +601,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Batches
 			//
 			gRenderSystem->setProjection2dOrthographic();
-			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
-			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
+			lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
-			quadBatchCount = updateQuadBatch(gRenderSystem, quadBatch, quadBatchCount, totalTime);
+			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
+			//quadBatchCount = updateQuadBatch(gRenderSystem, quadBatch, quadBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();

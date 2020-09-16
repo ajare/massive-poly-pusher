@@ -32,6 +32,8 @@ namespace mpp
 
 	protected:
 
+		virtual mesh::Primitive::Type getPrimitiveType() const = 0;
+
 		virtual void createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
 		
 		void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr);

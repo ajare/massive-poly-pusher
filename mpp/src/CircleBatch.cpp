@@ -44,6 +44,29 @@ namespace mpp
 		, mColourType(colourType)
 		, mIndexWidth(indexWidth)
 	{
+		// Set vertex options
+		float size = mRadius * 2;
+		Caps const& caps = getRenderSystem()->getCaps();
+		bool canUsePointSprites = caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
+
+		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		{
+			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
+		}
+
+		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		{
+			mVertexOptions = VertexOptions::Points;
+		}
+		else
+		{
+			mVertexOptions = VertexOptions::Triangles;
+		}
+	}
+
+	mesh::Primitive::Type CircleBatch::getPrimitiveType() const
+	{
+		return usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
 	}
 
 	bool CircleBatch::indexedVertices() const
@@ -108,30 +131,9 @@ namespace mpp
 	 */
 	void CircleBatch::createImpl()
 	{
-		//
-		// Set up options for this batch
-		//
 		float size = mRadius * 2;
 
-		// Set vertex options
-		Caps const& caps = getRenderSystem()->getCaps();
-		bool canUsePointSprites = caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
-
-		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
-		{
-			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
-		}
-
-		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
-		{
-			mVertexOptions = VertexOptions::Points;
-		}
-		else
-		{
-			mVertexOptions = VertexOptions::Triangles;
-		}
-
-		auto primitiveType = usingPointSprites() ? mesh::Primitive::Type::Points : mesh::Primitive::Type::Triangles;
+		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
