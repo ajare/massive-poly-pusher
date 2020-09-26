@@ -9,6 +9,7 @@ using namespace std;
 
 namespace mpp
 {
+
 	ProgrammaticModelStream::ProgrammaticModelStream()
 		: ModelStream()
 	{
@@ -17,24 +18,14 @@ namespace mpp
 	void ProgrammaticModelStream::createMeshDataStreams()
 	{
 		// Set component streams for each mesh
-		for (MeshDataStreamDefinition& meshDef: mMeshDataDefinitions)
+		for (MeshDataStreamDefinition& meshDef : mMeshDataDefinitions)
 		{
-			int vertexOffset = 0;
-			int vertexStride = 0;
-
-			for (int i = 0; i < meshDef.specification.getNumVertexBufferAttributeLayouts(); ++i)
-			{
-				auto layout = meshDef.specification.getVertexBufferAttributeLayout(i);
-
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
-				{
-					auto attrib = layout.getAttribute(j);
-					vertexStride += attrib.sizeInBytes();
-				}
-			}
+			uint32 vertexOffset = 0;
+			size_t vertexStride = meshDef.specification.getVertexStrideInBytes();
+			size_t srcVertexDataSize = meshDef.vertexData.size();
 
 			// Set counts
-			meshDef.vertexCount = (int)(meshDef.vertexData.size() * sizeof(float)) / vertexStride;
+			meshDef.vertexCount = srcVertexDataSize / vertexStride;
 
 			int elementSize = mesh::Primitive::size(meshDef.specification.getPrimitiveType());
 			int indexWidthBytes = meshDef.indexWidth / 8;
@@ -42,9 +33,7 @@ namespace mpp
 			meshDef.primitiveCount = meshDef.specification.verticesIndexed() ? (meshDef.indexData.size() / (elementSize * indexWidthBytes)) : (meshDef.vertexCount / elementSize);
 
 			// Go through each component in order, and build streams.
-			int srcVertexDataSize = meshDef.vertexData.size() * sizeof(float);
-
-			float* dataPtr = new float[meshDef.vertexData.size()];
+			auto dataPtr = new int8[srcVertexDataSize];
 			memcpy(dataPtr, &(meshDef.vertexData[0]), srcVertexDataSize);
 
 			auto sharedDataPtr = std::shared_ptr<const int8>((const int8*)dataPtr, [](const int8 *p) { delete[] p; });
@@ -60,7 +49,7 @@ namespace mpp
 					VertexDataStreamDefinition vertexStreamDef;
 
 					vertexStreamDef.data = sharedDataPtr;
-					vertexStreamDef.dataType = mpp::mesh::Vertex::DataType::Float;
+					vertexStreamDef.dataType = attrib.dataType;
 					vertexStreamDef.offset = vertexOffset;
 					vertexStreamDef.stride = vertexStride;
 
@@ -189,14 +178,14 @@ namespace mpp
 		}
 
 		int index = mMeshDataDefinitions.size();
-		
+
 		MeshDataStreamDefinition meshDef;
 		meshDef.specification = specification;
 		meshDef.name = name;
 		meshDef.indexWidth = indexWidth;
 		meshDef.pointSize = pointSize;
 		meshDef.material = material;
-		
+
 		mMeshDataDefinitions.push_back(meshDef);
 
 		return index;
@@ -212,7 +201,16 @@ namespace mpp
 			}
 		}
 		return -1;
-	}	
+	}
+
+	void ProgrammaticModelStream::addVertexData(int meshIndex, mesh::VertexData const& vertexData)
+	{
+		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
+		
+		auto const& data = vertexData.getData();
+		meshDef.vertexData.insert(meshDef.vertexData.end(), std::begin(data), std::end(data));
+	}
+
 
 	void ProgrammaticModelStream::addPoint(int meshIndex, uint32 v)
 	{
@@ -260,7 +258,7 @@ namespace mpp
 	void ProgrammaticModelStream::addTriangle(int meshIndex, uint32 v0, uint32 v1, uint32 v2)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
-		
+
 		if (meshDef.indexWidth == 16)
 		{
 			meshDef.indexData.push_back(v0 & 255);
@@ -286,5 +284,4 @@ namespace mpp
 			meshDef.indexData.push_back(v2 >> 24);
 		}
 	}
-	
 }

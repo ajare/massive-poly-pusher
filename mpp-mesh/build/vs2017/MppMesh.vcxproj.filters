@@ -36,6 +36,9 @@
     <ClCompile Include="..\..\include\mpp\mesh\MppMeshException.h">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\VertexData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\mesh\Config.h">
@@ -66,6 +69,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\mesh\VertexTypeSpecification.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\mesh\VertexData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

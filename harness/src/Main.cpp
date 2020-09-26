@@ -25,9 +25,9 @@
 #include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
-
 #include <mpp/QuadBatch.h>
 
+#include <mpp/mesh/VertexData.h>
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
 
@@ -302,6 +302,36 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto gridModel = gResourceManager->createResource<Model>("Model.Grid", ResourceStreamPtr(gridStream));
 		gridModel->load();
 
+		// Quad
+		mesh::MeshSpecification quadSpec(mesh::Primitive::Type::Triangles);
+
+		attribLayout = quadSpec.createVertexBufferAttributeLayout();
+		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::HalfFloat, false);
+		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::HalfFloat, false);
+		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::HalfFloat, false);
+		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+		quadSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+		quadSpec.setIndexedVertices(true);
+		
+		auto quadStream = new ProgrammaticModelStream();
+		auto meshId = quadStream->createMesh("QuadTest", quadSpec, "Material.Marble", 16);
+		
+		auto quadStride = quadSpec.getVertexStrideInBytes();
+		mesh::VertexData quadVertexData(quadStride * 4);
+		
+		quadVertexData.f16(0.0f, 0.0f, 0.0f).f16(0.0f, 1.0f, 0.0f).f16(0.0f, 0.0f).u8(255, 255, 255, 255);
+		quadVertexData.f16(256.0f, 0.0f, 0.0f).f16(0.0f, 1.0f, 0.0f).f16(1.0f, 0.0f).u8(255, 255, 255, 255);
+		quadVertexData.f16(256.0f, 0.0f, 256.0f).f16(0.0f, 1.0f, 0.0f).f16(1.0f, 1.0f).u8(255, 255, 255, 255);
+		quadVertexData.f16(0.0f, 0.0f, 256.0f).f16(0.0f, 1.0f, 0.0f).f16(0.0f, 1.0f).u8(255, 255, 255, 255);
+		quadStream->addVertexData(meshId, quadVertexData);
+		
+		quadStream->addTriangle(meshId, 0, 1, 2);
+		quadStream->addTriangle(meshId, 2, 3, 0);
+
+		auto quadModel = gResourceManager->createResource<Model>("Model.Quad", ResourceStreamPtr(quadStream));
+		quadModel->load();
+
 		// Statue
 		/*
 		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
@@ -319,10 +349,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//{ sphereModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
 			//{ cylinderModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(10.0f, 10.0f, 10.0f)},
 			{ gridModel, glm::vec3(0.0f, -100.0f, 50.0f), glm::vec3(1.0f, 1.0f, 1.0f)},
+			{ quadModel, glm::vec3(-128.0f, -100.0f, -178.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
 			//{ statueModel, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)}
 		};
 
-		auto currentModelId = 0;
+		auto currentModelId = 1;
 
 		//
 		// 2d batch objects

@@ -106,18 +106,20 @@
     <ClCompile Include="..\..\src\Vertex.cpp" />
     <ClCompile Include="..\..\src\VertexBufferAttributeLayout.cpp" />
     <ClCompile Include="..\..\src\VertexBufferDefinition.cpp" />
+    <ClCompile Include="..\..\src\VertexData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\mesh\Config.h" />
     <ClInclude Include="..\..\include\mpp\mesh\MeshDefinition.h" />
     <ClInclude Include="..\..\include\mpp\mesh\MeshSpecification.h" />
     <ClInclude Include="..\..\include\mpp\mesh\ModelSerializer.h" />
-	<ClCompile Include="..\..\include\mpp\mesh\MppMeshException.h" />
+    <ClCompile Include="..\..\include\mpp\mesh\MppMeshException.h" />
     <ClInclude Include="..\..\include\mpp\mesh\Primitive.h" />
     <ClInclude Include="..\..\include\mpp\mesh\Vertex.h" />
     <ClInclude Include="..\..\include\mpp\mesh\VertexBufferAttributeLayout.h" />
     <ClInclude Include="..\..\include\mpp\mesh\VertexBufferDefinition.h" />
     <ClInclude Include="..\..\include\mpp\mesh\VertexBufferStorageType.h" />
+    <ClInclude Include="..\..\include\mpp\mesh\VertexData.h" />
     <ClInclude Include="..\..\include\mpp\mesh\VertexTypeSpecification.h" />
   </ItemGroup>
   <ItemGroup>
