@@ -149,6 +149,28 @@ namespace mpp
 		}
 
 		/*
+		 * Get the Mesh's vertex stride.
+		 *
+		 */
+		size_t MeshSpecification::getVertexStrideInBytes() const
+		{
+			size_t stride{ 0 };
+
+			for (int i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			{
+				auto layout = getVertexBufferAttributeLayout(i);
+
+				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				{
+					auto attrib = layout.getAttribute(j);
+					stride += attrib.sizeInBytes();
+				}
+			}
+
+			return stride;
+		}
+
+		/*
 		 * Get a name.
 		 *
 		 */

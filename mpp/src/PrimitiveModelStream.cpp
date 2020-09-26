@@ -25,18 +25,7 @@ namespace mpp
 	void PrimitiveModelStream::createMeshDataStreams()
 	{
 		int vertexOffset = 0;
-		mStrideInBytes = 0;
-
-		for (int i = 0; i < mMeshDataDefinition.specification.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto layout = mMeshDataDefinition.specification.getVertexBufferAttributeLayout(i);
-
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto attrib = layout.getAttribute(j);
-				mStrideInBytes += attrib.sizeInBytes();
-			}
-		}
+		mStrideInBytes = mMeshDataDefinition.specification.getVertexStrideInBytes();
 
 		// Set counts
 		mMeshDataDefinition.vertexCount = (int)mMeshDataDefinition.vertexData.size() / mStrideInBytes;
@@ -221,7 +210,7 @@ namespace mpp
 			case mesh::Vertex::DataType::Double:
 				setVertexData(offset, { x }); break;
 			case mesh::Vertex::DataType::HalfFloat:
-				setVertexData(offset, { (half_float::half)x }); break;
+				setVertexData(offset, { (half_float::half)((float)x) }); break;
 			case mesh::Vertex::DataType::Byte:
 				setVertexData(offset, { (int8_t)(normalised ? x * 0xff : x) }); break;
 			case mesh::Vertex::DataType::UnsignedByte:
@@ -247,7 +236,7 @@ namespace mpp
 			case mesh::Vertex::DataType::Double:
 				setVertexData(offset, { x, y }); break;
 			case mesh::Vertex::DataType::HalfFloat:
-				setVertexData(offset, { (half_float::half)x, (half_float::half)y }); break;
+				setVertexData(offset, { (half_float::half)((float)x), (half_float::half)((float)y) }); break;
 			case mesh::Vertex::DataType::Byte:
 				setVertexData(offset, { (int8_t)(normalised ? x * 0xff : x), (int8_t)(normalised ? y * 0xff : y) }); break;
 			case mesh::Vertex::DataType::UnsignedByte:
@@ -274,7 +263,7 @@ namespace mpp
 			case mesh::Vertex::DataType::Double:
 				setVertexData(offset, { x, y, z }); break;
 			case mesh::Vertex::DataType::HalfFloat:
-				setVertexData(offset, { (half_float::half)x, (half_float::half)y, (half_float::half)z }); break;
+				setVertexData(offset, { (half_float::half)((float)x), (half_float::half)((float)y), (half_float::half)((float)z) }); break;
 			case mesh::Vertex::DataType::Byte:
 				setVertexData(offset, { (int8_t)(normalised ? x * 0xff : x), (int8_t)(normalised ? y * 0xff : y), (int8_t)(normalised ? z * 0xff : z) }); break;
 			case mesh::Vertex::DataType::UnsignedByte:
@@ -302,7 +291,7 @@ namespace mpp
 			case mesh::Vertex::DataType::Double:
 				setVertexData(offset, { x, y, z, w }); break;
 			case mesh::Vertex::DataType::HalfFloat:
-				setVertexData(offset, { (half_float::half)x, (half_float::half)y, (half_float::half)z, (half_float::half)w }); break;
+				setVertexData(offset, { (half_float::half)((float)x), (half_float::half)((float)y), (half_float::half)((float)z), (half_float::half)((float)w) }); break;
 			case mesh::Vertex::DataType::Byte:
 				setVertexData(offset, { (int8_t)(normalised ? x * 0xff : x), (int8_t)(normalised ? y * 0xff : y), (int8_t)(normalised ? z * 0xff : z), (int8_t)(normalised ? w * 0xff : w) }); break;
 			case mesh::Vertex::DataType::UnsignedByte:

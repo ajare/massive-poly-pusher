@@ -1,11 +1,15 @@
 #pragma once
 
 #include <initializer_list>
+#include <any>
 
 #include "mpp/ModelStream.h"
 
+#include "mpp/mesh/VertexData.h"
+
 namespace mpp
 {
+
 	class _MPPAPI ProgrammaticModelStream : public ModelStream
 	{
 		struct MeshDataStreamDefinition
@@ -13,7 +17,7 @@ namespace mpp
 			mesh::MeshSpecification specification;
 			std::string name;
 			std::string material;
-			std::vector<float> vertexData;
+			std::vector<uint8> vertexData;
 			int indexWidth;
 			float pointSize;
 			std::vector<uint8> indexData;
@@ -54,21 +58,10 @@ namespace mpp
 		ProgrammaticModelStream();
 
 		int createMesh(std::string const& name, mesh::MeshSpecification const& specification, std::string const& material, int indexWidth, float pointSize = -1.0f);
-		
-		int getMeshId(std::string const& name) const;
-		
-		template<typename T>
-		void addVertexData(int meshIndex, std::initializer_list<T> const& vertex)
-		{
-			MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
-			meshDef.vertexData.insert(meshDef.vertexData.end(), vertex.begin(), vertex.end());
-		}
 
-		void addVertexData(int meshIndex, std::vector<float>::const_iterator begin, std::vector<float>::const_iterator end)
-		{
-			MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
-			meshDef.vertexData.insert(meshDef.vertexData.end(), begin, end);
-		}
+		int getMeshId(std::string const& name) const;
+
+		void addVertexData(int meshIndex, mesh::VertexData const& vertexData);
 
 		void addPoint(int meshIndex, uint32 v);
 

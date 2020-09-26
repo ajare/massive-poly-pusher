@@ -52,6 +52,8 @@ namespace mpp
 
 			VertexBufferAttributeLayout& getVertexBufferAttributeLayout(int index);
 
+			size_t getVertexStrideInBytes() const;
+
 			std::string getDescriptor(std::string const& prefix) const;
 
 			uint32 getHashCode() const;

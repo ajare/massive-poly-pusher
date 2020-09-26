@@ -601,7 +601,7 @@ namespace mpp
 		}
 
 		// Create font mesh
-		ProgrammaticModelStream* textStream = new ProgrammaticModelStream();
+		auto textStream = new ProgrammaticModelStream();
 
 		int glyphCount = 2048;
 
@@ -618,9 +618,10 @@ namespace mpp
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
 
+			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount; ++i)
 			{
-				textStream->addVertexData<float>(textMesh, { 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f });
+				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f).f32(1.0f).f32(1.0f));
 			}
 		}
 		else
@@ -636,9 +637,10 @@ namespace mpp
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
 
+			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
-				textStream->addVertexData<float>(textMesh, { 0.0f, 0.0f, 0.0f, 0.0f });
+				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 			}
 		}
 
@@ -661,13 +663,15 @@ namespace mpp
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
-			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
+			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount; ++i)
 			{
-				textStream->addVertexData<float>(textMesh, { 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f });
+				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
+					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
 			}
 		}
 		else
@@ -680,13 +684,15 @@ namespace mpp
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
+			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
-				textStream->addVertexData<float>(textMesh, { 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f });
+				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
+					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
 			}
 		}
 
@@ -697,7 +703,7 @@ namespace mpp
 		mColouredTextMesh = resourceMgr->getResource("__mpp_internal_coloured_text_mesh__");
 
 		// Fullscreen mesh
-		ProgrammaticModelStream* quadStream = new ProgrammaticModelStream();
+		auto quadStream = new ProgrammaticModelStream();
 		mesh::MeshSpecification quadSpec = mesh::MeshSpecification(mesh::Primitive::Type::Triangles);
 
 		auto attribLayout = quadSpec.createVertexBufferAttributeLayout();
@@ -709,12 +715,14 @@ namespace mpp
 		auto fullscreenProgram = resourceMgr->getOrCreateDefault2dProgram(quadSpec, 0, true);
 		auto quadMesh = quadStream->createMesh("0", quadSpec, fullscreenProgram->getName(), 32, -1.0f);
 
-		quadStream->addVertexData<float>(quadMesh, { 0.0f, 0.0f, 0.0f, 0.0f });
-		quadStream->addVertexData<float>(quadMesh, { (float)mWindowWidth, 0.0f, 1.0f, 0.0f });
-		quadStream->addVertexData<float>(quadMesh, { (float)mWindowWidth, (float)mWindowHeight, 1.0f, 1.0f });
-		quadStream->addVertexData<float>(quadMesh, { (float)mWindowWidth, (float)mWindowHeight, 1.0f, 1.0f });
-		quadStream->addVertexData<float>(quadMesh, { 0.0f, (float)mWindowHeight, 0.0f, 1.0f });
-		quadStream->addVertexData<float>(quadMesh, { 0.0f, 0.0f, 0.0f, 0.0f });
+		auto quadStride = quadSpec.getVertexStrideInBytes();
+
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32((float)mWindowWidth).f32(0.0f).f32(1.0f).f32(0.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32((float)mWindowWidth).f32((float)mWindowHeight).f32(1.0f).f32(1.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32((float)mWindowWidth).f32((float)mWindowHeight).f32(1.0f).f32(1.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32(0.0f).f32((float)mWindowHeight).f32(0.0f).f32(1.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 
 		resourceMgr->createResource<Model>("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream))->load();
 		mFullscreenQuad = resourceMgr->getResource("__mpp_mesh_fullscreen_quad__");

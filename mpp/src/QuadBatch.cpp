@@ -50,7 +50,7 @@ namespace mpp
 		, mPointSize((float)maxDimX)
 	{
 		// Set vertex options
-		float size = max(maxDimX, maxDimY);
+		float size = (float)max(maxDimX, maxDimY);
 		bool square = mSameSize && mMaxDimX == mMaxDimY;
 
 		Caps const& caps = getRenderSystem()->getCaps();
@@ -106,7 +106,7 @@ namespace mpp
 		, mPointSize((float)maxDimX)
 	{
 		// Set vertex options
-		float size = max(maxDimX, maxDimY);
+		float size = (float)max(maxDimX, maxDimY);
 		bool square = mSameSize && mMaxDimX == mMaxDimY;
 
 		Caps const& caps = getRenderSystem()->getCaps();
