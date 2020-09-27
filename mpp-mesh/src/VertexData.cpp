@@ -16,6 +16,13 @@ namespace mpp
 			mData.resize(mStride * numVertices);
 		}
 
+		void VertexData::clear()
+		{
+			mData.clear();
+			mDataTypes.clear();
+			mOffset = 0;
+		}
+
 		size_t VertexData::getStride() const
 		{
 			return mStride;

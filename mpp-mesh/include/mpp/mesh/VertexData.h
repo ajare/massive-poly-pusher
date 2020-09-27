@@ -114,6 +114,8 @@ namespace mpp
 
 			VertexData(MeshSpecification const& spec, size_t numVertices);
 
+			void clear();
+
 			size_t getStride() const;
 
 			size_t getNumVertices() const;
