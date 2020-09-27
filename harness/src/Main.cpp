@@ -317,8 +317,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto quadStream = new ProgrammaticModelStream();
 		auto meshId = quadStream->createMesh("QuadTest", quadSpec, "Material.Marble", 16);
 		
-		auto quadStride = quadSpec.getVertexStrideInBytes();
-		mesh::VertexData quadVertexData(quadStride * 4);
+		mesh::VertexData quadVertexData(quadSpec, 4);
 		
 		quadVertexData.f16(0.0f, 0.0f, 0.0f).f16(0.0f, 1.0f, 0.0f).f16(0.0f, 0.0f).u8(255, 255, 255, 255);
 		quadVertexData.f16(256.0f, 0.0f, 0.0f).f16(0.0f, 1.0f, 0.0f).f16(1.0f, 0.0f).u8(255, 255, 255, 255);
@@ -460,7 +459,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				lineBatchCount = max(0, lineBatchCount - 1);
+				lineBatchCount = max((size_t)0, lineBatchCount - 1);
 			}
 
 			// Update current state

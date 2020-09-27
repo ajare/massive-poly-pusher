@@ -54,6 +54,8 @@ namespace mpp
 
 			size_t getVertexStrideInBytes() const;
 
+			size_t getNumComponents() const;
+
 			std::string getDescriptor(std::string const& prefix) const;
 
 			uint32 getHashCode() const;

@@ -618,10 +618,9 @@ namespace mpp
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
 
-			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount; ++i)
 			{
-				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f).f32(1.0f).f32(1.0f));
+				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f).f32(1.0f).f32(1.0f));
 			}
 		}
 		else
@@ -637,10 +636,9 @@ namespace mpp
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
 
-			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
-				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
+				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 			}
 		}
 
@@ -667,10 +665,9 @@ namespace mpp
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
-			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount; ++i)
 			{
-				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
+				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
 					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
 			}
 		}
@@ -688,10 +685,9 @@ namespace mpp
 
 			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
-			auto textStride = textSpec.getVertexStrideInBytes();
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
-				textStream->addVertexData(textMesh, mesh::VertexData(textStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
+				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
 					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
 			}
 		}
@@ -715,14 +711,12 @@ namespace mpp
 		auto fullscreenProgram = resourceMgr->getOrCreateDefault2dProgram(quadSpec, 0, true);
 		auto quadMesh = quadStream->createMesh("0", quadSpec, fullscreenProgram->getName(), 32, -1.0f);
 
-		auto quadStride = quadSpec.getVertexStrideInBytes();
-
-		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
-		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32((float)mWindowWidth).f32(0.0f).f32(1.0f).f32(0.0f));
-		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32((float)mWindowWidth).f32((float)mWindowHeight).f32(1.0f).f32(1.0f));
-		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32((float)mWindowWidth).f32((float)mWindowHeight).f32(1.0f).f32(1.0f));
-		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32(0.0f).f32((float)mWindowHeight).f32(0.0f).f32(1.0f));
-		quadStream->addVertexData(quadMesh, mesh::VertexData(quadStride).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32((float)mWindowWidth).f32(0.0f).f32(1.0f).f32(0.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32((float)mWindowWidth).f32((float)mWindowHeight).f32(1.0f).f32(1.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32((float)mWindowWidth).f32((float)mWindowHeight).f32(1.0f).f32(1.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32((float)mWindowHeight).f32(0.0f).f32(1.0f));
+		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 
 		resourceMgr->createResource<Model>("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream))->load();
 		mFullscreenQuad = resourceMgr->getResource("__mpp_mesh_fullscreen_quad__");

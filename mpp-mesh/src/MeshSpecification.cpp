@@ -171,6 +171,29 @@ namespace mpp
 		}
 
 		/*
+		 * Get the number of individual components that make up a vertex.
+		 *
+		 */
+		size_t MeshSpecification::getNumComponents() const
+		{
+			size_t count{ 0 };
+
+			for (int i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			{
+				auto layout = getVertexBufferAttributeLayout(i);
+
+				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				{
+					auto attrib = layout.getAttribute(j);
+					count += Vertex::getComponentSize(attrib.component);
+				}
+			}
+
+			return count;
+
+		}
+
+		/*
 		 * Get a name.
 		 *
 		 */
