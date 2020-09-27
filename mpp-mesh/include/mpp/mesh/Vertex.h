@@ -51,6 +51,8 @@ namespace mpp
 
 			static int getDataTypeSize(DataType dataType);
 
+			static bool isDataTypeNormalisable(DataType dataType);
+
 			static std::string getComponentName(Component component);
 
 			static std::string getDataTypeName(DataType dataType);
