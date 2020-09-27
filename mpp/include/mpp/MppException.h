@@ -69,7 +69,7 @@ namespace mpp
 
 		std::string getErrorMessage(GLenum errorCode)
 		{
-			switch (mErrorCode)
+			switch (errorCode)
 			{
 			case GL_INVALID_ENUM:
 				return "GL_INVALID_ENUM";
