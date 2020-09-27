@@ -80,6 +80,29 @@ namespace mpp
 			}
 		}
 
+		bool Vertex::isDataTypeNormalisable(DataType dataType)
+		{
+			switch (dataType)
+			{
+			case Vertex::DataType::Byte:
+			case Vertex::DataType::UnsignedByte:
+			case Vertex::DataType::Short:
+			case Vertex::DataType::UnsignedShort:
+			case Vertex::DataType::Int:
+			case Vertex::DataType::UnsignedInt:
+			case Vertex::DataType::Int_2_10_10_10_REV:
+			case Vertex::DataType::UnsignedInt_2_10_10_10_REV:
+				return true;
+			case Vertex::DataType::HalfFloat:
+			case Vertex::DataType::Float:
+			case Vertex::DataType::Double:
+				return false;
+			case Vertex::DataType::None:
+			default:
+				throw MppMeshException("Vertex::isDataTypeNormalisable() invalid data type!");
+			}
+		}
+
 		string Vertex::getComponentName(Component component)
 		{
 			switch (component)
