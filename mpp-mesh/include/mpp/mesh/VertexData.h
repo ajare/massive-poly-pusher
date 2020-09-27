@@ -120,9 +120,9 @@ namespace mpp
 
 			std::vector<int8> const& getData() const;
 
-			std::vector<int8> getVertexRange(uint32 start, size_t count);
+			std::vector<int8> getVertexRange(uint32 start, size_t count) const;
 
-			Reader createReader();
+			Reader createReader() const;
 
 			VertexData& i8(int8 data);
 

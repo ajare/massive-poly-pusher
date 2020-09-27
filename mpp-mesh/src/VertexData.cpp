@@ -31,12 +31,12 @@ namespace mpp
 			return mData;
 		}
 
-		vector<int8> VertexData::getVertexRange(uint32 start, size_t count)
+		vector<int8> VertexData::getVertexRange(uint32 start, size_t count) const
 		{
 			return vector<int8>(mData.begin() + mStride * start, mData.begin() + mStride * (start + count));
 		}
 
-		VertexData::Reader VertexData::createReader()
+		VertexData::Reader VertexData::createReader() const
 		{
 			return Reader(this);
 		}
