@@ -9,10 +9,11 @@ namespace mpp
 	namespace mesh
 	{
 
-		VertexData::VertexData(size_t stride)
-			: mStride(stride)
+		VertexData::VertexData(MeshSpecification const& spec, size_t numVertices)
+			: mStride(spec.getVertexStrideInBytes())
+			, mNumComponents(spec.getNumComponents())
 		{
-			mData.resize(stride);
+			mData.resize(mStride * numVertices);
 		}
 
 		size_t VertexData::getStride() const
@@ -20,15 +21,31 @@ namespace mpp
 			return mStride;
 		}
 
-		std::vector<uint8> const& VertexData::getData() const
+		size_t VertexData::getNumVertices() const
+		{
+			return mData.size() / mStride;
+		}
+
+		vector<int8> const& VertexData::getData() const
 		{
 			return mData;
+		}
+
+		vector<int8> VertexData::getVertexRange(uint32 start, size_t count)
+		{
+			return vector<int8>(mData.begin() + mStride * start, mData.begin() + mStride * (start + count));
+		}
+
+		VertexData::Reader VertexData::createReader()
+		{
+			return Reader(this);
 		}
 
 		VertexData& VertexData::i8(int8 data)
 		{
 			memcpy(&mData[mOffset], &data, sizeof(int8));
 			mOffset += sizeof(int8);
+			mDataTypes.push_back(Vertex::DataType::Byte);
 			return *this;
 		}
 
@@ -51,6 +68,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(uint8));
 			mOffset += sizeof(uint8);
+			mDataTypes.push_back(Vertex::DataType::UnsignedByte);
 			return *this;
 		}
 
@@ -73,6 +91,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(int16));
 			mOffset += sizeof(int16);
+			mDataTypes.push_back(Vertex::DataType::Short);
 			return *this;
 		}
 
@@ -95,6 +114,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(uint16));
 			mOffset += sizeof(uint16);
+			mDataTypes.push_back(Vertex::DataType::UnsignedShort);
 			return *this;
 		}
 
@@ -117,6 +137,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(int32));
 			mOffset += sizeof(int32);
+			mDataTypes.push_back(Vertex::DataType::Int);
 			return *this;
 		}
 
@@ -139,6 +160,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(uint32));
 			mOffset += sizeof(uint32);
+			mDataTypes.push_back(Vertex::DataType::UnsignedInt);
 			return *this;
 		}
 
@@ -163,6 +185,7 @@ namespace mpp
 
 			memcpy(&mData[mOffset], &hdata, sizeof(half_float::half));
 			mOffset += sizeof(half_float::half);
+			mDataTypes.push_back(Vertex::DataType::HalfFloat);
 			return *this;
 		}
 
@@ -185,6 +208,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(float));
 			mOffset += sizeof(float);
+			mDataTypes.push_back(Vertex::DataType::Float);
 			return *this;
 		}
 
@@ -207,6 +231,7 @@ namespace mpp
 		{
 			memcpy(&mData[mOffset], &data, sizeof(double));
 			mOffset += sizeof(double);
+			mDataTypes.push_back(Vertex::DataType::Double);
 			return *this;
 		}
 
