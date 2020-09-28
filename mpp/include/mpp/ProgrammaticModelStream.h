@@ -61,6 +61,8 @@ namespace mpp
 
 		int getMeshId(std::string const& name) const;
 
+		void addVertexData(int meshIndex, std::vector<int8> const& vertexData);
+
 		void addVertexData(int meshIndex, mesh::VertexData const& vertexData);
 
 		void addPoint(int meshIndex, uint32 v);

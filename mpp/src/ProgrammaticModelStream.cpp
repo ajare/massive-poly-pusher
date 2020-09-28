@@ -203,14 +203,16 @@ namespace mpp
 		return -1;
 	}
 
-	void ProgrammaticModelStream::addVertexData(int meshIndex, mesh::VertexData const& vertexData)
+	void ProgrammaticModelStream::addVertexData(int meshIndex, vector<int8> const& vertexData)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
-		
-		auto const& data = vertexData.getData();
-		meshDef.vertexData.insert(meshDef.vertexData.end(), std::begin(data), std::end(data));
+		meshDef.vertexData.insert(meshDef.vertexData.end(), begin(vertexData), end(vertexData));
 	}
 
+	void ProgrammaticModelStream::addVertexData(int meshIndex, mesh::VertexData const& vertexData)
+	{
+		addVertexData(meshIndex, vertexData.getData());
+	}
 
 	void ProgrammaticModelStream::addPoint(int meshIndex, uint32 v)
 	{
