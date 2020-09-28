@@ -57,6 +57,6 @@ namespace mpp
 
 			static std::string getDataTypeName(DataType dataType);
 		};
-
+		
 	}
 }
