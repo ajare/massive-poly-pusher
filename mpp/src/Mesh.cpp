@@ -383,20 +383,20 @@ namespace mpp
 	 * Send vertex data.
 	 *
 	 */
-	void Mesh::render() const
+	void Mesh::render(float pointSize) const
 	{
-		render(mPrimitiveCount);
+		render(mPrimitiveCount, pointSize);
 	}
 		
 	/*
 	 * Send vertex data.
 	 *
 	 */
-	void Mesh::render(uint32 numPrimitives) const
+	void Mesh::render(uint32 numPrimitives, float pointSize) const
 	{
 		if (mPrimitiveType == mesh::Primitive::Type::Points)
 		{
-			GL_CHECK(glPointSize(mPointSize));
+			GL_CHECK(glPointSize(pointSize > 0.0f ? pointSize : mPointSize));
 		}
 
 		if (mIsIndexed)

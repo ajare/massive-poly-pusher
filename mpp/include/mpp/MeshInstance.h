@@ -25,6 +25,8 @@ namespace mpp
 
 		bool mBlend;
 
+		float mPointSize;
+
 		uint32 mPrimitivesToRender;
 
 		Program const* mwProgram;
@@ -62,6 +64,10 @@ namespace mpp
 		void blend(bool blend);
 
 		bool blend() const;
+
+		void setPointSize(float pointSize);
+
+		float getPointSize() const;
 
 		void setMaterial(ResourcePtr material);
 

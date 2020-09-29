@@ -19,6 +19,7 @@ namespace mpp
 		, mRender(true)
 		, mWireframe(false)
 		, mBlend(false)
+		, mPointSize(-1.0f)
 		, mPrimitivesToRender((uint32)-1)
 		, mwMaterial(nullptr)
 	{
@@ -116,6 +117,24 @@ namespace mpp
 	bool MeshInstance::blend() const
 	{
 		return mBlend;
+	}
+
+	/*
+	 * Set point size (only has effect with GL_POINTS).
+	 *
+	 */
+	void MeshInstance::setPointSize(float pointSize)
+	{
+		mPointSize = pointSize;
+	}
+
+	/*
+	 * Get point size.
+	 *
+	 */
+	float MeshInstance::getPointSize() const
+	{
+		return mPointSize;
 	}
 
 	/*
