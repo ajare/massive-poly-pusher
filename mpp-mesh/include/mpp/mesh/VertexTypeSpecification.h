@@ -3,6 +3,8 @@
 #undef min
 #undef max
 
+#include <limits>
+
 #include "half/half.hpp"
 
 #include "Vertex.h"
@@ -131,8 +133,8 @@ namespace mpp
 			static int8 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int8)v; }
 			static int8 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int8)v; }
 			
-			static int8 min_normalised() { return -128; }
-			static int8 max_normalised() { return 127; }
+			static int8 min_normalised() { return std::numeric_limits<int8>::min(); }
+			static int8 max_normalised() { return std::numeric_limits<int8>::max(); }
 			
 			template<typename T> static int8* ptr(T* p) { return (int8*)p; }
 			static size_t size() { return sizeof(int8); }
@@ -152,8 +154,8 @@ namespace mpp
 			static uint8 value(uint16 v, bool normalise=false)     { (void)(normalise); return (uint8)v; }
 			static uint8 value(uint32 v, bool normalise=false)     { (void)(normalise); return (uint8)v; }
 			
-			static uint8 min_normalised() { return 0; }
-			static uint8 max_normalised() { return 255; }
+			static uint8 min_normalised() { return std::numeric_limits<uint8>::min(); }
+			static uint8 max_normalised() { return std::numeric_limits<uint8>::max(); }
 			
 			template<typename T> static uint8* ptr(T* p) { return (uint8*)p; }
 			static size_t size() { return sizeof(uint8); }
@@ -173,8 +175,8 @@ namespace mpp
 			static int16 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int16)v; }
 			static int16 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int16)v; }
 		
-			static int16 min_normalised() { return -32768; }
-			static int16 max_normalised() { return 32767; }
+			static int16 min_normalised() { return std::numeric_limits<int16>::min(); }
+			static int16 max_normalised() { return std::numeric_limits<int16>::max(); }
 		
 			template<typename T> static int16* ptr(T* p) { return (int16*)p; }
 			static size_t size() { return sizeof(int16); }
@@ -194,8 +196,8 @@ namespace mpp
 			static uint16 value(uint16 v, bool normalise=false)     { (void)(normalise); return (uint16)v; }
 			static uint16 value(uint32 v, bool normalise=false)     { (void)(normalise); return (uint16)v; }
 			
-			static uint16 min_normalised() { return 0; }
-			static uint16 max_normalised() { return 65535; }
+			static uint16 min_normalised() { return std::numeric_limits<uint16>::min(); }
+			static uint16 max_normalised() { return std::numeric_limits<uint16>::max(); }
 			
 			template<typename T> static uint16* ptr(T* p) { return (uint16*)p; }
 			static size_t size() { return sizeof(uint16); }
@@ -215,8 +217,8 @@ namespace mpp
 			static int32 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int32)v; }
 			static int32 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int32)v; }
 			
-			static int32 min_normalised() { return -2147483648; }
-			static int32 max_normalised() { return 2147483647; }
+			static int32 min_normalised() { return std::numeric_limits<int32>::min(); }
+			static int32 max_normalised() { return std::numeric_limits<int32>::max(); }
 			
 			template<typename T> static int32* ptr(T* p) { return (int32*)p; }
 			static size_t size() { return sizeof(int32); }
@@ -236,8 +238,8 @@ namespace mpp
 			static uint32 value(uint16 v, bool normalise=false)     { (void)(normalise); return (uint32)v; }
 			static uint32 value(uint32 v, bool normalise=false)     { (void)(normalise); return (uint32)v; }
 			
-			static uint32 min_normalised() { return 0; }
-			static uint32 max_normalised() { return 4294967295; }
+			static uint32 min_normalised() { return std::numeric_limits<uint32>::min(); }
+			static uint32 max_normalised() { return std::numeric_limits<uint32>::max(); }
 			
 			template<typename T> static uint32* ptr(T* p) { return (uint32*)p; }
 			static size_t size() { return sizeof(uint32); }
