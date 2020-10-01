@@ -215,7 +215,7 @@ namespace mpp
 			static int32 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int32)v; }
 			static int32 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int32)v; }
 			
-			static int16 min_normalised() { return -2147483648; }
+			static int32 min_normalised() { return -2147483648; }
 			static int32 max_normalised() { return 2147483647; }
 			
 			template<typename T> static int32* ptr(T* p) { return (int32*)p; }
