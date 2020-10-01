@@ -84,8 +84,8 @@ namespace mpp
 			
 			template<typename T> static half_float::half value(T v, bool normalise=false) { (void)(normalise); return (half_float::half)v; }
 			
-			static half_float::half min_normalised() { return -1.0f; }
-			static half_float::half max_normalised() { return 1.0f; }
+			static half_float::half min_normalised() { return (half_float::half)-1.0f; }
+			static half_float::half max_normalised() { return (half_float::half)1.0f; }
 			
 			template<typename T> static half_float::half* ptr(T* p) { return (half_float::half*)p; }
 			static size_t size() { return sizeof(half_float::half); }
