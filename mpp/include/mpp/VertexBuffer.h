@@ -43,6 +43,8 @@ namespace mpp
 		int mVertexStride;
 
 		bool mStreaming;
+
+		bool mStatic;
 		
 		std::vector<Attribute> mAttributes;
 
@@ -56,7 +58,7 @@ namespace mpp
 
 	public:
 
-		VertexBuffer(RenderSystem* renderSystem, mesh::VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, std::shared_ptr<const int8> data);
+		VertexBuffer(RenderSystem* renderSystem, mesh::VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8> data);
 
 		virtual ~VertexBuffer();
 
@@ -66,7 +68,7 @@ namespace mpp
 			
 		int getVertexStride() const;
 
-		GLenum getDataType() const;
+		bool isStatic() const;
 
 		int getNumAttributes() const;
 

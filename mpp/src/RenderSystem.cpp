@@ -543,7 +543,7 @@ namespace mpp
 		
 		// Default 2d program
 		mesh::MeshSpecification spec2d(mesh::Primitive::Type::Triangles);
-		auto layout = spec2d.createVertexBufferAttributeLayout();
+		auto layout = spec2d.createVertexBufferAttributeLayout(false);
 		layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
@@ -611,7 +611,7 @@ namespace mpp
 			textSpec.setStorageType(mesh::VertexBufferStorageType::Dynamic);
 			textSpec.setIndexedVertices(false);
 
-			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout();
+			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout(false);
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
@@ -629,7 +629,7 @@ namespace mpp
 			textSpec.setStorageType(mesh::VertexBufferStorageType::Dynamic);
 			textSpec.setIndexedVertices(false);
 
-			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout();
+			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout(false);
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
@@ -657,7 +657,7 @@ namespace mpp
 			textSpec.setStorageType(mesh::VertexBufferStorageType::Dynamic);
 			textSpec.setIndexedVertices(false);
 
-			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout();
+			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout(false);
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
@@ -677,7 +677,7 @@ namespace mpp
 			textSpec.setStorageType(mesh::VertexBufferStorageType::Dynamic);
 			textSpec.setIndexedVertices(false);
 
-			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout();
+			mesh::VertexBufferAttributeLayout* attribLayout = textSpec.createVertexBufferAttributeLayout(false);
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
@@ -702,7 +702,7 @@ namespace mpp
 		auto quadStream = new ProgrammaticModelStream();
 		mesh::MeshSpecification quadSpec = mesh::MeshSpecification(mesh::Primitive::Type::Triangles);
 
-		auto attribLayout = quadSpec.createVertexBufferAttributeLayout();
+		auto attribLayout = quadSpec.createVertexBufferAttributeLayout(false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 		quadSpec.setStorageType(mesh::VertexBufferStorageType::Static);
@@ -2103,7 +2103,7 @@ namespace mpp
 		*posDataDst++ = 1.0f;
 		*posDataDst++ = 1.0f;
 
-		mProfileLines->finishUpdate(mProfileTimeSamples.size() * 5 + 2, false);
+		mProfileLines->finishUpdate(mProfileTimeSamples.size() * 5 + 2);
 
 		renderModelImmediate(*mProfileLines, false);
 #endif

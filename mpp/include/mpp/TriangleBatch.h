@@ -8,15 +8,19 @@
 namespace mpp
 {
 
+	struct TriangleBatchOptions
+	{
+		mpp::mesh::Vertex::DataType positionType;
+		BatchVertexAttribute texcoordAttrib;
+		BatchVertexAttribute colourAttrib;
+		bool useDiffuse;
+	};
+
 	class _MPPAPI TriangleBatch : public Batch
 	{
+		TriangleBatchOptions mOptions;
+
 	protected:
-
-		mpp::mesh::Vertex::DataType mPositionType;
-
-		mpp::mesh::Vertex::DataType mTexcoordType;
-
-		mpp::mesh::Vertex::DataType mColourType;
 
 		std::string mTexture;
 
@@ -35,18 +39,14 @@ namespace mpp
 	public:
 
 		TriangleBatch(std::string const& name,
-			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType texcoordType,
-			mpp::mesh::Vertex::DataType colourType,
+			TriangleBatchOptions const& options,
 			size_t initialCapacity,
 			std::string const& texture,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		void finishUpdate(int count, bool updateTexCoords);
+		size_t getPrimitiveCount(size_t objectCount) const;
 
-		int getPrimitiveCount(int objectCount) const;
-
-		int getVertexCount(int primitiveCount);
+		size_t getVertexCount(size_t primitiveCount);
 	};
 }

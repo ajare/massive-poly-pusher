@@ -18,9 +18,7 @@ namespace mpp
 	 *
 	 */
 	CircleBatch::CircleBatch(string const& name,
-		VertexOptions vertexOptions,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType colourType,
+		CircleBatchOptions const& options,
 		size_t indexWidth,
 		float maxRadius,
 		float borderSize,
@@ -33,15 +31,15 @@ namespace mpp
 			initialCapacity, 
 			VertexShader2dCircle, 
 			antiAlias ? FragmentShader2dCircleAntialiased : FragmentShader2dCircle, 
-			"circle", 
+			"circle",
+			options.colourAttrib,
+			options.useDiffuse,
 			renderSystem, 
 			resourceMgr)
+		, mOptions(options)
 		, mRadius(maxRadius)
 		, mBorderSize(borderSize)
 		, mAntiAlias(antiAlias)
-		, mVertexOptions(vertexOptions)
-		, mPositionType(positionType)
-		, mColourType(colourType)
 		, mIndexWidth(indexWidth)
 	{
 		// Set vertex options
@@ -49,18 +47,18 @@ namespace mpp
 		Caps const& caps = getRenderSystem()->getCaps();
 		bool canUsePointSprites = caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
 
-		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		if (options.vertexOptions == CircleBatchOptions::VertexOptions::Points && !canUsePointSprites)
 		{
 			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
 		}
 
-		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		if (canUsePointSprites && options.vertexOptions != CircleBatchOptions::VertexOptions::Triangles)
 		{
-			mVertexOptions = VertexOptions::Points;
+			mOptions.vertexOptions = CircleBatchOptions::VertexOptions::Points;
 		}
 		else
 		{
-			mVertexOptions = VertexOptions::Triangles;
+			mOptions.vertexOptions = CircleBatchOptions::VertexOptions::Triangles;
 		}
 	}
 
@@ -109,20 +107,20 @@ namespace mpp
 	void CircleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
 		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout();
+		auto layout = mSpecification.createVertexBufferAttributeLayout(false);
 
 		if (usingPointSprites())
 		{
-			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
 		}
 		else
 		{
-			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
+			layout->createAttribute(mesh::Vertex::Component::Position4, mOptions.positionType, false);
 		}
 
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "OPTIONS", mesh::Vertex::DataType::Float, false);
-		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "BORDERCOLOUR", mColourType, true);
-		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "INNERCOLOUR", mColourType, true);
+		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "BORDERCOLOUR", getColourAttribute().dataType, true);
+		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "INNERCOLOUR", getColourAttribute().dataType, true);
 	}
 
 	/*
@@ -170,38 +168,21 @@ namespace mpp
 				size);
 		}
 
-		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
-		int8* data = new int8[vertexCount * bufferSize];
-		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
-
-		createMesh(mesh, vertexCount, bufferSize, dataPtr);
-	}
-
-	void CircleBatch::finishUpdate(int count, bool updateTexCoords)
-	{
-		mCurCount = count;
-
-		if (mMeshes[0]->isIndexed())
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			mMeshes[0]->mapIndexData(count * (usingPointSprites() ? 1 : 2));
+			createVertexBuffer(i, mesh, vertexCount, false);
 		}
 
-		auto numPrimitives = getPrimitiveCount(count);
-		for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
-		{
-			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
-			vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
-		}
-
-		mMeshes[0]->setNumPrimitives(numPrimitives);
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
 	}
 
-	int CircleBatch::getPrimitiveCount(int objectCount) const
+	size_t CircleBatch::getPrimitiveCount(size_t objectCount) const
 	{
 		return objectCount * (usingPointSprites() ? 1 : 2);
 	}
 
-	int CircleBatch::getVertexCount(int primitiveCount)
+	size_t CircleBatch::getVertexCount(size_t primitiveCount)
 	{
 		// If using triangles, we expect primitiveCount to be a multiple of 2
 		return primitiveCount * (usingPointSprites() ? 1 : 2);
@@ -209,7 +190,7 @@ namespace mpp
 
 	bool CircleBatch::usingPointSprites() const
 	{
-		return mVertexOptions == VertexOptions::Points;
+		return mOptions.vertexOptions == CircleBatchOptions::VertexOptions::Points;
 	}
 
 	float CircleBatch::getRadius() const

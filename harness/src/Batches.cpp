@@ -1,3 +1,5 @@
+#include <mpp/UniformCollection.h>
+
 #include "Batches.h"
 
 using namespace std;
@@ -6,9 +8,12 @@ mpp::IndexedTriangleBatch* createIndexedTriangleBatch(string const& name, string
 {
 	auto indexedTriangleBatch = new mpp::IndexedTriangleBatch(
 		"TestIndexedTriangles",
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::UnsignedByte,
+		{
+			mpp::mesh::Vertex::DataType::Float,
+			{ mpp::mesh::Vertex::DataType::Float, false },
+			{ mpp::mesh::Vertex::DataType::UnsignedByte, false },
+			false
+		},
 		16,
 		indexedTriangleBatchCount,
 		texture,
@@ -24,9 +29,12 @@ mpp::TriangleBatch* createTriangleBatch(string const& name, string const& textur
 {
 	auto triangleBatch = new mpp::TriangleBatch(
 		"TestTriangles",
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::UnsignedByte,
+		{
+			mpp::mesh::Vertex::DataType::Float,
+			{ mpp::mesh::Vertex::DataType::Float, false },
+			{ mpp::mesh::Vertex::DataType::UnsignedByte, false },
+			false,
+		},
 		triangleBatchCount,
 		texture,
 		renderSystem,
@@ -53,36 +61,16 @@ mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::
 	return lineBatch;
 }
 
-mpp::QuadBatch* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
-{
-	auto quadBatch = new mpp::QuadBatch(
-		name,
-		mpp::QuadBatch::VertexOptions::Auto,
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::UnsignedByte,
-		true,
-		true,
-		16,
-		16,
-		"__mpp_tex_none__",
-		false,
-		16,
-		quadBatchCount,
-		renderSystem,
-		resourceMgr);
-
-	quadBatch->load();
-	return quadBatch;
-}
-
 mpp::CircleBatch* createCircleBatch(string const& name, size_t circleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
 	auto circleBatch = new mpp::CircleBatch(
 		name,
-		mpp::CircleBatch::VertexOptions::Auto,
-		mpp::mesh::Vertex::DataType::Float,
-		mpp::mesh::Vertex::DataType::UnsignedByte,
+		{
+			mpp::CircleBatchOptions::VertexOptions::Auto,
+			mpp::mesh::Vertex::DataType::Float,
+			mpp::mesh::Vertex::DataType::UnsignedByte,
+			false
+		},
 		16,
 		32.0f,
 		4.0f,
@@ -153,7 +141,13 @@ size_t updateTriangleBatch(mpp::RenderSystem* renderSystem, mpp::TriangleBatch* 
 
 	triBatch->finishUpdate(count, false);
 
-	renderSystem->renderModelImmediate(*triBatch, false);
+	mpp::UniformCollection uniforms;
+	if (triBatch->usingDiffuse())
+	{
+		uniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+	}
+
+	renderSystem->renderModelImmediate(*triBatch, false, &uniforms);
 	return triBatch->getCount();
 }
 
@@ -217,7 +211,13 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 
 	triBatch->finishUpdate(count, false);
 
-	renderSystem->renderModelImmediate(*triBatch, false);
+	mpp::UniformCollection uniforms;
+	if (triBatch->usingDiffuse())
+	{
+		uniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+	}
+
+	renderSystem->renderModelImmediate(*triBatch, false, &uniforms);
 	return triBatch->getCount();
 }
 
@@ -269,82 +269,65 @@ size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatc
 
 	lineBatch->finishUpdate(count, false);
 
-	renderSystem->renderModelImmediate(*lineBatch, false);
+	mpp::UniformCollection uniforms;
+	if (lineBatch->usingDiffuse())
+	{
+		uniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+	}
+
+	renderSystem->renderModelImmediate(*lineBatch, false, &uniforms);
 	return lineBatch->getCount();
 }
 
-size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count, float totalTime)
+/*
+ * QuadBatch
+ *
+ */
+mpp::QuadBatch* createQuadBatch(string const& name, string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
+{
+	auto quadBatch = new mpp::QuadBatch(
+		name,
+		{
+			mpp::QuadBatchOptions::VertexOptions::Triangles,
+			mpp::mesh::Vertex::DataType::Float,
+			{ mpp::mesh::Vertex::DataType::Float, true },
+			{ mpp::mesh::Vertex::DataType::UnsignedByte, true },
+			true,
+			true
+		},
+		true,
+		16,
+		16,
+		nullptr,
+		false,
+		16,
+		quadBatchCount,
+		renderSystem,
+		resourceMgr);
+
+	quadBatch->load();
+	setupQuadBatch(renderSystem, quadBatch, quadBatchCount);
+	return quadBatch;
+}
+
+void setupQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count)
 {
 	quadBatch->startUpdate(count);
 
-	auto posBuffer = (float*)quadBatch->getAttributeData("POSITION").first;
-	auto posStride = quadBatch->getAttributeData("POSITION").second / sizeof(float);
-
-	auto texBuffer = (float*)nullptr; // (float*)quadBatch->getAttributeData("TEXCOORDS").first;
-	auto texStride = 0; // quadBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
+	auto texBuffer = (float*)quadBatch->getAttributeData("TEXCOORDS").first;
+	auto texStride = quadBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
 
 	auto colBuffer = (uint8*)quadBatch->getAttributeData("COLOUR").first;
 	auto colStride = quadBatch->getAttributeData("COLOUR").second / sizeof(uint8);
 
+	uint8 colours[] {
+		255, 0, 255,
+		128, 128, 0
+	};
+
 	size_t vertexCount = quadBatch->getVertexCount(count);
-	for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
+	for (size_t cOffset = 0, tOffset = 0, i = 0; i < vertexCount; ++i)
 	{
-		// Position/rotation data
-		if (quadBatch->usingPointSprites())
-		{
-			// One vertex per quad
-			posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
-			posBuffer[pOffset + 1] = 300 + cosf(totalTime * (i + 2)) * 100;
-		}
-		else
-		{
-			// Indexed, four vertices per quad
-			int primitiveIndex = i / 4;
-			int vertexIndex = i % 4;
-
-			auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
-			auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
-
-			switch (vertexIndex)
-			{
-			case 0:
-				posBuffer[pOffset + 0] = xc - 16.0f;
-				posBuffer[pOffset + 1] = yc - 16.0f;
-				break;
-			case 1:
-				posBuffer[pOffset + 0] = xc + 16.0f;
-				posBuffer[pOffset + 1] = yc - 16.0f;
-				break;
-			case 2:
-				posBuffer[pOffset + 0] = xc + 16.0f;
-				posBuffer[pOffset + 1] = yc + 16.0f;
-				break;
-			case 3:
-				posBuffer[pOffset + 0] = xc - 16.0f;
-				posBuffer[pOffset + 1] = yc + 16.0f;
-				break;
-			}
-		}
-
-		// Set rotation: combination of position and texcoord data
-		if (quadBatch->rotating())
-		{
-			posBuffer[pOffset + 2] = sinf(totalTime);
-			posBuffer[pOffset + 3] = cosf(totalTime);
-
-			if (!quadBatch->usingPointSprites())
-			{
-				int primitiveIndex = i / 4;
-				int vertexIndex = i % 4;
-
-				auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
-				auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
-
-				texBuffer[tOffset + 2] = xc;
-				texBuffer[tOffset + 3] = yc;
-			}
-		}
-
 		// Texture data
 		if (quadBatch->usingPointSprites())
 		{
@@ -413,20 +396,126 @@ size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatc
 		}
 
 		// Colour data
-		colBuffer[cOffset + 0] = 255;
-		colBuffer[cOffset + 1] = 255;
-		colBuffer[cOffset + 2] = 255;
-		colBuffer[cOffset + 3] = 255;
+		if (quadBatch->usingColour())
+		{
+			if (quadBatch->usingPointSprites())
+			{
+				colBuffer[cOffset + 0] = rand() % 256;
+				colBuffer[cOffset + 1] = rand() % 256;
+				colBuffer[cOffset + 2] = rand() % 256;
+				colBuffer[cOffset + 3] = 255;
+			}
+			else
+			{
+				// Indexed, four vertices per quad
+				int primitiveIndex = i / 4;
 
-		pOffset += posStride;
+				srand(primitiveIndex);
+				auto ri = rand() % 2;
+
+				colBuffer[cOffset + 0] = colours[ri * 3 + 0];
+				colBuffer[cOffset + 1] = colours[ri * 3 + 1];
+				colBuffer[cOffset + 2] = colours[ri * 3 + 2];
+				colBuffer[cOffset + 3] = 255;
+			}
+		}
+
 		tOffset += texStride;
 		cOffset += colStride;
 	}
 
 	quadBatch->finishUpdate(count, true);
+}
 
-	renderSystem->renderModelImmediate(*quadBatch, true);
+size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count, float totalTime)
+{
+	quadBatch->startUpdate(count);
+
+	float radiusX = quadBatch->getMaxDimX() / 2.0f;
+	float radiusY = quadBatch->getMaxDimY() / 2.0f;
+
+	auto posBuffer = (float*)quadBatch->getAttributeData("POSITION").first;
+	auto posStride = quadBatch->getAttributeData("POSITION").second / sizeof(float);
+
+	auto rotBuffer = (float*)quadBatch->getAttributeData("ROTATION").first;
+	auto rotStride = quadBatch->getAttributeData("ROTATION").second / sizeof(float);
+
+	size_t vertexCount = quadBatch->getVertexCount(count);
+	for (size_t pOffset = 0, rOffset = 0, i = 0; i < vertexCount; ++i)
+	{
+		// Position data
+		if (quadBatch->usingPointSprites())
+		{
+			// One vertex per quad
+			posBuffer[pOffset + 0] = 400 + sinf(totalTime * (i + 1)) * 100;
+			posBuffer[pOffset + 1] = 300 + cosf(totalTime * (i + 2)) * 100;
+		}
+		else
+		{
+			// Indexed, four vertices per quad
+			int primitiveIndex = i / 4;
+			int vertexIndex = i % 4;
+
+			auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
+			auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
+
+			switch (vertexIndex)
+			{
+			case 0:
+				posBuffer[pOffset + 0] = xc - radiusX;
+				posBuffer[pOffset + 1] = yc - radiusY;
+				break;
+			case 1:
+				posBuffer[pOffset + 0] = xc + radiusX;
+				posBuffer[pOffset + 1] = yc - radiusY;
+				break;
+			case 2:
+				posBuffer[pOffset + 0] = xc + radiusX;
+				posBuffer[pOffset + 1] = yc + radiusY;
+				break;
+			case 3:
+				posBuffer[pOffset + 0] = xc - radiusX;
+				posBuffer[pOffset + 1] = yc + radiusY;
+				break;
+			}
+		}
+
+		// Set rotation
+		if (quadBatch->rotating())
+		{
+			rotBuffer[rOffset + 0] = sinf(totalTime);
+			rotBuffer[rOffset + 1] = cosf(totalTime);
+
+			if (quadBatch->usingTriangles())
+			{
+				int primitiveIndex = i / 4;
+				int vertexIndex = i % 4;
+
+				auto xc = 400 + sinf(totalTime * (primitiveIndex + 1)) * 100;
+				auto yc = 300 + cosf(totalTime * (primitiveIndex + 2)) * 100;
+
+				posBuffer[pOffset + 2] = xc;
+				posBuffer[pOffset + 3] = yc;
+			}
+		}
+
+		pOffset += posStride;
+		rOffset += rotStride;
+	}
+
+	quadBatch->finishUpdate(count, false);
 	return quadBatch->getCount();
+}
+
+void renderQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count)
+{
+	mpp::UniformCollection uniforms;
+	if (quadBatch->usingDiffuse())
+	{
+		uniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+	}
+
+	renderSystem->renderModelImmediate(*quadBatch, true, &uniforms);
 }
 
 size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circleBatch, size_t count, float totalTime)
@@ -523,8 +612,14 @@ size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circ
 		cOffset += colourStride;
 	}
 
-	circleBatch->finishUpdate(count, true);
+	circleBatch->finishUpdate(count, false);
 
-	renderSystem->renderModelImmediate(*circleBatch, true, nullptr, circleBatch->getPrimitiveCount(circleBatch->getCount()));
+	mpp::UniformCollection uniforms;
+	if (circleBatch->usingDiffuse())
+	{
+		uniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+	}
+
+	renderSystem->renderModelImmediate(*circleBatch, true, &uniforms, circleBatch->getPrimitiveCount(circleBatch->getCount()));
 	return circleBatch->getCount();
 }

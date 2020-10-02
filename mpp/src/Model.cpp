@@ -112,6 +112,7 @@ namespace mpp
 					bufferDef->getVertexCount(),
 					bufferDef->getVertexStride(),
 					bufferDef->getStreaming(),
+					false,
 					bufferDef->getData());
 
 				for (int k = 0; k < bufferDef->getNumAttributes(); ++k)

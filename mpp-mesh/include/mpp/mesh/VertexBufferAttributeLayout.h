@@ -40,9 +40,11 @@ namespace mpp
 
 			int mBaseId;
 
+			bool mStatic;
+
 		public:
 
-			explicit VertexBufferAttributeLayout(int baseId);
+			VertexBufferAttributeLayout(int baseId, bool staticData);
 
 			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary = 1);
 
@@ -51,6 +53,8 @@ namespace mpp
 			int getBaseId() const;
 
 			int getNumAttributes() const;
+
+			bool isStatic() const;
 
 			Attribute const& getAttribute(int index) const;
 

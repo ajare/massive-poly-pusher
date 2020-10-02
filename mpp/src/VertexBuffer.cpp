@@ -16,13 +16,14 @@ namespace mpp
 	 * Constructor.  Pass already-created vertex data directly in.
 	 *
 	 */
-	VertexBuffer::VertexBuffer(RenderSystem* renderSystem, VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, shared_ptr<const int8> data)
+	VertexBuffer::VertexBuffer(RenderSystem* renderSystem, VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8> data)
 		: mVBO(0)
 		, mwRenderSystem(renderSystem)
 		, mStorageType(storageType)
 		, mVertexCount(vertexCount)
 		, mVertexStride(vertexStride)
 		, mStreaming(streaming)
+		, mStatic(staticData)
 	{
 		mData.reserve(vertexCount * vertexStride);
 		int8 const* dataPtr = data.get();
@@ -95,6 +96,15 @@ namespace mpp
 	int VertexBuffer::getVertexStride() const
 	{
 		return mVertexStride;
+	}
+
+	/*
+	 * Is the data static?
+	 *
+	 */
+	bool VertexBuffer::isStatic() const
+	{
+		return mStatic;
 	}
 
 	/*

@@ -6,21 +6,26 @@
 
 namespace mpp
 {
-
-	class _MPPAPI QuadBatch : public Batch
+	struct QuadBatchOptions
 	{
-	public:
-
 		enum class VertexOptions
 		{
 			Auto,
 			Points,
 			Triangles
 		};
+		
+		VertexOptions vertexOptions;
+		mpp::mesh::Vertex::DataType positionType;
+		BatchVertexAttribute texcoordAttrib;
+		BatchVertexAttribute colourAttrib;
+		bool useDiffuse;
+		bool rotate;
+	};
 
-	private:
-
-		bool mRotate;
+	class _MPPAPI QuadBatch : public Batch
+	{
+		QuadBatchOptions mOptions;
 
 		bool mSameSize;
 
@@ -33,14 +38,6 @@ namespace mpp
 		float mPointSize;
 
 	protected:
-
-		VertexOptions mVertexOptions;
-
-		mpp::mesh::Vertex::DataType mPositionType;
-
-		mpp::mesh::Vertex::DataType mTexcoordType;
-
-		mpp::mesh::Vertex::DataType mColourType;
 
 		size_t mIndexWidth;
 
@@ -61,15 +58,11 @@ namespace mpp
 	public:
 
 		QuadBatch(std::string const& name,
-			VertexOptions vertexOptions,
-			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType texcoordType,
-			mpp::mesh::Vertex::DataType colourType,
-			bool rotate,
+			QuadBatchOptions const& options,
 			bool sameSize,
 			int maxDimX,
 			int maxDimY,
-			std::string const& texture,
+			ResourcePtr texture,
 			bool textureAtlas,
 			size_t indexWidth,
 			size_t initialCapacity,
@@ -77,15 +70,11 @@ namespace mpp
 			ResourceManager* resourceMgr);
 
 		QuadBatch(std::string const& name,
-			VertexOptions vertexOptions,
-			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType texcoordType,
-			mpp::mesh::Vertex::DataType colourType,
-			bool rotate,
+			QuadBatchOptions const& options,
 			bool sameSize,
 			int maxDimX,
 			int maxDimY,
-			std::string const& texture,
+			ResourcePtr texture,
 			bool textureAtlas,
 			size_t indexWidth,
 			size_t initialCapacity,
@@ -95,13 +84,17 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		void finishUpdate(int count, bool updateTexCoords);
+		size_t getPrimitiveCount(size_t objectCount) const;
 
-		int getPrimitiveCount(int objectCount) const;
+		size_t getVertexCount(size_t primitiveCount);
 
-		int getVertexCount(int primitiveCount);
+		int getMaxDimX() const;
+
+		int getMaxDimY() const;
 
 		bool usingPointSprites() const;
+
+		bool usingTriangles() const;
 
 		bool rotating() const;
 

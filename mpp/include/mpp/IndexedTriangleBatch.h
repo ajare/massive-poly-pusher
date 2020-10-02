@@ -29,17 +29,13 @@ namespace mpp
 	public:
 
 		IndexedTriangleBatch(std::string const& name,
-			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType texcoordType,
-			mpp::mesh::Vertex::DataType colourType,
+			TriangleBatchOptions const& options,
 			int indexWidth,
 			size_t initialCapacity,
 			std::string const& texture,
 			VertexCountFunction vertexCountFn,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
-
-		void finishUpdate(int count, bool updateTexCoords);
 
 		int getVertexCount(int primitiveCount);
 

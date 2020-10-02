@@ -6,10 +6,9 @@
 
 namespace mpp
 {
-	class _MPPAPI CircleBatch : public Batch
-	{
-	public:
 
+	struct CircleBatchOptions
+	{
 		enum class VertexOptions
 		{
 			Auto,
@@ -17,19 +16,21 @@ namespace mpp
 			Triangles
 		};
 
-	private:
+		VertexOptions vertexOptions;
+		mpp::mesh::Vertex::DataType positionType;
+		BatchVertexAttribute colourAttrib;
+		bool useDiffuse;
+	};
+
+	class _MPPAPI CircleBatch : public Batch
+	{
+		CircleBatchOptions mOptions;
 
 		float mRadius;
 
 		float mBorderSize;
 
 		bool mAntiAlias;
-
-		VertexOptions mVertexOptions;
-
-		mpp::mesh::Vertex::DataType mPositionType;
-
-		mpp::mesh::Vertex::DataType mColourType;
 
 		size_t mIndexWidth;
 
@@ -50,9 +51,7 @@ namespace mpp
 	public:
 
 		CircleBatch(std::string const& name,
-			VertexOptions vertexOptions,
-			mpp::mesh::Vertex::DataType positionType,
-			mpp::mesh::Vertex::DataType colourType,
+			CircleBatchOptions const& options,
 			size_t indexWidth,
 			float maxRadius,
 			float borderSize,
@@ -61,11 +60,9 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		void finishUpdate(int count, bool updateTexCoords);
+		size_t getPrimitiveCount(size_t objectCount) const;
 
-		int getPrimitiveCount(int objectCount) const;
-
-		int getVertexCount(int primitiveCount);
+		size_t getVertexCount(size_t primitiveCount);
 
 		bool usingPointSprites() const;
 

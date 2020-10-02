@@ -10,11 +10,23 @@
 namespace mpp
 {
 
+	struct BatchVertexAttribute
+	{
+		mesh::Vertex::DataType dataType;
+		bool fixedValues;
+	};
+
 	class _MPPAPI Batch : public Model
 	{
 		std::string mDefaultVertexShader, mDefaultFragmentShader;
 
 		std::string mProgramDescriptor;
+
+		BatchVertexAttribute mColourAttrib;
+		
+		bool mUseDiffuse;
+
+		static std::pair<char*, size_t> msNonExistentAttribute;
 
 	protected:
 
@@ -32,11 +44,13 @@ namespace mpp
 
 	protected:
 
+		BatchVertexAttribute getColourAttribute() const;
+
 		virtual mesh::Primitive::Type getPrimitiveType() const = 0;
 
 		virtual void createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
 		
-		void createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, std::shared_ptr<const int8> dataPtr);
+		void createVertexBuffer(uint32 index, Mesh* mesh, size_t vertexCount, bool staticData);
 
 		void setSpecificationPointers(Mesh* mesh);
 
@@ -53,6 +67,8 @@ namespace mpp
 			std::string const& defaultVertexShader,
 			std::string const& defaultFragmentShader,
 			std::string const& descriptor,
+			BatchVertexAttribute colourAttrib,
+			bool useDiffuse,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
@@ -62,17 +78,21 @@ namespace mpp
 
 		const std::pair<char*, size_t>& getAttributeData(std::string const& name) const;
 
-		int getCount() const;
+		size_t getCount() const;
 
-		int getCapacity() const;
+		size_t getCapacity() const;
 
-		virtual int getPrimitiveCount(int objectCount) const;
+		virtual size_t getPrimitiveCount(size_t objectCount) const;
 
-		virtual int getVertexCount(int primitiveCount) = 0;
+		virtual size_t getVertexCount(size_t primitiveCount) = 0;
 
-		void startUpdate(int minimumCount);
+		void startUpdate(size_t minimumCount);
 
-		virtual void finishUpdate(int count, bool updateTexCoords) = 0;
+		virtual void finishUpdate(size_t count, bool updateFixedBuffers);
+
+		bool usingDiffuse() const;
+
+		bool usingColour() const;
 	};
 }
 #pragma once

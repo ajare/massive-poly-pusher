@@ -10,9 +10,10 @@ namespace mpp
 
 		using namespace std;
 
-		VertexBufferAttributeLayout::VertexBufferAttributeLayout(int baseId)
+		VertexBufferAttributeLayout::VertexBufferAttributeLayout(int baseId, bool staticData)
 			: mVertexSize(0)
 			, mBaseId(baseId)
+			, mStatic(staticData)
 		{
 		}
 
@@ -125,6 +126,11 @@ namespace mpp
 		int VertexBufferAttributeLayout::getNumAttributes() const
 		{
 			return (int)mAttributes.size();
+		}
+
+		bool VertexBufferAttributeLayout::isStatic() const
+		{
+			return mStatic;
 		}
 
 		/*

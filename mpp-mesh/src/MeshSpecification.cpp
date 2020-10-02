@@ -17,6 +17,7 @@ namespace mpp
 			, mStorageType(VertexBufferStorageType::Static)
 			, mIndexedVertices(false)
 		{
+			mVertexBufferAttributeLayouts.reserve(16);
 		}
 
 		/*
@@ -28,6 +29,7 @@ namespace mpp
 			, mStorageType(VertexBufferStorageType::Static)
 			, mIndexedVertices(false)
 		{
+			mVertexBufferAttributeLayouts.reserve(16);
 		}
 
 		/*
@@ -39,6 +41,7 @@ namespace mpp
 			, mStorageType(storageType)
 			, mIndexedVertices(false)
 		{
+			mVertexBufferAttributeLayouts.reserve(16);
 		}
 
 		/*
@@ -111,11 +114,11 @@ namespace mpp
 		 * Create attribute layout.
 		 *
 		 */
-		VertexBufferAttributeLayout* MeshSpecification::createVertexBufferAttributeLayout()
+		VertexBufferAttributeLayout* MeshSpecification::createVertexBufferAttributeLayout(bool staticData)
 		{
 			int baseId = mVertexBufferAttributeLayouts.empty() ? 0 
 				: mVertexBufferAttributeLayouts.back().getBaseId() + mVertexBufferAttributeLayouts.back().getNumAttributes();
-			mVertexBufferAttributeLayouts.push_back(VertexBufferAttributeLayout(baseId));
+			mVertexBufferAttributeLayouts.push_back(VertexBufferAttributeLayout(baseId, staticData));
 			return &(mVertexBufferAttributeLayouts.back());
 		}
 
@@ -254,6 +257,12 @@ namespace mpp
 		 */
 		uint32 MeshSpecification::getHashCode() const
 		{
+			//TODO
+			// Need to include attrib type information into the hash, as otherwise
+			// vec2 and ivec2 are treated the same
+			// Need: primitive type
+			// For each attrib: component, datatype
+
 			auto primType = getPrimitiveType();
 			int primBits = (int)primType + 1;
 
@@ -269,6 +278,7 @@ namespace mpp
 					{
 					case Vertex::Component::Position2:
 						posBits = 2;
+
 						break;
 					case Vertex::Component::Position3:
 						posBits = 3;

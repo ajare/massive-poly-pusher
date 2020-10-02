@@ -226,7 +226,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		mesh::MeshSpecification modelSpec(mesh::Primitive::Type::Triangles);
 
-		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
+		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout(false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
@@ -305,7 +305,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Quad
 		mesh::MeshSpecification quadSpec(mesh::Primitive::Type::Triangles);
 
-		attribLayout = quadSpec.createVertexBufferAttributeLayout();
+		attribLayout = quadSpec.createVertexBufferAttributeLayout(false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::HalfFloat, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::HalfFloat, false);
 		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::HalfFloat, false);
@@ -357,40 +357,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
-		/*
 		size_t circleBatchCount{ 1 };
-		auto circleBatch = createCircleBatch(
+		size_t lineBatchCount{ 100 };
+		size_t triBatchCount{ 32 };
+		size_t quadBatchCount{ 32 };
+
+		CircleBatch* circleBatch{ nullptr };
+		LineBatch* lineBatch{ nullptr };
+		IndexedTriangleBatch* triBatch{ nullptr };
+		QuadBatch* quadBatch{ nullptr };
+
+		circleBatch = createCircleBatch(
 			"TestCircles", 
 			circleBatchCount,
 			gRenderSystem, 
 			gResourceManager);
-		*/
 		
-		size_t lineBatchCount{ 100 };
-		auto lineBatch = createLineBatch(
+		lineBatch = createLineBatch(
 			"TestLines",
 			lineBatchCount,
 			gRenderSystem,
 			gResourceManager);
 		
-		/*
-		size_t triBatchCount{ 32 };
-		auto triBatch = createIndexedTriangleBatch(
+		triBatch = createIndexedTriangleBatch(
 			"TestTris",
 			"__mpp_tex_none__",
 			triBatchCount,
 			gRenderSystem,
 			gResourceManager);
-		*/
-		/*
-		size_t quadBatchCount{ 32 };
-		auto quadBatch = createQuadBatch(
+		
+		quadBatch = createQuadBatch(
 			"TestQuads",
 			"__mpp_tex_none__",
 			quadBatchCount,
 			gRenderSystem,
 			gResourceManager);
-		*/
+		
 		//
 		// Camera setup
 		//
@@ -455,11 +457,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (gInputMgr->keyPressed(Key_O))
 			{
+				circleBatchCount++;
 				lineBatchCount++;
+				triBatchCount++;
+				quadBatchCount++;
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
+				circleBatchCount = max((size_t)0, circleBatchCount - 1);
 				lineBatchCount = max((size_t)0, lineBatchCount - 1);
+				triBatchCount = max((size_t)0, triBatchCount - 1);
+				quadBatchCount = max((size_t)0, lineBatchCount - 1);
 			}
 
 			// Update current state
@@ -631,10 +639,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Batches
 			//
 			gRenderSystem->setProjection2dOrthographic();
-			lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
+			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
 			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
-			//quadBatchCount = updateQuadBatch(gRenderSystem, quadBatch, quadBatchCount, totalTime);
+			quadBatchCount = updateQuadBatch(gRenderSystem, quadBatch, quadBatchCount, totalTime);
+			renderQuadBatch(gRenderSystem, quadBatch, quadBatchCount);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
@@ -660,10 +669,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// Clean up
 		//
-		//delete lineBatch;
-		//delete quadBatch
-		//delete triangleBatch;
-		//delete tndexedTriangleBatch;
+		delete circleBatch;
+		delete lineBatch;
+		delete triBatch;
+		delete quadBatch;
 	}
 	catch (mpp::MppException const& e)
 	{

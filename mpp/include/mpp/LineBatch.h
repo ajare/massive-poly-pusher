@@ -10,7 +10,7 @@ namespace mpp
 	struct LineBatchOptions
 	{
 		mpp::mesh::Vertex::DataType positionType;
-		mpp::mesh::Vertex::DataType colourType;
+		BatchVertexAttribute colourAttrib;
 		bool useDiffuse;
 	};
 
@@ -38,10 +38,8 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		void finishUpdate(int count, bool updateTexCoords);
+		size_t getPrimitiveCount(size_t objectCount) const;
 
-		int getPrimitiveCount(int objectCount) const;
-
-		int getVertexCount(int primitiveCount);
+		size_t getVertexCount(size_t primitiveCount);
 	};
 }

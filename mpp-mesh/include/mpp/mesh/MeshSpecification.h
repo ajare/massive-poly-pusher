@@ -44,7 +44,7 @@ namespace mpp
 
 			bool verticesIndexed() const;
 
-			VertexBufferAttributeLayout* createVertexBufferAttributeLayout();
+			VertexBufferAttributeLayout* createVertexBufferAttributeLayout(bool staticData);
 
 			int getNumVertexBufferAttributeLayouts() const;
 

@@ -47,7 +47,7 @@ namespace mpp
 		{
 			mesh::MeshSpecification meshSpec;
 			
-			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
@@ -67,7 +67,7 @@ namespace mpp
 		{
 			mesh::MeshSpecification meshSpec;
 
-			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
@@ -85,7 +85,7 @@ namespace mpp
 		{
 			mesh::MeshSpecification meshSpec;
 
-			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 
@@ -101,7 +101,7 @@ namespace mpp
 		{
 			mesh::MeshSpecification meshSpec;
 
-			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
@@ -117,7 +117,7 @@ namespace mpp
 		{
 			mesh::MeshSpecification meshSpec;
 
-			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
@@ -134,7 +134,7 @@ namespace mpp
 		{
 			mesh::MeshSpecification meshSpec;
 
-			auto layout = meshSpec.createVertexBufferAttributeLayout();
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
