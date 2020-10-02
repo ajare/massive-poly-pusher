@@ -10,6 +10,8 @@ namespace mpp
 {
 	using namespace mesh;
 
+	pair<char*, size_t> Batch::msNonExistentAttribute{ nullptr, 0 };
+
 	/*
 	 * Constructor.
 	 *
@@ -19,6 +21,8 @@ namespace mpp
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
 		string const& descriptor,
+		BatchVertexAttribute colourAttrib,
+		bool useDiffuse,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Model(name, renderSystem, resourceMgr, nullptr)
@@ -27,6 +31,8 @@ namespace mpp
 		, mProgramDescriptor(descriptor)
 		, mCurCount(0)
 		, mMaxCount(initialCapacity)
+		, mColourAttrib(colourAttrib)
+		, mUseDiffuse(useDiffuse)
 	{
 	}
 
@@ -37,49 +43,77 @@ namespace mpp
 
 	const pair<char*, size_t>& Batch::getAttributeData(string const& name) const
 	{
+		auto it = mDataPointers.find(name);
+		if (it == mDataPointers.end())
+		{
+			return msNonExistentAttribute;
+		}
+
 		return mDataPointers.at(name);
 	}
 
-	void Batch::createMesh(Mesh* mesh, size_t vertexCount, size_t bufferSize, shared_ptr<const int8> dataPtr)
+	void Batch::createVertexBuffer(uint32 index, Mesh* mesh, size_t vertexCount, bool staticData)
 	{
-		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		auto& layout = mSpecification.getVertexBufferAttributeLayout(index);
+
+		auto bufferSize = layout.getVertexSize();
+		int8* data = new int8[vertexCount * bufferSize];
+		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
+
+		auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, staticData, dataPtr);
+
+		for (int j = 0; j < layout.getNumAttributes(); ++j)
 		{
-			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
-			auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, dataPtr);
-
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto& attrib = layout.getAttribute(j);
-				vb->setAttribute(
-					attrib.attributeId,
-					attrib.dataType,
-					mesh::Vertex::getComponentSize(attrib.component),
-					attrib.offsetInBytes,
-					attrib.normalised);
-			}
+			auto& attrib = layout.getAttribute(j);
+			vb->setAttribute(
+				attrib.attributeId,
+				attrib.dataType,
+				mesh::Vertex::getComponentSize(attrib.component),
+				attrib.offsetInBytes,
+				attrib.normalised);
 		}
-
-		setSpecificationPointers(mesh);
-		mMeshes.push_back(mesh);
 	}
 
 	void Batch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
 	{
 	}
 
-	int Batch::getCount() const
+	size_t Batch::getCount() const
 	{
 		return mCurCount;
 	}
 
-	int Batch::getCapacity() const
+	size_t Batch::getCapacity() const
 	{
 		return mMaxCount;
 	}
 
-	void Batch::startUpdate(int minimumCount)
+	void Batch::startUpdate(size_t minimumCount)
 	{
 		setMinimumCount(minimumCount);
+	}
+
+	void Batch::finishUpdate(size_t count, bool updateFixedBuffers)
+	{
+		mCurCount = count;
+		auto numPrimitives = getPrimitiveCount(count);
+
+		if (mMeshes[0]->isIndexed())
+		{
+			mMeshes[0]->mapIndexData(numPrimitives);
+		}
+
+		for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+		{
+			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+
+			if (updateFixedBuffers || !vertexBuffer->isStatic())
+			{
+				vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
+			}
+		}
+
+		mMeshes[0]->setNumPrimitives(numPrimitives);
 	}
 
 	ResourcePtr Batch::createMaterial(string const& name, string const& texture, uint32 programFlags)
@@ -114,7 +148,12 @@ namespace mpp
 		return materialResource;
 	}
 
-	int Batch::getPrimitiveCount(int objectCount) const
+	BatchVertexAttribute Batch::getColourAttribute() const
+	{
+		return mColourAttrib;
+	}
+
+	size_t Batch::getPrimitiveCount(size_t objectCount) const
 	{
 		return objectCount;
 	}
@@ -165,5 +204,14 @@ namespace mpp
 			mMaxCount = count;
 			setSpecificationPointers(mMeshes[0]);
 		}
+	}
+
+	bool Batch::usingColour() const
+	{
+		return mColourAttrib.dataType != mesh::Vertex::DataType::None;
+	}
+	bool Batch::usingDiffuse() const
+	{
+		return mUseDiffuse;
 	}
 }

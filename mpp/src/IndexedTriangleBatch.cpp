@@ -15,16 +15,14 @@ namespace mpp
 	 *
 	 */
 	IndexedTriangleBatch::IndexedTriangleBatch(string const& name,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType,
-		mpp::mesh::Vertex::DataType colourType,
+		TriangleBatchOptions const& options,
 		int indexWidth,
 		size_t initialCapacity,
 		string const& texture,
 		VertexCountFunction vertexCountFn,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: TriangleBatch(name, positionType, texcoordType, colourType, initialCapacity, texture, renderSystem, resourceMgr) 
+		: TriangleBatch(name, options, initialCapacity, texture, renderSystem, resourceMgr) 
 		, mIndexWidth(indexWidth)
 		, mVertexCountFn(vertexCountFn)
 	{
@@ -61,22 +59,13 @@ namespace mpp
 			indices,
 			mesh::VertexBufferStorageType::Dynamic);
 
-		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
-		int8* data = new int8[vertexCount * bufferSize];
-		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			createVertexBuffer(i, mesh, vertexCount, false);
+		}
 
-		createMesh(mesh, vertexCount, bufferSize, dataPtr);
-	}
-
-	void IndexedTriangleBatch::finishUpdate(int count, bool updateTexCoords)
-	{
-		mCurCount = count;
-
-		mMeshes[0]->mapIndexData(count);
-
-		mpp::VertexBuffer* vertexBuffer0 = mMeshes[0]->getVertexBuffer(0);
-		vertexBuffer0->mapBufferData(getVertexCount(count));
-		mMeshes[0]->setNumPrimitives(count);
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
 	}
 
 	/*

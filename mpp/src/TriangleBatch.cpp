@@ -19,17 +19,13 @@ namespace mpp
 	 *
 	 */
 	TriangleBatch::TriangleBatch(string const& name,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType,
-		mpp::mesh::Vertex::DataType colourType,
+		TriangleBatchOptions const& options,
 		size_t initialCapacity,
 		string const& texture,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "tris", renderSystem, resourceMgr)
-		, mPositionType(positionType)
-		, mTexcoordType(texcoordType)
-		, mColourType(colourType)
+		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "tris", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
+		, mOptions(options)
 		, mTexture(texture)
 	{
 	}
@@ -47,11 +43,11 @@ namespace mpp
 	void TriangleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
 		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout();
+		auto layout = mSpecification.createVertexBufferAttributeLayout(false);
 
-		layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
-		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mTexcoordType, false);
-		layout->createAttribute(mesh::Vertex::Component::Colour4, mColourType, true);
+		layout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
+		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mOptions.texcoordAttrib.dataType, false);
+		layout->createAttribute(mesh::Vertex::Component::Colour4, getColourAttribute().dataType, true);
 	}
 
 	/*
@@ -75,23 +71,16 @@ namespace mpp
 			primitiveCount,
 			mesh::VertexBufferStorageType::Dynamic);
 
-		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
-		int8* data = new int8[vertexCount * bufferSize];
-		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			createVertexBuffer(i, mesh, vertexCount, false);
+		}
 
-		createMesh(mesh, vertexCount, bufferSize, dataPtr);
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
 	}
-
-	void TriangleBatch::finishUpdate(int count, bool updateTexCoords)
-	{
-		mCurCount = count;
-
-		mpp::VertexBuffer* vertexBuffer0 = mMeshes[0]->getVertexBuffer(0);
-		vertexBuffer0->mapBufferData(getVertexCount(count));
-		mMeshes[0]->setNumPrimitives(count);
-	}
-
-	int TriangleBatch::getPrimitiveCount(int objectCount) const
+	
+	size_t TriangleBatch::getPrimitiveCount(size_t objectCount) const
 	{
 		return objectCount;
 	}
@@ -100,7 +89,7 @@ namespace mpp
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	int TriangleBatch::getVertexCount(int primitiveCount)
+	size_t TriangleBatch::getVertexCount(size_t primitiveCount)
 	{
 		return primitiveCount * 3;
 	}

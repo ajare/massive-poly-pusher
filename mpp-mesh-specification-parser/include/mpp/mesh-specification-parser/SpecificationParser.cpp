@@ -196,7 +196,7 @@ namespace mpp
 			{
 				do
 				{
-					mpp::mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout();
+					mpp::mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
 
 					auto channelNode = bufferNode->getChild("Channel");
 

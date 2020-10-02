@@ -338,7 +338,7 @@ namespace mpp
 					break;
 
 				case VariableType::OutAttribute:
-					varDeclType = find_if(stage.inAttribs.begin(), stage.inAttribs.end(), [varName](auto const& attrStruct)
+					varDeclType = find_if(stage.outAttribs.begin(), stage.outAttribs.end(), [varName](auto const& attrStruct)
 					{
 						return attrStruct.name == varName;
 					})->type;

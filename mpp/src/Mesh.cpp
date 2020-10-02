@@ -21,7 +21,7 @@ namespace mpp
 	 * Constructor (non-indexed).
 	 *
 	 */
-	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, int primitiveCount, mesh::VertexBufferStorageType storageType, float pointSize)
+	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, mesh::VertexBufferStorageType storageType, float pointSize)
 		: mName(name)
 		, mVAO(0)
 		, mIBO(0)
@@ -42,7 +42,7 @@ namespace mpp
 	 * Constructor (indexed).
 	 *
 	 */
-	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, int primitiveCount, int indexWidth, vector<uint8> const& indices, mesh::VertexBufferStorageType storageType, float pointSize)
+	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, vector<uint8> const& indices, mesh::VertexBufferStorageType storageType, float pointSize)
 		: mName(name)
 		, mVAO(0)
 		, mIBO(0)
@@ -150,7 +150,7 @@ namespace mpp
 	 * Set the number of primitives to render.
 	 *
 	 */
-	void Mesh::setNumPrimitives(int count)
+	void Mesh::setNumPrimitives(size_t count)
 	{
 		mPrimitiveCount = count;
 	}
@@ -159,7 +159,7 @@ namespace mpp
 	 * Get primitive count.
 	 *
 	 */
-	int Mesh::getNumPrimitives() const
+	size_t Mesh::getNumPrimitives() const
 	{
 		return mPrimitiveCount;
 	}
@@ -186,9 +186,9 @@ namespace mpp
 	 * Add a vertex buffer.
 	 *
 	 */
-	VertexBuffer* Mesh::createVertexBuffer(int vertexCount, int vertexStride, bool streaming, shared_ptr<const int8> vertexData)
+	VertexBuffer* Mesh::createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8> vertexData)
 	{
-		VertexBuffer* buf = new VertexBuffer(mwRenderSystem, mStorageType, vertexCount, vertexStride, streaming, vertexData);
+		VertexBuffer* buf = new VertexBuffer(mwRenderSystem, mStorageType, vertexCount, vertexStride, streaming, staticData, vertexData);
 
 		mVertexBuffers.push_back(buf);
 		return buf;
@@ -231,7 +231,7 @@ namespace mpp
 	 * Re-map index data.
 	 *
 	 */
-	void Mesh::mapIndexData(int numPrimitives)
+	void Mesh::mapIndexData(size_t numPrimitives)
 	{
 		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 

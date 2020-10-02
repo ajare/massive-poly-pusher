@@ -194,7 +194,7 @@ namespace mpp
 			uint32_t attribOffset = 0;
 			for (int i = 0; i < layoutCount; ++i)
 			{
-				auto layout = meshSpec.createVertexBufferAttributeLayout();
+				auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 				readVertexBufferAttributeLayout(fp, layout, attribOffset);
 				attribOffset += layout->getNumAttributes();
 			}

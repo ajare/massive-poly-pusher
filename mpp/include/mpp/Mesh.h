@@ -58,9 +58,9 @@ namespace mpp
 
 	public:
 
-		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, int primitiveCount, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
+		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
 
-		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, int primitiveCount, int indexWidth, std::vector<uint8> const& indices, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
+		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, std::vector<uint8> const& indices, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
 
 		~Mesh();
 
@@ -74,15 +74,15 @@ namespace mpp
 
 		bool isIndexed() const;
 
-		void setNumPrimitives(int count);
+		void setNumPrimitives(size_t count);
 
-		int getNumPrimitives() const;
+		size_t getNumPrimitives() const;
 
 		void setPointSize(float size);
 
 		float getPointSize() const;
 
-		VertexBuffer* createVertexBuffer(int vertexCount, int vertexStride, bool streaming, std::shared_ptr<const int8> vertexData);
+		VertexBuffer* createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8> vertexData);
 		
 		int getNumVertexBuffers() const;
 
@@ -92,7 +92,7 @@ namespace mpp
 
 		std::vector<uint8>& getIndexData();
 
-		void mapIndexData(int numVertices);
+		void mapIndexData(size_t numVertices);
 
 		void mapIndexData(int startVertex, int numVertices);
 

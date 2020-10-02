@@ -57,7 +57,8 @@ namespace mpp
 				switch (dataType)
 				{
 				case mpp::mesh::Vertex::DataType::Double:
-					glslType = "d" + glslType; break;
+					glslType = "d" + glslType;
+					break;
 				case mpp::mesh::Vertex::DataType::Byte:
 				case mpp::mesh::Vertex::DataType::Short:
 				case mpp::mesh::Vertex::DataType::Int:

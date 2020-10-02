@@ -126,14 +126,14 @@ R"(
 void main()
 {
 ## Points&Rotation
-	vec2 d = normalize(@In(POSITION).zw);
+	vec2 d = normalize(@In(ROTATION).xy);
 	@Out(mat4 TEXROTATION) =
 	mat4(d.x, d.y, 0.0, 0.0,
 		-d.y, d.x, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0);
 ## Triangles&Rotation
-	vec2 d = normalize(@In(POSITION).zw);
+	vec2 d = normalize(@In(ROTATION).xy);
 	mat4 rotationMatrix =
 	mat4(d.x, d.y, 0.0, 0.0,
 		-d.y, d.x, 0.0, 0.0,
@@ -148,7 +148,7 @@ void main()
 ## Triangles&Rotation
 	// Rotate around TEXCOORDS.zw
 	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
-	vec4 transCentroid = @MCPMatrix * vec4(@In(TEXCOORDS).zw, 0, 1);
+	vec4 transCentroid = @MCPMatrix * vec4(@In(POSITION).zw, 0, 1);
 	vec2 offset = transVertex.xy - transCentroid.xy;
 	offset = vec2(rotationMatrix * vec4(offset, 0.0, 1.0));
 	transVertex.xy = transCentroid.xy + offset.xy;
@@ -181,26 +181,24 @@ void main()
     colour *= @Uniform(DIFFUSE);
 ##
 
-## Points&!Rotation&!TexCoords
+## !Points&Texture
+	vec2 tc = @In(TEXCOORDS).st;
+
+## Points&!Rotation&Texture&!Atlas
 	// Use gl_PointCoord
 	vec2 tc = gl_PointCoord;
-## TexCoords2
-	// Use supplied texture coords for a single image
-	vec2 tc = @In(TEXCOORDS);
-## Triangles&Rotation
-	// Use first part of texcoords
-	vec2 tc = vec2(@In(TEXCOORDS));
-## Points&!Rotation&TexCoords4
+## Points&!Rotation&Texture&Atlas
 	// Use supplied texture coords for an atlas
 	vec2 tc = mix(@In(TEXCOORDS).st, @In(TEXCOORDS).pq, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
-## Points&Rotation&!Atlas
+
+## Points&Rotation&Texture&!Atlas
 	// Rotate a single image
 	const vec2 offset = vec2(0.5, 0.5);
 	vec2 tc = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y);
 	tc -= offset;
 	tc = vec2(@In(TEXROTATION) * vec4(tc, 0.0, 1.0));
 	tc += offset;
-## Points&Rotation&Atlas
+## Points&Rotation&Texture&Atlas
 	// Rotate an image within an atlas
 	const vec2 offset = vec2(0.5, 0.5);
 	vec2 tc = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y);

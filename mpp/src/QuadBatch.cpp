@@ -18,15 +18,11 @@ namespace mpp
 	 *
 	 */
 	QuadBatch::QuadBatch(string const& name,
-		VertexOptions vertexOptions,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType,
-		mpp::mesh::Vertex::DataType colourType,
-		bool rotate,
+		QuadBatchOptions const& options, 
 		bool sameSize,
 		int maxDimX,
 		int maxDimY,
-		string const& texture,
+		ResourcePtr texture,
 		bool textureAtlas,
 		size_t indexWidth,
 		size_t initialCapacity,
@@ -35,16 +31,12 @@ namespace mpp
 		string const& descriptor,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", renderSystem, resourceMgr)
-		, mVertexOptions(vertexOptions)
-		, mPositionType(positionType)
-		, mTexcoordType(texcoordType)
-		, mColourType(colourType)
-		, mRotate(rotate)
+		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
+		, mOptions(options)
 		, mSameSize(sameSize)
 		, mMaxDimX(maxDimX)
 		, mMaxDimY(maxDimY)
-		, mTexture(texture)
+		, mTexture(texture ? texture->getName() : "__mpp_tex_none__")
 		, mTextureAtlas(textureAtlas)
 		, mIndexWidth(indexWidth)
 		, mPointSize((float)maxDimX)
@@ -57,18 +49,28 @@ namespace mpp
 		bool canUsePointSprites = square &&
 			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
 
-		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		if (mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Points && !canUsePointSprites)
 		{
-			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
+			THROW_MPP("Cannot use point sprites.", __LINE__, __FILE__, __func__);
 		}
 
-		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		if (canUsePointSprites && mOptions.vertexOptions != QuadBatchOptions::VertexOptions::Triangles)
 		{
-			mVertexOptions = VertexOptions::Points;
+			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Points;
 		}
 		else
 		{
-			mVertexOptions = VertexOptions::Triangles;
+			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Triangles;
+		}
+
+		if (mTexture == "__mpp_tex_none__" && mTextureAtlas)
+		{
+			THROW_MPP("Cannot use texture atlas without a texture.", __LINE__, __FILE__, __func__);
+		}
+
+		if (mTexture != "__mpp_tex_none__" && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
+		{
+			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
 		}
 	}
 
@@ -77,30 +79,22 @@ namespace mpp
 	 *
 	 */
 	QuadBatch::QuadBatch(string const& name,
-		VertexOptions vertexOptions,
-		mpp::mesh::Vertex::DataType positionType,
-		mpp::mesh::Vertex::DataType texcoordType,
-		mpp::mesh::Vertex::DataType colourType,
-		bool rotate,
+		QuadBatchOptions const& options,
 		bool sameSize,
 		int maxDimX,
 		int maxDimY,
-		string const& texture,
+		ResourcePtr texture,
 		bool textureAtlas,
 		size_t indexWidth,
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", renderSystem, resourceMgr)
-		, mVertexOptions(vertexOptions)
-		, mPositionType(positionType)
-		, mTexcoordType(texcoordType)
-		, mColourType(colourType)
-		, mRotate(rotate)
+		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
+		, mOptions(options)
 		, mSameSize(sameSize)
 		, mMaxDimX(maxDimX)
 		, mMaxDimY(maxDimY)
-		, mTexture(texture)
+		, mTexture(texture ? texture->getName() : "__mpp_tex_none__")
 		, mTextureAtlas(textureAtlas)
 		, mIndexWidth(indexWidth)
 		, mPointSize((float)maxDimX)
@@ -113,21 +107,29 @@ namespace mpp
 		bool canUsePointSprites = square &&
 			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
 
-
-		if (mVertexOptions == VertexOptions::Points && !canUsePointSprites)
+		if (mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Points && !canUsePointSprites)
 		{
-			THROW_MPP("Cannot use point sprites for this CircleBatch.", __LINE__, __FILE__, __func__);
+			THROW_MPP("Cannot use point sprites.", __LINE__, __FILE__, __func__);
 		}
 
-		if (canUsePointSprites && mVertexOptions != VertexOptions::Triangles)
+		if (canUsePointSprites && mOptions.vertexOptions != QuadBatchOptions::VertexOptions::Triangles)
 		{
-			mVertexOptions = VertexOptions::Points;
+			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Points;
 		}
 		else
 		{
-			mVertexOptions = VertexOptions::Triangles;
+			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Triangles;
 		}
 
+		if (mTexture == "__mpp_tex_none__" && mTextureAtlas)
+		{
+			THROW_MPP("Cannot use texture atlas without a texture.", __LINE__, __FILE__, __func__);
+		}
+
+		if (mTexture != "__mpp_tex_none__" && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
+		{
+			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
+		}
 	}
 
 	mesh::Primitive::Type QuadBatch::getPrimitiveType() const
@@ -176,42 +178,112 @@ namespace mpp
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	int QuadBatch::getVertexCount(int primitiveCount)
+	size_t QuadBatch::getVertexCount(size_t primitiveCount)
 	{
 		return primitiveCount * (usingPointSprites() ? 1 : 4);
 	}
 
 	void QuadBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout();
+		/*
+		Position holds position (xy) and centroid (zw) for when we're rotating and
+		using triangles.
+		
+		User-defined Rotation holds rotation (xy) for when we're rotating
 
-		if (rotating())
+		Texcoords hold texcoords when we have a single texture (xy) and full xyzw
+		when we're using point sprites and an atlas
+
+		Colour is optional, but always xyzw
+		*/
+
+		mSpecification = mesh::MeshSpecification(primitiveType);
+		auto dynamicLayout = mSpecification.createVertexBufferAttributeLayout(false);
+		mesh::VertexBufferAttributeLayout* staticLayout{ nullptr };
+
+		// For position, if we're rotating with triangles, then we need to store the
+		// angle in .zw, as it needs the same type as position.
+		if (rotating() && usingTriangles())
 		{
-			layout->createAttribute(mesh::Vertex::Component::Position4, mPositionType, false);
+			dynamicLayout->createAttribute(mesh::Vertex::Component::Position4, mOptions.positionType, false);
 		}
 		else
 		{
-			layout->createAttribute(mesh::Vertex::Component::Position2, mPositionType, false);
+			dynamicLayout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
+		}
+
+		// If we're not rotating, store rotation as static data
+		mesh::VertexBufferAttributeLayout* rotationLayout{ nullptr };
+		if (!rotating())
+		{
+			if (!staticLayout)
+			{
+				staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+			}
+
+			rotationLayout = staticLayout;
+		}
+		else
+		{
+			rotationLayout = dynamicLayout;
+		}
+
+		rotationLayout->createAttribute(mesh::Vertex::Component::UserDefined2, "ROTATION", mesh::Vertex::DataType::Float, false);
+
+
+		// Texture coords
+		mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };
+		if (mOptions.texcoordAttrib.fixedValues)
+		{
+			if (!staticLayout)
+			{
+				staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+			}
+
+			texcoordLayout = staticLayout;
+		}
+		else
+		{
+			texcoordLayout = dynamicLayout;
 		}
 
 		if (usingPointSprites())
 		{
-			if (mTexture != "" && mTextureAtlas)
+			// Only need texcoords if we're using a texture atlas (and implicitly, a texture), otherwise
+			// gl_PointCoord is used
+			if (usingTextureAtlas())
 			{
-				layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, false);
+				texcoordLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mOptions.texcoordAttrib.dataType, false);
 			}
-		}
-		else if (rotating())
-		{
-			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mTexcoordType, false);
 		}
 		else
 		{
-			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mTexcoordType, false);
+			if (usingTexture())
+			{
+				texcoordLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mOptions.texcoordAttrib.dataType, false);
+			}
 		}
 		
-		layout->createAttribute(mesh::Vertex::Component::Colour4, mColourType, true);
+		// Colour
+		if (mOptions.colourAttrib.dataType != mesh::Vertex::DataType::None)
+		{
+			mesh::VertexBufferAttributeLayout* colourLayout{ nullptr };
+			if (mOptions.colourAttrib.fixedValues)
+			{
+				if (!staticLayout)
+				{
+					staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+				}
+
+				colourLayout = staticLayout;
+			}
+			else
+			{
+				colourLayout = dynamicLayout;
+			}
+
+			colourLayout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourAttrib.dataType, mesh::Vertex::isDataTypeNormalisable(mOptions.colourAttrib.dataType));
+		}
 	}
 
 	/*
@@ -229,12 +301,13 @@ namespace mpp
 		// Set program flags
 		uint32 flags = 0
 			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
-			| (mTexture != "" ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
-			| (mTextureAtlas ? MPP_PROGRAM_TAGS_ATLAS : 0)
-			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0);
+			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
+			| (usingTextureAtlas() ? MPP_PROGRAM_TAGS_ATLAS : 0)
+			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0)
+			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
 		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture, flags);
-		int vertexCount = getVertexCount(primitiveCount);
+		size_t vertexCount = getVertexCount(primitiveCount);
 
 		vector<uint8> indices;
 		createIndexData(indices, 0, getCapacity());
@@ -250,50 +323,49 @@ namespace mpp
 			mesh::VertexBufferStorageType::Dynamic,
 			mPointSize);
 
-		auto bufferSize = mSpecification.getVertexBufferAttributeLayout(0).getVertexSize();
-		int8* data = new int8[vertexCount * bufferSize];
-		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
-
-		createMesh(mesh, vertexCount, bufferSize, dataPtr);
-	}
-
-	void QuadBatch::finishUpdate(int count, bool updateTexCoords)
-	{
-		mCurCount = count;
-
-		if (mMeshes[0]->isIndexed())
+		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			mMeshes[0]->mapIndexData(count * (usingPointSprites() ? 1 : 2));
+			auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			createVertexBuffer(i, mesh, vertexCount, layout.isStatic());
 		}
 
-		auto numPrimitives = getPrimitiveCount(count);
-		for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
-		{
-			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
-			vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
-		}
-
-		mMeshes[0]->setNumPrimitives(numPrimitives);
+		setSpecificationPointers(mesh);
+		mMeshes.push_back(mesh);
 	}
 
-	int QuadBatch::getPrimitiveCount(int objectCount) const
+	size_t QuadBatch::getPrimitiveCount(size_t objectCount) const
 	{
 		return objectCount * (usingPointSprites() ? 1 : 2);
 	}
 
+	int QuadBatch::getMaxDimX() const
+	{
+		return mMaxDimX;
+	}
+
+	int QuadBatch::getMaxDimY() const
+	{
+		return mMaxDimY;
+	}
+
 	bool QuadBatch::usingPointSprites() const
 	{
-		return mVertexOptions == VertexOptions::Points;
+		return mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Points;
+	}
+
+	bool QuadBatch::usingTriangles() const
+	{
+		return mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Triangles;
 	}
 
 	bool QuadBatch::rotating() const
 	{
-		return mRotate;
+		return mOptions.rotate;
 	}
 
 	bool QuadBatch::usingTexture() const
 	{
-		return mTexture != "";
+		return mTexture != "__mpp_tex_none__";
 	}
 
 	bool QuadBatch::usingTextureAtlas() const
