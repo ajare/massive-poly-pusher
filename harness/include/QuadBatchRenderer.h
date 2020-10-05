@@ -74,16 +74,16 @@ public:
 
 	void angle(uint32 index, float& angle)
 	{
-		angle = (index + 1) * mTime;
+		angle = index * mTime;
 	}
 
 	void textureAtlasTexcoords(uint32 index, float& u0, float& v0, float& u1, float& v1)
 	{
 		const float txWidth = 1.0f / 8;
 
-		u0 = txWidth * 2;
+		u0 = txWidth * 0;
 		v0 = 0.0f;
-		u1 = txWidth * 3;
+		u1 = txWidth * 1;
 		v1 = 1.0f;
 	}
 
@@ -91,15 +91,17 @@ public:
 	{
 		uint8 colours[]{
 			255, 0, 255,
-			128, 128, 0
+			255, 127, 0,
+			0, 255, 127,
+			64, 64, 224
 		};
 
 		srand(index);
-		auto ri = rand() % 2;
+		auto ri = rand() % 4;
 
-		red = colours[ri * 3 + 0];
-		green = colours[ri * 3 + 1];
-		blue = colours[ri * 3 + 2];
+		red = 255; colours[ri * 3 + 0];
+		green = 255; colours[ri * 3 + 1];
+		blue = 255; colours[ri * 3 + 2];
 		alpha = 255;
 	}
 
@@ -112,6 +114,16 @@ public:
 	{
 		mTime += frameTime;
 	}
+};
+
+struct QuadBatchRendererParams
+{
+	mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions;
+	bool fixedTextureData, fixedColourData;
+	bool useVertexColours, useDiffuse;
+	bool rotate;
+	size_t width, height;
+	size_t indexWidth;
 };
 
 template<typename PosType, typename TexType, typename ColType>
@@ -127,27 +139,50 @@ class QuadBatchRenderer
 
 public:
 
-	QuadBatchRenderer(std::string const& name, bool rotate, bool useDiffuse, size_t initialSize, QuadBatchDataProvider<PosType, TexType, ColType>* dataProvider, mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr)
+	QuadBatchRenderer(std::string const& name, 
+		QuadBatchRendererParams const& params, 
+		QuadBatchDataProvider<PosType, TexType, ColType>* dataProvider, 
+		mpp::ResourcePtr texture, 
+		size_t initialSize, 
+		mpp::RenderSystem* renderSystem,
+		mpp::ResourceManager* resourceMgr)
 		: mRenderSystem(renderSystem)
 		, mResourceMgr(resourceMgr)
 		, mDataProvider(dataProvider)
 	{
+		bool sameSize = params.width == params.height;
+		if (texture)
+		{
+			// Need to load texture first, to get its sizes
+			texture->load();
+
+			if (texture->getType() == "Texture")
+			{
+				auto t = dynamic_cast<mpp::Texture*>(texture.get());
+				sameSize = t->getWidth() == t->getHeight();
+			}
+			else
+			{
+				auto t = dynamic_cast<mpp::TextureAtlas*>(texture.get());
+				sameSize = t->getWidth() / t->getImagesX() == t->getHeight() / t->getImagesY();
+			}
+		}
+
 		mBatch = new mpp::QuadBatch(
 			name,
 			{
-				mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+				params.primitiveOptions,
 				PosType::vertexDataType(),
-				{ TexType::vertexDataType(), false },
-				{ ColType::vertexDataType(), true },
-				useDiffuse,
-				rotate,
-				16,
-				16,
-				16
+				{ TexType::vertexDataType(), params.fixedTextureData },
+				{ params.useVertexColours ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData },
+				params.useDiffuse,
+				params.rotate,
+				params.width,
+				params.height,
+				params.indexWidth
 			},
-			true,
-			nullptr,
-			false,
+			sameSize,
+			texture,
 			initialSize,
 			renderSystem,
 			resourceMgr);
@@ -166,6 +201,12 @@ public:
 
 	size_t update(size_t count, bool updateFixed = false)
 	{
+		size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+		if (count > batchSize)
+		{
+			initStart = mBatch->getVertexCount(mBatch->getPrimitiveCount(batchSize));
+		}
+
 		mBatch->startUpdate(count);
 
 		float radiusX = mBatch->getMaxDimX() / 2.0f;
@@ -183,7 +224,7 @@ public:
 		auto colBuffer = (uint8*)mBatch->getAttributeData("COLOUR").first;
 		auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(uint8);
 
-		size_t vertexCount = mBatch->getVertexCount(count);
+		size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 		for (size_t pOffset = 0, rOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
 		{
 			uint32 primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
@@ -191,7 +232,7 @@ public:
 			//
 			// Position data
 			//
-			if (updateFixed || !mBatch->positionFixed())
+			if (updateFixed || !mBatch->positionFixed() || i >= initStart)
 			{
 				PosType::builtin_type x, y;
 				mDataProvider->position(primitiveIndex, x, y);
@@ -239,7 +280,7 @@ public:
 			//
 			// Rotation data
 			//
-			if (updateFixed || !mBatch->rotationFixed())
+			if (updateFixed || !mBatch->rotationFixed() || i >= initStart)
 			{
 				PosType::builtin_type angle;
 				mDataProvider->angle(primitiveIndex, angle);
@@ -251,7 +292,7 @@ public:
 			//
 			// Texture data
 			//
-			if (updateFixed || !mBatch->texcoordsFixed())
+			if (updateFixed || !mBatch->texcoordsFixed() || i >= initStart)
 			{
 				if (mBatch->usingPointSprites())
 				{
@@ -327,7 +368,7 @@ public:
 			//
 			// Colour data
 			//
-			if (mBatch->usingColour() && (updateFixed || !mBatch->colourFixed()))
+			if (mBatch->usingColour() && (updateFixed || !mBatch->colourFixed() || i >= initStart))
 			{
 				ColType::builtin_type red, green, blue, alpha;
 				mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
@@ -345,7 +386,7 @@ public:
 			cOffset += colStride;
 		}
 
-		mBatch->finishUpdate(count, updateFixed);
+		mBatch->finishUpdate(count, updateFixed || (initStart != ~0u));
 		return mBatch->getCount();
 	}
 

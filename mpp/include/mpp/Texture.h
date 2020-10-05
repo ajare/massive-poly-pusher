@@ -14,7 +14,7 @@ namespace mpp
 		
 		uint32 mSortId;
 
-	private:
+	protected:
 
 		void createImpl();
 

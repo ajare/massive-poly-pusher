@@ -14,6 +14,8 @@ typedef std::map<std::pair<int, int>, std::vector<SDL_DisplayMode>> DisplayModeS
 
 mpp::TextureStream* loadImage(std::string const& filename, bool flipY);
 
+mpp::TextureAtlasStream* loadImageAtlas(std::string const& filename, bool flipY, size_t imagesX, size_t imagesY);
+
 void loadAllImages(std::string const& dir, bool flipY, mpp::ResourceManager* resourceMgr);
 
 void rationalApproximation(float value, int md, int &num, int &denom);

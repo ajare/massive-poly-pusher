@@ -2,6 +2,7 @@
 #include "utils/StringUtils.h"
 
 #include <mpp/MaterialStream.h>
+#include <mpp/TextureAtlasStream.h>
 
 #include "Helper.h"
 #include "Logger.h"
@@ -55,7 +56,59 @@ mpp::TextureStream* loadImage(string const& filename, bool flipY)
 			ptr += dataSpan;
 		}
 
-		mpp::TextureStream* tStr = new mpp::TextureStream(tempData, dataWidth, dataHeight, dataBPP, true);
+		mpp::TextureStream* tStr{ nullptr };
+		tStr = new mpp::TextureStream(tempData, dataWidth, dataHeight, dataBPP, true);
+
+		FreeImage_Unload(bitmap);
+		delete[] tempData;
+		return tStr;
+	}
+	else
+	{
+		string errMsg = "Couldn't open '" + filename + "'.";
+		throw exception(errMsg.c_str());
+	}
+}
+
+mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size_t imagesX, size_t imagesY)
+{
+	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
+	if (bitmap)
+	{
+		int dataWidth = FreeImage_GetWidth(bitmap);
+		int dataHeight = FreeImage_GetHeight(bitmap);
+		int dataBPP = FreeImage_GetBPP(bitmap);
+		int dataSpan = dataWidth * dataBPP / 8;
+
+		int dataSize = dataSpan * dataHeight;
+		unsigned char* tempData = new unsigned char[dataSize];
+
+		// Flip vertically?
+		int y0, y1, inc;
+		if (flipY)
+		{
+			y0 = dataHeight - 1;
+			y1 = -1;
+			inc = -1;
+		}
+		else
+		{
+			y0 = 0;
+			y1 = dataHeight;
+			inc = 1;
+		}
+
+		unsigned char* ptr = (unsigned char*)FreeImage_GetBits(bitmap);
+		for (int y = y0; y != y1; y += inc)
+		{
+			memcpy(&tempData[y * dataSpan], ptr, dataSpan);
+			ptr += dataSpan;
+		}
+
+		mpp::TextureAtlasStream* tStr{ nullptr };
+
+		tStr = new mpp::TextureAtlasStream(tempData, dataWidth, dataHeight, dataBPP, true, imagesX, imagesY);
+
 		FreeImage_Unload(bitmap);
 		delete[] tempData;
 		return tStr;

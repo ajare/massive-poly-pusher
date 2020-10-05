@@ -15,6 +15,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
+#include "mpp/TextureAtlas.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -107,6 +108,26 @@ namespace mpp
 		auto resourcePtr = createResourceImpl<Texture>(name, resourceStream);
 
 		Texture* t = ((Texture*)resourcePtr.get());
+
+		t->setSortId(msSortableTextureId++);
+		mSortableTextures.push_back(t);
+
+		return resourcePtr;
+	}
+
+	template<>
+	inline ResourcePtr ResourceManager::createResource<TextureAtlas>(std::string const& name, ResourceStreamPtr resourceStream)
+	{
+		uint64 maxBits = std::min<uint64>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
+		if (msSortableTextureId == (uint32)(1 << maxBits))
+		{
+			std::string errMsg = utils::StringUtils::format("Cannot create Texture resource '{}'.  Limit reached!", name);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		auto resourcePtr = createResourceImpl<TextureAtlas>(name, resourceStream);
+
+		TextureAtlas* t = ((TextureAtlas*)resourcePtr.get());
 
 		t->setSortId(msSortableTextureId++);
 		mSortableTextures.push_back(t);

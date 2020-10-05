@@ -100,14 +100,6 @@ namespace mpp
 
 		void compileShader(uint32* id, std::string const& source, std::string const& sourceType);
 
-		void createImpl();
-
-		void destroyImpl();
-
-		void loadImpl();
-
-		void unloadImpl();
-
 		VariableInfo getVariableInfo(std::string const& def, std::string const& name, std::string const& type, ShaderType shaderType);
 
 		std::vector<std::string> splitSourceIntoLines(std::string const& src);
@@ -115,6 +107,16 @@ namespace mpp
 		std::string stripComments(std::string const& src);
 
 		std::string parseSource(std::string const& src, ShaderType shaderType, bool usingGeometryShader);
+
+	protected:
+
+		void createImpl();
+
+		void destroyImpl();
+
+		void loadImpl();
+
+		void unloadImpl();
 
 	public:
 

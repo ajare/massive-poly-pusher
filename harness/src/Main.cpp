@@ -14,6 +14,8 @@
 #include <mpp/Program.h>
 #include <mpp/TextureStream.h>
 #include <mpp/Texture.h>
+#include <mpp/TextureAtlasStream.h>
+#include <mpp/TextureAtlas.h>
 #include <mpp/MaterialStream.h>
 #include <mpp/Material.h>
 #include <mpp/Model.h>
@@ -255,12 +257,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		textureStream = loadImage(gOptions.resourceLocation + "bullet1.png", false);
 		gResourceManager->createResource<Texture>("bullet1.png", ResourceStreamPtr(textureStream));
 
-		textureStream = loadImage(gOptions.resourceLocation + "bullets.png", false);
-		gResourceManager->createResource<Texture>("bullets.png", ResourceStreamPtr(textureStream));
+		TextureAtlasStream* atlasStream = static_cast<TextureAtlasStream*>(loadImageAtlas(gOptions.resourceLocation + "bullets.png", false, 8, 1));
+		gResourceManager->createResource<TextureAtlas>("bullets.png", ResourceStreamPtr(atlasStream));
 
 		// RGBA test
 		textureStream = loadImage(gOptions.resourceLocation + "rgba.png", false);
 		gResourceManager->createResource<Texture>("rgba.png", ResourceStreamPtr(textureStream));
+
+		// Arrow
+		textureStream = loadImage(gOptions.resourceLocation + "arrow.png", false);
+		gResourceManager->createResource<Texture>("arrow.png", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
@@ -362,7 +368,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		size_t circleBatchCount{ 1 };
 		size_t lineBatchCount{ 100 };
 		size_t triBatchCount{ 32 };
-		size_t quadBatchCount{ 32 };
+		size_t quadBatchCount{ 4 };
 
 		CircleBatch* circleBatch{ nullptr };
 		LineBatch* lineBatch{ nullptr };
@@ -388,8 +394,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem,
 			gResourceManager);
 		
+		QuadBatchRendererParams quadParams
+		{
+			mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+			true,
+			true,
+			true,
+			false,
+			true,
+			16,
+			16,
+			16
+		};
+
 		TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> quadData;
-		QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> quadBatchRenderer("TestQuads", true, false, quadBatchCount, &quadData, gRenderSystem, gResourceManager);
+		QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> 
+			quadBatchRenderer("TestQuads", 
+				quadParams,
+				&quadData,
+				gResourceManager->getResource("bullets.png"),
+				quadBatchCount,
+				gRenderSystem, 
+				gResourceManager);
+
 		quadBatchRenderer.create();
 		
 		//
@@ -463,10 +490,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				circleBatchCount = max((size_t)0, circleBatchCount - 1);
-				lineBatchCount = max((size_t)0, lineBatchCount - 1);
-				triBatchCount = max((size_t)0, triBatchCount - 1);
-				quadBatchCount = max((size_t)0, lineBatchCount - 1);
+				circleBatchCount--; if (circleBatchCount == ~0u) circleBatchCount = 0;
+				lineBatchCount--; if (lineBatchCount == ~0u) lineBatchCount = 0;
+				triBatchCount--; if (triBatchCount == ~0u) triBatchCount = 0;
+				quadBatchCount--; if (quadBatchCount == ~0u) quadBatchCount = 0;
 			}
 
 			// Update current state
