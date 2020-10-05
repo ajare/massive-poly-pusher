@@ -38,6 +38,8 @@
 #include "Helper.h"
 #include "Logger.h"
 #include "Batches.h"
+#include "QuadBatchRenderer.h"
+
 
 // Platform
 #include "sdl/WindowSDL.h"
@@ -386,12 +388,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem,
 			gResourceManager);
 		
-		quadBatch = createQuadBatch(
-			"TestQuads",
-			"__mpp_tex_none__",
-			quadBatchCount,
-			gRenderSystem,
-			gResourceManager);
+		TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> quadData;
+		QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> quadBatchRenderer("TestQuads", true, false, quadBatchCount, &quadData, gRenderSystem, gResourceManager);
+		quadBatchRenderer.create();
 		
 		//
 		// Camera setup
@@ -569,6 +568,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					isFullScreen = !isFullScreen;
 					gWindow->setFullscreen(isFullScreen);
 				}
+
+				// Logic
+				quadData.update(frameTime);
+				quadBatchCount = quadBatchRenderer.update(quadBatchCount);
 			}
 
 			// Render scene
@@ -639,11 +642,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Batches
 			//
 			gRenderSystem->setProjection2dOrthographic();
+
+			quadBatchRenderer.render();
+
 			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
 			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
-			quadBatchCount = updateQuadBatch(gRenderSystem, quadBatch, quadBatchCount, totalTime);
-			renderQuadBatch(gRenderSystem, quadBatch, quadBatchCount);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
