@@ -31,7 +31,7 @@ namespace mpp
 
 		bool mSameSize;
 
-		std::string mTexture;
+		ResourcePtr mTexture;
 
 		bool mTextureAtlas;
 
@@ -57,7 +57,6 @@ namespace mpp
 			QuadBatchOptions const& options,
 			bool sameSize,
 			ResourcePtr texture,
-			bool textureAtlas,
 			size_t initialCapacity,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
@@ -66,7 +65,6 @@ namespace mpp
 			QuadBatchOptions const& options,
 			bool sameSize,
 			ResourcePtr texture,
-			bool textureAtlas,
 			size_t initialCapacity,
 			std::string const& defaultVertexShader,
 			std::string const& defaultFragmentShader,

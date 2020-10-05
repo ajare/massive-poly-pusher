@@ -16,7 +16,7 @@ namespace mpp
 
 		std::vector<Mesh*> mMeshes;
 
-	private:
+	protected:
 
 		void createImpl();
 

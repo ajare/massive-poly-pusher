@@ -21,7 +21,6 @@ namespace mpp
 		QuadBatchOptions const& options, 
 		bool sameSize,
 		ResourcePtr texture,
-		bool textureAtlas,
 		size_t initialCapacity,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
@@ -31,8 +30,8 @@ namespace mpp
 		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
 		, mSameSize(sameSize)
-		, mTexture(texture ? texture->getName() : "__mpp_tex_none__")
-		, mTextureAtlas(textureAtlas)
+		, mTexture(texture)
+		, mTextureAtlas(texture ? texture->getType() == "TextureAtlas" : false)
 		, mPointSize((float)options.maxSizeX)
 	{
 		// Set vertex options
@@ -57,12 +56,7 @@ namespace mpp
 			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Triangles;
 		}
 
-		if (mTexture == "__mpp_tex_none__" && mTextureAtlas)
-		{
-			THROW_MPP("Cannot use texture atlas without a texture.", __LINE__, __FILE__, __func__);
-		}
-
-		if (mTexture != "__mpp_tex_none__" && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
+		if (mTexture && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
 		{
 			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
 		}
@@ -76,15 +70,14 @@ namespace mpp
 		QuadBatchOptions const& options,
 		bool sameSize,
 		ResourcePtr texture,
-		bool textureAtlas,
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
 		, mSameSize(sameSize)
-		, mTexture(texture ? texture->getName() : "__mpp_tex_none__")
-		, mTextureAtlas(textureAtlas)
+		, mTexture(texture)
+		, mTextureAtlas(texture ? texture->getType() == "TextureAtlas" : false)
 		, mPointSize((float)options.maxSizeX)
 	{
 		// Set vertex options
@@ -109,12 +102,7 @@ namespace mpp
 			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Triangles;
 		}
 
-		if (mTexture == "__mpp_tex_none__" && mTextureAtlas)
-		{
-			THROW_MPP("Cannot use texture atlas without a texture.", __LINE__, __FILE__, __func__);
-		}
-
-		if (mTexture != "__mpp_tex_none__" && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
+		if (mTexture && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
 		{
 			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
 		}
@@ -296,22 +284,38 @@ namespace mpp
 			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
-		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture, flags);
+		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture->getName(), flags);
 		size_t vertexCount = getVertexCount(primitiveCount);
 
-		vector<uint8> indices;
-		createIndexData(indices, 0, getCapacity());
+		Mesh* mesh{ nullptr };
+		if (indexedVertices())
+		{
+			vector<uint8> indices;
+			createIndexData(indices, 0, getCapacity());
 
-		auto mesh = new Mesh(
-			getRenderSystem(),
-			getName(),
-			materialResource,
-			primitiveType,
-			primitiveCount,
-			mOptions.indexWidth,
-			indices,
-			mesh::VertexBufferStorageType::Dynamic,
-			mPointSize);
+			mesh = new Mesh(
+				getRenderSystem(),
+				getName(),
+				materialResource,
+				primitiveType,
+				primitiveCount,
+				mOptions.indexWidth,
+				indices,
+				mesh::VertexBufferStorageType::Dynamic,
+				mPointSize);
+		}
+		else
+		{
+			mesh = new Mesh(
+				getRenderSystem(),
+				getName(),
+				materialResource,
+				primitiveType,
+				primitiveCount,
+				mesh::VertexBufferStorageType::Dynamic,
+				mPointSize);
+		}
+
 
 		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
@@ -355,7 +359,7 @@ namespace mpp
 
 	bool QuadBatch::usingTexture() const
 	{
-		return mTexture != "__mpp_tex_none__";
+		return mTexture != nullptr;
 	}
 
 	bool QuadBatch::usingTextureAtlas() const

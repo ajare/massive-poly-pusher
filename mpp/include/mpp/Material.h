@@ -23,7 +23,7 @@ namespace mpp
 
 		std::vector<ResourcePtr> mTextures;
 
-	private:
+	protected:
 
 		void createImpl();
 

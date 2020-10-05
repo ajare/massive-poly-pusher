@@ -20,7 +20,7 @@ namespace mpp
 
 		TextureStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
 
-		~TextureStream();
+		virtual ~TextureStream();
 
 		std::string getType();
 

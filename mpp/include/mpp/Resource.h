@@ -32,7 +32,7 @@ namespace mpp
 
 		ResourceStreamPtr mResourceStream;
 
-	private:
+	protected:
 
 		virtual void createImpl() = 0;
 
@@ -41,8 +41,6 @@ namespace mpp
 		virtual void loadImpl() = 0;
 
 		virtual void unloadImpl() = 0;
-
-	protected:
 
 		void setId(uint32 id);
 
@@ -54,7 +52,7 @@ namespace mpp
 
 		std::string const& getName() const;
 
-		std::string const& getType() const;
+		virtual std::string const& getType() const;
 
 		bool isCreated() const;
 
