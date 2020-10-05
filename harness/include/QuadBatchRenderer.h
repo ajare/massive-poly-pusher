@@ -399,7 +399,7 @@ public:
 			uniforms.setUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 		}
 
-		mRenderSystem->renderModelImmediate(*mBatch, false, &uniforms);
+		mRenderSystem->renderModelImmediate(*mBatch, true, &uniforms);
 	}
 };
 
