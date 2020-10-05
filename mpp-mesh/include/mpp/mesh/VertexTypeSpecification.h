@@ -83,6 +83,7 @@ namespace mpp
 		struct DataTypeHalfFloat
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::HalfFloat; }
+			typedef half_float::half builtin_type;
 			
 			template<typename T> static half_float::half value(T v, bool normalise=false) { (void)(normalise); return (half_float::half)v; }
 			
@@ -96,7 +97,8 @@ namespace mpp
 		struct DataTypeFloat
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Float; }
-			
+			typedef float builtin_type;
+
 			template<typename T> static float value(T v, bool normalise=false) { (void)(normalise); return (float)v; }
 			
 			static float min_normalised() { return -1.0f; }
@@ -109,7 +111,8 @@ namespace mpp
 		struct DataTypeDouble
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Double; }
-			
+			typedef double builtin_type;
+
 			template<typename T> static double value(T v, bool normalise=false) { (void)(normalise); return (double)v; }
 			
 			static double min_normalised() { return -1.0; }
@@ -122,7 +125,8 @@ namespace mpp
 		struct DataTypeByte
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Byte; }
-			
+			typedef int8 builtin_type;
+
 			static int8 value(half_float::half v, bool normalise) { return normalise ? (int8)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8)v; }
 			static int8 value(float v, bool normalise)            { return normalise ? (int8)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8)v; }
 			static int8 value(double v, bool normalise)           { return normalise ? (int8)((v * 0.5 + 0.5) * 255.0) - 128    : (int8)v; }
@@ -143,6 +147,7 @@ namespace mpp
 		struct DataTypeUnsignedByte
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedByte; }
+			typedef uint8 builtin_type;
 
 			static uint8 value(half_float::half v, bool normalise) { return normalise ? (uint8)(v * 255.0f) : (uint8)v; }
 			static uint8 value(float v, bool normalise)            { return normalise ? (uint8)(v * 255.0f) : (uint8)v; }
@@ -164,6 +169,7 @@ namespace mpp
 		struct DataTypeShort
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Short; }
+			typedef int16 builtin_type;
 
 			static int16 value(half_float::half v, bool normalise) { return normalise ? (int16)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16)v; }
 			static int16 value(float v, bool normalise)            { return normalise ? (int16)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16)v; }
@@ -185,6 +191,7 @@ namespace mpp
 		struct DataTypeUnsignedShort
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedShort; }
+			typedef uint16 builtin_type;
 
 			static uint16 value(half_float::half v, bool normalise) { return normalise ? (uint16)(v * 65535.0f) : (uint16)v; }
 			static uint16 value(float v, bool normalise)            { return normalise ? (uint16)(v * 65535.0f) : (uint16)v; }
@@ -206,6 +213,7 @@ namespace mpp
 		struct DataTypeInt
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Int; }
+			typedef int32 builtin_type;
 
 			static int32 value(half_float::half v, bool normalise) { return normalise ? (int32)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32)v; }
 			static int32 value(float v, bool normalise)            { return normalise ? (int32)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32)v; }
@@ -227,6 +235,7 @@ namespace mpp
 		struct DataTypeUnsignedInt
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedInt; }
+			typedef uint32 builtin_type;
 
 			static uint32 value(half_float::half v, bool normalise) { return normalise ? (uint32)(v * 4294967295.0f) : (uint32)v; }
 			static uint32 value(float v, bool normalise)            { return normalise ? (uint32)(v * 4294967295.0f) : (uint32)v; }
@@ -248,7 +257,8 @@ namespace mpp
 		struct DataType2_10_10_10
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Int_2_10_10_10_REV; }
-			
+			typedef int32 builtin_type;
+
 			template<typename T> static int32 value(T v, bool normalise=false) { (void)(normalise); return (int32)v; }
 			
 			template<typename T> static int32* ptr(T* p) { return (int32*)p; }
@@ -258,7 +268,8 @@ namespace mpp
 		struct DataTypeUnsigned2_10_10_10
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedInt_2_10_10_10_REV; }
-			
+			typedef uint32 builtin_type;
+
 			template<typename T> static uint32 value(T v, bool normalise=false) { (void)(normalise); return (uint32)v; }
 			
 			template<typename T> static uint32* ptr(T* p) { return (uint32*)p; }

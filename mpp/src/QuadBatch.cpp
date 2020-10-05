@@ -20,11 +20,8 @@ namespace mpp
 	QuadBatch::QuadBatch(string const& name,
 		QuadBatchOptions const& options, 
 		bool sameSize,
-		int maxDimX,
-		int maxDimY,
 		ResourcePtr texture,
 		bool textureAtlas,
-		size_t indexWidth,
 		size_t initialCapacity,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
@@ -34,33 +31,30 @@ namespace mpp
 		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
 		, mSameSize(sameSize)
-		, mMaxDimX(maxDimX)
-		, mMaxDimY(maxDimY)
 		, mTexture(texture ? texture->getName() : "__mpp_tex_none__")
 		, mTextureAtlas(textureAtlas)
-		, mIndexWidth(indexWidth)
-		, mPointSize((float)maxDimX)
+		, mPointSize((float)options.maxSizeX)
 	{
 		// Set vertex options
-		float size = (float)max(maxDimX, maxDimY);
-		bool square = mSameSize && mMaxDimX == mMaxDimY;
+		float size = (float)max(options.maxSizeX, options.maxSizeY);
+		bool square = mSameSize && options.maxSizeX == options.maxSizeY;
 
 		Caps const& caps = getRenderSystem()->getCaps();
 		bool canUsePointSprites = square &&
 			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
 
-		if (mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Points && !canUsePointSprites)
+		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points && !canUsePointSprites)
 		{
 			THROW_MPP("Cannot use point sprites.", __LINE__, __FILE__, __func__);
 		}
 
-		if (canUsePointSprites && mOptions.vertexOptions != QuadBatchOptions::VertexOptions::Triangles)
+		if (canUsePointSprites && mOptions.primitiveOptions != QuadBatchOptions::PrimitiveOptions::Triangles)
 		{
-			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Points;
+			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Points;
 		}
 		else
 		{
-			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Triangles;
+			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Triangles;
 		}
 
 		if (mTexture == "__mpp_tex_none__" && mTextureAtlas)
@@ -81,44 +75,38 @@ namespace mpp
 	QuadBatch::QuadBatch(string const& name,
 		QuadBatchOptions const& options,
 		bool sameSize,
-		int maxDimX,
-		int maxDimY,
 		ResourcePtr texture,
 		bool textureAtlas,
-		size_t indexWidth,
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
 		, mSameSize(sameSize)
-		, mMaxDimX(maxDimX)
-		, mMaxDimY(maxDimY)
 		, mTexture(texture ? texture->getName() : "__mpp_tex_none__")
 		, mTextureAtlas(textureAtlas)
-		, mIndexWidth(indexWidth)
-		, mPointSize((float)maxDimX)
+		, mPointSize((float)options.maxSizeX)
 	{
 		// Set vertex options
-		float size = (float)max(maxDimX, maxDimY);
-		bool square = mSameSize && mMaxDimX == mMaxDimY;
+		float size = (float)max(options.maxSizeX, options.maxSizeY);
+		bool square = mSameSize && options.maxSizeX == options.maxSizeY;
 
 		Caps const& caps = getRenderSystem()->getCaps();
 		bool canUsePointSprites = square &&
 			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
 
-		if (mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Points && !canUsePointSprites)
+		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points && !canUsePointSprites)
 		{
 			THROW_MPP("Cannot use point sprites.", __LINE__, __FILE__, __func__);
 		}
 
-		if (canUsePointSprites && mOptions.vertexOptions != QuadBatchOptions::VertexOptions::Triangles)
+		if (canUsePointSprites && mOptions.primitiveOptions != QuadBatchOptions::PrimitiveOptions::Triangles)
 		{
-			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Points;
+			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Points;
 		}
 		else
 		{
-			mOptions.vertexOptions = QuadBatchOptions::VertexOptions::Triangles;
+			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Triangles;
 		}
 
 		if (mTexture == "__mpp_tex_none__" && mTextureAtlas)
@@ -148,11 +136,11 @@ namespace mpp
 	 */
 	void QuadBatch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
 	{
-		size_t vertexSize{ 6 * (mIndexWidth / 8) };
+		size_t vertexSize{ 6 * (mOptions.indexWidth / 8) };
 		data.resize(count * vertexSize);
 
 		uint32* ptr = (uint32*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
-		int indexBytes = mIndexWidth / 8;
+		int indexBytes = mOptions.indexWidth / 8;
 
 		for (uint32_t i = start; i < count; ++i)
 		{
@@ -180,7 +168,9 @@ namespace mpp
 	 */
 	size_t QuadBatch::getVertexCount(size_t primitiveCount)
 	{
-		return primitiveCount * (usingPointSprites() ? 1 : 4);
+		// Assume that if not using point sprites, primitiveCount must be a
+		// multiple of 2.
+		return primitiveCount * (usingPointSprites() ? 1 : 2);
 	}
 
 	void QuadBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
@@ -318,7 +308,7 @@ namespace mpp
 			materialResource,
 			primitiveType,
 			primitiveCount,
-			mIndexWidth,
+			mOptions.indexWidth,
 			indices,
 			mesh::VertexBufferStorageType::Dynamic,
 			mPointSize);
@@ -340,22 +330,22 @@ namespace mpp
 
 	int QuadBatch::getMaxDimX() const
 	{
-		return mMaxDimX;
+		return mOptions.maxSizeX;
 	}
 
 	int QuadBatch::getMaxDimY() const
 	{
-		return mMaxDimY;
+		return mOptions.maxSizeY;
 	}
 
 	bool QuadBatch::usingPointSprites() const
 	{
-		return mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Points;
+		return mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points;
 	}
 
 	bool QuadBatch::usingTriangles() const
 	{
-		return mOptions.vertexOptions == QuadBatchOptions::VertexOptions::Triangles;
+		return mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Triangles;
 	}
 
 	bool QuadBatch::rotating() const
@@ -371,6 +361,26 @@ namespace mpp
 	bool QuadBatch::usingTextureAtlas() const
 	{
 		return mTextureAtlas;
+	}
+
+	bool QuadBatch::positionFixed() const
+	{
+		return false;
+	}
+
+	bool QuadBatch::rotationFixed() const
+	{
+		return !mOptions.rotate;
+	}
+
+	bool QuadBatch::texcoordsFixed() const
+	{
+		return mOptions.texcoordAttrib.fixedValues;
+	}
+
+	bool QuadBatch::colourFixed() const
+	{
+		return mOptions.colourAttrib.fixedValues;
 	}
 
 }

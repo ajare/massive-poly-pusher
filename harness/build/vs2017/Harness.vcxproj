@@ -19,6 +19,7 @@
     <ClInclude Include="..\..\include\Logger.h" />
     <ClInclude Include="..\..\include\Particle.h" />
     <ClInclude Include="..\..\include\ProgramOptions.h" />
+    <ClInclude Include="..\..\include\QuadBatchRenderer.h" />
     <ClInclude Include="..\..\include\sdl\InputManagerSDL.h" />
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
     <ClInclude Include="..\..\include\sdl\WindowSDL.h" />

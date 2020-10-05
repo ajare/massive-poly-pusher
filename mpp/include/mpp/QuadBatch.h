@@ -8,19 +8,21 @@ namespace mpp
 {
 	struct QuadBatchOptions
 	{
-		enum class VertexOptions
+		enum class PrimitiveOptions
 		{
 			Auto,
 			Points,
 			Triangles
 		};
 		
-		VertexOptions vertexOptions;
-		mpp::mesh::Vertex::DataType positionType;
-		BatchVertexAttribute texcoordAttrib;
-		BatchVertexAttribute colourAttrib;
-		bool useDiffuse;
-		bool rotate;
+		PrimitiveOptions primitiveOptions{ PrimitiveOptions::Auto };
+		mpp::mesh::Vertex::DataType positionType{ mpp::mesh::Vertex::DataType::Float };
+		BatchVertexAttribute texcoordAttrib{ mpp::mesh::Vertex::DataType::Float, false };
+		BatchVertexAttribute colourAttrib{ mpp::mesh::Vertex::DataType::Float, false };
+		bool useDiffuse{ false };
+		bool rotate{ false };
+		size_t maxSizeX{ 1 }, maxSizeY{ 1 };
+		size_t indexWidth{ 32 };
 	};
 
 	class _MPPAPI QuadBatch : public Batch
@@ -29,17 +31,11 @@ namespace mpp
 
 		bool mSameSize;
 
-		int mMaxDimX, mMaxDimY;
-
 		std::string mTexture;
 
 		bool mTextureAtlas;
 
 		float mPointSize;
-
-	protected:
-
-		size_t mIndexWidth;
 
 	private:
 
@@ -60,11 +56,8 @@ namespace mpp
 		QuadBatch(std::string const& name,
 			QuadBatchOptions const& options,
 			bool sameSize,
-			int maxDimX,
-			int maxDimY,
 			ResourcePtr texture,
 			bool textureAtlas,
-			size_t indexWidth,
 			size_t initialCapacity,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
@@ -72,11 +65,8 @@ namespace mpp
 		QuadBatch(std::string const& name,
 			QuadBatchOptions const& options,
 			bool sameSize,
-			int maxDimX,
-			int maxDimY,
 			ResourcePtr texture,
 			bool textureAtlas,
-			size_t indexWidth,
 			size_t initialCapacity,
 			std::string const& defaultVertexShader,
 			std::string const& defaultFragmentShader,
@@ -101,5 +91,13 @@ namespace mpp
 		bool usingTexture() const;
 
 		bool usingTextureAtlas() const;
+
+		bool positionFixed() const;
+
+		bool rotationFixed() const;
+
+		bool texcoordsFixed() const;
+
+		bool colourFixed() const;
 	};
 }

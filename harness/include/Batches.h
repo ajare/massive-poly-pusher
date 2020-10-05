@@ -3,7 +3,6 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/LineBatch.h>
-#include <mpp/QuadBatch.h>
 #include <mpp/CircleBatch.h>
 #include <mpp/TriangleBatch.h>
 #include <mpp/IndexedTriangleBatch.h>
@@ -23,12 +22,3 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatch, size_t count, float totalTime);
 
 size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circleBatch, size_t count, float totalTime);
-
-// QuadBatch
-mpp::QuadBatch* createQuadBatch(std::string const& name, std::string const& texture, size_t quadBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr);
-
-void setupQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count);
-
-size_t updateQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count, float totalTime);
-
-void renderQuadBatch(mpp::RenderSystem* renderSystem, mpp::QuadBatch* quadBatch, size_t count);
