@@ -80,6 +80,14 @@ namespace mpp
 		};
 
 		// Type definitions
+		struct DataTypeNone
+		{
+			static Vertex::DataType vertexDataType() { return Vertex::DataType::None; }
+			typedef void builtin_type;
+			
+			static size_t size() { return 0; }
+		};
+
 		struct DataTypeHalfFloat
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::HalfFloat; }

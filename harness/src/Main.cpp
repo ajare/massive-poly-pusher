@@ -400,7 +400,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			16
 		};
 
-		TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> quadData;
+		TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+			quadData(gRenderSystem, quadBatchCount);
+
 		QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte> 
 			quadBatchRenderer("TestQuads", 
 				quadParams,
@@ -419,10 +421,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			false
 		};
 
-		TestLineBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+		TestLineBatchDataProvider<mpp::mesh::DataTypeFloat>
 			lineData(gRenderSystem, lineBatchCount);
 
-		LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+		LineBatchRenderer<mpp::mesh::DataTypeFloat>
 			lineBatchRenderer("TestLines",
 				lineParams,
 				&lineData,
@@ -610,12 +612,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 
 				// Logic
-				//quadData.update(frameTime);
-				//quadBatchCount = quadBatchRenderer.update(quadBatchCount);
+				quadData.setNumQuads(quadBatchCount);
+				quadData.update(frameTime);
+				quadBatchCount = quadBatchRenderer.update(quadBatchCount);
 
 				lineData.setNumLines(lineBatchCount);
 				lineData.update(frameTime);
-
 				lineBatchCount = lineBatchRenderer.update(lineData.getNumLines());
 			}
 
@@ -688,7 +690,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->setProjection2dOrthographic();
 
-			//quadBatchRenderer.render();
+			quadBatchRenderer.render();
 			lineBatchRenderer.render();
 
 			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
