@@ -41,6 +41,7 @@
 #include "Logger.h"
 #include "Batches.h"
 #include "QuadBatchRenderer.h"
+#include "LineBatchRenderer.h"
 
 
 // Platform
@@ -366,25 +367,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// 2d batch objects
 		//
 		size_t circleBatchCount{ 1 };
-		size_t lineBatchCount{ 100 };
+		size_t lineBatchCount{ 4 };
 		size_t triBatchCount{ 32 };
 		size_t quadBatchCount{ 4 };
 
 		CircleBatch* circleBatch{ nullptr };
-		LineBatch* lineBatch{ nullptr };
 		IndexedTriangleBatch* triBatch{ nullptr };
-		QuadBatch* quadBatch{ nullptr };
 
 		circleBatch = createCircleBatch(
 			"TestCircles", 
 			circleBatchCount,
 			gRenderSystem, 
-			gResourceManager);
-		
-		lineBatch = createLineBatch(
-			"TestLines",
-			lineBatchCount,
-			gRenderSystem,
 			gResourceManager);
 		
 		triBatch = createIndexedTriangleBatch(
@@ -419,6 +412,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		quadBatchRenderer.create();
 		
+		LineBatchRendererParams lineParams
+		{
+			true,
+			true,
+			false
+		};
+
+		TestLineBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+			lineData(gRenderSystem, lineBatchCount);
+
+		LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+			lineBatchRenderer("TestLines",
+				lineParams,
+				&lineData,
+				lineBatchCount,
+				gRenderSystem,
+				gResourceManager);
+
+		lineBatchRenderer.create();
+
 		//
 		// Camera setup
 		//
@@ -597,8 +610,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 
 				// Logic
-				quadData.update(frameTime);
-				quadBatchCount = quadBatchRenderer.update(quadBatchCount);
+				//quadData.update(frameTime);
+				//quadBatchCount = quadBatchRenderer.update(quadBatchCount);
+
+				lineData.setNumLines(lineBatchCount);
+				lineData.update(frameTime);
+
+				lineBatchCount = lineBatchRenderer.update(lineData.getNumLines());
 			}
 
 			// Render scene
@@ -670,7 +688,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->setProjection2dOrthographic();
 
-			quadBatchRenderer.render();
+			//quadBatchRenderer.render();
+			lineBatchRenderer.render();
 
 			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
@@ -701,9 +720,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Clean up
 		//
 		delete circleBatch;
-		delete lineBatch;
 		delete triBatch;
-		delete quadBatch;
 	}
 	catch (mpp::MppException const& e)
 	{

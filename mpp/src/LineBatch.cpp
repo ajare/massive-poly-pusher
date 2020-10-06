@@ -35,13 +35,20 @@ namespace mpp
 	void LineBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
 		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout(false);
+		auto dynamicLayout = mSpecification.createVertexBufferAttributeLayout(false);
 
-		layout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
+		dynamicLayout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
 
 		if (mOptions.colourAttrib.dataType != mesh::Vertex::DataType::None)
 		{
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourAttrib.dataType, true);
+			mesh::VertexBufferAttributeLayout* colourLayout{ dynamicLayout };
+
+			if (mOptions.colourAttrib.fixedValues)
+			{
+				colourLayout = mSpecification.createVertexBufferAttributeLayout(true);
+			}
+
+			colourLayout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourAttrib.dataType, true);
 		}
 	}
 
@@ -102,8 +109,20 @@ namespace mpp
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	size_t LineBatch::getVertexCount(size_t primitiveCount)
+	size_t LineBatch::getVertexCount(size_t primitiveCount) const
 	{
 		return primitiveCount * 2;
 	}
+
+
+	bool LineBatch::positionFixed() const
+	{
+		return false;
+	}
+
+	bool LineBatch::colourFixed() const
+	{
+		return mOptions.colourAttrib.fixedValues;
+	}
+
 }

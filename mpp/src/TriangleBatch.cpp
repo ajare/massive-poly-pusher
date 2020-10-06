@@ -89,7 +89,7 @@ namespace mpp
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	size_t TriangleBatch::getVertexCount(size_t primitiveCount)
+	size_t TriangleBatch::getVertexCount(size_t primitiveCount) const
 	{
 		return primitiveCount * 3;
 	}

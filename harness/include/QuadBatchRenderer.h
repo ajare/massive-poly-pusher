@@ -196,15 +196,17 @@ public:
 	void create()
 	{
 		mBatch->load();
-		update(mBatch->getCapacity(), true);
+		update(mBatch->getCapacity());
 	}
 
-	size_t update(size_t count, bool updateFixed = false)
+	size_t update(size_t count)
 	{
 		size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+		bool newVertices{ false };
 		if (count > batchSize)
 		{
 			initStart = mBatch->getVertexCount(mBatch->getPrimitiveCount(batchSize));
+			newVertices = true;
 		}
 
 		mBatch->startUpdate(count);
@@ -213,26 +215,39 @@ public:
 		float radiusY = mBatch->getMaxDimY() / 2.0f;
 
 		auto posBuffer = (PosType::builtin_type*)mBatch->getAttributeData("POSITION").first;
-		auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(float);
+		auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
 
 		auto rotBuffer = (PosType::builtin_type*)mBatch->getAttributeData("ROTATION").first;
-		auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(float);
+		auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosType::builtin_type);
 
-		auto texBuffer = (TexType::builtin_type*)mBatch->getAttributeData("TEXCOORDS").first;
-		auto texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(float);
+		TexType::builtin_type* texBuffer;
+		size_t texStride{ 0 };
 
-		auto colBuffer = (uint8*)mBatch->getAttributeData("COLOUR").first;
-		auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(uint8);
+		if (mBatch->usingTexture())
+		{
+			texBuffer = (TexType::builtin_type*)mBatch->getAttributeData("TEXCOORDS").first;
+			texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
+		}
+
+		ColType::builtin_type* colBuffer;
+		size_t colStride{ 0 };
+
+		if (mBatch->usingColour())
+		{
+			colBuffer = (uint8*)mBatch->getAttributeData("COLOUR").first;
+			colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
+		}
 
 		size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 		for (size_t pOffset = 0, rOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
 		{
 			uint32 primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
+			bool newVertex = i >= initStart;
 
 			//
 			// Position data
 			//
-			if (updateFixed || !mBatch->positionFixed() || i >= initStart)
+			if (!mBatch->positionFixed() || newVertex)
 			{
 				PosType::builtin_type x, y;
 				mDataProvider->position(primitiveIndex, x, y);
@@ -280,7 +295,7 @@ public:
 			//
 			// Rotation data
 			//
-			if (updateFixed || !mBatch->rotationFixed() || i >= initStart)
+			if (!mBatch->rotationFixed() || newVertex)
 			{
 				PosType::builtin_type angle;
 				mDataProvider->angle(primitiveIndex, angle);
@@ -292,7 +307,7 @@ public:
 			//
 			// Texture data
 			//
-			if (updateFixed || !mBatch->texcoordsFixed() || i >= initStart)
+			if (!mBatch->texcoordsFixed() || newVertex)
 			{
 				if (mBatch->usingPointSprites())
 				{
@@ -368,7 +383,7 @@ public:
 			//
 			// Colour data
 			//
-			if (mBatch->usingColour() && (updateFixed || !mBatch->colourFixed() || i >= initStart))
+			if (mBatch->usingColour() && (!mBatch->colourFixed() || newVertex))
 			{
 				ColType::builtin_type red, green, blue, alpha;
 				mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
@@ -386,7 +401,7 @@ public:
 			cOffset += colStride;
 		}
 
-		mBatch->finishUpdate(count, updateFixed || (initStart != ~0u));
+		mBatch->finishUpdate(count, newVertices);
 		return mBatch->getCount();
 	}
 

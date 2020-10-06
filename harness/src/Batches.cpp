@@ -44,23 +44,6 @@ mpp::TriangleBatch* createTriangleBatch(string const& name, string const& textur
 	return triangleBatch;
 }
 
-mpp::LineBatch* createLineBatch(string const& name, size_t lineBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
-{
-	auto lineBatch = new mpp::LineBatch(
-		name,
-		{
-			mpp::mesh::Vertex::DataType::Float,
-			mpp::mesh::Vertex::DataType::UnsignedByte,
-			false
-		},
-		lineBatchCount,
-		renderSystem,
-		resourceMgr);
-
-	lineBatch->load();
-	return lineBatch;
-}
-
 mpp::CircleBatch* createCircleBatch(string const& name, size_t circleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr)
 {
 	auto circleBatch = new mpp::CircleBatch(
@@ -219,64 +202,6 @@ size_t updateIndexedTriangleBatch(mpp::RenderSystem* renderSystem, mpp::IndexedT
 
 	renderSystem->renderModelImmediate(*triBatch, false, &uniforms);
 	return triBatch->getCount();
-}
-
-size_t updateLineBatch(mpp::RenderSystem* renderSystem, mpp::LineBatch* lineBatch, size_t count, float totalTime)
-{
-	lineBatch->startUpdate(count);
-
-	auto posBuffer = (float*)lineBatch->getAttributeData("POSITION").first;
-	auto posStride = lineBatch->getAttributeData("POSITION").second / sizeof(float);
-
-	auto colBuffer = (uint8*)lineBatch->getAttributeData("COLOUR").first;
-	auto colStride = lineBatch->getAttributeData("COLOUR").second / sizeof(uint8);
-
-	float linesX = renderSystem->getWindowWidth() * 0.25f;
-	float linesW = renderSystem->getWindowWidth() * 0.5f;
-	float linesY = renderSystem->getWindowWidth() * 0.5f;
-	for (uint32 i = 0; i < count; ++i)
-	{
-		float y0 =
-			sinf(((float)i / count) * 6.2832f - totalTime) +
-			sinf(((float)i / (count / 2)) * 6.2832f + 1.2f - totalTime) +
-			sinf(((float)i / (count / 4)) * 6.2832f + 2.4f - totalTime) * 0.75f;
-
-		*(posBuffer + 0) = linesX + linesW * ((float)i / count);
-		*(posBuffer + 1) = linesY + 100 + y0 * 10;
-		*(colBuffer + 0) = 255;
-		*(colBuffer + 1) = 255;
-		*(colBuffer + 2) = 255;
-		*(colBuffer + 3) = 255;
-
-		posBuffer += posStride;
-		colBuffer += colStride;
-
-		float y1 =
-			cosf(((float)i / count) * 6.2832f - totalTime) +
-			sinf(((float)i / (count / 4)) * 6.2832f + 3.2f - totalTime) * 0.5f +
-			cosf(((float)i / (count / 3)) * 6.2832f + 5.4f - totalTime) * 0.5f;
-
-		*(posBuffer + 0) = linesX + linesW * ((float)i / count);
-		*(posBuffer + 1) = linesY - 100 - y1 * 10;
-		*(colBuffer + 0) = 255;
-		*(colBuffer + 1) = 255;
-		*(colBuffer + 2) = 255;
-		*(colBuffer + 3) = 255;
-
-		posBuffer += posStride;
-		colBuffer += colStride;
-	}
-
-	lineBatch->finishUpdate(count, false);
-
-	mpp::UniformCollection uniforms;
-	if (lineBatch->usingDiffuse())
-	{
-		uniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-	}
-
-	renderSystem->renderModelImmediate(*lineBatch, false, &uniforms);
-	return lineBatch->getCount();
 }
 
 size_t updateCircleBatch(mpp::RenderSystem* renderSystem, mpp::CircleBatch* circleBatch, size_t count, float totalTime)
