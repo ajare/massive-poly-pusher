@@ -9,6 +9,8 @@
 template<typename PosType, typename TexType, typename ColType>
 class QuadBatchDataProvider
 {
+	size_t mNumQuads{ 0 };
+
 public:
 
 	virtual void position(uint32 index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
@@ -20,6 +22,16 @@ public:
 	virtual void colour(uint32 index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 	virtual mpp::Colour diffuse() = 0;
+
+	void setNumQuads(size_t numQuads)
+	{
+		mNumQuads = numQuads;
+	}
+
+	size_t getNumQuads() const
+	{
+		return mNumQuads;
+	}
 
 	virtual void update(float frameTime) {}
 };
@@ -62,9 +74,17 @@ class TestQuadBatchDataProvider<
 	mpp::mesh::DataTypeFloat,
 	mpp::mesh::DataTypeUnsignedByte>
 {
+	mpp::RenderSystem* mRenderSystem{ nullptr };
+
 	float mTime{ 0.0f };
 
 public:
+
+	TestQuadBatchDataProvider(mpp::RenderSystem* renderSystem, size_t numQuads)
+		: mRenderSystem(renderSystem)
+	{
+		setNumQuads(numQuads);
+	}
 
 	void position(uint32 index, float& x, float& y)
 	{
