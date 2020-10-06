@@ -154,7 +154,7 @@ namespace mpp
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	size_t QuadBatch::getVertexCount(size_t primitiveCount)
+	size_t QuadBatch::getVertexCount(size_t primitiveCount) const
 	{
 		// Assume that if not using point sprites, primitiveCount must be a
 		// multiple of 2.
@@ -315,7 +315,6 @@ namespace mpp
 				mesh::VertexBufferStorageType::Dynamic,
 				mPointSize);
 		}
-
 
 		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{

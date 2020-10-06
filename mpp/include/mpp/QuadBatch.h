@@ -74,7 +74,7 @@ namespace mpp
 
 		size_t getPrimitiveCount(size_t objectCount) const;
 
-		size_t getVertexCount(size_t primitiveCount);
+		size_t getVertexCount(size_t primitiveCount) const;
 
 		int getMaxDimX() const;
 

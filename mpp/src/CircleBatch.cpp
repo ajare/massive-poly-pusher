@@ -182,7 +182,7 @@ namespace mpp
 		return objectCount * (usingPointSprites() ? 1 : 2);
 	}
 
-	size_t CircleBatch::getVertexCount(size_t primitiveCount)
+	size_t CircleBatch::getVertexCount(size_t primitiveCount) const
 	{
 		// If using triangles, we expect primitiveCount to be a multiple of 2
 		return primitiveCount * (usingPointSprites() ? 1 : 2);

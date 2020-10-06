@@ -84,7 +84,7 @@ namespace mpp
 
 		virtual size_t getPrimitiveCount(size_t objectCount) const;
 
-		virtual size_t getVertexCount(size_t primitiveCount) = 0;
+		virtual size_t getVertexCount(size_t primitiveCount) const = 0;
 
 		void startUpdate(size_t minimumCount);
 

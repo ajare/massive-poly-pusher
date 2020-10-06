@@ -37,7 +37,7 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		int getVertexCount(int primitiveCount);
+		int getVertexCount(int primitiveCount) const;
 
 		uint8* getIndexData();
 	};

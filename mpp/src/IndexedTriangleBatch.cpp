@@ -88,7 +88,7 @@ namespace mpp
 	 * Get the number of vertices required, given the number of primitives.
 	 *
 	 */
-	int IndexedTriangleBatch::getVertexCount(int primitiveCount)
+	int IndexedTriangleBatch::getVertexCount(int primitiveCount) const
 	{
 		return mVertexCountFn(primitiveCount);
 	}
