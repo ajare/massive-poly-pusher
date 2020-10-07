@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\Batches.h" />
     <ClInclude Include="..\..\include\Helper.h" />
-    <ClInclude Include="..\..\include\IndexedTriangleBatchRenderer.h" />
     <ClInclude Include="..\..\include\Input.h" />
     <ClInclude Include="..\..\include\InputManager.h" />
     <ClInclude Include="..\..\include\LineBatchRenderer.h" />

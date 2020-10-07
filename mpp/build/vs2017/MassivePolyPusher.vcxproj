@@ -27,8 +27,6 @@
     <ClInclude Include="..\..\include\mpp\FileProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\Font.h" />
     <ClInclude Include="..\..\include\mpp\GLErrorCheck.h" />
-    <ClInclude Include="..\..\include\mpp\IndexedTriangleBatch.h" />
-    <ClInclude Include="..\..\include\mpp\IndexedTriangleBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\InternalFont.h" />
     <ClInclude Include="..\..\include\mpp\LineBatch.h" />
     <ClInclude Include="..\..\include\mpp\Logger.h" />
@@ -88,7 +86,6 @@
     <ClCompile Include="..\..\src\FileProgramStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
     <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
-    <ClCompile Include="..\..\src\IndexedTriangleBatch.cpp" />
     <ClCompile Include="..\..\src\InternalFont.cpp" />
     <ClCompile Include="..\..\src\LineBatch.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />

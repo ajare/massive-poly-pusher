@@ -43,7 +43,6 @@
 #include "QuadBatchRenderer.h"
 #include "LineBatchRenderer.h"
 #include "TriangleBatchRenderer.h"
-#include "IndexedTriangleBatchRenderer.h"
 
 // Platform
 #include "sdl/WindowSDL.h"
