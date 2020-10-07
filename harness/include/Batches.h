@@ -5,7 +5,6 @@
 #include <mpp/LineBatch.h>
 #include <mpp/CircleBatch.h>
 #include <mpp/TriangleBatch.h>
-#include <mpp/IndexedTriangleBatch.h>
 
 mpp::CircleBatch* createCircleBatch(std::string const& name, size_t circleBatchCount, mpp::RenderSystem* renderSystem, mpp::ResourceManager *resourceMgr);
 
