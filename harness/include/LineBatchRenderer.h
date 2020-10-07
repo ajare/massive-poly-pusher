@@ -259,14 +259,8 @@ public:
 		auto posBuffer = (PosType::builtin_type*)mBatch->getAttributeData("POSITION").first;
 		auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
 
-		ColType::builtin_type* colBuffer{ nullptr };
-		size_t colStride{ 0 };
-
-		if (mBatch->usingColour())
-		{
-			colBuffer = (ColType::builtin_type*)mBatch->getAttributeData("COLOUR").first;
-			colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
-		}
+		auto colBuffer = (ColType::builtin_type*)mBatch->getAttributeData("COLOUR").first;
+		auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
 
 		size_t lineCount = mBatch->getPrimitiveCount(count);
 		for (size_t pOffset = 0, cOffset = 0, i = 0; i < lineCount; ++i)
@@ -290,11 +284,15 @@ public:
 				posBuffer[pOffset + 1] = y1;
 				pOffset += posStride;
 			}
+			else
+			{
+				pOffset += posStride * 2;
+			}
 
 			//
 			// Colour data
 			//
-			if (mBatch->usingColour() && (!mBatch->colourFixed() || newVertex))
+			if (!mBatch->colourFixed() || newVertex)
 			{
 				ColType::builtin_type red, green, blue, alpha;
 				mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
@@ -416,6 +414,10 @@ public:
 				posBuffer[pOffset + 0] = x1;
 				posBuffer[pOffset + 1] = y1;
 				pOffset += posStride;
+			}
+			else
+			{
+				pOffset += posStride * 2;
 			}
 		}
 

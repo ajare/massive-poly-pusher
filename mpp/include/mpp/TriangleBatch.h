@@ -22,7 +22,7 @@ namespace mpp
 
 	protected:
 
-		std::string mTexture;
+		ResourcePtr mTexture;
 
 	private:
 
@@ -40,13 +40,22 @@ namespace mpp
 
 		TriangleBatch(std::string const& name,
 			TriangleBatchOptions const& options,
+			ResourcePtr texture,
 			size_t initialCapacity,
-			std::string const& texture,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
 		size_t getPrimitiveCount(size_t objectCount) const;
 
 		size_t getVertexCount(size_t primitiveCount) const;
+
+		bool usingTexture() const;
+
+		bool positionFixed() const;
+
+		bool texcoordsFixed() const;
+
+		bool colourFixed() const;
+
 	};
 }

@@ -30,9 +30,9 @@ namespace mpp
 
 		IndexedTriangleBatch(std::string const& name,
 			TriangleBatchOptions const& options,
+			ResourcePtr texture,
 			int indexWidth,
 			size_t initialCapacity,
-			std::string const& texture,
 			VertexCountFunction vertexCountFn,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);

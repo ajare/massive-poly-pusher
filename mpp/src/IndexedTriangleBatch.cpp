@@ -16,13 +16,13 @@ namespace mpp
 	 */
 	IndexedTriangleBatch::IndexedTriangleBatch(string const& name,
 		TriangleBatchOptions const& options,
+		ResourcePtr texture,
 		int indexWidth,
 		size_t initialCapacity,
-		string const& texture,
 		VertexCountFunction vertexCountFn,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: TriangleBatch(name, options, initialCapacity, texture, renderSystem, resourceMgr) 
+		: TriangleBatch(name, options, texture, initialCapacity, renderSystem, resourceMgr)
 		, mIndexWidth(indexWidth)
 		, mVertexCountFn(vertexCountFn)
 	{
@@ -43,7 +43,12 @@ namespace mpp
 		int primitiveCount = getPrimitiveCount(getCapacity());
 
 		createMeshSpecification(primitiveType);
-		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
+
+		uint32 flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
+			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
+			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
+
+		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture->getName(), flags);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		const int indexStride = 3 * (mIndexWidth / 8);
@@ -61,7 +66,8 @@ namespace mpp
 
 		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			createVertexBuffer(i, mesh, vertexCount, false);
+			auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			createVertexBuffer(i, mesh, vertexCount, layout.isStatic());
 		}
 
 		setSpecificationPointers(mesh);
