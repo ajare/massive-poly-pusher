@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\Batches.h" />
     <ClInclude Include="..\..\include\Helper.h" />
+    <ClInclude Include="..\..\include\IndexedTriangleBatchRenderer.h" />
     <ClInclude Include="..\..\include\Input.h" />
     <ClInclude Include="..\..\include\InputManager.h" />
     <ClInclude Include="..\..\include\LineBatchRenderer.h" />
@@ -24,6 +25,7 @@
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
     <ClInclude Include="..\..\include\sdl\WindowSDL.h" />
     <ClInclude Include="..\..\include\Timer.h" />
+    <ClInclude Include="..\..\include\TriangleBatchRenderer.h" />
     <ClInclude Include="..\..\include\Window.h" />
   </ItemGroup>
   <ItemGroup>
