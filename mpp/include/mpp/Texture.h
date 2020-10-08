@@ -34,7 +34,7 @@ namespace mpp
 
 		virtual int getBitsPerPixel() const;
 
-		void bind(int unit);
+		virtual void bind(int unit);
 
 		void setSortId(uint32 sortId);
 

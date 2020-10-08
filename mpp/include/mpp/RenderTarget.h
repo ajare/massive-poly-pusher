@@ -24,10 +24,6 @@ namespace mpp
 
 		RenderTarget(int width, int height);
 
-		virtual ~RenderTarget();
-
-		void setDimensions(int width, int height);
-
 		virtual int getWidth() const;
 
 		virtual int getHeight() const;

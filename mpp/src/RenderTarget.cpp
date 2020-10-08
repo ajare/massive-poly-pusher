@@ -26,25 +26,6 @@ namespace mpp
 	}
 
 	/*
-	 * Destructor.
-	 *
-	 */
-	RenderTarget::~RenderTarget()
-	{
-	}
-
-	/*
-	 * Set dimensions.
-	 *
-	 */
-	void RenderTarget::setDimensions(int width, int height)
-	{
-		mWidth = width;
-		mHeight = height;
-		GL_CHECK(glViewport(0, 0, mWidth, mHeight));
-	}
-
-	/*
 	 * Get render target width.
 	 *
 	 */

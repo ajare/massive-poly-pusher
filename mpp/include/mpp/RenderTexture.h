@@ -15,8 +15,14 @@
 
 namespace mpp
 {
-	class _MPPAPI RenderTexture : public RenderTarget
+	class _MPPAPI RenderTexture : public RenderTarget, public Texture
 	{
+		RenderSystem* mRenderSystem{ nullptr };
+
+		bool mUseDepthBuffer;
+
+		size_t mNumAttachments;
+
 		GLuint mFrameBuffer;
 
 		GLuint mDepthBuffer;
@@ -29,13 +35,29 @@ namespace mpp
 
 		void activate();
 
+	protected:
+
+		void createImpl();
+
+		void destroyImpl();
+
+		void loadImpl();
+
+		void unloadImpl();
+
 	public:
 
-		RenderTexture(int width, int height, int numAttachments, bool depthBuffer, RenderSystem* renderSystem);
+		RenderTexture(std::string const& name, int width, int height, size_t numAttachments, bool depthBuffer, RenderSystem* renderSystem);
 
 		~RenderTexture();
 
+		int getWidth() const;
+
+		int getHeight() const;
+
 		int getBitsPerPixel() const;
+
+		void bind(int unit);
 
 		void bind(int attachment, int unit);
 

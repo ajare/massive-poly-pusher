@@ -13,15 +13,57 @@ namespace mpp
 	* Constructor.
 	*
 	*/
-	RenderTexture::RenderTexture(int width, int height, int numAttachments, bool depthBuffer, RenderSystem* renderSystem)
+	RenderTexture::RenderTexture(string const& name, int width, int height, size_t numAttachments, bool depthBuffer, RenderSystem* renderSystem)
 		: RenderTarget(width, height)
+		, Texture(name, renderSystem, nullptr, nullptr)
+		, mRenderSystem(renderSystem)
+		, mUseDepthBuffer(depthBuffer)
+		, mNumAttachments(numAttachments)
+		, mFrameBuffer(0)
+		, mDepthBuffer(0)
 	{
+	}
+
+	/*
+	 * Destructor.
+	 *
+	 */
+	RenderTexture::~RenderTexture()
+	{
+		destroy();
+	}
+
+	/*
+	 * Create the data required.
+	 *
+	 */
+	void RenderTexture::createImpl()
+	{
+	}
+
+	/*
+	 * Destroy the texture data.
+	 *
+	 */
+	void RenderTexture::destroyImpl()
+	{
+	}
+
+	/*
+	 * Create OpenGL rendertexture.
+	 *
+	 */
+	void RenderTexture::loadImpl()
+	{
+		auto width = getWidth();
+		auto height = getHeight();
+
 		// Create framebuffer
 		GL_CHECK(glGenFramebuffers(1, &mFrameBuffer));
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
 
 		// Create textures
-		for (int i = 0; i < numAttachments; ++i)
+		for (size_t i = 0; i < mNumAttachments; ++i)
 		{
 			GLuint texId;
 			GL_CHECK(glGenTextures(1, &texId));
@@ -38,7 +80,7 @@ namespace mpp
 		}
 
 		// Create depth buffer
-		if (depthBuffer)
+		if (mDepthBuffer)
 		{
 			GL_CHECK(glGenRenderbuffers(1, &mDepthBuffer));
 			GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer));
@@ -51,15 +93,15 @@ namespace mpp
 			mDepthBuffer = 0;
 		}
 
-		GLenum* drawBuffers = new GLenum[numAttachments]; 
-		for (int i = 0; i < numAttachments; ++i)
+		GLenum* drawBuffers = new GLenum[mNumAttachments];
+		for (size_t i = 0; i < mNumAttachments; ++i)
 		{
 			GLenum attachment = GL_COLOR_ATTACHMENT0 + i;
 			GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, mTextureIds[i], 0));
 			drawBuffers[i] = attachment;
 		}
 
-		GL_CHECK(glDrawBuffers(numAttachments, drawBuffers));
+		GL_CHECK(glDrawBuffers(mNumAttachments, drawBuffers));
 		delete[] drawBuffers;
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -71,12 +113,16 @@ namespace mpp
 	}
 
 	/*
-	 * Destructor.
+	 * Destroy the OpenGL rendertexture.
 	 *
 	 */
-	RenderTexture::~RenderTexture()
+	void RenderTexture::unloadImpl()
 	{
-		GL_CHECK(glDeleteFramebuffers(1, &mFrameBuffer));
+		if (mFrameBuffer != 0)
+		{
+			GL_CHECK(glDeleteFramebuffers(1, &mFrameBuffer));
+			mFrameBuffer = 0;
+		}
 	}
 
 	/*
@@ -99,12 +145,39 @@ namespace mpp
 	}
 
 	/*
+	 * Get render target width.
+	 *
+	 */
+	int RenderTexture::getWidth() const
+	{
+		return RenderTarget::getWidth();
+	}
+
+	/*
+	 * Get render target height.
+	 *
+	 */
+	int RenderTexture::getHeight() const
+	{
+		return RenderTarget::getHeight();
+	}
+
+	/*
 	 * Override Texture functionality.
 	 *
 	 */
 	int RenderTexture::getBitsPerPixel() const
 	{
 		return 32;
+	}
+
+	/*
+	 * Override Texture functionality.
+	 *
+	 */
+	void RenderTexture::bind(int unit)
+	{
+		bind(0, unit);
 	}
 
 	/*
