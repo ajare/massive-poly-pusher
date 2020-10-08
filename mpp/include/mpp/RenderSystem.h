@@ -284,8 +284,6 @@ namespace mpp
 
 		void setDisplay(int width, int height);
 
-		void updateDisplay(int width, int height);
-
 		void logMessage(std::string const& message);
 
 		// Render targets and textures
@@ -293,7 +291,7 @@ namespace mpp
 
 		void renderToScreen();
 
-		RenderTargetPtr createRenderTexture(int width, int height, int numAttachments, bool depthBuffer);
+		RenderTargetPtr createRenderTexture(std::string const& name, int width, int height, int numAttachments, bool depthBuffer);
 
 		TextureTile const& createTextureTile(std::string const& name, ResourcePtr texture, int offX, int offY, float u0, float v0, float u1, float v1);
 

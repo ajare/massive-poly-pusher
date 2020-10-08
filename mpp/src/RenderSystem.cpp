@@ -722,12 +722,12 @@ namespace mpp
 		mFullscreenQuad = resourceMgr->getResource("__mpp_mesh_fullscreen_quad__");
 
 		// Render targets
-		mSceneTarget = createRenderTexture(getWindowWidth(), getWindowHeight(), 1, true);
-		mFullscreenFxTarget = createRenderTexture(getWindowWidth(), getWindowHeight(), 1, false);
+		mSceneTarget = createRenderTexture("SceneTarget", getWindowWidth(), getWindowHeight(), 1, true);
+		mFullscreenFxTarget = createRenderTexture("FullscreenFxTarget", getWindowWidth(), getWindowHeight(), 1, false);
 
 		// Blur textures: should use cascading sizes based on blur kernel size.
-		mBlur1Target = createRenderTexture(getWindowWidth(), getWindowHeight(), 1, false);
-		mBlur2Target = createRenderTexture(getWindowWidth(), getWindowHeight(), 1, false);
+		mBlur1Target = createRenderTexture("Blur1Target", getWindowWidth(), getWindowHeight(), 1, false);
+		mBlur2Target = createRenderTexture("Blur2Target", getWindowWidth(), getWindowHeight(), 1, false);
 		
 		// Set none as active
 		mwActiveProgram = nullptr;
@@ -842,18 +842,6 @@ namespace mpp
 	}
 
 	/*
-	 * Update the current render target.
-	 *
-	 */
-	void RenderSystem::updateDisplay(int width, int height)
-	{
-		mWindowWidth = width;
-		mWindowHeight = height;
-
-		mRenderTarget->setDimensions(width, height);
-	}
-
-	/*
 	 * Write a message to logfile.
 	 *
 	 */
@@ -900,9 +888,12 @@ namespace mpp
 	 * Create a new render texture.
 	 *
 	 */
-	RenderTargetPtr RenderSystem::createRenderTexture(int width, int height, int numAttachments, bool depthBuffer)
+	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, int width, int height, int numAttachments, bool depthBuffer)
 	{
-		return RenderTargetPtr(new RenderTexture(width, height, numAttachments, depthBuffer, this));
+		auto rt = new RenderTexture(name, width, height, numAttachments, depthBuffer, this);
+		rt->load();
+
+		return RenderTargetPtr(rt);
 	}
 
 	/*
