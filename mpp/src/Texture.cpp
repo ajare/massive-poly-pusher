@@ -174,29 +174,4 @@ namespace mpp
 		return mSortId;
 	}
 
-	/*
-	 * Set a texel.
-	 *
-	 */
-	void Texture::setTexel(int x, int y, uint8 red, uint8 green, uint8 blue)
-	{
-		uint8 data[4];
-		data[0] = red;
-		data[1] = green;
-		data[2] = blue;
-		data[3] = 255;
-
-		glBindTexture(GL_TEXTURE_2D, getId());
-
-		if (mBitsPerPixel == 24)
-		{
-			GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, data));
-		}
-		else if (mBitsPerPixel == 32)
-		{
-			GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data));
-		}
-
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-	}
 }

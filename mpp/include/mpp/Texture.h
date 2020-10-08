@@ -39,8 +39,6 @@ namespace mpp
 		void setSortId(uint32 sortId);
 
 		uint32 getSortId() const;
-
-		void setTexel(int x, int y, uint8 red, uint8 green, uint8 blue);
 	};
 
 }
