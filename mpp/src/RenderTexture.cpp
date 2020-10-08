@@ -2,6 +2,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderTexture.h"
+#include "mpp/RenderTextureStream.h"
 #include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
 
@@ -13,12 +14,12 @@ namespace mpp
 	* Constructor.
 	*
 	*/
-	RenderTexture::RenderTexture(string const& name, int width, int height, size_t numAttachments, bool depthBuffer, RenderSystem* renderSystem)
-		: RenderTarget(width, height)
-		, Texture(name, renderSystem, nullptr, nullptr)
+	RenderTexture::RenderTexture(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
+		: RenderTarget(0, 0)
+		, Texture(name, renderSystem, resourceMgr, resourceStream)
 		, mRenderSystem(renderSystem)
-		, mUseDepthBuffer(depthBuffer)
-		, mNumAttachments(numAttachments)
+		, mUseDepthBuffer(false)
+		, mNumAttachments(0)
 		, mFrameBuffer(0)
 		, mDepthBuffer(0)
 	{
@@ -39,6 +40,17 @@ namespace mpp
 	 */
 	void RenderTexture::createImpl()
 	{
+		RenderTextureStream* rtStr = dynamic_cast<RenderTextureStream*>(getResourceStream().get());
+		if (!rtStr)
+		{
+			THROW_MPP("Could not cast to type 'RenderTextureStream'.", __LINE__, __FILE__, __func__);
+		}
+
+		RenderTarget::mWidth = rtStr->getWidth();
+		RenderTarget::mHeight = rtStr->getHeight();
+
+		mUseDepthBuffer = rtStr->useDepthBuffer();
+		mNumAttachments = rtStr->getNumAttachments();
 	}
 
 	/*

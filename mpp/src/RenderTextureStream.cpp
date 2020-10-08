@@ -1,0 +1,67 @@
+#include <cassert>
+
+#include "mpp/RenderTextureStream.h"
+
+using namespace std;
+
+namespace mpp
+{
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	RenderTextureStream::RenderTextureStream(int width, int height, bool useDepthBuffer, size_t numAttachments)
+		: mWidth(width)
+		, mHeight(height)
+		, mUseDepthBuffer(useDepthBuffer)
+		, mNumAttachments(numAttachments)
+	{
+	}
+
+	/*
+	 * Load data.  Already loaded in constructor!
+	 *
+	 */
+	void RenderTextureStream::loadImpl()
+	{
+	}
+
+	/*
+	 * Get resource stream type.
+	 *
+	 */
+	string RenderTextureStream::getType()
+	{
+		return "RenderTexture";
+	}
+
+	/*
+	 * Get texture width.
+	 *
+	 */
+	int RenderTextureStream::getWidth() const
+	{
+		return mWidth;
+	}
+
+	/*
+	 * Get texture height.
+	 *
+	 */
+	int RenderTextureStream::getHeight() const
+	{
+		return mHeight;
+	}
+
+	bool RenderTextureStream::useDepthBuffer() const
+	{
+		return mUseDepthBuffer;
+	}
+
+	size_t RenderTextureStream::getNumAttachments() const
+	{
+		return mNumAttachments;
+	}
+
+}

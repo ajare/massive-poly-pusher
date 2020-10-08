@@ -54,6 +54,7 @@
     <ClInclude Include="..\..\include\mpp\RenderSystem.h" />
     <ClInclude Include="..\..\include\mpp\RenderTarget.h" />
     <ClInclude Include="..\..\include\mpp\RenderTexture.h" />
+    <ClInclude Include="..\..\include\mpp\RenderTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\Resource.h" />
     <ClInclude Include="..\..\include\mpp\ResourceManager.h" />
     <ClInclude Include="..\..\include\mpp\ResourceStream.h" />
@@ -109,6 +110,7 @@
     <ClCompile Include="..\..\src\RenderSystem.cpp" />
     <ClCompile Include="..\..\src\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\RenderTexture.cpp" />
+    <ClCompile Include="..\..\src\RenderTextureStream.cpp" />
     <ClCompile Include="..\..\src\Resource.cpp" />
     <ClCompile Include="..\..\src\ResourceManager.cpp" />
     <ClCompile Include="..\..\src\ResourceStream.cpp" />
