@@ -136,6 +136,26 @@ namespace mpp
 	}
 
 	template<>
+	inline ResourcePtr ResourceManager::createResource<RenderTexture>(std::string const& name, ResourceStreamPtr resourceStream)
+	{
+		uint64 maxBits = std::min<uint64>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
+		if (msSortableTextureId == (uint32)(1 << maxBits))
+		{
+			std::string errMsg = utils::StringUtils::format("Cannot create RenderTexture resource '{}'.  Limit reached!", name);
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		auto resourcePtr = createResourceImpl<RenderTexture>(name, resourceStream);
+
+		RenderTexture* rt = ((RenderTexture*)resourcePtr.get());
+
+		rt->setSortId(msSortableTextureId++);
+		mSortableTextures.push_back(rt);
+
+		return resourcePtr;
+	}
+
+	template<>
 	inline ResourcePtr ResourceManager::createResource<Program>(std::string const& name, ResourceStreamPtr resourceStream)
 	{
 		if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))

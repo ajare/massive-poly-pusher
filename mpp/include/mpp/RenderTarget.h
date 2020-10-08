@@ -12,6 +12,8 @@ namespace mpp
 	{
 		friend class RenderSystem;
 
+	protected:
+
 		int mWidth, mHeight;
 
 	private:

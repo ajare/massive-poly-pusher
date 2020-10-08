@@ -47,7 +47,7 @@ namespace mpp
 
 	public:
 
-		RenderTexture(std::string const& name, int width, int height, size_t numAttachments, bool depthBuffer, RenderSystem* renderSystem);
+		RenderTexture(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
 		~RenderTexture();
 
