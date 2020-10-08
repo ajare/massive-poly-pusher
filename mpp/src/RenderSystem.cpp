@@ -832,6 +832,11 @@ namespace mpp
 		mWindowWidth = width;
 		mWindowHeight = height;
 
+		if (mScreen)
+		{
+			mScreen.reset();
+		}
+
 		mScreen = RenderTargetPtr(new Screen(width, height));
 		setRenderTarget(mScreen);
 	}
