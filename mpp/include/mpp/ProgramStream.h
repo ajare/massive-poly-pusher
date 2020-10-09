@@ -26,5 +26,7 @@ namespace mpp
 		std::string const& getVertexSource() const;
 
 		std::string const& getFragmentSource() const;
+
+		std::string getConcatenatedSource();
 	};
 }

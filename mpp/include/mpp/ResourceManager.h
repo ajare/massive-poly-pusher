@@ -16,6 +16,7 @@
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
 #include "mpp/TextureAtlas.h"
+#include "mpp/ProgramStream.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -26,7 +27,7 @@ namespace mpp
 	{
 		std::map<std::string, ResourcePtr> mResources;
 
-		std::map<uint32, ResourcePtr> mDefaultPrograms;
+		std::map<std::string, ResourcePtr> mProgramCache;
 
 		RenderSystem* mwRenderSystem;
 
@@ -158,6 +159,17 @@ namespace mpp
 	template<>
 	inline ResourcePtr ResourceManager::createResource<Program>(std::string const& name, ResourceStreamPtr resourceStream)
 	{
+		// See whether this program has already been created
+		auto programStream = dynamic_cast<ProgramStream*>(resourceStream.get());
+		auto fullSource = programStream->getConcatenatedSource();
+
+		auto createdProgram = mProgramCache.find(fullSource);
+		if (createdProgram != mProgramCache.end())
+		{
+			return createdProgram->second;
+		}
+
+		// Else create program
 		if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
 		{
 			std::string errMsg = utils::StringUtils::format("Cannot create Program resource '{}'.  Limit reached!", name);
@@ -170,6 +182,8 @@ namespace mpp
 		
 		p->setSortId(msSortableProgramId++);
 		mSortablePrograms.push_back(p);
+
+		mProgramCache[fullSource] = resourcePtr;
 
 		return resourcePtr;
 	}
