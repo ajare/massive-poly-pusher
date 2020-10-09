@@ -375,16 +375,6 @@ namespace mpp
 
 	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
 	{
-		// Calculate hash
-		uint32 specHash = spec.getHashCode() | flags;
-
-		// Does it already exist?
-		auto createdProgram = mDefaultPrograms.find(specHash);
-		if (createdProgram != mDefaultPrograms.end())
-		{
-			return createdProgram->second;
-		}
-
 		auto parser = make_shared<program::Parser>();
 
 		parser->setMeshSpecification(spec);
@@ -440,11 +430,14 @@ namespace mpp
 			specName += "_" + descriptor;
 		}
 
+		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
+		// between attribute type).
+		specName += "_";
+		specName += utils::StringUtils::toString(mProgramCache.size() + 1);
+
 		specName += "__";
 
-
 		auto res = createResource<Program>(specName, ResourceStreamPtr(ps));
-		mDefaultPrograms[specHash] = res;
 
 		if (load)
 		{

@@ -61,4 +61,14 @@ namespace mpp
 		return mFragmentSource;
 	}
 
+	/*
+	 * Get all source concatenated 
+	 *
+	 */
+	string ProgramStream::getConcatenatedSource()
+	{
+		load();
+		return getVertexSource() + getFragmentSource();
+	}
+
 }
