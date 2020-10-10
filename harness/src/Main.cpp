@@ -366,19 +366,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// 2d batch objects
 		//
-		size_t circleBatchCount{ 1 };
 		size_t lineBatchCount{ 4 };
 		size_t triangleBatchCount{ 32 };
 		size_t quadBatchCount{ 4 };
 
-		CircleBatch* circleBatch{ nullptr };
+		/*
+		To have a quad batch which uses a rendertexture (eg for a custom image), do the following:
+		- Create a subclass of TextureRenderer, which may have various Renderers, eg TriangleBatchRenderer
+		  which will take a DataProvider.
+		  
+		  Initialisation:
+		  - Instantiate TextureRenderer subclass
+		  - Instantiate QuadBatchDataProvider subclass
+		  - Instantiate QuadBatchRenderer, passing in the two classes
 
-		circleBatch = createCircleBatch(
-			"TestCircles",
-			circleBatchCount,
-			gRenderSystem,
-			gResourceManager);
+		  Update:
+		  - Update the time on the TextureRenderer if you want an animated texture
+		  - Set the number of quads on the QuadBatchDataProvider
+		  - Update the time on the QuadBatchDataProvider
+		  - Update the QuadBatchRenderer
 
+		  Render:
+		    - TextureRenderer::updateRenderTexture(QuadBatchRenderer::getBatch()::getTexture()) if you want
+			  an animated texture
+			- QuadBatchRenderer::render()
+		*/
 		auto circleRenderer = make_shared<CircleRenderer>("Circles", gRenderSystem, gResourceManager);
 		
 		QuadBatchRendererParams quadParams(
@@ -513,14 +525,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (gInputMgr->keyPressed(Key_O))
 			{
-				circleBatchCount++;
 				lineBatchCount++;
 				triangleBatchCount++;
 				quadBatchCount++;
 			}
 			if (gInputMgr->keyPressed(Key_P))
 			{
-				circleBatchCount--; if (circleBatchCount == ~0u) circleBatchCount = 0;
 				lineBatchCount--; if (lineBatchCount == ~0u) lineBatchCount = 0;
 				triangleBatchCount--; if (triangleBatchCount == ~0u) triangleBatchCount = 0;
 				quadBatchCount--; if (quadBatchCount == ~0u) quadBatchCount = 0;
@@ -718,7 +728,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
-			//circleBatchCount = updateCircleBatch(gRenderSystem, circleBatch, circleBatchCount, totalTime);
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
@@ -744,7 +753,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// Clean up
 		//
-		delete circleBatch;
 	}
 	catch (mpp::MppException const& e)
 	{
