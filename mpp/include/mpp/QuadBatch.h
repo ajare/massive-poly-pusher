@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "mpp/Batch.h"
+#include "mpp/TextureRenderer.h"
 
 namespace mpp
 {
@@ -33,11 +34,13 @@ namespace mpp
 
 		ResourcePtr mTexture;
 
-		bool mTextureAtlas;
+		TextureRendererPtr mTextureRenderer;
 
 		float mPointSize;
 
 	private:
+
+		void setPrimitiveOptions();
 
 		bool indexedVertices() const;
 
@@ -68,7 +71,40 @@ namespace mpp
 			size_t initialCapacity,
 			std::string const& defaultVertexShader,
 			std::string const& defaultFragmentShader,
-			std::string const& descriptor,
+			RenderSystem* renderSystem,
+			ResourceManager* resourceMgr);
+
+		QuadBatch(std::string const& name,
+			QuadBatchOptions const& options,
+			bool sameSize,
+			TextureRendererPtr textureRenderer,
+			size_t initialCapacity,
+			RenderSystem* renderSystem,
+			ResourceManager* resourceMgr);
+
+		QuadBatch(std::string const& name,
+			QuadBatchOptions const& options,
+			bool sameSize,
+			TextureRendererPtr textureRenderer,
+			size_t initialCapacity,
+			std::string const& defaultVertexShader,
+			std::string const& defaultFragmentShader,
+			RenderSystem* renderSystem,
+			ResourceManager* resourceMgr);
+
+		QuadBatch(std::string const& name,
+			QuadBatchOptions const& options,
+			bool sameSize,
+			size_t initialCapacity,
+			RenderSystem* renderSystem,
+			ResourceManager* resourceMgr);
+
+		QuadBatch(std::string const& name,
+			QuadBatchOptions const& options,
+			bool sameSize,
+			size_t initialCapacity,
+			std::string const& defaultVertexShader,
+			std::string const& defaultFragmentShader,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
@@ -97,5 +133,7 @@ namespace mpp
 		bool texcoordsFixed() const;
 
 		bool colourFixed() const;
+
+		ResourcePtr getTexture();
 	};
 }

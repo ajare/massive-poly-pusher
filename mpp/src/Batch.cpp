@@ -116,7 +116,7 @@ namespace mpp
 		mMeshes[0]->setNumPrimitives(numPrimitives);
 	}
 
-	ResourcePtr Batch::createMaterial(string const& name, string const& texture, uint32 programFlags)
+	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32 programFlags)
 	{
 		auto resourceMgr = getResourceManager();
 		auto programResource = resourceMgr->getOrCreateDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
@@ -124,7 +124,7 @@ namespace mpp
 		return createMaterial(name, programResource, texture, programFlags);
 	}
 
-	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr program, string const& texture, uint32 programFlags)
+	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr program, ResourcePtr texture, uint32 programFlags)
 	{
 		auto resourceMgr = getResourceManager();
 
@@ -132,7 +132,7 @@ namespace mpp
 
 		matStream->setProgram(program->getName());
 
-		matStream->setTexture("TEX1", texture);
+		matStream->setTexture("TEX1", texture ? texture->getName() : "__mpp_tex_none__");
 
 		auto materialResource = resourceMgr->getResource(name, true);
 		if (materialResource)

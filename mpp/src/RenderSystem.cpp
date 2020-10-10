@@ -830,9 +830,6 @@ namespace mpp
 	 */
 	void RenderSystem::setDisplay(int width, int height)
 	{
-		mWindowWidth = width;
-		mWindowHeight = height;
-
 		if (mScreen)
 		{
 			mScreen.reset();
@@ -866,6 +863,23 @@ namespace mpp
 
 		mRenderTarget = renderTarget;
 		mRenderTarget->activate();
+
+		mWindowWidth = mRenderTarget->getWidth();
+		mWindowHeight = mRenderTarget->getHeight();
+	}
+
+	void RenderSystem::pushRenderTarget(RenderTargetPtr renderTarget)
+	{
+		mRenderTargetStack.push(mRenderTarget);
+		setRenderTarget(renderTarget);
+	}
+
+	void RenderSystem::popRenderTarget()
+	{
+		auto renderTarget = mRenderTargetStack.top();
+		mRenderTargetStack.pop();
+
+		setRenderTarget(renderTarget);
 	}
 
 	/*
@@ -891,8 +905,9 @@ namespace mpp
 	 */
 	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, int width, int height, size_t numAttachments, bool depthBuffer)
 	{
-		auto rtStr = new RenderTextureStream(width, height, depthBuffer, numAttachments);
-		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStr));
+		auto rtStream = new RenderTextureStream(width, height, depthBuffer, numAttachments);
+		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
+
 		rt->load();
 
 		return RenderTargetPtr(rt);

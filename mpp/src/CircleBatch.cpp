@@ -136,7 +136,7 @@ namespace mpp
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
 		createMeshSpecification(primitiveType);
-		auto materialResource = createMaterial(getName() + "_CircleBatch", "__mpp_tex_none__", usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
+		auto materialResource = createMaterial(getName() + "_CircleBatch", nullptr, usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		Mesh* mesh{ nullptr };

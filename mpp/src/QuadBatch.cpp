@@ -24,42 +24,16 @@ namespace mpp
 		size_t initialCapacity,
 		string const& defaultVertexShader,
 		string const& defaultFragmentShader,
-		string const& descriptor,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
 		, mSameSize(sameSize)
 		, mTexture(texture)
-		, mTextureAtlas(texture ? texture->getType() == "TextureAtlas" : false)
+		, mTextureRenderer(nullptr)
 		, mPointSize((float)options.maxSizeX)
 	{
-		// Set vertex options
-		float size = (float)max(options.maxSizeX, options.maxSizeY);
-		bool square = mSameSize && options.maxSizeX == options.maxSizeY;
-
-		Caps const& caps = getRenderSystem()->getCaps();
-		bool canUsePointSprites = square &&
-			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
-
-		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points && !canUsePointSprites)
-		{
-			THROW_MPP("Cannot use point sprites.", __LINE__, __FILE__, __func__);
-		}
-
-		if (canUsePointSprites && mOptions.primitiveOptions != QuadBatchOptions::PrimitiveOptions::Triangles)
-		{
-			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Points;
-		}
-		else
-		{
-			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Triangles;
-		}
-
-		if (mTexture && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
-		{
-			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
-		}
+		setPrimitiveOptions();
 	}
 
 	/*
@@ -73,36 +47,113 @@ namespace mpp
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
+		: QuadBatch(name, options, sameSize, texture, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, renderSystem, resourceMgr)
+	{
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch::QuadBatch(string const& name,
+		QuadBatchOptions const& options,
+		bool sameSize,
+		TextureRendererPtr textureRenderer,
+		size_t initialCapacity,
+		string const& defaultVertexShader,
+		string const& defaultFragmentShader,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
 		, mSameSize(sameSize)
-		, mTexture(texture)
-		, mTextureAtlas(texture ? texture->getType() == "TextureAtlas" : false)
+		, mTexture(nullptr)
+		, mTextureRenderer(textureRenderer)
 		, mPointSize((float)options.maxSizeX)
 	{
+		setPrimitiveOptions();
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch::QuadBatch(string const& name,
+		QuadBatchOptions const& options,
+		bool sameSize,
+		TextureRendererPtr textureRenderer,
+		size_t initialCapacity,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: QuadBatch(name, options, sameSize, textureRenderer, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, renderSystem, resourceMgr)
+	{
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch::QuadBatch(string const& name,
+		QuadBatchOptions const& options,
+		bool sameSize,
+		size_t initialCapacity,
+		string const& defaultVertexShader,
+		string const& defaultFragmentShader,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: Batch(name, initialCapacity, defaultVertexShader, defaultFragmentShader, "quad", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
+		, mOptions(options)
+		, mSameSize(sameSize)
+		, mTexture(nullptr)
+		, mTextureRenderer(nullptr)
+		, mPointSize((float)options.maxSizeX)
+	{
+		setPrimitiveOptions();
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	QuadBatch::QuadBatch(string const& name,
+		QuadBatchOptions const& options,
+		bool sameSize,
+		size_t initialCapacity,
+		RenderSystem* renderSystem,
+		ResourceManager* resourceMgr)
+		: QuadBatch(name, options, sameSize, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, renderSystem, resourceMgr)
+	{
+	}
+
+	void QuadBatch::setPrimitiveOptions()
+	{
 		// Set vertex options
-		float size = (float)max(options.maxSizeX, options.maxSizeY);
-		bool square = mSameSize && options.maxSizeX == options.maxSizeY;
+		float size = (float)max(mOptions.maxSizeX, mOptions.maxSizeY);
+		bool square = mSameSize && mOptions.maxSizeX == mOptions.maxSizeY;
 
 		Caps const& caps = getRenderSystem()->getCaps();
-		bool canUsePointSprites = square &&
-			caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
-
-		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points && !canUsePointSprites)
+		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points)
 		{
-			THROW_MPP("Cannot use point sprites.", __LINE__, __FILE__, __func__);
+			if (mOptions.rotate && !usingTexture())
+			{
+				THROW_MPP("Cannot use point sprites when rotating with no texture.", __LINE__, __FILE__, __func__);
+			}
+			if (!square)
+			{
+				THROW_MPP("Cannot use point sprites for non-square quads.", __LINE__, __FILE__, __func__);
+			}
+			if (caps.pointSizeRange[0] > size || caps.pointSizeRange[1] < size)
+			{
+				THROW_MPP("Cannot use point sprites for theses sizes of quad.", __LINE__, __FILE__, __func__);
+			}
 		}
 
-		if (canUsePointSprites && mOptions.primitiveOptions != QuadBatchOptions::PrimitiveOptions::Triangles)
+		if (mOptions.primitiveOptions != QuadBatchOptions::PrimitiveOptions::Triangles)
 		{
 			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Points;
 		}
-		else
-		{
-			mOptions.primitiveOptions = QuadBatchOptions::PrimitiveOptions::Triangles;
-		}
 
-		if (mTexture && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
+		if (usingTexture() && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
 		{
 			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
 		}
@@ -208,7 +259,6 @@ namespace mpp
 
 		rotationLayout->createAttribute(mesh::Vertex::Component::UserDefined2, "ROTATION", mesh::Vertex::DataType::Float, false);
 
-
 		// Texture coords
 		mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };
 		if (mOptions.texcoordAttrib.fixedValues)
@@ -284,7 +334,13 @@ namespace mpp
 			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
-		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture->getName(), flags);
+		// Material
+		if (mTextureRenderer)
+		{
+			mTexture = mTextureRenderer->createRenderTexture(mOptions.maxSizeX, mOptions.maxSizeY);
+		}
+
+		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture, flags);
 		size_t vertexCount = getVertexCount(primitiveCount);
 
 		Mesh* mesh{ nullptr };
@@ -358,12 +414,12 @@ namespace mpp
 
 	bool QuadBatch::usingTexture() const
 	{
-		return mTexture != nullptr;
+		return mTexture || mTextureRenderer;
 	}
 
 	bool QuadBatch::usingTextureAtlas() const
 	{
-		return mTextureAtlas;
+		return mTexture && mTexture->getType() == "TextureAtlas";
 	}
 
 	bool QuadBatch::positionFixed() const
@@ -384,6 +440,11 @@ namespace mpp
 	bool QuadBatch::colourFixed() const
 	{
 		return mOptions.colourAttrib.fixedValues;
+	}
+
+	ResourcePtr QuadBatch::getTexture()
+	{
+		return mTexture;
 	}
 
 }

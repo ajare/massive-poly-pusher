@@ -92,7 +92,7 @@ namespace mpp
 		}
 
 		// Create depth buffer
-		if (mDepthBuffer)
+		if (mUseDepthBuffer)
 		{
 			GL_CHECK(glGenRenderbuffers(1, &mDepthBuffer));
 			GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer));

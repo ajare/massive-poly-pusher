@@ -65,6 +65,7 @@
     <ClInclude Include="..\..\include\mpp\Texture.h" />
     <ClInclude Include="..\..\include\mpp\TextureAtlas.h" />
     <ClInclude Include="..\..\include\mpp\TextureAtlasStream.h" />
+    <ClInclude Include="..\..\include\mpp\TextureRenderer.h" />
     <ClInclude Include="..\..\include\mpp\TextureStream.h" />
     <ClInclude Include="..\..\include\mpp\TextureTile.h" />
     <ClInclude Include="..\..\include\mpp\GridModelStream.h" />
@@ -121,6 +122,7 @@
     <ClCompile Include="..\..\src\Texture.cpp" />
     <ClCompile Include="..\..\src\TextureAtlas.cpp" />
     <ClCompile Include="..\..\src\TextureAtlasStream.cpp" />
+    <ClCompile Include="..\..\src\TextureRenderer.cpp" />
     <ClCompile Include="..\..\src\TextureStream.cpp" />
     <ClCompile Include="..\..\src\GridModelStream.cpp" />
     <ClCompile Include="..\..\src\TriangleBatch.cpp" />

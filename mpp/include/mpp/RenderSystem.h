@@ -123,6 +123,8 @@ namespace mpp
 
 		RenderTargetPtr mRenderTarget;
 
+		std::stack<RenderTargetPtr> mRenderTargetStack;
+
 		std::stack<ClipRectangle> mClipStack;
 
 		RenderTargetPtr mScreen;
@@ -288,6 +290,10 @@ namespace mpp
 
 		// Render targets and textures
 		void setRenderTarget(RenderTargetPtr renderTarget);
+
+		void pushRenderTarget(RenderTargetPtr renderTarget);
+
+		void popRenderTarget();
 
 		void renderToScreen();
 

@@ -374,13 +374,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		CircleBatch* circleBatch{ nullptr };
 
 		circleBatch = createCircleBatch(
-			"TestCircles", 
+			"TestCircles",
 			circleBatchCount,
-			gRenderSystem, 
+			gRenderSystem,
 			gResourceManager);
+
+		auto circleRenderer = make_shared<CircleRenderer>("Circles", gRenderSystem, gResourceManager);
 		
-		QuadBatchRendererParams quadParams
-		{
+		QuadBatchRendererParams quadParams(
 			mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
 			true,
 			true,
@@ -389,8 +390,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			true,
 			16,
 			16,
-			16
-		};
+			true,
+			16,
+			circleRenderer
+		);
 
 		TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
 			quadData(gRenderSystem, quadBatchCount);
@@ -399,7 +402,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			quadBatchRenderer("TestQuads", 
 				quadParams,
 				&quadData,
-				gResourceManager->getResource("bullets.png"),
 				quadBatchCount,
 				gRenderSystem, 
 				gResourceManager);
@@ -625,6 +627,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 
 				// Logic
+				circleRenderer->update(frameTime);
 				quadData.setNumQuads(quadBatchCount);
 				quadData.update(frameTime);
 				quadBatchCount = quadBatchRenderer.update(quadBatchCount);
@@ -707,9 +710,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->setProjection2dOrthographic();
 
-			//quadBatchRenderer.render();
+			circleRenderer->updateRenderTexture(quadBatchRenderer.getBatch()->getTexture());
+
+			quadBatchRenderer.render();
 			//lineBatchRenderer.render();
-			triangleBatchRenderer.render();
+			//triangleBatchRenderer.render();
 
 			//lineBatchCount = updateLineBatch(gRenderSystem, lineBatch, lineBatchCount, totalTime);
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
