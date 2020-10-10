@@ -217,13 +217,13 @@ class TriangleBatchRenderer
 
 	mpp::TriangleBatch* mBatch{ nullptr };
 
-	TriangleBatchDataProvider<PosType, TexType, ColType>* mDataProvider{ nullptr };
+	std::shared_ptr<TriangleBatchDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
 public:
 
 	TriangleBatchRenderer(std::string const& name,
 		TriangleBatchRendererParams const& params,
-		TriangleBatchDataProvider<PosType, TexType, ColType>* dataProvider,
+		std::shared_ptr<TriangleBatchDataProvider<PosType, TexType, ColType>> dataProvider,
 		mpp::ResourcePtr texture,
 		size_t initialSize,
 		mpp::RenderSystem* renderSystem,
@@ -398,13 +398,13 @@ class TriangleBatchRenderer<PosType, TexType, mpp::mesh::DataTypeNone>
 
 	mpp::TriangleBatch* mBatch{ nullptr };
 
-	TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>* mDataProvider{ nullptr };
+	std::shared_ptr<TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider{ nullptr };
 
 public:
 
 	TriangleBatchRenderer(std::string const& name,
 		TriangleBatchRendererParams const& params,
-		TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>* dataProvider,
+		std::shared_ptr<TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> dataProvider,
 		mpp::ResourcePtr texture,
 		size_t initialSize,
 		mpp::RenderSystem* renderSystem,

@@ -207,13 +207,13 @@ class LineBatchRenderer
 
 	mpp::LineBatch* mBatch{ nullptr };
 
-	LineBatchDataProvider<PosType, ColType>* mDataProvider{ nullptr };
+	std::shared_ptr<LineBatchDataProvider<PosType, ColType>> mDataProvider{ nullptr };
 
 public:
 
 	LineBatchRenderer(std::string const& name,
 		LineBatchRendererParams const& params,
-		LineBatchDataProvider<PosType, ColType>* dataProvider,
+		std::shared_ptr<LineBatchDataProvider<PosType, ColType>> dataProvider,
 		size_t initialSize,
 		mpp::RenderSystem* renderSystem,
 		mpp::ResourceManager* resourceMgr)
@@ -341,13 +341,13 @@ class LineBatchRenderer<PosType, mpp::mesh::DataTypeNone>
 
 	mpp::LineBatch* mBatch{ nullptr };
 
-	LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>* mDataProvider{ nullptr };
+	std::shared_ptr<LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>> mDataProvider;
 
 public:
 
 	LineBatchRenderer(std::string const& name,
 		LineBatchRendererParams const& params,
-		LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>* dataProvider,
+		std::shared_ptr<LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>> dataProvider,
 		size_t initialSize,
 		mpp::RenderSystem* renderSystem,
 		mpp::ResourceManager* resourceMgr)
