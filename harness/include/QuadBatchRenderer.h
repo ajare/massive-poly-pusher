@@ -3,8 +3,105 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/QuadBatch.h>
+#include <mpp/TextureRenderer.h>
 
 #include <mpp/mesh/VertexTypeSpecification.h>
+
+#include "TriangleBatchRenderer.h"
+
+class CircleDataProvider : public TriangleBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+{
+	float mTime{ 0.0f };
+
+public:
+
+	CircleDataProvider(size_t numTriangles)
+	{
+		setNumTriangles(numTriangles);
+	}
+
+	void position(uint32 index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
+	{
+		x0 = 8;
+		y0 = 8;
+
+		x1 = 8 + sinf(2 * 3.14159f * index / 36.0f) * 7.0f;
+		y1 = 8 + cosf(2 * 3.14159f * index / 36.0f) * 7.0f;
+
+		x2 = 8 + sinf(2 * 3.14159f * (index + 1) / 36.0f) * 7.0f;
+		y2 = 8 + cosf(2 * 3.14159f * (index + 1) / 36.0f) * 7.0f;
+	}
+
+	void colour(uint32 index, uint8& red, uint8& green, uint8& blue, uint8& alpha)
+	{
+		red = uint8((sinf(mTime) * 2 - 1.0f) * 192 + 64);
+		green = 255;
+		blue = 224 - uint8((cosf(mTime) * 2 - 1.0f) * 128);
+		alpha = 255;
+	}
+
+	mpp::Colour diffuse()
+	{
+		return mpp::Colour::White;
+	}
+
+	void update(float frameTime)
+	{
+		mTime += frameTime;
+	}
+};
+
+class CircleRenderer : public mpp::TextureRenderer
+{
+	TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>* mTriRenderer{ nullptr };
+
+	CircleDataProvider* mDataProvider{ nullptr };
+
+private:
+
+	void render(int width, int height)
+	{
+		mTriRenderer->render();
+	}
+
+public:
+
+	CircleRenderer(std::string const& name, mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr)
+		: mpp::TextureRenderer(name, renderSystem, resourceMgr)
+	{
+		mDataProvider = new CircleDataProvider(36);
+		
+		TriangleBatchRendererParams params
+		{
+			true, 
+			false, 
+			false
+		};
+
+		mTriRenderer = new TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>(
+			"CircleRenderer",
+			params,
+			mDataProvider,
+			nullptr,
+			36,
+			mRenderSystem,
+			mResourceMgr);
+
+		mTriRenderer->create();
+	}
+
+	~CircleRenderer()
+	{
+		delete mDataProvider;
+		delete mTriRenderer;
+	}
+
+	void update(float frameTime)
+	{
+		mDataProvider->update(frameTime);
+		mTriRenderer->update(36);
+	}
+};
 
 template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
 class QuadBatchDataProvider
@@ -196,14 +293,167 @@ public:
 	}
 };
 
-struct QuadBatchRendererParams
+class QuadBatchRendererParams
 {
-	mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions;
-	bool fixedTextureData, fixedColourData;
-	bool useVertexColours, useDiffuse;
-	bool rotate;
-	size_t width, height;
-	size_t indexWidth;
+	mpp::QuadBatchOptions::PrimitiveOptions mPrimitiveOptions;
+
+	bool mFixedTextureData, mFixedColourData;
+	
+	bool mUseVertexColours, mUseDiffuse;
+
+	bool mSameSize;
+	
+	bool mRotate;
+
+	size_t mWidth, mHeight;
+
+	size_t mIndexWidth;
+
+	mpp::ResourcePtr mTexture;
+
+	mpp::TextureRendererPtr mTextureRenderer;
+
+public:
+
+	QuadBatchRendererParams(
+		mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions,
+		bool fixedTextureData,
+		bool fixedColourData,
+		bool useVertexColours,
+		bool useDiffuse,
+		bool rotate,
+		size_t width,
+		size_t height,
+		bool sameSize,
+		size_t indexWidth)
+		: mPrimitiveOptions(primitiveOptions)
+		, mFixedTextureData(fixedTextureData)
+		, mFixedColourData(fixedColourData)
+		, mUseVertexColours(useVertexColours)
+		, mUseDiffuse(useDiffuse)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mWidth(width)
+		, mHeight(height)
+		, mIndexWidth(indexWidth)
+		, mTexture(nullptr)
+		, mTextureRenderer(nullptr)
+	{
+	}
+
+	QuadBatchRendererParams(
+		mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions,
+		bool fixedTextureData,
+		bool fixedColourData,
+		bool useVertexColours,
+		bool useDiffuse,
+		bool rotate,
+		size_t width,
+		size_t height,
+		bool sameSize,
+		size_t indexWidth,
+		mpp::ResourcePtr texture)
+		: mPrimitiveOptions(primitiveOptions)
+		, mFixedTextureData(fixedTextureData)
+		, mFixedColourData(fixedColourData)
+		, mUseVertexColours(useVertexColours)
+		, mUseDiffuse(useDiffuse)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mWidth(width)
+		, mHeight(height)
+		, mIndexWidth(indexWidth)
+		, mTexture(texture)
+		, mTextureRenderer(nullptr)
+	{
+	}
+
+	QuadBatchRendererParams(
+		mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions,
+		bool fixedTextureData,
+		bool fixedColourData,
+		bool useVertexColours,
+		bool useDiffuse,
+		bool rotate,
+		size_t width,
+		size_t height,
+		bool sameSize,
+		size_t indexWidth,
+		mpp::TextureRendererPtr textureRenderer)
+		: mPrimitiveOptions(primitiveOptions)
+		, mFixedTextureData(fixedTextureData)
+		, mFixedColourData(fixedColourData)
+		, mUseVertexColours(useVertexColours)
+		, mUseDiffuse(useDiffuse)
+		, mRotate(rotate)
+		, mSameSize(sameSize)
+		, mWidth(width)
+		, mHeight(height)
+		, mIndexWidth(indexWidth)
+		, mTexture(nullptr)
+		, mTextureRenderer(textureRenderer)
+	{
+	}
+
+	mpp::QuadBatchOptions::PrimitiveOptions getPrimitiveOptions() const
+	{
+		return mPrimitiveOptions;
+	}
+
+	bool fixedTextureData() const
+	{
+		return mFixedTextureData;
+	}
+
+	bool fixedColourData() const
+	{
+		return mFixedColourData;
+	}
+
+	bool useVertexColours() const
+	{
+		return mUseVertexColours;
+	}
+	
+	bool useDiffuse() const
+	{
+		return mUseDiffuse;
+	}
+	
+	bool rotate() const
+	{
+		return mRotate;
+	}
+	
+	size_t getWidth() const
+	{
+		return mWidth;
+	}
+
+	size_t getHeight() const
+	{
+		return mHeight;
+	}
+
+	bool sameSize() const
+	{
+		return mSameSize;
+	}
+
+	size_t getIndexWidth() const
+	{
+		return mIndexWidth;
+	}
+
+	mpp::ResourcePtr getTexture() const
+	{
+		return mTexture;
+	}
+
+	mpp::TextureRendererPtr getTextureRenderer() const
+	{
+		return mTextureRenderer;
+	}
 };
 
 template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
@@ -222,7 +472,6 @@ public:
 	QuadBatchRenderer(std::string const& name, 
 		QuadBatchRendererParams const& params, 
 		QuadBatchDataProvider<PosType, TexType, ColType>* dataProvider, 
-		mpp::ResourcePtr texture, 
 		size_t initialSize, 
 		mpp::RenderSystem* renderSystem,
 		mpp::ResourceManager* resourceMgr)
@@ -230,47 +479,78 @@ public:
 		, mResourceMgr(resourceMgr)
 		, mDataProvider(dataProvider)
 	{
-		bool sameSize = params.width == params.height;
-		if (texture)
+		if (params.getTexture())
 		{
-			// Need to load texture first, to get its sizes
-			texture->load();
-
-			if (texture->getType() == "Texture")
-			{
-				auto t = dynamic_cast<mpp::Texture*>(texture.get());
-				sameSize = t->getWidth() == t->getHeight();
-			}
-			else
-			{
-				auto t = dynamic_cast<mpp::TextureAtlas*>(texture.get());
-				sameSize = t->getWidth() / t->getImagesX() == t->getHeight() / t->getImagesY();
-			}
+			mBatch = new mpp::QuadBatch(
+				name,
+				{
+					params.getPrimitiveOptions(),
+					PosType::vertexDataType(),
+					{ TexType::vertexDataType(), params.fixedTextureData() },
+					{ params.useVertexColours() ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData() },
+					params.useDiffuse(),
+					params.rotate(),
+					params.getWidth(),
+					params.getHeight(),
+					params.getIndexWidth()
+				},
+				params.getSameSize(),
+				params.getTexture(),
+				initialSize,
+				renderSystem,
+				resourceMgr);
 		}
-
-		mBatch = new mpp::QuadBatch(
-			name,
-			{
-				params.primitiveOptions,
-				PosType::vertexDataType(),
-				{ TexType::vertexDataType(), params.fixedTextureData },
-				{ params.useVertexColours ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData },
-				params.useDiffuse,
-				params.rotate,
-				params.width,
-				params.height,
-				params.indexWidth
-			},
-			sameSize,
-			texture,
-			initialSize,
-			renderSystem,
-			resourceMgr);
+		else if (params.getTextureRenderer())
+		{
+			mBatch = new mpp::QuadBatch(
+				name,
+				{
+					params.getPrimitiveOptions(),
+					PosType::vertexDataType(),
+					{ TexType::vertexDataType(), params.fixedTextureData() },
+					{ params.useVertexColours() ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData() },
+					params.useDiffuse(),
+					params.rotate(),
+					params.getWidth(),
+					params.getHeight(),
+					params.getIndexWidth()
+				},
+				params.getSameSize(),
+				params.getTextureRenderer(),
+				initialSize,
+				renderSystem,
+				resourceMgr);
+		}
+		else
+		{
+			mBatch = new mpp::QuadBatch(
+				name,
+				{
+					params.getPrimitiveOptions(),
+					PosType::vertexDataType(),
+					{ TexType::vertexDataType(), params.fixedTextureData() },
+					{ params.useVertexColours() ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData() },
+					params.useDiffuse(),
+					params.rotate(),
+					params.getWidth(),
+					params.getHeight(),
+					params.getIndexWidth()
+				},
+				params.getSameSize(),
+				initialSize,
+				renderSystem,
+				resourceMgr);
+		}
 	}
 
 	virtual ~QuadBatchRenderer()
 	{
 		delete mBatch;
+	}
+
+	mpp::QuadBatch* getBatch()
+	{
+		return mBatch;
 	}
 
 	void create()
@@ -508,7 +788,6 @@ public:
 	QuadBatchRenderer(std::string const& name,
 		QuadBatchRendererParams const& params,
 		QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>* dataProvider,
-		mpp::ResourcePtr texture,
 		size_t initialSize,
 		mpp::RenderSystem* renderSystem,
 		mpp::ResourceManager* resourceMgr)
@@ -516,47 +795,78 @@ public:
 		, mResourceMgr(resourceMgr)
 		, mDataProvider(dataProvider)
 	{
-		bool sameSize = params.width == params.height;
-		if (texture)
+		if (params.getTexture())
 		{
-			// Need to load texture first, to get its sizes
-			texture->load();
-
-			if (texture->getType() == "Texture")
-			{
-				auto t = dynamic_cast<mpp::Texture*>(texture.get());
-				sameSize = t->getWidth() == t->getHeight();
-			}
-			else
-			{
-				auto t = dynamic_cast<mpp::TextureAtlas*>(texture.get());
-				sameSize = t->getWidth() / t->getImagesX() == t->getHeight() / t->getImagesY();
-			}
+			mBatch = new mpp::QuadBatch(
+				name,
+				{
+					params.getPrimitiveOptions(),
+					PosType::vertexDataType(),
+					{ TexType::vertexDataType(), params.fixedTextureData() },
+					{ mpp::mesh::Vertex::DataType::None, true },
+					params.useDiffuse(),
+					params.rotate(),
+					params.getWidth(),
+					params.getHeight(),
+					params.getIndexWidth()
+				},
+				params.sameSize(),
+				params.getTexture(),
+				initialSize,
+				renderSystem,
+				resourceMgr);
 		}
-
-		mBatch = new mpp::QuadBatch(
-			name,
-			{
-				params.primitiveOptions,
-				PosType::vertexDataType(),
-				{ TexType::vertexDataType(), params.fixedTextureData },
-				{ mpp::mesh::Vertex::DataType::None, true },
-				params.useDiffuse,
-				params.rotate,
-				params.width,
-				params.height,
-				params.indexWidth
-			},
-			sameSize,
-			texture,
-			initialSize,
-			renderSystem,
-			resourceMgr);
+		else if (params.getTextureRenderer())
+		{
+			mBatch = new mpp::QuadBatch(
+				name,
+				{
+					params.getPrimitiveOptions(),
+					PosType::vertexDataType(),
+					{ TexType::vertexDataType(), params.fixedTextureData() },
+					{ mpp::mesh::Vertex::DataType::None, true },
+					params.useDiffuse(),
+					params.rotate(),
+					params.getWidth(),
+					params.getHeight(),
+					params.getIndexWidth()
+				},
+				params.sameSize(),
+				params.getTextureRenderer(),
+				initialSize,
+				renderSystem,
+				resourceMgr);
+		}
+		else
+		{
+			mBatch = new mpp::QuadBatch(
+				name,
+				{
+					params.getPrimitiveOptions(),
+					PosType::vertexDataType(),
+					{ TexType::vertexDataType(), params.fixedTextureData() },
+					{ mpp::mesh::Vertex::DataType::None, true },
+					params.useDiffuse(),
+					params.rotate(),
+					params.getWidth(),
+					params.getHeight(),
+					params.getIndexWidth()
+				},
+				params.sameSize(),
+				initialSize,
+				renderSystem,
+				resourceMgr);
+		}
 	}
 
 	virtual ~QuadBatchRenderer()
 	{
 		delete mBatch;
+	}
+
+	mpp::QuadBatch* getBatch()
+	{
+		return mBatch;
 	}
 
 	void create()

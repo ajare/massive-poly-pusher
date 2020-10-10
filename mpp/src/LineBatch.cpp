@@ -80,7 +80,7 @@ namespace mpp
 		uint32 flags = MPP_PROGRAM_TAGS_PRIM_LINES
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
-		auto materialResource = createMaterial(getName() + "_LineBatch", "__mpp_tex_none__", flags);
+		auto materialResource = createMaterial(getName() + "_LineBatch", nullptr, flags);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		auto mesh = new Mesh(

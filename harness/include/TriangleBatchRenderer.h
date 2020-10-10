@@ -19,7 +19,7 @@ public:
 
 	virtual void texcoords(uint32 index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
 		typename PosType::builtin_type& u1, typename PosType::builtin_type& v1,
-		typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) = 0;
+		typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) {}
 
 	virtual void colour(uint32 index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
@@ -51,7 +51,7 @@ public:
 
 	virtual void texcoords(uint32 index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
 		typename PosType::builtin_type& u1, typename PosType::builtin_type& v1,
-		typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) = 0;
+		typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) {}
 
 	virtual mpp::Colour diffuse() = 0;
 
@@ -240,8 +240,8 @@ public:
 				{ ColType::vertexDataType(), params.fixedColourData },
 				params.useDiffuse
 			},
-			initialSize,
 			texture,
+			initialSize,
 			renderSystem,
 			resourceMgr);
 	}
@@ -318,7 +318,7 @@ public:
 			//
 			// Texture data
 			//
-			if (!mBatch->texcoordsFixed() || newVertex)
+			if (mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
 			{
 				TexType::builtin_type u0, v0, u1, v1, u2, v2;
 				mDataProvider->texcoords(primitiveIndex, u0, v0, u1, v1, u2, v2);
@@ -343,7 +343,7 @@ public:
 			//
 			// Colour data
 			//
-			if (!mBatch->colourFixed() || newVertex)
+			if (mBatch->usingColour() && (!mBatch->colourFixed() || newVertex))
 			{
 				ColType::builtin_type red, green, blue, alpha;
 				mDataProvider->colour(primitiveIndex, red, green, blue, alpha);

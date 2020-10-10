@@ -54,22 +54,25 @@ namespace mpp
 		dynamicLayout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
 
 		// Texture coords
-		mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };
-		if (mOptions.texcoordAttrib.fixedValues)
+		if (usingTexture())
 		{
-			if (!staticLayout)
+			mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };
+			if (mOptions.texcoordAttrib.fixedValues)
 			{
-				staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+				if (!staticLayout)
+				{
+					staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+				}
+
+				texcoordLayout = staticLayout;
+			}
+			else
+			{
+				texcoordLayout = dynamicLayout;
 			}
 
-			texcoordLayout = staticLayout;
+			texcoordLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mOptions.texcoordAttrib.dataType, false);
 		}
-		else
-		{
-			texcoordLayout = dynamicLayout;
-		}
-
-		texcoordLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mOptions.texcoordAttrib.dataType, false);
 
 		// Colour
 		if (mOptions.colourAttrib.dataType != mesh::Vertex::DataType::None)
@@ -108,7 +111,7 @@ namespace mpp
 			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
-		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture->getName(), flags);
+		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, flags);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		auto mesh = new Mesh(

@@ -56,9 +56,9 @@ namespace mpp
 
 		virtual void setMinimumCount(size_t count);
 
-		ResourcePtr createMaterial(std::string const& name, std::string const& texture, uint32 programFlags);
+		ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32 programFlags);
 
-		ResourcePtr createMaterial(std::string const& name, ResourcePtr program, std::string const& texture, uint32 programFlags);
+		ResourcePtr createMaterial(std::string const& name, ResourcePtr program, ResourcePtr texture, uint32 programFlags);
 
 	public:
 
@@ -95,4 +95,3 @@ namespace mpp
 		bool usingColour() const;
 	};
 }
-#pragma once
