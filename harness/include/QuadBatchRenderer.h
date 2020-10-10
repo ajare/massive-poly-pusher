@@ -53,9 +53,9 @@ public:
 
 class CircleRenderer : public mpp::TextureRenderer
 {
-	TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>* mTriRenderer{ nullptr };
+	std::shared_ptr<TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> mTriRenderer{ nullptr };
 
-	CircleDataProvider* mDataProvider{ nullptr };
+	std::shared_ptr<CircleDataProvider> mDataProvider;
 
 private:
 
@@ -69,7 +69,7 @@ public:
 	CircleRenderer(std::string const& name, mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr)
 		: mpp::TextureRenderer(name, renderSystem, resourceMgr)
 	{
-		mDataProvider = new CircleDataProvider(36);
+		mDataProvider = std::make_shared<CircleDataProvider>(36);
 		
 		TriangleBatchRendererParams params
 		{
@@ -78,7 +78,7 @@ public:
 			false
 		};
 
-		mTriRenderer = new TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>(
+		mTriRenderer = std::make_shared<TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
 			"CircleRenderer",
 			params,
 			mDataProvider,
@@ -88,12 +88,6 @@ public:
 			mResourceMgr);
 
 		mTriRenderer->create();
-	}
-
-	~CircleRenderer()
-	{
-		delete mDataProvider;
-		delete mTriRenderer;
 	}
 
 	void update(float frameTime)
@@ -465,13 +459,13 @@ class QuadBatchRenderer
 
 	mpp::QuadBatch* mBatch{ nullptr };
 
-	QuadBatchDataProvider<PosType, TexType, ColType>* mDataProvider{ nullptr };
+	std::shared_ptr<QuadBatchDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
 public:
 
 	QuadBatchRenderer(std::string const& name, 
 		QuadBatchRendererParams const& params, 
-		QuadBatchDataProvider<PosType, TexType, ColType>* dataProvider, 
+		std::shared_ptr<QuadBatchDataProvider<PosType, TexType, ColType>> dataProvider, 
 		size_t initialSize, 
 		mpp::RenderSystem* renderSystem,
 		mpp::ResourceManager* resourceMgr)
@@ -781,13 +775,13 @@ class QuadBatchRenderer<PosType, TexType, mpp::mesh::DataTypeNone>
 
 	mpp::QuadBatch* mBatch{ nullptr };
 
-	QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>* mDataProvider{ nullptr };
+	std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider;
 
 public:
 
 	QuadBatchRenderer(std::string const& name,
 		QuadBatchRendererParams const& params,
-		QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>* dataProvider,
+		std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> dataProvider,
 		size_t initialSize,
 		mpp::RenderSystem* renderSystem,
 		mpp::ResourceManager* resourceMgr)

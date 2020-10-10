@@ -407,13 +407,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			circleRenderer
 		);
 
-		TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
-			quadData(gRenderSystem, quadBatchCount);
+		auto quadData = make_shared<TestQuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(gRenderSystem, quadBatchCount);
 
 		QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat> 
 			quadBatchRenderer("TestQuads", 
 				quadParams,
-				&quadData,
+				quadData,
 				quadBatchCount,
 				gRenderSystem, 
 				gResourceManager);
@@ -427,13 +426,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			false
 		};
 
-		TestLineBatchDataProvider<mpp::mesh::DataTypeFloat>
-			lineData(gRenderSystem, lineBatchCount);
+		auto lineData = make_shared<TestLineBatchDataProvider<mpp::mesh::DataTypeFloat>>(gRenderSystem, lineBatchCount);
 
 		LineBatchRenderer<mpp::mesh::DataTypeFloat>
 			lineBatchRenderer("TestLines",
 				lineParams,
-				&lineData,
+				lineData,
 				lineBatchCount,
 				gRenderSystem,
 				gResourceManager);
@@ -447,13 +445,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			true,
 		};
 
-		TestTriangleBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
-			triangleData(gRenderSystem, triangleBatchCount);
+		auto triangleData = make_shared<TestTriangleBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(gRenderSystem, triangleBatchCount);
 
 		TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
 			triangleBatchRenderer("TestTriangles",
 				triangleParams,
-				&triangleData,
+				triangleData,
 				gResourceManager->getResource("bullets.png"),
 				quadBatchCount,
 				gRenderSystem,
@@ -638,17 +635,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 				// Logic
 				circleRenderer->update(frameTime);
-				quadData.setNumQuads(quadBatchCount);
-				quadData.update(frameTime);
+				quadData->setNumQuads(quadBatchCount);
+				quadData->update(frameTime);
 				quadBatchCount = quadBatchRenderer.update(quadBatchCount);
 
-				lineData.setNumLines(lineBatchCount);
-				lineData.update(frameTime);
-				lineBatchCount = lineBatchRenderer.update(lineData.getNumLines());
+				lineData->setNumLines(lineBatchCount);
+				lineData->update(frameTime);
+				lineBatchCount = lineBatchRenderer.update(lineData->getNumLines());
 
-				triangleData.setNumTriangles(triangleBatchCount);
-				triangleData.update(frameTime);
-				triangleBatchCount = triangleBatchRenderer.update(triangleData.getNumTriangles());
+				triangleData->setNumTriangles(triangleBatchCount);
+				triangleData->update(frameTime);
+				triangleBatchCount = triangleBatchRenderer.update(triangleData->getNumTriangles());
 			}
 
 			// Render scene
