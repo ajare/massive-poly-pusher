@@ -14,20 +14,12 @@ namespace mpp
 	TextureAtlas::TextureAtlas(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: Texture(name, renderSystem, resourceMgr, resourceStream)
 		, mAtlasType("TextureAtlas")
-		, mImagesX(0)
-		, mImagesY(0)
 	{
 	}
 
 	string const& TextureAtlas::getType() const
 	{
 		return mAtlasType;
-	}
-
-	void TextureAtlas::setImageCounts(size_t x, size_t y)
-	{
-		mImagesX = x;
-		mImagesY = y;
 	}
 
 	void TextureAtlas::createImpl()
@@ -40,18 +32,23 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'TextureAtlasStream'.", __LINE__, __FILE__, __func__);
 		}
 
-		mImagesX = tStr->getImagesX();
-		mImagesY = tStr->getImagesY();
+		// Add tiles
+		auto const& tiles = tStr->getTiles();
+		for (auto const& tile: tiles)
+		{
+			Tile t;
+			
+			t.u[0] = tile.second.u[0];
+			t.v[0] = tile.second.v[0];
+			t.u[1] = tile.second.u[1];
+			t.v[1] = tile.second.v[1];
+
+			mTiles[tile.first] = t;
+		}
 	}
 
-	size_t TextureAtlas::getImagesX() const
+	TextureAtlas::Tile const& TextureAtlas::getTile(string const& name) const
 	{
-		return mImagesX;
+		return mTiles.at(name);
 	}
-
-	size_t TextureAtlas::getImagesY() const
-	{
-		return mImagesY;
-	}
-
 }

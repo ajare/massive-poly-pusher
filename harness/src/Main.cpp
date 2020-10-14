@@ -10,7 +10,6 @@
 // RenderSystem
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
-#include <mpp/FileProgramStream.h>
 #include <mpp/Program.h>
 #include <mpp/TextureStream.h>
 #include <mpp/Texture.h>
@@ -204,7 +203,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		   - modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		   - modelSpec.setIndexedVertices(true);
 		1. Create programs
-		   - auto STREAM = new FileProgramStream(VERTEX_FILE, FRAGMENT_FILE);
+		   - auto STREAM = new ProgramProgramStream(meshSpec, VERTEX_FILE, FRAGMENT_FILE);
 		   - ResourceManager::createResource<Program>(NAME, ResourceStreamPtr(STREAM));
 		2. Create textures
 		   - auto STREAM = loadImage(IMAGE_FILE, false);

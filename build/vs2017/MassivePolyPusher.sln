@@ -39,6 +39,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppMeshSpecificationParser"
 		{4201332E-DD6A-40B6-8BCD-73AD3008D9C8} = {4201332E-DD6A-40B6-8BCD-73AD3008D9C8}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DemoSuite", "..\..\demo-suite\build\vs2017\DemoSuite.vcxproj", "{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -99,6 +101,12 @@ Global
 		{94976D27-EA69-45F8-8C69-C98F28BA5CC9}.Release|Win32.ActiveCfg = Release|Win32
 		{94976D27-EA69-45F8-8C69-C98F28BA5CC9}.Release|Win32.Build.0 = Release|Win32
 		{94976D27-EA69-45F8-8C69-C98F28BA5CC9}.Release|x64.ActiveCfg = Release|Win32
+		{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}.Debug|Win32.Build.0 = Debug|Win32
+		{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}.Debug|x64.ActiveCfg = Debug|Win32
+		{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}.Release|Win32.ActiveCfg = Release|Win32
+		{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}.Release|Win32.Build.0 = Release|Win32
+		{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

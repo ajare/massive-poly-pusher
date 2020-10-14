@@ -1,14 +1,26 @@
 #pragma once
 
+#include <map>
+
 #include "mpp/Texture.h"
 
 namespace mpp
 {
 	class _MPPAPI TextureAtlas : public Texture
 	{
+	public:
+
+		struct Tile
+		{
+			float u[2];
+			float v[2];
+		};
+
+	private:
+
 		std::string mAtlasType;
 
-		size_t mImagesX, mImagesY;
+		std::map<std::string, Tile> mTiles;
 
 	protected:
 
@@ -20,11 +32,7 @@ namespace mpp
 
 		std::string const& getType() const;
 
-		void setImageCounts(size_t x, size_t y);
-
-		size_t getImagesX() const;
-
-		size_t getImagesY() const;
+		Tile const& getTile(std::string const& name) const;
 	};
 
 }

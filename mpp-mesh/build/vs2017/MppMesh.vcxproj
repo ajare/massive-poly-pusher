@@ -100,6 +100,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\MaterialInformation.cpp" />
     <ClCompile Include="..\..\src\MeshDefinition.cpp" />
     <ClCompile Include="..\..\src\MeshSpecification.cpp" />
     <ClCompile Include="..\..\src\ModelSerializer.cpp" />
@@ -110,6 +111,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\mesh\Config.h" />
+    <ClInclude Include="..\..\include\mpp\mesh\MaterialInformation.h" />
     <ClInclude Include="..\..\include\mpp\mesh\MeshDefinition.h" />
     <ClInclude Include="..\..\include\mpp\mesh\MeshSpecification.h" />
     <ClInclude Include="..\..\include\mpp\mesh\ModelSerializer.h" />

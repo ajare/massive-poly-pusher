@@ -36,90 +36,70 @@ namespace mpp
 			mDataTypes["uint16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
 		}
 
-		map<string, ProgramInformation> SpecificationParser::parseProgramInformation()
+		map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInformation()
 		{
-			map<string, ProgramInformation> pinfos;
-
-			utils::XmlReader* reader = utils::XmlReader::fromFile(mFilename);
-
-			auto programNode = reader->getNode("Specification/Programs/Program");
-			do
-			{
-				string name = programNode->getAttribute("name");
-				ProgramInformation pi(name);
-
-				// Parse shaders
-				auto vsNode = programNode->getOptionalChild("VertexShader");
-				if (vsNode)
-				{
-					// Set vertex shader
-					pi.setVertexShader(vsNode->getValue());
-				}
-
-				auto fsNode = programNode->getOptionalChild("FragmentShader");
-				if (fsNode)
-				{
-					// Set fragment shader
-					pi.setFragmentShader(vsNode->getValue());
-				}
-
-				// Parse textures
-				auto texturesNode = programNode->getOptionalChild("Textures");
-				if (texturesNode)
-				{
-					auto textureNode = texturesNode->getOptionalChild("Texture");
-					if (textureNode)
-					{
-						do
-						{
-							pi.setTexture(textureNode->getAttribute("binding"), textureNode->getAttribute("value"));
-						} while (textureNode->next());
-					}
-				}
-
-				// Parse uniforms
-				auto uniformsNode = programNode->getOptionalChild("Uniforms");
-				if (uniformsNode)
-				{
-					auto uniformNode = uniformsNode->getOptionalChild("Uniform");
-					if (uniformNode)
-					{
-						do
-						{
-							pi.setUniform(uniformNode->getAttribute("binding"), uniformNode->getAttribute("value"));
-						} while (uniformNode->next());
-					}
-				}
-
-				pinfos[name] = pi;
-			} while (programNode->next());
-
-			delete reader;
-			return pinfos;
-		}
-
-		map<string, MaterialInformation> SpecificationParser::parseMaterialInformation()
-		{
-			map<string, MaterialInformation> minfos;
+			map<string, mesh::MaterialInformation> minfos;
 
 			utils::XmlReader* reader = utils::XmlReader::fromFile(mFilename);
 
 			auto materialNode = reader->getNode("Specification/Materials/Material");
 			do
 			{
-				string name;
-				if (!materialNode->getOptionalAttribute("name", name))
-				{
-					name = "";
-				}
+				string name = materialNode->getAttribute("name");
 
-				MaterialInformation mi(name);
+				mesh::MaterialInformation mi(name);
 
 				// Parse program
-				auto programName = materialNode->getChild("Program");
-				string program = programName->getAttribute("name");
+				auto programNode = materialNode->getChild("Program");
+				
+				// Position type: 2d or 3d
+				string positionType = programNode->getAttribute("positionType");
+				utils::StringUtils::toLower(positionType);
 
-				mi.setProgram(program);
+				if (positionType != "2d" && positionType != "3d")
+				{
+					string errMsg = "Invalid position type: " + programNode->getAttribute("positionType");
+					throw exception(errMsg.c_str());
+				}
+
+				mi.setPositionType(positionType == "2d" ? mesh::MaterialInformation::PositionType::p2D : mesh::MaterialInformation::PositionType::p3D);
+
+				auto shaderNode = programNode->getChild("Shaders")->getChild("Shader");
+				if (!shaderNode)
+				{
+					string errMsg = "No shaders specified";
+					throw exception(errMsg.c_str());
+				}
+
+				do
+				{
+					auto shaderTypeStr = shaderNode->getAttribute("type");
+					utils::StringUtils::toLower(shaderTypeStr);
+
+					auto shaderName = shaderNode->getValue();
+
+					mesh::MaterialInformation::Shader::Type shaderType;
+					if (shaderTypeStr == "vertex")
+					{
+						shaderType = mesh::MaterialInformation::Shader::Type::Vertex;
+					}
+					else if (shaderTypeStr == "geometry")
+					{
+						shaderType = mesh::MaterialInformation::Shader::Type::Geometry;
+					}
+					else if (shaderTypeStr == "fragment")
+					{
+						shaderType = mesh::MaterialInformation::Shader::Type::Fragment;
+					}
+					else
+					{
+						string errMsg = "Invalid shader stage: " + shaderNode->getAttribute("type");
+						throw exception(errMsg.c_str());
+					}
+
+					mi.addShader(shaderType, shaderName);
+				} while (shaderNode->next());
+
 
 				minfos[name] = mi;
 			} while (materialNode->next());

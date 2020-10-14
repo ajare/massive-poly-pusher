@@ -21,9 +21,6 @@
     <ClInclude Include="..\..\include\mpp\mesh-specification-parser\ProgramInformation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\mesh-specification-parser\MaterialInformation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\mesh-specification-parser\SpecificationParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -35,9 +32,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\ProgramInformation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\MaterialInformation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\include\mpp\mesh-specification-parser\SpecificationParser.cpp">

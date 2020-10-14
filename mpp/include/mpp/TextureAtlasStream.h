@@ -1,19 +1,30 @@
 #pragma once
 
+#include <map>
+#include <string>
+
 #include "mpp/TextureStream.h"
 
 namespace mpp
 {
 	class _MPPAPI TextureAtlasStream : public TextureStream
 	{
-		size_t mImagesX, mImagesY;
+		struct Tile
+		{
+			float u[2];
+			float v[2];
+		};
+
+	private:
+
+		std::map<std::string, Tile> mTiles;
 
 	public:
 
-		TextureAtlasStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered, size_t imagesX, size_t imagesY);
+		TextureAtlasStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
 
-		size_t getImagesX() const;
+		void addTile(std::string const& name, int x, int y, int w, int h);
 
-		size_t getImagesY() const;
+		std::map<std::string, Tile> const& getTiles() const;
 	};
 }

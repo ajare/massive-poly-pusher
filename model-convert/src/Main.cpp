@@ -78,7 +78,6 @@ Materials specification
 
 #include <mpp/mesh-specification-parser/SpecificationParser.h>
 #include <mpp/mesh-specification-parser/ProgramInformation.h>
-#include <mpp/mesh-specification-parser/MaterialInformation.h>
 
 #include "AssImpModelLoader.h"
 
@@ -115,7 +114,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 	// Set defaults.
 	auto fi = utils::FileSystem::FileInfo(string(argv[1]));
 
-	pArgs.inFile = fi.getFileName();
+	pArgs.inFile = fi.getFilePath();
 	pArgs.outFile = fi.getFileNameWithoutExtension() + MPPMODEL_FILEEXT;
 	pArgs.specFile = "";
 	pArgs.matFile = fi.getFileNameWithoutExtension() + MATERIAL_FILEEXT;
@@ -138,7 +137,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			if (i == (argc - 1))
 			{
-				throw exception("Read '/o' token but found no parameter after it.");
+				throw exception("Read '-o' token but found no parameter after it.");
 			}
 			else
 			{
@@ -156,7 +155,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 			if (i == (argc - 1))
 			{
-				throw exception("Read '/s' token but found no parameter after it.");
+				throw exception("Read '-s' token but found no parameter after it.");
 			}
 			else
 			{
@@ -167,7 +166,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			if (i == (argc - 1))
 			{
-				throw exception("Read '/m' token but found no parameter after it.");
+				throw exception("Read '-m' token but found no parameter after it.");
 			}
 			else
 			{
@@ -192,19 +191,23 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 
 	uint32 maxVerticesPerMesh;
 	MeshSpecification meshSpec = parser.parseMeshSpecification(maxVerticesPerMesh);
-	map<string, ProgramInformation> programInfo = parser.parseProgramInformation();
-	map<string, MaterialInformation> materialInfo = parser.parseMaterialInformation();
+	map<string, mpp::mesh::MaterialInformation> materialInfo = parser.parseMaterialInformation();
 
-	AssImpModelLoader loader(inFile, meshSpec, programInfo, materialInfo, maxVerticesPerMesh, true);
+	AssImpModelLoader loader(inFile, meshSpec, maxVerticesPerMesh, true);
 
 	cout << "Reading: " << inFile << endl;
 	cout << "Writing: " << outFile << ", " << matFile << endl;
 	cout << "Spec file: " << specFile << endl;
 
 	loader.load();
-
+	
 	// Save file
 	ModelSerializer fileSaver;
+
+	for (auto const& matInfo: materialInfo)
+	{
+		fileSaver.addMaterialInformation(matInfo.first, matInfo.second);
+	}
 
 	int meshCount = loader.getNumMeshDefinitions();
 	fileSaver.setMeshCount(meshCount);
@@ -229,11 +232,12 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	}
 
 	fileSaver.save(outFile);
-	loader.writeMaterials(matFile);
 }
 
 void debug(string const& inFile, string const& outFile)
 {
+	cout << "Debugging " << inFile << "\n";
+
 	ModelSerializer fileLoader;
 
 	fileLoader.load(inFile);
@@ -246,29 +250,29 @@ void debug(string const& inFile, string const& outFile)
 		int numPrimitives = fileLoader.getPrimitiveCount(i);
 		auto primitiveType = fileLoader.getPrimitiveType(i);
 
-		cout << "Mesh '" << meshName << "'." << endl << endl;
+		cout << "Mesh '" << meshName << "'.\n\n";
 
 		int primitiveSize = mpp::mesh::Primitive::size(primitiveType);
 		switch (primitiveType)
 		{
 			case mpp::mesh::Primitive::Type::Points:
-				cout << numPrimitives << " points." << endl;
+				cout << numPrimitives << " points.\n";
 				break;
 
 			case mpp::mesh::Primitive::Type::Lines:
-				cout << numPrimitives << " lines." << endl;
+				cout << numPrimitives << " lines.\n";
 				break;
 
 			case mpp::mesh::Primitive::Type::Triangles:
-				cout << numPrimitives << " triangles." << endl;
+				cout << numPrimitives << " triangles.\n";
 				break;
 
 			default:
-				cout << numPrimitives << " items of unknown primitive type." << endl;
+				cout << numPrimitives << " items of unknown primitive type.\n";
 				break;
 		}
 
-		cout << endl;
+		cout << "\n";
 
 		// Get model specification
 		auto const& spec = fileLoader.getMeshSpecification(i);
@@ -277,10 +281,10 @@ void debug(string const& inFile, string const& outFile)
 		int numLayouts = spec.getNumVertexBufferAttributeLayouts();
 		for (int j = 0; j < numLayouts; ++j)
 		{
-			cout << "Layout " << j << endl;
+			cout << "Layout " << j << "\n";
 			auto const& layout = spec.getVertexBufferAttributeLayout(j);
 
-			cout << "Id\tComponent\tType\tNormalised\tSize (bytes)" << endl;
+			cout << "Id\tComponent\tType\tNormalised\tSize (bytes)\n";
 
 			int numAttribs = layout.getNumAttributes();
 			for (int k = 0; k < numAttribs; ++k)
@@ -291,12 +295,13 @@ void debug(string const& inFile, string const& outFile)
 					 << mpp::mesh::Vertex::getComponentName(attrib.component) << "\t"
 					 << mpp::mesh::Vertex::getDataTypeName(attrib.dataType) << "\t" 
 					 << (attrib.normalised ? "yes" : "no") << "\t\t" 
-					 << attrib.sizeInBytes() << endl;
+					 << attrib.sizeInBytes() << "\n";
 			}
 
-			cout << endl;
+			cout << "\n";
 
 			// Get data and parse according to attrib list
+			/*
 			int vertexCount, vertexStride;
 			shared_ptr<const int8> vertexData;
 			fileLoader.getVertexStream(i, j, &vertexCount, &vertexStride, &vertexData);
@@ -343,17 +348,17 @@ void debug(string const& inFile, string const& outFile)
 					}
 				}
 
-				cout << endl;
+				cout << "\n";
 			}
-
-			cout << endl;
-
+			*/
+			cout << "\n";
+			/*
 			// Get index data
 			int indexWidth = fileLoader.getIndexWidth(i);
 			int indexWidthBytes = indexWidth / 8;
 			shared_ptr<const uint8> indexData = fileLoader.getIndexData(i);
 
-			cout << "Index width: " << indexWidth << endl;
+			cout << "Index width: " << indexWidth << "\n";
 
 			uint8 const* indexDataPtr = indexData.get();
 			for (int j = 0; j < numPrimitives; ++j)
@@ -373,11 +378,12 @@ void debug(string const& inFile, string const& outFile)
 					indexDataPtr += indexWidthBytes;
 				}
 
-				cout << endl;
+				cout << "\n";
 			}
+			*/
 		}
-
-		cout << endl;
+		
+		cout << "\n";
 	}
 }
 

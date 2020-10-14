@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Specification>
+
+	<Buffers indexed="true" primitive="triangles" storage="dynamic">
+		<Buffer>
+			<Channel data="position3" type="float" />
+			<Channel data="normal3" type="float" />
+			<Channel data="texcoord2" type="float" />
+			<Channel data="colour4" type="ubyte" normalised="true" />
+		</Buffer>
+	</Buffers>
+	
+	<Programs>
+		<!-- Basic diffuse texturing. -->
+		<Program name="test">
+			<Textures>
+				<Texture binding="tex">
+					<Resource input="marble_texture" />
+				</Texture>
+			</Textures>
+		</Program>
+	</Programs>
+	
+	<Materials>
+		<!-- Material name -->
+		<Name input="default_material" />
+		
+		<!-- Program used -->
+		<Program>
+			<Name input="test" />
+		</Program>
+	</Materials>
+</Specification>

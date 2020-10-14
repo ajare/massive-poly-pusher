@@ -45,9 +45,40 @@ namespace mpp
 		// Get name
 		mName = materialNode->getAttribute("name");
 
-		// Get program
-		auto programNode = materialNode->getChild("Program");
-		mProgram = programNode->getAttribute("name");
+		// Get shaders
+		auto shadersNode = materialNode->getChild("Shaders");
+
+		// Vertex shader
+		auto vertexNode = shadersNode->getOptionalChild("Vertex");
+		if (!vertexNode)
+		{
+			string errMsg = utils::StringUtils::format(
+				"No vertex shader specified  while parsing material '{}'.", mName);
+
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		string vertexShader;
+		if (!vertexNode->getOptionalAttribute("name", vertexShader))
+		{
+			vertexShader = "";
+		}
+
+		// Fragment shader
+		auto fragmentNode = shadersNode->getOptionalChild("Fragment");
+		if (!fragmentNode)
+		{
+			string errMsg = utils::StringUtils::format(
+				"No fragment shader specified  while parsing material '{}'.", mName);
+
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		string fragmentShader;
+		if (!fragmentNode->getOptionalAttribute("name", fragmentShader))
+		{
+			fragmentShader = "";
+		}
 
 		// Get textures
 		auto texturesNode = materialNode->getOptionalChild("Textures");

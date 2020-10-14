@@ -18,6 +18,25 @@ namespace mpp
 		{
 		}
 
+		string ModelSerializer::readString(FILE* fp)
+		{
+			string ret;
+			auto ch = fgetc(fp);
+			while (ch != '\0')
+			{
+				ret.append(1, ch);
+				ch = fgetc(fp);
+			}
+
+			return ret;
+		}
+
+		void ModelSerializer::writeString(FILE* fp, string const& str)
+		{
+			auto len = str.length();
+			fwrite(str.c_str(), 1, str.length() + 1, fp);
+		}
+
 		/*
 		 * Read Header
 		 *
@@ -54,6 +73,12 @@ namespace mpp
 
 			// Flags
 			fread(&mHeader.flags, sizeof(uint32), 1, fp);
+		}
+
+		void ModelSerializer::skipHeader(FILE* fp)
+		{
+			auto offset = 4 + sizeof(uint16) + sizeof(uint16) + sizeof(uint32);
+			fseek(fp, offset, SEEK_SET);
 		}
 
 		/*
@@ -287,6 +312,74 @@ namespace mpp
 			fwrite(vertexStream.vertexData.get(), vertexDataSize, 1, fp);
 		}
 
+		MaterialInformation ModelSerializer::readMaterialInformation(FILE* fp)
+		{
+			auto name = readString(fp);
+
+			MaterialInformation mi(name);
+
+			mpp::mesh::MaterialInformation::PositionType positionType;
+			fread(&positionType, sizeof(positionType), 1, fp);
+
+			mi.setPositionType(positionType);
+
+			int shaderCount;
+			fread(&shaderCount, sizeof(shaderCount), 1, fp);
+			for (int i = 0; i < shaderCount; ++i)
+			{
+				mpp::mesh::MaterialInformation::Shader::Type shaderType;
+
+				fread(&shaderType, sizeof(shaderType), 1, fp);
+				auto shaderName = readString(fp);
+
+				mi.addShader(shaderType, shaderName);
+			}
+
+			int textureCount;
+			fread(&textureCount, sizeof(textureCount), 1, fp);
+			for (int i = 0; i < textureCount; ++i)
+			{
+				int32 isResource;
+				fread(&isResource, sizeof(isResource), 1, fp);
+				auto binding = readString(fp);
+				auto resource = readString(fp);
+
+				mi.addTexture(isResource, binding, resource);
+			}
+
+			return mi;
+		}
+
+		void ModelSerializer::writeMaterialInformation(FILE* fp, MaterialInformation const& matInfo)
+		{
+			writeString(fp, matInfo.getName());
+
+			auto positionType = matInfo.getPositionType();
+			fwrite(&positionType, sizeof(positionType), 1, fp);
+
+			auto const& shaders = matInfo.getShaders();
+
+			int shaderCount = (int)shaders.size();
+			fwrite(&shaderCount, sizeof(shaderCount), 1, fp);
+			for (auto const& shader: shaders)
+			{
+				fwrite(&shader.type, sizeof(shader.type), 1, fp);
+				writeString(fp, shader.name);
+			}
+
+			auto const& textures = matInfo.getTextures();
+
+			int textureCount = (int)textures.size();
+			fwrite(&textureCount, sizeof(textureCount), 1, fp);
+			for (auto const& texture : textures)
+			{
+				int32 isResource = texture.isResource ? 1 : 0;
+				fwrite(&isResource, sizeof(isResource), 1, fp);
+				writeString(fp, texture.binding);
+				writeString(fp, texture.resource);
+			}
+		}
+
 		/*
 		 * Read mesh definition
 		 *
@@ -428,6 +521,39 @@ namespace mpp
 		MeshSpecification const& ModelSerializer::getMeshSpecification(int meshIndex) const
 		{
 			return mMeshes[meshIndex].specification;
+		}
+
+		void ModelSerializer::addMaterialInformation(string const& name, MaterialInformation const& matInfo)
+		{
+			mMaterialInformation[name] = matInfo;
+		}
+
+		map<string, MaterialInformation> const& ModelSerializer::getMaterialInformation() const
+		{
+			return mMaterialInformation;
+		}
+
+		map<string, MaterialInformation> ModelSerializer::peakMaterialInformation(string const& filename)
+		{
+#pragma warning(suppress: 4996)
+			FILE* fp = fopen(filename.c_str(), "rb");
+
+			skipHeader(fp);
+
+			// Read materials
+			int materialCount;
+			fread(&materialCount, sizeof(int), 1, fp);
+
+			map<string, MaterialInformation> mats;
+			for (int i = 0; i < materialCount; ++i)
+			{
+				auto mi = readMaterialInformation(fp);
+				mats[mi.getName()] = mi;
+			}
+
+			fclose(fp);
+
+			return mats;
 		}
 
 		/*
@@ -584,6 +710,16 @@ namespace mpp
 
 			writeHeader(fp);
 
+			// Write materials
+			int materialCount = (int)mMaterialInformation.size();
+			fwrite(&materialCount, sizeof(int), 1, fp);
+
+			for (auto const& matInfo: mMaterialInformation)
+			{
+				writeMaterialInformation(fp, matInfo.second);
+			}
+
+			// Write meshes
 			int meshCount = getMeshCount();
 			fwrite(&meshCount, sizeof(int), 1, fp);
 
@@ -606,6 +742,17 @@ namespace mpp
 
 			readHeader(fp);
 
+			// Read materials
+			int materialCount;
+			fread(&materialCount, sizeof(int), 1, fp);
+
+			for (int i = 0; i < materialCount; ++i)
+			{
+				auto mi = readMaterialInformation(fp);
+				mMaterialInformation[mi.getName()] = mi;
+			}
+
+			// Read meshes
 			int meshCount;
 			fread(&meshCount, sizeof(int), 1, fp);
 			setMeshCount(meshCount);

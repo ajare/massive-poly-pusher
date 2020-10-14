@@ -2,10 +2,12 @@
 
 #include <string>
 #include <memory>
+#include <map>
 
 #include "Config.h"
 #include "MeshDefinition.h"
 #include "MeshSpecification.h"
+#include "MaterialInformation.h"
 
 namespace mpp
 {
@@ -42,14 +44,22 @@ namespace mpp
 
 			Header mHeader;
 
+			std::map<std::string, MaterialInformation> mMaterialInformation;
+
 			std::vector<Mesh> mMeshes;
 
 		private:
 
 			// Read
+			std::string readString(FILE* fp);
+
 			void readHeader(FILE* fp);
 
+			void skipHeader(FILE* fp);
+
 			MeshSpecification readMeshSpecification(FILE* fp);
+
+			MaterialInformation readMaterialInformation(FILE* fp);
 
 			void readVertexBufferAttributeLayout(FILE* fp, VertexBufferAttributeLayout* layout, uint32_t attribOffset);
 
@@ -58,7 +68,11 @@ namespace mpp
 			void readMeshDefinition(FILE* fp, int meshIndex);
 
 			// Write
+			void writeString(FILE* fp, std::string const& str);
+
 			void writeHeader(FILE* fp);
+
+			void writeMaterialInformation(FILE* fp, MaterialInformation const& matInfo);
 
 			void writeVertexBufferAttributeLayout(FILE* fp, VertexBufferAttributeLayout const& layout);
 
@@ -79,6 +93,12 @@ namespace mpp
 			void setMeshSpecification(int meshIndex, MeshSpecification const& specification);
 
 			MeshSpecification const& getMeshSpecification(int meshIndex) const;
+
+			void addMaterialInformation(std::string const& name, MaterialInformation const& matInfo);
+
+			std::map<std::string, MaterialInformation> const& getMaterialInformation() const;
+
+			std::map<std::string, MaterialInformation> peakMaterialInformation(std::string const& filename);
 
 			void setName(int meshIndex, std::string const& name);
 
