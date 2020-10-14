@@ -12,7 +12,9 @@ namespace mpp
  	 * Constructor.
 	 *
 	 */
-	ProgramStream::ProgramStream()
+	ProgramStream::ProgramStream(shared_ptr<program::Parser> parser, set<string> const& attribs)
+		: mParser(parser)
+		, mAttribs(attribs)
 	{
 	}
 
@@ -69,6 +71,32 @@ namespace mpp
 	{
 		load();
 		return getVertexSource() + getFragmentSource();
+	}
+
+	/*
+	 * Load.
+	 *
+	 */
+	void ProgramStream::loadImpl()
+	{
+		mParser->build(mAttribs);
+		setVertexSource(mParser->getGeneratedVertexSource());
+		setFragmentSource(mParser->getGeneratedFragmentSource());
+	}
+
+	vector<program::Attribute> ProgramStream::getInAttributes() const
+	{
+		return mParser->getInAttributes();
+	}
+
+	vector<string> ProgramStream::getUniforms() const
+	{
+		return mParser->getUniforms();
+	}
+
+	vector<string> ProgramStream::getTextures() const
+	{
+		return mParser->getTextures();
 	}
 
 }

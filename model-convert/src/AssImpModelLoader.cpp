@@ -26,11 +26,9 @@ using namespace mpp::mesh;
  * Constructor.
  *
  */
-AssImpModelLoader::AssImpModelLoader(string const& filename, MeshSpecification const& meshSpec, map<string, mpp::mesh_specification_parser::ProgramInformation> const& programInfo, map<string, mpp::mesh_specification_parser::MaterialInformation> const& materialInfo, uint32 maxVerticesPerMesh, bool generateColours) :
+AssImpModelLoader::AssImpModelLoader(string const& filename, MeshSpecification const& meshSpec, uint32 maxVerticesPerMesh, bool generateColours) :
 	mFilename(filename),
 	mSpecification(meshSpec),
-	mProgramInfo(programInfo),
-	mMaterialInfo(materialInfo),
 	mMaxVerticesPerMesh(maxVerticesPerMesh),
 	mGenerateColours(generateColours)
 {
@@ -230,16 +228,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			cout << "Warning: material used is 'DefaultMaterial'.  Check that the material library is both specified and enabled." << endl;
 		}
 
-		// Does this material already exist?
-		if (mMaterialDefinitions.find(matNameStr) == mMaterialDefinitions.end())
-		{
-			// Create new material
-			cout << "Parsing material '" << matNameStr << "'" << endl;
-			MaterialDefinition matDef = createMaterialDefinition(matNameStr, material);
-			mMaterialDefinitions[matNameStr] = matDef;
-		}
-
-		dataStreamDef->material = mMaterialDefinitions[matNameStr].name;
+		dataStreamDef->material = matNameStr;
 
 		int vertexStride = 0;
 
@@ -426,105 +415,6 @@ MeshDefinition* AssImpModelLoader::createMeshDefinition(int triangleCount, std::
 	mMeshDefinitions.push_back(md);
 
 	return md;
-}
-
-/*
- * Create a material definition from an imported material.
- *
- */
-MaterialDefinition AssImpModelLoader::createMaterialDefinition(string const& name, aiMaterial* material)
-{
-	MaterialDefinition matDef;
-
-	matDef.name = name;
-	
-	// Find the appropriate information based on name
-	auto it = find_if(mMaterialInfo.begin(), mMaterialInfo.end(), [name](auto kvp)
-	{
-		return regex_match(name, regex(kvp.first));
-	});
-
-	mpp::mesh_specification_parser::MaterialInformation mi;
-	if (it == mMaterialInfo.end())
-	{
-		auto defIt = mMaterialInfo.find("");
-		if (defIt == mMaterialInfo.end())
-		{
-			// Can't find a material to use
-			string errMsg = "Cannot find a material specification for '" + name + "'.";
-			throw exception(errMsg.c_str());
-		}
-		else
-		{
-			mi = defIt->second;
-		}
-	}
-	else
-	{
-		mi = it->second;
-	}
-
-	matDef.program = mi.getProgram();
-
-	// Get program info
-	auto pit = mProgramInfo.find(matDef.program);
-	if (pit == mProgramInfo.end())
-	{
-		string errMsg = "Cannot find a program specification '" + matDef.program + "'.";
-		throw exception(errMsg.c_str());
-	}
-
-	mpp::mesh_specification_parser::ProgramInformation pi = pit->second;
-
-	// Get texture and uniform information
-	map<string, MaterialTransformer> matTokens =
-	{
-		{ "Material.Diffuse.Map", [](aiMaterial* mat, int index) 
-			{ 
-				aiString texName;
-				mat->Get(AI_MATKEY_TEXTURE_DIFFUSE(index), texName); 
-				return string(texName.C_Str());
-			} 
-		}
-	};
-
-	auto const& textures = pi.getTextures();
-
-	for (auto kvp: textures)
-	{
-		string binding = kvp.first;
-		string value = kvp.second;
-
-		// Parse value
-		utils::StringUtils::trim(value);
-		if (utils::StringUtils::startsWith(value, "${") && utils::StringUtils::endsWith(value, "}"))
-		{
-			string token = value.substr(2, value.length() - 3);
-
-			// Check token against recognised list.
-			auto it = find_if(matTokens.begin(), matTokens.end(), [token](auto kvp)
-			{
-				return utils::StringUtils::startsWith(token, kvp.first);
-			});
-
-			if (it == matTokens.end())
-			{
-				string errMsg = "Unrecognised token '" + token + "'";
-				throw exception(errMsg.c_str());
-			}
-
-			int index = token.find_last_of('.');
-			string repl = it->second(material, utils::StringUtils::parseUInt(token.substr(index + 1)));
-
-			matDef.textureBindings[kvp.first] = repl;
-		}
-		else
-		{
-			matDef.textureBindings[kvp.first] = kvp.second;
-		}
-	}
-
-	return matDef;
 }
 
 /*
@@ -750,47 +640,4 @@ void AssImpModelLoader::load()
 			VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, vertexCount, vertexStride, shared_ptr<const int8>(bufData, [](int8 const* p) { delete[] p; }));
 		}
 	}
-}
-
-/*
- * Write out material definitions to a file.
- *
- */
-void AssImpModelLoader::writeMaterials(string const& filename)
-{
-	utils::XmlWriter writer("Resources");
-	auto rootNode = writer.getRootNode();
-
-	for (auto it: mMaterialDefinitions)
-	{
-		auto matDef = it.second;
-
-		// Material node
-		auto materialNode = rootNode->createChild("Material");
-		materialNode->addAttribute("name", matDef.name);
-
-		// Program node
-		auto programNode = materialNode->createChild("Program");
-		programNode->addAttribute("name", matDef.program);
-
-		// Textures
-		auto texturesNode = materialNode->createChild("Textures");
-		for (auto textureBinding: matDef.textureBindings)
-		{
-			auto textureNode = texturesNode->createChild("Texture");
-			textureNode->addAttribute("binding", textureBinding.first);
-			textureNode->addAttribute("resource", textureBinding.second);
-		}
-
-		// Uniforms
-		auto uniformsNode = materialNode->createChild("Uniforms");
-		for (auto uniform: matDef.uniformValues)
-		{
-			auto uniformNode = uniformsNode->createChild("Uniform");
-			uniformNode->addAttribute("name", uniform.first);
-			uniformNode->addAttribute("value", uniform.second);
-		}
-	}
-
-	writer.write(filename);
 }

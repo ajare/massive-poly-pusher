@@ -21,7 +21,6 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/Program.h"
 #include "mpp/ProgramStream.h"
-#include "mpp/ProgramProgramStream.h"
 #include "mpp/MppException.h"
 
 using namespace std;
@@ -678,7 +677,7 @@ namespace mpp
 		try
 		{
 			// Set up uniforms and textures
-			ProgramProgramStream* pStr = dynamic_cast<ProgramProgramStream*>(getResourceStream().get());
+			ProgramStream* pStr = dynamic_cast<ProgramStream*>(getResourceStream().get());
 				
 			auto uniforms = pStr->getUniforms();
 			for (auto const& uniform : uniforms)

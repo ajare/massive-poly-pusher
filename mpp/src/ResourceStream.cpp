@@ -2,6 +2,8 @@
 
 namespace mpp
 {
+	using namespace std;
+
 	/*
 	 * Constructor.
 	 *
@@ -28,6 +30,11 @@ namespace mpp
 	{
 		if (!mLoaded)
 		{
+			for (auto& child: mChildren)
+			{
+				child->load();
+			}
+
 			loadImpl();
 			mLoaded = true;
 		}
@@ -43,6 +50,11 @@ namespace mpp
 		{
 			unloadImpl();
 			mLoaded = false;
+
+			for (auto& child: mChildren)
+			{
+				child->unload();
+			}
 		}
 	}
 
@@ -54,5 +66,15 @@ namespace mpp
 	uint32_t ResourceStream::getFlags() const
 	{
 		return mFlags;
+	}
+
+	void ResourceStream::addChild(ResourceStreamPtr child)
+	{
+		mChildren.push_back(child);
+	}
+
+	vector<ResourceStreamPtr> const& ResourceStream::getChildren() const
+	{
+		return mChildren;
 	}
 }

@@ -78,7 +78,8 @@
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)..\..\3rd party\bin\vs2017\$(Platform)\$(Configuration)\*.*" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\bin\$(Platform)\$(Configuration)\*.*" $(OutDir)</Command>
+copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\bin\$(Platform)\$(Configuration)\*.*" $(OutDir)
+copy /Y "$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2017\bin\$(Platform)\$(Configuration)\*.*" $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -103,7 +104,8 @@ copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\bin\$(Platform)\$(Configura
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)..\..\3rd party\bin\vs2017\$(Platform)\$(Configuration)\*.*" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\bin\$(Platform)\$(Configuration)\*.*" $(OutDir)</Command>
+copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\bin\$(Platform)\$(Configuration)\*.*" $(OutDir)
+copy /Y "$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2017\bin\$(Platform)\$(Configuration)\*.*" $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

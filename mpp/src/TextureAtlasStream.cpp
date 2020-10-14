@@ -11,20 +11,26 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TextureAtlasStream::TextureAtlasStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered, size_t imagesX, size_t imagesY)
+	TextureAtlasStream::TextureAtlasStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
 		: TextureStream(data, width, height, bitsPerPixel, filtered)
-		, mImagesX(imagesX)
-		, mImagesY(imagesY)
 	{
 	}
 
-	size_t TextureAtlasStream::getImagesX() const
+	void TextureAtlasStream::addTile(string const& name, int x, int y, int w, int h)
 	{
-		return mImagesX;
+		Tile t;
+		
+		t.u[0] = x / (float)getWidth();
+		t.v[0] = y / (float)getHeight();
+
+		t.u[1] = t.u[0] + w / (float)getWidth();
+		t.v[1] = t.v[0] + h / (float)getHeight();
+
+		mTiles[name] = t;
 	}
 
-	size_t TextureAtlasStream::getImagesY() const
+	map<string, TextureAtlasStream::Tile> const& TextureAtlasStream::getTiles() const
 	{
-		return mImagesY;
+		return mTiles;
 	}
 }

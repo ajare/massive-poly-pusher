@@ -119,7 +119,7 @@ namespace mpp
 	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32 programFlags)
 	{
 		auto resourceMgr = getResourceManager();
-		auto programResource = resourceMgr->getOrCreateDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
+		auto programResource = resourceMgr->getDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
 
 		return createMaterial(name, programResource, texture, programFlags);
 	}

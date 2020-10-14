@@ -25,7 +25,6 @@
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
 #include "mpp/ProgramStream.h"
-#include "mpp/StringProgramStream.h"
 #include "mpp/Texture.h"
 #include "mpp/TextureStream.h"
 #include "mpp/Model.h"
@@ -549,7 +548,7 @@ namespace mpp
 		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-		mDefaultProgram2d = resourceMgr->getOrCreateDefault2dProgram(spec2d, 0, true);
+		mDefaultProgram2d = resourceMgr->getDefault2dProgram(spec2d, 0, true);
 
 		// Default 3d program
 		mDefaultProgram3d = resourceMgr->getResource("__mpp_p3d_tris_p3n3t2c4__");
@@ -709,7 +708,7 @@ namespace mpp
 		quadSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		quadSpec.setIndexedVertices(false);
 
-		auto fullscreenProgram = resourceMgr->getOrCreateDefault2dProgram(quadSpec, 0, true);
+		auto fullscreenProgram = resourceMgr->getDefault2dProgram(quadSpec, 0, true);
 		auto quadMesh = quadStream->createMesh("0", quadSpec, fullscreenProgram->getName(), 32, -1.0f);
 
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));

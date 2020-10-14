@@ -6,8 +6,6 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
-#include "mpp/StringProgramStream.h"
-#include "mpp/ProgramProgramStream.h"
 #include "mpp/TextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
@@ -59,7 +57,7 @@ namespace mpp
 			parser->setVertexSource(VertexShader3dTemplate);
 			parser->setFragmentSource(FragmentShader3dTemplate);
 
-			auto ps = new ProgramProgramStream(parser, {});
+			auto ps = new ProgramStream(parser, {});
 			createResource<Program>("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -77,7 +75,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderFullscreenTemplate);
 			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
-			auto ps = new ProgramProgramStream(parser, {});
+			auto ps = new ProgramStream(parser, {});
 			createResource<Program>("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -95,7 +93,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(parser, {"Points"});
+			auto ps = new ProgramStream(parser, {"Points"});
 			createResource<Program>("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -111,7 +109,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(parser, {});
+			auto ps = new ProgramStream(parser, {});
 			createResource<Program>("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -128,7 +126,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(parser, { "Points", "Colours" });
+			auto ps = new ProgramStream(parser, { "Points", "Colours" });
 			createResource<Program>("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -145,7 +143,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramProgramStream(parser, { "Colours" });
+			auto ps = new ProgramStream(parser, { "Colours" });
 			createResource<Program>("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -368,12 +366,12 @@ namespace mpp
 	 * Gets (or creates if not existing) a 2d program based on the given spec and flags.
 	 *
 	 */
-	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	ResourcePtr ResourceManager::getDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
 	{
-		return getOrCreateDefault2dProgram(VertexShader2dTemplate, FragmentShader2dTemplate, spec, flags, load, descriptor);
+		return getDefault2dProgram(VertexShader2dTemplate, FragmentShader2dTemplate, spec, flags, load, descriptor);
 	}
 
-	ResourcePtr ResourceManager::getOrCreateDefault2dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	ResourcePtr ResourceManager::getDefault2dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
 	{
 		auto parser = make_shared<program::Parser>();
 
@@ -381,7 +379,7 @@ namespace mpp
 		parser->setVertexSource(defaultVertexShader);
 		parser->setFragmentSource(defaultFragmentShader);
 
-		auto ps = new ProgramProgramStream(parser, getProgramAttributes(spec, flags));
+		auto ps = new ProgramStream(parser, getProgramAttributes(spec, flags));
 
 		// Generate name
 		string specName = spec.getDescriptor("__mpp_p2d_");

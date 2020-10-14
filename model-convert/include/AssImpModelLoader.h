@@ -8,9 +8,6 @@
 #include "mpp/mesh/MeshSpecification.h"
 
 #include <mpp/mesh-specification-parser/ProgramInformation.h>
-#include <mpp/mesh-specification-parser/MaterialInformation.h>
-
-#include "MaterialDefinition.h"
 
 class AssImpModelLoader
 {
@@ -41,10 +38,6 @@ private:
 
 	mpp::mesh::MeshSpecification mSpecification;
 
-	std::map<std::string, mpp::mesh_specification_parser::ProgramInformation> mProgramInfo;
-
-	std::map<std::string, mpp::mesh_specification_parser::MaterialInformation> mMaterialInfo;
-
 	uint32 mMaxVerticesPerMesh;
 
 	bool mGenerateColours;
@@ -52,8 +45,6 @@ private:
 	std::vector<MeshDataStreamDefinition*> mMeshDataDefinitions;
 
 	std::vector<mpp::mesh::MeshDefinition*> mMeshDefinitions;
-
-	std::map<std::string, MaterialDefinition> mMaterialDefinitions;
 
 private:
 
@@ -81,8 +72,6 @@ private:
 
 	mpp::mesh::MeshDefinition* createMeshDefinition(int triangleCount, std::string const& name, std::string const& material, int indexWidth);
 
-	MaterialDefinition createMaterialDefinition(std::string const& name, aiMaterial* material);
-
 	bool streamsAreTightlyPacked(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams);
 
 	int8* copyVertexBufferData(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
@@ -91,7 +80,7 @@ private:
 
 public:
 
-	AssImpModelLoader(std::string const& filename, mpp::mesh::MeshSpecification const& meshSpec, std::map<std::string, mpp::mesh_specification_parser::ProgramInformation> const& programInfo, std::map<std::string, mpp::mesh_specification_parser::MaterialInformation> const& materialInfo, uint32 maxVerticesPerMesh, bool generateColours);
+	AssImpModelLoader(std::string const& filename, mpp::mesh::MeshSpecification const& meshSpec, uint32 maxVerticesPerMesh, bool generateColours);
 
 	~AssImpModelLoader();
 
@@ -100,6 +89,4 @@ public:
 	int getNumMeshDefinitions() const;
 
 	mpp::mesh::MeshDefinition* getMeshDefinition(int index);
-
-	void writeMaterials(std::string const& filename);
 };
