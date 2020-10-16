@@ -16,6 +16,8 @@ namespace mpp
 
 		std::vector<std::shared_ptr<ResourceStream>> mChildren;
 
+		bool mChildrenCreated;
+
 	private:
 
 		virtual void loadImpl() = 0;
@@ -23,6 +25,12 @@ namespace mpp
 		// In case the user wants to free the data once
 		// all resources have been created from it.
 		virtual void unloadImpl() {}
+
+		virtual void createChildResourceStreamsImpl() {};
+
+		void createChildResourceStreams();
+
+		void destroyChildResourceStreams();
 
 	protected:
 

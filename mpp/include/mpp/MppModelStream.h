@@ -33,6 +33,8 @@ namespace mpp
 
 	private:
 
+		void createChildResourceStreamsImpl();
+
 		void createMeshDataStreams();
 
 		VertexDataStreamDefinition getMeshDataStream(int meshIndex, mesh::Vertex::Component component) const;
