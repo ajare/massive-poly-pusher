@@ -10,6 +10,7 @@ namespace mpp
 	 */
 	ResourceStream::ResourceStream()
 		: mLoaded(false)
+		, mChildrenCreated(false)
 	{
 	}
 
@@ -22,12 +23,32 @@ namespace mpp
 		unload();
 	}
 
+	void ResourceStream::createChildResourceStreams()
+	{
+		if (!mChildrenCreated)
+		{
+			createChildResourceStreamsImpl();
+			mChildrenCreated = true;
+		}
+	}
+
+	void ResourceStream::destroyChildResourceStreams()
+	{
+		if (mChildrenCreated)
+		{
+			mChildren.clear();
+			mChildrenCreated = false;
+		}
+	}
+
 	/*
 	 * Load resource stream data.
 	 *
 	 */
 	void ResourceStream::load()
 	{
+		createChildResourceStreams();
+
 		if (!mLoaded)
 		{
 			for (auto& child: mChildren)
@@ -56,6 +77,8 @@ namespace mpp
 				child->unload();
 			}
 		}
+
+		destroyChildResourceStreams();
 	}
 
 	void ResourceStream::setFlags(uint32_t flags)

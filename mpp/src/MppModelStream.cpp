@@ -11,17 +11,29 @@ namespace mpp
 	MppModelStream::MppModelStream(string const& filename)
 		: mFilename(filename)
 	{
+	}
+
+	MppModelStream::~MppModelStream()
+	{
+		for (auto it : mMeshDataDefinitions)
+		{
+			delete it;
+		}
+	}
+
+	void MppModelStream::createChildResourceStreamsImpl()
+	{
 		mesh::ModelSerializer ser;
 
 		// Create child ResourceStreams
-		auto materialInfo = ser.peakMaterialInformation(filename);
+		auto materialInfo = ser.peakMaterialInformation(mFilename);
 
 		for (auto const& mi: materialInfo)
 		{
 			// Create program stream based on MeshSpec and shaders, or by
 			// loading files
 			auto const& shaders = mi.second.getShaders();
-			for (auto const& shader: shaders)
+			for (auto const& shader : shaders)
 			{
 				if (shader.name != "")
 				{
@@ -36,14 +48,6 @@ namespace mpp
 			// Create texture streams if required
 
 			// Create material stream
-		}
-	}
-
-	MppModelStream::~MppModelStream()
-	{
-		for (auto it : mMeshDataDefinitions)
-		{
-			delete it;
 		}
 	}
 
