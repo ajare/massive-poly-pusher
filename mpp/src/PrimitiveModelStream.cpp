@@ -11,8 +11,8 @@ using namespace std;
 
 namespace mpp
 {
-	PrimitiveModelStream::PrimitiveModelStream(mesh::MeshSpecification const& meshSpec, string const& material)
-		: ModelStream()
+	PrimitiveModelStream::PrimitiveModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material)
+		: ModelStream(resourceMgr)
 		, mStrideInBytes(0)
 	{
 		mMeshDataDefinition.specification = meshSpec;

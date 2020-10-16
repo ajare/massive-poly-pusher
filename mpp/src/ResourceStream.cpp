@@ -1,4 +1,5 @@
 #include "mpp/ResourceStream.h"
+#include "mpp/ResourceManager.h"
 
 namespace mpp
 {
@@ -8,9 +9,10 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	ResourceStream::ResourceStream()
+	ResourceStream::ResourceStream(ResourceManager* resourceMgr)
 		: mLoaded(false)
 		, mChildrenCreated(false)
+		, mResourceMgr(resourceMgr)
 	{
 	}
 
@@ -21,6 +23,11 @@ namespace mpp
 	ResourceStream::~ResourceStream()
 	{
 		unload();
+	}
+
+	ResourceManager* ResourceStream::getResourceMgr()
+	{
+		return mResourceMgr;
 	}
 
 	void ResourceStream::createChildResourceStreams()

@@ -8,8 +8,8 @@ using namespace std;
 
 namespace mpp
 {
-	SphereModelStream::SphereModelStream(mesh::MeshSpecification const& meshSpec, string const& material, float radius, int res)
-		: PrimitiveModelStream(meshSpec, material)
+	SphereModelStream::SphereModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, float radius, int res)
+		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 		, mRadius(radius)
 		, mResolution(res)
 	{

@@ -34,13 +34,13 @@ namespace mpp
 
 	public:
 
-		MaterialStream();
+		explicit MaterialStream(ResourceManager* resourceMgr);
 
-		explicit MaterialStream(std::string const& program);
+		MaterialStream(ResourceManager* resourceMgr, std::string const& program);
 
-		MaterialStream(bool program2d, mesh::MeshSpecification const& meshSpec);
+		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
 
-		MaterialStream(bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
+		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
 
 		std::string getType();
 

@@ -128,7 +128,7 @@ namespace mpp
 	{
 		auto resourceMgr = getResourceManager();
 
-		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream();
+		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream(resourceMgr);
 
 		matStream->setProgram(program->getName());
 

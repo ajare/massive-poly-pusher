@@ -10,6 +10,6 @@ namespace mpp
 	{
 	public:
 
-		BoxModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, float width, float height, float depth);
+		BoxModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, float width, float height, float depth);
 	};
 }

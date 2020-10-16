@@ -57,7 +57,7 @@ namespace mpp
 
 	public:
 
-		explicit MppModelStream(std::string const& filename);
+		MppModelStream(ResourceManager* resourceMgr, std::string const& filename);
 
 		~MppModelStream();
 	};

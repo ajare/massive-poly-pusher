@@ -8,8 +8,8 @@ using namespace std;
 
 namespace mpp
 {
-	CylinderModelStream::CylinderModelStream(mesh::MeshSpecification const& meshSpec, string const& material, float length, float radius1, float radius2, int res)
-		: PrimitiveModelStream(meshSpec, material)
+	CylinderModelStream::CylinderModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, float length, float radius1, float radius2, int res)
+		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 		, mResolution(res)
 	{
 		// Cylinders always use indexed vertices.

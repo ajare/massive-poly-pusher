@@ -55,7 +55,7 @@ namespace mpp
 
 	public:
 
-		ProgrammaticModelStream();
+		explicit ProgrammaticModelStream(ResourceManager* resourceMgr);
 
 		int createMesh(std::string const& name, mesh::MeshSpecification const& specification, std::string const& material, int indexWidth, float pointSize = -1.0f);
 

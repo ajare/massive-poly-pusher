@@ -6,6 +6,11 @@ using namespace std;
 namespace mpp
 {
 
+	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr)
+		: MaterialStream(resourceMgr)
+	{
+	}
+
 	void ProgrammaticMaterialStream::setTexture(string const& sampler, string const& texture)
 	{
 		mTextures[sampler] = texture;

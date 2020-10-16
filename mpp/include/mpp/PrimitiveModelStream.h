@@ -74,7 +74,7 @@ namespace mpp
 
 	public:
 
-		PrimitiveModelStream(mesh::MeshSpecification const& meshSpec,std::string const& material);
+		PrimitiveModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec,std::string const& material);
 
 		void setData(int offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y, double z = 0.0, double w = 1.0);
 	};

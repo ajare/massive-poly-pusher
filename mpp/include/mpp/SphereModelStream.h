@@ -25,6 +25,6 @@ namespace mpp
 
 	public:
 
-		SphereModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, float radius, int res);
+		SphereModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, float radius, int res);
 	};
 }

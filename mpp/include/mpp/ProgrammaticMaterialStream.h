@@ -20,6 +20,8 @@ namespace mpp
 
 	public:
 
+		explicit ProgrammaticMaterialStream(ResourceManager* resourceMgr);
+
 		void setTexture(std::string const& sampler, std::string const& texture);
 
 		void useDefaultTexture();

@@ -11,8 +11,8 @@ using namespace std;
 
 namespace mpp
 {
-	GridModelStream::GridModelStream(mesh::MeshSpecification const& meshSpec, string const& material, double width, double depth, int dimX, int dimZ)
-		: PrimitiveModelStream(meshSpec, material)
+	GridModelStream::GridModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, double width, double depth, int dimX, int dimZ)
+		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 	{
 		int strideInBytes = 0;
 		map<string, int> componentOffsets;

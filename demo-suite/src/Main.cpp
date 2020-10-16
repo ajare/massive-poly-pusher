@@ -278,19 +278,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		TODO: a Material should be able to consist of a set of shaders, and zero or more Textures.  That is to say, we can apply
 		the same Material to multiple Models (ie with different MeshSpecifications).
 		*/
-		auto meshMaterialStream = new ProgrammaticMaterialStream();
+		auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
 		meshMaterialStream->setProgram(false, modelSpec, {});
 		meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
 		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
 		FileDataStream fileDataStream(gOptions.resourceLocation + "statue/statue.material");
-		auto statueMaterialStream = new FileMaterialStream(fileDataStream);
+		auto statueMaterialStream = new FileMaterialStream(gResourceManager, fileDataStream);
 		gResourceManager->createResource<Material>("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
 
 		//
 		// Models
 		//
-		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
+		auto statueStream = new MppModelStream(gResourceManager, gOptions.resourceLocation + "statue/statue.mppmodel");
 		auto statueModel = gResourceManager->createResource<Model>("Model.Statue", ResourceStreamPtr(statueStream));
 		statueModel->load();
 

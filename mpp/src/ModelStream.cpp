@@ -17,7 +17,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	ModelStream::ModelStream()
+	ModelStream::ModelStream(ResourceManager* resourceMgr)
+		: ResourceStream(resourceMgr)
 	{
 	}
 

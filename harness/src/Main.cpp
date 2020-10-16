@@ -273,7 +273,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 
 		// Marble
-		auto meshMaterialStream = new ProgrammaticMaterialStream();
+		auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
 
 		meshMaterialStream->setProgram(false, modelSpec, {});
 
@@ -305,7 +305,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		*/
 
 		// Grid
-		auto gridStream = new GridModelStream(modelSpec, "Material.Marble", 256, 256, 8, 8);
+		auto gridStream = new GridModelStream(gResourceManager, modelSpec, "Material.Marble", 256, 256, 8, 8);
 
 		auto gridModel = gResourceManager->createResource<Model>("Model.Grid", ResourceStreamPtr(gridStream));
 		gridModel->load();
@@ -322,7 +322,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		quadSpec.setStorageType(mesh::VertexBufferStorageType::Static);
 		quadSpec.setIndexedVertices(true);
 		
-		auto quadStream = new ProgrammaticModelStream();
+		auto quadStream = new ProgrammaticModelStream(gResourceManager);
 		auto meshId = quadStream->createMesh("QuadTest", quadSpec, "Material.Marble", 16);
 		
 		mesh::VertexData quadVertexData(quadSpec, 4);

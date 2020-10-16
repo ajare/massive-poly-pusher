@@ -9,8 +9,8 @@ using namespace std;
 
 namespace mpp
 {
-	BoxModelStream::BoxModelStream(mesh::MeshSpecification const& meshSpec, string const& material, float width, float height, float depth)
-		: PrimitiveModelStream(meshSpec, material)
+	BoxModelStream::BoxModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, float width, float height, float depth)
+		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 	{
 		int strideInBytes = 0;
 		map<string, int> componentOffsets;

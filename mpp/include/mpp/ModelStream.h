@@ -70,7 +70,7 @@ namespace mpp
 
 	public:
 
-		ModelStream();
+		explicit ModelStream(ResourceManager* resourceMgr);
 
 		virtual ~ModelStream();
 
