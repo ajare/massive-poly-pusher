@@ -11,8 +11,9 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	RenderTextureStream::RenderTextureStream(int width, int height, bool useDepthBuffer, size_t numAttachments)
-		: mWidth(width)
+	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr, int width, int height, bool useDepthBuffer, size_t numAttachments)
+		: ResourceStream(resourceMgr)
+		, mWidth(width)
 		, mHeight(height)
 		, mUseDepthBuffer(useDepthBuffer)
 		, mNumAttachments(numAttachments)

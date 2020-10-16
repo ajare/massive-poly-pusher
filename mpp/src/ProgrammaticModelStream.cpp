@@ -10,8 +10,8 @@ using namespace std;
 namespace mpp
 {
 
-	ProgrammaticModelStream::ProgrammaticModelStream()
-		: ModelStream()
+	ProgrammaticModelStream::ProgrammaticModelStream(ResourceManager* resourceMgr)
+		: ModelStream(resourceMgr)
 	{
 	}
 

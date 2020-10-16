@@ -30,7 +30,7 @@ namespace mpp
 
 	public:
 
-		ProgramStream(std::shared_ptr<program::Parser> parser, std::set<std::string> const& attribs);
+		ProgramStream(ResourceManager* resourceMgr, std::shared_ptr<program::Parser> parser, std::set<std::string> const& attribs);
 
 		std::string getType();
 

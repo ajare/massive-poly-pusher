@@ -18,7 +18,7 @@ namespace mpp
 
 	public:
 
-		RenderTextureStream(int width, int height, bool useDepthBuffer, size_t numAttachments);
+		RenderTextureStream(ResourceManager* resourceMgr, int width, int height, bool useDepthBuffer, size_t numAttachments);
 
 		std::string getType();
 

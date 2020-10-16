@@ -15,8 +15,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	FileMaterialStream::FileMaterialStream(FileDataStream const& dataStream)
-		: MaterialStream()
+	FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, FileDataStream const& dataStream)
+		: MaterialStream(resourceMgr)
 	{
 		mXmlDefinition = string((char const*)dataStream.getData(), dataStream.getDataSize());
 	}
@@ -25,8 +25,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	FileMaterialStream::FileMaterialStream(string const& xmlDef)
-		: MaterialStream()
+	FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& xmlDef)
+		: MaterialStream(resourceMgr)
 		, mXmlDefinition(xmlDef)
 	{
 	}

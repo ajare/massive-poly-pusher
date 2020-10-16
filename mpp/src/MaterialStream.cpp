@@ -9,7 +9,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MaterialStream::MaterialStream()
+	MaterialStream::MaterialStream(ResourceManager* resourceMgr)
+		: ResourceStream(resourceMgr)
 	{
 	}
 	
@@ -17,8 +18,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MaterialStream::MaterialStream(string const& program)
-		: MaterialStream()
+	MaterialStream::MaterialStream(ResourceManager* resourceMgr, string const& program)
+		: MaterialStream(resourceMgr)
 	{
 		setProgram(program);
 	}
@@ -27,8 +28,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MaterialStream::MaterialStream(bool program2d, mesh::MeshSpecification const& meshSpec)
-		: MaterialStream()
+	MaterialStream::MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec)
+		: MaterialStream(resourceMgr)
 	{
 		setProgram(program2d, meshSpec, {});
 	}
@@ -37,8 +38,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MaterialStream::MaterialStream(bool program2d, mesh::MeshSpecification const& meshSpec, set<string> const& tags)
-		: MaterialStream()
+	MaterialStream::MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, set<string> const& tags)
+		: MaterialStream(resourceMgr)
 	{
 		setProgram(program2d, meshSpec, tags);
 	}

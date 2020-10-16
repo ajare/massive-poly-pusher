@@ -11,8 +11,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TextureAtlasStream::TextureAtlasStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
-		: TextureStream(data, width, height, bitsPerPixel, filtered)
+	TextureAtlasStream::TextureAtlasStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
+		: TextureStream(resourceMgr, data, width, height, bitsPerPixel, filtered)
 	{
 	}
 

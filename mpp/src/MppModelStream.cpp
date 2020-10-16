@@ -8,8 +8,9 @@ using namespace std;
 
 namespace mpp
 {
-	MppModelStream::MppModelStream(string const& filename)
-		: mFilename(filename)
+	MppModelStream::MppModelStream(ResourceManager* resourceMgr, string const& filename)
+		: ModelStream(resourceMgr)
+		, mFilename(filename)
 	{
 	}
 

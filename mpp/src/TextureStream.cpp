@@ -11,8 +11,9 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TextureStream::TextureStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
-		: mData(nullptr)
+	TextureStream::TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
+		: ResourceStream(resourceMgr)
+		, mData(nullptr)
 		, mWidth(width)
 		, mHeight(height)
 		, mBitsPerPixel(bitsPerPixel)

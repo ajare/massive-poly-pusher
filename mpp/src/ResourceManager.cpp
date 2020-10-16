@@ -57,7 +57,7 @@ namespace mpp
 			parser->setVertexSource(VertexShader3dTemplate);
 			parser->setFragmentSource(FragmentShader3dTemplate);
 
-			auto ps = new ProgramStream(parser, {});
+			auto ps = new ProgramStream(this, parser, {});
 			createResource<Program>("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -75,7 +75,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderFullscreenTemplate);
 			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
-			auto ps = new ProgramStream(parser, {});
+			auto ps = new ProgramStream(this, parser, {});
 			createResource<Program>("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -93,7 +93,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(parser, {"Points"});
+			auto ps = new ProgramStream(this, parser, {"Points"});
 			createResource<Program>("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -109,7 +109,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(parser, {});
+			auto ps = new ProgramStream(this, parser, {});
 			createResource<Program>("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -126,7 +126,7 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(parser, { "Points", "Colours" });
+			auto ps = new ProgramStream(this, parser, { "Points", "Colours" });
 			createResource<Program>("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -143,20 +143,21 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(parser, { "Colours" });
+			auto ps = new ProgramStream(this, parser, { "Colours" });
 			createResource<Program>("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Default texture
 		vector<uint8> whiteData(16, 255);
 
-		TextureStream* blankStream = new TextureStream(&(whiteData[0]), 2, 2, 32, false);
+		TextureStream* blankStream = new TextureStream(this, &(whiteData[0]), 2, 2, 32, false);
 		createResource<Texture>("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
 		InternalFont internalFont;
 
 		TextureStream* ts = new TextureStream(
+			this,
 			(uint8 const*)internalFont.getData(),
 			internalFont.getWidth(),
 			internalFont.getHeight(),
@@ -379,7 +380,7 @@ namespace mpp
 		parser->setVertexSource(defaultVertexShader);
 		parser->setFragmentSource(defaultFragmentShader);
 
-		auto ps = new ProgramStream(parser, getProgramAttributes(spec, flags));
+		auto ps = new ProgramStream(this, parser, getProgramAttributes(spec, flags));
 
 		// Generate name
 		string specName = spec.getDescriptor("__mpp_p2d_");

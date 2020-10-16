@@ -8,6 +8,8 @@
 
 namespace mpp
 {
+	class ResourceManager;
+
 	class _MPPAPI ResourceStream
 	{
 		bool mLoaded;
@@ -17,6 +19,8 @@ namespace mpp
 		std::vector<std::shared_ptr<ResourceStream>> mChildren;
 
 		bool mChildrenCreated;
+
+		ResourceManager* mResourceMgr;
 
 	private:
 
@@ -34,11 +38,13 @@ namespace mpp
 
 	protected:
 
+		ResourceManager* getResourceMgr();
+
 		void addChild(std::shared_ptr<ResourceStream> child);
 
 	public:
 
-		ResourceStream();
+		explicit ResourceStream(ResourceManager* resourceMgr);
 
 		virtual ~ResourceStream();
 

@@ -12,6 +12,6 @@ namespace mpp
 
 	public:
 
-		CylinderModelStream(mesh::MeshSpecification const& meshSpec, std::string const& material, float length, float radius1, float radius2, int res);
+		CylinderModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, float length, float radius1, float radius2, int res);
 	};
 }

@@ -15,8 +15,8 @@ namespace mpp
 
 	public:
 
-		explicit FileMaterialStream(FileDataStream const& dataStream);
+		FileMaterialStream(ResourceManager* resourceMgr, FileDataStream const& dataStream);
 
-		explicit FileMaterialStream(std::string const& xmlDef);
+		FileMaterialStream(ResourceManager* resourceMgr, std::string const& xmlDef);
 	};
 }

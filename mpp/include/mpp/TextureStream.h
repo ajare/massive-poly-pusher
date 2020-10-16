@@ -18,7 +18,7 @@ namespace mpp
 
 	public:
 
-		TextureStream(uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
+		TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
 
 		virtual ~TextureStream();
 

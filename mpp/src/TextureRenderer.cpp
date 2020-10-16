@@ -17,7 +17,7 @@ namespace mpp
 
 	ResourcePtr TextureRenderer::createRenderTexture(int width, int height)
 	{
-		auto rtStream = new RenderTextureStream(width, height, true, 1);
+		auto rtStream = new RenderTextureStream(mResourceMgr, width, height, true, 1);
 		auto rt = mResourceMgr->createResource<RenderTexture>(mName, ResourceStreamPtr(rtStream));
 
 		rt->load();

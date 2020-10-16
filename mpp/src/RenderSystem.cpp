@@ -557,7 +557,7 @@ namespace mpp
 		mInternalFont = new Font(mInternalFontTexture);
 
 		// Default material
-		ProgrammaticMaterialStream* defaultMatStream = new ProgrammaticMaterialStream();
+		ProgrammaticMaterialStream* defaultMatStream = new ProgrammaticMaterialStream(mResourceMgr);
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
@@ -565,14 +565,14 @@ namespace mpp
 
 		// Internal font
 		bool textAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
-		ProgrammaticMaterialStream* textMatStream = new ProgrammaticMaterialStream();
+		ProgrammaticMaterialStream* textMatStream = new ProgrammaticMaterialStream(mResourceMgr);
 
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
 		textMatStream->setFloatUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStream->setTexture("TEX1", "__mpp_tex_internalfont__");
 		resourceMgr->createResource<mpp::Material>("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream))->load();
 
-		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream();
+		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream(mResourceMgr);
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
 		textMatStreamColoured->setFloatUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
@@ -601,7 +601,7 @@ namespace mpp
 		}
 
 		// Create font mesh
-		auto textStream = new ProgrammaticModelStream();
+		auto textStream = new ProgrammaticModelStream(mResourceMgr);
 
 		int glyphCount = 2048;
 
@@ -649,7 +649,7 @@ namespace mpp
 		mTextMesh = resourceMgr->getResource("__mpp_internal_text_mesh__");
 
 		// Coloured font mesh
-		textStream = new ProgrammaticModelStream();
+		textStream = new ProgrammaticModelStream(mResourceMgr);
 
 		if (textAsPoints)
 		{
@@ -699,7 +699,7 @@ namespace mpp
 		mColouredTextMesh = resourceMgr->getResource("__mpp_internal_coloured_text_mesh__");
 
 		// Fullscreen mesh
-		auto quadStream = new ProgrammaticModelStream();
+		auto quadStream = new ProgrammaticModelStream(mResourceMgr);
 		mesh::MeshSpecification quadSpec = mesh::MeshSpecification(mesh::Primitive::Type::Triangles);
 
 		auto attribLayout = quadSpec.createVertexBufferAttributeLayout(false);
@@ -904,7 +904,7 @@ namespace mpp
 	 */
 	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, int width, int height, size_t numAttachments, bool depthBuffer)
 	{
-		auto rtStream = new RenderTextureStream(width, height, depthBuffer, numAttachments);
+		auto rtStream = new RenderTextureStream(mResourceMgr, width, height, depthBuffer, numAttachments);
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
 
 		rt->load();

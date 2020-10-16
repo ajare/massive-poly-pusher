@@ -8,6 +8,7 @@
 #include "Logger.h"
 
 extern Logger* gLogger;
+extern mpp::ResourceManager* gResourceManager;
 
 using namespace std;
 
@@ -57,7 +58,7 @@ mpp::TextureStream* loadImage(string const& filename, bool flipY)
 		}
 
 		mpp::TextureStream* tStr{ nullptr };
-		tStr = new mpp::TextureStream(tempData, dataWidth, dataHeight, dataBPP, true);
+		tStr = new mpp::TextureStream(gResourceManager, tempData, dataWidth, dataHeight, dataBPP, true);
 
 		FreeImage_Unload(bitmap);
 		delete[] tempData;
@@ -107,7 +108,7 @@ mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size
 
 		mpp::TextureAtlasStream* tStr{ nullptr };
 
-		tStr = new mpp::TextureAtlasStream(tempData, dataWidth, dataHeight, dataBPP, true);
+		tStr = new mpp::TextureAtlasStream(gResourceManager, tempData, dataWidth, dataHeight, dataBPP, true);
 
 		FreeImage_Unload(bitmap);
 		delete[] tempData;
