@@ -31,10 +31,12 @@ namespace mpp
 
 		auto resourceMgr = getResourceManager();
 		
-		// Create program and build information about it.
+		// Create program and build information about it.  Program is either a named resource, or a MeshSpecification with
+		// optional shader strings.
 		mProgram = resourceMgr->getResource(mStr->getProgram());
 		mProgram->load();
 
+		// Set uniforms
 		Program* program = (Program*)(mProgram.get());
 
 		Uniform<float> floatUniform;

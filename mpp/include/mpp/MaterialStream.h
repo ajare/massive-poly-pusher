@@ -15,6 +15,17 @@ namespace mpp
 	{
 	public:
 
+		struct ProgramOptions
+		{
+			bool resourceExists{ false };
+			std::string existingResource;
+			std::set<std::string> tags;
+
+			bool is2d, useDefaultShaders;
+			mesh::MeshSpecification spec;
+			std::string vertexShader, fragmentShader;
+		};
+
 		template<typename T>
 		struct Uniform
 		{
@@ -26,7 +37,7 @@ namespace mpp
 
 		std::string mName;
  
-		std::string mProgram;
+		ProgramOptions mProgram;
 
 		std::map<std::string, Uniform<float>> mFloatUniforms;
 
@@ -38,6 +49,8 @@ namespace mpp
 
 		MaterialStream(ResourceManager* resourceMgr, std::string const& program);
 
+		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, std::string const& fragmentShader);
+
 		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
 
 		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
@@ -48,9 +61,13 @@ namespace mpp
 
 		void setProgram(std::string const& program);
 
-		void setProgram(bool is2d, mpp::mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
 
-		std::string const& getProgram() const;
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader);
+
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec);
+
+		ProgramOptions const& getProgramOptions() const;
 
 		std::map<std::string, Uniform<float>> const& getFloatUniforms() const;
 

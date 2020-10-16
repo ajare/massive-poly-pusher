@@ -34,7 +34,7 @@ namespace mpp
 			// Create program stream based on MeshSpec and shaders, or by
 			// loading files
 			auto const& shaders = mi.second.getShaders();
-			for (auto const& shader : shaders)
+			for (auto const& shader: shaders)
 			{
 				if (shader.name != "")
 				{
