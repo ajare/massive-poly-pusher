@@ -24,6 +24,12 @@ namespace mpp
 		setProgram(program);
 	}
 
+	MaterialStream::MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, string const& fragmentShader)
+		: MaterialStream(resourceMgr)
+	{
+		setProgram(program2d, meshSpec, vertexShader, fragmentShader);
+	}
+
 	/*
 	 * Constructor.
 	 *
@@ -31,7 +37,7 @@ namespace mpp
 	MaterialStream::MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec)
 		: MaterialStream(resourceMgr)
 	{
-		setProgram(program2d, meshSpec, {});
+		setProgram(program2d, meshSpec);
 	}
 
 	/*
@@ -68,34 +74,56 @@ namespace mpp
 	 */
 	void MaterialStream::setProgram(string const& program)
 	{
-		mProgram = program;
+		mProgram.resourceExists = true;
+		mProgram.existingResource = program;
 	}
 
 	/*
 	 * Set program
 	 *
-	 */
+	 */ 
 	void MaterialStream::setProgram(bool is2d, mpp::mesh::MeshSpecification const& spec, set<string> const& tags)
 	{
+		mProgram.resourceExists = true;
+		mProgram.is2d = is2d;
+
 		string prefix = "__mpp_";
-		mProgram = spec.getDescriptor(prefix + (is2d ? "p2d_" : "p3d_"));
+		mProgram.existingResource = spec.getDescriptor(prefix + (is2d ? "p2d_" : "p3d_"));
 
 		for (auto const& tag : tags)
 		{
 			if (tag == "diffuse")
 			{
-				mProgram += "_d";
+				mProgram.existingResource += "_d";
 			}
 		}
 
-		mProgram += "__";
+		mProgram.existingResource += "__";
+	}
+
+	void MaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader)
+	{
+		mProgram.resourceExists = false;
+		mProgram.useDefaultShaders = false;
+		mProgram.is2d = is2d;
+		mProgram.spec = spec;
+		mProgram.vertexShader = vertexShader;
+		mProgram.fragmentShader = fragmentShader;
+	}
+
+	void MaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec)
+	{
+		mProgram.resourceExists = false;
+		mProgram.useDefaultShaders = true;
+		mProgram.is2d = is2d;
+		mProgram.spec = spec;
 	}
 
 	/*
 	 * Get program.
 	 *
 	 */
-	string const& MaterialStream::getProgram() const
+	MaterialStream::ProgramOptions const& MaterialStream::getProgramOptions() const
 	{
 		return mProgram;
 	}

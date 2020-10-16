@@ -94,6 +94,8 @@ namespace mpp
 
 			MeshSpecification const& getMeshSpecification(int meshIndex) const;
 
+			MeshSpecification peakMeshSpecification(int meshIndex);
+
 			void addMaterialInformation(std::string const& name, MaterialInformation const& matInfo);
 
 			std::map<std::string, MaterialInformation> const& getMaterialInformation() const;
