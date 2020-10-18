@@ -37,6 +37,32 @@ namespace mpp
 			mSortablePrograms.push_back(nullptr);
 		}
 
+		// Add factories
+		mResourceFactories["Program"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new Program(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["Texture"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new Texture(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["TextureAtlas"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new TextureAtlas(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["RenderTexture"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new RenderTexture(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["Material"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new Material(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["Model"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new Model(name, this->mwRenderSystem, this, rStream));
+		};
+
 		//
 		// Create built-in resources
 		//
@@ -58,7 +84,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShader3dTemplate);
 
 			auto ps = new ProgramStream(this, parser, {});
-			createResource<Program>("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
+			createResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
 		// 2d fullscreen program
@@ -76,7 +102,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
 			auto ps = new ProgramStream(this, parser, {});
-			createResource<Program>("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
+			createResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Internal text programs
@@ -94,7 +120,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, {"Points"});
-			createResource<Program>("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
+			createResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -110,7 +136,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, {});
-			createResource<Program>("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
+			createResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -127,7 +153,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, { "Points", "Colours" });
-			createResource<Program>("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
+			createResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -144,14 +170,14 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, { "Colours" });
-			createResource<Program>("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
+			createResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Default texture
 		vector<uint8> whiteData(16, 255);
 
 		TextureStream* blankStream = new TextureStream(this, &(whiteData[0]), 2, 2, 32, false);
-		createResource<Texture>("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
+		createResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
 		InternalFont internalFont;
@@ -164,7 +190,7 @@ namespace mpp
 			32,
 			false);
 
-		createResource<Texture>("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
+		createResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
 
 		// 2D materials
 		// ...
@@ -180,6 +206,16 @@ namespace mpp
 	ResourceManager::~ResourceManager()
 	{
 		destroyAllResources();
+	}
+
+	void ResourceManager::setImageLoadFunction(ImageLoadFunction function)
+	{
+		mImageLoadFunction = function;
+	}
+
+	ImageLoadFunction ResourceManager::getImageLoadFunction()
+	{
+		return mImageLoadFunction;
 	}
 
 	/*
@@ -228,6 +264,78 @@ namespace mpp
 		{
 			it.second->unload();
 		}
+	}
+
+	ResourcePtr ResourceManager::createResource(string const& name, ResourceStreamPtr resourceStream)
+	{
+		// Check name doen't exist
+		if (mResources.find(name) != mResources.end())
+		{
+			THROW_MPP(
+				utils::StringUtils::format("Resource '{}' already exists.", name),
+				__LINE__, __FILE__, __func__);
+		}
+
+		string type = resourceStream->getType();
+
+		// Check caching
+		string fullSource{ "" };
+		if (type == "Program")
+		{
+			auto programStream = dynamic_cast<ProgramStream*>(resourceStream.get());
+			fullSource = programStream->getConcatenatedSource();
+
+			auto createdProgram = mProgramCache.find(fullSource);
+			if (createdProgram != mProgramCache.end())
+			{
+				return createdProgram->second;
+			}
+		}
+
+		if (resourceStream)
+		{
+			resourceStream->load();
+		}
+
+		// Create resource
+		auto res = mResourceFactories[type](name, resourceStream);
+
+		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
+		{
+			// Set sort id
+			uint64 maxBits = min<uint64>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
+			if (msSortableTextureId == (uint32)(1 << maxBits))
+			{
+				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
+				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+			}
+
+			Texture* t = static_cast<Texture*>(res.get());
+
+			t->setSortId(msSortableTextureId++);
+			mSortableTextures.push_back(t);
+		}
+		else if (type == "Program")
+		{
+			// Caching
+			if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
+			{
+				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
+				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+			}
+
+			Program* p = static_cast<Program*>(res.get());
+
+			p->setSortId(msSortableProgramId++);
+			mSortablePrograms.push_back(p);
+
+			// Add to cache
+			mProgramCache[fullSource] = res;
+		}
+
+		mResources[name] = res;
+
+		return res;
 	}
 
 	/*
@@ -436,7 +544,7 @@ namespace mpp
 
 		specName += "__";
 
-		auto res = createResource<Program>(specName, ResourceStreamPtr(ps));
+		auto res = createResource(specName, ResourceStreamPtr(ps));
 
 		if (load)
 		{

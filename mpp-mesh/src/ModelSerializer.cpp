@@ -15,6 +15,8 @@ namespace mpp
 		 *
 		 */
 		ModelSerializer::ModelSerializer()
+			: mMaterialPeakOffset(0)
+			, mMeshSpecPeakOffset(0)
 		{
 		}
 
@@ -73,6 +75,10 @@ namespace mpp
 
 			// Flags
 			fread(&mHeader.flags, sizeof(uint32), 1, fp);
+
+			// Peak info
+			fread(&mMaterialPeakOffset, sizeof(uint32), 1, fp);
+			fread(&mMeshSpecPeakOffset, sizeof(uint32), 1, fp);
 		}
 
 		void ModelSerializer::skipHeader(FILE* fp)
@@ -92,6 +98,8 @@ namespace mpp
 			2 bytes: version major
 			2 bytes: version minor
 			4 bytes: flags (including if indexed, etc).
+			4 bytes: material peak info
+			4 bytes: meshspec peak info
 			*/
 
 			// Id
@@ -111,6 +119,15 @@ namespace mpp
 			flags |= FLAG_INDEXED_VERTICES;
 
 			fwrite(&flags, sizeof(uint32), 1, fp);
+
+			// Peak info
+			uint32 offsetDummy{ 0 };
+
+			mMaterialPeakOffset = ftell(fp);
+			fwrite(&offsetDummy, sizeof(offsetDummy), 1, fp);
+
+			mMeshSpecPeakOffset = ftell(fp);
+			fwrite(&offsetDummy, sizeof(offsetDummy), 1, fp);
 		}
 
 		/*
@@ -186,15 +203,18 @@ namespace mpp
 		 * Read model specification
 		 *
 		 */
-		MeshSpecification ModelSerializer::readMeshSpecification(FILE* fp)
+		MeshSpecification ModelSerializer::readMeshSpecification(FILE* fp, string& meshName)
 		{
 			/*
+			x bytes: mesh name
 			4 bytes: primitive type
 			4 bytes: storage type
 			1 byte : indexed vertices?
 			2 bytes: layout count
 			<buffer count> times: buffer data
 			*/
+
+			meshName = readString(fp);
 
 			MeshSpecification meshSpec;
 
@@ -232,15 +252,18 @@ namespace mpp
 		 * Write model specification
 		 *
 		 */
-		void ModelSerializer::writeMeshSpecification(FILE* fp, MeshSpecification const& meshSpec)
+		void ModelSerializer::writeMeshSpecification(FILE* fp, string const&meshName, MeshSpecification const& meshSpec)
 		{
 			/*
+			x bytes: mesh name
 			4 bytes: primitive type
 			4 bytes: storage type
 			1 byte : indexed vertices?
 			2 bytes: layout count
 			<buffer count> times: buffer data
 			*/
+
+			writeString(fp, meshName);
 
 			mpp::mesh::Primitive::Type primitiveType = meshSpec.getPrimitiveType();
 			fwrite(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
@@ -387,7 +410,6 @@ namespace mpp
 		void ModelSerializer::readMeshDefinition(FILE* fp, int meshIndex)
 		{
 			/*
-			x bytes: MeshSpecification
 			4 bytes: primitive count
 			zero-str: name
 			zero-str: material name
@@ -395,9 +417,6 @@ namespace mpp
 			4 bytes: index data size in bytes
 			x bytes: index data
 			*/
-
-			// Read mesh specification
-			mMeshes[meshIndex].specification = readMeshSpecification(fp);
 
 			// Read primitive type
 			Primitive::Type primitiveType;
@@ -463,7 +482,6 @@ namespace mpp
 		void ModelSerializer::writeMeshDefinition(FILE* fp, int meshIndex)
 		{
 			/*
-			x bytes: MeshSpecification
 			4 bytes: primitive count
 			zero-str: name
 			zero-str: material name
@@ -471,9 +489,6 @@ namespace mpp
 			4 bytes: index data size in bytes
 			x bytes: index data
 			*/
-
-			// Write mesh specification
-			writeMeshSpecification(fp, mMeshes[meshIndex].specification);
 
 			// Write primitive type
 			fwrite(&mMeshes[meshIndex].primitiveType, sizeof(Primitive::Type), 1, fp);
@@ -523,6 +538,31 @@ namespace mpp
 			return mMeshes[meshIndex].specification;
 		}
 
+		map<string, MeshSpecification> ModelSerializer::peakMeshSpecification(string const& filename)
+		{
+#pragma warning(suppress: 4996)
+			FILE* fp = fopen(filename.c_str(), "rb");
+
+			readHeader(fp);
+			fseek(fp, mMeshSpecPeakOffset, SEEK_SET);
+
+			map<string, MeshSpecification> meshSpecs;
+
+			uint32 meshCount;
+			fread(&meshCount, sizeof(meshCount), 1, fp);
+
+			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			{
+				string meshName;
+				auto meshSpec = readMeshSpecification(fp, meshName);
+				meshSpecs[meshName] = meshSpec;
+			}
+
+			fclose(fp);
+
+			return meshSpecs;
+		}
+
 		void ModelSerializer::addMaterialInformation(string const& name, MaterialInformation const& matInfo)
 		{
 			mMaterialInformation[name] = matInfo;
@@ -538,7 +578,8 @@ namespace mpp
 #pragma warning(suppress: 4996)
 			FILE* fp = fopen(filename.c_str(), "rb");
 
-			skipHeader(fp);
+			readHeader(fp);
+			fseek(fp, mMaterialPeakOffset, SEEK_SET);
 
 			// Read materials
 			int materialCount;
@@ -708,9 +749,17 @@ namespace mpp
 #pragma warning(suppress: 4996)
 			FILE* fp = fopen(filename.c_str(), "wb");
 
+			// Header with peak info
+			mMaterialPeakOffset = 0;
+			mMeshSpecPeakOffset = 0;
 			writeHeader(fp);
 
 			// Write materials
+			auto curOffset = ftell(fp);
+			fseek(fp, mMaterialPeakOffset, SEEK_SET);
+			fwrite(&curOffset, sizeof(curOffset), 1, fp);
+			fseek(fp, curOffset, SEEK_SET);
+
 			int materialCount = (int)mMaterialInformation.size();
 			fwrite(&materialCount, sizeof(int), 1, fp);
 
@@ -719,10 +768,22 @@ namespace mpp
 				writeMaterialInformation(fp, matInfo.second);
 			}
 
-			// Write meshes
-			int meshCount = getMeshCount();
-			fwrite(&meshCount, sizeof(int), 1, fp);
+			// Write meshspecs
+			curOffset = ftell(fp);
+			fseek(fp, mMeshSpecPeakOffset, SEEK_SET);
+			fwrite(&curOffset, sizeof(curOffset), 1, fp);
+			fseek(fp, curOffset, SEEK_SET);
 
+			int meshCount = getMeshCount();
+
+			fwrite(&meshCount, sizeof(int), 1, fp);
+			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			{
+				writeMeshSpecification(fp, mMeshes[i].name, mMeshes[i].specification);
+			}
+
+			// Write meshes
+			fwrite(&meshCount, sizeof(int), 1, fp);
 			for (uint32 i = 0; i < mMeshes.size(); ++i)
 			{
 				writeMeshDefinition(fp, i);
@@ -744,7 +805,7 @@ namespace mpp
 
 			// Read materials
 			int materialCount;
-			fread(&materialCount, sizeof(int), 1, fp);
+			fread(&materialCount, sizeof(materialCount), 1, fp);
 
 			for (int i = 0; i < materialCount; ++i)
 			{
@@ -752,11 +813,19 @@ namespace mpp
 				mMaterialInformation[mi.getName()] = mi;
 			}
 
-			// Read meshes
+			// Read meshspecs: assume 1-to-1 spec to mesh.
 			int meshCount;
-			fread(&meshCount, sizeof(int), 1, fp);
+			fread(&meshCount, sizeof(meshCount), 1, fp);
 			setMeshCount(meshCount);
 
+			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			{
+				string meshName;
+				mMeshes[i].specification = readMeshSpecification(fp, meshName);
+			}
+
+			// Read meshes
+			fread(&meshCount, sizeof(meshCount), 1, fp);
 			for (uint32 i = 0; i < mMeshes.size(); ++i)
 			{
 				readMeshDefinition(fp, i);

@@ -22,6 +22,14 @@ namespace mpp
 
 		explicit ProgrammaticMaterialStream(ResourceManager* resourceMgr);
 
+		ProgrammaticMaterialStream(ResourceManager* resourceMgr, std::string const& program);
+
+		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles);
+
+		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
+
+		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
+
 		void setTexture(std::string const& sampler, std::string const& texture);
 
 		void useDefaultTexture();
@@ -33,5 +41,7 @@ namespace mpp
 		void setFloatUniform(std::string const& name, glm::vec3 const& value);
 
 		void setFloatUniform(std::string const& name, glm::vec4 const& value);
+
+		Resource* createResource(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr);
 	};
 }

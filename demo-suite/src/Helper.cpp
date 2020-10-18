@@ -22,7 +22,7 @@ void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message)
 	gLogger->message(errMsg);
 }
 
-mpp::TextureStream* loadImage(string const& filename, bool flipY)
+mpp::TextureData loadImage(string const& filename)
 {
 	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
 	if (bitmap)
@@ -33,36 +33,33 @@ mpp::TextureStream* loadImage(string const& filename, bool flipY)
 		int dataSpan = dataWidth * dataBPP / 8;
 
 		int dataSize = dataSpan * dataHeight;
-		unsigned char* tempData = new unsigned char[dataSize];
+		auto tempData = new uint8[dataSize];
 
 		// Flip vertically?
 		int y0, y1, inc;
-		if (flipY)
-		{
-			y0 = dataHeight - 1;
-			y1 = -1;
-			inc = -1;
-		}
-		else
-		{
-			y0 = 0;
-			y1 = dataHeight;
-			inc = 1;
-		}
+		
+		y0 = 0;
+		y1 = dataHeight;
+		inc = 1;
 
-		unsigned char* ptr = (unsigned char*)FreeImage_GetBits(bitmap);
+		uint8* ptr = (uint8*)FreeImage_GetBits(bitmap);
 		for (int y = y0; y != y1; y += inc)
 		{
 			memcpy(&tempData[y * dataSpan], ptr, dataSpan);
 			ptr += dataSpan;
 		}
 
-		mpp::TextureStream* tStr{ nullptr };
-		tStr = new mpp::TextureStream(gResourceManager, tempData, dataWidth, dataHeight, dataBPP, true);
-
 		FreeImage_Unload(bitmap);
-		delete[] tempData;
-		return tStr;
+
+		mpp::TextureData textureData
+		{
+			tempData,
+			dataWidth,
+			dataHeight,
+			dataBPP
+		};
+
+		return textureData;
 	}
 	else
 	{
@@ -131,9 +128,10 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 		string imageName = filePath.substr(dir.length());
 		utils::FileSystem::standardisePath(imageName);
 
-		mpp::TextureStream* tStr = loadImage(filePath, false);
+		auto textureData = loadImage(filePath);
+		auto tStr = new mpp::TextureStream(resourceMgr, filePath, loadImage, true);
 
-		mpp::ResourcePtr tex = resourceMgr->createResource<mpp::Texture>(imageName, mpp::ResourceStreamPtr(tStr));
+		mpp::ResourcePtr tex = resourceMgr->createResource(imageName, mpp::ResourceStreamPtr(tStr));
 		tex->load();
 	}
 }

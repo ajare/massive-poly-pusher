@@ -26,6 +26,21 @@ namespace mpp
 		memcpy(mData, data, dataSize);
 	}
 
+	TextureStream::TextureStream(ResourceManager* resourceMgr, string const& filename, ImageLoadFunction function, bool filtered)
+		: ResourceStream(resourceMgr)
+		, mData(nullptr)
+		, mWidth(0)
+		, mHeight(0)
+		, mBitsPerPixel(0)
+		, mFiltered(filtered)
+	{
+		auto textureData = function(filename);
+		mData = textureData.data;
+		mWidth = textureData.width;
+		mHeight = textureData.height;
+		mBitsPerPixel = textureData.bitsPerPixel;
+	}
+
 	/*
 	* Destructor.
 	*

@@ -1,6 +1,9 @@
 #include "mpp/Config.h"
 #include "mpp/MppModelStream.h"
+#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/TextureStream.h"
 #include "mpp/mesh/ModelSerializer.h"
+#include "mpp/ResourceManager.h"
 
 #define FLAG_INDEXED_VERTICES 0x0001
 
@@ -24,31 +27,72 @@ namespace mpp
 
 	void MppModelStream::createChildResourceStreamsImpl()
 	{
+		auto resMgr = getResourceMgr();
+
 		mesh::ModelSerializer ser;
 
 		// Create child ResourceStreams
 		auto materialInfo = ser.peakMaterialInformation(mFilename);
+		auto meshSpecs = ser.peakMeshSpecification(mFilename);
+		
+		string vertexShader{ "" }, fragmentShader{ "" };
 
 		for (auto const& mi: materialInfo)
 		{
 			// Create program stream based on MeshSpec and shaders, or by
 			// loading files
+			bool shadersAreFiles{ false };
 			auto const& shaders = mi.second.getShaders();
 			for (auto const& shader: shaders)
 			{
 				if (shader.name != "")
 				{
-					// Create shader from file
+					shadersAreFiles = true;
 				}
-				else
+
+				switch (shader.type)
 				{
-					// Create default 2d/3d shader
+				case mesh::MaterialInformation::Shader::Type::Vertex:
+					vertexShader = shader.name;
+					break;
+
+				case mesh::MaterialInformation::Shader::Type::Fragment:
+					fragmentShader = shader.name;
+					break;
 				}
 			}
 
-			// Create texture streams if required
+			bool is2d = mi.second.getPositionType() == mesh::MaterialInformation::PositionType::p2D;
+			auto mStr = new ProgrammaticMaterialStream(
+				resMgr,
+				is2d, 
+				meshSpecs[mi.first], 
+				vertexShader, 
+				fragmentShader, 
+				shadersAreFiles);
 
-			// Create material stream
+			// Create texture streams if required
+			auto const& textures = mi.second.getTextures();
+			for (auto const& texture: textures)
+			{
+				if (!texture.isResource)
+				{
+					// Add a File TextureStream child to MaterialStream
+					auto texStr = new TextureStream(
+						resMgr,
+						texture.resource,
+						resMgr->getImageLoadFunction(),
+						true);
+
+					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
+				}
+				else
+				{
+					mStr->setTexture(texture.binding, texture.resource);
+				}
+			}
+
+			addChild(mi.second.getName(), ResourceStreamPtr(mStr));
 		}
 	}
 

@@ -12,7 +12,7 @@
 
 typedef std::map<std::pair<int, int>, std::vector<SDL_DisplayMode>> DisplayModeSet;
 
-mpp::TextureStream* loadImage(std::string const& filename, bool flipY);
+mpp::TextureData loadImage(std::string const& filename);
 
 mpp::TextureAtlasStream* loadImageAtlas(std::string const& filename, bool flipY, size_t imagesX, size_t imagesY);
 

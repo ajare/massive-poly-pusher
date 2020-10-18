@@ -242,6 +242,47 @@ void debug(string const& inFile, string const& outFile)
 
 	fileLoader.load(inFile);
 
+	// Material info
+	auto matInfo = fileLoader.getMaterialInformation();
+	cout << "Materials\n\n";
+	for (auto mat: matInfo)
+	{
+		cout << "Material: " << mat.second.getName() << "\n";
+		cout << (mat.second.getPositionType() == mpp::mesh::MaterialInformation::PositionType::p2D ?
+			"Position2 data" : "Position3 data") << "\n";
+		
+		auto const& shaders = mat.second.getShaders();
+		for (auto const& shader: shaders)
+		{
+			switch (shader.type)
+			{
+			case mpp::mesh::MaterialInformation::Shader::Type::Vertex:
+				cout << "Vertex shader: " << shader.name << "\n";
+				break;
+
+			case mpp::mesh::MaterialInformation::Shader::Type::Geometry:
+				cout << "Geometry shader: " << shader.name << "\n";
+				break;
+
+			case mpp::mesh::MaterialInformation::Shader::Type::Fragment:
+				cout << "Fragment shader: " << shader.name << "\n";
+				break;
+			}
+		}
+
+		auto const& textures = mat.second.getTextures();
+		for (auto const& texture: textures)
+		{
+			cout << texture.binding << ": " << texture.resource;
+			if (texture.isResource)
+			{
+				cout << " (external resource)";
+			}
+			cout << "\n";
+		}
+	}
+
+	// Mesh info
 	int numMeshes = fileLoader.getMeshCount();
 	for (int i = 0; i < numMeshes; ++i)
 	{

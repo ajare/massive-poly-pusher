@@ -11,6 +11,37 @@ namespace mpp
 	{
 	}
 
+	/*
+	 * Constructor.
+	 *
+	 */
+	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, string const& program)
+		: MaterialStream(resourceMgr, program)
+	{
+	}
+
+	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, string const& fragmentShader, bool shadersAreFiles)
+		: MaterialStream(resourceMgr, program2d, meshSpec, vertexShader, fragmentShader, shadersAreFiles)
+	{
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec)
+		: MaterialStream(resourceMgr, program2d, meshSpec)
+	{
+	}
+
+	/*
+	 * Constructor.
+	 *
+	 */
+	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, set<string> const& tags)
+		: MaterialStream(resourceMgr, program2d, meshSpec, tags)
+	{
+	}
 	void ProgrammaticMaterialStream::setTexture(string const& sampler, string const& texture)
 	{
 		mTextures[sampler] = texture;

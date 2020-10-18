@@ -142,7 +142,10 @@ void startup()
 	gWindow->create(gOptions.screenWidth, gOptions.screenHeight, gOptions.fullScreen, gOptions.vSync);
 
 	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight());
+	
 	gResourceManager = new ResourceManager(gRenderSystem);
+	gResourceManager->setImageLoadFunction(loadImage);
+
 	gRenderSystem->createCoreResources(gResourceManager);
 
 	gInputMgr = new InputManagerSDL();
@@ -200,20 +203,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		1. Create programs
 		2. Create textures
 		   - auto STREAM = loadImage(IMAGE_FILE, false);
-		   - ResourceManager::createResource<Texture>(NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::createResource(NAME, ResourceStreamPtr(STREAM));
 		3. Create materials
 		   - auto STREAM = new ProgrammaticMaterialStream();
 			 - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
 			 - STREAM->setProgram(<2d | 3d>, MODEL_SPEC, PROGRAM_TAGS);
 		   - STREAM->setTexture(SAMPLER_NAME, TEXTURE_RESOURCE_NAME);
-		   - ResourceManager::createResource<Material>(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::createResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
 		   or:
 		  - FileDataStream FILE_STREAM(MATERIAL_FILE);
 		  - auto STREAM = new FileMaterialStream(FILE_STREAM);
-		  - ResourceManager::createResource<Material>(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		  - ResourceManager::createResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
 		4. Create models
 		   - auto STREAM = new BoxModelStream(MODEL_SPEC, MATERIAL_RESOURCE_NAME, ...);
-		   - auto MODEL = ResourceManager::createResource<Model>(MODEL_NAME, ResourceStreamPtr(STREAM));
+		   - auto MODEL = ResourceManager::createResource(MODEL_NAME, ResourceStreamPtr(STREAM));
 		5. Load model
 		   - MODEL->load();
 		*/
@@ -266,8 +269,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/*
 		Textures are image files which are loaded with a helper function into a TextureStream, which takes the raw loaded data.
 		*/
-		TextureStream* textureStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
-		gResourceManager->createResource<Texture>("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
+		TextureStream* textureStream = new mpp::TextureStream(gResourceManager, gOptions.resourceLocation + "marble_texture4662.jpg", loadImage, true);
+		gResourceManager->createResource("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
@@ -275,23 +278,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		/*
 		Materials consist of a Program, and zero or more Textures.
-		TODO: a Material should be able to consist of a set of shaders, and zero or more Textures.  That is to say, we can apply
-		the same Material to multiple Models (ie with different MeshSpecifications).
 		*/
-		auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
-		meshMaterialStream->setProgram(false, modelSpec, {});
-		meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
-		gResourceManager->createResource<Material>("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
+		//auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
+		//meshMaterialStream->setProgram(false, modelSpec, {});
+		//meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
+		//gResourceManager->createResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
-		FileDataStream fileDataStream(gOptions.resourceLocation + "statue/statue.material");
-		auto statueMaterialStream = new FileMaterialStream(gResourceManager, fileDataStream);
-		gResourceManager->createResource<Material>("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
+		//FileDataStream fileDataStream(gOptions.resourceLocation + "statue/statue.material");
+		//auto statueMaterialStream = new FileMaterialStream(gResourceManager, fileDataStream);
+		//gResourceManager->createResource("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
 
 		//
 		// Models
 		//
 		auto statueStream = new MppModelStream(gResourceManager, gOptions.resourceLocation + "statue/statue.mppmodel");
-		auto statueModel = gResourceManager->createResource<Model>("Model.Statue", ResourceStreamPtr(statueStream));
+		auto statueModel = gResourceManager->createResource("Model.Statue", ResourceStreamPtr(statueStream));
 		statueModel->load();
 
 		//

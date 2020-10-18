@@ -24,10 +24,10 @@ namespace mpp
 		setProgram(program);
 	}
 
-	MaterialStream::MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, string const& fragmentShader)
+	MaterialStream::MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, string const& fragmentShader, bool shadersAreFiles)
 		: MaterialStream(resourceMgr)
 	{
-		setProgram(program2d, meshSpec, vertexShader, fragmentShader);
+		setProgram(program2d, meshSpec, vertexShader, fragmentShader, shadersAreFiles);
 	}
 
 	/*
@@ -101,10 +101,11 @@ namespace mpp
 		mProgram.existingResource += "__";
 	}
 
-	void MaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader)
+	void MaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles)
 	{
 		mProgram.resourceExists = false;
 		mProgram.useDefaultShaders = false;
+		mProgram.shadersAreFiles = shadersAreFiles;
 		mProgram.is2d = is2d;
 		mProgram.spec = spec;
 		mProgram.vertexShader = vertexShader;

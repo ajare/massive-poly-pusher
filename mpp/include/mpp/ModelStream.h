@@ -79,6 +79,5 @@ namespace mpp
 		int getNumMeshDefinitions() const;
 
 		mesh::MeshDefinition* getMeshDefinition(int index);
-
 	};
 }

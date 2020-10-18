@@ -45,6 +45,5 @@ namespace mpp
 		std::vector<std::string> getUniforms() const;
 
 		std::vector<std::string> getTextures() const;
-
 	};
 }
