@@ -60,7 +60,7 @@ namespace mpp
 		{
 			for (auto& child: mChildren)
 			{
-				child->load();
+				child.second->load();
 			}
 
 			loadImpl();
@@ -81,7 +81,7 @@ namespace mpp
 
 			for (auto& child: mChildren)
 			{
-				child->unload();
+				child.second->unload();
 			}
 		}
 
@@ -98,13 +98,57 @@ namespace mpp
 		return mFlags;
 	}
 
-	void ResourceStream::addChild(ResourceStreamPtr child)
+	void ResourceStream::addChild(string const& name, ResourceStreamPtr child)
 	{
-		mChildren.push_back(child);
+		mChildren[name] = child;
 	}
 
-	vector<ResourceStreamPtr> const& ResourceStream::getChildren() const
+	map<string, ResourceStreamPtr> const& ResourceStream::getChildren() const
 	{
 		return mChildren;
 	}
-}
+
+	void ResourceStream::createChildResources(string const& parentName)
+	{
+		for (auto child: mChildren)
+		{
+			string name = parentName + "/" + child.first;
+			auto res = child.second;
+
+			res->createChildResources(name);
+			mResourceMgr->createResource(name, res);
+		}
+	}
+
+	void ResourceStream::destroyChildResources()
+	{
+		for (auto child: mChildren)
+		{
+			auto res = mResourceMgr->getResource(child.first);
+			res->destroy();
+
+			child.second->destroyChildResources();
+		}
+	}
+
+	void ResourceStream::loadChildResources()
+	{
+		for (auto child: mChildren)
+		{
+			child.second->loadChildResources();
+
+			auto res = mResourceMgr->getResource(child.first);
+			res->load();
+		}
+	}
+
+	void ResourceStream::unloadChildResources()
+	{
+		for (auto child: mChildren)
+		{
+			auto res = mResourceMgr->getResource(child.first);
+			res->unload();
+
+			child.second->unloadChildResources();
+		}
+	}}

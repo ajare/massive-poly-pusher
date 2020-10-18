@@ -16,6 +16,15 @@ namespace mpp
 	{
 	}
 
+	/*
+	 * Get resource stream type.
+	 *
+	 */
+	string TextureAtlasStream::getType()
+	{
+		return "TextureAtlas";
+	}
+
 	void TextureAtlasStream::addTile(string const& name, int x, int y, int w, int h)
 	{
 		Tile t;

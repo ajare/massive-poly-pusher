@@ -133,7 +133,7 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 
 		mpp::TextureStream* tStr = loadImage(filePath, false);
 
-		mpp::ResourcePtr tex = resourceMgr->createResource<mpp::Texture>(imageName, mpp::ResourceStreamPtr(tStr));
+		mpp::ResourcePtr tex = resourceMgr->createResource(imageName, mpp::ResourceStreamPtr(tStr));
 		tex->load();
 	}
 }

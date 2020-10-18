@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+#include <map>
 
 #include "mpp/Config.h"
 
@@ -16,7 +16,7 @@ namespace mpp
 
 		uint32_t mFlags{ 0 };
 
-		std::vector<std::shared_ptr<ResourceStream>> mChildren;
+		std::map<std::string, std::shared_ptr<ResourceStream>> mChildren;
 
 		bool mChildrenCreated;
 
@@ -40,13 +40,13 @@ namespace mpp
 
 		ResourceManager* getResourceMgr();
 
-		void addChild(std::shared_ptr<ResourceStream> child);
-
 	public:
 
 		explicit ResourceStream(ResourceManager* resourceMgr);
 
 		virtual ~ResourceStream();
+
+		void addChild(std::string const& name, std::shared_ptr<ResourceStream> child);
 
 		virtual std::string getType() = 0;
 
@@ -58,7 +58,15 @@ namespace mpp
 
 		uint32_t getFlags() const;
 
-		std::vector<std::shared_ptr<ResourceStream>> const& getChildren() const;
+		std::map<std::string, std::shared_ptr<ResourceStream>> const& getChildren() const;
+
+		void createChildResources(std::string const& parentName);
+
+		void destroyChildResources();
+
+		void loadChildResources();
+
+		void unloadChildResources();
 	};
 
 	typedef std::shared_ptr<ResourceStream> ResourceStreamPtr;

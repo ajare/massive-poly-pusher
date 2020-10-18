@@ -135,6 +135,9 @@ namespace mpp
 	 */
 	void Resource::create()
 	{
+		// Create child resources
+		mResourceStream->createChildResources(getName());
+
 		if (!isCreated())
 		{
 			createImpl();
@@ -158,6 +161,9 @@ namespace mpp
 			destroyImpl();
 			mCreated = false;
 		}
+
+		// Destroy child resources
+		mResourceStream->destroyChildResources();
 	}
 
 	/*
@@ -191,6 +197,9 @@ namespace mpp
 			create();
 		}
 
+		// Load child resources
+		mResourceStream->loadChildResources();
+
 		if (!isLoaded())
 		{
 			loadImpl();
@@ -209,5 +218,8 @@ namespace mpp
 			unloadImpl();
 			mLoaded = false;
 		}
+
+		// Unload child resources
+		mResourceStream->unloadChildResources();
 	}
 }

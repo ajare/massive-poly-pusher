@@ -20,6 +20,11 @@ namespace mpp
 			{
 				int versionMajor, versionMinor;
 				uint32 flags;
+				
+				// For peaking
+				uint32 materialOffset;
+
+				uint32 meshSpecOffset;
 			};
 
 			struct VertexStream
@@ -48,6 +53,9 @@ namespace mpp
 
 			std::vector<Mesh> mMeshes;
 
+			// Peak offsets
+			uint32 mMaterialPeakOffset, mMeshSpecPeakOffset;
+
 		private:
 
 			// Read
@@ -57,7 +65,7 @@ namespace mpp
 
 			void skipHeader(FILE* fp);
 
-			MeshSpecification readMeshSpecification(FILE* fp);
+			MeshSpecification readMeshSpecification(FILE* fp, std::string& meshName);
 
 			MaterialInformation readMaterialInformation(FILE* fp);
 
@@ -76,7 +84,7 @@ namespace mpp
 
 			void writeVertexBufferAttributeLayout(FILE* fp, VertexBufferAttributeLayout const& layout);
 
-			void writeMeshSpecification(FILE* fp, MeshSpecification const& meshSpec);
+			void writeMeshSpecification(FILE* fp, std::string const&meshName, MeshSpecification const& meshSpec);
 
 			void writeVertexBuffer(FILE* fp, VertexStream const& vertexStream);
 
@@ -94,7 +102,7 @@ namespace mpp
 
 			MeshSpecification const& getMeshSpecification(int meshIndex) const;
 
-			MeshSpecification peakMeshSpecification(int meshIndex);
+			std::map<std::string, MeshSpecification> peakMeshSpecification(std::string const& filename);
 
 			void addMaterialInformation(std::string const& name, MaterialInformation const& matInfo);
 

@@ -33,7 +33,7 @@ namespace mpp
 		
 		// Create program and build information about it.  Program is either a named resource, or a MeshSpecification with
 		// optional shader strings.
-		mProgram = resourceMgr->getResource(mStr->getProgram());
+		mProgram = resourceMgr->getResource(mStr->getProgramOptions().existingResource);
 		mProgram->load();
 
 		// Set uniforms

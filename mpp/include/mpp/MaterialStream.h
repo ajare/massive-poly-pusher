@@ -21,7 +21,7 @@ namespace mpp
 			std::string existingResource;
 			std::set<std::string> tags;
 
-			bool is2d, useDefaultShaders;
+			bool is2d, useDefaultShaders, shadersAreFiles;
 			mesh::MeshSpecification spec;
 			std::string vertexShader, fragmentShader;
 		};
@@ -49,7 +49,7 @@ namespace mpp
 
 		MaterialStream(ResourceManager* resourceMgr, std::string const& program);
 
-		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, std::string const& fragmentShader);
+		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles);
 
 		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
 
@@ -63,7 +63,7 @@ namespace mpp
 
 		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
 
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader);
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles);
 
 		void setProgram(bool is2d, mesh::MeshSpecification const& spec);
 
