@@ -485,6 +485,23 @@ namespace mpp
 		auto parser = make_shared<program::Parser>();
 
 		parser->setMeshSpecification(spec);
+
+		// Set defaults if empty
+		string vShader = defaultVertexShader;
+		if (vShader == "")
+		{
+			vShader = VertexShader2dTemplate;
+		}
+
+		string fShader = defaultFragmentShader;
+		if (fShader == "")
+		{
+			fShader = FragmentShader2dTemplate;
+		}
+
+		parser->setVertexSource(vShader);
+		parser->setFragmentSource(fShader);
+
 		parser->setVertexSource(defaultVertexShader);
 		parser->setFragmentSource(defaultFragmentShader);
 
@@ -564,8 +581,22 @@ namespace mpp
 		auto parser = make_shared<program::Parser>();
 
 		parser->setMeshSpecification(spec);
-		parser->setVertexSource(defaultVertexShader);
-		parser->setFragmentSource(defaultFragmentShader);
+
+		// Set defaults if empty
+		string vShader = defaultVertexShader;
+		if (vShader == "")
+		{
+			vShader = VertexShader3dTemplate;
+		}
+		
+		string fShader = defaultFragmentShader;
+		if (fShader == "")
+		{
+			fShader = FragmentShader3dTemplate;
+		}
+
+		parser->setVertexSource(vShader);
+		parser->setFragmentSource(fShader);
 
 		auto ps = new ProgramStream(this, parser, getProgramAttributes(spec, flags));
 

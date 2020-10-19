@@ -21,7 +21,7 @@ namespace mpp
 			std::string existingResource;
 			std::set<std::string> tags;
 
-			bool is2d, useDefaultShaders, shadersAreFiles;
+			bool is2d, shadersAreFiles;
 			mesh::MeshSpecification spec;
 			std::string vertexShader, fragmentShader;
 		};
