@@ -32,13 +32,18 @@ namespace mpp
 		mesh::ModelSerializer ser;
 
 		// Create child ResourceStreams
+		auto meshNames = ser.peakMeshNames(mFilename);
 		auto materialInfo = ser.peakMaterialInformation(mFilename);
 		auto meshSpecs = ser.peakMeshSpecification(mFilename);
 		
 		string vertexShader{ "" }, fragmentShader{ "" };
 
-		for (auto const& mi: materialInfo)
+		// Create a material resource for each unique combination of mesh (spec) and
+		// the material it uses
+		for (auto const& meshName: meshNames)
 		{
+			auto matInfo = materialInfo[] // Need mesh name -> material mapping
+
 			// Create program stream based on MeshSpec and shaders, or by
 			// loading files
 			bool shadersAreFiles{ false };
@@ -63,10 +68,11 @@ namespace mpp
 			}
 
 			bool is2d = mi.second.getPositionType() == mesh::MaterialInformation::PositionType::p2D;
+			auto const& meshSpec = meshSpecs[mi.first];
 			auto mStr = new ProgrammaticMaterialStream(
 				resMgr,
 				is2d, 
-				meshSpecs[mi.first], 
+				meshSpec, 
 				vertexShader, 
 				fragmentShader, 
 				shadersAreFiles);
