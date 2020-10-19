@@ -18,7 +18,7 @@
 		<!-- Material name should match those defined in the .mtl file. -->
 		<Material name="statue_material">
 			<!-- positionType attribute is either '2D' or '3D' -->
-			<Program positionType="2D">
+			<Program positionType="3D">
 				<!--
 				Shaders are either filenames, or if empty, use the default shaders.
 				-->

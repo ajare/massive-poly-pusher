@@ -104,7 +104,6 @@ namespace mpp
 	void MaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles)
 	{
 		mProgram.resourceExists = false;
-		mProgram.useDefaultShaders = false;
 		mProgram.shadersAreFiles = shadersAreFiles;
 		mProgram.is2d = is2d;
 		mProgram.spec = spec;
@@ -115,7 +114,6 @@ namespace mpp
 	void MaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec)
 	{
 		mProgram.resourceExists = false;
-		mProgram.useDefaultShaders = true;
 		mProgram.is2d = is2d;
 		mProgram.spec = spec;
 	}

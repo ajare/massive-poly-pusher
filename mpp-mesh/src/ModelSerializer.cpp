@@ -551,7 +551,7 @@ namespace mpp
 			uint32 meshCount;
 			fread(&meshCount, sizeof(meshCount), 1, fp);
 
-			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			for (uint32 i = 0; i < meshCount; ++i)
 			{
 				string meshName;
 				auto meshSpec = readMeshSpecification(fp, meshName);
@@ -818,7 +818,7 @@ namespace mpp
 			fread(&meshCount, sizeof(meshCount), 1, fp);
 			setMeshCount(meshCount);
 
-			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			for (uint32 i = 0; i < meshCount; ++i)
 			{
 				string meshName;
 				mMeshes[i].specification = readMeshSpecification(fp, meshName);
@@ -826,7 +826,7 @@ namespace mpp
 
 			// Read meshes
 			fread(&meshCount, sizeof(meshCount), 1, fp);
-			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			for (uint32 i = 0; i < meshCount; ++i)
 			{
 				readMeshDefinition(fp, i);
 			}

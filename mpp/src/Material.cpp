@@ -44,9 +44,10 @@ namespace mpp
 			// Get or create program, either with default shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)
 			{
-				if (progOpts.useDefaultShaders)
+				if (progOpts.shadersAreFiles)
 				{
-					mProgram = resourceMgr->getDefault2dProgram(progOpts.spec, 0, false);
+					THROW_MPP_NOTIMP("Loading shaders from files", __LINE__, __FILE__, __func__);
+					//mProgram = resourceMgr->getDefault2dProgram(progOpts.spec, 0, false);
 				}
 				else
 				{
@@ -55,9 +56,10 @@ namespace mpp
 			}
 			else
 			{
-				if (progOpts.useDefaultShaders)
+				if (progOpts.shadersAreFiles)
 				{
-					mProgram = resourceMgr->getDefault3dProgram(progOpts.spec, 0, false);
+					THROW_MPP_NOTIMP("Loading shaders from files", __LINE__, __FILE__, __func__);
+					//mProgram = resourceMgr->getDefault3dProgram(progOpts.spec, 0, false);
 				}
 				else
 				{
