@@ -79,5 +79,8 @@ namespace mpp
 		int getNumMeshDefinitions() const;
 
 		mesh::MeshDefinition* getMeshDefinition(int index);
+
+		virtual std::string markUpMaterialName(std::string const& name, std::string const& material);
+
 	};
 }

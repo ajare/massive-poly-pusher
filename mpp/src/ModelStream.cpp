@@ -262,4 +262,9 @@ namespace mpp
 		assert((index >= 0 && index < getNumMeshDefinitions()) && "ModelStream::getMeshDefinition() 'index' argument out of range!");
 		return mMeshDefinitions[index];
 	}
+
+	string ModelStream::markUpMaterialName(string const& name, string const& material)
+	{
+		return material;
+	}
 }
