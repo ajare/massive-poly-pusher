@@ -197,4 +197,8 @@ namespace mpp
 		return mMeshDataDefinitions[meshIndex]->specification;
 	}
 
+	string MppModelStream::markUpMaterialName(string const& name, string const& material)
+	{
+		return name + "/" + material;
+	}
 }

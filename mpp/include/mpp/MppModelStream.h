@@ -60,6 +60,8 @@ namespace mpp
 		MppModelStream(ResourceManager* resourceMgr, std::string const& filename);
 
 		~MppModelStream();
+
+		std::string markUpMaterialName(std::string const& name, std::string const& material);
 	};
 
 }

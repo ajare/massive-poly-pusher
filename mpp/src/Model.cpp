@@ -60,7 +60,10 @@ namespace mpp
 		{
 			MeshDefinition* meshDef = mStr->getMeshDefinition(i);
 
-			ResourcePtr	material = resourceMgr->getResource(meshDef->getMaterial());
+			// If it's an MPP model, prepend name, as the material will be specific to it.
+			string materialName = mStr->markUpMaterialName(getName(), meshDef->getMaterial());
+			
+			ResourcePtr	material = resourceMgr->getResource(materialName);
 			material->load();
 
 			// Don't check vertex attribute mapping for internal resources as they may not

@@ -33,8 +33,18 @@ namespace mpp
 		
 		// Create program and build information about it.  Program is either a named resource, or a MeshSpecification with
 		// optional shader strings.
-		mProgram = resourceMgr->getResource(mStr->getProgramOptions().existingResource);
-		mProgram->load();
+		auto const& progOpts = mStr->getProgramOptions();
+
+		if (progOpts.resourceExists)
+		{
+			mProgram = resourceMgr->getResource(mStr->getProgramOptions().existingResource);
+			mProgram->load();
+		}
+		else
+		{
+			// Get or create program, either with default shaders or loaded strings in ProgOpts.
+			TODO...
+		}
 
 		// Set uniforms
 		Program* program = (Program*)(mProgram.get());
