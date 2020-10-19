@@ -73,6 +73,10 @@ namespace mpp
 
 		ResourcePtr getDefault2dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
 
+		ResourcePtr getDefault3dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+
+		ResourcePtr getDefault3dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+
 		Texture* getTextureBySortId(uint32 id);
 
 		Program* getProgramBySortId(uint32 id);

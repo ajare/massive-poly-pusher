@@ -554,6 +554,81 @@ namespace mpp
 		return res;
 	}
 
+	ResourcePtr ResourceManager::getDefault3dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	{
+		return getDefault3dProgram(VertexShader3dTemplate, FragmentShader3dTemplate, spec, flags, load, descriptor);
+	}
+
+	ResourcePtr ResourceManager::getDefault3dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	{
+		auto parser = make_shared<program::Parser>();
+
+		parser->setMeshSpecification(spec);
+		parser->setVertexSource(defaultVertexShader);
+		parser->setFragmentSource(defaultFragmentShader);
+
+		auto ps = new ProgramStream(this, parser, getProgramAttributes(spec, flags));
+
+		// Generate name
+		string specName = spec.getDescriptor("__mpp_p3d_");
+
+		// Add texture units, diffuse, rotation.
+		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
+		{
+			specName += "_s";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE1)
+		{
+			specName += "1";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE2)
+		{
+			specName += "2";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE3)
+		{
+			specName += "3";
+		}
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE4)
+		{
+			specName += "4";
+		}
+
+		if (flags & MPP_PROGRAM_TAGS_DIFFUSE)
+		{
+			specName += "_";
+		}
+		if (flags & MPP_PROGRAM_TAGS_DIFFUSE)
+		{
+			specName += "d";
+		}
+		if (flags & MPP_PROGRAM_TAGS_ATLAS)
+		{
+			specName += "a";
+		}
+
+		if (descriptor != "")
+		{
+			specName += "_" + descriptor;
+		}
+
+		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
+		// between attribute type).
+		specName += "_";
+		specName += utils::StringUtils::toString(mProgramCache.size() + 1);
+
+		specName += "__";
+
+		auto res = createResource(specName, ResourceStreamPtr(ps));
+
+		if (load)
+		{
+			res->load();
+		}
+
+		return res;
+	}
+
 	/*
 	 * Get raw texture resource from sort id.
 	 *

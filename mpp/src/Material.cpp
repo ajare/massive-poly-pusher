@@ -38,13 +38,35 @@ namespace mpp
 		if (progOpts.resourceExists)
 		{
 			mProgram = resourceMgr->getResource(mStr->getProgramOptions().existingResource);
-			mProgram->load();
 		}
 		else
 		{
 			// Get or create program, either with default shaders or loaded strings in ProgOpts.
-			TODO...
+			if (progOpts.is2d)
+			{
+				if (progOpts.useDefaultShaders)
+				{
+					mProgram = resourceMgr->getDefault2dProgram(progOpts.spec, 0, false);
+				}
+				else
+				{
+					mProgram = resourceMgr->getDefault2dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, 0, false);
+				}
+			}
+			else
+			{
+				if (progOpts.useDefaultShaders)
+				{
+					mProgram = resourceMgr->getDefault3dProgram(progOpts.spec, 0, false);
+				}
+				else
+				{
+					mProgram = resourceMgr->getDefault3dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, 0, false);
+				}
+			}
 		}
+
+		mProgram->load();
 
 		// Set uniforms
 		Program* program = (Program*)(mProgram.get());
