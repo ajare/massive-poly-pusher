@@ -79,12 +79,16 @@ namespace mpp
 			// Peak info
 			fread(&mMaterialPeakOffset, sizeof(uint32), 1, fp);
 			fread(&mMeshSpecPeakOffset, sizeof(uint32), 1, fp);
-		}
 
-		void ModelSerializer::skipHeader(FILE* fp)
-		{
-			auto offset = 4 + sizeof(uint16) + sizeof(uint16) + sizeof(uint32);
-			fseek(fp, offset, SEEK_SET);
+			size_t numMeshes;
+			fread(&numMeshes, sizeof(numMeshes), 1, fp);
+
+			mMeshNames.clear();
+			for (size_t i = 0; i < numMeshes; ++i)
+			{
+				string meshName = readString(fp);
+				mMeshNames.push_back(meshName);
+			}
 		}
 
 		/*
@@ -128,6 +132,13 @@ namespace mpp
 
 			mMeshSpecPeakOffset = ftell(fp);
 			fwrite(&offsetDummy, sizeof(offsetDummy), 1, fp);
+
+			size_t numMeshes = mMeshes.size();
+			fwrite(&numMeshes, sizeof(numMeshes), 1, fp);
+			for (auto const& mesh : mMeshes)
+			{
+				writeString(fp, mesh.name);
+			}
 		}
 
 		/*
@@ -738,6 +749,16 @@ namespace mpp
 		int ModelSerializer::getMeshCount() const
 		{
 			return (int)mMeshes.size();
+		}
+
+		vector<string> const& ModelSerializer::peakMeshNames(string const& filename)
+		{
+#pragma warning(suppress: 4996)
+			FILE* fp = fopen(filename.c_str(), "rb");
+			readHeader(fp);
+			fclose(fp);
+
+			return mMeshNames;
 		}
 
 		/*

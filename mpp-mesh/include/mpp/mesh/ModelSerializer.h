@@ -25,6 +25,8 @@ namespace mpp
 				uint32 materialOffset;
 
 				uint32 meshSpecOffset;
+
+				size_t numMeshes;
 			};
 
 			struct VertexStream
@@ -56,14 +58,14 @@ namespace mpp
 			// Peak offsets
 			uint32 mMaterialPeakOffset, mMeshSpecPeakOffset;
 
+			std::vector<std::string> mMeshNames;
+
 		private:
 
 			// Read
 			std::string readString(FILE* fp);
 
 			void readHeader(FILE* fp);
-
-			void skipHeader(FILE* fp);
 
 			MeshSpecification readMeshSpecification(FILE* fp, std::string& meshName);
 
@@ -97,6 +99,8 @@ namespace mpp
 			void setMeshCount(int count);
 
 			int getMeshCount() const;
+
+			std::vector<std::string> const& peakMeshNames(std::string const& filename);
 
 			void setMeshSpecification(int meshIndex, MeshSpecification const& specification);
 
