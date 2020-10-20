@@ -30,24 +30,24 @@ namespace mpp
 		auto resMgr = getResourceMgr();
 
 		mesh::ModelSerializer ser;
+		auto reader = ser.getReader(mFilename);
 
 		// Create child ResourceStreams
-		auto meshNames = ser.peakMeshNames(mFilename);
-		auto materialInfo = ser.peakMaterialInformation(mFilename);
-		auto meshSpecs = ser.peakMeshSpecification(mFilename);
-		
 		string vertexShader{ "" }, fragmentShader{ "" };
 
 		// Create a material resource for each unique combination of mesh (spec) and
 		// the material it uses
-		for (auto const& meshName: meshNames)
+		auto numMeshes = reader.getNumMeshes();
+		for (size_t i = 0; i < numMeshes; ++i)
 		{
-			auto matInfo = materialInfo[] // Need mesh name -> material mapping
+			//auto matInfo = materialInfo[] // Need mesh name -> material mapping
+			auto const& matInfo = reader.getMaterialByMeshId(i);
+			auto const& meshSpec = reader.getMeshSpecificationByMeshId(i);
 
 			// Create program stream based on MeshSpec and shaders, or by
 			// loading files
 			bool shadersAreFiles{ false };
-			auto const& shaders = mi.second.getShaders();
+			auto const& shaders = matInfo.getShaders();
 			for (auto const& shader: shaders)
 			{
 				if (shader.name != "")
@@ -67,8 +67,7 @@ namespace mpp
 				}
 			}
 
-			bool is2d = mi.second.getPositionType() == mesh::MaterialInformation::PositionType::p2D;
-			auto const& meshSpec = meshSpecs[mi.first];
+			bool is2d = matInfo.getPositionType() == mesh::MaterialInformation::PositionType::p2D;
 			auto mStr = new ProgrammaticMaterialStream(
 				resMgr,
 				is2d, 
@@ -78,7 +77,7 @@ namespace mpp
 				shadersAreFiles);
 
 			// Create texture streams if required
-			auto const& textures = mi.second.getTextures();
+			auto const& textures = matInfo.getTextures();
 			for (auto const& texture: textures)
 			{
 				if (!texture.isResource)
@@ -98,7 +97,7 @@ namespace mpp
 				}
 			}
 
-			addChild(mi.second.getName(), ResourceStreamPtr(mStr));
+			addChild(matInfo.getName(), ResourceStreamPtr(mStr));
 		}
 	}
 
