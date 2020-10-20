@@ -15,9 +15,18 @@ namespace mpp
 		 *
 		 */
 		ModelSerializer::ModelSerializer()
-			: mMaterialPeakOffset(0)
-			, mMeshSpecPeakOffset(0)
 		{
+		}
+
+		void ModelSerializer::clear()
+		{
+			mMaterialLookup.clear();
+			mMaterials.clear();
+			mMeshSpecifications.clear();
+			mVertexStreams.clear();
+			mIndexStreamLookup.clear();
+			mIndexStreams.clear();
+			mMeshes.clear();
 		}
 
 		string ModelSerializer::readString(FILE* fp)
@@ -75,20 +84,6 @@ namespace mpp
 
 			// Flags
 			fread(&mHeader.flags, sizeof(uint32), 1, fp);
-
-			// Peak info
-			fread(&mMaterialPeakOffset, sizeof(uint32), 1, fp);
-			fread(&mMeshSpecPeakOffset, sizeof(uint32), 1, fp);
-
-			size_t numMeshes;
-			fread(&numMeshes, sizeof(numMeshes), 1, fp);
-
-			mMeshNames.clear();
-			for (size_t i = 0; i < numMeshes; ++i)
-			{
-				string meshName = readString(fp);
-				mMeshNames.push_back(meshName);
-			}
 		}
 
 		/*
@@ -102,8 +97,6 @@ namespace mpp
 			2 bytes: version major
 			2 bytes: version minor
 			4 bytes: flags (including if indexed, etc).
-			4 bytes: material peak info
-			4 bytes: meshspec peak info
 			*/
 
 			// Id
@@ -123,22 +116,337 @@ namespace mpp
 			flags |= FLAG_INDEXED_VERTICES;
 
 			fwrite(&flags, sizeof(uint32), 1, fp);
+		}
 
-			// Peak info
-			uint32 offsetDummy{ 0 };
+		/*
+		 * Read directory.
+		 *
+		 */
+		void ModelSerializer::readDirectory(FILE* fp)
+		{
+			mDirectory.entries[(size_t)Directory::Entry::Type::Unused] = readDirectoryEntry(fp);
+			mDirectory.entries[(size_t)Directory::Entry::Type::Materials] = readDirectoryEntry(fp);
+			mDirectory.entries[(size_t)Directory::Entry::Type::MeshSpecifications] = readDirectoryEntry(fp);
+			mDirectory.entries[(size_t)Directory::Entry::Type::VertexData] = readDirectoryEntry(fp);
+			mDirectory.entries[(size_t)Directory::Entry::Type::IndexData] = readDirectoryEntry(fp);
+			mDirectory.entries[(size_t)Directory::Entry::Type::MeshMetadata] = readDirectoryEntry(fp);
+		}
 
-			mMaterialPeakOffset = ftell(fp);
-			fwrite(&offsetDummy, sizeof(offsetDummy), 1, fp);
+		/*
+		 * Read directory entry.
+		 *
+		 */
+		ModelSerializer::Directory::Entry ModelSerializer::readDirectoryEntry(FILE* fp)
+		{
+			ModelSerializer::Directory::Entry entry;
 
-			mMeshSpecPeakOffset = ftell(fp);
-			fwrite(&offsetDummy, sizeof(offsetDummy), 1, fp);
+			fread(&entry.type, sizeof(entry.type), 1, fp);
+			fread(&entry.startOffset, sizeof(entry.startOffset), 1, fp);
+			fread(&entry.endOffset, sizeof(entry.endOffset), 1, fp);
+			fread(&entry.count, sizeof(entry.count), 1, fp);
 
-			size_t numMeshes = mMeshes.size();
-			fwrite(&numMeshes, sizeof(numMeshes), 1, fp);
-			for (auto const& mesh : mMeshes)
+			return entry;
+		}
+
+		void ModelSerializer::updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32 start, uint32 end, size_t count)
+		{
+			auto oldPos = ftell(fp);
+
+			size_t newPos = sizeof(Header) + (size_t)type * sizeof(Directory::Entry);
+
+			fseek(fp, newPos, SEEK_SET);
+			writeDirectoryEntry(fp, { type, start, end, count });
+
+			fseek(fp, oldPos, SEEK_SET);
+		}
+
+		/*
+		 * Write directory.
+		 *
+		 */
+		void ModelSerializer::writeDirectory(FILE* fp)
+		{
+			writeDirectoryEntry(fp, { Directory::Entry::Type::Unused, 0, 0, 0 });
+			writeDirectoryEntry(fp, { Directory::Entry::Type::Materials, 0, 0, mMaterials.size() });
+			writeDirectoryEntry(fp, { Directory::Entry::Type::MeshSpecifications, 0, 0, mMeshes.size() });
+			writeDirectoryEntry(fp, { Directory::Entry::Type::VertexData, 0, 0, 0 });
+			writeDirectoryEntry(fp, { Directory::Entry::Type::IndexData, 0, 0, 0 });
+			writeDirectoryEntry(fp, { Directory::Entry::Type::MeshMetadata, 0, 0, 0 });
+		}
+
+		/*
+		 * Write directory entry.
+		 *
+		 */
+		void ModelSerializer::writeDirectoryEntry(FILE* fp, Directory::Entry const& entry)
+		{
+			fwrite(&entry.type, sizeof(entry.type), 1, fp);
+			fwrite(&entry.startOffset, sizeof(entry.startOffset), 1, fp);
+			fwrite(&entry.endOffset, sizeof(entry.endOffset), 1, fp);
+			fwrite(&entry.count, sizeof(entry.count), 1, fp);
+		}
+
+		void ModelSerializer::readMaterials(FILE* fp)
+		{
+			auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::Materials];
+
+			fseek(fp, entry.startOffset, SEEK_SET);
+
+			for (size_t i = 0; i < entry.count; ++i)
 			{
-				writeString(fp, mesh.name);
+				auto material = readMaterial(fp);
+
+				mMaterialLookup[material.getName()] = mMaterials.size();
+				mMaterials.push_back(material);
 			}
+
+			if (ftell(fp) != entry.endOffset)
+			{
+				THROW_MPP_MESH("Invalid file position.", __LINE__, __FILE__, __func__);
+			}
+		}
+
+		MaterialInformation ModelSerializer::readMaterial(FILE* fp)
+		{
+			auto name = readString(fp);
+
+			MaterialInformation mi(name);
+
+			mpp::mesh::MaterialInformation::PositionType positionType;
+			fread(&positionType, sizeof(positionType), 1, fp);
+
+			mi.setPositionType(positionType);
+
+			int shaderCount;
+			fread(&shaderCount, sizeof(shaderCount), 1, fp);
+			for (int i = 0; i < shaderCount; ++i)
+			{
+				mpp::mesh::MaterialInformation::Shader::Type shaderType;
+
+				fread(&shaderType, sizeof(shaderType), 1, fp);
+				auto shaderName = readString(fp);
+
+				mi.addShader(shaderType, shaderName);
+			}
+
+			int textureCount;
+			fread(&textureCount, sizeof(textureCount), 1, fp);
+			for (int i = 0; i < textureCount; ++i)
+			{
+				int32 isResource;
+				fread(&isResource, sizeof(isResource), 1, fp);
+				auto binding = readString(fp);
+				auto resource = readString(fp);
+
+				mi.addTexture(isResource, binding, resource);
+			}
+
+			return mi;
+		}
+
+		/*
+		 * Write all materials.
+		 *
+		 */
+		void ModelSerializer::writeMaterials(FILE* fp)
+		{
+			uint32 start = ftell(fp);
+
+			// Write and update mapping
+			for (size_t i = 0; i < mMaterials.size(); ++i)
+			{
+				writeMaterial(fp, mMaterials[i]);
+			}
+
+			uint32 end = ftell(fp);
+			updateDirectoryEntry(fp, Directory::Entry::Type::Materials, start, end, mMaterials.size());
+		}
+
+		void ModelSerializer::writeMaterial(FILE* fp, MaterialInformation const& matInfo)
+		{
+			writeString(fp, matInfo.getName());
+
+			auto positionType = matInfo.getPositionType();
+			fwrite(&positionType, sizeof(positionType), 1, fp);
+
+			auto const& shaders = matInfo.getShaders();
+
+			int shaderCount = (int)shaders.size();
+			fwrite(&shaderCount, sizeof(shaderCount), 1, fp);
+			for (auto const& shader : shaders)
+			{
+				fwrite(&shader.type, sizeof(shader.type), 1, fp);
+				writeString(fp, shader.name);
+			}
+
+			auto const& textures = matInfo.getTextures();
+
+			int textureCount = (int)textures.size();
+			fwrite(&textureCount, sizeof(textureCount), 1, fp);
+			for (auto const& texture : textures)
+			{
+				int32 isResource = texture.isResource ? 1 : 0;
+				fwrite(&isResource, sizeof(isResource), 1, fp);
+				writeString(fp, texture.binding);
+				writeString(fp, texture.resource);
+			}
+		}
+
+		void ModelSerializer::readMeshSpecifications(FILE* fp)
+		{
+			auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::MeshSpecifications];
+
+			fseek(fp, entry.startOffset, SEEK_SET);
+
+			for (size_t i = 0; i < entry.count; ++i)
+			{
+				mMeshSpecifications.push_back(readMeshSpecification(fp));
+			}
+
+			if (ftell(fp) != entry.endOffset)
+			{
+				THROW_MPP_MESH("Invalid file position.", __LINE__, __FILE__, __func__);
+			}
+		}
+
+		/*
+		 * Read model specification
+		 *
+		 */
+		MeshSpecification ModelSerializer::readMeshSpecification(FILE* fp)
+		{
+			/*
+			4 bytes: primitive type
+			4 bytes: storage type
+			1 byte : indexed vertices?
+			2 bytes: layout count
+			<buffer count> times: buffer data
+			*/
+			MeshSpecification meshSpec;
+
+			mpp::mesh::Primitive::Type primitiveType;
+			fread(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
+			meshSpec.setPrimitiveType(primitiveType);
+
+			mpp::mesh::VertexBufferStorageType storageType;
+			fread(&storageType, sizeof(mpp::mesh::VertexBufferStorageType), 1, fp);
+			meshSpec.setStorageType(storageType);
+
+			char indexed;
+			fread(&indexed, sizeof(char), 1, fp);
+			if (indexed == 1)
+			{
+				meshSpec.setIndexedVertices(true);
+			}
+
+			uint16 layoutCount;
+			fread(&layoutCount, sizeof(uint16), 1, fp);
+
+			uint32_t attribOffset = 0;
+			for (int i = 0; i < layoutCount; ++i)
+			{
+				auto layout = meshSpec.createVertexBufferAttributeLayout(false);
+				readVertexBufferAttributeLayout(fp, layout, attribOffset);
+				attribOffset += layout->getNumAttributes();
+			}
+
+			return meshSpec;
+		}
+
+		/*
+		 * Write all MeshSpecifications.
+		 *
+		 */
+		void ModelSerializer::writeMeshSpecifications(FILE* fp)
+		{
+			uint32 start = ftell(fp);
+
+			for (uint32 i = 0; i < mMeshSpecifications.size(); ++i)
+			{
+				writeMeshSpecification(fp, mMeshSpecifications[i]);
+			}
+
+			uint32 end = ftell(fp);
+			updateDirectoryEntry(fp, Directory::Entry::Type::MeshSpecifications, start, end, mMeshSpecifications.size());
+		}
+
+		/*
+		 * Write mesh specification
+		 *
+		 */
+		void ModelSerializer::writeMeshSpecification(FILE* fp, MeshSpecification const& meshSpec)
+		{
+			/*
+			4 bytes: primitive type
+			4 bytes: storage type
+			1 byte : indexed vertices?
+			2 bytes: layout count
+			<buffer count> times: buffer data
+			*/
+			mpp::mesh::Primitive::Type primitiveType = meshSpec.getPrimitiveType();
+			fwrite(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
+
+			mpp::mesh::VertexBufferStorageType storageType = meshSpec.getStorageType();
+			fwrite(&storageType, sizeof(mpp::mesh::VertexBufferStorageType), 1, fp);
+
+			char indexed = meshSpec.verticesIndexed() ? 1 : 0;
+			fwrite(&indexed, sizeof(char), 1, fp);
+
+			uint16 layoutCount = meshSpec.getNumVertexBufferAttributeLayouts();
+			fwrite(&layoutCount, sizeof(uint16), 1, fp);
+
+			for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+			{
+				auto buffer = meshSpec.getVertexBufferAttributeLayout(i);
+				writeVertexBufferAttributeLayout(fp, buffer);
+			}
+		}
+
+		void ModelSerializer::readVertexBuffers(FILE* fp)
+		{
+			auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::VertexData];
+
+			fseek(fp, entry.startOffset, SEEK_SET);
+
+			for (size_t i = 0; i < entry.count; ++i)
+			{
+				mVertexStreams.push_back(readVertexBuffer(fp));
+			}
+
+			if (ftell(fp) != entry.endOffset)
+			{
+				THROW_MPP_MESH("Invalid file position.", __LINE__, __FILE__, __func__);
+			}
+		}
+
+		/*
+		 * Read vertex buffer
+		 *
+		 */
+		ModelSerializer::VertexStream ModelSerializer::readVertexBuffer(FILE* fp)
+		{
+			/*
+			4 bytes: vertex data size in bytes
+			4 bytes: vertex count
+			4 bytes: vertex stride
+			x bytes: vertex data
+			*/
+
+			int vertexDataSize, vertexCount, vertexStride;
+
+			fread(&vertexDataSize, sizeof(int), 1, fp);
+			fread(&vertexCount, sizeof(int), 1, fp);
+			fread(&vertexStride, sizeof(int), 1, fp);
+
+			int8* vertexData = new int8[vertexDataSize];
+			fread(vertexData, vertexDataSize, 1, fp);
+
+			VertexStream vs;
+			vs.vertexCount = vertexCount;
+			vs.vertexStride = vertexStride;
+			vs.vertexData = shared_ptr<const int8>(vertexData, [](int8 *p) { delete[] p; });
+
+			return vs;
 		}
 
 		/*
@@ -179,6 +487,44 @@ namespace mpp
 		}
 
 		/*
+		 * Write all Vertex Buffers.
+		 *
+		 */
+		void ModelSerializer::writeVertexBuffers(FILE* fp)
+		{
+			uint32 start = ftell(fp);
+
+			for (size_t i = 0; i < mVertexStreams.size(); ++i)
+			{
+				writeVertexBuffer(fp, mVertexStreams[i]);
+			}
+
+			uint32 end = ftell(fp);
+			updateDirectoryEntry(fp, Directory::Entry::Type::VertexData, start, end, mVertexStreams.size());
+		}
+
+		/*
+		 * Write vertex buffer
+		 *
+		 */
+		void ModelSerializer::writeVertexBuffer(FILE* fp, VertexStream const& vertexStream)
+		{
+			/*
+			4 bytes: vertex data size in bytes
+			4 bytes: vertex count
+			4 bytes: vertex stride
+			x bytes: vertex data
+			*/
+
+			size_t vertexDataSize = vertexStream.vertexCount * vertexStream.vertexStride;
+			fwrite(&vertexDataSize, sizeof(vertexDataSize), 1, fp);
+
+			fwrite(&vertexStream.vertexCount, sizeof(vertexStream.vertexCount), 1, fp);
+			fwrite(&vertexStream.vertexStride, sizeof(vertexStream.vertexStride), 1, fp);
+			fwrite(vertexStream.vertexData.get(), vertexDataSize, 1, fp);
+		}
+
+		/*
 		 * Write Vertex Layout
 		 *
 		 */
@@ -210,207 +556,93 @@ namespace mpp
 			}
 		}
 
-		/*
-		 * Read model specification
-		 *
-		 */
-		MeshSpecification ModelSerializer::readMeshSpecification(FILE* fp, string& meshName)
+		void ModelSerializer::readIndexBuffers(FILE* fp)
 		{
-			/*
-			x bytes: mesh name
-			4 bytes: primitive type
-			4 bytes: storage type
-			1 byte : indexed vertices?
-			2 bytes: layout count
-			<buffer count> times: buffer data
-			*/
+			auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::IndexData];
 
-			meshName = readString(fp);
+			fseek(fp, entry.startOffset, SEEK_SET);
 
-			MeshSpecification meshSpec;
-
-			mpp::mesh::Primitive::Type primitiveType;
-			fread(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
-			meshSpec.setPrimitiveType(primitiveType);
-
-			mpp::mesh::VertexBufferStorageType storageType;
-			fread(&storageType, sizeof(mpp::mesh::VertexBufferStorageType), 1, fp);
-			meshSpec.setStorageType(storageType);
-
-			char indexed;
-			fread(&indexed, sizeof(char), 1, fp);
-			if (indexed == 1)
+			for (size_t i = 0; i < entry.count; ++i)
 			{
-				meshSpec.setIndexedVertices(true);
+				mIndexStreams.push_back(readIndexBuffer(fp));
 			}
 
-			uint16 layoutCount;
-			fread(&layoutCount, sizeof(uint16), 1, fp);
-
-			uint32_t attribOffset = 0;
-			for (int i = 0; i < layoutCount; ++i)
+			if (ftell(fp) != entry.endOffset)
 			{
-				auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-				readVertexBufferAttributeLayout(fp, layout, attribOffset);
-				attribOffset += layout->getNumAttributes();
+				THROW_MPP_MESH("Invalid file position.", __LINE__, __FILE__, __func__);
 			}
-
-			return meshSpec;
 		}
 
-
-		/*
-		 * Write model specification
-		 *
-		 */
-		void ModelSerializer::writeMeshSpecification(FILE* fp, string const&meshName, MeshSpecification const& meshSpec)
+		ModelSerializer::IndexStream ModelSerializer::readIndexBuffer(FILE* fp)
 		{
 			/*
-			x bytes: mesh name
-			4 bytes: primitive type
-			4 bytes: storage type
-			1 byte : indexed vertices?
-			2 bytes: layout count
-			<buffer count> times: buffer data
+			4 bytes: index data size in bytes
+			4 bytes: index width
+			x bytes: index data
 			*/
+			size_t dataSize, indexWidth;
 
-			writeString(fp, meshName);
+			fread(&dataSize, sizeof(dataSize), 1, fp);
+			fread(&indexWidth, sizeof(indexWidth), 1, fp);
 
-			mpp::mesh::Primitive::Type primitiveType = meshSpec.getPrimitiveType();
-			fwrite(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
+			uint8* indexData = new uint8[dataSize];
+			fread(indexData, dataSize, 1, fp);
 
-			mpp::mesh::VertexBufferStorageType storageType = meshSpec.getStorageType();
-			fwrite(&storageType, sizeof(mpp::mesh::VertexBufferStorageType), 1, fp);
+			IndexStream is;
+			is.indexWidth = indexWidth;
+			is.indexData = shared_ptr<const uint8>(indexData, [](uint8 *p) { delete[] p; });
 
-			char indexed = meshSpec.verticesIndexed() ? 1 : 0;
-			fwrite(&indexed, sizeof(char), 1, fp);
-
-			uint16 layoutCount = meshSpec.getNumVertexBufferAttributeLayouts();
-			fwrite(&layoutCount, sizeof(uint16), 1, fp);
-
-			for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
-			{
-				auto buffer = meshSpec.getVertexBufferAttributeLayout(i);
-				writeVertexBufferAttributeLayout(fp, buffer);
-			}
+			return is;
 		}
 
 		/*
-		 * Read vertex buffer
+		 * Write all Index Buffers.
 		 *
 		 */
-		void ModelSerializer::readVertexBuffer(FILE* fp, int meshIndex)
+		void ModelSerializer::writeIndexBuffers(FILE* fp)
+		{
+			uint32 start = ftell(fp);
+
+			for (size_t i = 0; i < mIndexStreams.size(); ++i)
+			{
+				auto const& mesh = mMeshes[mIndexStreamLookup[i]];
+				writeIndexBuffer(fp, mIndexStreams[i], mesh.primitiveType, mesh.primitiveCount);
+			}
+
+			uint32 end = ftell(fp);
+			updateDirectoryEntry(fp, Directory::Entry::Type::IndexData, start, end, mIndexStreams.size());
+		}
+
+		void ModelSerializer::writeIndexBuffer(FILE* fp, IndexStream const& indexStream, Primitive::Type primitiveType, size_t numPrimitives)
 		{
 			/*
-			4 bytes: vertex data size in bytes
-			4 bytes: vertex count
-			4 bytes: vertex stride
-			x bytes: vertex data
+			4 bytes: index data size in bytes
+			4 bytes: index width
+			x bytes: index data
 			*/
+			size_t indexDataSize = numPrimitives *
+				mesh::Primitive::size(primitiveType) *
+				indexStream.indexWidth / 8;
 
-			int vertexDataSize, vertexCount, vertexStride;
-
-			fread(&vertexDataSize, sizeof(int), 1, fp);
-			fread(&vertexCount, sizeof(int), 1, fp);
-			fread(&vertexStride, sizeof(int), 1, fp);
-
-			int8* vertexData = new int8[vertexDataSize];
-			fread(vertexData, vertexDataSize, 1, fp);
-
-			VertexStream vs;
-			vs.vertexCount = vertexCount;
-			vs.vertexStride = vertexStride;
-			vs.vertexData = shared_ptr<const int8>(vertexData, [](int8 *p) { delete[] p; });
-
-			mMeshes[meshIndex].vertexStreams.push_back(vs);
+			fwrite(&indexDataSize, sizeof(indexDataSize), 1, fp);
+			fwrite(&indexStream.indexWidth, sizeof(indexStream.indexWidth), 1, fp);
+			fwrite(indexStream.indexData.get(), indexDataSize, 1, fp);
 		}
 
-		/*
-		 * Write vertex buffer
-		 *
-		 */
-		void ModelSerializer::writeVertexBuffer(FILE* fp, VertexStream const& vertexStream)
+		void ModelSerializer::readMeshes(FILE* fp)
 		{
-			/*
-			4 bytes: vertex data size in bytes
-			4 bytes: vertex count
-			4 bytes: vertex stride
-			x bytes: vertex data
-			*/
+			auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::MeshMetadata];
 
-			int vertexDataSize = vertexStream.vertexCount * vertexStream.vertexStride;
-			fwrite(&vertexDataSize, sizeof(int), 1, fp);
+			fseek(fp, entry.startOffset, SEEK_SET);
 
-			fwrite(&vertexStream.vertexCount, sizeof(int), 1, fp);
-			fwrite(&vertexStream.vertexStride, sizeof(int), 1, fp);
-			fwrite(vertexStream.vertexData.get(), vertexDataSize, 1, fp);
-		}
-
-		MaterialInformation ModelSerializer::readMaterialInformation(FILE* fp)
-		{
-			auto name = readString(fp);
-
-			MaterialInformation mi(name);
-
-			mpp::mesh::MaterialInformation::PositionType positionType;
-			fread(&positionType, sizeof(positionType), 1, fp);
-
-			mi.setPositionType(positionType);
-
-			int shaderCount;
-			fread(&shaderCount, sizeof(shaderCount), 1, fp);
-			for (int i = 0; i < shaderCount; ++i)
+			for (size_t i = 0; i < entry.count; ++i)
 			{
-				mpp::mesh::MaterialInformation::Shader::Type shaderType;
-
-				fread(&shaderType, sizeof(shaderType), 1, fp);
-				auto shaderName = readString(fp);
-
-				mi.addShader(shaderType, shaderName);
+				mMeshes.push_back(readMesh(fp));
 			}
 
-			int textureCount;
-			fread(&textureCount, sizeof(textureCount), 1, fp);
-			for (int i = 0; i < textureCount; ++i)
+			if (ftell(fp) != entry.endOffset)
 			{
-				int32 isResource;
-				fread(&isResource, sizeof(isResource), 1, fp);
-				auto binding = readString(fp);
-				auto resource = readString(fp);
-
-				mi.addTexture(isResource, binding, resource);
-			}
-
-			return mi;
-		}
-
-		void ModelSerializer::writeMaterialInformation(FILE* fp, MaterialInformation const& matInfo)
-		{
-			writeString(fp, matInfo.getName());
-
-			auto positionType = matInfo.getPositionType();
-			fwrite(&positionType, sizeof(positionType), 1, fp);
-
-			auto const& shaders = matInfo.getShaders();
-
-			int shaderCount = (int)shaders.size();
-			fwrite(&shaderCount, sizeof(shaderCount), 1, fp);
-			for (auto const& shader: shaders)
-			{
-				fwrite(&shader.type, sizeof(shader.type), 1, fp);
-				writeString(fp, shader.name);
-			}
-
-			auto const& textures = matInfo.getTextures();
-
-			int textureCount = (int)textures.size();
-			fwrite(&textureCount, sizeof(textureCount), 1, fp);
-			for (auto const& texture : textures)
-			{
-				int32 isResource = texture.isResource ? 1 : 0;
-				fwrite(&isResource, sizeof(isResource), 1, fp);
-				writeString(fp, texture.binding);
-				writeString(fp, texture.resource);
+				THROW_MPP_MESH("Invalid file position.", __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -418,194 +650,87 @@ namespace mpp
 		 * Read mesh definition
 		 *
 		 */
-		void ModelSerializer::readMeshDefinition(FILE* fp, int meshIndex)
+		ModelSerializer::Mesh ModelSerializer::readMesh(FILE* fp)
 		{
 			/*
-			4 bytes: primitive count
 			zero-str: name
-			zero-str: material name
-			4 bytes: index width
-			4 bytes: index data size in bytes
-			x bytes: index data
+			4 bytes: primitive type
+			4 bytes: primitive count
+			4 bytes: material id
+			4 bytes: index buffer id (or -1 for none)
+			4 bytes: number of vertex buffers
+			...    : vertex buffer ids (4 bytes each)
 			*/
+			Mesh mesh;
 
-			// Read primitive type
-			Primitive::Type primitiveType;
-			fread(&primitiveType, sizeof(Primitive::Type), 1, fp);
-			mMeshes[meshIndex].primitiveType = primitiveType;
+			mesh.name = readString(fp);
 
-			// Read primitive count
-			int primitiveCount;
-			fread(&primitiveCount, sizeof(int), 1, fp);
-			mMeshes[meshIndex].primitiveCount = primitiveCount;
+			fread(&mesh.primitiveType, sizeof(mesh.primitiveType), 1, fp);
+			fread(&mesh.primitiveCount, sizeof(mesh.primitiveCount), 1, fp);
 
-			// Read name
-			string name;
-			int c = fgetc(fp);
-			while (c != 0)
+			fread(&mesh.material, sizeof(mesh.material), 1, fp);
+			fread(&mesh.meshSpec, sizeof(mesh.meshSpec), 1, fp);
+
+			size_t numVertexBuffers;
+			fread(&numVertexBuffers, sizeof(numVertexBuffers), 1, fp);
+
+			for (size_t i = 0; i < numVertexBuffers; ++i)
 			{
-				name.push_back((char)c);
-				c = fgetc(fp);
+				uint32 vertexBufferId;
+				fread(&vertexBufferId, sizeof(vertexBufferId), 1, fp);
+
+				mesh.vertexStreams.push_back(vertexBufferId);
 			}
 
-			mMeshes[meshIndex].name = name;
+			fread(&mesh.indexStream, sizeof(mesh.indexStream), 1, fp);
 
-			// Read material
-			string materialName;
-			c = fgetc(fp);
-			while (c != 0)
+			return mesh;
+		}
+
+		void ModelSerializer::writeMeshes(FILE* fp)
+		{
+			uint32 start = ftell(fp);
+
+			for (uint32 i = 0; i < mMeshes.size(); ++i)
 			{
-				materialName.push_back((char)c);
-				c = fgetc(fp);
+				writeMesh(fp, mMeshes[i], i);
 			}
 
-			mMeshes[meshIndex].material = materialName;
-
-			// Read index data
-			int indexWidth;
-			fread(&indexWidth, sizeof(int), 1, fp);
-
-			mMeshes[meshIndex].indexWidth = indexWidth;
-
-			int indexDataSize;
-			fread(&indexDataSize, sizeof(int), 1, fp);
-
-			uint8* indexData = nullptr;
-			if (indexDataSize > 0)
-			{
-				indexData = new uint8[3 * primitiveCount * (indexWidth / 8)];
-				fread(indexData, indexDataSize, 1, fp);
-			}
-
-			mMeshes[meshIndex].indexData.reset(indexData);
-
-			// Read vertex buffers
-			for (int i = 0; i < mMeshes[meshIndex].specification.getNumVertexBufferAttributeLayouts(); ++i)
-			{
-				readVertexBuffer(fp, meshIndex);
-			}
+			uint32 end = ftell(fp);
+			updateDirectoryEntry(fp, Directory::Entry::Type::MeshMetadata, start, end, mMeshes.size());
 		}
 
 		/*
 		 * Write mesh definition
 		 *
 		 */
-		void ModelSerializer::writeMeshDefinition(FILE* fp, int meshIndex)
+		void ModelSerializer::writeMesh(FILE* fp, Mesh const& mesh, uint32 index)
 		{
 			/*
-			4 bytes: primitive count
 			zero-str: name
-			zero-str: material name
-			4 bytes: index width
-			4 bytes: index data size in bytes
-			x bytes: index data
+			4 bytes: primitive type
+			4 bytes: primitive count
+			4 bytes: material id
+			4 bytes: index buffer id (or -1 for none)
+			4 bytes: number of vertex buffers
+			...    : vertex buffer ids (4 bytes each)
 			*/
+			writeString(fp, mesh.name);
+			fwrite(&mesh.primitiveType, sizeof(mesh.primitiveType), 1, fp);
+			fwrite(&mesh.primitiveCount, sizeof(mesh.primitiveCount), 1, fp);
 
-			// Write primitive type
-			fwrite(&mMeshes[meshIndex].primitiveType, sizeof(Primitive::Type), 1, fp);
+			// Write material, meshspec, index buffer and vertex buffer IDs
+			fwrite(&mesh.material, sizeof(mesh.material), 1, fp);
+			fwrite(&mesh.meshSpec, sizeof(index), 1, fp);
 
-			// Write primitive count
-			fwrite(&mMeshes[meshIndex].primitiveCount, sizeof(int), 1, fp);
-
-			// Write name
-			fputs(mMeshes[meshIndex].name.c_str(), fp);
-			fputc(0, fp);
-
-			// Write material
-			fputs(mMeshes[meshIndex].material.c_str(), fp);
-			fputc(0, fp);
-
-			// Write index data
-			int indexWidth = mMeshes[meshIndex].indexWidth;
-
-			fwrite(&indexWidth, sizeof(int), 1, fp);
-			auto indexData = mMeshes[meshIndex].indexData.get();
-			int indexDataSize = indexData != nullptr ? mMeshes[meshIndex].primitiveCount * mesh::Primitive::size(mMeshes[meshIndex].primitiveType) * (indexWidth / 8) : 0;
-			fwrite(&indexDataSize, sizeof(int), 1, fp);
-
-			fwrite(indexData, indexDataSize, 1, fp);
-
-			for (auto vertexStream: mMeshes[meshIndex].vertexStreams)
+			auto numVertexBuffers = mesh.vertexStreams.size();
+			fwrite(&numVertexBuffers, sizeof(numVertexBuffers), 1, fp);
+			for (auto vb: mesh.vertexStreams)
 			{
-				writeVertexBuffer(fp, vertexStream);
-			}
-		}
-
-		/*
-		 * Set mesh specification.
-		 *
-		 */
-		void ModelSerializer::setMeshSpecification(int meshIndex, MeshSpecification const& specification)
-		{
-			mMeshes[meshIndex].specification = specification;
-		}
-
-		/*
-		 * Get mesh specification.
-		 *
-		 */
-		MeshSpecification const& ModelSerializer::getMeshSpecification(int meshIndex) const
-		{
-			return mMeshes[meshIndex].specification;
-		}
-
-		map<string, MeshSpecification> ModelSerializer::peakMeshSpecification(string const& filename)
-		{
-#pragma warning(suppress: 4996)
-			FILE* fp = fopen(filename.c_str(), "rb");
-
-			readHeader(fp);
-			fseek(fp, mMeshSpecPeakOffset, SEEK_SET);
-
-			map<string, MeshSpecification> meshSpecs;
-
-			uint32 meshCount;
-			fread(&meshCount, sizeof(meshCount), 1, fp);
-
-			for (uint32 i = 0; i < meshCount; ++i)
-			{
-				string meshName;
-				auto meshSpec = readMeshSpecification(fp, meshName);
-				meshSpecs[meshName] = meshSpec;
+				fwrite(&vb, sizeof(vb), 1, fp);
 			}
 
-			fclose(fp);
-
-			return meshSpecs;
-		}
-
-		void ModelSerializer::addMaterialInformation(string const& name, MaterialInformation const& matInfo)
-		{
-			mMaterialInformation[name] = matInfo;
-		}
-
-		map<string, MaterialInformation> const& ModelSerializer::getMaterialInformation() const
-		{
-			return mMaterialInformation;
-		}
-
-		map<string, MaterialInformation> ModelSerializer::peakMaterialInformation(string const& filename)
-		{
-#pragma warning(suppress: 4996)
-			FILE* fp = fopen(filename.c_str(), "rb");
-
-			readHeader(fp);
-			fseek(fp, mMaterialPeakOffset, SEEK_SET);
-
-			// Read materials
-			int materialCount;
-			fread(&materialCount, sizeof(int), 1, fp);
-
-			map<string, MaterialInformation> mats;
-			for (int i = 0; i < materialCount; ++i)
-			{
-				auto mi = readMaterialInformation(fp);
-				mats[mi.getName()] = mi;
-			}
-
-			fclose(fp);
-
-			return mats;
+			fwrite(&mesh.indexStream, sizeof(uint32), 1, fp);
 		}
 
 		/*
@@ -627,55 +752,27 @@ namespace mpp
 		}
 
 		/*
-		 * Set material.
+		 * Set the number of meshes in this file.
 		 *
 		 */
-		void ModelSerializer::setMaterial(int meshIndex, string const& material)
+		void ModelSerializer::setMeshCount(int count)
 		{
-			mMeshes[meshIndex].material = material;
+			mMeshes.resize(count);
 		}
 
 		/*
-		 * Get material.
+		 * Get the number of meshes in this file.
 		 *
 		 */
-		string const& ModelSerializer::getMaterial(int meshIndex) const
+		int ModelSerializer::getMeshCount() const
 		{
-			return mMeshes[meshIndex].material;
-		}
-
-		void ModelSerializer::setIndexWidth(int meshIndex, int width)
-		{
-			mMeshes[meshIndex].indexWidth = width;
-		}
-
-		int ModelSerializer::getIndexWidth(int meshIndex) const
-		{
-			return mMeshes[meshIndex].indexWidth;
+			return (int)mMeshes.size();
 		}
 
 		/*
-		 * Set index data.
-		 *
-		 */
-		void ModelSerializer::setIndexData(int meshIndex, shared_ptr<const uint8> indexData)
-		{
-			mMeshes[meshIndex].indexData = indexData;
-		}
-
-		/*
-		 * Get index data.
-		 *
-		 */
-		shared_ptr<const uint8> ModelSerializer::getIndexData(int meshIndex) const
-		{
-			return mMeshes[meshIndex].indexData;
-		}
-
-		/*
-		 * Set primitive type.
-		 *
-		 */
+			 * Set primitive type.
+			 *
+			 */
 		void ModelSerializer::setPrimitiveType(int meshIndex, Primitive::Type primitiveType)
 		{
 			mMeshes[meshIndex].primitiveType = primitiveType;
@@ -709,17 +806,67 @@ namespace mpp
 		}
 
 		/*
+		 * Set mesh specification.
+		 *
+		 */
+		void ModelSerializer::setMeshSpecification(int meshIndex, MeshSpecification const& specification)
+		{
+			mMeshes[meshIndex].meshSpec = mMeshSpecifications.size();
+			mMeshSpecifications.push_back(specification);
+		}
+
+		/*
+		 * Get mesh specification.
+		 *
+		 */
+		MeshSpecification const& ModelSerializer::getMeshSpecification(int meshIndex) const
+		{
+			return mMeshSpecifications[mMeshes[meshIndex].meshSpec];
+		}
+
+		void ModelSerializer::addMaterial(string const& name, MaterialInformation const& matInfo)
+		{
+			mMaterialLookup[name] = mMaterials.size();
+			mMaterials.push_back(matInfo);
+		}
+
+		/*
+		 * Set material.
+		 *
+		 */
+		void ModelSerializer::setMaterial(int meshIndex, string const& material)
+		{
+			mMeshes[meshIndex].material = mMaterialLookup[material];
+		}
+
+		/*
+		 * Get material.
+		 *
+		 */
+		string const& ModelSerializer::getMaterial(int meshIndex) const
+		{
+			return mMaterials[mMeshes[meshIndex].material].getName();
+		}
+
+		vector<MaterialInformation> const& ModelSerializer::getMaterials() const
+		{
+			return mMaterials;
+		}
+
+		/*
 		 * Add a vertex stream.
 		 *
 		 */
 		void ModelSerializer::addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8> vertexData)
 		{
+			mMeshes[meshIndex].vertexStreams.push_back(mVertexStreams.size());
+
 			VertexStream vs;
 			vs.vertexCount = vertexCount;
 			vs.vertexStride = vertexStride;
 			vs.vertexData = vertexData;
 
-			mMeshes[meshIndex].vertexStreams.push_back(vs);
+			mVertexStreams.push_back(vs);
 		}
 
 		/*
@@ -728,37 +875,41 @@ namespace mpp
 		 */
 		void ModelSerializer::getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, shared_ptr<const int8>* vertexData)
 		{
-			*vertexCount = mMeshes[meshIndex].vertexStreams[index].vertexCount;
-			*vertexStride = mMeshes[meshIndex].vertexStreams[index].vertexStride;
-			*vertexData = mMeshes[meshIndex].vertexStreams[index].vertexData;
+			auto const& vertexStream = mVertexStreams[mMeshes[meshIndex].vertexStreams[index]];
+			*vertexCount = vertexStream.vertexCount;
+			*vertexStride = vertexStream.vertexStride;
+			*vertexData = vertexStream.vertexData;
 		}
 
 		/*
-		 * Set the number of meshes in this file.
+		 * Set index data.
 		 *
 		 */
-		void ModelSerializer::setMeshCount(int count)
+		void ModelSerializer::setIndexBuffer(int meshIndex, shared_ptr<const uint8> indexData, size_t indexWidth)
 		{
-			mMeshes.resize(count);
+			auto streamIndex = mIndexStreams.size();
+			mMeshes[meshIndex].indexStream = streamIndex;
+			mIndexStreamLookup[streamIndex] = meshIndex;
+
+			IndexStream is;
+			is.indexData = indexData;
+			is.indexWidth = indexWidth;
+
+			mIndexStreams.push_back(is);
 		}
 
 		/*
-		 * Get the number of meshes in this file.
+		 * Get index data.
 		 *
 		 */
-		int ModelSerializer::getMeshCount() const
+		shared_ptr<const uint8> ModelSerializer::getIndexData(int meshIndex) const
 		{
-			return (int)mMeshes.size();
+			return mIndexStreams[mMeshes[meshIndex].indexStream].indexData;
 		}
 
-		vector<string> const& ModelSerializer::peakMeshNames(string const& filename)
+		int ModelSerializer::getIndexWidth(int meshIndex) const
 		{
-#pragma warning(suppress: 4996)
-			FILE* fp = fopen(filename.c_str(), "rb");
-			readHeader(fp);
-			fclose(fp);
-
-			return mMeshNames;
+			return mIndexStreams[mMeshes[meshIndex].indexStream].indexWidth;
 		}
 
 		/*
@@ -769,47 +920,16 @@ namespace mpp
 		{
 #pragma warning(suppress: 4996)
 			FILE* fp = fopen(filename.c_str(), "wb");
-
-			// Header with peak info
-			mMaterialPeakOffset = 0;
-			mMeshSpecPeakOffset = 0;
+		
 			writeHeader(fp);
+			writeDirectory(fp);
 
-			// Write materials
-			auto curOffset = ftell(fp);
-			fseek(fp, mMaterialPeakOffset, SEEK_SET);
-			fwrite(&curOffset, sizeof(curOffset), 1, fp);
-			fseek(fp, curOffset, SEEK_SET);
-
-			int materialCount = (int)mMaterialInformation.size();
-			fwrite(&materialCount, sizeof(int), 1, fp);
-
-			for (auto const& matInfo: mMaterialInformation)
-			{
-				writeMaterialInformation(fp, matInfo.second);
-			}
-
-			// Write meshspecs
-			curOffset = ftell(fp);
-			fseek(fp, mMeshSpecPeakOffset, SEEK_SET);
-			fwrite(&curOffset, sizeof(curOffset), 1, fp);
-			fseek(fp, curOffset, SEEK_SET);
-
-			int meshCount = getMeshCount();
-
-			fwrite(&meshCount, sizeof(int), 1, fp);
-			for (uint32 i = 0; i < mMeshes.size(); ++i)
-			{
-				writeMeshSpecification(fp, mMeshes[i].name, mMeshes[i].specification);
-			}
-
-			// Write meshes
-			fwrite(&meshCount, sizeof(int), 1, fp);
-			for (uint32 i = 0; i < mMeshes.size(); ++i)
-			{
-				writeMeshDefinition(fp, i);
-			}
-
+			writeMaterials(fp);
+			writeMeshSpecifications(fp);
+			writeVertexBuffers(fp);
+			writeIndexBuffers(fp);
+			writeMeshes(fp);
+			
 			fclose(fp);
 		}
 
@@ -819,40 +939,56 @@ namespace mpp
 		 */
 		void ModelSerializer::load(std::string const& filename)
 		{
+			clear();
+
 #pragma warning(suppress: 4996)
 			FILE* fp = fopen(filename.c_str(), "rb");
 
 			readHeader(fp);
+			readDirectory(fp);
 
-			// Read materials
-			int materialCount;
-			fread(&materialCount, sizeof(materialCount), 1, fp);
-
-			for (int i = 0; i < materialCount; ++i)
-			{
-				auto mi = readMaterialInformation(fp);
-				mMaterialInformation[mi.getName()] = mi;
-			}
-
-			// Read meshspecs: assume 1-to-1 spec to mesh.
-			int meshCount;
-			fread(&meshCount, sizeof(meshCount), 1, fp);
-			setMeshCount(meshCount);
-
-			for (uint32 i = 0; i < meshCount; ++i)
-			{
-				string meshName;
-				mMeshes[i].specification = readMeshSpecification(fp, meshName);
-			}
-
-			// Read meshes
-			fread(&meshCount, sizeof(meshCount), 1, fp);
-			for (uint32 i = 0; i < meshCount; ++i)
-			{
-				readMeshDefinition(fp, i);
-			}
+			readMaterials(fp);
+			readMeshSpecifications(fp);
+			readVertexBuffers(fp);
+			readIndexBuffers(fp);
+			readMeshes(fp);
 
 			fclose(fp);
+		}
+
+		ModelSerializer::MetadataReader ModelSerializer::getReader(string const& filename)
+		{
+			// If we pass in a filename, then load it in.  Otherwise, assume the
+			// data has already been loaded (either from a file, or specified from API).
+			if (filename != "")
+			{
+				clear();
+
+#pragma warning(suppress: 4996)
+				FILE* fp = fopen(filename.c_str(), "rb");
+
+				readHeader(fp);
+				readDirectory(fp);
+
+				readMaterials(fp);
+				readMeshSpecifications(fp);
+				readMeshes(fp);
+
+				fclose(fp);
+			}
+
+			MetadataReader reader(
+				mMaterialLookup,
+				mMaterials,
+				mMeshSpecifications);
+
+			for (size_t i = 0; i < mMeshes.size(); ++i)
+			{
+				auto const& mesh = mMeshes[i];
+				reader.addMesh(mesh.name, mesh.meshSpec, mesh.material, mesh.primitiveType);
+			}
+
+			return reader;
 		}
 	}
 }

@@ -206,7 +206,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 
 	for (auto const& matInfo: materialInfo)
 	{
-		fileSaver.addMaterialInformation(matInfo.first, matInfo.second);
+		fileSaver.addMaterial(matInfo.first, matInfo.second);
 	}
 
 	int meshCount = loader.getNumMeshDefinitions();
@@ -221,8 +221,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 		fileSaver.setMaterial(i, meshDef->getMaterial());
 		fileSaver.setPrimitiveType(i, meshDef->getPrimitiveType());
 		fileSaver.setPrimitiveCount(i, meshDef->getNumPrimitives());
-		fileSaver.setIndexWidth(i, meshDef->getIndexWidth());
-		fileSaver.setIndexData(i, meshDef->getIndexData());
+		fileSaver.setIndexBuffer(i, meshDef->getIndexData(), meshDef->getIndexWidth());
 
 		for (int j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
 		{
@@ -243,15 +242,15 @@ void debug(string const& inFile, string const& outFile)
 	fileLoader.load(inFile);
 
 	// Material info
-	auto matInfo = fileLoader.getMaterialInformation();
+	auto matInfo = fileLoader.getMaterials();
 	cout << "Materials\n\n";
 	for (auto mat: matInfo)
 	{
-		cout << "Material: " << mat.second.getName() << "\n";
-		cout << (mat.second.getPositionType() == mpp::mesh::MaterialInformation::PositionType::p2D ?
+		cout << "Material: " << mat.getName() << "\n";
+		cout << (mat.getPositionType() == mpp::mesh::MaterialInformation::PositionType::p2D ?
 			"Position2 data" : "Position3 data") << "\n";
 		
-		auto const& shaders = mat.second.getShaders();
+		auto const& shaders = mat.getShaders();
 		for (auto const& shader: shaders)
 		{
 			switch (shader.type)
@@ -270,7 +269,7 @@ void debug(string const& inFile, string const& outFile)
 			}
 		}
 
-		auto const& textures = mat.second.getTextures();
+		auto const& textures = mat.getTextures();
 		for (auto const& texture: textures)
 		{
 			cout << texture.binding << ": " << texture.resource;
