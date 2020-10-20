@@ -319,7 +319,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStreamDef.data = (int8*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
-			vertexStreamDef.stride = vertexStride;
+			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
 
 			dataStreamDef->componentStreams[Vertex::Component::Position2] = vertexStreamDef;
 			dataStreamDef->componentStreams[Vertex::Component::Position3] = vertexStreamDef;
@@ -333,7 +333,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStreamDef.data = (int8*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
-			vertexStreamDef.stride = vertexStride;
+			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
 
 			dataStreamDef->componentStreams[Vertex::Component::Normal3] = vertexStreamDef;
 			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 3;
@@ -346,7 +346,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStreamDef.data = (int8*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
-			vertexStreamDef.stride = vertexStride;
+			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
 
 			dataStreamDef->componentStreams[Vertex::Component::TexCoord2] = vertexStreamDef;
 			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 2;
@@ -359,7 +359,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStreamDef.data = (int8*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
-			vertexStreamDef.stride = vertexStride;
+			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
 
 			dataStreamDef->componentStreams[Vertex::Component::Colour1] = vertexStreamDef;
 			dataStreamDef->componentStreams[Vertex::Component::Colour3] = vertexStreamDef;
@@ -477,7 +477,7 @@ bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout cons
 			return false;
 		}
 
-		vertexStride += Vertex::getComponentSize(attrib.component) + attrib.paddingBytes;
+		vertexStride += Vertex::getComponentSize(attrib.component) * Vertex::getDataTypeSize(attrib.dataType) + attrib.paddingBytes;
 	}
 
 	if (vertexStride != streamStride1)
@@ -516,35 +516,34 @@ int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout
 			auto const& attrib = bufferSpec.getAttribute(j);
 			auto const& stream = componentStreams.at(attrib.component);
 
-			int vertexOffset = (stream.stride * i + stream.offset);
-			int vertexWidth = Vertex::getComponentSize(attrib.component);
+			auto streamOffset = (stream.stride * i + stream.offset);
+			auto attribComponentSize = Vertex::getComponentSize(attrib.component);
+			auto attribDataTypeSize = Vertex::getDataTypeSize(attrib.dataType);
 
 			// Convert to desired datatype.
 			switch (attrib.dataType)
 			{
 			case Vertex::DataType::UnsignedByte:
-			case Vertex::DataType::HalfFloat:
-				for (int k = 0; k < vertexWidth; ++k)
+				for (int k = 0; k < attribComponentSize; ++k)
 				{
-					float value = ((float const*)stream.data)[vertexOffset + k];
-					if (attrib.dataType == Vertex::DataType::UnsignedByte)
-					{
-						// TODO: this assumes we have a normalised float.
-						*bufDataPtr = (uint8)(value * 255.0f);
-						bufDataPtr += sizeof(uint8);
-					}
-					else if (attrib.dataType == Vertex::DataType::HalfFloat)
-					{
-						uint16 hv16 = ((half_float::half)value).data_;
-						*bufDataPtr++ = (uint8)(hv16 & 0xff);
-						*bufDataPtr++ = (uint8)(hv16 >> 8);
-					}
+					*bufDataPtr = (uint8)(*(((float const*)(&stream.data[streamOffset])) + k) * 255.0f);
+					bufDataPtr += sizeof(uint8);
+				}
+				break;
+
+			case Vertex::DataType::HalfFloat:
+				for (int k = 0; k < attribComponentSize; ++k)
+				{
+					float value = *(((float const*)(&stream.data[streamOffset])) + k);
+					uint16 hv16 = ((half_float::half)value).data_;
+					*bufDataPtr++ = (uint8)(hv16 & 0xff);
+					*bufDataPtr++ = (uint8)(hv16 >> 8);
 				}
 				break;
 
 			case Vertex::DataType::Float:
-				memcpy(bufDataPtr, stream.data + vertexOffset * Vertex::getDataTypeSize(attrib.dataType), vertexWidth * Vertex::getDataTypeSize(attrib.dataType));
-				bufDataPtr += vertexWidth * Vertex::getDataTypeSize(attrib.dataType);
+				memcpy(bufDataPtr, stream.data + streamOffset, attrib.sizeInBytes());
+				bufDataPtr += attrib.sizeInBytes();
 				break;
 
 			default:

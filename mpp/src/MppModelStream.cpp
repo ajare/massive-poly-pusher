@@ -1,3 +1,5 @@
+#include "utils/FileSystem.h"
+
 #include "mpp/Config.h"
 #include "mpp/MppModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
@@ -80,20 +82,24 @@ namespace mpp
 			auto const& textures = matInfo.getTextures();
 			for (auto const& texture: textures)
 			{
-				if (!texture.isResource)
+				if (texture.isResource)
+				{
+					mStr->setTexture(texture.binding, texture.resource);
+				}
+				else
 				{
 					// Add a File TextureStream child to MaterialStream
+					string textureFilename = utils::FileSystem::concatPaths(
+						utils::FileSystem::baseDirectory(mFilename),
+						texture.resource);
+
 					auto texStr = new TextureStream(
 						resMgr,
-						texture.resource,
+						textureFilename,
 						resMgr->getImageLoadFunction(),
 						true);
 
 					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
-				}
-				else
-				{
-					mStr->setTexture(texture.binding, texture.resource);
 				}
 			}
 

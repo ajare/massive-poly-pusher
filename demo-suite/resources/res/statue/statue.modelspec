@@ -34,7 +34,7 @@
 				to specify an existing loaded texture resource.  If filename, the generated Texture resource
 				is named modelname_materialname_filename.
 				-->
-				<Texture binding="TEX1" filename="marble_texture4662.jpg" />
+				<Texture binding="TEX1" filename="statue_marble.jpg" />
 			</Textures>
 		</Material>
 	</Materials>

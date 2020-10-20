@@ -18,7 +18,7 @@ namespace mpp
 
 		std::map<std::string, std::shared_ptr<ResourceStream>> mChildren;
 
-		bool mChildrenCreated;
+		bool mChildrenCreated, mChildResourcesCreated, mChildResourcesLoaded;
 
 		ResourceManager* mResourceMgr;
 

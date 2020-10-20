@@ -12,6 +12,8 @@ namespace mpp
 	ResourceStream::ResourceStream(ResourceManager* resourceMgr)
 		: mLoaded(false)
 		, mChildrenCreated(false)
+		, mChildResourcesCreated(false)
+		, mChildResourcesLoaded(false)
 		, mResourceMgr(resourceMgr)
 	{
 	}
@@ -110,48 +112,78 @@ namespace mpp
 
 	void ResourceStream::createChildResources(string const& parentName)
 	{
-		for (auto child: mChildren)
+		if (!mChildResourcesCreated)
 		{
-			string name = parentName + "/" + child.first;
-			auto res = child.second;
+			for (auto child : mChildren)
+			{
+				string name = parentName + "/" + child.first;
+				auto res = child.second;
 
-			res->createChildResources(name);
-			mResourceMgr->createResource(name, res);
+				res->createChildResources(name);
+				mResourceMgr->createResource(name, res);
+			}
+
+			mChildResourcesCreated = true;
 		}
 	}
 
 	void ResourceStream::destroyChildResources(string const& parentName)
 	{
-		for (auto child: mChildren)
+		if (mChildResourcesLoaded)
 		{
-			string name = parentName + "/" + child.first;
-			auto res = mResourceMgr->getResource(name);
-			res->destroy();
+			unloadChildResources(parentName);
+		}
 
-			child.second->destroyChildResources(name);
+		if (mChildResourcesCreated)
+		{
+			for (auto child : mChildren)
+			{
+				string name = parentName + "/" + child.first;
+				auto res = mResourceMgr->getResource(name);
+				res->destroy();
+
+				child.second->destroyChildResources(name);
+			}
+
+			mChildResourcesCreated = false;
 		}
 	}
 
 	void ResourceStream::loadChildResources(string const& parentName)
 	{
-		for (auto child: mChildren)
+		if (!mChildResourcesCreated)
 		{
-			string name = parentName + "/" + child.first;
-			child.second->loadChildResources(name);
+			createChildResources(parentName);
+		}
 
-			auto res = mResourceMgr->getResource(name);
-			res->load();
+		if (!mChildResourcesLoaded)
+		{
+			for (auto child : mChildren)
+			{
+				string name = parentName + "/" + child.first;
+				child.second->loadChildResources(name);
+
+				auto res = mResourceMgr->getResource(name);
+				res->load();
+			}
+
+			mChildResourcesLoaded = true;
 		}
 	}
 
 	void ResourceStream::unloadChildResources(string const& parentName)
 	{
-		for (auto child: mChildren)
+		if (mChildResourcesLoaded)
 		{
-			string name = parentName + "/" + child.first;
-			auto res = mResourceMgr->getResource(name);
-			res->unload();
+			for (auto child : mChildren)
+			{
+				string name = parentName + "/" + child.first;
+				auto res = mResourceMgr->getResource(name);
+				res->unload();
 
-			child.second->unloadChildResources(name);
+				child.second->unloadChildResources(name);
+			}
+
+			mChildResourcesLoaded = false;
 		}
 	}}
