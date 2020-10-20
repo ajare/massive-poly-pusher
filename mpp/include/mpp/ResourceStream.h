@@ -62,11 +62,11 @@ namespace mpp
 
 		void createChildResources(std::string const& parentName);
 
-		void destroyChildResources();
+		void destroyChildResources(std::string const& parentName);
 
-		void loadChildResources();
+		void loadChildResources(std::string const& parentName);
 
-		void unloadChildResources();
+		void unloadChildResources(std::string const& parentName);
 	};
 
 	typedef std::shared_ptr<ResourceStream> ResourceStreamPtr;

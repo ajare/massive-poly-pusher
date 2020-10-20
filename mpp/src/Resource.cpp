@@ -163,7 +163,7 @@ namespace mpp
 		}
 
 		// Destroy child resources
-		mResourceStream->destroyChildResources();
+		mResourceStream->destroyChildResources(getName());
 	}
 
 	/*
@@ -198,7 +198,7 @@ namespace mpp
 		}
 
 		// Load child resources
-		mResourceStream->loadChildResources();
+		mResourceStream->loadChildResources(getName());
 
 		if (!isLoaded())
 		{
@@ -220,6 +220,6 @@ namespace mpp
 		}
 
 		// Unload child resources
-		mResourceStream->unloadChildResources();
+		mResourceStream->unloadChildResources(getName());
 	}
 }
