@@ -11,102 +11,135 @@ namespace mpp
 
 		using namespace std;
 
-		SpecificationParser::SpecificationParser(string const& filename)
-			: mFilename(filename)
-		{
-			mComponentTypes["position2"] = mpp::mesh::Vertex::Component::Position2;
-			mComponentTypes["position3"] = mpp::mesh::Vertex::Component::Position3;
-			mComponentTypes["position4"] = mpp::mesh::Vertex::Component::Position4;
-			mComponentTypes["normal3"] = mpp::mesh::Vertex::Component::Normal3;
-			mComponentTypes["normal4"] = mpp::mesh::Vertex::Component::Normal4;
-			mComponentTypes["texcoord2"] = mpp::mesh::Vertex::Component::TexCoord2;
-			mComponentTypes["texcoord3"] = mpp::mesh::Vertex::Component::TexCoord3;
-			mComponentTypes["texcoord4"] = mpp::mesh::Vertex::Component::TexCoord4;
-			mComponentTypes["colour1"] = mpp::mesh::Vertex::Component::Colour1;
-			mComponentTypes["colour3"] = mpp::mesh::Vertex::Component::Colour3;
-			mComponentTypes["colour4"] = mpp::mesh::Vertex::Component::Colour4;
-			mComponentTypes["user1"] = mpp::mesh::Vertex::Component::UserDefined1;
-			mComponentTypes["user2"] = mpp::mesh::Vertex::Component::UserDefined2;
-			mComponentTypes["user3"] = mpp::mesh::Vertex::Component::UserDefined3;
-			mComponentTypes["user4"] = mpp::mesh::Vertex::Component::UserDefined4;
+SpecificationParser::SpecificationParser(string const& filename)
+	: mFilename(filename)
+{
+	mComponentTypes["position2"] = mpp::mesh::Vertex::Component::Position2;
+	mComponentTypes["position3"] = mpp::mesh::Vertex::Component::Position3;
+	mComponentTypes["position4"] = mpp::mesh::Vertex::Component::Position4;
+	mComponentTypes["normal3"] = mpp::mesh::Vertex::Component::Normal3;
+	mComponentTypes["normal4"] = mpp::mesh::Vertex::Component::Normal4;
+	mComponentTypes["texcoord2"] = mpp::mesh::Vertex::Component::TexCoord2;
+	mComponentTypes["texcoord3"] = mpp::mesh::Vertex::Component::TexCoord3;
+	mComponentTypes["texcoord4"] = mpp::mesh::Vertex::Component::TexCoord4;
+	mComponentTypes["colour1"] = mpp::mesh::Vertex::Component::Colour1;
+	mComponentTypes["colour3"] = mpp::mesh::Vertex::Component::Colour3;
+	mComponentTypes["colour4"] = mpp::mesh::Vertex::Component::Colour4;
+	mComponentTypes["user1"] = mpp::mesh::Vertex::Component::UserDefined1;
+	mComponentTypes["user2"] = mpp::mesh::Vertex::Component::UserDefined2;
+	mComponentTypes["user3"] = mpp::mesh::Vertex::Component::UserDefined3;
+	mComponentTypes["user4"] = mpp::mesh::Vertex::Component::UserDefined4;
 
-			mDataTypes["float32"] = mpp::mesh::Vertex::DataType::Float;
-			mDataTypes["float16"] = mpp::mesh::Vertex::DataType::HalfFloat;
-			mDataTypes["uint8"] = mpp::mesh::Vertex::DataType::UnsignedByte;
-			mDataTypes["uint16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
+	mDataTypes["float32"] = mpp::mesh::Vertex::DataType::Float;
+	mDataTypes["float16"] = mpp::mesh::Vertex::DataType::HalfFloat;
+	mDataTypes["uint8"] = mpp::mesh::Vertex::DataType::UnsignedByte;
+	mDataTypes["uint16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
+}
+
+map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInformation()
+{
+	map<string, mesh::MaterialInformation> minfos;
+
+	utils::XmlReader* reader = utils::XmlReader::fromFile(mFilename);
+
+	auto materialNode = reader->getNode("Specification/Materials/Material");
+	do
+	{
+		string name = materialNode->getAttribute("name");
+
+		mesh::MaterialInformation mi(name);
+
+		// Parse program
+		auto programNode = materialNode->getChild("Program");
+
+		// Position type: 2d or 3d
+		string positionType = programNode->getAttribute("positionType");
+		utils::StringUtils::toLower(positionType);
+
+		if (positionType != "2d" && positionType != "3d")
+		{
+			string errMsg = "Invalid position type: " + programNode->getAttribute("positionType");
+			throw exception(errMsg.c_str());
 		}
 
-		map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInformation()
+		mi.setPositionType(positionType == "2d" ? mesh::MaterialInformation::PositionType::p2D : mesh::MaterialInformation::PositionType::p3D);
+
+		auto shaderNode = programNode->getChild("Shaders")->getChild("Shader");
+		if (!shaderNode)
 		{
-			map<string, mesh::MaterialInformation> minfos;
+			string errMsg = "No shaders specified";
+			throw exception(errMsg.c_str());
+		}
 
-			utils::XmlReader* reader = utils::XmlReader::fromFile(mFilename);
+		do
+		{
+			auto shaderTypeStr = shaderNode->getAttribute("type");
+			utils::StringUtils::toLower(shaderTypeStr);
 
-			auto materialNode = reader->getNode("Specification/Materials/Material");
-			do
+			auto shaderName = shaderNode->getValue();
+
+			mesh::MaterialInformation::Shader::Type shaderType;
+			if (shaderTypeStr == "vertex")
 			{
-				string name = materialNode->getAttribute("name");
+				shaderType = mesh::MaterialInformation::Shader::Type::Vertex;
+			}
+			else if (shaderTypeStr == "geometry")
+			{
+				shaderType = mesh::MaterialInformation::Shader::Type::Geometry;
+			}
+			else if (shaderTypeStr == "fragment")
+			{
+				shaderType = mesh::MaterialInformation::Shader::Type::Fragment;
+			}
+			else
+			{
+				string errMsg = "Invalid shader stage: " + shaderNode->getAttribute("type");
+				throw exception(errMsg.c_str());
+			}
 
-				mesh::MaterialInformation mi(name);
+			mi.addShader(shaderType, shaderName);
+		} while (shaderNode->next());
 
-				// Parse program
-				auto programNode = materialNode->getChild("Program");
-				
-				// Position type: 2d or 3d
-				string positionType = programNode->getAttribute("positionType");
-				utils::StringUtils::toLower(positionType);
-
-				if (positionType != "2d" && positionType != "3d")
-				{
-					string errMsg = "Invalid position type: " + programNode->getAttribute("positionType");
-					throw exception(errMsg.c_str());
-				}
-
-				mi.setPositionType(positionType == "2d" ? mesh::MaterialInformation::PositionType::p2D : mesh::MaterialInformation::PositionType::p3D);
-
-				auto shaderNode = programNode->getChild("Shaders")->getChild("Shader");
-				if (!shaderNode)
-				{
-					string errMsg = "No shaders specified";
-					throw exception(errMsg.c_str());
-				}
-
+		// Parse textures
+		auto texturesNode = materialNode->getOptionalChild("Textures");
+		if (texturesNode)
+		{
+			auto textureNode = texturesNode->getOptionalChild("Texture");
+			if (textureNode)
+			{
 				do
 				{
-					auto shaderTypeStr = shaderNode->getAttribute("type");
-					utils::StringUtils::toLower(shaderTypeStr);
+					auto binding = textureNode->getAttribute("binding");
 
-					auto shaderName = shaderNode->getValue();
+					bool isResource;
+					string resource;
 
-					mesh::MaterialInformation::Shader::Type shaderType;
-					if (shaderTypeStr == "vertex")
+					if (textureNode->getOptionalAttribute("filename", resource))
 					{
-						shaderType = mesh::MaterialInformation::Shader::Type::Vertex;
+						isResource = false;
 					}
-					else if (shaderTypeStr == "geometry")
+					else if (textureNode->getOptionalAttribute("resource", resource))
 					{
-						shaderType = mesh::MaterialInformation::Shader::Type::Geometry;
-					}
-					else if (shaderTypeStr == "fragment")
-					{
-						shaderType = mesh::MaterialInformation::Shader::Type::Fragment;
+						isResource = true;
 					}
 					else
 					{
-						string errMsg = "Invalid shader stage: " + shaderNode->getAttribute("type");
+						string errMsg = "Either 'filename' or 'resource' must be specified for a texture";
 						throw exception(errMsg.c_str());
 					}
 
-					mi.addShader(shaderType, shaderName);
-				} while (shaderNode->next());
-
-
-				minfos[name] = mi;
-			} while (materialNode->next());
-
-			delete reader;
-			return minfos;
+					mi.addTexture(isResource, binding, resource);
+				} while (textureNode->next());
+			}
 		}
+
+		// Add material
+		minfos[name] = mi;
+	} while (materialNode->next());
+
+	delete reader;
+	return minfos;
+}
 
 		mpp::mesh::MeshSpecification SpecificationParser::parseMeshSpecification(uint32& maxVerticesPerMesh)
 		{
