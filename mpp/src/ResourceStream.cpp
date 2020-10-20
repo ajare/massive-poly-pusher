@@ -120,35 +120,38 @@ namespace mpp
 		}
 	}
 
-	void ResourceStream::destroyChildResources()
+	void ResourceStream::destroyChildResources(string const& parentName)
 	{
 		for (auto child: mChildren)
 		{
-			auto res = mResourceMgr->getResource(child.first);
+			string name = parentName + "/" + child.first;
+			auto res = mResourceMgr->getResource(name);
 			res->destroy();
 
-			child.second->destroyChildResources();
+			child.second->destroyChildResources(name);
 		}
 	}
 
-	void ResourceStream::loadChildResources()
+	void ResourceStream::loadChildResources(string const& parentName)
 	{
 		for (auto child: mChildren)
 		{
-			child.second->loadChildResources();
+			string name = parentName + "/" + child.first;
+			child.second->loadChildResources(name);
 
-			auto res = mResourceMgr->getResource(child.first);
+			auto res = mResourceMgr->getResource(name);
 			res->load();
 		}
 	}
 
-	void ResourceStream::unloadChildResources()
+	void ResourceStream::unloadChildResources(string const& parentName)
 	{
 		for (auto child: mChildren)
 		{
-			auto res = mResourceMgr->getResource(child.first);
+			string name = parentName + "/" + child.first;
+			auto res = mResourceMgr->getResource(name);
 			res->unload();
 
-			child.second->unloadChildResources();
+			child.second->unloadChildResources(name);
 		}
 	}}
