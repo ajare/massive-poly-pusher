@@ -24,6 +24,7 @@
     <ClInclude Include="..\..\include\mpp\DefaultShaders.h" />
     <ClInclude Include="..\..\include\mpp\FileDataStream.h" />
     <ClInclude Include="..\..\include\mpp\FileMaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\FileStringStream.h" />
     <ClInclude Include="..\..\include\mpp\Font.h" />
     <ClInclude Include="..\..\include\mpp\GLErrorCheck.h" />
     <ClInclude Include="..\..\include\mpp\InternalFont.h" />
@@ -59,6 +60,8 @@
     <ClInclude Include="..\..\include\mpp\Screen.h" />
     <ClInclude Include="..\..\include\mpp\SphereModelStream.h" />
     <ClInclude Include="..\..\include\mpp\StackWalker.h" />
+    <ClInclude Include="..\..\include\mpp\String.h" />
+    <ClInclude Include="..\..\include\mpp\StringStream.h" />
     <ClInclude Include="..\..\include\mpp\Texture.h" />
     <ClInclude Include="..\..\include\mpp\TextureAtlas.h" />
     <ClInclude Include="..\..\include\mpp\TextureAtlasStream.h" />
@@ -82,6 +85,7 @@
     <ClCompile Include="..\..\src\DebugStackWalker.cpp" />
     <ClCompile Include="..\..\src\FileDataStream.cpp" />
     <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
+    <ClCompile Include="..\..\src\FileStringStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
     <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
     <ClCompile Include="..\..\src\InternalFont.cpp" />
@@ -113,6 +117,8 @@
     <ClCompile Include="..\..\src\Screen.cpp" />
     <ClCompile Include="..\..\src\SphereModelStream.cpp" />
     <ClCompile Include="..\..\src\StackWalker.cpp" />
+    <ClCompile Include="..\..\src\String.cpp" />
+    <ClCompile Include="..\..\src\StringStream.cpp" />
     <ClCompile Include="..\..\src\Texture.cpp" />
     <ClCompile Include="..\..\src\TextureAtlas.cpp" />
     <ClCompile Include="..\..\src\TextureAtlasStream.cpp" />

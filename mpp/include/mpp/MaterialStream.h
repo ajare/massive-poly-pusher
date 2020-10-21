@@ -17,13 +17,19 @@ namespace mpp
 
 		struct ProgramOptions
 		{
+			struct Shader
+			{
+				bool isFile;
+				std::string data;
+			};
+
 			bool resourceExists{ false };
 			std::string existingResource;
 			std::set<std::string> tags;
 
-			bool is2d, shadersAreFiles;
+			bool is2d;
 			mesh::MeshSpecification spec;
-			std::string vertexShader, fragmentShader;
+			Shader vertexShader, fragmentShader;
 		};
 
 		template<typename T>
@@ -49,7 +55,7 @@ namespace mpp
 
 		MaterialStream(ResourceManager* resourceMgr, std::string const& program);
 
-		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles);
+		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFile);
 
 		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
 
@@ -63,7 +69,7 @@ namespace mpp
 
 		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
 
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, std::string const& fragmentShader, bool shadersAreFiles);
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFiles);
 
 		void setProgram(bool is2d, mesh::MeshSpecification const& spec);
 

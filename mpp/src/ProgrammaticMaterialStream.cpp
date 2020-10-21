@@ -20,8 +20,8 @@ namespace mpp
 	{
 	}
 
-	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, string const& fragmentShader, bool shadersAreFiles)
-		: MaterialStream(resourceMgr, program2d, meshSpec, vertexShader, fragmentShader, shadersAreFiles)
+	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, bool vertexShaderIsFile, string const& fragmentShader, bool fragmentShaderIsFile)
+		: MaterialStream(resourceMgr, program2d, meshSpec, vertexShader, vertexShaderIsFile, fragmentShader, fragmentShaderIsFile)
 	{
 	}
 

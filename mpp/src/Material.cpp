@@ -2,6 +2,7 @@
 #include "mpp/MaterialStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/String.h"
 #include "mpp/MppException.h"
 
 using namespace std;
@@ -61,30 +62,29 @@ namespace mpp
 				THROW_MPP("Cannot use more than 4 textures in a material.", __LINE__, __FILE__, __func__);
 			}
 
+			// Load in shaders if required
+			string vertexShaderSrc = progOpts.vertexShader.data;
+			if (progOpts.vertexShader.isFile)
+			{
+				string resName = getName() + "/" + progOpts.vertexShader.data;
+				vertexShaderSrc = static_cast<String*>(resourceMgr->getResource(resName).get())->getData();
+			}
+
+			string fragmentShaderSrc = progOpts.fragmentShader.data;
+			if (progOpts.fragmentShader.isFile)
+			{
+				string resName = getName() + "/" + progOpts.fragmentShader.data;
+				fragmentShaderSrc = static_cast<String*>(resourceMgr->getResource(resName).get())->getData();
+			}
+
 			// Get or create program, either with default shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)
 			{
-				if (progOpts.shadersAreFiles)
-				{
-					THROW_MPP_NOTIMP("Loading shaders from files", __LINE__, __FILE__, __func__);
-					//mProgram = resourceMgr->getDefault2dProgram(progOpts.spec, programFlags, false);
-				}
-				else
-				{
-					mProgram = resourceMgr->getDefault2dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, programFlags, false);
-				}
+				mProgram = resourceMgr->getDefault2dProgram(vertexShaderSrc, fragmentShaderSrc, progOpts.spec, programFlags, false);
 			}
 			else
 			{
-				if (progOpts.shadersAreFiles)
-				{
-					THROW_MPP_NOTIMP("Loading shaders from files", __LINE__, __FILE__, __func__);
-					//mProgram = resourceMgr->getDefault3dProgram(progOpts.spec, programFlags, false);
-				}
-				else
-				{
-					mProgram = resourceMgr->getDefault3dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, programFlags, false);
-				}
+				mProgram = resourceMgr->getDefault3dProgram(vertexShaderSrc, fragmentShaderSrc, progOpts.spec, programFlags, false);
 			}
 		}
 
