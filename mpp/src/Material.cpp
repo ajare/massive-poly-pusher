@@ -41,17 +41,37 @@ namespace mpp
 		}
 		else
 		{
+			// Get texture usage
+			uint32 programFlags{ 0 };
+			switch (mStr->getTextures().size())
+			{
+			case 0:
+				break;
+			case 4:
+				programFlags |= MPP_PROGRAM_TAGS_TEXTURE4;
+			case 3:
+				programFlags |= MPP_PROGRAM_TAGS_TEXTURE3;
+			case 2:
+				programFlags |= MPP_PROGRAM_TAGS_TEXTURE2;
+			case 1:
+				programFlags |= MPP_PROGRAM_TAGS_TEXTURE1;
+				break;
+
+			default:
+				THROW_MPP("Cannot use more than 4 textures in a material.", __LINE__, __FILE__, __func__);
+			}
+
 			// Get or create program, either with default shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)
 			{
 				if (progOpts.shadersAreFiles)
 				{
 					THROW_MPP_NOTIMP("Loading shaders from files", __LINE__, __FILE__, __func__);
-					//mProgram = resourceMgr->getDefault2dProgram(progOpts.spec, 0, false);
+					//mProgram = resourceMgr->getDefault2dProgram(progOpts.spec, programFlags, false);
 				}
 				else
 				{
-					mProgram = resourceMgr->getDefault2dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, 0, false);
+					mProgram = resourceMgr->getDefault2dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, programFlags, false);
 				}
 			}
 			else
@@ -59,11 +79,11 @@ namespace mpp
 				if (progOpts.shadersAreFiles)
 				{
 					THROW_MPP_NOTIMP("Loading shaders from files", __LINE__, __FILE__, __func__);
-					//mProgram = resourceMgr->getDefault3dProgram(progOpts.spec, 0, false);
+					//mProgram = resourceMgr->getDefault3dProgram(progOpts.spec, programFlags, false);
 				}
 				else
 				{
-					mProgram = resourceMgr->getDefault3dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, 0, false);
+					mProgram = resourceMgr->getDefault3dProgram(progOpts.vertexShader, progOpts.fragmentShader, progOpts.spec, programFlags, false);
 				}
 			}
 		}
@@ -112,7 +132,18 @@ namespace mpp
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			mTextures.push_back(resourceMgr->getResource(it->second));
+			string textureName;
+			if (it->second.second)
+			{
+				// Texture is a child resource, so we need to mark it up
+				textureName = getName() + "/" + it->second.first;
+			}
+			else
+			{
+				textureName = it->second.first;
+			}
+
+			mTextures.push_back(resourceMgr->getResource(textureName));
 		}
 	}
 

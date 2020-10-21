@@ -42,14 +42,20 @@ namespace mpp
 		: MaterialStream(resourceMgr, program2d, meshSpec, tags)
 	{
 	}
+
+	void ProgrammaticMaterialStream::setTextureChild(string const& sampler, string const& resource)
+	{
+		mTextures[sampler] = make_pair(resource, true);
+	}
+
 	void ProgrammaticMaterialStream::setTexture(string const& sampler, string const& texture)
 	{
-		mTextures[sampler] = texture;
+		mTextures[sampler] = make_pair(texture, false);
 	}
 
 	void ProgrammaticMaterialStream::useDefaultTexture()
 	{
-		mTextures["TEX1"] = "__mpp_tex_none__";
+		mTextures["TEX1"] = make_pair("__mpp_tex_none__", false);
 	}
 
 	void ProgrammaticMaterialStream::setFloatUniform(string const& name, float value)

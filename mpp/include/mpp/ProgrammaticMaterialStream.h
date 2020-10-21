@@ -30,6 +30,8 @@ namespace mpp
 
 		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
 
+		void setTextureChild(std::string const& sampler, std::string const& resource);
+
 		void setTexture(std::string const& sampler, std::string const& texture);
 
 		void useDefaultTexture();

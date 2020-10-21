@@ -100,6 +100,7 @@ namespace mpp
 						true);
 
 					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
+					mStr->setTextureChild(texture.binding, texture.resource);
 				}
 			}
 

@@ -41,7 +41,7 @@ namespace mpp
 
 		std::map<std::string, Uniform<float>> mFloatUniforms;
 
-		std::map<std::string, std::string> mTextures;
+		std::map<std::string, std::pair<std::string, bool>> mTextures;
 
 	public:
 
@@ -71,6 +71,6 @@ namespace mpp
 
 		std::map<std::string, Uniform<float>> const& getFloatUniforms() const;
 
-		std::map<std::string, std::string> const& getTextures() const;
+		std::map<std::string, std::pair<std::string, bool>> const& getTextures() const;
 	};
 }
