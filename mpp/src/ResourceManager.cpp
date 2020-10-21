@@ -6,6 +6,7 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
+#include "mpp/String.h"
 #include "mpp/TextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
@@ -61,6 +62,10 @@ namespace mpp
 		mResourceFactories["Model"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new Model(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["String"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new String(name, this->mwRenderSystem, this, rStream));
 		};
 
 		//

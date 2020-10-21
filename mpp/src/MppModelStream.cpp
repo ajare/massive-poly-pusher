@@ -4,6 +4,7 @@
 #include "mpp/MppModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/TextureStream.h"
+#include "mpp/FileStringStream.h"
 #include "mpp/mesh/ModelSerializer.h"
 #include "mpp/ResourceManager.h"
 
@@ -42,31 +43,41 @@ namespace mpp
 		auto numMeshes = reader.getNumMeshes();
 		for (size_t i = 0; i < numMeshes; ++i)
 		{
-			//auto matInfo = materialInfo[] // Need mesh name -> material mapping
 			auto const& matInfo = reader.getMaterialByMeshId(i);
 			auto const& meshSpec = reader.getMeshSpecificationByMeshId(i);
 
 			// Create program stream based on MeshSpec and shaders, or by
 			// loading files
-			bool shadersAreFiles{ false };
+			bool vertexShaderIsFile, fragmentShaderIsFile;
+			bool foundVertexShader{ false }, foundFragmentShader{ false };
 			auto const& shaders = matInfo.getShaders();
 			for (auto const& shader: shaders)
 			{
-				if (shader.name != "")
-				{
-					shadersAreFiles = true;
-				}
-
 				switch (shader.type)
 				{
 				case mesh::MaterialInformation::Shader::Type::Vertex:
+					foundVertexShader = true;
+					vertexShaderIsFile = shader.name != "";
 					vertexShader = shader.name;
 					break;
 
 				case mesh::MaterialInformation::Shader::Type::Fragment:
+					foundFragmentShader = true;
+					fragmentShaderIsFile = shader.name != "";
 					fragmentShader = shader.name;
 					break;
 				}
+			}
+
+			if (!foundVertexShader)
+			{
+				THROW_MPP("No vertex shader specified for program in material '" + matInfo.getName() + "'",
+					__LINE__, __FILE__, __func__);
+			}
+			if (!foundFragmentShader)
+			{
+				THROW_MPP("No fragment shader specified for program in material '" + matInfo.getName() + "'",
+					__LINE__, __FILE__, __func__);
 			}
 
 			bool is2d = matInfo.getPositionType() == mesh::MaterialInformation::PositionType::p2D;
@@ -75,9 +86,31 @@ namespace mpp
 				is2d, 
 				meshSpec, 
 				vertexShader, 
+				vertexShaderIsFile,
 				fragmentShader, 
-				shadersAreFiles);
+				fragmentShaderIsFile);
 
+			// Add program resources if required
+			if (vertexShaderIsFile)
+			{
+				// Add a File StringStream child to MaterialStream
+				string vertexShaderFilename = utils::FileSystem::concatPaths(
+					utils::FileSystem::baseDirectory(mFilename),
+					vertexShader);
+
+				auto strStr = new FileStringStream(resMgr, vertexShaderFilename);
+				mStr->addChild(vertexShader, ResourceStreamPtr(strStr));
+			}
+			if (fragmentShaderIsFile)
+			{
+				// Add a File StringStream child to MaterialStream
+				string fragmentShaderFilename = utils::FileSystem::concatPaths(
+					utils::FileSystem::baseDirectory(mFilename),
+					fragmentShader);
+
+				auto strStr = new FileStringStream(resMgr, fragmentShaderFilename);
+				mStr->addChild(vertexShader, ResourceStreamPtr(strStr));
+			}
 			// Create texture streams if required
 			auto const& textures = matInfo.getTextures();
 			for (auto const& texture: textures)

@@ -23,7 +23,7 @@
 				Shaders are either filenames, or if empty, use the default shaders.
 				-->
 				<Shaders>
-					<Shader type="Vertex"></Shader>
+					<Shader type="Vertex">statue.vert</Shader>
 					<Shader type="Fragment"></Shader>
 				</Shaders>
 			</Program>
@@ -34,7 +34,8 @@
 				to specify an existing loaded texture resource.  If filename, the generated Texture resource
 				is named modelname/materialname/filename.
 				-->
-				<Texture binding="TEX1" filename="statue_marble.jpg" />
+				<!--<Texture binding="TEX1" filename="statue_marble.jpg" />-->
+				<Texture binding="TEX1" resource="rgba.png" />
 			</Textures>
 		</Material>
 	</Materials>

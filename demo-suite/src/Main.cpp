@@ -269,8 +269,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/*
 		Textures are image files which are loaded with a helper function into a TextureStream, which takes the raw loaded data.
 		*/
-		TextureStream* textureStream = new mpp::TextureStream(gResourceManager, gOptions.resourceLocation + "marble_texture4662.jpg", loadImage, true);
-		gResourceManager->createResource("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
+		TextureStream* textureStream = new mpp::TextureStream(gResourceManager, gOptions.resourceLocation + "rgba.png", loadImage, true);
+		gResourceManager->createResource("rgba.png", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
