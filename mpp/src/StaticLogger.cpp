@@ -1,5 +1,6 @@
 #include <mutex>
 #include <fstream>
+#include <map>
 #include <iomanip>
 #include <time.h>
 
@@ -15,22 +16,23 @@ namespace mpp
 	using namespace std;
 
 	static bool gsInitialised = false;
+	static map<string, bool> gsEnabled;
 
-	void _initialise_static_logger()
+	void _initialise_static_logger(string const& file)
 	{
 		// Delete file if it exists
-		utils::FileSystem::deleteFile(LOG_FILENAME);
+		utils::FileSystem::deleteFile(file);
 	}
 
-	void _static_log_message(string const& message)
+	void _static_log_message(string const& file, string const& message)
 	{
 		std::ofstream logger;
 		
-		logger.open(LOG_FILENAME, ofstream::out | ofstream::app);
+		logger.open(file, ofstream::out | ofstream::app);
 
 		if (!logger.is_open())
 		{
-			THROW_MPP("Could not open " LOG_FILENAME " for logging.", __LINE__, __FILE__, __func__);
+			THROW_MPP("Could not open " + file + " for logging.", __LINE__, __FILE__, __func__);
 		}
 
 		struct tm *pTime;
@@ -47,33 +49,37 @@ namespace mpp
 		logger.close();
 	}
 
-	static bool gsEnabled = false;
-
-	void enable_static_log(bool enabled)
+	void enable_static_log(string const& file, bool enabled)
 	{
-		gsEnabled = enabled;
+		gsEnabled[file] = enabled;
 	}
 
-	bool is_static_log_enabled()
+	bool is_static_log_enabled(string const& file)
 	{
-		return gsEnabled;
+		auto it = gsEnabled.find(file);
+		if (it == gsEnabled.end())
+		{
+			return false;
+		}
+
+		return it->second;
 	}
 
-	static std::mutex gMutex;
+	static mutex gMutex;
 
-	void static_log_message(string const& message)
+	void static_log_message(string const& file, string const& message)
 	{
 		const lock_guard<std::mutex> lock(gMutex);
 
-		if (gsEnabled)
+		if (is_static_log_enabled(file))
 		{
 			if (!gsInitialised)
 			{
-				_initialise_static_logger();
+				_initialise_static_logger(file);
 				gsInitialised = true;
 			}
 
-			_static_log_message(message);
+			_static_log_message(file, message);
 		}
 	}
 }

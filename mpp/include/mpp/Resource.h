@@ -12,15 +12,6 @@ namespace mpp
 	class RenderSystem;
 	class ResourceManager;
 	
-	enum class ResourceEvent
-	{
-		Create,
-		Destroy,
-		Load,
-		Unload,
-		Reload
-	};
-
 	class _MPPAPI Resource
 	{
 		std::string mName;
@@ -57,7 +48,7 @@ namespace mpp
 
 		Resource(std::string const& name, std::string const& type, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
-		virtual ~Resource() = default;
+		virtual ~Resource();
 
 		std::string const& getName() const;
 

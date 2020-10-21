@@ -143,7 +143,7 @@ void startup()
 	gWindow = new WindowSDL();
 	gWindow->create(gOptions.screenWidth, gOptions.screenHeight, gOptions.fullScreen, gOptions.vSync);
 
-	mpp::enable_static_log(true);
+	mpp::enable_static_log(MPP_RESOURCE_LOGFILE, true);
 
 	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight());
 	
