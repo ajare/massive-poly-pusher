@@ -11,8 +11,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TextureStream::TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
-		: ResourceStream(resourceMgr)
+	TextureStream::TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered, string streamType)
+		: ResourceStream(resourceMgr, streamType)
 		, mData(nullptr)
 		, mWidth(width)
 		, mHeight(height)
@@ -26,8 +26,8 @@ namespace mpp
 		memcpy(mData, data, dataSize);
 	}
 
-	TextureStream::TextureStream(ResourceManager* resourceMgr, string const& filename, ImageLoadFunction function, bool filtered)
-		: ResourceStream(resourceMgr)
+	TextureStream::TextureStream(ResourceManager* resourceMgr, string const& filename, ImageLoadFunction function, bool filtered, string streamType)
+		: ResourceStream(resourceMgr, streamType)
 		, mData(nullptr)
 		, mWidth(0)
 		, mHeight(0)
@@ -56,15 +56,6 @@ namespace mpp
 	 */
 	void TextureStream::loadImpl()
 	{
-	}
-
-	/*
-	 * Get resource stream type.
-	 *
-	 */
-	string TextureStream::getType()
-	{
-		return "Texture";
 	}
 
 	/*

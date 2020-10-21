@@ -31,13 +31,11 @@ namespace mpp
 
 	public:
 
-		TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
+		TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered, std::string streamType = "Texture");
 
-		TextureStream(ResourceManager* resourceMgr, std::string const& filename, ImageLoadFunction loader, bool filtered);
+		TextureStream(ResourceManager* resourceMgr, std::string const& filename, ImageLoadFunction loader, bool filtered, std::string streamType = "Texture");
 
 		virtual ~TextureStream();
-
-		std::string getType();
 
 		uint8 const* getData() const;
 

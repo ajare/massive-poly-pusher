@@ -12,6 +12,15 @@ namespace mpp
 	class RenderSystem;
 	class ResourceManager;
 	
+	enum class ResourceEvent
+	{
+		Create,
+		Destroy,
+		Load,
+		Unload,
+		Reload
+	};
+
 	class _MPPAPI Resource
 	{
 		std::string mName;

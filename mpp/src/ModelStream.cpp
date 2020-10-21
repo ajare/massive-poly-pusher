@@ -18,7 +18,7 @@ namespace mpp
 	 *
 	 */
 	ModelStream::ModelStream(ResourceManager* resourceMgr)
-		: ResourceStream(resourceMgr)
+		: ResourceStream(resourceMgr, "Model")
 	{
 	}
 
@@ -32,15 +32,6 @@ namespace mpp
 		{
 			delete it;
 		}
-	}
-
-	/*
-	 * Get resource stream type.
-	 *
-	 */
-	string ModelStream::getType()
-	{
-		return "Model";
 	}
 
 	/*

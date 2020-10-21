@@ -10,17 +10,8 @@ namespace mpp
 	 *
 	 */
 	StringStream::StringStream(ResourceManager* resourceMgr)
-		: ResourceStream(resourceMgr)
+		: ResourceStream(resourceMgr, "String")
 	{
-	}
-
-	/*
-	 * Get resource type.
-	 *
-	 */
-	std::string StringStream::getType()
-	{
-		return "String";
 	}
 
 }

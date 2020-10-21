@@ -12,17 +12,8 @@ namespace mpp
 	 *
 	 */
 	TextureAtlasStream::TextureAtlasStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered)
-		: TextureStream(resourceMgr, data, width, height, bitsPerPixel, filtered)
+		: TextureStream(resourceMgr, data, width, height, bitsPerPixel, filtered, "TextureAtlas")
 	{
-	}
-
-	/*
-	 * Get resource stream type.
-	 *
-	 */
-	string TextureAtlasStream::getType()
-	{
-		return "TextureAtlas";
 	}
 
 	void TextureAtlasStream::addTile(string const& name, int x, int y, int w, int h)

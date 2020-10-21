@@ -61,8 +61,6 @@ namespace mpp
 
 		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
 
-		std::string getType();
-
 		std::string const& getName() const;
 
 		void setProgram(std::string const& program);

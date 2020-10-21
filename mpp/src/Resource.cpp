@@ -1,5 +1,7 @@
 #include "mpp/RenderSystem.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/Resource.h"
+#include "mpp/StaticLogger.h"
 
 using namespace std;
 
@@ -19,6 +21,7 @@ namespace mpp
 		, mwResourceMgr(resourceMgr)
 		, mResourceStream(resourceStream)
 	{
+		mResourceStream->mwResource = this;
 	}
 
 	/*
@@ -140,6 +143,7 @@ namespace mpp
 
 		if (!isCreated())
 		{
+			static_log_message("Create '" + getName() + "'");
 			createImpl();
 			mCreated = true;
 		}
@@ -158,6 +162,7 @@ namespace mpp
 
 		if (isCreated())
 		{
+			static_log_message("Destroy '" + getName() + "'");
 			destroyImpl();
 			mCreated = false;
 		}
@@ -202,6 +207,7 @@ namespace mpp
 
 		if (!isLoaded())
 		{
+			static_log_message("Load '" + getName() + "'");
 			loadImpl();
 			mLoaded = true;
 		}
@@ -215,6 +221,7 @@ namespace mpp
 	{
 		if (isLoaded())
 		{
+			static_log_message("Unload '" + getName() + "'");
 			unloadImpl();
 			mLoaded = false;
 		}

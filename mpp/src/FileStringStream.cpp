@@ -40,7 +40,7 @@ namespace mpp
 	}
 
 	/*
-	 * Get resource type.
+	 * Get resource data.
 	 *
 	 */
 	std::string FileStringStream::getData() const
