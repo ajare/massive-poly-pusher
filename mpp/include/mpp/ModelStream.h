@@ -74,8 +74,6 @@ namespace mpp
 
 		virtual ~ModelStream();
 
-		std::string getType();
-
 		int getNumMeshDefinitions() const;
 
 		mesh::MeshDefinition* getMeshDefinition(int index);

@@ -32,8 +32,6 @@ namespace mpp
 
 		ProgramStream(ResourceManager* resourceMgr, std::shared_ptr<program::Parser> parser, std::set<std::string> const& attribs);
 
-		std::string getType();
-
 		std::string const& getVertexSource() const;
 
 		std::string const& getFragmentSource() const;

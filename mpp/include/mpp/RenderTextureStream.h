@@ -20,8 +20,6 @@ namespace mpp
 
 		RenderTextureStream(ResourceManager* resourceMgr, int width, int height, bool useDepthBuffer, size_t numAttachments);
 
-		std::string getType();
-
 		int getWidth() const;
 
 		int getHeight() const;

@@ -23,8 +23,6 @@ namespace mpp
 
 		TextureAtlasStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
 
-		std::string getType();
-
 		void addTile(std::string const& name, int x, int y, int w, int h);
 
 		std::map<std::string, Tile> const& getTiles() const;

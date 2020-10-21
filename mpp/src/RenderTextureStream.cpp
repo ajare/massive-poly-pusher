@@ -12,7 +12,7 @@ namespace mpp
 	 *
 	 */
 	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr, int width, int height, bool useDepthBuffer, size_t numAttachments)
-		: ResourceStream(resourceMgr)
+		: ResourceStream(resourceMgr, "RenderTexture")
 		, mWidth(width)
 		, mHeight(height)
 		, mUseDepthBuffer(useDepthBuffer)
@@ -26,15 +26,6 @@ namespace mpp
 	 */
 	void RenderTextureStream::loadImpl()
 	{
-	}
-
-	/*
-	 * Get resource stream type.
-	 *
-	 */
-	string RenderTextureStream::getType()
-	{
-		return "RenderTexture";
 	}
 
 	/*

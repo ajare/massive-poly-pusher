@@ -26,6 +26,7 @@
 #include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
+#include <mpp/StaticLogger.h>
 
 #include <mpp/mesh/VertexData.h>
 #include <mpp/mesh/MeshSpecification.h>
@@ -70,6 +71,7 @@ ProgramOptions gOptions;
 Window* gWindow = nullptr;
 Timer* gTimer = nullptr;
 InputManager* gInputMgr = nullptr;
+
 RenderSystem* gRenderSystem = nullptr;
 ResourceManager* gResourceManager = nullptr;
 
@@ -141,6 +143,8 @@ void startup()
 	gWindow = new WindowSDL();
 	gWindow->create(gOptions.screenWidth, gOptions.screenHeight, gOptions.fullScreen, gOptions.vSync);
 
+	mpp::enable_static_log(true);
+
 	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight());
 	
 	gResourceManager = new ResourceManager(gRenderSystem);
@@ -173,6 +177,7 @@ void shutdown()
 #endif
 
 	delete gLogger;
+	gLogger = nullptr;
 }
 
 

@@ -213,6 +213,52 @@ namespace mpp
 		destroyAllResources();
 	}
 
+	/*
+	void ResourceManager::logResourceEvent(Resource* resource, ResourceEvent event)
+	{
+		if (mLogResourceEvents && mwLogger)
+		{
+			string msg;
+			switch (event)
+			{
+			case ResourceEvent::Create:
+				msg = "CREATE-RES: "; break;
+			case ResourceEvent::Destroy:
+				msg = "DESTROY-RES: "; break;
+			case ResourceEvent::Load:
+				msg = "LOAD-RES: "; break;
+			case ResourceEvent::Unload:
+				msg = "UNLOAD-RES: "; break;
+			case ResourceEvent::Reload:
+				msg = "RELOAD-RES: "; break;
+			}
+
+			msg += resource->getName();
+
+			mwLogger->message(msg);
+		}
+	}
+
+	void ResourceManager::logResourceStreamEvent(ResourceStream* stream, ResourceStreamEvent event)
+	{
+		if (mLogResourceEvents)
+		{
+			string msg;
+			switch (event)
+			{
+			case ResourceStreamEvent::Load:
+				msg = "LOAD-STREAM: "; break;
+			case ResourceStreamEvent::Unload:
+				msg = "UNLOAD-STREAM: "; break;
+			}
+
+			msg += stream->getType();
+
+			mwLogger->message(msg);
+		}
+	}
+	*/
+
 	void ResourceManager::setImageLoadFunction(ImageLoadFunction function)
 	{
 		mImageLoadFunction = function;

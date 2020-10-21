@@ -13,7 +13,7 @@ namespace mpp
 	 *
 	 */
 	ProgramStream::ProgramStream(ResourceManager* resourceMgr, shared_ptr<program::Parser> parser, set<string> const& attribs)
-		: ResourceStream(resourceMgr)
+		: ResourceStream(resourceMgr, "Program")
 		, mParser(parser)
 		, mAttribs(attribs)
 	{
@@ -35,15 +35,6 @@ namespace mpp
 	void ProgramStream::setFragmentSource(string const& src)
 	{
 		mFragmentSource = src;
-	}
-
-	/*
-	 * Get resource stream type.
-	 *
-	 */
-	string ProgramStream::getType()
-	{
-		return "Program";
 	}
 
 	/*

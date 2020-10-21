@@ -1,5 +1,6 @@
 #include "mpp/ResourceStream.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/StaticLogger.h"
 
 namespace mpp
 {
@@ -9,12 +10,14 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	ResourceStream::ResourceStream(ResourceManager* resourceMgr)
-		: mLoaded(false)
+	ResourceStream::ResourceStream(ResourceManager* resourceMgr, string const& type)
+		: mType(type)
+		, mLoaded(false)
 		, mChildrenCreated(false)
 		, mChildResourcesCreated(false)
 		, mChildResourcesLoaded(false)
 		, mResourceMgr(resourceMgr)
+		, mwResource(nullptr)
 	{
 	}
 
@@ -25,6 +28,11 @@ namespace mpp
 	ResourceStream::~ResourceStream()
 	{
 		unload();
+	}
+
+	string const& ResourceStream::getType() const
+	{
+		return mType;
 	}
 
 	ResourceManager* ResourceStream::getResourceMgr()
@@ -65,6 +73,7 @@ namespace mpp
 				child.second->load();
 			}
 
+			static_log_message("Load-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
 			loadImpl();
 			mLoaded = true;
 		}
@@ -78,6 +87,7 @@ namespace mpp
 	{
 		if (mLoaded)
 		{
+			static_log_message("Unload-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
 			unloadImpl();
 			mLoaded = false;
 

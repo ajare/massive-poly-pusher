@@ -9,9 +9,22 @@
 namespace mpp
 {
 	class ResourceManager;
+	class Resource;
+
+	enum class ResourceStreamEvent
+	{
+		Load,
+		Unload,
+	};
 
 	class _MPPAPI ResourceStream
 	{
+		friend class Resource;
+
+	private:
+
+		std::string mType;
+		
 		bool mLoaded;
 
 		uint32_t mFlags{ 0 };
@@ -21,6 +34,8 @@ namespace mpp
 		bool mChildrenCreated, mChildResourcesCreated, mChildResourcesLoaded;
 
 		ResourceManager* mResourceMgr;
+
+		Resource* mwResource;
 
 	private:
 
@@ -42,13 +57,13 @@ namespace mpp
 
 	public:
 
-		explicit ResourceStream(ResourceManager* resourceMgr);
+		ResourceStream(ResourceManager* resourceMgr, std::string const& type);
 
 		virtual ~ResourceStream();
 
 		void addChild(std::string const& name, std::shared_ptr<ResourceStream> child);
 
-		virtual std::string getType() = 0;
+		std::string const& getType() const;
 
 		void load();
 

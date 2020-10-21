@@ -10,7 +10,7 @@ namespace mpp
 	 *
 	 */
 	MaterialStream::MaterialStream(ResourceManager* resourceMgr)
-		: ResourceStream(resourceMgr)
+		: ResourceStream(resourceMgr, "Material")
 	{
 	}
 	
@@ -48,15 +48,6 @@ namespace mpp
 		: MaterialStream(resourceMgr)
 	{
 		setProgram(program2d, meshSpec, tags);
-	}
-
-	/*
-	 * Get resource type.
-	 *
-	 */
-	std::string MaterialStream::getType()
-	{
-		return "Material";
 	}
 
 	/*

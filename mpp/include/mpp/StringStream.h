@@ -10,8 +10,6 @@ namespace mpp
 
 		explicit StringStream(ResourceManager* resourceMgr);
 
-		std::string getType();
-
 		virtual std::string getData() const = 0;
 	};
 }

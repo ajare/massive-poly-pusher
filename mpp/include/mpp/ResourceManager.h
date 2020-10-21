@@ -47,6 +47,8 @@ namespace mpp
 
 		ImageLoadFunction mImageLoadFunction;
 
+		bool mLogResourceEvents{ false };
+
 	public:
 
 		explicit ResourceManager(RenderSystem* renderSystem);
