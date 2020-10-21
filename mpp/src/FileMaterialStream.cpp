@@ -91,7 +91,7 @@ namespace mpp
 				{
 					string binding = textureNode->getAttribute("binding");
 					string resource = textureNode->getAttribute("resource");
-					mTextures[binding] = resource;
+					mTextures[binding] = make_pair(resource, false);
 				} while (textureNode->next());
 			}
 		}

@@ -140,7 +140,7 @@ namespace mpp
 	 * Get textures.
 	 *
 	 */
-	map<string, string> const& MaterialStream::getTextures() const
+	map<string, pair<string, bool>> const& MaterialStream::getTextures() const
 	{
 		return mTextures;
 	}

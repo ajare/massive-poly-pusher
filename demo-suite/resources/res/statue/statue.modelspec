@@ -32,7 +32,7 @@
 				<!-- 
 				Textures either use a 'filename' attribute to specify filename, or a 'resource' attribute
 				to specify an existing loaded texture resource.  If filename, the generated Texture resource
-				is named modelname_materialname_filename.
+				is named modelname/materialname/filename.
 				-->
 				<Texture binding="TEX1" filename="statue_marble.jpg" />
 			</Textures>
