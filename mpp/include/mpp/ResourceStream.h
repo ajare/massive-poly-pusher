@@ -6,16 +6,12 @@
 
 #include "mpp/Config.h"
 
+#define MPP_RESOURCE_LOGFILE "mpp-resources.log"
+
 namespace mpp
 {
 	class ResourceManager;
 	class Resource;
-
-	enum class ResourceStreamEvent
-	{
-		Load,
-		Unload,
-	};
 
 	class _MPPAPI ResourceStream
 	{

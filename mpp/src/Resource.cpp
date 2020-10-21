@@ -22,6 +22,12 @@ namespace mpp
 		, mResourceStream(resourceStream)
 	{
 		mResourceStream->mwResource = this;
+		static_log_message(MPP_RESOURCE_LOGFILE, "Construct " + getType() + ": '" + getName() + "'");
+	}
+
+	Resource::~Resource()
+	{
+		static_log_message(MPP_RESOURCE_LOGFILE, "Destruct " + getType() + ": '" + getName() + "'");
 	}
 
 	/*
@@ -143,7 +149,7 @@ namespace mpp
 
 		if (!isCreated())
 		{
-			static_log_message("Create '" + getName() + "'");
+			static_log_message(MPP_RESOURCE_LOGFILE, "Create " + getType () + ": '" + getName() + "'");
 			createImpl();
 			mCreated = true;
 		}
@@ -162,7 +168,7 @@ namespace mpp
 
 		if (isCreated())
 		{
-			static_log_message("Destroy '" + getName() + "'");
+			static_log_message(MPP_RESOURCE_LOGFILE, "Destroy " + getType() + ": '" + getName() + "'");
 			destroyImpl();
 			mCreated = false;
 		}
@@ -207,7 +213,7 @@ namespace mpp
 
 		if (!isLoaded())
 		{
-			static_log_message("Load '" + getName() + "'");
+			static_log_message(MPP_RESOURCE_LOGFILE, "Load " + getType() + ": '" + getName() + "'");
 			loadImpl();
 			mLoaded = true;
 		}
@@ -221,7 +227,7 @@ namespace mpp
 	{
 		if (isLoaded())
 		{
-			static_log_message("Unload '" + getName() + "'");
+			static_log_message(MPP_RESOURCE_LOGFILE, "Unload " + getType() + ": '" + getName() + "'");
 			unloadImpl();
 			mLoaded = false;
 		}
