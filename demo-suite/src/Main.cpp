@@ -38,6 +38,10 @@
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
+#include "World.h"
+#include "Camera.h"
+#include "Scene.h"
+#include "ModelScene.h"
 
 // Platform
 #include "sdl/WindowSDL.h"
@@ -49,22 +53,9 @@
 using namespace std;
 using namespace mpp;
 
-struct ModelTransform
-{
-	mpp::ResourcePtr model;
-	glm::vec3 position;
-	glm::vec3 scale;
-};
-
-enum class ModelId
-{
-	Cube,
-	Sphere,
-	Cylinder,
-	Grid,
-	Statue
-};
-
+//
+// Global variables
+//
 ProgramOptions gOptions;
 
 ::Logger* gLogger = nullptr;
@@ -75,7 +66,12 @@ InputManager* gInputMgr = nullptr;
 RenderSystem* gRenderSystem = nullptr;
 ResourceManager* gResourceManager = nullptr;
 
-// Renderdoc
+vector<Scene*> gScenes;
+World gWorld;
+
+//
+// Renderdoc integration for detailed diagnostics
+//
 HINSTANCE gRenderdocProc = 0;
 RENDERDOC_API_1_1_1* gRenderdocApi = nullptr;
 
@@ -122,6 +118,9 @@ void unhookRenderdoc()
 	gRenderdocApi = nullptr;
 }
 
+//
+// App initialisation
+//
 void startup()
 {
 	gOptions = parseProgramOptions("DemoSuite.cfg");
@@ -154,10 +153,33 @@ void startup()
 
 	gInputMgr = new InputManagerSDL();
 	gTimer = new TimerSDL();
+
+	// Set up scenes
+	gScenes.push_back(new ModelScene(gResourceManager));
+
+	for (auto scene: gScenes)
+	{
+		scene->setup(gOptions);
+	}
+
+	// Set up world
+	gWorld.pointLights.push_back(glm::vec3(0, 750, 400));
 }
 
+//
+// App shutdown
+//
 void shutdown()
 {
+	// Delete scenes
+	for (auto scene: gScenes)
+	{
+		delete scene;
+	}
+
+	gScenes.clear();
+
+	// Delete systems
 	delete gTimer;
 	delete gInputMgr;
 
@@ -180,10 +202,12 @@ void shutdown()
 	gLogger = nullptr;
 }
 
-
+//
+// Entry point
+//
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	atexit(shutdown);
+	int exitCode{ 0 };
 
 	try
 	{
@@ -271,11 +295,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Textures
 		//
 		
-		/*
-		Textures are image files which are loaded with a helper function into a TextureStream, which takes the raw loaded data.
-		*/
-		TextureStream* textureStream = new mpp::TextureStream(gResourceManager, gOptions.resourceLocation + "rgba.png", loadImage, true);
-		gResourceManager->createResource("rgba.png", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
@@ -292,23 +311,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//FileDataStream fileDataStream(gOptions.resourceLocation + "statue/statue.material");
 		//auto statueMaterialStream = new FileMaterialStream(gResourceManager, fileDataStream);
 		//gResourceManager->createResource("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
-
-		//
-		// Models
-		//
-		auto statueStream = new MppModelStream(gResourceManager, gOptions.resourceLocation + "statue/statue.mppmodel");
-		auto statueModel = gResourceManager->createResource("Model.Statue", ResourceStreamPtr(statueStream));
-		statueModel->load();
-
-		//
-		// Model transforms
-		//
-		ModelTransform statueTransform
-		{
-			statueModel, 
-			glm::vec3(0.0f, 0.0f, 0.0f), 
-			glm::vec3(1.0f, 1.0f, 1.0f)
-		};
 
 		//
 		// Camera setup
@@ -377,9 +379,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				accum -= updateFreq;
 
-				float yaw = 0.0f, pitch = 0.0f, roll = 0.0f;
-				float forwardBack = 0.0f, upDown = 0.0f, rightLeft = 0.0f;
-
 				// Rotate model
 				if (gInputMgr->keyDown(Key_LeftArrow))
 				{
@@ -391,38 +390,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 
 				// Move camera
-				if (gInputMgr->keyDown(Key_W))
-				{
-					camera.forward(50.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_S))
-				{
-					camera.backward(50.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_A))
-				{
-					camera.left(50.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_D))
-				{
-					camera.right(50.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_R))
-				{
-					camera.up(50.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_V))
-				{
-					camera.down(50.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_Q))
-				{
-					camera.roll(-60.0f * frameTime);
-				}
-				if (gInputMgr->keyDown(Key_E))
-				{
-					camera.roll(60.0f * frameTime);
-				}
+				updateFreeCamera(camera, gInputMgr, frameTime);
 
 				// Light
 				if (gInputMgr->keyDown(Key_T))
@@ -450,15 +418,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 
 				// Logic
-				// ...
+				for (auto scene: gScenes)
+				{
+					scene->update(frameTime);
+				}
 			}
 
+			//
 			// Render scene
-
-			// Should have a Scene object which takes a render target, camera, post-fx.
-			// Call render methods on the scene object, rather than the rendersystem
-
-			// For glow, can we render to multiple targets?
+			//
 			gRenderSystem->startScene();
 			gRenderSystem->clearScreen(Colour::Grey50);
 
@@ -472,27 +440,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			auto cameraUp = camera.getUp();
 			gRenderSystem->setCamera3d(cameraPos, cameraPos + cameraDir, cameraUp);
 
-			// Set light position
-			glm::vec3 lightPos(0, lightHeight, 400);
-			lightPos = glm::rotate(lightPos, glm::radians(lightAngle), glm::vec3(0, 1, 0));
+			// Set light positions
+			for (auto& light: gWorld.pointLights)
+			{
+				light = glm::rotate(light, glm::radians(lightAngle), glm::vec3(0, 1, 0));
+			}
 
-			mpp::UniformCollection modelUniforms;
-			modelUniforms.setUniform("light", lightPos);
+			// Render scenes
+			for (auto scene: gScenes)
+			{
+				if (scene->getRender())
+				{
+					scene->render(gRenderSystem, gWorld);
+				}
+			}
 
-			//
-			// Render model
-			//
-			gRenderSystem->resetTransform();
-			gRenderSystem->translateTransform3d(statueTransform.position);
-			gRenderSystem->scaleTransform3d(statueTransform.scale);
-			gRenderSystem->rotateTransform3d(viewAngle, glm::vec3(0, 1, 0));
-
-			auto mi = gRenderSystem->renderModelBatched((Model&)*statueTransform.model, true, &modelUniforms);
-			mi->setWireframe(wireframe);
-
-			//
 			// Add post-process effects
-			//
+			// ...
 
 			// Finish scene
 			auto ri = gRenderSystem->finishScene();
@@ -508,30 +472,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			gWindow->show();
 		}
-
-		//
-		// Clean up
-		//
 	}
 	catch (mpp::MppException const& e)
 	{
 		gLogger->message(e.what());
 		gLogger->message(" - thrown by " + e.getFunction());
 		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
-		return 1;
+		exitCode = 1;
 	}
 	catch (mpp::mesh::MppMeshException const& e)
 	{
 		gLogger->message(e.what());
 		gLogger->message(" - thrown by " + e.getFunction());
 		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
-		return 1;
+		exitCode = 1;
 	}
 	catch (exception const& e)
 	{
 		gLogger->message(e.what());
-		return 1;
+		exitCode = 1;
 	}
 
-	return 0;
+	shutdown();
+	return exitCode;
 }
