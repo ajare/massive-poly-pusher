@@ -11,23 +11,30 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\Camera.h" />
     <ClInclude Include="..\..\include\Helper.h" />
     <ClInclude Include="..\..\include\Input.h" />
     <ClInclude Include="..\..\include\InputManager.h" />
     <ClInclude Include="..\..\include\Logger.h" />
+    <ClInclude Include="..\..\include\ModelScene.h" />
     <ClInclude Include="..\..\include\ProgramOptions.h" />
+    <ClInclude Include="..\..\include\Scene.h" />
     <ClInclude Include="..\..\include\sdl\InputManagerSDL.h" />
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
     <ClInclude Include="..\..\include\sdl\WindowSDL.h" />
     <ClInclude Include="..\..\include\Timer.h" />
     <ClInclude Include="..\..\include\TriangleBatchRenderer.h" />
+    <ClInclude Include="..\..\include\World.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\Camera.cpp" />
     <ClCompile Include="..\..\src\Helper.cpp" />
     <ClCompile Include="..\..\src\Input.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />
     <ClCompile Include="..\..\src\Main.cpp" />
+    <ClCompile Include="..\..\src\ModelScene.cpp" />
     <ClCompile Include="..\..\src\ProgramOptions.cpp" />
+    <ClCompile Include="..\..\src\Scene.cpp" />
     <ClCompile Include="..\..\src\sdl\InputManagerSDL.cpp" />
     <ClCompile Include="..\..\src\sdl\TimerSDL.cpp" />
     <ClCompile Include="..\..\src\sdl\WindowSDL.cpp" />

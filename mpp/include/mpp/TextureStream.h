@@ -25,6 +25,10 @@ namespace mpp
 
 		bool mFiltered;
 
+		ImageLoadFunction mLoadFunc;
+
+		std::string mSource;
+
 	private:
 
 		void loadImpl();

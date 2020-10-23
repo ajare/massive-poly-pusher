@@ -109,7 +109,7 @@ namespace mpp
 					fragmentShader);
 
 				auto strStr = new FileStringStream(resMgr, fragmentShaderFilename);
-				mStr->addChild(vertexShader, ResourceStreamPtr(strStr));
+				mStr->addChild(fragmentShader, ResourceStreamPtr(strStr));
 			}
 			// Create texture streams if required
 			auto const& textures = matInfo.getTextures();

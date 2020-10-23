@@ -33,12 +33,9 @@ namespace mpp
 		, mHeight(0)
 		, mBitsPerPixel(0)
 		, mFiltered(filtered)
+		, mLoadFunc(function)
+		, mSource(filename)
 	{
-		auto textureData = function(filename);
-		mData = textureData.data;
-		mWidth = textureData.width;
-		mHeight = textureData.height;
-		mBitsPerPixel = textureData.bitsPerPixel;
 	}
 
 	/*
@@ -51,11 +48,19 @@ namespace mpp
 	}
 
 	/*
-	 * Load data.  Already loaded in constructor!
+	 * Load data.
 	 *
 	 */
 	void TextureStream::loadImpl()
 	{
+		if (mLoadFunc)
+		{
+			auto textureData = mLoadFunc(mSource);
+			mData = textureData.data;
+			mWidth = textureData.width;
+			mHeight = textureData.height;
+			mBitsPerPixel = textureData.bitsPerPixel;
+		}
 	}
 
 	/*

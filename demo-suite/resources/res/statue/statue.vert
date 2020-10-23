@@ -7,7 +7,6 @@ void main()
     vec4 vertPos = @MCPMatrix * @Vec4(@In(POSITION));
 
     @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
-    @Out(vec4 COLOUR) = @In(COLOUR);
 
     gl_Position = vertPos;
 }
