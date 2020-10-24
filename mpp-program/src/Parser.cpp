@@ -478,40 +478,6 @@ namespace mpp
 				for (int j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto const& meshAttrib = layout.getAttribute(j);
-
-					/*
-					string attribName;
-
-					switch (meshAttrib.component)
-					{
-					case mesh::Vertex::Component::Position2:
-					case mesh::Vertex::Component::Position3:
-					case mesh::Vertex::Component::Position4:
-						attribName = "POSITION";
-						break;
-					case mesh::Vertex::Component::Normal3:
-					case mesh::Vertex::Component::Normal4:
-						attribName = "NORMAL";
-						break;
-					case mesh::Vertex::Component::TexCoord2:
-					case mesh::Vertex::Component::TexCoord3:
-					case mesh::Vertex::Component::TexCoord4:
-						attribName = "TEXCOORDS";
-						break;
-					case mesh::Vertex::Component::Colour1:
-					case mesh::Vertex::Component::Colour3:
-					case mesh::Vertex::Component::Colour4:
-						attribName = "COLOUR";
-						break;
-					case mesh::Vertex::Component::UserDefined1:
-					case mesh::Vertex::Component::UserDefined2:
-					case mesh::Vertex::Component::UserDefined3:
-					case mesh::Vertex::Component::UserDefined4:
-						attribName = "USER";
-						break;
-					}
-					*/
-
 					size_t size[2];
 
 					switch (meshAttrib.component)

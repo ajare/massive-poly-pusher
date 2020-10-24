@@ -16,69 +16,11 @@ namespace mpp
 		// Spheres always use indexed vertices.
 		mMeshDataDefinition.specification.setIndexedVertices(true);
 
-		int strideInBytes = 0;
-		map<string, int> componentOffsets;
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
+		size_t strideInBytes;
+		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
 
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto const& attrib = layout.getAttribute(j);
-
-				int componentSize = mesh::Vertex::getComponentSize(attrib.component) * mesh::Vertex::getDataTypeSize(attrib.dataType);
-
-				// Get offset for this component
-				componentOffsets[mesh::Vertex::getComponentName(attrib.component)] = strideInBytes;
-
-				// Calculate total stride
-				strideInBytes += componentSize;
-			}
-		}
-
-		const int numVertices = 12;
-		int bufferSize = strideInBytes * numVertices / sizeof(float);
-
-		mMeshDataDefinition.vertexData.resize(bufferSize);
-
-		// Generate vertices
-		float x = 0.525731112119133606f;
-		float z = 0.850650808352039932f;
-
-		vector<float> positions = 
-		{ 
-			-x, 0, z,
-			x, 0, z,
-			-x, 0, -z,
-			x, 0, -z,
-			0, z, x,
-			0, z, -x,
-			0, -z, x,
-			0, -z, -x,
-			z, x, 0,
-			-z, x, 0,
-			z, -x, 0,
-			-z, -x, 0 
-		};
-
-		for (int i = 0, offset = 0; i < (int)positions.size(); i += 3, offset += strideInBytes)
-		{
-			// Position
-			setVertexData<float>(offset + 0, { positions[i], positions[i + 1], positions[i + 2] });
-			
-			// Normal
-			setVertexData<float>(offset + 12, { positions[i], positions[i + 1], positions[i + 2] });
-			
-			// UV coords
-			float u, v;
-			getUvCoord(positions[i], positions[i + 1], positions[i + 2], &u, &v);
-			setVertexData<float>(offset + 24, { u, v });
-
-			// Colour
-			setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
-		}
-
-		// Triangle indices
+		// Generate triangle indices first, as they are needed for subdividing
+		// the position data.
 		addTriangle(1, 4, 0);
 		addTriangle(4, 9, 0);
 		addTriangle(4, 5, 9);
@@ -100,19 +42,94 @@ namespace mpp
 		addTriangle(5, 2, 9);
 		addTriangle(11, 2, 7);
 
-		// Resize data here, to stop this happening in subdivide
-		size_t scaleFactor = (size_t)pow(4, (res - 1));
-		//mMeshDataDefinition.vertexData.resize(mMeshDataDefinition.vertexData.size() * scaleFactor);
-		//mMeshDataDefinition.indexData.resize(mMeshDataDefinition.indexData.size() * scaleFactor);
+		// Generate vertices
+		double x = 0.525731112119133606;
+		double z = 0.850650808352039932;
+
+		vector<double> positions = 
+		{ 
+			-x, 0, z,
+			x, 0, z,
+			-x, 0, -z,
+			x, 0, -z,
+			0, z, x,
+			0, z, -x,
+			0, -z, x,
+			0, -z, -x,
+			z, x, 0,
+			-z, x, 0,
+			z, -x, 0,
+			-z, -x, 0 
+		};
+
 		for (int i = 1; i < res; ++i)
 		{
-			subdivide(strideInBytes / sizeof(float));
+			subdivide(positions);
 		}
 
-		renormalise(strideInBytes / sizeof(float));
+		renormalise(positions);
+
+		// Preallocate vertex buffer
+		size_t bufferSize = strideInBytes * (positions.size() / 3);
+		mMeshDataDefinition.vertexData.resize(bufferSize);
+
+		// Set vertex data
+		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
+
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto const& attrib = layout.getAttribute(j);
+
+				// Get offset and stride for component
+				int offset = componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+
+				switch (attrib.component)
+				{
+				case mesh::Vertex::Component::Position3:
+				case mesh::Vertex::Component::Position4:
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, positions[i + 0], positions[i + 1], positions[i + 2]);
+					}
+					break;
+				case mesh::Vertex::Component::Normal3:
+				case mesh::Vertex::Component::Normal4:
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, positions[i + 0], positions[i + 1], positions[i + 2]);
+					}
+					break;
+				case mesh::Vertex::Component::TexCoord2:
+				case mesh::Vertex::Component::TexCoord3:
+				case mesh::Vertex::Component::TexCoord4:
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
+					{
+						double u, v;
+						getUvCoord(positions[i + 0], positions[i + 1], positions[i + 2], &u, &v);
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
+					}
+					break;
+				case mesh::Vertex::Component::Colour1:
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+					}
+					break;
+				case mesh::Vertex::Component::Colour3:
+				case mesh::Vertex::Component::Colour4:
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+					}
+					break;
+				}
+			}
+		}
 	}
 
-	void SphereModelStream::subdivide(int vertexStride)
+	void SphereModelStream::subdivide(vector<double>& positions)
 	{
 		map<uint64, uint32> midpointIndices;
 
@@ -123,9 +140,9 @@ namespace mpp
 			uint32 i1 = mMeshDataDefinition.indexData[i + 1];
 			uint32 i2 = mMeshDataDefinition.indexData[i + 2];
 
-			uint32 m01 = getMidpointIndex(midpointIndices, mMeshDataDefinition.vertexData, vertexStride, i0, i1);
-			uint32 m12 = getMidpointIndex(midpointIndices, mMeshDataDefinition.vertexData, vertexStride, i1, i2);
-			uint32 m20 = getMidpointIndex(midpointIndices, mMeshDataDefinition.vertexData, vertexStride, i2, i0);
+			uint32 m01 = getMidpointIndex(midpointIndices, positions, i0, i1);
+			uint32 m12 = getMidpointIndex(midpointIndices, positions, i1, i2);
+			uint32 m20 = getMidpointIndex(midpointIndices, positions, i2, i0);
 
 			// Add new indices
 			mMeshDataDefinition.indexData[i + 0] = i0;
@@ -146,7 +163,7 @@ namespace mpp
 		}
 	}
 
-	uint32 SphereModelStream::getMidpointIndex(map<uint64, uint32>& midpointIndices, vector<float>& vertexData, int vertexStride, uint32 i0, uint32 i1)
+	uint32 SphereModelStream::getMidpointIndex(map<uint64, uint32>& midpointIndices, vector<double>& positions, uint32 i0, uint32 i1)
 	{
 		uint64 key = min<uint64>(i0, i1) << 32;
 		key |= max(i0, i1);
@@ -154,15 +171,13 @@ namespace mpp
 		auto it = midpointIndices.find(key);
 		if (it == midpointIndices.end())
 		{
-			uint32 index = vertexData.size() / vertexStride;
+			uint32 index = positions.size() / 3;
 			midpointIndices[key] = index;
 
-			// Construct new vertex
-			for (int i = 0; i < vertexStride; ++i)
+			for (size_t i = 0; i < 3; ++i)
 			{
-				float v0 = vertexData[vertexStride * i0 + i];
-				float v1 = vertexData[vertexStride * i1 + i];
-				vertexData.push_back(v0 + (v1 - v0) * 0.5f);
+				double v = (positions[i0 * 3 + i] + positions[i1 * 3 + i]) / 2.0f;
+				positions.push_back(v);
 			}
 
 			return index;
@@ -173,29 +188,25 @@ namespace mpp
 		}
 	}
 
-	void SphereModelStream::renormalise(int vertexStride)
+	void SphereModelStream::renormalise(std::vector<double>& positions)
 	{
-		for (int i = 0; i < (int)mMeshDataDefinition.vertexData.size(); i += vertexStride)
+		for (size_t i = 0; i < positions.size(); i += 3)
 		{
-			float x = mMeshDataDefinition.vertexData[i + 0];
-			float y = mMeshDataDefinition.vertexData[i + 1];
-			float z = mMeshDataDefinition.vertexData[i + 2];
+			double& x = positions[i + 0];
+			double& y = positions[i + 1];
+			double& z = positions[i + 2];
 
 			float d = mRadius / sqrt(x * x + y * y + z * z);
 			x *= d;
 			y *= d;
 			z *= d;
-
-			mMeshDataDefinition.vertexData[i + 0] = x;
-			mMeshDataDefinition.vertexData[i + 1] = y;
-			mMeshDataDefinition.vertexData[i + 2] = z;
 		}
 	}
 
-	void SphereModelStream::getUvCoord(float nx, float ny, float nz, float* u, float* v)
+	void SphereModelStream::getUvCoord(double nx, double ny, double nz, double* u, double* v)
 	{
-		float normalisedX = 0;
-		float normalisedZ = -1;
+		double normalisedX = 0;
+		double normalisedZ = -1;
 
 		if (((nx * nx) + (nz * nz)) > 0)
 		{
@@ -212,22 +223,22 @@ namespace mpp
 		}
 		if (normalisedZ == 0)
 		{
-			*u = ((normalisedX * 3.14159f) / 2);
+			*u = ((normalisedX * 3.14159) / 2);
 		}
 		else 
 		{
 			*u = atan(normalisedX / normalisedZ);
 			if (normalisedZ < 0)
 			{
-				*u += 3.14159f;
+				*u += 3.14159;
 			}
 			if (*u < 0)
 			{
-				*u += 2 * 3.14159f;
+				*u += 2 * 3.14159;
 			}
 		}
 
-		*u /= 2 * 3.14159f;
+		*u /= 2 * 3.14159;
 		*v = (-ny + 1) / 2;
 	}
 }

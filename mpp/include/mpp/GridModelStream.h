@@ -10,6 +10,6 @@ namespace mpp
 	{
 	public:
 
-		GridModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, double width, double depth, int dimX, int dimZ);
+		GridModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, double width, double depth, size_t dimX, size_t dimZ);
 	};
 }

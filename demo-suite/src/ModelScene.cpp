@@ -24,6 +24,10 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 */
 
 #include <mpp/MppModelStream.h>
+#include <mpp/SphereModelStream.h>
+#include <mpp/GridModelStream.h>
+#include <mpp/ProgrammaticMaterialStream.h>
+#include <mpp/TextureStream.h>
 
 #include "ModelScene.h"
 #include "Helper.h"
@@ -35,9 +39,91 @@ ModelScene::ModelScene(mpp::ResourceManager* resourceMgr)
 {
 }
 
+void ModelScene::createSharedTextures(ProgramOptions const& options)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto textureStream = new TextureStream(resourceMgr, options.resourceLocation + "marble_texture4662.jpg", loadImage, true);
+	resourceMgr->createResource("Marble.Texture", ResourceStreamPtr(textureStream));
+}
+
+mesh::MeshSpecification ModelScene::createGridMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(true);
+
+	return meshSpec;
+}
+
+mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto materialStream = new ProgrammaticMaterialStream(resourceMgr,
+		false,
+		meshSpec,
+		"",
+		false,
+		"",
+		false);
+
+	materialStream->setTexture("TEX1", "Marble.Texture");
+
+	auto res = resourceMgr->createResource("Grid.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	return res;
+}
+
+mesh::MeshSpecification ModelScene::createSphereMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(true);
+
+	return meshSpec;
+}
+
+mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto materialStream = new ProgrammaticMaterialStream(resourceMgr,
+		false,
+		meshSpec,
+		"",
+		false,
+		"",
+		false); 
+	
+	materialStream->setTexture("TEX1", "Marble.Texture");
+
+	auto res = resourceMgr->createResource("Sphere.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	return res;
+}
+
 void ModelScene::setup(ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
+
+	createSharedTextures(options);
 
 	// Textures are image files which are loaded with a helper function into a TextureStream, 
 	// which takes the raw loaded data.  In this case, rgba.png is referenced by the statue
@@ -47,40 +133,79 @@ void ModelScene::setup(ProgramOptions const& options)
 
 	// Load MppModel
 	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
-	mStatue = resourceMgr->createResource("Model.Statue", ResourceStreamPtr(statueStream));
-	mStatue->load();
+	auto statue = resourceMgr->createResource("Model.Statue", ResourceStreamPtr(statueStream));
+	statue->load();
 
-	// Set model to render
-	mModelId = ModelId::Statue;
+	mModels.push_back({
+		statue,
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f)
+	});
+
+	// Load Grid
+	auto gridMeshSpec = createGridMeshSpecification();
+	createGridMaterial(gridMeshSpec);
+
+	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 256, 256, 8, 8);
+	auto grid = resourceMgr->createResource("Model.Grid", ResourceStreamPtr(gridStream));
+	grid->load();
+
+	mModels.push_back({
+		grid,
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f)
+		});
+
+	// Load Sphere
+	auto sphereMeshSpec = createSphereMeshSpecification();
+	createSphereMaterial(sphereMeshSpec);
+	
+	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 20, 2);
+	auto sphere = resourceMgr->createResource("Model.Sphere", ResourceStreamPtr(sphereStream));
+	sphere->load();
+
+	mModels.push_back({
+		sphere,
+		glm::vec3(80.0f, 130.0f, 0.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f)
+	});
 }
 
 void ModelScene::update(float frameTime)
 {
+	mTotalTime += frameTime;
+
+	// Rotate sphere
+	auto& sphereModel = mModels[2];
+
+	float speed = 1.5f;
+	float amt = speed * frameTime;
+
+	float x = sphereModel.position.x;
+	float z = sphereModel.position.z;
+	
+	sphereModel.position.x = x * cosf(amt) - z * sinf(amt);
+	sphereModel.position.y = 130.0f + sinf(mTotalTime * 2.0f) * 25.0f;
+	sphereModel.position.z = x * sinf(amt) + z * cosf(amt);
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
 {
-	// Transform
-	renderSystem->resetTransform();
-
-	switch (mModelId)
-	{
-	case ModelId::None:
-		break;
-
-	case ModelId::Statue:
-		renderSystem->translateTransform3d(glm::vec3(0.0f, -170.0f, -80.0f));
-		renderSystem->scaleTransform3d(glm::vec3(1.0f, 1.0f, 1.0f));
-		break;
-	};
-
-	// Set uniforms.
+	// Set uniforms
 	mpp::UniformCollection modelUniforms;
 	if (!world.pointLights.empty())
 	{
 		modelUniforms.setUniform("light", world.pointLights.front());
 	}
 
-	// Render model
-	auto mi = renderSystem->renderModelBatched((Model&)*mStatue, true, &modelUniforms);
+	for (auto const& model: mModels)
+	{
+		// Transform
+		renderSystem->resetTransform();
+		renderSystem->translateTransform3d(model.position);
+		renderSystem->scaleTransform3d(model.scale);
+
+		// Render
+		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, &modelUniforms);
+	}
 }

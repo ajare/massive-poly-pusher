@@ -15,13 +15,13 @@ namespace mpp
 
 	private:
 
-		void subdivide(int vertexStride);
+		void subdivide(std::vector<double>& positions);
 
-		uint32 getMidpointIndex(std::map<uint64, uint32>& midpointIndices, std::vector<float>& vertexData, int vertexStride, uint32 i0, uint32 i1);
+		uint32 getMidpointIndex(std::map<uint64, uint32>& midpointIndices, std::vector<double>& positions, uint32 i0, uint32 i1);
 
-		void renormalise(int vertexStride);
+		void renormalise(std::vector<double>& positions);
 
-		void getUvCoord(float nx, float ny, float nz, float* u, float* v);
+		void getUvCoord(double nx, double ny, double nz, double* u, double* v);
 
 	public:
 

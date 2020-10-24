@@ -12,25 +12,8 @@ namespace mpp
 	BoxModelStream::BoxModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, float width, float height, float depth)
 		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 	{
-		int strideInBytes = 0;
-		map<string, int> componentOffsets;
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
-
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto const& attrib = layout.getAttribute(j);
-
-				int componentSize = mesh::Vertex::getComponentSize(attrib.component) * mesh::Vertex::getDataTypeSize(attrib.dataType);
-
-				// Get offset for this component
-				componentOffsets[mesh::Vertex::getComponentName(attrib.component)] = strideInBytes;
-
-				// Calculate total stride
-				strideInBytes += componentSize;
-			}
-		}
+		size_t strideInBytes;
+		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
 
 		// Preallocate vertex buffer
 		int verticesPerFace = (meshSpec.verticesIndexed() ? 4 : 6);
