@@ -18,6 +18,7 @@
     <ClInclude Include="..\..\include\Logger.h" />
     <ClInclude Include="..\..\include\ModelScene.h" />
     <ClInclude Include="..\..\include\ProgramOptions.h" />
+    <ClInclude Include="..\..\include\RenderOptions.h" />
     <ClInclude Include="..\..\include\Scene.h" />
     <ClInclude Include="..\..\include\sdl\InputManagerSDL.h" />
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />

@@ -5,6 +5,7 @@
 
 #include "ProgramOptions.h"
 #include "World.h"
+#include "RenderOptions.h"
 
 class Scene
 {
@@ -30,5 +31,5 @@ public:
 
 	virtual void update(float frameTime) {}
 
-	virtual void render(mpp::RenderSystem* renderSystem, World const& world) {}
+	virtual void render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options) {}
 };

@@ -48,5 +48,5 @@ public:
 
 	void update(float frameTime);
 
-	void render(mpp::RenderSystem* renderSystem, World const& world);
+	void render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options);
 };
