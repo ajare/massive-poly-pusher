@@ -48,6 +48,9 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	auto textureStream = new TextureStream(resourceMgr, options.resourceLocation + "marble_texture4662.jpg", loadImage, true);
 	resourceMgr->createResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
+	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "electbubbles.jpg", loadImage, true);
+	resourceMgr->createResource("Electro.Texture", ResourceStreamPtr(textureStream));
+
 	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "test.png", loadImage, true);
 	resourceMgr->createResource("Test.Texture", ResourceStreamPtr(textureStream));
 }
@@ -116,7 +119,7 @@ mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification c
 		"",
 		false); 
 	
-	materialStream->setTexture("TEX1", "Test.Texture");
+	materialStream->setTexture("TEX1", "Electro.Texture");
 
 	auto res = resourceMgr->createResource("Sphere.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -152,7 +155,7 @@ mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification
 		"",
 		false);
 
-	materialStream->setTexture("TEX1", "Test.Texture");
+	materialStream->setTexture("TEX1", "Marble.Texture");
 
 	auto res = resourceMgr->createResource("Cylinder.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -319,7 +322,7 @@ void ModelScene::update(float frameTime)
 	mModels[6].angle += frameTime * 50;
 }
 
-void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
+void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
 	// Set uniforms
 	mpp::UniformCollection modelUniforms;
@@ -358,5 +361,10 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
 
 		// Render
 		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, &modelUniforms);
+
+		if (options.wireframe)
+		{
+			mi->setWireframe(true);
+		}
 	}
 }

@@ -39,6 +39,7 @@
 #include "Helper.h"
 #include "Logger.h"
 #include "World.h"
+#include "RenderOptions.h"
 #include "Camera.h"
 #include "Scene.h"
 #include "ModelScene.h"
@@ -68,6 +69,7 @@ ResourceManager* gResourceManager = nullptr;
 
 vector<Scene*> gScenes;
 World gWorld;
+RenderOptions gRenderOptions;
 
 //
 // Renderdoc integration for detailed diagnostics
@@ -164,6 +166,9 @@ void startup()
 
 	// Set up world
 	gWorld.pointLights.push_back(glm::vec3(0, 750, 400));
+
+	// Set default render options
+	gRenderOptions.wireframe = false;
 }
 
 //
@@ -374,6 +379,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				gRenderdocApi->TriggerCapture();
 			}
 
+			if (gInputMgr->keyReleased(Key_F1))
+			{
+				gRenderOptions.wireframe = !gRenderOptions.wireframe;
+			}
+
 			// Update current state
 			while (accum >= updateFreq)
 			{
@@ -451,7 +461,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				if (scene->getRender())
 				{
-					scene->render(gRenderSystem, gWorld);
+					scene->render(gRenderSystem, gWorld, gRenderOptions);
 				}
 			}
 
@@ -468,7 +478,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("Program switches: " + utils::StringUtils::toString(ri.programSwitches));
 			lines.push_back("Texture switches: " + utils::StringUtils::toString(ri.textureSwitches));
 
-			gRenderSystem->renderText(lines, 0, 0, Colour::White);
+			gRenderSystem->renderText(lines, 8, gRenderSystem->getWindowHeight() - 80, Colour::White);
+
+			lines.clear();
+			lines.push_back("F1: toggle wireframe");
+
+			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 
 			gWindow->show();
 		}
