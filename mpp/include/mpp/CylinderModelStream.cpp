@@ -19,7 +19,7 @@ namespace mpp
 		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
 
 		// Preallocate vertex buffer
-		const int numVertices = (res + 1) * 2 + 2; // Two extra for caps centres.
+		const int numVertices = (res + 1) * 4 + 2; // Two extra for caps centres.
 		int bufferSize = strideInBytes * numVertices;
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
@@ -67,6 +67,12 @@ namespace mpp
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x1, l2, z1);
 						offset += strideInBytes;
 
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x1, l2, z1);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x2, -l2, z2);
+						offset += strideInBytes;
+
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x2, -l2, z2);
 						offset += strideInBytes;
 					}
@@ -84,12 +90,18 @@ namespace mpp
 					// Sides
 					for (int i = 0; i <= res; ++i)
 					{
-						float nx, nz, angleInc = 2 * 3.14159f / res;
+						double nx, nz, angleInc = 2 * 3.14159 / res;
 
 						nx = sin(angleInc * i);
 						nz = cos(angleInc * i);
 
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0);
+						offset += strideInBytes;
+
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, nx, 0, nz);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0);
 						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, nx, 0, nz);
@@ -110,7 +122,17 @@ namespace mpp
 					// Sides
 					for (int i = 0; i <= res; ++i)
 					{
+						double angleInc = 2 * 3.14159 / res;
+						double u = sin(angleInc) * 0.5 + 0.5;
+						double v = cos(angleInc) * 0.5 + 0.5;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
+						offset += strideInBytes;
+
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, i / (double)res, 1);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
 						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, i / (double)res, 0);
@@ -129,6 +151,12 @@ namespace mpp
 					// Sides
 					for (int i = 0; i <= res; ++i)
 					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+						offset += strideInBytes;
+
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
 						offset += strideInBytes;
 
@@ -154,6 +182,12 @@ namespace mpp
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
 						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+						offset += strideInBytes;
 					}
 					break;
 				}
@@ -163,23 +197,25 @@ namespace mpp
 		// Top indices
 		for (int i = 0; i < res; ++i)
 		{
-			addTriangle(0, i * 2 + 2, i * 2 + 4);
+			addTriangle(0, 2 + i * 4, 2 + (i + 1) * 4);
 		}
 
 		// Bottom indices
 		for (int i = 0; i < res; ++i)
 		{
-			addTriangle(1, i * 2 + 3, i * 2 + 5);
+			addTriangle(1, 2 + i * 4 + 2, 2 + (i + 1) * 4 + 2);
 		}
 
 		// Side indices
 		for (int i = 0; i < res; ++i)
 		{
-			uint32 v23 = i * 2 + 3;
-			uint32 v31 = i * 2 + 4;
+			auto v0 = 2 + i * 4 + 1;
+			auto v1 = 2 + i * 4 + 3;
+			auto v2 = 2 + (i + 1) * 4 + 3;
+			auto v3 = 2 + (i + 1) * 4 + 1;
 			
-			addTriangle(i * 2 + 2, v23, v31);
-			addTriangle(v31, i * 2 + 5, v23);
+			addTriangle(v0, v1, v2);
+			addTriangle(v2, v3, v0);
 		}
 	}
 }
