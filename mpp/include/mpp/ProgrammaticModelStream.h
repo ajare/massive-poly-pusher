@@ -70,7 +70,5 @@ namespace mpp
 		void addLine(int meshIndex, uint32 v0, uint32 v1);
 
 		void addTriangle(int meshIndex, uint32 v0, uint32 v1, uint32 v2);
-
-		Resource* createResource(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr);
 	};
 }

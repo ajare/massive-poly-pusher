@@ -28,6 +28,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/GridModelStream.h>
 #include <mpp/CylinderModelStream.h>
 #include <mpp/BoxModelStream.h>
+#include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/TextureStream.h>
 
@@ -53,6 +54,9 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "test.png", loadImage, true);
 	resourceMgr->createResource("Test.Texture", ResourceStreamPtr(textureStream));
+
+	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "donut.jpg", loadImage, true);
+	resourceMgr->createResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
 }
 
 mesh::MeshSpecification ModelScene::createGridMeshSpecification()
@@ -199,6 +203,108 @@ mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification cons
 	return res;
 }
 
+mesh::MeshSpecification ModelScene::createTorusMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(true);
+
+	return meshSpec;
+}
+
+mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto materialStream = new ProgrammaticMaterialStream(resourceMgr,
+		false,
+		meshSpec,
+		"",
+		false,
+		"",
+		false);
+
+	materialStream->setTexture("TEX1", "Doughnut.Texture");
+
+	auto res = resourceMgr->createResource("Torus.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	return res;
+}
+
+ResourcePtr ModelScene::createTorusModel()
+{
+	auto resourceMgr = getResourceManager();
+
+	auto torusMeshSpec = createTorusMeshSpecification();
+	createTorusMaterial(torusMeshSpec);
+
+	auto torusStream = new ProgrammaticModelStream(resourceMgr);
+	auto torusMeshId = torusStream->createMesh("Torus", torusMeshSpec, "Torus.Material", 32);
+
+	// Torus has 64 rings of 16 vertices each
+	size_t ringSize{ 16 };
+	size_t numRings{ 64 };
+	size_t radius{ 48 };
+	size_t thickness{ 12 };
+
+	mesh::VertexData torusData(torusMeshSpec, ringSize * numRings);
+
+	float dp = 2 * 3.14159f / ringSize;
+	float dt = 2 * 3.14159f / numRings;
+
+	for (size_t i = 0; i < numRings; ++i)
+	{
+		float theta = dt * i;
+
+		for (size_t j = 0; j < ringSize; ++j)
+		{
+			float phi = dp * j;
+
+			float nx = cos(theta);
+			float ny = sin(phi);
+			float nz = sin(theta);
+
+			float x = nx * (radius + cos(phi) * thickness);
+			float y = ny * thickness;
+			float z = nz * (radius + cos(phi) * thickness);
+
+			torusData.f32(x, y, z); // Position
+			torusData.f32(nx, ny, nz); // Normal
+			torusData.f32(i / ((float)numRings - 1) * 8, j / ((float)ringSize - 1)); // UV coord
+			torusData.f32(1.0f, 1.0f, 1.0f, 1.0f); // Colour
+		}
+	}
+
+	torusStream->addVertexData(torusMeshId, torusData);
+
+	for (size_t i = 0; i < numRings; ++i)
+	{
+		for (size_t j = 0; j < ringSize; ++j)
+		{
+			auto i0 = i * ringSize + j;
+			auto i1 = i * ringSize + ((j + 1) % ringSize);
+			auto i2 = ((i + 1) % numRings) * ringSize + ((j + 1) % ringSize);
+			auto i3 = ((i + 1) % numRings) * ringSize + j;
+
+			torusStream->addTriangle(torusMeshId, i0, i1, i2);
+			torusStream->addTriangle(torusMeshId, i2, i3, i0);
+		}
+	}
+
+	auto torus = resourceMgr->createResource("Model.Torus", ResourceStreamPtr(torusStream));
+	torus->load();
+
+	return torus;
+}
+
 void ModelScene::setup(ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
@@ -248,7 +354,7 @@ void ModelScene::setup(ProgramOptions const& options)
 	
 	mModels.push_back({
 		sphere,
-		glm::vec3(80.0f, 130.0f, 0.0f),
+		glm::vec3(-80.0f, 130.0f, 0.0f),
 		glm::vec3(1.0f, 1.0f, 1.0f),
 		0.0f
 	});
@@ -296,6 +402,16 @@ void ModelScene::setup(ProgramOptions const& options)
 		glm::vec3(1.0f, 1.0f, 1.0f),
 		0.0f
 		});
+
+	// Load torus
+	auto torus = createTorusModel();
+
+	mModels.push_back({
+		torus,
+		glm::vec3(0.0f, 280.0f, 0.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
+		});
 }
 
 void ModelScene::update(float frameTime)
@@ -320,6 +436,9 @@ void ModelScene::update(float frameTime)
 	// Rotate boxes
 	mModels[5].angle += frameTime * 50;
 	mModels[6].angle += frameTime * 50;
+
+	// Rotate torus
+	mModels[7].angle = sin(mTotalTime) * 25.0f;
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
@@ -355,6 +474,8 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 		case 6: // Box
 			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.707107f, 0.0f, 0.707107f));
 			break;
+		case 7: // Torus
+			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.707107f, 0.0f, 0.707107f));
 		default:
 			break;
 		}
