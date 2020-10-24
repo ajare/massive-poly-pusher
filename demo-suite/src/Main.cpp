@@ -379,7 +379,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				gRenderdocApi->TriggerCapture();
 			}
 
-			if (gInputMgr->keyReleased(Key_F1))
+			if (gInputMgr->keyReleased(Key_F2))
 			{
 				gRenderOptions.wireframe = !gRenderOptions.wireframe;
 			}
@@ -481,7 +481,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem->renderText(lines, 8, gRenderSystem->getWindowHeight() - 80, Colour::White);
 
 			lines.clear();
-			lines.push_back("F1: toggle wireframe");
+			lines.push_back("F1: toggle fullscreen");
+			lines.push_back("F2: toggle wireframe");
 
 			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 

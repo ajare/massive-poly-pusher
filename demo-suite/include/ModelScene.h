@@ -40,6 +40,12 @@ private:
 
 	mpp::ResourcePtr createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec);
 
+	mpp::mesh::MeshSpecification createTorusMeshSpecification();
+
+	mpp::ResourcePtr createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+
+	mpp::ResourcePtr createTorusModel();
+
 public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
