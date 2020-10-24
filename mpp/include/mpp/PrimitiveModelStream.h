@@ -16,7 +16,7 @@ namespace mpp
 			std::string name;
 			std::string material;
 
-			std::vector<float> vertexData;
+			std::vector<int8> vertexData;
 			
 			float pointSize;
 			
@@ -39,6 +39,8 @@ namespace mpp
 	protected:
 
 		void createMeshDataStreams();
+
+		std::map<std::string, size_t> getComponentOffsets(size_t& strideInBytes);
 
 		int getNumMeshes() const;
 
@@ -74,8 +76,8 @@ namespace mpp
 
 	public:
 
-		PrimitiveModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec,std::string const& material);
+		PrimitiveModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material);
 
-		void setData(int offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y, double z = 0.0, double w = 1.0);
+		void setData(int offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y = 0.0, double z = 0.0, double w = 1.0);
 	};
 }

@@ -1,20 +1,35 @@
 #pragma once
 
+#include <mpp/mesh/MeshSpecification.h>
+
 #include "Scene.h"
 
 class ModelScene : public Scene
 {
-	enum class ModelId
+	struct ModelData
 	{
-		None,
-		Statue
+		mpp::ResourcePtr model;
+		glm::vec3 position;
+		glm::vec3 scale;
 	};
 	
 private:
 
-	ModelId mModelId;
+	std::vector<ModelData> mModels;
 
-	mpp::ResourcePtr mStatue;
+	float mTotalTime{ 0 };
+
+private:
+
+	void createSharedTextures(ProgramOptions const& options);
+	
+	mpp::mesh::MeshSpecification createGridMeshSpecification();
+
+	mpp::ResourcePtr createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+
+	mpp::mesh::MeshSpecification createSphereMeshSpecification();
+
+	mpp::ResourcePtr createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec);
 
 public:
 

@@ -315,7 +315,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// Camera setup
 		//
-		helper::FreeCamera camera(glm::vec3(0, 0, 400), 0.0f, 0.0f, 0.0f);
+		helper::FreeCamera camera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f);
 		camera.setClipDistances(0.1f, 2000.0f);
 		camera.setFov(45.0f);
 

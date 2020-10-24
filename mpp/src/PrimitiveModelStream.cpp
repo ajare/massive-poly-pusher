@@ -36,10 +36,8 @@ namespace mpp
 		mMeshDataDefinition.primitiveCount = mMeshDataDefinition.specification.verticesIndexed() ? ((mMeshDataDefinition.indexData.size() * sizeof(uint32)) / (elementSize * indexWidthBytes)) : (mMeshDataDefinition.vertexCount / elementSize);
 
 		// Go through each component in order, and build streams.
-		int srcVertexDataSize = mMeshDataDefinition.vertexData.size() * sizeof(float);
-
-		float* dataPtr = new float[mMeshDataDefinition.vertexData.size()];
-		memcpy(dataPtr, &(mMeshDataDefinition.vertexData[0]), srcVertexDataSize);
+		auto dataPtr = new int8[mMeshDataDefinition.vertexData.size()];
+		memcpy(dataPtr, &(mMeshDataDefinition.vertexData[0]), mMeshDataDefinition.vertexData.size());
 
 		auto sharedDataPtr = std::shared_ptr<const int8>((const int8*)dataPtr, [](const int8 *p) { delete[] p; });
 
@@ -119,6 +117,33 @@ namespace mpp
 		}
 	}
 
+	map<string, size_t> PrimitiveModelStream::getComponentOffsets(size_t& strideInBytes)
+	{
+		auto const& meshSpec = getMeshSpecification(0);
+		map<string, size_t> componentOffsets;
+		strideInBytes = 0;
+
+		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		{
+			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
+
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto const& attrib = layout.getAttribute(j);
+
+				size_t componentSize = attrib.sizeInBytes();
+
+				// Get offset for this component
+				componentOffsets[mesh::Vertex::getComponentName(attrib.component)] = strideInBytes;
+
+				// Calculate total stride
+				strideInBytes += componentSize;
+			}
+		}
+
+		return componentOffsets;
+	}
+
 	int PrimitiveModelStream::getNumMeshes() const
 	{
 		return 1;
@@ -170,32 +195,6 @@ namespace mpp
 		mMeshDataDefinition.indexData.push_back(v0);
 		mMeshDataDefinition.indexData.push_back(v1);
 		mMeshDataDefinition.indexData.push_back(v2);
-		/*
-		if (mMeshDataDefinition.indexWidth == 16)
-		{
-			mMeshDataDefinition.indexData.push_back(v0 & 255);
-			mMeshDataDefinition.indexData.push_back((v0 >> 8) & 255);
-			mMeshDataDefinition.indexData.push_back(v1 & 255);
-			mMeshDataDefinition.indexData.push_back((v1 >> 8) & 255);
-			mMeshDataDefinition.indexData.push_back(v2 & 255);
-			mMeshDataDefinition.indexData.push_back((v2 >> 8) & 255);
-		}
-		else
-		{
-			mMeshDataDefinition.indexData.push_back(v0 & 255);
-			mMeshDataDefinition.indexData.push_back((v0 >> 8) & 255);
-			mMeshDataDefinition.indexData.push_back((v0 >> 16) & 255);
-			mMeshDataDefinition.indexData.push_back(v0 >> 24);
-			mMeshDataDefinition.indexData.push_back(v1 & 255);
-			mMeshDataDefinition.indexData.push_back((v1 >> 8) & 255);
-			mMeshDataDefinition.indexData.push_back((v1 >> 16) & 255);
-			mMeshDataDefinition.indexData.push_back(v1 >> 24);
-			mMeshDataDefinition.indexData.push_back(v2 & 255);
-			mMeshDataDefinition.indexData.push_back((v2 >> 8) & 255);
-			mMeshDataDefinition.indexData.push_back((v2 >> 16) & 255);
-			mMeshDataDefinition.indexData.push_back(v2 >> 24);
-		}
-		*/
 	}
 
 	void PrimitiveModelStream::setData(int offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y, double z, double w)
