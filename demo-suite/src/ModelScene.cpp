@@ -27,6 +27,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/SphereModelStream.h>
 #include <mpp/GridModelStream.h>
 #include <mpp/CylinderModelStream.h>
+#include <mpp/BoxModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/TextureStream.h>
 
@@ -159,6 +160,42 @@ mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification
 	return res;
 }
 
+mesh::MeshSpecification ModelScene::createBoxMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(true);
+
+	return meshSpec;
+}
+
+mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto materialStream = new ProgrammaticMaterialStream(resourceMgr,
+		false,
+		meshSpec,
+		"",
+		false,
+		"",
+		false);
+
+	materialStream->setTexture("TEX1", "Test.Texture");
+
+	auto res = resourceMgr->createResource("Box.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	return res;
+}
+
 void ModelScene::setup(ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
@@ -234,6 +271,28 @@ void ModelScene::setup(ProgramOptions const& options)
 		glm::vec3(1.0f, 1.0f, 1.0f),
 		0.0f
 		});
+
+	// Load Box
+	auto boxMeshSpec = createBoxMeshSpecification();
+	createBoxMaterial(boxMeshSpec);
+
+	auto boxStream = new BoxModelStream(resourceMgr, cylinderMeshSpec, "Box.Material", 32, 32, 32);
+	auto box = resourceMgr->createResource("Model.Box", ResourceStreamPtr(boxStream));
+	box->load();
+
+	mModels.push_back({
+		box,
+		glm::vec3(96.0f, 108.0f, 96.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
+		});
+
+	mModels.push_back({
+		box,
+		glm::vec3(-96.0f, 108, 96.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
+		});
 }
 
 void ModelScene::update(float frameTime)
@@ -254,6 +313,10 @@ void ModelScene::update(float frameTime)
 	sphereModel.position.z = x * sinf(amt) + z * cosf(amt);
 
 	sphereModel.angle += frameTime * 50;
+
+	// Rotate boxes
+	mModels[5].angle += frameTime * 50;
+	mModels[6].angle += frameTime * 50;
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
@@ -265,13 +328,33 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
 		modelUniforms.setUniform("light", world.pointLights.front());
 	}
 
-	for (auto const& model: mModels)
+	for (size_t i = 0; i < mModels.size(); ++i)
 	{
+		auto const& model = mModels[i];
+
 		// Transform
 		renderSystem->resetTransform();
 		renderSystem->translateTransform3d(model.position);
 		renderSystem->scaleTransform3d(model.scale);
-		renderSystem->rotateTransform3d(model.angle, glm::vec3(0.0f, 1.0f, 0.0f));
+
+		switch (i)
+		{
+		case 0: // Statue
+		case 1: // Grid
+		case 2: // Sphere
+		case 3: // Cylinder
+		case 4: // Cylinder
+			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.0f, 1.0f, 0.0f));
+			break;
+		case 5: // Box
+			renderSystem->rotateTransform3d(model.angle, glm::vec3(-0.707107f, 0.707107f, 0.0f));
+			break;
+		case 6: // Box
+			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.707107f, 0.0f, 0.707107f));
+			break;
+		default:
+			break;
+		}
 
 		// Render
 		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, &modelUniforms);
