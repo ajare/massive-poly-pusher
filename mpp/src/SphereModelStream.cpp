@@ -98,7 +98,11 @@ namespace mpp
 				case mesh::Vertex::Component::Normal4:
 					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
-						setData(offset, attrib.component, attrib.dataType, attrib.normalised, positions[i + 0], positions[i + 1], positions[i + 2]);
+						auto len = sqrt(positions[i + 0] * positions[i + 0] +
+							positions[i + 1] * positions[i + 1] +
+							positions[i + 2] * positions[i + 2]);
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, positions[i + 0] / len, positions[i + 1] / len, positions[i + 2] / len);
 					}
 					break;
 				case mesh::Vertex::Component::TexCoord2:
@@ -106,8 +110,12 @@ namespace mpp
 				case mesh::Vertex::Component::TexCoord4:
 					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
+						auto len = sqrt(positions[i + 0] * positions[i + 0] +
+							positions[i + 1] * positions[i + 1] +
+							positions[i + 2] * positions[i + 2]);
+
 						double u, v;
-						getUvCoord(positions[i + 0], positions[i + 1], positions[i + 2], &u, &v);
+						getUvCoord(positions[i + 0] / len, positions[i + 1] / len, positions[i + 2] / len, &u, &v);
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
 					}
 					break;
@@ -205,40 +213,21 @@ namespace mpp
 
 	void SphereModelStream::getUvCoord(double nx, double ny, double nz, double* u, double* v)
 	{
-		double normalisedX = 0;
-		double normalisedZ = -1;
-
-		if (((nx * nx) + (nz * nz)) > 0)
+		double phi = ny;
+		double lambda;
+		if (ny == 1.0 || ny == -1.0)
 		{
-			normalisedX = sqrt((nx * nx) / ((nx * nx) + (nz * nz)));
-			if (nx < 0)
-			{
-				normalisedX = -normalisedX;
-			}
-			normalisedZ = sqrt((nz * nz) / ((nx * nx) + (nz * nz)));
-			if (nz < 0)
-			{
-				normalisedZ = -normalisedZ;
-			}
+			// At a pole.
+			lambda = 0.0;
 		}
-		if (normalisedZ == 0)
+		else
 		{
-			*u = ((normalisedX * 3.14159) / 2);
-		}
-		else 
-		{
-			*u = atan(normalisedX / normalisedZ);
-			if (normalisedZ < 0)
-			{
-				*u += 3.14159;
-			}
-			if (*u < 0)
-			{
-				*u += 2 * 3.14159;
-			}
+			lambda = atan2(nz, nx);
 		}
 
-		*u /= 2 * 3.14159;
-		*v = (-ny + 1) / 2;
+		*u = -((lambda / 3.14159) * 0.5 + 0.5);
+		*u *= 2; // stretch for 2-1 ratio;
+
+		*v = tan(phi);
 	}
 }

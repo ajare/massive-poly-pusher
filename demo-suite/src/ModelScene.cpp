@@ -26,6 +26,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/MppModelStream.h>
 #include <mpp/SphereModelStream.h>
 #include <mpp/GridModelStream.h>
+#include <mpp/CylinderModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/TextureStream.h>
 
@@ -45,6 +46,9 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	auto textureStream = new TextureStream(resourceMgr, options.resourceLocation + "marble_texture4662.jpg", loadImage, true);
 	resourceMgr->createResource("Marble.Texture", ResourceStreamPtr(textureStream));
+
+	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "test.png", loadImage, true);
+	resourceMgr->createResource("Test.Texture", ResourceStreamPtr(textureStream));
 }
 
 mesh::MeshSpecification ModelScene::createGridMeshSpecification()
@@ -111,9 +115,45 @@ mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification c
 		"",
 		false); 
 	
-	materialStream->setTexture("TEX1", "Marble.Texture");
+	materialStream->setTexture("TEX1", "Test.Texture");
 
 	auto res = resourceMgr->createResource("Sphere.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	return res;
+}
+
+mesh::MeshSpecification ModelScene::createCylinderMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(true);
+
+	return meshSpec;
+}
+
+mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto materialStream = new ProgrammaticMaterialStream(resourceMgr,
+		false,
+		meshSpec,
+		"",
+		false,
+		"",
+		false);
+
+	materialStream->setTexture("TEX1", "Test.Texture");
+
+	auto res = resourceMgr->createResource("Cylinder.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
 	return res;
@@ -135,11 +175,12 @@ void ModelScene::setup(ProgramOptions const& options)
 	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
 	auto statue = resourceMgr->createResource("Model.Statue", ResourceStreamPtr(statueStream));
 	statue->load();
-
+	
 	mModels.push_back({
 		statue,
 		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f)
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
 	});
 
 	// Load Grid
@@ -153,22 +194,46 @@ void ModelScene::setup(ProgramOptions const& options)
 	mModels.push_back({
 		grid,
 		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f)
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
 		});
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
 	createSphereMaterial(sphereMeshSpec);
 	
-	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 20, 2);
+	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 3);
 	auto sphere = resourceMgr->createResource("Model.Sphere", ResourceStreamPtr(sphereStream));
 	sphere->load();
-
+	
 	mModels.push_back({
 		sphere,
 		glm::vec3(80.0f, 130.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f)
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
 	});
+
+	// Load Cylinder
+	auto cylinderMeshSpec = createCylinderMeshSpecification();
+	createCylinderMaterial(cylinderMeshSpec);
+
+	auto cylinderStream = new CylinderModelStream(resourceMgr, cylinderMeshSpec, "Cylinder.Material", 80, 24, 24, 16);
+	auto cylinder = resourceMgr->createResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
+	cylinder->load();
+
+	mModels.push_back({
+		cylinder,
+		glm::vec3(96.0f, 40.0f, 96.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
+		});
+
+	mModels.push_back({
+		cylinder,
+		glm::vec3(-96.0f, 40.0f, 96.0f),
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		0.0f
+		});
 }
 
 void ModelScene::update(float frameTime)
@@ -187,6 +252,8 @@ void ModelScene::update(float frameTime)
 	sphereModel.position.x = x * cosf(amt) - z * sinf(amt);
 	sphereModel.position.y = 130.0f + sinf(mTotalTime * 2.0f) * 25.0f;
 	sphereModel.position.z = x * sinf(amt) + z * cosf(amt);
+
+	sphereModel.angle += frameTime * 50;
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
@@ -204,6 +271,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world)
 		renderSystem->resetTransform();
 		renderSystem->translateTransform3d(model.position);
 		renderSystem->scaleTransform3d(model.scale);
+		renderSystem->rotateTransform3d(model.angle, glm::vec3(0.0f, 1.0f, 0.0f));
 
 		// Render
 		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, &modelUniforms);
