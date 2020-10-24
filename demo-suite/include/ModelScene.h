@@ -11,6 +11,7 @@ class ModelScene : public Scene
 		mpp::ResourcePtr model;
 		glm::vec3 position;
 		glm::vec3 scale;
+		float angle;
 	};
 	
 private:
@@ -30,6 +31,10 @@ private:
 	mpp::mesh::MeshSpecification createSphereMeshSpecification();
 
 	mpp::ResourcePtr createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+
+	mpp::mesh::MeshSpecification createCylinderMeshSpecification();
+
+	mpp::ResourcePtr createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec);
 
 public:
 

@@ -18,56 +18,146 @@ namespace mpp
 		size_t strideInBytes;
 		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
 
+		// Preallocate vertex buffer
 		const int numVertices = (res + 1) * 2 + 2; // Two extra for caps centres.
-		int bufferSize = strideInBytes * numVertices / sizeof(float);
+		int bufferSize = strideInBytes * numVertices;
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
 
 		// Generate vertices
-		float l2 = length / 2;
+		double l2 = length / 2;
 
-		// Top cap
-		int offset = 0;
-		setVertexData<float>(offset + 0, { 0, l2, 0 });
-		setVertexData<float>(offset + 12, { 0, 1, 0 });
-		setVertexData<float>(offset + 24, { 0.5f, 0.5f });
-		setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
-		offset += strideInBytes;
-
-		// Bottom cap
-		setVertexData<float>(offset + 0, { 0, -l2, 0 });
-		setVertexData<float>(offset + 12, { 0, -1, 0 });
-		setVertexData<float>(offset + 24, { 0.5f, 0.5f });
-		setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
-		offset += strideInBytes;
-
-		float nx, nz, x1, x2, z1, z2, angle = 0.0f, angleInc = 2 * 3.14159f / res;
-		for (int i = 0; i <= res; ++i)
+		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			nx = sin(angle);
-			nz = cos(angle);
+			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
 
-			x1 = nx * radius1;
-			z1 = nz * radius1;
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto const& attrib = layout.getAttribute(j);
 
-			x2 = nx * radius2;
-			z2 = nz * radius2;
+				// Get offset and stride for component
+				int offset = componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
-			// Top vertices
-			setVertexData<float>(offset + 0, { x1, l2, z1 });
-			setVertexData<float>(offset + 12, { nx, 0, nz });
-			setVertexData<float>(offset + 24, { i / (float)res, 1 });
-			setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
-			offset += strideInBytes;
+				switch (attrib.component)
+				{
+				case mesh::Vertex::Component::Position3:
+				case mesh::Vertex::Component::Position4:
+					// Top cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, l2, 0.0);
+					offset += strideInBytes;
+					
+					// Bottom cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, -l2, 0.0);
+					offset += strideInBytes;
 
-			// Bottom vertices
-			setVertexData<float>(offset + 0, { x2, -l2, z2 });
-			setVertexData<float>(offset + 12, { nx, 0, nz });
-			setVertexData<float>(offset + 24, { i / (float)res, 0 });
-			setVertexData<float>(offset + 32, { 1, 1, 1, 1 });
-			offset += strideInBytes;
+					// Sides
+					for (int i = 0; i <= res; ++i)
+					{
+						float nx, nz, x1, x2, z1, z2, angleInc = 2 * 3.14159f / res;
 
-			angle += angleInc;
+						nx = sin(angleInc * i);
+						nz = cos(angleInc * i);
+
+						x1 = nx * radius1;
+						z1 = nz * radius1;
+
+						x2 = nx * radius2;
+						z2 = nz * radius2;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x1, l2, z1);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x2, -l2, z2);
+						offset += strideInBytes;
+					}
+					break;
+				case mesh::Vertex::Component::Normal3:
+				case mesh::Vertex::Component::Normal4:
+					// Top cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, 1.0, 0.0);
+					offset += strideInBytes;
+
+					// Top cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, -1.0, 0.0);
+					offset += strideInBytes;
+
+					// Sides
+					for (int i = 0; i <= res; ++i)
+					{
+						float nx, nz, angleInc = 2 * 3.14159f / res;
+
+						nx = sin(angleInc * i);
+						nz = cos(angleInc * i);
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, nx, 0, nz);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, nx, 0, nz);
+						offset += strideInBytes;
+					}
+					break;
+				case mesh::Vertex::Component::TexCoord2:
+				case mesh::Vertex::Component::TexCoord3:
+				case mesh::Vertex::Component::TexCoord4:
+					// Top cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.5, 0.5);
+					offset += strideInBytes;
+
+					// Bottom cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.5, 0.5);
+					offset += strideInBytes;
+
+					// Sides
+					for (int i = 0; i <= res; ++i)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, i / (double)res, 1);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, i / (double)res, 0);
+						offset += strideInBytes;
+					}
+					break;
+				case mesh::Vertex::Component::Colour1:
+					// Top cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+					offset += strideInBytes;
+
+					// Bottom cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+					offset += strideInBytes;
+
+					// Sides
+					for (int i = 0; i <= res; ++i)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
+						offset += strideInBytes;
+					}
+					break;
+				case mesh::Vertex::Component::Colour3:
+				case mesh::Vertex::Component::Colour4:
+					// Top cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+					offset += strideInBytes;
+
+					// Bottom cap
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+					offset += strideInBytes;
+
+					// Sides
+					for (int i = 0; i <= res; ++i)
+					{
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+						offset += strideInBytes;
+
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
+						offset += strideInBytes;
+					}
+					break;
+				}
+			}
 		}
 		
 		// Top indices
