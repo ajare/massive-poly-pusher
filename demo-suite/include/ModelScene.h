@@ -36,6 +36,10 @@ private:
 
 	mpp::ResourcePtr createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec);
 
+	mpp::mesh::MeshSpecification createBoxMeshSpecification();
+
+	mpp::ResourcePtr createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+
 public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
