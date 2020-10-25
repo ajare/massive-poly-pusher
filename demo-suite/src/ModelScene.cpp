@@ -268,13 +268,17 @@ ResourcePtr ModelScene::createTorusModel()
 		{
 			float phi = dp * j;
 
-			float nx = cos(theta);
-			float ny = sin(phi);
-			float nz = sin(theta);
+			float nx = cosf(theta);
+			float ny = sinf(phi);
+			float nz = sinf(theta);
 
-			float x = nx * (radius + cos(phi) * thickness);
+			float x = nx * (radius + cosf(phi) * thickness);
 			float y = ny * thickness;
-			float z = nz * (radius + cos(phi) * thickness);
+			float z = nz * (radius + cosf(phi) * thickness);
+			
+			// Hypertrochoid
+			//float x = pow(cosf(theta), 3) * (radius + cosf(phi) * thickness);
+			//float z = pow(sinf(theta), 3) * (radius + cosf(phi) * thickness);
 
 			torusData.f32(x, y, z); // Position
 			torusData.f32(nx, ny, nz); // Normal
