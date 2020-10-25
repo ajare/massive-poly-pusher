@@ -654,7 +654,7 @@ namespace mpp
 		// Generate name
 		string specName = spec.getDescriptor("__mpp_p3d_");
 
-		// Add texture units, diffuse, rotation.
+		// Add texture units, lights diffuse, rotation.
 		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
 		{
 			specName += "_s";

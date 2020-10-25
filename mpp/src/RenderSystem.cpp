@@ -73,6 +73,34 @@ namespace mpp
 		}
 
 		initialise();
+
+		// Set up test uniform buffer
+		const size_t uniformSize{ 4 * 16 + 4 };
+		shared_ptr<const int8> uniformData(new int8[uniformSize], [](int8 *p) { delete[] p; });
+
+		auto fp = (float*)uniformData.get();
+		*fp++ = 10.0f;
+		*fp++ = 20.0f;
+		*fp++ = 30.0f;
+		*fp++;
+
+		*fp++ = 40.0f;
+		*fp++ = 50.0f;
+		*fp++ = 60.0f;
+		*fp++;
+
+		*fp++ = 0.1f;
+		*fp++ = 0.2f;
+		*fp++ = 0.3f;
+		*fp++ = 0.4f;
+
+		*fp++ = 0.5f;
+		*fp++ = 0.6f;
+		*fp++ = 0.7f;
+		*fp++ = 0.8f;
+
+		*(int32*)(fp) = 2;
+		mUniformBuffer = new UniformBuffer(this, uniformData, uniformSize);
 	}
 
 	/*
@@ -81,6 +109,8 @@ namespace mpp
 	 */
 	RenderSystem::~RenderSystem()
 	{
+		delete mUniformBuffer;
+
 #ifdef MPP_PROFILE_BUILD
 		delete mProfiler;
 		delete mProfileLines;

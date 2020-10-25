@@ -29,13 +29,20 @@ R"(
 @@Texture(sampler2D TEX1)
 ##
 
+layout (std140) uniform Lights
+{
+    vec3 position[2];
+    vec4 colour[2];
+    int count;	
+};
+
 void main()
 {
+    vec4 shadedColour = vec4(@In(COLOUR).xyz, 1.0);
 ## Texture
-    vec3 shadedColour = @In(COLOUR).xyz;
-    @Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS).xy) * vec4(shadedColour, 1.0);
+    @Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS).xy) * shadedColour;
 ## Else
-	@Out(vec4 COLOUR) = @In(COLOUR);
+    @Out(vec4 COLOUR) = shadedColour;
 ##
 }
 )";

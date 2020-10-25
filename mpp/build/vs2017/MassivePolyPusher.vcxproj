@@ -72,6 +72,7 @@
     <ClInclude Include="..\..\include\mpp\GridModelStream.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatch.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatchSpecification.h" />
+    <ClInclude Include="..\..\include\mpp\UniformBuffer.h" />
     <ClInclude Include="..\..\include\mpp\UniformCollection.h" />
     <ClInclude Include="..\..\include\mpp\Vertex2d.h" />
     <ClInclude Include="..\..\include\mpp\VertexBuffer.h" />
@@ -128,6 +129,7 @@
     <ClCompile Include="..\..\src\TextureStream.cpp" />
     <ClCompile Include="..\..\src\GridModelStream.cpp" />
     <ClCompile Include="..\..\src\TriangleBatch.cpp" />
+    <ClCompile Include="..\..\src\UniformBuffer.cpp" />
     <ClCompile Include="..\..\src\UniformCollection.cpp" />
     <ClCompile Include="..\..\src\VertexBuffer.cpp" />
   </ItemGroup>
