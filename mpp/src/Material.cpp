@@ -62,6 +62,8 @@ namespace mpp
 				THROW_MPP("Cannot use more than 4 textures in a material.", __LINE__, __FILE__, __func__);
 			}
 
+			// Get light usage
+
 			// Load in shaders if required
 			string vertexShaderSrc = progOpts.vertexShader.data;
 			if (progOpts.vertexShader.isFile)

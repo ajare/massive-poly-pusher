@@ -25,6 +25,7 @@
 #include "mpp/LineBatch.h"
 #include "mpp/ModelInstance.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/UniformBuffer.h"
 #include "mpp/Vertex2d.h"
 #include "mpp/Logger.h"
 #include "mpp/DebugStackWalker.h"
@@ -225,6 +226,9 @@ namespace mpp
 		SizeUnit mSizeUnit;
 		
 		RenderInfo mRenderInfo;
+
+		// Test UBO
+		UniformBuffer* mUniformBuffer{ nullptr };
 
 	private:
 
