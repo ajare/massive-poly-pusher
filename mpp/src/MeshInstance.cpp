@@ -21,11 +21,8 @@ namespace mpp
 		, mBlend(false)
 		, mPointSize(-1.0f)
 		, mPrimitivesToRender((uint32)-1)
-		, mwMaterial(nullptr)
 	{
-		// Get mcp uniform name
-		Material& m = (Material&)(*mesh->getMaterial());
-		mwProgram = (Program*)m.getProgram().get();
+		mMaterial = mesh->getMaterial();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -42,9 +39,7 @@ namespace mpp
 	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix)
 		: mwMesh(mesh)
 	{
-		// Get mcp uniform name
-		Material& m = (Material&)(*mesh->getMaterial());
-		mwProgram = (Program*)m.getProgram().get();
+		mMaterial = mesh->getMaterial();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -60,9 +55,7 @@ namespace mpp
 	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize)
 		: mwMesh(mesh)
 	{
-		// Get mcp uniform name
-		Material& m = (Material&)(*mesh->getMaterial());
-		mwProgram = (Program*)m.getProgram().get();
+		mMaterial = mesh->getMaterial();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -149,8 +142,7 @@ namespace mpp
 	 */
 	void MeshInstance::setMaterial(ResourcePtr material)
 	{
-		mwMaterial = (Material*)material.get();
-		mwProgram = (Program*)mwMaterial->getProgram().get();
+		mMaterial = material;
 	}
 
 	/*
@@ -222,36 +214,40 @@ namespace mpp
 	 */
 	void MeshInstance::bindUniforms()
 	{
-		mUniforms.bindUniforms(mwProgram);
+		auto program = static_cast<Material*>(mMaterial.get())->getProgram();
+
+		mUniforms.bindUniforms(program);
 
 		// Set special uniforms: Model, ModelCameraProjection & Normal matrices, half screen size.
-		int vpId = mwProgram->getModelMatrixId();
+		Program* p = static_cast<Program*>(program.get());
+
+		int vpId = p->getViewPosId();
 		if (vpId >= 0)
 		{
 			GL_CHECK(glUniform3fv(vpId, 1, glm::value_ptr(mViewPos)));
 		}
 
-		int mId = mwProgram->getModelMatrixId();
+		int mId = p->getModelMatrixId();
 		if (mId >= 0)
 		{
 			auto mMatrix = mModelMatrix * mLocalTransform;
 			GL_CHECK(glUniformMatrix4fv(mId, 1, GL_FALSE, glm::value_ptr(mMatrix)));
 		}
 
-		int mcpId = mwProgram->getModelCameraProjectionMatrixId();
+		int mcpId = p->getModelCameraProjectionMatrixId();
 		if (mcpId >= 0)
 		{
 			auto mcpMatrix = mModelCameraProjectionMatrix * mLocalTransform;
 			GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcpMatrix)));
 		}
 
-		int normalId = mwProgram->getNormalMatrixId();
+		int normalId = p->getNormalMatrixId();
 		if (normalId >= 0)
 		{
 			GL_CHECK(glUniformMatrix3fv(normalId, 1, GL_FALSE, glm::value_ptr(mNormalMatrix)));
 		}
 
-		int hwsId = mwProgram->getHalfWindowSizeId();
+		int hwsId = p->getHalfWindowSizeId();
 		if (hwsId >= 0)
 		{
 			GL_CHECK(glUniform2fv(hwsId, 1, glm::value_ptr(mHalfWindowSize)));
@@ -264,15 +260,20 @@ namespace mpp
 	 */
 	bool MeshInstance::operator <(MeshInstance const* other)
 	{
-		uint32 progA = this->mwProgram->getId();
-		uint32 progB = other->mwProgram->getId();
+		auto m1 = static_cast<Material*>(mMaterial.get());
+		auto program1 = m1->getProgram();
+		auto p1 = static_cast<Program*>(program1.get()); 
+
+		auto m2 = static_cast<Material*>(other->mMaterial.get());
+		auto program2 = m2->getProgram();
+		auto p2 = static_cast<Program*>(program2.get());
+
+		uint32 progA = p1->getId();
+		uint32 progB = p2->getId();
 
 		if (progA == progB)
 		{
-			uint32 texA = this->mwMaterial ? this->mwMaterial->getId() : this->mwMesh->getMaterial()->getId();
-			uint32 texB = other->mwMaterial ? other->mwMaterial->getId() : other->mwMesh->getMaterial()->getId();
-
-			return texA < texB;
+			return m1->getId() < m2->getId();
 		}
 		else
 		{

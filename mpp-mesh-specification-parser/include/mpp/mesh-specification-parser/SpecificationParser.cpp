@@ -131,6 +131,75 @@ map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInforma
 					mi.addTexture(isResource, binding, resource);
 				} while (textureNode->next());
 			}
+
+			auto uniformsNode = materialNode->getOptionalChild("Uniforms");
+			if (uniformsNode)
+			{
+				auto uniformNode = uniformsNode->getOptionalChild("Uniform");
+				if (uniformNode)
+				{
+					do
+					{
+						string uniformName = uniformNode->getAttribute("name");
+						string uniformType = uniformNode->getAttribute("type");
+						string uniformValue = uniformNode->getAttribute("value");
+
+						if (uniformType != "int" && uniformType != "uint" && uniformType != "float")
+						{
+							string errMsg = utils::StringUtils::format(
+								"Found {}-type uniform '{}' while parsing material.  Only int/uint/float types are supported.",
+								uniformType, uniformName);
+
+							throw exception(errMsg.c_str());
+						}
+
+						// Parse value: from [1, 5) components
+						vector<string> tokens = utils::StringUtils::split(uniformValue, ",");
+
+						size_t componentCount = tokens.size();
+
+						if (componentCount < 1 || componentCount > 4)
+						{
+							string errMsg = utils::StringUtils::format(
+								"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional types are supported.",
+								componentCount, uniformName);
+
+							throw exception(errMsg.c_str());
+						}
+
+						if (uniformType == "int")
+						{
+							int32 values[4];
+							for (size_t i = 0; i < componentCount; ++i)
+							{
+								values[i] = utils::StringUtils::parseInt(tokens[i]);
+							}
+
+							mi.addUniform(uniformName, componentCount, values);
+						}
+						else if (uniformType == "uint")
+						{
+							uint32 values[4];
+							for (size_t i = 0; i < componentCount; ++i)
+							{
+								values[i] = utils::StringUtils::parseUInt(tokens[i]);
+							}
+
+							mi.addUniform(uniformName, componentCount, values);
+						}
+						else if (uniformType == "float")
+						{
+							float values[4];
+							for (size_t i = 0; i < componentCount; ++i)
+							{
+								values[i] = utils::StringUtils::parseFloat(tokens[i]);
+							}
+
+							mi.addUniform(uniformName, componentCount, values);
+						}
+					} while (uniformNode->next());
+				}
+			}
 		}
 
 		// Add material

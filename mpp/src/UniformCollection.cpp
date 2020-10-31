@@ -2,6 +2,8 @@
 #include <Windows.h>
 #endif
 
+#include <functional>
+
 #include <glew/glew.h>
 #include <gl/gl.h>
 
@@ -12,28 +14,37 @@
 
 #include "mpp/UniformCollection.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
 namespace mpp
 {
-	// Uniforms are used by shaders, which are part of Materials.
-	// So, it should be a member of Material, not MeshInstance.
-	// However, we may want to override them for individual MeshInstances.
-	// We also want to be able to have them set programmatically, via a
-	// lambda, which should take the Model resource, and mesh id, as arguments.
 
-	// When the program changes in flushVertexBuffers, need to set the material uniforms
-	// When the program stays the same, but the material changes, need to set the
-	// material uniforms.
-
-	// Batches should set uniforms such as Diffuse in the Material directly.
-	
-	// Then need to set mesh overrides
-
-	void UniformCollection::setUniform(string const& name, int value)
+	void UniformCollection::setUniform(string const& name, int32 value)
 	{
-		mIntegerUniforms[name] = value;
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Int,
+			1
+		};
+
+		memcpy(ud.data, &value, sizeof(int32));
+		mUniformData[name] = ud;
+	}
+
+	void UniformCollection::setUniform(string const& name, uint32 value)
+	{
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Uint,
+			1
+		};
+
+		memcpy(ud.data, &value, sizeof(uint32));
+		mUniformData[name] = ud;
 	}
 
 	/*
@@ -42,7 +53,15 @@ namespace mpp
 	 */
 	void UniformCollection::setUniform(string const& name, float value)
 	{
-		mFloatUniforms[name] = value;
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			1
+		};
+
+		memcpy(ud.data, &value, sizeof(float));
+		mUniformData[name] = ud;
 	}
 
 	/*
@@ -51,7 +70,15 @@ namespace mpp
 	 */
 	void UniformCollection::setUniform(string const& name, glm::vec2 const& value)
 	{
-		mVec2Uniforms[name] = value;
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			2
+		};
+
+		memcpy(ud.data, glm::value_ptr(value), sizeof(glm::vec2));
+		mUniformData[name] = ud;
 	}
 
 	/*
@@ -60,7 +87,15 @@ namespace mpp
 	 */
 	void UniformCollection::setUniform(string const& name, glm::vec3 const& value)
 	{
-		mVec3Uniforms[name] = value;
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			3
+		};
+
+		memcpy(ud.data, glm::value_ptr(value), sizeof(glm::vec3));
+		mUniformData[name] = ud;
 	}
 
 	/*
@@ -69,38 +104,179 @@ namespace mpp
 	 */
 	void UniformCollection::setUniform(string const& name, glm::vec4 const& value)
 	{
-		mVec4Uniforms[name] = value;
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			4
+		};
+
+		memcpy(ud.data, glm::value_ptr(value), sizeof(glm::vec4));
+		mUniformData[name] = ud;
+	}
+
+	void UniformCollection::setUniform(string const& name, size_t count, int32 const* values)
+	{
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Int,
+			count
+		};
+
+		memcpy(ud.data, values, sizeof(int32) * count);
+		mUniformData[name] = ud;
+	}
+
+	void UniformCollection::setUniform(string const& name, size_t count, uint32 const* values)
+	{
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Uint,
+			count
+		};
+
+		memcpy(ud.data, values, sizeof(uint32) * count);
+		mUniformData[name] = ud;
+	}
+
+	void UniformCollection::setUniform(string const& name, size_t count, float const* values)
+	{
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			count
+		};
+
+		memcpy(&ud.data, values, sizeof(float) * count);
+		mUniformData[name] = ud;
+	}
+
+	void UniformCollection::updateUniform(string const& name, int32 value)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, &value, sizeof(int32));
+	}
+
+	void UniformCollection::updateUniform(string const& name, uint32 value)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, &value, sizeof(uint32));
+	}
+
+	/*
+	 * Set a uniform value for this mesh instance.
+	 *
+	 */
+	void UniformCollection::updateUniform(string const& name, float value)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, &value, sizeof(float));
+	}
+
+	/*
+	 * Set a uniform value for this mesh instance.
+	 *
+	 */
+	void UniformCollection::updateUniform(string const& name, glm::vec2 const& value)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, &value, sizeof(glm::vec2));
+	}
+
+	/*
+	 * Set a uniform value for this mesh instance.
+	 *
+	 */
+	void UniformCollection::updateUniform(string const& name, glm::vec3 const& value)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, &value, sizeof(glm::vec3));
+	}
+
+	/*
+	 * Set a uniform value for this mesh instance.
+	 *
+	 */
+	void UniformCollection::updateUniform(string const& name, glm::vec4 const& value)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, &value, sizeof(glm::vec4));
+	}
+
+	void UniformCollection::updateUniform(string const& name, size_t count, int32 const* values)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, values, sizeof(int32) * count);
+	}
+
+	void UniformCollection::updateUniform(string const& name, size_t count, uint32 const* values)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, values, sizeof(int32) * count);
+	}
+
+	void UniformCollection::updateUniform(string const& name, size_t count, float const* values)
+	{
+		auto data = mUniformData.find(name)->second.data;
+		memcpy(data, values, sizeof(int32) * count);
 	}
 
 	/*
 	 * Upload uniform values for rendering.
 	 *
 	 */
-	void UniformCollection::bindUniforms(Program const* program)
+	void UniformCollection::bindUniforms(ResourcePtr program)
 	{
-		for (auto it: mIntegerUniforms)
-		{
-			GL_CHECK(glUniform1i(program->getUniformId(it.first), it.second));
-		}
+		Program* p = static_cast<Program*>(program.get());
 
-		for (auto it: mFloatUniforms)
+		const function<void(GLint, GLsizei, const GLint*)> intFunctions[4]
 		{
-			GL_CHECK(glUniform1f(program->getUniformId(it.first), it.second));
-		}
+			glUniform1iv,
+			glUniform2iv,
+			glUniform3iv,
+			glUniform4iv
+		};
 
-		for (auto it: mVec2Uniforms)
+		const function<void(GLint, GLsizei, const GLuint*)> uintFunctions[4]
 		{
-			GL_CHECK(glUniform2f(program->getUniformId(it.first), it.second.x, it.second.y));
-		}
+			glUniform1uiv,
+			glUniform2uiv,
+			glUniform3uiv,
+			glUniform4uiv
+		};
 
-		for (auto it: mVec3Uniforms)
+		const function<void(GLint, GLsizei, const GLfloat*)> floatFunctions[4]
 		{
-			GL_CHECK(glUniform3f(program->getUniformId(it.first), it.second.x, it.second.y, it.second.z));
-		}
+			glUniform1fv,
+			glUniform2fv,
+			glUniform3fv,
+			glUniform4fv
+		};
 
-		for (auto it: mVec4Uniforms)
+		for (auto const& it: mUniformData)
 		{
-			GL_CHECK(glUniform4f(program->getUniformId(it.first), it.second.x, it.second.y, it.second.z, it.second.w));
+			auto const& ud = it.second;
+
+			switch (ud.type)
+			{
+			case program::GLSLType::Int:
+				GL_CHECK(intFunctions[ud.size - 1]((GLint)p->getUniformId(ud.name), (GLsizei)ud.size, (const GLint*)ud.data));
+				break;
+
+			case program::GLSLType::Uint:
+				GL_CHECK(uintFunctions[ud.size - 1]((GLuint)p->getUniformId(ud.name), (GLsizei)ud.size, (const GLuint*)ud.data));
+				break;
+
+			case program::GLSLType::Float:
+				GL_CHECK(floatFunctions[ud.size - 1]((GLfloat)p->getUniformId(ud.name), (GLsizei)ud.size, (const GLfloat*)ud.data));
+				break;
+
+			default:
+				THROW_MPP("Unsupported uniform type.", __LINE__, __FILE__, __func__);
+			}
 		}
 	}
 

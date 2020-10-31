@@ -30,12 +30,12 @@ namespace mpp
 		// Pad sortable vectors
 		for (uint32 i = 0; i < msSortableTextureId; ++i)
 		{
-			mSortableTextures.push_back(nullptr);
+			mSortableTextures.push_back(ResourcePtr());
 		}
 
 		for (uint32 i = 0; i < msSortableProgramId; ++i)
 		{
-			mSortablePrograms.push_back(nullptr);
+			mSortablePrograms.push_back(ResourcePtr());
 		}
 
 		// Add factories
@@ -364,7 +364,7 @@ namespace mpp
 			Texture* t = static_cast<Texture*>(res.get());
 
 			t->setSortId(msSortableTextureId++);
-			mSortableTextures.push_back(t);
+			mSortableTextures.push_back(res);
 		}
 		else if (type == "Program")
 		{
@@ -378,7 +378,7 @@ namespace mpp
 			Program* p = static_cast<Program*>(res.get());
 
 			p->setSortId(msSortableProgramId++);
-			mSortablePrograms.push_back(p);
+			mSortablePrograms.push_back(res);
 
 			// Add to cache
 			mProgramCache[fullSource] = res;
@@ -715,7 +715,7 @@ namespace mpp
 	 * Get raw texture resource from sort id.
 	 *
 	 */
-	Texture* ResourceManager::getTextureBySortId(uint32 id)
+	ResourcePtr ResourceManager::getTextureBySortId(uint32 id)
 	{
 		return mSortableTextures[id];
 	}
@@ -724,7 +724,7 @@ namespace mpp
 	 * Get raw program resource from sort id.
 	 *
 	 */
-	Program* ResourceManager::getProgramBySortId(uint32 id)
+	ResourcePtr ResourceManager::getProgramBySortId(uint32 id)
 	{
 		return mSortablePrograms[id];
 	}

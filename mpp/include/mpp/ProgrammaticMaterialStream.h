@@ -36,13 +36,23 @@ namespace mpp
 
 		void useDefaultTexture();
 
-		void setFloatUniform(std::string const& name, float value);
+		void setUniform(std::string const& name, int32 value);
 
-		void setFloatUniform(std::string const& name, glm::vec2 const& value);
+		void setUniform(std::string const& name, uint32 value);
 
-		void setFloatUniform(std::string const& name, glm::vec3 const& value);
+		void setUniform(std::string const& name, float value);
 
-		void setFloatUniform(std::string const& name, glm::vec4 const& value);
+		void setUniform(std::string const& name, glm::vec2 const& value);
+
+		void setUniform(std::string const& name, glm::vec3 const& value);
+
+		void setUniform(std::string const& name, glm::vec4 const& value);
+
+		void setUniform(std::string const& name, size_t count, int32 const* values);
+
+		void setUniform(std::string const& name, size_t count, uint32 const* values);
+
+		void setUniform(std::string const& name, size_t count, float const* values);
 
 		Resource* createResource(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr);
 	};

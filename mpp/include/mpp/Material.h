@@ -5,21 +5,15 @@
 #include "mpp/Resource.h"
 #include "mpp/Texture.h"
 #include "mpp/Program.h"
+#include "mpp/UniformCollection.h"
 
 namespace mpp
 {
 	class _MPPAPI Material : public Resource
 	{
-		template<typename T>
-		struct Uniform
-		{
-			T values[4];
-			int valueCount;
-		};
-
 		ResourcePtr mProgram;
 
-		std::vector<std::pair<int, Uniform<float>>> mFloatUniforms;
+		UniformCollection mUniforms;
 
 		std::vector<ResourcePtr> mTextures;
 

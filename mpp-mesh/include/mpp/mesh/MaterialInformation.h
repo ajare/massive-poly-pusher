@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <any>
 
 #include "mpp/mesh/Config.h"
 
@@ -40,6 +41,14 @@ namespace mpp
 				std::string resource;
 			};
 
+			struct Uniform
+			{
+				std::string name;
+				std::string type;
+				size_t numComponents;
+				std::any values[4];
+			};
+
 		private:
 
 			std::string mName;
@@ -49,6 +58,8 @@ namespace mpp
 			std::vector<Shader> mShaders;
 
 			std::vector<Texture> mTextures;
+
+			std::vector<Uniform> mUniforms;
 
 		public:
 
@@ -69,6 +80,14 @@ namespace mpp
 			void addTexture(bool isResource, std::string const& binding, std::string const& resource);
 
 			std::vector<Texture> const& getTextures() const;
+
+			void addUniform(std::string const& name, size_t numComponents, int32 const* values);
+
+			void addUniform(std::string const& name, size_t numComponents, uint32 const* values);
+
+			void addUniform(std::string const& name, size_t numComponents, float const* values);
+
+			std::vector<Uniform> const& getUniforms() const;
 		};
 	}
 }

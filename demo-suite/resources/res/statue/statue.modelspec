@@ -24,7 +24,7 @@
 				-->
 				<Shaders>
 					<Shader type="Vertex"></Shader>
-					<Shader type="Fragment">statue_multitex.frag</Shader>
+					<Shader type="Fragment">statue_lighting.frag</Shader>
 				</Shaders>
 			</Program>
 
@@ -37,6 +37,11 @@
 				<Texture binding="TEX1" filename="statue_marble.jpg" />
 				<Texture binding="TEX2" resource="rgba.png" />
 			</Textures>
+			
+			<Uniforms>
+				<Uniform name="SPEC_EXPONENT" type="float" value="32" />
+				<Uniform name="SPEC_STRENGTH" type="float" value="0.5" />
+			</Uniforms>
 		</Material>
 	</Materials>
 

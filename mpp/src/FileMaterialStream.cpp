@@ -106,30 +106,62 @@ namespace mpp
 				do
 				{
 					string uniformName = uniformNode->getAttribute("name");
+					string uniformType = uniformNode->getAttribute("type");
 					string uniformValue = uniformNode->getAttribute("value");
+
+					if (uniformType != "int" && uniformType != "uint" && uniformType != "float")
+					{
+						string errMsg = utils::StringUtils::format(
+							"Found {}-type uniform '{}' while parsing material '{}'.  Only int/uint/float types are supported.",
+							uniformType, uniformName, mName);
+
+						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+					}
 
 					// Parse value: from [1, 5) components
 					vector<string> tokens = utils::StringUtils::split(uniformValue, ",");
 
-					int componentCount = tokens.size();
+					size_t componentCount = tokens.size();
 
 					if (componentCount < 1 || componentCount > 4)
 					{
 						string errMsg = utils::StringUtils::format(
-							"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional float are supported.",
+							"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional types are supported.",
 							componentCount, uniformName, mName);
 
 						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 					}
 
-					Uniform<float> u;
-					u.valueCount = componentCount;
-					for (int i = 0; i < componentCount; ++i)
+					if (uniformType == "int")
 					{
-						u.values[i] = utils::StringUtils::parseFloat(tokens[i]);
-					}
+						int32 values[4];
+						for (size_t i = 0; i < componentCount; ++i)
+						{
+							values[i] = utils::StringUtils::parseInt(tokens[i]);
+						}
 
-					mFloatUniforms[uniformName] = u;
+						mUniforms.setUniform(uniformName, componentCount, values);
+					}
+					else if (uniformType == "uint")
+					{
+						uint32 values[4];
+						for (size_t i = 0; i < componentCount; ++i)
+						{
+							values[i] = utils::StringUtils::parseUInt(tokens[i]);
+						}
+
+						mUniforms.setUniform(uniformName, componentCount, values);
+					}
+					else if (uniformType == "float")
+					{
+						float values[4];
+						for (size_t i = 0; i < componentCount; ++i)
+						{
+							values[i] = utils::StringUtils::parseFloat(tokens[i]);
+						}
+
+						mUniforms.setUniform(uniformName, componentCount, values);
+					}
 				} while (uniformNode->next());
 			}
 		}

@@ -141,7 +141,7 @@ namespace mpp
 		// Default programs.
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
 
-		Program* mwActiveProgram;
+		ResourcePtr mActiveProgram;
 
 		// Internal textures
 		ResourcePtr mNoTexture;
@@ -246,9 +246,9 @@ namespace mpp
 
 		void useDefaultProgram();
 
-		void setUsedProgram(Program* program);
+		void setUsedProgram(ResourcePtr program);
 
-		Program* getUsedProgram();
+		ResourcePtr getUsedProgram();
 		
 		void setDefaultTexture();
 

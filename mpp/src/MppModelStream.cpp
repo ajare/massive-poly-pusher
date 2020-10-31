@@ -111,6 +111,7 @@ namespace mpp
 				auto strStr = new FileStringStream(resMgr, fragmentShaderFilename);
 				mStr->addChild(fragmentShader, ResourceStreamPtr(strStr));
 			}
+
 			// Create texture streams if required
 			auto const& textures = matInfo.getTextures();
 			for (auto const& texture: textures)
@@ -135,6 +136,43 @@ namespace mpp
 					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
 					mStr->setTextureChild(texture.binding, texture.resource);
 				}
+			}
+
+			// Add uniforms
+			auto const& uniforms = matInfo.getUniforms();
+			for (auto const& uniform: uniforms)
+			{
+				if (uniform.type == "int")
+				{
+					int32 values[4];
+					for (size_t i = 0; i < uniform.numComponents; ++i)
+					{
+						values[i] = any_cast<int32>(uniform.values[0]);
+					}
+
+					mStr->setUniform(uniform.name, uniform.numComponents, values);
+				}
+				else if (uniform.type == "uint")
+				{
+					uint32 values[4];
+					for (size_t i = 0; i < uniform.numComponents; ++i)
+					{
+						values[i] = any_cast<uint32>(uniform.values[0]);
+					}
+
+					mStr->setUniform(uniform.name, uniform.numComponents, values);
+				}
+				else if (uniform.type == "float")
+				{
+					float values[4];
+					for (size_t i = 0; i < uniform.numComponents; ++i)
+					{
+						values[i] = any_cast<float>(uniform.values[0]);
+					}
+
+					mStr->setUniform(uniform.name, uniform.numComponents, values);
+				}
+
 			}
 
 			addChild(matInfo.getName(), ResourceStreamPtr(mStr));
