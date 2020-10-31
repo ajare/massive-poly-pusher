@@ -478,7 +478,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPo
 		}
 
 		// Render
-		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, viewDir);
+		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, viewPos);
 
 		if (options.wireframe)
 		{
