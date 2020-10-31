@@ -259,19 +259,20 @@ namespace mpp
 		for (auto const& it: mUniformData)
 		{
 			auto const& ud = it.second;
-
+			auto id = (GLint)p->getUniformId(it.first); // Use non-marked up value
+			
 			switch (ud.type)
 			{
 			case program::GLSLType::Int:
-				GL_CHECK(intFunctions[ud.size - 1]((GLint)p->getUniformId(ud.name), (GLsizei)ud.size, (const GLint*)ud.data));
+				GL_CHECK(intFunctions[ud.size - 1](id, (GLsizei)ud.size, (const GLint*)ud.data));
 				break;
 
 			case program::GLSLType::Uint:
-				GL_CHECK(uintFunctions[ud.size - 1]((GLuint)p->getUniformId(ud.name), (GLsizei)ud.size, (const GLuint*)ud.data));
+				GL_CHECK(uintFunctions[ud.size - 1](id, (GLsizei)ud.size, (const GLuint*)ud.data));
 				break;
 
 			case program::GLSLType::Float:
-				GL_CHECK(floatFunctions[ud.size - 1]((GLfloat)p->getUniformId(ud.name), (GLsizei)ud.size, (const GLfloat*)ud.data));
+				GL_CHECK(floatFunctions[ud.size - 1](id, (GLsizei)ud.size, (const GLfloat*)ud.data));
 				break;
 
 			default:
