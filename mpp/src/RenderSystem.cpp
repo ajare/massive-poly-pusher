@@ -75,32 +75,43 @@ namespace mpp
 		initialise();
 
 		// Set up test uniform buffer
-		const size_t uniformSize{ 4 * 16 + 4 };
+		const size_t uniformSize{ 96 };
 		shared_ptr<const int8> uniformData(new int8[uniformSize], [](int8 *p) { delete[] p; });
 
 		auto fp = (float*)uniformData.get();
-		*fp++ = 10.0f;
-		*fp++ = 20.0f;
-		*fp++ = 30.0f;
-		*fp++;
-
-		*fp++ = 40.0f;
-		*fp++ = 50.0f;
-		*fp++ = 60.0f;
-		*fp++;
-
-		*fp++ = 0.1f;
-		*fp++ = 0.2f;
+		// Ambient
 		*fp++ = 0.3f;
-		*fp++ = 0.4f;
+		*fp++ = 0.3f;
+		*fp++ = 0.3f;
+		*fp++;
 
+		// Light1 position
+		*fp++ = 256.0f;
+		*fp++ = 256.0f;
+		*fp++ = 256.0f;
+		*fp++;
+
+		// Light1 colour
 		*fp++ = 0.5f;
-		*fp++ = 0.6f;
-		*fp++ = 0.7f;
-		*fp++ = 0.8f;
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++;
 
-		*(int32*)(fp) = 2;
-		mUniformBuffer = new UniformBuffer(this, uniformData, uniformSize);
+		// Light2 position
+		*fp++ = -256.0f;
+		*fp++ = 256.0f;
+		*fp++ = -256.0f;
+		*fp++;
+
+		// Light2 colour
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++ = 0.5f;
+		*fp++;
+
+		*(int32*)(fp) = 1;
+		mUniformBuffer = new UniformBuffer(this, uniformData, uniformSize, 0);
+		mUniformBuffer->load();
 	}
 
 	/*
@@ -1295,7 +1306,14 @@ namespace mpp
 	 */
 	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms, uint32 primitiveCount)
 	{
+		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), uniforms, primitiveCount);
+	}
+
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32 primitiveCount)
+	{
 		ModelInstance* mi = new ModelInstance(model, 
+			viewPos,
+			m3dModelMatrix,
 			m3dModelCameraProjectionMatrix, 
 			getNormalMatrix(), 
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
@@ -1321,6 +1339,12 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32 primitiveCount)
+	{
+		renderModelBatched(model, alphaBlend, viewPos, uniforms, primitiveCount);
+		flushVertexBuffers();
+	}
+
 	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms, uint32 primitiveCount)
 	{
 		renderModelBatched(model, alphaBlend, uniforms, primitiveCount);

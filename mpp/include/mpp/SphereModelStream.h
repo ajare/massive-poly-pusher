@@ -9,7 +9,7 @@ namespace mpp
 {
 	class _MPPAPI SphereModelStream : public PrimitiveModelStream
 	{
-		float mRadius;
+		double mRadius;
 		
 		int mResolution;
 
@@ -25,6 +25,6 @@ namespace mpp
 
 	public:
 
-		SphereModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, float radius, int res);
+		SphereModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material, double radius, int res);
 	};
 }

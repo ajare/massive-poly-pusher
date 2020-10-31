@@ -11,8 +11,11 @@ namespace mpp
 
 		struct Uniform
 		{
+			std::string qualifier;
 			std::string name;
 			GLSLTypeDecl type;
+			size_t count;
+			bool inBlock;
 		};
 
 	}

@@ -87,7 +87,7 @@ mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification con
 		"",
 		false);
 
-	materialStream->setTexture("TEX1", "Marble.Texture");
+	//materialStream->setTexture("TEX1", "Marble.Texture");
 
 	auto res = resourceMgr->createResource("Grid.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -123,7 +123,7 @@ mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification c
 		"",
 		false); 
 	
-	materialStream->setTexture("TEX1", "Electro.Texture");
+	//materialStream->setTexture("TEX1", "Electro.Texture");
 
 	auto res = resourceMgr->createResource("Sphere.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -159,7 +159,7 @@ mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification
 		"",
 		false);
 
-	materialStream->setTexture("TEX1", "Marble.Texture");
+	//materialStream->setTexture("TEX1", "Marble.Texture");
 
 	auto res = resourceMgr->createResource("Cylinder.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -195,7 +195,7 @@ mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification cons
 		"",
 		false);
 
-	materialStream->setTexture("TEX1", "Test.Texture");
+	//materialStream->setTexture("TEX1", "Test.Texture");
 
 	auto res = resourceMgr->createResource("Box.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -231,7 +231,7 @@ mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification co
 		"",
 		false);
 
-	materialStream->setTexture("TEX1", "Doughnut.Texture");
+	//materialStream->setTexture("TEX1", "Doughnut.Texture");
 
 	auto res = resourceMgr->createResource("Torus.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -331,7 +331,7 @@ void ModelScene::setup(ProgramOptions const& options)
 		glm::vec3(0.0f, 0.0f, 0.0f),
 		glm::vec3(1.0f, 1.0f, 1.0f),
 		0.0f
-	});
+		});
 
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
@@ -445,7 +445,7 @@ void ModelScene::update(float frameTime)
 	mModels[7].angle = sin(mTotalTime) * 25.0f;
 }
 
-void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
+void ModelScene::render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPos, glm::vec3 const& viewDir, World const& world, RenderOptions const& options)
 {
 	// Set uniforms
 	mpp::UniformCollection modelUniforms;
@@ -485,7 +485,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 		}
 
 		// Render
-		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, &modelUniforms);
+		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, viewDir, &modelUniforms);
 
 		if (options.wireframe)
 		{

@@ -23,11 +23,11 @@ namespace mpp
 
 	public:
 
-		ModelInstance(Model const& model, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize);
+		ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize);
 
-		ModelInstance(Model const& model, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix);
+		ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix);
 
-		ModelInstance(Model const& model, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize);
+		ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize);
 
 		~ModelInstance();
 

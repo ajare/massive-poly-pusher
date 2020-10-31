@@ -25,6 +25,8 @@ namespace mpp
 		std::vector<int8> mData;
 
 		size_t mDataSize;
+		
+		uint32 mBinding;
 
 	private:
 
@@ -32,7 +34,7 @@ namespace mpp
 
 	public:
 
-		UniformBuffer(RenderSystem* renderSystem, std::shared_ptr<const int8> data, size_t dataSize);
+		UniformBuffer(RenderSystem* renderSystem, std::shared_ptr<const int8> data, size_t dataSize, uint32 binding);
 
 		virtual ~UniformBuffer();
 
