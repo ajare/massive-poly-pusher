@@ -58,53 +58,43 @@ namespace mpp
 		mTextures["TEX1"] = make_pair("__mpp_tex_none__", false);
 	}
 
-	void ProgrammaticMaterialStream::setFloatUniform(string const& name, float value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, int32 value)
 	{
-		Uniform<float> u;
-		u.valueCount = 1;
-		u.values[0] = value;
-
-		// Mark up name
-		string markedUpName = MPP_PROGRAM_MARKUP_UNIFORM(name);
-		mFloatUniforms[markedUpName] = u;
+		mUniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setFloatUniform(string const& name, glm::vec2 const& value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, uint32 value)
 	{
-		Uniform<float> u;
-
-		u.valueCount = 2;
-		u.values[0] = value[0];
-		u.values[1] = value[1];
-
-		// Mark up name
-		string markedUpName = MPP_PROGRAM_MARKUP_UNIFORM(name);
-		mFloatUniforms[markedUpName] = u;
+		mUniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setFloatUniform(string const& name, glm::vec3 const& value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, float value)
 	{
-		Uniform<float> u;
-
-		u.valueCount = 3;
-		u.values[0] = value[0];
-		u.values[1] = value[1];
-		u.values[2] = value[2];
-
-		mFloatUniforms[name] = u;
+		mUniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setFloatUniform(string const& name, glm::vec4 const& value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, glm::vec3 const& value)
 	{
-		Uniform<float> u;
-
-		u.valueCount = 4;
-		u.values[0] = value[0];
-		u.values[1] = value[1];
-		u.values[2] = value[2];
-		u.values[3] = value[3];
-
-		mFloatUniforms[name] = u;
+		mUniforms.setUniform(name, value);
 	}
 
+	void ProgrammaticMaterialStream::setUniform(string const& name, glm::vec4 const& value)
+	{
+		mUniforms.setUniform(name, value);
+	}
+
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, int32 const* values)
+	{
+		mUniforms.setUniform(name, count, values);
+	}
+
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, uint32 const* values)
+	{
+		mUniforms.setUniform(name, count, values);
+	}
+
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, float const* values)
+	{
+		mUniforms.setUniform(name, count, values);
+	}
 }

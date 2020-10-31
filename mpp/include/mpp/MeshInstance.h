@@ -29,9 +29,7 @@ namespace mpp
 
 		uint32 mPrimitivesToRender;
 
-		Program const* mwProgram;
-
-		Material* mwMaterial;
+		ResourcePtr mMaterial;
 
 		UniformCollection mUniforms;
 

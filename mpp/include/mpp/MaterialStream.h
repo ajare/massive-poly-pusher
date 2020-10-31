@@ -6,6 +6,7 @@
 
 #include "mpp/ResourceStream.h"
 #include "mpp/FileDataStream.h"
+#include "mpp/UniformCollection.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -32,20 +33,13 @@ namespace mpp
 			Shader vertexShader, fragmentShader;
 		};
 
-		template<typename T>
-		struct Uniform
-		{
-			T values[4];
-			int valueCount;
-		};
-
 	protected:
 
 		std::string mName;
  
 		ProgramOptions mProgram;
 
-		std::map<std::string, Uniform<float>> mFloatUniforms;
+		UniformCollection mUniforms;
 
 		std::map<std::string, std::pair<std::string, bool>> mTextures;
 
@@ -73,7 +67,7 @@ namespace mpp
 
 		ProgramOptions const& getProgramOptions() const;
 
-		std::map<std::string, Uniform<float>> const& getFloatUniforms() const;
+		UniformCollection const& getUniforms() const;
 
 		std::map<std::string, std::pair<std::string, bool>> const& getTextures() const;
 	};

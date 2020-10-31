@@ -217,6 +217,7 @@ namespace mpp
 
 			mi.setPositionType(positionType);
 
+			// Shaders
 			int shaderCount;
 			fread(&shaderCount, sizeof(shaderCount), 1, fp);
 			for (int i = 0; i < shaderCount; ++i)
@@ -229,6 +230,7 @@ namespace mpp
 				mi.addShader(shaderType, shaderName);
 			}
 
+			// Textures
 			int textureCount;
 			fread(&textureCount, sizeof(textureCount), 1, fp);
 			for (int i = 0; i < textureCount; ++i)
@@ -239,6 +241,37 @@ namespace mpp
 				auto resource = readString(fp);
 
 				mi.addTexture(isResource, binding, resource);
+			}
+
+			// Uniforms
+			int uniformCount;
+			fread(&uniformCount, sizeof(uniformCount), 1, fp);
+			for (int i = 0; i < uniformCount; ++i)
+			{
+				string name = readString(fp);
+				string type = readString(fp);
+
+				size_t numComponents;
+				fread(&numComponents, sizeof(numComponents), 1, fp);
+
+				if (type == "int")
+				{
+					int32 values[4];
+					fread(values, sizeof(int32), numComponents, fp);
+					mi.addUniform(name, numComponents, values);
+				}
+				else if (type == "uint")
+				{
+					uint32 values[4];
+					fread(values, sizeof(uint32), numComponents, fp);
+					mi.addUniform(name, numComponents, values);
+				}
+				if (type == "float")
+				{
+					float values[4];
+					fread(values, sizeof(float), numComponents, fp);
+					mi.addUniform(name, numComponents, values);
+				}
 			}
 
 			return mi;
@@ -269,26 +302,59 @@ namespace mpp
 			auto positionType = matInfo.getPositionType();
 			fwrite(&positionType, sizeof(positionType), 1, fp);
 
+			// Shaders
 			auto const& shaders = matInfo.getShaders();
 
 			int shaderCount = (int)shaders.size();
 			fwrite(&shaderCount, sizeof(shaderCount), 1, fp);
-			for (auto const& shader : shaders)
+			for (auto const& shader: shaders)
 			{
 				fwrite(&shader.type, sizeof(shader.type), 1, fp);
 				writeString(fp, shader.name);
 			}
 
+			// Textures
 			auto const& textures = matInfo.getTextures();
 
 			int textureCount = (int)textures.size();
 			fwrite(&textureCount, sizeof(textureCount), 1, fp);
-			for (auto const& texture : textures)
+			for (auto const& texture: textures)
 			{
 				int32 isResource = texture.isResource ? 1 : 0;
 				fwrite(&isResource, sizeof(isResource), 1, fp);
 				writeString(fp, texture.binding);
 				writeString(fp, texture.resource);
+			}
+
+			// Uniforms
+			auto const& uniforms = matInfo.getUniforms();
+
+			int uniformCount = (int)uniforms.size();
+			fwrite(&uniformCount, sizeof(uniformCount), 1, fp);
+			for (auto const& uniform: uniforms)
+			{
+				writeString(fp, uniform.name);
+				writeString(fp, uniform.type);
+				fwrite(&uniform.numComponents, sizeof(uniform.numComponents), 1, fp);
+				
+				for (size_t i = 0; i < uniform.numComponents; ++i)
+				{
+					if (uniform.type == "int")
+					{
+						auto value = any_cast<int32>(uniform.values[i]);
+						fwrite(&value, sizeof(int32), 1, fp);
+					}
+					else if (uniform.type == "uint")
+					{
+						auto value = any_cast<uint32>(uniform.values[i]);
+						fwrite(&value, sizeof(uint32), 1, fp);
+					}
+					else if (uniform.type == "float")
+					{
+						auto value = any_cast<float>(uniform.values[i]);
+						fwrite(&value, sizeof(float), 1, fp);
+					}
+				}
 			}
 		}
 

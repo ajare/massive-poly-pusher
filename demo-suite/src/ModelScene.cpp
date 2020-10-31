@@ -447,13 +447,6 @@ void ModelScene::update(float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPos, glm::vec3 const& viewDir, World const& world, RenderOptions const& options)
 {
-	// Set uniforms
-	mpp::UniformCollection modelUniforms;
-	if (!world.pointLights.empty())
-	{
-		modelUniforms.setUniform("light", world.pointLights.front());
-	}
-
 	for (size_t i = 0; i < mModels.size(); ++i)
 	{
 		auto const& model = mModels[i];
@@ -485,7 +478,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPo
 		}
 
 		// Render
-		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, viewDir, &modelUniforms);
+		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, viewDir);
 
 		if (options.wireframe)
 		{

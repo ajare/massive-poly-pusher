@@ -670,9 +670,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			glm::vec3 lightPos(0, lightHeight, 400);
 			lightPos = glm::rotate(lightPos, glm::radians(lightAngle), glm::vec3(0, 1, 0));
 
-			mpp::UniformCollection modelUniforms;
-			modelUniforms.setUniform("light", lightPos);
-
 			//
 			// Render model
 			//
@@ -681,7 +678,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			gRenderSystem->scaleTransform3d(modelTranforms[(int)currentModelId].scale);
 			gRenderSystem->rotateTransform3d(viewAngle, glm::vec3(0, 1, 0));
 
-			auto mi = gRenderSystem->renderModelBatched((Model&)*modelTranforms[(int)currentModelId].model, true, &modelUniforms);
+			auto mi = gRenderSystem->renderModelBatched((Model&)*modelTranforms[(int)currentModelId].model, true);
 			mi->setWireframe(wireframe);
 
 			//

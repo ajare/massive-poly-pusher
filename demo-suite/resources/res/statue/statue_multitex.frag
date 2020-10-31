@@ -1,4 +1,4 @@
-@@Version
+@@Version7
 
 ## Texture
 @@Texture(sampler2D TEX1);

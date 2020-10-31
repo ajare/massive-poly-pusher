@@ -93,32 +93,10 @@ namespace mpp
 		mProgram->load();
 
 		// Set uniforms
-		Program* program = (Program*)(mProgram.get());
-
-		Uniform<float> floatUniform;
-		auto const& uniforms = mStr->getFloatUniforms();
-		for (auto uniform: uniforms)
-		{
-			floatUniform.valueCount = uniform.second.valueCount;
-			switch (uniform.second.valueCount)
-			{
-			case 4:
-				floatUniform.values[3] = uniform.second.values[3];
-
-			case 3:
-				floatUniform.values[2] = uniform.second.values[2];
-
-			case 2:
-				floatUniform.values[1] = uniform.second.values[1];
-
-			case 1:
-				floatUniform.values[0] = uniform.second.values[0];
-				break;
-			}
-
-			mFloatUniforms.push_back(make_pair(program->getUniformId(uniform.first), floatUniform));
-		}
+		mUniforms = mStr->getUniforms();
 		
+		// Set textures
+		Program* program = (Program*)(mProgram.get());
 		auto materialTextures = mStr->getTextures();
 
 		// Go through each texture, get the binding location.
@@ -156,7 +134,6 @@ namespace mpp
 	void Material::destroyImpl()
 	{
 		mProgram.reset();
-		mFloatUniforms.clear();
 		mTextures.clear();
 	}
 
@@ -216,28 +193,6 @@ namespace mpp
 	 */
 	void Material::setUniforms()
 	{
-		// Material uniforms
-		for (auto uniform: mFloatUniforms)
-		{
-			auto const& uniformData = uniform.second;
-			switch (uniformData.valueCount)
-			{
-			case 1:
-				glUniform1f(uniform.first, uniformData.values[0]);
-				break;
-
-			case 2:
-				glUniform2fv(uniform.first, 1, uniformData.values);
-				break;
-
-			case 3:
-				glUniform3fv(uniform.first, 1, uniformData.values);
-				break;
-
-			case 4:
-				glUniform4fv(uniform.first, 1, uniformData.values);
-				break;
-			}
-		}
+		mUniforms.bindUniforms(mProgram);
 	}
 }

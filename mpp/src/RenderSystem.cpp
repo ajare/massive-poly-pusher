@@ -53,7 +53,6 @@ namespace mpp
 		, mWindowHeight(windowHeight)
 		, mResourceMgr(nullptr)
 		, mClearColour(0.0f, 0.0f, 0.0f, 1.0f)
-		, mwActiveProgram(nullptr)
 #ifdef MPP_PROFILE_BUILD
 		, mProfiler(nullptr)
 		, mProfileLines(nullptr)
@@ -609,13 +608,13 @@ namespace mpp
 		ProgrammaticMaterialStream* textMatStream = new ProgrammaticMaterialStream(mResourceMgr);
 
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
-		textMatStream->setFloatUniform("COLOUR", glm::vec4(1, 1, 1, 1));
+		textMatStream->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStream->setTexture("TEX1", "__mpp_tex_internalfont__");
 		resourceMgr->createResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream))->load();
 
 		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream(mResourceMgr);
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
-		textMatStreamColoured->setFloatUniform("COLOUR", glm::vec4(1, 1, 1, 1));
+		textMatStreamColoured->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
 		resourceMgr->createResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured))->load();
 
@@ -771,7 +770,7 @@ namespace mpp
 		mBlur2Target = createRenderTexture("Blur2Target", getWindowWidth(), getWindowHeight(), 1, false);
 		
 		// Set none as active
-		mwActiveProgram = nullptr;
+		mActiveProgram.reset();
 
 		// Profile graph
 #ifdef MPP_PROFILE_BUILD
@@ -796,11 +795,11 @@ namespace mpp
 		switch (mProjectionType)
 		{
 		case ProjectionType::Perspective3D:
-			setUsedProgram((Program*)mDefaultProgram3d.get());
+			setUsedProgram(mDefaultProgram3d);
 			break;
 
 		case ProjectionType::Ortho2D:
-			setUsedProgram((Program*)mDefaultProgram2d.get());
+			setUsedProgram(mDefaultProgram2d);
 			break;
 
 		default:
@@ -813,24 +812,24 @@ namespace mpp
 	 * after GL has accepted the program as active.
 	 *
 	 */
-	void RenderSystem::setUsedProgram(Program* program)
+	void RenderSystem::setUsedProgram(ResourcePtr program)
 	{
-		if (program == mwActiveProgram)
+		if (program == mActiveProgram)
 		{
 			return;
 		}
 
-		program->bind();
-		mwActiveProgram = program;
+		static_cast<Program*>(program.get())->bind();
+		mActiveProgram = program;
 	}
 
 	/*
 	 * Get used program.
 	 *
 	 */
-	Program* RenderSystem::getUsedProgram()
+	ResourcePtr RenderSystem::getUsedProgram()
 	{
-		return mwActiveProgram;
+		return mActiveProgram;
 	}
 
 	/*
@@ -1645,8 +1644,10 @@ namespace mpp
 		Material* m = (Material*)material.get();
 
 		// Set program
-		Program* p = (Program*)m->getProgram().get();
-		setUsedProgram(p);
+		auto program = m->getProgram();
+		auto p = static_cast<Program*>(program.get());
+
+		setUsedProgram(program);
 		mRenderInfo.programSwitches++;
 
 		// Set uniforms
@@ -1654,7 +1655,7 @@ namespace mpp
 
 		if (uniforms)
 		{
-			uniforms->bindUniforms(p);
+			uniforms->bindUniforms(program);
 		}
 
 		int mcpId = p->getModelCameraProjectionMatrixId();
@@ -1691,15 +1692,16 @@ namespace mpp
 		flushVertexBuffers();
 
 		// Set program
-		Program* p = (Program*)(mResourceMgr->getResource("__mpp_p2d_fullscreen__").get());
+		auto program = mResourceMgr->getResource("__mpp_p2d_fullscreen__");
+		auto p = static_cast<Program*>(program.get());
 
-		setUsedProgram(p);
+		setUsedProgram(program);
 		mRenderInfo.programSwitches++;
 
 		// Set uniforms
 		if (uniforms)
 		{
-			uniforms->bindUniforms(p);
+			uniforms->bindUniforms(program);
 		}
 
 		int mcpId = p->getModelCameraProjectionMatrixId();
@@ -1752,9 +1754,10 @@ namespace mpp
 		flushVertexBuffers();
 
 		// Set program
-		Program* p = (Program*)(mResourceMgr->getResource("__mpp_p2d_fullscreen__").get());
+		auto program = mResourceMgr->getResource("__mpp_p2d_fullscreen__");
+		auto p = static_cast<Program*>(program.get());
 
-		setUsedProgram(p);
+		setUsedProgram(program);
 		mRenderInfo.programSwitches++;
 
 		pushModelMatrix();
@@ -2194,7 +2197,7 @@ namespace mpp
 					// Create sort key
 					uint64 sortKey = 0;
 
-					auto material = mi->mwMaterial ? mi->mwMaterial : (Material*)(mi->mwMesh->getMaterial().get());
+					auto material = (Material*)mi->mMaterial.get();
 					int numTextures = material->getNumTextures();
 
 					// Texture 0.
@@ -2248,6 +2251,7 @@ namespace mpp
 		uint64 currentProgramKey = 0; // Sort ids start at 1, so this is guaranteed not to be one.
 		uint64 currentTexture0Key = 0, currentTexture1Key = 0;
 
+		Material* currentMaterial{ nullptr };
 		for (auto meshInstance: meshInstances)
 		{
 			// Mask off program and see if it has changed from previous.
@@ -2267,12 +2271,14 @@ namespace mpp
 				mRenderInfo.programSwitches++;
 			}
 
-			// Set uniforms.
-			auto material = meshInstance.second->mwMaterial
-				? meshInstance.second->mwMaterial
-				: (Material*)(meshInstance.second->mwMesh->getMaterial().get());
+			// Set uniforms if the program or material have changed.
+			auto material = static_cast<Material*>(meshInstance.second->mMaterial.get());
+			if (programChanged || material != currentMaterial)
+			{
+				material->setUniforms();
+			}
 
-			material->setUniforms();
+			currentMaterial = material;
 
 			// Mask off texture and see if it has changed from previous.  This assumes the mesh
 			// is only using one texture.
@@ -2283,7 +2289,7 @@ namespace mpp
 
 			if (thisTexture0Key > 0 && (thisTexture0Key != currentTexture0Key || programChanged))
 			{
-				auto texture = mResourceMgr->getTextureBySortId((uint32)thisTexture0Key);
+				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32)thisTexture0Key).get());
 				texture->bind(0);
 
 				currentTexture0Key = thisTexture0Key;
@@ -2296,7 +2302,7 @@ namespace mpp
 
 			if (thisTexture1Key > 0 && (thisTexture1Key != currentTexture1Key || programChanged))
 			{
-				auto texture = mResourceMgr->getTextureBySortId((uint32)thisTexture1Key);
+				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32)thisTexture1Key).get());
 				texture->bind(1);
 
 				currentTexture1Key = thisTexture1Key;

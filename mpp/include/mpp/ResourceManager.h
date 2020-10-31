@@ -41,9 +41,9 @@ namespace mpp
 
 		static uint32 msSortableProgramId;
 
-		std::vector<Texture*> mSortableTextures;
+		std::vector<ResourcePtr> mSortableTextures;
 
-		std::vector<Program*> mSortablePrograms;
+		std::vector<ResourcePtr> mSortablePrograms;
 
 		ImageLoadFunction mImageLoadFunction;
 
@@ -79,9 +79,9 @@ namespace mpp
 
 		ResourcePtr getDefault3dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
 
-		Texture* getTextureBySortId(uint32 id);
+		ResourcePtr getTextureBySortId(uint32 id);
 
-		Program* getProgramBySortId(uint32 id);
+		ResourcePtr getProgramBySortId(uint32 id);
 
 		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
 	};

@@ -59,5 +59,62 @@ namespace mpp
 		{
 			return mTextures;
 		}
+
+		void MaterialInformation::addUniform(string const& name, size_t numComponents, int32 const* values)
+		{
+			Uniform u
+			{
+				name,
+				"int",
+				numComponents
+			};
+
+			for (size_t i = 0; i < numComponents; ++i)
+			{
+				u.values[i] = values[i];
+			}
+
+			mUniforms.push_back(u);
+		}
+
+		void MaterialInformation::addUniform(string const& name, size_t numComponents, uint32 const* values)
+		{
+			Uniform u
+			{
+				name,
+				"uint",
+				numComponents
+			};
+
+			for (size_t i = 0; i < numComponents; ++i)
+			{
+				u.values[i] = values[i];
+			}
+
+			mUniforms.push_back(u);
+		}
+
+		void MaterialInformation::addUniform(string const& name, size_t numComponents, float const* values)
+		{
+			Uniform u
+			{
+				name,
+				"float",
+				numComponents
+			};
+
+			for (size_t i = 0; i < numComponents; ++i)
+			{
+				u.values[i] = values[i];
+			}
+
+			mUniforms.push_back(u);
+		}
+
+		vector<MaterialInformation::Uniform> const& MaterialInformation::getUniforms() const
+		{
+			return mUniforms;
+		}
+
 	}
 }

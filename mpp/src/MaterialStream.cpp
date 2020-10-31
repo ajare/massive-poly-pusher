@@ -123,9 +123,9 @@ namespace mpp
 	 * Get program uniforms.
 	 *
 	 */
-	map<string, MaterialStream::Uniform<float>> const& MaterialStream::getFloatUniforms() const
+	UniformCollection const& MaterialStream::getUniforms() const
 	{
-		return mFloatUniforms;
+		return mUniforms;
 	}
 
 	/*
