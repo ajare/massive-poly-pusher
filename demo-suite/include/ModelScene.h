@@ -50,7 +50,7 @@ public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
 
-	void setup(ProgramOptions const& options);
+	void setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
 
 	void update(float frameTime);
 

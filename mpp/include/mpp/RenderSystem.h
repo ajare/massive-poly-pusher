@@ -227,8 +227,8 @@ namespace mpp
 		
 		RenderInfo mRenderInfo;
 
-		// Test UBO
-		UniformBuffer* mUniformBuffer{ nullptr };
+		// Built-in lights
+		UniformBuffer* mLightsBuffer{ nullptr };
 
 	private:
 
@@ -255,6 +255,10 @@ namespace mpp
 		int buildTextVertexBuffer(VertexBuffer* buffer, std::string const& text, int& offset, int x, int y);
 
 		int buildColouredTextVertexBuffer(VertexBuffer* buffer, std::string const& text, int& offset, int x, int y);
+
+		void createLightsData();
+
+		void destroyLightsData();
 
 	public:
 
@@ -350,6 +354,19 @@ namespace mpp
 		glm::mat4 const& getModelMatrix() const;
 
 		void resetTransform();
+
+		// Lights
+		void setLightCount(size_t count);
+
+		void setAmbientColour(Colour const& colour);
+
+		void setLight1Position(glm::vec3 const& pos);
+
+		void setLight1Colour(Colour const& colour);
+
+		void setLight2Position(glm::vec3 const& pos);
+
+		void setLight2Colour(Colour const& colour);
 
 		//
 		// 3d operations

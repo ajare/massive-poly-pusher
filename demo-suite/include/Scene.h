@@ -27,7 +27,7 @@ public:
 
 	bool getRender() const;
 
-	virtual void setup(ProgramOptions const& options) {}
+	virtual void setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options) {}
 
 	virtual void update(float frameTime) {}
 

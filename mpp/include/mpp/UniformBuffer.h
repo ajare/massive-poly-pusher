@@ -40,6 +40,8 @@ namespace mpp
 
 		std::vector<int8>& getBufferData();
 
+		void updateData(uint32 offset, size_t size);
+
 		void mapBufferData();
 
 		void bind();
