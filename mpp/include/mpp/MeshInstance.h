@@ -37,6 +37,8 @@ namespace mpp
 
 #pragma warning(push)
 #pragma warning(disable: 4324)
+		alignas(16) glm::vec3 mViewPos;
+		alignas(16) glm::mat4 mModelMatrix;
 		alignas(16) glm::mat4 mModelCameraProjectionMatrix;
 		alignas(16) glm::mat4 mLocalTransform;
 		alignas(16) glm::mat3 mNormalMatrix;
@@ -45,11 +47,11 @@ namespace mpp
 
 	public:
 
-		MeshInstance(Mesh const* mesh, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize);
+		MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize);
 
-		MeshInstance(Mesh const* mesh, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix);
+		MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix);
 
-		MeshInstance(Mesh const* mesh, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize);
+		MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize);
 
 		bool operator <(MeshInstance const* other);
 

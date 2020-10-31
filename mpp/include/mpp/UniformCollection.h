@@ -14,11 +14,14 @@ namespace mpp
 {
 	class _MPPAPI UniformCollection
 	{
-		std::map<std::string, int> mIntegerUniforms;
-		std::map<std::string, float> mFloatUniforms;
-		std::map<std::string, glm::vec2> mVec2Uniforms;
-		std::map<std::string, glm::vec3> mVec3Uniforms;
-		std::map<std::string, glm::vec4> mVec4Uniforms;
+		struct UniformData
+		{
+			std::string name;
+			GLuint glType;
+			char data[64];
+		};
+
+		std::map<std::string, UniformData> mUniformData;
 
 	public:
 

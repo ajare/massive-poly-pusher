@@ -8,7 +8,7 @@ using namespace std;
 
 namespace mpp
 {
-	SphereModelStream::SphereModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, float radius, int res)
+	SphereModelStream::SphereModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, double radius, int res)
 		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 		, mRadius(radius)
 		, mResolution(res)
@@ -204,7 +204,7 @@ namespace mpp
 			double& y = positions[i + 1];
 			double& z = positions[i + 2];
 
-			float d = mRadius / sqrt(x * x + y * y + z * z);
+			auto d = mRadius / sqrt(x * x + y * y + z * z);
 			x *= d;
 			y *= d;
 			z *= d;

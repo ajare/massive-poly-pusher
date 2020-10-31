@@ -16,15 +16,16 @@ namespace mpp
 	 * Constructor.  Pass already-created vertex data directly in.
 	 *
 	 */
-	UniformBuffer::UniformBuffer(RenderSystem* renderSystem, shared_ptr<const int8> data, size_t dataSize)
+	UniformBuffer::UniformBuffer(RenderSystem* renderSystem, shared_ptr<const int8> data, size_t dataSize, uint32 binding)
 		: mUBO(0)
 		, mwRenderSystem(renderSystem)
 		, mDataSize(dataSize)
+		, mBinding(binding)
 	{
 		mData.reserve(dataSize);
 		int8 const* dataPtr = data.get();
 
-		for (int i = 0; i < dataSize; ++i)
+		for (size_t i = 0; i < dataSize; ++i)
 		{
 			mData.push_back(*dataPtr++);
 		}
@@ -55,7 +56,7 @@ namespace mpp
 	void UniformBuffer::allocate()
 	{
 		GLenum glStorageType = GL_DYNAMIC_DRAW;
-		GL_CHECK(glBufferData(GL_ARRAY_BUFFER, mDataSize, &(mData[0]), glStorageType));
+		GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, mDataSize, &(mData[0]), glStorageType));
 	}
 
 	/*
@@ -104,6 +105,8 @@ namespace mpp
 
 		bind();
 		allocate();
+
+		glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO);
 	}
 
 	/*

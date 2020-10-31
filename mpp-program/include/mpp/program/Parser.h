@@ -65,6 +65,14 @@ namespace mpp
 
 			std::string replaceCasts(ShaderStage::Type stageType, std::string const& src);
 
+			std::string replaceUniformDeclaration(ShaderStage::Type stageType, std::string const& decl);
+
+			std::string replaceUniformUsage(ShaderStage::Type stageType, std::string const& usage);
+
+			std::string replaceTextureDeclaration(ShaderStage::Type stageType, std::string const& decl);
+
+			std::string replaceTextureUsage(ShaderStage::Type stageType, std::string const& usage);
+
 			std::vector<std::string> splitSourceIntoLines(std::string const& src);
 
 			void addError(ShaderStage::Type stageType, std::string const& error);

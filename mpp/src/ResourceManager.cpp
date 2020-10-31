@@ -583,7 +583,7 @@ namespace mpp
 			specName += "4";
 		}
 
-		if (flags & (MPP_PROGRAM_TAGS_DIFFUSE | MPP_PROGRAM_TAGS_ROTATION))
+		if (flags & (MPP_PROGRAM_TAGS_DIFFUSE | MPP_PROGRAM_TAGS_ROTATION | MPP_PROGRAM_TAGS_ATLAS))
 		{
 			specName += "_";
 		}

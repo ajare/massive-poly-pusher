@@ -98,7 +98,8 @@ namespace mpp
 
 					// Bottom face
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0);	offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
 
 					// Front face

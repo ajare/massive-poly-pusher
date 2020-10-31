@@ -21,6 +21,8 @@
 #define MPP_PROGRAM_FS_IN_PREFIX			"_mpp_fs_in_"
 #define MPP_PROGRAM_FS_OUT_PREFIX			"_mpp_fs_out_"
 
+#define MPP_PROGRAM_VIEWPOS_TOKEN			"@ViewPos"
+#define MPP_PROGRAM_MMATRIX_TOKEN			"@MMatrix"
 #define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
 #define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
 #define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
@@ -28,12 +30,14 @@
 #define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
 #define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
 
+#define MPP_PROGRAM_VIEWPOS_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "viewPos_")
+#define MPP_PROGRAM_MMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "model_")
 #define MPP_PROGRAM_MCPMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "modelCameraProjection_")
 #define MPP_PROGRAM_NORMALMATRIX_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "normal_")
 #define MPP_PROGRAM_HALFWINDOWSIZE_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "halfWindowSize_")
 
-#define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token)
-#define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token)
+#define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token + "_")
+#define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token + "_")
 
 // These must start from above MeshSpecification's maximum hash value
 #define MPP_PROGRAM_TAGS_TEXTURE1			(1 << 10)
@@ -86,7 +90,7 @@ namespace mpp
 
 		std::map<std::string, int> mUniformIds;
 
-		int mMcpMatrixId, mNormalMatrixId, mHalfWindowSizeId;
+		int mViewPosId, mMMatrixId, mMcpMatrixId, mNormalMatrixId, mHalfWindowSizeId;
 
 		std::vector<TextureInfo> mTextures;
 
@@ -106,8 +110,6 @@ namespace mpp
 
 		std::string stripComments(std::string const& src);
 
-		std::string parseSource(std::string const& src, ShaderType shaderType, bool usingGeometryShader);
-
 	protected:
 
 		void createImpl();
@@ -125,6 +127,10 @@ namespace mpp
 		bool operator==(Program const& other);
 
 		int getUniformId(std::string const& name) const;
+
+		int getViewPosId() const;
+
+		int getModelMatrixId() const;
 
 		int getModelCameraProjectionMatrixId() const;
 

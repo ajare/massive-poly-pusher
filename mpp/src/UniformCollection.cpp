@@ -17,7 +17,20 @@ using namespace std;
 
 namespace mpp
 {
+	// Uniforms are used by shaders, which are part of Materials.
+	// So, it should be a member of Material, not MeshInstance.
+	// However, we may want to override them for individual MeshInstances.
+	// We also want to be able to have them set programmatically, via a
+	// lambda, which should take the Model resource, and mesh id, as arguments.
+
+	// When the program changes in flushVertexBuffers, need to set the material uniforms
+	// When the program stays the same, but the material changes, need to set the
+	// material uniforms.
+
+	// Batches should set uniforms such as Diffuse in the Material directly.
 	
+	// Then need to set mesh overrides
+
 	void UniformCollection::setUniform(string const& name, int value)
 	{
 		mIntegerUniforms[name] = value;

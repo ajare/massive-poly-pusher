@@ -13,6 +13,8 @@ namespace mpp
 
 		map<string, GLSLTypeDecl> gsGLSLTypeDecls
 		{
+			{"",   {"user", GLSLType::User, mesh::Vertex::DataType::None, {1, 1}, false, false}},
+
 			{"bool",   {"bool", GLSLType::Bool, mesh::Vertex::DataType::Int, {1, 1}, false, true}},
 			{"int",    {"int", GLSLType::Int, mesh::Vertex::DataType::Int, {1, 1}, false, true}},
 			{"uint",   {"uint", GLSLType::Uint, mesh::Vertex::DataType::UnsignedInt, {1, 1}, false, false}},

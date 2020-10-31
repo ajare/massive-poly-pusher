@@ -13,6 +13,8 @@
 #include "glslTypes.h"
 #include "MppProgramException.h"
 
+#define MPP_PROGRAM_VIEWPOS_TOKEN			"@ViewPos"
+#define MPP_PROGRAM_MMATRIX_TOKEN			"@MMatrix"
 #define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
 #define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
 #define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
@@ -23,6 +25,8 @@
 #define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
 #define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
 
+#define MPP_PROGRAM_VIEWPOS_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "viewPos_")
+#define MPP_PROGRAM_MMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "model_")
 #define MPP_PROGRAM_MCPMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "modelCameraProjection_")
 #define MPP_PROGRAM_NORMALMATRIX_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "normal_")
 #define MPP_PROGRAM_HALFWINDOWSIZE_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "halfWindowSize_")
@@ -373,6 +377,123 @@ namespace mpp
 			return parsedSrc;
 		}
 
+		string Parser::replaceUniformDeclaration(ShaderStage::Type stageType, string const& decl)
+		{
+			regex re(R"(@@Uniform\s*\(\s*([\w\d]+\s+)([\w\d\[\]]+)\s*\))");
+			smatch match;
+
+			if (regex_search(decl, match, re))
+			{
+				auto type = utils::StringUtils::trim(match.str(1));
+				string fullName, name = utils::StringUtils::trim(match.str(2));
+				fullName = name;
+
+				// Get count and modify name according
+				size_t count = 1;
+
+				auto firstBrace = name.find_first_of('[');
+				auto secondBrace = name.find_first_of(']');
+				if (firstBrace != string::npos && secondBrace != string::npos)
+				{
+					count = utils::StringUtils::parseInt(name.substr(firstBrace + 1, secondBrace - firstBrace - 1));
+					name = name.substr(0, firstBrace);
+				}
+
+				// Find name in uniform list
+				auto const& uniforms = mStages[(int)stageType].uniforms;
+				auto uniformIt = find_if(uniforms.begin(), uniforms.end(), [name](auto const& u)
+				{
+					return u.name == name;
+				});
+
+				auto const& uniform = *uniformIt;
+				string replacement = type + " " + MPP_PROGRAM_MARKUP_UNIFORM(name);
+
+				if (count > 1)
+				{
+					replacement += "[" + utils::StringUtils::toString(count) + "]";
+				}
+
+				if (!uniform.inBlock)
+				{
+					replacement = "uniform " + replacement;
+				}
+
+				// Insert the replacement
+				auto const& fullMatch = match.str(0);
+				auto startIndex = decl.find(fullMatch);
+
+				auto endIndex = startIndex + fullMatch.length();
+				string pre = decl.substr(0, startIndex);
+				string post = decl.substr(endIndex);
+				return pre + replacement + post;
+			}
+			else
+			{
+				return decl;
+			}
+		}
+
+		string Parser::replaceUniformUsage(ShaderStage::Type stageType, string const& usage)
+		{
+			// This needs to parse multiple uniforms on one line, building up the return
+			// replacement string.
+
+			regex re(R"(@Uniform\s*\(\s*([\w\d\[\]]+)\s*\))");
+			smatch match;
+
+			string repl = usage, res;
+			while (regex_search(repl, match, re))
+			{
+				string name = utils::StringUtils::trim(match.str(1));
+
+				// Get count and modify name according
+				string index;
+
+				auto firstBrace = name.find_first_of('[');
+				auto secondBrace = name.find_first_of(']');
+				if (firstBrace != string::npos && secondBrace != string::npos)
+				{
+					index = name.substr(firstBrace + 1, secondBrace - firstBrace - 1);
+					name = name.substr(0, firstBrace);
+				}
+
+				string replacement = MPP_PROGRAM_MARKUP_UNIFORM(name);
+				if (index != "")
+				{
+					replacement += "[" + index + "]";
+				}
+
+				// Insert the replacement
+				auto const& fullMatch = match.str(0);
+				auto startIndex = repl.find(fullMatch);
+
+				auto endIndex = startIndex + fullMatch.length();
+				string pre = repl.substr(0, startIndex);
+				string post = repl.substr(endIndex);
+				
+				res += pre + replacement;
+				repl = post;
+			}
+			
+			res += repl;
+			return res;
+		}
+
+		string Parser::Parser::replaceTextureDeclaration(ShaderStage::Type stageType, string const& decl)
+		{
+			return regex_replace(decl,
+				regex(R"(@@Texture\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))"),
+				"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2_");
+		}
+
+		string Parser::replaceTextureUsage(ShaderStage::Type stageType, string const& usage)
+		{
+			return regex_replace(usage,
+				regex(R"(@Texture\s*\(\s*([\w\d]+)\s*\))"),
+				MPP_PROGRAM_TEXTURE_PREFIX "$1_");
+		}
+
 		/*
 		 * Parse source for basic information.
 		 *
@@ -418,21 +539,88 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)stageType];
 
-			regex re(R"(@@Uniform\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))");
+			auto lines = utils::StringUtils::split(stage.source, "\n");
+
+			regex re(R"((.*)?@@Uniform\s*\(\s*([\w\d]+\s+)([\w\d\[\]]+)\s*\))");
 			smatch match;
+
+			regex blockMatchRe(R"(.*uniform\s+[\w\d]+.*)");
 
 			stage.uniforms.clear();
 
-			auto src = stage.source;
-			while (regex_search(src, match, re))
+			bool looking{ false }, inBlock{ false };
+			for (auto const& line: lines)
 			{
-				auto type = utils::StringUtils::trim(match.str(1));
-				auto name = utils::StringUtils::trim(match.str(2));
+				auto src = line;
 
-				stage.uniforms.push_back({ name, gsGLSLTypeDecls[type] });
+				// See whether we're starting a block: expecting
+				// "uniform <name> {" to start block and then the next "}" to end it
+				// After "uniform <name>", see what comes next, "{", ";" or "=".
+				if (regex_match(src, blockMatchRe))
+				{
+					auto braceIndex = src.find_first_of("{");
+					auto semiIndex = src.find_first_of(";");
+					auto equalsIndex = src.find_first_of("=");
 
-				// Look for next match
-				src = match.suffix().str();
+					if (braceIndex < semiIndex && braceIndex < equalsIndex)
+					{
+						inBlock = true;
+						looking = false;
+					}
+					else
+					{
+						looking = true;
+					}
+				}
+				else if (looking)
+				{
+					auto braceIndex = src.find_first_of("{");
+					auto semiIndex = src.find_first_of(";");
+					auto equalsIndex = src.find_first_of("=");
+
+					if (braceIndex < semiIndex && braceIndex < equalsIndex)
+					{
+						inBlock = true;
+						looking = false;
+					}
+				}
+				if (inBlock && src.find_first_of('}') != string::npos)
+				{
+					inBlock = false;
+				}
+
+				if (regex_search(src, match, re))
+				{
+					auto qualifier = utils::StringUtils::trim(match.str(1));
+					auto type = utils::StringUtils::trim(match.str(2));
+					auto name = utils::StringUtils::trim(match.str(3));
+
+					// Get count and modify name according
+					size_t count = 1;
+
+					auto firstBrace = name.find_first_of('[');
+					auto secondBrace = name.find_first_of(']');
+					if (firstBrace != string::npos && secondBrace != string::npos)
+					{ 
+						count = utils::StringUtils::parseInt(name.substr(firstBrace + 1, secondBrace - firstBrace - 1));
+						name = name.substr(0, firstBrace);
+					}
+
+					// If count is greater than 1, then uniforms will be expanded, eg
+					// LIGHTS[2] will create uniforms LIGHTS[0] and LIGHTS[1]
+					// TODO: what happens with LIGHTS[1]?  Is it valid, and if so, does
+					// it expandto LIGHTS[0]?
+
+					auto typeIt = gsGLSLTypeDecls.find(type);
+					if (typeIt != gsGLSLTypeDecls.end())
+					{
+						stage.uniforms.push_back({ qualifier, name, typeIt->second, count, inBlock });
+					}
+					else
+					{
+						stage.uniforms.push_back({ qualifier, name, gsGLSLTypeDecls[""], count, inBlock });
+					}
+				}
 			}
 		}
 
@@ -764,21 +952,11 @@ namespace mpp
 			stage.generated.clear();
 
 			// Check for special uniforms
-			bool mcpUsed{ false }, normalUsed{ false }, halfWindowSizeUsed{ false };
-			if (stage.source.find(MPP_PROGRAM_MCPMATRIX_TOKEN) != string::npos)
-			{
-				mcpUsed = true;
-			}
-
-			if (stage.source.find(MPP_PROGRAM_NORMALMATRIX_TOKEN) != string::npos)
-			{
-				normalUsed = true;
-			}
-
-			if (stage.source.find(MPP_PROGRAM_HALFWINDOWSIZE_TOKEN) != string::npos)
-			{
-				halfWindowSizeUsed = true;
-			}
+			bool vpUsed = stage.source.find(MPP_PROGRAM_VIEWPOS_TOKEN) != string::npos;
+			bool mUsed = stage.source.find(MPP_PROGRAM_MMATRIX_TOKEN) != string::npos;
+			bool mcpUsed = stage.source.find(MPP_PROGRAM_MCPMATRIX_TOKEN) != string::npos;
+			bool normalUsed = stage.source.find(MPP_PROGRAM_NORMALMATRIX_TOKEN) != string::npos;
+			bool halfWindowSizeUsed = stage.source.find(MPP_PROGRAM_HALFWINDOWSIZE_TOKEN) != string::npos;
 			
 			// Parse line by line
 			auto lines = splitSourceIntoLines(stage.source);
@@ -790,7 +968,7 @@ namespace mpp
 				utils::StringUtils::trim(trimmed);
 
 				// If it's semicolon or '\n', ignore
-				if (trimmed == "" || line == ";")
+				if (trimmed == "" || line == ";" || line == "\n")
 				{
 					parsedLines.push_back(line);
 					continue;
@@ -837,6 +1015,16 @@ namespace mpp
 					parsedLines.push_back("\n");
 				
 					// Add built-in uniforms
+					if (vpUsed)
+					{
+						parsedLines.push_back(utils::StringUtils::format("uniform vec3 {};", MPP_PROGRAM_VIEWPOS_NAME));
+						parsedLines.push_back("\n");
+					}
+					if (mUsed)
+					{
+						parsedLines.push_back(utils::StringUtils::format("uniform mat4 {};", MPP_PROGRAM_MMATRIX_NAME));
+						parsedLines.push_back("\n");
+					}
 					if (mcpUsed)
 					{
 						parsedLines.push_back(utils::StringUtils::format("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
@@ -866,27 +1054,18 @@ namespace mpp
 						MPP_PROGRAM_OUT_PREFIX "$2");
 
 					// Parse built-in uniforms
+					utils::StringUtils::replaceAll(replaced, "@ViewPos", MPP_PROGRAM_VIEWPOS_NAME);
+					utils::StringUtils::replaceAll(replaced, "@MMatrix", MPP_PROGRAM_MMATRIX_NAME);
 					utils::StringUtils::replaceAll(replaced, "@MCPMatrix", MPP_PROGRAM_MCPMATRIX_NAME);
 					utils::StringUtils::replaceAll(replaced, "@NormalMatrix", MPP_PROGRAM_NORMALMATRIX_NAME);
 					utils::StringUtils::replaceAll(replaced, "@HalfWindowSize", MPP_PROGRAM_HALFWINDOWSIZE_NAME);
 
 					// Parse user-defined uniforms
-					replaced = regex_replace(replaced,
-						regex(R"(@@Uniform\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))"),
-						"uniform $1 " MPP_PROGRAM_UNIFORM_PREFIX "$2;");
+					replaced = replaceUniformDeclaration(stage.type, replaced);
+					replaced = replaceUniformUsage(stage.type, replaced);
+					replaced = replaceTextureDeclaration(stage.type, replaced);
+					replaced = replaceTextureUsage(stage.type, replaced);
 
-					replaced = regex_replace(replaced,
-						regex(R"(@Uniform\s*\(\s*([\w\d]+)\s*\))"), 
-						MPP_PROGRAM_UNIFORM_PREFIX "$1");
-
-					// Parse textures
-					replaced = regex_replace(replaced,
-						regex(R"(@@Texture\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))"),
-						"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2;");
-
-					replaced = regex_replace(replaced,
-						regex(R"(@Texture\s*\(\s*([\w\d]+)\s*\))"), 
-						MPP_PROGRAM_TEXTURE_PREFIX "$1");
 
 					// Add line
 					parsedLines.push_back(replaced);

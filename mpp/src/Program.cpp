@@ -272,402 +272,6 @@ namespace mpp
 	}
 
 	/*
-	 * Parse source file for special tokens.
-	 *
-	 */
-	string Program::parseSource(string const& src, ShaderType shaderType, bool usingGeometryShader)
-	{
-		// Get caps and set variable standards
-		auto rs = getRenderSystem();
-		auto const& caps = rs->getCaps();
-
-		string inDecl, outDecl;
-		string inPrefix, outPrefix;
-		switch (shaderType)
-		{
-		case ShaderType::Vertex:
-			inDecl = "in";
-			outDecl = "out";
-			inPrefix = MPP_PROGRAM_VS_IN_PREFIX;
-			outPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
-			break;
-
-		case ShaderType::Geometry:
-			inDecl = "in";
-			outDecl = "out";
-			inPrefix = MPP_PROGRAM_VS_OUT_PREFIX;
-			outPrefix = MPP_PROGRAM_GS_OUT_PREFIX;
-			break;
-
-		case ShaderType::Fragment:
-			inDecl = "in";
-			outDecl = "out";
-			inPrefix = usingGeometryShader ? MPP_PROGRAM_GS_OUT_PREFIX : MPP_PROGRAM_VS_OUT_PREFIX;
-			outPrefix = MPP_PROGRAM_FS_OUT_PREFIX;
-			break;
-		}
-
-		// Variable information
-		list<VariableInfo> inVars, outVars, uniformVars, textureVars;
-		bool mcpUsed = false, normalUsed = false, halfWindowSizeUsed = false;
-
-		// Find entry point
-		int mainLine = -1;
-		regex entryPointRegex("void\\smain");
-		smatch stringMatch;
-		if (regex_search(src, stringMatch, entryPointRegex))
-		{
-			if (stringMatch.size() > 1)
-			{
-				THROW_MPP("Multiple 'main' definitions found in program source.", __LINE__, __FILE__, __func__);
-			}
-
-			mainLine = 0;
-			int stringPos = stringMatch.position(0);
-			while (stringPos >= 0)
-			{
-				if (src[stringPos] == '\n' || src[stringPos] == ';')
-				{
-					mainLine++;
-				}
-				
-				stringPos--;
-			}
-		}
-		else
-		{
-			THROW_MPP("Could not find 'main' definition in program source.", __LINE__, __FILE__, __func__);
-		}
-
-		// See which built-in uniforms are used
-		string strippedSrc = stripComments(src);
-
-		// Check for special uniforms
-		if (strippedSrc.find(MPP_PROGRAM_MCPMATRIX_TOKEN) != string::npos)
-		{
-			mcpUsed = true;
-		}
-
-		if (strippedSrc.find(MPP_PROGRAM_NORMALMATRIX_TOKEN) != string::npos)
-		{
-			normalUsed = true;
-		}
-
-		if (strippedSrc.find(MPP_PROGRAM_HALFWINDOWSIZE_TOKEN) != string::npos)
-		{
-			halfWindowSizeUsed = true;
-		}
-
-		// Parse source line by line (or by statement).
-		vector<string> lines = splitSourceIntoLines(strippedSrc);
-
-		list<string> parsedLines;
-		bool prevLineWasTemplate = false;
-		for (uint32 i = 0; i < lines.size(); ++i)
-		{
-			string line = lines[i];
-
-			// If it's semicolon or '\n', ignore
-			if ((line == "\n" && !prevLineWasTemplate) || line == ";")
-			{
-				parsedLines.push_back(line);
-				continue;
-			}
-
-			// Parse lines[i], then replace it and append lines[i + 1] to it
-			string trimmedLine = line; utils::StringUtils::trim(trimmedLine);
-
-			prevLineWasTemplate = false;
-			int templateSectionIndex = trimmedLine.find("@@");
-			if (templateSectionIndex != string::npos && trimmedLine != "@@Version")
-			{
-				// Don't keep the next newline
-				prevLineWasTemplate = true;
-				mainLine--;
-
-				string templateSection = trimmedLine.substr(templateSectionIndex + 2);
-				utils::StringUtils::trim(templateSection);
-
-				int spacePos = templateSection.find_first_of(' ');
-				if (spacePos == string::npos)
-				{
-					string errMsg = "Invalid template definition '" + templateSection + "' in program source.";
-					THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-				}
-
-				// Variable definition
-				string varDef = templateSection.substr(0, spacePos);
-				utils::StringUtils::trim(varDef);
-
-				// Variable name
-				int equalsPos = templateSection.find_first_of('=');
-				if (equalsPos == string::npos)
-				{
-					string errMsg = "Invalid template definition '" + templateSection + "' in program source.";
-					THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-				}
-
-				string varName = templateSection.substr(spacePos + 1, equalsPos - (spacePos + 1));
-				utils::StringUtils::trim(varName);
-
-				// Variable type
-				string varType = templateSection.substr(equalsPos + 1);
-				utils::StringUtils::trim(varType);
-
-				transform(varDef.begin(), varDef.end(), varDef.begin(), ::tolower);
-
-				VariableInfo vi = getVariableInfo(varDef, varName, varType, shaderType);
-
-				if (varDef == "in")
-				{
-					inVars.push_back(vi);
-				}
-				else if (varDef == "out")
-				{
-					outVars.push_back(vi);
-				}
-				else if (varDef == "passthrough")
-				{
-					inVars.push_back(vi);
-					outVars.push_back(vi);
-				}
-				else if (varDef == "uniform")
-				{
-					uniformVars.push_back(vi);
-				}
-				else if (varDef == "texture")
-				{
-					textureVars.push_back(vi);
-				}
-			}
-			else
-			{
-				parsedLines.push_back(line);
-			}
-		}
-
-		auto it = parsedLines.begin();
-		for (int i = 0; i < mainLine; ++i, ++it);
-
-		// If mcp or normal matrices, or half window size vector are used, insert them
-		mMcpMatrixId = -1;
-		mNormalMatrixId = -1;
-		mHalfWindowSizeId = -1;
-		if (mcpUsed)
-		{
-			parsedLines.insert(it, utils::StringUtils::format("uniform mat4 {};\n", MPP_PROGRAM_MCPMATRIX_NAME));
-		}
-		if (normalUsed)
-		{
-			parsedLines.insert(it, utils::StringUtils::format("uniform mat3 {};\n", MPP_PROGRAM_NORMALMATRIX_NAME));
-		}
-		if (halfWindowSizeUsed)
-		{
-			parsedLines.insert(it, utils::StringUtils::format("uniform vec2 {};\n", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
-		}
-
-		parsedLines.insert(it, "\n");
-
-		// Insert uniform definitions
-		for (auto vit = uniformVars.begin(); vit != uniformVars.end(); ++vit)
-		{
-			auto const& vi = *vit;
-
-			string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(vi.name);
-			parsedLines.insert(it, utils::StringUtils::format("uniform {} {};\n", vi.type, markedUpUniform));
-
-			mUniformIds[markedUpUniform] = -1;
-		}
-
-		parsedLines.insert(it, "\n");
-
-		// Insert texture definitions
-		for (auto vit = textureVars.begin(); vit != textureVars.end(); ++vit)
-		{
-			auto const& vi = *vit;
-
-			string markedUpTexture = MPP_PROGRAM_MARKUP_TEXTURE(vi.name);
-			parsedLines.insert(it, utils::StringUtils::format("uniform {} {};\n", vi.type, markedUpTexture));
-
-			TextureInfo ti;
-			ti.samplerName = vi.name;
-			ti.markedUpName = markedUpTexture;
-			ti.uniformId = -1;
-
-			mTextures.push_back(ti);
-		}
-
-		parsedLines.insert(it, "\n");
-		
-		// Insert in-var definitions
-		int layoutLocation = 0;
-		for (auto vit = inVars.begin(); vit != inVars.end(); ++vit)
-		{
-			auto const& vi = *vit;
-
-			parsedLines.insert(it, utils::StringUtils::format("layout(location={}) {} {} {}{}_;\n", layoutLocation, inDecl, vi.type, inPrefix, vi.name));
-			layoutLocation++;
-		}
-
-		parsedLines.insert(it, "\n");
-
-		// Insert out-var definitions
-		layoutLocation = 0;
-		for (auto vit = outVars.begin(); vit != outVars.end(); ++vit)
-		{
-			auto const& vi = *vit;
-
-			parsedLines.insert(it, utils::StringUtils::format("layout(location={}) {} {} {}{}_;\n", layoutLocation, outDecl, vi.type, outPrefix, vi.name));
-			layoutLocation++;
-		}
-
-		parsedLines.insert(it, "\n");
-
-		// Token replace @() instances in code.
-		string parsedSource = accumulate(parsedLines.begin(), parsedLines.end(), string(""));
-
-		utils::StringUtils::replaceAll(parsedSource, MPP_PROGRAM_MCPMATRIX_TOKEN, MPP_PROGRAM_MCPMATRIX_NAME);
-		utils::StringUtils::replaceAll(parsedSource, MPP_PROGRAM_NORMALMATRIX_TOKEN, MPP_PROGRAM_NORMALMATRIX_NAME);
-		utils::StringUtils::replaceAll(parsedSource, MPP_PROGRAM_HALFWINDOWSIZE_TOKEN, MPP_PROGRAM_HALFWINDOWSIZE_NAME);
-
-		// Add version
-		string versionString = utils::StringUtils::toString(caps.glslVersionMajor) + utils::StringUtils::toString(caps.glslVersionMinor);
-		utils::StringUtils::replaceAll(parsedSource, "@@Version", "#version " + versionString + "\n\n");
-		utils::StringUtils::replaceAll(parsedSource, "@Version", versionString);
-
-		vector<string> tokenList;
-		tokenList.push_back("@In(");
-		tokenList.push_back("@Out(");
-		tokenList.push_back("@Uniform(");
-		tokenList.push_back("@Texture(");
-		
-		for (auto const& token: tokenList)
-		{
-			int templateStart = parsedSource.find(token);
-			while (templateStart != string::npos)
-			{
-				// Find closing bracket
-				int templateEnd = parsedSource.find(")", templateStart + token.length());
-
-				if (templateEnd == string::npos)
-				{
-					THROW_MPP("Could not find closing template bracket in program source.", __LINE__, __FILE__, __func__);
-				}
-
-				string tokenName = parsedSource.substr(templateStart + token.length(), templateEnd - templateStart - token.length());
-				utils::StringUtils::trim(tokenName);
-
-				string markedUpTokenName;
-
-				// Mark up token
-				if (token == "@In(")
-				{
-					markedUpTokenName = inPrefix + tokenName + "_";
-
-					// Check that it has been declared
-					if (find_if(inVars.begin(), inVars.end(), [tokenName](VariableInfo const& vi)
-					{
-						return vi.name == tokenName;
-					}) == inVars.end())
-					{
-						string errMsg = "In-variable '" + tokenName + "' used but not declared.";
-						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-					}
-				}
-				if (token == "@Out(")
-				{
-					markedUpTokenName = outPrefix + tokenName + "_";
-
-					// Check that it has been declared
-					if (find_if(outVars.begin(), outVars.end(), [tokenName](VariableInfo const& vi)
-					{
-						return vi.name == tokenName;
-					}) == outVars.end())
-					{
-						string errMsg = "Out-variable '" + tokenName + "' used but not declared.";
-						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-					}
-				}
-				if (token == "@Uniform(")
-				{
-					markedUpTokenName = MPP_PROGRAM_MARKUP_UNIFORM(tokenName);
-
-					// Check that it has been declared
-					if (find_if(uniformVars.begin(), uniformVars.end(), [tokenName](VariableInfo const& vi)
-					{
-						return vi.name == tokenName;
-					}) == uniformVars.end())
-					{
-						string errMsg = "Uniform '" + tokenName + "' used but not declared.";
-						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-					}
-				}
-				if (token == "@Texture(")
-				{
-					markedUpTokenName = MPP_PROGRAM_MARKUP_TEXTURE(tokenName);
-
-					// Check that it has been declared
-					if (find_if(textureVars.begin(), textureVars.end(), [tokenName](VariableInfo const& vi)
-					{
-						return vi.name == tokenName;
-					}) == textureVars.end())
-					{
-						string errMsg = "Uniform (texture) '" + tokenName + "' used but not declared.";
-						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-					}
-				}
-
-				string tokenText = parsedSource.substr(templateStart, templateEnd - templateStart + 1);
-				utils::StringUtils::replaceAll(parsedSource, tokenText, markedUpTokenName);
-				templateStart = parsedSource.find(token);
-			}
-		}
-
-		// Insert in/out code: find final } in main()
-		// Go through each line after main (including after main text in the main line)
-		// and and find first {.  Then find matching }, and put this on a new line.  Then
-		// insert inout code before it.
-		if (shaderType != ShaderType::Fragment)
-		{
-			int cursorPos = parsedSource.find("void main(");
-			cursorPos = parsedSource.find("{", cursorPos) + 1;
-			int bracketStack = 1;
-
-			while (cursorPos < (int)parsedSource.length())
-			{
-				if (parsedSource[cursorPos] == '{')
-				{
-					bracketStack++;
-				}
-				else if (parsedSource[cursorPos] == '}')
-				{
-					bracketStack--;
-				}
-
-				if (bracketStack == 0)
-				{
-					// Found the end of main.
-					string passthroughs = "\n\n";
-					for (auto const& inout : inVars)
-					{
-						if (inout.def == "passthrough")
-						{
-							passthroughs += utils::StringUtils::format("\t{}{}_ = {}{}_;\n", outPrefix, inout.name, inPrefix, inout.name);
-						}
-					}
-
-					parsedSource.insert(cursorPos - 1, passthroughs);
-					break;
-				}
-
-				cursorPos++;
-			}
-		}
-
-		return parsedSource;
-	}
-
-	/*
 	 * Create OpenGL program.
 	 *
 	 */
@@ -676,22 +280,15 @@ namespace mpp
 		auto rs = getRenderSystem();
 		try
 		{
-			// Set up uniforms and textures
+			// Set up textures
 			ProgramStream* pStr = dynamic_cast<ProgramStream*>(getResourceStream().get());
-				
-			auto uniforms = pStr->getUniforms();
-			for (auto const& uniform : uniforms)
-			{
-				auto markedUpUniform = MPP_PROGRAM_UNIFORM_PREFIX + uniform;
-				mUniformIds[markedUpUniform] = -1;
-			}
 
 			auto textures = pStr->getTextures();
 			for (auto const& texture: textures)
 			{
 				TextureInfo ti;
 				ti.samplerName = texture;
-				ti.markedUpName = MPP_PROGRAM_TEXTURE_PREFIX + texture;
+				ti.markedUpName = MPP_PROGRAM_MARKUP_TEXTURE(texture);
 				ti.uniformId = -1;
 
 				mTextures.push_back(ti);
@@ -856,7 +453,17 @@ namespace mpp
 
 				string uniformName = uniformNameBuffer;
 
-				// Is this MCPMatrix, NormalMatrix, standard uniform or a texture?
+				// Is this ViewPos, MMatrix, MCPMatrix, NormalMatrix, standard uniform or a texture?
+				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
+				{
+					mViewPosId = glGetUniformLocation(programId, uniformNameBuffer);
+					rs->logMessage("- Uniform: ViewPosition id: " + utils::StringUtils::toString(mViewPosId));
+				}
+				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
+				{
+					mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
+					rs->logMessage("- Uniform: Model matrix id: " + utils::StringUtils::toString(mMMatrixId));
+				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
 					mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
@@ -872,11 +479,6 @@ namespace mpp
 					mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
 					rs->logMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
 				}
-				else if (mUniformIds.find(uniformName) != mUniformIds.end())
-				{
-					mUniformIds[uniformName] = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(mUniformIds[uniformName]));
-				}
 				else
 				{
 					auto it = find_if(mTextures.begin(), mTextures.end(), [uniformName](TextureInfo const& ti) -> bool
@@ -887,13 +489,13 @@ namespace mpp
 					if (it != mTextures.end())
 					{
 						it->uniformId = glGetUniformLocation(programId, uniformNameBuffer);
-						rs->logMessage("- Uniform (texture): '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
+						rs->logMessage("- Texture: '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
 					}
 					else
 					{
-						// Uniform used but not declared in metadata
-						string errMsg = "Uniform '" + uniformName + "' was used in program '" + getName() + "' but not declared in metadata.";
-						THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+						auto uniformId = glGetUniformLocation(programId, uniformNameBuffer);
+						mUniformIds[uniformName] = uniformId;
+						rs->logMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(uniformId));
 					}
 				}
 			}
@@ -952,6 +554,20 @@ namespace mpp
 	}
 
 	//	string markedUpTexture = MPP_PROGRAM_MARKUP_TEXTURE(texture);
+
+	int Program::getViewPosId() const
+	{
+		return mViewPosId;
+	}
+
+	/*
+	 * Get index for model matrix, if using one, or -1.
+	 *
+	 */
+	int Program::getModelMatrixId() const
+	{
+		return mMMatrixId;
+	}
 
 	/*
 	 * Get index for model-camera-projection matrix, if using one, or -1.

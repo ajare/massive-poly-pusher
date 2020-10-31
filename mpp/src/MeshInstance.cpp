@@ -14,7 +14,7 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize)
+	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize)
 		: mwMesh(mesh)
 		, mRender(true)
 		, mWireframe(false)
@@ -27,6 +27,8 @@ namespace mpp
 		Material& m = (Material&)(*mesh->getMaterial());
 		mwProgram = (Program*)m.getProgram().get();
 
+		mViewPos = viewPos;
+		mModelMatrix = modelMatrix;
 		mModelCameraProjectionMatrix = modelCameraProjMatrix;
 		mLocalTransform = glm::mat4();
 		mNormalMatrix = normalMatrix;
@@ -37,13 +39,15 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix)
+	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix)
 		: mwMesh(mesh)
 	{
 		// Get mcp uniform name
 		Material& m = (Material&)(*mesh->getMaterial());
 		mwProgram = (Program*)m.getProgram().get();
 
+		mViewPos = viewPos;
+		mModelMatrix = modelMatrix;
 		mModelCameraProjectionMatrix = modelCameraProjMatrix;
 		mLocalTransform = glm::mat4();
 		mNormalMatrix = normalMatrix;
@@ -53,13 +57,15 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize)
+	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize)
 		: mwMesh(mesh)
 	{
 		// Get mcp uniform name
 		Material& m = (Material&)(*mesh->getMaterial());
 		mwProgram = (Program*)m.getProgram().get();
 
+		mViewPos = viewPos;
+		mModelMatrix = modelMatrix;
 		mModelCameraProjectionMatrix = modelCameraProjMatrix;
 		mLocalTransform = glm::mat4();
 		mHalfWindowSize = halfWindowSize;
@@ -218,7 +224,20 @@ namespace mpp
 	{
 		mUniforms.bindUniforms(mwProgram);
 
-		// Set special uniforms: ModelCameraProjection & normal matrices, half screen size.
+		// Set special uniforms: Model, ModelCameraProjection & Normal matrices, half screen size.
+		int vpId = mwProgram->getModelMatrixId();
+		if (vpId >= 0)
+		{
+			GL_CHECK(glUniform3fv(vpId, 1, glm::value_ptr(mViewPos)));
+		}
+
+		int mId = mwProgram->getModelMatrixId();
+		if (mId >= 0)
+		{
+			auto mMatrix = mModelMatrix * mLocalTransform;
+			GL_CHECK(glUniformMatrix4fv(mId, 1, GL_FALSE, glm::value_ptr(mMatrix)));
+		}
+
 		int mcpId = mwProgram->getModelCameraProjectionMatrixId();
 		if (mcpId >= 0)
 		{

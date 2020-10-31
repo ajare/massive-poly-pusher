@@ -14,6 +14,7 @@ void main()
 
     vec4 vertPos = @MCPMatrix * @Vec4(@In(POSITION));
 
+    @Out(vec3 FRAGPOSITION) = @Vec3(@MMatrix * @Vec4(@In(POSITION)));
     @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
     @Out(vec4 COLOUR) = @In(COLOUR);
 
@@ -26,19 +27,58 @@ R"(
 @@Version
 
 ## Texture
-@@Texture(sampler2D TEX1)
+@@Texture(sampler2D TEX1);
 ##
 
-layout (std140) uniform Lights
+struct Light
 {
-    vec3 position[2];
-    vec4 colour[2];
-    int count;	
+    vec3 position;
+    vec3 colour;
 };
+
+layout(std140, binding = 0) uniform Block
+{
+	@@Uniform(vec3 AMBIENT);
+	@@Uniform(Light LIGHTS[2]);
+	@@Uniform(int NUM_LIGHTS);
+};
+
+float lambert(vec3 n, vec3 l)
+{
+    float result = dot(n, l);
+    return max(result, 0.0);
+}
+
+float phong(vec3 v, vec3 n, vec3 l)
+{
+    float strength = 0.5;
+    float exponent = 32;
+
+    vec3 r = reflect(-l, n);
+    float spec = pow(max(dot(v, r), 0.0), exponent);
+    return strength * spec;
+}
 
 void main()
 {
-    vec4 shadedColour = vec4(@In(COLOUR).xyz, 1.0);
+    vec3 normalDir = @In(NORMAL);
+    vec3 viewDir = normalize(@ViewPos - @In(FRAGPOSITION));
+
+    vec3 colourContrib = @Uniform(AMBIENT);
+
+	for (int i = 0; i < @Uniform(NUM_LIGHTS); i++)
+	{
+        vec3 lightDir = normalize(@Uniform(LIGHTS[i]).position - @In(FRAGPOSITION));
+
+        // Lighting model
+        float diffuse = lambert(normalDir, lightDir);
+        float specular = phong(viewDir, normalDir, lightDir);
+        
+        colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular);
+	}
+
+    vec4 shadedColour = vec4(colourContrib, 1.0) * @In(COLOUR);
+
 ## Texture
     @Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS).xy) * shadedColour;
 ## Else
@@ -69,12 +109,11 @@ const std::string FragmentShaderFullscreenTemplate =
 R"(
 @@Version
 
-@@Uniform(vec4 DIFFUSE)
-@@Texture(sampler2D TEX1)
+@@Texture(sampler2D TEX1);
 
 void main()
 {
-	@Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS)) * @Uniform(DIFFUSE);
+	@Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS));
 }
 )";
 
@@ -111,7 +150,7 @@ R"(
 @@Version
 
 @@Uniform(vec4 COLOUR);
-@@Texture(sampler2D TEX1)
+@@Texture(sampler2D TEX1);
 
 void main()
 {
@@ -180,7 +219,7 @@ R"(
 ## Diffuse
 @@Uniform(vec4 DIFFUSE);
 ## Texture
-@@Texture(sampler2D TEX1)
+@@Texture(sampler2D TEX1);
 ##
 
 void main()

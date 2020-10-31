@@ -1,8 +1,8 @@
 @@Version
 
 ## Texture
-@@Texture(sampler2D TEX1)
-@@Texture(sampler2D TEX2)
+@@Texture(sampler2D TEX1);
+@@Texture(sampler2D TEX2);
 ##
 
 void main()

@@ -31,5 +31,5 @@ public:
 
 	virtual void update(float frameTime) {}
 
-	virtual void render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options) {}
+	virtual void render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPos, glm::vec3 const& viewDir, World const& world, RenderOptions const& options) {}
 };

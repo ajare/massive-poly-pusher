@@ -461,7 +461,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				if (scene->getRender())
 				{
-					scene->render(gRenderSystem, gWorld, gRenderOptions);
+					scene->render(gRenderSystem, cameraPos, cameraDir, gWorld, gRenderOptions);
 				}
 			}
 

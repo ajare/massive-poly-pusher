@@ -386,7 +386,11 @@ namespace mpp
 		//
 		// 3d rendering
 		//
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+
 		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+
+		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
 
 		void renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
 
