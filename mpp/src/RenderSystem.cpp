@@ -72,45 +72,6 @@ namespace mpp
 		}
 
 		initialise();
-
-		// Set up test uniform buffer
-		const size_t uniformSize{ 96 };
-		shared_ptr<const int8> uniformData(new int8[uniformSize], [](int8 *p) { delete[] p; });
-
-		auto fp = (float*)uniformData.get();
-		// Ambient
-		*fp++ = 0.3f;
-		*fp++ = 0.3f;
-		*fp++ = 0.3f;
-		*fp++;
-
-		// Light1 position
-		*fp++ = 256.0f;
-		*fp++ = 256.0f;
-		*fp++ = 256.0f;
-		*fp++;
-
-		// Light1 colour
-		*fp++ = 0.5f;
-		*fp++ = 0.0f;
-		*fp++ = 0.0f;
-		*fp++;
-
-		// Light2 position
-		*fp++ = -256.0f;
-		*fp++ = 256.0f;
-		*fp++ = -256.0f;
-		*fp++;
-
-		// Light2 colour
-		*fp++ = 0.0f;
-		*fp++ = 0.0f;
-		*fp++ = 0.5f;
-		*fp++;
-
-		*(int32*)(fp) = 1;
-		mUniformBuffer = new UniformBuffer(this, uniformData, uniformSize, 0);
-		mUniformBuffer->load();
 	}
 
 	/*
@@ -119,7 +80,7 @@ namespace mpp
 	 */
 	RenderSystem::~RenderSystem()
 	{
-		delete mUniformBuffer;
+		destroyLightsData();
 
 #ifdef MPP_PROFILE_BUILD
 		delete mProfiler;
@@ -335,6 +296,7 @@ namespace mpp
 
 		setDefaultState();
 		setDisplay(mWindowWidth, mWindowHeight);
+		createLightsData();
 	}
 
 	/*
@@ -1289,6 +1251,89 @@ namespace mpp
 		scaleTransform3d(glm::vec3(vec.x, vec.y, 1.0f));
 	}
 
+	void RenderSystem::setAmbientColour(Colour const& colour)
+	{
+		const uint32 offset{ 0 };
+		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
+		fp += offset;
+
+		// Ambient
+		*fp++ = colour.red;
+		*fp++ = colour.green;
+		*fp++ = colour.blue;
+
+		mLightsBuffer->updateData(offset * sizeof(float), 12);
+	}
+
+	void RenderSystem::setLight1Position(glm::vec3 const& pos)
+	{
+		const uint32 offset{ 4 };
+		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
+		fp += offset;
+
+		// Light1 position
+		*fp++ = pos.x;
+		*fp++ = pos.y;
+		*fp++ = pos.z;
+
+		mLightsBuffer->updateData(offset * sizeof(float), 12);
+	}
+
+	void RenderSystem::setLight1Colour(Colour const& colour)
+	{
+		const uint32 offset{ 8 };
+		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
+		fp += offset;
+
+		// Light1 position
+		*fp++ = colour.red;
+		*fp++ = colour.green;
+		*fp++ = colour.blue;
+
+		mLightsBuffer->updateData(offset * sizeof(float), 12);
+	}
+
+	void RenderSystem::setLight2Position(glm::vec3 const& pos)
+	{
+		const uint32 offset{ 12 };
+		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
+		fp += offset;
+
+		// Light1 position
+		*fp++ = pos.x;
+		*fp++ = pos.y;
+		*fp++ = pos.z;
+
+		mLightsBuffer->updateData(offset * sizeof(float), 12);
+	}
+
+	void RenderSystem::setLight2Colour(Colour const& colour)
+	{
+		const uint32 offset{ 16 };
+		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
+		fp += offset;
+
+		// Light2 position
+		*fp++ = colour.red;
+		*fp++ = colour.green;
+		*fp++ = colour.blue;
+
+		mLightsBuffer->updateData(offset * sizeof(float), 12);
+	}
+
+	void RenderSystem::setLightCount(size_t count)
+	{
+		const uint32 offset{ 20 };
+
+		auto fp = (int*)(&mLightsBuffer->getBufferData()[0]);
+		fp += offset;
+
+		// Count
+		*fp = count;
+
+		mLightsBuffer->updateData(offset * sizeof(float), 4);
+	}
+
 	/*
 	 * Clear the screen to the specified colour.
 	 *
@@ -1613,6 +1658,66 @@ namespace mpp
 
 			offset += numChars * 6;
 			return numChars * 2;
+		}
+	}
+
+	void RenderSystem::createLightsData()
+	{
+		if (mLightsBuffer)
+		{
+			delete mLightsBuffer;
+		}
+
+		// Set up lights uniform buffer
+		const size_t uniformSize{ 96 };
+		shared_ptr<const int8> uniformData(new int8[uniformSize], [](int8 *p) { delete[] p; });
+
+		auto fp = (float*)uniformData.get();
+
+		// Ambient
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++;
+
+		// Light1 position
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++;
+
+		// Light1 colour
+		*fp++ = 1.0f;
+		*fp++ = 1.0f;
+		*fp++ = 1.0f;
+		*fp++;
+
+		// Light2 position
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++ = 0.0f;
+		*fp++;
+
+		// Light2 colour
+		*fp++ = 1.0f;
+		*fp++ = 1.0f;
+		*fp++ = 1.0f;
+		*fp++;
+
+		// Count
+		*(int32*)(fp) = 0;
+
+		mLightsBuffer = new UniformBuffer(this, uniformData, uniformSize, 0);
+		mLightsBuffer->load();
+	}
+
+	void RenderSystem::destroyLightsData()
+	{
+		if (mLightsBuffer)
+		{
+			mLightsBuffer->unload();
+			delete mLightsBuffer;
+			mLightsBuffer = nullptr;
 		}
 	}
 

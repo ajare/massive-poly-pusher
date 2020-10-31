@@ -309,7 +309,7 @@ ResourcePtr ModelScene::createTorusModel()
 	return torus;
 }
 
-void ModelScene::setup(ProgramOptions const& options)
+void ModelScene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -416,6 +416,12 @@ void ModelScene::setup(ProgramOptions const& options)
 		glm::vec3(1.0f, 1.0f, 1.0f),
 		0.0f
 		});
+
+	// Lighting
+	renderSystem->setAmbientColour(Colour::Red);
+	renderSystem->setLightCount(1);
+	renderSystem->setLight1Position(glm::vec3(256, 0, 256));
+	renderSystem->setLight1Colour(Colour::White);
 }
 
 void ModelScene::update(float frameTime)

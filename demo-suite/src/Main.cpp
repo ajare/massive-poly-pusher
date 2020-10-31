@@ -161,7 +161,7 @@ void startup()
 
 	for (auto scene: gScenes)
 	{
-		scene->setup(gOptions);
+		scene->setup(gRenderSystem, gOptions);
 	}
 
 	// Set up world

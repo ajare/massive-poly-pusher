@@ -59,6 +59,12 @@ namespace mpp
 		GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, mDataSize, &(mData[0]), glStorageType));
 	}
 
+	void UniformBuffer::updateData(uint32 offset, size_t size)
+	{
+		bind();
+		glBufferSubData(GL_UNIFORM_BUFFER, offset, size, &mData[offset]);
+	}
+
 	/*
 	 * Reupload the buffer data.  This method pulls the whole buffer memory down, and back up, even
 	 * if only a part of it has been updated.  Thus it may be inefficient if only a small part of the
@@ -70,10 +76,10 @@ namespace mpp
 		bind();
 
 		int8* bufferPtr{ nullptr };
-		GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
+		GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY));
 
 		memcpy(bufferPtr, &(mData[0]), mDataSize);
-		GL_CHECK(glUnmapBuffer(GL_ARRAY_BUFFER));
+		GL_CHECK(glUnmapBuffer(GL_UNIFORM_BUFFER));
 	}
 
 	/*
