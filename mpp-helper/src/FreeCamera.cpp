@@ -6,38 +6,38 @@ namespace mpp
 	{
 		using namespace glm;
 
-		FreeCamera::FreeCamera() :
-			Camera()
+		FreeCamera::FreeCamera(float aspectRatio) :
+			Camera(aspectRatio)
 		{
 		}
 
-		FreeCamera::FreeCamera(vec3 const& position) 
-			: Camera(position)
+		FreeCamera::FreeCamera(vec3 const& position, float aspectRatio)
+			: Camera(position, aspectRatio)
 		{
 		}
 
-		FreeCamera::FreeCamera(vec3 const& position, float fov) 
-			: Camera(position, fov)
+		FreeCamera::FreeCamera(vec3 const& position, float fov, float aspectRatio)
+			: Camera(position, fov, aspectRatio)
 		{
 		}
 
-		FreeCamera::FreeCamera(vec3 const& position, vec3 const& direction, vec3 const& up) :
-			Camera(position, direction, up)
+		FreeCamera::FreeCamera(vec3 const& position, vec3 const& direction, vec3 const& up, float aspectRatio) :
+			Camera(position, direction, up, aspectRatio)
 		{
 		}
 
-		FreeCamera::FreeCamera(vec3 const& position, vec3 const& direction, vec3 const& up, float fov)
-			: Camera(position, direction, up, fov)
+		FreeCamera::FreeCamera(vec3 const& position, vec3 const& direction, vec3 const& up, float fov, float aspectRatio)
+			: Camera(position, direction, up, fov, aspectRatio)
 		{
 		}
 
-		FreeCamera::FreeCamera(vec3 const& position, float yaw, float pitch, float roll)
-			: Camera(position, yaw, pitch, roll)
+		FreeCamera::FreeCamera(vec3 const& position, float yaw, float pitch, float roll, float aspectRatio)
+			: Camera(position, yaw, pitch, roll, aspectRatio)
 		{
 		}
 		
-		FreeCamera::FreeCamera(vec3 const& position, float yaw, float pitch, float roll, float fov)
-			: Camera(position, yaw, pitch, roll, fov)
+		FreeCamera::FreeCamera(vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio)
+			: Camera(position, yaw, pitch, roll, fov, aspectRatio)
 		{
 		}
 

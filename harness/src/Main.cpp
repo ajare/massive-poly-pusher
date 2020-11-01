@@ -460,7 +460,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//
 		// Camera setup
 		//
-		helper::FreeCamera camera(glm::vec3(0, 0, 400), 0.0f, 0.0f, 0.0f);
+		float aspectRatio = gOptions.screenWidth / (float)gOptions.screenHeight;
+		helper::FreeCamera camera(glm::vec3(0, 0, 400), 0.0f, 0.0f, 0.0f, aspectRatio);
 		camera.setClipDistances(0.1f, 2000.0f);
 		camera.setFov(45.0f);
 

@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <map>
 #include <deque>
+#include <stack>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -29,8 +30,7 @@
 #include "mpp/Vertex2d.h"
 #include "mpp/Logger.h"
 #include "mpp/DebugStackWalker.h"
-
-#include <stack>
+#include "mpp/SceneFactory.h"
 
 namespace mpp
 {
@@ -161,13 +161,12 @@ namespace mpp
 #pragma warning(disable: 4324)
 		alignas(16) glm::mat4 m3dModelCameraProjectionMatrix;
 		alignas(16) glm::mat4 m3dCameraMatrix;
-		alignas(16) glm::mat4 m3dCameraInverseMatrix;
 		alignas(16) glm::mat4 m3dProjectionMatrix;
 		alignas(16) glm::mat4 m3dModelMatrix;
 
 		alignas(16) std::stack<glm::mat4> m3dCameraMatrixStack;
 		alignas(16) std::stack<glm::mat4> m3dProjectionMatrixStack;
-		alignas(16) std::stack<glm::mat4> m3dModelMatrixStack;;
+		alignas(16) std::stack<glm::mat4> m3dModelMatrixStack;
 #pragma warning(pop)
 
 		float mFarPlaneDistance;
@@ -229,6 +228,9 @@ namespace mpp
 
 		// Built-in lights
 		UniformBuffer* mLightsBuffer{ nullptr };
+
+		// Scene
+		std::map<std::string, SceneFactory> mSceneFactories;
 
 	private:
 
@@ -392,6 +394,8 @@ namespace mpp
 		void scaleTransform2d(glm::vec2 const& vec);
 
 		// Rendering
+		ScenePtr createScene(std::string const& type);
+
 		RenderInfo const& getRenderInfo() const;
 
 		void startScene();
@@ -399,13 +403,15 @@ namespace mpp
 		RenderInfo const& finishScene();
 
 		void clearScreen(Colour const& colour);
-
+		 
 		//
 		// 3d rendering
 		//
 		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
 
 		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+
+		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32 primitiveCount = -1);
 
 		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
 

@@ -9,15 +9,15 @@ namespace mpp
 	{
 		using namespace glm;
 
-		OrbitCamera::OrbitCamera(vec3 const& position, vec3 const& targetPos, vec3 const& targetUp)
-			: Camera(position, fromLookAt(position, targetPos, targetUp))
+		OrbitCamera::OrbitCamera(vec3 const& position, vec3 const& targetPos, vec3 const& targetUp, float aspectRatio)
+			: Camera(position, fromLookAt(position, targetPos, targetUp), aspectRatio)
 		{
 			mTargetPos = targetPos;
 			mTargetUp = targetUp;
 		}
 
-		OrbitCamera::OrbitCamera(vec3 const& position, vec3 const& targetPos, vec3 const& targetUp, float fov)
-			: Camera(position, fromLookAt(position, targetPos, targetUp), fov)
+		OrbitCamera::OrbitCamera(vec3 const& position, vec3 const& targetPos, vec3 const& targetUp, float fov, float aspectRatio)
+			: Camera(position, fromLookAt(position, targetPos, targetUp), fov, aspectRatio)
 		{
 			mTargetPos = targetPos;
 			mTargetUp = targetUp;

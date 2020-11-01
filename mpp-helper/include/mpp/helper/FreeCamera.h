@@ -7,30 +7,31 @@
 #pragma warning(pop)
 
 #include "Config.h"
-#include "Camera.h"
+
+#include "mpp/Camera.h"
 
 namespace mpp
 {
 	namespace helper
 	{
 
-		class FreeCamera : public Camera
+		class FreeCamera : public mpp::Camera
 		{
 		public:
 
-			FreeCamera();
+			FreeCamera(float aspectRatio);
 
-			explicit FreeCamera(glm::vec3 const& position);
+			FreeCamera(glm::vec3 const& position, float aspectRatio);
 
-			FreeCamera(glm::vec3 const& position, float fov);
+			FreeCamera(glm::vec3 const& position, float fov, float aspectRatio);
 
-			FreeCamera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up);
+			FreeCamera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float aspectRatio);
 
-			FreeCamera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float fov);
+			FreeCamera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float fov, float aspectRatio);
 
-			FreeCamera(glm::vec3 const& position, float yaw, float pitch, float roll);
+			FreeCamera(glm::vec3 const& position, float yaw, float pitch, float roll, float aspectRatio);
 
-			FreeCamera(glm::vec3 const& position, float yaw, float pitch, float roll, float fov);
+			FreeCamera(glm::vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio);
 
 			void yaw(float yaw);
 

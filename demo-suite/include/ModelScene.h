@@ -6,21 +6,17 @@
 
 class ModelScene : public Scene
 {
-	struct ModelData
-	{
-		mpp::ResourcePtr model;
-		glm::vec3 position;
-		glm::vec3 scale;
-		float angle;
-	};
-	
-private:
-
-	std::vector<ModelData> mModels;
-
 	float mTotalTime{ 0 };
 
+	glm::vec3 mLightPosition;
+
+	std::vector<mpp::SceneModelPtr> mModels;
+
 private:
+
+	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
+
+	mpp::CameraPtr createCamera(ProgramOptions const& options);
 
 	void createSharedTextures(ProgramOptions const& options);
 	
@@ -50,9 +46,7 @@ public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
 
-	void setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
+	void update(mpp::RenderSystem* renderSystem, float frameTime);
 
-	void update(float frameTime);
-
-	void render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPos, glm::vec3 const& viewDir, World const& world, RenderOptions const& options);
+	void render(mpp::RenderSystem* renderSystemr, World const& world, RenderOptions const& options);
 };

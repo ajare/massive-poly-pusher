@@ -23,6 +23,8 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 
 */
 
+#include <glm/gtx/rotate_vector.hpp>
+
 #include <mpp/MppModelStream.h>
 #include <mpp/SphereModelStream.h>
 #include <mpp/GridModelStream.h>
@@ -32,13 +34,18 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/TextureStream.h>
 
+#include <mpp/helper/FreeCamera.h>
+#include <mpp/helper/OrbitCamera.h>
+
 #include "ModelScene.h"
 #include "Helper.h"
 
+using namespace std;
 using namespace mpp;
 
 ModelScene::ModelScene(mpp::ResourceManager* resourceMgr)
-	: Scene(resourceMgr)
+	: Scene("Default", resourceMgr)
+	, mLightPosition(0, 256, 256)
 {
 }
 
@@ -87,7 +94,7 @@ mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification con
 		"",
 		false);
 
-	//materialStream->setTexture("TEX1", "Marble.Texture");
+	materialStream->setTexture("TEX1", "Marble.Texture");
 
 	auto res = resourceMgr->createResource("Grid.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -123,7 +130,7 @@ mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification c
 		"",
 		false); 
 	
-	//materialStream->setTexture("TEX1", "Electro.Texture");
+	materialStream->setTexture("TEX1", "Electro.Texture");
 
 	auto res = resourceMgr->createResource("Sphere.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -159,7 +166,7 @@ mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification
 		"",
 		false);
 
-	//materialStream->setTexture("TEX1", "Marble.Texture");
+	materialStream->setTexture("TEX1", "Marble.Texture");
 
 	auto res = resourceMgr->createResource("Cylinder.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -195,7 +202,7 @@ mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification cons
 		"",
 		false);
 
-	//materialStream->setTexture("TEX1", "Test.Texture");
+	materialStream->setTexture("TEX1", "Test.Texture");
 
 	auto res = resourceMgr->createResource("Box.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -231,7 +238,7 @@ mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification co
 		"",
 		false);
 
-	//materialStream->setTexture("TEX1", "Doughnut.Texture");
+	materialStream->setTexture("TEX1", "Doughnut.Texture");
 
 	auto res = resourceMgr->createResource("Torus.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -309,9 +316,10 @@ ResourcePtr ModelScene::createTorusModel()
 	return torus;
 }
 
-void ModelScene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
+void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
+	auto mppScene = getScene();
 
 	createSharedTextures(options);
 
@@ -326,42 +334,28 @@ void ModelScene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& op
 	auto statue = resourceMgr->createResource("Model.Statue", ResourceStreamPtr(statueStream));
 	statue->load();
 	
-	mModels.push_back({
-		statue,
-		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
+	mModels.push_back(mppScene->addModel(statue));
 
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
 	createGridMaterial(gridMeshSpec);
 
-	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 256, 256, 8, 8);
+	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 8, 8);
 	auto grid = resourceMgr->createResource("Model.Grid", ResourceStreamPtr(gridStream));
 	grid->load();
 
-	mModels.push_back({
-		grid,
-		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
+	mModels.push_back(mppScene->addModel(grid));
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
 	createSphereMaterial(sphereMeshSpec);
 	
-	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 3);
+	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
 	auto sphere = resourceMgr->createResource("Model.Sphere", ResourceStreamPtr(sphereStream));
 	sphere->load();
 	
-	mModels.push_back({
-		sphere,
-		glm::vec3(-80.0f, 130.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-	});
+	mModels.push_back(mppScene->addModel(sphere));
+	mModels.back()->translate(glm::vec3(-80, 130, 0));
 
 	// Load Cylinder
 	auto cylinderMeshSpec = createCylinderMeshSpecification();
@@ -371,19 +365,11 @@ void ModelScene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& op
 	auto cylinder = resourceMgr->createResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
 	cylinder->load();
 
-	mModels.push_back({
-		cylinder,
-		glm::vec3(96.0f, 40.0f, 96.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
-
-	mModels.push_back({
-		cylinder,
-		glm::vec3(-96.0f, 40.0f, 96.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
+	mModels.push_back(mppScene->addModel(cylinder));
+	mModels.back()->translate(glm::vec3(96, 40, 96));
+	
+	mModels.push_back(mppScene->addModel(cylinder));
+	mModels.back()->translate(glm::vec3(-96, 40, 96));
 
 	// Load Box
 	auto boxMeshSpec = createBoxMeshSpecification();
@@ -393,38 +379,37 @@ void ModelScene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& op
 	auto box = resourceMgr->createResource("Model.Box", ResourceStreamPtr(boxStream));
 	box->load();
 
-	mModels.push_back({
-		box,
-		glm::vec3(96.0f, 108.0f, 96.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
+	mModels.push_back(mppScene->addModel(box));
+	mModels.back()->translate(glm::vec3(96, 108, 96));
 
-	mModels.push_back({
-		box,
-		glm::vec3(-96.0f, 108, 96.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
+	mModels.push_back(mppScene->addModel(box));
+	mModels.back()->translate(glm::vec3(-96, 108, 96));
 
 	// Load torus
 	auto torus = createTorusModel();
 
-	mModels.push_back({
-		torus,
-		glm::vec3(0.0f, 280.0f, 0.0f),
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		0.0f
-		});
+	mModels.push_back(mppScene->addModel(torus));
+	mModels.back()->translate(glm::vec3(0, 280, 0));
 
 	// Lighting
-	renderSystem->setAmbientColour(Colour::Red);
+	renderSystem->setAmbientColour(Colour::Grey25);
 	renderSystem->setLightCount(1);
-	renderSystem->setLight1Position(glm::vec3(256, 0, 256));
 	renderSystem->setLight1Colour(Colour::White);
 }
 
-void ModelScene::update(float frameTime)
+mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options)
+{
+	float aspectRatio = options.screenWidth / (float)options.screenHeight;
+
+	auto camera = new helper::FreeCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f, aspectRatio);
+
+	camera->setClipDistances(0.1f, 1000.0f);
+	camera->setFov(45.0f);
+
+	return shared_ptr<mpp::Camera>(camera);
+}
+
+void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 {
 	mTotalTime += frameTime;
 
@@ -432,63 +417,27 @@ void ModelScene::update(float frameTime)
 	auto& sphereModel = mModels[2];
 
 	float speed = 1.5f;
-	float amt = speed * frameTime;
-
-	float x = sphereModel.position.x;
-	float z = sphereModel.position.z;
-	
-	sphereModel.position.x = x * cosf(amt) - z * sinf(amt);
-	sphereModel.position.y = 130.0f + sinf(mTotalTime * 2.0f) * 25.0f;
-	sphereModel.position.z = x * sinf(amt) + z * cosf(amt);
-
-	sphereModel.angle += frameTime * 50;
+	sphereModel->rotateOrigin(-speed * frameTime, glm::vec3(0, 1, 0));
 
 	// Rotate boxes
-	mModels[5].angle += frameTime * 50;
-	mModels[6].angle += frameTime * 50;
+	auto a1 = glm::rotateX(glm::vec3(0, 1, 0), mTotalTime);
+	auto a2 = glm::rotateZ(glm::vec3(0, 1, 0), mTotalTime);
+	mModels[5]->rotateSelf(2 * frameTime, a1);
+	mModels[6]->rotateSelf(-2 * frameTime, a2);
 
 	// Rotate torus
-	mModels[7].angle = sin(mTotalTime) * 25.0f;
+	auto& torusModel = mModels[7];
+	torusModel->rotateOrigin(speed * frameTime, glm::vec3(0, 1, 0));
+
+	// Lighting
+	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
+	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
+	renderSystem->setLight1Position(mLightPosition);
 }
 
-void ModelScene::render(mpp::RenderSystem* renderSystem, glm::vec3 const& viewPos, glm::vec3 const& viewDir, World const& world, RenderOptions const& options)
+void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	for (size_t i = 0; i < mModels.size(); ++i)
-	{
-		auto const& model = mModels[i];
+	getScene()->render();
 
-		// Transform
-		renderSystem->resetTransform();
-		renderSystem->translateTransform3d(model.position);
-		renderSystem->scaleTransform3d(model.scale);
-
-		switch (i)
-		{
-		case 0: // Statue
-		case 1: // Grid
-		case 2: // Sphere
-		case 3: // Cylinder
-		case 4: // Cylinder
-			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.0f, 1.0f, 0.0f));
-			break;
-		case 5: // Box
-			renderSystem->rotateTransform3d(model.angle, glm::vec3(-0.707107f, 0.707107f, 0.0f));
-			break;
-		case 6: // Box
-			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.707107f, 0.0f, 0.707107f));
-			break;
-		case 7: // Torus
-			renderSystem->rotateTransform3d(model.angle, glm::vec3(0.707107f, 0.0f, 0.707107f));
-		default:
-			break;
-		}
-
-		// Render
-		auto mi = renderSystem->renderModelBatched((Model&)*model.model, true, viewPos);
-
-		if (options.wireframe)
-		{
-			mi->setWireframe(true);
-		}
-	}
+	// Post processing
 }
