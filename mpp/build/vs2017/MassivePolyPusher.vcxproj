@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\Batch.h" />
     <ClInclude Include="..\..\include\mpp\BoxModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\Camera.h" />
     <ClInclude Include="..\..\include\mpp\Caps.h" />
     <ClInclude Include="..\..\include\mpp\CircleBatch.h" />
     <ClInclude Include="..\..\include\mpp\ClipRectangle.h" />
@@ -57,6 +58,9 @@
     <ClInclude Include="..\..\include\mpp\Resource.h" />
     <ClInclude Include="..\..\include\mpp\ResourceManager.h" />
     <ClInclude Include="..\..\include\mpp\ResourceStream.h" />
+    <ClInclude Include="..\..\include\mpp\Scene.h" />
+    <ClInclude Include="..\..\include\mpp\SceneFactory.h" />
+    <ClInclude Include="..\..\include\mpp\SceneModel.h" />
     <ClInclude Include="..\..\include\mpp\Screen.h" />
     <ClInclude Include="..\..\include\mpp\SphereModelStream.h" />
     <ClInclude Include="..\..\include\mpp\StackWalker.h" />
@@ -81,6 +85,7 @@
     <ClCompile Include="..\..\include\mpp\CylinderModelStream.cpp" />
     <ClCompile Include="..\..\src\Batch.cpp" />
     <ClCompile Include="..\..\src\BoxModelStream.cpp" />
+    <ClCompile Include="..\..\src\Camera.cpp" />
     <ClCompile Include="..\..\src\CircleBatch.cpp" />
     <ClCompile Include="..\..\src\ClipRectangle.cpp" />
     <ClCompile Include="..\..\src\Colour.cpp" />
@@ -116,6 +121,8 @@
     <ClCompile Include="..\..\src\Resource.cpp" />
     <ClCompile Include="..\..\src\ResourceManager.cpp" />
     <ClCompile Include="..\..\src\ResourceStream.cpp" />
+    <ClCompile Include="..\..\src\Scene.cpp" />
+    <ClCompile Include="..\..\src\SceneModel.cpp" />
     <ClCompile Include="..\..\src\Screen.cpp" />
     <ClCompile Include="..\..\src\SphereModelStream.cpp" />
     <ClCompile Include="..\..\src\StackWalker.cpp" />
@@ -202,7 +209,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
@@ -227,7 +234,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>

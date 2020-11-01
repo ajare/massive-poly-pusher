@@ -33,6 +33,12 @@ float phong(vec3 v, vec3 n, vec3 l)
     return spec * @Uniform(SPEC_STRENGTH);
 }
 
+float blinn_phong(vec3 v, vec3 n, vec3 l)
+{
+    vec3 h = normalize(l + v);
+    return pow(max(dot(n, h), 0.0), @Uniform(SPEC_EXPONENT));
+}
+
 void main()
 {
     vec3 normalDir = @In(NORMAL);
@@ -46,7 +52,8 @@ void main()
 
         // Lighting model
         float diffuse = lambert(normalDir, lightDir);
-        float specular = phong(viewDir, normalDir, lightDir);
+        //float specular = phong(viewDir, normalDir, lightDir);
+		float specular = blinn_phong(viewDir, normalDir, lightDir);
         
         colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular);
 	}
@@ -58,4 +65,8 @@ void main()
 ## Else
     @Out(vec4 COLOUR) = shadedColour;
 ##
+
+    // Gamma correction
+	//float gamma = 2.2;
+	//@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0/gamma));
 }

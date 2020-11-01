@@ -7,14 +7,15 @@
 #pragma warning(pop)
 
 #include "Config.h"
-#include "Camera.h"
+
+#include "mpp/Camera.h"
 
 namespace mpp
 {
 	namespace helper
 	{
 
-		class OrbitCamera : public Camera
+		class OrbitCamera : public mpp::Camera
 		{
 			glm::vec3 mTargetPos, mTargetUp;
 
@@ -26,9 +27,9 @@ namespace mpp
 
 		public:
 
-			OrbitCamera(glm::vec3 const& position, glm::vec3 const& targetPos, glm::vec3 const& targetUp);
+			OrbitCamera(glm::vec3 const& position, glm::vec3 const& targetPos, glm::vec3 const& targetUp, float aspectRatio);
 
-			OrbitCamera(glm::vec3 const& position, glm::vec3 const& targetPos, glm::vec3 const& targetUp, float fov);
+			OrbitCamera(glm::vec3 const& position, glm::vec3 const& targetPos, glm::vec3 const& targetUp, float fov, float aspectRatio);
 
 			void orbitClockwise(float angle);
 

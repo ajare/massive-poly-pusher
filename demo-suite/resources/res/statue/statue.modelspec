@@ -39,7 +39,7 @@
 			</Textures>
 			
 			<Uniforms>
-				<Uniform name="SPEC_EXPONENT" type="float" value="32" />
+				<Uniform name="SPEC_EXPONENT" type="float" value="16" />
 				<Uniform name="SPEC_STRENGTH" type="float" value="0.5" />
 			</Uniforms>
 		</Material>

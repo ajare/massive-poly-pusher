@@ -32,9 +32,6 @@
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
 
-#include <mpp/helper/FreeCamera.h>
-#include <mpp/helper/OrbitCamera.h>
-
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
@@ -67,7 +64,7 @@ InputManager* gInputMgr = nullptr;
 RenderSystem* gRenderSystem = nullptr;
 ResourceManager* gResourceManager = nullptr;
 
-vector<Scene*> gScenes;
+vector<::Scene*> gScenes;
 World gWorld;
 RenderOptions gRenderOptions;
 
@@ -318,13 +315,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//gResourceManager->createResource("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
 
 		//
-		// Camera setup
-		//
-		helper::FreeCamera camera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f);
-		camera.setClipDistances(0.1f, 2000.0f);
-		camera.setFov(45.0f);
-
-		//
 		// Main loop
 		//
 		float accum = 0.0f;
@@ -400,7 +390,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 
 				// Move camera
-				updateFreeCamera(camera, gInputMgr, frameTime);
+				//updateFreeCamera(camera, gInputMgr, frameTime);
 
 				// Light
 				if (gInputMgr->keyDown(Key_T))
@@ -430,7 +420,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// Logic
 				for (auto scene: gScenes)
 				{
-					scene->update(frameTime);
+					scene->update(gRenderSystem, frameTime);
 				}
 			}
 
@@ -439,16 +429,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			gRenderSystem->startScene();
 			gRenderSystem->clearScreen(Colour::Grey50);
-
-			gRenderSystem->setProjection3dPerspective(
-				camera.getFov(),
-				camera.getNearClipDistance(),
-				camera.getFarClipDistance());
-
-			auto cameraPos = camera.getPosition();
-			auto cameraDir = camera.getDirection();
-			auto cameraUp = camera.getUp();
-			gRenderSystem->setCamera3d(cameraPos, cameraPos + cameraDir, cameraUp);
 
 			// Set light positions
 			for (auto& light: gWorld.pointLights)
@@ -461,7 +441,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				if (scene->getRender())
 				{
-					scene->render(gRenderSystem, cameraPos, cameraDir, gWorld, gRenderOptions);
+					scene->render(gRenderSystem, gWorld, gRenderOptions);
 				}
 			}
 

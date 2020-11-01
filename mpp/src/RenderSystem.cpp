@@ -71,6 +71,10 @@ namespace mpp
 			THROW_MPP("Could not initialise RenderSystem logger", __LINE__, __FILE__, __func__);
 		}
 
+		// Add scene factories
+		mSceneFactories["Default"] = [this]() { return make_shared<Scene>(this); };
+
+		// Initialise
 		initialise();
 	}
 
@@ -817,7 +821,6 @@ namespace mpp
 
 		// Set matrices to identity
 		m3dCameraMatrix = glm::mat4();
-		m3dCameraMatrix = glm::inverse(m3dCameraMatrix);
 		m3dProjectionMatrix = glm::mat4();
 		m3dModelMatrix = glm::mat4();
 		m3dModelCameraProjectionMatrix = glm::mat4();
@@ -1066,7 +1069,6 @@ namespace mpp
 		assert(!m3dCameraMatrixStack.empty() && "RenderSystem::popCameraMatrix3d() 'm3dCameraMatrixStack' is empty.");
 
 		m3dCameraMatrix = m3dCameraMatrixStack.top();
-		m3dCameraInverseMatrix = glm::inverse(m3dCameraMatrix);
 		m3dCameraMatrixStack.pop();
 
 		// Recalculate combined matrix
@@ -1089,7 +1091,6 @@ namespace mpp
 	void RenderSystem::setCamera3d(glm::vec3 const& position, glm::vec3 const& target, glm::vec3 const& up)
 	{
 		m3dCameraMatrix = glm::lookAt(position, target, up);
-		m3dCameraInverseMatrix = glm::inverse(m3dCameraMatrix);
 
 		// Recalculate combined matrix
 		m3dModelCameraProjectionMatrix = m3dProjectionMatrix * m3dCameraMatrix * m3dModelMatrix;
@@ -1143,7 +1144,6 @@ namespace mpp
 
 		// Reset camera and model matrices
 		m3dCameraMatrix = glm::mat4();
-		m3dCameraInverseMatrix = glm::inverse(m3dCameraMatrix);
 		m3dModelMatrix = glm::mat4();
 
 		// Recalculate combined matrix
@@ -1216,7 +1216,6 @@ namespace mpp
 
 		// Reset camera and model matrices
 		m3dCameraMatrix = glm::mat4();
-		m3dCameraInverseMatrix = glm::inverse(m3dCameraMatrix);
 		m3dModelMatrix = glm::mat4();
 
 		// Recalculate combined matrix
@@ -1376,6 +1375,26 @@ namespace mpp
 
 		mModelInstances.push_back(mi);
 
+		return mi;
+	}
+
+	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32 primitiveCount)
+	{
+		ModelInstance* mi = new ModelInstance(static_cast<Model const&>(*model.get()),
+			camera->getPosition(),
+			transform,
+			camera->getProjectionTransform() * camera->getViewTransform() * transform,
+			glm::transpose(glm::inverse(glm::mat3(transform))),
+			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+
+		auto& instances = mi->getMeshInstances();
+		for (auto& instance: instances)
+		{
+			instance->setRenderCount(primitiveCount);
+			instance->blend(true);
+		}
+
+		mModelInstances.push_back(mi);
 		return mi;
 	}
 
@@ -2326,9 +2345,9 @@ namespace mpp
 
 					// Depth
 					// modelMatrix is used to create final transform, so can use this
-					auto modelMatrix = m3dModelMatrix * mi->mLocalTransform;
+					auto modelMatrix = mi->mModelMatrix * mi->mLocalTransform;
 					
-					auto cameraPos = glm::vec3(m3dCameraInverseMatrix[3]);
+					auto cameraPos = mi->mViewPos;
 					auto modelPos = glm::vec3(modelMatrix[3]);
 
 					float distanceToModel = glm::distance(cameraPos, modelPos);
@@ -2471,6 +2490,18 @@ namespace mpp
 	RenderInfo const& RenderSystem::getRenderInfo() const
 	{
 		return mRenderInfo;
+	}
+
+	ScenePtr RenderSystem::createScene(string const& type)
+	{
+		auto it = mSceneFactories.find(type);
+		if (it == mSceneFactories.end())
+		{
+			string errMsg = "Unknown scene type: " + type;
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		return it->second();
 	}
 
 	/*
