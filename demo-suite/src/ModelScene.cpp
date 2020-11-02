@@ -397,7 +397,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLight1Colour(Colour::White);
 }
 
-mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options)
+mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 {
 	float aspectRatio = options.screenWidth / (float)options.screenHeight;
 

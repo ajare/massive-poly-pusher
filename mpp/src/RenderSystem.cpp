@@ -2511,12 +2511,6 @@ namespace mpp
 	 */
 	void RenderSystem::startScene()
 	{
-		mRenderInfo.batchCount = 0;
-		mRenderInfo.programSwitches = 0;
-		mRenderInfo.textureSwitches = 0;
-		mRenderInfo.primitivesRendered = 0;
-		mRenderInfo.fullscreenQuads = 0;
-
 		mPostProcessEffects.clear();
 
 		resetTransform();
@@ -2524,11 +2518,16 @@ namespace mpp
 		setRenderTarget(mSceneTarget);
 	}
 
+	void RenderSystem::startStatCollection()
+	{
+		mRenderInfo.clear();
+	}
+
 	/*
 	 * Finish rendering.  Must be called before swapping screen.
 	 *
 	 */
-	RenderInfo const& RenderSystem::finishScene()
+	RenderInfo const& RenderSystem::finishScene(RenderTargetPtr sceneTarget)
 	{
 		flushVertexBuffers();
 
@@ -2537,7 +2536,7 @@ namespace mpp
 		resetTransform();
 
 		renderToScreen();
-		renderFullscreenQuad((mpp::RenderTexture*)mSceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
+		renderFullscreenQuad((mpp::RenderTexture*)sceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
 
 		// Post process
 		for (auto& effect: mPostProcessEffects)

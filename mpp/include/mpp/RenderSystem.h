@@ -54,11 +54,22 @@ namespace mpp
 
 	struct RenderInfo
 	{
-		int batchCount;
-		int programSwitches;
-		int textureSwitches;
-		int primitivesRendered;
-		int fullscreenQuads;
+		int batchCount{ 0 };
+		int programSwitches{ 0 };
+		int textureSwitches{ 0 };
+		int primitivesRendered{ 0 };
+		int fullscreenQuads{ 0 };
+
+	public:
+
+		void clear()
+		{
+			batchCount = 0;
+			programSwitches = 0;
+			textureSwitches = 0;
+			primitivesRendered = 0;
+			fullscreenQuads = 0;
+		}
 	};
 
 	class _MPPAPI __declspec(align(16)) RenderSystem
@@ -400,7 +411,9 @@ namespace mpp
 
 		void startScene();
 
-		RenderInfo const& finishScene();
+		void startStatCollection();
+
+		RenderInfo const& finishScene(RenderTargetPtr sceneTarget);
 
 		void clearScreen(Colour const& colour);
 		 
