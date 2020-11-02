@@ -1,5 +1,6 @@
 #include "mpp/Scene.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -30,6 +31,12 @@ namespace mpp
 	Scene::Scene(RenderSystem* renderSystem)
 		: mRenderSystem(renderSystem)
 	{
+		mTarget = renderSystem->createRenderTexture(
+			"SceneTarget", 
+			renderSystem->getWindowWidth(),
+			renderSystem->getWindowHeight(), 
+			1, 
+			true);
 	}
 
 	Scene::~Scene()
@@ -44,6 +51,11 @@ namespace mpp
 		return sm;
 	}
 
+	vector<SceneModelPtr> Scene::getObjectsInView(CameraPtr camera)
+	{
+		return mModels;
+	}
+
 	void Scene::addCamera(string const& name, CameraPtr camera)
 	{
 		mCameras[name] = camera;
@@ -54,19 +66,44 @@ namespace mpp
 		mActiveCamera = mCameras[name];
 	}
 
+	RenderTargetPtr Scene::getRenderTarget()
+	{
+		return mTarget;
+	}
+
+	Colour Scene::getClearColour() const
+	{
+		return Colour::Grey25;
+	}
+
+	void Scene::start()
+	{
+		mRenderSystem->setRenderTarget(mTarget);
+	}
+
+	void Scene::finish()
+	{
+		mRenderSystem->flushVertexBuffers();
+	}
+
 	void Scene::render()
 	{
+		start();
+
+		auto clearColour = getClearColour();
+
+		GL_CHECK(glClearColor(clearColour.red, clearColour.green, clearColour.blue, clearColour.alpha));
+		GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
 		mRenderSystem->setProjection3dPerspective(
 			mActiveCamera->getFov(),
 			mActiveCamera->getNearClipDistance(),
 			mActiveCamera->getFarClipDistance());
 
+		auto models = getObjectsInView(mActiveCamera);
 		for (size_t pass = 0; pass < 1; ++pass)
 		{
-			// Render fullbright only in first pass
-			// Render normally in second pass
-
-			for (auto model: mModels)
+			for (auto model: models)
 			{
 				mRenderSystem->renderModelBatched(
 					model->getModel(),
@@ -74,5 +111,7 @@ namespace mpp
 					mActiveCamera);
 			}
 		}
+
+		finish();
 	}
 }

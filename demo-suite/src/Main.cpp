@@ -427,8 +427,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Render scene
 			//
+			gRenderSystem->startStatCollection();
 			gRenderSystem->startScene();
-			gRenderSystem->clearScreen(Colour::Grey50);
 
 			// Set light positions
 			for (auto& light: gWorld.pointLights)
@@ -445,11 +445,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 			}
 
-			// Add post-process effects
-			// ...
-
 			// Finish scene
-			auto ri = gRenderSystem->finishScene();
+			auto ri = gRenderSystem->finishScene(gScenes[0]->getScene()->getRenderTarget());
 
 			// Text
 			vector<string> lines;

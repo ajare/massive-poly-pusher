@@ -7,6 +7,8 @@
 #include "mpp/Resource.h"
 #include "mpp/SceneModel.h"
 #include "mpp/Camera.h"
+#include "mpp/RenderTarget.h"
+#include "mpp/Colour.h"
 
 namespace mpp
 {
@@ -16,11 +18,21 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem;
 
+		RenderTargetPtr mTarget;
+
 		std::vector<SceneModelPtr> mModels;
 
 		std::map<std::string, CameraPtr> mCameras;
 
 		CameraPtr mActiveCamera;
+
+	private:
+
+		virtual Colour getClearColour() const;
+
+		void start();
+
+		void finish();
 
 	public:
 
@@ -28,11 +40,15 @@ namespace mpp
 
 		virtual ~Scene();
 
-		SceneModelPtr addModel(ResourcePtr model);
+		virtual SceneModelPtr addModel(ResourcePtr model);
+
+		virtual std::vector<SceneModelPtr> getObjectsInView(CameraPtr camera);
 
 		void addCamera(std::string const& name, CameraPtr camera);
 
 		void setCamera(std::string const& name);
+
+		RenderTargetPtr getRenderTarget();
 
 		virtual void render();
 	};

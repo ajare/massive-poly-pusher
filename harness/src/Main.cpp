@@ -655,7 +655,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			// For glow, can we render to multiple targets?
 			gRenderSystem->startScene();
-			gRenderSystem->clearScreen(Colour::Grey50);
 
 			gRenderSystem->setProjection3dPerspective(
 				camera.getFov(),
@@ -724,6 +723,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//triBatchCount = updateIndexedTriangleBatch(gRenderSystem, triBatch, triBatchCount, totalTime);
 
 			// Finish scene
+			/*
 			auto ri = gRenderSystem->finishScene();
 
 			// Text
@@ -740,7 +740,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("[5] Statue");
 
 			gRenderSystem->renderText(lines, 0, 0, Colour::White);
-
+			*/
 			gWindow->show();
 		}
 

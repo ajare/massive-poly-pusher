@@ -16,7 +16,7 @@ private:
 
 	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
 
-	mpp::CameraPtr createCamera(ProgramOptions const& options);
+	mpp::CameraPtr createCamera(ProgramOptions const& options) const;
 
 	void createSharedTextures(ProgramOptions const& options);
 	

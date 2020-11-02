@@ -24,19 +24,19 @@ private:
 
 	virtual void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) {}
 
-	virtual mpp::CameraPtr createCamera(ProgramOptions const& options) = 0;
+	virtual mpp::CameraPtr createCamera(ProgramOptions const& options) const = 0;
 
 protected:
 
 	mpp::ResourceManager* getResourceManager();
-
-	mpp::ScenePtr getScene();
 
 public:
 
 	Scene(std::string const& sceneType, mpp::ResourceManager* resourceMgr);
 
 	virtual ~Scene() = default;
+
+	mpp::ScenePtr getScene();
 
 	void setRender(bool render);
 
