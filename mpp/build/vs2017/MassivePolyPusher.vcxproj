@@ -42,6 +42,8 @@
     <ClInclude Include="..\..\include\mpp\ModelStream.h" />
     <ClInclude Include="..\..\include\mpp\MppException.h" />
     <ClInclude Include="..\..\include\mpp\MppModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\PostEffect.h" />
+    <ClInclude Include="..\..\include\mpp\PostEffectStream.h" />
     <ClInclude Include="..\..\include\mpp\PrimitiveModelStream.h" />
     <ClInclude Include="..\..\include\mpp\Profiler.h" />
     <ClInclude Include="..\..\include\mpp\Program.h" />
@@ -51,6 +53,7 @@
     <ClInclude Include="..\..\include\mpp\QuadBatch.h" />
     <ClInclude Include="..\..\include\mpp\QuadBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\QuadDefinition.h" />
+    <ClInclude Include="..\..\include\mpp\RenderPass.h" />
     <ClInclude Include="..\..\include\mpp\RenderSystem.h" />
     <ClInclude Include="..\..\include\mpp\RenderTarget.h" />
     <ClInclude Include="..\..\include\mpp\RenderTexture.h" />
@@ -107,6 +110,8 @@
     <ClCompile Include="..\..\src\ModelInstance.cpp" />
     <ClCompile Include="..\..\src\ModelStream.cpp" />
     <ClCompile Include="..\..\src\MppModelStream.cpp" />
+    <ClCompile Include="..\..\src\PostEffect.cpp" />
+    <ClCompile Include="..\..\src\PostEffectStream.cpp" />
     <ClCompile Include="..\..\src\PrimitiveModelStream.cpp" />
     <ClCompile Include="..\..\src\Profiler.cpp" />
     <ClCompile Include="..\..\src\Program.cpp" />
@@ -114,6 +119,7 @@
     <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp" />
     <ClCompile Include="..\..\src\ProgramStream.cpp" />
     <ClCompile Include="..\..\src\QuadBatch.cpp" />
+    <ClCompile Include="..\..\src\RenderPass.cpp" />
     <ClCompile Include="..\..\src\RenderSystem.cpp" />
     <ClCompile Include="..\..\src\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\RenderTexture.cpp" />

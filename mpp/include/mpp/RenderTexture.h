@@ -61,5 +61,11 @@ namespace mpp
 
 		void bind(int attachment, int unit);
 
+		size_t getNumAttachments() const;
+
+		bool hasDepthBuffer() const;
+
+		bool hasStencilBuffer() const;
+
 	};
 }

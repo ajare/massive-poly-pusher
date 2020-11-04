@@ -7,6 +7,7 @@
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
 #include "mpp/String.h"
+#include "mpp/PostEffect.h"
 #include "mpp/TextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
@@ -66,6 +67,10 @@ namespace mpp
 		mResourceFactories["String"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new String(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["PostEffect"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new PostEffect(name, this->mwRenderSystem, this, rStream));
 		};
 
 		//

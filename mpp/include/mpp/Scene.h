@@ -5,6 +5,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
+#include "mpp/RenderPass.h"
 #include "mpp/SceneModel.h"
 #include "mpp/Camera.h"
 #include "mpp/RenderTarget.h"
@@ -18,7 +19,7 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem;
 
-		RenderTargetPtr mTarget;
+		std::vector<RenderPassPtr> mPasses;
 
 		std::vector<SceneModelPtr> mModels;
 
@@ -26,19 +27,25 @@ namespace mpp
 
 		CameraPtr mActiveCamera;
 
+		bool mLoaded{ false };
+
 	private:
 
 		virtual Colour getClearColour() const;
 
-		void start();
+		virtual void loadImpl() {}
 
-		void finish();
+		virtual void unloadImpl() {};
 
 	public:
 
 		explicit Scene(RenderSystem* renderSystem);
 
 		virtual ~Scene();
+
+		void load();
+
+		void unload();
 
 		virtual SceneModelPtr addModel(ResourcePtr model);
 
