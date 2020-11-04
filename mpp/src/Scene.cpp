@@ -31,16 +31,31 @@ namespace mpp
 	Scene::Scene(RenderSystem* renderSystem)
 		: mRenderSystem(renderSystem)
 	{
-		mTarget = renderSystem->createRenderTexture(
-			"SceneTarget", 
-			renderSystem->getWindowWidth(),
-			renderSystem->getWindowHeight(), 
-			1, 
-			true);
+		// Default pass
+		mPasses.push_back(make_shared<RenderPass>(renderSystem));
 	}
 
 	Scene::~Scene()
 	{
+		unload();
+	}
+
+	void Scene::load()
+	{
+		if (!mLoaded)
+		{
+			loadImpl();
+			mLoaded = true;
+		}
+	}
+
+	void Scene::unload()
+	{
+		if (mLoaded)
+		{
+			unloadImpl();
+			mLoaded = false;
+		}
 	}
 
 	SceneModelPtr Scene::addModel(ResourcePtr model)
@@ -68,7 +83,7 @@ namespace mpp
 
 	RenderTargetPtr Scene::getRenderTarget()
 	{
-		return mTarget;
+		return mPasses.front()->getRenderTarget();
 	}
 
 	Colour Scene::getClearColour() const
@@ -76,42 +91,31 @@ namespace mpp
 		return Colour::Grey25;
 	}
 
-	void Scene::start()
-	{
-		mRenderSystem->setRenderTarget(mTarget);
-	}
-
-	void Scene::finish()
-	{
-		mRenderSystem->flushVertexBuffers();
-	}
-
 	void Scene::render()
 	{
-		start();
-
-		auto clearColour = getClearColour();
-
-		GL_CHECK(glClearColor(clearColour.red, clearColour.green, clearColour.blue, clearColour.alpha));
-		GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-
 		mRenderSystem->setProjection3dPerspective(
 			mActiveCamera->getFov(),
 			mActiveCamera->getNearClipDistance(),
 			mActiveCamera->getFarClipDistance());
 
 		auto models = getObjectsInView(mActiveCamera);
-		for (size_t pass = 0; pass < 1; ++pass)
-		{
-			for (auto model: models)
-			{
-				mRenderSystem->renderModelBatched(
-					model->getModel(),
-					model->getTransform(),
-					mActiveCamera);
-			}
-		}
 
-		finish();
+		for (auto const& pass: mPasses)
+		{
+			// Start pass
+			pass->bindRenderTarget();
+
+			// Clear
+			auto clearColour = getClearColour();
+
+			GL_CHECK(glClearColor(clearColour.red, clearColour.green, clearColour.blue, clearColour.alpha));
+			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
+			// Render pass
+			pass->render(models, mActiveCamera);
+
+			// Flush
+			mRenderSystem->flushVertexBuffers();
+		}
 	}
 }

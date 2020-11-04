@@ -202,5 +202,19 @@ namespace mpp
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
 	}
 
+	size_t RenderTexture::getNumAttachments() const
+	{
+		return mNumAttachments;
+	}
+
+	bool RenderTexture::hasDepthBuffer() const
+	{
+		return mUseDepthBuffer;
+	}
+
+	bool RenderTexture::hasStencilBuffer() const
+	{
+		return false;
+	}
 }
 
