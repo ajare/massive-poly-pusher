@@ -32,7 +32,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/BoxModelStream.h>
 #include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
-#include <mpp/TextureStream.h>
+#include <mpp/ProgrammaticTextureStream.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/OrbitCamera.h>
@@ -53,16 +53,24 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
-	auto textureStream = new TextureStream(resourceMgr, options.resourceLocation + "marble_texture4662.jpg", loadImage, true);
+	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
-	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "electbubbles.jpg", loadImage, true);
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setFile(options.resourceLocation + "electbubbles.jpg", loadImage);
+	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream));
 
-	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "test.png", loadImage, true);
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
+	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
-	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "donut.jpg", loadImage, true);
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setFile(options.resourceLocation + "donut.jpg", loadImage);
+	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
 }
 
@@ -326,7 +334,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// Textures are image files which are loaded with a helper function into a TextureStream, 
 	// which takes the raw loaded data.  In this case, rgba.png is referenced by the statue
 	// model, so needs to be explicitly loaded
-	auto textureStream = new mpp::TextureStream(resourceMgr, options.resourceLocation + "rgba.png", loadImage, true);
+	auto textureStream = new mpp::ProgrammaticTextureStream(resourceMgr);
+	textureStream->setFile(options.resourceLocation + "rgba.png", loadImage);
+	textureStream->setFiltered(true);
 	resourceMgr->declareResource("rgba.png", ResourceStreamPtr(textureStream));
 
 	// Load MppModel

@@ -18,6 +18,9 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc">
@@ -25,7 +28,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\Main.cpp">
+    <ClCompile Include="..\..\src\FileTextureStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

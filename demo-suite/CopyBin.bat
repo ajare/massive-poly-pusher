@@ -38,6 +38,10 @@ copy /Y "%Root%\..\mpp-mesh\build\%Solution%\bin\%Platform%\%Configuration%\*.dl
 @rem Copy mpp-program
 copy /Y "%Root%\..\mpp-program\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
+@rem Copy mpp-resource-parsers
+copy /Y "%Root%\..\mpp-resource-parsers\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
+
+
 @rem Copy resources
 copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
 copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%

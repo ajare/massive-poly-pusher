@@ -8,7 +8,7 @@
 #include "mpp/Program.h"
 #include "mpp/String.h"
 #include "mpp/PostEffect.h"
-#include "mpp/TextureStream.h"
+#include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/MppException.h"
@@ -186,19 +186,21 @@ namespace mpp
 		// Default texture
 		vector<uint8_t> whiteData(16, 255);
 
-		TextureStream* blankStream = new TextureStream(this, &(whiteData[0]), 2, 2, 32, false);
+		auto blankStream = new ProgrammaticTextureStream(this);
+		blankStream->setData(&(whiteData[0]), 2, 2, 32);
+		blankStream->setFiltered(false);
 		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
 		InternalFont internalFont;
 
-		TextureStream* ts = new TextureStream(
-			this,
+		auto ts = new ProgrammaticTextureStream(this);
+		ts->setData(
 			(uint8_t const*)internalFont.getData(),
 			internalFont.getWidth(),
 			internalFont.getHeight(),
-			32,
-			false);
+			32);
+		ts->setFiltered(false);
 
 		declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
 

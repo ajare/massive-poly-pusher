@@ -2,7 +2,8 @@
 #include "utils/StringUtils.h"
 
 #include <mpp/MaterialStream.h>
-#include <mpp/TextureAtlasStream.h>
+#include <mpp/ProgrammaticTextureStream.h>
+#include <mpp/ProgrammaticTextureAtlasStream.h>
 
 #include "Helper.h"
 #include "Logger.h"
@@ -103,9 +104,9 @@ mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size
 			ptr += dataSpan;
 		}
 
-		mpp::TextureAtlasStream* tStr{ nullptr };
-
-		tStr = new mpp::TextureAtlasStream(gResourceManager, tempData, dataWidth, dataHeight, dataBPP, true);
+		auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
+		tStr->setData(tempData, dataWidth, dataHeight, dataBPP);
+		tStr->setFiltered(true);
 
 		FreeImage_Unload(bitmap);
 		delete[] tempData;
@@ -129,7 +130,9 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 		utils::FileSystem::standardisePath(imageName);
 
 		auto textureData = loadImage(filePath);
-		auto tStr = new mpp::TextureStream(resourceMgr, filePath, loadImage, true);
+		auto tStr = new mpp::ProgrammaticTextureStream(resourceMgr);
+		tStr->setFile(filePath, loadImage);
+		tStr->setFiltered(true);
 
 		mpp::ResourcePtr tex = resourceMgr->declareResource(imageName, mpp::ResourceStreamPtr(tStr));
 		tex->load();

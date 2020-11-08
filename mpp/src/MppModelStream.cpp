@@ -3,7 +3,7 @@
 #include "mpp/Config.h"
 #include "mpp/MppModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
-#include "mpp/TextureStream.h"
+#include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/FileStringStream.h"
 #include "mpp/mesh/ModelSerializer.h"
 #include "mpp/ResourceManager.h"
@@ -127,11 +127,9 @@ namespace mpp
 						utils::FileSystem::baseDirectory(mFilename),
 						texture.resource);
 
-					auto texStr = new TextureStream(
-						resMgr,
-						textureFilename,
-						resMgr->getImageLoadFunction(),
-						true);
+					auto texStr = new ProgrammaticTextureStream(resMgr);
+					texStr->setFile(textureFilename, resMgr->getImageLoadFunction());
+					texStr->setFiltered(true);
 
 					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
 					mStr->setTextureChild(texture.binding, texture.resource);
