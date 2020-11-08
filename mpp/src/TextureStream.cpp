@@ -11,30 +11,13 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TextureStream::TextureStream(ResourceManager* resourceMgr, uint8_t const* data, int width, int height, int bitsPerPixel, bool filtered, string streamType)
-		: ResourceStream(resourceMgr, streamType)
-		, mData(nullptr)
-		, mWidth(width)
-		, mHeight(height)
-		, mBitsPerPixel(bitsPerPixel)
-		, mFiltered(filtered)
-	{
-		assert((bitsPerPixel == 24 || bitsPerPixel == 32) && "TextureStream::TextureStream() 'bitsPerPixel' is invalid.");
-
-		int dataSize = getDataSize();
-		mData = new uint8_t[dataSize];
-		memcpy(mData, data, dataSize);
-	}
-
-	TextureStream::TextureStream(ResourceManager* resourceMgr, string const& filename, ImageLoadFunction function, bool filtered, string streamType)
+	TextureStream::TextureStream(ResourceManager* resourceMgr, string streamType)
 		: ResourceStream(resourceMgr, streamType)
 		, mData(nullptr)
 		, mWidth(0)
 		, mHeight(0)
 		, mBitsPerPixel(0)
-		, mFiltered(filtered)
-		, mLoadFunc(function)
-		, mSource(filename)
+		, mFiltered(false)
 	{
 	}
 
@@ -76,7 +59,7 @@ namespace mpp
 	 * Get texture width.
 	 *
 	 */
-	int TextureStream::getWidth() const
+	size_t TextureStream::getWidth() const
 	{
 		return mWidth;
 	}
@@ -85,7 +68,7 @@ namespace mpp
 	 * Get texture height.
 	 *
 	 */
-	int TextureStream::getHeight() const
+	size_t TextureStream::getHeight() const
 	{
 		return mHeight;
 	}
@@ -94,7 +77,7 @@ namespace mpp
 	 * Get texture bits per pixel.
 	 *
 	 */
-	int TextureStream::getBitsPerPixel() const
+	size_t TextureStream::getBitsPerPixel() const
 	{
 		return mBitsPerPixel;
 	}
@@ -112,7 +95,7 @@ namespace mpp
 	 * Get texture data size in bytes.
 	 *
 	 */
-	int TextureStream::getDataSize() const
+	size_t TextureStream::getDataSize() const
 	{
 		return getWidth() * getHeight() * getBitsPerPixel() / 8;
 	}

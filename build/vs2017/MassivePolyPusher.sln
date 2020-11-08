@@ -45,6 +45,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DemoSuite", "..\..\demo-suite\build\vs2017\DemoSuite.vcxproj", "{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MppResourceParsers", "..\..\mpp-resource-parsers\build\vs2017\MppResourceParsers.vcxproj", "{4835F8A1-673A-494D-B35E-2C9B85C95692}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9EE39F33-DF1C-4120-8CF5-5865CC11E152} = {9EE39F33-DF1C-4120-8CF5-5865CC11E152}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

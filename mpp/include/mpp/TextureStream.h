@@ -19,9 +19,11 @@ namespace mpp
 
 	class _MPPAPI TextureStream : public ResourceStream
 	{
+	protected:
+
 		uint8_t* mData;
 
-		int mWidth, mHeight, mBitsPerPixel;
+		size_t mWidth, mHeight, mBitsPerPixel;
 
 		bool mFiltered;
 
@@ -35,22 +37,20 @@ namespace mpp
 
 	public:
 
-		TextureStream(ResourceManager* resourceMgr, uint8_t const* data, int width, int height, int bitsPerPixel, bool filtered, std::string streamType = "Texture");
-
-		TextureStream(ResourceManager* resourceMgr, std::string const& filename, ImageLoadFunction loader, bool filtered, std::string streamType = "Texture");
+		TextureStream(ResourceManager* resourceMgr, std::string streamType = "Texture");
 
 		virtual ~TextureStream();
 
 		uint8_t const* getData() const;
 
-		int getWidth() const;
+		size_t getWidth() const;
 
-		int getHeight() const;
+		size_t getHeight() const;
 
-		int getBitsPerPixel() const;
+		size_t getBitsPerPixel() const;
 
 		bool isFiltered() const;
 
-		int getDataSize() const;
+		size_t getDataSize() const;
 	};
 }
