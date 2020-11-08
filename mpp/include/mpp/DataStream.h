@@ -10,6 +10,6 @@ namespace mpp
 
 		virtual int getDataSize() const = 0;
 
-		virtual int8 const* getData() const = 0;
+		virtual int8_t const* getData() const = 0;
 	};
 }

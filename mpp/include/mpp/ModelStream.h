@@ -23,7 +23,7 @@ namespace mpp
 
 		struct VertexDataStreamDefinition
 		{
-			std::shared_ptr<const int8> data;
+			std::shared_ptr<const int8_t> data;
 			mesh::Vertex::DataType dataType;
 			int offset, stride;
 		};
@@ -38,9 +38,9 @@ namespace mpp
 
 		bool streamsAreTightlyPacked(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams);
 
-		int8* copyVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
+		int8_t* copyVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
 
-		int8* deinterlaceVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride);
+		int8_t* deinterlaceVertexBufferData(mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride);
 
 	protected:
 
@@ -62,7 +62,7 @@ namespace mpp
 
 		virtual float getMeshPointSize(int meshIndex) const = 0;
 
-		virtual uint8 const* getMeshIndexData(int meshIndex) const = 0;
+		virtual uint8_t const* getMeshIndexData(int meshIndex) const = 0;
 
 		virtual std::string const& getMeshName(int meshIndex) const = 0;
 

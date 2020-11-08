@@ -19,7 +19,7 @@ namespace mpp
 
 		mesh::Primitive::Type mPrimitiveType;
 
-		uint32 mPrimitiveRenderType;
+		uint32_t mPrimitiveRenderType;
 
 		float mPointSize;
 		
@@ -31,7 +31,7 @@ namespace mpp
 
 		mesh::VertexBufferStorageType mStorageType;
 
-		uint32 mVAO, mIBO;
+		uint32_t mVAO, mIBO;
 
 		RenderSystem* mwRenderSystem;
 
@@ -39,7 +39,7 @@ namespace mpp
 
 		std::vector<VertexBuffer*> mVertexBuffers;
 
-		std::vector<uint8> mIndexData;
+		std::vector<uint8_t> mIndexData;
 
 		bool mIsIndexed;
 
@@ -60,7 +60,7 @@ namespace mpp
 
 		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
 
-		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, std::vector<uint8> const& indices, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
+		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, std::vector<uint8_t> const& indices, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
 
 		~Mesh();
 
@@ -70,7 +70,7 @@ namespace mpp
 
 		ResourcePtr getMaterial() const;
 
-		void setIndexData(std::vector<uint8> const& indexData, int indexWidth);
+		void setIndexData(std::vector<uint8_t> const& indexData, int indexWidth);
 
 		bool isIndexed() const;
 
@@ -82,7 +82,7 @@ namespace mpp
 
 		float getPointSize() const;
 
-		VertexBuffer* createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8> vertexData);
+		VertexBuffer* createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8_t> vertexData);
 		
 		int getNumVertexBuffers() const;
 
@@ -90,7 +90,7 @@ namespace mpp
 
 		std::vector<VertexBuffer*> const& getVertexBuffers() const;
 
-		std::vector<uint8>& getIndexData();
+		std::vector<uint8_t>& getIndexData();
 
 		void mapIndexData(size_t numVertices);
 
@@ -102,7 +102,7 @@ namespace mpp
 
 		void render(float pointSize = -1.0f) const;
 
-		void render(uint32 numPrimitives, float pointSize = -1.0f) const;
+		void render(uint32_t numPrimitives, float pointSize = -1.0f) const;
 
 		void setStorageType(mesh::VertexBufferStorageType storageType);
 

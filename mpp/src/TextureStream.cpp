@@ -11,7 +11,7 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	TextureStream::TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered, string streamType)
+	TextureStream::TextureStream(ResourceManager* resourceMgr, uint8_t const* data, int width, int height, int bitsPerPixel, bool filtered, string streamType)
 		: ResourceStream(resourceMgr, streamType)
 		, mData(nullptr)
 		, mWidth(width)
@@ -22,7 +22,7 @@ namespace mpp
 		assert((bitsPerPixel == 24 || bitsPerPixel == 32) && "TextureStream::TextureStream() 'bitsPerPixel' is invalid.");
 
 		int dataSize = getDataSize();
-		mData = new uint8[dataSize];
+		mData = new uint8_t[dataSize];
 		memcpy(mData, data, dataSize);
 	}
 
@@ -67,7 +67,7 @@ namespace mpp
 	 * Get raw texture data.
 	 *
 	 */
-	uint8 const* TextureStream::getData() const
+	uint8_t const* TextureStream::getData() const
 	{
 		return mData;
 	}

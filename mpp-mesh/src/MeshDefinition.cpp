@@ -131,7 +131,7 @@ namespace mpp
 		 * Set as indexed.
 		 *
 		 */
-		void MeshDefinition::setIndexData(shared_ptr<const uint8> indexData)
+		void MeshDefinition::setIndexData(shared_ptr<const uint8_t> indexData)
 		{
 			mIsIndexed = true;
 			mIndexData = indexData;
@@ -141,7 +141,7 @@ namespace mpp
 		 * Get index data
 		 *
 		 */
-		std::shared_ptr<const uint8> MeshDefinition::getIndexData() const
+		std::shared_ptr<const uint8_t> MeshDefinition::getIndexData() const
 		{
 			return mIndexData;
 		}
@@ -159,7 +159,7 @@ namespace mpp
 		 * Add a vertex buffer.
 		 *
 		 */
-		VertexBufferDefinition* MeshDefinition::createVertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, std::shared_ptr<const int8> vertexData)
+		VertexBufferDefinition* MeshDefinition::createVertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData)
 		{
 			VertexBufferDefinition* vbd = new VertexBufferDefinition(spec, vertexCount, vertexStride, false, vertexData);
 			mVertexBufferDefinitions.push_back(vbd);

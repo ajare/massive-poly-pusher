@@ -24,7 +24,7 @@ namespace mpp
 
 		bool mLoaded;
 
-		uint32 mId;
+		uint32_t mId;
 
 		RenderSystem* mwRenderSystem;
 
@@ -42,7 +42,7 @@ namespace mpp
 
 		virtual void unloadImpl() = 0;
 
-		void setId(uint32 id);
+		void setId(uint32_t id);
 
 	public:
 
@@ -58,7 +58,7 @@ namespace mpp
 
 		bool isLoaded() const;
 
-		uint32 getId() const;
+		uint32_t getId() const;
 
 		RenderSystem* getRenderSystem();
 

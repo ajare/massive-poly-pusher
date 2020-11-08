@@ -48,7 +48,7 @@ namespace mpp
 		
 		std::vector<Attribute> mAttributes;
 
-		std::vector<int8> mData;
+		std::vector<int8_t> mData;
 
 		size_t mMaxDataSize;
 
@@ -58,7 +58,7 @@ namespace mpp
 
 	public:
 
-		VertexBuffer(RenderSystem* renderSystem, mesh::VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8> data);
+		VertexBuffer(RenderSystem* renderSystem, mesh::VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8_t> data);
 
 		virtual ~VertexBuffer();
 
@@ -74,7 +74,7 @@ namespace mpp
 
 		void enableAttribute(int index, bool enable);
 
-		std::vector<int8>& getBufferData();
+		std::vector<int8_t>& getBufferData();
 
 		void mapBufferData(int numVertices);
 

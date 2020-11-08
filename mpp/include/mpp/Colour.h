@@ -88,17 +88,17 @@ namespace mpp
 
 		std::string toStringUint8(std::string const& start, std::string const& end, std::string const& sep) const
 		{
-			return utils::StringUtils::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, (uint8)(red * 255.0f), (uint8)(green * 255.0f), (uint8)(blue * 255.0f), (uint8)(alpha * 255.0f));
+			return utils::StringUtils::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, (uint8_t)(red * 255.0f), (uint8_t)(green * 255.0f), (uint8_t)(blue * 255.0f), (uint8_t)(alpha * 255.0f));
 		}
 
 		std::string toStringHex(std::string const& start, std::string const& end, std::string const& sep) const
 		{
 			const char* hexChars = "0123456789ABCDEF";
 
-			uint8 r = (uint8)(red * 255.0f);
-			uint8 g = (uint8)(green * 255.0f);
-			uint8 b = (uint8)(blue * 255.0f);
-			uint8 a = (uint8)(alpha * 255.0f);
+			uint8_t r = (uint8_t)(red * 255.0f);
+			uint8_t g = (uint8_t)(green * 255.0f);
+			uint8_t b = (uint8_t)(blue * 255.0f);
+			uint8_t a = (uint8_t)(alpha * 255.0f);
 
 			std::string rh("  "), gh("  "), bh("  "), ah("  ");
 

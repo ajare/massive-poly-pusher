@@ -29,7 +29,7 @@ namespace mpp
 
 			std::map<std::string, mesh::MaterialInformation> parseMaterialInformation();
 
-			mpp::mesh::MeshSpecification parseMeshSpecification(uint32& maxVerticesPerMesh);
+			mpp::mesh::MeshSpecification parseMeshSpecification(uint32_t& maxVerticesPerMesh);
 		};
 
 	}

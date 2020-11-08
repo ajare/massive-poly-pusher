@@ -110,18 +110,18 @@ namespace mpp
 	 * Return the counter values.
 	 *
 	 */
-	map<string, uint64> Profiler::getSamples()
+	map<string, uint64_t> Profiler::getSamples()
 	{
 		UINT64 value = 8, cycle = 0;
 
-		map<string, uint64> results;
+		map<string, uint64_t> results;
 		for (auto counterName : mCounterNames)
 		{
 			auto res = sNVPMManager.Api()->GetCounterValueByName(sNVPMContext, counterName.c_str(), 0, &value, &cycle);
 
 			if (res == NVPM_OK)
 			{
-				results[counterName] = (uint64)value;
+				results[counterName] = (uint64_t)value;
 			}
 			else
 			{
@@ -132,17 +132,17 @@ namespace mpp
 		// Add non-perfkit samples
 		//GLint glValue = 0;
 		//glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &glValue);
-		//results["Total GPU memory"] = (uint64)glValue;
+		//results["Total GPU memory"] = (uint64_t)glValue;
 
 		// These just seem to return the total memory
 		/*
 		glValue = 0;
 		glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &glValue);
-		results["Total available GPU memory"] = (uint64)glValue;
+		results["Total available GPU memory"] = (uint64_t)glValue;
 
 		glValue = 0;
 		glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &glValue);
-		results["Current available GPU memory"] = (uint64)glValue;
+		results["Current available GPU memory"] = (uint64_t)glValue;
 		*/
 		return results;
 	}

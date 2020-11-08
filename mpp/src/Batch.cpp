@@ -52,13 +52,13 @@ namespace mpp
 		return mDataPointers.at(name);
 	}
 
-	void Batch::createVertexBuffer(uint32 index, Mesh* mesh, size_t vertexCount, bool staticData)
+	void Batch::createVertexBuffer(uint32_t index, Mesh* mesh, size_t vertexCount, bool staticData)
 	{
 		auto& layout = mSpecification.getVertexBufferAttributeLayout(index);
 
 		auto bufferSize = layout.getVertexSize();
-		int8* data = new int8[vertexCount * bufferSize];
-		shared_ptr<const int8> dataPtr(data, [](int8*p) { delete[] p; });
+		int8_t* data = new int8_t[vertexCount * bufferSize];
+		shared_ptr<const int8_t> dataPtr(data, [](int8_t*p) { delete[] p; });
 
 		auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, staticData, dataPtr);
 
@@ -74,7 +74,7 @@ namespace mpp
 		}
 	}
 
-	void Batch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
+	void Batch::createIndexData(vector<uint8_t>& data, uint32_t start, size_t count)
 	{
 	}
 
@@ -116,7 +116,7 @@ namespace mpp
 		mMeshes[0]->setNumPrimitives(numPrimitives);
 	}
 
-	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32 programFlags)
+	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags)
 	{
 		auto resourceMgr = getResourceManager();
 		auto programResource = resourceMgr->getDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
@@ -124,7 +124,7 @@ namespace mpp
 		return createMaterial(name, programResource, texture, programFlags);
 	}
 
-	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr program, ResourcePtr texture, uint32 programFlags)
+	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr program, ResourcePtr texture, uint32_t programFlags)
 	{
 		auto resourceMgr = getResourceManager();
 

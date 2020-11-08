@@ -13,7 +13,7 @@ namespace mpp
 		 * VertexBufferDefinition constructor.
 		 *
 		 */
-		VertexBufferDefinition::VertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, bool streaming, shared_ptr<const int8> vertexData)
+		VertexBufferDefinition::VertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, bool streaming, shared_ptr<const int8_t> vertexData)
 			: mVertexCount(vertexCount)
 			, mVertexStride(vertexStride)
 			, mStreaming(streaming)
@@ -62,7 +62,7 @@ namespace mpp
 		 * Get vertex data.
 		 *
 		 */
-		shared_ptr<const int8> VertexBufferDefinition::getData() const
+		shared_ptr<const int8_t> VertexBufferDefinition::getData() const
 		{
 			return mData;
 		}

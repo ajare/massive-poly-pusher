@@ -33,7 +33,7 @@ mpp::TextureData loadImage(string const& filename)
 		int dataSpan = dataWidth * dataBPP / 8;
 
 		int dataSize = dataSpan * dataHeight;
-		auto tempData = new uint8[dataSize];
+		auto tempData = new uint8_t[dataSize];
 
 		// Flip vertically?
 		int y0, y1, inc;
@@ -42,7 +42,7 @@ mpp::TextureData loadImage(string const& filename)
 		y1 = dataHeight;
 		inc = 1;
 
-		uint8* ptr = (uint8*)FreeImage_GetBits(bitmap);
+		uint8_t* ptr = (uint8_t*)FreeImage_GetBits(bitmap);
 		for (int y = y0; y != y1; y += inc)
 		{
 			memcpy(&tempData[y * dataSpan], ptr, dataSpan);

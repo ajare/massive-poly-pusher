@@ -134,7 +134,7 @@ namespace mpp
 
 					if (uniformType == "int")
 					{
-						int32 values[4];
+						int32_t values[4];
 						for (size_t i = 0; i < componentCount; ++i)
 						{
 							values[i] = utils::StringUtils::parseInt(tokens[i]);
@@ -144,7 +144,7 @@ namespace mpp
 					}
 					else if (uniformType == "uint")
 					{
-						uint32 values[4];
+						uint32_t values[4];
 						for (size_t i = 0; i < componentCount; ++i)
 						{
 							values[i] = utils::StringUtils::parseUInt(tokens[i]);

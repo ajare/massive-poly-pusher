@@ -20,7 +20,7 @@ namespace mpp
 		, mWireframe(false)
 		, mBlend(false)
 		, mPointSize(-1.0f)
-		, mPrimitivesToRender((uint32)-1)
+		, mPrimitivesToRender((uint32_t)-1)
 	{
 		mMaterial = mesh->getMaterial();
 
@@ -203,7 +203,7 @@ namespace mpp
 	 * Set number of primitives to render, or -1 to render all, which is default.
 	 *
 	 */
-	void MeshInstance::setRenderCount(uint32 count)
+	void MeshInstance::setRenderCount(uint32_t count)
 	{
 		mPrimitivesToRender = count;
 	}
@@ -268,8 +268,8 @@ namespace mpp
 		auto program2 = m2->getProgram();
 		auto p2 = static_cast<Program*>(program2.get());
 
-		uint32 progA = p1->getId();
-		uint32 progB = p2->getId();
+		uint32_t progA = p1->getId();
+		uint32_t progB = p2->getId();
 
 		if (progA == progB)
 		{

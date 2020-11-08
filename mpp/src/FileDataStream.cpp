@@ -45,9 +45,9 @@ namespace mpp
 	 * Get data.
 	 *
 	 */
-	int8 const* FileDataStream::getData() const
+	int8_t const* FileDataStream::getData() const
 	{
-		return (int8 const*)mFileData.c_str();
+		return (int8_t const*)mFileData.c_str();
 	}
 
 }

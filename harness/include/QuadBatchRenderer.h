@@ -20,7 +20,7 @@ public:
 		setNumTriangles(numTriangles);
 	}
 
-	void position(uint32 index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
+	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
 	{
 		x0 = 8;
 		y0 = 8;
@@ -32,11 +32,11 @@ public:
 		y2 = 8 + cosf(2 * 3.14159f * (index + 1) / 36.0f) * 7.0f;
 	}
 
-	void colour(uint32 index, uint8& red, uint8& green, uint8& blue, uint8& alpha)
+	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha)
 	{
-		red = uint8((sinf(mTime) * 2 - 1.0f) * 192 + 64);
+		red = uint8_t((sinf(mTime) * 2 - 1.0f) * 192 + 64);
 		green = 255;
-		blue = 224 - uint8((cosf(mTime) * 2 - 1.0f) * 128);
+		blue = 224 - uint8_t((cosf(mTime) * 2 - 1.0f) * 128);
 		alpha = 255;
 	}
 
@@ -104,13 +104,13 @@ class QuadBatchDataProvider
 
 public:
 
-	virtual void position(uint32 index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
+	virtual void position(uint32_t index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
 
-	virtual void angle(uint32 index, float& angle) = 0;
+	virtual void angle(uint32_t index, float& angle) = 0;
 
-	virtual void textureAtlasTexcoords(uint32 index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
+	virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
-	virtual void colour(uint32 index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
+	virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 	virtual mpp::Colour diffuse() = 0;
 
@@ -134,11 +134,11 @@ class QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>
 
 public:
 
-	virtual void position(uint32 index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
+	virtual void position(uint32_t index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
 
-	virtual void angle(uint32 index, float& angle) = 0;
+	virtual void angle(uint32_t index, float& angle) = 0;
 
-	virtual void textureAtlasTexcoords(uint32 index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
+	virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
 	virtual mpp::Colour diffuse() = 0;
 
@@ -184,18 +184,18 @@ public:
 		setNumQuads(numQuads);
 	}
 
-	void position(uint32 index, float& x, float& y)
+	void position(uint32_t index, float& x, float& y)
 	{
 		x = 400 + sinf((index + 1) * mTime / 10.0f) * 100;
 		y = 300 + cosf((index + 2) * mTime / 10.0f) * 100;
 	}
 
-	void angle(uint32 index, float& angle)
+	void angle(uint32_t index, float& angle)
 	{
 		angle = index * mTime;
 	}
 
-	void textureAtlasTexcoords(uint32 index, float& u0, float& v0, float& u1, float& v1)
+	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)
 	{
 		const float txWidth = 1.0f / 8;
 
@@ -205,9 +205,9 @@ public:
 		v1 = 1.0f;
 	}
 
-	void colour(uint32 index, uint8& red, uint8& green, uint8& blue, uint8& alpha)
+	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha)
 	{
-		uint8 colours[]{
+		uint8_t colours[]{
 			255, 0, 255,
 			255, 127, 0,
 			0, 255, 127,
@@ -255,18 +255,18 @@ public:
 		setNumQuads(numQuads);
 	}
 
-	void position(uint32 index, float& x, float& y)
+	void position(uint32_t index, float& x, float& y)
 	{
 		x = 400 + sinf((index + 1) * mTime / 10.0f) * 100;
 		y = 300 + cosf((index + 2) * mTime / 10.0f) * 100;
 	}
 
-	void angle(uint32 index, float& angle)
+	void angle(uint32_t index, float& angle)
 	{
 		angle = index * mTime;
 	}
 
-	void textureAtlasTexcoords(uint32 index, float& u0, float& v0, float& u1, float& v1)
+	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)
 	{
 		const float txWidth = 1.0f / 8;
 
@@ -583,13 +583,13 @@ public:
 			texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
 		}
 
-		auto colBuffer = (uint8*)mBatch->getAttributeData("COLOUR").first;
+		auto colBuffer = (uint8_t*)mBatch->getAttributeData("COLOUR").first;
 		auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
 
 		size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 		for (size_t pOffset = 0, rOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
 		{
-			uint32 primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
+			uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
 			bool newVertex = i >= initStart;
 
 			//
@@ -902,7 +902,7 @@ public:
 		size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 		for (size_t pOffset = 0, rOffset = 0, tOffset = 0, i = 0; i < vertexCount; ++i)
 		{
-			uint32 primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
+			uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
 			bool newVertex = i >= initStart;
 
 			//

@@ -139,18 +139,18 @@ namespace mpp
 
 	void SphereModelStream::subdivide(vector<double>& positions)
 	{
-		map<uint64, uint32> midpointIndices;
+		map<uint64_t, uint32_t> midpointIndices;
 
 		int indicesToProcess = (int)mMeshDataDefinition.indexData.size();
 		for (int i = 0; i < indicesToProcess; i += 3)
 		{
-			uint32 i0 = mMeshDataDefinition.indexData[i + 0];
-			uint32 i1 = mMeshDataDefinition.indexData[i + 1];
-			uint32 i2 = mMeshDataDefinition.indexData[i + 2];
+			uint32_t i0 = mMeshDataDefinition.indexData[i + 0];
+			uint32_t i1 = mMeshDataDefinition.indexData[i + 1];
+			uint32_t i2 = mMeshDataDefinition.indexData[i + 2];
 
-			uint32 m01 = getMidpointIndex(midpointIndices, positions, i0, i1);
-			uint32 m12 = getMidpointIndex(midpointIndices, positions, i1, i2);
-			uint32 m20 = getMidpointIndex(midpointIndices, positions, i2, i0);
+			uint32_t m01 = getMidpointIndex(midpointIndices, positions, i0, i1);
+			uint32_t m12 = getMidpointIndex(midpointIndices, positions, i1, i2);
+			uint32_t m20 = getMidpointIndex(midpointIndices, positions, i2, i0);
 
 			// Add new indices
 			mMeshDataDefinition.indexData[i + 0] = i0;
@@ -171,15 +171,15 @@ namespace mpp
 		}
 	}
 
-	uint32 SphereModelStream::getMidpointIndex(map<uint64, uint32>& midpointIndices, vector<double>& positions, uint32 i0, uint32 i1)
+	uint32_t SphereModelStream::getMidpointIndex(map<uint64_t, uint32_t>& midpointIndices, vector<double>& positions, uint32_t i0, uint32_t i1)
 	{
-		uint64 key = min<uint64>(i0, i1) << 32;
+		uint64_t key = min<uint64_t>(i0, i1) << 32;
 		key |= max(i0, i1);
 
 		auto it = midpointIndices.find(key);
 		if (it == midpointIndices.end())
 		{
-			uint32 index = positions.size() / 3;
+			uint32_t index = positions.size() / 3;
 			midpointIndices[key] = index;
 
 			for (size_t i = 0; i < 3; ++i)

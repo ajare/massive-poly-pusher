@@ -71,19 +71,19 @@ namespace mpp
 			}
 
 			// Version major
-			uint16 versionMajor;
-			fread(&versionMajor, sizeof(uint16), 1, fp);
+			uint16_t versionMajor;
+			fread(&versionMajor, sizeof(uint16_t), 1, fp);
 
 			mHeader.versionMajor = versionMajor;
 
 			// Version minor
-			uint16 versionMinor;
-			fread(&versionMinor, sizeof(uint16), 1, fp);
+			uint16_t versionMinor;
+			fread(&versionMinor, sizeof(uint16_t), 1, fp);
 
 			mHeader.versionMinor = versionMinor;
 
 			// Flags
-			fread(&mHeader.flags, sizeof(uint32), 1, fp);
+			fread(&mHeader.flags, sizeof(uint32_t), 1, fp);
 		}
 
 		/*
@@ -104,18 +104,18 @@ namespace mpp
 			fwrite(magic, 4, 1, fp);
 
 			// Version major
-			uint16 versionMajor = 1;
-			fwrite(&versionMajor, sizeof(uint16), 1, fp);
+			uint16_t versionMajor = 1;
+			fwrite(&versionMajor, sizeof(uint16_t), 1, fp);
 
 			// Version minor
-			uint16 versionMinor = 1;
-			fwrite(&versionMinor, sizeof(uint16), 1, fp);
+			uint16_t versionMinor = 1;
+			fwrite(&versionMinor, sizeof(uint16_t), 1, fp);
 
 			// Flags
-			uint32 flags = 0;
+			uint32_t flags = 0;
 			flags |= FLAG_INDEXED_VERTICES;
 
-			fwrite(&flags, sizeof(uint32), 1, fp);
+			fwrite(&flags, sizeof(uint32_t), 1, fp);
 		}
 
 		/*
@@ -148,7 +148,7 @@ namespace mpp
 			return entry;
 		}
 
-		void ModelSerializer::updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32 start, uint32 end, size_t count)
+		void ModelSerializer::updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32_t start, uint32_t end, size_t count)
 		{
 			auto oldPos = ftell(fp);
 
@@ -235,7 +235,7 @@ namespace mpp
 			fread(&textureCount, sizeof(textureCount), 1, fp);
 			for (int i = 0; i < textureCount; ++i)
 			{
-				int32 isResource;
+				int32_t isResource;
 				fread(&isResource, sizeof(isResource), 1, fp);
 				auto binding = readString(fp);
 				auto resource = readString(fp);
@@ -256,14 +256,14 @@ namespace mpp
 
 				if (type == "int")
 				{
-					int32 values[4];
-					fread(values, sizeof(int32), numComponents, fp);
+					int32_t values[4];
+					fread(values, sizeof(int32_t), numComponents, fp);
 					mi.addUniform(name, numComponents, values);
 				}
 				else if (type == "uint")
 				{
-					uint32 values[4];
-					fread(values, sizeof(uint32), numComponents, fp);
+					uint32_t values[4];
+					fread(values, sizeof(uint32_t), numComponents, fp);
 					mi.addUniform(name, numComponents, values);
 				}
 				if (type == "float")
@@ -283,7 +283,7 @@ namespace mpp
 		 */
 		void ModelSerializer::writeMaterials(FILE* fp)
 		{
-			uint32 start = ftell(fp);
+			uint32_t start = ftell(fp);
 
 			// Write and update mapping
 			for (size_t i = 0; i < mMaterials.size(); ++i)
@@ -291,7 +291,7 @@ namespace mpp
 				writeMaterial(fp, mMaterials[i]);
 			}
 
-			uint32 end = ftell(fp);
+			uint32_t end = ftell(fp);
 			updateDirectoryEntry(fp, Directory::Entry::Type::Materials, start, end, mMaterials.size());
 		}
 
@@ -320,7 +320,7 @@ namespace mpp
 			fwrite(&textureCount, sizeof(textureCount), 1, fp);
 			for (auto const& texture: textures)
 			{
-				int32 isResource = texture.isResource ? 1 : 0;
+				int32_t isResource = texture.isResource ? 1 : 0;
 				fwrite(&isResource, sizeof(isResource), 1, fp);
 				writeString(fp, texture.binding);
 				writeString(fp, texture.resource);
@@ -341,13 +341,13 @@ namespace mpp
 				{
 					if (uniform.type == "int")
 					{
-						auto value = any_cast<int32>(uniform.values[i]);
-						fwrite(&value, sizeof(int32), 1, fp);
+						auto value = any_cast<int32_t>(uniform.values[i]);
+						fwrite(&value, sizeof(int32_t), 1, fp);
 					}
 					else if (uniform.type == "uint")
 					{
-						auto value = any_cast<uint32>(uniform.values[i]);
-						fwrite(&value, sizeof(uint32), 1, fp);
+						auto value = any_cast<uint32_t>(uniform.values[i]);
+						fwrite(&value, sizeof(uint32_t), 1, fp);
 					}
 					else if (uniform.type == "float")
 					{
@@ -405,8 +405,8 @@ namespace mpp
 				meshSpec.setIndexedVertices(true);
 			}
 
-			uint16 layoutCount;
-			fread(&layoutCount, sizeof(uint16), 1, fp);
+			uint16_t layoutCount;
+			fread(&layoutCount, sizeof(uint16_t), 1, fp);
 
 			uint32_t attribOffset = 0;
 			for (int i = 0; i < layoutCount; ++i)
@@ -425,14 +425,14 @@ namespace mpp
 		 */
 		void ModelSerializer::writeMeshSpecifications(FILE* fp)
 		{
-			uint32 start = ftell(fp);
+			uint32_t start = ftell(fp);
 
-			for (uint32 i = 0; i < mMeshSpecifications.size(); ++i)
+			for (uint32_t i = 0; i < mMeshSpecifications.size(); ++i)
 			{
 				writeMeshSpecification(fp, mMeshSpecifications[i]);
 			}
 
-			uint32 end = ftell(fp);
+			uint32_t end = ftell(fp);
 			updateDirectoryEntry(fp, Directory::Entry::Type::MeshSpecifications, start, end, mMeshSpecifications.size());
 		}
 
@@ -458,8 +458,8 @@ namespace mpp
 			char indexed = meshSpec.verticesIndexed() ? 1 : 0;
 			fwrite(&indexed, sizeof(char), 1, fp);
 
-			uint16 layoutCount = meshSpec.getNumVertexBufferAttributeLayouts();
-			fwrite(&layoutCount, sizeof(uint16), 1, fp);
+			uint16_t layoutCount = meshSpec.getNumVertexBufferAttributeLayouts();
+			fwrite(&layoutCount, sizeof(uint16_t), 1, fp);
 
 			for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 			{
@@ -504,13 +504,13 @@ namespace mpp
 			fread(&vertexCount, sizeof(int), 1, fp);
 			fread(&vertexStride, sizeof(int), 1, fp);
 
-			int8* vertexData = new int8[vertexDataSize];
+			int8_t* vertexData = new int8_t[vertexDataSize];
 			fread(vertexData, vertexDataSize, 1, fp);
 
 			VertexStream vs;
 			vs.vertexCount = vertexCount;
 			vs.vertexStride = vertexStride;
-			vs.vertexData = shared_ptr<const int8>(vertexData, [](int8 *p) { delete[] p; });
+			vs.vertexData = shared_ptr<const int8_t>(vertexData, [](int8_t *p) { delete[] p; });
 
 			return vs;
 		}
@@ -531,8 +531,8 @@ namespace mpp
 			4 bytes : normalised
 			*/
 
-			uint16 attribCount;
-			fread(&attribCount, sizeof(uint16), 1, fp);
+			uint16_t attribCount;
+			fread(&attribCount, sizeof(uint16_t), 1, fp);
 
 			for (int i = 0; i < attribCount; ++i)
 			{
@@ -558,14 +558,14 @@ namespace mpp
 		 */
 		void ModelSerializer::writeVertexBuffers(FILE* fp)
 		{
-			uint32 start = ftell(fp);
+			uint32_t start = ftell(fp);
 
 			for (size_t i = 0; i < mVertexStreams.size(); ++i)
 			{
 				writeVertexBuffer(fp, mVertexStreams[i]);
 			}
 
-			uint32 end = ftell(fp);
+			uint32_t end = ftell(fp);
 			updateDirectoryEntry(fp, Directory::Entry::Type::VertexData, start, end, mVertexStreams.size());
 		}
 
@@ -606,8 +606,8 @@ namespace mpp
 			4 bytes : normalised
 			*/
 
-			uint16 attribCount = layout.getNumAttributes();
-			fwrite(&attribCount, sizeof(uint16), 1, fp);
+			uint16_t attribCount = layout.getNumAttributes();
+			fwrite(&attribCount, sizeof(uint16_t), 1, fp);
 
 			for (int i = 0; i < attribCount; ++i)
 			{
@@ -651,12 +651,12 @@ namespace mpp
 			fread(&dataSize, sizeof(dataSize), 1, fp);
 			fread(&indexWidth, sizeof(indexWidth), 1, fp);
 
-			uint8* indexData = new uint8[dataSize];
+			uint8_t* indexData = new uint8_t[dataSize];
 			fread(indexData, dataSize, 1, fp);
 
 			IndexStream is;
 			is.indexWidth = indexWidth;
-			is.indexData = shared_ptr<const uint8>(indexData, [](uint8 *p) { delete[] p; });
+			is.indexData = shared_ptr<const uint8_t>(indexData, [](uint8_t *p) { delete[] p; });
 
 			return is;
 		}
@@ -667,7 +667,7 @@ namespace mpp
 		 */
 		void ModelSerializer::writeIndexBuffers(FILE* fp)
 		{
-			uint32 start = ftell(fp);
+			uint32_t start = ftell(fp);
 
 			for (size_t i = 0; i < mIndexStreams.size(); ++i)
 			{
@@ -675,7 +675,7 @@ namespace mpp
 				writeIndexBuffer(fp, mIndexStreams[i], mesh.primitiveType, mesh.primitiveCount);
 			}
 
-			uint32 end = ftell(fp);
+			uint32_t end = ftell(fp);
 			updateDirectoryEntry(fp, Directory::Entry::Type::IndexData, start, end, mIndexStreams.size());
 		}
 
@@ -742,7 +742,7 @@ namespace mpp
 
 			for (size_t i = 0; i < numVertexBuffers; ++i)
 			{
-				uint32 vertexBufferId;
+				uint32_t vertexBufferId;
 				fread(&vertexBufferId, sizeof(vertexBufferId), 1, fp);
 
 				mesh.vertexStreams.push_back(vertexBufferId);
@@ -755,14 +755,14 @@ namespace mpp
 
 		void ModelSerializer::writeMeshes(FILE* fp)
 		{
-			uint32 start = ftell(fp);
+			uint32_t start = ftell(fp);
 
-			for (uint32 i = 0; i < mMeshes.size(); ++i)
+			for (uint32_t i = 0; i < mMeshes.size(); ++i)
 			{
 				writeMesh(fp, mMeshes[i], i);
 			}
 
-			uint32 end = ftell(fp);
+			uint32_t end = ftell(fp);
 			updateDirectoryEntry(fp, Directory::Entry::Type::MeshMetadata, start, end, mMeshes.size());
 		}
 
@@ -770,7 +770,7 @@ namespace mpp
 		 * Write mesh definition
 		 *
 		 */
-		void ModelSerializer::writeMesh(FILE* fp, Mesh const& mesh, uint32 index)
+		void ModelSerializer::writeMesh(FILE* fp, Mesh const& mesh, uint32_t index)
 		{
 			/*
 			zero-str: name
@@ -796,7 +796,7 @@ namespace mpp
 				fwrite(&vb, sizeof(vb), 1, fp);
 			}
 
-			fwrite(&mesh.indexStream, sizeof(uint32), 1, fp);
+			fwrite(&mesh.indexStream, sizeof(uint32_t), 1, fp);
 		}
 
 		/*
@@ -923,7 +923,7 @@ namespace mpp
 		 * Add a vertex stream.
 		 *
 		 */
-		void ModelSerializer::addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8> vertexData)
+		void ModelSerializer::addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData)
 		{
 			mMeshes[meshIndex].vertexStreams.push_back(mVertexStreams.size());
 
@@ -939,7 +939,7 @@ namespace mpp
 		 * Get specified vertex stream.
 		 *
 		 */
-		void ModelSerializer::getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, shared_ptr<const int8>* vertexData)
+		void ModelSerializer::getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, shared_ptr<const int8_t>* vertexData)
 		{
 			auto const& vertexStream = mVertexStreams[mMeshes[meshIndex].vertexStreams[index]];
 			*vertexCount = vertexStream.vertexCount;
@@ -951,7 +951,7 @@ namespace mpp
 		 * Set index data.
 		 *
 		 */
-		void ModelSerializer::setIndexBuffer(int meshIndex, shared_ptr<const uint8> indexData, size_t indexWidth)
+		void ModelSerializer::setIndexBuffer(int meshIndex, shared_ptr<const uint8_t> indexData, size_t indexWidth)
 		{
 			auto streamIndex = mIndexStreams.size();
 			mMeshes[meshIndex].indexStream = streamIndex;
@@ -968,7 +968,7 @@ namespace mpp
 		 * Get index data.
 		 *
 		 */
-		shared_ptr<const uint8> ModelSerializer::getIndexData(int meshIndex) const
+		shared_ptr<const uint8_t> ModelSerializer::getIndexData(int meshIndex) const
 		{
 			return mIndexStreams[mMeshes[meshIndex].indexStream].indexData;
 		}

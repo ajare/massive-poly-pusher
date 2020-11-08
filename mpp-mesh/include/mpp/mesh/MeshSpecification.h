@@ -58,7 +58,7 @@ namespace mpp
 
 			std::string getDescriptor(std::string const& prefix) const;
 
-			uint32 getHashCode() const;
+			uint32_t getHashCode() const;
 		};
 
 	}

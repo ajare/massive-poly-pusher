@@ -19,7 +19,7 @@ namespace mpp
 		mesh::VertexDataType<ColType> mColourType;
 		mesh::VertexComponentSize<ColSize> mColourSize;
 
-		uint32 mIndexWidth;
+		uint32_t mIndexWidth;
 
 		bool mUseTriangles;
 
@@ -30,7 +30,7 @@ namespace mpp
 		QuadBatchSpecification(
 			RenderSystem* renderSystem,
 			bool useDiffuse,
-			uint32 indexWidth,
+			uint32_t indexWidth,
 			bool square,
 			float maxDimX,
 			float maxDimY,
@@ -98,7 +98,7 @@ namespace mpp
 			return posTypeSize * posTypeCount;
 		}
 
-		uint32 getIndexWidth() const
+		uint32_t getIndexWidth() const
 		{
 			return mIndexWidth;
 		}

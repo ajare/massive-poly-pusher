@@ -26,37 +26,37 @@ namespace mpp
 		};
 
 		template<>
-		struct VertexDataType<int8>
+		struct VertexDataType<int8_t>
 		{
 			Vertex::DataType value = Vertex::DataType::Byte;
 		};
 
 		template<>
-		struct VertexDataType<uint8>
+		struct VertexDataType<uint8_t>
 		{
 			Vertex::DataType value = Vertex::DataType::UnsignedByte;
 		};
 
 		template<>
-		struct VertexDataType<int16>
+		struct VertexDataType<int16_t>
 		{
 			Vertex::DataType value = Vertex::DataType::Short;
 		};
 
 		template<>
-		struct VertexDataType<uint16>
+		struct VertexDataType<uint16_t>
 		{
 			Vertex::DataType value = Vertex::DataType::UnsignedShort;
 		};
 
 		template<>
-		struct VertexDataType<int32>
+		struct VertexDataType<int32_t>
 		{
 			Vertex::DataType value = Vertex::DataType::Int;
 		};
 
 		template<>
-		struct VertexDataType<uint32>
+		struct VertexDataType<uint32_t>
 		{
 			Vertex::DataType value = Vertex::DataType::UnsignedInt;
 		};
@@ -133,155 +133,155 @@ namespace mpp
 		struct DataTypeByte
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Byte; }
-			typedef int8 builtin_type;
+			typedef int8_t builtin_type;
 
-			static int8 value(half_float::half v, bool normalise) { return normalise ? (int8)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8)v; }
-			static int8 value(float v, bool normalise)            { return normalise ? (int8)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8)v; }
-			static int8 value(double v, bool normalise)           { return normalise ? (int8)((v * 0.5 + 0.5) * 255.0) - 128    : (int8)v; }
-			static int8 value(int8 v, bool normalise=false)       { (void)(normalise); return (int8)v; }
-			static int8 value(int16 v, bool normalise=false)      { (void)(normalise); return (int8)v; }
-			static int8 value(int32 v, bool normalise=false)      { (void)(normalise); return (int8)v; }
-			static int8 value(uint8 v, bool normalise=false)      { (void)(normalise); return (int8)v; }
-			static int8 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int8)v; }
-			static int8 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int8)v; }
+			static int8_t value(half_float::half v, bool normalise) { return normalise ? (int8_t)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8_t)v; }
+			static int8_t value(float v, bool normalise)            { return normalise ? (int8_t)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8_t)v; }
+			static int8_t value(double v, bool normalise)           { return normalise ? (int8_t)((v * 0.5 + 0.5) * 255.0) - 128    : (int8_t)v; }
+			static int8_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (int8_t)v; }
+			static int8_t value(int16_t v, bool normalise=false)      { (void)(normalise); return (int8_t)v; }
+			static int8_t value(int32_t v, bool normalise=false)      { (void)(normalise); return (int8_t)v; }
+			static int8_t value(uint8_t v, bool normalise=false)      { (void)(normalise); return (int8_t)v; }
+			static int8_t value(uint16_t v, bool normalise=false)     { (void)(normalise); return (int8_t)v; }
+			static int8_t value(uint32_t v, bool normalise=false)     { (void)(normalise); return (int8_t)v; }
 			
-			static int8 min_normalised() { return std::numeric_limits<int8>::min(); }
-			static int8 max_normalised() { return std::numeric_limits<int8>::max(); }
+			static int8_t min_normalised() { return std::numeric_limits<int8_t>::min(); }
+			static int8_t max_normalised() { return std::numeric_limits<int8_t>::max(); }
 			
-			template<typename T> static int8* ptr(T* p) { return (int8*)p; }
-			static size_t size() { return sizeof(int8); }
+			template<typename T> static int8_t* ptr(T* p) { return (int8_t*)p; }
+			static size_t size() { return sizeof(int8_t); }
 		};
 
 		struct DataTypeUnsignedByte
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedByte; }
-			typedef uint8 builtin_type;
+			typedef uint8_t builtin_type;
 
-			static uint8 value(half_float::half v, bool normalise) { return normalise ? (uint8)(v * 255.0f) : (uint8)v; }
-			static uint8 value(float v, bool normalise)            { return normalise ? (uint8)(v * 255.0f) : (uint8)v; }
-			static uint8 value(double v, bool normalise)           { return normalise ? (uint8)(v * 255.0)  : (uint8)v; }
-			static uint8 value(int8 v, bool normalise=false)       { (void)(normalise); return (uint8)v; }
-			static uint8 value(int16 v, bool normalise=false)      { (void)(normalise); return (uint8)v; }
-			static uint8 value(int32 v, bool normalise=false)      { (void)(normalise); return (uint8)v; }
-			static uint8 value(uint8 v, bool normalise=false)      { (void)(normalise); return (uint8)v; }
-			static uint8 value(uint16 v, bool normalise=false)     { (void)(normalise); return (uint8)v; }
-			static uint8 value(uint32 v, bool normalise=false)     { (void)(normalise); return (uint8)v; }
+			static uint8_t value(half_float::half v, bool normalise) { return normalise ? (uint8_t)(v * 255.0f) : (uint8_t)v; }
+			static uint8_t value(float v, bool normalise)            { return normalise ? (uint8_t)(v * 255.0f) : (uint8_t)v; }
+			static uint8_t value(double v, bool normalise)           { return normalise ? (uint8_t)(v * 255.0)  : (uint8_t)v; }
+			static uint8_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (uint8_t)v; }
+			static uint8_t value(int16_t v, bool normalise=false)      { (void)(normalise); return (uint8_t)v; }
+			static uint8_t value(int32_t v, bool normalise=false)      { (void)(normalise); return (uint8_t)v; }
+			static uint8_t value(uint8_t v, bool normalise=false)      { (void)(normalise); return (uint8_t)v; }
+			static uint8_t value(uint16_t v, bool normalise=false)     { (void)(normalise); return (uint8_t)v; }
+			static uint8_t value(uint32_t v, bool normalise=false)     { (void)(normalise); return (uint8_t)v; }
 			
-			static uint8 min_normalised() { return std::numeric_limits<uint8>::min(); }
-			static uint8 max_normalised() { return std::numeric_limits<uint8>::max(); }
+			static uint8_t min_normalised() { return std::numeric_limits<uint8_t>::min(); }
+			static uint8_t max_normalised() { return std::numeric_limits<uint8_t>::max(); }
 			
-			template<typename T> static uint8* ptr(T* p) { return (uint8*)p; }
-			static size_t size() { return sizeof(uint8); }
+			template<typename T> static uint8_t* ptr(T* p) { return (uint8_t*)p; }
+			static size_t size() { return sizeof(uint8_t); }
 		};
 
 		struct DataTypeShort
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Short; }
-			typedef int16 builtin_type;
+			typedef int16_t builtin_type;
 
-			static int16 value(half_float::half v, bool normalise) { return normalise ? (int16)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16)v; }
-			static int16 value(float v, bool normalise)            { return normalise ? (int16)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16)v; }
-			static int16 value(double v, bool normalise)           { return normalise ? (int16)((v * 0.5 + 0.5) * 65535.0) - 32768    : (int16)v; }
-			static int16 value(int8 v, bool normalise=false)       { (void)(normalise); return (int16)v; }
-			static int16 value(int16 v, bool normalise=false)      { (void)(normalise); return (int16)v; }
-			static int16 value(int32 v, bool normalise=false)      { (void)(normalise); return (int16)v; }
-			static int16 value(uint8 v, bool normalise=false)      { (void)(normalise); return (int16)v; }
-			static int16 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int16)v; }
-			static int16 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int16)v; }
+			static int16_t value(half_float::half v, bool normalise) { return normalise ? (int16_t)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16_t)v; }
+			static int16_t value(float v, bool normalise)            { return normalise ? (int16_t)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16_t)v; }
+			static int16_t value(double v, bool normalise)           { return normalise ? (int16_t)((v * 0.5 + 0.5) * 65535.0) - 32768    : (int16_t)v; }
+			static int16_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (int16_t)v; }
+			static int16_t value(int16_t v, bool normalise=false)      { (void)(normalise); return (int16_t)v; }
+			static int16_t value(int32_t v, bool normalise=false)      { (void)(normalise); return (int16_t)v; }
+			static int16_t value(uint8_t v, bool normalise=false)      { (void)(normalise); return (int16_t)v; }
+			static int16_t value(uint16_t v, bool normalise=false)     { (void)(normalise); return (int16_t)v; }
+			static int16_t value(uint32_t v, bool normalise=false)     { (void)(normalise); return (int16_t)v; }
 		
-			static int16 min_normalised() { return std::numeric_limits<int16>::min(); }
-			static int16 max_normalised() { return std::numeric_limits<int16>::max(); }
+			static int16_t min_normalised() { return std::numeric_limits<int16_t>::min(); }
+			static int16_t max_normalised() { return std::numeric_limits<int16_t>::max(); }
 		
-			template<typename T> static int16* ptr(T* p) { return (int16*)p; }
-			static size_t size() { return sizeof(int16); }
+			template<typename T> static int16_t* ptr(T* p) { return (int16_t*)p; }
+			static size_t size() { return sizeof(int16_t); }
 		};
 
 		struct DataTypeUnsignedShort
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedShort; }
-			typedef uint16 builtin_type;
+			typedef uint16_t builtin_type;
 
-			static uint16 value(half_float::half v, bool normalise) { return normalise ? (uint16)(v * 65535.0f) : (uint16)v; }
-			static uint16 value(float v, bool normalise)            { return normalise ? (uint16)(v * 65535.0f) : (uint16)v; }
-			static uint16 value(double v, bool normalise)           { return normalise ? (uint16)(v * 65535.0)  : (uint16)v; }
-			static uint16 value(int8 v, bool normalise=false)       { (void)(normalise); return (uint16)v; }
-			static uint16 value(int16 v, bool normalise=false)      { (void)(normalise); return (uint16)v; }
-			static uint16 value(int32 v, bool normalise=false)      { (void)(normalise); return (uint16)v; }
-			static uint16 value(uint8 v, bool normalise=false)      { (void)(normalise); return (uint16)v; }
-			static uint16 value(uint16 v, bool normalise=false)     { (void)(normalise); return (uint16)v; }
-			static uint16 value(uint32 v, bool normalise=false)     { (void)(normalise); return (uint16)v; }
+			static uint16_t value(half_float::half v, bool normalise) { return normalise ? (uint16_t)(v * 65535.0f) : (uint16_t)v; }
+			static uint16_t value(float v, bool normalise)            { return normalise ? (uint16_t)(v * 65535.0f) : (uint16_t)v; }
+			static uint16_t value(double v, bool normalise)           { return normalise ? (uint16_t)(v * 65535.0)  : (uint16_t)v; }
+			static uint16_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (uint16_t)v; }
+			static uint16_t value(int16_t v, bool normalise=false)      { (void)(normalise); return (uint16_t)v; }
+			static uint16_t value(int32_t v, bool normalise=false)      { (void)(normalise); return (uint16_t)v; }
+			static uint16_t value(uint8_t v, bool normalise=false)      { (void)(normalise); return (uint16_t)v; }
+			static uint16_t value(uint16_t v, bool normalise=false)     { (void)(normalise); return (uint16_t)v; }
+			static uint16_t value(uint32_t v, bool normalise=false)     { (void)(normalise); return (uint16_t)v; }
 			
-			static uint16 min_normalised() { return std::numeric_limits<uint16>::min(); }
-			static uint16 max_normalised() { return std::numeric_limits<uint16>::max(); }
+			static uint16_t min_normalised() { return std::numeric_limits<uint16_t>::min(); }
+			static uint16_t max_normalised() { return std::numeric_limits<uint16_t>::max(); }
 			
-			template<typename T> static uint16* ptr(T* p) { return (uint16*)p; }
-			static size_t size() { return sizeof(uint16); }
+			template<typename T> static uint16_t* ptr(T* p) { return (uint16_t*)p; }
+			static size_t size() { return sizeof(uint16_t); }
 		};
 
 		struct DataTypeInt
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Int; }
-			typedef int32 builtin_type;
+			typedef int32_t builtin_type;
 
-			static int32 value(half_float::half v, bool normalise) { return normalise ? (int32)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32)v; }
-			static int32 value(float v, bool normalise)            { return normalise ? (int32)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32)v; }
-			static int32 value(double v, bool normalise)           { return normalise ? (int32)((v * 0.5 + 0.5) * 4294967295.0) - 2147483648    : (int32)v; }
-			static int32 value(int8 v, bool normalise=false)       { (void)(normalise); return (int32)v; }
-			static int32 value(int16 v, bool normalise=false)      { (void)(normalise); return (int32)v; }
-			static int32 value(int32 v, bool normalise=false)      { (void)(normalise); return (int32)v; }
-			static int32 value(uint8 v, bool normalise=false)      { (void)(normalise); return (int32)v; }
-			static int32 value(uint16 v, bool normalise=false)     { (void)(normalise); return (int32)v; }
-			static int32 value(uint32 v, bool normalise=false)     { (void)(normalise); return (int32)v; }
+			static int32_t value(half_float::half v, bool normalise) { return normalise ? (int32_t)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32_t)v; }
+			static int32_t value(float v, bool normalise)            { return normalise ? (int32_t)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32_t)v; }
+			static int32_t value(double v, bool normalise)           { return normalise ? (int32_t)((v * 0.5 + 0.5) * 4294967295.0) - 2147483648    : (int32_t)v; }
+			static int32_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (int32_t)v; }
+			static int32_t value(int16_t v, bool normalise=false)      { (void)(normalise); return (int32_t)v; }
+			static int32_t value(int32_t v, bool normalise=false)      { (void)(normalise); return (int32_t)v; }
+			static int32_t value(uint8_t v, bool normalise=false)      { (void)(normalise); return (int32_t)v; }
+			static int32_t value(uint16_t v, bool normalise=false)     { (void)(normalise); return (int32_t)v; }
+			static int32_t value(uint32_t v, bool normalise=false)     { (void)(normalise); return (int32_t)v; }
 			
-			static int32 min_normalised() { return std::numeric_limits<int32>::min(); }
-			static int32 max_normalised() { return std::numeric_limits<int32>::max(); }
+			static int32_t min_normalised() { return std::numeric_limits<int32_t>::min(); }
+			static int32_t max_normalised() { return std::numeric_limits<int32_t>::max(); }
 			
-			template<typename T> static int32* ptr(T* p) { return (int32*)p; }
-			static size_t size() { return sizeof(int32); }
+			template<typename T> static int32_t* ptr(T* p) { return (int32_t*)p; }
+			static size_t size() { return sizeof(int32_t); }
 		};
 
 		struct DataTypeUnsignedInt
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedInt; }
-			typedef uint32 builtin_type;
+			typedef uint32_t builtin_type;
 
-			static uint32 value(half_float::half v, bool normalise) { return normalise ? (uint32)(v * 4294967295.0f) : (uint32)v; }
-			static uint32 value(float v, bool normalise)            { return normalise ? (uint32)(v * 4294967295.0f) : (uint32)v; }
-			static uint32 value(double v, bool normalise)           { return normalise ? (uint32)(v * 4294967295.0)  : (uint32)v; }
-			static uint32 value(int8 v, bool normalise=false)       { (void)(normalise); return (uint32)v; }
-			static uint32 value(int16 v, bool normalise=false)      { (void)(normalise); return (uint32)v; }
-			static uint32 value(int32 v, bool normalise=false)      { (void)(normalise); return (uint32)v; }
-			static uint32 value(uint8 v, bool normalise=false)      { (void)(normalise); return (uint32)v; }
-			static uint32 value(uint16 v, bool normalise=false)     { (void)(normalise); return (uint32)v; }
-			static uint32 value(uint32 v, bool normalise=false)     { (void)(normalise); return (uint32)v; }
+			static uint32_t value(half_float::half v, bool normalise) { return normalise ? (uint32_t)(v * 4294967295.0f) : (uint32_t)v; }
+			static uint32_t value(float v, bool normalise)            { return normalise ? (uint32_t)(v * 4294967295.0f) : (uint32_t)v; }
+			static uint32_t value(double v, bool normalise)           { return normalise ? (uint32_t)(v * 4294967295.0)  : (uint32_t)v; }
+			static uint32_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (uint32_t)v; }
+			static uint32_t value(int16_t v, bool normalise=false)      { (void)(normalise); return (uint32_t)v; }
+			static uint32_t value(int32_t v, bool normalise=false)      { (void)(normalise); return (uint32_t)v; }
+			static uint32_t value(uint8_t v, bool normalise=false)      { (void)(normalise); return (uint32_t)v; }
+			static uint32_t value(uint16_t v, bool normalise=false)     { (void)(normalise); return (uint32_t)v; }
+			static uint32_t value(uint32_t v, bool normalise=false)     { (void)(normalise); return (uint32_t)v; }
 			
-			static uint32 min_normalised() { return std::numeric_limits<uint32>::min(); }
-			static uint32 max_normalised() { return std::numeric_limits<uint32>::max(); }
+			static uint32_t min_normalised() { return std::numeric_limits<uint32_t>::min(); }
+			static uint32_t max_normalised() { return std::numeric_limits<uint32_t>::max(); }
 			
-			template<typename T> static uint32* ptr(T* p) { return (uint32*)p; }
-			static size_t size() { return sizeof(uint32); }
+			template<typename T> static uint32_t* ptr(T* p) { return (uint32_t*)p; }
+			static size_t size() { return sizeof(uint32_t); }
 		};
 
 		struct DataType2_10_10_10
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Int_2_10_10_10_REV; }
-			typedef int32 builtin_type;
+			typedef int32_t builtin_type;
 
-			template<typename T> static int32 value(T v, bool normalise=false) { (void)(normalise); return (int32)v; }
+			template<typename T> static int32_t value(T v, bool normalise=false) { (void)(normalise); return (int32_t)v; }
 			
-			template<typename T> static int32* ptr(T* p) { return (int32*)p; }
-			static size_t size() { return sizeof(int32); }
+			template<typename T> static int32_t* ptr(T* p) { return (int32_t*)p; }
+			static size_t size() { return sizeof(int32_t); }
 		};
 
 		struct DataTypeUnsigned2_10_10_10
 		{
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedInt_2_10_10_10_REV; }
-			typedef uint32 builtin_type;
+			typedef uint32_t builtin_type;
 
-			template<typename T> static uint32 value(T v, bool normalise=false) { (void)(normalise); return (uint32)v; }
+			template<typename T> static uint32_t value(T v, bool normalise=false) { (void)(normalise); return (uint32_t)v; }
 			
-			template<typename T> static uint32* ptr(T* p) { return (uint32*)p; }
-			static size_t size() { return sizeof(uint32); }
+			template<typename T> static uint32_t* ptr(T* p) { return (uint32_t*)p; }
+			static size_t size() { return sizeof(uint32_t); }
 		};
 	}
 }

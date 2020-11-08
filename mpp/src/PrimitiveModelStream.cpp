@@ -33,13 +33,13 @@ namespace mpp
 		int elementSize = mesh::Primitive::size(mMeshDataDefinition.specification.getPrimitiveType());
 		int indexWidthBytes = mMeshDataDefinition.indexWidth / 8;
 
-		mMeshDataDefinition.primitiveCount = mMeshDataDefinition.specification.verticesIndexed() ? ((mMeshDataDefinition.indexData.size() * sizeof(uint32)) / (elementSize * indexWidthBytes)) : (mMeshDataDefinition.vertexCount / elementSize);
+		mMeshDataDefinition.primitiveCount = mMeshDataDefinition.specification.verticesIndexed() ? ((mMeshDataDefinition.indexData.size() * sizeof(uint32_t)) / (elementSize * indexWidthBytes)) : (mMeshDataDefinition.vertexCount / elementSize);
 
 		// Go through each component in order, and build streams.
-		auto dataPtr = new int8[mMeshDataDefinition.vertexData.size()];
+		auto dataPtr = new int8_t[mMeshDataDefinition.vertexData.size()];
 		memcpy(dataPtr, &(mMeshDataDefinition.vertexData[0]), mMeshDataDefinition.vertexData.size());
 
-		auto sharedDataPtr = std::shared_ptr<const int8>((const int8*)dataPtr, [](const int8 *p) { delete[] p; });
+		auto sharedDataPtr = std::shared_ptr<const int8_t>((const int8_t*)dataPtr, [](const int8_t *p) { delete[] p; });
 
 		for (int i = 0; i < mMeshDataDefinition.specification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
@@ -175,9 +175,9 @@ namespace mpp
 		return mMeshDataDefinition.pointSize;
 	}
 
-	uint8 const* PrimitiveModelStream::getMeshIndexData(int meshIndex) const
+	uint8_t const* PrimitiveModelStream::getMeshIndexData(int meshIndex) const
 	{
-		return (uint8 const*)&(mMeshDataDefinition.indexData[0]);
+		return (uint8_t const*)&(mMeshDataDefinition.indexData[0]);
 	}
 
 	string const& PrimitiveModelStream::getMeshName(int meshIndex) const
@@ -190,7 +190,7 @@ namespace mpp
 		return mMeshDataDefinition.material;
 	}
 
-	void PrimitiveModelStream::addTriangle(uint32 v0, uint32 v1, uint32 v2)
+	void PrimitiveModelStream::addTriangle(uint32_t v0, uint32_t v1, uint32_t v2)
 	{
 		mMeshDataDefinition.indexData.push_back(v0);
 		mMeshDataDefinition.indexData.push_back(v1);

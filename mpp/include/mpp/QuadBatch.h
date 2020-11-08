@@ -44,7 +44,7 @@ namespace mpp
 
 		bool indexedVertices() const;
 
-		void createIndexData(std::vector<uint8>& data, uint32_t start, size_t count);
+		void createIndexData(std::vector<uint8_t>& data, uint32_t start, size_t count);
 
 	protected:
 

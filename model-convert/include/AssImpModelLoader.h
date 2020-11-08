@@ -13,7 +13,7 @@ class AssImpModelLoader
 {
 	struct VertexDataStreamDefinition
 	{
-		int8* data;
+		int8_t* data;
 		mpp::mesh::Vertex::DataType dataType;
 		int offset, stride;
 	};
@@ -24,7 +24,7 @@ class AssImpModelLoader
 		std::string name;
 		std::string material;
 		int indexWidth;
-		std::vector<uint8> indexData;
+		std::vector<uint8_t> indexData;
 		std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
 	};
 
@@ -38,7 +38,7 @@ private:
 
 	mpp::mesh::MeshSpecification mSpecification;
 
-	uint32 mMaxVerticesPerMesh;
+	uint32_t mMaxVerticesPerMesh;
 
 	bool mGenerateColours;
 
@@ -50,7 +50,7 @@ private:
 
 	void addBuildVertex(aiMesh const* mesh, int index, aiMaterial* material, std::vector<float>& vertices, bool hasPositions, bool hasNormals, bool hasTexCoords, bool hasColours);
 
-	void addBuildFace(uint32 index0, uint32 index1, uint32 index2, std::vector<uint32>& faces);
+	void addBuildFace(uint32_t index0, uint32_t index1, uint32_t index2, std::vector<uint32_t>& faces);
 
 	void createMeshDataStreams();
 
@@ -64,7 +64,7 @@ private:
 
 	int getMeshIndexWidth(int meshIndex) const;
 
-	std::vector<uint8> const& getMeshIndexData(int meshIndex) const;
+	std::vector<uint8_t> const& getMeshIndexData(int meshIndex) const;
 
 	std::string const& getMeshName(int meshIndex) const;
 
@@ -74,13 +74,13 @@ private:
 
 	bool streamsAreTightlyPacked(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams);
 
-	int8* copyVertexBufferData(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
+	int8_t* copyVertexBufferData(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride);
 
-	int8* deinterlaceVertexBufferData(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride);
+	int8_t* deinterlaceVertexBufferData(mpp::mesh::VertexBufferAttributeLayout const& bufferSpec, std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride);
 
 public:
 
-	AssImpModelLoader(std::string const& filename, mpp::mesh::MeshSpecification const& meshSpec, uint32 maxVerticesPerMesh, bool generateColours);
+	AssImpModelLoader(std::string const& filename, mpp::mesh::MeshSpecification const& meshSpec, uint32_t maxVerticesPerMesh, bool generateColours);
 
 	~AssImpModelLoader();
 

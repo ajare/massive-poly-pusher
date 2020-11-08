@@ -18,7 +18,7 @@ namespace mpp
 			float pointSize;
 			
 			int indexWidth;
-			std::shared_ptr<const uint8> indexData;
+			std::shared_ptr<const uint8_t> indexData;
 
 			// Component data
 			int vertexCount, primitiveCount;
@@ -45,7 +45,7 @@ namespace mpp
 
 		float getMeshPointSize(int meshIndex) const;
 
-		uint8 const* getMeshIndexData(int meshIndex) const;
+		uint8_t const* getMeshIndexData(int meshIndex) const;
 
 		std::string const& getMeshName(int meshIndex) const;
 

@@ -21,7 +21,7 @@ namespace mpp
 
 	public:
 
-		TextureAtlasStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered);
+		TextureAtlasStream(ResourceManager* resourceMgr, uint8_t const* data, int width, int height, int bitsPerPixel, bool filtered);
 
 		void addTile(std::string const& name, int x, int y, int w, int h);
 

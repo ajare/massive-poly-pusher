@@ -43,7 +43,7 @@ namespace mpp
 		else
 		{
 			// Get texture usage
-			uint32 programFlags{ 0 };
+			uint32_t programFlags{ 0 };
 			switch (mStr->getTextures().size())
 			{
 			case 0:

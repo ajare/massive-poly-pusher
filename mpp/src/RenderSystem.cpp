@@ -597,7 +597,7 @@ namespace mpp
 			else if (i == 'r') kern = -10;
 
 			mInternalFont->setGlyph(
-				(uint8)i,
+				(uint8_t)i,
 				(i % 16) * 16,
 				fontTextureHeight - 16 - (i / 16) * 16,
 				glyphWidth,
@@ -1247,7 +1247,7 @@ namespace mpp
 
 	void RenderSystem::setAmbientColour(Colour const& colour)
 	{
-		const uint32 offset{ 0 };
+		const uint32_t offset{ 0 };
 		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
 		fp += offset;
 
@@ -1261,7 +1261,7 @@ namespace mpp
 
 	void RenderSystem::setLight1Position(glm::vec3 const& pos)
 	{
-		const uint32 offset{ 4 };
+		const uint32_t offset{ 4 };
 		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
 		fp += offset;
 
@@ -1275,7 +1275,7 @@ namespace mpp
 
 	void RenderSystem::setLight1Colour(Colour const& colour)
 	{
-		const uint32 offset{ 8 };
+		const uint32_t offset{ 8 };
 		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
 		fp += offset;
 
@@ -1289,7 +1289,7 @@ namespace mpp
 
 	void RenderSystem::setLight2Position(glm::vec3 const& pos)
 	{
-		const uint32 offset{ 12 };
+		const uint32_t offset{ 12 };
 		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
 		fp += offset;
 
@@ -1303,7 +1303,7 @@ namespace mpp
 
 	void RenderSystem::setLight2Colour(Colour const& colour)
 	{
-		const uint32 offset{ 16 };
+		const uint32_t offset{ 16 };
 		auto fp = (float*)(&mLightsBuffer->getBufferData()[0]);
 		fp += offset;
 
@@ -1317,7 +1317,7 @@ namespace mpp
 
 	void RenderSystem::setLightCount(size_t count)
 	{
-		const uint32 offset{ 20 };
+		const uint32_t offset{ 20 };
 
 		auto fp = (int*)(&mLightsBuffer->getBufferData()[0]);
 		fp += offset;
@@ -1342,12 +1342,12 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
-	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms, uint32 primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms, uint32_t primitiveCount)
 	{
 		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), uniforms, primitiveCount);
 	}
 
-	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32 primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32_t primitiveCount)
 	{
 		ModelInstance* mi = new ModelInstance(model, 
 			viewPos,
@@ -1373,7 +1373,7 @@ namespace mpp
 		return mi;
 	}
 
-	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32 primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount)
 	{
 		ModelInstance* mi = new ModelInstance(static_cast<Model const&>(*model.get()),
 			camera->getPosition(),
@@ -1397,13 +1397,13 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32 primitiveCount)
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32_t primitiveCount)
 	{
 		renderModelBatched(model, alphaBlend, viewPos, uniforms, primitiveCount);
 		flushVertexBuffers();
 	}
 
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms, uint32 primitiveCount)
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms, uint32_t primitiveCount)
 	{
 		renderModelBatched(model, alphaBlend, uniforms, primitiveCount);
 		flushVertexBuffers();
@@ -1420,7 +1420,7 @@ namespace mpp
 
 		int vertexStride = buffer->getVertexStride() / sizeof(float);
 
-		vector<int8>& bufferData = buffer->getBufferData();
+		vector<int8_t>& bufferData = buffer->getBufferData();
 		float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 		float xpos = (float)x + 8; // 8 to offset default kerning
@@ -1518,7 +1518,7 @@ namespace mpp
 
 		int vertexStride = buffer->getVertexStride() / sizeof(float);
 
-		vector<int8>& bufferData = buffer->getBufferData();
+		vector<int8_t>& bufferData = buffer->getBufferData();
 		float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 		float xpos = (float)x + 8; // 8 to offset default kerning
@@ -1537,13 +1537,13 @@ namespace mpp
 			while (i < numChars)
 			{
 				// Format for colour is [#RRGGBBAA]
-				// Colours are hex, and should be converted to uint8
-				// Then change text spec from float to uint8
-				// Pack the value into a uint32 and reinterpret_cast to float
+				// Colours are hex, and should be converted to uint8_t
+				// Then change text spec from float to uint8_t
+				// Pack the value into a uint32_t and reinterpret_cast to float
 				if (i < (numChars - 8) && textPtr[i] == '[' && 
 					textPtr[i + 1] == '#' && textPtr[i + 10] == ']')
 				{
-					uint8 tcolour[4] = { 0, 0, 0, 0 };
+					uint8_t tcolour[4] = { 0, 0, 0, 0 };
 					for (int j = 0; j < 8; ++j)
 					{
 						if (textPtr[i + j + 2] >= '0' && textPtr[i + j + 2] <= '9')
@@ -1684,7 +1684,7 @@ namespace mpp
 
 		// Set up lights uniform buffer
 		const size_t uniformSize{ 96 };
-		shared_ptr<const int8> uniformData(new int8[uniformSize], [](int8 *p) { delete[] p; });
+		shared_ptr<const int8_t> uniformData(new int8_t[uniformSize], [](int8_t *p) { delete[] p; });
 
 		auto fp = (float*)uniformData.get();
 
@@ -1719,7 +1719,7 @@ namespace mpp
 		*fp++;
 
 		// Count
-		*(int32*)(fp) = 0;
+		*(int32_t*)(fp) = 0;
 
 		mLightsBuffer = new UniformBuffer(this, uniformData, uniformSize, 0);
 		mLightsBuffer->load();
@@ -1950,7 +1950,7 @@ namespace mpp
 
 		y = mWindowHeight - y - 16; 
 		int count = 0, offset = 0;
-		for (uint32 i = 0; i < text.size(); ++i)
+		for (uint32_t i = 0; i < text.size(); ++i)
 		{
 			count += buildTextVertexBuffer(vertexBuffer, text[i], offset, x, y - i * 16);
 		}
@@ -1997,7 +1997,7 @@ namespace mpp
 		vector<string> lines;
 
 #ifdef MPP_PROFILE_BUILD
-		map<string, uint64> profileResults = mProfiler->getSamples();
+		map<string, uint64_t> profileResults = mProfiler->getSamples();
 
 		TimeSample timeSample;
 		timeSample.frameTime = -1;
@@ -2010,7 +2010,7 @@ namespace mpp
 		for (auto it = profileResults.begin(); it != profileResults.end(); ++it)
 		{
 			string profile = it->first;
-			uint64 result = it->second;
+			uint64_t result = it->second;
 
 			string msg, unit;
 
@@ -2156,7 +2156,7 @@ namespace mpp
 		float* posDataDst = (float*)mProfileLines->getPositionData();
 
 		int xp = x, yp;
-		for (uint32 i = 0; i < mProfileTimeSamples.size(); ++i)
+		for (uint32_t i = 0; i < mProfileTimeSamples.size(); ++i)
 		{
 			yp = 0;
 			auto const& sample = mProfileTimeSamples[i];
@@ -2297,25 +2297,25 @@ namespace mpp
 				if (mi->render())
 				{
 					// Create sort key
-					uint64 sortKey = 0;
+					uint64_t sortKey = 0;
 
 					auto material = (Material*)mi->mMaterial.get();
 					int numTextures = material->getNumTextures();
 
 					// Texture 0.
-					uint64 texture0Key = (uint64)(numTextures > 0 ? ((Texture*)material->getTexture(0).get())->getSortId() : 0);
+					uint64_t texture0Key = (uint64_t)(numTextures > 0 ? ((Texture*)material->getTexture(0).get())->getSortId() : 0);
 					texture0Key <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
 					
 					sortKey |= texture0Key;
 
 					// Texture 1
-					uint64 texture1Key = (uint64)(numTextures > 1 ? ((Texture*)material->getTexture(1).get())->getSortId() : 0);
+					uint64_t texture1Key = (uint64_t)(numTextures > 1 ? ((Texture*)material->getTexture(1).get())->getSortId() : 0);
 					texture1Key <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
 					
 					sortKey |= texture1Key;
 
 					// Program
-					uint64 programKey = (uint64)((Program*)material->getProgram().get())->getSortId();
+					uint64_t programKey = (uint64_t)((Program*)material->getProgram().get())->getSortId();
 					programKey <<= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
 					sortKey |= programKey;
 
@@ -2331,8 +2331,8 @@ namespace mpp
 					float distanceToModel = glm::distance(cameraPos, modelPos);
 					float distanceInScene = min(distanceToModel / mFarPlaneDistance, 1.0f);
 
-					uint64 distanceKey = 1 << MPP_RENDER_SORT_DEPTH_BITS_SIZE;
-					distanceKey = (uint64)(distanceKey * distanceInScene);
+					uint64_t distanceKey = 1 << MPP_RENDER_SORT_DEPTH_BITS_SIZE;
+					distanceKey = (uint64_t)(distanceKey * distanceInScene);
 
 					distanceKey <<= MPP_RENDER_SORT_DEPTH_BITS_OFFSET;
 					sortKey |= distanceKey;
@@ -2350,14 +2350,14 @@ namespace mpp
 		}
 
 		// Now render all the meshes.
-		uint64 currentProgramKey = 0; // Sort ids start at 1, so this is guaranteed not to be one.
-		uint64 currentTexture0Key = 0, currentTexture1Key = 0;
+		uint64_t currentProgramKey = 0; // Sort ids start at 1, so this is guaranteed not to be one.
+		uint64_t currentTexture0Key = 0, currentTexture1Key = 0;
 
 		Material* currentMaterial{ nullptr };
 		for (auto meshInstance: meshInstances)
 		{
 			// Mask off program and see if it has changed from previous.
-			uint64 thisProgramKey = meshInstance.first;
+			uint64_t thisProgramKey = meshInstance.first;
 			thisProgramKey >>= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
 			thisProgramKey &= ((1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE) - 1);
 
@@ -2365,7 +2365,7 @@ namespace mpp
 			bool programChanged = false;
 			if (thisProgramKey != currentProgramKey)
 			{
-				auto program = mResourceMgr->getProgramBySortId((uint32)thisProgramKey);
+				auto program = mResourceMgr->getProgramBySortId((uint32_t)thisProgramKey);
 				setUsedProgram(program);
 
 				currentProgramKey = thisProgramKey;
@@ -2385,26 +2385,26 @@ namespace mpp
 			// Mask off texture and see if it has changed from previous.  This assumes the mesh
 			// is only using one texture.
 			// Mask off program and see if it has changed from previous.
-			uint64 thisTexture0Key = meshInstance.first;
+			uint64_t thisTexture0Key = meshInstance.first;
 			thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
 			thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
 
 			if (thisTexture0Key > 0 && (thisTexture0Key != currentTexture0Key || programChanged))
 			{
-				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32)thisTexture0Key).get());
+				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture0Key).get());
 				texture->bind(0);
 
 				currentTexture0Key = thisTexture0Key;
 				mRenderInfo.textureSwitches++;
 			}
 
-			uint64 thisTexture1Key = meshInstance.first;
+			uint64_t thisTexture1Key = meshInstance.first;
 			thisTexture1Key >>= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
 			thisTexture1Key &= ((1 << MPP_RENDER_SORT_TEXTURE1_BITS_SIZE) - 1);
 
 			if (thisTexture1Key > 0 && (thisTexture1Key != currentTexture1Key || programChanged))
 			{
-				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32)thisTexture1Key).get());
+				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture1Key).get());
 				texture->bind(1);
 
 				currentTexture1Key = thisTexture1Key;
@@ -2428,7 +2428,7 @@ namespace mpp
 			}
 
 			// Render
-			if (meshInstance.second->mPrimitivesToRender == (uint32)-1)
+			if (meshInstance.second->mPrimitivesToRender == (uint32_t)-1)
 			{
 				meshInstance.second->mwMesh->render(meshInstance.second->mPointSize);
 				mRenderInfo.primitivesRendered += meshInstance.second->mwMesh->getNumPrimitives();

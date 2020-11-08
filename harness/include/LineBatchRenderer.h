@@ -15,9 +15,9 @@ class LineBatchDataProvider
 
 public:
 
-	virtual void position(uint32 index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0, typename PosType::builtin_type& x1, typename PosType::builtin_type& y1) = 0;
+	virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0, typename PosType::builtin_type& x1, typename PosType::builtin_type& y1) = 0;
 
-	virtual void colour(uint32 index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
+	virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 	virtual mpp::Colour diffuse() = 0;
 
@@ -41,7 +41,7 @@ class LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>
 
 public:
 
-	virtual void position(uint32 index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0, typename PosType::builtin_type& x1, typename PosType::builtin_type& y1) = 0;
+	virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0, typename PosType::builtin_type& x1, typename PosType::builtin_type& y1) = 0;
 
 	virtual mpp::Colour diffuse() = 0;
 
@@ -85,7 +85,7 @@ public:
 		setNumLines(numLines);
 	}
 
-	void position(uint32 index, float& x0, float& y0, float& x1, float& y1)
+	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)
 	{
 		float linesX = mRenderSystem->getWindowWidth() * 0.25f;
 		float linesW = mRenderSystem->getWindowWidth() * 0.5f;
@@ -110,9 +110,9 @@ public:
 		y1 = linesY - 100 - y1 * 10;
 	}
 
-	void colour(uint32 index, uint8& red, uint8& green, uint8& blue, uint8& alpha)
+	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha)
 	{
-		uint8 colours[]{
+		uint8_t colours[]{
 			255, 0, 255,
 			255, 127, 0,
 			0, 255, 127,
@@ -156,7 +156,7 @@ public:
 		setNumLines(numLines);
 	}
 
-	void position(uint32 index, float& x0, float& y0, float& x1, float& y1)
+	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)
 	{
 		float linesX = mRenderSystem->getWindowWidth() * 0.25f;
 		float linesW = mRenderSystem->getWindowWidth() * 0.5f;
@@ -265,7 +265,7 @@ public:
 		size_t lineCount = mBatch->getPrimitiveCount(count);
 		for (size_t pOffset = 0, cOffset = 0, i = 0; i < lineCount; ++i)
 		{
-			uint32 primitiveIndex = i;
+			uint32_t primitiveIndex = i;
 			bool newVertex = i >= initStart;
 
 			//
@@ -396,7 +396,7 @@ public:
 		size_t lineCount = mBatch->getPrimitiveCount(count);
 		for (size_t pOffset = 0, i = 0; i < lineCount; ++i)
 		{
-			uint32 primitiveIndex = i;
+			uint32_t primitiveIndex = i;
 			bool newVertex = i >= initStart;
 
 			//

@@ -6,13 +6,13 @@ namespace mpp
 {
 	class _MPPAPI Texture : public Resource
 	{
-		uint8* mData;
+		uint8_t* mData;
 
 		int mWidth, mHeight, mBitsPerPixel;
 
 		bool mFiltered;
 		
-		uint32 mSortId;
+		uint32_t mSortId;
 
 	protected:
 
@@ -36,9 +36,9 @@ namespace mpp
 
 		virtual void bind(int unit);
 
-		void setSortId(uint32 sortId);
+		void setSortId(uint32_t sortId);
 
-		uint32 getSortId() const;
+		uint32_t getSortId() const;
 	};
 
 }

@@ -34,7 +34,7 @@ namespace mpp
 	 * Set resource id.
 	 *
 	 */
-	void Resource::setId(uint32 id)
+	void Resource::setId(uint32_t id)
 	{
 		mId = id;
 	}
@@ -43,7 +43,7 @@ namespace mpp
 	* Get the resource id.
 	*
 	*/
-	uint32 Resource::getId() const
+	uint32_t Resource::getId() const
 	{
 		return mId;
 	}

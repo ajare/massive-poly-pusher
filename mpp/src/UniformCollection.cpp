@@ -21,7 +21,7 @@ using namespace std;
 namespace mpp
 {
 
-	void UniformCollection::setUniform(string const& name, int32 value)
+	void UniformCollection::setUniform(string const& name, int32_t value)
 	{
 		UniformData ud
 		{
@@ -30,11 +30,11 @@ namespace mpp
 			1
 		};
 
-		memcpy(ud.data, &value, sizeof(int32));
+		memcpy(ud.data, &value, sizeof(int32_t));
 		mUniformData[name] = ud;
 	}
 
-	void UniformCollection::setUniform(string const& name, uint32 value)
+	void UniformCollection::setUniform(string const& name, uint32_t value)
 	{
 		UniformData ud
 		{
@@ -43,7 +43,7 @@ namespace mpp
 			1
 		};
 
-		memcpy(ud.data, &value, sizeof(uint32));
+		memcpy(ud.data, &value, sizeof(uint32_t));
 		mUniformData[name] = ud;
 	}
 
@@ -115,7 +115,7 @@ namespace mpp
 		mUniformData[name] = ud;
 	}
 
-	void UniformCollection::setUniform(string const& name, size_t count, int32 const* values)
+	void UniformCollection::setUniform(string const& name, size_t count, int32_t const* values)
 	{
 		UniformData ud
 		{
@@ -124,11 +124,11 @@ namespace mpp
 			count
 		};
 
-		memcpy(ud.data, values, sizeof(int32) * count);
+		memcpy(ud.data, values, sizeof(int32_t) * count);
 		mUniformData[name] = ud;
 	}
 
-	void UniformCollection::setUniform(string const& name, size_t count, uint32 const* values)
+	void UniformCollection::setUniform(string const& name, size_t count, uint32_t const* values)
 	{
 		UniformData ud
 		{
@@ -137,7 +137,7 @@ namespace mpp
 			count
 		};
 
-		memcpy(ud.data, values, sizeof(uint32) * count);
+		memcpy(ud.data, values, sizeof(uint32_t) * count);
 		mUniformData[name] = ud;
 	}
 
@@ -154,16 +154,16 @@ namespace mpp
 		mUniformData[name] = ud;
 	}
 
-	void UniformCollection::updateUniform(string const& name, int32 value)
+	void UniformCollection::updateUniform(string const& name, int32_t value)
 	{
 		auto data = mUniformData.find(name)->second.data;
-		memcpy(data, &value, sizeof(int32));
+		memcpy(data, &value, sizeof(int32_t));
 	}
 
-	void UniformCollection::updateUniform(string const& name, uint32 value)
+	void UniformCollection::updateUniform(string const& name, uint32_t value)
 	{
 		auto data = mUniformData.find(name)->second.data;
-		memcpy(data, &value, sizeof(uint32));
+		memcpy(data, &value, sizeof(uint32_t));
 	}
 
 	/*
@@ -206,22 +206,22 @@ namespace mpp
 		memcpy(data, &value, sizeof(glm::vec4));
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, int32 const* values)
+	void UniformCollection::updateUniform(string const& name, size_t count, int32_t const* values)
 	{
 		auto data = mUniformData.find(name)->second.data;
-		memcpy(data, values, sizeof(int32) * count);
+		memcpy(data, values, sizeof(int32_t) * count);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, uint32 const* values)
+	void UniformCollection::updateUniform(string const& name, size_t count, uint32_t const* values)
 	{
 		auto data = mUniformData.find(name)->second.data;
-		memcpy(data, values, sizeof(int32) * count);
+		memcpy(data, values, sizeof(int32_t) * count);
 	}
 
 	void UniformCollection::updateUniform(string const& name, size_t count, float const* values)
 	{
 		auto data = mUniformData.find(name)->second.data;
-		memcpy(data, values, sizeof(int32) * count);
+		memcpy(data, values, sizeof(int32_t) * count);
 	}
 
 	/*
