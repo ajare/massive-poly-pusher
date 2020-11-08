@@ -132,7 +132,7 @@ namespace mpp
 				auto res = child.second;
 
 				res->createChildResources(name);
-				mResourceMgr->createResource(name, res);
+				mResourceMgr->declareResource(name, res);
 			}
 
 			mChildResourcesCreated = true;

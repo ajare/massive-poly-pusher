@@ -94,7 +94,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShader3dTemplate);
 
 			auto ps = new ProgramStream(this, parser, {});
-			createResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
+			declareResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
 		// 2d fullscreen program
@@ -112,7 +112,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
 			auto ps = new ProgramStream(this, parser, {});
-			createResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
+			declareResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Internal text programs
@@ -130,7 +130,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, {"Points"});
-			createResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
+			declareResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -146,7 +146,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, {});
-			createResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
+			declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -163,7 +163,7 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, { "Points", "Colours" });
-			createResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
+			declareResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -180,14 +180,14 @@ namespace mpp
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
 			auto ps = new ProgramStream(this, parser, { "Colours" });
-			createResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
+			declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
 		// Default texture
 		vector<uint8> whiteData(16, 255);
 
 		TextureStream* blankStream = new TextureStream(this, &(whiteData[0]), 2, 2, 32, false);
-		createResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
+		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
 		InternalFont internalFont;
@@ -200,7 +200,7 @@ namespace mpp
 			32,
 			false);
 
-		createResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
+		declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
 
 		// 2D materials
 		// ...
@@ -322,7 +322,7 @@ namespace mpp
 		}
 	}
 
-	ResourcePtr ResourceManager::createResource(string const& name, ResourceStreamPtr resourceStream)
+	ResourcePtr ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream)
 	{
 		// Check name doen't exist
 		if (mResources.find(name) != mResources.end())
@@ -617,7 +617,7 @@ namespace mpp
 
 		specName += "__";
 
-		auto res = createResource(specName, ResourceStreamPtr(ps));
+		auto res = declareResource(specName, ResourceStreamPtr(ps));
 
 		if (load)
 		{
@@ -706,7 +706,7 @@ namespace mpp
 
 		specName += "__";
 
-		auto res = createResource(specName, ResourceStreamPtr(ps));
+		auto res = declareResource(specName, ResourceStreamPtr(ps));
 
 		if (load)
 		{

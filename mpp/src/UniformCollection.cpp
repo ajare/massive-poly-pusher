@@ -264,15 +264,15 @@ namespace mpp
 			switch (ud.type)
 			{
 			case program::GLSLType::Int:
-				GL_CHECK(intFunctions[ud.size - 1](id, (GLsizei)ud.size, (const GLint*)ud.data));
+				GL_CHECK(intFunctions[ud.size - 1](id, 1, (const GLint*)ud.data));
 				break;
 
 			case program::GLSLType::Uint:
-				GL_CHECK(uintFunctions[ud.size - 1](id, (GLsizei)ud.size, (const GLuint*)ud.data));
+				GL_CHECK(uintFunctions[ud.size - 1](id, 1, (const GLuint*)ud.data));
 				break;
 
 			case program::GLSLType::Float:
-				GL_CHECK(floatFunctions[ud.size - 1](id, (GLsizei)ud.size, (const GLfloat*)ud.data));
+				GL_CHECK(floatFunctions[ud.size - 1](id, 1, (const GLfloat*)ud.data));
 				break;
 
 			default:

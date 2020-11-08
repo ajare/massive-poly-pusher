@@ -54,16 +54,16 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	auto resourceMgr = getResourceManager();
 
 	auto textureStream = new TextureStream(resourceMgr, options.resourceLocation + "marble_texture4662.jpg", loadImage, true);
-	resourceMgr->createResource("Marble.Texture", ResourceStreamPtr(textureStream));
+	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "electbubbles.jpg", loadImage, true);
-	resourceMgr->createResource("Electro.Texture", ResourceStreamPtr(textureStream));
+	resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "test.png", loadImage, true);
-	resourceMgr->createResource("Test.Texture", ResourceStreamPtr(textureStream));
+	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new TextureStream(resourceMgr, options.resourceLocation + "donut.jpg", loadImage, true);
-	resourceMgr->createResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
+	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
 }
 
 mesh::MeshSpecification ModelScene::createGridMeshSpecification()
@@ -96,7 +96,7 @@ mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification con
 
 	materialStream->setTexture("TEX1", "Marble.Texture");
 
-	auto res = resourceMgr->createResource("Grid.Material", ResourceStreamPtr(materialStream));
+	auto res = resourceMgr->declareResource("Grid.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
 	return res;
@@ -132,7 +132,7 @@ mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification c
 	
 	materialStream->setTexture("TEX1", "Electro.Texture");
 
-	auto res = resourceMgr->createResource("Sphere.Material", ResourceStreamPtr(materialStream));
+	auto res = resourceMgr->declareResource("Sphere.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
 	return res;
@@ -168,7 +168,7 @@ mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification
 
 	materialStream->setTexture("TEX1", "Marble.Texture");
 
-	auto res = resourceMgr->createResource("Cylinder.Material", ResourceStreamPtr(materialStream));
+	auto res = resourceMgr->declareResource("Cylinder.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
 	return res;
@@ -204,7 +204,7 @@ mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification cons
 
 	materialStream->setTexture("TEX1", "Test.Texture");
 
-	auto res = resourceMgr->createResource("Box.Material", ResourceStreamPtr(materialStream));
+	auto res = resourceMgr->declareResource("Box.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
 	return res;
@@ -240,7 +240,7 @@ mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification co
 
 	materialStream->setTexture("TEX1", "Doughnut.Texture");
 
-	auto res = resourceMgr->createResource("Torus.Material", ResourceStreamPtr(materialStream));
+	auto res = resourceMgr->declareResource("Torus.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
 	return res;
@@ -310,7 +310,7 @@ ResourcePtr ModelScene::createTorusModel()
 		}
 	}
 
-	auto torus = resourceMgr->createResource("Model.Torus", ResourceStreamPtr(torusStream));
+	auto torus = resourceMgr->declareResource("Model.Torus", ResourceStreamPtr(torusStream));
 	torus->load();
 
 	return torus;
@@ -327,11 +327,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// which takes the raw loaded data.  In this case, rgba.png is referenced by the statue
 	// model, so needs to be explicitly loaded
 	auto textureStream = new mpp::TextureStream(resourceMgr, options.resourceLocation + "rgba.png", loadImage, true);
-	resourceMgr->createResource("rgba.png", ResourceStreamPtr(textureStream));
+	resourceMgr->declareResource("rgba.png", ResourceStreamPtr(textureStream));
 
 	// Load MppModel
 	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
-	auto statue = resourceMgr->createResource("Model.Statue", ResourceStreamPtr(statueStream));
+	auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
 	statue->load();
 	
 	mModels.push_back(mppScene->addModel(statue));
@@ -341,7 +341,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	createGridMaterial(gridMeshSpec);
 
 	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 8, 8);
-	auto grid = resourceMgr->createResource("Model.Grid", ResourceStreamPtr(gridStream));
+	auto grid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream));
 	grid->load();
 
 	mModels.push_back(mppScene->addModel(grid));
@@ -351,7 +351,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	createSphereMaterial(sphereMeshSpec);
 	
 	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
-	auto sphere = resourceMgr->createResource("Model.Sphere", ResourceStreamPtr(sphereStream));
+	auto sphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream));
 	sphere->load();
 	
 	mModels.push_back(mppScene->addModel(sphere));
@@ -362,7 +362,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	createCylinderMaterial(cylinderMeshSpec);
 
 	auto cylinderStream = new CylinderModelStream(resourceMgr, cylinderMeshSpec, "Cylinder.Material", 80, 24, 24, 16);
-	auto cylinder = resourceMgr->createResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
+	auto cylinder = resourceMgr->declareResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
 	cylinder->load();
 
 	mModels.push_back(mppScene->addModel(cylinder));
@@ -376,7 +376,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	createBoxMaterial(boxMeshSpec);
 
 	auto boxStream = new BoxModelStream(resourceMgr, cylinderMeshSpec, "Box.Material", 32, 32, 32);
-	auto box = resourceMgr->createResource("Model.Box", ResourceStreamPtr(boxStream));
+	auto box = resourceMgr->declareResource("Model.Box", ResourceStreamPtr(boxStream));
 	box->load();
 
 	mModels.push_back(mppScene->addModel(box));
@@ -395,6 +395,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setAmbientColour(Colour::Grey25);
 	renderSystem->setLightCount(1);
 	renderSystem->setLight1Colour(Colour::White);
+
+	// Pipelines
+	auto pipeline = renderSystem->createRenderPipeline(getRenderPipelineName());
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
@@ -437,7 +440,5 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	getScene()->render();
-
-	// Post processing
+	renderSystem->renderScene(getScene(), getCamera(), "Default");
 }

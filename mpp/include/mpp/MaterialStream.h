@@ -47,23 +47,7 @@ namespace mpp
 
 		explicit MaterialStream(ResourceManager* resourceMgr);
 
-		MaterialStream(ResourceManager* resourceMgr, std::string const& program);
-
-		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFile);
-
-		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
-
-		MaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
-
 		std::string const& getName() const;
-
-		void setProgram(std::string const& program);
-
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
-
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFiles);
-
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec);
 
 		ProgramOptions const& getProgramOptions() const;
 

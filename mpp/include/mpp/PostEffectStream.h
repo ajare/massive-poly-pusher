@@ -18,49 +18,69 @@ namespace mpp
 
 		class ImageDimension
 		{
-			bool mAbsolute;
-
-			size_t mMinValue, mMaxValue;
-
-			union Value
+			struct Value
 			{
-				size_t absoluteValue;
-				float percentValue;
-			} mValues[3];
+				bool absolute;
+
+				union ValueData
+				{
+					size_t absoluteValue;
+					float percentValue;
+				} value;
+
+				size_t get(size_t referenceSize) const
+				{
+					return absolute ? value.absoluteValue : (size_t)(referenceSize * value.percentValue);
+				}
+			};
+
+			Value mMin, mMax, mPreferred;
+
 
 		public:
 
-			ImageDimension(bool absolute)
-				: mAbsolute(absolute)
+			ImageDimension()
 			{
+				setMinValueAbsolute(0);
 			}
 
-			void setMinMax(size_t minValue, size_t maxValue)
+			void setMinValueAbsolute(size_t minValue)
 			{
-				mMinValue = minValue;
-				mMaxValue = maxValue;
+				mMin.absolute = true;
+				mMin.value.absoluteValue = minValue;
 			}
 
-			size_t getMin() const
+			void setMinValueRelative(float minValue)
 			{
-				return mMinValue;
+				mMin.absolute = false;
+				mMin.value.percentValue = minValue;
 			}
 
-			size_t getMax() const
+			void setMaxValueAbsolute(size_t minValue)
 			{
-				return mMaxValue;
+				mMax.absolute = true;
+				mMax.value.absoluteValue = minValue;
 			}
 
-			size_t getPreferred(int level, size_t windowSize) const
+			void setMaxValueRelative(float minValue)
 			{
-				if (mAbsolute)
-				{
-					return mValues[level].absoluteValue;
-				}
-				else
-				{
-					return windowSize * mValues[level].percentValue
-				}
+				mMax.absolute = false;
+				mMax.value.percentValue = minValue;
+			}
+
+			size_t getMin(size_t windowSize) const
+			{
+				return mMin.get(windowSize);
+			}
+
+			size_t getMax(size_t windowSize) const
+			{
+				return mMax.get(windowSize);
+			}
+
+			size_t getPreferred(size_t windowSize) const
+			{
+				return mPreferred.get(windowSize);
 			}
 		};
 
@@ -72,7 +92,7 @@ namespace mpp
 		struct Output
 		{
 			ImageType type;
-			string format;
+			std::string format;
 			ImageDimension width, height;
 		};
 

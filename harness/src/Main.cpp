@@ -204,23 +204,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		   - modelSpec.setIndexedVertices(true);
 		1. Create programs
 		   - auto STREAM = new ProgramProgramStream(meshSpec, VERTEX_FILE, FRAGMENT_FILE);
-		   - ResourceManager::createResource(NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::declareResource(NAME, ResourceStreamPtr(STREAM));
 		2. Create textures
 		   - auto STREAM = loadImage(IMAGE_FILE, false);
-		   - ResourceManager::createResource(NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::declareResource(NAME, ResourceStreamPtr(STREAM));
 		3. Create materials
 		   - auto STREAM = new ProgrammaticMaterialStream();
 			 - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
 			 - STREAM->setProgram(<2d | 3d>, MODEL_SPEC, PROGRAM_TAGS);
 		   - STREAM->setTexture(SAMPLER_NAME, TEXTURE_RESOURCE_NAME);
-		   - ResourceManager::createResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::declareResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
 		   or:
 		  - FileDataStream FILE_STREAM(MATERIAL_FILE);
 		  - auto STREAM = new FileMaterialStream(FILE_STREAM);
-		  - ResourceManager::createResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		  - ResourceManager::declareResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
 		4. Create models
 		   - auto STREAM = new BoxModelStream(MODEL_SPEC, MATERIAL_RESOURCE_NAME, ...);
-		   - auto MODEL = ResourceManager::createResource(MODEL_NAME, ResourceStreamPtr(STREAM));
+		   - auto MODEL = ResourceManager::declareResource(MODEL_NAME, ResourceStreamPtr(STREAM));
 		5. Load model
 		   - MODEL->load();
 		*/
@@ -251,22 +251,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// Marble
 		TextureStream* textureStream = loadImage(gOptions.resourceLocation + "marble_texture4662.jpg", false);
-		gResourceManager->createResource("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
+		gResourceManager->declareResource("marble_texture4662.jpg", ResourceStreamPtr(textureStream));
 
 		// Bullets
 		textureStream = loadImage(gOptions.resourceLocation + "bullet1.png", false);
-		gResourceManager->createResource("bullet1.png", ResourceStreamPtr(textureStream));
+		gResourceManager->declareResource("bullet1.png", ResourceStreamPtr(textureStream));
 
 		TextureAtlasStream* atlasStream = static_cast<TextureAtlasStream*>(loadImageAtlas(gOptions.resourceLocation + "bullets.png", false, 8, 1));
-		gResourceManager->createResource("bullets.png", ResourceStreamPtr(atlasStream));
+		gResourceManager->declareResource("bullets.png", ResourceStreamPtr(atlasStream));
 
 		// RGBA test
 		textureStream = loadImage(gOptions.resourceLocation + "rgba.png", false);
-		gResourceManager->createResource("rgba.png", ResourceStreamPtr(textureStream));
+		gResourceManager->declareResource("rgba.png", ResourceStreamPtr(textureStream));
 
 		// Arrow
 		textureStream = loadImage(gOptions.resourceLocation + "arrow.png", false);
-		gResourceManager->createResource("arrow.png", ResourceStreamPtr(textureStream));
+		gResourceManager->declareResource("arrow.png", ResourceStreamPtr(textureStream));
 
 		//
 		// Materials
@@ -278,7 +278,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		meshMaterialStream->setProgram(false, modelSpec, {});
 
 		meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
-		gResourceManager->createResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
+		gResourceManager->declareResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
 		//
 		// Models
@@ -288,26 +288,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/*
 		auto cubeStream = new BoxModelStream(modelSpec, "Material.Marble", 1, 1, 1);
 
-		auto cubeModel = gResourceManager->createResource("Model.Cube", ResourceStreamPtr(cubeStream));
+		auto cubeModel = gResourceManager->declareResource("Model.Cube", ResourceStreamPtr(cubeStream));
 		cubeModel->load();
 
 		// Sphere
 		auto sphereStream = new SphereModelStream(modelSpec, "Material.Marble", 15.0f, 1);
 
-		auto sphereModel = gResourceManager->createResource("Model.Sphere", ResourceStreamPtr(sphereStream));
+		auto sphereModel = gResourceManager->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream));
 		sphereModel->load();
 		
 		// Cylinder
 		auto cylinderStream = new CylinderModelStream(modelSpec, "Material.Marble", 30.0f, 15.0f, 10.0f, 72);
 
-		auto cylinderModel = gResourceManager->createResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
+		auto cylinderModel = gResourceManager->declareResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
 		cylinderModel->load();
 		*/
 
 		// Grid
 		auto gridStream = new GridModelStream(gResourceManager, modelSpec, "Material.Marble", 256, 256, 8, 8);
 
-		auto gridModel = gResourceManager->createResource("Model.Grid", ResourceStreamPtr(gridStream));
+		auto gridModel = gResourceManager->declareResource("Model.Grid", ResourceStreamPtr(gridStream));
 		gridModel->load();
 
 		// Quad
@@ -336,14 +336,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		quadStream->addTriangle(meshId, 0, 1, 2);
 		quadStream->addTriangle(meshId, 2, 3, 0);
 
-		auto quadModel = gResourceManager->createResource("Model.Quad", ResourceStreamPtr(quadStream));
+		auto quadModel = gResourceManager->declareResource("Model.Quad", ResourceStreamPtr(quadStream));
 		quadModel->load();
 
 		// Statue
 		/*
 		auto statueStream = new MppModelStream(gOptions.resourceLocation + "statue/statue.mppmodel");
 
-		auto statueModel = gResourceManager->createResource("Model.Statue", ResourceStreamPtr(statueStream));
+		auto statueModel = gResourceManager->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
 		statueModel->load();
 		*/
 
@@ -654,8 +654,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Call render methods on the scene object, rather than the rendersystem
 
 			// For glow, can we render to multiple targets?
-			gRenderSystem->startScene();
-
+//			gRenderSystem->startScene();
+			/*
 			gRenderSystem->setProjection3dPerspective(
 				camera.getFov(),
 				camera.getNearClipDistance(),
@@ -680,7 +680,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			auto mi = gRenderSystem->renderModelBatched((Model&)*modelTranforms[(int)currentModelId].model, true);
 			mi->setWireframe(wireframe);
-
+			*/
 			//
 			// Add post-process effects
 			//

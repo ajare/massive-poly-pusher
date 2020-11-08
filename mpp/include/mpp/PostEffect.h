@@ -48,6 +48,8 @@ namespace mpp
 	public:
 
 		PostEffect(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
+
+		RenderTargetPtr getOuputRenderTarget();
 	};
 
 }

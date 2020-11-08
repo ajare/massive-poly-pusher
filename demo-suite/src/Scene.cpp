@@ -28,13 +28,20 @@ mpp::ScenePtr Scene::getScene()
 	return mScene;
 }
 
+mpp::CameraPtr Scene::getCamera()
+{
+	return mCamera;
+}
+
 void Scene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
 {
 	mScene = renderSystem->createScene(mSceneType);
 	mCamera = createCamera(options);
 
-	mScene->addCamera("Default", mCamera);
-	mScene->setCamera("Default");
-
 	setupImpl(renderSystem, options);
+}
+
+string Scene::getRenderPipelineName() const
+{
+	return "Default";
 }

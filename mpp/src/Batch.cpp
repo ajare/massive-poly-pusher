@@ -141,7 +141,7 @@ namespace mpp
 		}
 		else
 		{
-			materialResource = resourceMgr->createResource(name, mpp::ResourceStreamPtr(matStream));
+			materialResource = resourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream));
 			materialResource->load();
 		}
 

@@ -38,12 +38,12 @@ namespace mpp
 	{
 	}
 
-	/*
-	 * Destroy the OpenGL texture.
-	 *
-	 */
 	void PostEffect::unloadImpl()
 	{
 	}
 
+	RenderTargetPtr PostEffect::getOuputRenderTarget()
+	{
+		return mOutput.target;
+	}
 }

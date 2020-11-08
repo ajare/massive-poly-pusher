@@ -30,6 +30,14 @@ namespace mpp
 
 		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
 
+		void setProgram(std::string const& program);
+
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::set<std::string> const& tags);
+
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFiles);
+
+		void setProgram(bool is2d, mesh::MeshSpecification const& spec);
+
 		void setTextureChild(std::string const& sampler, std::string const& resource);
 
 		void setTexture(std::string const& sampler, std::string const& texture);
@@ -53,7 +61,5 @@ namespace mpp
 		void setUniform(std::string const& name, size_t count, uint32 const* values);
 
 		void setUniform(std::string const& name, size_t count, float const* values);
-
-		Resource* createResource(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr);
 	};
 }
