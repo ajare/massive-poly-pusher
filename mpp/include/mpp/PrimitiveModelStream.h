@@ -16,12 +16,12 @@ namespace mpp
 			std::string name;
 			std::string material;
 
-			std::vector<int8> vertexData;
+			std::vector<int8_t> vertexData;
 			
 			float pointSize;
 			
 			int indexWidth;
-			std::vector<uint32> indexData;
+			std::vector<uint32_t> indexData;
 
 			// Component data
 			int vertexCount, primitiveCount;
@@ -54,7 +54,7 @@ namespace mpp
 
 		float getMeshPointSize(int meshIndex) const;
 
-		uint8 const* getMeshIndexData(int meshIndex) const;
+		uint8_t const* getMeshIndexData(int meshIndex) const;
 
 		std::string const& getMeshName(int meshIndex) const;
 
@@ -63,7 +63,7 @@ namespace mpp
 		template<typename T>
 		void setVertexData(int offset, std::initializer_list<T> const& vertex)
 		{
-			uint8* dataPtr = ((uint8*)&mMeshDataDefinition.vertexData[0]) + offset;
+			uint8_t* dataPtr = ((uint8_t*)&mMeshDataDefinition.vertexData[0]) + offset;
 			for (auto it: vertex)
 			{
 				T value = it;
@@ -72,7 +72,7 @@ namespace mpp
 			}
 		}
 
-		void addTriangle(uint32 v0, uint32 v1, uint32 v2);
+		void addTriangle(uint32_t v0, uint32_t v1, uint32_t v2);
 
 	public:
 

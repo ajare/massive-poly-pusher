@@ -128,7 +128,7 @@ int main(int argc, char** argv)
 
 		// Parse
 		mpp::mesh_specification_parser::SpecificationParser specParser(pArgs.meshSpec);
-		uint32 maxVerticesPerMesh;
+		uint32_t maxVerticesPerMesh;
 		
 		mpp::mesh::MeshSpecification meshSpec = specParser.parseMeshSpecification(maxVerticesPerMesh);
 

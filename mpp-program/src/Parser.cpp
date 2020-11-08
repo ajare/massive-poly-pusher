@@ -824,7 +824,7 @@ namespace mpp
 		{
 			vector<string> lines;
 
-			uint32 i = 0, j = 0;
+			uint32_t i = 0, j = 0;
 			while (i != src.length())
 			{
 				char ch = src[i];
@@ -882,8 +882,8 @@ namespace mpp
 				return !prev;
 			}
 
-			uint32 orPos = lineFragment.find_first_of('|');
-			uint32 andPos = lineFragment.find_first_of('&');
+			uint32_t orPos = lineFragment.find_first_of('|');
+			uint32_t andPos = lineFragment.find_first_of('&');
 
 			if (orPos == -1 && andPos == -1)
 			{

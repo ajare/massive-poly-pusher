@@ -81,9 +81,9 @@ namespace mpp
 
 			std::vector<Texture> const& getTextures() const;
 
-			void addUniform(std::string const& name, size_t numComponents, int32 const* values);
+			void addUniform(std::string const& name, size_t numComponents, int32_t const* values);
 
-			void addUniform(std::string const& name, size_t numComponents, uint32 const* values);
+			void addUniform(std::string const& name, size_t numComponents, uint32_t const* values);
 
 			void addUniform(std::string const& name, size_t numComponents, float const* values);
 

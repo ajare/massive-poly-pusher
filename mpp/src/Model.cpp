@@ -92,9 +92,9 @@ namespace mpp
 				int indexWidthBytes = indexWidth / 8;
 				int indexSize = primitiveCount * primitiveSize * indexWidthBytes;
 
-				auto indexDataPtr = (uint8*)meshDef->getIndexData().get();
+				auto indexDataPtr = (uint8_t*)meshDef->getIndexData().get();
 
-				vector<uint8> indexData;
+				vector<uint8_t> indexData;
 				for (int i = 0; i < indexSize; ++i)
 				{
 					indexData.push_back(*indexDataPtr++);

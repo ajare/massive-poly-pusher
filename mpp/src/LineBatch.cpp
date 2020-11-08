@@ -77,7 +77,7 @@ namespace mpp
 
 		createMeshSpecification(primitiveType);
 
-		uint32 flags = MPP_PROGRAM_TAGS_PRIM_LINES
+		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_LINES
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
 		auto materialResource = createMaterial(getName() + "_LineBatch", nullptr, flags);

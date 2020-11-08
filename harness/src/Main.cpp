@@ -697,7 +697,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// 3. Repeat steps 1 & 2 a number of times (though use blur2 target as input texture for step 1).
 			// 4. Blend blur2 to screen
 
-			// Check whether we need to use a float texture rather than uint8 for bloom.
+			// Check whether we need to use a float texture rather than uint8_t for bloom.
 
 			// Maybe just: gRenderSystem->enableBloom()
 

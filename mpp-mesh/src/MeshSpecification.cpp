@@ -255,7 +255,7 @@ namespace mpp
 		 * Gets a hash code.
 		 *
 		 */
-		uint32 MeshSpecification::getHashCode() const
+		uint32_t MeshSpecification::getHashCode() const
 		{
 			//TODO
 			// Need to include attrib type information into the hash, as otherwise

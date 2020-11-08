@@ -78,7 +78,7 @@ namespace mpp
 
 	private:
 
-		typedef std::pair<uint64, MeshInstance*> SortableMeshInstance;
+		typedef std::pair<uint64_t, MeshInstance*> SortableMeshInstance;
 		
 	private:
 
@@ -383,15 +383,15 @@ namespace mpp
 		//
 		// 3d rendering
 		//
-		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32 primitiveCount = -1);
+		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32 primitiveCount = -1);
+		void renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
 
 		//
 		// 2d rendering

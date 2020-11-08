@@ -29,7 +29,7 @@ namespace mpp
 	 * Set a glyph.
 	 *
 	 */
-	void Font::setGlyph(uint8 index, int x, int y, int width, int height, int kern, int raise)
+	void Font::setGlyph(uint8_t index, int x, int y, int width, int height, int kern, int raise)
 	{
 		Glyph& g = mGlyphs[index];
 		
@@ -53,7 +53,7 @@ namespace mpp
 	* Get a glyph.
 	*
 	*/
-	Font::Glyph const& Font::getGlyph(uint8 index)
+	Font::Glyph const& Font::getGlyph(uint8_t index)
 	{
 		return  mGlyphs[index];
 	}

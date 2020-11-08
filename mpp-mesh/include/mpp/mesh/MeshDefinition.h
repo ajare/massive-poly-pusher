@@ -28,8 +28,8 @@ namespace mpp
 
 			std::vector<VertexBufferDefinition*> mVertexBufferDefinitions;
 
-			// Array, so must supply deleter, ie: std::shared_ptr<uint16> ptr(new uint8[vertexCount], [](uint16 *p) { delete[] p; } );
-			std::shared_ptr<const uint8> mIndexData;
+			// Array, so must supply deleter, ie: std::shared_ptr<uint16_t> ptr(new uint8_t[vertexCount], [](uint16_t *p) { delete[] p; } );
+			std::shared_ptr<const uint8_t> mIndexData;
 
 			int mNumPrimitives;
 
@@ -63,11 +63,11 @@ namespace mpp
 
 			bool isIndexed() const;
 
-			void setIndexData(std::shared_ptr<const uint8> indexData);
+			void setIndexData(std::shared_ptr<const uint8_t> indexData);
 
-			std::shared_ptr<const uint8> getIndexData() const;
+			std::shared_ptr<const uint8_t> getIndexData() const;
 
-			VertexBufferDefinition* createVertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, std::shared_ptr<const int8> vertexData);
+			VertexBufferDefinition* createVertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData);
 
 			int getNumVertexBufferDefinitions() const;
 

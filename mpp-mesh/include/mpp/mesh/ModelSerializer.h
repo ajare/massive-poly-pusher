@@ -26,14 +26,14 @@ namespace mpp
 				struct Mesh
 				{
 					std::string name;
-					uint32 meshSpec;
-					uint32 material;
+					uint32_t meshSpec;
+					uint32_t material;
 					Primitive::Type primitiveType;
 				};
 
 			private:
 
-				std::map<std::string, uint32> mMaterialLookup;
+				std::map<std::string, uint32_t> mMaterialLookup;
 				std::vector<MaterialInformation> mMaterials;
 				std::vector<MeshSpecification> mMeshSpecifications;
 				std::vector<Mesh> mMeshes;
@@ -41,7 +41,7 @@ namespace mpp
 			private:
 
 				MetadataReader(
-					std::map<std::string, uint32> const& materialLookup,
+					std::map<std::string, uint32_t> const& materialLookup,
 					std::vector<MaterialInformation> const& materials,
 					std::vector<MeshSpecification> const& meshSpecifications)
 					: mMaterialLookup(materialLookup)
@@ -50,7 +50,7 @@ namespace mpp
 				{
 				}
 
-				void addMesh(std::string const& name, uint32 meshSpec, uint32 material, Primitive::Type type)
+				void addMesh(std::string const& name, uint32_t meshSpec, uint32_t material, Primitive::Type type)
 				{
 					Mesh mesh
 					{
@@ -70,12 +70,12 @@ namespace mpp
 					return mMeshes.size();
 				}
 
-				MaterialInformation const& getMaterialByMeshId(uint32 id)
+				MaterialInformation const& getMaterialByMeshId(uint32_t id)
 				{
 					return mMaterials[mMeshes[id].material];
 				}
 
-				MeshSpecification const& getMeshSpecificationByMeshId(uint32 id)
+				MeshSpecification const& getMeshSpecificationByMeshId(uint32_t id)
 				{
 					return mMeshSpecifications[mMeshes[id].meshSpec];
 				}
@@ -87,7 +87,7 @@ namespace mpp
 			struct Header
 			{
 				int versionMajor, versionMinor;
-				uint32 flags;
+				uint32_t flags;
 			};
 
 			struct Directory
@@ -106,8 +106,8 @@ namespace mpp
 					};
 
 					Type type{ Type::Unused };
-					uint32 startOffset{ 0 };
-					uint32 endOffset{ 0 };
+					uint32_t startOffset{ 0 };
+					uint32_t endOffset{ 0 };
 					size_t count{ 0 };
 				};
 
@@ -117,25 +117,25 @@ namespace mpp
 			struct VertexStream
 			{
 				size_t vertexCount, vertexStride;
-				std::shared_ptr<const int8> vertexData;
+				std::shared_ptr<const int8_t> vertexData;
 			};
 
 			struct IndexStream
 			{
 				size_t indexWidth{ 0 };
-				std::shared_ptr<const uint8> indexData;
+				std::shared_ptr<const uint8_t> indexData;
 			};
 
 			struct Mesh
 			{
 				std::string name;
-				uint32 meshSpec;
-				uint32 material;
+				uint32_t meshSpec;
+				uint32_t material;
 				Primitive::Type primitiveType;
 				int primitiveCount;
 
-				uint32 indexStream;
-				std::vector<uint32> vertexStreams;
+				uint32_t indexStream;
+				std::vector<uint32_t> vertexStreams;
 			};
 
 		private:
@@ -147,7 +147,7 @@ namespace mpp
 			// Materials: a material gets added into an array, for writing, and
 			// then the material name is mapped to the array index, for meshes
 			// to index with.
-			std::map<std::string, uint32> mMaterialLookup;
+			std::map<std::string, uint32_t> mMaterialLookup;
 
 			std::vector<MaterialInformation> mMaterials;
 
@@ -157,7 +157,7 @@ namespace mpp
 
 			// Index buffers: we have a lookup which maps index buffer id
 			// to mesh id, so we can get the primitive type etc, when writing
-			std::map<uint32, uint32> mIndexStreamLookup;
+			std::map<uint32_t, uint32_t> mIndexStreamLookup;
 
 			std::vector<IndexStream> mIndexStreams;
 
@@ -179,7 +179,7 @@ namespace mpp
 
 			Directory::Entry readDirectoryEntry(FILE* fp);
 
-			void updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32 start, uint32 end, size_t count);
+			void updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32_t start, uint32_t end, size_t count);
 
 			void writeDirectory(FILE* fp);
 
@@ -227,7 +227,7 @@ namespace mpp
 					
 			void writeMeshes(FILE* fp);
 
-			void writeMesh(FILE* fp, Mesh const& mesh, uint32 index);
+			void writeMesh(FILE* fp, Mesh const& mesh, uint32_t index);
 
 		public:
 
@@ -261,13 +261,13 @@ namespace mpp
 
 			std::vector<MaterialInformation> const& getMaterials() const;
 
-			void addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8> vertexData);
+			void addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData);
 
-			void getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, std::shared_ptr<const int8>* vertexData);
+			void getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, std::shared_ptr<const int8_t>* vertexData);
 
-			void setIndexBuffer(int meshIndex, std::shared_ptr<const uint8> indexData, size_t indexWidth);
+			void setIndexBuffer(int meshIndex, std::shared_ptr<const uint8_t> indexData, size_t indexWidth);
 
-			std::shared_ptr<const uint8> getIndexData(int meshIndex) const;
+			std::shared_ptr<const uint8_t> getIndexData(int meshIndex) const;
 
 			int getIndexWidth(int meshIndex) const;
 

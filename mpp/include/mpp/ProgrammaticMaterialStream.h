@@ -44,9 +44,9 @@ namespace mpp
 
 		void useDefaultTexture();
 
-		void setUniform(std::string const& name, int32 value);
+		void setUniform(std::string const& name, int32_t value);
 
-		void setUniform(std::string const& name, uint32 value);
+		void setUniform(std::string const& name, uint32_t value);
 
 		void setUniform(std::string const& name, float value);
 
@@ -56,9 +56,9 @@ namespace mpp
 
 		void setUniform(std::string const& name, glm::vec4 const& value);
 
-		void setUniform(std::string const& name, size_t count, int32 const* values);
+		void setUniform(std::string const& name, size_t count, int32_t const* values);
 
-		void setUniform(std::string const& name, size_t count, uint32 const* values);
+		void setUniform(std::string const& name, size_t count, uint32_t const* values);
 
 		void setUniform(std::string const& name, size_t count, float const* values);
 	};

@@ -28,9 +28,9 @@ namespace mpp
 
 	public:
 
-		void setUniform(std::string const& name, int32 value);
+		void setUniform(std::string const& name, int32_t value);
 
-		void setUniform(std::string const& name, uint32 value);
+		void setUniform(std::string const& name, uint32_t value);
 
 		void setUniform(std::string const& name, float value);
 
@@ -40,15 +40,15 @@ namespace mpp
 
 		void setUniform(std::string const& name, glm::vec4 const& value);
 
-		void setUniform(std::string const& name, size_t count, int32 const* values);
+		void setUniform(std::string const& name, size_t count, int32_t const* values);
 
-		void setUniform(std::string const& name, size_t count, uint32 const* values);
+		void setUniform(std::string const& name, size_t count, uint32_t const* values);
 
 		void setUniform(std::string const& name, size_t count, float const* values);
 
-		void updateUniform(std::string const& name, int32 value);
+		void updateUniform(std::string const& name, int32_t value);
 
-		void updateUniform(std::string const& name, uint32 value);
+		void updateUniform(std::string const& name, uint32_t value);
 
 		void updateUniform(std::string const& name, float value);
 
@@ -58,9 +58,9 @@ namespace mpp
 
 		void updateUniform(std::string const& name, glm::vec4 const& value);
 
-		void updateUniform(std::string const& name, size_t count, int32 const* values);
+		void updateUniform(std::string const& name, size_t count, int32_t const* values);
 
-		void updateUniform(std::string const& name, size_t count, uint32 const* values);
+		void updateUniform(std::string const& name, size_t count, uint32_t const* values);
 
 		void updateUniform(std::string const& name, size_t count, float const* values);
 

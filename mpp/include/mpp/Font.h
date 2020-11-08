@@ -36,9 +36,9 @@ namespace mpp
 
 		Font(ResourcePtr texture);
 
-		void setGlyph(uint8 index, int x, int y, int width, int height, int kern, int raise);
+		void setGlyph(uint8_t index, int x, int y, int width, int height, int kern, int raise);
 
-		Glyph const& getGlyph(uint8 index);
+		Glyph const& getGlyph(uint8_t index);
 
 		ResourcePtr getTexture();
 	};

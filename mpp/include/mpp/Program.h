@@ -70,7 +70,7 @@ namespace mpp
 		{
 			std::string samplerName;
 			std::string markedUpName;
-			int32 uniformId;
+			int32_t uniformId;
 		};
 
 	private:
@@ -86,7 +86,7 @@ namespace mpp
 
 		std::string mVertexSource, mFragmentSource;
 
-		uint32 mVertexShaderId, mFragmentShaderId;
+		uint32_t mVertexShaderId, mFragmentShaderId;
 
 		std::map<std::string, int> mUniformIds;
 
@@ -96,13 +96,13 @@ namespace mpp
 
 		std::vector<VariableInfo> mVertexAttributes;
 
-		uint32 mSortId;
+		uint32_t mSortId;
 
 		uint32_t mFlags{ 0 };
 
 	private:
 
-		void compileShader(uint32* id, std::string const& source, std::string const& sourceType);
+		void compileShader(uint32_t* id, std::string const& source, std::string const& sourceType);
 
 		VariableInfo getVariableInfo(std::string const& def, std::string const& name, std::string const& type, ShaderType shaderType);
 
@@ -138,9 +138,9 @@ namespace mpp
 
 		int getHalfWindowSizeId() const;
 
-		void setSortId(uint32 sortId);
+		void setSortId(uint32_t sortId);
 
-		uint32 getSortId() const;
+		uint32_t getSortId() const;
 
 		int getNumSamplers() const;
 

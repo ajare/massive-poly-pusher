@@ -91,9 +91,9 @@ namespace mpp
 	 * that the source is set up to match our target layout.
 	 *
 	 */
-	int8* ModelStream::copyVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride)
+	int8_t* ModelStream::copyVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride)
 	{
-		int8* bufData = new int8[vertexStride * vertexCount];
+		int8_t* bufData = new int8_t[vertexStride * vertexCount];
 
 		memcpy(bufData, componentStream.data.get(), vertexCount * vertexStride);
 		return bufData;
@@ -103,10 +103,10 @@ namespace mpp
 	 * Create a vertex buffer definition by copying each attribute from an interlaced source.
 	 *
 	 */
-	int8* ModelStream::deinterlaceVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride)
+	int8_t* ModelStream::deinterlaceVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride)
 	{
-		int8* bufData = new int8[vertexStride * vertexCount];
-		int8* bufDataPtr = bufData;
+		int8_t* bufData = new int8_t[vertexStride * vertexCount];
+		int8_t* bufDataPtr = bufData;
 
 		for (int i = 0; i < vertexCount; ++i)
 		{
@@ -125,14 +125,14 @@ namespace mpp
 				case Vertex::DataType::Byte:
 					for (int k = 0; k < componentCount; ++k)
 					{
-						*bufDataPtr++ = ((int8 const*)stream.data.get())[componentOffset + k];
+						*bufDataPtr++ = ((int8_t const*)stream.data.get())[componentOffset + k];
 					}
 					break;
 
 				case Vertex::DataType::UnsignedByte:
 					for (int k = 0; k < componentCount; ++k)
 					{
-						*bufDataPtr++ = ((uint8 const*)stream.data.get())[componentOffset + k];
+						*bufDataPtr++ = ((uint8_t const*)stream.data.get())[componentOffset + k];
 					}
 					break;
 
@@ -179,7 +179,7 @@ namespace mpp
 			// Set index data if we have any.
 			if (meshSpec.verticesIndexed())
 			{
-				uint8 const* indexData = getMeshIndexData(i);
+				uint8_t const* indexData = getMeshIndexData(i);
 				int indexWidth = getMeshIndexWidth(i);
 				int indexWidthBytes = indexWidth / 8;
 
@@ -187,10 +187,10 @@ namespace mpp
 				{
 					size_t dataSize = primitiveCount * mesh::Primitive::size(primitiveType) * indexWidthBytes;
 
-					uint8* indexBuffer = new uint8[dataSize];
+					uint8_t* indexBuffer = new uint8_t[dataSize];
 					memcpy(indexBuffer, indexData, dataSize);
 
-					meshDef->setIndexData(shared_ptr<const uint8>(indexBuffer, [](uint8*p) { delete[] p; }));
+					meshDef->setIndexData(shared_ptr<const uint8_t>(indexBuffer, [](uint8_t*p) { delete[] p; }));
 				}
 			}
 
@@ -212,11 +212,11 @@ namespace mpp
 
 				// See whether or not the streams are the same, and are packed tightly.
 				// If they are, we can load the data in one go.
-				int8* bufData = streamsAreTightlyPacked(bufferSpec, componentStreams)
+				int8_t* bufData = streamsAreTightlyPacked(bufferSpec, componentStreams)
 					? copyVertexBufferData(bufferSpec, componentStreams.begin()->second, vertexCount, vertexStride)
 					: deinterlaceVertexBufferData(bufferSpec, componentStreams, vertexCount, vertexStride);
 
-				VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, vertexCount, vertexStride, shared_ptr<const int8>(bufData, [](int8 const* p) { delete[] p; }));
+				VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, vertexCount, vertexStride, shared_ptr<const int8_t>(bufData, [](int8_t const* p) { delete[] p; }));
 			}
 		}
 	}

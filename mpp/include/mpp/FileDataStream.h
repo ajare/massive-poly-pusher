@@ -16,6 +16,6 @@ namespace mpp
 
 		int getDataSize() const;
 
-		int8 const* getData() const;
+		int8_t const* getData() const;
 	};
 }

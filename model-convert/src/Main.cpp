@@ -189,7 +189,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 
 	SpecificationParser parser(specFile);
 
-	uint32 maxVerticesPerMesh;
+	uint32_t maxVerticesPerMesh;
 	MeshSpecification meshSpec = parser.parseMeshSpecification(maxVerticesPerMesh);
 	map<string, mpp::mesh::MaterialInformation> materialInfo = parser.parseMaterialInformation();
 
@@ -343,10 +343,10 @@ void debug(string const& inFile, string const& outFile)
 			// Get data and parse according to attrib list
 			/*
 			int vertexCount, vertexStride;
-			shared_ptr<const int8> vertexData;
+			shared_ptr<const int8_t> vertexData;
 			fileLoader.getVertexStream(i, j, &vertexCount, &vertexStride, &vertexData);
 
-			int8 const* v = vertexData.get();
+			int8_t const* v = vertexData.get();
 			for (int k = 0; k < vertexCount; ++k)
 			{
 				for (int l = 0; l < numAttribs; ++l)
@@ -360,25 +360,25 @@ void debug(string const& inFile, string const& outFile)
 						switch (attrib.dataType)
 						{
 						case mpp::mesh::Vertex::DataType::Byte:
-							cout << (int)*(int8*)v; break;
+							cout << (int)*(int8_t*)v; break;
 						case mpp::mesh::Vertex::DataType::UnsignedByte:
-							cout << (int)*(uint8*)v; break;
+							cout << (int)*(uint8_t*)v; break;
 						case mpp::mesh::Vertex::DataType::Short:
-							cout << *(int16*)v; break;
+							cout << *(int16_t*)v; break;
 						case mpp::mesh::Vertex::DataType::UnsignedShort:
-							cout << *(uint16*)v; break;
+							cout << *(uint16_t*)v; break;
 						case mpp::mesh::Vertex::DataType::Int:
-							cout << *(int32*)v; break;
+							cout << *(int32_t*)v; break;
 						case mpp::mesh::Vertex::DataType::UnsignedInt:
-							cout << *(uint32*)v; break;
+							cout << *(uint32_t*)v; break;
 						case mpp::mesh::Vertex::DataType::Float:
 							cout << *(float*)v; break;
 						case mpp::mesh::Vertex::DataType::Double:
 							cout << *(double*)v; break;
 						case mpp::mesh::Vertex::DataType::Int_2_10_10_10_REV:
-							cout << *(int32*)v; break;
+							cout << *(int32_t*)v; break;
 						case mpp::mesh::Vertex::DataType::UnsignedInt_2_10_10_10_REV:
-							cout << *(uint32*)v; break;
+							cout << *(uint32_t*)v; break;
 						default:
 							cout << "Unknown"; break;
 						}
@@ -396,22 +396,22 @@ void debug(string const& inFile, string const& outFile)
 			// Get index data
 			int indexWidth = fileLoader.getIndexWidth(i);
 			int indexWidthBytes = indexWidth / 8;
-			shared_ptr<const uint8> indexData = fileLoader.getIndexData(i);
+			shared_ptr<const uint8_t> indexData = fileLoader.getIndexData(i);
 
 			cout << "Index width: " << indexWidth << "\n";
 
-			uint8 const* indexDataPtr = indexData.get();
+			uint8_t const* indexDataPtr = indexData.get();
 			for (int j = 0; j < numPrimitives; ++j)
 			{
 				for (int k = 0; k < primitiveSize; ++k)
 				{
 					if (indexWidth == 16)
 					{
-						cout << (uint16)*(uint16 const*)indexDataPtr;
+						cout << (uint16_t)*(uint16_t const*)indexDataPtr;
 					}
 					else
 					{
-						cout << (uint32)*(uint32 const*)indexDataPtr;
+						cout << (uint32_t)*(uint32_t const*)indexDataPtr;
 					}
 
 					cout << "\t";

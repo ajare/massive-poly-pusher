@@ -37,9 +37,9 @@ namespace mpp
 
 		RenderSystem* mwRenderSystem;
 
-		static uint32 msSortableTextureId;
+		static uint32_t msSortableTextureId;
 
-		static uint32 msSortableProgramId;
+		static uint32_t msSortableProgramId;
 
 		std::vector<ResourcePtr> mSortableTextures;
 
@@ -71,17 +71,17 @@ namespace mpp
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
 
-		ResourcePtr getDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+		ResourcePtr getDefault2dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
-		ResourcePtr getDefault2dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+		ResourcePtr getDefault2dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
-		ResourcePtr getDefault3dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+		ResourcePtr getDefault3dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
-		ResourcePtr getDefault3dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, std::string descriptor = "");
+		ResourcePtr getDefault3dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
-		ResourcePtr getTextureBySortId(uint32 id);
+		ResourcePtr getTextureBySortId(uint32_t id);
 
-		ResourcePtr getProgramBySortId(uint32 id);
+		ResourcePtr getProgramBySortId(uint32_t id);
 
 		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
 	};

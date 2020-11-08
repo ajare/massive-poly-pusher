@@ -26,7 +26,7 @@ namespace mpp
 
 				VertexData const* mVertexData;
 
-				uint32 mIndex, mOffset;
+				uint32_t mIndex, mOffset;
 
 			private:
 
@@ -46,7 +46,7 @@ namespace mpp
 
 				void nextVertex()
 				{
-					uint32 currentVertex = mIndex / mVertexData->mNumComponents;
+					uint32_t currentVertex = mIndex / mVertexData->mNumComponents;
 					mIndex = mVertexData->mNumComponents * (currentVertex + 1);
 					mOffset = mVertexData->mStride * (currentVertex + 1);
 				}
@@ -57,28 +57,28 @@ namespace mpp
 					switch (mVertexData->mDataTypes[mIndex++])
 					{
 					case Vertex::DataType::Byte:
-						mOffset += sizeof(int8);
-						return (T)((int8)mVertexData->mData[mOffset - sizeof(int8)]);
+						mOffset += sizeof(int8_t);
+						return (T)((int8_t)mVertexData->mData[mOffset - sizeof(int8_t)]);
 
 					case Vertex::DataType::UnsignedByte:
-						mOffset += sizeof(uint8);
-						return (T)((uint8)mVertexData->mData[mOffset - sizeof(uint8)]);
+						mOffset += sizeof(uint8_t);
+						return (T)((uint8_t)mVertexData->mData[mOffset - sizeof(uint8_t)]);
 
 					case Vertex::DataType::Short:
-						mOffset += sizeof(int16);
-						return (T)(*(int16*)&mVertexData->mData[mOffset - sizeof(int16)]);
+						mOffset += sizeof(int16_t);
+						return (T)(*(int16_t*)&mVertexData->mData[mOffset - sizeof(int16_t)]);
 
 					case Vertex::DataType::UnsignedShort:
-						mOffset += sizeof(uint16);
-						return (T)(*(uint16*)&mVertexData->mData[mOffset - sizeof(uint16)]);
+						mOffset += sizeof(uint16_t);
+						return (T)(*(uint16_t*)&mVertexData->mData[mOffset - sizeof(uint16_t)]);
 
 					case Vertex::DataType::Int:
-						mOffset += sizeof(int32);
-						return (T)(*(int32*)&mVertexData->mData[mOffset - sizeof(int32)]);
+						mOffset += sizeof(int32_t);
+						return (T)(*(int32_t*)&mVertexData->mData[mOffset - sizeof(int32_t)]);
 
 					case Vertex::DataType::UnsignedInt:
-						mOffset += sizeof(uint32);
-						return (T)(*(uint32*)&mVertexData->mData[mOffset - sizeof(uint32)]);
+						mOffset += sizeof(uint32_t);
+						return (T)(*(uint32_t*)&mVertexData->mData[mOffset - sizeof(uint32_t)]);
 
 					case Vertex::DataType::HalfFloat:
 						mOffset += sizeof(half_float::half);
@@ -104,9 +104,9 @@ namespace mpp
 
 			size_t mNumComponents{ 0 };
 
-			uint32 mOffset{ 0 };
+			uint32_t mOffset{ 0 };
 
-			std::vector<int8> mData;
+			std::vector<int8_t> mData;
 
 			std::vector<Vertex::DataType> mDataTypes;
 
@@ -120,59 +120,59 @@ namespace mpp
 
 			size_t getNumVertices() const;
 
-			std::vector<int8> const& getData() const;
+			std::vector<int8_t> const& getData() const;
 
-			std::vector<int8> getVertexRange(uint32 start, size_t count) const;
+			std::vector<int8_t> getVertexRange(uint32_t start, size_t count) const;
 
 			Reader createReader() const;
 
-			VertexData& i8(int8 data);
+			VertexData& i8(int8_t data);
 
-			VertexData& i8(int8 data1, int8 data2);
+			VertexData& i8(int8_t data1, int8_t data2);
 
-			VertexData& i8(int8 data1, int8 data2, int8 data3);
+			VertexData& i8(int8_t data1, int8_t data2, int8_t data3);
 
-			VertexData& i8(int8 data1, int8 data2, int8 data3, int8 data4);
+			VertexData& i8(int8_t data1, int8_t data2, int8_t data3, int8_t data4);
 
-			VertexData& u8(uint8 data);
+			VertexData& u8(uint8_t data);
 
-			VertexData& u8(uint8 data1, uint8 data2);
+			VertexData& u8(uint8_t data1, uint8_t data2);
 
-			VertexData& u8(uint8 data1, uint8 data2, uint8 data3);
+			VertexData& u8(uint8_t data1, uint8_t data2, uint8_t data3);
 
-			VertexData& u8(uint8 data1, uint8 data2, uint8 data3, uint8 data4);
+			VertexData& u8(uint8_t data1, uint8_t data2, uint8_t data3, uint8_t data4);
 
-			VertexData& i16(int16 data);
+			VertexData& i16(int16_t data);
 
-			VertexData& i16(int16 data1, int16 data2);
+			VertexData& i16(int16_t data1, int16_t data2);
 
-			VertexData& i16(int16 data1, int16 data2, int16 data3);
+			VertexData& i16(int16_t data1, int16_t data2, int16_t data3);
 
-			VertexData& i16(int16 data1, int16 data2, int16 data3, int16 data4);
+			VertexData& i16(int16_t data1, int16_t data2, int16_t data3, int16_t data4);
 
-			VertexData& u16(uint16 data);
+			VertexData& u16(uint16_t data);
 
-			VertexData& u16(uint16 data1, uint16 data2);
+			VertexData& u16(uint16_t data1, uint16_t data2);
 
-			VertexData& u16(uint16 data1, uint16 data2, uint16 data3);
+			VertexData& u16(uint16_t data1, uint16_t data2, uint16_t data3);
 
-			VertexData& u16(uint16 data1, uint16 data2, uint16 data3, uint16 data4);
+			VertexData& u16(uint16_t data1, uint16_t data2, uint16_t data3, uint16_t data4);
 
-			VertexData& i32(int32 data);
+			VertexData& i32(int32_t data);
 
-			VertexData& i32(int32 data1, int32 data2);
+			VertexData& i32(int32_t data1, int32_t data2);
 
-			VertexData& i32(int32 data1, int32 data2, int32 data3);
+			VertexData& i32(int32_t data1, int32_t data2, int32_t data3);
 
-			VertexData& i32(int32 data1, int32 data2, int32 data3, int32 data4);
+			VertexData& i32(int32_t data1, int32_t data2, int32_t data3, int32_t data4);
 
-			VertexData& u32(uint32 data);
+			VertexData& u32(uint32_t data);
 
-			VertexData& u32(uint32 data1, uint32 data2);
+			VertexData& u32(uint32_t data1, uint32_t data2);
 
-			VertexData& u32(uint32 data1, uint32 data2, uint32 data3);
+			VertexData& u32(uint32_t data1, uint32_t data2, uint32_t data3);
 
-			VertexData& u32(uint32 data1, uint32 data2, uint32 data3, uint32 data4);
+			VertexData& u32(uint32_t data1, uint32_t data2, uint32_t data3, uint32_t data4);
 
 			VertexData& f16(float data);
 

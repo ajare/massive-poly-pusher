@@ -20,7 +20,7 @@ namespace mpp
 
 		void sample();
 
-		std::map<std::string, uint64> getSamples();
+		std::map<std::string, uint64_t> getSamples();
 	};
 }
 

@@ -17,7 +17,7 @@ namespace mpp
 
 		void subdivide(std::vector<double>& positions);
 
-		uint32 getMidpointIndex(std::map<uint64, uint32>& midpointIndices, std::vector<double>& positions, uint32 i0, uint32 i1);
+		uint32_t getMidpointIndex(std::map<uint64_t, uint32_t>& midpointIndices, std::vector<double>& positions, uint32_t i0, uint32_t i1);
 
 		void renormalise(std::vector<double>& positions);
 

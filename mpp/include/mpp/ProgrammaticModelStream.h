@@ -17,10 +17,10 @@ namespace mpp
 			mesh::MeshSpecification specification;
 			std::string name;
 			std::string material;
-			std::vector<uint8> vertexData;
+			std::vector<uint8_t> vertexData;
 			int indexWidth;
 			float pointSize;
-			std::vector<uint8> indexData;
+			std::vector<uint8_t> indexData;
 
 			// Component data
 			int vertexCount, primitiveCount;
@@ -47,7 +47,7 @@ namespace mpp
 
 		float getMeshPointSize(int meshIndex) const;
 
-		uint8 const* getMeshIndexData(int meshIndex) const;
+		uint8_t const* getMeshIndexData(int meshIndex) const;
 
 		std::string const& getMeshName(int meshIndex) const;
 
@@ -61,14 +61,14 @@ namespace mpp
 
 		int getMeshId(std::string const& name) const;
 
-		void addVertexData(int meshIndex, std::vector<int8> const& vertexData);
+		void addVertexData(int meshIndex, std::vector<int8_t> const& vertexData);
 
 		void addVertexData(int meshIndex, mesh::VertexData const& vertexData);
 
-		void addPoint(int meshIndex, uint32 v);
+		void addPoint(int meshIndex, uint32_t v);
 
-		void addLine(int meshIndex, uint32 v0, uint32 v1);
+		void addLine(int meshIndex, uint32_t v0, uint32_t v1);
 
-		void addTriangle(int meshIndex, uint32 v0, uint32 v1, uint32 v2);
+		void addTriangle(int meshIndex, uint32_t v0, uint32_t v1, uint32_t v2);
 	};
 }

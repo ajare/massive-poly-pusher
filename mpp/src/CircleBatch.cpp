@@ -76,12 +76,12 @@ namespace mpp
 	 * Create indices for an object.
 	 *
 	 */
-	void CircleBatch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
+	void CircleBatch::createIndexData(vector<uint8_t>& data, uint32_t start, size_t count)
 	{
 		size_t vertexSize{ 6 * (mIndexWidth / 8) };
 		data.resize(count * vertexSize);
 
-		uint32* ptr = (uint32*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
+		uint32_t* ptr = (uint32_t*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
 		int indexBytes = mIndexWidth / 8;
 
 		for (uint32_t i = start; i < count; ++i)
@@ -142,7 +142,7 @@ namespace mpp
 		Mesh* mesh{ nullptr };
 		if (indexedVertices())
 		{
-			vector<uint8> indices;
+			vector<uint8_t> indices;
 			createIndexData(indices, 0, getCapacity());
 
 			mesh = new Mesh(

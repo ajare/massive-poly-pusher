@@ -52,7 +52,7 @@ namespace mpp
 	 * Compile shader source.
 	 *
 	 */
-	void Program::compileShader(uint32* id, string const& source, string const& sourceType)
+	void Program::compileShader(uint32_t* id, string const& source, string const& sourceType)
 	{
 		char const* sourcePtr = source.c_str();
 		glShaderSource(*id, 1, (const GLchar**)&sourcePtr, nullptr);
@@ -243,7 +243,7 @@ namespace mpp
 	{
 		vector<string> lines;
 
-		uint32 i = 0, j = 0;
+		uint32_t i = 0, j = 0;
 		while (i != src.length())
 		{
 			char ch = src[i];
@@ -601,7 +601,7 @@ namespace mpp
 	 * we have assigned to program in the sort key.
 	 *
 	 */
-	void Program::setSortId(uint32 sortId)
+	void Program::setSortId(uint32_t sortId)
 	{
 		mSortId = sortId;
 	}
@@ -610,7 +610,7 @@ namespace mpp
 	 * Get the sort id.
 	 *
 	 */
-	uint32 Program::getSortId() const
+	uint32_t Program::getSortId() const
 	{
 		return mSortId;
 	}
@@ -651,7 +651,7 @@ namespace mpp
 		glUseProgram(getId());
 
 		// Bind texture unit locations to samplers
-		for (uint32 i = 0; i < mTextures.size(); ++i)
+		for (uint32_t i = 0; i < mTextures.size(); ++i)
 		{
 			auto const& ti = mTextures[i];
 			glUniform1i(ti.uniformId, i);

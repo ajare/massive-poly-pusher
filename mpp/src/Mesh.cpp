@@ -42,7 +42,7 @@ namespace mpp
 	 * Constructor (indexed).
 	 *
 	 */
-	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, vector<uint8> const& indices, mesh::VertexBufferStorageType storageType, float pointSize)
+	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, vector<uint8_t> const& indices, mesh::VertexBufferStorageType storageType, float pointSize)
 		: mName(name)
 		, mVAO(0)
 		, mIBO(0)
@@ -129,7 +129,7 @@ namespace mpp
 	 * Set index data.
 	 *
 	 */
-	void Mesh::setIndexData(vector<uint8> const& indexData, int indexWidth)
+	void Mesh::setIndexData(vector<uint8_t> const& indexData, int indexWidth)
 	{
 		mIsIndexed = true;
 		mIndexData = indexData;
@@ -186,7 +186,7 @@ namespace mpp
 	 * Add a vertex buffer.
 	 *
 	 */
-	VertexBuffer* Mesh::createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8> vertexData)
+	VertexBuffer* Mesh::createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8_t> vertexData)
 	{
 		VertexBuffer* buf = new VertexBuffer(mwRenderSystem, mStorageType, vertexCount, vertexStride, streaming, staticData, vertexData);
 
@@ -222,7 +222,7 @@ namespace mpp
 	 * Return index data for potential modification.
 	 *
 	 */
-	vector<uint8>& Mesh::getIndexData()
+	vector<uint8_t>& Mesh::getIndexData()
 	{
 		return mIndexData;
 	}
@@ -244,8 +244,8 @@ namespace mpp
 		}
 		else
 		{
-			int8* bufferPtr{ nullptr };
-			GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY));
+			int8_t* bufferPtr{ nullptr };
+			GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY));
 
 			memcpy(bufferPtr, &(mIndexData[0]), mIndexDataSize);
 			GL_CHECK(glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER));
@@ -392,7 +392,7 @@ namespace mpp
 	 * Send vertex data.
 	 *
 	 */
-	void Mesh::render(uint32 numPrimitives, float pointSize) const
+	void Mesh::render(uint32_t numPrimitives, float pointSize) const
 	{
 		if (mPrimitiveType == mesh::Primitive::Type::Points)
 		{

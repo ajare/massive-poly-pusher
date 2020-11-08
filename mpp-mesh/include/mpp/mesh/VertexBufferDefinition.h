@@ -21,14 +21,14 @@ namespace mpp
 
 			bool mStreaming;
 
-			// Array, so must supply deleter, ie: std::shared_ptr<int8> ptr(new int8[vertexCount], [](int8 *p) { delete[] p; } );
-			std::shared_ptr<const int8> mData;
+			// Array, so must supply deleter, ie: std::shared_ptr<int8_t> ptr(new int8_t[vertexCount], [](int8_t *p) { delete[] p; } );
+			std::shared_ptr<const int8_t> mData;
 
 			VertexBufferAttributeLayout mSpecification;
 
 		public:
 
-			VertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, bool streaming, std::shared_ptr<const int8> vertexData);
+			VertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, bool streaming, std::shared_ptr<const int8_t> vertexData);
 
 			int getVertexStride() const;
 
@@ -38,7 +38,7 @@ namespace mpp
 
 			int getDataSize() const;
 
-			std::shared_ptr<const int8> getData() const;
+			std::shared_ptr<const int8_t> getData() const;
 
 			VertexBufferAttributeLayout const& getAttributeLayout() const;
 

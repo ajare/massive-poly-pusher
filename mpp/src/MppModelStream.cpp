@@ -144,20 +144,20 @@ namespace mpp
 			{
 				if (uniform.type == "int")
 				{
-					int32 values[4];
+					int32_t values[4];
 					for (size_t i = 0; i < uniform.numComponents; ++i)
 					{
-						values[i] = any_cast<int32>(uniform.values[0]);
+						values[i] = any_cast<int32_t>(uniform.values[0]);
 					}
 
 					mStr->setUniform(uniform.name, uniform.numComponents, values);
 				}
 				else if (uniform.type == "uint")
 				{
-					uint32 values[4];
+					uint32_t values[4];
 					for (size_t i = 0; i < uniform.numComponents; ++i)
 					{
-						values[i] = any_cast<uint32>(uniform.values[0]);
+						values[i] = any_cast<uint32_t>(uniform.values[0]);
 					}
 
 					mStr->setUniform(uniform.name, uniform.numComponents, values);
@@ -206,7 +206,7 @@ namespace mpp
 				auto layout = dataStreamDef->specification.getVertexBufferAttributeLayout(j);
 
 				int vertexCount, vertexStride;
-				shared_ptr<const int8> vertexData;
+				shared_ptr<const int8_t> vertexData;
 
 				ser.getVertexStream(i, j, &vertexCount, &vertexStride, &vertexData);
 
@@ -249,7 +249,7 @@ namespace mpp
 		return mMeshDataDefinitions[meshIndex]->pointSize;
 	}
 
-	uint8 const* MppModelStream::getMeshIndexData(int meshIndex) const
+	uint8_t const* MppModelStream::getMeshIndexData(int meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->indexData.get();
 	}

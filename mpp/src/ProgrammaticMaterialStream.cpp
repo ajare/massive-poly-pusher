@@ -113,12 +113,12 @@ namespace mpp
 		mTextures["TEX1"] = make_pair("__mpp_tex_none__", false);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, int32 value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, int32_t value)
 	{
 		mUniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, uint32 value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, uint32_t value)
 	{
 		mUniforms.setUniform(name, value);
 	}
@@ -138,12 +138,12 @@ namespace mpp
 		mUniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, int32 const* values)
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, int32_t const* values)
 	{
 		mUniforms.setUniform(name, count, values);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, uint32 const* values)
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, uint32_t const* values)
 	{
 		mUniforms.setUniform(name, count, values);
 	}

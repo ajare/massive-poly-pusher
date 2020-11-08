@@ -173,12 +173,12 @@ namespace mpp
 	 * Create indices for a primitive.
 	 *
 	 */
-	void QuadBatch::createIndexData(vector<uint8>& data, uint32_t start, size_t count)
+	void QuadBatch::createIndexData(vector<uint8_t>& data, uint32_t start, size_t count)
 	{
 		size_t vertexSize{ 6 * (mOptions.indexWidth / 8) };
 		data.resize(count * vertexSize);
 
-		uint32* ptr = (uint32*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
+		uint32_t* ptr = (uint32_t*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
 		int indexBytes = mOptions.indexWidth / 8;
 
 		for (uint32_t i = start; i < count; ++i)
@@ -327,7 +327,7 @@ namespace mpp
 		createMeshSpecification(primitiveType);
 
 		// Set program flags
-		uint32 flags = 0
+		uint32_t flags = 0
 			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
 			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
 			| (usingTextureAtlas() ? MPP_PROGRAM_TAGS_ATLAS : 0)
@@ -346,7 +346,7 @@ namespace mpp
 		Mesh* mesh{ nullptr };
 		if (indexedVertices())
 		{
-			vector<uint8> indices;
+			vector<uint8_t> indices;
 			createIndexData(indices, 0, getCapacity());
 
 			mesh = new Mesh(

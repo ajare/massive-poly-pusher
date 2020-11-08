@@ -20,7 +20,7 @@ namespace mpp
 		// Set component streams for each mesh
 		for (MeshDataStreamDefinition& meshDef : mMeshDataDefinitions)
 		{
-			uint32 vertexOffset = 0;
+			uint32_t vertexOffset = 0;
 			size_t vertexStride = meshDef.specification.getVertexStrideInBytes();
 			size_t srcVertexDataSize = meshDef.vertexData.size();
 
@@ -33,10 +33,10 @@ namespace mpp
 			meshDef.primitiveCount = meshDef.specification.verticesIndexed() ? (meshDef.indexData.size() / (elementSize * indexWidthBytes)) : (meshDef.vertexCount / elementSize);
 
 			// Go through each component in order, and build streams.
-			auto dataPtr = new int8[srcVertexDataSize];
+			auto dataPtr = new int8_t[srcVertexDataSize];
 			memcpy(dataPtr, &(meshDef.vertexData[0]), srcVertexDataSize);
 
-			auto sharedDataPtr = std::shared_ptr<const int8>((const int8*)dataPtr, [](const int8 *p) { delete[] p; });
+			auto sharedDataPtr = std::shared_ptr<const int8_t>((const int8_t*)dataPtr, [](const int8_t *p) { delete[] p; });
 
 			for (int i = 0; i < meshDef.specification.getNumVertexBufferAttributeLayouts(); ++i)
 			{
@@ -149,7 +149,7 @@ namespace mpp
 		return mMeshDataDefinitions[meshIndex].pointSize;
 	}
 
-	uint8 const* ProgrammaticModelStream::getMeshIndexData(int meshIndex) const
+	uint8_t const* ProgrammaticModelStream::getMeshIndexData(int meshIndex) const
 	{
 		return &(mMeshDataDefinitions[meshIndex].indexData[0]);
 	}
@@ -203,7 +203,7 @@ namespace mpp
 		return -1;
 	}
 
-	void ProgrammaticModelStream::addVertexData(int meshIndex, vector<int8> const& vertexData)
+	void ProgrammaticModelStream::addVertexData(int meshIndex, vector<int8_t> const& vertexData)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
 		meshDef.vertexData.insert(meshDef.vertexData.end(), begin(vertexData), end(vertexData));
@@ -214,7 +214,7 @@ namespace mpp
 		addVertexData(meshIndex, vertexData.getData());
 	}
 
-	void ProgrammaticModelStream::addPoint(int meshIndex, uint32 v)
+	void ProgrammaticModelStream::addPoint(int meshIndex, uint32_t v)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
 
@@ -232,7 +232,7 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticModelStream::addLine(int meshIndex, uint32 v0, uint32 v1)
+	void ProgrammaticModelStream::addLine(int meshIndex, uint32_t v0, uint32_t v1)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
 
@@ -257,7 +257,7 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticModelStream::addTriangle(int meshIndex, uint32 v0, uint32 v1, uint32 v2)
+	void ProgrammaticModelStream::addTriangle(int meshIndex, uint32_t v0, uint32_t v1, uint32_t v2)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
 

@@ -48,7 +48,7 @@ namespace mpp
 		int dataSize = tStr->getDataSize();
 
 		delete[] mData;
-		mData = new uint8[dataSize];
+		mData = new uint8_t[dataSize];
 		memcpy(mData, tStr->getData(), dataSize);
 
 		mWidth = tStr->getWidth();
@@ -78,7 +78,7 @@ namespace mpp
 	 */
 	void Texture::loadImpl()
 	{
-		uint32 texId;
+		uint32_t texId;
 
 		GL_CHECK(glGenTextures(1, &texId));
 
@@ -160,7 +160,7 @@ namespace mpp
 	 * we have assigned to texture in the sort key.
 	 *
 	 */
-	void Texture::setSortId(uint32 sortId)
+	void Texture::setSortId(uint32_t sortId)
 	{
 		mSortId = sortId;
 	}
@@ -169,7 +169,7 @@ namespace mpp
 	 * Get the sort id.
 	 *
 	 */
-	uint32 Texture::getSortId() const
+	uint32_t Texture::getSortId() const
 	{
 		return mSortId;
 	}

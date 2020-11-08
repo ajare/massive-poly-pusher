@@ -60,7 +60,7 @@ namespace mpp
 			return mTextures;
 		}
 
-		void MaterialInformation::addUniform(string const& name, size_t numComponents, int32 const* values)
+		void MaterialInformation::addUniform(string const& name, size_t numComponents, int32_t const* values)
 		{
 			Uniform u
 			{
@@ -77,7 +77,7 @@ namespace mpp
 			mUniforms.push_back(u);
 		}
 
-		void MaterialInformation::addUniform(string const& name, size_t numComponents, uint32 const* values)
+		void MaterialInformation::addUniform(string const& name, size_t numComponents, uint32_t const* values)
 		{
 			Uniform u
 			{

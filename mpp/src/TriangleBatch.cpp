@@ -107,7 +107,7 @@ namespace mpp
 
 		createMeshSpecification(primitiveType);
 
-		uint32 flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
+		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
 			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 

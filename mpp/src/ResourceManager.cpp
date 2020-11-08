@@ -18,8 +18,8 @@ using namespace std;
 namespace mpp
 {
 
-	uint32 ResourceManager::msSortableTextureId = 1;
-	uint32 ResourceManager::msSortableProgramId = 1;
+	uint32_t ResourceManager::msSortableTextureId = 1;
+	uint32_t ResourceManager::msSortableProgramId = 1;
 
 	/*
 	 * Constructor.
@@ -29,12 +29,12 @@ namespace mpp
 		: mwRenderSystem(renderSystem)
 	{
 		// Pad sortable vectors
-		for (uint32 i = 0; i < msSortableTextureId; ++i)
+		for (uint32_t i = 0; i < msSortableTextureId; ++i)
 		{
 			mSortableTextures.push_back(ResourcePtr());
 		}
 
-		for (uint32 i = 0; i < msSortableProgramId; ++i)
+		for (uint32_t i = 0; i < msSortableProgramId; ++i)
 		{
 			mSortablePrograms.push_back(ResourcePtr());
 		}
@@ -184,7 +184,7 @@ namespace mpp
 		}
 
 		// Default texture
-		vector<uint8> whiteData(16, 255);
+		vector<uint8_t> whiteData(16, 255);
 
 		TextureStream* blankStream = new TextureStream(this, &(whiteData[0]), 2, 2, 32, false);
 		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
@@ -194,7 +194,7 @@ namespace mpp
 
 		TextureStream* ts = new TextureStream(
 			this,
-			(uint8 const*)internalFont.getData(),
+			(uint8_t const*)internalFont.getData(),
 			internalFont.getWidth(),
 			internalFont.getHeight(),
 			32,
@@ -359,8 +359,8 @@ namespace mpp
 		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
 		{
 			// Set sort id
-			uint64 maxBits = min<uint64>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
-			if (msSortableTextureId == (uint32)(1 << maxBits))
+			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
+			if (msSortableTextureId == (uint32_t)(1 << maxBits))
 			{
 				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
@@ -531,12 +531,12 @@ namespace mpp
 	 * Gets (or creates if not existing) a 2d program based on the given spec and flags.
 	 *
 	 */
-	ResourcePtr ResourceManager::getDefault2dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	ResourcePtr ResourceManager::getDefault2dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, string descriptor)
 	{
 		return getDefault2dProgram(VertexShader2dTemplate, FragmentShader2dTemplate, spec, flags, load, descriptor);
 	}
 
-	ResourcePtr ResourceManager::getDefault2dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	ResourcePtr ResourceManager::getDefault2dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32_t flags, bool load, string descriptor)
 	{
 		auto parser = make_shared<program::Parser>();
 
@@ -627,12 +627,12 @@ namespace mpp
 		return res;
 	}
 
-	ResourcePtr ResourceManager::getDefault3dProgram(mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	ResourcePtr ResourceManager::getDefault3dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, string descriptor)
 	{
 		return getDefault3dProgram(VertexShader3dTemplate, FragmentShader3dTemplate, spec, flags, load, descriptor);
 	}
 
-	ResourcePtr ResourceManager::getDefault3dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32 flags, bool load, string descriptor)
+	ResourcePtr ResourceManager::getDefault3dProgram(string const& defaultVertexShader, string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32_t flags, bool load, string descriptor)
 	{
 		auto parser = make_shared<program::Parser>();
 
@@ -720,7 +720,7 @@ namespace mpp
 	 * Get raw texture resource from sort id.
 	 *
 	 */
-	ResourcePtr ResourceManager::getTextureBySortId(uint32 id)
+	ResourcePtr ResourceManager::getTextureBySortId(uint32_t id)
 	{
 		return mSortableTextures[id];
 	}
@@ -729,7 +729,7 @@ namespace mpp
 	 * Get raw program resource from sort id.
 	 *
 	 */
-	ResourcePtr ResourceManager::getProgramBySortId(uint32 id)
+	ResourcePtr ResourceManager::getProgramBySortId(uint32_t id)
 	{
 		return mSortablePrograms[id];
 	}

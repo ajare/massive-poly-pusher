@@ -27,7 +27,7 @@ namespace mpp
 
 		float mPointSize;
 
-		uint32 mPrimitivesToRender;
+		uint32_t mPrimitivesToRender;
 
 		ResourcePtr mMaterial;
 
@@ -83,7 +83,7 @@ namespace mpp
 
 		void setUniform(std::string const& name, glm::vec4 const& value);
 
-		void setRenderCount(uint32 count);
+		void setRenderCount(uint32_t count);
 
 		void translate(glm::vec3 const& translate);
 

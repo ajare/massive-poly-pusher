@@ -22,11 +22,11 @@ namespace mpp
 
 		RenderSystem* mwRenderSystem;
 
-		std::vector<int8> mData;
+		std::vector<int8_t> mData;
 
 		size_t mDataSize;
 		
-		uint32 mBinding;
+		uint32_t mBinding;
 
 	private:
 
@@ -34,13 +34,13 @@ namespace mpp
 
 	public:
 
-		UniformBuffer(RenderSystem* renderSystem, std::shared_ptr<const int8> data, size_t dataSize, uint32 binding);
+		UniformBuffer(RenderSystem* renderSystem, std::shared_ptr<const int8_t> data, size_t dataSize, uint32_t binding);
 
 		virtual ~UniformBuffer();
 
-		std::vector<int8>& getBufferData();
+		std::vector<int8_t>& getBufferData();
 
-		void updateData(uint32 offset, size_t size);
+		void updateData(uint32_t offset, size_t size);
 
 		void mapBufferData();
 

@@ -16,14 +16,14 @@ namespace mpp
 	 * Constructor.  Pass already-created vertex data directly in.
 	 *
 	 */
-	UniformBuffer::UniformBuffer(RenderSystem* renderSystem, shared_ptr<const int8> data, size_t dataSize, uint32 binding)
+	UniformBuffer::UniformBuffer(RenderSystem* renderSystem, shared_ptr<const int8_t> data, size_t dataSize, uint32_t binding)
 		: mUBO(0)
 		, mwRenderSystem(renderSystem)
 		, mDataSize(dataSize)
 		, mBinding(binding)
 	{
 		mData.reserve(dataSize);
-		int8 const* dataPtr = data.get();
+		int8_t const* dataPtr = data.get();
 
 		for (size_t i = 0; i < dataSize; ++i)
 		{
@@ -44,7 +44,7 @@ namespace mpp
 	 * Return vertex data for potential modification
 	 *
 	 */
-	vector<int8>& UniformBuffer::getBufferData()
+	vector<int8_t>& UniformBuffer::getBufferData()
 	{
 		return mData;
 	}
@@ -59,7 +59,7 @@ namespace mpp
 		GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, mDataSize, &(mData[0]), glStorageType));
 	}
 
-	void UniformBuffer::updateData(uint32 offset, size_t size)
+	void UniformBuffer::updateData(uint32_t offset, size_t size)
 	{
 		bind();
 		glBufferSubData(GL_UNIFORM_BUFFER, offset, size, &mData[offset]);
@@ -75,8 +75,8 @@ namespace mpp
 	{
 		bind();
 
-		int8* bufferPtr{ nullptr };
-		GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY));
+		int8_t* bufferPtr{ nullptr };
+		GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY));
 
 		memcpy(bufferPtr, &(mData[0]), mDataSize);
 		GL_CHECK(glUnmapBuffer(GL_UNIFORM_BUFFER));

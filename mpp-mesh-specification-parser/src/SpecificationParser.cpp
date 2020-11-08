@@ -32,8 +32,8 @@ SpecificationParser::SpecificationParser(string const& filename)
 
 	mDataTypes["float32"] = mpp::mesh::Vertex::DataType::Float;
 	mDataTypes["float16"] = mpp::mesh::Vertex::DataType::HalfFloat;
-	mDataTypes["uint8"] = mpp::mesh::Vertex::DataType::UnsignedByte;
-	mDataTypes["uint16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
+	mDataTypes["uint8_t"] = mpp::mesh::Vertex::DataType::UnsignedByte;
+	mDataTypes["uint16_t"] = mpp::mesh::Vertex::DataType::UnsignedShort;
 }
 
 map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInformation()
@@ -169,7 +169,7 @@ map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInforma
 
 						if (uniformType == "int")
 						{
-							int32 values[4];
+							int32_t values[4];
 							for (size_t i = 0; i < componentCount; ++i)
 							{
 								values[i] = utils::StringUtils::parseInt(tokens[i]);
@@ -179,7 +179,7 @@ map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInforma
 						}
 						else if (uniformType == "uint")
 						{
-							uint32 values[4];
+							uint32_t values[4];
 							for (size_t i = 0; i < componentCount; ++i)
 							{
 								values[i] = utils::StringUtils::parseUInt(tokens[i]);
@@ -210,7 +210,7 @@ map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInforma
 	return minfos;
 }
 
-		mpp::mesh::MeshSpecification SpecificationParser::parseMeshSpecification(uint32& maxVerticesPerMesh)
+		mpp::mesh::MeshSpecification SpecificationParser::parseMeshSpecification(uint32_t& maxVerticesPerMesh)
 		{
 			mpp::mesh::MeshSpecification meshSpec;
 			utils::XmlReader* reader = utils::XmlReader::fromFile(mFilename);
@@ -266,7 +266,7 @@ map<string, mesh::MaterialInformation> SpecificationParser::parseMaterialInforma
 
 			// Get split size
 			string splitSize;
-			maxVerticesPerMesh = (uint32)-1;
+			maxVerticesPerMesh = (uint32_t)-1;
 			if (buffersNode->getOptionalAttribute("splitSize", splitSize))
 			{
 				maxVerticesPerMesh = utils::StringUtils::parseUInt(splitSize);

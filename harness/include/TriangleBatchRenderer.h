@@ -13,15 +13,15 @@ class TriangleBatchDataProvider
 
 public:
 
-	virtual void position(uint32 index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0,
+	virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0,
 		typename PosType::builtin_type& x1, typename PosType::builtin_type& y1,
 		typename PosType::builtin_type& x2, typename PosType::builtin_type& y2) = 0;
 
-	virtual void texcoords(uint32 index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
+	virtual void texcoords(uint32_t index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
 		typename PosType::builtin_type& u1, typename PosType::builtin_type& v1,
 		typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) {}
 
-	virtual void colour(uint32 index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
+	virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 	virtual mpp::Colour diffuse() = 0;
 
@@ -45,11 +45,11 @@ class TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>
 
 public:
 
-	virtual void position(uint32 index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0,
+	virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0,
 		typename PosType::builtin_type& x1, typename PosType::builtin_type& y1,
 		typename PosType::builtin_type& x2, typename PosType::builtin_type& y2) = 0;
 
-	virtual void texcoords(uint32 index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
+	virtual void texcoords(uint32_t index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
 		typename PosType::builtin_type& u1, typename PosType::builtin_type& v1,
 		typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) {}
 
@@ -97,7 +97,7 @@ public:
 		setNumTriangles(numTriangles);
 	}
 
-	void position(uint32 index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
+	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
 	{
 		x0 = 400 + sinf((index + 1) * mTime / 10.0f) * 100;
 		y0 = 300 + cosf((index + 2) * mTime / 10.0f) * 100;
@@ -109,7 +109,7 @@ public:
 		y2 = y0 - 32;
 	}
 
-	void texcoords(uint32 index, float& u0, float& v0, float& u1, float& v1, float& u2, float& v2)
+	void texcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1, float& u2, float& v2)
 	{
 		u0 = 0.5f;
 		v0 = 1.0f;
@@ -119,9 +119,9 @@ public:
 		v2 = 0.0f;
 	}
 
-	void colour(uint32 index, uint8& red, uint8& green, uint8& blue, uint8& alpha)
+	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha)
 	{
-		uint8 colours[]{
+		uint8_t colours[]{
 			255, 0, 255,
 			255, 127, 0,
 			0, 255, 127,
@@ -169,7 +169,7 @@ public:
 		setNumTriangles(numTriangles);
 	}
 
-	void position(uint32 index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
+	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2)
 	{
 		x0 = 400 + sinf((index + 1) * mTime / 10.0f) * 100;
 		y0 = 300 + cosf((index + 2) * mTime / 10.0f) * 100;
@@ -181,7 +181,7 @@ public:
 		y2 = y0 - 32;
 	}
 
-	void texcoords(uint32 index, float& u0, float& v0, float& u1, float& v1, float& u2, float& v2)
+	void texcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1, float& u2, float& v2)
 	{
 		u0 = 0.5f;
 		v0 = 1.0f;
@@ -281,13 +281,13 @@ public:
 			texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
 		}
 
-		auto colBuffer = (uint8*)mBatch->getAttributeData("COLOUR").first;
+		auto colBuffer = (uint8_t*)mBatch->getAttributeData("COLOUR").first;
 		auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
 
 		size_t triangleCount = mBatch->getPrimitiveCount(count);
 		for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 		{
-			uint32 primitiveIndex = i;
+			uint32_t primitiveIndex = i;
 			bool newVertex = i >= initStart;
 
 			//
@@ -465,7 +465,7 @@ public:
 		size_t triangleCount = mBatch->getPrimitiveCount(count);
 		for (size_t pOffset = 0, tOffset = 0, i = 0; i < triangleCount; ++i)
 		{
-			uint32 primitiveIndex = i;
+			uint32_t primitiveIndex = i;
 			bool newVertex = i >= initStart;
 
 			//

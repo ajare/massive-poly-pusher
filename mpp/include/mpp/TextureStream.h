@@ -9,7 +9,7 @@ namespace mpp
 {
 	struct TextureData
 	{
-		uint8* data{ nullptr };
+		uint8_t* data{ nullptr };
 		int width, height, bitsPerPixel;
 	};
 
@@ -19,7 +19,7 @@ namespace mpp
 
 	class _MPPAPI TextureStream : public ResourceStream
 	{
-		uint8* mData;
+		uint8_t* mData;
 
 		int mWidth, mHeight, mBitsPerPixel;
 
@@ -35,13 +35,13 @@ namespace mpp
 
 	public:
 
-		TextureStream(ResourceManager* resourceMgr, uint8 const* data, int width, int height, int bitsPerPixel, bool filtered, std::string streamType = "Texture");
+		TextureStream(ResourceManager* resourceMgr, uint8_t const* data, int width, int height, int bitsPerPixel, bool filtered, std::string streamType = "Texture");
 
 		TextureStream(ResourceManager* resourceMgr, std::string const& filename, ImageLoadFunction loader, bool filtered, std::string streamType = "Texture");
 
 		virtual ~TextureStream();
 
-		uint8 const* getData() const;
+		uint8_t const* getData() const;
 
 		int getWidth() const;
 

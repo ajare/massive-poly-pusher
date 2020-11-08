@@ -16,7 +16,7 @@ namespace mpp
 	 * Constructor.  Pass already-created vertex data directly in.
 	 *
 	 */
-	VertexBuffer::VertexBuffer(RenderSystem* renderSystem, VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8> data)
+	VertexBuffer::VertexBuffer(RenderSystem* renderSystem, VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8_t> data)
 		: mVBO(0)
 		, mwRenderSystem(renderSystem)
 		, mStorageType(storageType)
@@ -26,7 +26,7 @@ namespace mpp
 		, mStatic(staticData)
 	{
 		mData.reserve(vertexCount * vertexStride);
-		int8 const* dataPtr = data.get();
+		int8_t const* dataPtr = data.get();
 
 		for (int i = 0; i < vertexCount * vertexStride; ++i)
 		{
@@ -173,7 +173,7 @@ namespace mpp
 	 * Return vertex data for potential modification
 	 *
 	 */
-	vector<int8>& VertexBuffer::getBufferData()
+	vector<int8_t>& VertexBuffer::getBufferData()
 	{
 		return mData;
 	}
@@ -244,8 +244,8 @@ namespace mpp
 			allocate(curSize);
 		}
 		
-		int8* bufferPtr{ nullptr };
-		GL_CHECK(bufferPtr = (int8*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
+		int8_t* bufferPtr{ nullptr };
+		GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
 
 		memcpy(bufferPtr, &(mData[0]), curSize);
 		GL_CHECK(glUnmapBuffer(GL_ARRAY_BUFFER));

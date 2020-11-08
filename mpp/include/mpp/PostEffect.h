@@ -20,7 +20,7 @@ namespace mpp
 		{
 			ImageType type;
 			RenderTargetPtr target;
-			uint32 attachment;
+			uint32_t attachment;
 		};
 
 		struct Output

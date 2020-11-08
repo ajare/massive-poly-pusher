@@ -26,7 +26,7 @@ using namespace mpp::mesh;
  * Constructor.
  *
  */
-AssImpModelLoader::AssImpModelLoader(string const& filename, MeshSpecification const& meshSpec, uint32 maxVerticesPerMesh, bool generateColours) :
+AssImpModelLoader::AssImpModelLoader(string const& filename, MeshSpecification const& meshSpec, uint32_t maxVerticesPerMesh, bool generateColours) :
 	mFilename(filename),
 	mSpecification(meshSpec),
 	mMaxVerticesPerMesh(maxVerticesPerMesh),
@@ -99,7 +99,7 @@ void AssImpModelLoader::addBuildVertex(aiMesh const* mesh, int index, aiMaterial
  * Add a face to list to be processed.
  *
  */
-void AssImpModelLoader::addBuildFace(uint32 index0, uint32 index1, uint32 index2, vector<uint32>& faces)
+void AssImpModelLoader::addBuildFace(uint32_t index0, uint32_t index1, uint32_t index2, vector<uint32_t>& faces)
 {
 	faces.push_back(index0);
 	faces.push_back(index1);
@@ -147,7 +147,7 @@ int AssImpModelLoader::getMeshIndexWidth(int meshIndex) const
  * Get mesh index data.
  *
  */
-vector<uint8> const& AssImpModelLoader::getMeshIndexData(int meshIndex) const
+vector<uint8_t> const& AssImpModelLoader::getMeshIndexData(int meshIndex) const
 {
 	return mMeshDataDefinitions[meshIndex]->indexData;
 }
@@ -186,7 +186,7 @@ void AssImpModelLoader::createMeshDataStreams()
 
 	aiPropertyStore* props = aiCreatePropertyStore();
 
-	if (mMaxVerticesPerMesh != (uint32)-1)
+	if (mMaxVerticesPerMesh != (uint32_t)-1)
 	{
 		aiSetImportPropertyInteger(props, AI_CONFIG_PP_SLM_VERTEX_LIMIT, mMaxVerticesPerMesh);
 	}
@@ -199,7 +199,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		throw exception(("AssimpModelStream::loadImpl() could not load " + mFilename).c_str());
 	}
 
-	for (uint32 j = 0; j < scene->mNumMeshes; ++j)
+	for (uint32_t j = 0; j < scene->mNumMeshes; ++j)
 	{
 		// Create data streams from buffer definition, to be fed into the MeshDefinitions.
 		aiMesh const* inputMesh = scene->mMeshes[j];
@@ -260,9 +260,9 @@ void AssImpModelLoader::createMeshDataStreams()
 		}
 
 		vector<float> vertices;
-		vector<uint32> indices;
+		vector<uint32_t> indices;
 
-		if (inputMesh->mNumVertices <= numeric_limits<uint16>::max())
+		if (inputMesh->mNumVertices <= numeric_limits<uint16_t>::max())
 		{
 			dataStreamDef->indexWidth = 16;
 		}
@@ -275,16 +275,16 @@ void AssImpModelLoader::createMeshDataStreams()
 		{
 			// We want to use 16-bit indices for efficiency, but if the model
 			// has more than 2^16 vertices then we have a problem.  Either we
-			// split the model into multiple meshes, or use uint32 for the indices.
+			// split the model into multiple meshes, or use uint32_t for the indices.
 
 			// Copy the vertex data straight.
-			for (uint32 k = 0; k < inputMesh->mNumVertices; ++k)
+			for (uint32_t k = 0; k < inputMesh->mNumVertices; ++k)
 			{
 				addBuildVertex(inputMesh, k, material, vertices, hasPositions, hasNormals, hasTexCoords, hasColours);
 			}
 
 			// Copy over index data
-			for (uint32 k = 0; k < inputMesh->mNumFaces; ++k)
+			for (uint32_t k = 0; k < inputMesh->mNumFaces; ++k)
 			{
 				aiFace const& face = inputMesh->mFaces[k];
 				addBuildFace(face.mIndices[0], face.mIndices[1], face.mIndices[2], indices);
@@ -293,7 +293,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		else
 		{
 			// Iterate over face list and create vertices from them.
-			for (uint32 k = 0; k < inputMesh->mNumFaces; k++)
+			for (uint32_t k = 0; k < inputMesh->mNumFaces; k++)
 			{
 				aiFace const& face = inputMesh->mFaces[k];
 
@@ -316,7 +316,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		{
 			VertexDataStreamDefinition vertexStreamDef;
 
-			vertexStreamDef.data = (int8*)dataPtr;
+			vertexStreamDef.data = (int8_t*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
 			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
@@ -330,7 +330,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		{
 			VertexDataStreamDefinition vertexStreamDef;
 
-			vertexStreamDef.data = (int8*)dataPtr;
+			vertexStreamDef.data = (int8_t*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
 			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
@@ -343,7 +343,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		{
 			VertexDataStreamDefinition vertexStreamDef;
 
-			vertexStreamDef.data = (int8*)dataPtr;
+			vertexStreamDef.data = (int8_t*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
 			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
@@ -356,7 +356,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		{
 			VertexDataStreamDefinition vertexStreamDef;
 
-			vertexStreamDef.data = (int8*)dataPtr;
+			vertexStreamDef.data = (int8_t*)dataPtr;
 			vertexStreamDef.dataType = Vertex::DataType::Float;
 			vertexStreamDef.offset = vertexOffset;
 			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
@@ -374,9 +374,9 @@ void AssImpModelLoader::createMeshDataStreams()
 			size_t dataSize = dataStreamDef->triangleCount * 3 * indexWidthBytes;
 			dataStreamDef->indexData.reserve(dataSize);
 
-			for (uint32 i = 0, j = 0; i < dataSize; i += indexWidthBytes, ++j)
+			for (uint32_t i = 0, j = 0; i < dataSize; i += indexWidthBytes, ++j)
 			{
-				uint32 index = indices[j];
+				uint32_t index = indices[j];
 				if (dataStreamDef->indexWidth == 16)
 				{
 					dataStreamDef->indexData.push_back(index & 255);
@@ -442,7 +442,7 @@ MeshDefinition* AssImpModelLoader::getMeshDefinition(int index)
  */
 bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams)
 {
-	int8 const* streamData1 = (componentStreams.begin())->second.data;
+	int8_t const* streamData1 = (componentStreams.begin())->second.data;
 	int streamStride1 = (componentStreams.begin())->second.stride;
 
 	for (auto it = componentStreams.begin(); it != componentStreams.end(); ++it)
@@ -492,9 +492,9 @@ bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout cons
  * Copy data.
  *
  */
-int8* AssImpModelLoader::copyVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride)
+int8_t* AssImpModelLoader::copyVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, VertexDataStreamDefinition componentStream, int vertexCount, int vertexStride)
 {
-	int8* bufData = new int8[vertexStride * vertexCount];
+	int8_t* bufData = new int8_t[vertexStride * vertexCount];
 
 	memcpy(bufData, componentStream.data, vertexCount * vertexStride);
 	return bufData;
@@ -504,10 +504,10 @@ int8* AssImpModelLoader::copyVertexBufferData(VertexBufferAttributeLayout const&
  * Split interlaced vertex data into one stream.
  *
  */
-int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride)
+int8_t* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout const& bufferSpec, map<Vertex::Component, VertexDataStreamDefinition> const& componentStreams, int vertexCount, int vertexStride)
 {
-	int8* bufData = new int8[vertexStride * vertexCount];
-	int8* bufDataPtr = bufData;
+	int8_t* bufData = new int8_t[vertexStride * vertexCount];
+	int8_t* bufDataPtr = bufData;
 
 	for (int i = 0; i < vertexCount; ++i)
 	{
@@ -526,8 +526,8 @@ int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout
 			case Vertex::DataType::UnsignedByte:
 				for (int k = 0; k < attribComponentSize; ++k)
 				{
-					*bufDataPtr = (uint8)(*(((float const*)(&stream.data[streamOffset])) + k) * 255.0f);
-					bufDataPtr += sizeof(uint8);
+					*bufDataPtr = (uint8_t)(*(((float const*)(&stream.data[streamOffset])) + k) * 255.0f);
+					bufDataPtr += sizeof(uint8_t);
 				}
 				break;
 
@@ -535,9 +535,9 @@ int8* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayout
 				for (int k = 0; k < attribComponentSize; ++k)
 				{
 					float value = *(((float const*)(&stream.data[streamOffset])) + k);
-					uint16 hv16 = ((half_float::half)value).data_;
-					*bufDataPtr++ = (uint8)(hv16 & 0xff);
-					*bufDataPtr++ = (uint8)(hv16 >> 8);
+					uint16_t hv16 = ((half_float::half)value).data_;
+					*bufDataPtr++ = (uint8_t)(hv16 & 0xff);
+					*bufDataPtr++ = (uint8_t)(hv16 >> 8);
 				}
 				break;
 
@@ -579,7 +579,7 @@ void AssImpModelLoader::load()
 		MeshDefinition* meshDef = createMeshDefinition(triangleCount, getMeshName(i), getMeshMaterial(i), getMeshIndexWidth(i));
 
 		// Set index data if we have any.
-		vector<uint8> const& indexData = getMeshIndexData(i);
+		vector<uint8_t> const& indexData = getMeshIndexData(i);
 		if (indexData.size() && meshSpec.verticesIndexed())
 		{
 			int indexWidth = getMeshIndexWidth(i);
@@ -587,10 +587,10 @@ void AssImpModelLoader::load()
 
 			size_t dataSize = triangleCount * 3 * indexWidthBytes;
 
-			uint8* indexBuffer = new uint8[dataSize];
+			uint8_t* indexBuffer = new uint8_t[dataSize];
 			memcpy(indexBuffer, &(indexData[0]), dataSize);
 
-			meshDef->setIndexData(shared_ptr<const uint8>(indexBuffer, [](uint8 *p) { delete[] p; }));
+			meshDef->setIndexData(shared_ptr<const uint8_t>(indexBuffer, [](uint8_t *p) { delete[] p; }));
 		}
 
 		for (int j = 0; j < meshSpec.getNumVertexBufferAttributeLayouts(); ++j)
@@ -610,7 +610,7 @@ void AssImpModelLoader::load()
 
 			// See whether or not the streams are the same, and are packed tightly.
 			// If they are, we can load the data in one go.
-			int8* bufData = streamsAreTightlyPacked(bufferSpec, componentStreams)
+			int8_t* bufData = streamsAreTightlyPacked(bufferSpec, componentStreams)
 				? copyVertexBufferData(bufferSpec, componentStreams.begin()->second, vertexCount, vertexStride)
 				: deinterlaceVertexBufferData(bufferSpec, componentStreams, vertexCount, vertexStride);
 
@@ -636,7 +636,7 @@ void AssImpModelLoader::load()
 				}
 			}
 
-			VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, vertexCount, vertexStride, shared_ptr<const int8>(bufData, [](int8 const* p) { delete[] p; }));
+			VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, vertexCount, vertexStride, shared_ptr<const int8_t>(bufData, [](int8_t const* p) { delete[] p; }));
 		}
 	}
 }
