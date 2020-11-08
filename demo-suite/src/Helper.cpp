@@ -131,7 +131,7 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 		auto textureData = loadImage(filePath);
 		auto tStr = new mpp::TextureStream(resourceMgr, filePath, loadImage, true);
 
-		mpp::ResourcePtr tex = resourceMgr->createResource(imageName, mpp::ResourceStreamPtr(tStr));
+		mpp::ResourcePtr tex = resourceMgr->declareResource(imageName, mpp::ResourceStreamPtr(tStr));
 		tex->load();
 	}
 }

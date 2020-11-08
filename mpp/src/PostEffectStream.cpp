@@ -18,6 +18,14 @@ namespace mpp
 
 	void PostEffectStream::loadImpl()
 	{
+		// Test gamma effect
+		mInputs.push_back(
+		{
+			ImageType::Colour
+		});
+
+		mOutput.type = ImageType::Colour;
+		mOutput.format = "RGB";
 	}
 
 }

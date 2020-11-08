@@ -38,11 +38,15 @@ public:
 
 	mpp::ScenePtr getScene();
 
+	mpp::CameraPtr getCamera();
+
 	void setRender(bool render);
 
 	bool getRender() const;
 
 	void setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
+
+	virtual std::string getRenderPipelineName() const;
 
 	virtual void update(mpp::RenderSystem* renderSystem, float frameTime) {}
 

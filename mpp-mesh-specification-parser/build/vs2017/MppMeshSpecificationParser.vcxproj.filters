@@ -34,7 +34,7 @@
     <ClCompile Include="..\..\src\ProgramInformation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\include\mpp\mesh-specification-parser\SpecificationParser.cpp">
+    <ClCompile Include="..\..\src\SpecificationParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

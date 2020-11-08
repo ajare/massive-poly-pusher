@@ -13,9 +13,12 @@
 #include "mpp/Config.h"
 #include "mpp/Caps.h"
 #include "mpp/Resource.h"
+#include "mpp/RenderPipeline.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/ClipRectangle.h"
+#include "mpp/BlendMode.h"
+#include "mpp/RenderInfo.h"
 #include "mpp/Colour.h"
 #include "mpp/Model.h"
 #include "mpp/Font.h"
@@ -37,40 +40,6 @@ namespace mpp
 	class Program;
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
-
-	enum class BlendMode
-	{
-		Zero = GL_ZERO,
-		One = GL_ONE,
-		SrcColour = GL_SRC_COLOR,
-		OneMinusSrcColour = GL_ONE_MINUS_SRC_COLOR,
-		DstColour = GL_DST_COLOR,
-		OneMinusDstColour = GL_ONE_MINUS_DST_COLOR,
-		SrcAlpha = GL_SRC_ALPHA,
-		OneMinusSrcAlpha = GL_ONE_MINUS_SRC_ALPHA,
-		DstAlpha = GL_DST_ALPHA,
-		OneMinusDstAlpha = GL_ONE_MINUS_DST_ALPHA
-	};
-
-	struct RenderInfo
-	{
-		int batchCount{ 0 };
-		int programSwitches{ 0 };
-		int textureSwitches{ 0 };
-		int primitivesRendered{ 0 };
-		int fullscreenQuads{ 0 };
-
-	public:
-
-		void clear()
-		{
-			batchCount = 0;
-			programSwitches = 0;
-			textureSwitches = 0;
-			primitivesRendered = 0;
-			fullscreenQuads = 0;
-		}
-	};
 
 	class _MPPAPI __declspec(align(16)) RenderSystem
 	{
@@ -99,16 +68,6 @@ namespace mpp
 			Gigabytes
 		};
 
-	private:
-
-		struct PostProcessEffect
-		{
-			std::string material;
-			UniformCollection uniforms;
-			int attachment;
-			BlendMode blendSrc, blendDst;
-		};
-
 	public:
 
 		enum class TextureTiling
@@ -132,6 +91,8 @@ namespace mpp
 		Caps mCaps;
 
 		glm::vec4 mClearColour;
+
+		std::map<std::string, RenderPipelinePtr> mPipelines;
 
 		RenderTargetPtr mRenderTarget;
 
@@ -185,9 +146,7 @@ namespace mpp
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad;
 
-		std::vector<PostProcessEffect> mPostProcessEffects;
-
-		RenderTargetPtr mSceneTarget, mFullscreenFxTarget, mBlur1Target, mBlur2Target;
+		RenderTargetPtr mSceneTarget;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -407,13 +366,17 @@ namespace mpp
 		// Rendering
 		ScenePtr createScene(std::string const& type);
 
+		void renderScene(ScenePtr scene, CameraPtr camera, std::string const& pipelineName);
+
+		RenderPipelinePtr createRenderPipeline(std::string const& name);
+
+		RenderPipelinePtr getRenderPipeline(std::string const& name);
+
 		RenderInfo const& getRenderInfo() const;
 
-		void startScene();
+		void startStatsCollection();
 
-		void startStatCollection();
-
-		RenderInfo const& finishScene(RenderTargetPtr sceneTarget);
+		RenderInfo const& finishStatsCollection();
 
 		void clearScreen(Colour const& colour);
 		 
@@ -433,8 +396,6 @@ namespace mpp
 		//
 		// 2d rendering
 		// 
-		void addPostEffect(std::string const& material, UniformCollection const& uniforms, int attachment, BlendMode srcBlend, BlendMode dstBlend);
-
 		void renderFullscreenQuad(ResourcePtr material, UniformCollection* uniforms = nullptr);
 
 		void renderFullscreenQuad(RenderTexture* texture, int attachment, BlendMode srcBlend, BlendMode dstBlend, UniformCollection* uniforms = nullptr);

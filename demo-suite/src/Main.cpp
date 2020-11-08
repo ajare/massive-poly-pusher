@@ -234,20 +234,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		1. Create programs
 		2. Create textures
 		   - auto STREAM = loadImage(IMAGE_FILE, false);
-		   - ResourceManager::createResource(NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::declareResource(NAME, ResourceStreamPtr(STREAM));
 		3. Create materials
 		   - auto STREAM = new ProgrammaticMaterialStream();
 			 - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
 			 - STREAM->setProgram(<2d | 3d>, MODEL_SPEC, PROGRAM_TAGS);
 		   - STREAM->setTexture(SAMPLER_NAME, TEXTURE_RESOURCE_NAME);
-		   - ResourceManager::createResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		   - ResourceManager::declareResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
 		   or:
 		  - FileDataStream FILE_STREAM(MATERIAL_FILE);
 		  - auto STREAM = new FileMaterialStream(FILE_STREAM);
-		  - ResourceManager::createResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
+		  - ResourceManager::declareResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
 		4. Create models
 		   - auto STREAM = new BoxModelStream(MODEL_SPEC, MATERIAL_RESOURCE_NAME, ...);
-		   - auto MODEL = ResourceManager::createResource(MODEL_NAME, ResourceStreamPtr(STREAM));
+		   - auto MODEL = ResourceManager::declareResource(MODEL_NAME, ResourceStreamPtr(STREAM));
 		5. Load model
 		   - MODEL->load();
 		*/
@@ -308,11 +308,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		//auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
 		//meshMaterialStream->setProgram(false, modelSpec, {});
 		//meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
-		//gResourceManager->createResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
+		//gResourceManager->declareResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
 
 		//FileDataStream fileDataStream(gOptions.resourceLocation + "statue/statue.material");
 		//auto statueMaterialStream = new FileMaterialStream(gResourceManager, fileDataStream);
-		//gResourceManager->createResource("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
+		//gResourceManager->declareResource("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
 
 		//
 		// Main loop
@@ -425,10 +425,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 
 			//
-			// Render scene
+			// Render
 			//
-			gRenderSystem->startStatCollection();
-			gRenderSystem->startScene();
+			gRenderSystem->startStatsCollection();
 
 			// Set light positions
 			for (auto& light: gWorld.pointLights)
@@ -446,7 +445,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 
 			// Finish scene
-			auto ri = gRenderSystem->finishScene(gScenes[0]->getScene()->getRenderTarget());
+			auto ri = gRenderSystem->finishStatsCollection();
 
 			// Text
 			vector<string> lines;

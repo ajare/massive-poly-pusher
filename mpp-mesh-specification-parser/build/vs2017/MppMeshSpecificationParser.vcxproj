@@ -114,8 +114,8 @@
     <ResourceCompile Include="..\version\Version.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\include\mpp\mesh-specification-parser\SpecificationParser.cpp" />
     <ClCompile Include="..\..\src\ProgramInformation.cpp" />
+    <ClCompile Include="..\..\src\SpecificationParser.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -72,7 +72,7 @@ namespace mpp
 		}
 
 		// Add scene factories
-		mSceneFactories["Default"] = [this]() { return make_shared<Scene>(this); };
+		mSceneFactories["Default"] = [this]() { return make_shared<Scene>(); };
 
 		// Initialise
 		initialise();
@@ -567,7 +567,7 @@ namespace mpp
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
-		resourceMgr->createResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream))->load();
+		resourceMgr->declareResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream))->load();
 
 		// Internal font
 		bool textAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
@@ -576,13 +576,13 @@ namespace mpp
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
 		textMatStream->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStream->setTexture("TEX1", "__mpp_tex_internalfont__");
-		resourceMgr->createResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream))->load();
+		resourceMgr->declareResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream))->load();
 
 		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream(mResourceMgr);
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
 		textMatStreamColoured->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
-		resourceMgr->createResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured))->load();
+		resourceMgr->declareResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured))->load();
 
 		int fontTextureWidth = ((Texture&)*mInternalFontTexture).getWidth();
 		int fontTextureHeight = ((Texture&)*mInternalFontTexture).getHeight();
@@ -649,7 +649,7 @@ namespace mpp
 		}
 
 		auto textStreamPtr = ResourceStreamPtr(textStream);
-		auto textRes = resourceMgr->createResource("__mpp_internal_text_mesh__", textStreamPtr);
+		auto textRes = resourceMgr->declareResource("__mpp_internal_text_mesh__", textStreamPtr);
 		textRes->load();
 
 		mTextMesh = resourceMgr->getResource("__mpp_internal_text_mesh__");
@@ -699,7 +699,7 @@ namespace mpp
 		}
 
 		textStreamPtr = ResourceStreamPtr(textStream);
-		textRes = resourceMgr->createResource("__mpp_internal_coloured_text_mesh__", textStreamPtr);
+		textRes = resourceMgr->declareResource("__mpp_internal_coloured_text_mesh__", textStreamPtr);
 		textRes->load();
 
 		mColouredTextMesh = resourceMgr->getResource("__mpp_internal_coloured_text_mesh__");
@@ -724,16 +724,11 @@ namespace mpp
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32((float)mWindowHeight).f32(0.0f).f32(1.0f));
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 
-		resourceMgr->createResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream))->load();
+		resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream))->load();
 		mFullscreenQuad = resourceMgr->getResource("__mpp_mesh_fullscreen_quad__");
 
 		// Render targets
 		mSceneTarget = createRenderTexture("SceneTarget", getWindowWidth(), getWindowHeight(), 1, true);
-		mFullscreenFxTarget = createRenderTexture("FullscreenFxTarget", getWindowWidth(), getWindowHeight(), 1, false);
-
-		// Blur textures: should use cascading sizes based on blur kernel size.
-		mBlur1Target = createRenderTexture("Blur1Target", getWindowWidth(), getWindowHeight(), 1, false);
-		mBlur2Target = createRenderTexture("Blur2Target", getWindowWidth(), getWindowHeight(), 1, false);
 		
 		// Set none as active
 		mActiveProgram.reset();
@@ -1741,23 +1736,6 @@ namespace mpp
 	}
 
 	/*
-	 * Add a post-process effect.
-	 *
-	 */
-	void RenderSystem::addPostEffect(string const& material, UniformCollection const& uniforms, int attachment, BlendMode srcBlend, BlendMode dstBlend)
-	{
-		PostProcessEffect ppe;
-
-		ppe.material = material;
-		ppe.uniforms = uniforms;
-		ppe.attachment = attachment;
-		ppe.blendSrc = srcBlend;
-		ppe.blendDst = dstBlend;
-
-		mPostProcessEffects.push_back(ppe);
-	}
-
-	/*
 	 * Render a fullscreen quad, for effects.
 	 *
 	 */
@@ -2504,21 +2482,34 @@ namespace mpp
 		return it->second();
 	}
 
-	/*
-	 * Start rendering.  Must be called before any other rendersystem
-	 * functions in the render loop.
-	 *
-	 */
-	void RenderSystem::startScene()
+	void RenderSystem::renderScene(ScenePtr scene, CameraPtr camera, string const& pipelineName)
 	{
-		mPostProcessEffects.clear();
-
-		resetTransform();
-
-		setRenderTarget(mSceneTarget);
+		auto pipeline = getRenderPipeline(pipelineName);
+		pipeline->render(scene, camera);
 	}
 
-	void RenderSystem::startStatCollection()
+	RenderPipelinePtr RenderSystem::createRenderPipeline(string const& name)
+	{
+		auto rs = make_shared<RenderPipeline>(name, this);
+
+		mPipelines[name] = rs;
+		return rs;
+	}
+
+	RenderPipelinePtr RenderSystem::getRenderPipeline(string const& name)
+	{
+		auto it = mPipelines.find(name);
+
+		if (it == mPipelines.end())
+		{
+			string errMsg = "RenderPipeline '" + name + "' not found.";
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		return it->second;
+	}
+
+	void RenderSystem::startStatsCollection()
 	{
 		mRenderInfo.clear();
 	}
@@ -2527,18 +2518,19 @@ namespace mpp
 	 * Finish rendering.  Must be called before swapping screen.
 	 *
 	 */
-	RenderInfo const& RenderSystem::finishScene(RenderTargetPtr sceneTarget)
+	RenderInfo const& RenderSystem::finishStatsCollection()
 	{
-		flushVertexBuffers();
+//		flushVertexBuffers();
 
 		// Change to 2d to render everything out.
-		setProjection2dOrthographic();
-		resetTransform();
+//		setProjection2dOrthographic();
+//		resetTransform();
 
-		renderToScreen();
-		renderFullscreenQuad((mpp::RenderTexture*)sceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
+//		renderToScreen();
+//		renderFullscreenQuad((mpp::RenderTexture*)sceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
 
 		// Post process
+		/*
 		for (auto& effect: mPostProcessEffects)
 		{
 			// Set render target
@@ -2554,6 +2546,7 @@ namespace mpp
 			auto fxTexture = (mpp::RenderTexture*)mFullscreenFxTarget.get();
 			renderFullscreenQuad(fxTexture, effect.attachment, effect.blendSrc, effect.blendDst);
 		}
+		*/
 
 #ifdef MPP_PROFILE_BUILD
 		mProfiler->sample();

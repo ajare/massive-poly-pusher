@@ -67,7 +67,7 @@ namespace mpp
 
 		void unloadAllResources();
 
-		ResourcePtr createResource(std::string const& name, ResourceStreamPtr resourceStream);
+		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream);
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
 
