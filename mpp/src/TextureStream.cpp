@@ -13,11 +13,6 @@ namespace mpp
 	 */
 	TextureStream::TextureStream(ResourceManager* resourceMgr, string streamType)
 		: ResourceStream(resourceMgr, streamType)
-		, mData(nullptr)
-		, mWidth(0)
-		, mHeight(0)
-		, mBitsPerPixel(0)
-		, mFiltered(false)
 	{
 	}
 
@@ -27,7 +22,7 @@ namespace mpp
 	*/
 	TextureStream::~TextureStream()
 	{
-		delete[] mData;
+		delete[] mData.data;
 	}
 
 	/*
@@ -38,12 +33,11 @@ namespace mpp
 	{
 		if (mLoadFunc)
 		{
-			auto textureData = mLoadFunc(mSource);
-			mData = textureData.data;
-			mWidth = textureData.width;
-			mHeight = textureData.height;
-			mBitsPerPixel = textureData.bitsPerPixel;
+			mData = mLoadFunc(mSource);
 		}
+
+		// Convert to an appropriate format for internal format
+		// ...
 	}
 
 	/*
@@ -52,7 +46,7 @@ namespace mpp
 	 */
 	uint8_t const* TextureStream::getData() const
 	{
-		return mData;
+		return mData.data;
 	}
 
 	/*
@@ -61,7 +55,7 @@ namespace mpp
 	 */
 	size_t TextureStream::getWidth() const
 	{
-		return mWidth;
+		return mData.width;
 	}
 
 	/*
@@ -70,7 +64,7 @@ namespace mpp
 	 */
 	size_t TextureStream::getHeight() const
 	{
-		return mHeight;
+		return mData.height;
 	}
 
 	/*
@@ -79,16 +73,17 @@ namespace mpp
 	 */
 	size_t TextureStream::getBitsPerPixel() const
 	{
-		return mBitsPerPixel;
+		return mData.bitsPerPixel;
 	}
 
-	/*
-	 * Should the texture be filtered or not.
-	 *
-	 */
-	bool TextureStream::isFiltered() const
+	uint32_t TextureStream::getPixelFormat() const
 	{
-		return mFiltered;
+		return mData.pixelFormat;
+	}
+
+	uint32_t TextureStream::getPixelDataType() const
+	{
+		return mData.dataType;
 	}
 
 	/*
@@ -100,4 +95,8 @@ namespace mpp
 		return getWidth() * getHeight() * getBitsPerPixel() / 8;
 	}
 
+	TextureParams const& TextureStream::getParams() const
+	{
+		return mParams;
+	}
 }

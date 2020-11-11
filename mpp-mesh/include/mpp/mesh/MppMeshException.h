@@ -83,5 +83,5 @@ namespace mpp
 #define THROW_MPP_MESH(errMsg, line, file, function) throw mpp::mesh::MppMeshException(errMsg, line, file, function)
 #define THROW_MPP_MESH_IO(errMsg, line, file, function) throw mpp::mesh::MppMeshIoException(errMsg, line, file, function)
 #define THROW_MPP_MESH_NOTIMP(item, line, file, function) throw mpp::mesh::MppMeshNotImplementedException(item, line, file, function)
-#define THROW_MPP_MESH_FN_NOTIMP(line, file, function) throw mpp::MppMeshNotImplementedException(line, file, function)	
+#define THROW_MPP_MESH_FN_NOTIMP(line, file, function) throw mpp::mesh::MppMeshNotImplementedException(line, file, function)	
 

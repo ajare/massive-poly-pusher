@@ -59,8 +59,8 @@ mpp::TextureStream* loadImage(string const& filename, bool flipY)
 		}
 
 		auto tStr = new mpp::ProgrammaticTextureStream(gResourceManager);
-		tStr->setData(tempData, dataWidth, dataHeight, dataBPP);
-		tStr->setFiltered(true);
+		//tStr->setData(tempData, dataWidth, dataHeight, dataBPP);
+		//tStr->setFiltered(true);
 
 		FreeImage_Unload(bitmap);
 		delete[] tempData;
@@ -109,8 +109,8 @@ mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size
 		}
 
 		auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
-		tStr->setData(tempData, dataWidth, dataHeight, dataBPP);
-		tStr->setFiltered(true);
+		//tStr->setData(tempData, dataWidth, dataHeight, dataBPP);
+		//tStr->setFiltered(true);
 
 		FreeImage_Unload(bitmap);
 		delete[] tempData;

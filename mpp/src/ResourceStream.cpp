@@ -19,7 +19,7 @@ namespace mpp
 		, mResourceMgr(resourceMgr)
 		, mwResource(nullptr)
 	{
-		static_log_message(MPP_RESOURCE_LOGFILE, "Construct-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
+		//static_log_message(MPP_RESOURCE_LOGFILE, "Construct-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
 	}
 
 	/*
@@ -29,7 +29,7 @@ namespace mpp
 	ResourceStream::~ResourceStream()
 	{
 		unload();
-		static_log_message(MPP_RESOURCE_LOGFILE, "Destruct-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
+		//static_log_message(MPP_RESOURCE_LOGFILE, "Destruct-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
 	}
 
 	string const& ResourceStream::getType() const
@@ -75,7 +75,7 @@ namespace mpp
 				child.second->load();
 			}
 
-			static_log_message(MPP_RESOURCE_LOGFILE, "Load-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
+			//static_log_message(MPP_RESOURCE_LOGFILE, "Load-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
 			loadImpl();
 			mLoaded = true;
 		}
@@ -89,7 +89,7 @@ namespace mpp
 	{
 		if (mLoaded)
 		{
-			static_log_message(MPP_RESOURCE_LOGFILE, "Unload-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
+			//static_log_message(MPP_RESOURCE_LOGFILE, "Unload-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
 			unloadImpl();
 			mLoaded = false;
 

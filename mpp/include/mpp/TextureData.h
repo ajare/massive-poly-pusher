@@ -1,0 +1,38 @@
+#pragma once
+
+#include "Config.h"
+
+namespace mpp
+{
+	struct _MPPAPI TextureData
+	{
+		uint8_t* data;
+		size_t width, height, bitsPerPixel;
+		uint32_t pixelFormat, dataType;
+
+	public:
+
+		TextureData();
+
+		TextureData(
+			uint8_t* _data,
+			size_t _width,
+			size_t _height,
+			size_t _bitsPerPixel,
+			uint32_t _pixelFormat,
+			uint32_t _dataType);
+	};
+
+	struct _MPPAPI TextureParams
+	{
+		uint32_t minFilter;
+		uint32_t magFilter;
+		uint32_t target;
+		uint32_t wrap;
+		uint32_t internalFormat;
+
+	public:
+
+		TextureParams();
+	};
+}

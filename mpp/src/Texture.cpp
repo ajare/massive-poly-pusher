@@ -24,11 +24,6 @@ namespace mpp
 	 */
 	Texture::Texture(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: Resource(name, "Texture", renderSystem, resourceMgr, resourceStream)
-		, mData(nullptr)
-		, mWidth(0)
-		, mHeight(0)
-		, mBitsPerPixel(0)
-		, mFiltered(true)
 		, mSortId(0)
 	{
 	}
@@ -45,16 +40,126 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'TextureStream'.", __LINE__, __FILE__, __func__);
 		}
 
-		int dataSize = tStr->getDataSize();
+		auto dataSize = tStr->getDataSize();
 
-		delete[] mData;
-		mData = new uint8_t[dataSize];
-		memcpy(mData, tStr->getData(), dataSize);
+		delete[] mData.data;
+		mData.data = new uint8_t[dataSize];
+		memcpy(mData.data, tStr->getData(), dataSize);
 
-		mWidth = tStr->getWidth();
-		mHeight = tStr->getHeight();
-		mBitsPerPixel = tStr->getBitsPerPixel();
-		mFiltered = tStr->isFiltered();
+		mData.width = tStr->getWidth();
+		mData.height = tStr->getHeight();
+		mData.bitsPerPixel = tStr->getBitsPerPixel();
+		mData.pixelFormat = tStr->getPixelFormat();
+		mData.dataType = tStr->getPixelDataType();
+		mParams = tStr->getParams();
+
+		if (mParams.internalFormat == 0)
+		{
+			// If we haven't specified the format, work it out from bpp/pixelformat/datatype
+			size_t channels{ 0 };
+
+			switch (mData.dataType)
+			{
+			case GL_BYTE:
+				// Signed, normalised
+				channels = mData.bitsPerPixel / (sizeof(int8_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mParams.internalFormat = GL_R8_SNORM; break;
+				case 2:
+					mParams.internalFormat = GL_RG8_SNORM; break;
+				case 3:
+					mParams.internalFormat = GL_RGB8_SNORM; break;
+				case 4:
+					mParams.internalFormat = GL_RGBA8_SNORM; break;
+				}
+				break;
+
+			case GL_UNSIGNED_BYTE:
+				// Unsigned, normalised
+				channels = mData.bitsPerPixel / (sizeof(uint8_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mParams.internalFormat = GL_R8; break;
+				case 2:
+					mParams.internalFormat = GL_RG8; break;
+				case 3:
+					mParams.internalFormat = GL_RGB8; break;
+				case 4:
+					mParams.internalFormat = GL_RGBA8; break;
+				}
+				break;
+
+			case GL_SHORT:
+				// Signed, normalised
+				channels = mData.bitsPerPixel / (sizeof(int16_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mParams.internalFormat = GL_R16_SNORM; break;
+				case 2:
+					mParams.internalFormat = GL_RG16_SNORM; break;
+				case 3:
+					mParams.internalFormat = GL_RGB16_SNORM; break;
+				case 4:
+					mParams.internalFormat = GL_RGBA16_SNORM; break;
+				}
+				break;
+
+			case GL_UNSIGNED_SHORT:
+				// Unsigned, normalised
+				channels = mData.bitsPerPixel / (sizeof(uint16_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mParams.internalFormat = GL_R16; break;
+				case 2:
+					mParams.internalFormat = GL_RG16; break;
+				case 3:
+					mParams.internalFormat = GL_RGB16; break;
+				case 4:
+					mParams.internalFormat = GL_RGBA16; break;
+				}
+				break;
+
+			case GL_HALF_FLOAT:
+				// Signed, unnormalised
+				channels = mData.bitsPerPixel / ((sizeof(float) / 2) * 8);
+				switch (channels)
+				{
+				case 1:
+					mParams.internalFormat = GL_R16F; break;
+				case 2:
+					mParams.internalFormat = GL_RG16F; break;
+				case 3:
+					mParams.internalFormat = GL_RGB16F; break;
+				case 4:
+					mParams.internalFormat = GL_RGBA16F; break;
+				}
+				break;
+
+			case GL_FLOAT:
+				// Signed, unnormalised
+				channels = mData.bitsPerPixel / (sizeof(float) * 8);
+				switch (channels)
+				{
+				case 1:
+					mParams.internalFormat = GL_R32F; break;
+				case 2:
+					mParams.internalFormat = GL_RG32F; break;
+				case 3:
+					mParams.internalFormat = GL_RGB32F; break;
+				case 4:
+					mParams.internalFormat = GL_RGBA32F; break;
+				}
+				break;
+
+			default:
+				THROW_MPP("Unsupported data type.", __LINE__, __FILE__, __func__);
+			}
+		}
 	}
 
 	/*
@@ -63,12 +168,12 @@ namespace mpp
 	 */
 	void Texture::destroyImpl()
 	{
-		delete[] mData;
-		mData = nullptr;
+		delete[] mData.data;
+		mData.data = nullptr;
 
-		mWidth = 0;
-		mHeight = 0;
-		mBitsPerPixel = 0;
+		mData.width = 0;
+		mData.height = 0;
+		mData.bitsPerPixel = 0;
 		mSortId = 0;
 	}
 
@@ -82,20 +187,20 @@ namespace mpp
 
 		GL_CHECK(glGenTextures(1, &texId));
 
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
-		GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mFiltered ? GL_LINEAR : GL_NEAREST));
-		GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mFiltered ? GL_LINEAR : GL_NEAREST));
+		GL_CHECK(glBindTexture(mParams.target, texId));
+		GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
+		GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
 
-		if (mBitsPerPixel == 24)
+		if (mData.bitsPerPixel == 24)
 		{
-			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, mWidth, mHeight, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, mData));
+			GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
 		}
-		else if (mBitsPerPixel == 32)
+		else if (mData.bitsPerPixel == 32)
 		{
-			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, mWidth, mHeight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, mData));
+			GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
 		}
 
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		GL_CHECK(glBindTexture(mParams.target, 0));
 		setId(texId);
 	}
 
@@ -119,7 +224,7 @@ namespace mpp
 	 */
 	int Texture::getWidth() const
 	{
-		return mWidth;
+		return mData.width;
 	}
 
 	/*
@@ -128,7 +233,7 @@ namespace mpp
 	 */
 	int Texture::getHeight() const
 	{
-		return mHeight;
+		return mData.height;
 	}
 
 	/*
@@ -137,7 +242,7 @@ namespace mpp
 	 */
 	int Texture::getBitsPerPixel() const
 	{
-		return mBitsPerPixel;
+		return mData.bitsPerPixel;
 	}
 
 	/*
@@ -152,7 +257,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, getId()));
+		GL_CHECK(glBindTexture(mParams.target, getId()));
 	}
 
 	/*
