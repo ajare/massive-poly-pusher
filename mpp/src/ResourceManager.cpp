@@ -187,7 +187,7 @@ namespace mpp
 		vector<uint8_t> whiteData(16, 255);
 
 		auto blankStream = new ProgrammaticTextureStream(this);
-		blankStream->setData(&(whiteData[0]), 2, 2, 32);
+		blankStream->setData(&(whiteData[0]), 2, 2, 32, GL_RGBA, GL_UNSIGNED_BYTE);
 		blankStream->setFiltered(false);
 		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
@@ -199,7 +199,10 @@ namespace mpp
 			(uint8_t const*)internalFont.getData(),
 			internalFont.getWidth(),
 			internalFont.getHeight(),
-			32);
+			32, 
+			GL_RGBA, 
+			GL_UNSIGNED_BYTE);
+
 		ts->setFiltered(false);
 
 		declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();

@@ -4,14 +4,10 @@
 #include <functional>
 
 #include "mpp/ResourceStream.h"
+#include "mpp/TextureData.h"
 
 namespace mpp
 {
-	struct TextureData
-	{
-		uint8_t* data{ nullptr };
-		int width, height, bitsPerPixel;
-	};
 
 	class TextureStream;
 
@@ -19,13 +15,21 @@ namespace mpp
 
 	class _MPPAPI TextureStream : public ResourceStream
 	{
+	public:
+
+		enum class InternalType
+		{
+			Auto,
+			UnsignedInteger,
+			SignedInteger,
+			Float
+		};
+
 	protected:
 
-		uint8_t* mData;
+		TextureData mData;
 
-		size_t mWidth, mHeight, mBitsPerPixel;
-
-		bool mFiltered;
+		TextureParams mParams;
 
 		ImageLoadFunction mLoadFunc;
 
@@ -49,8 +53,12 @@ namespace mpp
 
 		size_t getBitsPerPixel() const;
 
-		bool isFiltered() const;
+		uint32_t getPixelFormat() const;
+
+		uint32_t getPixelDataType() const;
 
 		size_t getDataSize() const;
+
+		TextureParams const& getParams() const;
 	};
 }

@@ -72,7 +72,7 @@
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MassivePolyPusherd.lib;fmtd.lib;Utilsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Utilsd.lib;MassivePolyPusherd.lib;fmtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -98,7 +98,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MassivePolyPusher.lib;fmt.lib;Utils.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Utils.lib;MassivePolyPusher.lib;fmt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -107,13 +107,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\resource-parsers\Config.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\Serializer.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\XmlSerializer.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\FileStream.cpp" />
     <ClCompile Include="..\..\src\FileTextureStream.cpp" />
+    <ClCompile Include="..\..\src\Serializer.cpp" />
+    <ClCompile Include="..\..\src\XmlSerializer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,17 +1,16 @@
 #pragma once
 
 #include "mpp/Resource.h"
+#include "mpp/TextureData.h"
 
 namespace mpp
 {
 	class _MPPAPI Texture : public Resource
 	{
-		uint8_t* mData;
+		TextureData mData;
 
-		int mWidth, mHeight, mBitsPerPixel;
+		TextureParams mParams;
 
-		bool mFiltered;
-		
 		uint32_t mSortId;
 
 	protected:

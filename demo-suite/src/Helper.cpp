@@ -1,3 +1,10 @@
+#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#	include <Windows.h>
+#endif
+
+#include <glew/glew.h>
+#include <gl/GL.h>
+
 #include "utils/FileSystem.h"
 #include "utils/StringUtils.h"
 
@@ -23,17 +30,28 @@ void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message)
 	gLogger->message(errMsg);
 }
 
+bool isBigEndian()
+{
+	union 
+	{
+		uint32_t i;
+		char c[4];
+	} bint{ 0x01020304 };
+
+	return bint.c[0] == 1;
+}
+
 mpp::TextureData loadImage(string const& filename)
 {
 	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
 	if (bitmap)
 	{
-		int dataWidth = FreeImage_GetWidth(bitmap);
-		int dataHeight = FreeImage_GetHeight(bitmap);
-		int dataBPP = FreeImage_GetBPP(bitmap);
-		int dataSpan = dataWidth * dataBPP / 8;
+		size_t dataWidth = (size_t)FreeImage_GetWidth(bitmap);
+		size_t dataHeight = (size_t)FreeImage_GetHeight(bitmap);
+		size_t dataBPP = (size_t)FreeImage_GetBPP(bitmap);
+		size_t dataSpan = dataWidth * dataBPP / 8;
 
-		int dataSize = dataSpan * dataHeight;
+		size_t dataSize = dataSpan * dataHeight;
 		auto tempData = new uint8_t[dataSize];
 
 		// Flip vertically?
@@ -52,12 +70,22 @@ mpp::TextureData loadImage(string const& filename)
 
 		FreeImage_Unload(bitmap);
 
+		uint32_t pixelFormat = dataBPP == 24 ? GL_BGR : GL_BGRA;
+		if (isBigEndian())
+		{
+			pixelFormat = dataBPP == 24 ? GL_RGB : GL_RGBA;
+		}
+		
+		uint32_t dataType = GL_UNSIGNED_BYTE;
+
 		mpp::TextureData textureData
 		{
 			tempData,
 			dataWidth,
 			dataHeight,
-			dataBPP
+			dataBPP,
+			pixelFormat,
+			dataType
 		};
 
 		return textureData;
@@ -104,8 +132,16 @@ mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size
 			ptr += dataSpan;
 		}
 
+		auto pixelFormat = dataBPP == 24 ? GL_BGR : GL_BGRA;
+		if (isBigEndian())
+		{
+			pixelFormat = dataBPP == 24 ? GL_RGB : GL_RGBA;
+		}
+
+		auto dataType = GL_UNSIGNED_BYTE;
+
 		auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
-		tStr->setData(tempData, dataWidth, dataHeight, dataBPP);
+		tStr->setData(tempData, dataWidth, dataHeight, dataBPP, pixelFormat, dataType);
 		tStr->setFiltered(true);
 
 		FreeImage_Unload(bitmap);

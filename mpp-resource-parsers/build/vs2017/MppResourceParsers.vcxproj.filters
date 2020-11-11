@@ -21,6 +21,18 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\XmlSerializer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\Serializer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc">
@@ -29,6 +41,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\FileTextureStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Serializer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\XmlSerializer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\FileStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,0 +1,50 @@
+#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#	include <Windows.h>
+#endif
+
+#include <glew/glew.h>
+#include <gl/GL.h>
+
+#include "mpp/TextureData.h"
+
+using namespace std;
+
+namespace mpp
+{
+
+	TextureData::TextureData()
+		: data(nullptr)
+		, width(0)
+		, height(0)
+		, bitsPerPixel(0)
+		, pixelFormat(0)
+		, dataType(0)
+	{
+	}
+
+	TextureData::TextureData(
+		uint8_t* _data,
+		size_t _width,
+		size_t _height,
+		size_t _bitsPerPixel,
+		uint32_t _pixelFormat,
+		uint32_t _dataType)
+		: data(_data)
+		, width(_width)
+		, height(_height)
+		, bitsPerPixel(_bitsPerPixel)
+		, pixelFormat(_pixelFormat)
+		, dataType(_dataType)
+	{
+	}
+
+	TextureParams::TextureParams()
+		: minFilter(GL_NEAREST)
+		, magFilter(GL_NEAREST)
+		, target(GL_TEXTURE_2D)
+		, wrap(GL_REPEAT)
+		, internalFormat(0)
+	{
+	}
+
+}
