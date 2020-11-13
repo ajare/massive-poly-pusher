@@ -54,24 +54,40 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	auto resourceMgr = getResourceManager();
 
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setFile(TextureStream::Target::Texture_2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
 	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(options.resourceLocation + "electbubbles.jpg", loadImage);
+	textureStream->setFile(TextureStream::Target::Texture_2D, options.resourceLocation + "electbubbles.jpg", loadImage);
 	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
+	textureStream->setFile(TextureStream::Target::Texture_2D, options.resourceLocation + "test.png", loadImage);
 	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(options.resourceLocation + "donut.jpg", loadImage);
+	textureStream->setFile(TextureStream::Target::Texture_2D, options.resourceLocation + "donut.jpg", loadImage);
 	textureStream->setFiltered(true);
 	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
+
+	// 1D texture
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	auto stripData = new uint8_t[256 * 3];
+	for (int i = 0; i < 256; ++i)
+	{
+		stripData[i * 3 + 0] = 256 - i - 1;
+		stripData[i * 3 + 1] = 0;
+		stripData[i * 3 + 2] = i;
+	}
+
+	textureStream->setData(TextureStream::Target::Texture_1D, stripData, 256, 1, 24, GL_RGB, GL_UNSIGNED_BYTE);
+	delete[] stripData;
+
+	textureStream->setFiltered(true);
+	resourceMgr->declareResource("Strip.Texture", ResourceStreamPtr(textureStream));
 }
 
 mesh::MeshSpecification ModelScene::createGridMeshSpecification()
@@ -335,7 +351,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// which takes the raw loaded data.  In this case, rgba.png is referenced by the statue
 	// model, so needs to be explicitly loaded
 	auto textureStream = new mpp::ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(options.resourceLocation + "rgba.png", loadImage);
+	textureStream->setFile(mpp::TextureStream::Target::Texture_2D, options.resourceLocation + "rgba.png", loadImage);
 	textureStream->setFiltered(true);
 	resourceMgr->declareResource("rgba.png", ResourceStreamPtr(textureStream));
 

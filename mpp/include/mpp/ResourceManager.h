@@ -84,6 +84,14 @@ namespace mpp
 		ResourcePtr getProgramBySortId(uint32_t id);
 
 		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
+
+		void debugMessage(std::string const& message);
+
+		void infoMessage(std::string const& message);
+
+		void warnMessage(std::string const& message);
+
+		void errorMessage(std::string const& message);
 	};
 
 }

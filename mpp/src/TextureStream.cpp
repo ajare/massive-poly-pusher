@@ -35,9 +35,6 @@ namespace mpp
 		{
 			mData = mLoadFunc(mSource);
 		}
-
-		// Convert to an appropriate format for internal format
-		// ...
 	}
 
 	/*

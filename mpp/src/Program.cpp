@@ -84,7 +84,7 @@ namespace mpp
 			THROW_MPP(msg, __LINE__, __FILE__, __func__);
 		}
 
-		getRenderSystem()->logMessage("Compiled " + sourceType + " shader.");
+		getRenderSystem()->infoMessage("Compiled " + sourceType + " shader.");
 	}
 		
 	/*
@@ -433,7 +433,7 @@ namespace mpp
 				default: typeName = "unknown type"; break;
 				}
 				
-				rs->logMessage(utils::StringUtils::format("Vertex attribute {}: {} ({}[{}]).", location, varName, typeName, varSize));
+				rs->debugMessage(utils::StringUtils::format("Vertex attribute {}: {} ({}[{}]).", location, varName, typeName, varSize));
 			}
 
 			// Get uniform information
@@ -457,27 +457,27 @@ namespace mpp
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
 				{
 					mViewPosId = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("- Uniform: ViewPosition id: " + utils::StringUtils::toString(mViewPosId));
+					rs->debugMessage("- Uniform: ViewPosition id: " + utils::StringUtils::toString(mViewPosId));
 				}
 				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
 				{
 					mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("- Uniform: Model matrix id: " + utils::StringUtils::toString(mMMatrixId));
+					rs->debugMessage("- Uniform: Model matrix id: " + utils::StringUtils::toString(mMMatrixId));
 				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
 					mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("- Uniform: ModelCameraProjection matrix id: " + utils::StringUtils::toString(mMcpMatrixId));
+					rs->debugMessage("- Uniform: ModelCameraProjection matrix id: " + utils::StringUtils::toString(mMcpMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
 					mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
-					rs->logMessage("- Uniform normal matrix id: " + utils::StringUtils::toString(mNormalMatrixId));
+					rs->debugMessage("- Uniform normal matrix id: " + utils::StringUtils::toString(mNormalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
 					mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
-					rs->logMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
+					rs->debugMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
 				}
 				else
 				{
@@ -489,25 +489,24 @@ namespace mpp
 					if (it != mTextures.end())
 					{
 						it->uniformId = glGetUniformLocation(programId, uniformNameBuffer);
-						rs->logMessage("- Texture: '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
+						rs->debugMessage("- Texture: '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
 					}
 					else
 					{
 						auto uniformId = glGetUniformLocation(programId, uniformNameBuffer);
 						mUniformIds[uniformName] = uniformId;
-						rs->logMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(uniformId));
+						rs->debugMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(uniformId));
 					}
 				}
 			}
 		}
 		catch (exception& e)
 		{
-			rs->logMessage("Error creating program '" + getName() + "'.");
+			rs->errorMessage("Error creating program '" + getName() + "'.");
 			throw e;
 		}
 
-		rs->logMessage("Created program '" + getName() + "'.");
-		rs->logMessage("");
+		rs->infoMessage("Created program '" + getName() + "'.");
 	}
 
 	/*
