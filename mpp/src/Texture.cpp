@@ -174,6 +174,8 @@ namespace mpp
 		mData.width = 0;
 		mData.height = 0;
 		mData.bitsPerPixel = 0;
+		mData.pixelFormat = 0;
+		mData.dataType = 0;
 		mSortId = 0;
 	}
 
@@ -185,19 +187,76 @@ namespace mpp
 	{
 		uint32_t texId;
 
+		// Create and bind
 		GL_CHECK(glGenTextures(1, &texId));
-
 		GL_CHECK(glBindTexture(mParams.target, texId));
-		GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
-		GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
 
-		if (mData.bitsPerPixel == 24)
+		// Set parameters
+		switch (mParams.target)
 		{
-			GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
+		case GL_TEXTURE_3D:
+		case GL_TEXTURE_CUBE_MAP:
+			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_WRAP_R, mParams.wrap));
+		case GL_TEXTURE_2D:
+			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_WRAP_T, mParams.wrap));
+		case GL_TEXTURE_1D:
+			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
+			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
+			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_WRAP_S, mParams.wrap));
+			break;
+		default:
+			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 		}
-		else if (mData.bitsPerPixel == 32)
+
+		// Set data
+		switch (mParams.target)
 		{
-			GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
+		case GL_TEXTURE_1D:
+			if (mData.bitsPerPixel == 24)
+			{
+				GL_CHECK(glTexImage1D(mParams.target, 0, mParams.internalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			else if (mData.bitsPerPixel == 32)
+			{
+				GL_CHECK(glTexImage1D(mParams.target, 0, mParams.internalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			break;
+
+		case GL_TEXTURE_2D:
+			if (mData.bitsPerPixel == 24)
+			{
+				GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			else if (mData.bitsPerPixel == 32)
+			{
+				GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			break;
+
+		case GL_TEXTURE_3D:
+			if (mData.bitsPerPixel == 24)
+			{
+				GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			else if (mData.bitsPerPixel == 32)
+			{
+				GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			break;
+
+		case GL_TEXTURE_CUBE_MAP:
+			if (mData.bitsPerPixel == 24)
+			{
+				//GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			else if (mData.bitsPerPixel == 32)
+			{
+				//GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+			}
+			break;
+
+		default:
+			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 		}
 
 		GL_CHECK(glBindTexture(mParams.target, 0));

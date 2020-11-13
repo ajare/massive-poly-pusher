@@ -66,7 +66,7 @@ namespace mpp
 		, mSizeUnit(SizeUnit::Megabytes)
 	{
 		mLogger = new Logger();
-		if (!mLogger->initialise("mpp.log"))
+		if (!mLogger->initialise("mpp.log", Logger::Level::Debug))
 		{
 			THROW_MPP("Could not initialise RenderSystem logger", __LINE__, __FILE__, __func__);
 		}
@@ -175,7 +175,7 @@ namespace mpp
 		}
 
 		strMsg += msg;
-		renderSystem->logMessage(strMsg);
+		renderSystem->errorMessage(strMsg);
 
 #ifdef MPP_DEBUG_BUILD
 		RenderSystem::OpenGLError::Severity svrty;
@@ -395,19 +395,19 @@ namespace mpp
 
 				GL_CHECK(glDebugMessageCallbackARB(&debugOutputCallback, this));
 #endif
-				logMessage("GL_ARB_debug_output initialised.");
+				infoMessage("GL_ARB_debug_output initialised.");
 			}
 			else if (extensionName == "GL_EXT_texture_rectangle")
 			{
-				logMessage("GL_EXT_texture_rectangle initialised.");
+				infoMessage("GL_EXT_texture_rectangle initialised.");
 			}
 			else if (extensionName == "GLEW_ARB_buffer_storage")
 			{
-				logMessage("GLEW_ARB_buffer_storage initialised.");
+				infoMessage("GLEW_ARB_buffer_storage initialised.");
 			}
 			else if (extensionName == "GLEW_ARB_map_buffer_range")
 			{
-				logMessage("GLEW_ARB_map_buffer_range initialised.");
+				infoMessage("GLEW_ARB_map_buffer_range initialised.");
 			}
 		}
 
@@ -466,11 +466,10 @@ namespace mpp
 			THROW_MPP("Could not parse GL_SHADING_LANGUAGE_VERSION: " + glslVersion, __LINE__, __FILE__, __func__);
 		}
 
-		logMessage("GL version: " + glVersion);
-		logMessage("GLSL version: " + glslVersion);
-		logMessage("Renderer: " + glRenderer);
-		logMessage("Vendor: " + vendorInfo);
-		logMessage("");
+		infoMessage("GL version: " + glVersion);
+		infoMessage("GLSL version: " + glslVersion);
+		infoMessage("Renderer: " + glRenderer);
+		infoMessage("Vendor: " + vendorInfo);
 
 		// Get point size render range
 		GLfloat sizeRange[2] = { 0.0f, 0.0f };
@@ -523,17 +522,15 @@ namespace mpp
 		mCaps.streamingGeometry = GLEW_ARB_buffer_storage && GLEW_ARB_map_buffer_range;
 
 		// Print caps
-		logMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
-		logMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
-		logMessage(utils::StringUtils::format("Supported texture units: {}", mCaps.maxTextureUnits));
-		logMessage(utils::StringUtils::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
-		logMessage(utils::StringUtils::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
-		logMessage(utils::StringUtils::format("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
-		logMessage(utils::StringUtils::format("Max recommended elements: {}", mCaps.maxRecommendedElements));
-		logMessage(utils::StringUtils::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
-		logMessage(utils::StringUtils::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
-
-		logMessage("");
+		infoMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
+		infoMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
+		infoMessage(utils::StringUtils::format("Supported texture units: {}", mCaps.maxTextureUnits));
+		infoMessage(utils::StringUtils::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
+		infoMessage(utils::StringUtils::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
+		infoMessage(utils::StringUtils::format("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
+		infoMessage(utils::StringUtils::format("Max recommended elements: {}", mCaps.maxRecommendedElements));
+		infoMessage(utils::StringUtils::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
+		infoMessage(utils::StringUtils::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
 	}
 
 	/*
@@ -842,9 +839,24 @@ namespace mpp
 	 * Write a message to logfile.
 	 *
 	 */
-	void RenderSystem::logMessage(string const& message)
+	void RenderSystem::debugMessage(string const& message)
 	{
-		mLogger->message(message);
+		mLogger->debug(message);
+	}
+
+	void RenderSystem::infoMessage(string const& message)
+	{
+		mLogger->info(message);
+	}
+
+	void RenderSystem::warnMessage(string const& message)
+	{
+		mLogger->warn(message);
+	}
+
+	void RenderSystem::errorMessage(string const& message)
+	{
+		mLogger->error(message);
 	}
 
 	/*

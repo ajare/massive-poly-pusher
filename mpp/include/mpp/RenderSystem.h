@@ -266,7 +266,13 @@ namespace mpp
 
 		void setDisplay(int width, int height);
 
-		void logMessage(std::string const& message);
+		void debugMessage(std::string const& message);
+
+		void infoMessage(std::string const& message);
+
+		void warnMessage(std::string const& message);
+
+		void errorMessage(std::string const& message);
 
 		// Render targets and textures
 		void setRenderTarget(RenderTargetPtr renderTarget);

@@ -8,6 +8,7 @@
 #include <cassert>
 
 #include "mpp/ProgrammaticTextureStream.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/MppException.h"
 
 using namespace std;
@@ -24,7 +25,7 @@ namespace mpp
 	{
 		if (type == InternalType::Float && normalized)
 		{
-			// Ignore/warning
+			getResourceMgr()->warnMessage("ProgrammaticTextureStream: ignoring 'normalized': specified with floating-point data.");
 		}
 
 		if (channels < 1 || channels > 4)
@@ -268,9 +269,36 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setData(uint8_t const* data, size_t width, size_t height, size_t bitsPerPixel, uint32_t pixelFormat, uint32_t dataType)
+	void ProgrammaticTextureStream::setTarget(TextureStream::Target target)
+	{
+		switch (target)
+		{
+		case Target::Texture_1D:
+			mParams.target = GL_TEXTURE_1D;
+			break;
+
+		case Target::Texture_2D:
+			mParams.target = GL_TEXTURE_2D;
+			break;
+
+		case Target::Texture_3D:
+			mParams.target = GL_TEXTURE_3D;
+			break;
+
+		case Target::CubeMap:
+			mParams.target = GL_TEXTURE_CUBE_MAP;
+			break;
+
+		default:
+			THROW_MPP("Unknown texture target.", __LINE__, __FILE__, __func__);
+		}
+	}
+
+	void ProgrammaticTextureStream::setData(TextureStream::Target target, uint8_t const* data, size_t width, size_t height, size_t bitsPerPixel, uint32_t pixelFormat, uint32_t dataType)
 	{
 		assert((bitsPerPixel == 24 || bitsPerPixel == 32) && "ProgrammaticTextureStream::setData() 'bitsPerPixel' is invalid.");
+
+		setTarget(target);
 
 		mData.width = width;
 		mData.height = height;
@@ -285,8 +313,10 @@ namespace mpp
 		memcpy(mData.data, data, dataSize);
 	}
 
-	void ProgrammaticTextureStream::setFile(std::string const& filename, ImageLoadFunction loader)
+	void ProgrammaticTextureStream::setFile(TextureStream::Target target, string const& filename, ImageLoadFunction loader)
 	{
+		setTarget(target);
+
 		mSource = filename;
 		mLoadFunc = loader;
 	}

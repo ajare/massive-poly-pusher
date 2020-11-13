@@ -187,7 +187,7 @@ namespace mpp
 		vector<uint8_t> whiteData(16, 255);
 
 		auto blankStream = new ProgrammaticTextureStream(this);
-		blankStream->setData(&(whiteData[0]), 2, 2, 32, GL_RGBA, GL_UNSIGNED_BYTE);
+		blankStream->setData(TextureStream::Target::Texture_2D, &(whiteData[0]), 2, 2, 32, GL_RGBA, GL_UNSIGNED_BYTE);
 		blankStream->setFiltered(false);
 		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
@@ -196,6 +196,7 @@ namespace mpp
 
 		auto ts = new ProgrammaticTextureStream(this);
 		ts->setData(
+			TextureStream::Target::Texture_2D,
 			(uint8_t const*)internalFont.getData(),
 			internalFont.getWidth(),
 			internalFont.getHeight(),
@@ -737,6 +738,26 @@ namespace mpp
 	ResourcePtr ResourceManager::getProgramBySortId(uint32_t id)
 	{
 		return mSortablePrograms[id];
+	}
+
+	void ResourceManager::debugMessage(string const& message)
+	{
+		mwRenderSystem->debugMessage(message);
+	}
+
+	void ResourceManager::infoMessage(string const& message)
+	{
+		mwRenderSystem->infoMessage(message);
+	}
+
+	void ResourceManager::warnMessage(string const& message)
+	{
+		mwRenderSystem->warnMessage(message);
+	}
+
+	void ResourceManager::errorMessage(string const& message)
+	{
+		mwRenderSystem->errorMessage(message);
 	}
 
 }

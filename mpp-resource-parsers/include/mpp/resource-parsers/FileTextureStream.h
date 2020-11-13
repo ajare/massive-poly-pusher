@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 
 #include "mpp/TextureStream.h"
@@ -17,9 +18,19 @@ namespace mpp
 		{
 			std::string mFilepath;
 
+			std::map<std::string, uint32_t> mInternalFormats, mFiltering, mTargets, mWrapping;
+
 		private:
 
 			void loadImpl();
+
+			uint32_t parseInternalFormat(std::string const& value);
+
+			uint32_t parseFiltering(std::string const& value);
+
+			uint32_t parseWrapping(std::string const& value);
+
+			uint32_t parseTarget(std::string const& value);
 
 		public:
 

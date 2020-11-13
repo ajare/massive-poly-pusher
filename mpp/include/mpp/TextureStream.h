@@ -17,6 +17,14 @@ namespace mpp
 	{
 	public:
 
+		enum class Target
+		{
+			Texture_1D,
+			Texture_2D,
+			Texture_3D,
+			CubeMap
+		};
+
 		enum class InternalType
 		{
 			Auto,
@@ -35,7 +43,7 @@ namespace mpp
 
 		std::string mSource;
 
-	private:
+	protected:
 
 		void loadImpl();
 
