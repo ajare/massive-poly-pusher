@@ -11,6 +11,10 @@ namespace mpp
 
 		TextureParams mParams;
 
+		uint32_t mTarget;
+
+		uint32_t mInternalFormat;
+
 		uint32_t mSortId;
 
 	protected:

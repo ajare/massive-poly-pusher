@@ -25,6 +25,7 @@ namespace mpp
 	Texture::Texture(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: Resource(name, "Texture", renderSystem, resourceMgr, resourceStream)
 		, mSortId(0)
+		, mInternalFormat(0)
 	{
 	}
 
@@ -46,14 +47,17 @@ namespace mpp
 		mData.data = new uint8_t[dataSize];
 		memcpy(mData.data, tStr->getData(), dataSize);
 
+		mInternalFormat = tStr->getInternalFormat();
+		mTarget = tStr->getTarget();
+		mParams = tStr->getParams(0);
+
 		mData.width = tStr->getWidth();
 		mData.height = tStr->getHeight();
 		mData.bitsPerPixel = tStr->getBitsPerPixel();
 		mData.pixelFormat = tStr->getPixelFormat();
 		mData.dataType = tStr->getPixelDataType();
-		mParams = tStr->getParams();
 
-		if (mParams.internalFormat == 0)
+		if (mInternalFormat == 0)
 		{
 			// If we haven't specified the format, work it out from bpp/pixelformat/datatype
 			size_t channels{ 0 };
@@ -66,13 +70,13 @@ namespace mpp
 				switch (channels)
 				{
 				case 1:
-					mParams.internalFormat = GL_R8_SNORM; break;
+					mInternalFormat = GL_R8_SNORM; break;
 				case 2:
-					mParams.internalFormat = GL_RG8_SNORM; break;
+					mInternalFormat = GL_RG8_SNORM; break;
 				case 3:
-					mParams.internalFormat = GL_RGB8_SNORM; break;
+					mInternalFormat = GL_RGB8_SNORM; break;
 				case 4:
-					mParams.internalFormat = GL_RGBA8_SNORM; break;
+					mInternalFormat = GL_RGBA8_SNORM; break;
 				}
 				break;
 
@@ -82,13 +86,13 @@ namespace mpp
 				switch (channels)
 				{
 				case 1:
-					mParams.internalFormat = GL_R8; break;
+					mInternalFormat = GL_R8; break;
 				case 2:
-					mParams.internalFormat = GL_RG8; break;
+					mInternalFormat = GL_RG8; break;
 				case 3:
-					mParams.internalFormat = GL_RGB8; break;
+					mInternalFormat = GL_RGB8; break;
 				case 4:
-					mParams.internalFormat = GL_RGBA8; break;
+					mInternalFormat = GL_RGBA8; break;
 				}
 				break;
 
@@ -98,13 +102,13 @@ namespace mpp
 				switch (channels)
 				{
 				case 1:
-					mParams.internalFormat = GL_R16_SNORM; break;
+					mInternalFormat = GL_R16_SNORM; break;
 				case 2:
-					mParams.internalFormat = GL_RG16_SNORM; break;
+					mInternalFormat = GL_RG16_SNORM; break;
 				case 3:
-					mParams.internalFormat = GL_RGB16_SNORM; break;
+					mInternalFormat = GL_RGB16_SNORM; break;
 				case 4:
-					mParams.internalFormat = GL_RGBA16_SNORM; break;
+					mInternalFormat = GL_RGBA16_SNORM; break;
 				}
 				break;
 
@@ -114,13 +118,13 @@ namespace mpp
 				switch (channels)
 				{
 				case 1:
-					mParams.internalFormat = GL_R16; break;
+					mInternalFormat = GL_R16; break;
 				case 2:
-					mParams.internalFormat = GL_RG16; break;
+					mInternalFormat = GL_RG16; break;
 				case 3:
-					mParams.internalFormat = GL_RGB16; break;
+					mInternalFormat = GL_RGB16; break;
 				case 4:
-					mParams.internalFormat = GL_RGBA16; break;
+					mInternalFormat = GL_RGBA16; break;
 				}
 				break;
 
@@ -130,13 +134,13 @@ namespace mpp
 				switch (channels)
 				{
 				case 1:
-					mParams.internalFormat = GL_R16F; break;
+					mInternalFormat = GL_R16F; break;
 				case 2:
-					mParams.internalFormat = GL_RG16F; break;
+					mInternalFormat = GL_RG16F; break;
 				case 3:
-					mParams.internalFormat = GL_RGB16F; break;
+					mInternalFormat = GL_RGB16F; break;
 				case 4:
-					mParams.internalFormat = GL_RGBA16F; break;
+					mInternalFormat = GL_RGBA16F; break;
 				}
 				break;
 
@@ -146,13 +150,13 @@ namespace mpp
 				switch (channels)
 				{
 				case 1:
-					mParams.internalFormat = GL_R32F; break;
+					mInternalFormat = GL_R32F; break;
 				case 2:
-					mParams.internalFormat = GL_RG32F; break;
+					mInternalFormat = GL_RG32F; break;
 				case 3:
-					mParams.internalFormat = GL_RGB32F; break;
+					mInternalFormat = GL_RGB32F; break;
 				case 4:
-					mParams.internalFormat = GL_RGBA32F; break;
+					mInternalFormat = GL_RGBA32F; break;
 				}
 				break;
 
@@ -189,69 +193,69 @@ namespace mpp
 
 		// Create and bind
 		GL_CHECK(glGenTextures(1, &texId));
-		GL_CHECK(glBindTexture(mParams.target, texId));
+		GL_CHECK(glBindTexture(mTarget, texId));
 
 		// Set parameters
-		switch (mParams.target)
+		switch (mTarget)
 		{
 		case GL_TEXTURE_3D:
 		case GL_TEXTURE_CUBE_MAP:
-			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_WRAP_R, mParams.wrap));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_R, mParams.wrap));
 		case GL_TEXTURE_2D:
-			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_WRAP_T, mParams.wrap));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_T, mParams.wrap));
 		case GL_TEXTURE_1D:
-			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
-			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
-			GL_CHECK(glTexParameteri(mParams.target, GL_TEXTURE_WRAP_S, mParams.wrap));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_S, mParams.wrap));
 			break;
 		default:
 			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 		}
 
 		// Set data
-		switch (mParams.target)
+		switch (mTarget)
 		{
 		case GL_TEXTURE_1D:
 			if (mData.bitsPerPixel == 24)
 			{
-				GL_CHECK(glTexImage1D(mParams.target, 0, mParams.internalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
+				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			else if (mData.bitsPerPixel == 32)
 			{
-				GL_CHECK(glTexImage1D(mParams.target, 0, mParams.internalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
+				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			break;
 
 		case GL_TEXTURE_2D:
 			if (mData.bitsPerPixel == 24)
 			{
-				GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
+				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			else if (mData.bitsPerPixel == 32)
 			{
-				GL_CHECK(glTexImage2D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
+				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			break;
 
 		case GL_TEXTURE_3D:
 			if (mData.bitsPerPixel == 24)
 			{
-				GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			else if (mData.bitsPerPixel == 32)
 			{
-				GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			break;
 
 		case GL_TEXTURE_CUBE_MAP:
 			if (mData.bitsPerPixel == 24)
 			{
-				//GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			else if (mData.bitsPerPixel == 32)
 			{
-				//GL_CHECK(glTexImage3D(mParams.target, 0, mParams.internalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
 			}
 			break;
 
@@ -259,7 +263,7 @@ namespace mpp
 			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 		}
 
-		GL_CHECK(glBindTexture(mParams.target, 0));
+		GL_CHECK(glBindTexture(mTarget, 0));
 		setId(texId);
 	}
 
@@ -316,7 +320,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
-		GL_CHECK(glBindTexture(mParams.target, getId()));
+		GL_CHECK(glBindTexture(mTarget, getId()));
 	}
 
 	/*

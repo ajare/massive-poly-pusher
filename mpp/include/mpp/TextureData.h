@@ -43,9 +43,7 @@ namespace mpp
 	{
 		uint32_t minFilter;
 		uint32_t magFilter;
-		uint32_t target;
 		uint32_t wrap;
-		uint32_t internalFormat;
 
 	public:
 

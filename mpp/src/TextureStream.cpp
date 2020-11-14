@@ -13,6 +13,8 @@ namespace mpp
 	 */
 	TextureStream::TextureStream(ResourceManager* resourceMgr, string streamType)
 		: ResourceStream(resourceMgr, streamType)
+		, mInternalFormat(0)
+		, mTarget(0)
 	{
 	}
 
@@ -33,8 +35,18 @@ namespace mpp
 	{
 		if (mLoadFunc)
 		{
-			mData = mLoadFunc(mSource);
+			mData = mLoadFunc(mQualitySettings[0].source);
 		}
+	}
+
+	uint32_t TextureStream::getInternalFormat() const
+	{
+		return mInternalFormat;
+	}
+
+	uint32_t TextureStream::getTarget() const
+	{
+		return mTarget;
 	}
 
 	/*
@@ -92,8 +104,8 @@ namespace mpp
 		return getWidth() * getHeight() * getBitsPerPixel() / 8;
 	}
 
-	TextureParams const& TextureStream::getParams() const
+	TextureParams const& TextureStream::getParams(uint32_t quality) const
 	{
-		return mParams;
+		return mQualitySettings[quality].params;
 	}
 }
