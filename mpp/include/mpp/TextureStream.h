@@ -19,10 +19,24 @@ namespace mpp
 
 		enum class Target
 		{
-			Texture_1D,
-			Texture_2D,
-			Texture_3D,
+			Texture1D,
+			Texture2D,
+			Texture3D,
 			CubeMap
+		};
+
+		enum class Filtering
+		{
+			Nearest,
+			Linear
+		};
+
+		enum class Wrapping
+		{
+			Repeat,
+			MirroredRepeat,
+			ClampToEdge,
+			ClampToBorder
 		};
 
 		enum class InternalType
@@ -33,15 +47,25 @@ namespace mpp
 			Float
 		};
 
+	private:
+
+		struct QualitySetting
+		{
+			TextureParams params;
+			std::string source;
+		};
+
 	protected:
 
 		TextureData mData;
 
-		TextureParams mParams;
+		std::vector<QualitySetting> mQualitySettings;
+
+		uint32_t mInternalFormat;
+
+		uint32_t mTarget;
 
 		ImageLoadFunction mLoadFunc;
-
-		std::string mSource;
 
 	protected:
 
@@ -52,6 +76,10 @@ namespace mpp
 		TextureStream(ResourceManager* resourceMgr, std::string streamType = "Texture");
 
 		virtual ~TextureStream();
+
+		uint32_t getInternalFormat() const;
+
+		uint32_t getTarget() const;
 
 		uint8_t const* getData() const;
 
@@ -67,6 +95,6 @@ namespace mpp
 
 		size_t getDataSize() const;
 
-		TextureParams const& getParams() const;
+		TextureParams const& getParams(uint32_t quality) const;
 	};
 }

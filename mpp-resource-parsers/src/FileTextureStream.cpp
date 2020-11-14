@@ -21,6 +21,8 @@ namespace mpp
 			: TextureStream(resourceMgr)
 			, mFilepath(filepath)
 		{
+			mQualitySettings.resize(1);
+
 			// Internal formats
 			mInternalFormats["R8_SNORM"] = GL_R8_SNORM;
 			mInternalFormats["RG8_SNORM"] = GL_RG8_SNORM;
@@ -113,7 +115,7 @@ namespace mpp
 		{
 			auto it = mTargets.find(value);
 
-			if (it != mTargets.end())
+			if (it != mTargets.end())	
 			{
 				return it->second;
 			}
@@ -149,27 +151,28 @@ namespace mpp
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
-				if (entry.first == "filename")
+
+				if (entry.first == "target")
+				{
+					mTarget = parseTarget(value);
+				}
+				else if (entry.first == "filename")
 				{
 					// If filename is specified, then load from disk
-					mSource = entry.second.getValue();
-				}
-				else if (entry.first == "target")
-				{
-					mParams.target = parseTarget(value);
+					mQualitySettings[0].source = entry.second.getValue();
 				}
 				else if (entry.first == "filter")
 				{
-					mParams.minFilter = mParams.magFilter = parseFiltering(value);
+					mQualitySettings[0].params.minFilter = mQualitySettings[0].params.magFilter = parseFiltering(value);
 				}
 				else if (entry.first == "wrap")
 				{
-					mParams.wrap = parseWrapping(value);
+					mQualitySettings[0].params.wrap = parseWrapping(value);
 				}
 				else if (entry.first == "internalFormat")
 				{
 					// Optionally, specify OpenGL internal format.  Otherwise generate from loaded image.
-					mParams.internalFormat = parseInternalFormat(value);
+					mInternalFormat = parseInternalFormat(value);
 				}
 				else
 				{
@@ -179,7 +182,7 @@ namespace mpp
 			}
 
 			// Load the texture if 'filename' is specified
-			if (mSource == "")
+			if (mQualitySettings[0].source == "")
 			{
 				string errMsg = "Error loading " + mFilepath + ".  'filename' not specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);

@@ -128,8 +128,8 @@ namespace mpp
 						texture.resource);
 
 					auto texStr = new ProgrammaticTextureStream(resMgr);
-					texStr->setFile(TextureStream::Target::Texture_2D, textureFilename, resMgr->getImageLoadFunction());
-					texStr->setFiltered(true);
+					texStr->setFile(TextureStream::Target::Texture2D, textureFilename, resMgr->getImageLoadFunction());
+					texStr->setFiltering(TextureStream::Filtering::Linear, TextureStream::Filtering::Linear);
 
 					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
 					mStr->setTextureChild(texture.binding, texture.resource);
