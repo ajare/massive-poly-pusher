@@ -75,16 +75,28 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	// 1D texture
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	auto stripData = new uint8_t[256 * 3];
-	for (int i = 0; i < 256; ++i)
+	textureStream->setData(TextureStream::Target::Texture1D, [](string const& id)
 	{
-		stripData[i * 3 + 0] = 256 - i - 1;
-		stripData[i * 3 + 1] = 0;
-		stripData[i * 3 + 2] = i;
-	}
+		TextureData data;
 
-	textureStream->setData(TextureStream::Target::Texture1D, stripData, 256, 1, 24, GL_RGB, GL_UNSIGNED_BYTE);
-	delete[] stripData;
+		data.width = 256;
+		data.height = 1;
+		data.bitsPerPixel = 24;
+		data.dataType = GL_UNSIGNED_BYTE;
+		data.pixelFormat = GL_RGB;
+
+		size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
+		
+		data.data = new uint8_t[dataSize];
+		for (int i = 0; i < 256; ++i)
+		{
+			data.data[i * 3 + 0] = 256 - i - 1;
+			data.data[i * 3 + 1] = 0;
+			data.data[i * 3 + 2] = i;
+		}
+
+		return data;
+	});
 
 	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
 	resourceMgr->declareResource("Strip.Texture", ResourceStreamPtr(textureStream));

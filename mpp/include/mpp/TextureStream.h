@@ -87,6 +87,8 @@ namespace mpp
 
 		size_t getHeight() const;
 
+		size_t getDepth() const;
+
 		size_t getBitsPerPixel() const;
 
 		uint32_t getPixelFormat() const;
