@@ -76,6 +76,11 @@ namespace mpp
 		return mData.height;
 	}
 
+	size_t TextureStream::getDepth() const
+	{
+		return mData.depth;
+	}
+
 	/*
 	 * Get texture bits per pixel.
 	 *

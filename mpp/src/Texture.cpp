@@ -26,6 +26,12 @@ namespace mpp
 		: Resource(name, "Texture", renderSystem, resourceMgr, resourceStream)
 		, mSortId(0)
 		, mInternalFormat(0)
+		, mWidth(0)
+		, mHeight(0)
+		, mDepth(0)
+		, mBitsPerPixel(0)
+		, mPixelFormat(0)
+		, mDataType(0)
 	{
 	}
 
@@ -43,30 +49,27 @@ namespace mpp
 
 		auto dataSize = tStr->getDataSize();
 
-		delete[] mData.data;
-		mData.data = new uint8_t[dataSize];
-		memcpy(mData.data, tStr->getData(), dataSize);
-
 		mInternalFormat = tStr->getInternalFormat();
 		mTarget = tStr->getTarget();
 		mParams = tStr->getParams(0);
-
-		mData.width = tStr->getWidth();
-		mData.height = tStr->getHeight();
-		mData.bitsPerPixel = tStr->getBitsPerPixel();
-		mData.pixelFormat = tStr->getPixelFormat();
-		mData.dataType = tStr->getPixelDataType();
+		
+		mWidth = tStr->getWidth();
+		mHeight = tStr->getHeight();
+		mDepth = tStr->getDepth();
+		mBitsPerPixel = tStr->getBitsPerPixel();
+		mPixelFormat = tStr->getPixelFormat();
+		mDataType = tStr->getPixelDataType();
 
 		if (mInternalFormat == 0)
 		{
 			// If we haven't specified the format, work it out from bpp/pixelformat/datatype
 			size_t channels{ 0 };
 
-			switch (mData.dataType)
+			switch (mDataType)
 			{
 			case GL_BYTE:
 				// Signed, normalised
-				channels = mData.bitsPerPixel / (sizeof(int8_t) * 8);
+				channels = mBitsPerPixel / (sizeof(int8_t) * 8);
 				switch (channels)
 				{
 				case 1:
@@ -82,7 +85,7 @@ namespace mpp
 
 			case GL_UNSIGNED_BYTE:
 				// Unsigned, normalised
-				channels = mData.bitsPerPixel / (sizeof(uint8_t) * 8);
+				channels = mBitsPerPixel / (sizeof(uint8_t) * 8);
 				switch (channels)
 				{
 				case 1:
@@ -98,7 +101,7 @@ namespace mpp
 
 			case GL_SHORT:
 				// Signed, normalised
-				channels = mData.bitsPerPixel / (sizeof(int16_t) * 8);
+				channels = mBitsPerPixel / (sizeof(int16_t) * 8);
 				switch (channels)
 				{
 				case 1:
@@ -114,7 +117,7 @@ namespace mpp
 
 			case GL_UNSIGNED_SHORT:
 				// Unsigned, normalised
-				channels = mData.bitsPerPixel / (sizeof(uint16_t) * 8);
+				channels = mBitsPerPixel / (sizeof(uint16_t) * 8);
 				switch (channels)
 				{
 				case 1:
@@ -130,7 +133,7 @@ namespace mpp
 
 			case GL_HALF_FLOAT:
 				// Signed, unnormalised
-				channels = mData.bitsPerPixel / ((sizeof(float) / 2) * 8);
+				channels = mBitsPerPixel / ((sizeof(float) / 2) * 8);
 				switch (channels)
 				{
 				case 1:
@@ -146,7 +149,7 @@ namespace mpp
 
 			case GL_FLOAT:
 				// Signed, unnormalised
-				channels = mData.bitsPerPixel / (sizeof(float) * 8);
+				channels = mBitsPerPixel / (sizeof(float) * 8);
 				switch (channels)
 				{
 				case 1:
@@ -172,14 +175,12 @@ namespace mpp
 	 */
 	void Texture::destroyImpl()
 	{
-		delete[] mData.data;
-		mData.data = nullptr;
-
-		mData.width = 0;
-		mData.height = 0;
-		mData.bitsPerPixel = 0;
-		mData.pixelFormat = 0;
-		mData.dataType = 0;
+		mWidth = 0;
+		mHeight = 0;
+		mDepth = 0;
+		mBitsPerPixel = 0;
+		mPixelFormat = 0;
+		mDataType = 0;
 		mSortId = 0;
 	}
 
@@ -189,6 +190,12 @@ namespace mpp
 	 */
 	void Texture::loadImpl()
 	{
+		TextureStream* tStr = dynamic_cast<TextureStream*>(getResourceStream().get());
+		if (!tStr)
+		{
+			THROW_MPP("Could not cast to type 'TextureStream'.", __LINE__, __FILE__, __func__);
+		}
+
 		uint32_t texId;
 
 		// Create and bind
@@ -213,50 +220,23 @@ namespace mpp
 		}
 
 		// Set data
+		auto data = tStr->getData();
 		switch (mTarget)
 		{
 		case GL_TEXTURE_1D:
-			if (mData.bitsPerPixel == 24)
-			{
-				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
-			else if (mData.bitsPerPixel == 32)
-			{
-				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mData.width, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
+			GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mWidth, 0, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_2D:
-			if (mData.bitsPerPixel == 24)
-			{
-				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
-			else if (mData.bitsPerPixel == 32)
-			{
-				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mData.width, mData.height, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
+			GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mWidth, mHeight, 0, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_3D:
-			if (mData.bitsPerPixel == 24)
-			{
-				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
-			else if (mData.bitsPerPixel == 32)
-			{
-				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
+			GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_CUBE_MAP:
-			if (mData.bitsPerPixel == 24)
-			{
-				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
-			else if (mData.bitsPerPixel == 32)
-			{
-				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-			}
+			//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
 			break;
 
 		default:
@@ -287,7 +267,7 @@ namespace mpp
 	 */
 	int Texture::getWidth() const
 	{
-		return mData.width;
+		return mWidth;
 	}
 
 	/*
@@ -296,7 +276,16 @@ namespace mpp
 	 */
 	int Texture::getHeight() const
 	{
-		return mData.height;
+		return mHeight;
+	}
+
+	/*
+	 * Get texture depth.
+	 *
+	 */
+	int Texture::getDepth() const
+	{
+		return mDepth;
 	}
 
 	/*
@@ -305,7 +294,7 @@ namespace mpp
 	 */
 	int Texture::getBitsPerPixel() const
 	{
-		return mData.bitsPerPixel;
+		return mBitsPerPixel;
 	}
 
 	/*

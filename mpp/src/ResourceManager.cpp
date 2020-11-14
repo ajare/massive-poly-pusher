@@ -184,25 +184,49 @@ namespace mpp
 		}
 
 		// Default texture
-		vector<uint8_t> whiteData(16, 255);
-
 		auto blankStream = new ProgrammaticTextureStream(this);
-		blankStream->setData(TextureStream::Target::Texture2D, &(whiteData[0]), 2, 2, 32, GL_RGBA, GL_UNSIGNED_BYTE);
+		blankStream->setData(TextureStream::Target::Texture2D, [](string const& id)
+		{
+			TextureData data;
+			
+			data.width = 2;
+			data.height = 2;
+			data.bitsPerPixel = 24;
+			data.dataType = GL_UNSIGNED_BYTE;
+			data.pixelFormat = GL_RGB;
+
+			size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
+			
+			data.data = new uint8_t[dataSize];
+			memset(data.data, 255, dataSize);
+
+			return data;
+		});
+
 		blankStream->setFiltering(TextureStream::Filtering::Nearest, TextureStream::Filtering::Nearest);
 		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
-		InternalFont internalFont;
-
 		auto ts = new ProgrammaticTextureStream(this);
 		ts->setData(
-			TextureStream::Target::Texture2D,
-			(uint8_t const*)internalFont.getData(),
-			internalFont.getWidth(),
-			internalFont.getHeight(),
-			32, 
-			GL_RGBA, 
-			GL_UNSIGNED_BYTE);
+			TextureStream::Target::Texture2D, [](string const& id)
+		{
+			InternalFont internalFont;
+			TextureData data;
+
+			data.width = internalFont.getWidth();
+			data.height = internalFont.getHeight();
+			data.bitsPerPixel = 32;
+			data.dataType = GL_UNSIGNED_BYTE;
+			data.pixelFormat = GL_RGBA;
+
+			size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
+
+			data.data = new uint8_t[dataSize];
+			memcpy(data.data, (uint8_t const*)internalFont.getData(), dataSize);
+
+			return data;
+		});
 
 		ts->setFiltering(TextureStream::Filtering::Nearest, TextureStream::Filtering::Nearest);
 

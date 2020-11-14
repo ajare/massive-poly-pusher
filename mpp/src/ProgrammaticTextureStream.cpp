@@ -295,23 +295,12 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setData(TextureStream::Target target, uint8_t const* data, size_t width, size_t height, size_t bitsPerPixel, uint32_t pixelFormat, uint32_t dataType)
+	void ProgrammaticTextureStream::setData(TextureStream::Target target, ImageLoadFunction creator)
 	{
-		assert((bitsPerPixel == 24 || bitsPerPixel == 32) && "ProgrammaticTextureStream::setData() 'bitsPerPixel' is invalid.");
-
 		setTarget(target);
 
-		mData.width = width;
-		mData.height = height;
-		mData.bitsPerPixel = bitsPerPixel;
-		mData.pixelFormat = pixelFormat;
-		mData.dataType = dataType;
-
-		auto dataSize = getDataSize();
-
-		delete[] mData.data;
-		mData.data = new uint8_t[dataSize];
-		memcpy(mData.data, data, dataSize);
+		mQualitySettings[0].source = "";
+		mLoadFunc = creator;
 	}
 
 	void ProgrammaticTextureStream::setFile(TextureStream::Target target, string const& filename, ImageLoadFunction loader)

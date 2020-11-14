@@ -7,9 +7,11 @@ namespace mpp
 {
 	class _MPPAPI Texture : public Resource
 	{
-		TextureData mData;
-
 		TextureParams mParams;
+
+		size_t mWidth, mHeight, mDepth, mBitsPerPixel;
+
+		uint32_t mPixelFormat, mDataType;
 
 		uint32_t mTarget;
 
@@ -34,6 +36,8 @@ namespace mpp
 		virtual int getWidth() const;
 
 		virtual int getHeight() const;
+
+		virtual int getDepth() const;
 
 		virtual int getBitsPerPixel() const;
 
