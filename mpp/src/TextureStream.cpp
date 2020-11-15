@@ -120,6 +120,11 @@ namespace mpp
 		return mQualitySettings[mQualitySetting].sampler;
 	}
 
+	map<string, TextureStream::Tile> const& TextureStream::getTiles() const
+	{
+		return mTiles;
+	}
+
 	uint32_t TextureStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
