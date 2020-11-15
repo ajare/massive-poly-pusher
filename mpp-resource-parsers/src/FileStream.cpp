@@ -10,7 +10,7 @@ namespace mpp
 
 		FileStream::FileStream()
 		{
-			mFactories["xml"] = []() {return new XmlSerializer(); };
+			mFactories[".xml"] = []() {return new XmlSerializer(); };
 		}
 
 		SerializerPtr FileStream::getSerializer(string const& type)

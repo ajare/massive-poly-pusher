@@ -35,6 +35,8 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/ProgrammaticSamplerStream.h>
 
+#include <mpp/resource-parsers/FileTextureStream.h>
+
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/OrbitCamera.h>
 
@@ -59,12 +61,14 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	samplerStream->setFiltering(mpp::SamplerParams::MinFilter::Linear, mpp::SamplerParams::MagFilter::Linear);
 	resourceMgr->declareResource("Default.Sampler", ResourceStreamPtr(samplerStream));
 
+	// Create texture with sampler
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
+	// Create textures programmatically
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "electbubbles.jpg", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
@@ -75,10 +79,12 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
-	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "donut.jpg", loadImage);
-	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
-	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
+	// Create texture from file
+	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, options.resourceLocation + "Doughnut.xml");
+	//textureStream = new ProgrammaticTextureStream(resourceMgr);
+	//textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "donut.jpg", loadImage);
+	//textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(fileStream));
 
 	// 1D texture
 	textureStream = new ProgrammaticTextureStream(resourceMgr);

@@ -18,12 +18,12 @@ namespace mpp
 			std::string name;
 			std::string material;
 			std::vector<uint8_t> vertexData;
-			int indexWidth;
+			size_t indexWidth;
 			float pointSize;
 			std::vector<uint8_t> indexData;
 
 			// Component data
-			int vertexCount, primitiveCount;
+			size_t vertexCount, primitiveCount;
 			std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
 		};
 
@@ -35,40 +35,40 @@ namespace mpp
 
 		void createMeshDataStreams();
 
-		int getNumMeshes() const;
+		size_t getNumMeshes() const;
 
-		mesh::MeshSpecification const& getMeshSpecification(int meshIndex) const;
+		mesh::MeshSpecification const& getMeshSpecification(size_t meshIndex) const;
 
-		void getMeshCounts(int meshIndex, int* primitiveCount, int* vertexCount);
+		void getMeshCounts(size_t meshIndex, size_t* primitiveCount, size_t* vertexCount);
 
-		VertexDataStreamDefinition getMeshDataStream(int meshIndex, mesh::Vertex::Component component) const;
+		VertexDataStreamDefinition getMeshDataStream(size_t meshIndex, mesh::Vertex::Component component) const;
 
-		int getMeshIndexWidth(int meshIndex) const;
+		size_t getMeshIndexWidth(size_t meshIndex) const;
 
-		float getMeshPointSize(int meshIndex) const;
+		float getMeshPointSize(size_t meshIndex) const;
 
-		uint8_t const* getMeshIndexData(int meshIndex) const;
+		uint8_t const* getMeshIndexData(size_t meshIndex) const;
 
-		std::string const& getMeshName(int meshIndex) const;
+		std::string const& getMeshName(size_t meshIndex) const;
 
-		std::string const& getMeshMaterial(int meshIndex) const;
+		std::string const& getMeshMaterial(size_t meshIndex) const;
 
 	public:
 
 		explicit ProgrammaticModelStream(ResourceManager* resourceMgr);
 
-		int createMesh(std::string const& name, mesh::MeshSpecification const& specification, std::string const& material, int indexWidth, float pointSize = -1.0f);
+		size_t createMesh(std::string const& name, mesh::MeshSpecification const& specification, std::string const& material, int indexWidth, float pointSize = -1.0f);
 
-		int getMeshId(std::string const& name) const;
+		int32_t getMeshId(std::string const& name) const;
 
-		void addVertexData(int meshIndex, std::vector<int8_t> const& vertexData);
+		void addVertexData(size_t meshIndex, std::vector<int8_t> const& vertexData);
 
-		void addVertexData(int meshIndex, mesh::VertexData const& vertexData);
+		void addVertexData(size_t meshIndex, mesh::VertexData const& vertexData);
 
-		void addPoint(int meshIndex, uint32_t v);
+		void addPoint(size_t meshIndex, uint32_t v);
 
-		void addLine(int meshIndex, uint32_t v0, uint32_t v1);
+		void addLine(size_t meshIndex, uint32_t v0, uint32_t v1);
 
-		void addTriangle(int meshIndex, uint32_t v0, uint32_t v1, uint32_t v2);
+		void addTriangle(size_t meshIndex, uint32_t v0, uint32_t v1, uint32_t v2);
 	};
 }

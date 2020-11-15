@@ -144,48 +144,48 @@ namespace mpp
 		return componentOffsets;
 	}
 
-	int PrimitiveModelStream::getNumMeshes() const
+	size_t PrimitiveModelStream::getNumMeshes() const
 	{
 		return 1;
 	}
 
-	mesh::MeshSpecification const& PrimitiveModelStream::getMeshSpecification(int meshIndex) const
+	mesh::MeshSpecification const& PrimitiveModelStream::getMeshSpecification(size_t meshIndex) const
 	{
 		return mMeshDataDefinition.specification;
 	}
 
-	void PrimitiveModelStream::getMeshCounts(int meshIndex, int* primitiveCount, int* vertexCount)
+	void PrimitiveModelStream::getMeshCounts(size_t meshIndex, size_t* primitiveCount, size_t* vertexCount)
 	{
 		*primitiveCount = mMeshDataDefinition.primitiveCount;
 		*vertexCount = mMeshDataDefinition.vertexCount;
 	}
 
-	ModelStream::VertexDataStreamDefinition PrimitiveModelStream::getMeshDataStream(int meshIndex, mesh::Vertex::Component component) const
+	ModelStream::VertexDataStreamDefinition PrimitiveModelStream::getMeshDataStream(size_t meshIndex, mesh::Vertex::Component component) const
 	{
 		return mMeshDataDefinition.componentStreams.at(component);
 	}
 
-	int PrimitiveModelStream::getMeshIndexWidth(int meshIndex) const
+	size_t PrimitiveModelStream::getMeshIndexWidth(size_t meshIndex) const
 	{
 		return mMeshDataDefinition.indexWidth;
 	}
 
-	float PrimitiveModelStream::getMeshPointSize(int meshIndex) const
+	float PrimitiveModelStream::getMeshPointSize(size_t meshIndex) const
 	{
 		return mMeshDataDefinition.pointSize;
 	}
 
-	uint8_t const* PrimitiveModelStream::getMeshIndexData(int meshIndex) const
+	uint8_t const* PrimitiveModelStream::getMeshIndexData(size_t meshIndex) const
 	{
 		return (uint8_t const*)&(mMeshDataDefinition.indexData[0]);
 	}
 
-	string const& PrimitiveModelStream::getMeshName(int meshIndex) const
+	string const& PrimitiveModelStream::getMeshName(size_t meshIndex) const
 	{
 		return mMeshDataDefinition.name;
 	}
 
-	string const& PrimitiveModelStream::getMeshMaterial(int meshIndex) const
+	string const& PrimitiveModelStream::getMeshMaterial(size_t meshIndex) const
 	{
 		return mMeshDataDefinition.material;
 	}

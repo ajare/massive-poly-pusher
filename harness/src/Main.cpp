@@ -13,7 +13,6 @@
 #include <mpp/Program.h>
 #include <mpp/TextureStream.h>
 #include <mpp/Texture.h>
-#include <mpp/TextureAtlasStream.h>
 #include <mpp/TextureAtlas.h>
 #include <mpp/MaterialStream.h>
 #include <mpp/Material.h>

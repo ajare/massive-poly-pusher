@@ -57,23 +57,23 @@ namespace mpp
 
 		virtual void createMeshDataStreams() = 0;
 
-		virtual int getNumMeshes() const = 0;
+		virtual size_t getNumMeshes() const = 0;
 
-		virtual mesh::MeshSpecification const& getMeshSpecification(int meshIndex) const = 0;
+		virtual mesh::MeshSpecification const& getMeshSpecification(size_t meshIndex) const = 0;
 
-		virtual void getMeshCounts(int meshIndex, int* primitiveCount, int* vertexCount) = 0;
+		virtual void getMeshCounts(size_t meshIndex, size_t* primitiveCount, size_t* vertexCount) = 0;
 
-		virtual VertexDataStreamDefinition getMeshDataStream(int meshIndex, mesh::Vertex::Component component) const = 0;
+		virtual VertexDataStreamDefinition getMeshDataStream(size_t meshIndex, mesh::Vertex::Component component) const = 0;
 
-		virtual int getMeshIndexWidth(int meshIndex) const = 0;
+		virtual size_t getMeshIndexWidth(size_t meshIndex) const = 0;
 
-		virtual float getMeshPointSize(int meshIndex) const = 0;
+		virtual float getMeshPointSize(size_t meshIndex) const = 0;
 
-		virtual uint8_t const* getMeshIndexData(int meshIndex) const = 0;
+		virtual uint8_t const* getMeshIndexData(size_t meshIndex) const = 0;
 
-		virtual std::string const& getMeshName(int meshIndex) const = 0;
+		virtual std::string const& getMeshName(size_t meshIndex) const = 0;
 
-		virtual std::string const& getMeshMaterial(int meshIndex) const = 0;
+		virtual std::string const& getMeshMaterial(size_t meshIndex) const = 0;
 
 	public:
 
@@ -83,7 +83,7 @@ namespace mpp
 
 		size_t getNumMeshDefinitions(uint32_t quality = 0) const;
 
-		mesh::MeshDefinition* getMeshDefinition(int index, uint32_t quality = 0);
+		mesh::MeshDefinition* getMeshDefinition(size_t index, uint32_t quality = 0);
 
 		virtual std::string markUpMaterialName(std::string const& name, std::string const& material);
 

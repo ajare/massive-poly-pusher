@@ -17,11 +17,11 @@ namespace mpp
 
 			float pointSize;
 			
-			int indexWidth;
+			size_t indexWidth;
 			std::shared_ptr<const uint8_t> indexData;
 
 			// Component data
-			int vertexCount, primitiveCount;
+			size_t vertexCount, primitiveCount;
 			std::map<mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
 		};
 
@@ -37,23 +37,23 @@ namespace mpp
 
 		void createMeshDataStreams();
 
-		VertexDataStreamDefinition getMeshDataStream(int meshIndex, mesh::Vertex::Component component) const;
+		VertexDataStreamDefinition getMeshDataStream(size_t meshIndex, mesh::Vertex::Component component) const;
 
-		mesh::MeshSpecification const& getMeshSpecification(int meshIndex) const;
+		mesh::MeshSpecification const& getMeshSpecification(size_t meshIndex) const;
 
-		int getMeshIndexWidth(int meshIndex) const;
+		size_t getMeshIndexWidth(size_t meshIndex) const;
 
-		float getMeshPointSize(int meshIndex) const;
+		float getMeshPointSize(size_t meshIndex) const;
 
-		uint8_t const* getMeshIndexData(int meshIndex) const;
+		uint8_t const* getMeshIndexData(size_t meshIndex) const;
 
-		std::string const& getMeshName(int meshIndex) const;
+		std::string const& getMeshName(size_t meshIndex) const;
 
-		std::string const& getMeshMaterial(int meshIndex) const;
+		std::string const& getMeshMaterial(size_t meshIndex) const;
 
-		int getNumMeshes() const;
+		size_t getNumMeshes() const;
 
-		void getMeshCounts(int meshIndex, int* primitiveCount, int* vertexCount);
+		void getMeshCounts(size_t meshIndex, size_t* primitiveCount, size_t* vertexCount);
 
 	public:
 

@@ -7,7 +7,6 @@
 
 #include <mpp/TextureStream.h>
 #include <mpp/ResourceManager.h>
-#include <mpp/TextureAtlasStream.h>
 
 #include "sdl/WindowSDL.h"
 
