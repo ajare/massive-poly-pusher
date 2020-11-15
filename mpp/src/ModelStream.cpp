@@ -29,9 +29,12 @@ namespace mpp
 	 */
 	ModelStream::~ModelStream()
 	{
-		for (auto it: mMeshDefinitions)
+		for (auto& qs: mQualitySettings)
 		{
-			delete it;
+			for (auto meshDef: qs.meshDefinitions)
+			{
+				delete meshDef;
+			}
 		}
 	}
 
@@ -231,7 +234,7 @@ namespace mpp
 		MeshDefinition* md = new MeshDefinition(material, type, storageType, primitiveCount, indexWidth, pointSize);
 		md->setName(name);
 
-		mMeshDefinitions.push_back(md);
+		mQualitySettings[mQualitySetting].meshDefinitions.push_back(md);
 
 		return md;
 	}
@@ -240,19 +243,19 @@ namespace mpp
 	 * Get number of meshes in this stream.
 	 *
 	 */
-	int ModelStream::getNumMeshDefinitions() const
+	size_t ModelStream::getNumMeshDefinitions(uint32_t quality) const
 	{
-		return (int)mMeshDefinitions.size();
+		return mQualitySettings[quality].meshDefinitions.size();
 	}
 	
 	/*
 	 * Get indexed mesh definition.
 	 *
 	 */
-	MeshDefinition* ModelStream::getMeshDefinition(int index)
+	MeshDefinition* ModelStream::getMeshDefinition(int index, uint32_t quality)
 	{
 		assert((index >= 0 && index < getNumMeshDefinitions()) && "ModelStream::getMeshDefinition() 'index' argument out of range!");
-		return mMeshDefinitions[index];
+		return mQualitySettings[quality].meshDefinitions[index];
 	}
 
 	string ModelStream::markUpMaterialName(string const& name, string const& material)

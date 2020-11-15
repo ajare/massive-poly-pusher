@@ -12,6 +12,7 @@
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/MppException.h"
 
 using namespace std;
@@ -98,7 +99,8 @@ namespace mpp
 			parser->setVertexSource(VertexShader3dTemplate);
 			parser->setFragmentSource(FragmentShader3dTemplate);
 
-			auto ps = new ProgramStream(this, parser, {});
+			auto ps = new ProgrammaticProgramStream(this);
+			ps->setParser(parser);
 			declareResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -116,7 +118,8 @@ namespace mpp
 			parser->setVertexSource(VertexShaderFullscreenTemplate);
 			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
 
-			auto ps = new ProgramStream(this, parser, {});
+			auto ps = new ProgrammaticProgramStream(this);
+			ps->setParser(parser);
 			declareResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -134,7 +137,9 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(this, parser, {"Points"});
+			auto ps = new ProgrammaticProgramStream(this);
+			ps->setParser(parser);
+			ps->setAttribs({ "Points" });
 			declareResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -150,7 +155,8 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(this, parser, {});
+			auto ps = new ProgrammaticProgramStream(this);
+			ps->setParser(parser);
 			declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -167,7 +173,9 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(this, parser, { "Points", "Colours" });
+			auto ps = new ProgrammaticProgramStream(this);
+			ps->setParser(parser);
+			ps->setAttribs({ "Points", "Colours" });
 			declareResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 		{
@@ -184,7 +192,9 @@ namespace mpp
 			parser->setVertexSource(VertexShaderTextTemplate);
 			parser->setFragmentSource(FragmentShaderTextTemplate);
 
-			auto ps = new ProgramStream(this, parser, { "Colours" });
+			auto ps = new ProgrammaticProgramStream(this);
+			ps->setParser(parser);
+			ps->setAttribs({ "Colours" });
 			declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
 		}
 
@@ -599,7 +609,9 @@ namespace mpp
 		parser->setVertexSource(defaultVertexShader);
 		parser->setFragmentSource(defaultFragmentShader);
 
-		auto ps = new ProgramStream(this, parser, getProgramAttributes(spec, flags));
+		auto ps = new ProgrammaticProgramStream(this);
+		ps->setParser(parser);
+		ps->setAttribs(getProgramAttributes(spec, flags));
 
 		// Generate name
 		string specName = spec.getDescriptor("__mpp_p2d_");
@@ -692,7 +704,9 @@ namespace mpp
 		parser->setVertexSource(vShader);
 		parser->setFragmentSource(fShader);
 
-		auto ps = new ProgramStream(this, parser, getProgramAttributes(spec, flags));
+		auto ps = new ProgrammaticProgramStream(this);
+		ps->setParser(parser);
+		ps->setAttribs(getProgramAttributes(spec, flags));
 
 		// Generate name
 		string specName = spec.getDescriptor("__mpp_p3d_");

@@ -37,19 +37,16 @@ namespace mpp
 
 		struct QualitySetting
 		{
+			ProgramOptions program;
+			UniformCollection uniforms;
+			std::map<std::string, std::pair<std::string, bool>> textures;
 		};
 
 	protected:
 
 		std::string mName;
  
-		ProgramOptions mProgram;
-
-		UniformCollection mUniforms;
-
 		std::vector<QualitySetting> mQualitySettings;
-
-		std::map<std::string, std::pair<std::string, bool>> mTextures;
 
 	public:
 

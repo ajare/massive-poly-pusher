@@ -14,19 +14,18 @@ namespace mpp
 	{
 		struct QualitySetting
 		{
+			std::shared_ptr<program::Parser> parser;
 		};
 
 	private:
 
 		std::string mVertexSource, mFragmentSource;
 
-		std::shared_ptr<program::Parser> mParser;
-
-		std::set<std::string> mAttribs;
-
 	protected:
 
 		std::vector<QualitySetting> mQualitySettings;
+
+		std::set<std::string> mAttribs;
 
 	private:
 
@@ -40,7 +39,7 @@ namespace mpp
 
 	public:
 
-		ProgramStream(ResourceManager* resourceMgr, std::shared_ptr<program::Parser> parser, std::set<std::string> const& attribs);
+		explicit ProgramStream(ResourceManager* resourceMgr);
 
 		std::string const& getVertexSource() const;
 

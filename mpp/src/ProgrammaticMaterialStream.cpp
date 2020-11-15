@@ -51,105 +51,135 @@ namespace mpp
 	 * Set program
 	 *
 	 */
-	void ProgrammaticMaterialStream::setProgram(string const& program)
+	void ProgrammaticMaterialStream::setProgram(string const& program, uint32_t quality)
 	{
-		mProgram.resourceExists = true;
-		mProgram.existingResource = program;
+		auto& qs = mQualitySettings[quality];
+
+		qs.program.resourceExists = true;
+		qs.program.existingResource = program;
 	}
 
 	/*
 	 * Set program
 	 *
 	 */
-	void ProgrammaticMaterialStream::setProgram(bool is2d, mpp::mesh::MeshSpecification const& spec, set<string> const& tags)
+	void ProgrammaticMaterialStream::setProgram(bool is2d, mpp::mesh::MeshSpecification const& spec, set<string> const& tags, uint32_t quality)
 	{
-		mProgram.resourceExists = true;
-		mProgram.is2d = is2d;
+		auto& qs = mQualitySettings[quality];
+
+		qs.program.resourceExists = true;
+		qs.program.is2d = is2d;
 
 		string prefix = "__mpp_";
-		mProgram.existingResource = spec.getDescriptor(prefix + (is2d ? "p2d_" : "p3d_"));
+		qs.program.existingResource = spec.getDescriptor(prefix + (is2d ? "p2d_" : "p3d_"));
 
 		for (auto const& tag : tags)
 		{
 			if (tag == "diffuse")
 			{
-				mProgram.existingResource += "_d";
+				qs.program.existingResource += "_d";
 			}
 		}
 
-		mProgram.existingResource += "__";
+		qs.program.existingResource += "__";
 	}
 
-	void ProgrammaticMaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFile)
+	void ProgrammaticMaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFile, uint32_t quality)
 	{
-		mProgram.resourceExists = false;
-		mProgram.is2d = is2d;
-		mProgram.spec = spec;
-		mProgram.vertexShader = { vertexShaderIsFile, vertexShader };
-		mProgram.fragmentShader = { fragmentShaderIsFile, fragmentShader };
+		auto& qs = mQualitySettings[quality];
+
+		qs.program.resourceExists = false;
+		qs.program.is2d = is2d;
+		qs.program.spec = spec;
+		qs.program.vertexShader = { vertexShaderIsFile, vertexShader };
+		qs.program.fragmentShader = { fragmentShaderIsFile, fragmentShader };
 	}
 
-	void ProgrammaticMaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec)
+	void ProgrammaticMaterialStream::setProgram(bool is2d, mesh::MeshSpecification const& spec, uint32_t quality)
 	{
-		mProgram.resourceExists = false;
-		mProgram.is2d = is2d;
-		mProgram.spec = spec;
-		mProgram.vertexShader = { false, "" };
-		mProgram.fragmentShader = { false, "" };
+		auto& qs = mQualitySettings[quality];
+
+		qs.program.resourceExists = false;
+		qs.program.is2d = is2d;
+		qs.program.spec = spec;
+		qs.program.vertexShader = { false, "" };
+		qs.program.fragmentShader = { false, "" };
 	}
 
-	void ProgrammaticMaterialStream::setTextureChild(string const& sampler, string const& resource)
+	void ProgrammaticMaterialStream::setTextureChild(string const& sampler, string const& resource, uint32_t quality)
 	{
-		mTextures[sampler] = make_pair(resource, true);
+		auto& qs = mQualitySettings[quality];
+
+		qs.textures[sampler] = make_pair(resource, true);
 	}
 
-	void ProgrammaticMaterialStream::setTexture(string const& sampler, string const& texture)
+	void ProgrammaticMaterialStream::setTexture(string const& sampler, string const& texture, uint32_t quality)
 	{
-		mTextures[sampler] = make_pair(texture, false);
+		auto& qs = mQualitySettings[quality];
+
+		qs.textures[sampler] = make_pair(texture, false);
 	}
 
-	void ProgrammaticMaterialStream::useDefaultTexture()
+	void ProgrammaticMaterialStream::setDefaultTexture(uint32_t quality)
 	{
-		mTextures["TEX1"] = make_pair("__mpp_tex_none__", false);
+		auto& qs = mQualitySettings[quality];
+
+		qs.textures["TEX1"] = make_pair("__mpp_tex_none__", false);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, int32_t value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, int32_t value, uint32_t quality)
 	{
-		mUniforms.setUniform(name, value);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, uint32_t value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, uint32_t value, uint32_t quality)
 	{
-		mUniforms.setUniform(name, value);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, float value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, float value, uint32_t quality)
 	{
-		mUniforms.setUniform(name, value);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, glm::vec3 const& value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, glm::vec3 const& value, uint32_t quality)
 	{
-		mUniforms.setUniform(name, value);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, glm::vec4 const& value)
+	void ProgrammaticMaterialStream::setUniform(string const& name, glm::vec4 const& value, uint32_t quality)
 	{
-		mUniforms.setUniform(name, value);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, value);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, int32_t const* values)
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, int32_t const* values, uint32_t quality)
 	{
-		mUniforms.setUniform(name, count, values);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, count, values);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, uint32_t const* values)
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, uint32_t const* values, uint32_t quality)
 	{
-		mUniforms.setUniform(name, count, values);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, count, values);
 	}
 
-	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, float const* values)
+	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, float const* values, uint32_t quality)
 	{
-		mUniforms.setUniform(name, count, values);
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms.setUniform(name, count, values);
 	}
 }

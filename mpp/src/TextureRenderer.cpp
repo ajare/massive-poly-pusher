@@ -1,5 +1,5 @@
 #include "mpp/TextureRenderer.h"
-#include "mpp/RenderTextureStream.h"
+#include "mpp/ProgrammaticRenderTextureStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
 
@@ -17,7 +17,12 @@ namespace mpp
 
 	ResourcePtr TextureRenderer::createRenderTexture(int width, int height)
 	{
-		auto rtStream = new RenderTextureStream(mResourceMgr, width, height, true, 1);
+		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
+		rtStream->setWidth(width);
+		rtStream->setHeight(height);
+		rtStream->setDepthBuffer(true);
+		rtStream->setNumAttachments(1);
+
 		auto rt = mResourceMgr->declareResource(mName, ResourceStreamPtr(rtStream));
 
 		rt->load();

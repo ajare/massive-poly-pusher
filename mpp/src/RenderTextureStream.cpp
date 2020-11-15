@@ -11,12 +11,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr, int width, int height, bool useDepthBuffer, size_t numAttachments)
+	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "RenderTexture")
-		, mWidth(width)
-		, mHeight(height)
-		, mUseDepthBuffer(useDepthBuffer)
-		, mNumAttachments(numAttachments)
 	{
 		mQualitySettings.resize(1);
 	}
@@ -33,18 +29,18 @@ namespace mpp
 	 * Get texture width.
 	 *
 	 */
-	int RenderTextureStream::getWidth() const
+	size_t RenderTextureStream::getWidth() const
 	{
-		return mWidth;
+		return mQualitySettings[mQualitySetting].width;
 	}
 
 	/*
 	 * Get texture height.
 	 *
 	 */
-	int RenderTextureStream::getHeight() const
+	size_t RenderTextureStream::getHeight() const
 	{
-		return mHeight;
+		return mQualitySettings[mQualitySetting].height;
 	}
 
 	bool RenderTextureStream::useDepthBuffer() const

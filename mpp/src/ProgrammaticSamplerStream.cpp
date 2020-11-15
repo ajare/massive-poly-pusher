@@ -19,7 +19,6 @@ namespace mpp
 	ProgrammaticSamplerStream::ProgrammaticSamplerStream(ResourceManager* resourceMgr)
 		: SamplerStream(resourceMgr)
 	{
-		mQualitySettings.resize(1);
 	}
 
 	void ProgrammaticSamplerStream::setFiltering(SamplerParams::MinFilter minFilter, SamplerParams::MagFilter magFilter)

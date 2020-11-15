@@ -50,6 +50,8 @@
     <ClInclude Include="..\..\include\mpp\Program.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticProgramStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticRenderTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticSamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureAtlasStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureStream.h" />
@@ -128,6 +130,8 @@
     <ClCompile Include="..\..\src\Program.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticMaterialStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticProgramStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticRenderTextureStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticSamplerStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureAtlasStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureStream.cpp" />
