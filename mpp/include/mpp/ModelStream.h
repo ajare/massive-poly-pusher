@@ -30,7 +30,17 @@ namespace mpp
 
 	private:
 
+		struct QualitySetting
+		{
+		};
+
+	private:
+
 		std::vector<mesh::MeshDefinition*> mMeshDefinitions;
+
+	protected:
+
+		std::vector<QualitySetting> mQualitySettings;
 
 	private:
 
@@ -79,6 +89,8 @@ namespace mpp
 		mesh::MeshDefinition* getMeshDefinition(int index);
 
 		virtual std::string markUpMaterialName(std::string const& name, std::string const& material);
+
+		uint32_t createQualitySetting(std::string const& name);
 
 	};
 }

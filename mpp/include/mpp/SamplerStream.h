@@ -59,5 +59,7 @@ namespace mpp
 		virtual ~SamplerStream();
 
 		SamplerParams const& getParams(uint32_t quality) const;
+
+		uint32_t createQualitySetting(std::string const& name);
 	};
 }

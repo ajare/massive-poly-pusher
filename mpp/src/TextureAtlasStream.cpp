@@ -14,6 +14,7 @@ namespace mpp
 	TextureAtlasStream::TextureAtlasStream(ResourceManager* resourceMgr)
 		: TextureStream(resourceMgr, "TextureAtlas")
 	{
+		mQualitySettings.resize(1);
 	}
 
 	void TextureAtlasStream::addTile(string const& name, int x, int y, int w, int h)
@@ -33,4 +34,5 @@ namespace mpp
 	{
 		return mTiles;
 	}
+
 }

@@ -26,5 +26,6 @@ namespace mpp
 		void addTile(std::string const& name, int x, int y, int w, int h);
 
 		std::map<std::string, Tile> const& getTiles() const;
+
 	};
 }

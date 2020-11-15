@@ -12,11 +12,21 @@ namespace mpp
 {
 	class _MPPAPI ProgramStream : public ResourceStream
 	{
+		struct QualitySetting
+		{
+		};
+
+	private:
+
 		std::string mVertexSource, mFragmentSource;
 
 		std::shared_ptr<program::Parser> mParser;
 
 		std::set<std::string> mAttribs;
+
+	protected:
+
+		std::vector<QualitySetting> mQualitySettings;
 
 	private:
 
@@ -43,5 +53,7 @@ namespace mpp
 		std::vector<std::string> getUniforms() const;
 
 		std::vector<std::string> getTextures() const;
+
+		uint32_t createQualitySetting(std::string const& name);
 	};
 }

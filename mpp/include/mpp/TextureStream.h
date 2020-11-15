@@ -34,13 +34,14 @@ namespace mpp
 			Float
 		};
 
-	private:
+	protected:
 
 		struct QualitySetting
 		{
 			TextureParams params;
 			std::string sampler;
 			std::string source;
+			ImageLoadFunction loadFunc;
 		};
 
 	protected:
@@ -52,8 +53,6 @@ namespace mpp
 		uint32_t mInternalFormat;
 
 		uint32_t mTarget;
-
-		ImageLoadFunction mLoadFunc;
 
 	protected:
 
@@ -85,8 +84,10 @@ namespace mpp
 
 		size_t getDataSize() const;
 
-		TextureParams const& getParams(uint32_t quality) const;
+		TextureParams const& getParams() const;
 
-		std::string const& getSampler(uint32_t quality) const;
+		std::string const& getSampler() const;
+
+		uint32_t createQualitySetting(std::string const& name);
 	};
 }

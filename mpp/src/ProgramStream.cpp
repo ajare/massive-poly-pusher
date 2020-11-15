@@ -17,6 +17,7 @@ namespace mpp
 		, mParser(parser)
 		, mAttribs(attribs)
 	{
+		mQualitySettings.resize(1);
 	}
 
 	/*
@@ -61,7 +62,6 @@ namespace mpp
 	 */
 	string ProgramStream::getConcatenatedSource()
 	{
-		load();
 		return getVertexSource() + getFragmentSource();
 	}
 
@@ -91,4 +91,12 @@ namespace mpp
 		return mParser->getTextures();
 	}
 
+	uint32_t ProgramStream::createQualitySetting(string const& name)
+	{
+		auto qualityId = mQualitySettings.size();
+		mQualityNames[name] = qualityId;
+
+		mQualitySettings.push_back(QualitySetting());
+		return qualityId;
+	}
 }

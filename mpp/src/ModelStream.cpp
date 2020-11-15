@@ -20,6 +20,7 @@ namespace mpp
 	ModelStream::ModelStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "Model")
 	{
+		mQualitySettings.resize(1);
 	}
 
 	/*
@@ -257,5 +258,14 @@ namespace mpp
 	string ModelStream::markUpMaterialName(string const& name, string const& material)
 	{
 		return material;
+	}
+
+	uint32_t ModelStream::createQualitySetting(string const& name)
+	{
+		auto qualityId = mQualitySettings.size();
+		mQualityNames[name] = qualityId;
+
+		mQualitySettings.push_back(QualitySetting());
+		return qualityId;
 	}
 }

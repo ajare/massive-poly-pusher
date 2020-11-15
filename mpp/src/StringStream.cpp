@@ -14,4 +14,12 @@ namespace mpp
 	{
 	}
 
+	uint32_t StringStream::createQualitySetting(string const& name)
+	{
+		auto qualityId = mQualitySettings.size();
+		mQualityNames[name] = qualityId;
+
+		mQualitySettings.push_back(QualitySetting());
+		return qualityId;
+	}
 }

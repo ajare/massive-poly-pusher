@@ -257,8 +257,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		textureStream = loadImage(gOptions.resourceLocation + "bullet1.png", false);
 		gResourceManager->declareResource("bullet1.png", ResourceStreamPtr(textureStream));
 
-		TextureAtlasStream* atlasStream = static_cast<TextureAtlasStream*>(loadImageAtlas(gOptions.resourceLocation + "bullets.png", false, 8, 1));
-		gResourceManager->declareResource("bullets.png", ResourceStreamPtr(atlasStream));
+		//TextureAtlasStream* atlasStream = static_cast<TextureAtlasStream*>(loadImageAtlas(gOptions.resourceLocation + "bullets.png", false, 8, 1));
+		//gResourceManager->declareResource("bullets.png", ResourceStreamPtr(atlasStream));
 
 		// RGBA test
 		textureStream = loadImage(gOptions.resourceLocation + "rgba.png", false);

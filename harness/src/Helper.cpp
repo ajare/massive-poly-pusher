@@ -72,7 +72,7 @@ mpp::TextureStream* loadImage(string const& filename, bool flipY)
 		throw exception(errMsg.c_str());
 	}
 }
-
+/*
 mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size_t imagesX, size_t imagesY)
 {
 	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
@@ -122,6 +122,7 @@ mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size
 		throw exception(errMsg.c_str());
 	}
 }
+*/
 
 void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resourceMgr)
 {
