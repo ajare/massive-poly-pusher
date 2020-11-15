@@ -6,6 +6,7 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
+#include "mpp/Sampler.h"
 #include "mpp/String.h"
 #include "mpp/PostEffect.h"
 #include "mpp/ProgrammaticTextureStream.h"
@@ -43,6 +44,10 @@ namespace mpp
 		mResourceFactories["Program"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new Program(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["Sampler"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new Sampler(name, this->mwRenderSystem, this, rStream));
 		};
 		mResourceFactories["Texture"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
@@ -203,7 +208,7 @@ namespace mpp
 			return data;
 		});
 
-		blankStream->setFiltering(TextureStream::Filtering::Nearest, TextureStream::Filtering::Nearest);
+		blankStream->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
 		declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream))->load();
 
 		// Internal font texture
@@ -228,7 +233,7 @@ namespace mpp
 			return data;
 		});
 
-		ts->setFiltering(TextureStream::Filtering::Nearest, TextureStream::Filtering::Nearest);
+		ts->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
 
 		declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
 

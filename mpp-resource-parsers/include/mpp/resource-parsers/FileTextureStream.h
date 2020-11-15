@@ -18,7 +18,7 @@ namespace mpp
 		{
 			std::string mFilepath;
 
-			std::map<std::string, uint32_t> mInternalFormats, mFiltering, mTargets, mWrapping;
+			std::map<std::string, uint32_t> mInternalFormats, mMinFilters, mMagFilters, mTargets, mWrapping;
 
 		private:
 
@@ -26,7 +26,9 @@ namespace mpp
 
 			uint32_t parseInternalFormat(std::string const& value);
 
-			uint32_t parseFiltering(std::string const& value);
+			uint32_t parseMinFilter(std::string const& value);
+
+			uint32_t parseMagFilter(std::string const& value);
 
 			uint32_t parseWrapping(std::string const& value);
 

@@ -50,6 +50,7 @@
     <ClInclude Include="..\..\include\mpp\Program.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticSamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureAtlasStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgramStream.h" />
@@ -66,6 +67,9 @@
     <ClInclude Include="..\..\include\mpp\Resource.h" />
     <ClInclude Include="..\..\include\mpp\ResourceManager.h" />
     <ClInclude Include="..\..\include\mpp\ResourceStream.h" />
+    <ClInclude Include="..\..\include\mpp\Sampler.h" />
+    <ClInclude Include="..\..\include\mpp\SamplerParams.h" />
+    <ClInclude Include="..\..\include\mpp\SamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\Scene.h" />
     <ClInclude Include="..\..\include\mpp\SceneFactory.h" />
     <ClInclude Include="..\..\include\mpp\SceneModel.h" />
@@ -79,6 +83,7 @@
     <ClInclude Include="..\..\include\mpp\TextureAtlas.h" />
     <ClInclude Include="..\..\include\mpp\TextureAtlasStream.h" />
     <ClInclude Include="..\..\include\mpp\TextureData.h" />
+    <ClInclude Include="..\..\include\mpp\TextureParams.h" />
     <ClInclude Include="..\..\include\mpp\TextureRenderer.h" />
     <ClInclude Include="..\..\include\mpp\TextureStream.h" />
     <ClInclude Include="..\..\include\mpp\TextureTile.h" />
@@ -123,6 +128,7 @@
     <ClCompile Include="..\..\src\Program.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticMaterialStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticSamplerStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureAtlasStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureStream.cpp" />
     <ClCompile Include="..\..\src\ProgramStream.cpp" />
@@ -136,6 +142,9 @@
     <ClCompile Include="..\..\src\Resource.cpp" />
     <ClCompile Include="..\..\src\ResourceManager.cpp" />
     <ClCompile Include="..\..\src\ResourceStream.cpp" />
+    <ClCompile Include="..\..\src\Sampler.cpp" />
+    <ClCompile Include="..\..\src\SamplerParams.cpp" />
+    <ClCompile Include="..\..\src\SamplerStream.cpp" />
     <ClCompile Include="..\..\src\Scene.cpp" />
     <ClCompile Include="..\..\src\SceneModel.cpp" />
     <ClCompile Include="..\..\src\Screen.cpp" />
@@ -148,6 +157,7 @@
     <ClCompile Include="..\..\src\TextureAtlas.cpp" />
     <ClCompile Include="..\..\src\TextureAtlasStream.cpp" />
     <ClCompile Include="..\..\src\TextureData.cpp" />
+    <ClCompile Include="..\..\src\TextureParams.cpp" />
     <ClCompile Include="..\..\src\TextureRenderer.cpp" />
     <ClCompile Include="..\..\src\TextureStream.cpp" />
     <ClCompile Include="..\..\src\GridModelStream.cpp" />

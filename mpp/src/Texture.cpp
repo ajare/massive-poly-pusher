@@ -243,6 +243,15 @@ namespace mpp
 			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 		}
 
+		// Set up mipmaps
+		if (mParams.useMipmaps)
+		{
+			glGenerateMipmap(mTarget);
+			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
+		}
+
 		GL_CHECK(glBindTexture(mTarget, 0));
 		setId(texId);
 	}
@@ -301,7 +310,7 @@ namespace mpp
 	 * Bind texture.
 	 *
 	 */
-	void Texture::bind(int unit)
+	void Texture::bind(uint32_t unit)
 	{
 		if (!isLoaded())
 		{

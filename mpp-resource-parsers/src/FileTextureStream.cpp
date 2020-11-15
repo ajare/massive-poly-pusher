@@ -50,8 +50,15 @@ namespace mpp
 			mInternalFormats["RGBA32F"] = GL_RGBA32F;
 
 			// Filtering methods
-			mFiltering["BILINEAR"] = GL_LINEAR;
-			mFiltering["NONE"] = GL_NEAREST;
+			mMinFilters["LINEAR"] = GL_LINEAR;
+			mMinFilters["NEAREST"] = GL_NEAREST;
+			mMinFilters["NEAREST_MIPMAP_NEAREST"] = GL_NEAREST_MIPMAP_NEAREST;
+			mMinFilters["NEAREST_MIPMAP_LINEAR"] = GL_NEAREST_MIPMAP_LINEAR;
+			mMinFilters["LINEAR_MIPMAP_NEAREST"] = GL_LINEAR_MIPMAP_NEAREST;
+			mMinFilters["LINEAR_MIPMAP_LINEAR"] = GL_LINEAR_MIPMAP_LINEAR;
+
+			mMagFilters["LINEAR"] = GL_LINEAR;
+			mMagFilters["NEAREST"] = GL_NEAREST;
 
 			// Texture targets
 			mTargets["1D"] = GL_TEXTURE_1D;
@@ -81,17 +88,32 @@ namespace mpp
 			}
 		}
 
-		uint32_t FileTextureStream::parseFiltering(string const& value)
+		uint32_t FileTextureStream::parseMinFilter(string const& value)
 		{
-			auto it = mFiltering.find(value);
+			auto it = mMinFilters.find(value);
 
-			if (it != mFiltering.end())
+			if (it != mMinFilters.end())
 			{
 				return it->second;
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
+				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
+			}
+		}
+
+		uint32_t FileTextureStream::parseMagFilter(string const& value)
+		{
+			auto it = mMagFilters.find(value);
+
+			if (it != mMagFilters.end())
+			{
+				return it->second;
+			}
+			else
+			{
+				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -161,9 +183,29 @@ namespace mpp
 					// If filename is specified, then load from disk
 					mQualitySettings[0].source = entry.second.getValue();
 				}
-				else if (entry.first == "filter")
+				else if (entry.first == "mipmaps")
 				{
-					mQualitySettings[0].params.minFilter = mQualitySettings[0].params.magFilter = parseFiltering(value);
+					mQualitySettings[0].params.useMipmaps = utils::StringUtils::parseBool(value);
+				}
+				else if (entry.first == "minFilter")
+				{
+					mQualitySettings[0].params.minFilter = parseMinFilter(value);
+				}
+				else if (entry.first == "magFilter")
+				{
+					mQualitySettings[0].params.magFilter = parseMagFilter(value);
+				}
+				else if (entry.first == "lodBaseLevel")
+				{
+					mQualitySettings[0].params.lodBaseLevel = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "lodMaxLevel")
+				{
+					mQualitySettings[0].params.lodMaxLevel = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "lodBias")
+				{
+					mQualitySettings[0].params.lodBias = utils::StringUtils::parseFloat(value);
 				}
 				else if (entry.first == "wrap")
 				{
@@ -171,7 +213,7 @@ namespace mpp
 				}
 				else if (entry.first == "internalFormat")
 				{
-					// Optionally, specify OpenGL internal format.  Otherwise generate from loaded image.
+					// Optionally, specify OpenGL internal format.  Otherwise calculate from loaded image.
 					mInternalFormat = parseInternalFormat(value);
 				}
 				else

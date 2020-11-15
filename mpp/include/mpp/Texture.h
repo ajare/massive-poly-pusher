@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mpp/Resource.h"
-#include "mpp/TextureData.h"
+#include "mpp/TextureParams.h"
 
 namespace mpp
 {
@@ -41,7 +41,7 @@ namespace mpp
 
 		virtual int getBitsPerPixel() const;
 
-		virtual void bind(int unit);
+		virtual void bind(uint32_t unit);
 
 		void setSortId(uint32_t sortId);
 

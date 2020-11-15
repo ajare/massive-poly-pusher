@@ -39,14 +39,4 @@ namespace mpp
 			uint32_t _dataType);
 	};
 
-	struct _MPPAPI TextureParams
-	{
-		uint32_t minFilter;
-		uint32_t magFilter;
-		uint32_t wrap;
-
-	public:
-
-		TextureParams();
-	};
 }

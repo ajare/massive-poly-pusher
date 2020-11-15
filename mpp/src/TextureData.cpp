@@ -74,11 +74,4 @@ namespace mpp
 	{
 	}
 
-	TextureParams::TextureParams()
-		: minFilter(GL_NEAREST)
-		, magFilter(GL_NEAREST)
-		, wrap(GL_REPEAT)
-	{
-	}
-
 }

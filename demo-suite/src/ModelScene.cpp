@@ -55,22 +55,22 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
-	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "electbubbles.jpg", loadImage);
-	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "test.png", loadImage);
-	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "donut.jpg", loadImage);
-	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(textureStream));
 
 	// 1D texture
@@ -98,7 +98,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 		return data;
 	});
 
-	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Strip.Texture", ResourceStreamPtr(textureStream));
 }
 
@@ -364,7 +364,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// model, so needs to be explicitly loaded
 	auto textureStream = new mpp::ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(mpp::TextureStream::Target::Texture2D, options.resourceLocation + "rgba.png", loadImage);
-	textureStream->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("rgba.png", ResourceStreamPtr(textureStream));
 
 	// Load MppModel

@@ -168,7 +168,7 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 		auto textureData = loadImage(filePath);
 		auto tStr = new mpp::ProgrammaticTextureStream(resourceMgr);
 		tStr->setFile(mpp::TextureStream::Target::Texture2D, filePath, loadImage);
-		tStr->setFiltering(mpp::TextureStream::Filtering::Linear, mpp::TextureStream::Filtering::Linear);
+		tStr->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 
 		mpp::ResourcePtr tex = resourceMgr->declareResource(imageName, mpp::ResourceStreamPtr(tStr));
 		tex->load();
