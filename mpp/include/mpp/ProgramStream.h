@@ -27,11 +27,9 @@ namespace mpp
 
 		std::set<std::string> mAttribs;
 
-	private:
+	protected:
 
 		void loadImpl();
-
-	protected:
 
 		void setVertexSource(std::string const& src);
 
