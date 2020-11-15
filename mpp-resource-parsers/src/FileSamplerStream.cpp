@@ -135,6 +135,10 @@ namespace mpp
 				{
 					mQualitySettings[0].params.wrap = parseWrapping(value);
 				}
+				else if (entry.first == "maxAnisotropy")
+				{
+					mQualitySettings[0].params.maxAnisotropy = utils::StringUtils::parseFloat(value);
+				}
 				else
 				{
 					string errMsg = "Error loading " + mFilepath + ".  Unknown element '" + entry.first + "'.";

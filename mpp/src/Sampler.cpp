@@ -75,6 +75,7 @@ namespace mpp
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
+		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
 
 		setId(samplerId);
 	}

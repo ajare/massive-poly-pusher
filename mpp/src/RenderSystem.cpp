@@ -521,6 +521,12 @@ namespace mpp
 		// ARB_buffer_storage && ARB_map_buffer_range
 		mCaps.streamingGeometry = GLEW_ARB_buffer_storage && GLEW_ARB_map_buffer_range;
 
+		// Filtering
+		float maxAnisotropy;
+		GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAnisotropy));
+
+		mCaps.maxAnisotropy = maxAnisotropy;
+
 		// Print caps
 		infoMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
 		infoMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
@@ -528,6 +534,7 @@ namespace mpp
 		infoMessage(utils::StringUtils::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
 		infoMessage(utils::StringUtils::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
 		infoMessage(utils::StringUtils::format("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
+		infoMessage(utils::StringUtils::format("Max anisotropy: {}", mCaps.maxAnisotropy));
 		infoMessage(utils::StringUtils::format("Max recommended elements: {}", mCaps.maxRecommendedElements));
 		infoMessage(utils::StringUtils::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
 		infoMessage(utils::StringUtils::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));

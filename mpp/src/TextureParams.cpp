@@ -20,6 +20,7 @@ namespace mpp
 		, lodBaseLevel(0.0f)
 		, lodMaxLevel(1000.0f)
 		, lodBias(0.0f)
+		, maxAnisotropy(1.0f)
 	{
 	}
 
