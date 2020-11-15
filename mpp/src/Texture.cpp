@@ -65,6 +65,7 @@ namespace mpp
 		if (sampler != "")
 		{
 			mSampler = getResourceManager()->getResource(sampler);
+			mSampler->create();
 		}
 
 		if (mInternalFormat == 0)
@@ -261,6 +262,11 @@ namespace mpp
 
 		GL_CHECK(glBindTexture(mTarget, 0));
 		setId(texId);
+
+		if (mSampler)
+		{
+			mSampler->load();
+		}
 	}
 
 	/*
