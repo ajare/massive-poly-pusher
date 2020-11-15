@@ -16,6 +16,7 @@ namespace mpp
 		, mInternalFormat(0)
 		, mTarget(0)
 	{
+		mQualitySettings.resize(1);
 	}
 
 	/*
@@ -33,9 +34,9 @@ namespace mpp
 	 */
 	void TextureStream::loadImpl()
 	{
-		if (mLoadFunc)
+		if (mQualitySettings[mQualitySetting].loadFunc)
 		{
-			mData = mLoadFunc(mQualitySettings[0].source);
+			mData = mQualitySettings[mQualitySetting].loadFunc(mQualitySettings[mQualitySetting].source);
 		}
 	}
 
@@ -109,13 +110,22 @@ namespace mpp
 		return getWidth() * getHeight() * getBitsPerPixel() / 8;
 	}
 
-	TextureParams const& TextureStream::getParams(uint32_t quality) const
+	TextureParams const& TextureStream::getParams() const
 	{
-		return mQualitySettings[quality].params;
+		return mQualitySettings[mQualitySetting].params;
 	}
 
-	string const& TextureStream::getSampler(uint32_t quality) const
+	string const& TextureStream::getSampler() const
 	{
-		return mQualitySettings[quality].sampler;
+		return mQualitySettings[mQualitySetting].sampler;
+	}
+
+	uint32_t TextureStream::createQualitySetting(string const& name)
+	{
+		auto qualityId = mQualitySettings.size();
+		mQualityNames[name] = qualityId;
+
+		mQualitySettings.push_back(QualitySetting());
+		return qualityId;
 	}
 }

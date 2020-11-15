@@ -19,7 +19,6 @@ namespace mpp
 	ProgrammaticTextureStream::ProgrammaticTextureStream(ResourceManager* resourceMgr)
 		: TextureStream(resourceMgr)
 	{
-		mQualitySettings.resize(1);
 	}
 
 	void ProgrammaticTextureStream::setInternalFormat(InternalType type, bool normalized, size_t bitSize, size_t channels)
@@ -295,51 +294,51 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setData(TextureStream::Target target, ImageLoadFunction creator)
+	void ProgrammaticTextureStream::setData(TextureStream::Target target, ImageLoadFunction creator, uint32_t quality)
 	{
 		setTarget(target);
 
-		mQualitySettings[0].source = "";
-		mLoadFunc = creator;
+		mQualitySettings[quality].source = "";
+		mQualitySettings[quality].loadFunc = creator;
 	}
 
-	void ProgrammaticTextureStream::setFile(TextureStream::Target target, string const& filename, ImageLoadFunction loader)
+	void ProgrammaticTextureStream::setFile(TextureStream::Target target, string const& filename, ImageLoadFunction loader, uint32_t quality)
 	{
 		setTarget(target);
 
-		mQualitySettings[0].source = filename;
-		mLoadFunc = loader;
+		mQualitySettings[quality].source = filename;
+		mQualitySettings[quality].loadFunc = loader;
 	}
 
-	void ProgrammaticTextureStream::setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter)
+	void ProgrammaticTextureStream::setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter, uint32_t quality)
 	{
 		switch (minFilter)
 		{
 		case TextureParams::MinFilter::Nearest:
-			mQualitySettings[0].params.minFilter = GL_NEAREST;
+			mQualitySettings[quality].params.minFilter = GL_NEAREST;
 			break;
 
 		case TextureParams::MinFilter::Linear:
-			mQualitySettings[0].params.minFilter = GL_LINEAR;
+			mQualitySettings[quality].params.minFilter = GL_LINEAR;
 			break;
 
 		case TextureParams::MinFilter::NearestMipmapNearest:
-			mQualitySettings[0].params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
+			mQualitySettings[quality].params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
 			enableMipMaps(true);
 			break;
 
 		case TextureParams::MinFilter::LinearMipmapNearest:
-			mQualitySettings[0].params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
+			mQualitySettings[quality].params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
 			enableMipMaps(true);
 			break;
 
 		case TextureParams::MinFilter::NearestMipmapLinear:
-			mQualitySettings[0].params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
+			mQualitySettings[quality].params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
 			enableMipMaps(true);
 			break;
 
 		case TextureParams::MinFilter::LinearMipmapLinear:
-			mQualitySettings[0].params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+			mQualitySettings[quality].params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
 			enableMipMaps(true);
 			break;
 
@@ -350,11 +349,11 @@ namespace mpp
 		switch (magFilter)
 		{
 		case TextureParams::MagFilter::Nearest:
-			mQualitySettings[0].params.magFilter = GL_NEAREST;
+			mQualitySettings[quality].params.magFilter = GL_NEAREST;
 			break;
 
 		case TextureParams::MagFilter::Linear:
-			mQualitySettings[0].params.magFilter = GL_LINEAR;
+			mQualitySettings[quality].params.magFilter = GL_LINEAR;
 			break;
 
 		default:
@@ -362,24 +361,24 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setWrapping(TextureParams::Wrapping wrapping)
+	void ProgrammaticTextureStream::setWrapping(TextureParams::Wrapping wrapping, uint32_t quality)
 	{
 		switch (wrapping)
 		{
 		case TextureParams::Wrapping::Repeat:
-			mQualitySettings[0].params.wrap = GL_REPEAT;
+			mQualitySettings[quality].params.wrap = GL_REPEAT;
 			break;
 
 		case TextureParams::Wrapping::MirroredRepeat:
-			mQualitySettings[0].params.wrap = GL_MIRRORED_REPEAT;
+			mQualitySettings[quality].params.wrap = GL_MIRRORED_REPEAT;
 			break;
 
 		case TextureParams::Wrapping::ClampToEdge:
-			mQualitySettings[0].params.wrap = GL_CLAMP_TO_EDGE;
+			mQualitySettings[quality].params.wrap = GL_CLAMP_TO_EDGE;
 			break;
 
 		case TextureParams::Wrapping::ClampToBorder:
-			mQualitySettings[0].params.wrap = GL_CLAMP_TO_BORDER;
+			mQualitySettings[quality].params.wrap = GL_CLAMP_TO_BORDER;
 			break;
 
 		default:
@@ -387,28 +386,28 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::enableMipMaps(bool enable)
+	void ProgrammaticTextureStream::enableMipMaps(bool enable, uint32_t quality)
 	{
-		mQualitySettings[0].params.useMipmaps = enable;
+		mQualitySettings[quality].params.useMipmaps = enable;
 	}
 
-	void ProgrammaticTextureStream::setLodBaseLevel(float level)
+	void ProgrammaticTextureStream::setLodBaseLevel(float level, uint32_t quality)
 	{
-		mQualitySettings[0].params.lodBaseLevel = level;
+		mQualitySettings[quality].params.lodBaseLevel = level;
 	}
 
-	void ProgrammaticTextureStream::setLodMaxLevel(float level)
+	void ProgrammaticTextureStream::setLodMaxLevel(float level, uint32_t quality)
 	{
-		mQualitySettings[0].params.lodMaxLevel = level;
+		mQualitySettings[quality].params.lodMaxLevel = level;
 	}
 
-	void ProgrammaticTextureStream::setLodBias(float bias)
+	void ProgrammaticTextureStream::setLodBias(float bias, uint32_t quality)
 	{
-		mQualitySettings[0].params.lodBias = bias;
+		mQualitySettings[quality].params.lodBias = bias;
 	}
 
-	void ProgrammaticTextureStream::setSampler(string const& sampler)
+	void ProgrammaticTextureStream::setSampler(string const& sampler, uint32_t quality)
 	{
-		mQualitySettings[0].sampler = sampler;
+		mQualitySettings[quality].sampler = sampler;
 	}
 }

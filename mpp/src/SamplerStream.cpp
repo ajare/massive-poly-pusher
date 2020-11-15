@@ -14,6 +14,7 @@ namespace mpp
 	SamplerStream::SamplerStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "Sampler")
 	{
+		mQualitySettings.resize(1);
 	}
 
 	/*
@@ -35,5 +36,14 @@ namespace mpp
 	SamplerParams const& SamplerStream::getParams(uint32_t quality) const
 	{
 		return mQualitySettings[quality].params;
+	}
+
+	uint32_t SamplerStream::createQualitySetting(string const& name)
+	{
+		auto qualityId = mQualitySettings.size();
+		mQualityNames[name] = qualityId;
+
+		mQualitySettings.push_back(QualitySetting());
+		return qualityId;
 	}
 }

@@ -18,6 +18,7 @@ namespace mpp
 		, mUseDepthBuffer(useDepthBuffer)
 		, mNumAttachments(numAttachments)
 	{
+		mQualitySettings.resize(1);
 	}
 
 	/*
@@ -56,4 +57,12 @@ namespace mpp
 		return mNumAttachments;
 	}
 
+	uint32_t RenderTextureStream::createQualitySetting(string const& name)
+	{
+		auto qualityId = mQualitySettings.size();
+		mQualityNames[name] = qualityId;
+
+		mQualitySettings.push_back(QualitySetting());
+		return qualityId;
+	}
 }

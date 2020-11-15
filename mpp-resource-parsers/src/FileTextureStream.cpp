@@ -235,7 +235,7 @@ namespace mpp
 			}
 			else
 			{
-				mLoadFunc = getResourceMgr()->getImageLoadFunction();
+				mQualitySettings[0].loadFunc = getResourceMgr()->getImageLoadFunction();
 				TextureStream::loadImpl();
 			}
 		}

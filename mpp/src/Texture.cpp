@@ -52,7 +52,7 @@ namespace mpp
 
 		mInternalFormat = tStr->getInternalFormat();
 		mTarget = tStr->getTarget();
-		mParams = tStr->getParams(0);
+		mParams = tStr->getParams();
 
 		mWidth = tStr->getWidth();
 		mHeight = tStr->getHeight();
@@ -61,7 +61,7 @@ namespace mpp
 		mPixelFormat = tStr->getPixelFormat();
 		mDataType = tStr->getPixelDataType();
 
-		auto sampler = tStr->getSampler(0);
+		auto sampler = tStr->getSampler();
 		if (sampler != "")
 		{
 			mSampler = getResourceManager()->getResource(sampler);

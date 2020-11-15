@@ -357,7 +357,7 @@ namespace mpp
 		}
 	}
 
-	ResourcePtr ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream)
+	ResourcePtr ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream, uint32_t quality)
 	{
 		// Check name doen't exist
 		if (mResources.find(name) != mResources.end())
@@ -367,12 +367,20 @@ namespace mpp
 				__LINE__, __FILE__, __func__);
 		}
 
+		if (loadStream)
+		{
+			resourceStream->load(quality);
+		}
+
 		string type = resourceStream->getType();
 
 		// Check caching
 		string fullSource{ "" };
 		if (type == "Program")
 		{
+			// Must load to get source
+			resourceStream->load(quality);
+
 			auto programStream = dynamic_cast<ProgramStream*>(resourceStream.get());
 			fullSource = programStream->getConcatenatedSource();
 
@@ -381,11 +389,6 @@ namespace mpp
 			{
 				return createdProgram->second;
 			}
-		}
-
-		if (resourceStream)
-		{
-			resourceStream->load();
 		}
 
 		// Create resource

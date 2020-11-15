@@ -33,6 +33,12 @@ namespace mpp
 			Shader vertexShader, fragmentShader;
 		};
 
+	private:
+
+		struct QualitySetting
+		{
+		};
+
 	protected:
 
 		std::string mName;
@@ -40,6 +46,8 @@ namespace mpp
 		ProgramOptions mProgram;
 
 		UniformCollection mUniforms;
+
+		std::vector<QualitySetting> mQualitySettings;
 
 		std::map<std::string, std::pair<std::string, bool>> mTextures;
 
@@ -54,5 +62,7 @@ namespace mpp
 		UniformCollection const& getUniforms() const;
 
 		std::map<std::string, std::pair<std::string, bool>> const& getTextures() const;
+
+		uint32_t createQualitySetting(std::string const& name);
 	};
 }

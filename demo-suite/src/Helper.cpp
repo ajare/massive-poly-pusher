@@ -97,62 +97,16 @@ mpp::TextureData loadImage(string const& filename)
 	}
 }
 
-mpp::TextureAtlasStream* loadImageAtlas(string const& filename, bool flipY, size_t imagesX, size_t imagesY)
+mpp::TextureStream* loadImageAtlas(string const& filename)
 {
-	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
-	if (bitmap)
+	auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
+	tStr->setData(mpp::TextureStream::Target::Texture2D, [filename](std::string const& f)
 	{
-		int dataWidth = FreeImage_GetWidth(bitmap);
-		int dataHeight = FreeImage_GetHeight(bitmap);
-		int dataBPP = FreeImage_GetBPP(bitmap);
-		int dataSpan = dataWidth * dataBPP / 8;
+		return loadImage(filename);
+	});
 
-		int dataSize = dataSpan * dataHeight;
-		unsigned char* tempData = new unsigned char[dataSize];
-
-		// Flip vertically?
-		int y0, y1, inc;
-		if (flipY)
-		{
-			y0 = dataHeight - 1;
-			y1 = -1;
-			inc = -1;
-		}
-		else
-		{
-			y0 = 0;
-			y1 = dataHeight;
-			inc = 1;
-		}
-
-		unsigned char* ptr = (unsigned char*)FreeImage_GetBits(bitmap);
-		for (int y = y0; y != y1; y += inc)
-		{
-			memcpy(&tempData[y * dataSpan], ptr, dataSpan);
-			ptr += dataSpan;
-		}
-
-		auto pixelFormat = dataBPP == 24 ? GL_BGR : GL_BGRA;
-		if (isBigEndian())
-		{
-			pixelFormat = dataBPP == 24 ? GL_RGB : GL_RGBA;
-		}
-
-		auto dataType = GL_UNSIGNED_BYTE;
-
-		auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
-		tStr->setData(tempData, dataWidth, dataHeight, dataBPP, pixelFormat, dataType);
-		tStr->setFiltered(true);
-
-		FreeImage_Unload(bitmap);
-		delete[] tempData;
-		return tStr;
-	}
-	else
-	{
-		string errMsg = "Couldn't open '" + filename + "'.";
-		throw exception(errMsg.c_str());
-	}
+	tStr->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	return tStr;
 }
 
 void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resourceMgr)
