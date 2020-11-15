@@ -107,6 +107,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\resource-parsers\Config.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileProgramStream.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileSamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h" />
@@ -117,6 +119,8 @@
     <ResourceCompile Include="..\version\Version.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\FileProgramStream.cpp" />
+    <ClCompile Include="..\..\src\FileSamplerStream.cpp" />
     <ClCompile Include="..\..\src\FileStream.cpp" />
     <ClCompile Include="..\..\src\FileTextureStream.cpp" />
     <ClCompile Include="..\..\src\Serializer.cpp" />

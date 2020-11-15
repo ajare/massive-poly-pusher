@@ -23,8 +23,6 @@ namespace mpp
 			: TextureStream(resourceMgr)
 			, mFilepath(filepath)
 		{
-			mQualitySettings.resize(1);
-
 			// Internal formats
 			mInternalFormats["R8_SNORM"] = GL_R8_SNORM;
 			mInternalFormats["RG8_SNORM"] = GL_RG8_SNORM;
