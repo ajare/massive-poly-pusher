@@ -183,7 +183,7 @@ namespace mpp
 		ser.load(mFilename);
 
 		// Create meshes
-		for (int i = 0; i < ser.getMeshCount(); ++i)
+		for (size_t i = 0; i < ser.getMeshCount(); ++i)
 		{
 			auto dataStreamDef = new MeshDataStreamDefinition();
 			mMeshDataDefinitions.push_back(dataStreamDef);
@@ -203,7 +203,7 @@ namespace mpp
 			{
 				auto layout = dataStreamDef->specification.getVertexBufferAttributeLayout(j);
 
-				int vertexCount, vertexStride;
+				size_t vertexCount, vertexStride;
 				shared_ptr<const int8_t> vertexData;
 
 				ser.getVertexStream(i, j, &vertexCount, &vertexStride, &vertexData);
@@ -232,48 +232,48 @@ namespace mpp
 		}
 	}
 
-	ModelStream::VertexDataStreamDefinition MppModelStream::getMeshDataStream(int meshIndex, mesh::Vertex::Component component) const
+	ModelStream::VertexDataStreamDefinition MppModelStream::getMeshDataStream(size_t meshIndex, mesh::Vertex::Component component) const
 	{
 		return mMeshDataDefinitions[meshIndex]->componentStreams.at(component);
 	}
 
-	int MppModelStream::getMeshIndexWidth(int meshIndex) const
+	size_t MppModelStream::getMeshIndexWidth(size_t meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->indexWidth;
 	}
 
-	float MppModelStream::getMeshPointSize(int meshIndex) const
+	float MppModelStream::getMeshPointSize(size_t meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->pointSize;
 	}
 
-	uint8_t const* MppModelStream::getMeshIndexData(int meshIndex) const
+	uint8_t const* MppModelStream::getMeshIndexData(size_t meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->indexData.get();
 	}
 
-	string const& MppModelStream::getMeshName(int meshIndex) const
+	string const& MppModelStream::getMeshName(size_t meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->name;
 	}
 
-	string const& MppModelStream::getMeshMaterial(int meshIndex) const
+	string const& MppModelStream::getMeshMaterial(size_t meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->material;
 	}
 
-	int MppModelStream::getNumMeshes() const
+	size_t MppModelStream::getNumMeshes() const
 	{
-		return (int)mMeshDataDefinitions.size();
+		return mMeshDataDefinitions.size();
 	}
 
-	void MppModelStream::getMeshCounts(int meshIndex, int* primitiveCount, int* vertexCount)
+	void MppModelStream::getMeshCounts(size_t meshIndex, size_t* primitiveCount, size_t* vertexCount)
 	{
 		*primitiveCount = mMeshDataDefinitions[meshIndex]->primitiveCount;
 		*vertexCount = mMeshDataDefinitions[meshIndex]->vertexCount;
 	}
 
-	mesh::MeshSpecification const& MppModelStream::getMeshSpecification(int meshIndex) const
+	mesh::MeshSpecification const& MppModelStream::getMeshSpecification(size_t meshIndex) const
 	{
 		return mMeshDataDefinitions[meshIndex]->specification;
 	}

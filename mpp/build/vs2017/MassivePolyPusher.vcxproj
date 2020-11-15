@@ -83,7 +83,6 @@
     <ClInclude Include="..\..\include\mpp\StringStream.h" />
     <ClInclude Include="..\..\include\mpp\Texture.h" />
     <ClInclude Include="..\..\include\mpp\TextureAtlas.h" />
-    <ClInclude Include="..\..\include\mpp\TextureAtlasStream.h" />
     <ClInclude Include="..\..\include\mpp\TextureData.h" />
     <ClInclude Include="..\..\include\mpp\TextureParams.h" />
     <ClInclude Include="..\..\include\mpp\TextureRenderer.h" />
@@ -98,13 +97,13 @@
     <ClInclude Include="..\..\include\mpp\VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\include\mpp\CylinderModelStream.cpp" />
     <ClCompile Include="..\..\src\Batch.cpp" />
     <ClCompile Include="..\..\src\BoxModelStream.cpp" />
     <ClCompile Include="..\..\src\Camera.cpp" />
     <ClCompile Include="..\..\src\CircleBatch.cpp" />
     <ClCompile Include="..\..\src\ClipRectangle.cpp" />
     <ClCompile Include="..\..\src\Colour.cpp" />
+    <ClCompile Include="..\..\src\CylinderModelStream.cpp" />
     <ClCompile Include="..\..\src\DebugStackWalker.cpp" />
     <ClCompile Include="..\..\src\FileDataStream.cpp" />
     <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
@@ -159,7 +158,6 @@
     <ClCompile Include="..\..\src\StringStream.cpp" />
     <ClCompile Include="..\..\src\Texture.cpp" />
     <ClCompile Include="..\..\src\TextureAtlas.cpp" />
-    <ClCompile Include="..\..\src\TextureAtlasStream.cpp" />
     <ClCompile Include="..\..\src\TextureData.cpp" />
     <ClCompile Include="..\..\src\TextureParams.cpp" />
     <ClCompile Include="..\..\src\TextureRenderer.cpp" />

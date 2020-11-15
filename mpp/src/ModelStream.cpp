@@ -169,9 +169,9 @@ namespace mpp
 		createMeshDataStreams();
 
 		// Create MeshDefinitions from data streams
-		for (int i = 0; i < getNumMeshes(); ++i)
+		for (size_t i = 0; i < getNumMeshes(); ++i)
 		{
-			int primitiveCount, vertexCount;
+			size_t primitiveCount, vertexCount;
 			getMeshCounts(i, &primitiveCount, &vertexCount);
 
 			mesh::MeshSpecification const& meshSpec = getMeshSpecification(i);
@@ -252,7 +252,7 @@ namespace mpp
 	 * Get indexed mesh definition.
 	 *
 	 */
-	MeshDefinition* ModelStream::getMeshDefinition(int index, uint32_t quality)
+	MeshDefinition* ModelStream::getMeshDefinition(size_t index, uint32_t quality)
 	{
 		assert((index >= 0 && index < getNumMeshDefinitions()) && "ModelStream::getMeshDefinition() 'index' argument out of range!");
 		return mQualitySettings[quality].meshDefinitions[index];

@@ -132,7 +132,7 @@ namespace mpp
 				uint32_t meshSpec;
 				uint32_t material;
 				Primitive::Type primitiveType;
-				int primitiveCount;
+				size_t primitiveCount;
 
 				uint32_t indexStream;
 				std::vector<uint32_t> vertexStreams;
@@ -233,43 +233,43 @@ namespace mpp
 
 			ModelSerializer();
 
-			void setName(int meshIndex, std::string const& name);
+			void setName(size_t meshIndex, std::string const& name);
 
-			std::string const& getName(int meshIndex) const;
+			std::string const& getName(size_t meshIndex) const;
 
-			void setMeshCount(int count);
+			void setMeshCount(size_t count);
 
-			int getMeshCount() const;
+			size_t getMeshCount() const;
 
-			void setPrimitiveType(int meshIndex, Primitive::Type primitiveType);
+			void setPrimitiveType(size_t meshIndex, Primitive::Type primitiveType);
 
-			Primitive::Type getPrimitiveType(int meshIndex) const;
+			Primitive::Type getPrimitiveType(size_t meshIndex) const;
 
-			void setPrimitiveCount(int meshIndex, int primitiveCount);
+			void setPrimitiveCount(size_t meshIndex, size_t primitiveCount);
 
-			int getPrimitiveCount(int meshIndex) const;
+			int getPrimitiveCount(size_t meshIndex) const;
 
-			void setMeshSpecification(int meshIndex, MeshSpecification const& specification);
+			void setMeshSpecification(size_t meshIndex, MeshSpecification const& specification);
 
-			MeshSpecification const& getMeshSpecification(int meshIndex) const;
+			MeshSpecification const& getMeshSpecification(size_t meshIndex) const;
 
 			void addMaterial(std::string const& name, MaterialInformation const& matInfo);
 
-			void setMaterial(int meshIndex, std::string const& material);
+			void setMaterial(size_t meshIndex, std::string const& material);
 
-			std::string const& getMaterial(int meshIndex) const;
+			std::string const& getMaterial(size_t meshIndex) const;
 
 			std::vector<MaterialInformation> const& getMaterials() const;
 
-			void addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData);
+			void addVertexStream(size_t meshIndex, size_t vertexCount, size_t vertexStride, std::shared_ptr<const int8_t> vertexData);
 
-			void getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, std::shared_ptr<const int8_t>* vertexData);
+			void getVertexStream(size_t meshIndex, size_t index, size_t* vertexCount, size_t* vertexStride, std::shared_ptr<const int8_t>* vertexData);
 
-			void setIndexBuffer(int meshIndex, std::shared_ptr<const uint8_t> indexData, size_t indexWidth);
+			void setIndexBuffer(size_t meshIndex, std::shared_ptr<const uint8_t> indexData, size_t indexWidth);
 
-			std::shared_ptr<const uint8_t> getIndexData(int meshIndex) const;
+			std::shared_ptr<const uint8_t> getIndexData(size_t meshIndex) const;
 
-			int getIndexWidth(int meshIndex) const;
+			int getIndexWidth(size_t meshIndex) const;
 
 			void save(std::string const& filename);
 

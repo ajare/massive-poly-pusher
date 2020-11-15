@@ -10,6 +10,6 @@ namespace mpp
 
 		explicit ProgrammaticTextureAtlasStream(ResourceManager* resourceMgr);
 
-		void addTile(string const& name, int x, int y, int w, int h);
+		void addTile(std::string const& name, float u0, float v0, float u1, float v1);
 	};
 }

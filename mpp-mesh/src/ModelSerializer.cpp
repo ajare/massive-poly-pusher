@@ -803,7 +803,7 @@ namespace mpp
 		 * Set name.
 		 *
 		 */
-		void ModelSerializer::setName(int meshIndex, string const& name)
+		void ModelSerializer::setName(size_t meshIndex, string const& name)
 		{
 			mMeshes[meshIndex].name = name;
 		}
@@ -812,7 +812,7 @@ namespace mpp
 		 * Get name.
 		 *
 		 */
-		string const& ModelSerializer::getName(int meshIndex) const
+		string const& ModelSerializer::getName(size_t meshIndex) const
 		{
 			return mMeshes[meshIndex].name;
 		}
@@ -821,7 +821,7 @@ namespace mpp
 		 * Set the number of meshes in this file.
 		 *
 		 */
-		void ModelSerializer::setMeshCount(int count)
+		void ModelSerializer::setMeshCount(size_t count)
 		{
 			mMeshes.resize(count);
 		}
@@ -830,16 +830,16 @@ namespace mpp
 		 * Get the number of meshes in this file.
 		 *
 		 */
-		int ModelSerializer::getMeshCount() const
+		size_t ModelSerializer::getMeshCount() const
 		{
-			return (int)mMeshes.size();
+			return mMeshes.size();
 		}
 
 		/*
 			 * Set primitive type.
 			 *
 			 */
-		void ModelSerializer::setPrimitiveType(int meshIndex, Primitive::Type primitiveType)
+		void ModelSerializer::setPrimitiveType(size_t meshIndex, Primitive::Type primitiveType)
 		{
 			mMeshes[meshIndex].primitiveType = primitiveType;
 		}
@@ -848,7 +848,7 @@ namespace mpp
 		 * Get primitive type.
 		 *
 		 */
-		Primitive::Type ModelSerializer::getPrimitiveType(int meshIndex) const
+		Primitive::Type ModelSerializer::getPrimitiveType(size_t meshIndex) const
 		{
 			return mMeshes[meshIndex].primitiveType;
 		}
@@ -857,7 +857,7 @@ namespace mpp
 		 * Set primitive count.
 		 *
 		 */
-		void ModelSerializer::setPrimitiveCount(int meshIndex, int primitiveCount)
+		void ModelSerializer::setPrimitiveCount(size_t meshIndex, size_t primitiveCount)
 		{
 			mMeshes[meshIndex].primitiveCount = primitiveCount;
 		}
@@ -866,7 +866,7 @@ namespace mpp
 		 * Get primitive count.
 		 *
 		 */
-		int ModelSerializer::getPrimitiveCount(int meshIndex) const
+		int ModelSerializer::getPrimitiveCount(size_t meshIndex) const
 		{
 			return mMeshes[meshIndex].primitiveCount;
 		}
@@ -875,7 +875,7 @@ namespace mpp
 		 * Set mesh specification.
 		 *
 		 */
-		void ModelSerializer::setMeshSpecification(int meshIndex, MeshSpecification const& specification)
+		void ModelSerializer::setMeshSpecification(size_t meshIndex, MeshSpecification const& specification)
 		{
 			mMeshes[meshIndex].meshSpec = mMeshSpecifications.size();
 			mMeshSpecifications.push_back(specification);
@@ -885,7 +885,7 @@ namespace mpp
 		 * Get mesh specification.
 		 *
 		 */
-		MeshSpecification const& ModelSerializer::getMeshSpecification(int meshIndex) const
+		MeshSpecification const& ModelSerializer::getMeshSpecification(size_t meshIndex) const
 		{
 			return mMeshSpecifications[mMeshes[meshIndex].meshSpec];
 		}
@@ -900,7 +900,7 @@ namespace mpp
 		 * Set material.
 		 *
 		 */
-		void ModelSerializer::setMaterial(int meshIndex, string const& material)
+		void ModelSerializer::setMaterial(size_t meshIndex, string const& material)
 		{
 			mMeshes[meshIndex].material = mMaterialLookup[material];
 		}
@@ -909,7 +909,7 @@ namespace mpp
 		 * Get material.
 		 *
 		 */
-		string const& ModelSerializer::getMaterial(int meshIndex) const
+		string const& ModelSerializer::getMaterial(size_t meshIndex) const
 		{
 			return mMaterials[mMeshes[meshIndex].material].getName();
 		}
@@ -923,7 +923,7 @@ namespace mpp
 		 * Add a vertex stream.
 		 *
 		 */
-		void ModelSerializer::addVertexStream(int meshIndex, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData)
+		void ModelSerializer::addVertexStream(size_t meshIndex, size_t vertexCount, size_t vertexStride, std::shared_ptr<const int8_t> vertexData)
 		{
 			mMeshes[meshIndex].vertexStreams.push_back(mVertexStreams.size());
 
@@ -939,7 +939,7 @@ namespace mpp
 		 * Get specified vertex stream.
 		 *
 		 */
-		void ModelSerializer::getVertexStream(int meshIndex, int index, int* vertexCount, int* vertexStride, shared_ptr<const int8_t>* vertexData)
+		void ModelSerializer::getVertexStream(size_t meshIndex, size_t index, size_t* vertexCount, size_t* vertexStride, shared_ptr<const int8_t>* vertexData)
 		{
 			auto const& vertexStream = mVertexStreams[mMeshes[meshIndex].vertexStreams[index]];
 			*vertexCount = vertexStream.vertexCount;
@@ -951,7 +951,7 @@ namespace mpp
 		 * Set index data.
 		 *
 		 */
-		void ModelSerializer::setIndexBuffer(int meshIndex, shared_ptr<const uint8_t> indexData, size_t indexWidth)
+		void ModelSerializer::setIndexBuffer(size_t meshIndex, shared_ptr<const uint8_t> indexData, size_t indexWidth)
 		{
 			auto streamIndex = mIndexStreams.size();
 			mMeshes[meshIndex].indexStream = streamIndex;
@@ -968,12 +968,12 @@ namespace mpp
 		 * Get index data.
 		 *
 		 */
-		shared_ptr<const uint8_t> ModelSerializer::getIndexData(int meshIndex) const
+		shared_ptr<const uint8_t> ModelSerializer::getIndexData(size_t meshIndex) const
 		{
 			return mIndexStreams[mMeshes[meshIndex].indexStream].indexData;
 		}
 
-		int ModelSerializer::getIndexWidth(int meshIndex) const
+		int ModelSerializer::getIndexWidth(size_t meshIndex) const
 		{
 			return mIndexStreams[mMeshes[meshIndex].indexStream].indexWidth;
 		}

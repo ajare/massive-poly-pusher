@@ -2,6 +2,8 @@
 #	include <Windows.h>
 #endif
 
+#include <filesystem>
+
 #include <glew/glew.h>
 #include <gl/GL.h>
 
@@ -181,7 +183,17 @@ namespace mpp
 				else if (entry.first == "filename")
 				{
 					// If filename is specified, then load from disk
-					mQualitySettings[0].source = entry.second.getValue();
+					string filepath = entry.second.getValue();
+
+					// if the filepath is relative, prepend the path of the xml file
+					filesystem::path fp(filepath);
+					if (fp.is_relative())
+					{
+						filesystem::path fileFp(mFilepath);
+						filepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
+					}
+
+					mQualitySettings[0].source = filepath;
 				}
 				else if (entry.first == "sampler")
 				{
@@ -225,6 +237,12 @@ namespace mpp
 					string errMsg = "Error loading " + mFilepath + ".  Unknown element '" + entry.first + "'.";
 					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 				}
+			}
+
+			if (mTarget == 0)
+			{
+				string errMsg = "Error loading " + mFilepath + ".  'target' not specified.";
+				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			// Load the texture if 'filename' is specified

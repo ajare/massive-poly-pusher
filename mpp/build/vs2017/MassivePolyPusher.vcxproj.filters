@@ -186,9 +186,6 @@
     <ClInclude Include="..\..\include\mpp\TextureAtlas.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\TextureAtlasStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\RenderTextureStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -377,9 +374,6 @@
     <ClCompile Include="..\..\src\PrimitiveModelStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\include\mpp\CylinderModelStream.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\SphereModelStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -408,9 +402,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\TextureAtlas.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\TextureAtlasStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\RenderTextureStream.cpp">
@@ -483,6 +474,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\ProgrammaticRenderTextureStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\CylinderModelStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
