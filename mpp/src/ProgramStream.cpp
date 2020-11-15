@@ -12,10 +12,8 @@ namespace mpp
  	 * Constructor.
 	 *
 	 */
-	ProgramStream::ProgramStream(ResourceManager* resourceMgr, shared_ptr<program::Parser> parser, set<string> const& attribs)
+	ProgramStream::ProgramStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "Program")
-		, mParser(parser)
-		, mAttribs(attribs)
 	{
 		mQualitySettings.resize(1);
 	}
@@ -71,24 +69,30 @@ namespace mpp
 	 */
 	void ProgramStream::loadImpl()
 	{
-		mParser->build(mAttribs);
-		setVertexSource(mParser->getGeneratedVertexSource());
-		setFragmentSource(mParser->getGeneratedFragmentSource());
+		auto parser = mQualitySettings[mQualitySetting].parser;
+
+		parser->build(mAttribs);
+
+		setVertexSource(parser->getGeneratedVertexSource());
+		setFragmentSource(parser->getGeneratedFragmentSource());
 	}
 
 	vector<program::Attribute> ProgramStream::getInAttributes() const
 	{
-		return mParser->getInAttributes();
+		auto parser = mQualitySettings[mQualitySetting].parser;
+		return parser->getInAttributes();
 	}
 
 	vector<string> ProgramStream::getUniforms() const
 	{
-		return mParser->getUniforms();
+		auto parser = mQualitySettings[mQualitySetting].parser;
+		return parser->getUniforms();
 	}
 
 	vector<string> ProgramStream::getTextures() const
 	{
-		return mParser->getTextures();
+		auto parser = mQualitySettings[mQualitySetting].parser;
+		return parser->getTextures();
 	}
 
 	uint32_t ProgramStream::createQualitySetting(string const& name)

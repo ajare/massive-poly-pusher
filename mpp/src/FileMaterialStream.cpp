@@ -37,6 +37,7 @@ namespace mpp
 	 */
 	void FileMaterialStream::loadImpl()
 	{
+		/*
 		utils::XmlReader* reader = utils::XmlReader::fromString(mXmlDefinition);
 
 		auto materialNodes = reader->getNode("Materials");
@@ -165,5 +166,6 @@ namespace mpp
 				} while (uniformNode->next());
 			}
 		}
+		*/
 	}
 }

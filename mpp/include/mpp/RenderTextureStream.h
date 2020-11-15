@@ -10,19 +10,16 @@ namespace mpp
 	{
 		struct QualitySetting
 		{
+			size_t width, height;
 		};
-
-	private:
-
-		int mWidth, mHeight;
-
-		bool mUseDepthBuffer;
-
-		size_t mNumAttachments;
 
 	protected:
 
 		std::vector<QualitySetting> mQualitySettings;
+
+		bool mUseDepthBuffer;
+
+		size_t mNumAttachments;
 
 	private:
 
@@ -30,11 +27,11 @@ namespace mpp
 
 	public:
 
-		RenderTextureStream(ResourceManager* resourceMgr, int width, int height, bool useDepthBuffer, size_t numAttachments);
+		RenderTextureStream(ResourceManager* resourceMgr);
 
-		int getWidth() const;
+		size_t getWidth() const;
 
-		int getHeight() const;
+		size_t getHeight() const;
 
 		bool useDepthBuffer() const;
 

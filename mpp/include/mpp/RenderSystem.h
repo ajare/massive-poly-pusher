@@ -283,7 +283,7 @@ namespace mpp
 
 		void renderToScreen();
 
-		RenderTargetPtr createRenderTexture(std::string const& name, int width, int height, size_t numAttachments, bool depthBuffer);
+		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer);
 
 		TextureTile const& createTextureTile(std::string const& name, ResourcePtr texture, int offX, int offY, float u0, float v0, float u1, float v1);
 

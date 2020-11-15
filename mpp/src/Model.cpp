@@ -56,7 +56,7 @@ namespace mpp
 
 		auto resourceMgr = getResourceManager();
 
-		for (int i = 0; i < mStr->getNumMeshDefinitions(); ++i)
+		for (size_t i = 0; i < mStr->getNumMeshDefinitions(); ++i)
 		{
 			MeshDefinition* meshDef = mStr->getMeshDefinition(i);
 

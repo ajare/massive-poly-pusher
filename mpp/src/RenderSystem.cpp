@@ -32,7 +32,7 @@
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/RenderTexture.h"
-#include "mpp/RenderTextureStream.h"
+#include "mpp/ProgrammaticRenderTextureStream.h"
 #include "mpp/Profiler.h"
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
@@ -914,9 +914,14 @@ namespace mpp
 	 * Create a new render texture.
 	 *
 	 */
-	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, int width, int height, size_t numAttachments, bool depthBuffer)
+	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer)
 	{
-		auto rtStream = new RenderTextureStream(mResourceMgr, width, height, depthBuffer, numAttachments);
+		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
+		rtStream->setWidth(width);
+		rtStream->setHeight(height);
+		rtStream->setDepthBuffer(depthBuffer);
+		rtStream->setNumAttachments(numAttachments);
+
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
 
 		rt->load();
