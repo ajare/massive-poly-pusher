@@ -31,5 +31,7 @@ namespace mpp
 
 		void setLodBias(float bias);
 
+		void setSampler(std::string const& sampler);
+
 	};
 }

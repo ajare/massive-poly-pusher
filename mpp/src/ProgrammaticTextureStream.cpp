@@ -406,4 +406,9 @@ namespace mpp
 	{
 		mQualitySettings[0].params.lodBias = bias;
 	}
+
+	void ProgrammaticTextureStream::setSampler(string const& sampler)
+	{
+		mQualitySettings[0].sampler = sampler;
+	}
 }

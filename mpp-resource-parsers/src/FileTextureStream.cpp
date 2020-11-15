@@ -183,6 +183,10 @@ namespace mpp
 					// If filename is specified, then load from disk
 					mQualitySettings[0].source = entry.second.getValue();
 				}
+				else if (entry.first == "sampler")
+				{
+					mQualitySettings[0].sampler = entry.second.getValue();
+				}
 				else if (entry.first == "mipmaps")
 				{
 					mQualitySettings[0].params.useMipmaps = utils::StringUtils::parseBool(value);

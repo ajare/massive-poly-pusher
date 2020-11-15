@@ -2,6 +2,7 @@
 
 #include "mpp/Resource.h"
 #include "mpp/TextureParams.h"
+#include "mpp/Sampler.h"
 
 namespace mpp
 {
@@ -18,6 +19,8 @@ namespace mpp
 		uint32_t mInternalFormat;
 
 		uint32_t mSortId;
+
+		ResourcePtr mSampler;
 
 	protected:
 

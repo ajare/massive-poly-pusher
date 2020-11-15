@@ -39,6 +39,7 @@ namespace mpp
 		struct QualitySetting
 		{
 			TextureParams params;
+			std::string sampler;
 			std::string source;
 		};
 
@@ -85,5 +86,7 @@ namespace mpp
 		size_t getDataSize() const;
 
 		TextureParams const& getParams(uint32_t quality) const;
+
+		std::string const& getSampler(uint32_t quality) const;
 	};
 }

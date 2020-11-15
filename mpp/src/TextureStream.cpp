@@ -113,4 +113,9 @@ namespace mpp
 	{
 		return mQualitySettings[quality].params;
 	}
+
+	string const& TextureStream::getSampler(uint32_t quality) const
+	{
+		return mQualitySettings[quality].sampler;
+	}
 }
