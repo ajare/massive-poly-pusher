@@ -4,6 +4,7 @@
 #include <functional>
 
 #include "mpp/ResourceStream.h"
+#include "mpp/TextureParams.h"
 #include "mpp/TextureData.h"
 
 namespace mpp
@@ -23,20 +24,6 @@ namespace mpp
 			Texture2D,
 			Texture3D,
 			CubeMap
-		};
-
-		enum class Filtering
-		{
-			Nearest,
-			Linear
-		};
-
-		enum class Wrapping
-		{
-			Repeat,
-			MirroredRepeat,
-			ClampToEdge,
-			ClampToBorder
 		};
 
 		enum class InternalType

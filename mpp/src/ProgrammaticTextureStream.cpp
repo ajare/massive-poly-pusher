@@ -311,16 +311,36 @@ namespace mpp
 		mLoadFunc = loader;
 	}
 
-	void ProgrammaticTextureStream::setFiltering(Filtering minFilter, Filtering magFilter)
+	void ProgrammaticTextureStream::setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter)
 	{
 		switch (minFilter)
 		{
-		case Filtering::Nearest:
+		case TextureParams::MinFilter::Nearest:
 			mQualitySettings[0].params.minFilter = GL_NEAREST;
 			break;
 
-		case Filtering::Linear:
+		case TextureParams::MinFilter::Linear:
 			mQualitySettings[0].params.minFilter = GL_LINEAR;
+			break;
+
+		case TextureParams::MinFilter::NearestMipmapNearest:
+			mQualitySettings[0].params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
+			enableMipMaps(true);
+			break;
+
+		case TextureParams::MinFilter::LinearMipmapNearest:
+			mQualitySettings[0].params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
+			enableMipMaps(true);
+			break;
+
+		case TextureParams::MinFilter::NearestMipmapLinear:
+			mQualitySettings[0].params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
+			enableMipMaps(true);
+			break;
+
+		case TextureParams::MinFilter::LinearMipmapLinear:
+			mQualitySettings[0].params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+			enableMipMaps(true);
 			break;
 
 		default:
@@ -329,11 +349,11 @@ namespace mpp
 
 		switch (magFilter)
 		{
-		case Filtering::Nearest:
+		case TextureParams::MagFilter::Nearest:
 			mQualitySettings[0].params.magFilter = GL_NEAREST;
 			break;
 
-		case Filtering::Linear:
+		case TextureParams::MagFilter::Linear:
 			mQualitySettings[0].params.magFilter = GL_LINEAR;
 			break;
 
@@ -342,28 +362,48 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setWrapping(Wrapping wrapping)
+	void ProgrammaticTextureStream::setWrapping(TextureParams::Wrapping wrapping)
 	{
 		switch (wrapping)
 		{
-		case Wrapping::Repeat:
+		case TextureParams::Wrapping::Repeat:
 			mQualitySettings[0].params.wrap = GL_REPEAT;
 			break;
 
-		case Wrapping::MirroredRepeat:
+		case TextureParams::Wrapping::MirroredRepeat:
 			mQualitySettings[0].params.wrap = GL_MIRRORED_REPEAT;
 			break;
 
-		case Wrapping::ClampToEdge:
+		case TextureParams::Wrapping::ClampToEdge:
 			mQualitySettings[0].params.wrap = GL_CLAMP_TO_EDGE;
 			break;
 
-		case Wrapping::ClampToBorder: 
+		case TextureParams::Wrapping::ClampToBorder:
 			mQualitySettings[0].params.wrap = GL_CLAMP_TO_BORDER;
 			break;
 
 		default:
 			THROW_MPP("Unknown texture wrap setting.", __LINE__, __FILE__, __func__);
 		}
+	}
+
+	void ProgrammaticTextureStream::enableMipMaps(bool enable)
+	{
+		mQualitySettings[0].params.useMipmaps = enable;
+	}
+
+	void ProgrammaticTextureStream::setLodBaseLevel(float level)
+	{
+		mQualitySettings[0].params.lodBaseLevel = level;
+	}
+
+	void ProgrammaticTextureStream::setLodMaxLevel(float level)
+	{
+		mQualitySettings[0].params.lodMaxLevel = level;
+	}
+
+	void ProgrammaticTextureStream::setLodBias(float bias)
+	{
+		mQualitySettings[0].params.lodBias = bias;
 	}
 }

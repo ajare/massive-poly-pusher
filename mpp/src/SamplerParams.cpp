@@ -1,0 +1,25 @@
+#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#	include <Windows.h>
+#endif
+
+#include <glew/glew.h>
+#include <gl/GL.h>
+
+#include "mpp/SamplerParams.h"
+
+using namespace std;
+
+namespace mpp
+{
+
+	SamplerParams::SamplerParams()
+		: minFilter(GL_NEAREST)
+		, magFilter(GL_NEAREST)
+		, wrap(GL_REPEAT)
+		, lodBaseLevel(0.0f)
+		, lodMaxLevel(1000.0f)
+		, lodBias(0.0f)
+	{
+	}
+
+}

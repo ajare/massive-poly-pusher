@@ -19,9 +19,17 @@ namespace mpp
 
 		void setFile(TextureStream::Target target, std::string const& filename, ImageLoadFunction loader);
 
-		void setFiltering(Filtering minFilter, Filtering magFilter);
+		void setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter);
 
-		void setWrapping(Wrapping wrapping);
+		void setWrapping(TextureParams::Wrapping wrapping);
+
+		void enableMipMaps(bool enable);
+
+		void setLodBaseLevel(float level);
+
+		void setLodMaxLevel(float level);
+
+		void setLodBias(float bias);
 
 	};
 }
