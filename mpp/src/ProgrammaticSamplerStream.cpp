@@ -21,32 +21,32 @@ namespace mpp
 	{
 	}
 
-	void ProgrammaticSamplerStream::setFiltering(SamplerParams::MinFilter minFilter, SamplerParams::MagFilter magFilter)
+	void ProgrammaticSamplerStream::setFiltering(SamplerParams::MinFilter minFilter, SamplerParams::MagFilter magFilter, uint32_t quality)
 	{
 		switch (minFilter)
 		{
 		case SamplerParams::MinFilter::Nearest:
-			mQualitySettings[0].params.minFilter = GL_NEAREST;
+			mQualitySettings[quality].params.minFilter = GL_NEAREST;
 			break;
 
 		case SamplerParams::MinFilter::Linear:
-			mQualitySettings[0].params.minFilter = GL_LINEAR;
+			mQualitySettings[quality].params.minFilter = GL_LINEAR;
 			break;
 
 		case SamplerParams::MinFilter::NearestMipmapNearest:
-			mQualitySettings[0].params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
+			mQualitySettings[quality].params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
 			break;
 
 		case SamplerParams::MinFilter::LinearMipmapNearest:
-			mQualitySettings[0].params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
+			mQualitySettings[quality].params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
 			break;
 
 		case SamplerParams::MinFilter::NearestMipmapLinear:
-			mQualitySettings[0].params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
+			mQualitySettings[quality].params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
 			break;
 
 		case SamplerParams::MinFilter::LinearMipmapLinear:
-			mQualitySettings[0].params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+			mQualitySettings[quality].params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
 			break;
 
 		default:
@@ -56,11 +56,11 @@ namespace mpp
 		switch (magFilter)
 		{
 		case SamplerParams::MagFilter::Nearest:
-			mQualitySettings[0].params.magFilter = GL_NEAREST;
+			mQualitySettings[quality].params.magFilter = GL_NEAREST;
 			break;
 
 		case SamplerParams::MagFilter::Linear:
-			mQualitySettings[0].params.magFilter = GL_LINEAR;
+			mQualitySettings[quality].params.magFilter = GL_LINEAR;
 			break;
 
 		default:
@@ -68,24 +68,24 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticSamplerStream::setWrapping(SamplerParams::Wrapping wrapping)
+	void ProgrammaticSamplerStream::setWrapping(SamplerParams::Wrapping wrapping, uint32_t quality)
 	{
 		switch (wrapping)
 		{
 		case SamplerParams::Wrapping::Repeat:
-			mQualitySettings[0].params.wrap = GL_REPEAT;
+			mQualitySettings[quality].params.wrap = GL_REPEAT;
 			break;
 
 		case SamplerParams::Wrapping::MirroredRepeat:
-			mQualitySettings[0].params.wrap = GL_MIRRORED_REPEAT;
+			mQualitySettings[quality].params.wrap = GL_MIRRORED_REPEAT;
 			break;
 
 		case SamplerParams::Wrapping::ClampToEdge:
-			mQualitySettings[0].params.wrap = GL_CLAMP_TO_EDGE;
+			mQualitySettings[quality].params.wrap = GL_CLAMP_TO_EDGE;
 			break;
 
 		case SamplerParams::Wrapping::ClampToBorder:
-			mQualitySettings[0].params.wrap = GL_CLAMP_TO_BORDER;
+			mQualitySettings[quality].params.wrap = GL_CLAMP_TO_BORDER;
 			break;
 
 		default:
@@ -93,18 +93,23 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticSamplerStream::setLodBaseLevel(float level)
+	void ProgrammaticSamplerStream::setLodBaseLevel(float level, uint32_t quality)
 	{
-		mQualitySettings[0].params.lodBaseLevel = level;
+		mQualitySettings[quality].params.lodBaseLevel = level;
 	}
 
-	void ProgrammaticSamplerStream::setLodMaxLevel(float level)
+	void ProgrammaticSamplerStream::setLodMaxLevel(float level, uint32_t quality)
 	{
-		mQualitySettings[0].params.lodMaxLevel = level;
+		mQualitySettings[quality].params.lodMaxLevel = level;
 	}
 
-	void ProgrammaticSamplerStream::setLodBias(float bias)
+	void ProgrammaticSamplerStream::setLodBias(float bias, uint32_t quality)
 	{
-		mQualitySettings[0].params.lodBias = bias;
+		mQualitySettings[quality].params.lodBias = bias;
+	}
+
+	void ProgrammaticSamplerStream::setMaxAnisotropy(float maxAnisotropy, uint32_t quality)
+	{
+		mQualitySettings[quality].params.maxAnisotropy = maxAnisotropy;
 	}
 }

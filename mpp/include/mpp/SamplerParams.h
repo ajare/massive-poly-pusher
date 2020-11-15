@@ -37,6 +37,7 @@ namespace mpp
 		uint32_t wrap;
 
 		float lodBaseLevel, lodMaxLevel, lodBias;
+		float maxAnisotropy;
 
 	public:
 

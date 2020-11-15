@@ -30,6 +30,8 @@ namespace mpp
 		void setLodMaxLevel(float level, uint32_t quality = 0);
 
 		void setLodBias(float bias, uint32_t quality = 0);
+		
+		void setMaxAnisotropy(float maxAnisotropy, uint32_t quality = 0);
 
 		void setSampler(std::string const& sampler, uint32_t quality = 0);
 

@@ -38,6 +38,7 @@ namespace mpp
 
 		bool useMipmaps;
 		float lodBaseLevel, lodMaxLevel, lodBias;
+		float maxAnisotropy;
 
 	public:
 

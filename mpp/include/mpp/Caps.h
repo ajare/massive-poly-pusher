@@ -23,6 +23,8 @@ namespace mpp
 		int maxRecommendedVertices;
 		int maxElements;
 
+		float maxAnisotropy;
+
 		bool streamingGeometry;
 	};
 

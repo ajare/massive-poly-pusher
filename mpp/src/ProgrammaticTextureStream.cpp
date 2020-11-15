@@ -406,6 +406,11 @@ namespace mpp
 		mQualitySettings[quality].params.lodBias = bias;
 	}
 
+	void ProgrammaticTextureStream::setMaxAnisotropy(float maxAnisotropy, uint32_t quality)
+	{
+		mQualitySettings[quality].params.maxAnisotropy = maxAnisotropy;
+	}
+
 	void ProgrammaticTextureStream::setSampler(string const& sampler, uint32_t quality)
 	{
 		mQualitySettings[quality].sampler = sampler;

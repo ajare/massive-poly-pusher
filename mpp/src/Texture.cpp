@@ -260,6 +260,8 @@ namespace mpp
 			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
 		}
 
+		GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+
 		GL_CHECK(glBindTexture(mTarget, 0));
 		setId(texId);
 
@@ -336,6 +338,10 @@ namespace mpp
 		if (mSampler)
 		{
 			static_cast<Sampler*>(mSampler.get())->bind(unit);
+		}
+		else
+		{
+			GL_CHECK(glBindSampler(unit, 0));
 		}
 	}
 
