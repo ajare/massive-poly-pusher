@@ -33,6 +33,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
+#include <mpp/ProgrammaticSamplerStream.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/OrbitCamera.h>
@@ -53,9 +54,15 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
+	// Create a sampler for the marble texture to use
+	auto samplerStream = new ProgrammaticSamplerStream(resourceMgr);
+	samplerStream->setFiltering(mpp::SamplerParams::MinFilter::Linear, mpp::SamplerParams::MagFilter::Linear);
+	resourceMgr->declareResource("Default.Sampler", ResourceStreamPtr(samplerStream));
+
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
-	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	textureStream->enableMipMaps(true);
+	textureStream->setSampler("Default.Sampler");
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
