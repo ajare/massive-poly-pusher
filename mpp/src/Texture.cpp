@@ -9,6 +9,7 @@
 #include <gl/gl.h>
 
 #include "mpp/RenderSystem.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/Texture.h"
 #include "mpp/TextureStream.h"
 #include "mpp/MppException.h"
@@ -52,13 +53,19 @@ namespace mpp
 		mInternalFormat = tStr->getInternalFormat();
 		mTarget = tStr->getTarget();
 		mParams = tStr->getParams(0);
-		
+
 		mWidth = tStr->getWidth();
 		mHeight = tStr->getHeight();
 		mDepth = tStr->getDepth();
 		mBitsPerPixel = tStr->getBitsPerPixel();
 		mPixelFormat = tStr->getPixelFormat();
 		mDataType = tStr->getPixelDataType();
+
+		auto sampler = tStr->getSampler(0);
+		if (sampler != "")
+		{
+			mSampler = getResourceManager()->getResource(sampler);
+		}
 
 		if (mInternalFormat == 0)
 		{
@@ -319,6 +326,11 @@ namespace mpp
 
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
 		GL_CHECK(glBindTexture(mTarget, getId()));
+
+		if (mSampler)
+		{
+			static_cast<Sampler*>(mSampler.get())->bind(unit);
+		}
 	}
 
 	/*
