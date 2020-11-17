@@ -72,8 +72,8 @@ namespace mpp
 		GL_CHECK(glSamplerParameteri(samplerId, GL_TEXTURE_WRAP_T, mParams.wrap));
 		GL_CHECK(glSamplerParameteri(samplerId, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
 		GL_CHECK(glSamplerParameteri(samplerId, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
-		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
-		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MIN_LOD, mParams.lodMinLevel));
+		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_LOD, mParams.lodMaxLevel));
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
 

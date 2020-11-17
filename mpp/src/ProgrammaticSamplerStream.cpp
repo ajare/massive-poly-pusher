@@ -19,6 +19,7 @@ namespace mpp
 	ProgrammaticSamplerStream::ProgrammaticSamplerStream(ResourceManager* resourceMgr)
 		: SamplerStream(resourceMgr)
 	{
+		createQualitySetting("");
 	}
 
 	void ProgrammaticSamplerStream::setFiltering(SamplerParams::MinFilter minFilter, SamplerParams::MagFilter magFilter, uint32_t quality)
@@ -93,9 +94,9 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticSamplerStream::setLodBaseLevel(float level, uint32_t quality)
+	void ProgrammaticSamplerStream::setLodMinLevel(float level, uint32_t quality)
 	{
-		mQualitySettings[quality].params.lodBaseLevel = level;
+		mQualitySettings[quality].params.lodMinLevel = level;
 	}
 
 	void ProgrammaticSamplerStream::setLodMaxLevel(float level, uint32_t quality)

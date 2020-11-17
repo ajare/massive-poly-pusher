@@ -255,8 +255,8 @@ namespace mpp
 		if (mParams.useMipmaps)
 		{
 			glGenerateMipmap(mTarget);
-			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
-			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
 			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
 		}
 

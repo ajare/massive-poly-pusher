@@ -14,7 +14,6 @@ namespace mpp
 	PostEffectStream::PostEffectStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "PostEffect")
 	{
-		mQualitySettings.resize(1);
 	}
 
 	void PostEffectStream::loadImpl()
@@ -32,7 +31,11 @@ namespace mpp
 	uint32_t PostEffectStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
-		mQualityNames[name] = qualityId;
+
+		if (name != "")
+		{
+			mQualityNames[name] = qualityId;
+		}
 
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;

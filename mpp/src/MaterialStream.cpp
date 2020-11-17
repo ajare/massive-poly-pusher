@@ -12,7 +12,6 @@ namespace mpp
 	MaterialStream::MaterialStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "Material")
 	{
-		mQualitySettings.resize(1);
 	}
 	
 	/*
@@ -54,7 +53,11 @@ namespace mpp
 	uint32_t MaterialStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
-		mQualityNames[name] = qualityId;
+
+		if (name != "")
+		{
+			mQualityNames[name] = qualityId;
+		}
 
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;

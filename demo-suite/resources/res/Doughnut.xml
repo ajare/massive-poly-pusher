@@ -1,5 +1,10 @@
 <?xml version="1.0"?>
 <Texture>
-	<filename>donut.jpg</filename>
 	<target>2D</target>
+	<filename>donut.jpg</filename>
+	
+	<Quality>
+		<name>lo-res</name>
+		<filename>donut.jpg</filename>
+	</Quality>
 </Texture>

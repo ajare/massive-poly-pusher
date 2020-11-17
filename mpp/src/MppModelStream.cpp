@@ -18,6 +18,7 @@ namespace mpp
 		: ModelStream(resourceMgr)
 		, mFilename(filename)
 	{
+		createQualitySetting("");
 	}
 
 	MppModelStream::~MppModelStream()

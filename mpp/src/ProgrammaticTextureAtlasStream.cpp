@@ -18,6 +18,7 @@ namespace mpp
 	ProgrammaticTextureAtlasStream::ProgrammaticTextureAtlasStream(ResourceManager* resourceMgr)
 		: ProgrammaticTextureStream(resourceMgr)
 	{
+		createQualitySetting("");
 	}
 
 	void ProgrammaticTextureAtlasStream::addTile(string const& name, float u0, float v0, float u1, float v1)

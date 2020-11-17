@@ -148,6 +148,77 @@ namespace mpp
 			}
 		}
 
+		void FileTextureStream::parseQualitySetting(utils::StructuredData const& data)
+		{
+			string name;
+			QualitySetting qs;
+
+			for (auto it = data.begin(); it != data.end(); ++it)
+			{
+				auto const& entry = *it;
+				string value = utils::StringUtils::toUpper(entry.second.getValue());
+
+				if (entry.first == "name")
+				{
+					name = entry.second.getValue();
+				}
+				else if (entry.first == "filename")
+				{
+					// If filename is specified, then load from disk
+					string filepath = entry.second.getValue();
+
+					// if the filepath is relative, prepend the path of the xml file
+					filesystem::path fp(filepath);
+					if (fp.is_relative())
+					{
+						filesystem::path fileFp(mFilepath);
+						filepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
+					}
+
+					qs.source = filepath;
+				}
+				else if (entry.first == "sampler")
+				{
+					qs.sampler = entry.second.getValue();
+				}
+				else if (entry.first == "mipmaps")
+				{
+					qs.params.useMipmaps = utils::StringUtils::parseBool(value);
+				}
+				else if (entry.first == "minFilter")
+				{
+					qs.params.minFilter = parseMinFilter(value);
+				}
+				else if (entry.first == "magFilter")
+				{
+					qs.params.magFilter = parseMagFilter(value);
+				}
+				else if (entry.first == "lodBaseLevel")
+				{
+					qs.params.lodBaseLevel = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "lodMaxLevel")
+				{
+					qs.params.lodMaxLevel = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "lodBias")
+				{
+					qs.params.lodBias = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "maxAnisotropy")
+				{
+					qs.params.maxAnisotropy = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "wrap")
+				{
+					qs.params.wrap = parseWrapping(value);
+				}
+			}
+
+			auto newSettingId = createQualitySetting(name);
+			mQualitySettings[newSettingId] = qs;
+		}
+
 		void FileTextureStream::loadImpl()
 		{
 			// Get file type from extension
@@ -168,7 +239,8 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexParameter.xhtml
+			parseQualitySetting(data);
+
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
@@ -178,66 +250,14 @@ namespace mpp
 				{
 					mTarget = parseTarget(value);
 				}
-				else if (entry.first == "filename")
-				{
-					// If filename is specified, then load from disk
-					string filepath = entry.second.getValue();
-
-					// if the filepath is relative, prepend the path of the xml file
-					filesystem::path fp(filepath);
-					if (fp.is_relative())
-					{
-						filesystem::path fileFp(mFilepath);
-						filepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
-					}
-
-					mQualitySettings[0].source = filepath;
-				}
-				else if (entry.first == "sampler")
-				{
-					mQualitySettings[0].sampler = entry.second.getValue();
-				}
-				else if (entry.first == "mipmaps")
-				{
-					mQualitySettings[0].params.useMipmaps = utils::StringUtils::parseBool(value);
-				}
-				else if (entry.first == "minFilter")
-				{
-					mQualitySettings[0].params.minFilter = parseMinFilter(value);
-				}
-				else if (entry.first == "magFilter")
-				{
-					mQualitySettings[0].params.magFilter = parseMagFilter(value);
-				}
-				else if (entry.first == "lodBaseLevel")
-				{
-					mQualitySettings[0].params.lodBaseLevel = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "lodMaxLevel")
-				{
-					mQualitySettings[0].params.lodMaxLevel = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "lodBias")
-				{
-					mQualitySettings[0].params.lodBias = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "maxAnisotropy")
-				{
-					mQualitySettings[0].params.maxAnisotropy = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "wrap")
-				{
-					mQualitySettings[0].params.wrap = parseWrapping(value);
-				}
 				else if (entry.first == "internalFormat")
 				{
 					// Optionally, specify OpenGL internal format.  Otherwise calculate from loaded image.
 					mInternalFormat = parseInternalFormat(value);
 				}
-				else
+				else if (entry.first == "Quality")
 				{
-					string errMsg = "Error loading " + mFilepath + ".  Unknown element '" + entry.first + "'.";
-					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+					parseQualitySetting(entry.second);
 				}
 			}
 
@@ -247,17 +267,18 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			// Load the texture if 'filename' is specified
-			if (mQualitySettings[0].source == "")
+			for (auto& qs: mQualitySettings)
 			{
-				string errMsg = "Error loading " + mFilepath + ".  'filename' not specified.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+				if (qs.source == "")
+				{
+					string errMsg = "Error loading " + mFilepath + ".  'filename' not specified for quality setting.";
+					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+				}
+				
+				qs.loadFunc = getResourceMgr()->getImageLoadFunction();
 			}
-			else
-			{
-				mQualitySettings[0].loadFunc = getResourceMgr()->getImageLoadFunction();
-				TextureStream::loadImpl();
-			}
+
+			TextureStream::loadImpl();
 		}
 	}
 }

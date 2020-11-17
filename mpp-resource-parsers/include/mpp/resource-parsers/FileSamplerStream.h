@@ -30,6 +30,8 @@ namespace mpp
 
 			uint32_t parseWrapping(std::string const& value);
 
+			void parseQualitySetting(utils::StructuredData const& data);
+
 		public:
 
 			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath);

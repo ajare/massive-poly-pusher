@@ -15,7 +15,6 @@ namespace mpp
 	ProgramStream::ProgramStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "Program")
 	{
-		mQualitySettings.resize(1);
 	}
 
 	/*
@@ -98,7 +97,11 @@ namespace mpp
 	uint32_t ProgramStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
-		mQualityNames[name] = qualityId;
+
+		if (name != "")
+		{
+			mQualityNames[name] = qualityId;
+		}
 
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;

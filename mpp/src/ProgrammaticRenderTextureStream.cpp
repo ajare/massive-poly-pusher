@@ -8,6 +8,7 @@ namespace mpp
 	ProgrammaticRenderTextureStream::ProgrammaticRenderTextureStream(ResourceManager* resourceMgr)
 		: RenderTextureStream(resourceMgr)
 	{
+		createQualitySetting("");
 	}
 
 	void ProgrammaticRenderTextureStream::setWidth(size_t width, uint32_t quality)

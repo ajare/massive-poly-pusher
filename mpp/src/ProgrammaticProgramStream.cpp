@@ -8,6 +8,7 @@ namespace mpp
 	ProgrammaticProgramStream::ProgrammaticProgramStream(ResourceManager* resourceMgr)
 		: ProgramStream(resourceMgr)
 	{
+		createQualitySetting("");
 	}
 
 	void ProgrammaticProgramStream::setParser(shared_ptr<program::Parser> parser, uint32_t quality)

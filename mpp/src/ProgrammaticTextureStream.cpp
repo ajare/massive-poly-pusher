@@ -19,6 +19,7 @@ namespace mpp
 	ProgrammaticTextureStream::ProgrammaticTextureStream(ResourceManager* resourceMgr)
 		: TextureStream(resourceMgr)
 	{
+		createQualitySetting("");
 	}
 
 	void ProgrammaticTextureStream::setInternalFormat(InternalType type, bool normalized, size_t bitSize, size_t channels)
@@ -391,12 +392,12 @@ namespace mpp
 		mQualitySettings[quality].params.useMipmaps = enable;
 	}
 
-	void ProgrammaticTextureStream::setLodBaseLevel(float level, uint32_t quality)
+	void ProgrammaticTextureStream::setLodBaseLevel(int32_t level, uint32_t quality)
 	{
 		mQualitySettings[quality].params.lodBaseLevel = level;
 	}
 
-	void ProgrammaticTextureStream::setLodMaxLevel(float level, uint32_t quality)
+	void ProgrammaticTextureStream::setLodMaxLevel(int32_t level, uint32_t quality)
 	{
 		mQualitySettings[quality].params.lodMaxLevel = level;
 	}

@@ -23,6 +23,11 @@ namespace mpp
 		{
 		}
 
+		void FileProgramStream::parseQualitySetting(utils::StructuredData const& data)
+		{
+
+		}
+
 		void FileProgramStream::loadImpl()
 		{
 			// Get file type from extension
