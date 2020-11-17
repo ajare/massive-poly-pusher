@@ -34,6 +34,8 @@ namespace mpp
 
 			uint32_t parseTarget(std::string const& value);
 
+			void parseQualitySetting(utils::StructuredData const& data);
+
 		public:
 
 			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath);

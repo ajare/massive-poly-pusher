@@ -25,9 +25,9 @@ namespace mpp
 
 		void enableMipMaps(bool enable, uint32_t quality = 0);
 
-		void setLodBaseLevel(float level, uint32_t quality = 0);
+		void setLodBaseLevel(int32_t level, uint32_t quality = 0);
 
-		void setLodMaxLevel(float level, uint32_t quality = 0);
+		void setLodMaxLevel(int32_t level, uint32_t quality = 0);
 
 		void setLodBias(float bias, uint32_t quality = 0);
 		

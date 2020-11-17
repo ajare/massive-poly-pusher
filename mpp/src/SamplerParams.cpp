@@ -16,7 +16,7 @@ namespace mpp
 		: minFilter(GL_NEAREST)
 		, magFilter(GL_NEAREST)
 		, wrap(GL_REPEAT)
-		, lodBaseLevel(0.0f)
+		, lodMinLevel(-1000.0f)
 		, lodMaxLevel(1000.0f)
 		, lodBias(0.0f)
 		, maxAnisotropy(1.0f)

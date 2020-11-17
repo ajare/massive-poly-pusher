@@ -36,7 +36,8 @@ namespace mpp
 		uint32_t magFilter;
 		uint32_t wrap;
 
-		float lodBaseLevel, lodMaxLevel, lodBias;
+		float lodMinLevel, lodMaxLevel;
+		float lodBias;
 		float maxAnisotropy;
 
 	public:

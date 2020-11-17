@@ -18,6 +18,10 @@ namespace mpp
 
 			std::map<std::string, SerializerFactory> mFactories;
 
+		private:
+
+			virtual void parseQualitySetting(utils::StructuredData const& data) = 0;
+
 		protected:
 
 			SerializerPtr getSerializer(std::string const& type);

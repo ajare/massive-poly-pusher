@@ -15,6 +15,8 @@ namespace mpp
 		: ModelStream(resourceMgr)
 		, mStrideInBytes(0)
 	{
+		createQualitySetting("");
+
 		mMeshDataDefinition.specification = meshSpec;
 
 		mMeshDataDefinition.name = "0";

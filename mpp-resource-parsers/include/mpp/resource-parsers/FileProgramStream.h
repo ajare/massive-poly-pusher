@@ -22,6 +22,8 @@ namespace mpp
 
 			void loadImpl();
 
+			void parseQualitySetting(utils::StructuredData const& data);
+
 		public:
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath);

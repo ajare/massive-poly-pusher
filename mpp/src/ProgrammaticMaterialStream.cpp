@@ -9,6 +9,7 @@ namespace mpp
 	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr)
 		: MaterialStream(resourceMgr)
 	{
+		createQualitySetting("");
 	}
 
 	/*
@@ -18,12 +19,14 @@ namespace mpp
 	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, string const& program)
 		: MaterialStream(resourceMgr)
 	{
+		createQualitySetting("");
 		setProgram(program);
 	}
 
 	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, string const& vertexShader, bool vertexShaderIsFile, string const& fragmentShader, bool fragmentShaderIsFile)
 		: MaterialStream(resourceMgr)
 	{
+		createQualitySetting("");
 		setProgram(program2d, meshSpec, vertexShader, vertexShaderIsFile, fragmentShader, fragmentShaderIsFile);
 	}
 
@@ -34,6 +37,7 @@ namespace mpp
 	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec)
 		: MaterialStream(resourceMgr)
 	{
+		createQualitySetting("");
 		setProgram(program2d, meshSpec);
 	}
 
@@ -44,6 +48,7 @@ namespace mpp
 	ProgrammaticMaterialStream::ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, set<string> const& tags)
 		: MaterialStream(resourceMgr)
 	{
+		createQualitySetting("");
 		setProgram(program2d, meshSpec, tags);
 	}
 

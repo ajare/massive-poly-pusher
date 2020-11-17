@@ -37,7 +37,8 @@ namespace mpp
 		uint32_t wrap;
 
 		bool useMipmaps;
-		float lodBaseLevel, lodMaxLevel, lodBias;
+		int32_t lodBaseLevel, lodMaxLevel;
+		float lodBias;
 		float maxAnisotropy;
 
 	public:

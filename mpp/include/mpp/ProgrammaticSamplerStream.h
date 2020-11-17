@@ -14,7 +14,7 @@ namespace mpp
 
 		void setWrapping(SamplerParams::Wrapping wrapping, uint32_t quality = 0);
 
-		void setLodBaseLevel(float level, uint32_t quality = 0);
+		void setLodMinLevel(float level, uint32_t quality = 0);
 
 		void setLodMaxLevel(float level, uint32_t quality = 0);
 
