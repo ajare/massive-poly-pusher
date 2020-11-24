@@ -1,78 +1,21 @@
-New mesh system
----------------
+Main Items
+----------
 
-Goal:
-- To be able to specify a Mesh entirely based on:
-  - Mesh specification
-  - Functions to set components, eg
-      auto vi = addVertex();
-	  setVertexPosition(vi, 0, 0, 0);
-	  
-	  and so on
-
-- The idea is to simplify Mesh creation and wrap it all.
-- Shaders are generated based on the Mesh specification.
-  - Either write them manually, or use defaults
-  - Just specify Position2/3/4 etc as the variable names.  The type is deduced & generated from the Mesh specification
-- Might be able to use templating, eg like in Willpower to have a specialised class
-  with correct types.  Would have to use GL datatype values though, can't use C types
-  for template arguments, in order to be able to use half floats, dvec4 etc.  So template
-  params would be a set of integers, not types: check this is possible.
-- See about passing in data other than pos/normal/tex/colour, and how that would work
-
-Current work
-------------
-
-- Fix grid vertices [DONE]
-- Make sure padding bytes work [DONE]
-  - Try with an unsigned byte Colour3 [DONE]
-    - VertexBufferAttributeLayout::createAttribute should have optional param for 'pad to multiple of' (default is 1) [DONE]
-- MeshSpecification has issues:
-  - MeshSpecification::createVertexBufferAttributeLayout() returns pointer to end of vector, which
-    can be invalidated if resized by adding new layout
-  - Attribute baseid relies on each layout being complete before the next one is started
-- Don't use varying [DONE]  
-- Get non-float datatypes working
-  - Use test shader not built-in [DONE]
-  - Get (u)byte working normalised & unnormalised [DONE]
-  - Get (u)short working normalised & unnormalised [DONE]
-  - Get (u)int working normalised & unnormalised [DONE]
-  - Get halffloat working [DONE]
-  - Get double working [DONE]
-  - GL_UNSIGNED_INT_2_10_10_10_REV [DONE]
-  - GL_INT_2_10_10_10_REV [DONE]
-- Use layout(location=...) [DONE]
-  - Remove deprecated 'varying' stuff [DONE]
-- Shouldn't need to specify attribute type (vec3 etc) in default shaders, it should be calculated based on MeshSpecification [DONE]
-- Create a separate lib to do shader parsing and generation [DONE]
-  - Create app which uses this to generate programs from a template, based on a MeshSpecification [DONE]
-- Generate default 2d shaders for batches, etc [DONE]
-  - Use bitfield for hashing [DONE]
-- Ensure all 2d batches work, for all options:
-  - IndexedTriangleBatch [DONE]
-  - TriangleBatch [DONE]
-  - LineBatch [DONE]
-  - QuadBatch
-    - With texture [DONE]
-	- With texture atlas [DONE]
-	- With rotation [DONE]
-	- Using triangles [DONE]
-	- Using point sprites [DONE]
-	- Tidy up shader template [DONE]
-	- Tidy up batch update function [DONE]
-- Replacement for FreeImage, for size
-  - Just read/write PNG	(http://www.nongnu.org/pngpp/)
-  - Make pluggable by client (eg Harness)
-- Serialization is now almost certainly broken.
-  - Get model being saved to .mppmodel and loaded in
-  - Ensure multiple buffers work
-  - Ensure padding is saved/loaded
-  - Create model inspector?
-- Get packed types (above) decoded in model-convert's debug function.  Ie, we need methods to print out each value in a vertex buffer, for debug purposes.  
-- Look into separate attribute format:
-  - https://www.khronos.org/opengl/wiki/Vertex_Specification#Separate_attribute_format
-- Fix Primitives (box/sphere)
-  - Grid [DONE]
-  - Box [DONE]
-  - Cylinder
-  - Sphere
+1. RESOURCE LOADING FROM FILES
+   a. Material
+   b. String
+   c. Multi-type
+2. Normal mapping   
+3. Sponza model + mtl transformation
+4. Cubemap loading
+5. Skyboxes
+6. Environment mapping shader
+7. POST-EFFECTS SYSTEM
+8. Get 2d batches working with Scene
+9. 3d polygon-soup batch class
+10. PARTICLE SYSTEM
+    - Look at Destiny particle system, compute shader bytecode VM
+    - Soft particles, so we can race through fog/smoke/cloud etc
+11. Octree Scene manager
+12. Cell-portal Scene manager
+13. Video loading

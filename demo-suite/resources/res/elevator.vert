@@ -1,0 +1,20 @@
+@@Version
+
+@@Texture(sampler2D TEX1);
+
+void main()
+{
+    vec4 pos = @Vec4(@In(POSITION));
+    vec2 heightCoords = vec2((pos.x / 1024.0) + 0.5, (pos.z / 1024.0) + 0.5);
+    pos.y += texture(@Texture(TEX1), heightCoords).r * 100;
+    
+    // Need to recalculate normal
+    // ...
+    
+    @Out(vec3 FRAGPOSITION) = @Vec3(@MMatrix * pos);
+    @Out(vec3 NORMAL) = normalize(@NormalMatrix * @Vec3(@In(NORMAL)));
+    @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
+    @Out(vec4 COLOUR) = @In(COLOUR);
+
+    gl_Position = @MCPMatrix * pos;
+}

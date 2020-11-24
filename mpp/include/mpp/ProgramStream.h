@@ -12,6 +12,8 @@ namespace mpp
 {
 	class _MPPAPI ProgramStream : public ResourceStream
 	{
+	protected:
+
 		struct QualitySetting
 		{
 			std::shared_ptr<program::Parser> parser;
