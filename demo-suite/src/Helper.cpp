@@ -46,12 +46,63 @@ mpp::TextureData loadImage(string const& filename)
 	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
 	if (bitmap)
 	{
+		auto imageType = FreeImage_GetImageType(bitmap);
 		size_t dataWidth = (size_t)FreeImage_GetWidth(bitmap);
 		size_t dataHeight = (size_t)FreeImage_GetHeight(bitmap);
 		size_t dataBPP = (size_t)FreeImage_GetBPP(bitmap);
-		size_t dataSpan = dataWidth * dataBPP / 8;
 
-		size_t dataSize = dataSpan * dataHeight;
+		// Calculate data size etc from type and bpp
+		size_t typeSize;
+		GLuint glType;
+		switch (imageType)
+		{
+		case FIT_BITMAP:
+			typeSize = sizeof(uint8_t);
+			glType = GL_UNSIGNED_BYTE;
+			break;
+
+		case FIT_UINT16:
+		case FIT_RGB16:
+		case FIT_RGBA16:
+			typeSize = sizeof(uint16_t);
+			glType = GL_UNSIGNED_SHORT;
+			break;
+
+		case FIT_INT16:
+			typeSize = sizeof(int16_t);
+			glType = GL_SHORT;
+			break;
+
+		case FIT_UINT32:
+			typeSize = sizeof(uint32_t);
+			glType = GL_UNSIGNED_INT;
+			break;
+
+		case FIT_INT32:
+			typeSize = sizeof(int32_t);
+			glType = GL_INT;
+			break;
+
+		case FIT_FLOAT:
+		case FIT_RGBF:
+		case FIT_RGBAF:
+			typeSize = sizeof(float);
+			glType = GL_FLOAT;
+			break;
+
+		case FIT_DOUBLE:
+			typeSize = sizeof(double);
+			glType = GL_DOUBLE;
+			break;
+
+		case FIT_UNKNOWN:
+		default:
+			string errMsg = "Couldn't open '" + filename + "'.  Unknown/unsupported image type.";
+			throw exception(errMsg.c_str());
+		}
+
+		size_t dataSpan = dataWidth * dataBPP / 8;
+		size_t dataSize = dataSpan * dataHeight * typeSize;
 		auto tempData = new uint8_t[dataSize];
 
 		// Flip vertically?
@@ -70,14 +121,50 @@ mpp::TextureData loadImage(string const& filename)
 
 		FreeImage_Unload(bitmap);
 
-		uint32_t pixelFormat = dataBPP == 24 ? GL_BGR : GL_BGRA;
+		// Calculate pixel format
+		size_t numChannels = dataBPP / (8 * typeSize);
+		
+		uint32_t pixelFormat;
+		switch (numChannels)
+		{
+		case 1:
+			pixelFormat = GL_RED;
+			break;
+
+		case 2:
+			pixelFormat = GL_RG;
+			break;
+
+		case 3:
+			pixelFormat = GL_BGR;
+			break;
+
+		case 4:
+			pixelFormat = GL_BGRA;
+			break;
+
+		default:
+			string errMsg = "Couldn't open '" + filename + "'.  Unknown/unsupported channel count.";
+			throw exception(errMsg.c_str());
+		}
+
 		if (isBigEndian())
 		{
-			pixelFormat = dataBPP == 24 ? GL_RGB : GL_RGBA;
+			switch (numChannels)
+			{
+			case 3:
+				pixelFormat = GL_RGB;
+				break;
+
+			case 4:
+				pixelFormat = GL_RGBA;
+				break;
+
+			default:
+				break;
+			}
 		}
 		
-		uint32_t dataType = GL_UNSIGNED_BYTE;
-
 		mpp::TextureData textureData
 		{
 			tempData,
@@ -85,7 +172,7 @@ mpp::TextureData loadImage(string const& filename)
 			dataHeight,
 			dataBPP,
 			pixelFormat,
-			dataType
+			glType
 		};
 
 		return textureData;

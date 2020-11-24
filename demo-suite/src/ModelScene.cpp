@@ -71,7 +71,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	// Create textures programmatically
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "clouds.png", loadImage);
+	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "clouds_16.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Clouds.Texture", ResourceStreamPtr(textureStream));
 
