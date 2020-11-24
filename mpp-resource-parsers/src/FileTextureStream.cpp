@@ -195,11 +195,11 @@ namespace mpp
 				}
 				else if (entry.first == "lodBaseLevel")
 				{
-					qs.params.lodBaseLevel = utils::StringUtils::parseFloat(value);
+					qs.params.lodBaseLevel = utils::StringUtils::parseInt(value);
 				}
 				else if (entry.first == "lodMaxLevel")
 				{
-					qs.params.lodMaxLevel = utils::StringUtils::parseFloat(value);
+					qs.params.lodMaxLevel = utils::StringUtils::parseInt(value);
 				}
 				else if (entry.first == "lodBias")
 				{

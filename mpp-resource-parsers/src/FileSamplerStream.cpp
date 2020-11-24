@@ -88,7 +88,50 @@ namespace mpp
 
 		void FileSamplerStream::parseQualitySetting(utils::StructuredData const& data)
 		{
+			string name;
+			QualitySetting qs;
 
+			for (auto it = data.begin(); it != data.end(); ++it)
+			{
+				auto const& entry = *it;
+				string value = utils::StringUtils::toUpper(entry.second.getValue());
+
+				if (entry.first == "name")
+				{
+					name = entry.second.getValue();
+				}
+				else if (entry.first == "minFilter")
+				{
+					qs.params.minFilter = parseMinFilter(value);
+				}
+				else if (entry.first == "magFilter")
+				{
+					qs.params.magFilter = parseMagFilter(value);
+				}
+				else if (entry.first == "lodMinLevel")
+				{
+					qs.params.lodMinLevel = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "lodMaxLevel")
+				{
+					qs.params.lodMaxLevel = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "lodBias")
+				{
+					qs.params.lodBias = utils::StringUtils::parseFloat(value);
+				}
+				else if (entry.first == "wrap")
+				{
+					qs.params.wrap = parseWrapping(value);
+				}
+				else if (entry.first == "maxAnisotropy")
+				{
+					qs.params.maxAnisotropy = utils::StringUtils::parseFloat(value);
+				}
+			}
+
+			auto newSettingId = createQualitySetting(name);
+			mQualitySettings[newSettingId] = qs;
 		}
 
 		void FileSamplerStream::loadImpl()
@@ -111,43 +154,16 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
+			parseQualitySetting(data);
+
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
 
-				if (entry.first == "minFilter")
+				if (entry.first == "Quality")
 				{
-					mQualitySettings[0].params.minFilter = parseMinFilter(value);
-				}
-				else if (entry.first == "magFilter")
-				{
-					mQualitySettings[0].params.magFilter = parseMagFilter(value);
-				}
-				else if (entry.first == "lodBaseLevel")
-				{
-					mQualitySettings[0].params.lodBaseLevel = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "lodMaxLevel")
-				{
-					mQualitySettings[0].params.lodMaxLevel = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "lodBias")
-				{
-					mQualitySettings[0].params.lodBias = utils::StringUtils::parseFloat(value);
-				}
-				else if (entry.first == "wrap")
-				{
-					mQualitySettings[0].params.wrap = parseWrapping(value);
-				}
-				else if (entry.first == "maxAnisotropy")
-				{
-					mQualitySettings[0].params.maxAnisotropy = utils::StringUtils::parseFloat(value);
-				}
-				else
-				{
-					string errMsg = "Error loading " + mFilepath + ".  Unknown element '" + entry.first + "'.";
-					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+					parseQualitySetting(entry.second);
 				}
 			}
 

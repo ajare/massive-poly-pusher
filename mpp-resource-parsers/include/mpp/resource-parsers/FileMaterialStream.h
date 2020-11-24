@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-#include "mpp/ProgramStream.h"
+#include "mpp/MaterialStream.h"
 #include "mpp/ResourceManager.h"
 
 #include "Config.h"
@@ -14,21 +14,21 @@ namespace mpp
 	namespace resource_parsers
 	{
 
-		class _MPPRESOURCEPARSERSAPI FileProgramStream : public mpp::ProgramStream, public FileStream
+		class _MPPRESOURCEPARSERSAPI FileMaterialStream : public mpp::MaterialStream, public FileStream
 		{
 			std::string mFilepath;
 
 		private:
 
-			void loadImpl();
-
 			void parseQualitySetting(utils::StructuredData const& data);
 
-			std::string readTextFile(std::string const& filepath);
+		protected:
+
+			void loadImpl();
 
 		public:
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath);
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath);
 		};
 
 	}

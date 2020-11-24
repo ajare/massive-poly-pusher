@@ -33,7 +33,7 @@ namespace mpp
 			Shader vertexShader, fragmentShader;
 		};
 
-	private:
+	protected:
 
 		struct QualitySetting
 		{

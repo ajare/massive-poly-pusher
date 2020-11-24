@@ -22,25 +22,25 @@ private:
 	
 	mpp::mesh::MeshSpecification createGridMeshSpecification();
 
-	mpp::ResourcePtr createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+	mpp::ResourcePtr createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createSphereMeshSpecification();
 
-	mpp::ResourcePtr createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+	mpp::ResourcePtr createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createCylinderMeshSpecification();
 
-	mpp::ResourcePtr createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+	mpp::ResourcePtr createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createBoxMeshSpecification();
 
-	mpp::ResourcePtr createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+	mpp::ResourcePtr createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createTorusMeshSpecification();
 
-	mpp::ResourcePtr createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec);
+	mpp::ResourcePtr createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
-	mpp::ResourcePtr createTorusModel();
+	mpp::ResourcePtr createTorusModel(ProgramOptions const& options);
 
 public:
 

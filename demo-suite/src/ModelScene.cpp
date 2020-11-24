@@ -30,6 +30,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/GridModelStream.h>
 #include <mpp/CylinderModelStream.h>
 #include <mpp/BoxModelStream.h>
+#include <mpp/FileStringStream.h>
 #include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
@@ -69,6 +70,11 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
 	// Create textures programmatically
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "clouds.png", loadImage);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	resourceMgr->declareResource("Clouds.Texture", ResourceStreamPtr(textureStream));
+
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "electbubbles.jpg", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
@@ -131,19 +137,23 @@ mesh::MeshSpecification ModelScene::createGridMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
+
+	auto vertStream = new FileStringStream(resourceMgr, options.resourceLocation + "elevator.vert");
+	auto vertRes = resourceMgr->declareResource("Grid.Material/elevator.vert", ResourceStreamPtr(vertStream));
+	vertRes->load();
 
 	auto materialStream = new ProgrammaticMaterialStream(resourceMgr,
 		false,
 		meshSpec,
-		"",
-		false,
+		"elevator.vert", //"",
+		true, //false,
 		"",
 		false);
 
-	materialStream->setTexture("TEX1", "Marble.Texture");
+	materialStream->setTexture("TEX1", "Clouds.Texture");
 
 	auto res = resourceMgr->declareResource("Grid.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -167,7 +177,7 @@ mesh::MeshSpecification ModelScene::createSphereMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -203,7 +213,7 @@ mesh::MeshSpecification ModelScene::createCylinderMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -239,7 +249,7 @@ mesh::MeshSpecification ModelScene::createBoxMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -275,7 +285,7 @@ mesh::MeshSpecification ModelScene::createTorusMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec)
+mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -295,12 +305,12 @@ mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification co
 	return res;
 }
 
-ResourcePtr ModelScene::createTorusModel()
+ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
 	auto torusMeshSpec = createTorusMeshSpecification();
-	createTorusMaterial(torusMeshSpec);
+	createTorusMaterial(torusMeshSpec, options);
 
 	auto torusStream = new ProgrammaticModelStream(resourceMgr);
 	auto torusMeshId = torusStream->createMesh("Torus", torusMeshSpec, "Torus.Material", 32);
@@ -389,9 +399,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
-	createGridMaterial(gridMeshSpec);
+	createGridMaterial(gridMeshSpec, options);
 
-	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 8, 8);
+	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 256, 256);
 	auto grid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream));
 	grid->load();
 
@@ -399,7 +409,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
-	createSphereMaterial(sphereMeshSpec);
+	createSphereMaterial(sphereMeshSpec, options);
 	
 	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
 	auto sphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream));
@@ -410,7 +420,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// Load Cylinder
 	auto cylinderMeshSpec = createCylinderMeshSpecification();
-	createCylinderMaterial(cylinderMeshSpec);
+	createCylinderMaterial(cylinderMeshSpec, options);
 
 	auto cylinderStream = new CylinderModelStream(resourceMgr, cylinderMeshSpec, "Cylinder.Material", 80, 24, 24, 16);
 	auto cylinder = resourceMgr->declareResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
@@ -424,7 +434,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// Load Box
 	auto boxMeshSpec = createBoxMeshSpecification();
-	createBoxMaterial(boxMeshSpec);
+	createBoxMaterial(boxMeshSpec, options);
 
 	auto boxStream = new BoxModelStream(resourceMgr, cylinderMeshSpec, "Box.Material", 32, 32, 32);
 	auto box = resourceMgr->declareResource("Model.Box", ResourceStreamPtr(boxStream));
@@ -437,7 +447,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.back()->translate(glm::vec3(-96, 108, 96));
 
 	// Load torus
-	auto torus = createTorusModel();
+	auto torus = createTorusModel(options);
 
 	mModels.push_back(mppScene->addModel(torus));
 	mModels.back()->translate(glm::vec3(0, 280, 0));

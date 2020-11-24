@@ -39,6 +39,9 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileProgramStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileMaterialStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc">
@@ -62,6 +65,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\FileProgramStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\FileMaterialStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

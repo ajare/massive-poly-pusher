@@ -41,12 +41,6 @@ namespace mpp
 
 	private:
 
-		virtual void loadImpl() = 0;
-
-		// In case the user wants to free the data once
-		// all resources have been created from it.
-		virtual void unloadImpl() {}
-
 		virtual void createChildResourceStreamsImpl() {};
 
 		void createChildResourceStreams();
@@ -54,6 +48,10 @@ namespace mpp
 		void destroyChildResourceStreams();
 
 	protected:
+
+		virtual void loadImpl() = 0;
+
+		virtual void unloadImpl() {}
 
 		ResourceManager* getResourceMgr();
 

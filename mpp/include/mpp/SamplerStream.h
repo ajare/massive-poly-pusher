@@ -37,7 +37,7 @@ namespace mpp
 			ClampToBorder
 		};
 
-	private:
+	protected:
 
 		struct QualitySetting
 		{
