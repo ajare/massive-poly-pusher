@@ -18,9 +18,13 @@ namespace mpp
 		{
 			std::string mFilepath;
 
+			utils::StructuredData mData;
+
 			std::map<std::string, uint32_t> mMinFilters, mMagFilters, mWrapping;
 
 		private:
+
+			void setup();
 
 			void loadImpl();
 
@@ -35,6 +39,8 @@ namespace mpp
 		public:
 
 			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath);
+
+			FileSamplerStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
 		};
 
 	}

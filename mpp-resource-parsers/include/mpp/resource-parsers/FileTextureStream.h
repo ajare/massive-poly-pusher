@@ -18,9 +18,13 @@ namespace mpp
 		{
 			std::string mFilepath;
 
+			utils::StructuredData mData;
+
 			std::map<std::string, uint32_t> mInternalFormats, mMinFilters, mMagFilters, mTargets, mWrapping;
 
 		private:
+
+			void setup();
 
 			void loadImpl();
 
@@ -39,6 +43,8 @@ namespace mpp
 		public:
 
 			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath);
+
+			FileTextureStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
 		};
 
 	}

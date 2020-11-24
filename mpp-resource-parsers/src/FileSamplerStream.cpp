@@ -22,6 +22,19 @@ namespace mpp
 		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, string const& filepath)
 			: SamplerStream(resourceMgr)
 			, mFilepath(filepath)
+			, mData("") 
+		{
+			setup();
+		}
+
+		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, utils::StructuredData const& data)
+			: SamplerStream(resourceMgr)
+			, mData(data)
+		{
+			setup();
+		}
+
+		void FileSamplerStream::setup()
 		{
 			// Filtering methods
 			mMinFilters["LINEAR"] = GL_LINEAR;
@@ -137,16 +150,19 @@ namespace mpp
 		void FileSamplerStream::loadImpl()
 		{
 			// Get file type from extension
-			auto fi = utils::FileSystem::getFile(mFilepath);
-			auto ext = fi.getExtension();
+			if (mFilepath != "")
+			{
+				auto fi = utils::FileSystem::getFile(mFilepath);
+				auto ext = fi.getExtension();
 
-			auto ser = getSerializer(ext);
+				auto ser = getSerializer(ext);
 
-			ser->loadFromFile(mFilepath);
-			auto const& data = ser->getData();
+				ser->loadFromFile(mFilepath);
+				mData = ser->getData();
+			}
 
 			// Parse data.  Root element should be 'Sampler'
-			auto rootName = data.getName();
+			auto rootName = mData.getName();
 
 			if (rootName != "Sampler")
 			{
@@ -154,9 +170,9 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			parseQualitySetting(mData);
 
-			for (auto it = data.begin(); it != data.end(); ++it)
+			for (auto it = mData.begin(); it != mData.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());

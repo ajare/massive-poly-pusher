@@ -3,6 +3,7 @@
 #include "mpp/DefaultShaders.h"
 
 #include "mpp/resource-parsers/FileMaterialStream.h"
+#include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 
 namespace mpp
@@ -15,6 +16,13 @@ namespace mpp
 		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath)
 			: MaterialStream(resourceMgr)
 			, mFilepath(filepath)
+			, mData("")
+		{
+		}
+
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, utils::StructuredData const& data)
+			: MaterialStream(resourceMgr)
+			, mData(data)
 		{
 		}
 
@@ -35,6 +43,10 @@ namespace mpp
 				{
 					// This can either be a reference to another resource, or
 					// an actual program definition.
+
+					// If it's a definition, create a child FileProgramStream with this node and load it
+					//auto programStream = new FileProgramStream(getResourceMgr(), entry.second);
+					//addChild("Program", ResourceStreamPtr(programStream));
 				}
 				else if (entry.first == "Textures")
 				{
@@ -76,16 +88,19 @@ namespace mpp
 		void FileMaterialStream::loadImpl()
 		{
 			// Get file type from extension
-			auto fi = utils::FileSystem::getFile(mFilepath);
-			auto ext = fi.getExtension();
+			if (mFilepath != "")
+			{
+				auto fi = utils::FileSystem::getFile(mFilepath);
+				auto ext = fi.getExtension();
 
-			auto ser = getSerializer(ext);
+				auto ser = getSerializer(ext);
 
-			ser->loadFromFile(mFilepath);
-			auto const& data = ser->getData();
+				ser->loadFromFile(mFilepath);
+				mData = ser->getData();
+			}
 
 			// Parse data.  Root element should be 'Material'
-			auto rootName = data.getName();
+			auto rootName = mData.getName();
 
 			if (rootName != "Material")
 			{
@@ -93,9 +108,9 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			parseQualitySetting(mData);
 
-			for (auto it = data.begin(); it != data.end(); ++it)
+			for (auto it = mData.begin(); it != mData.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());

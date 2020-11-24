@@ -22,6 +22,19 @@ namespace mpp
 		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath)
 			: TextureStream(resourceMgr)
 			, mFilepath(filepath)
+			, mData("") 
+		{
+			setup();
+		}
+
+		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, utils::StructuredData const& data)
+			: TextureStream(resourceMgr)
+			, mData(data)
+		{
+			setup();
+		}
+
+		void FileTextureStream::setup()
 		{
 			// Internal formats
 			mInternalFormats["R8_SNORM"] = GL_R8_SNORM;
@@ -222,16 +235,19 @@ namespace mpp
 		void FileTextureStream::loadImpl()
 		{
 			// Get file type from extension
-			auto fi = utils::FileSystem::getFile(mFilepath);
-			auto ext = fi.getExtension();
+			if (mFilepath != "")
+			{
+				auto fi = utils::FileSystem::getFile(mFilepath);
+				auto ext = fi.getExtension();
 
-			auto ser = getSerializer(ext);
+				auto ser = getSerializer(ext);
 
-			ser->loadFromFile(mFilepath);
-			auto const& data = ser->getData();
+				ser->loadFromFile(mFilepath);
+				mData = ser->getData();
+			}
 
 			// Parse data.  Root element should be 'Texture'
-			auto rootName = data.getName();
+			auto rootName = mData.getName();
 
 			if (rootName != "Texture")
 			{
@@ -239,9 +255,9 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			parseQualitySetting(mData);
 
-			for (auto it = data.begin(); it != data.end(); ++it)
+			for (auto it = mData.begin(); it != mData.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
