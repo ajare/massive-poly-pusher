@@ -18,6 +18,8 @@ namespace mpp
 		{
 			std::string mFilepath;
 
+			utils::StructuredData mData;
+
 		private:
 
 			void loadImpl();
@@ -29,6 +31,8 @@ namespace mpp
 		public:
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath);
+
+			FileProgramStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
 		};
 
 	}

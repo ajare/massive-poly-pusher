@@ -18,6 +18,8 @@ namespace mpp
 		{
 			std::string mFilepath;
 
+			utils::StructuredData mData;
+
 		private:
 
 			void parseQualitySetting(utils::StructuredData const& data);
@@ -29,6 +31,8 @@ namespace mpp
 		public:
 
 			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath);
+
+			FileMaterialStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
 		};
 
 	}

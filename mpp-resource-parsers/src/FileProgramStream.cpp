@@ -15,6 +15,13 @@ namespace mpp
 		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath)
 			: ProgramStream(resourceMgr)
 			, mFilepath(filepath)
+			, mData("") 
+		{
+		}
+
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, utils::StructuredData const& data)
+			: ProgramStream(resourceMgr)
+			, mData(data)
 		{
 		}
 
@@ -127,16 +134,19 @@ namespace mpp
 		void FileProgramStream::loadImpl()
 		{
 			// Get file type from extension
-			auto fi = utils::FileSystem::getFile(mFilepath);
-			auto ext = fi.getExtension();
+			if (mFilepath != "")
+			{
+				auto fi = utils::FileSystem::getFile(mFilepath);
+				auto ext = fi.getExtension();
 
-			auto ser = getSerializer(ext);
+				auto ser = getSerializer(ext);
 
-			ser->loadFromFile(mFilepath);
-			auto const& data = ser->getData();
+				ser->loadFromFile(mFilepath);
+				mData = ser->getData();
+			}
 
 			// Parse data.  Root element should be 'Program'
-			auto rootName = data.getName();
+			auto rootName = mData.getName();
 
 			if (rootName != "Program")
 			{
@@ -144,9 +154,9 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			parseQualitySetting(mData);
 
-			for (auto it = data.begin(); it != data.end(); ++it)
+			for (auto it = mData.begin(); it != mData.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
