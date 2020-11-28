@@ -4,7 +4,7 @@
 
 #include "Scene.h"
 
-class ModelScene : public Scene
+class ModelScene : public ::Scene
 {
 	float mTotalTime{ 0 };
 

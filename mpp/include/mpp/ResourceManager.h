@@ -49,6 +49,8 @@ namespace mpp
 
 		bool mLogResourceEvents{ false };
 
+		size_t mProgramIdCounter{ 0 };
+
 	public:
 
 		explicit ResourceManager(RenderSystem* renderSystem);

@@ -22,21 +22,23 @@ namespace mpp
 
 		explicit ProgrammaticMaterialStream(ResourceManager* resourceMgr);
 
-		ProgrammaticMaterialStream(ResourceManager* resourceMgr, std::string const& program);
-
-		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFile);
-
-		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec);
-
-		ProgrammaticMaterialStream(ResourceManager* resourceMgr, bool program2d, mesh::MeshSpecification const& meshSpec, std::set<std::string> const& tags);
-
 		void setProgram(std::string const& program, uint32_t quality = 0);
 
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::set<std::string> const& tags, uint32_t quality = 0);
+		void setMeshSpecification(mesh::MeshSpecification const& spec, uint32_t quality = 0);
 
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, std::string const& vertexShader, bool vertexShaderIsFile, std::string const& fragmentShader, bool fragmentShaderIsFiles, uint32_t quality = 0);
+		void setProgram2d(bool is2d, size_t quality = 0);
 
-		void setProgram(bool is2d, mesh::MeshSpecification const& spec, uint32_t quality = 0);
+		void setProgramVertexShaderFile(std::string const& file, uint32_t quality = 0);
+
+		void setProgramVertexShaderString(std::string const& data, uint32_t quality = 0);
+
+		void setProgramVertexShaderResource(std::string const& resource, uint32_t quality = 0);
+
+		void setProgramFragmentShaderFile(std::string const& file, uint32_t quality = 0);
+
+		void setProgramFragmentShaderString(std::string const& data, uint32_t quality = 0);
+
+		void setProgramFragmentShaderResource(std::string const& resource, uint32_t quality = 0);
 
 		void setTextureChild(std::string const& sampler, std::string const& resource, uint32_t quality = 0);
 

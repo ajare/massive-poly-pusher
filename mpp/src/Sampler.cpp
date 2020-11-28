@@ -39,7 +39,7 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'SamplerStream'.", __LINE__, __FILE__, __func__);
 		}
 
-		mParams = sStr->getParams(0);
+		mParams = sStr->getParams();
 	}
 
 	/*

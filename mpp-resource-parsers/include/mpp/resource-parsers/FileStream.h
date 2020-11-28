@@ -14,6 +14,10 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileStream
 		{
+			std::string mFilepath;
+
+			mutable utils::StructuredData mData;
+
 			typedef std::function<Serializer*()> SerializerFactory;
 
 			std::map<std::string, SerializerFactory> mFactories;
@@ -24,11 +28,19 @@ namespace mpp
 
 		protected:
 
-			SerializerPtr getSerializer(std::string const& type);
+			SerializerPtr getSerializer(std::string const& type) const;
+
+			std::string readTextFile(std::string const& filepath) const;
 
 		public:
 
-			FileStream();
+			explicit FileStream(std::string const& filepath);
+
+			FileStream(std::string const& filepath, utils::StructuredData const& data);
+
+			std::string const& getFilepath() const;
+
+			utils::StructuredData const& getStructuredData() const;
 		};
 
 	}

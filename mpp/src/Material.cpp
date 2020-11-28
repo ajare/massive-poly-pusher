@@ -38,7 +38,14 @@ namespace mpp
 
 		if (progOpts.resourceExists)
 		{
-			mProgram = resourceMgr->getResource(mStr->getProgramOptions().existingResource);
+			if (progOpts.isChild)
+			{
+				mProgram = resourceMgr->getResource(getName() + "/Program");
+			}
+			else
+			{
+				mProgram = resourceMgr->getResource(progOpts.existingResource);
+			}
 		}
 		else
 		{
@@ -62,22 +69,45 @@ namespace mpp
 				THROW_MPP("Cannot use more than 4 textures in a material.", __LINE__, __FILE__, __func__);
 			}
 
-			// Get light usage
-
 			// Load in shaders if required
-			string vertexShaderSrc = progOpts.vertexShader.data;
-			if (progOpts.vertexShader.isFile)
+			string vertexShaderSrc;
+			switch (progOpts.vertexShader.type)
 			{
-				string resName = getName() + "/" + progOpts.vertexShader.data;
-				vertexShaderSrc = static_cast<String*>(resourceMgr->getResource(resName).get())->getData();
+			case MaterialStream::ProgramOptions::Shader::Type::String:
+				vertexShaderSrc = progOpts.vertexShader.data;
+				break;
+
+			case MaterialStream::ProgramOptions::Shader::Type::File:
+				//load from file
+				break;
+
+			case MaterialStream::ProgramOptions::Shader::Type::Resource:
+				//existing string resource
+				break;
+
+			default:
+				THROW_MPP("Unknown MaterialStream::ProgramOptions::Shader::Type", __LINE__, __FILE__, __func__);
 			}
 
-			string fragmentShaderSrc = progOpts.fragmentShader.data;
-			if (progOpts.fragmentShader.isFile)
+			string fragmentShaderSrc;
+			switch (progOpts.fragmentShader.type)
 			{
-				string resName = getName() + "/" + progOpts.fragmentShader.data;
-				fragmentShaderSrc = static_cast<String*>(resourceMgr->getResource(resName).get())->getData();
+			case MaterialStream::ProgramOptions::Shader::Type::String:
+				fragmentShaderSrc = progOpts.fragmentShader.data;
+				break;
+
+			case MaterialStream::ProgramOptions::Shader::Type::File:
+				//load from file
+				break;
+
+			case MaterialStream::ProgramOptions::Shader::Type::Resource:
+				//existing string resource
+				break;
+
+			default:
+				THROW_MPP("Unknown MaterialStream::ProgramOptions::Shader::Type", __LINE__, __FILE__, __func__);
 			}
+
 
 			// Get or create program, either with default shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)

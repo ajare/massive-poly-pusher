@@ -32,9 +32,9 @@ namespace mpp
 	{
 	}
 
-	SamplerParams const& SamplerStream::getParams(uint32_t quality) const
+	SamplerParams const& SamplerStream::getParams() const
 	{
-		return mQualitySettings[quality].params;
+		return mQualitySettings[mQualitySetting].params;
 	}
 
 	uint32_t SamplerStream::createQualitySetting(string const& name)

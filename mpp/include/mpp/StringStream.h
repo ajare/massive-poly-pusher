@@ -8,8 +8,12 @@ namespace mpp
 {
 	class _MPPAPI StringStream : public ResourceStream
 	{
+	protected:
+
 		struct QualitySetting
 		{
+			std::string data, file;
+			bool isFile;
 		};
 
 	protected:
@@ -20,8 +24,8 @@ namespace mpp
 
 		explicit StringStream(ResourceManager* resourceMgr);
 
-		virtual std::string getData() const = 0;
-
 		uint32_t createQualitySetting(std::string const& name);
+
+		std::string const& getString() const;
 	};
 }

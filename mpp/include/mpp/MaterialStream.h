@@ -18,15 +18,25 @@ namespace mpp
 
 		struct ProgramOptions
 		{
+			bool resourceExists{ false };
+
+			// For an existing program resource
+			std::string existingResource;
+			bool isChild{ false };
+
+			// Info for creating new resource
 			struct Shader
 			{
-				bool isFile;
+				enum class Type
+				{
+					String,
+					File,
+					Resource
+				};
+
+				Type type;
 				std::string data;
 			};
-
-			bool resourceExists{ false };
-			std::string existingResource;
-			std::set<std::string> tags;
 
 			bool is2d;
 			mesh::MeshSpecification spec;

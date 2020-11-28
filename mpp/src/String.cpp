@@ -27,7 +27,7 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'StringStream'", __LINE__, __FILE__, __func__);
 		}
 
-		mData = sStr->getData();
+		mData = sStr->getString();
 	}
 
 	/*

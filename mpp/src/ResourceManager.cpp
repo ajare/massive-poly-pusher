@@ -397,6 +397,7 @@ namespace mpp
 			auto createdProgram = mProgramCache.find(fullSource);
 			if (createdProgram != mProgramCache.end())
 			{
+				mResources[name] = createdProgram->second;
 				return createdProgram->second;
 			}
 		}
@@ -754,7 +755,7 @@ namespace mpp
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
 		specName += "_";
-		specName += utils::StringUtils::toString(mProgramCache.size() + 1);
+		specName += utils::StringUtils::toString(++mProgramIdCounter);
 
 		specName += "__";
 

@@ -16,10 +16,6 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileSamplerStream : public mpp::SamplerStream, public FileStream
 		{
-			std::string mFilepath;
-
-			utils::StructuredData mData;
-
 			std::map<std::string, uint32_t> mMinFilters, mMagFilters, mWrapping;
 
 		private:
@@ -40,7 +36,7 @@ namespace mpp
 
 			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath);
 
-			FileSamplerStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
+			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
 		};
 
 	}

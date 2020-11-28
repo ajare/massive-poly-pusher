@@ -25,8 +25,6 @@
     <ClInclude Include="..\..\include\mpp\DebugStackWalker.h" />
     <ClInclude Include="..\..\include\mpp\DefaultShaders.h" />
     <ClInclude Include="..\..\include\mpp\FileDataStream.h" />
-    <ClInclude Include="..\..\include\mpp\FileMaterialStream.h" />
-    <ClInclude Include="..\..\include\mpp\FileStringStream.h" />
     <ClInclude Include="..\..\include\mpp\Font.h" />
     <ClInclude Include="..\..\include\mpp\GLErrorCheck.h" />
     <ClInclude Include="..\..\include\mpp\InternalFont.h" />
@@ -53,6 +51,7 @@
     <ClInclude Include="..\..\include\mpp\ProgrammaticProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticRenderTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticSamplerStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticStringStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureAtlasStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgramStream.h" />
@@ -106,8 +105,6 @@
     <ClCompile Include="..\..\src\CylinderModelStream.cpp" />
     <ClCompile Include="..\..\src\DebugStackWalker.cpp" />
     <ClCompile Include="..\..\src\FileDataStream.cpp" />
-    <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
-    <ClCompile Include="..\..\src\FileStringStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
     <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
     <ClCompile Include="..\..\src\InternalFont.cpp" />
@@ -132,6 +129,7 @@
     <ClCompile Include="..\..\src\ProgrammaticProgramStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticRenderTextureStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticSamplerStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticStringStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureAtlasStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureStream.cpp" />
     <ClCompile Include="..\..\src\ProgramStream.cpp" />
