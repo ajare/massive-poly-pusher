@@ -21,15 +21,14 @@ namespace mpp
 
 		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath)
 			: TextureStream(resourceMgr)
-			, mFilepath(filepath)
-			, mData("") 
+			, FileStream(filepath)
 		{
 			setup();
 		}
 
-		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, utils::StructuredData const& data)
+		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
 			: TextureStream(resourceMgr)
-			, mData(data)
+			, FileStream(filepath, data)
 		{
 			setup();
 		}
@@ -96,7 +95,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported internal format '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported internal format '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -111,7 +110,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -126,7 +125,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -141,7 +140,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported wrap method '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported wrap method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -156,7 +155,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported target '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported target '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -184,7 +183,7 @@ namespace mpp
 					filesystem::path fp(filepath);
 					if (fp.is_relative())
 					{
-						filesystem::path fileFp(mFilepath);
+						filesystem::path fileFp(getFilepath());
 						filepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
 					}
 
@@ -234,30 +233,20 @@ namespace mpp
 
 		void FileTextureStream::loadImpl()
 		{
-			// Get file type from extension
-			if (mFilepath != "")
-			{
-				auto fi = utils::FileSystem::getFile(mFilepath);
-				auto ext = fi.getExtension();
-
-				auto ser = getSerializer(ext);
-
-				ser->loadFromFile(mFilepath);
-				mData = ser->getData();
-			}
+			auto const& data = getStructuredData();
 
 			// Parse data.  Root element should be 'Texture'
-			auto rootName = mData.getName();
+			auto rootName = data.getName();
 
-			if (rootName != "Texture")
+			if (rootName != "Texture" && rootName != "Resource")
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Root element is not 'Texture'.";
+				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Texture' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(mData);
+			parseQualitySetting(data);
 
-			for (auto it = mData.begin(); it != mData.end(); ++it)
+			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
@@ -279,7 +268,7 @@ namespace mpp
 
 			if (mTarget == 0)
 			{
-				string errMsg = "Error loading " + mFilepath + ".  'target' not specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  'target' not specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -287,7 +276,7 @@ namespace mpp
 			{
 				if (qs.source == "")
 				{
-					string errMsg = "Error loading " + mFilepath + ".  'filename' not specified for quality setting.";
+					string errMsg = "Error loading " + getFilepath() + ".  'filename' not specified for quality setting.";
 					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 				}
 				

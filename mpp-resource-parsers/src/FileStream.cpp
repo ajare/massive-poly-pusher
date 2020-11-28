@@ -1,3 +1,7 @@
+#include <fstream>
+
+#include "utils/FileSystem.h"
+
 #include "mpp/resource-parsers/FileStream.h"
 #include "mpp/resource-parsers/XmlSerializer.h"
 
@@ -8,12 +12,21 @@ namespace mpp
 
 		using namespace std;
 
-		FileStream::FileStream()
+		FileStream::FileStream(string const& filepath)
+			: mFilepath(filepath)
+			, mData("")
 		{
 			mFactories[".xml"] = []() {return new XmlSerializer(); };
 		}
 
-		SerializerPtr FileStream::getSerializer(string const& type)
+		FileStream::FileStream(string const& filepath, utils::StructuredData const& data)
+			: mFilepath(filepath)
+			, mData(data)
+		{
+			mFactories[".xml"] = []() {return new XmlSerializer(); };
+		}
+
+		SerializerPtr FileStream::getSerializer(string const& type) const
 		{
 			auto it = mFactories.find(type);
 
@@ -24,6 +37,43 @@ namespace mpp
 			}
 
 			return shared_ptr<Serializer>(it->second());
+		}
+
+		string const& FileStream::getFilepath() const
+		{
+			return mFilepath;
+		}
+
+		utils::StructuredData const& FileStream::getStructuredData() const
+		{
+			if (mData.getName() == "")
+			{
+				auto fi = utils::FileSystem::getFile(getFilepath());
+				auto ext = fi.getExtension();
+
+				auto ser = getSerializer(ext);
+
+				ser->loadFromFile(getFilepath());
+				mData = ser->getData();
+			}
+
+			return mData;
+		}
+
+		string FileStream::readTextFile(string const& filepath) const
+		{
+			string fpath{ filepath };
+
+			// if the filepath is relative, prepend the path of the xml file
+			filesystem::path fp(filepath);
+			if (fp.is_relative())
+			{
+				filesystem::path fileFp(mFilepath);
+				fpath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
+			}
+
+			// Load
+			return utils::FileSystem::readTextFile(fpath);
 		}
 
 	}

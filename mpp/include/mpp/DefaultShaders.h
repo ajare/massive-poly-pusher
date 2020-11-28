@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 /*
  * Default 3d program.
  *
@@ -63,8 +65,8 @@ void main()
 
     vec3 colourContrib = @Uniform(AMBIENT);
 
-	for (int i = 0; i < @Uniform(NUM_LIGHTS); i++)
-	{
+    for (int i = 0; i < @Uniform(NUM_LIGHTS); i++)
+    {
         vec3 lightDir = normalize(@Uniform(LIGHTS[i]).position - @In(FRAGPOSITION));
 
         // Lighting model
@@ -72,7 +74,7 @@ void main()
         float specular = phong(viewDir, normalDir, lightDir);
         
         colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular);
-	}
+    }
 
     vec4 shadedColour = vec4(colourContrib, 1.0) * @In(COLOUR);
 

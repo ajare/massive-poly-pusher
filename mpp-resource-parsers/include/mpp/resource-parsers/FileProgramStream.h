@@ -16,23 +16,40 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileProgramStream : public mpp::ProgramStream, public FileStream
 		{
-			std::string mFilepath;
-
-			utils::StructuredData mData;
+			std::map<std::string, mesh::VertexBufferStorageType> mMeshSpecificationStorage;
+			std::map<std::string, mesh::Primitive::Type>  mMeshSpecificationPrimitive;
+			std::map<std::string, mesh::Vertex::Component> mComponentTypes;
+			std::map<std::string, mesh::Vertex::DataType> mDataTypes;
 
 		private:
 
+			void setup();
+
 			void loadImpl();
 
-			void parseQualitySetting(utils::StructuredData const& data);
+			std::string parseShader(utils::StructuredData const& data);
 
-			std::string readTextFile(std::string const& filepath);
+			void parseMeshSpecificationBufferChannel(utils::StructuredData const& data, mesh::VertexBufferAttributeLayout* layout);
+
+			void parseMeshSpecificationBuffer(utils::StructuredData const& data, mesh::MeshSpecification& meshSpec);
+
+			mesh::Vertex::Component parseMeshSpecificationBufferChannelComponent(std::string const& value);
+
+			mesh::Vertex::DataType parseMeshSpecificationBufferChannelType(std::string const& value);
+
+			mesh::Primitive::Type parseMeshSpecificationPrimitive(std::string const& value);
+
+			mesh::VertexBufferStorageType parseMeshSpecificationStorage(std::string const& value);
+
+			mesh::MeshSpecification parseMeshSpecification(utils::StructuredData const& data);
+			
+			void parseQualitySetting(utils::StructuredData const& data);
 
 		public:
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath);
 
-			FileProgramStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
 		};
 
 	}

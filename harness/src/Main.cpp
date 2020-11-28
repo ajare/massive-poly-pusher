@@ -22,7 +22,6 @@
 #include <mpp/CylinderModelStream.h>
 #include <mpp/SphereModelStream.h>
 #include <mpp/GridModelStream.h>
-#include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
 #include <mpp/QuadBatch.h>
@@ -274,7 +273,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// Marble
 		auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
 
-		meshMaterialStream->setProgram(false, modelSpec, {});
+		//meshMaterialStream->setProgram(false, modelSpec, {});
 
 		meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
 		gResourceManager->declareResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();

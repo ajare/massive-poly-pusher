@@ -16,13 +16,13 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileMaterialStream : public mpp::MaterialStream, public FileStream
 		{
-			std::string mFilepath;
-
-			utils::StructuredData mData;
-
-		private:
-
 			void parseQualitySetting(utils::StructuredData const& data);
+
+			void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms);
+
+			void parseUniformVectorType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms);
+
+			void parseUniformMatrixType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms);
 
 		protected:
 
@@ -32,7 +32,7 @@ namespace mpp
 
 			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath);
 
-			FileMaterialStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
 		};
 
 	}

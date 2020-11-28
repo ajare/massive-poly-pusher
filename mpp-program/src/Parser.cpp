@@ -1195,7 +1195,7 @@ namespace mpp
 			{
 				if (mStages[i].provided())
 				{
-					for (auto const& texture : mStages[i].textures)
+					for (auto const& texture: mStages[i].textures)
 					{
 						textureSet.insert(texture.name);
 					}

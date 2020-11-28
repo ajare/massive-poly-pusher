@@ -21,15 +21,14 @@ namespace mpp
 
 		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, string const& filepath)
 			: SamplerStream(resourceMgr)
-			, mFilepath(filepath)
-			, mData("") 
+			, FileStream(filepath)
 		{
 			setup();
 		}
 
-		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, utils::StructuredData const& data)
+		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
 			: SamplerStream(resourceMgr)
-			, mData(data)
+			, FileStream(filepath, data)
 		{
 			setup();
 		}
@@ -64,7 +63,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -79,7 +78,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -94,7 +93,7 @@ namespace mpp
 			}
 			else
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Unknown/unsupported wrap method '" + value + "' specified.";
+				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported wrap method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -149,30 +148,20 @@ namespace mpp
 
 		void FileSamplerStream::loadImpl()
 		{
-			// Get file type from extension
-			if (mFilepath != "")
-			{
-				auto fi = utils::FileSystem::getFile(mFilepath);
-				auto ext = fi.getExtension();
-
-				auto ser = getSerializer(ext);
-
-				ser->loadFromFile(mFilepath);
-				mData = ser->getData();
-			}
+			auto const& data = getStructuredData();
 
 			// Parse data.  Root element should be 'Sampler'
-			auto rootName = mData.getName();
+			auto rootName = data.getName();
 
-			if (rootName != "Sampler")
+			if (rootName != "Sampler" && rootName != "Resource")
 			{
-				string errMsg = "Error loading " + mFilepath + ".  Root element is not 'Sampler'.";
+				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Sampler' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(mData);
+			parseQualitySetting(data);
 
-			for (auto it = mData.begin(); it != mData.end(); ++it)
+			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());

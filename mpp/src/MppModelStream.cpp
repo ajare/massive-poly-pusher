@@ -4,7 +4,7 @@
 #include "mpp/MppModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
-#include "mpp/FileStringStream.h"
+#include "mpp/ProgrammaticStringStream.h"
 #include "mpp/mesh/ModelSerializer.h"
 #include "mpp/ResourceManager.h"
 
@@ -81,15 +81,13 @@ namespace mpp
 					__LINE__, __FILE__, __func__);
 			}
 
-			bool is2d = matInfo.getPositionType() == mesh::MaterialInformation::PositionType::p2D;
-			auto mStr = new ProgrammaticMaterialStream(
-				resMgr,
-				is2d, 
-				meshSpec, 
-				vertexShader, 
-				vertexShaderIsFile,
-				fragmentShader, 
-				fragmentShaderIsFile);
+			auto mStr = new ProgrammaticMaterialStream(resMgr);
+			
+			mStr->setProgram2d(matInfo.getPositionType() == mesh::MaterialInformation::PositionType::p2D);
+			mStr->setMeshSpecification(meshSpec);
+
+			mStr->setProgramVertexShaderResource(vertexShader);
+			mStr->setProgramFragmentShaderResource(vertexShader);
 
 			// Add program resources if required
 			if (vertexShaderIsFile)
@@ -99,7 +97,8 @@ namespace mpp
 					utils::FileSystem::baseDirectory(mFilename),
 					vertexShader);
 
-				auto strStr = new FileStringStream(resMgr, vertexShaderFilename);
+				auto strStr = new ProgrammaticStringStream(resMgr);
+				strStr->setFile(vertexShaderFilename);
 				mStr->addChild(vertexShader, ResourceStreamPtr(strStr));
 			}
 			if (fragmentShaderIsFile)
@@ -109,7 +108,8 @@ namespace mpp
 					utils::FileSystem::baseDirectory(mFilename),
 					fragmentShader);
 
-				auto strStr = new FileStringStream(resMgr, fragmentShaderFilename);
+				auto strStr = new ProgrammaticStringStream(resMgr);
+				strStr->setFile(fragmentShaderFilename);
 				mStr->addChild(fragmentShader, ResourceStreamPtr(strStr));
 			}
 

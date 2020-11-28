@@ -26,4 +26,9 @@ namespace mpp
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;
 	}
+
+	string const& StringStream::getString() const
+	{
+		return mQualitySettings[mQualitySetting].data;
+	}
 }

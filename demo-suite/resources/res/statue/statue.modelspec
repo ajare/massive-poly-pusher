@@ -35,7 +35,6 @@
 				is named modelname/materialname/filename.
 				-->
 				<Texture binding="TEX1" filename="statue_marble.jpg" />
-				<Texture binding="TEX2" resource="rgba.png" />
 			</Textures>
 			
 			<Uniforms>

@@ -22,7 +22,6 @@
 #include <mpp/CylinderModelStream.h>
 #include <mpp/SphereModelStream.h>
 #include <mpp/GridModelStream.h>
-#include <mpp/FileMaterialStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/MppModelStream.h>
 #include <mpp/StaticLogger.h>
@@ -213,105 +212,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	try
 	{
 		startup();
-
-		//
-		// Load resources
-		//
-		string resLoc = gOptions.resourceLocation;
-
-		/*
-		Loading resources:
-		0. Create a MeshSpecification if needed for program, or programmatic model
-		   - mesh::MeshSpecification modelSpec(mesh::Primitive::Type::Triangles);
-		   - mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout();
-		   - attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-		   - attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
-		   - attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-		   - attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, true);
-		   - modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
-		   - modelSpec.setIndexedVertices(true);
-		1. Create programs
-		2. Create textures
-		   - auto STREAM = loadImage(IMAGE_FILE, false);
-		   - ResourceManager::declareResource(NAME, ResourceStreamPtr(STREAM));
-		3. Create materials
-		   - auto STREAM = new ProgrammaticMaterialStream();
-			 - STREAM->setProgram(PROGRAM_RESOURCE_NAME);
-			 - STREAM->setProgram(<2d | 3d>, MODEL_SPEC, PROGRAM_TAGS);
-		   - STREAM->setTexture(SAMPLER_NAME, TEXTURE_RESOURCE_NAME);
-		   - ResourceManager::declareResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
-		   or:
-		  - FileDataStream FILE_STREAM(MATERIAL_FILE);
-		  - auto STREAM = new FileMaterialStream(FILE_STREAM);
-		  - ResourceManager::declareResource(MATERIAL_NAME, ResourceStreamPtr(STREAM));
-		4. Create models
-		   - auto STREAM = new BoxModelStream(MODEL_SPEC, MATERIAL_RESOURCE_NAME, ...);
-		   - auto MODEL = ResourceManager::declareResource(MODEL_NAME, ResourceStreamPtr(STREAM));
-		5. Load model
-		   - MODEL->load();
-		*/
-
-		//
-		// MeshSpecifications
-		//
-
-		/*
-		MeshSpecifications are composed of vertex attribute layouts.  Generally, you will use one layout, although
-		using multiple is useful when you want to change certain attributes without having to reupload the ones that
-		do not change.  For instance, if you are animating the positions (and normals) on the CPU, but want texcoords
-		and colours to stay the same, it is more efficient to have one layout with position and normal, and one with
-		texcoords and colour.
-		*/
-		mesh::MeshSpecification modelSpec(mesh::Primitive::Type::Triangles);
-
-		mesh::VertexBufferAttributeLayout* attribLayout = modelSpec.createVertexBufferAttributeLayout(false);
-		attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
-		attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-
-		//attribLayout = modelSpec.createVertexBufferAttributeLayout();
-		attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
-
-		modelSpec.setStorageType(mesh::VertexBufferStorageType::Static);
-		modelSpec.setIndexedVertices(true);
-
-		//
-		// Programs
-		//
-
-		/*
-		Programs are composed of templated shaders.  Templating generates version, attrib and uniform
-		information, along with conditionals that affect codepaths.
-
-		You can call ResourceManager::getDefault[2d|3d]Program, passing in a MeshSpecification and flags.  This takes either
-		a set of shaders ready to be templated, or uses the built-in ones.
-
-		Or you can manually create a Program by loading in the shaders from disk, and then creating a Parser, setting the shader
-		source and MeshSpecification.
-
-		Programs, therefore, are specified with a MeshSpecification, and a list of shaders.
-		*/
-
-		//
-		// Textures
-		//
-		
-
-		//
-		// Materials
-		//
-
-		/*
-		Materials consist of a Program, and zero or more Textures.
-		*/
-		//auto meshMaterialStream = new ProgrammaticMaterialStream(gResourceManager);
-		//meshMaterialStream->setProgram(false, modelSpec, {});
-		//meshMaterialStream->setTexture("TEX1", "marble_texture4662.jpg");
-		//gResourceManager->declareResource("Material.Marble", ResourceStreamPtr(meshMaterialStream))->load();
-
-		//FileDataStream fileDataStream(gOptions.resourceLocation + "statue/statue.material");
-		//auto statueMaterialStream = new FileMaterialStream(gResourceManager, fileDataStream);
-		//gResourceManager->declareResource("statue_material", ResourceStreamPtr(statueMaterialStream))->load();
 
 		//
 		// Main loop

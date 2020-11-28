@@ -16,10 +16,6 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileTextureStream : public mpp::TextureStream, public FileStream
 		{
-			std::string mFilepath;
-
-			utils::StructuredData mData;
-
 			std::map<std::string, uint32_t> mInternalFormats, mMinFilters, mMagFilters, mTargets, mWrapping;
 
 		private:
@@ -44,7 +40,7 @@ namespace mpp
 
 			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath);
 
-			FileTextureStream(ResourceManager* resourceMgr, utils::StructuredData const& data);
+			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
 		};
 
 	}
