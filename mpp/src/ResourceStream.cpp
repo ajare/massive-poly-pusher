@@ -201,4 +201,10 @@ namespace mpp
 
 			mChildResourcesLoaded = false;
 		}
-	}}
+	}
+
+	map<string, uint32_t> const& ResourceStream::getQualityNames() const
+	{
+		return mQualityNames;
+	}
+}

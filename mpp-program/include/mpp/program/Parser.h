@@ -101,6 +101,12 @@ namespace mpp
 
 			mesh::MeshSpecification const& getMeshSpecification() const;
 
+			std::string const& getInputVertexSource() const;
+
+			std::string const& getInputGeometrySource() const;
+
+			std::string const& getInputFragmentSource() const;
+
 			std::string const& getGeneratedVertexSource() const;
 
 			std::string const& getGeneratedGeometrySource() const;

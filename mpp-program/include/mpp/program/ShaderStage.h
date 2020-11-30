@@ -24,7 +24,7 @@ namespace mpp
 			};
 
 			Type type;
-			std::string source;
+			std::string inputSource, source;
 			std::string generated;
 			int mainLine{ -1 };
 

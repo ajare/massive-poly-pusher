@@ -165,6 +165,19 @@ namespace mpp
 		mUniformData[name] = ud;
 	}
 
+	void UniformCollection::setUniform(string const& name, program::GLSLType type, size_t count, char* data)
+	{
+		UniformData ud
+		{
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			type,
+			count
+		};
+
+		memcpy(&ud.data, data, 64);
+		mUniformData[name] = ud;
+	}
+
 	void UniformCollection::updateUniform(string const& name, int32_t value)
 	{
 		auto data = mUniformData.find(name)->second.data;

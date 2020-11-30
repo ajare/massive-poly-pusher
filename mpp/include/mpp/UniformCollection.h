@@ -52,6 +52,8 @@ namespace mpp
 
 		void setUniform(std::string const& name, size_t count, float const* values);
 
+		void setUniform(std::string const& name, program::GLSLType type, size_t count, char* data);
+
 		void updateUniform(std::string const& name, int32_t value);
 
 		void updateUniform(std::string const& name, uint32_t value);

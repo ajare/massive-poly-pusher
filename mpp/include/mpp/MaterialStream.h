@@ -42,7 +42,7 @@ namespace mpp
 
 			bool is2d;
 			mesh::MeshSpecification spec;
-			Shader vertexShader, fragmentShader;
+			Shader vertexShader, geometryShader, fragmentShader;
 		};
 
 	protected:

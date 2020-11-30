@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+
 #include "Config.h"
 #include "Vertex.h"
 
@@ -19,7 +20,7 @@ namespace mpp
 				std::string identifier;
 				Vertex::Component component;
 				Vertex::DataType dataType;
-				int paddingBytes;
+				int paddingBytes, padToBoundary; // padToBoundary required for (de)serialization
 				bool normalised;
 
 				int offsetInBytes;

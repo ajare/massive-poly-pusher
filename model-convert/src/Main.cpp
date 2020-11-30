@@ -73,6 +73,8 @@ Materials specification
 
 #include "utils/FileSystem.h"
 
+#include <mpp/ResourceStreamSerializer.h>
+
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/ModelSerializer.h>
 
@@ -191,6 +193,8 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	ModelspecStream mStream(specFile);
 	mStream.load();
 
+	auto resSer = make_shared<mpp::ResourceStreamSerializer>(nullptr);
+
 	uint32_t maxVerticesPerMesh{ ~0u };
 	AssImpModelLoader loader(inFile, mStream.getMeshSpecification(), maxVerticesPerMesh, true);
 
@@ -203,6 +207,10 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	// Save file
 	ModelSerializer fileSaver;
 
+	// Materials
+	//resSer.serialize(mStream)
+
+	/*
 	auto const& materials = mStream.getMaterials();
 	for (auto const& kvp: materials)
 	{
@@ -218,6 +226,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 
 		fileSaver.addMaterial(name, mi);
 	}
+	*/
 
 	int meshCount = loader.getNumMeshDefinitions();
 	fileSaver.setMeshCount(meshCount);
