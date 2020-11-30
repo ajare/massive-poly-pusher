@@ -1149,6 +1149,16 @@ namespace mpp
 			generateShader(ShaderStage::Type::Fragment);
 		}
 
+		ShaderStage const& Parser::getStage(uint32_t index) const
+		{
+			return mStages[index];
+		}
+
+		mesh::MeshSpecification const& Parser::getMeshSpecification() const
+		{
+			return mSpecification;
+		}
+
 		string const& Parser::getGeneratedVertexSource() const
 		{
 			return mStages[(int)ShaderStage::Type::Vertex].generated;

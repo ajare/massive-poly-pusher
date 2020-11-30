@@ -12,16 +12,34 @@ namespace mpp
 {
 	class _MPPAPI ProgramStream : public ResourceStream
 	{
+		friend class ResourceStreamSerializer;
+
+	public:
+
+		struct Shader
+		{
+			enum class Type
+			{
+				Default,
+				File,
+				Resource
+			};
+
+			Type type{ Type::Default };
+			std::string source, data;
+		};
+
 	protected:
 
 		struct QualitySetting
 		{
 			std::shared_ptr<program::Parser> parser;
+			Shader vertexShader, geometryShader, fragmentShader;
 		};
 
 	private:
 
-		std::string mVertexSource, mFragmentSource;
+		std::string mVertexSource, mGeometrySource, mFragmentSource;
 
 	protected:
 
@@ -35,6 +53,8 @@ namespace mpp
 
 		void setVertexSource(std::string const& src);
 
+		void setGeometrySource(std::string const& src);
+
 		void setFragmentSource(std::string const& src);
 
 	public:
@@ -43,7 +63,15 @@ namespace mpp
 
 		std::string const& getVertexSource() const;
 
+		std::string const& getGeometrySource() const;
+
 		std::string const& getFragmentSource() const;
+
+		Shader const& getVertexShader() const;
+
+		Shader const& getGeometryShader() const;
+
+		Shader const& getFragmentShader() const;
 
 		std::string getConcatenatedSource();
 

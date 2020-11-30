@@ -45,6 +45,9 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileStringStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc">
@@ -74,6 +77,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\FileStringStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\MeshSpecificationParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

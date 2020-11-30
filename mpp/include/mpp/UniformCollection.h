@@ -16,6 +16,8 @@ namespace mpp
 {
 	class _MPPAPI UniformCollection
 	{
+	public:
+
 		struct UniformData
 		{
 			std::string name;
@@ -27,6 +29,10 @@ namespace mpp
 		std::map<std::string, UniformData> mUniformData;
 
 	public:
+
+		size_t getNumUniforms() const;
+
+		std::map<std::string, UniformData> const& getUniformData() const;
 
 		void setUniform(std::string const& name, int32_t value);
 

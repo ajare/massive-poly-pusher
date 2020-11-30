@@ -24,6 +24,9 @@
     <ClInclude Include="..\..\include\mpp\mesh-specification-parser\SpecificationParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\mesh-specification-parser\ModelspecStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc">
@@ -35,6 +38,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\SpecificationParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ModelspecStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

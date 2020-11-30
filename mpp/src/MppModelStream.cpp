@@ -47,8 +47,26 @@ namespace mpp
 			auto const& matInfo = reader.getMaterialByMeshId(i);
 			auto const& meshSpec = reader.getMeshSpecificationByMeshId(i);
 
-			// Create program stream based on MeshSpec and shaders, or by
-			// loading files
+			// Create material resource, including program and texture child resources
+			// if required.
+
+			// If program is an existing resource
+			// ...
+
+			// Else if program needs to be created as a child
+			// ...
+
+			// Else if we're using a default program
+			// ...
+			
+			// For each texture, is it an existing resource?
+			// ...
+
+			// If not, create it as a child
+			// ...
+
+
+			// Create program stream based on MeshSpec and shaders, or by loading files
 			bool vertexShaderIsFile, fragmentShaderIsFile;
 			bool foundVertexShader{ false }, foundFragmentShader{ false };
 			auto const& shaders = matInfo.getShaders();
@@ -87,7 +105,7 @@ namespace mpp
 			mStr->setMeshSpecification(meshSpec);
 
 			mStr->setProgramVertexShaderResource(vertexShader);
-			mStr->setProgramFragmentShaderResource(vertexShader);
+			mStr->setProgramFragmentShaderResource(fragmentShader);
 
 			// Add program resources if required
 			if (vertexShaderIsFile)

@@ -21,6 +21,17 @@ using namespace std;
 namespace mpp
 {
 
+
+	size_t UniformCollection::getNumUniforms() const
+	{
+		return mUniformData.size();
+	}
+
+	map<std::string, UniformCollection::UniformData> const& UniformCollection::getUniformData() const
+	{
+		return mUniformData;
+	}
+
 	void UniformCollection::setUniform(string const& name, int32_t value)
 	{
 		UniformData ud

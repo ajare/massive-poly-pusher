@@ -63,7 +63,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;MPP_MESH_SPECIFICATION_PARSER_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp\3rd party\include;..\..\..\mpp-mesh\include;..\..\..\mpp-mesh-specification-parser\include;..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp\include;..\..\..\mpp-mesh\include;..\..\..\mpp-program\include;..\..\..\mpp-mesh-specification-parser\include;..\..\..\mpp-resource-parsers\include;..\..\..\mpp\3rd party\include;..\..\..\ext\utils\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -71,8 +71,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MppMeshd.lib;fmtd.lib;Utilsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Utilsd.lib;MassivePolyPusherd.lib;MppMeshd.lib;MppResourceParsersd.lib;fmtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -88,7 +88,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;MPP_MESH_SPECIFICATION_PARSER_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp\3rd party\include;..\..\..\mpp-mesh\include;..\..\..\mpp-mesh-specification-parser\include;..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp\include;..\..\..\mpp-mesh\include;..\..\..\mpp-program\include;..\..\..\mpp-mesh-specification-parser\include;..\..\..\mpp-resource-parsers\include;..\..\..\mpp\3rd party\include;..\..\..\ext\utils\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -97,8 +97,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MppMesh.lib;fmt.lib;Utils.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Utils.lib;MassivePolyPusher.lib;MppMesh.lib;MppResourceParsers.lib;fmt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -107,6 +107,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\mesh-specification-parser\Config.h" />
+    <ClInclude Include="..\..\include\mpp\mesh-specification-parser\ModelspecStream.h" />
     <ClInclude Include="..\..\include\mpp\mesh-specification-parser\ProgramInformation.h" />
     <ClInclude Include="..\..\include\mpp\mesh-specification-parser\SpecificationParser.h" />
   </ItemGroup>
@@ -114,6 +115,7 @@
     <ResourceCompile Include="..\version\Version.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\ModelspecStream.cpp" />
     <ClCompile Include="..\..\src\ProgramInformation.cpp" />
     <ClCompile Include="..\..\src\SpecificationParser.cpp" />
   </ItemGroup>

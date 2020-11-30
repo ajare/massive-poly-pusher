@@ -29,7 +29,7 @@ if not exist %TargetBinDir% mkdir %TargetBinDir%
 copy /Y "%Root%\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
 @rem Copy mpp
-copy /Y "%Root%\..\mpp\\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
+copy /Y "%Root%\..\mpp\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 copy /Y "%Root%\..\mpp\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
 @rem Copy mpp-mesh

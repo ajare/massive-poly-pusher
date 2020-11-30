@@ -46,6 +46,7 @@
 				<filename>electbubbles.jpg</filename>
 				<minFilter>LINEAR</minFilter>
 				<magFilter>LINEAR</magFilter>
+				<sampler>Default.Sampler</sampler>
 			</Resource>
 		</Texture>
 	</Textures>

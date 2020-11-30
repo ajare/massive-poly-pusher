@@ -24,7 +24,7 @@ namespace mpp
 
 		private:
 
-			virtual void parseQualitySetting(utils::StructuredData const& data) = 0;
+			virtual void parseQualitySetting(utils::StructuredData const& data) {};
 
 		protected:
 

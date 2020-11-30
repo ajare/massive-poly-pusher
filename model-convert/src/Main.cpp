@@ -78,6 +78,7 @@ Materials specification
 
 #include <mpp/mesh-specification-parser/SpecificationParser.h>
 #include <mpp/mesh-specification-parser/ProgramInformation.h>
+#include <mpp/mesh-specification-parser/ModelspecStream.h>
 
 #include "AssImpModelLoader.h"
 
@@ -187,13 +188,11 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 {
 	using namespace mpp::mesh_specification_parser;
 
-	SpecificationParser parser(specFile);
+	ModelspecStream mStream(specFile);
+	mStream.load();
 
-	uint32_t maxVerticesPerMesh;
-	MeshSpecification meshSpec = parser.parseMeshSpecification(maxVerticesPerMesh);
-	map<string, mpp::mesh::MaterialInformation> materialInfo = parser.parseMaterialInformation();
-
-	AssImpModelLoader loader(inFile, meshSpec, maxVerticesPerMesh, true);
+	uint32_t maxVerticesPerMesh{ ~0u };
+	AssImpModelLoader loader(inFile, mStream.getMeshSpecification(), maxVerticesPerMesh, true);
 
 	cout << "Reading: " << inFile << endl;
 	cout << "Writing: " << outFile << ", " << matFile << endl;
@@ -204,9 +203,20 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	// Save file
 	ModelSerializer fileSaver;
 
-	for (auto const& matInfo: materialInfo)
+	auto const& materials = mStream.getMaterials();
+	for (auto const& kvp: materials)
 	{
-		fileSaver.addMaterial(matInfo.first, matInfo.second);
+		auto const& name = kvp.first;
+		auto const& material = kvp.second;
+
+		MaterialInformation mi;
+
+		mi.setPositionType(material.program.is2d ? mpp::mesh::MaterialInformation::PositionType::p2D :
+			mpp::mesh::MaterialInformation::PositionType::p3D);
+
+		//mi.
+
+		fileSaver.addMaterial(name, mi);
 	}
 
 	int meshCount = loader.getNumMeshDefinitions();
@@ -216,7 +226,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	{
 		MeshDefinition* meshDef = loader.getMeshDefinition(i);
 
-		fileSaver.setMeshSpecification(i, meshSpec);
+		fileSaver.setMeshSpecification(i, mStream.getMeshSpecification());
 		fileSaver.setName(i, meshDef->getName());
 		fileSaver.setMaterial(i, meshDef->getMaterial());
 		fileSaver.setPrimitiveType(i, meshDef->getPrimitiveType());

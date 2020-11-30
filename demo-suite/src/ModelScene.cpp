@@ -357,13 +357,6 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	createSharedTextures(options);
 
-	// Load MppModel
-	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
-	auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
-	statue->load();
-	
-	mModels.push_back(mppScene->addModel(statue));
-
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
 	createGridMaterial(gridMeshSpec, options);
@@ -419,6 +412,13 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.push_back(mppScene->addModel(torus));
 	mModels.back()->translate(glm::vec3(0, 280, 0));
 
+	// Load MppModel
+	//auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
+	//auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
+	//statue->load();
+
+	//mModels.push_back(mppScene->addModel(statue));
+
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
 	renderSystem->setLightCount(1);
@@ -445,7 +445,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mTotalTime += frameTime;
 
 	// Rotate sphere
-	auto& sphereModel = mModels[2];
+	auto& sphereModel = mModels[1];
 
 	float speed = 1.5f;
 	sphereModel->rotateOrigin(-speed * frameTime, glm::vec3(0, 1, 0));
@@ -453,11 +453,11 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate boxes
 	auto a1 = glm::rotateX(glm::vec3(0, 1, 0), mTotalTime);
 	auto a2 = glm::rotateZ(glm::vec3(0, 1, 0), mTotalTime);
-	mModels[5]->rotateSelf(2 * frameTime, a1);
-	mModels[6]->rotateSelf(-2 * frameTime, a2);
+	mModels[4]->rotateSelf(2 * frameTime, a1);
+	mModels[5]->rotateSelf(-2 * frameTime, a2);
 
 	// Rotate torus
-	auto& torusModel = mModels[7];
+	auto& torusModel = mModels[6];
 	torusModel->rotateOrigin(speed * frameTime, glm::vec3(0, 1, 0));
 
 	// Lighting

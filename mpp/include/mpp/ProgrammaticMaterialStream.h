@@ -30,13 +30,9 @@ namespace mpp
 
 		void setProgramVertexShaderFile(std::string const& file, uint32_t quality = 0);
 
-		void setProgramVertexShaderString(std::string const& data, uint32_t quality = 0);
-
 		void setProgramVertexShaderResource(std::string const& resource, uint32_t quality = 0);
 
 		void setProgramFragmentShaderFile(std::string const& file, uint32_t quality = 0);
-
-		void setProgramFragmentShaderString(std::string const& data, uint32_t quality = 0);
 
 		void setProgramFragmentShaderResource(std::string const& resource, uint32_t quality = 0);
 

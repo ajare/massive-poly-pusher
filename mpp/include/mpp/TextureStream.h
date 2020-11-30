@@ -16,6 +16,8 @@ namespace mpp
 
 	class _MPPAPI TextureStream : public ResourceStream
 	{
+		friend class ResourceStreamSerializer;
+
 	public:
 
 		struct Tile

@@ -14,6 +14,8 @@ namespace mpp
 {
 	class _MPPAPI MaterialStream : public ResourceStream
 	{
+		friend class ResourceStreamSerializer;
+
 	public:
 
 		struct ProgramOptions
@@ -29,12 +31,12 @@ namespace mpp
 			{
 				enum class Type
 				{
-					String,
+					Default,
 					File,
 					Resource
 				};
 
-				Type type;
+				Type type{ Type::Default };
 				std::string data;
 			};
 
