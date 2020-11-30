@@ -76,7 +76,7 @@ namespace mpp
 				THROW_MPP_MESH(Vertex::getDataTypeName(dataType) + " vertex attributes must have 4 components.", __LINE__, __FILE__, __func__);
 			}
 
-			// TODO: check caps to ensure GL_MAX_VERTEX_ATTRIBS and  GL_MAX_VERTEX_ATTRIB_STRIDE
+			// TODO: check caps to ensure GL_MAX_VERTEX_ATTRIBS and GL_MAX_VERTEX_ATTRIB_STRIDE
 			// ...
 
 			// Add attrib
@@ -86,6 +86,7 @@ namespace mpp
 			attrib.identifier = identifier;
 			attrib.component = component;
 			attrib.dataType = dataType;
+			attrib.padToBoundary = padToBoundary;
 			attrib.normalised = normalised;
 
 			if (padToBoundary < 2)

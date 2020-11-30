@@ -91,6 +91,25 @@ namespace mpp
 				THROW_MPP("Unknown MaterialStream::ProgramOptions::Shader::Type", __LINE__, __FILE__, __func__);
 			}
 
+			string geometryShaderSrc;
+			switch (progOpts.geometryShader.type)
+			{
+			case MaterialStream::ProgramOptions::Shader::Type::Default:
+				geometryShaderSrc = "";
+				break;
+
+			case MaterialStream::ProgramOptions::Shader::Type::File:
+				geometryShaderSrc = utils::FileSystem::readTextFile(progOpts.geometryShader.data);
+				break;
+
+			case MaterialStream::ProgramOptions::Shader::Type::Resource:
+				geometryShaderSrc = dynamic_cast<String*>(getResourceManager()->getResource(progOpts.geometryShader.data).get())->getData();
+				break;
+
+			default:
+				THROW_MPP("Unknown MaterialStream::ProgramOptions::Shader::Type", __LINE__, __FILE__, __func__);
+			}
+
 			string fragmentShaderSrc;
 			switch (progOpts.fragmentShader.type)
 			{

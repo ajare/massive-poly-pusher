@@ -85,6 +85,7 @@ namespace mpp
 									programRes->load(0);
 
 									auto const& vertexShader = programRes->getVertexShader();
+									auto const& geometryShader = programRes->getGeometryShader();
 									auto const& fragmentShader = programRes->getFragmentShader();
 
 									mat.program.vertexShader.data = vertexShader.data;
@@ -100,6 +101,22 @@ namespace mpp
 
 									case mpp::ProgramStream::Shader::Type::Resource:
 										mat.program.vertexShader.type = ProgramOptions::Shader::Type::Resource;
+										break;
+									}
+
+									mat.program.geometryShader.data = geometryShader.data;
+									switch (geometryShader.type)
+									{
+									case mpp::ProgramStream::Shader::Type::Default:
+										mat.program.geometryShader.type = ProgramOptions::Shader::Type::Default;
+										break;
+
+									case mpp::ProgramStream::Shader::Type::File:
+										mat.program.geometryShader.type = ProgramOptions::Shader::Type::File;
+										break;
+
+									case mpp::ProgramStream::Shader::Type::Resource:
+										mat.program.geometryShader.type = ProgramOptions::Shader::Type::Resource;
 										break;
 									}
 
@@ -121,7 +138,6 @@ namespace mpp
 
 								}
 							}
-
 
 							mat.uniforms = mstream.getUniforms();
 							mat.textures = mstream.getTextures();

@@ -55,6 +55,22 @@ namespace mpp
 		qs.program.vertexShader.data = resource;
 	}
 
+	void ProgrammaticMaterialStream::setProgramGeometryShaderFile(string const& file, uint32_t quality)
+	{
+		auto& qs = mQualitySettings[quality];
+
+		qs.program.geometryShader.type = ProgramOptions::Shader::Type::File;
+		qs.program.geometryShader.data = file;
+	}
+
+	void ProgrammaticMaterialStream::setProgramGeometryShaderResource(string const& resource, uint32_t quality)
+	{
+		auto& qs = mQualitySettings[quality];
+
+		qs.program.geometryShader.type = ProgramOptions::Shader::Type::Resource;
+		qs.program.geometryShader.data = resource;
+	}
+
 	void ProgrammaticMaterialStream::setProgramFragmentShaderFile(string const& file, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
@@ -90,6 +106,13 @@ namespace mpp
 		auto& qs = mQualitySettings[quality];
 
 		qs.textures["TEX1"] = make_pair("__mpp_tex_none__", false);
+	}
+
+	void ProgrammaticMaterialStream::setUniforms(UniformCollection const& uniforms, uint32_t quality)
+	{
+		auto& qs = mQualitySettings[quality];
+
+		qs.uniforms = uniforms;
 	}
 
 	void ProgrammaticMaterialStream::setUniform(string const& name, int32_t value, uint32_t quality)

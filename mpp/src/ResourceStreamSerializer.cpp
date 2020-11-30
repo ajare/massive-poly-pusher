@@ -6,11 +6,21 @@
 #include "mpp/SamplerStream.h"
 #include "mpp/StringStream.h"
 #include "mpp/TextureStream.h"
+#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticProgramStream.h"
+#include "mpp/ProgrammaticSamplerStream.h"
+#include "mpp/ProgrammaticStringStream.h"
+#include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/MppException.h"
 
 namespace mpp
 {
 	using namespace std;
+
+	ResourceStreamSerializer::ResourceStreamSerializer(ResourceManager* resourceMgr)
+		: mResourceMgr(resourceMgr)
+	{
+	}
 
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, string const& filename)
 	{
@@ -36,7 +46,11 @@ namespace mpp
 	{
 		size_t len = value.length();
 		fp.write((char const*)&len, sizeof(len));
-		fp.write(value.c_str(), len);
+
+		if (len > 0)
+		{
+			fp.write(value.c_str(), len);
+		}
 	}
 
 	void ResourceStreamSerializer::writeValue(int32_t value, ofstream& fp)
@@ -72,24 +86,19 @@ namespace mpp
 		{
 			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
 
+			writeValue(layout.isStatic(), fp);
+
 			// Write attributes
 			writeValue(layout.getNumAttributes(), fp);
 			for (int j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 
-				writeValue(attrib.attributeId, fp);
-				writeValue(attrib.identifier, fp);
 				writeValue((uint32_t)attrib.component, fp);
 				writeValue((uint32_t)attrib.dataType, fp);
-				writeValue(attrib.paddingBytes, fp);
+				writeValue(attrib.padToBoundary, fp);
 				writeValue(attrib.normalised, fp);
-				writeValue(attrib.offsetInBytes, fp);
 			}
-
-			writeValue(layout.getVertexSize(), fp);
-			writeValue(layout.getBaseId(), fp);
-			writeValue(layout.isStatic(), fp);
 		}
 	}
 
@@ -101,10 +110,7 @@ namespace mpp
 
 		for (auto const& kvp: uniformData)
 		{
-			auto const& name = kvp.first;
 			auto const& data = kvp.second;
-
-			writeValue(name, fp);
 
 			writeValue(data.name, fp);
 			writeValue((uint32_t)data.type, fp);
@@ -114,80 +120,19 @@ namespace mpp
 		}
 	}
 
-	void ResourceStreamSerializer::writeGLSLDecl(program::GLSLTypeDecl decl, ofstream& fp)
-	{
-		writeValue(decl.name, fp);
-		writeValue((uint32_t)decl.type, fp);
-		writeValue((uint32_t)decl.dataType, fp);
-		writeValue(decl.size[0], fp);
-		writeValue(decl.size[1], fp);
-		writeValue(decl.isFloatingPoint, fp);
-		writeValue(decl.isSigned, fp);
-	}
-
 	void ResourceStreamSerializer::writeParser(program::Parser const& parser, ofstream& fp)
 	{
 		writeValue(parser.getName(), fp);
 
 		// Shader stages
-		writeValue((uint32_t)program::ShaderStage::Type::NumStages, fp);
 		for (uint32_t i = 0; i < (uint32_t)program::ShaderStage::Type::NumStages; ++i)
 		{
 			auto const& stage = parser.getStage(i);
 
-			writeValue((uint32_t)stage.type, fp);
-			writeValue(stage.source, fp);
-			writeValue(stage.generated, fp);
-			writeValue(stage.mainLine, fp);
-
-			// Attributes
-			writeValue(stage.inAttribs.size(), fp);
-			for (auto const& attrib: stage.inAttribs)
-			{
-				writeValue(attrib.name, fp);
-				writeGLSLDecl(attrib.type, fp);
-				writeValue(attrib.normalised, fp);
-			}
-
-			writeValue(stage.outAttribs.size(), fp);
-			for (auto const& attrib: stage.outAttribs)
-			{
-				writeValue(attrib.name, fp);
-				writeGLSLDecl(attrib.type, fp);
-				writeValue(attrib.normalised, fp);
-			}
-
-			// Uniforms
-			writeValue(stage.uniforms.size(), fp);
-			for (auto const& uniform: stage.uniforms)
-			{
-				writeValue(uniform.qualifier, fp);
-				writeValue(uniform.name, fp);
-				writeGLSLDecl(uniform.type, fp);
-			}
-
-			// Textures
-			writeValue(stage.textures.size(), fp);
-			for (auto const& texture: stage.textures)
-			{
-				writeValue(texture.name, fp);
-				writeGLSLDecl(texture.type, fp);
-			}
+			writeValue(stage.inputSource, fp);
 		}
 
 		writeMeshSpecification(parser.getMeshSpecification(), fp);
-
-		writeValue(parser.getErrors().size(), fp);
-		for (auto const& error: parser.getErrors())
-		{
-			writeValue(error, fp);
-		}
-
-		writeValue(parser.getWarnings().size(), fp);
-		for (auto const& error: parser.getWarnings())
-		{
-			writeValue(error, fp);
-		}
 	}
 
 	void ResourceStreamSerializer::writeMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
@@ -208,8 +153,15 @@ namespace mpp
 
 			writeMeshSpecification(setting.program.spec, fp);
 
+			// Shaders
 			writeValue((uint32_t)setting.program.vertexShader.type, fp);
 			writeValue(setting.program.vertexShader.data, fp);
+
+			writeValue((uint32_t)setting.program.geometryShader.type, fp);
+			writeValue(setting.program.geometryShader.data, fp);
+
+			writeValue((uint32_t)setting.program.fragmentShader.type, fp);
+			writeValue(setting.program.fragmentShader.data, fp);
 
 			// Uniforms
 			writeUniformCollection(setting.uniforms, fp);
@@ -317,17 +269,6 @@ namespace mpp
 			writeValue(kvp.second.v[1], fp);
 		}
 
-		// Write texture data
-		auto dataSize = stream->mData.width * stream->mData.height * stream->mData.depth * stream->mData.bitsPerPixel / 8;
-		writeValue(dataSize, fp);
-		fp.write((char const*)stream->mData.data, dataSize);
-		writeValue(stream->mData.width, fp);
-		writeValue(stream->mData.height, fp);
-		writeValue(stream->mData.depth, fp);
-		writeValue(stream->mData.bitsPerPixel, fp);
-		writeValue(stream->mData.pixelFormat, fp);
-		writeValue(stream->mData.dataType, fp);
-
 		// Write number of quality settings
 		writeValue(stream->mQualitySettings.size(), fp);
 
@@ -355,6 +296,10 @@ namespace mpp
 
 	void ResourceStreamSerializer::writeStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
+		// Write type
+		auto const& streamType = resourceStream->getType();
+		writeValue(streamType, fp);
+
 		// Write children
 		auto const& children = resourceStream->getChildren();
 
@@ -367,9 +312,6 @@ namespace mpp
 			writeValue(name, fp);
 			writeStream(child, fp);
 		}
-
-		// Write resource
-		auto const& streamType = resourceStream->getType();
 
 		// Write number of quality settings
 		writeValue(resourceStream->mQualityNames.size(), fp);
@@ -410,5 +352,420 @@ namespace mpp
 			string errMsg = "Cannot serialize ResourceStream of type '" + streamType + "'.";
 			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
+	}
+
+	string ResourceStreamSerializer::readString(ifstream& fp)
+	{
+		size_t len;
+		fp.read((char*)&len, sizeof(len));
+
+		if (len > 0)
+		{
+			char* buffer = new char[len + 1];
+			fp.read(buffer, len);
+
+			buffer[len] = '\0';
+
+			string value(buffer);
+			delete[] buffer;
+
+			return value;
+		}
+		else
+		{
+			return "";
+		}
+	}
+
+	int32_t ResourceStreamSerializer::readInt(ifstream& fp)
+	{
+		int32_t value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	uint32_t ResourceStreamSerializer::readUInt(ifstream& fp)
+	{
+		uint32_t value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	float ResourceStreamSerializer::readFloat(ifstream& fp)
+	{
+		float value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	bool ResourceStreamSerializer::readBool(ifstream& fp)
+	{
+		char value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value != 0;
+	}
+
+	mesh::MeshSpecification ResourceStreamSerializer::readMeshSpecification(ifstream& fp)
+	{
+		mesh::MeshSpecification meshSpec;
+
+		auto primitiveType = static_cast<mesh::Primitive::Type>(readUInt(fp));
+		meshSpec.setPrimitiveType(primitiveType);
+
+		auto storageType = static_cast<mesh::VertexBufferStorageType>(readUInt(fp));
+		meshSpec.setStorageType(storageType);
+
+		auto indexed = readBool(fp);
+		meshSpec.setIndexedVertices(indexed);
+
+		size_t numLayouts = readUInt(fp);
+		for (size_t i = 0; i < numLayouts; ++i)
+		{
+			auto isStatic = readBool(fp);
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout(isStatic);
+
+			size_t numAttribs = readUInt(fp);
+			for (size_t j = 0; j < numAttribs; ++j)
+			{
+				auto component = static_cast<mesh::Vertex::Component>(readUInt(fp));
+				auto datatype = static_cast<mesh::Vertex::DataType>(readUInt(fp));
+				auto padToBoundary = readInt(fp);
+				auto normalised = readBool(fp);
+
+				// Need to sort out paddingBytes
+				layout->createAttribute(component, datatype, normalised, padToBoundary);
+			}
+		}
+
+		return meshSpec;
+	}
+
+	UniformCollection ResourceStreamSerializer::readUniformCollection(ifstream& fp)
+	{
+		UniformCollection uniforms;
+
+		size_t numUniforms = readUInt(fp);
+		for (size_t i = 0; i < numUniforms; ++i)
+		{
+			string name = readString(fp);
+			auto type = static_cast<program::GLSLType>(readUInt(fp));
+			auto size = readUInt(fp);
+
+			char data[64];
+			fp.read(data, 64);
+
+			uniforms.setUniform(name, type, size, data);
+		}
+
+		return uniforms;
+	}
+
+	shared_ptr<program::Parser> ResourceStreamSerializer::readParser(ifstream& fp)
+	{
+		auto name = readString(fp);
+
+		auto parser = make_shared<program::Parser>(name);
+
+		// Shader stages
+		for (uint32_t i = 0; i < (uint32_t)program::ShaderStage::Type::NumStages; ++i)
+		{
+			auto source = readString(fp);
+			
+			switch (i)
+			{
+			case (uint32_t)program::ShaderStage::Type::Vertex:
+				parser->setVertexSource(source);
+				break;
+
+			case (uint32_t)program::ShaderStage::Type::Geometry:
+				parser->setGeometrySource(source);
+				break;
+
+			case (uint32_t)program::ShaderStage::Type::Fragment:
+				parser->setFragmentSource(source);
+				break;
+			}
+		}
+
+		auto meshSpec = readMeshSpecification(fp);
+		parser->setMeshSpecification(meshSpec);
+
+		return parser;
+	}
+
+	void ResourceStreamSerializer::readMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	{
+		auto pStream = static_cast<ProgrammaticMaterialStream*>(resourceStream.get());
+
+		// Read number of quality settings
+		size_t numSettings = readUInt(fp);
+
+		// Read quality settings
+		for (size_t i = 0; i < numSettings; ++i)
+		{
+			string name = qualityNames.at(i);
+			auto quality = pStream->createQualitySetting(name);
+
+			// Program options
+			auto& qs = pStream->mQualitySettings[quality];
+
+			qs.program.resourceExists = readBool(fp);
+			qs.program.existingResource = readString(fp);
+			qs.program.isChild = readBool(fp);
+			qs.program.is2d = readBool(fp);
+
+			// MeshSpecification
+			auto meshSpec = readMeshSpecification(fp);
+			qs.program.spec = meshSpec;
+
+			// Shaders
+			qs.program.vertexShader.type = static_cast<MaterialStream::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.program.vertexShader.data = readString(fp);
+
+			qs.program.geometryShader.type = static_cast<MaterialStream::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.program.geometryShader.data = readString(fp);
+
+			qs.program.fragmentShader.type = static_cast<MaterialStream::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.program.fragmentShader.data = readString(fp);
+
+			// Uniforms
+			qs.uniforms = readUniformCollection(fp);
+
+			// Textures
+			size_t numTextures = readUInt(fp);
+			for (size_t j = 0; j < numTextures; ++j)
+			{
+				auto sampler = readString(fp);
+				auto resource = readString(fp);
+				auto exists = readBool(fp);
+
+				qs.textures[sampler] = make_pair(resource, exists);
+			}
+		}
+	}
+
+	void ResourceStreamSerializer::readProgramStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	{
+		auto pStream = static_cast<ProgrammaticProgramStream*>(resourceStream.get());
+
+		// Read source
+		auto vertexSource = readString(fp);
+		auto geometrySource = readString(fp);
+		auto fragmentSource = readString(fp);
+
+		// Read number of quality settings
+		size_t numSettings = readUInt(fp);
+
+		// Read quality settings
+		for (size_t i = 0; i < numSettings; ++i)
+		{
+			string name = qualityNames.at(i);
+			auto quality = pStream->createQualitySetting(name);
+
+			auto& qs = pStream->mQualitySettings[quality];
+
+			qs.parser = readParser(fp);
+
+			qs.vertexShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
+			qs.vertexShader.source = readString(fp);
+			qs.vertexShader.data = readString(fp);
+
+			qs.geometryShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
+			qs.geometryShader.source = readString(fp);
+			qs.geometryShader.data = readString(fp);
+
+			qs.fragmentShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
+			qs.fragmentShader.source = readString(fp);
+			qs.fragmentShader.data = readString(fp);
+		}
+
+		auto numAttribs = readUInt(fp);
+		for (size_t i = 0; i < numAttribs; ++i)
+		{
+			pStream->mAttribs.insert(readString(fp));
+		}
+	}
+
+	void ResourceStreamSerializer::readSamplerStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	{
+		auto pStream = static_cast<ProgrammaticSamplerStream*>(resourceStream.get());
+
+		// Read number of quality settings
+		size_t numSettings = readUInt(fp);
+
+		// Read quality settings
+		for (size_t i = 0; i < numSettings; ++i)
+		{
+			string name = qualityNames.at(i);
+			auto quality = pStream->createQualitySetting(name);
+
+			auto& qs = pStream->mQualitySettings.at(quality);
+
+			qs.params.minFilter = readUInt(fp);
+			qs.params.magFilter = readUInt(fp);
+			qs.params.wrap = readUInt(fp);
+			qs.params.lodMinLevel = readFloat(fp);
+			qs.params.lodMaxLevel = readFloat(fp);
+			qs.params.lodBias = readFloat(fp);
+			qs.params.maxAnisotropy = readFloat(fp);
+		}
+	}
+
+	void ResourceStreamSerializer::readStringStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	{
+		auto pStream = static_cast<ProgrammaticStringStream*>(resourceStream.get());
+
+		// Read number of quality settings
+		size_t numSettings = readUInt(fp);
+
+		// Read quality settings
+		for (size_t i = 0; i < numSettings; ++i)
+		{
+			string name = qualityNames.at(i);
+			auto quality = pStream->createQualitySetting(name);
+
+			auto& qs = pStream->mQualitySettings.at(quality);
+
+			qs.data = readString(fp);
+			qs.file = readString(fp);
+			qs.isFile = readBool(fp);
+		}
+	}
+
+	void ResourceStreamSerializer::readTextureStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	{
+		auto pStream = static_cast<ProgrammaticTextureStream*>(resourceStream.get());
+
+		// Write tiles
+		size_t numTiles = readUInt(fp);
+		for (size_t i = 0; i < numTiles; ++i)
+		{
+			string tileName = readString(fp);
+			float u0 = readFloat(fp);
+			float u1 = readFloat(fp);
+			float v0 = readFloat(fp);
+			float v1 = readFloat(fp);
+
+			TextureStream::Tile tile
+			{
+				{ u0, u1 }, { v0, v1 }
+			};
+
+			pStream->mTiles[tileName] = tile;
+		}
+
+		// Read number of quality settings
+		size_t numSettings = readUInt(fp);
+
+		// Read quality settings
+		for (size_t i = 0; i < numSettings; ++i)
+		{
+			string name = qualityNames.at(i);
+			auto quality = pStream->createQualitySetting(name);
+
+			auto& qs = pStream->mQualitySettings.at(quality);
+
+			qs.params.minFilter = readUInt(fp);
+			qs.params.magFilter = readUInt(fp);
+			qs.params.wrap = readUInt(fp);
+			qs.params.useMipmaps = readBool(fp);
+			qs.params.lodBaseLevel = readInt(fp);
+			qs.params.lodMaxLevel = readInt(fp);
+			qs.params.lodBias = readFloat(fp);
+			qs.params.maxAnisotropy = readFloat(fp);
+
+			// Other.  Don't read the image load function, this will be provided by whatever loads this.
+			qs.sampler = readString(fp);
+			qs.source = readString(fp);
+		}
+	}
+
+	ResourceStreamPtr ResourceStreamSerializer::readStream(ifstream& fp)
+	{
+		auto streamType = readString(fp);
+		ResourceStreamPtr resourceStream;
+
+		if (streamType == "Material")
+		{
+			resourceStream.reset(new ProgrammaticMaterialStream(mResourceMgr));
+		}
+		else if (streamType == "Program")
+		{
+			resourceStream.reset(new ProgrammaticProgramStream(mResourceMgr));
+		}
+		else if (streamType == "Sampler")
+		{
+			resourceStream.reset(new ProgrammaticSamplerStream(mResourceMgr));
+		}
+		else if (streamType == "String")
+		{
+			resourceStream.reset(new ProgrammaticStringStream(mResourceMgr));
+		}
+		else if (streamType == "Texture")
+		{
+			resourceStream.reset(new ProgrammaticTextureStream(mResourceMgr));
+		}
+		else
+		{
+			string errMsg = "Cannot deserialize ResourceStream of type '" + streamType + "'.";
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		// Read children
+		size_t numChildren = readUInt(fp);
+		for (size_t i = 0; i < numChildren; ++i)
+		{
+			auto name = readString(fp);
+			auto res = readStream(fp);
+
+			resourceStream->addChild(name, res);
+		}
+
+		// Read number of quality settings
+		size_t numSettings = readUInt(fp);
+
+		// Read quality settings names
+		map<uint32_t, string> settingNames;
+		for (size_t i = 0; i < numSettings; ++i)
+		{
+			auto name = readString(fp);
+			auto id = readUInt(fp);
+
+			settingNames[id] = name;
+		}
+
+		// Read type-specific data
+		if (streamType == "Material")
+		{
+			readMaterialStream(resourceStream, fp, settingNames);
+		}
+		else if (streamType == "Program")
+		{
+			readMaterialStream(resourceStream, fp, settingNames);
+		}
+		else if (streamType == "Sampler")
+		{
+			readMaterialStream(resourceStream, fp, settingNames);
+		}
+		else if (streamType == "String")
+		{
+			readMaterialStream(resourceStream, fp, settingNames);
+		}
+		else if (streamType == "Texture")
+		{
+			readMaterialStream(resourceStream, fp, settingNames);
+		}
+		else
+		{
+			string errMsg = "Cannot deserialize ResourceStream of type '" + streamType + "'.";
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		return resourceStream;
 	}
 }

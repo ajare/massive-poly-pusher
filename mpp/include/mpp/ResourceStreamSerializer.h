@@ -15,6 +15,7 @@ namespace mpp
 {
 	class _MPPAPI ResourceStreamSerializer
 	{
+		// Write
 		void writeValue(std::string const& value, std::ofstream& fp);
 
 		void writeValue(int32_t value, std::ofstream& fp);
@@ -31,8 +32,6 @@ namespace mpp
 
 		void writeParser(program::Parser const& parser, std::ofstream& fp);
 
-		void writeGLSLDecl(program::GLSLTypeDecl decl, std::ofstream& fp);
-
 		void writeMaterialStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 
 		void writeProgramStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
@@ -45,13 +44,47 @@ namespace mpp
 
 		void writeStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 
+		// Read
+		std::string readString(std::ifstream& fp);
+
+		int32_t readInt(std::ifstream& fp);
+
+		uint32_t readUInt(std::ifstream& fp);
+
+		float readFloat(std::ifstream& fp);
+
+		bool readBool(std::ifstream& fp);
+
+		mesh::MeshSpecification readMeshSpecification(std::ifstream& fp);
+		
+		UniformCollection readUniformCollection(std::ifstream& fp);
+
+		std::shared_ptr<program::Parser> readParser(std::ifstream& fp);
+
+		void readMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+
+		void readProgramStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+
+		void readSamplerStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+
+		void readStringStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+
+		void readTextureStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+
+		ResourceStreamPtr readStream(std::ifstream& fp);
+
+	private:
+
+		ResourceManager* mResourceMgr;
+
 	public:
 
-		ResourceStreamSerializer() = default;
+		explicit ResourceStreamSerializer(ResourceManager* resourceMgr);
 
 		virtual ~ResourceStreamSerializer() = default;
 
 		void serialize(ResourceStreamPtr resourceStream, std::string const& filename);
+
 	};
 
 }

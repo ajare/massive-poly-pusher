@@ -32,6 +32,10 @@ namespace mpp
 
 		void setProgramVertexShaderResource(std::string const& resource, uint32_t quality = 0);
 
+		void setProgramGeometryShaderFile(std::string const& file, uint32_t quality = 0);
+
+		void setProgramGeometryShaderResource(std::string const& resource, uint32_t quality = 0);
+
 		void setProgramFragmentShaderFile(std::string const& file, uint32_t quality = 0);
 
 		void setProgramFragmentShaderResource(std::string const& resource, uint32_t quality = 0);
@@ -41,6 +45,8 @@ namespace mpp
 		void setTexture(std::string const& sampler, std::string const& texture, uint32_t quality = 0);
 
 		void setDefaultTexture(uint32_t quality = 0);
+
+		void setUniforms(UniformCollection const& uniforms, uint32_t quality = 0);
 
 		void setUniform(std::string const& name, int32_t value, uint32_t quality = 0);
 

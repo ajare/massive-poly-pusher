@@ -83,6 +83,7 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)ShaderStage::Type::Vertex];
 			
+			stage.inputSource = src; 
 			stage.source = stripComments(src);
 			stage.clear();
 		}
@@ -95,6 +96,7 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)ShaderStage::Type::Geometry];
 
+			stage.inputSource = src;
 			stage.source = stripComments(src);
 			stage.inAttribs.clear();
 			stage.outAttribs.clear();
@@ -108,6 +110,7 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)ShaderStage::Type::Fragment];
 
+			stage.inputSource = src;
 			stage.source = stripComments(src);
 			stage.inAttribs.clear();
 			stage.outAttribs.clear();
@@ -1157,6 +1160,21 @@ namespace mpp
 		mesh::MeshSpecification const& Parser::getMeshSpecification() const
 		{
 			return mSpecification;
+		}
+
+		string const& Parser::getInputVertexSource() const
+		{
+			return mStages[(int)ShaderStage::Type::Vertex].inputSource;
+		}
+
+		string const& Parser::getInputGeometrySource() const
+		{
+			return mStages[(int)ShaderStage::Type::Geometry].inputSource;
+		}
+
+		string const& Parser::getInputFragmentSource() const
+		{
+			return mStages[(int)ShaderStage::Type::Fragment].inputSource;
 		}
 
 		string const& Parser::getGeneratedVertexSource() const

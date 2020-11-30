@@ -85,6 +85,8 @@ namespace mpp
 		void unloadChildResources(std::string const& parentName);
 
 		virtual uint32_t createQualitySetting(std::string const& name) = 0;
+
+		std::map<std::string, uint32_t> const& getQualityNames() const;
 	};
 
 	typedef std::shared_ptr<ResourceStream> ResourceStreamPtr;

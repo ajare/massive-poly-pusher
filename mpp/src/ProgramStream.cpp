@@ -62,7 +62,6 @@ namespace mpp
 		return mGeometrySource;
 	}
 
-
 	/*
 	 * Get fragment shader source.
 	 *

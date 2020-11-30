@@ -39,7 +39,7 @@ namespace mpp
 				};
 
 				bool is2d;
-				Shader vertexShader, fragmentShader;
+				Shader vertexShader, geometryShader, fragmentShader;
 			};
 
 			struct Material
