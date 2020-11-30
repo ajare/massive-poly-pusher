@@ -8,6 +8,8 @@ namespace mpp
 {
 	class _MPPAPI StringStream : public ResourceStream
 	{
+		friend class ResourceStreamSerializer;
+
 	protected:
 
 		struct QualitySetting

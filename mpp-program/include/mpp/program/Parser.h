@@ -97,6 +97,10 @@ namespace mpp
 
 			void build(std::set<std::string> const& attribs);
 
+			ShaderStage const& getStage(uint32_t index) const;
+
+			mesh::MeshSpecification const& getMeshSpecification() const;
+
 			std::string const& getGeneratedVertexSource() const;
 
 			std::string const& getGeneratedGeometrySource() const;

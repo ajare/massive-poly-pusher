@@ -280,7 +280,11 @@ namespace mpp
 					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 				}
 				
-				qs.loadFunc = getResourceMgr()->getImageLoadFunction();
+				auto resourceMgr = getResourceMgr();
+				if (resourceMgr)
+				{
+					qs.loadFunc = getResourceMgr()->getImageLoadFunction();
+				}
 			}
 
 			TextureStream::loadImpl();

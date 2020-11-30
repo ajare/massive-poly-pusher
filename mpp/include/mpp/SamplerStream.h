@@ -11,6 +11,8 @@ namespace mpp
 
 	class _MPPAPI SamplerStream : public ResourceStream
 	{
+		friend class ResourceStreamSerializer;
+
 	public:
 
 		enum class MinFilter

@@ -27,6 +27,15 @@ namespace mpp
 	}
 
 	/*
+	 * Set geometry shader source.
+	 *
+	 */
+	void ProgramStream::setGeometrySource(string const& src)
+	{
+		mGeometrySource = src;
+	}
+
+	/*
 	* Set fragment shader source.
 	*
 	*/
@@ -45,12 +54,37 @@ namespace mpp
 	}
 
 	/*
+	 * Get geometry shader source.
+	 *
+	 */
+	string const& ProgramStream::getGeometrySource() const
+	{
+		return mGeometrySource;
+	}
+
+
+	/*
 	 * Get fragment shader source.
 	 *
 	 */
 	string const& ProgramStream::getFragmentSource() const
 	{
 		return mFragmentSource;
+	}
+
+	ProgramStream::Shader const& ProgramStream::getVertexShader() const
+	{
+		return mQualitySettings[mQualitySetting].vertexShader;
+	}
+
+	ProgramStream::Shader const& ProgramStream::getGeometryShader() const
+	{
+		return mQualitySettings[mQualitySetting].geometryShader;
+	}
+
+	ProgramStream::Shader const& ProgramStream::getFragmentShader() const
+	{
+		return mQualitySettings[mQualitySetting].fragmentShader;
 	}
 
 	/*

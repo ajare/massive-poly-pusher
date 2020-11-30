@@ -607,9 +607,6 @@ namespace mpp
 		parser->setVertexSource(vShader);
 		parser->setFragmentSource(fShader);
 
-		parser->setVertexSource(defaultVertexShader);
-		parser->setFragmentSource(defaultFragmentShader);
-
 		auto ps = new ProgrammaticProgramStream(this);
 		ps->setParser(parser);
 		ps->setAttribs(getProgramAttributes(spec, flags));

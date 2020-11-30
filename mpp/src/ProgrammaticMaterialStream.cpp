@@ -43,28 +43,14 @@ namespace mpp
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.program.isChild = false;
-		qs.program.resourceExists = false;
 		qs.program.vertexShader.type = ProgramOptions::Shader::Type::File;
 		qs.program.vertexShader.data = file;
-	}
-
-	void ProgrammaticMaterialStream::setProgramVertexShaderString(string const& data, uint32_t quality)
-	{
-		auto& qs = mQualitySettings[quality];
-
-		qs.program.isChild = false;
-		qs.program.resourceExists = false;
-		qs.program.vertexShader.type = ProgramOptions::Shader::Type::String;
-		qs.program.vertexShader.data = data;
 	}
 
 	void ProgrammaticMaterialStream::setProgramVertexShaderResource(string const& resource, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.program.isChild = false;
-		qs.program.resourceExists = false;
 		qs.program.vertexShader.type = ProgramOptions::Shader::Type::Resource;
 		qs.program.vertexShader.data = resource;
 	}
@@ -73,31 +59,16 @@ namespace mpp
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.program.isChild = false;
-		qs.program.resourceExists = false;
 		qs.program.fragmentShader.type = ProgramOptions::Shader::Type::File;
 		qs.program.fragmentShader.data = file;
-	}
-
-	void ProgrammaticMaterialStream::setProgramFragmentShaderString(string const& data, uint32_t quality)
-	{
-		auto& qs = mQualitySettings[quality];
-
-		qs.program.isChild = false;
-		qs.program.resourceExists = false;
-		qs.program.fragmentShader.type = ProgramOptions::Shader::Type::String;
-		qs.program.fragmentShader.data = data;
 	}
 
 	void ProgrammaticMaterialStream::setProgramFragmentShaderResource(string const& resource, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.program.isChild = false;
-		qs.program.resourceExists = false;
 		qs.program.fragmentShader.type = ProgramOptions::Shader::Type::Resource;
 		qs.program.fragmentShader.data = resource;
-
 	}
 
 	void ProgrammaticMaterialStream::setTextureChild(string const& sampler, string const& resource, uint32_t quality)

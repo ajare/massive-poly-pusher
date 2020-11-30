@@ -68,6 +68,7 @@
     <ClInclude Include="..\..\include\mpp\Resource.h" />
     <ClInclude Include="..\..\include\mpp\ResourceManager.h" />
     <ClInclude Include="..\..\include\mpp\ResourceStream.h" />
+    <ClInclude Include="..\..\include\mpp\ResourceStreamSerializer.h" />
     <ClInclude Include="..\..\include\mpp\Sampler.h" />
     <ClInclude Include="..\..\include\mpp\SamplerParams.h" />
     <ClInclude Include="..\..\include\mpp\SamplerStream.h" />
@@ -143,6 +144,7 @@
     <ClCompile Include="..\..\src\Resource.cpp" />
     <ClCompile Include="..\..\src\ResourceManager.cpp" />
     <ClCompile Include="..\..\src\ResourceStream.cpp" />
+    <ClCompile Include="..\..\src\ResourceStreamSerializer.cpp" />
     <ClCompile Include="..\..\src\Sampler.cpp" />
     <ClCompile Include="..\..\src\SamplerParams.cpp" />
     <ClCompile Include="..\..\src\SamplerStream.cpp" />

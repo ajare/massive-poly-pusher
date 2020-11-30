@@ -2,6 +2,7 @@
 #include "mpp/String.h"
 
 #include "mpp/resource-parsers/FileProgramStream.h"
+#include "mpp/resource-parsers/MeshSpecificationParser.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 
 namespace mpp
@@ -58,8 +59,10 @@ namespace mpp
 			mDataTypes["UINT16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
 		}
 
-		string FileProgramStream::parseShader(utils::StructuredData const& data)
+		FileProgramStream::Shader FileProgramStream::parseShader(utils::StructuredData const& data)
 		{
+			Shader shader;
+
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
@@ -67,17 +70,31 @@ namespace mpp
 
 				if (entry.first == "file")
 				{
-					return readTextFile(value);
+					shader.type = Shader::Type::File;
+					shader.source = value;
+					shader.data = readTextFile(value);
 				}
 				else if (entry.first == "resource")
 				{
-					auto res = getResourceMgr()->getResource(value);
-					return dynamic_cast<String*>(res.get())->getData();
+					shader.type = Shader::Type::Resource;
+					shader.source = value;
+
+					auto resourceMgr = getResourceMgr();
+					if (resourceMgr)
+					{
+						auto res = resourceMgr->getResource(value);
+						shader.data = dynamic_cast<String*>(res.get())->getData();
+					}
 				}
 			}
 
-			string errMsg = "Error loading " + getFilepath() + ".  Neither 'file' nor 'resource' specified for Shader.";
-			THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+			if (shader.type == Shader::Type::Default)
+			{
+				string errMsg = "Error loading " + getFilepath() + ".  Neither 'file' nor 'resource' specified for Shader.";
+				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+			}
+
+			return shader;
 		}
 
 		mesh::Vertex::Component FileProgramStream::parseMeshSpecificationBufferChannelComponent(string const& value)
@@ -232,15 +249,17 @@ namespace mpp
 			return meshSpec;
 		}
 
-
 		void FileProgramStream::parseQualitySetting(utils::StructuredData const& data)
 		{
 			string name;
 
 			// Read settings required to create a Parser
-			string vertexShader{ "" }, geometryShader{ "" }, fragmentShader{ "" }, positionType;
+			Shader vertexShader, geometryShader, fragmentShader;
+
+			string positionType;
 			mesh::MeshSpecification meshSpec;
 			size_t numTextures{ 0 };
+
 			bool useDiffuse{ false };
 			bool useColours{ false };
 			bool isAtlas{ false };
@@ -325,7 +344,8 @@ namespace mpp
 				}
 				else if (entry.first == "MeshSpecification")
 				{
-					meshSpec = parseMeshSpecification(entry.second);
+					MeshSpecificationParser parser(getFilepath());
+					meshSpec = parser.parse(entry.second);
 					parsedMeshSpec = true;
 				}
 			}
@@ -384,7 +404,7 @@ namespace mpp
 			qs.parser->setMeshSpecification(meshSpec);
 			
 			// Load source into parser
-			if (vertexShader == "")
+			if (vertexShader.type == Shader::Type::Default)
 			{
 				if (positionType == "2D")
 				{
@@ -397,10 +417,10 @@ namespace mpp
 			}
 			else
 			{
-				qs.parser->setVertexSource(vertexShader);
+				qs.parser->setVertexSource(vertexShader.data);
 			}
 
-			if (fragmentShader == "")
+			if (fragmentShader.type == Shader::Type::Default)
 			{
 				if (positionType == "2D")
 				{
@@ -413,7 +433,7 @@ namespace mpp
 			}
 			else
 			{
-				qs.parser->setFragmentSource(fragmentShader);
+				qs.parser->setFragmentSource(fragmentShader.data);
 			}
 		}
 

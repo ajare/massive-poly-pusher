@@ -1,3 +1,5 @@
+#include "utils/FileSystem.h"
+
 #include "mpp/Material.h"
 #include "mpp/MaterialStream.h"
 #include "mpp/RenderSystem.h"
@@ -73,16 +75,16 @@ namespace mpp
 			string vertexShaderSrc;
 			switch (progOpts.vertexShader.type)
 			{
-			case MaterialStream::ProgramOptions::Shader::Type::String:
-				vertexShaderSrc = progOpts.vertexShader.data;
+			case MaterialStream::ProgramOptions::Shader::Type::Default:
+				vertexShaderSrc = "";
 				break;
 
 			case MaterialStream::ProgramOptions::Shader::Type::File:
-				//load from file
+				vertexShaderSrc = utils::FileSystem::readTextFile(progOpts.vertexShader.data);
 				break;
 
 			case MaterialStream::ProgramOptions::Shader::Type::Resource:
-				//existing string resource
+				vertexShaderSrc = dynamic_cast<String*>(getResourceManager()->getResource(progOpts.vertexShader.data).get())->getData();
 				break;
 
 			default:
@@ -92,22 +94,21 @@ namespace mpp
 			string fragmentShaderSrc;
 			switch (progOpts.fragmentShader.type)
 			{
-			case MaterialStream::ProgramOptions::Shader::Type::String:
-				fragmentShaderSrc = progOpts.fragmentShader.data;
+			case MaterialStream::ProgramOptions::Shader::Type::Default:
+				fragmentShaderSrc = "";
 				break;
 
 			case MaterialStream::ProgramOptions::Shader::Type::File:
-				//load from file
+				fragmentShaderSrc = utils::FileSystem::readTextFile(progOpts.fragmentShader.data);
 				break;
 
 			case MaterialStream::ProgramOptions::Shader::Type::Resource:
-				//existing string resource
+				fragmentShaderSrc = dynamic_cast<String*>(getResourceManager()->getResource(progOpts.fragmentShader.data).get())->getData();
 				break;
 
 			default:
 				THROW_MPP("Unknown MaterialStream::ProgramOptions::Shader::Type", __LINE__, __FILE__, __func__);
 			}
-
 
 			// Get or create program, either with default shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)

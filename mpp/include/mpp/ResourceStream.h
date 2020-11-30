@@ -16,6 +16,7 @@ namespace mpp
 	class _MPPAPI ResourceStream
 	{
 		friend class Resource;
+		friend class ResourceStreamSerializer;
 
 	private:
 

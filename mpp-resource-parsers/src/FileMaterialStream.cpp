@@ -281,9 +281,9 @@ namespace mpp
 			// Parse data.  Root element should be 'Material'
 			auto rootName = data.getName();
 
-			if (rootName != "Material")
+			if (rootName != "Material" && rootName != "Resource")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Root element is not 'Material'.";
+				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Material' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
