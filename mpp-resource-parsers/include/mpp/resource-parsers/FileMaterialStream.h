@@ -16,6 +16,12 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileMaterialStream : public mpp::MaterialStream, public FileStream
 		{
+			bool mUseSpecifiedMeshSpec;
+
+			mesh::MeshSpecification mMeshSpec;
+
+		private:
+
 			void parseQualitySetting(utils::StructuredData const& data);
 
 			void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms);
@@ -33,6 +39,10 @@ namespace mpp
 			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath);
 
 			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
+
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec);
+
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec);
 		};
 
 	}

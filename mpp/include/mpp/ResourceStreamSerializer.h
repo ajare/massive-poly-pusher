@@ -77,13 +77,25 @@ namespace mpp
 
 		ResourceManager* mResourceMgr;
 
+		mesh::MeshSpecification mMeshSpec;
+
+		bool mUseGlobalMeshSpec{ false };
+
 	public:
 
 		explicit ResourceStreamSerializer(ResourceManager* resourceMgr);
 
 		virtual ~ResourceStreamSerializer() = default;
 
+		void setGlobalMeshSpecification(mesh::MeshSpecification const& meshSpec);
+
 		void serialize(ResourceStreamPtr resourceStream, std::string const& filename);
+
+		void serialize(ResourceStreamPtr resourceStream, std::ofstream& fp);
+
+		ResourceStreamPtr deserialize(std::string const& filename);
+
+		ResourceStreamPtr deserialize(std::ifstream& fp);
 
 	};
 

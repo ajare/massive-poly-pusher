@@ -1,0 +1,280 @@
+#pragma once
+
+#include <string>
+#include <memory>
+#include <map>
+#include <array>
+
+#include "mpp/mesh/MeshDefinition.h"
+#include "mpp/mesh/MeshSpecification.h"
+#include "mpp/mesh/MaterialInformation.h"
+
+#include "Config.h"
+
+namespace mpp
+{
+
+	class _MPPAPI ModelSerializer
+	{
+	public:
+
+		class MetadataReader
+		{
+			friend class ModelSerializer;
+
+			struct Mesh
+			{
+				std::string name;
+				uint32_t meshSpec;
+				uint32_t material;
+				mpp::mesh::Primitive::Type primitiveType;
+			};
+
+		private:
+
+			std::map<std::string, uint32_t> mMaterialLookup;
+			std::vector<mpp::mesh::MaterialInformation> mMaterials;
+			std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
+			std::vector<Mesh> mMeshes;
+
+		private:
+
+			MetadataReader(
+				std::map<std::string, uint32_t> const& materialLookup,
+				std::vector<mpp::mesh::MaterialInformation> const& materials,
+				std::vector<mpp::mesh::MeshSpecification> const& meshSpecifications)
+				: mMaterialLookup(materialLookup)
+				, mMaterials(materials)
+				, mMeshSpecifications(meshSpecifications)
+			{
+			}
+
+			void addMesh(std::string const& name, uint32_t meshSpec, uint32_t material, mpp::mesh::Primitive::Type type)
+			{
+				Mesh mesh
+				{
+					name,
+					meshSpec,
+					material,
+					type
+				};
+
+				mMeshes.push_back(mesh);
+			}
+
+		public:
+
+			size_t getNumMeshes() const
+			{
+				return mMeshes.size();
+			}
+
+			mpp::mesh::MaterialInformation const& getMaterialByMeshId(uint32_t id)
+			{
+				return mMaterials[mMeshes[id].material];
+			}
+
+			mpp::mesh::MeshSpecification const& getMeshSpecificationByMeshId(uint32_t id)
+			{
+				return mMeshSpecifications[mMeshes[id].meshSpec];
+			}
+
+		};
+
+	private:
+
+		struct Header
+		{
+			int versionMajor, versionMinor;
+			uint32_t flags;
+		};
+
+		struct Directory
+		{
+			struct Entry
+			{
+				enum class Type
+				{
+					Unused,
+					Materials,
+					MeshSpecifications,
+					VertexData,
+					IndexData,
+					MeshMetadata,
+					COUNT
+				};
+
+				Type type{ Type::Unused };
+				uint32_t startOffset{ 0 };
+				uint32_t endOffset{ 0 };
+				size_t count{ 0 };
+			};
+
+			std::array<Entry, static_cast<size_t>(Entry::Type::COUNT)> entries;
+		};
+
+		struct VertexStream
+		{
+			size_t vertexCount, vertexStride;
+			std::shared_ptr<const int8_t> vertexData;
+		};
+
+		struct IndexStream
+		{
+			size_t indexWidth{ 0 };
+			std::shared_ptr<const uint8_t> indexData;
+		};
+
+		struct Mesh
+		{
+			std::string name;
+			uint32_t meshSpec;
+			uint32_t material;
+			mpp::mesh::Primitive::Type primitiveType;
+			size_t primitiveCount;
+
+			uint32_t indexStream;
+			std::vector<uint32_t> vertexStreams;
+		};
+
+	private:
+
+		Header mHeader;
+
+		Directory mDirectory;
+
+		// Materials: a material gets added into an array, for writing, and
+		// then the material name is mapped to the array index, for meshes
+		// to index with.
+		std::map<std::string, uint32_t> mMaterialLookup;
+
+		std::vector<mpp::mesh::MaterialInformation> mMaterials;
+
+		std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
+
+		std::vector<VertexStream> mVertexStreams;
+
+		// Index buffers: we have a lookup which maps index buffer id
+		// to mesh id, so we can get the primitive type etc, when writing
+		std::map<uint32_t, uint32_t> mIndexStreamLookup;
+
+		std::vector<IndexStream> mIndexStreams;
+
+		std::vector<Mesh> mMeshes;
+
+	private:
+
+		void clear();
+
+		std::string readString(FILE* fp);
+
+		void writeString(FILE* fp, std::string const& str);
+
+		void readHeader(FILE* fp);
+
+		void writeHeader(FILE* fp);
+
+		void readDirectory(FILE* fp);
+
+		Directory::Entry readDirectoryEntry(FILE* fp);
+
+		void updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32_t start, uint32_t end, size_t count);
+
+		void writeDirectory(FILE* fp);
+
+		void writeDirectoryEntry(FILE* fp, Directory::Entry const& entry);
+
+		void readMaterials(FILE* fp);
+
+		mpp::mesh::MaterialInformation readMaterial(FILE* fp);
+
+		void writeMaterials(FILE* fp);
+
+		void writeMaterial(FILE* fp, mpp::mesh::MaterialInformation const& matInfo);
+
+		void readMeshSpecifications(FILE* fp);
+
+		mpp::mesh::MeshSpecification readMeshSpecification(FILE* fp);
+
+		void writeMeshSpecifications(FILE* fp);
+
+		void writeMeshSpecification(FILE* fp, mpp::mesh::MeshSpecification const& meshSpec);
+
+		void readVertexBuffers(FILE* fp);
+
+		VertexStream readVertexBuffer(FILE* fp);
+			
+		void readVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset);
+
+		void writeVertexBuffers(FILE* fp);
+
+		void writeVertexBuffer(FILE* fp, VertexStream const& vertexStream);
+
+		void writeVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout const& layout);
+
+		void readIndexBuffers(FILE* fp);
+
+		IndexStream readIndexBuffer(FILE* fp);
+
+		void writeIndexBuffers(FILE* fp);
+
+		void writeIndexBuffer(FILE* fp, IndexStream const& indexStream, mpp::mesh::Primitive::Type primitiveType, size_t numPrimitives);
+
+		void readMeshes(FILE* fp);
+
+		Mesh readMesh(FILE* fp);
+					
+		void writeMeshes(FILE* fp);
+
+		void writeMesh(FILE* fp, Mesh const& mesh, uint32_t index);
+
+	public:
+
+		ModelSerializer();
+
+		void setName(size_t meshIndex, std::string const& name);
+
+		std::string const& getName(size_t meshIndex) const;
+
+		void setMeshCount(size_t count);
+
+		size_t getMeshCount() const;
+
+		void setPrimitiveType(size_t meshIndex, mpp::mesh::Primitive::Type primitiveType);
+
+		mpp::mesh::Primitive::Type getPrimitiveType(size_t meshIndex) const;
+
+		void setPrimitiveCount(size_t meshIndex, size_t primitiveCount);
+
+		int getPrimitiveCount(size_t meshIndex) const;
+
+		void setMeshSpecification(size_t meshIndex, mpp::mesh::MeshSpecification const& specification);
+
+		mpp::mesh::MeshSpecification const& getMeshSpecification(size_t meshIndex) const;
+
+		void addMaterial(std::string const& name, mpp::mesh::MaterialInformation const& matInfo);
+
+		void setMaterial(size_t meshIndex, std::string const& material);
+
+		std::string const& getMaterial(size_t meshIndex) const;
+
+		std::vector<mpp::mesh::MaterialInformation> const& getMaterials() const;
+
+		void addVertexStream(size_t meshIndex, size_t vertexCount, size_t vertexStride, std::shared_ptr<const int8_t> vertexData);
+
+		void getVertexStream(size_t meshIndex, size_t index, size_t* vertexCount, size_t* vertexStride, std::shared_ptr<const int8_t>* vertexData);
+
+		void setIndexBuffer(size_t meshIndex, std::shared_ptr<const uint8_t> indexData, size_t indexWidth);
+
+		std::shared_ptr<const uint8_t> getIndexData(size_t meshIndex) const;
+
+		int getIndexWidth(size_t meshIndex) const;
+
+		void save(std::string const& filename);
+
+		void load(std::string const& filename);
+
+		MetadataReader getReader(std::string const& filename = "");
+	};
+}
+

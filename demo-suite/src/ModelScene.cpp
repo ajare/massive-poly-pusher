@@ -34,6 +34,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/ProgrammaticSamplerStream.h>
+#include <mpp/ResourceStreamSerializer.h>
 
 #include <mpp/resource-parsers/FileTextureStream.h>
 #include <mpp/resource-parsers/FileProgramStream.h>
@@ -154,7 +155,15 @@ mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification con
 	materialStream->setProgramVertexShaderResource("Elevator.Vert");
 	materialStream->setTexture("TEX1", "Clouds.Texture");
 
-	auto res = resourceMgr->declareResource("Grid.Material", ResourceStreamPtr(materialStream));
+	ResourceStreamPtr matStreamPtr(materialStream);
+
+	// Test serialization
+	ResourceStreamSerializer ser(resourceMgr);
+	ser.serialize(matStreamPtr, "gridmaterial.dat");
+
+	auto matStreamPtr2 = ser.deserialize("gridmaterial.dat");
+
+	auto res = resourceMgr->declareResource("Grid.Material", matStreamPtr);
 	res->load();
 
 	return res;

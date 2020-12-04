@@ -22,6 +22,8 @@ namespace mpp
 
 		explicit ProgrammaticMaterialStream(ResourceManager* resourceMgr);
 
+		void setProgram(ProgramOptions progOptions, uint32_t quality = 0);
+
 		void setProgram(std::string const& program, uint32_t quality = 0);
 
 		void setMeshSpecification(mesh::MeshSpecification const& spec, uint32_t quality = 0);

@@ -15,6 +15,7 @@ namespace mpp
 		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath)
+			, mMeshSpecRequired(true)
 		{
 			setup();
 		}
@@ -22,6 +23,25 @@ namespace mpp
 		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath, data)
+			, mMeshSpecRequired(true)
+		{
+			setup();
+		}
+
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec)
+			: ProgramStream(resourceMgr)
+			, FileStream(filepath)
+			, mMeshSpecRequired(false)
+			, mMeshSpecification(meshSpec)
+		{
+			setup();
+		}
+
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec)
+			: ProgramStream(resourceMgr)
+			, FileStream(filepath, data)
+			, mMeshSpecRequired(false)
+			, mMeshSpecification(meshSpec)
 		{
 			setup();
 		}
@@ -95,158 +115,6 @@ namespace mpp
 			}
 
 			return shader;
-		}
-
-		mesh::Vertex::Component FileProgramStream::parseMeshSpecificationBufferChannelComponent(string const& value)
-		{
-			auto it = mComponentTypes.find(value);
-
-			if (it != mComponentTypes.end())
-			{
-				return it->second;
-			}
-			else
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported component '" + value + "' specified.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
-			}
-		}
-
-		mesh::Vertex::DataType FileProgramStream::parseMeshSpecificationBufferChannelType(string const& value)
-		{
-			auto it = mDataTypes.find(value);
-
-			if (it != mDataTypes.end())
-			{
-				return it->second;
-			}
-			else
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported datatype '" + value + "' specified.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
-			}
-		}
-
-		void FileProgramStream::parseMeshSpecificationBufferChannel(utils::StructuredData const& data, mesh::VertexBufferAttributeLayout* layout)
-		{
-			mesh::Vertex::Component component{ mesh::Vertex::Component::Unused };
-			mesh::Vertex::DataType datatype{ mesh::Vertex::DataType::None };
-			bool normalised{ false };
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "data")
-				{
-					component = parseMeshSpecificationBufferChannelComponent(value);
-				}
-				else if (entry.first == "type")
-				{
-					datatype = parseMeshSpecificationBufferChannelType(value);
-				}
-				else if (entry.first == "normalised")
-				{
-					normalised = utils::StringUtils::parseBool(value);
-				}
-			}
-
-			if (component == mesh::Vertex::Component::Unused)
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  Invalid (or absent) component specified for MeshSpecification.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
-			}
-
-			if (datatype == mesh::Vertex::DataType::None)
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  Invalid (or absent) datatype specified for MeshSpecification.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
-			}
-
-			layout->createAttribute(component, datatype, normalised);
-		}
-
-		void FileProgramStream::parseMeshSpecificationBuffer(utils::StructuredData const& data, mesh::MeshSpecification& meshSpec)
-		{
-			auto buffer = meshSpec.createVertexBufferAttributeLayout(meshSpec.getStorageType() == mesh::VertexBufferStorageType::Static);
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Channel")
-				{
-					parseMeshSpecificationBufferChannel(entry.second, buffer);
-				}
-			}
-		}
-
-		mesh::Primitive::Type FileProgramStream::parseMeshSpecificationPrimitive(string const& value)
-		{
-			auto it = mMeshSpecificationPrimitive.find(value);
-
-			if (it != mMeshSpecificationPrimitive.end())
-			{
-				return it->second;
-			}
-			else
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported primitive type '" + value + "' specified.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
-			}
-		}
-
-		mesh::VertexBufferStorageType FileProgramStream::parseMeshSpecificationStorage(string const& value)
-		{
-			auto it = mMeshSpecificationStorage.find(value);
-
-			if (it != mMeshSpecificationStorage.end())
-			{
-				return it->second;
-			}
-			else
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported storage type '" + value + "' specified.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
-			}
-		}
-
-		mesh::MeshSpecification FileProgramStream::parseMeshSpecification(utils::StructuredData const& data)
-		{
-			if (data.getName() != "MeshSpecification")
-			{
-				string errMsg = "Error loading " + getFilepath() + ".  MeshSpecification element is not 'MeshSpecification'.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
-			}
-
-			mesh::MeshSpecification meshSpec;
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "primitive")
-				{
-					meshSpec.setPrimitiveType(parseMeshSpecificationPrimitive(value));
-				}
-				else if (entry.first == "indexed")
-				{
-					meshSpec.setIndexedVertices(utils::StringUtils::parseBool(value));
-				}
-				else if (entry.first == "storage")
-				{
-					meshSpec.setStorageType(parseMeshSpecificationStorage(value));
-				}
-				else if (entry.first == "Buffer")
-				{
-					parseMeshSpecificationBuffer(entry.second, meshSpec);
-				}
-			}
-
-			return meshSpec;
 		}
 
 		void FileProgramStream::parseQualitySetting(utils::StructuredData const& data)
@@ -350,7 +218,7 @@ namespace mpp
 				}
 			}
 
-			if (!parsedMeshSpec)
+			if (!parsedMeshSpec&& mMeshSpecRequired)
 			{
 				string errMsg = "Error loading " + getFilepath() + ".  MeshSpecification not specified for program.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
@@ -401,7 +269,15 @@ namespace mpp
 			auto& qs = mQualitySettings[newSettingId];
 
 			qs.parser = make_shared<program::Parser>();
-			qs.parser->setMeshSpecification(meshSpec);
+
+			if (mMeshSpecRequired)
+			{
+				qs.parser->setMeshSpecification(meshSpec);
+			}
+			else
+			{
+				qs.parser->setMeshSpecification(mMeshSpecification);
+			}
 			
 			// Load source into parser
 			if (vertexShader.type == Shader::Type::Default)
