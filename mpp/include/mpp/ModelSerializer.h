@@ -4,10 +4,12 @@
 #include <memory>
 #include <map>
 #include <array>
+#include <fstream>
+
+#include "mpp/MaterialSpecification.h"
 
 #include "mpp/mesh/MeshDefinition.h"
 #include "mpp/mesh/MeshSpecification.h"
-#include "mpp/mesh/MaterialInformation.h"
 
 #include "Config.h"
 
@@ -33,7 +35,7 @@ namespace mpp
 		private:
 
 			std::map<std::string, uint32_t> mMaterialLookup;
-			std::vector<mpp::mesh::MaterialInformation> mMaterials;
+			std::vector<MaterialSpecification> mMaterials;
 			std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
 			std::vector<Mesh> mMeshes;
 
@@ -41,7 +43,7 @@ namespace mpp
 
 			MetadataReader(
 				std::map<std::string, uint32_t> const& materialLookup,
-				std::vector<mpp::mesh::MaterialInformation> const& materials,
+				std::vector<MaterialSpecification> const& materials,
 				std::vector<mpp::mesh::MeshSpecification> const& meshSpecifications)
 				: mMaterialLookup(materialLookup)
 				, mMaterials(materials)
@@ -69,7 +71,7 @@ namespace mpp
 				return mMeshes.size();
 			}
 
-			mpp::mesh::MaterialInformation const& getMaterialByMeshId(uint32_t id)
+			MaterialSpecification const& getMaterialByMeshId(uint32_t id)
 			{
 				return mMaterials[mMeshes[id].material];
 			}
@@ -105,8 +107,8 @@ namespace mpp
 				};
 
 				Type type{ Type::Unused };
-				uint32_t startOffset{ 0 };
-				uint32_t endOffset{ 0 };
+				std::streampos startOffset{ 0 };
+				std::streampos endOffset{ 0 };
 				size_t count{ 0 };
 			};
 
@@ -148,7 +150,7 @@ namespace mpp
 		// to index with.
 		std::map<std::string, uint32_t> mMaterialLookup;
 
-		std::vector<mpp::mesh::MaterialInformation> mMaterials;
+		std::vector<MaterialSpecification> mMaterials;
 
 		std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
 
@@ -166,67 +168,101 @@ namespace mpp
 
 		void clear();
 
-		std::string readString(FILE* fp);
+		// Write
+		void writeValue(std::string const& value, std::ofstream& fp);
 
-		void writeString(FILE* fp, std::string const& str);
+		void writeValue(char const* value, size_t count, std::ofstream& fp);
 
-		void readHeader(FILE* fp);
+		void writeValue(int32_t value, std::ofstream& fp);
 
-		void writeHeader(FILE* fp);
+		void writeValue(uint32_t value, std::ofstream& fp);
 
-		void readDirectory(FILE* fp);
+		void writeValue(int16_t value, std::ofstream& fp);
 
-		Directory::Entry readDirectoryEntry(FILE* fp);
+		void writeValue(uint16_t value, std::ofstream& fp);
 
-		void updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32_t start, uint32_t end, size_t count);
+		void writeValue(float value, std::ofstream& fp);
 
-		void writeDirectory(FILE* fp);
+		void writeValue(bool value, std::ofstream& fp);
 
-		void writeDirectoryEntry(FILE* fp, Directory::Entry const& entry);
+		// Read
+		std::string readString(std::ifstream& fp);
 
-		void readMaterials(FILE* fp);
+		std::string readBytes(size_t count, std::ifstream& fp);
 
-		mpp::mesh::MaterialInformation readMaterial(FILE* fp);
+		int32_t readInt32(std::ifstream& fp);
 
-		void writeMaterials(FILE* fp);
+		uint32_t readUInt32(std::ifstream& fp);
 
-		void writeMaterial(FILE* fp, mpp::mesh::MaterialInformation const& matInfo);
+		int16_t readInt16(std::ifstream& fp);
 
-		void readMeshSpecifications(FILE* fp);
+		uint16_t readUInt16(std::ifstream& fp);
 
-		mpp::mesh::MeshSpecification readMeshSpecification(FILE* fp);
+		float readFloat(std::ifstream& fp);
 
-		void writeMeshSpecifications(FILE* fp);
+		bool readBool(std::ifstream& fp);
 
-		void writeMeshSpecification(FILE* fp, mpp::mesh::MeshSpecification const& meshSpec);
+		void readHeader(std::ifstream& fp);
 
-		void readVertexBuffers(FILE* fp);
+		void writeHeader(std::ofstream& fp);
 
-		VertexStream readVertexBuffer(FILE* fp);
+		void readDirectory(std::ifstream& fp);
+
+		Directory::Entry readDirectoryEntry(std::ifstream& fp);
+
+		void updateDirectoryEntry(std::ofstream& fp, Directory::Entry::Type type, std::streampos start, std::streampos end, size_t count);
+
+		void writeDirectory(std::ofstream& fp);
+
+		void writeDirectoryEntry(std::ofstream& fp, Directory::Entry const& entry);
+
+		void readMaterials(std::ifstream& fp);
+
+		MaterialSpecification readMaterial(std::ifstream& fp);
+
+		void writeMaterials(std::ofstream& fp);
+
+		void writeMaterial(std::ofstream& fp, MaterialSpecification const& matSpec);
+
+		void readMeshSpecifications(std::ifstream& fp);
+
+		mpp::mesh::MeshSpecification readMeshSpecification(std::ifstream& fp);
+
+		void writeUniformCollection(UniformCollection const& uniforms, std::ofstream& fp);
+
+		UniformCollection readUniformCollection(std::ifstream& fp);
+
+		void writeMeshSpecifications(std::ofstream& fp);
+
+		void writeMeshSpecification(mpp::mesh::MeshSpecification const& meshSpec, std::ofstream& fp);
+
+		void readVertexBuffers(std::ifstream& fp);
+
+		VertexStream readVertexBuffer(std::ifstream& fp);
 			
-		void readVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset);
+		void readVertexBufferAttributeLayout(std::ifstream& fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset);
 
-		void writeVertexBuffers(FILE* fp);
+		void writeVertexBuffers(std::ofstream& fp);
 
-		void writeVertexBuffer(FILE* fp, VertexStream const& vertexStream);
+		void writeVertexBuffer(std::ofstream& fp, VertexStream const& vertexStream);
 
 		void writeVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout const& layout);
 
-		void readIndexBuffers(FILE* fp);
+		void readIndexBuffers(std::ifstream& fp);
 
-		IndexStream readIndexBuffer(FILE* fp);
+		IndexStream readIndexBuffer(std::ifstream& fp);
 
-		void writeIndexBuffers(FILE* fp);
+		void writeIndexBuffers(std::ofstream& fp);
 
-		void writeIndexBuffer(FILE* fp, IndexStream const& indexStream, mpp::mesh::Primitive::Type primitiveType, size_t numPrimitives);
+		void writeIndexBuffer(std::ofstream& fp, IndexStream const& indexStream, mpp::mesh::Primitive::Type primitiveType, size_t numPrimitives);
 
-		void readMeshes(FILE* fp);
+		void readMeshes(std::ifstream& fp);
 
-		Mesh readMesh(FILE* fp);
+		Mesh readMesh(std::ifstream& fp);
 					
-		void writeMeshes(FILE* fp);
+		void writeMeshes(std::ofstream& fp);
 
-		void writeMesh(FILE* fp, Mesh const& mesh, uint32_t index);
+		void writeMesh(std::ofstream& fp, Mesh const& mesh, uint32_t index);
 
 	public:
 

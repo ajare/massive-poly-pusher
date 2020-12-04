@@ -28,30 +28,152 @@ namespace mpp
 		mMeshes.clear();
 	}
 
-	string ModelSerializer::readString(FILE* fp)
+	void ModelSerializer::writeValue(string const& value, ofstream& fp)
 	{
-		string ret;
-		auto ch = fgetc(fp);
-		while (ch != '\0')
-		{
-			ret.append(1, ch);
-			ch = fgetc(fp);
-		}
+		size_t len = value.length();
+		fp.write((char const*)&len, sizeof(len));
 
-		return ret;
+		if (len > 0)
+		{
+			fp.write(value.c_str(), len);
+		}
 	}
 
-	void ModelSerializer::writeString(FILE* fp, string const& str)
+	void ModelSerializer::writeValue(char const* value, size_t count, ofstream& fp)
 	{
-		auto len = str.length();
-		fwrite(str.c_str(), 1, str.length() + 1, fp);
+		if (count > 0)
+		{
+			fp.write(value, count);
+		}
+	}
+
+	void ModelSerializer::writeValue(int32_t value, ofstream& fp)
+	{
+		fp.write((char const*)&value, sizeof(value));
+	}
+
+	void ModelSerializer::writeValue(uint32_t value, ofstream& fp)
+	{
+		fp.write((char const*)&value, sizeof(value));
+	}
+
+	void ModelSerializer::writeValue(uint16_t value, ofstream& fp)
+	{
+		fp.write((char const*)&value, sizeof(value));
+	}
+
+	void ModelSerializer::writeValue(int16_t value, ofstream& fp)
+	{
+		fp.write((char const*)&value, sizeof(value));
+	}
+
+	void ModelSerializer::writeValue(float value, ofstream& fp)
+	{
+		fp.write((char const*)&value, sizeof(value));
+	}
+
+	void ModelSerializer::writeValue(bool value, ofstream& fp)
+	{
+		char vi = value ? 1 : 0;
+		fp.write((char const*)&vi, sizeof(vi));
+	}
+
+	string ModelSerializer::readString(ifstream& fp)
+	{
+		size_t len;
+		fp.read((char*)&len, sizeof(len));
+
+		if (len > 0)
+		{
+			char* buffer = new char[len + 1];
+			fp.read(buffer, len);
+
+			buffer[len] = '\0';
+
+			string value(buffer);
+			delete[] buffer;
+
+			return value;
+		}
+		else
+		{
+			return "";
+		}
+	}
+
+	string ModelSerializer::readBytes(size_t count, ifstream& fp)
+	{
+		if (count > 0)
+		{
+			char* buffer = new char[count + 1];
+			fp.read(buffer, count);
+
+			buffer[count] = '\0';
+
+			string value(buffer);
+			delete[] buffer;
+
+			return value;
+		}
+		else
+		{
+			return "";
+		}
+	}
+
+	int32_t ModelSerializer::readInt32(ifstream& fp)
+	{
+		int32_t value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	uint32_t ModelSerializer::readUInt32(ifstream& fp)
+	{
+		uint32_t value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	int16_t ModelSerializer::readInt16(ifstream& fp)
+	{
+		int16_t value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	uint16_t ModelSerializer::readUInt16(ifstream& fp)
+	{
+		uint16_t value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	float ModelSerializer::readFloat(ifstream& fp)
+	{
+		float value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value;
+	}
+
+	bool ModelSerializer::readBool(ifstream& fp)
+	{
+		char value;
+
+		fp.read((char*)&value, sizeof(value));
+		return value != 0;
 	}
 
 	/*
 	 * Read Header
 	 *
 	 */
-	void ModelSerializer::readHeader(FILE* fp)
+	void ModelSerializer::readHeader(ifstream& fp)
 	{
 		/*
 		4 bytes: id: value 'MMPM'
@@ -61,8 +183,7 @@ namespace mpp
 		*/
 
 		// Id
-		char magic[4];
-		fread(magic, 4, 1, fp);
+		string magic = readBytes(4, fp);
 
 		if (magic[0] != 'M' || magic[1] != 'P' || magic[2] != 'P' || magic[3] != 'M')
 		{
@@ -70,26 +191,18 @@ namespace mpp
 		}
 
 		// Version major
-		uint16_t versionMajor;
-		fread(&versionMajor, sizeof(uint16_t), 1, fp);
-
-		mHeader.versionMajor = versionMajor;
-
-		// Version minor
-		uint16_t versionMinor;
-		fread(&versionMinor, sizeof(uint16_t), 1, fp);
-
-		mHeader.versionMinor = versionMinor;
+		mHeader.versionMajor = readUInt16(fp);
+		mHeader.versionMinor = readUInt16(fp);
 
 		// Flags
-		fread(&mHeader.flags, sizeof(uint32_t), 1, fp);
+		mHeader.flags = readUInt32(fp);
 	}
 
 	/*
 		* Write Header
 		*
 	*/
-	void ModelSerializer::writeHeader(FILE* fp)
+	void ModelSerializer::writeHeader(ofstream& fp)
 	{
 		/*
 		4 bytes: id: value 'MMPM'
@@ -100,28 +213,26 @@ namespace mpp
 
 		// Id
 		char magic[4] = { 'M', 'P', 'P', 'M' };
-		fwrite(magic, 4, 1, fp);
+		writeValue(magic, 4, fp);
 
 		// Version major
-		uint16_t versionMajor = 1;
-		fwrite(&versionMajor, sizeof(uint16_t), 1, fp);
+		writeValue((uint16_t)1, fp);
 
 		// Version minor
-		uint16_t versionMinor = 1;
-		fwrite(&versionMinor, sizeof(uint16_t), 1, fp);
+		writeValue((uint16_t)1, fp);
 
 		// Flags
 		uint32_t flags = 0;
 		flags |= FLAG_INDEXED_VERTICES;
 
-		fwrite(&flags, sizeof(uint32_t), 1, fp);
+		writeValue(flags, fp);
 	}
 
 	/*
 		* Read directory.
 		*
 		*/
-	void ModelSerializer::readDirectory(FILE* fp)
+	void ModelSerializer::readDirectory(ifstream& fp)
 	{
 		mDirectory.entries[(size_t)Directory::Entry::Type::Unused] = readDirectoryEntry(fp);
 		mDirectory.entries[(size_t)Directory::Entry::Type::Materials] = readDirectoryEntry(fp);
@@ -132,38 +243,38 @@ namespace mpp
 	}
 
 	/*
-		* Read directory entry.
-		*
-		*/
-	ModelSerializer::Directory::Entry ModelSerializer::readDirectoryEntry(FILE* fp)
+	 * Read directory entry.
+	 *
+	 */
+	ModelSerializer::Directory::Entry ModelSerializer::readDirectoryEntry(ifstream& fp)
 	{
 		ModelSerializer::Directory::Entry entry;
 
-		fread(&entry.type, sizeof(entry.type), 1, fp);
-		fread(&entry.startOffset, sizeof(entry.startOffset), 1, fp);
-		fread(&entry.endOffset, sizeof(entry.endOffset), 1, fp);
-		fread(&entry.count, sizeof(entry.count), 1, fp);
+		entry.type = static_cast<Directory::Entry::Type>(readUInt32(fp));
+		entry.startOffset = readUInt32(fp);
+		entry.endOffset = readUInt32(fp);
+		entry.count = readUInt32(fp);
 
 		return entry;
 	}
 
-	void ModelSerializer::updateDirectoryEntry(FILE *fp, Directory::Entry::Type type, uint32_t start, uint32_t end, size_t count)
+	void ModelSerializer::updateDirectoryEntry(ofstream& fp, Directory::Entry::Type type, streampos start, streampos end, size_t count)
 	{
-		auto oldPos = ftell(fp);
+		auto oldPos = fp.tellp();
 
 		size_t newPos = sizeof(Header) + (size_t)type * sizeof(Directory::Entry);
 
-		fseek(fp, newPos, SEEK_SET);
+		fp.seekp((streampos)newPos);
 		writeDirectoryEntry(fp, { type, start, end, count });
 
-		fseek(fp, oldPos, SEEK_SET);
+		fp.seekp(oldPos);
 	}
 
 	/*
 		* Write directory.
 		*
 		*/
-	void ModelSerializer::writeDirectory(FILE* fp)
+	void ModelSerializer::writeDirectory(ofstream& fp)
 	{
 		writeDirectoryEntry(fp, { Directory::Entry::Type::Unused, 0, 0, 0 });
 		writeDirectoryEntry(fp, { Directory::Entry::Type::Materials, 0, 0, mMaterials.size() });
@@ -177,19 +288,19 @@ namespace mpp
 		* Write directory entry.
 		*
 		*/
-	void ModelSerializer::writeDirectoryEntry(FILE* fp, Directory::Entry const& entry)
+	void ModelSerializer::writeDirectoryEntry(ofstream& fp, Directory::Entry const& entry)
 	{
-		fwrite(&entry.type, sizeof(entry.type), 1, fp);
-		fwrite(&entry.startOffset, sizeof(entry.startOffset), 1, fp);
-		fwrite(&entry.endOffset, sizeof(entry.endOffset), 1, fp);
-		fwrite(&entry.count, sizeof(entry.count), 1, fp);
+		writeValue((uint32_t)entry.type, fp);
+		writeValue((uint32_t)entry.startOffset, fp);
+		writeValue((uint32_t)entry.endOffset, fp);
+		writeValue((uint32_t)entry.count, fp);
 	}
 
-	void ModelSerializer::readMaterials(FILE* fp)
+	void ModelSerializer::readMaterials(ifstream& fp)
 	{
 		auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::Materials];
 
-		fseek(fp, entry.startOffset, SEEK_SET);
+		fp.seekg((streampos)entry.startOffset);
 
 		for (size_t i = 0; i < entry.count; ++i)
 		{
@@ -199,90 +310,101 @@ namespace mpp
 			mMaterials.push_back(material);
 		}
 
-		if (ftell(fp) != entry.endOffset)
+		if (fp.tellg != (streampos)entry.endOffset)
 		{
 			THROW_MPP("Invalid file position.", __LINE__, __FILE__, __func__);
 		}
 	}
 
-	MaterialInformation ModelSerializer::readMaterial(FILE* fp)
+	MaterialSpecification ModelSerializer::readMaterial(ifstream& fp)
 	{
 		auto name = readString(fp);
 
-		MaterialInformation mi(name);
+		MaterialSpecification matSpec;
 
-		mpp::mesh::MaterialInformation::PositionType positionType;
-		fread(&positionType, sizeof(positionType), 1, fp);
+		// Program options
+		matSpec.program.resourceExists = readBool(fp);
+		matSpec.program.existingResource = readString(fp);
+		matSpec.program.isChild = readBool(fp);
+		matSpec.program.is2d = readBool(fp);
 
-		mi.setPositionType(positionType);
+		// MeshSpecification
+		auto meshSpec = readMeshSpecification(fp);
+		matSpec.program.spec = meshSpec;
 
 		// Shaders
-		int shaderCount;
-		fread(&shaderCount, sizeof(shaderCount), 1, fp);
-		for (int i = 0; i < shaderCount; ++i)
-		{
-			mpp::mesh::MaterialInformation::Shader::Type shaderType;
+		matSpec.program.vertexShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt32(fp));
+		matSpec.program.vertexShader.data = readString(fp);
 
-			fread(&shaderType, sizeof(shaderType), 1, fp);
-			auto shaderName = readString(fp);
+		matSpec.program.geometryShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt32(fp));
+		matSpec.program.geometryShader.data = readString(fp);
 
-			mi.addShader(shaderType, shaderName);
-		}
-
-		// Textures
-		int textureCount;
-		fread(&textureCount, sizeof(textureCount), 1, fp);
-		for (int i = 0; i < textureCount; ++i)
-		{
-			int32_t isResource;
-			fread(&isResource, sizeof(isResource), 1, fp);
-			auto binding = readString(fp);
-			auto resource = readString(fp);
-
-			mi.addTexture(isResource, binding, resource);
-		}
+		matSpec.program.fragmentShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt32(fp));
+		matSpec.program.fragmentShader.data = readString(fp);
 
 		// Uniforms
-		int uniformCount;
-		fread(&uniformCount, sizeof(uniformCount), 1, fp);
-		for (int i = 0; i < uniformCount; ++i)
+		matSpec.uniforms = readUniformCollection(fp);
+
+		// Textures
+		size_t numTextures = readUInt32(fp);
+		for (size_t j = 0; j < numTextures; ++j)
 		{
-			string name = readString(fp);
-			string type = readString(fp);
+			auto sampler = readString(fp);
+			auto resource = readString(fp);
+			auto exists = readBool(fp);
 
-			size_t numComponents;
-			fread(&numComponents, sizeof(numComponents), 1, fp);
-
-			if (type == "int")
-			{
-				int32_t values[4];
-				fread(values, sizeof(int32_t), numComponents, fp);
-				mi.addUniform(name, numComponents, values);
-			}
-			else if (type == "uint")
-			{
-				uint32_t values[4];
-				fread(values, sizeof(uint32_t), numComponents, fp);
-				mi.addUniform(name, numComponents, values);
-			}
-			if (type == "float")
-			{
-				float values[4];
-				fread(values, sizeof(float), numComponents, fp);
-				mi.addUniform(name, numComponents, values);
-			}
+			matSpec.textures[sampler] = make_pair(resource, exists);
 		}
 
-		return mi;
+		return matSpec;
 	}
+
+	void ModelSerializer::writeUniformCollection(UniformCollection const& uniforms, ofstream& fp)
+	{
+		writeValue(uniforms.getNumUniforms(), fp);
+
+		auto const& uniformData = uniforms.getUniformData();
+
+		for (auto const& kvp : uniformData)
+		{
+			auto const& data = kvp.second;
+
+			writeValue(data.name, fp);
+			writeValue((uint32_t)data.type, fp);
+			writeValue(data.size, fp);
+
+			fp.write(data.data, 64);
+		}
+	}
+
+	UniformCollection ModelSerializer::readUniformCollection(ifstream& fp)
+	{
+		UniformCollection uniforms;
+
+		size_t numUniforms = readUInt32(fp);
+		for (size_t i = 0; i < numUniforms; ++i)
+		{
+			string name = readString(fp);
+			auto type = static_cast<program::GLSLType>(readUInt32(fp));
+			auto size = readUInt32(fp);
+
+			char data[64];
+			fp.read(data, 64);
+
+			uniforms.setUniform(name, type, size, data);
+		}
+
+		return uniforms;
+	}
+
 
 	/*
 		* Write all materials.
 		*
 		*/
-	void ModelSerializer::writeMaterials(FILE* fp)
+	void ModelSerializer::writeMaterials(ofstream& fp)
 	{
-		uint32_t start = ftell(fp);
+		auto start = fp.tellp();
 
 		// Write and update mapping
 		for (size_t i = 0; i < mMaterials.size(); ++i)
@@ -290,74 +412,46 @@ namespace mpp
 			writeMaterial(fp, mMaterials[i]);
 		}
 
-		uint32_t end = ftell(fp);
+		auto end = fp.tellp();
 		updateDirectoryEntry(fp, Directory::Entry::Type::Materials, start, end, mMaterials.size());
 	}
 
-	void ModelSerializer::writeMaterial(FILE* fp, MaterialInformation const& matInfo)
+	void ModelSerializer::writeMaterial(ofstream& fp, MaterialSpecification const& matSpec)
 	{
-		writeString(fp, matInfo.getName());
+		writeValue(name, fp);
 
-		auto positionType = matInfo.getPositionType();
-		fwrite(&positionType, sizeof(positionType), 1, fp);
+		// Program options
+		writeValue(matSpec.program.resourceExists, fp);
+		writeValue(matSpec.program.existingResource, fp);
+		writeValue(matSpec.program.isChild, fp);
+		writeValue(matSpec.program.is2d, fp);
+
+		writeMeshSpecification(matSpec.program.spec, fp);
 
 		// Shaders
-		auto const& shaders = matInfo.getShaders();
+		writeValue((uint32_t)matSpec.program.vertexShader.type, fp);
+		writeValue(matSpec.program.vertexShader.data, fp);
 
-		int shaderCount = (int)shaders.size();
-		fwrite(&shaderCount, sizeof(shaderCount), 1, fp);
-		for (auto const& shader: shaders)
-		{
-			fwrite(&shader.type, sizeof(shader.type), 1, fp);
-			writeString(fp, shader.name);
-		}
+		writeValue((uint32_t)matSpec.program.geometryShader.type, fp);
+		writeValue(matSpec.program.geometryShader.data, fp);
 
-		// Textures
-		auto const& textures = matInfo.getTextures();
-
-		int textureCount = (int)textures.size();
-		fwrite(&textureCount, sizeof(textureCount), 1, fp);
-		for (auto const& texture: textures)
-		{
-			int32_t isResource = texture.isResource ? 1 : 0;
-			fwrite(&isResource, sizeof(isResource), 1, fp);
-			writeString(fp, texture.binding);
-			writeString(fp, texture.resource);
-		}
+		writeValue((uint32_t)matSpec.program.fragmentShader.type, fp);
+		writeValue(matSpec.program.fragmentShader.data, fp);
 
 		// Uniforms
-		auto const& uniforms = matInfo.getUniforms();
+		writeUniformCollection(matSpec.uniforms, fp);
 
-		int uniformCount = (int)uniforms.size();
-		fwrite(&uniformCount, sizeof(uniformCount), 1, fp);
-		for (auto const& uniform: uniforms)
+		// Textures
+		writeValue(matSpec.textures.size(), fp);
+		for (auto const& kvp : matSpec.textures)
 		{
-			writeString(fp, uniform.name);
-			writeString(fp, uniform.type);
-			fwrite(&uniform.numComponents, sizeof(uniform.numComponents), 1, fp);
-				
-			for (size_t i = 0; i < uniform.numComponents; ++i)
-			{
-				if (uniform.type == "int")
-				{
-					auto value = any_cast<int32_t>(uniform.values[i]);
-					fwrite(&value, sizeof(int32_t), 1, fp);
-				}
-				else if (uniform.type == "uint")
-				{
-					auto value = any_cast<uint32_t>(uniform.values[i]);
-					fwrite(&value, sizeof(uint32_t), 1, fp);
-				}
-				else if (uniform.type == "float")
-				{
-					auto value = any_cast<float>(uniform.values[i]);
-					fwrite(&value, sizeof(float), 1, fp);
-				}
-			}
+			writeValue(kvp.first, fp);
+			writeValue(kvp.second.first, fp);
+			writeValue(kvp.second.second, fp);
 		}
 	}
 
-	void ModelSerializer::readMeshSpecifications(FILE* fp)
+	void ModelSerializer::readMeshSpecifications(ifstream& fp)
 	{
 		auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::MeshSpecifications];
 
@@ -378,7 +472,7 @@ namespace mpp
 		* Read model specification
 		*
 		*/
-	MeshSpecification ModelSerializer::readMeshSpecification(FILE* fp)
+	MeshSpecification ModelSerializer::readMeshSpecification(ifstream& fp)
 	{
 		/*
 		4 bytes: primitive type
@@ -387,32 +481,35 @@ namespace mpp
 		2 bytes: layout count
 		<buffer count> times: buffer data
 		*/
-		MeshSpecification meshSpec;
+		mesh::MeshSpecification meshSpec;
 
-		mpp::mesh::Primitive::Type primitiveType;
-		fread(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
+		auto primitiveType = static_cast<mesh::Primitive::Type>(readUInt32(fp));
 		meshSpec.setPrimitiveType(primitiveType);
 
-		mpp::mesh::VertexBufferStorageType storageType;
-		fread(&storageType, sizeof(mpp::mesh::VertexBufferStorageType), 1, fp);
+		auto storageType = static_cast<mesh::VertexBufferStorageType>(readUInt32(fp));
 		meshSpec.setStorageType(storageType);
 
-		char indexed;
-		fread(&indexed, sizeof(char), 1, fp);
-		if (indexed == 1)
-		{
-			meshSpec.setIndexedVertices(true);
-		}
+		auto indexed = readBool(fp);
+		meshSpec.setIndexedVertices(indexed);
 
-		uint16_t layoutCount;
-		fread(&layoutCount, sizeof(uint16_t), 1, fp);
-
-		uint32_t attribOffset = 0;
-		for (int i = 0; i < layoutCount; ++i)
+		size_t numLayouts = readUInt32(fp);
+		for (size_t i = 0; i < numLayouts; ++i)
 		{
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			readVertexBufferAttributeLayout(fp, layout, attribOffset);
-			attribOffset += layout->getNumAttributes();
+			auto isStatic = readBool(fp);
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout(isStatic);
+
+			size_t numAttribs = readUInt32(fp);
+			for (size_t j = 0; j < numAttribs; ++j)
+			{
+				auto component = static_cast<mesh::Vertex::Component>(readUInt32(fp));
+				auto datatype = static_cast<mesh::Vertex::DataType>(readUInt32(fp));
+				auto padToBoundary = readInt32(fp);
+				auto normalised = readBool(fp);
+
+				// Need to sort out paddingBytes
+				layout->createAttribute(component, datatype, normalised, padToBoundary);
+			}
 		}
 
 		return meshSpec;
@@ -422,16 +519,16 @@ namespace mpp
 		* Write all MeshSpecifications.
 		*
 		*/
-	void ModelSerializer::writeMeshSpecifications(FILE* fp)
+	void ModelSerializer::writeMeshSpecifications(ofstream& fp)
 	{
-		uint32_t start = ftell(fp);
+		auto start = fp.tellp();
 
 		for (uint32_t i = 0; i < mMeshSpecifications.size(); ++i)
 		{
-			writeMeshSpecification(fp, mMeshSpecifications[i]);
+			writeMeshSpecification(mMeshSpecifications[i], fp);
 		}
 
-		uint32_t end = ftell(fp);
+		auto end = fp.tellp();
 		updateDirectoryEntry(fp, Directory::Entry::Type::MeshSpecifications, start, end, mMeshSpecifications.size());
 	}
 
@@ -439,7 +536,7 @@ namespace mpp
 		* Write mesh specification
 		*
 		*/
-	void ModelSerializer::writeMeshSpecification(FILE* fp, MeshSpecification const& meshSpec)
+	void ModelSerializer::writeMeshSpecification( MeshSpecification const& meshSpec, ofstream& fp)
 	{
 		/*
 		4 bytes: primitive type
@@ -448,37 +545,46 @@ namespace mpp
 		2 bytes: layout count
 		<buffer count> times: buffer data
 		*/
-		mpp::mesh::Primitive::Type primitiveType = meshSpec.getPrimitiveType();
-		fwrite(&primitiveType, sizeof(mpp::mesh::Primitive::Type), 1, fp);
+		auto const& ms = meshSpec;
 
-		mpp::mesh::VertexBufferStorageType storageType = meshSpec.getStorageType();
-		fwrite(&storageType, sizeof(mpp::mesh::VertexBufferStorageType), 1, fp);
+		writeValue((uint32_t)ms.getPrimitiveType(), fp);
+		writeValue((uint32_t)ms.getStorageType(), fp);
+		writeValue(ms.verticesIndexed(), fp);
 
-		char indexed = meshSpec.verticesIndexed() ? 1 : 0;
-		fwrite(&indexed, sizeof(char), 1, fp);
-
-		uint16_t layoutCount = meshSpec.getNumVertexBufferAttributeLayouts();
-		fwrite(&layoutCount, sizeof(uint16_t), 1, fp);
-
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		// Write layouts
+		writeValue(ms.getNumVertexBufferAttributeLayouts(), fp);
+		for (int i = 0; i < ms.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto buffer = meshSpec.getVertexBufferAttributeLayout(i);
-			writeVertexBufferAttributeLayout(fp, buffer);
+			auto const& layout = ms.getVertexBufferAttributeLayout(i);
+
+			writeValue(layout.isStatic(), fp);
+
+			// Write attributes
+			writeValue(layout.getNumAttributes(), fp);
+			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			{
+				auto const& attrib = layout.getAttribute(j);
+
+				writeValue((uint32_t)attrib.component, fp);
+				writeValue((uint32_t)attrib.dataType, fp);
+				writeValue(attrib.padToBoundary, fp);
+				writeValue(attrib.normalised, fp);
+			}
 		}
 	}
 
-	void ModelSerializer::readVertexBuffers(FILE* fp)
+	void ModelSerializer::readVertexBuffers(ifstream& fp)
 	{
 		auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::VertexData];
 
-		fseek(fp, entry.startOffset, SEEK_SET);
+		fp.seekg(entry.startOffset);
 
 		for (size_t i = 0; i < entry.count; ++i)
 		{
 			mVertexStreams.push_back(readVertexBuffer(fp));
 		}
 
-		if (ftell(fp) != entry.endOffset)
+		if (fp.tellg() != entry.endOffset)
 		{
 			THROW_MPP("Invalid file position.", __LINE__, __FILE__, __func__);
 		}
@@ -488,7 +594,7 @@ namespace mpp
 		* Read vertex buffer
 		*
 		*/
-	ModelSerializer::VertexStream ModelSerializer::readVertexBuffer(FILE* fp)
+	ModelSerializer::VertexStream ModelSerializer::readVertexBuffer(ifstream& fp)
 	{
 		/*
 		4 bytes: vertex data size in bytes
@@ -518,7 +624,7 @@ namespace mpp
 		* Read Vertex Layout
 		*
 		*/
-	void ModelSerializer::readVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset)
+	void ModelSerializer::readVertexBufferAttributeLayout(ifstream& fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset)
 	{
 		/*
 		2 bytes: attribute count
@@ -555,7 +661,7 @@ namespace mpp
 		* Write all Vertex Buffers.
 		*
 		*/
-	void ModelSerializer::writeVertexBuffers(FILE* fp)
+	void ModelSerializer::writeVertexBuffers(ofstream& fp)
 	{
 		uint32_t start = ftell(fp);
 
@@ -572,7 +678,7 @@ namespace mpp
 		* Write vertex buffer
 		*
 		*/
-	void ModelSerializer::writeVertexBuffer(FILE* fp, VertexStream const& vertexStream)
+	void ModelSerializer::writeVertexBuffer(ofstream& fp, VertexStream const& vertexStream)
 	{
 		/*
 		4 bytes: vertex data size in bytes
@@ -593,7 +699,7 @@ namespace mpp
 		* Write Vertex Layout
 		*
 		*/
-	void ModelSerializer::writeVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout const& layout)
+	void ModelSerializer::writeVertexBufferAttributeLayout(ofstream& fp, mpp::mesh::VertexBufferAttributeLayout const& layout)
 	{
 		/*
 		2 bytes: attribute count
@@ -621,7 +727,7 @@ namespace mpp
 		}
 	}
 
-	void ModelSerializer::readIndexBuffers(FILE* fp)
+	void ModelSerializer::readIndexBuffers(ifstream& fp)
 	{
 		auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::IndexData];
 
@@ -638,7 +744,7 @@ namespace mpp
 		}
 	}
 
-	ModelSerializer::IndexStream ModelSerializer::readIndexBuffer(FILE* fp)
+	ModelSerializer::IndexStream ModelSerializer::readIndexBuffer(ifstream& fp)
 	{
 		/*
 		4 bytes: index data size in bytes
@@ -664,7 +770,7 @@ namespace mpp
 		* Write all Index Buffers.
 		*
 		*/
-	void ModelSerializer::writeIndexBuffers(FILE* fp)
+	void ModelSerializer::writeIndexBuffers(ofstream& fp)
 	{
 		uint32_t start = ftell(fp);
 
@@ -678,7 +784,7 @@ namespace mpp
 		updateDirectoryEntry(fp, Directory::Entry::Type::IndexData, start, end, mIndexStreams.size());
 	}
 
-	void ModelSerializer::writeIndexBuffer(FILE* fp, IndexStream const& indexStream, Primitive::Type primitiveType, size_t numPrimitives)
+	void ModelSerializer::writeIndexBuffer(ofstream& fp, IndexStream const& indexStream, Primitive::Type primitiveType, size_t numPrimitives)
 	{
 		/*
 		4 bytes: index data size in bytes
@@ -694,7 +800,7 @@ namespace mpp
 		fwrite(indexStream.indexData.get(), indexDataSize, 1, fp);
 	}
 
-	void ModelSerializer::readMeshes(FILE* fp)
+	void ModelSerializer::readMeshes(ifstream& fp)
 	{
 		auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::MeshMetadata];
 
@@ -715,7 +821,7 @@ namespace mpp
 		* Read mesh definition
 		*
 		*/
-	ModelSerializer::Mesh ModelSerializer::readMesh(FILE* fp)
+	ModelSerializer::Mesh ModelSerializer::readMesh(ifstream& fp)
 	{
 		/*
 		zero-str: name
@@ -752,7 +858,7 @@ namespace mpp
 		return mesh;
 	}
 
-	void ModelSerializer::writeMeshes(FILE* fp)
+	void ModelSerializer::writeMeshes(ofstream& fp)
 	{
 		uint32_t start = ftell(fp);
 
@@ -769,7 +875,7 @@ namespace mpp
 		* Write mesh definition
 		*
 		*/
-	void ModelSerializer::writeMesh(FILE* fp, Mesh const& mesh, uint32_t index)
+	void ModelSerializer::writeMesh(ofstream& fp, Mesh const& mesh, uint32_t index)
 	{
 		/*
 		zero-str: name
