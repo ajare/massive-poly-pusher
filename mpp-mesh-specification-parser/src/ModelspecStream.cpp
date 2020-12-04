@@ -67,10 +67,10 @@ namespace mpp
 								throw exception(errMsg.c_str());
 							}
 
-							mMaterials[name] = Material();
+							mMaterials[name] = MaterialSpecification();
 
 							// Set up added material
-							Material& mat = mMaterials[name];
+							auto& mat = mMaterials[name];
 
 							mat.program = mstream.getProgramOptions();
 
@@ -90,7 +90,7 @@ namespace mpp
 			return mMeshSpec;
 		}
 
-		map<string, ModelspecStream::Material> const& ModelspecStream::getMaterials() const
+		map<string, mpp::MaterialSpecification> const& ModelspecStream::getMaterials() const
 		{
 			return mMaterials;
 		}

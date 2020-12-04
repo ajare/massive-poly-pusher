@@ -75,15 +75,15 @@ namespace mpp
 			string vertexShaderSrc;
 			switch (progOpts.vertexShader.type)
 			{
-			case MaterialStream::ProgramOptions::Shader::Type::Default:
+			case MaterialSpecification::ProgramOptions::Shader::Type::Default:
 				vertexShaderSrc = "";
 				break;
 
-			case MaterialStream::ProgramOptions::Shader::Type::File:
+			case MaterialSpecification::ProgramOptions::Shader::Type::File:
 				vertexShaderSrc = utils::FileSystem::readTextFile(progOpts.vertexShader.data);
 				break;
 
-			case MaterialStream::ProgramOptions::Shader::Type::Resource:
+			case MaterialSpecification::ProgramOptions::Shader::Type::Resource:
 				vertexShaderSrc = dynamic_cast<String*>(getResourceManager()->getResource(progOpts.vertexShader.data).get())->getData();
 				break;
 
@@ -94,15 +94,15 @@ namespace mpp
 			string geometryShaderSrc;
 			switch (progOpts.geometryShader.type)
 			{
-			case MaterialStream::ProgramOptions::Shader::Type::Default:
+			case MaterialSpecification::ProgramOptions::Shader::Type::Default:
 				geometryShaderSrc = "";
 				break;
 
-			case MaterialStream::ProgramOptions::Shader::Type::File:
+			case MaterialSpecification::ProgramOptions::Shader::Type::File:
 				geometryShaderSrc = utils::FileSystem::readTextFile(progOpts.geometryShader.data);
 				break;
 
-			case MaterialStream::ProgramOptions::Shader::Type::Resource:
+			case MaterialSpecification::ProgramOptions::Shader::Type::Resource:
 				geometryShaderSrc = dynamic_cast<String*>(getResourceManager()->getResource(progOpts.geometryShader.data).get())->getData();
 				break;
 
@@ -113,15 +113,15 @@ namespace mpp
 			string fragmentShaderSrc;
 			switch (progOpts.fragmentShader.type)
 			{
-			case MaterialStream::ProgramOptions::Shader::Type::Default:
+			case MaterialSpecification::ProgramOptions::Shader::Type::Default:
 				fragmentShaderSrc = "";
 				break;
 
-			case MaterialStream::ProgramOptions::Shader::Type::File:
+			case MaterialSpecification::ProgramOptions::Shader::Type::File:
 				fragmentShaderSrc = utils::FileSystem::readTextFile(progOpts.fragmentShader.data);
 				break;
 
-			case MaterialStream::ProgramOptions::Shader::Type::Resource:
+			case MaterialSpecification::ProgramOptions::Shader::Type::Resource:
 				fragmentShaderSrc = dynamic_cast<String*>(getResourceManager()->getResource(progOpts.fragmentShader.data).get())->getData();
 				break;
 
