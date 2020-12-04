@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mpp/MaterialSpecification.h"
 #include "mpp/UniformCollection.h"
 
 #include "mpp/resource-parsers/FileStream.h"
@@ -16,18 +17,9 @@ namespace mpp
 		class _MPPMESHSPECIFICATIONPARSERAPI ModelspecStream : public resource_parsers::FileStream
 		{
 
-			struct Material
-			{
-				MaterialStream::ProgramOptions program;
-				UniformCollection uniforms;
-				std::map<std::string, std::pair<std::string, bool>> textures;
-			};
-
-		private:
-
 			mesh::MeshSpecification mMeshSpec;
 
-			std::map<std::string, Material> mMaterials;
+			std::map<std::string, mpp::MaterialSpecification> mMaterials;
 
 		public:
 
@@ -37,7 +29,7 @@ namespace mpp
 
 			mesh::MeshSpecification const& getMeshSpecification() const;
 
-			std::map<std::string, Material> const& getMaterials() const;
+			std::map<std::string, mpp::MaterialSpecification> const& getMaterials() const;
 
 			void serialize(std::ofstream& fp);
 		};

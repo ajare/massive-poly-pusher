@@ -27,9 +27,9 @@ namespace mpp
 	 * Get program.
 	 *
 	 */
-	MaterialStream::ProgramOptions const& MaterialStream::getProgramOptions() const
+	MaterialSpecification::ProgramOptions const& MaterialStream::getProgramOptions() const
 	{
-		return mQualitySettings[mQualitySetting].program;
+		return mQualitySettings[mQualitySetting].spec.program;
 	}
 
 	/*
@@ -38,7 +38,7 @@ namespace mpp
 	 */
 	UniformCollection const& MaterialStream::getUniforms() const
 	{
-		return mQualitySettings[mQualitySetting].uniforms;
+		return mQualitySettings[mQualitySetting].spec.uniforms;
 	}
 
 	/*
@@ -47,7 +47,7 @@ namespace mpp
 	 */
 	map<string, pair<string, bool>> const& MaterialStream::getTextures() const
 	{
-		return mQualitySettings[mQualitySetting].textures;
+		return mQualitySettings[mQualitySetting].spec.textures;
 	}
 
 	uint32_t MaterialStream::createQualitySetting(string const& name)

@@ -7,6 +7,7 @@
 #include "mpp/ResourceStream.h"
 #include "mpp/FileDataStream.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/MaterialSpecification.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -16,42 +17,11 @@ namespace mpp
 	{
 		friend class ResourceStreamSerializer;
 
-	public:
-
-		struct ProgramOptions
-		{
-			bool resourceExists{ false };
-
-			// For an existing program resource
-			std::string existingResource;
-			bool isChild{ false };
-
-			// Info for creating new resource
-			struct Shader
-			{
-				enum class Type
-				{
-					Default,
-					File,
-					Resource
-				};
-
-				Type type{ Type::Default };
-				std::string data;
-			};
-
-			bool is2d;
-			mesh::MeshSpecification spec;
-			Shader vertexShader, geometryShader, fragmentShader;
-		};
-
 	protected:
 
 		struct QualitySetting
 		{
-			ProgramOptions program;
-			UniformCollection uniforms;
-			std::map<std::string, std::pair<std::string, bool>> textures;
+			MaterialSpecification spec;
 		};
 
 	protected:
@@ -66,7 +36,7 @@ namespace mpp
 
 		std::string const& getName() const;
 
-		ProgramOptions const& getProgramOptions() const;
+		MaterialSpecification::ProgramOptions const& getProgramOptions() const;
 
 		UniformCollection const& getUniforms() const;
 

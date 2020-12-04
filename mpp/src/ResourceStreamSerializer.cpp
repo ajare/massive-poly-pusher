@@ -185,29 +185,29 @@ namespace mpp
 		for (auto const& setting: stream->mQualitySettings)
 		{
 			// Program options
-			writeValue(setting.program.resourceExists, fp);
-			writeValue(setting.program.existingResource, fp);
-			writeValue(setting.program.isChild, fp);
-			writeValue(setting.program.is2d, fp);
+			writeValue(setting.spec.program.resourceExists, fp);
+			writeValue(setting.spec.program.existingResource, fp);
+			writeValue(setting.spec.program.isChild, fp);
+			writeValue(setting.spec.program.is2d, fp);
 
-			writeMeshSpecification(setting.program.spec, fp);
+			writeMeshSpecification(setting.spec.program.spec, fp);
 
 			// Shaders
-			writeValue((uint32_t)setting.program.vertexShader.type, fp);
-			writeValue(setting.program.vertexShader.data, fp);
+			writeValue((uint32_t)setting.spec.program.vertexShader.type, fp);
+			writeValue(setting.spec.program.vertexShader.data, fp);
 
-			writeValue((uint32_t)setting.program.geometryShader.type, fp);
-			writeValue(setting.program.geometryShader.data, fp);
+			writeValue((uint32_t)setting.spec.program.geometryShader.type, fp);
+			writeValue(setting.spec.program.geometryShader.data, fp);
 
-			writeValue((uint32_t)setting.program.fragmentShader.type, fp);
-			writeValue(setting.program.fragmentShader.data, fp);
+			writeValue((uint32_t)setting.spec.program.fragmentShader.type, fp);
+			writeValue(setting.spec.program.fragmentShader.data, fp);
 
 			// Uniforms
-			writeUniformCollection(setting.uniforms, fp);
+			writeUniformCollection(setting.spec.uniforms, fp);
 
 			// Textures
-			writeValue(setting.textures.size(), fp);
-			for (auto const& kvp: setting.textures)
+			writeValue(setting.spec.textures.size(), fp);
+			for (auto const& kvp: setting.spec.textures)
 			{
 				writeValue(kvp.first, fp);
 				writeValue(kvp.second.first, fp);
@@ -554,27 +554,27 @@ namespace mpp
 			// Program options
 			auto& qs = pStream->mQualitySettings[quality];
 
-			qs.program.resourceExists = readBool(fp);
-			qs.program.existingResource = readString(fp);
-			qs.program.isChild = readBool(fp);
-			qs.program.is2d = readBool(fp);
+			qs.spec.program.resourceExists = readBool(fp);
+			qs.spec.program.existingResource = readString(fp);
+			qs.spec.program.isChild = readBool(fp);
+			qs.spec.program.is2d = readBool(fp);
 
 			// MeshSpecification
 			auto meshSpec = readMeshSpecification(fp);
-			qs.program.spec = meshSpec;
+			qs.spec.program.spec = meshSpec;
 
 			// Shaders
-			qs.program.vertexShader.type = static_cast<MaterialStream::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.program.vertexShader.data = readString(fp);
+			qs.spec.program.vertexShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.vertexShader.data = readString(fp);
 
-			qs.program.geometryShader.type = static_cast<MaterialStream::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.program.geometryShader.data = readString(fp);
+			qs.spec.program.geometryShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.geometryShader.data = readString(fp);
 
-			qs.program.fragmentShader.type = static_cast<MaterialStream::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.program.fragmentShader.data = readString(fp);
+			qs.spec.program.fragmentShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.fragmentShader.data = readString(fp);
 
 			// Uniforms
-			qs.uniforms = readUniformCollection(fp);
+			qs.spec.uniforms = readUniformCollection(fp);
 
 			// Textures
 			size_t numTextures = readUInt(fp);
@@ -584,7 +584,7 @@ namespace mpp
 				auto resource = readString(fp);
 				auto exists = readBool(fp);
 
-				qs.textures[sampler] = make_pair(resource, exists);
+				qs.spec.textures[sampler] = make_pair(resource, exists);
 			}
 		}
 	}

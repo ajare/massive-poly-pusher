@@ -31,6 +31,7 @@
     <ClInclude Include="..\..\include\mpp\LineBatch.h" />
     <ClInclude Include="..\..\include\mpp\Logger.h" />
     <ClInclude Include="..\..\include\mpp\Material.h" />
+    <ClInclude Include="..\..\include\mpp\MaterialSpecification.h" />
     <ClInclude Include="..\..\include\mpp\MaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\Memory.h" />
     <ClInclude Include="..\..\include\mpp\Mesh.h" />

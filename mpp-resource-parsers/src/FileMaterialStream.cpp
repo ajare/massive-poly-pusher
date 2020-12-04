@@ -226,16 +226,16 @@ namespace mpp
 						addChild("Program", ResourceStreamPtr(programStream));
 
 						// Set program options
-						qs.program.resourceExists = true;
-						qs.program.isChild = true;
+						qs.spec.program.resourceExists = true;
+						qs.spec.program.isChild = true;
 					}
 					else if (programEntry.hasEntry("Ref"))
 					{
 						auto refName = programEntry.getEntry("Resource").getValue();
 
 						// Set program options
-						qs.program.resourceExists = true;
-						qs.program.existingResource = refName;
+						qs.spec.program.resourceExists = true;
+						qs.spec.program.existingResource = refName;
 					}
 					else
 					{
@@ -266,11 +266,11 @@ namespace mpp
 								auto textureStream = new FileTextureStream(getResourceMgr(), getFilepath(), textureEntry.getEntry("Resource"));
 								addChild(textureName, ResourceStreamPtr(textureStream));
 							
-								qs.textures[samplerName] = make_pair(textureName, true);
+								qs.spec.textures[samplerName] = make_pair(textureName, true);
 							}
 							else if (textureEntry.hasEntry("Ref"))
 							{
-								qs.textures[samplerName] = make_pair(textureEntry.getEntry("Ref").getValue(), false);
+								qs.spec.textures[samplerName] = make_pair(textureEntry.getEntry("Ref").getValue(), false);
 							}
 						}
 					}
@@ -285,7 +285,7 @@ namespace mpp
 						if (entry.first == "Uniform")
 						{
 							// Parse uniform
-							parseUniform(entry.second, qs.uniforms);
+							parseUniform(entry.second, qs.spec.uniforms);
 						}
 					}
 				}
