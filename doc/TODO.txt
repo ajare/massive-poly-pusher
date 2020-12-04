@@ -15,7 +15,7 @@ Main Items
 6. Normal mapping   
 7. Sponza model + mtl transformation
    - Add external repo and create batch file to convert and copy over (don't check in)
-8. Dragon model, or car model for env mapping
+8. Dragon model, or car model for env mapping, or other models here: https://casual-effects.com/data/
 9. POST-EFFECTS SYSTEM
 10. Get 2d batches working with default 3d scenes
 11. 2D SCENE

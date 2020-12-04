@@ -74,9 +74,10 @@ Materials specification
 #include "utils/FileSystem.h"
 
 #include <mpp/ResourceStreamSerializer.h>
+#include <mpp/MaterialStream.h>
+#include <mpp/ModelSerializer.h>
 
 #include <mpp/mesh/MeshSpecification.h>
-#include <mpp/mesh/ModelSerializer.h>
 
 #include <mpp/mesh-specification-parser/SpecificationParser.h>
 #include <mpp/mesh-specification-parser/ProgramInformation.h>
@@ -186,14 +187,21 @@ ProgramArgs parseArguments(int argc, char** argv)
 	return pArgs;
 }
 
+void serializeMaterial(mpp::ResourceStreamPtr const& matStream, mpp::mesh::MeshSpecification const& meshSpec, ofstream& fp)
+{
+	mpp::ResourceStreamSerializer ser(nullptr);
+
+	ser.setGlobalMeshSpecification(meshSpec);
+	ser.serialize(matStream, fp);
+}
+
 void convert(string const& inFile, string const& outFile, string const& specFile, string const& matFile)
 {
 	using namespace mpp::mesh_specification_parser;
 
+	// Load spec
 	ModelspecStream mStream(specFile);
 	mStream.load();
-
-	auto resSer = make_shared<mpp::ResourceStreamSerializer>(nullptr);
 
 	uint32_t maxVerticesPerMesh{ ~0u };
 	AssImpModelLoader loader(inFile, mStream.getMeshSpecification(), maxVerticesPerMesh, true);
@@ -205,28 +213,10 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	loader.load();
 	
 	// Save file
-	ModelSerializer fileSaver;
+	mpp::ModelSerializer fileSaver;
 
 	// Materials
-	//resSer.serialize(mStream)
-
-	/*
-	auto const& materials = mStream.getMaterials();
-	for (auto const& kvp: materials)
-	{
-		auto const& name = kvp.first;
-		auto const& material = kvp.second;
-
-		MaterialInformation mi;
-
-		mi.setPositionType(material.program.is2d ? mpp::mesh::MaterialInformation::PositionType::p2D :
-			mpp::mesh::MaterialInformation::PositionType::p3D);
-
-		//mi.
-
-		fileSaver.addMaterial(name, mi);
-	}
-	*/
+	// ...
 
 	int meshCount = loader.getNumMeshDefinitions();
 	fileSaver.setMeshCount(meshCount);
@@ -256,7 +246,7 @@ void debug(string const& inFile, string const& outFile)
 {
 	cout << "Debugging " << inFile << "\n";
 
-	ModelSerializer fileLoader;
+	mpp::ModelSerializer fileLoader;
 
 	fileLoader.load(inFile);
 

@@ -2,6 +2,9 @@
 
 #include "utils/StringUtils.h"
 
+#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ResourceStreamSerializer.h"
+
 #include "mpp/resource-parsers/MeshSpecificationParser.h"
 #include "mpp/resource-parsers/FileMaterialStream.h"
 
@@ -54,7 +57,7 @@ namespace mpp
 							auto name = mentry.second.getEntry("name").getValue();
 
 							// Get resource
-							resource_parsers::FileMaterialStream mstream(nullptr, getFilepath(), mentry.second.getEntry("Resource"));
+							resource_parsers::FileMaterialStream mstream(nullptr, getFilepath(), mentry.second.getEntry("Resource"), mMeshSpec);
 							mstream.load(0);
 							
 							// Add material
@@ -69,75 +72,10 @@ namespace mpp
 							// Set up added material
 							Material& mat = mMaterials[name];
 
-							auto const& progOpts = mstream.getProgramOptions();
+							mat.program = mstream.getProgramOptions();
 
-							mat.program.is2d = progOpts.is2d;
-							mat.program.resourceExists = progOpts.resourceExists;
-							mat.program.existingResource = progOpts.existingResource;
-
-							if (progOpts.resourceExists)
-							{
-								if (progOpts.isChild)
-								{
-									// Resource is being declared, so get its name
-									auto const& children = mstream.getChildren();
-									auto programRes = dynamic_cast<ProgramStream*>(children.at("Program").get());
-									programRes->load(0);
-
-									auto const& vertexShader = programRes->getVertexShader();
-									auto const& geometryShader = programRes->getGeometryShader();
-									auto const& fragmentShader = programRes->getFragmentShader();
-
-									mat.program.vertexShader.data = vertexShader.data;
-									switch (vertexShader.type)
-									{
-									case mpp::ProgramStream::Shader::Type::Default:
-										mat.program.vertexShader.type = ProgramOptions::Shader::Type::Default;
-										break;
-
-									case mpp::ProgramStream::Shader::Type::File:
-										mat.program.vertexShader.type = ProgramOptions::Shader::Type::File;
-										break;
-
-									case mpp::ProgramStream::Shader::Type::Resource:
-										mat.program.vertexShader.type = ProgramOptions::Shader::Type::Resource;
-										break;
-									}
-
-									mat.program.geometryShader.data = geometryShader.data;
-									switch (geometryShader.type)
-									{
-									case mpp::ProgramStream::Shader::Type::Default:
-										mat.program.geometryShader.type = ProgramOptions::Shader::Type::Default;
-										break;
-
-									case mpp::ProgramStream::Shader::Type::File:
-										mat.program.geometryShader.type = ProgramOptions::Shader::Type::File;
-										break;
-
-									case mpp::ProgramStream::Shader::Type::Resource:
-										mat.program.geometryShader.type = ProgramOptions::Shader::Type::Resource;
-										break;
-									}
-
-									mat.program.fragmentShader.data = fragmentShader.data;
-									switch (fragmentShader.type)
-									{
-									case mpp::ProgramStream::Shader::Type::Default:
-										mat.program.fragmentShader.type = ProgramOptions::Shader::Type::Default;
-										break;
-
-									case mpp::ProgramStream::Shader::Type::File:
-										mat.program.fragmentShader.type = ProgramOptions::Shader::Type::File;
-										break;
-
-									case mpp::ProgramStream::Shader::Type::Resource:
-										mat.program.fragmentShader.type = ProgramOptions::Shader::Type::Resource;
-										break;
-									}
-
-								}
-							}
+							// Override mesh specification
+							mat.program.spec = mMeshSpec;
 
 							mat.uniforms = mstream.getUniforms();
 							mat.textures = mstream.getTextures();
@@ -156,5 +94,41 @@ namespace mpp
 		{
 			return mMaterials;
 		}
+
+		void ModelspecStream::serialize(ofstream& fp)
+		{
+			// Write all materials using shared functions from ResourceStreamSerializer
+			mpp::ResourceStreamSerializer ser(nullptr);
+
+			for (auto const& material: mMaterials)
+			{
+				auto stream = make_shared< mpp::ProgrammaticMaterialStream>(nullptr);
+
+				// Program
+				stream->setProgram(material.second.program);
+
+				// Uniforms
+				stream->setUniforms(material.second.uniforms);
+
+				// Textures
+				for (auto const& texture : material.second.textures)
+				{
+					auto const& sampler = texture.first;
+					auto const& res = texture.second;
+
+					if (res.second)
+					{
+						stream->setTextureChild(sampler, res.first);
+					}
+					else
+					{
+						stream->setTexture(sampler, res.first);
+					}
+				}
+
+				ser.serialize(stream, fp);
+			}
+		}
 	}
+
 }

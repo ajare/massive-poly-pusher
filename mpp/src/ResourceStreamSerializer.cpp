@@ -22,6 +22,12 @@ namespace mpp
 	{
 	}
 
+	void ResourceStreamSerializer::setGlobalMeshSpecification(mesh::MeshSpecification const& meshSpec)
+	{
+		mUseGlobalMeshSpec = true;
+		mMeshSpec = meshSpec;
+	}
+
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, string const& filename)
 	{
 		// Open file
@@ -32,14 +38,45 @@ namespace mpp
 			THROW_MPP_IO("Could not open " + filename + " for writing", __LINE__, __FILE__, __func__);
 		}
 
+		serialize(resourceStream, fp);
+
+		fp.close();
+	}
+
+	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, ofstream& fp)
+	{
 		// Write magic number
 		char* magic{ "RSER" };
 		fp.write(magic, 4);
 
 		// Recursively write streams and their children
 		writeStream(resourceStream, fp);
+	}
 
-		fp.close();
+	ResourceStreamPtr ResourceStreamSerializer::deserialize(string const& filename)
+	{
+		// Open file
+		ifstream fp(filename, ios::in | ios::binary);
+
+		if (!fp.is_open())
+		{
+			THROW_MPP_IO("Could not open " + filename + " for reading", __LINE__, __FILE__, __func__);
+		}
+
+		return deserialize(fp);
+	}
+
+	ResourceStreamPtr ResourceStreamSerializer::deserialize(ifstream& fp)
+	{
+		char magic[4];
+		fp.read(magic, 4);
+
+		if (magic[0] != 'R' && magic[1] != 'S' && magic[2] != 'E' && magic[3] != 'R')
+		{
+			THROW_MPP_IO("Could not open stream for reading.  Not a valid format.", __LINE__, __FILE__, __func__);
+		}
+
+		return readStream(fp);
 	}
 
 	void ResourceStreamSerializer::writeValue(string const& value, ofstream& fp)
@@ -76,15 +113,17 @@ namespace mpp
 
 	void ResourceStreamSerializer::writeMeshSpecification(mesh::MeshSpecification const& meshSpec, ofstream& fp)
 	{
-		writeValue((uint32_t)meshSpec.getPrimitiveType(), fp);
-		writeValue((uint32_t)meshSpec.getStorageType(), fp);
-		writeValue(meshSpec.verticesIndexed(), fp);
+		auto const& ms = mUseGlobalMeshSpec ? mMeshSpec : meshSpec;
+
+		writeValue((uint32_t)ms.getPrimitiveType(), fp);
+		writeValue((uint32_t)ms.getStorageType(), fp);
+		writeValue(ms.verticesIndexed(), fp);
 
 		// Write layouts
-		writeValue(meshSpec.getNumVertexBufferAttributeLayouts(), fp);
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		writeValue(ms.getNumVertexBufferAttributeLayouts(), fp);
+		for (int i = 0; i < ms.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
+			auto const& layout = ms.getVertexBufferAttributeLayout(i);
 
 			writeValue(layout.isStatic(), fp);
 
@@ -442,7 +481,7 @@ namespace mpp
 			}
 		}
 
-		return meshSpec;
+		return mUseGlobalMeshSpec ? mMeshSpec : meshSpec;
 	}
 
 	UniformCollection ResourceStreamSerializer::readUniformCollection(ifstream& fp)
@@ -501,6 +540,7 @@ namespace mpp
 	void ResourceStreamSerializer::readMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
 		auto pStream = static_cast<ProgrammaticMaterialStream*>(resourceStream.get());
+		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
 		size_t numSettings = readUInt(fp);
@@ -552,6 +592,7 @@ namespace mpp
 	void ResourceStreamSerializer::readProgramStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
 		auto pStream = static_cast<ProgrammaticProgramStream*>(resourceStream.get());
+		pStream->mQualitySettings.clear();
 
 		// Read source
 		auto vertexSource = readString(fp);
@@ -594,6 +635,7 @@ namespace mpp
 	void ResourceStreamSerializer::readSamplerStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
 		auto pStream = static_cast<ProgrammaticSamplerStream*>(resourceStream.get());
+		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
 		size_t numSettings = readUInt(fp);
@@ -619,6 +661,7 @@ namespace mpp
 	void ResourceStreamSerializer::readStringStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
 		auto pStream = static_cast<ProgrammaticStringStream*>(resourceStream.get());
+		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
 		size_t numSettings = readUInt(fp);
@@ -640,6 +683,7 @@ namespace mpp
 	void ResourceStreamSerializer::readTextureStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
 		auto pStream = static_cast<ProgrammaticTextureStream*>(resourceStream.get());
+		pStream->mQualitySettings.clear();
 
 		// Write tiles
 		size_t numTiles = readUInt(fp);
@@ -716,6 +760,9 @@ namespace mpp
 			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
+		// Clear the quality setting that gets created
+		resourceStream->mQualityNames.clear();
+
 		// Read children
 		size_t numChildren = readUInt(fp);
 		for (size_t i = 0; i < numChildren; ++i)
@@ -746,19 +793,19 @@ namespace mpp
 		}
 		else if (streamType == "Program")
 		{
-			readMaterialStream(resourceStream, fp, settingNames);
+			readProgramStream(resourceStream, fp, settingNames);
 		}
 		else if (streamType == "Sampler")
 		{
-			readMaterialStream(resourceStream, fp, settingNames);
+			readSamplerStream(resourceStream, fp, settingNames);
 		}
 		else if (streamType == "String")
 		{
-			readMaterialStream(resourceStream, fp, settingNames);
+			readStringStream(resourceStream, fp, settingNames);
 		}
 		else if (streamType == "Texture")
 		{
-			readMaterialStream(resourceStream, fp, settingNames);
+			readTextureStream(resourceStream, fp, settingNames);
 		}
 		else
 		{

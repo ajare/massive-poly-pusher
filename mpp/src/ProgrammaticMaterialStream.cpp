@@ -16,6 +16,13 @@ namespace mpp
 	 * Set program
 	 *
 	 */
+	void ProgrammaticMaterialStream::setProgram(ProgramOptions progOptions, uint32_t quality)
+	{
+		auto& qs = mQualitySettings[quality];
+
+		qs.program = progOptions;
+	}
+
 	void ProgrammaticMaterialStream::setProgram(string const& program, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];

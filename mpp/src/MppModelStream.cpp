@@ -5,7 +5,7 @@
 #include "mpp/ProgrammaticMaterialStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticStringStream.h"
-#include "mpp/mesh/ModelSerializer.h"
+#include "mpp/ModelSerializer.h"
 #include "mpp/ResourceManager.h"
 
 #define FLAG_INDEXED_VERTICES 0x0001
@@ -33,7 +33,7 @@ namespace mpp
 	{
 		auto resMgr = getResourceMgr();
 
-		mesh::ModelSerializer ser;
+		ModelSerializer ser;
 		auto reader = ser.getReader(mFilename);
 
 		// Create child ResourceStreams
@@ -198,7 +198,7 @@ namespace mpp
 
 	void MppModelStream::createMeshDataStreams()
 	{
-		mesh::ModelSerializer ser;
+		ModelSerializer ser;
 		ser.load(mFilename);
 
 		// Create meshes

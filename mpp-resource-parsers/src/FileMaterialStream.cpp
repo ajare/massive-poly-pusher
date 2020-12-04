@@ -17,12 +17,30 @@ namespace mpp
 		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath)
 			: MaterialStream(resourceMgr)
 			, FileStream(filepath)
+			, mUseSpecifiedMeshSpec(false)
 		{
 		}
 
 		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
 			: MaterialStream(resourceMgr)
 			, FileStream(filepath, data)
+			, mUseSpecifiedMeshSpec(false)
+		{
+		}
+
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec)
+			: MaterialStream(resourceMgr)
+			, FileStream(filepath)
+			, mUseSpecifiedMeshSpec(true)
+			, mMeshSpec(meshSpec)
+		{
+		}
+
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec)
+			: MaterialStream(resourceMgr)
+			, FileStream(filepath, data)
+			, mUseSpecifiedMeshSpec(true)
+			, mMeshSpec(meshSpec)
 		{
 		}
 
@@ -201,7 +219,10 @@ namespace mpp
 					if (programEntry.hasEntry("Resource"))
 					{
 						// If it's a definition, create a child FileProgramStream with this node and load it
-						auto programStream = new FileProgramStream(getResourceMgr(), getFilepath(), programEntry.getEntry("Resource"));
+						FileProgramStream* programStream = mUseSpecifiedMeshSpec ?
+							new FileProgramStream(getResourceMgr(), getFilepath(), programEntry.getEntry("Resource"), mMeshSpec) :
+							new FileProgramStream(getResourceMgr(), getFilepath(), programEntry.getEntry("Resource"));
+
 						addChild("Program", ResourceStreamPtr(programStream));
 
 						// Set program options

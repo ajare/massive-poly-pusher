@@ -38,6 +38,7 @@
     <ClInclude Include="..\..\include\mpp\MeshSortFlags.h" />
     <ClInclude Include="..\..\include\mpp\Model.h" />
     <ClInclude Include="..\..\include\mpp\ModelInstance.h" />
+    <ClInclude Include="..\..\include\mpp\ModelSerializer.h" />
     <ClInclude Include="..\..\include\mpp\ModelStream.h" />
     <ClInclude Include="..\..\include\mpp\MppException.h" />
     <ClInclude Include="..\..\include\mpp\MppModelStream.h" />
@@ -118,6 +119,7 @@
     <ClCompile Include="..\..\src\MeshInstance.cpp" />
     <ClCompile Include="..\..\src\Model.cpp" />
     <ClCompile Include="..\..\src\ModelInstance.cpp" />
+    <ClCompile Include="..\..\src\ModelSerializer.cpp" />
     <ClCompile Include="..\..\src\ModelStream.cpp" />
     <ClCompile Include="..\..\src\MppModelStream.cpp" />
     <ClCompile Include="..\..\src\PostEffect.cpp" />
