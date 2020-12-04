@@ -1,6 +1,13 @@
 Main Items
 ----------
 
+0. Fix up ModelSerializer
+   a. Move to fstream
+   b. Refactor read/write functions to shared code
+   c. Get model-convert working and saving an mppmodel
+      i. Get material mapping in .modelspec file working
+   d. Get mppmodel loading in and displaying in demo-suite
+
 1. RESOURCE LOADING FROM FILES
    a. Material [DONE]
    b. String [DONE]
