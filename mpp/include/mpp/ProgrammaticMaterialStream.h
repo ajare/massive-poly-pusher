@@ -18,9 +18,13 @@ namespace mpp
 
 		void loadImpl() {}
 
+		void createChildResourceStreamsImpl();
+
 	public:
 
 		explicit ProgrammaticMaterialStream(ResourceManager* resourceMgr);
+
+		void setSpecification(MaterialSpecification const& matSpec, uint32_t quality = 0);
 
 		void setProgram(MaterialSpecification::ProgramOptions progOptions, uint32_t quality = 0);
 

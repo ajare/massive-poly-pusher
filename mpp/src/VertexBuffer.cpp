@@ -111,18 +111,18 @@ namespace mpp
 	 * Get the number of attributes this buffer has.
 	 *
 	 */
-	int VertexBuffer::getNumAttributes() const
+	size_t VertexBuffer::getNumAttributes() const
 	{
-		return (int)mAttributes.size();
+		return mAttributes.size();
 	}
 
 	/*
 	 * Enable specified attribute.
 	 *
 	 */
-	void VertexBuffer::enableAttribute(int index, bool enable)
+	void VertexBuffer::enableAttribute(uint32_t index, bool enable)
 	{
-		assert((index >= 0 && index < getNumAttributes()) && "VertexBuffer::enableAttribute() 'index' argument out of range!");
+		assert(index < getNumAttributes() && "VertexBuffer::enableAttribute() 'index' argument out of range!");
 
 		Attribute const& attrib = mAttributes[index];
 
@@ -300,7 +300,7 @@ namespace mpp
 		bind();
 		allocate(mVertexStride * mVertexCount);
 			
-		for (int i = 0; i < getNumAttributes(); ++i)
+		for (size_t i = 0; i < getNumAttributes(); ++i)
 		{
 			enableAttribute(i, true);
 		}

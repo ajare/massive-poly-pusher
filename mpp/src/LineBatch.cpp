@@ -91,7 +91,7 @@ namespace mpp
 			primitiveCount,
 			mesh::VertexBufferStorageType::Dynamic);
 
-		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			createVertexBuffer(i, mesh, vertexCount, false);
 		}

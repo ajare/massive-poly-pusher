@@ -1,5 +1,9 @@
+#include "mpp/DefaultShaders.h"
 #include "mpp/Program.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticProgramStream.h"
+#include "mpp/ProgrammaticTextureStream.h"
 
 using namespace std;
 
@@ -10,6 +14,80 @@ namespace mpp
 		: MaterialStream(resourceMgr)
 	{
 		createQualitySetting("");
+	}
+
+	void ProgrammaticMaterialStream::createChildResourceStreamsImpl()
+	{
+		auto const& qs = mQualitySettings[mQualitySetting];
+
+		// Program
+		if (qs.spec.program.resourceExists && qs.spec.program.isChild)
+		{
+			auto programStream = new ProgrammaticProgramStream(getResourceMgr());
+			
+			auto parser = make_shared<program::Parser>();
+
+			parser->setMeshSpecification(qs.spec.program.spec);
+
+			// Load source into parser
+			if (qs.spec.program.vertexShader.type == MaterialSpecification::ProgramOptions::Shader::Type::Default)
+			{
+				if (qs.spec.program.is2d)
+				{
+					parser->setVertexSource(VertexShader2dTemplate);
+				}
+				else
+				{
+					parser->setVertexSource(VertexShader3dTemplate);
+				}
+			}
+			else
+			{
+				parser->setVertexSource(qs.spec.program.vertexShader.data);
+			}
+
+			if (qs.spec.program.fragmentShader.type == MaterialSpecification::ProgramOptions::Shader::Type::Default)
+			{
+				if (qs.spec.program.is2d)
+				{
+					parser->setFragmentSource(FragmentShader2dTemplate);
+				}
+				else
+				{
+					parser->setFragmentSource(FragmentShader3dTemplate);
+				}
+			}
+			else
+			{
+				parser->setFragmentSource(qs.spec.program.fragmentShader.data);
+			}
+
+			programStream->setParser(parser);
+			addChild("Program", ResourceStreamPtr(programStream));
+		}
+
+		// Textures
+		for (auto const& texture: qs.spec.textures)
+		{
+			if (texture.resourceExists && texture.isChild)
+			{
+				auto resMgr = getResourceMgr();
+				auto textureStream = new ProgrammaticTextureStream(resMgr);
+
+				textureStream->setParams(texture.params);
+				textureStream->setSampler(texture.sampler);
+				textureStream->setFile(texture.target, texture.existingResource, resMgr->getImageLoadFunction());
+
+				addChild(texture.existingResource, ResourceStreamPtr(textureStream));
+			}
+		}
+	}
+
+	void ProgrammaticMaterialStream::setSpecification(MaterialSpecification const& matSpec, uint32_t quality)
+	{
+		auto& qs = mQualitySettings[quality];
+
+		qs.spec = matSpec;
 	}
 
 	/*
@@ -98,21 +176,45 @@ namespace mpp
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.spec.textures[sampler] = make_pair(resource, true);
+		MaterialSpecification::TextureOptions textureOptions;
+		
+		textureOptions.resourceExists = true;
+		textureOptions.sampler = sampler;
+
+		textureOptions.isChild = true;
+		textureOptions.existingResource = resource;
+
+		qs.spec.textures.push_back(textureOptions);
 	}
 
 	void ProgrammaticMaterialStream::setTexture(string const& sampler, string const& texture, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.spec.textures[sampler] = make_pair(texture, false);
+		MaterialSpecification::TextureOptions textureOptions;
+
+		textureOptions.resourceExists = true;
+		textureOptions.sampler = sampler;
+
+		textureOptions.isChild = false;
+		textureOptions.existingResource = texture;
+
+		qs.spec.textures.push_back(textureOptions);
 	}
 
 	void ProgrammaticMaterialStream::setDefaultTexture(uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.spec.textures["TEX1"] = make_pair("__mpp_tex_none__", false);
+		MaterialSpecification::TextureOptions textureOptions;
+
+		textureOptions.existingResource = true;
+		textureOptions.sampler = "TEX1";
+
+		textureOptions.isChild = false;
+		textureOptions.existingResource = "__mpp_tex_none__";
+
+		qs.spec.textures.push_back(textureOptions);
 	}
 
 	void ProgrammaticMaterialStream::setUniforms(UniformCollection const& uniforms, uint32_t quality)

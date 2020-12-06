@@ -147,14 +147,19 @@ namespace mpp
 		
 		// Set textures
 		Program* program = (Program*)(mProgram.get());
-		auto materialTextures = mStr->getTextures();
+		auto const& materialTextures = mStr->getTextures();
 
 		// Go through each texture, get the binding location.
 		for (int i = 0; i < program->getNumSamplers(); ++i)
 		{
 			string const& samplerName = program->getSamplerName(i);
-
-			auto it = materialTextures.find(samplerName);
+			
+			auto it = find_if(materialTextures.begin(), materialTextures.end(), 
+				[samplerName] (MaterialSpecification::TextureOptions const& textureOptions) 
+			{
+				return textureOptions.sampler == samplerName;
+			});
+			
 			if (it == materialTextures.end())
 			{
 				string errMsg = utils::StringUtils::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
@@ -162,16 +167,11 @@ namespace mpp
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			string textureName;
-			if (it->second.second)
-			{
-				// Texture is a child resource, so we need to mark it up
-				textureName = getName() + "/" + it->second.first;
-			}
-			else
-			{
-				textureName = it->second.first;
-			}
+			auto const& textureOptions = *it;
+
+			string textureName = textureOptions.isChild
+				? getName() + "/" + textureOptions.existingResource
+				: textureOptions.existingResource;
 
 			mTextures.push_back(resourceMgr->getResource(textureName));
 		}

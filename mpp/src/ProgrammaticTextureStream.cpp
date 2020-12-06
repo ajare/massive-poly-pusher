@@ -22,9 +22,14 @@ namespace mpp
 		createQualitySetting("");
 	}
 
-	void ProgrammaticTextureStream::setInternalFormat(InternalType type, bool normalized, size_t bitSize, size_t channels)
+	void ProgrammaticTextureStream::setParams(TextureParams const& params, uint32_t quality)
 	{
-		if (type == InternalType::Float && normalized)
+		mQualitySettings[quality].params = params;
+	}
+
+	void ProgrammaticTextureStream::setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels)
+	{
+		if (type == TextureInternalType::Float && normalized)
 		{
 			getResourceMgr()->warnMessage("ProgrammaticTextureStream: ignoring 'normalized': specified with floating-point data.");
 		}
@@ -37,7 +42,7 @@ namespace mpp
 
 		switch (type)
 		{
-		case InternalType::UnsignedInteger:
+		case TextureInternalType::UnsignedInteger:
 			if (normalized)
 			{
 				switch (channels)
@@ -135,7 +140,7 @@ namespace mpp
 			}
 			break;
 
-		case InternalType::SignedInteger:
+		case TextureInternalType::SignedInteger:
 			if (normalized)
 			{
 				switch (channels)
@@ -222,7 +227,7 @@ namespace mpp
 			}
 			break;
 
-		case InternalType::Float:
+		case TextureInternalType::Float:
 			switch (channels)
 			{
 			case 1:
@@ -270,23 +275,23 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setTarget(TextureStream::Target target)
+	void ProgrammaticTextureStream::setTarget(TextureTarget target)
 	{
 		switch (target)
 		{
-		case Target::Texture1D:
+		case TextureTarget::Texture1D:
 			mTarget = GL_TEXTURE_1D;
 			break;
 
-		case Target::Texture2D:
+		case TextureTarget::Texture2D:
 			mTarget = GL_TEXTURE_2D;
 			break;
 
-		case Target::Texture3D:
+		case TextureTarget::Texture3D:
 			mTarget = GL_TEXTURE_3D;
 			break;
 
-		case Target::CubeMap:
+		case TextureTarget::CubeMap:
 			mTarget = GL_TEXTURE_CUBE_MAP;
 			break;
 
@@ -295,7 +300,7 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setData(TextureStream::Target target, ImageLoadFunction creator, uint32_t quality)
+	void ProgrammaticTextureStream::setData(TextureTarget target, ImageLoadFunction creator, uint32_t quality)
 	{
 		setTarget(target);
 
@@ -303,7 +308,7 @@ namespace mpp
 		mQualitySettings[quality].loadFunc = creator;
 	}
 
-	void ProgrammaticTextureStream::setFile(TextureStream::Target target, string const& filename, ImageLoadFunction loader, uint32_t quality)
+	void ProgrammaticTextureStream::setFile(TextureTarget target, string const& filename, ImageLoadFunction loader, uint32_t quality)
 	{
 		setTarget(target);
 

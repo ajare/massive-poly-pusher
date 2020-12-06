@@ -663,10 +663,10 @@ namespace mpp
 
 			stage.inAttribs.clear();
 
-			for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+			for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 			{
 				auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto const& meshAttrib = layout.getAttribute(j);
 					size_t size[2];

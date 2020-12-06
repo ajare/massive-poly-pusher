@@ -32,16 +32,16 @@ namespace mpp
 		double dw = width / dimX;
 		double dh = depth / dimZ;
 
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
 
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 
 				// Get offset and stride for component
-				int offset = componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+				auto offset = componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
 				switch (attrib.component)
 				{

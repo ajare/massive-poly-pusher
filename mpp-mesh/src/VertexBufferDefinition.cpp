@@ -80,7 +80,7 @@ namespace mpp
 		 * Get the number of attributes in this buffer.
 		 *
 		 */
-		int VertexBufferDefinition::getNumAttributes() const
+		size_t VertexBufferDefinition::getNumAttributes() const
 		{
 			return mSpecification.getNumAttributes();
 		}

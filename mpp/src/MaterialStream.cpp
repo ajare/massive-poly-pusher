@@ -45,7 +45,7 @@ namespace mpp
 	 * Get textures.
 	 *
 	 */
-	map<string, pair<string, bool>> const& MaterialStream::getTextures() const
+	std::vector<MaterialSpecification::TextureOptions> const& MaterialStream::getTextures() const
 	{
 		return mQualitySettings[mQualitySetting].spec.textures;
 	}

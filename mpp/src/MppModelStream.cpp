@@ -36,163 +36,17 @@ namespace mpp
 		ModelSerializer ser;
 		auto reader = ser.getReader(mFilename);
 
-		// Create child ResourceStreams
-		string vertexShader{ "" }, fragmentShader{ "" };
-
-		// Create a material resource for each unique combination of mesh (spec) and
-		// the material it uses
+		// Create material resources
 		auto numMeshes = reader.getNumMeshes();
 		for (size_t i = 0; i < numMeshes; ++i)
 		{
-			auto const& matInfo = reader.getMaterialByMeshId(i);
-			auto const& meshSpec = reader.getMeshSpecificationByMeshId(i);
+			string matName;
+			auto const& matSpec = reader.getMaterialByMeshId(i, &matName);
 
-			// Create material resource, including program and texture child resources
-			// if required.
+			auto mStr = make_shared<mpp::ProgrammaticMaterialStream>(resMgr);
+			mStr->setSpecification(matSpec);
 
-			// If program is an existing resource
-			// ...
-
-			// Else if program needs to be created as a child
-			// ...
-
-			// Else if we're using a default program
-			// ...
-			
-			// For each texture, is it an existing resource?
-			// ...
-
-			// If not, create it as a child
-			// ...
-
-
-			// Create program stream based on MeshSpec and shaders, or by loading files
-			bool vertexShaderIsFile, fragmentShaderIsFile;
-			bool foundVertexShader{ false }, foundFragmentShader{ false };
-			auto const& shaders = matInfo.getShaders();
-			for (auto const& shader: shaders)
-			{
-				switch (shader.type)
-				{
-				case mesh::MaterialInformation::Shader::Type::Vertex:
-					foundVertexShader = true;
-					vertexShaderIsFile = shader.name != "";
-					vertexShader = shader.name;
-					break;
-
-				case mesh::MaterialInformation::Shader::Type::Fragment:
-					foundFragmentShader = true;
-					fragmentShaderIsFile = shader.name != "";
-					fragmentShader = shader.name;
-					break;
-				}
-			}
-
-			if (!foundVertexShader)
-			{
-				THROW_MPP("No vertex shader specified for program in material '" + matInfo.getName() + "'",
-					__LINE__, __FILE__, __func__);
-			}
-			if (!foundFragmentShader)
-			{
-				THROW_MPP("No fragment shader specified for program in material '" + matInfo.getName() + "'",
-					__LINE__, __FILE__, __func__);
-			}
-
-			auto mStr = new ProgrammaticMaterialStream(resMgr);
-			
-			mStr->setProgram2d(matInfo.getPositionType() == mesh::MaterialInformation::PositionType::p2D);
-			mStr->setMeshSpecification(meshSpec);
-
-			mStr->setProgramVertexShaderResource(vertexShader);
-			mStr->setProgramFragmentShaderResource(fragmentShader);
-
-			// Add program resources if required
-			if (vertexShaderIsFile)
-			{
-				// Add a File StringStream child to MaterialStream
-				string vertexShaderFilename = utils::FileSystem::concatPaths(
-					utils::FileSystem::baseDirectory(mFilename),
-					vertexShader);
-
-				auto strStr = new ProgrammaticStringStream(resMgr);
-				strStr->setFile(vertexShaderFilename);
-				mStr->addChild(vertexShader, ResourceStreamPtr(strStr));
-			}
-			if (fragmentShaderIsFile)
-			{
-				// Add a File StringStream child to MaterialStream
-				string fragmentShaderFilename = utils::FileSystem::concatPaths(
-					utils::FileSystem::baseDirectory(mFilename),
-					fragmentShader);
-
-				auto strStr = new ProgrammaticStringStream(resMgr);
-				strStr->setFile(fragmentShaderFilename);
-				mStr->addChild(fragmentShader, ResourceStreamPtr(strStr));
-			}
-
-			// Create texture streams if required
-			auto const& textures = matInfo.getTextures();
-			for (auto const& texture: textures)
-			{
-				if (texture.isResource)
-				{
-					mStr->setTexture(texture.binding, texture.resource);
-				}
-				else
-				{
-					// Add a File TextureStream child to MaterialStream
-					string textureFilename = utils::FileSystem::concatPaths(
-						utils::FileSystem::baseDirectory(mFilename),
-						texture.resource);
-
-					auto texStr = new ProgrammaticTextureStream(resMgr);
-					texStr->setFile(TextureStream::Target::Texture2D, textureFilename, resMgr->getImageLoadFunction());
-					texStr->setFiltering(TextureParams::MinFilter::Linear, TextureParams::MagFilter::Linear);
-
-					mStr->addChild(texture.resource, ResourceStreamPtr(texStr));
-					mStr->setTextureChild(texture.binding, texture.resource);
-				}
-			}
-
-			// Add uniforms
-			auto const& uniforms = matInfo.getUniforms();
-			for (auto const& uniform: uniforms)
-			{
-				if (uniform.type == "int")
-				{
-					int32_t values[4];
-					for (size_t i = 0; i < uniform.numComponents; ++i)
-					{
-						values[i] = any_cast<int32_t>(uniform.values[0]);
-					}
-
-					mStr->setUniform(uniform.name, uniform.numComponents, values);
-				}
-				else if (uniform.type == "uint")
-				{
-					uint32_t values[4];
-					for (size_t i = 0; i < uniform.numComponents; ++i)
-					{
-						values[i] = any_cast<uint32_t>(uniform.values[0]);
-					}
-
-					mStr->setUniform(uniform.name, uniform.numComponents, values);
-				}
-				else if (uniform.type == "float")
-				{
-					float values[4];
-					for (size_t i = 0; i < uniform.numComponents; ++i)
-					{
-						values[i] = any_cast<float>(uniform.values[0]);
-					}
-
-					mStr->setUniform(uniform.name, uniform.numComponents, values);
-				}
-
-			}
-
-			addChild(matInfo.getName(), ResourceStreamPtr(mStr));
+			addChild(matName, mStr);
 		}
 	}
 
@@ -218,7 +72,7 @@ namespace mpp
 			dataStreamDef->primitiveType = ser.getPrimitiveType(i);
 			dataStreamDef->primitiveCount = ser.getPrimitiveCount(i);
 
-			for (int j = 0; j < dataStreamDef->specification.getNumVertexBufferAttributeLayouts(); ++j)
+			for (size_t j = 0; j < dataStreamDef->specification.getNumVertexBufferAttributeLayouts(); ++j)
 			{
 				auto layout = dataStreamDef->specification.getVertexBufferAttributeLayout(j);
 
@@ -231,7 +85,7 @@ namespace mpp
 				dataStreamDef->vertexCount = vertexCount;
 
 				int offset = 0;
-				for (int k = 0; k < layout.getNumAttributes(); ++k)
+				for (size_t k = 0; k < layout.getNumAttributes(); ++k)
 				{
 					VertexDataStreamDefinition vertexStreamDef;
 

@@ -44,12 +44,46 @@ namespace mpp
 		{
 		}
 
-		void FileMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms)
+		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		{
+
+		}
+
+		void FileMaterialStream::createChildResourceStreamsImpl()
+		{
+			auto const& data = getStructuredData();
+
+			// Parse data.  Root element should be 'Material'
+			auto rootName = data.getName();
+
+			if (rootName != "Material" && rootName != "Resource")
+			{
+				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Material' nor 'Resource'.";
+				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+			}
+
+			// Default quality setting
+			parseForChildResourceStreams(data, getResourceMgr(), getFilepath());
+
+			for (auto it = data.begin(); it != data.end(); ++it)
+			{
+				auto const& entry = *it;
+				string value = utils::StringUtils::toUpper(entry.second.getValue());
+
+				if (entry.first == "Quality")
+				{
+					// Additional quality setting
+					parseForChildResourceStreams(entry.second, getResourceMgr(), getFilepath());
+				}
+			}
+		}
+
+		void FileMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
 		{
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  '" + type + "' specified for uniform '" + name + "'  but "
+				string errMsg = "Error loading " + filepath + ".  '" + type + "' specified for uniform '" + name + "'  but "
 					+ utils::StringUtils::toString(values.size()) + " values found.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
@@ -77,12 +111,12 @@ namespace mpp
 			}
 		}
 
-		void FileMaterialStream::parseUniformMatrixType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms)
+		void FileMaterialStream::parseUniformMatrixType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
 		{
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  '" + type + "' specified for uniform '" + name + "'  but "
+				string errMsg = "Error loading " + filepath + ".  '" + type + "' specified for uniform '" + name + "'  but "
 					+ utils::StringUtils::toString(values.size()) + " values found.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
@@ -97,7 +131,7 @@ namespace mpp
 			delete[] fvalues;
 		}
 
-		void FileMaterialStream::parseUniform(utils::StructuredData const& data, UniformCollection& uniforms)
+		void FileMaterialStream::parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
 		{
 			string name, type, value;
 			for (auto it = data.begin(); it != data.end(); ++it)
@@ -120,19 +154,19 @@ namespace mpp
 
 			if (name == "")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  'name' not specified for uniform '" + name + "'.";
+				string errMsg = "Error loading " + filepath + ".  'name' not specified for uniform '" + name + "'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			if (type == "")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  'type' not specified for uniform '" + name + "'.";
+				string errMsg = "Error loading " + filepath + ".  'type' not specified for uniform '" + name + "'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			if (value == "")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  'value' not specified for uniform '" + name + "'.";
+				string errMsg = "Error loading " + filepath + ".  'value' not specified for uniform '" + name + "'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -150,55 +184,55 @@ namespace mpp
 			}
 			else if (type == "vec2")
 			{
-				parseUniformVectorType(name, type, 2, value, uniforms);
+				parseUniformVectorType(name, type, 2, value, uniforms, filepath);
 			}
 			else if (type == "vec3")
 			{
-				parseUniformVectorType(name, type, 3, value, uniforms);
+				parseUniformVectorType(name, type, 3, value, uniforms, filepath);
 			}
 			else if (type == "vec4")
 			{
-				parseUniformVectorType(name, type, 4, value, uniforms);
+				parseUniformVectorType(name, type, 4, value, uniforms, filepath);
 			}
 			else if (type == "mat2")
 			{
-				parseUniformMatrixType(name, type, 2 * 2, value, uniforms);
+				parseUniformMatrixType(name, type, 2 * 2, value, uniforms, filepath);
 			}
 			else if (type == "mat2x3")
 			{
-				parseUniformMatrixType(name, type, 2 * 3, value, uniforms);
+				parseUniformMatrixType(name, type, 2 * 3, value, uniforms, filepath);
 			}
 			else if (type == "mat2x4")
 			{
-				parseUniformMatrixType(name, type, 2 * 4, value, uniforms);
+				parseUniformMatrixType(name, type, 2 * 4, value, uniforms, filepath);
 			}
 			else if (type == "mat3x2")
 			{
-				parseUniformMatrixType(name, type, 3 * 2, value, uniforms);
+				parseUniformMatrixType(name, type, 3 * 2, value, uniforms, filepath);
 			}
 			else if (type == "mat3")
 			{
-				parseUniformMatrixType(name, type, 3 * 3, value, uniforms);
+				parseUniformMatrixType(name, type, 3 * 3, value, uniforms, filepath);
 			}
 			else if (type == "mat3x4")
 			{
-				parseUniformMatrixType(name, type, 3 * 4, value, uniforms);
+				parseUniformMatrixType(name, type, 3 * 4, value, uniforms, filepath);
 			}
 			else if (type == "mat4x2")
 			{
-				parseUniformMatrixType(name, type, 4 * 2, value, uniforms);
+				parseUniformMatrixType(name, type, 4 * 2, value, uniforms, filepath);
 			}
 			else if (type == "mat4x3")
 			{
-				parseUniformMatrixType(name, type, 4 * 3, value, uniforms);
+				parseUniformMatrixType(name, type, 4 * 3, value, uniforms, filepath);
 			}
 			else if (type == "mat4")
 			{
-				parseUniformMatrixType(name, type, 4 * 4, value, uniforms);
+				parseUniformMatrixType(name, type, 4 * 4, value, uniforms, filepath);
 			}
 		}
 
-		void FileMaterialStream::parseQualitySetting(utils::StructuredData const& data)
+		pair<string, FileMaterialStream::QualitySetting> FileMaterialStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
 			QualitySetting qs;
@@ -218,16 +252,9 @@ namespace mpp
 					auto const& programEntry = entry.second;
 					if (programEntry.hasEntry("Resource"))
 					{
-						// If it's a definition, create a child FileProgramStream with this node and load it
-						FileProgramStream* programStream = mUseSpecifiedMeshSpec ?
-							new FileProgramStream(getResourceMgr(), getFilepath(), programEntry.getEntry("Resource"), mMeshSpec) :
-							new FileProgramStream(getResourceMgr(), getFilepath(), programEntry.getEntry("Resource"));
-
-						addChild("Program", ResourceStreamPtr(programStream));
-
-						// Set program options
 						qs.spec.program.resourceExists = true;
 						qs.spec.program.isChild = true;
+						qs.spec.program.existingResource = "Program";
 					}
 					else if (programEntry.hasEntry("Ref"))
 					{
@@ -235,11 +262,12 @@ namespace mpp
 
 						// Set program options
 						qs.spec.program.resourceExists = true;
+						qs.spec.program.isChild = false;
 						qs.spec.program.existingResource = refName;
 					}
 					else
 					{
-						string errMsg = "Error loading " + getFilepath() + ".  Neither 'Resource' nor 'Ref' specified for material program.";
+						string errMsg = "Error loading " + filepath + ".  Neither 'Resource' nor 'Ref' specified for material program.";
 						THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 					}
 				}
@@ -260,18 +288,23 @@ namespace mpp
 							auto samplerName = samplerEntry.getValue();
 
 							// This can either be a reference to another resource, or an actual texture definition.
+							MaterialSpecification::TextureOptions textureOptions;
+
+							textureOptions.resourceExists = true;
+							textureOptions.sampler = samplerName;
+
 							if (textureEntry.hasEntry("Resource"))
 							{
-								string textureName = "Texture" + utils::StringUtils::toString(textureId);
-								auto textureStream = new FileTextureStream(getResourceMgr(), getFilepath(), textureEntry.getEntry("Resource"));
-								addChild(textureName, ResourceStreamPtr(textureStream));
-							
-								qs.spec.textures[samplerName] = make_pair(textureName, true);
+								textureOptions.isChild = true;
+								textureOptions.existingResource = "Texture" + utils::StringUtils::toString(textureId);
 							}
 							else if (textureEntry.hasEntry("Ref"))
 							{
-								qs.spec.textures[samplerName] = make_pair(textureEntry.getEntry("Ref").getValue(), false);
+								textureOptions.isChild = false;
+								textureOptions.existingResource = textureEntry.getEntry("Ref").getValue();
 							}
+						
+							qs.spec.textures.push_back(textureOptions);
 						}
 					}
 				}
@@ -285,14 +318,13 @@ namespace mpp
 						if (entry.first == "Uniform")
 						{
 							// Parse uniform
-							parseUniform(entry.second, qs.spec.uniforms);
+							parseUniform(entry.second, qs.spec.uniforms, filepath);
 						}
 					}
 				}
 			}
 
-			auto newSettingId = createQualitySetting(name);
-			mQualitySettings[newSettingId] = qs;
+			return make_pair(name, qs);
 		}
 
 		void FileMaterialStream::loadImpl()
@@ -308,7 +340,10 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			// Default quality setting
+			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath());
+			auto newSettingId = createQualitySetting(qs.first);
+			mQualitySettings[newSettingId] = qs.second;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -317,7 +352,10 @@ namespace mpp
 
 				if (entry.first == "Quality")
 				{
-					parseQualitySetting(entry.second);
+					// Additional quality setting
+					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
+					auto newSettingId = createQualitySetting(qs.first);
+					mQualitySettings[newSettingId] = qs.second;
 				}
 			}
 		}

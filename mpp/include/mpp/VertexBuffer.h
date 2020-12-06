@@ -70,9 +70,9 @@ namespace mpp
 
 		bool isStatic() const;
 
-		int getNumAttributes() const;
+		size_t getNumAttributes() const;
 
-		void enableAttribute(int index, bool enable);
+		void enableAttribute(uint32_t index, bool enable);
 
 		std::vector<int8_t>& getBufferData();
 

@@ -216,7 +216,11 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 	mpp::ModelSerializer fileSaver;
 
 	// Materials
-	// ...
+	auto const& materials = mStream.getMaterials();
+	for (auto const& kvp: materials)
+	{
+		fileSaver.addMaterial(kvp.first, kvp.second);
+	}
 
 	int meshCount = loader.getNumMeshDefinitions();
 	fileSaver.setMeshCount(meshCount);
@@ -232,7 +236,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 		fileSaver.setPrimitiveCount(i, meshDef->getNumPrimitives());
 		fileSaver.setIndexBuffer(i, meshDef->getIndexData(), meshDef->getIndexWidth());
 
-		for (int j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
+		for (size_t j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
 		{
 			auto bufferDef = meshDef->getVertexBufferDefinition(j);
 			fileSaver.addVertexStream(i, bufferDef->getVertexCount(), bufferDef->getVertexStride(), bufferDef->getData());
@@ -251,12 +255,16 @@ void debug(string const& inFile, string const& outFile)
 	fileLoader.load(inFile);
 
 	// Material info
-	auto matInfo = fileLoader.getMaterials();
+	auto const& matNames = fileLoader.getMaterialNames();
+	auto const& matSpecs = fileLoader.getMaterials();
 	cout << "Materials\n\n";
-	for (auto mat: matInfo)
+	for (size_t i = 0; i < matSpecs.size(); ++i)
 	{
-		cout << "Material: " << mat.getName() << "\n";
-		cout << (mat.getPositionType() == mpp::mesh::MaterialInformation::PositionType::p2D ?
+		auto const& matSpec = matSpecs[i];
+
+		cout << "Material: " << matNames[i] << "\n";
+		/*
+		cout << (matSpec.getPositionType() == mpp::mesh::MaterialInformation::PositionType::p2D ?
 			"Position2 data" : "Position3 data") << "\n";
 		
 		auto const& shaders = mat.getShaders();
@@ -288,6 +296,7 @@ void debug(string const& inFile, string const& outFile)
 			}
 			cout << "\n";
 		}
+		*/
 	}
 
 	// Mesh info
@@ -327,16 +336,16 @@ void debug(string const& inFile, string const& outFile)
 		auto const& spec = fileLoader.getMeshSpecification(i);
 
 		// Get channels
-		int numLayouts = spec.getNumVertexBufferAttributeLayouts();
-		for (int j = 0; j < numLayouts; ++j)
+		auto numLayouts = spec.getNumVertexBufferAttributeLayouts();
+		for (size_t j = 0; j < numLayouts; ++j)
 		{
 			cout << "Layout " << j << "\n";
 			auto const& layout = spec.getVertexBufferAttributeLayout(j);
 
 			cout << "Id\tComponent\tType\tNormalised\tSize (bytes)\n";
 
-			int numAttribs = layout.getNumAttributes();
-			for (int k = 0; k < numAttribs; ++k)
+			auto numAttribs = layout.getNumAttributes();
+			for (size_t k = 0; k < numAttribs; ++k)
 			{
 				auto const& attrib = layout.getAttribute(k);
 
@@ -464,8 +473,6 @@ int main(int argc, char** argv)
 		{
 			throw exception("Nothing to do!");
 		}
-
-	
 	}
 	catch (exception& e)
 	{

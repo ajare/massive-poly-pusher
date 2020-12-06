@@ -187,7 +187,7 @@ mpp::TextureData loadImage(string const& filename)
 mpp::TextureStream* loadImageAtlas(string const& filename)
 {
 	auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
-	tStr->setData(mpp::TextureStream::Target::Texture2D, [filename](std::string const& f)
+	tStr->setData(mpp::TextureTarget::Texture2D, [filename](std::string const& f)
 	{
 		return loadImage(filename);
 	});
@@ -208,7 +208,7 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 
 		auto textureData = loadImage(filePath);
 		auto tStr = new mpp::ProgrammaticTextureStream(resourceMgr);
-		tStr->setFile(mpp::TextureStream::Target::Texture2D, filePath, loadImage);
+		tStr->setFile(mpp::TextureTarget::Texture2D, filePath, loadImage);
 		tStr->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 
 		mpp::ResourcePtr tex = resourceMgr->declareResource(imageName, mpp::ResourceStreamPtr(tStr));

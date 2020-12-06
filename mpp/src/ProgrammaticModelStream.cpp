@@ -39,11 +39,11 @@ namespace mpp
 
 			auto sharedDataPtr = std::shared_ptr<const int8_t>((const int8_t*)dataPtr, [](const int8_t *p) { delete[] p; });
 
-			for (int i = 0; i < meshDef.specification.getNumVertexBufferAttributeLayouts(); ++i)
+			for (size_t i = 0; i < meshDef.specification.getNumVertexBufferAttributeLayouts(); ++i)
 			{
 				auto layout = meshDef.specification.getVertexBufferAttributeLayout(i);
 
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto attrib = layout.getAttribute(j);
 

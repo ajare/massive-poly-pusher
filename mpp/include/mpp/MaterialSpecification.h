@@ -2,7 +2,9 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
+#include "mpp/TextureParams.h"
 #include "mpp/UniformCollection.h"
 
 #include <mpp/mesh/MeshSpecification.h>
@@ -39,11 +41,27 @@ namespace mpp
 			Shader vertexShader, geometryShader, fragmentShader;
 		};
 
+		struct TextureOptions
+		{
+			bool resourceExists{ false };
+			std::string sampler;
+
+			// For an existing program resource
+			std::string existingResource;
+			bool isChild{ false };
+
+			// Info for creating new resource
+			std::string source;
+			TextureTarget target{ TextureTarget::Texture2D };
+
+			TextureParams params;
+		};
+
 	public:
 
 		ProgramOptions program;
 		UniformCollection uniforms;
-		std::map<std::string, std::pair<std::string, bool>> textures;
+		std::vector<TextureOptions> textures;
 	};
 
 }

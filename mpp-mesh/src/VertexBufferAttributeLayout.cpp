@@ -124,9 +124,9 @@ namespace mpp
 		 * Get the number of channels.
 		 *
 		 */
-		int VertexBufferAttributeLayout::getNumAttributes() const
+		size_t VertexBufferAttributeLayout::getNumAttributes() const
 		{
-			return (int)mAttributes.size();
+			return mAttributes.size();
 		}
 
 		bool VertexBufferAttributeLayout::isStatic() const
@@ -138,9 +138,9 @@ namespace mpp
 		 * Get the specified channel.
 		 *
 		 */
-		VertexBufferAttributeLayout::Attribute const& VertexBufferAttributeLayout::getAttribute(int index) const
+		VertexBufferAttributeLayout::Attribute const& VertexBufferAttributeLayout::getAttribute(size_t index) const
 		{
-			assert((index >= 0 && index < getNumAttributes()) && "VertexBufferAttributeLayout::getAttribute() 'index' argument out of range!");
+			assert(index < getNumAttributes() && "VertexBufferAttributeLayout::getAttribute() 'index' argument out of range!");
 			return mAttributes[index];
 		}
 
@@ -148,9 +148,9 @@ namespace mpp
 		 * Get the specified channel.
 		 *
 		 */
-		VertexBufferAttributeLayout::Attribute& VertexBufferAttributeLayout::getAttribute(int index)
+		VertexBufferAttributeLayout::Attribute& VertexBufferAttributeLayout::getAttribute(size_t index)
 		{
-			assert((index >= 0 && index < getNumAttributes()) && "VertexBufferAttributeLayout::getAttribute() 'index' argument out of range!");
+			assert(index < getNumAttributes() && "VertexBufferAttributeLayout::getAttribute() 'index' argument out of range!");
 			return mAttributes[index];
 		}
 

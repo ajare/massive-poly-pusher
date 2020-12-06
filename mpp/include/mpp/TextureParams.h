@@ -4,6 +4,22 @@
 
 namespace mpp
 {
+	enum class TextureTarget
+	{
+		Texture1D,
+		Texture2D,
+		Texture3D,
+		CubeMap
+	};
+
+	enum class TextureInternalType
+	{
+		Auto,
+		UnsignedInteger,
+		SignedInteger,
+		Float
+	};
+
 	struct _MPPAPI TextureParams
 	{
 		enum class MinFilter

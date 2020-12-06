@@ -26,24 +26,6 @@ namespace mpp
 			float v[2];
 		};
 
-	public:
-
-		enum class Target
-		{
-			Texture1D,
-			Texture2D,
-			Texture3D,
-			CubeMap
-		};
-
-		enum class InternalType
-		{
-			Auto,
-			UnsignedInteger,
-			SignedInteger,
-			Float
-		};
-
 	protected:
 
 		struct QualitySetting

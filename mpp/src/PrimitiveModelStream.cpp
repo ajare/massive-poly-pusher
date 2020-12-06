@@ -43,11 +43,11 @@ namespace mpp
 
 		auto sharedDataPtr = std::shared_ptr<const int8_t>((const int8_t*)dataPtr, [](const int8_t *p) { delete[] p; });
 
-		for (int i = 0; i < mMeshDataDefinition.specification.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < mMeshDataDefinition.specification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto layout = mMeshDataDefinition.specification.getVertexBufferAttributeLayout(i);
 
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto attrib = layout.getAttribute(j);
 
@@ -125,11 +125,11 @@ namespace mpp
 		map<string, size_t> componentOffsets;
 		strideInBytes = 0;
 
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
 
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 

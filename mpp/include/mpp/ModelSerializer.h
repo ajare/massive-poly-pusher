@@ -1,5 +1,12 @@
 #pragma once
 
+#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#include <Windows.h>
+#endif
+
+#include <glew/glew.h>
+#include <gl/gl.h>
+
 #include <string>
 #include <memory>
 #include <map>
@@ -7,6 +14,7 @@
 #include <fstream>
 
 #include "mpp/MaterialSpecification.h"
+#include "mpp/MppException.h"
 
 #include "mpp/mesh/MeshDefinition.h"
 #include "mpp/mesh/MeshSpecification.h"
@@ -28,13 +36,13 @@ namespace mpp
 			{
 				std::string name;
 				uint32_t meshSpec;
-				uint32_t material;
+				std::string material;
 				mpp::mesh::Primitive::Type primitiveType;
 			};
 
 		private:
 
-			std::map<std::string, uint32_t> mMaterialLookup;
+			std::vector<std::string> mMaterialNames;
 			std::vector<MaterialSpecification> mMaterials;
 			std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
 			std::vector<Mesh> mMeshes;
@@ -42,16 +50,16 @@ namespace mpp
 		private:
 
 			MetadataReader(
-				std::map<std::string, uint32_t> const& materialLookup,
+				std::vector<std::string> materialNames,
 				std::vector<MaterialSpecification> const& materials,
 				std::vector<mpp::mesh::MeshSpecification> const& meshSpecifications)
-				: mMaterialLookup(materialLookup)
+				: mMaterialNames(materialNames)
 				, mMaterials(materials)
 				, mMeshSpecifications(meshSpecifications)
 			{
 			}
 
-			void addMesh(std::string const& name, uint32_t meshSpec, uint32_t material, mpp::mesh::Primitive::Type type)
+			void addMesh(std::string const& name, uint32_t meshSpec, std::string const& material, mpp::mesh::Primitive::Type type)
 			{
 				Mesh mesh
 				{
@@ -71,9 +79,23 @@ namespace mpp
 				return mMeshes.size();
 			}
 
-			MaterialSpecification const& getMaterialByMeshId(uint32_t id)
+			MaterialSpecification const& getMaterialByMeshId(uint32_t id, std::string* matName)
 			{
-				return mMaterials[mMeshes[id].material];
+				for (size_t i = 0; i < mMaterialNames.size(); ++i)
+				{
+					auto const& name = mMaterialNames[i];
+					if (mMeshes[id].material == name)
+					{
+						if (matName)
+						{
+							*matName = name;
+						}
+
+						return mMaterials[i];
+					}
+				}
+
+				THROW_MPP("Could not find MaterialSpecification", __LINE__, __FILE__, __func__);
 			}
 
 			mpp::mesh::MeshSpecification const& getMeshSpecificationByMeshId(uint32_t id)
@@ -98,6 +120,7 @@ namespace mpp
 				enum class Type
 				{
 					Unused,
+					MaterialNames,
 					Materials,
 					MeshSpecifications,
 					VertexData,
@@ -107,8 +130,8 @@ namespace mpp
 				};
 
 				Type type{ Type::Unused };
-				std::streampos startOffset{ 0 };
-				std::streampos endOffset{ 0 };
+				size_t startOffset{ 0 };
+				size_t endOffset{ 0 };
 				size_t count{ 0 };
 			};
 
@@ -131,7 +154,7 @@ namespace mpp
 		{
 			std::string name;
 			uint32_t meshSpec;
-			uint32_t material;
+			std::string material;
 			mpp::mesh::Primitive::Type primitiveType;
 			size_t primitiveCount;
 
@@ -148,7 +171,7 @@ namespace mpp
 		// Materials: a material gets added into an array, for writing, and
 		// then the material name is mapped to the array index, for meshes
 		// to index with.
-		std::map<std::string, uint32_t> mMaterialLookup;
+		std::vector<std::string> mMaterialNames;
 
 		std::vector<MaterialSpecification> mMaterials;
 
@@ -188,7 +211,9 @@ namespace mpp
 		// Read
 		std::string readString(std::ifstream& fp);
 
-		std::string readBytes(size_t count, std::ifstream& fp);
+		void readBytes(int8_t* buffer, size_t count, std::ifstream& fp);
+
+		size_t readSize(std::ifstream& fp);
 
 		int32_t readInt32(std::ifstream& fp);
 
@@ -210,19 +235,23 @@ namespace mpp
 
 		Directory::Entry readDirectoryEntry(std::ifstream& fp);
 
-		void updateDirectoryEntry(std::ofstream& fp, Directory::Entry::Type type, std::streampos start, std::streampos end, size_t count);
+		void updateDirectoryEntry(std::ofstream& fp, Directory::Entry::Type type, size_t start, size_t end, size_t count);
 
 		void writeDirectory(std::ofstream& fp);
 
 		void writeDirectoryEntry(std::ofstream& fp, Directory::Entry const& entry);
 
+		void readMaterialNames(std::ifstream& fp);
+
 		void readMaterials(std::ifstream& fp);
 
 		MaterialSpecification readMaterial(std::ifstream& fp);
 
+		void writeMaterialNames(std::ofstream& fp);
+
 		void writeMaterials(std::ofstream& fp);
 
-		void writeMaterial(std::ofstream& fp, MaterialSpecification const& matSpec);
+		void writeMaterial(MaterialSpecification const& matSpec, std::ofstream& fp);
 
 		void readMeshSpecifications(std::ifstream& fp);
 
@@ -240,13 +269,9 @@ namespace mpp
 
 		VertexStream readVertexBuffer(std::ifstream& fp);
 			
-		void readVertexBufferAttributeLayout(std::ifstream& fp, mpp::mesh::VertexBufferAttributeLayout* layout, uint32_t attribOffset);
-
 		void writeVertexBuffers(std::ofstream& fp);
 
-		void writeVertexBuffer(std::ofstream& fp, VertexStream const& vertexStream);
-
-		void writeVertexBufferAttributeLayout(FILE* fp, mpp::mesh::VertexBufferAttributeLayout const& layout);
+		void writeVertexBuffer(VertexStream const& vertexStream, std::ofstream& fp);
 
 		void readIndexBuffers(std::ifstream& fp);
 
@@ -288,13 +313,15 @@ namespace mpp
 
 		mpp::mesh::MeshSpecification const& getMeshSpecification(size_t meshIndex) const;
 
-		void addMaterial(std::string const& name, mpp::mesh::MaterialInformation const& matInfo);
+		void addMaterial(std::string const& name, mpp::MaterialSpecification const& matSpec);
 
 		void setMaterial(size_t meshIndex, std::string const& material);
 
 		std::string const& getMaterial(size_t meshIndex) const;
 
-		std::vector<mpp::mesh::MaterialInformation> const& getMaterials() const;
+		std::vector<std::string> const& getMaterialNames() const;
+
+		std::vector<MaterialSpecification> const& getMaterials() const;
 
 		void addVertexStream(size_t meshIndex, size_t vertexCount, size_t vertexStride, std::shared_ptr<const int8_t> vertexData);
 
