@@ -46,11 +46,11 @@ namespace mpp
 
 			VertexBufferAttributeLayout* createVertexBufferAttributeLayout(bool staticData);
 
-			int getNumVertexBufferAttributeLayouts() const;
+			size_t getNumVertexBufferAttributeLayouts() const;
 
-			VertexBufferAttributeLayout const& getVertexBufferAttributeLayout(int index) const;
+			VertexBufferAttributeLayout const& getVertexBufferAttributeLayout(uint32_t index) const;
 
-			VertexBufferAttributeLayout& getVertexBufferAttributeLayout(int index);
+			VertexBufferAttributeLayout& getVertexBufferAttributeLayout(uint32_t index);
 
 			size_t getVertexStrideInBytes() const;
 

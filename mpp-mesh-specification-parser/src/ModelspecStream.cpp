@@ -103,28 +103,7 @@ namespace mpp
 			for (auto const& material: mMaterials)
 			{
 				auto stream = make_shared< mpp::ProgrammaticMaterialStream>(nullptr);
-
-				// Program
-				stream->setProgram(material.second.program);
-
-				// Uniforms
-				stream->setUniforms(material.second.uniforms);
-
-				// Textures
-				for (auto const& texture : material.second.textures)
-				{
-					auto const& sampler = texture.first;
-					auto const& res = texture.second;
-
-					if (res.second)
-					{
-						stream->setTextureChild(sampler, res.first);
-					}
-					else
-					{
-						stream->setTexture(sampler, res.first);
-					}
-				}
+				stream->setSpecification(material.second);
 
 				ser.serialize(stream, fp);
 			}

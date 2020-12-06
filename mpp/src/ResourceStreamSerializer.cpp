@@ -121,7 +121,7 @@ namespace mpp
 
 		// Write layouts
 		writeValue(ms.getNumVertexBufferAttributeLayouts(), fp);
-		for (int i = 0; i < ms.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < ms.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto const& layout = ms.getVertexBufferAttributeLayout(i);
 
@@ -129,7 +129,7 @@ namespace mpp
 
 			// Write attributes
 			writeValue(layout.getNumAttributes(), fp);
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 
@@ -207,11 +207,24 @@ namespace mpp
 
 			// Textures
 			writeValue(setting.spec.textures.size(), fp);
-			for (auto const& kvp: setting.spec.textures)
+			for (auto const& texture: setting.spec.textures)
 			{
-				writeValue(kvp.first, fp);
-				writeValue(kvp.second.first, fp);
-				writeValue(kvp.second.second, fp);
+				writeValue(texture.resourceExists, fp);
+				writeValue(texture.existingResource, fp);
+				writeValue(texture.isChild, fp);
+				writeValue(texture.sampler, fp);
+				writeValue(texture.source, fp);
+				writeValue((uint32_t)texture.target, fp);
+
+				// TextureParams
+				writeValue(texture.params.minFilter, fp);
+				writeValue(texture.params.magFilter, fp);
+				writeValue(texture.params.wrap, fp);
+				writeValue(texture.params.useMipmaps, fp);
+				writeValue(texture.params.lodBaseLevel, fp);
+				writeValue(texture.params.lodMaxLevel, fp);
+				writeValue(texture.params.lodBias, fp);
+				writeValue(texture.params.maxAnisotropy, fp);
 			}
 		}
 	}
@@ -580,11 +593,26 @@ namespace mpp
 			size_t numTextures = readUInt(fp);
 			for (size_t j = 0; j < numTextures; ++j)
 			{
-				auto sampler = readString(fp);
-				auto resource = readString(fp);
-				auto exists = readBool(fp);
+				MaterialSpecification::TextureOptions textureOptions;
 
-				qs.spec.textures[sampler] = make_pair(resource, exists);
+				textureOptions.resourceExists = readBool(fp);
+				textureOptions.existingResource = readString(fp);
+				textureOptions.isChild = readBool(fp);
+				textureOptions.sampler = readString(fp);
+				textureOptions.source = readString(fp);
+				textureOptions.target = static_cast<TextureTarget>(readUInt(fp));
+
+				// TextureParams
+				textureOptions.params.minFilter = readUInt(fp);
+				textureOptions.params.magFilter = readUInt(fp);
+				textureOptions.params.wrap = readUInt(fp);
+				textureOptions.params.useMipmaps = readBool(fp);
+				textureOptions.params.lodBaseLevel = readInt(fp);
+				textureOptions.params.lodMaxLevel = readInt(fp);
+				textureOptions.params.lodBias = readFloat(fp);
+				textureOptions.params.maxAnisotropy = readFloat(fp);
+
+				qs.spec.textures.push_back(textureOptions);
 			}
 		}
 	}

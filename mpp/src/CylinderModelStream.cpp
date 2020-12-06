@@ -27,11 +27,11 @@ namespace mpp
 		// Generate vertices
 		double l2 = length / 2;
 
-		for (int i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
 
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 

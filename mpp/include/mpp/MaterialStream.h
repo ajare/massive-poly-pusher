@@ -40,7 +40,7 @@ namespace mpp
 
 		UniformCollection const& getUniforms() const;
 
-		std::map<std::string, std::pair<std::string, bool>> const& getTextures() const;
+		std::vector<MaterialSpecification::TextureOptions> const& getTextures() const;
 
 		uint32_t createQualitySetting(std::string const& name);
 	};

@@ -463,7 +463,7 @@ bool AssImpModelLoader::streamsAreTightlyPacked(VertexBufferAttributeLayout cons
 	// Do our channels have the same data type as the stream, and do they map
 	// in the same order?
 	int vertexStride = 0;
-	for (int i = 0; i < bufferSpec.getNumAttributes(); ++i)
+	for (size_t i = 0; i < bufferSpec.getNumAttributes(); ++i)
 	{
 		auto const& attrib = bufferSpec.getAttribute(i);
 		auto const& stream = componentStreams.at(attrib.component);
@@ -511,7 +511,7 @@ int8_t* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayo
 
 	for (int i = 0; i < vertexCount; ++i)
 	{
-		for (int j = 0; j < bufferSpec.getNumAttributes(); ++j)
+		for (size_t j = 0; j < bufferSpec.getNumAttributes(); ++j)
 		{
 			auto const& attrib = bufferSpec.getAttribute(j);
 			auto const& stream = componentStreams.at(attrib.component);
@@ -593,14 +593,14 @@ void AssImpModelLoader::load()
 			meshDef->setIndexData(shared_ptr<const uint8_t>(indexBuffer, [](uint8_t *p) { delete[] p; }));
 		}
 
-		for (int j = 0; j < meshSpec.getNumVertexBufferAttributeLayouts(); ++j)
+		for (size_t j = 0; j < meshSpec.getNumVertexBufferAttributeLayouts(); ++j)
 		{
 			auto const& bufferSpec = meshSpec.getVertexBufferAttributeLayout(j);
 
 			// Acquire the vertex streams needed and work out the stride.
 			int vertexStride = 0;
 			map<Vertex::Component, VertexDataStreamDefinition> componentStreams;
-			for (int k = 0; k < bufferSpec.getNumAttributes(); ++k)
+			for (size_t k = 0; k < bufferSpec.getNumAttributes(); ++k)
 			{
 				auto const& attrib = bufferSpec.getAttribute(k);
 

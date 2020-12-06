@@ -7,17 +7,19 @@ namespace mpp
 	class _MPPAPI ProgrammaticTextureStream : public TextureStream
 	{
 
-		void setTarget(TextureStream::Target target);
+		void setTarget(TextureTarget target);
 
 	public:
 
 		explicit ProgrammaticTextureStream(ResourceManager* resourceMgr);
 
-		void setInternalFormat(InternalType type, bool normalized, size_t bitSize, size_t channels);
+		void setParams(TextureParams const& params, uint32_t quality = 0);
 
-		void setData(TextureStream::Target target, ImageLoadFunction creator, uint32_t quality = 0);
+		void setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels);
 
-		void setFile(TextureStream::Target target, std::string const& filename, ImageLoadFunction loader, uint32_t quality = 0);
+		void setData(TextureTarget target, ImageLoadFunction creator, uint32_t quality = 0);
+
+		void setFile(TextureTarget target, std::string const& filename, ImageLoadFunction loader, uint32_t quality = 0);
 
 		void setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter, uint32_t quality = 0);
 

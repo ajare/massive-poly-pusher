@@ -43,8 +43,6 @@ namespace mpp
 			
 			void setName(std::string const& name);
 
-			void foo();
-
 			std::string const& getName() const;
 
 			Primitive::Type getPrimitiveType() const;
@@ -69,9 +67,9 @@ namespace mpp
 
 			VertexBufferDefinition* createVertexBufferDefinition(VertexBufferAttributeLayout const& spec, int vertexCount, int vertexStride, std::shared_ptr<const int8_t> vertexData);
 
-			int getNumVertexBufferDefinitions() const;
+			size_t getNumVertexBufferDefinitions() const;
 
-			VertexBufferDefinition* getVertexBufferDefinition(int index);
+			VertexBufferDefinition* getVertexBufferDefinition(size_t index);
 
 		};
 

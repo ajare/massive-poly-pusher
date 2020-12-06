@@ -67,25 +67,25 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	// Create texture with sampler.
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setFile(TextureTarget::Texture2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
 
 	// Create texture programmatically.  This is a 16bit texture.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "clouds_16.png", loadImage);
+	textureStream->setFile(TextureTarget::Texture2D, options.resourceLocation + "clouds_16.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Clouds.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "electbubbles.jpg", loadImage);
+	textureStream->setFile(TextureTarget::Texture2D, options.resourceLocation + "electbubbles.jpg", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
 	textureStream->enableMipMaps(true);
 	resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream));
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureStream::Target::Texture2D, options.resourceLocation + "test.png", loadImage);
+	textureStream->setFile(TextureTarget::Texture2D, options.resourceLocation + "test.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
@@ -95,7 +95,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	// Create 1D texture from programmatic data.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setData(TextureStream::Target::Texture1D, [](string const& id)
+	textureStream->setData(TextureTarget::Texture1D, [](string const& id)
 	{
 		TextureData data;
 
@@ -422,11 +422,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.back()->translate(glm::vec3(0, 280, 0));
 
 	// Load MppModel
-	//auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
-	//auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
-	//statue->load();
+	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "cube/cube.mppmodel");
+	auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
+	statue->load();
 
-	//mModels.push_back(mppScene->addModel(statue));
+	mModels.push_back(mppScene->addModel(statue));
+	mModels.back()->scale(glm::vec3(20, 0, 20));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);

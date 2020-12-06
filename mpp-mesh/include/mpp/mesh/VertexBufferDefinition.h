@@ -42,7 +42,7 @@ namespace mpp
 
 			VertexBufferAttributeLayout const& getAttributeLayout() const;
 
-			int getNumAttributes() const;
+			size_t getNumAttributes() const;
 
 			VertexBufferAttributeLayout::Attribute const& getAttribute(int index) const;
 		};

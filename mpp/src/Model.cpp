@@ -107,7 +107,7 @@ namespace mpp
 				mesh = new Mesh(getRenderSystem(), meshDef->getName(), material, primitiveType, primitiveCount, storageType, pointSize);
 			}
 
-			for (int j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
+			for (size_t j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
 			{
 				VertexBufferDefinition const* bufferDef = meshDef->getVertexBufferDefinition(j);
 
@@ -118,7 +118,7 @@ namespace mpp
 					false,
 					bufferDef->getData());
 
-				for (int k = 0; k < bufferDef->getNumAttributes(); ++k)
+				for (size_t k = 0; k < bufferDef->getNumAttributes(); ++k)
 				{
 					auto const& attrib = bufferDef->getAttribute(k);
 					buffer->setAttribute(
@@ -180,10 +180,10 @@ namespace mpp
 	{
 		// Get mesh attributes
 		vector<size_t> meshComponentSizes;
-		for (int i = 0; i < meshDef->getNumVertexBufferDefinitions(); ++i)
+		for (size_t i = 0; i < meshDef->getNumVertexBufferDefinitions(); ++i)
 		{
 			auto vbDef = meshDef->getVertexBufferDefinition(i);
-			for (int j = 0; j < vbDef->getNumAttributes(); ++j)
+			for (size_t j = 0; j < vbDef->getNumAttributes(); ++j)
 			{
 				auto attrib = vbDef->getAttribute(j);
 				meshComponentSizes.push_back(Vertex::getComponentSize(attrib.component));

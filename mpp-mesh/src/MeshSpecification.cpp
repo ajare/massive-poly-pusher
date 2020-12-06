@@ -126,18 +126,18 @@ namespace mpp
 		 * Get number of attribute layouts.
 		 *
 		 */
-		int MeshSpecification::getNumVertexBufferAttributeLayouts() const
+		size_t MeshSpecification::getNumVertexBufferAttributeLayouts() const
 		{
-			return (int)mVertexBufferAttributeLayouts.size();
+			return mVertexBufferAttributeLayouts.size();
 		}
 
 		/*
 	 	 * Get specified attribute layout.
 		 *
 		 */
-		VertexBufferAttributeLayout const& MeshSpecification::getVertexBufferAttributeLayout(int index) const
+		VertexBufferAttributeLayout const& MeshSpecification::getVertexBufferAttributeLayout(uint32_t index) const
 		{
-			assert((index >= 0 && index < getNumVertexBufferAttributeLayouts()) && "MeshSpecification::VertexBufferAttributeLayout::getVertexBufferAttributeLayout() 'index' argument out of range!");
+			assert(index < getNumVertexBufferAttributeLayouts() && "MeshSpecification::VertexBufferAttributeLayout::getVertexBufferAttributeLayout() 'index' argument out of range!");
 			return mVertexBufferAttributeLayouts[index];
 		}
 
@@ -145,9 +145,9 @@ namespace mpp
 		 * Get specified attribute layout.
 		 *
 		 */
-		VertexBufferAttributeLayout& MeshSpecification::getVertexBufferAttributeLayout(int index) 
+		VertexBufferAttributeLayout& MeshSpecification::getVertexBufferAttributeLayout(uint32_t index)
 		{
-			assert((index >= 0 && index < getNumVertexBufferAttributeLayouts()) && "MeshSpecification::VertexBufferAttributeLayout::getVertexBufferAttributeLayout() 'index' argument out of range!");
+			assert(index < getNumVertexBufferAttributeLayouts() && "MeshSpecification::VertexBufferAttributeLayout::getVertexBufferAttributeLayout() 'index' argument out of range!");
 			return mVertexBufferAttributeLayouts[index];
 		}
 
@@ -159,11 +159,11 @@ namespace mpp
 		{
 			size_t stride{ 0 };
 
-			for (int i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
 				auto layout = getVertexBufferAttributeLayout(i);
 
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto attrib = layout.getAttribute(j);
 					stride += attrib.sizeInBytes();
@@ -181,11 +181,11 @@ namespace mpp
 		{
 			size_t count{ 0 };
 
-			for (int i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
 				auto layout = getVertexBufferAttributeLayout(i);
 
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto attrib = layout.getAttribute(j);
 					count += Vertex::getComponentSize(attrib.component);
@@ -267,10 +267,10 @@ namespace mpp
 			int primBits = (int)primType + 1;
 
 			int posBits = 0, normalBits = 0, texBits = 0, colBits = 0, userBits = 0;
-			for (int i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
 				auto const& layout = getVertexBufferAttributeLayout(i);
-				for (int j = 0; j < layout.getNumAttributes(); ++j)
+				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto const& attrib = layout.getAttribute(j);
 

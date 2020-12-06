@@ -200,7 +200,7 @@ namespace mpp
 
 		// Default texture
 		auto blankStream = new ProgrammaticTextureStream(this);
-		blankStream->setData(TextureStream::Target::Texture2D, [](string const& id)
+		blankStream->setData(TextureTarget::Texture2D, [](string const& id)
 		{
 			TextureData data;
 			
@@ -224,7 +224,7 @@ namespace mpp
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(this);
 		ts->setData(
-			TextureStream::Target::Texture2D, [](string const& id)
+			TextureTarget::Texture2D, [](string const& id)
 		{
 			InternalFont internalFont;
 			TextureData data;
@@ -469,10 +469,10 @@ namespace mpp
 		set<string> attribs;
 
 		// Mesh specification
-		for (int i = 0; i < spec.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < spec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto const& layout = spec.getVertexBufferAttributeLayout(i);
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 

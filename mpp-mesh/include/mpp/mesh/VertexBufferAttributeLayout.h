@@ -53,13 +53,13 @@ namespace mpp
 
 			int getBaseId() const;
 
-			int getNumAttributes() const;
+			size_t getNumAttributes() const;
 
 			bool isStatic() const;
 
-			Attribute const& getAttribute(int index) const;
+			Attribute const& getAttribute(size_t index) const;
 
-			Attribute& getAttribute(int index);
+			Attribute& getAttribute(size_t index);
 
 			int getVertexSize() const;
 		};

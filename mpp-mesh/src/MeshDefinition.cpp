@@ -150,9 +150,9 @@ namespace mpp
 		 * Get the number of vertex buffers defined.
 		 *
 		 */
-		int MeshDefinition::getNumVertexBufferDefinitions() const
+		size_t MeshDefinition::getNumVertexBufferDefinitions() const
 		{
-			return (int)mVertexBufferDefinitions.size();
+			return mVertexBufferDefinitions.size();
 		}
 
 		/*
@@ -170,9 +170,9 @@ namespace mpp
 		 * Get indexed buffer definition.
 		 *
 		 */
-		VertexBufferDefinition* MeshDefinition::getVertexBufferDefinition(int index)
+		VertexBufferDefinition* MeshDefinition::getVertexBufferDefinition(size_t index)
 		{
-			assert((index >= 0 && index < getNumVertexBufferDefinitions()) && "MeshDefinition::getVertexBufferDefinition() 'index' argument out of range!");
+			assert(index < getNumVertexBufferDefinitions() && "MeshDefinition::getVertexBufferDefinition() 'index' argument out of range!");
 			return mVertexBufferDefinitions[index];
 		}
 

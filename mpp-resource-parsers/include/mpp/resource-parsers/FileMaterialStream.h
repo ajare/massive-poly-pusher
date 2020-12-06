@@ -22,15 +22,19 @@ namespace mpp
 
 		private:
 
-			void parseQualitySetting(utils::StructuredData const& data);
+			void createChildResourceStreamsImpl();
 
-			void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms);
+			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 
-			void parseUniformVectorType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms);
+			static void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, std::string const& filepath);
 
-			void parseUniformMatrixType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms);
+			static void parseUniformVectorType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms, std::string const& filepath);
+
+			static void parseUniformMatrixType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms, std::string const& filepath);
 
 		protected:
+
+			void parseForChildResourceStreams(utils::StructuredData const& data);
 
 			void loadImpl();
 

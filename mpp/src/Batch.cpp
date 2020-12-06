@@ -62,7 +62,7 @@ namespace mpp
 
 		auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, staticData, dataPtr);
 
-		for (int j = 0; j < layout.getNumAttributes(); ++j)
+		for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 		{
 			auto& attrib = layout.getAttribute(j);
 			vb->setAttribute(
@@ -166,11 +166,11 @@ namespace mpp
 	{
 		auto buffers = mesh->getVertexBuffers();
 
-		for (int i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+		for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
 			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
 
-			for (int j = 0; j < layout.getNumAttributes(); ++j)
+			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto& attrib = layout.getAttribute(j);
 				if (buffers[i]->getBufferData().size() > 0)
