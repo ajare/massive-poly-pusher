@@ -46,7 +46,44 @@ namespace mpp
 
 		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
+			for (auto it = data.begin(); it != data.end(); ++it)
+			{
+				auto const& entry = *it;
+				string value = utils::StringUtils::toUpper(entry.second.getValue());
 
+				if (entry.first == "Program")
+				{
+					// This can either be a reference to another resource, or an actual program definition.
+					auto const& programEntry = entry.second;
+					if (programEntry.hasEntry("Resource"))
+					{
+						auto qs = FileProgramStream::parseQualitySetting(programEntry.getEntry("Resource"), resourceMgr, filepath);
+					}
+				}
+				else if (entry.first == "Textures")
+				{
+					int textureId = 0;
+					auto const& textures = it->second;
+					for (auto tit = textures.begin(); tit != textures.end(); ++tit, ++textureId)
+					{
+						auto const& entry = *tit;
+
+						if (entry.first == "Texture")
+						{
+							auto const& textureEntry = entry.second;
+
+							if (textureEntry.hasEntry("Resource"))
+							{
+								// Set texture options: peak sampler name
+								auto samplerEntry = textureEntry.getEntry("Variable");
+								auto samplerName = samplerEntry.getValue();
+
+								auto qs = FileTextureStream::parseQualitySetting(textureEntry.getEntry("Resource"), resourceMgr, filepath);
+							}
+						}
+					}
+				}
+			}
 		}
 
 		void FileMaterialStream::createChildResourceStreamsImpl()
@@ -342,8 +379,7 @@ namespace mpp
 
 			// Default quality setting
 			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath());
-			auto newSettingId = createQualitySetting(qs.first);
-			mQualitySettings[newSettingId] = qs.second;
+			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -354,8 +390,7 @@ namespace mpp
 				{
 					// Additional quality setting
 					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
-					auto newSettingId = createQualitySetting(qs.first);
-					mQualitySettings[newSettingId] = qs.second;
+					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 				}
 			}
 		}

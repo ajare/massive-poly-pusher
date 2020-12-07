@@ -14,6 +14,6 @@ namespace mpp
 
 		void setParser(std::shared_ptr<program::Parser> parser, uint32_t quality = 0);
 
-		void setAttribs(std::set<std::string> const& attribs);
+		void setAttribs(std::set<std::string> const& attribs, uint32_t quality = 0);
 	};
 }

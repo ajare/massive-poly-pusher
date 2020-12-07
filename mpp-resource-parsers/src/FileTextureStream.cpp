@@ -61,28 +61,11 @@ namespace mpp
 			mInternalFormats["RGB32F"] = GL_RGB32F;
 			mInternalFormats["RGBA32F"] = GL_RGBA32F;
 
-			// Filtering methods
-			mMinFilters["LINEAR"] = GL_LINEAR;
-			mMinFilters["NEAREST"] = GL_NEAREST;
-			mMinFilters["NEAREST_MIPMAP_NEAREST"] = GL_NEAREST_MIPMAP_NEAREST;
-			mMinFilters["NEAREST_MIPMAP_LINEAR"] = GL_NEAREST_MIPMAP_LINEAR;
-			mMinFilters["LINEAR_MIPMAP_NEAREST"] = GL_LINEAR_MIPMAP_NEAREST;
-			mMinFilters["LINEAR_MIPMAP_LINEAR"] = GL_LINEAR_MIPMAP_LINEAR;
-
-			mMagFilters["LINEAR"] = GL_LINEAR;
-			mMagFilters["NEAREST"] = GL_NEAREST;
-
 			// Texture targets
 			mTargets["1D"] = GL_TEXTURE_1D;
 			mTargets["2D"] = GL_TEXTURE_2D;
 			mTargets["3D"] = GL_TEXTURE_3D;
 			mTargets["CUBEMAP"] = GL_TEXTURE_CUBE_MAP;
-
-			// Wrapping
-			mWrapping["REPEAT"] = GL_REPEAT;
-			mWrapping["MIRRORED_REPEAT"] = GL_MIRRORED_REPEAT;
-			mWrapping["CLAMP_TO_EDGE"] = GL_CLAMP_TO_EDGE;
-			mWrapping["CLAMP_TO_BORDER"] = GL_CLAMP_TO_BORDER;
 		}
 
 		uint32_t FileTextureStream::parseInternalFormat(string const& value)
@@ -100,47 +83,71 @@ namespace mpp
 			}
 		}
 
-		uint32_t FileTextureStream::parseMinFilter(string const& value)
+		uint32_t FileTextureStream::parseMinFilter(string const& value, string const& filepath)
 		{
-			auto it = mMinFilters.find(value);
+			// Filtering methods
+			map<string, uint32_t> minFilters;
 
-			if (it != mMinFilters.end())
+			minFilters["LINEAR"] = GL_LINEAR;
+			minFilters["NEAREST"] = GL_NEAREST;
+			minFilters["NEAREST_MIPMAP_NEAREST"] = GL_NEAREST_MIPMAP_NEAREST;
+			minFilters["NEAREST_MIPMAP_LINEAR"] = GL_NEAREST_MIPMAP_LINEAR;
+			minFilters["LINEAR_MIPMAP_NEAREST"] = GL_LINEAR_MIPMAP_NEAREST;
+			minFilters["LINEAR_MIPMAP_LINEAR"] = GL_LINEAR_MIPMAP_LINEAR;
+
+			auto it = minFilters.find(value);
+
+			if (it != minFilters.end())
 			{
 				return it->second;
 			}
 			else
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + filepath + ".  Unknown/unsupported min-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
 
-		uint32_t FileTextureStream::parseMagFilter(string const& value)
+		uint32_t FileTextureStream::parseMagFilter(string const& value, string const& filepath)
 		{
-			auto it = mMagFilters.find(value);
+			// Filtering methods
+			map<string, uint32_t> magFilters;
 
-			if (it != mMagFilters.end())
+			magFilters["LINEAR"] = GL_LINEAR;
+			magFilters["NEAREST"] = GL_NEAREST;
+
+			auto it = magFilters.find(value);
+
+			if (it != magFilters.end())
 			{
 				return it->second;
 			}
 			else
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
+				string errMsg = "Error loading " + filepath + ".  Unknown/unsupported mag-filter method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
 
-		uint32_t FileTextureStream::parseWrapping(string const& value)
+		uint32_t FileTextureStream::parseWrapping(string const& value, string const& filepath)
 		{
-			auto it = mWrapping.find(value);
+			// Wrapping
+			map<string, uint32_t> wrapping;
 
-			if (it != mWrapping.end())
+			wrapping["REPEAT"] = GL_REPEAT;
+			wrapping["MIRRORED_REPEAT"] = GL_MIRRORED_REPEAT;
+			wrapping["CLAMP_TO_EDGE"] = GL_CLAMP_TO_EDGE;
+			wrapping["CLAMP_TO_BORDER"] = GL_CLAMP_TO_BORDER;
+
+			auto it = wrapping.find(value);
+
+			if (it != wrapping.end())
 			{
 				return it->second;
 			}
 			else
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported wrap method '" + value + "' specified.";
+				string errMsg = "Error loading " + filepath + ".  Unknown/unsupported wrap method '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -160,7 +167,7 @@ namespace mpp
 			}
 		}
 
-		void FileTextureStream::parseQualitySetting(utils::StructuredData const& data)
+		pair<string, FileTextureStream::QualitySetting> FileTextureStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
 			QualitySetting qs;
@@ -183,7 +190,7 @@ namespace mpp
 					filesystem::path fp(filepath);
 					if (fp.is_relative())
 					{
-						filesystem::path fileFp(getFilepath());
+						filesystem::path fileFp(filepath);
 						filepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
 					}
 
@@ -199,11 +206,11 @@ namespace mpp
 				}
 				else if (entry.first == "minFilter")
 				{
-					qs.params.minFilter = parseMinFilter(value);
+					qs.params.minFilter = parseMinFilter(value, filepath);
 				}
 				else if (entry.first == "magFilter")
 				{
-					qs.params.magFilter = parseMagFilter(value);
+					qs.params.magFilter = parseMagFilter(value, filepath);
 				}
 				else if (entry.first == "lodBaseLevel")
 				{
@@ -223,12 +230,11 @@ namespace mpp
 				}
 				else if (entry.first == "wrap")
 				{
-					qs.params.wrap = parseWrapping(value);
+					qs.params.wrap = parseWrapping(value, filepath);
 				}
 			}
 
-			auto newSettingId = createQualitySetting(name);
-			mQualitySettings[newSettingId] = qs;
+			return make_pair(name, qs);
 		}
 
 		void FileTextureStream::loadImpl()
@@ -244,7 +250,8 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath());
+			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -262,7 +269,8 @@ namespace mpp
 				}
 				else if (entry.first == "Quality")
 				{
-					parseQualitySetting(entry.second);
+					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
+					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 				}
 			}
 

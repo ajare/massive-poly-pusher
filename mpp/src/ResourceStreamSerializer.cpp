@@ -247,27 +247,28 @@ namespace mpp
 			writeParser(*setting.parser.get(), fp);
 
 			// Vertex shader
-			writeValue((uint32_t)setting.vertexShader.type, fp);
-			writeValue(setting.vertexShader.source, fp);
-			writeValue(setting.vertexShader.data, fp);
+//			writeValue((uint32_t)setting.vertexShader.type, fp);
+//			writeValue(setting.vertexShader.source, fp);
+//			writeValue(setting.vertexShader.data, fp);
 
 			// Geometry shader
-			writeValue((uint32_t)setting.geometryShader.type, fp);
-			writeValue(setting.geometryShader.source, fp);
-			writeValue(setting.geometryShader.data, fp);
+//			writeValue((uint32_t)setting.geometryShader.type, fp);
+//			writeValue(setting.geometryShader.source, fp);
+//			writeValue(setting.geometryShader.data, fp);
 
 			// Fragment shader
-			writeValue((uint32_t)setting.fragmentShader.type, fp);
-			writeValue(setting.fragmentShader.source, fp);
-			writeValue(setting.fragmentShader.data, fp);
+//			writeValue((uint32_t)setting.fragmentShader.type, fp);
+//			writeValue(setting.fragmentShader.source, fp);
+//			writeValue(setting.fragmentShader.data, fp);
+
+			// Write attributes
+			writeValue(setting.attribs.size(), fp);
+			for (auto const& attrib : setting.attribs)
+			{
+				writeValue(attrib, fp);
+			}
 		}
 
-		// Write attributes
-		writeValue(stream->mAttribs.size(), fp);
-		for (auto const& attrib: stream->mAttribs)
-		{
-			writeValue(attrib, fp);
-		}
 	}
 
 	void ResourceStreamSerializer::writeSamplerStream(ResourceStreamPtr resourceStream, ofstream& fp)
@@ -640,23 +641,23 @@ namespace mpp
 
 			qs.parser = readParser(fp);
 
-			qs.vertexShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
-			qs.vertexShader.source = readString(fp);
-			qs.vertexShader.data = readString(fp);
+//			qs.vertexShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
+//			qs.vertexShader.source = readString(fp);
+//			qs.vertexShader.data = readString(fp);
 
-			qs.geometryShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
-			qs.geometryShader.source = readString(fp);
-			qs.geometryShader.data = readString(fp);
+//			qs.geometryShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
+//			qs.geometryShader.source = readString(fp);
+//			qs.geometryShader.data = readString(fp);
 
-			qs.fragmentShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
-			qs.fragmentShader.source = readString(fp);
-			qs.fragmentShader.data = readString(fp);
-		}
+//			qs.fragmentShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
+//			qs.fragmentShader.source = readString(fp);
+//			qs.fragmentShader.data = readString(fp);
 
-		auto numAttribs = readUInt(fp);
-		for (size_t i = 0; i < numAttribs; ++i)
-		{
-			pStream->mAttribs.insert(readString(fp));
+			auto numAttribs = readUInt(fp);
+			for (size_t i = 0; i < numAttribs; ++i)
+			{
+				qs.attribs.insert(readString(fp));
+			}
 		}
 	}
 

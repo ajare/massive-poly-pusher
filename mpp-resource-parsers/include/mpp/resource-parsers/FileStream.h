@@ -30,7 +30,7 @@ namespace mpp
 
 			SerializerPtr getSerializer(std::string const& type) const;
 
-			std::string readTextFile(std::string const& filepath) const;
+			static std::string readTextFile(std::string const& filepath, std::string const& root);
 
 		public:
 

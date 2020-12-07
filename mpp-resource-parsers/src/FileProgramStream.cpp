@@ -79,7 +79,7 @@ namespace mpp
 			mDataTypes["UINT16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
 		}
 
-		FileProgramStream::Shader FileProgramStream::parseShader(utils::StructuredData const& data)
+		FileProgramStream::Shader FileProgramStream::parseShader(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			Shader shader;
 
@@ -92,14 +92,13 @@ namespace mpp
 				{
 					shader.type = Shader::Type::File;
 					shader.source = value;
-					shader.data = readTextFile(value);
+					shader.data = readTextFile(value, filepath);
 				}
 				else if (entry.first == "resource")
 				{
 					shader.type = Shader::Type::Resource;
 					shader.source = value;
 
-					auto resourceMgr = getResourceMgr();
 					if (resourceMgr)
 					{
 						auto res = resourceMgr->getResource(value);
@@ -110,14 +109,14 @@ namespace mpp
 
 			if (shader.type == Shader::Type::Default)
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Neither 'file' nor 'resource' specified for Shader.";
+				string errMsg = "Error loading " + filepath + ".  Neither 'file' nor 'resource' specified for Shader.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			return shader;
 		}
 
-		void FileProgramStream::parseQualitySetting(utils::StructuredData const& data)
+		pair<std::string, FileProgramStream::QualitySetting> FileProgramStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec)
 		{
 			string name;
 
@@ -165,7 +164,7 @@ namespace mpp
 				{
 					if (primitiveAttib != PrimitiveAttrib::Unspecified)
 					{
-						string errMsg = "Error loading " + getFilepath() + ".  'primitive' cannot be specified more than once for program.";
+						string errMsg = "Error loading " + filepath + ".  'primitive' cannot be specified more than once for program.";
 						THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 					}
 					
@@ -200,7 +199,7 @@ namespace mpp
 				}
 				else if (entry.first == "VertexShader")
 				{
-					vertexShader = parseShader(entry.second);
+					vertexShader = parseShader(entry.second, resourceMgr, filepath);
 				}
 				else if (entry.first == "GeometryShader")
 				{
@@ -208,75 +207,75 @@ namespace mpp
 				}
 				else if (entry.first == "FragmentShader")
 				{
-					fragmentShader = parseShader(entry.second);
+					fragmentShader = parseShader(entry.second, resourceMgr, filepath);
 				}
 				else if (entry.first == "MeshSpecification")
 				{
-					MeshSpecificationParser parser(getFilepath());
+					MeshSpecificationParser parser(filepath);
 					meshSpec = parser.parse(entry.second);
 					parsedMeshSpec = true;
 				}
 			}
 
-			if (!parsedMeshSpec&& mMeshSpecRequired)
+			if (!parsedMeshSpec && meshSpecRequired)
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  MeshSpecification not specified for program.";
+				string errMsg = "Error loading " + filepath + ".  MeshSpecification not specified for program.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			if (positionType != "2D" && positionType != "3D")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Invalid (or absent) position type specified for program.";
+				string errMsg = "Error loading " + filepath + ".  Invalid (or absent) position type specified for program.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
 			// Set attribs
+			set<string> attribs;
+
 			if (numTextures > 0)
 			{
-				mAttribs.insert("Texture");
+				attribs.insert("Texture");
 			}
 			if (primitiveAttib != PrimitiveAttrib::Unspecified)
 			{
 				if (primitiveAttib == PrimitiveAttrib::Points)
 				{
-					mAttribs.insert("Points");
+					attribs.insert("Points");
 				}
 				else if (primitiveAttib == PrimitiveAttrib::Lines)
 				{
-					mAttribs.insert("Lines");
+					attribs.insert("Lines");
 				}
 				else if (primitiveAttib == PrimitiveAttrib::Triangles)
 				{
-					mAttribs.insert("Triangles");
+					attribs.insert("Triangles");
 				}
 			}
 			if (useColours)
 			{
-				mAttribs.insert("Colours");
+				attribs.insert("Colours");
 			}
 			if (isAtlas)
 			{
-				mAttribs.insert("Atlas");
+				attribs.insert("Atlas");
 			}
 			if (useRotation)
 			{
-				mAttribs.insert("Rotation");
+				attribs.insert("Rotation");
 			}
 
 			// Create quality settings
-			auto newSettingId = createQualitySetting(name);
-			
-			auto& qs = mQualitySettings[newSettingId];
-
+			QualitySetting qs;
 			qs.parser = make_shared<program::Parser>();
+			qs.attribs = attribs;
 
-			if (mMeshSpecRequired)
+			if (meshSpecRequired)
 			{
 				qs.parser->setMeshSpecification(meshSpec);
 			}
 			else
 			{
-				qs.parser->setMeshSpecification(mMeshSpecification);
+				qs.parser->setMeshSpecification(*mainMeshSpec);
 			}
 			
 			// Load source into parser
@@ -311,6 +310,8 @@ namespace mpp
 			{
 				qs.parser->setFragmentSource(fragmentShader.data);
 			}
+
+			return make_pair(name, qs);
 		}
 
 		void FileProgramStream::loadImpl()
@@ -326,7 +327,9 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
+			// Default quality setting
+			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath(), mMeshSpecRequired, &mMeshSpecification);
+			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -335,7 +338,9 @@ namespace mpp
 
 				if (entry.first == "Quality")
 				{
-					parseQualitySetting(entry.second);
+					// Additional quality setting
+					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath(), mMeshSpecRequired, &mMeshSpecification);
+					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 				}
 			}
 

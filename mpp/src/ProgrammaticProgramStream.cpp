@@ -16,8 +16,8 @@ namespace mpp
 		mQualitySettings[quality].parser = parser;
 	}
 
-	void ProgrammaticProgramStream::setAttribs(set<string> const& attribs)
+	void ProgrammaticProgramStream::setAttribs(set<string> const& attribs, uint32_t quality)
 	{
-		mAttribs = attribs;
+		mQualitySettings[quality].attribs = attribs;
 	}
 }

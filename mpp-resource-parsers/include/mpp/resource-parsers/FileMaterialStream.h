@@ -24,7 +24,7 @@ namespace mpp
 
 			void createChildResourceStreamsImpl();
 
-			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
+			static void parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 
 			static void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, std::string const& filepath);
 
@@ -33,8 +33,6 @@ namespace mpp
 			static void parseUniformMatrixType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms, std::string const& filepath);
 
 		protected:
-
-			void parseForChildResourceStreams(utils::StructuredData const& data);
 
 			void loadImpl();
 
@@ -47,6 +45,8 @@ namespace mpp
 			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec);
 
 			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec);
+
+			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 		};
 
 	}

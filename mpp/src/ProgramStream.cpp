@@ -70,7 +70,7 @@ namespace mpp
 	{
 		return mFragmentSource;
 	}
-
+	/*
 	ProgramStream::Shader const& ProgramStream::getVertexShader() const
 	{
 		return mQualitySettings[mQualitySetting].vertexShader;
@@ -85,7 +85,7 @@ namespace mpp
 	{
 		return mQualitySettings[mQualitySetting].fragmentShader;
 	}
-
+	*/
 	/*
 	 * Get all source concatenated 
 	 *
@@ -103,7 +103,7 @@ namespace mpp
 	{
 		auto parser = mQualitySettings[mQualitySetting].parser;
 
-		parser->build(mAttribs);
+		parser->build(mQualitySettings[mQualitySetting].attribs);
 
 		setVertexSource(parser->getGeneratedVertexSource());
 		setFragmentSource(parser->getGeneratedFragmentSource());
