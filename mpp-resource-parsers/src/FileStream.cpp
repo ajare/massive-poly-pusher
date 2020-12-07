@@ -60,7 +60,7 @@ namespace mpp
 			return mData;
 		}
 
-		string FileStream::readTextFile(string const& filepath) const
+		string FileStream::readTextFile(string const& filepath, string const& root)
 		{
 			string fpath{ filepath };
 
@@ -68,7 +68,7 @@ namespace mpp
 			filesystem::path fp(filepath);
 			if (fp.is_relative())
 			{
-				filesystem::path fileFp(mFilepath);
+				filesystem::path fileFp(root);
 				fpath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
 			}
 

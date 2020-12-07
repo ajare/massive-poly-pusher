@@ -31,9 +31,7 @@ namespace mpp
 
 			void loadImpl();
 
-			Shader parseShader(utils::StructuredData const& data);
-
-			void parseQualitySetting(utils::StructuredData const& data);
+			static Shader parseShader(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 
 		public:
 
@@ -44,6 +42,8 @@ namespace mpp
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec);
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec);
+
+			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec);
 		};
 
 	}

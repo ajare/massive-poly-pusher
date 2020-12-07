@@ -34,7 +34,8 @@ namespace mpp
 		struct QualitySetting
 		{
 			std::shared_ptr<program::Parser> parser;
-			Shader vertexShader, geometryShader, fragmentShader;
+			//Shader vertexShader, geometryShader, fragmentShader;
+			std::set<std::string> attribs;
 		};
 
 	private:
@@ -44,8 +45,6 @@ namespace mpp
 	protected:
 
 		std::vector<QualitySetting> mQualitySettings;
-
-		std::set<std::string> mAttribs;
 
 	protected:
 
@@ -66,13 +65,13 @@ namespace mpp
 		std::string const& getGeometrySource() const;
 
 		std::string const& getFragmentSource() const;
-
+		/*
 		Shader const& getVertexShader() const;
 
 		Shader const& getGeometryShader() const;
 
 		Shader const& getFragmentShader() const;
-
+		*/
 		std::string getConcatenatedSource();
 
 		std::vector<program::Attribute> getInAttributes() const;
