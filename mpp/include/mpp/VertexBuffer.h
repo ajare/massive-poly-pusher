@@ -76,9 +76,9 @@ namespace mpp
 
 		std::vector<int8_t>& getBufferData();
 
-		void mapBufferData(int numVertices);
+		void mapBufferData(size_t numVertices);
 
-		void mapBufferData(int startVertex, int numVertices);
+		void mapBufferData(uint32_t startVertex, size_t numVertices);
 
 		void bind();
 

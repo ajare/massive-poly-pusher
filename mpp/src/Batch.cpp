@@ -98,18 +98,21 @@ namespace mpp
 		mCurCount = count;
 		auto numPrimitives = getPrimitiveCount(count);
 
-		if (mMeshes[0]->isIndexed())
+		if (numPrimitives > 0)
 		{
-			mMeshes[0]->mapIndexData(numPrimitives);
-		}
-
-		for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
-		{
-			auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
-
-			if (updateFixedBuffers || !vertexBuffer->isStatic())
+			if (mMeshes[0]->isIndexed())
 			{
-				vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
+				mMeshes[0]->mapIndexData(numPrimitives);
+			}
+
+			for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+			{
+				auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+
+				if (updateFixedBuffers || !vertexBuffer->isStatic())
+				{
+					vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
+				}
 			}
 		}
 

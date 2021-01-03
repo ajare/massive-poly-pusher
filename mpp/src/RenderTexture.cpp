@@ -1,6 +1,7 @@
 #include <exception>
 
 #include "mpp/Config.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/RenderTextureStream.h"
 #include "mpp/MppException.h"
@@ -19,7 +20,6 @@ namespace mpp
 		, Texture(name, renderSystem, resourceMgr, resourceStream)
 		, mRenderSystem(renderSystem)
 		, mUseDepthBuffer(false)
-		, mNumAttachments(0)
 		, mFrameBuffer(0)
 		, mDepthBuffer(0)
 	{
@@ -46,19 +46,134 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'RenderTextureStream'.", __LINE__, __FILE__, __func__);
 		}
 
-		RenderTarget::mWidth = rtStr->getWidth();
-		RenderTarget::mHeight = rtStr->getHeight();
+		mInternalFormat = rtStr->getInternalFormat();
+		mTarget = rtStr->getTarget();
+		mParams = rtStr->getParams();
+
+		Texture::mWidth = RenderTarget::mWidth = rtStr->getWidth();
+		Texture::mHeight = RenderTarget::mHeight = rtStr->getHeight();
+		Texture::mDepth = rtStr->getDepth();
+		mBitsPerPixel = rtStr->getBitsPerPixel();
+		mPixelFormat = rtStr->getPixelFormat();
+		mDataType = rtStr->getPixelDataType();
+
+		auto sampler = rtStr->getSampler();
+		if (sampler != "")
+		{
+			mSampler = getResourceManager()->getResource(sampler);
+			mSampler->create();
+		}
+
+		if (mInternalFormat == 0)
+		{
+			// If we haven't specified the format, work it out from bpp/pixelformat/datatype
+			size_t channels{ 0 };
+
+			switch (mDataType)
+			{
+			case GL_BYTE:
+				// Signed, normalised
+				channels = mBitsPerPixel / (sizeof(int8_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R8_SNORM; break;
+				case 2:
+					mInternalFormat = GL_RG8_SNORM; break;
+				case 3:
+					mInternalFormat = GL_RGB8_SNORM; break;
+				case 4:
+					mInternalFormat = GL_RGBA8_SNORM; break;
+				}
+				break;
+
+			case GL_UNSIGNED_BYTE:
+				// Unsigned, normalised
+				channels = mBitsPerPixel / (sizeof(uint8_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R8; break;
+				case 2:
+					mInternalFormat = GL_RG8; break;
+				case 3:
+					mInternalFormat = GL_RGB8; break;
+				case 4:
+					mInternalFormat = GL_RGBA8; break;
+				}
+				break;
+
+			case GL_SHORT:
+				// Signed, normalised
+				channels = mBitsPerPixel / (sizeof(int16_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R16_SNORM; break;
+				case 2:
+					mInternalFormat = GL_RG16_SNORM; break;
+				case 3:
+					mInternalFormat = GL_RGB16_SNORM; break;
+				case 4:
+					mInternalFormat = GL_RGBA16_SNORM; break;
+				}
+				break;
+
+			case GL_UNSIGNED_SHORT:
+				// Unsigned, normalised
+				channels = mBitsPerPixel / (sizeof(uint16_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R16; break;
+				case 2:
+					mInternalFormat = GL_RG16; break;
+				case 3:
+					mInternalFormat = GL_RGB16; break;
+				case 4:
+					mInternalFormat = GL_RGBA16; break;
+				}
+				break;
+
+			case GL_HALF_FLOAT:
+				// Signed, unnormalised
+				channels = mBitsPerPixel / ((sizeof(float) / 2) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R16F; break;
+				case 2:
+					mInternalFormat = GL_RG16F; break;
+				case 3:
+					mInternalFormat = GL_RGB16F; break;
+				case 4:
+					mInternalFormat = GL_RGBA16F; break;
+				}
+				break;
+
+			case GL_FLOAT:
+				// Signed, unnormalised
+				channels = mBitsPerPixel / (sizeof(float) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R32F; break;
+				case 2:
+					mInternalFormat = GL_RG32F; break;
+				case 3:
+					mInternalFormat = GL_RGB32F; break;
+				case 4:
+					mInternalFormat = GL_RGBA32F; break;
+				}
+				break;
+
+			default:
+				THROW_MPP("Unsupported data type.", __LINE__, __FILE__, __func__);
+			}
+		}
 
 		mUseDepthBuffer = rtStr->useDepthBuffer();
 		mNumAttachments = rtStr->getNumAttachments();
-	}
-
-	/*
-	 * Destroy the texture data.
-	 *
-	 */
-	void RenderTexture::destroyImpl()
-	{
 	}
 
 	/*
@@ -90,6 +205,8 @@ namespace mpp
 
 			mTextureIds.push_back(texId);
 		}
+
+		setId(mTextureIds.front());
 
 		// Create depth buffer
 		if (mUseDepthBuffer)
@@ -181,30 +298,6 @@ namespace mpp
 	int RenderTexture::getBitsPerPixel() const
 	{
 		return 32;
-	}
-
-	/*
-	 * Override Texture functionality.
-	 *
-	 */
-	void RenderTexture::bind(int unit)
-	{
-		bind(0, unit);
-	}
-
-	/*
-	 * Bind as texture for use.
-	 *
-	 */
-	void RenderTexture::bind(int attachment, int unit)
-	{
-		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
-	}
-
-	size_t RenderTexture::getNumAttachments() const
-	{
-		return mNumAttachments;
 	}
 
 	bool RenderTexture::hasDepthBuffer() const

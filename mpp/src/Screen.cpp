@@ -30,7 +30,7 @@ namespace mpp
 	void Screen::activate()
 	{
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
+		resetViewport();
 	}
 
 	/*
@@ -40,7 +40,7 @@ namespace mpp
 	void Screen::deactivate()
 	{
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
+		resetViewport();
 	}
 }
 

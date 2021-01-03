@@ -21,7 +21,7 @@ namespace mpp
 		, mwResourceMgr(resourceMgr)
 		, mResourceStream(resourceStream)
 	{
-		mResourceStream->mwResource = this;
+		//mResourceStream->mwResource = this;
 		//static_log_message(MPP_RESOURCE_LOGFILE, "Construct " + getType() + ": '" + getName() + "'");
 	}
 
@@ -145,7 +145,10 @@ namespace mpp
 	void Resource::create()
 	{
 		// Create child resources
-		mResourceStream->createChildResources(getName());
+		if (mResourceStream)
+		{
+			mResourceStream->createChildResources(getName());
+		}
 
 		if (!isCreated())
 		{
@@ -174,7 +177,10 @@ namespace mpp
 		}
 
 		// Destroy child resources
-		mResourceStream->destroyChildResources(getName());
+		if (mResourceStream)
+		{
+			mResourceStream->destroyChildResources(getName());
+		}
 	}
 
 	/*
@@ -209,7 +215,10 @@ namespace mpp
 		}
 
 		// Load child resources
-		mResourceStream->loadChildResources(getName());
+		if (mResourceStream)
+		{
+			mResourceStream->loadChildResources(getName());
+		}
 
 		if (!isLoaded())
 		{
@@ -233,6 +242,9 @@ namespace mpp
 		}
 
 		// Unload child resources
-		mResourceStream->unloadChildResources(getName());
+		if (mResourceStream)
+		{
+			mResourceStream->unloadChildResources(getName());
+		}
 	}
 }

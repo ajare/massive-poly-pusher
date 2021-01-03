@@ -199,18 +199,6 @@ namespace mpp
 		if (mStreaming)
 		{
 			THROW_MPP_NOTIMP("geometry streaming", __LINE__, __FILE__, __func__);
-
-			//GLbitfield fMap = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-			//GLbitfield fCreate = fMap | GL_DYNAMIC_STORAGE_BIT;
-
-			if (size == 0)
-			{
-				//glBufferStorage(GL_ARRAY_BUFFER, size, nullptr, fCreate);
-			}
-			else
-			{
-				//glBufferStorage(GL_ARRAY_BUFFER, size, &(mData[0]), fCreate);
-			}
 		}
 		else
 		{
@@ -233,7 +221,7 @@ namespace mpp
 	 * buffer has been modified.
 	 *
 	 */
-	void VertexBuffer::mapBufferData(int numVertices)
+	void VertexBuffer::mapBufferData(size_t numVertices)
 	{
 		bind();
 
@@ -256,7 +244,7 @@ namespace mpp
 	 * efficient for only modifying a small part.
 	 *
 	 */
-	void VertexBuffer::mapBufferData(int startVertex, int numVertices)
+	void VertexBuffer::mapBufferData(uint32_t startVertex, size_t numVertices)
 	{
 		bind();
 

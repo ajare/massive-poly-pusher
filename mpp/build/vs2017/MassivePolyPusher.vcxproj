@@ -89,6 +89,7 @@
     <ClInclude Include="..\..\include\mpp\TextureParams.h" />
     <ClInclude Include="..\..\include\mpp\TextureRenderer.h" />
     <ClInclude Include="..\..\include\mpp\TextureStream.h" />
+    <ClInclude Include="..\..\include\mpp\TextureStreamBase.h" />
     <ClInclude Include="..\..\include\mpp\TextureTile.h" />
     <ClInclude Include="..\..\include\mpp\GridModelStream.h" />
     <ClInclude Include="..\..\include\mpp\TriangleBatch.h" />
@@ -166,6 +167,7 @@
     <ClCompile Include="..\..\src\TextureRenderer.cpp" />
     <ClCompile Include="..\..\src\TextureStream.cpp" />
     <ClCompile Include="..\..\src\GridModelStream.cpp" />
+    <ClCompile Include="..\..\src\TextureStreamBase.cpp" />
     <ClCompile Include="..\..\src\TriangleBatch.cpp" />
     <ClCompile Include="..\..\src\UniformBuffer.cpp" />
     <ClCompile Include="..\..\src\UniformCollection.cpp" />

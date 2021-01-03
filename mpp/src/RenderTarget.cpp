@@ -42,4 +42,14 @@ namespace mpp
 	{
 		return mHeight;
 	}
+
+	void RenderTarget::setViewport(int x, int y, size_t width, size_t height)
+	{
+		GL_CHECK(glViewport(x, y, width, height));
+	}
+
+	void RenderTarget::resetViewport()
+	{
+		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
+	}
 }
