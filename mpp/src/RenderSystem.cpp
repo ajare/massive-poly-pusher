@@ -924,6 +924,9 @@ namespace mpp
 	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer)
 	{
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
+
+		rtStream->setTarget(TextureTarget::Texture2D);
+		rtStream->setInternalFormat(TextureInternalType::UnsignedInteger, true, 8, 4);
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
 		rtStream->setDepthBuffer(depthBuffer);
@@ -1022,6 +1025,15 @@ namespace mpp
 		}
 	}
 
+	void RenderSystem::setViewport(int x, int y, size_t width, size_t height)
+	{
+		mRenderTarget->setViewport(x, y, width, height);
+	}
+
+	void RenderSystem::resetViewport()
+	{
+		mRenderTarget->resetViewport();
+	}
 	/*
 	 * Reset the model matrix to identity.
 	 *

@@ -21,13 +21,9 @@ namespace mpp
 
 		bool mUseDepthBuffer;
 
-		size_t mNumAttachments;
-
 		GLuint mFrameBuffer;
 
 		GLuint mDepthBuffer;
-
-		std::vector<GLuint> mTextureIds;
 
 	private:
 
@@ -38,8 +34,6 @@ namespace mpp
 	protected:
 
 		void createImpl();
-
-		void destroyImpl();
 
 		void loadImpl();
 
@@ -56,12 +50,6 @@ namespace mpp
 		int getHeight() const;
 
 		int getBitsPerPixel() const;
-
-		void bind(int unit);
-
-		void bind(int attachment, int unit);
-
-		size_t getNumAttachments() const;
 
 		bool hasDepthBuffer() const;
 

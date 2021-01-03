@@ -44,7 +44,7 @@ namespace mpp
 		{
 		}
 
-		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
 		{
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -57,7 +57,7 @@ namespace mpp
 					auto const& programEntry = entry.second;
 					if (programEntry.hasEntry("Resource"))
 					{
-						auto qs = FileProgramStream::parseQualitySetting(programEntry.getEntry("Resource"), resourceMgr, filepath);
+						auto qs = FileProgramStream::parseQualitySetting(programEntry.getEntry("Resource"), resourceMgr, filepath, useSpecifiedMesh, meshSpec);
 					}
 				}
 				else if (entry.first == "Textures")
@@ -100,7 +100,7 @@ namespace mpp
 			}
 
 			// Default quality setting
-			parseForChildResourceStreams(data, getResourceMgr(), getFilepath());
+			parseForChildResourceStreams(data, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -110,7 +110,7 @@ namespace mpp
 				if (entry.first == "Quality")
 				{
 					// Additional quality setting
-					parseForChildResourceStreams(entry.second, getResourceMgr(), getFilepath());
+					parseForChildResourceStreams(entry.second, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
 				}
 			}
 		}

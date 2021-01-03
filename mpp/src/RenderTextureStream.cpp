@@ -7,39 +7,55 @@ using namespace std;
 namespace mpp
 {
 
-	/*
-	 * Constructor.
-	 *
-	 */
 	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "RenderTexture")
+
 	{
 	}
 
-	/*
-	 * Load data.  Already loaded in constructor!
-	 *
-	 */
 	void RenderTextureStream::loadImpl()
 	{
+		// Nothing to do here.
 	}
 
-	/*
-	 * Get texture width.
-	 *
-	 */
 	size_t RenderTextureStream::getWidth() const
 	{
 		return mQualitySettings[mQualitySetting].width;
 	}
 
-	/*
-	 * Get texture height.
-	 *
-	 */
 	size_t RenderTextureStream::getHeight() const
 	{
 		return mQualitySettings[mQualitySetting].height;
+	}
+
+	size_t RenderTextureStream::getDepth() const
+	{
+		return mQualitySettings[mQualitySetting].depth;
+	}
+
+	size_t RenderTextureStream::getBitsPerPixel() const
+	{
+		return mQualitySettings[mQualitySetting].bitsPerPixel;
+	}
+
+	uint32_t RenderTextureStream::getPixelFormat() const
+	{
+		return mQualitySettings[mQualitySetting].pixelFormat;
+	}
+
+	uint32_t RenderTextureStream::getPixelDataType() const
+	{
+		return mQualitySettings[mQualitySetting].pixelDataType;
+	}
+
+	TextureParams const& RenderTextureStream::getParams() const
+	{
+		return mQualitySettings[mQualitySetting].params;
+	}
+
+	string const& RenderTextureStream::getSampler() const
+	{
+		return mQualitySettings[mQualitySetting].sampler;
 	}
 
 	bool RenderTextureStream::useDepthBuffer() const

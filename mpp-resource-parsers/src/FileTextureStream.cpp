@@ -184,17 +184,17 @@ namespace mpp
 				else if (entry.first == "filename")
 				{
 					// If filename is specified, then load from disk
-					string filepath = entry.second.getValue();
+					string texFilepath = entry.second.getValue();
 
 					// if the filepath is relative, prepend the path of the xml file
-					filesystem::path fp(filepath);
-					if (fp.is_relative())
+					filesystem::path texFp(texFilepath);
+					if (texFp.is_relative())
 					{
 						filesystem::path fileFp(filepath);
-						filepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), filepath);
+						texFilepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), texFilepath);
 					}
 
-					qs.source = filepath;
+					qs.source = texFilepath;
 				}
 				else if (entry.first == "sampler")
 				{

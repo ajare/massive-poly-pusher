@@ -15,9 +15,13 @@ namespace mpp
 	{
 	}
 
-	ResourcePtr TextureRenderer::createRenderTexture(int width, int height)
+	ResourcePtr TextureRenderer::createRenderTexture(size_t width, size_t height)
 	{
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
+
+		rtStream->setTarget(TextureTarget::Texture2D);
+		rtStream->setInternalFormat(TextureInternalType::UnsignedInteger, true, 8, 4);
+		
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
 		rtStream->setDepthBuffer(true);

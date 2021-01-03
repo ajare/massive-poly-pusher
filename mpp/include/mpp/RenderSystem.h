@@ -298,6 +298,10 @@ namespace mpp
 
 		void popClipRectangle();
 
+		void setViewport(int x, int y, size_t width, size_t height);
+
+		void resetViewport();
+
 		//
 		// 3d operations
 		//

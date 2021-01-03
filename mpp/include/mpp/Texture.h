@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "mpp/Resource.h"
 #include "mpp/TextureParams.h"
 #include "mpp/Sampler.h"
@@ -8,6 +10,8 @@ namespace mpp
 {
 	class _MPPAPI Texture : public Resource
 	{
+	protected:
+
 		TextureParams mParams;
 
 		size_t mWidth, mHeight, mDepth, mBitsPerPixel;
@@ -21,6 +25,10 @@ namespace mpp
 		uint32_t mSortId;
 
 		ResourcePtr mSampler;
+
+		size_t mNumAttachments;
+
+		std::vector<uint32_t> mTextureIds;
 
 	protected:
 
@@ -44,7 +52,9 @@ namespace mpp
 
 		virtual int getBitsPerPixel() const;
 
-		virtual void bind(uint32_t unit);
+		size_t getNumAttachments() const;
+
+		virtual void bind(uint32_t unit, uint32_t attachment = 0);
 
 		void setSortId(uint32_t sortId);
 

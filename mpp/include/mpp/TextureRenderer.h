@@ -22,7 +22,7 @@ namespace mpp
 
 	private:
 
-		virtual void render(int width, int height) {}
+		virtual void render(size_t width, size_t height) {}
 
 	public:
 
@@ -30,7 +30,7 @@ namespace mpp
 
 		virtual ~TextureRenderer() = default;
 
-		ResourcePtr createRenderTexture(int width, int height);
+		ResourcePtr createRenderTexture(size_t width, size_t height);
 
 		void updateRenderTexture(ResourcePtr renderTexture);
 	};

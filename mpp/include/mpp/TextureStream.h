@@ -4,6 +4,7 @@
 #include <functional>
 
 #include "mpp/ResourceStream.h"
+#include "mpp/TextureStreamBase.h"
 #include "mpp/TextureParams.h"
 #include "mpp/TextureData.h"
 
@@ -14,7 +15,7 @@ namespace mpp
 
 	typedef std::function<TextureData(std::string const&)> ImageLoadFunction;
 
-	class _MPPAPI TextureStream : public ResourceStream
+	class _MPPAPI TextureStream : public ResourceStream, public TextureStreamBase
 	{
 		friend class ResourceStreamSerializer;
 
@@ -44,10 +45,6 @@ namespace mpp
 
 		std::vector<QualitySetting> mQualitySettings;
 
-		uint32_t mInternalFormat;
-
-		uint32_t mTarget;
-
 	protected:
 
 		void loadImpl();
@@ -57,10 +54,6 @@ namespace mpp
 		TextureStream(ResourceManager* resourceMgr, std::string streamType = "Texture");
 
 		virtual ~TextureStream();
-
-		uint32_t getInternalFormat() const;
-
-		uint32_t getTarget() const;
 
 		uint8_t const* getData() const;
 

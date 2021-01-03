@@ -25,6 +25,7 @@ namespace mpp
 	 */
 	Texture::Texture(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: Resource(name, "Texture", renderSystem, resourceMgr, resourceStream)
+		, mNumAttachments(1)
 		, mSortId(0)
 		, mInternalFormat(0)
 		, mWidth(0)
@@ -204,66 +205,71 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'TextureStream'.", __LINE__, __FILE__, __func__);
 		}
 
-		uint32_t texId;
-
 		// Create and bind
-		GL_CHECK(glGenTextures(1, &texId));
-		GL_CHECK(glBindTexture(mTarget, texId));
-
-		// Set parameters
-		switch (mTarget)
+		for (size_t i = 0; i < mNumAttachments; ++i)
 		{
-		case GL_TEXTURE_3D:
-		case GL_TEXTURE_CUBE_MAP:
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_R, mParams.wrap));
-		case GL_TEXTURE_2D:
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_T, mParams.wrap));
-		case GL_TEXTURE_1D:
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_S, mParams.wrap));
-			break;
-		default:
-			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
+			uint32_t texId;
+		
+			GL_CHECK(glGenTextures(1, &texId));
+			mTextureIds.push_back(texId);
+
+			GL_CHECK(glBindTexture(mTarget, texId));
+
+			// Set parameters
+			switch (mTarget)
+			{
+			case GL_TEXTURE_3D:
+			case GL_TEXTURE_CUBE_MAP:
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_R, mParams.wrap));
+			case GL_TEXTURE_2D:
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_T, mParams.wrap));
+			case GL_TEXTURE_1D:
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_S, mParams.wrap));
+				break;
+			default:
+				THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
+			}
+
+			// Set data
+			auto data = tStr->getData();
+			switch (mTarget)
+			{
+			case GL_TEXTURE_1D:
+				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mWidth, 0, mPixelFormat, mDataType, data));
+				break;
+
+			case GL_TEXTURE_2D:
+				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mWidth, mHeight, 0, mPixelFormat, mDataType, data));
+				break;
+
+			case GL_TEXTURE_3D:
+				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, mPixelFormat, mDataType, data));
+				break;
+
+			case GL_TEXTURE_CUBE_MAP:
+				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
+				break;
+
+			default:
+				THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
+			}
+
+			// Set up mipmaps
+			if (mParams.useMipmaps)
+			{
+				glGenerateMipmap(mTarget);
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+				GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
+			}
+
+			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
 		}
-
-		// Set data
-		auto data = tStr->getData();
-		switch (mTarget)
-		{
-		case GL_TEXTURE_1D:
-			GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mWidth, 0, mPixelFormat, mDataType, data));
-			break;
-
-		case GL_TEXTURE_2D:
-			GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mWidth, mHeight, 0, mPixelFormat, mDataType, data));
-			break;
-
-		case GL_TEXTURE_3D:
-			GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, mPixelFormat, mDataType, data));
-			break;
-
-		case GL_TEXTURE_CUBE_MAP:
-			//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-			break;
-
-		default:
-			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
-		}
-
-		// Set up mipmaps
-		if (mParams.useMipmaps)
-		{
-			glGenerateMipmap(mTarget);
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
-			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
-			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
-		}
-
-		GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
 
 		GL_CHECK(glBindTexture(mTarget, 0));
-		setId(texId);
+		setId(mTextureIds.front());
 
 		if (mSampler)
 		{
@@ -321,11 +327,16 @@ namespace mpp
 		return mBitsPerPixel;
 	}
 
+	size_t Texture::getNumAttachments() const
+	{
+		return mNumAttachments;
+	}
+
 	/*
 	 * Bind texture.
 	 *
 	 */
-	void Texture::bind(uint32_t unit)
+	void Texture::bind(uint32_t unit, uint32_t attachment)
 	{
 		if (!isLoaded())
 		{
@@ -333,7 +344,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
-		GL_CHECK(glBindTexture(mTarget, getId()));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
 
 		if (mSampler)
 		{

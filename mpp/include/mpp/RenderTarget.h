@@ -29,6 +29,10 @@ namespace mpp
 		virtual int getWidth() const;
 
 		virtual int getHeight() const;
+
+		void setViewport(int x, int y, size_t width, size_t height);
+
+		void resetViewport();
 	};
 
 	typedef std::shared_ptr<RenderTarget> RenderTargetPtr;
