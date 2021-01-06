@@ -48,7 +48,8 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	// Create texture with sampler.
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
-	textureStream->setFile(TextureTarget::Texture2D, options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setTarget(TextureTarget::Texture2D);
+	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
 	resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));

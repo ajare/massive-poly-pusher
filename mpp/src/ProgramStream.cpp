@@ -131,7 +131,7 @@ namespace mpp
 	{
 		auto qualityId = mQualitySettings.size();
 
-		if (name != "")
+		//if (name != "")
 		{
 			mQualityNames[name] = qualityId;
 		}

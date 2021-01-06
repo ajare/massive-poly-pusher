@@ -27,7 +27,7 @@ namespace mpp
 			float v[2];
 		};
 
-	protected:
+	public:
 
 		struct QualitySetting
 		{

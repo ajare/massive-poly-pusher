@@ -24,7 +24,7 @@ namespace mpp
 
 			void createChildResourceStreamsImpl();
 
-			static void parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec);
+			static void parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec, std::map<std::string, ProgramStream::QualitySetting> &programSettings, std::map<std::string, std::map<std::string, TextureStream::QualitySetting>> &textureSettings);
 
 			static void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, std::string const& filepath);
 

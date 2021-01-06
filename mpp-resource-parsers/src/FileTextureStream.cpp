@@ -35,50 +35,47 @@ namespace mpp
 
 		void FileTextureStream::setup()
 		{
-			// Internal formats
-			mInternalFormats["R8_SNORM"] = GL_R8_SNORM;
-			mInternalFormats["RG8_SNORM"] = GL_RG8_SNORM;
-			mInternalFormats["RGB8_SNORM"] = GL_RGB8_SNORM;
-			mInternalFormats["RGBA8_SNORM"] = GL_RGBA8_SNORM;
-			mInternalFormats["R16_SNORM"] = GL_RG16_SNORM;
-			mInternalFormats["RG16_SNORM"] = GL_RGB16_SNORM;
-			mInternalFormats["RGB16_SNORM"] = GL_RGB16_SNORM;
-			mInternalFormats["RGBA16_SNORM"] = GL_RGBA16_SNORM;
-			mInternalFormats["R8"] = GL_R8;
-			mInternalFormats["RG8"] = GL_RG8;
-			mInternalFormats["RGB8"] = GL_RGB8;
-			mInternalFormats["RGBA8"] = GL_RGBA8;
-			mInternalFormats["R16"] = GL_R16;
-			mInternalFormats["RG16"] = GL_RG16;
-			mInternalFormats["RGB16"] = GL_RGB16;
-			mInternalFormats["RGBA16"] = GL_RGBA16;
-			mInternalFormats["R16F"] = GL_R16F;
-			mInternalFormats["RG16F"] = GL_RG16F;
-			mInternalFormats["RGB16F"] = GL_RGB16F;
-			mInternalFormats["RGBA16F"] = GL_RGBA16F;
-			mInternalFormats["R32F"] = GL_R32F;
-			mInternalFormats["RG32F"] = GL_RG32F;
-			mInternalFormats["RGB32F"] = GL_RGB32F;
-			mInternalFormats["RGBA32F"] = GL_RGBA32F;
-
-			// Texture targets
-			mTargets["1D"] = GL_TEXTURE_1D;
-			mTargets["2D"] = GL_TEXTURE_2D;
-			mTargets["3D"] = GL_TEXTURE_3D;
-			mTargets["CUBEMAP"] = GL_TEXTURE_CUBE_MAP;
 		}
 
-		uint32_t FileTextureStream::parseInternalFormat(string const& value)
+		uint32_t FileTextureStream::parseInternalFormat(string const& value, std::string const& filepath)
 		{
-			auto it = mInternalFormats.find(value);
+			map<string, uint32_t> internalFormats;
+
+			// Internal formats
+			internalFormats["R8_SNORM"] = GL_R8_SNORM;
+			internalFormats["RG8_SNORM"] = GL_RG8_SNORM;
+			internalFormats["RGB8_SNORM"] = GL_RGB8_SNORM;
+			internalFormats["RGBA8_SNORM"] = GL_RGBA8_SNORM;
+			internalFormats["R16_SNORM"] = GL_RG16_SNORM;
+			internalFormats["RG16_SNORM"] = GL_RGB16_SNORM;
+			internalFormats["RGB16_SNORM"] = GL_RGB16_SNORM;
+			internalFormats["RGBA16_SNORM"] = GL_RGBA16_SNORM;
+			internalFormats["R8"] = GL_R8;
+			internalFormats["RG8"] = GL_RG8;
+			internalFormats["RGB8"] = GL_RGB8;
+			internalFormats["RGBA8"] = GL_RGBA8;
+			internalFormats["R16"] = GL_R16;
+			internalFormats["RG16"] = GL_RG16;
+			internalFormats["RGB16"] = GL_RGB16;
+			internalFormats["RGBA16"] = GL_RGBA16;
+			internalFormats["R16F"] = GL_R16F;
+			internalFormats["RG16F"] = GL_RG16F;
+			internalFormats["RGB16F"] = GL_RGB16F;
+			internalFormats["RGBA16F"] = GL_RGBA16F;
+			internalFormats["R32F"] = GL_R32F;
+			internalFormats["RG32F"] = GL_RG32F;
+			internalFormats["RGB32F"] = GL_RGB32F;
+			internalFormats["RGBA32F"] = GL_RGBA32F;
+
+			auto it = internalFormats.find(value);
 			
-			if (it != mInternalFormats.end())
+			if (it != internalFormats.end())
 			{
 				return it->second;
 			}
 			else
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported internal format '" + value + "' specified.";
+				string errMsg = "Error loading " + filepath + ".  Unknown/unsupported internal format '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -152,17 +149,25 @@ namespace mpp
 			}
 		}
 
-		uint32_t FileTextureStream::parseTarget(string const& value)
+		uint32_t FileTextureStream::parseTarget(string const& value, string const& filepath)
 		{
-			auto it = mTargets.find(value);
+			map<string, uint32_t> targets;
 
-			if (it != mTargets.end())	
+			// Texture targets
+			targets["1D"] = GL_TEXTURE_1D;
+			targets["2D"] = GL_TEXTURE_2D;
+			targets["3D"] = GL_TEXTURE_3D;
+			targets["CUBEMAP"] = GL_TEXTURE_CUBE_MAP;
+
+			auto it = targets.find(value);
+
+			if (it != targets.end())	
 			{
 				return it->second;
 			}
 			else
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Unknown/unsupported target '" + value + "' specified.";
+				string errMsg = "Error loading " + filepath + ".  Unknown/unsupported target '" + value + "' specified.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __FUNCTION__);
 			}
 		}
@@ -260,12 +265,12 @@ namespace mpp
 
 				if (entry.first == "target")
 				{
-					mTarget = parseTarget(value);
+					mTarget = parseTarget(value, getFilepath());
 				}
 				else if (entry.first == "internalFormat")
 				{
 					// Optionally, specify OpenGL internal format.  Otherwise calculate from loaded image.
-					mInternalFormat = parseInternalFormat(value);
+					mInternalFormat = parseInternalFormat(value, getFilepath());
 				}
 				else if (entry.first == "Quality")
 				{
