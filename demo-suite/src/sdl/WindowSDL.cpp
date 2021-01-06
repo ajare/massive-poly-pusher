@@ -25,11 +25,11 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 
 	if (fullScreen)
 	{
-		mWindow = SDL_CreateWindow("Harness", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+		mWindow = SDL_CreateWindow("Demo Suite", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 	}
 	else
 	{
-		mWindow = SDL_CreateWindow("Harness", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+		mWindow = SDL_CreateWindow("Demo Suite", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
 	}
 
 	if (!mWindow)

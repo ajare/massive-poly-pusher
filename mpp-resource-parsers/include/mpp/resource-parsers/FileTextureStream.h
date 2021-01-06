@@ -16,15 +16,11 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileTextureStream : public mpp::TextureStream, public FileStream
 		{
-			std::map<std::string, uint32_t> mInternalFormats, mTargets;
-
-		private:
-
 			void setup();
 
 			void loadImpl();
 
-			uint32_t parseInternalFormat(std::string const& value);
+			static uint32_t parseInternalFormat(std::string const& value, std::string const& filepath);
 
 			static uint32_t parseMinFilter(std::string const& value, std::string const& filepath);
 
@@ -32,7 +28,7 @@ namespace mpp
 
 			static uint32_t parseWrapping(std::string const& value, std::string const& filepath);
 
-			uint32_t parseTarget(std::string const& value);
+			static uint32_t parseTarget(std::string const& value, std::string const& filepath);
 
 		public:
 

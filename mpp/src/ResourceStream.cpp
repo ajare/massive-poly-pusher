@@ -21,7 +21,7 @@ namespace mpp
 		, mQualitySetting(0)
 	{
 		//static_log_message(MPP_RESOURCE_LOGFILE, "Construct-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
-		mQualityNames["Default"] = 0;
+		//mQualityNames["Default"] = 0;
 	}
 
 	/*

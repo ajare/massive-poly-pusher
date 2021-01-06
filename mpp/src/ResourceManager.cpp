@@ -200,7 +200,8 @@ namespace mpp
 
 		// Default texture
 		auto blankStream = new ProgrammaticTextureStream(this);
-		blankStream->setData(TextureTarget::Texture2D, [](string const& id)
+		blankStream->setTarget(TextureTarget::Texture2D);
+		blankStream->setData([](string const& id)
 		{
 			TextureData data;
 			
@@ -223,8 +224,8 @@ namespace mpp
 
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(this);
-		ts->setData(
-			TextureTarget::Texture2D, [](string const& id)
+		ts->setTarget(TextureTarget::Texture2D);
+		ts->setData([](string const& id)
 		{
 			InternalFont internalFont;
 			TextureData data;

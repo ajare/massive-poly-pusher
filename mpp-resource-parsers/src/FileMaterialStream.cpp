@@ -1,6 +1,8 @@
 #include "utils/FileSystem.h"
 
 #include "mpp/DefaultShaders.h"
+#include "mpp/ProgrammaticProgramStream.h"
+#include "mpp/ProgrammaticTextureStream.h"
 
 #include "mpp/resource-parsers/FileMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
@@ -44,7 +46,7 @@ namespace mpp
 		{
 		}
 
-		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
+		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec, map<string, ProgramStream::QualitySetting> &programSettings, map<string, map<string, TextureStream::QualitySetting>> &textureSettings)
 		{
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -57,7 +59,8 @@ namespace mpp
 					auto const& programEntry = entry.second;
 					if (programEntry.hasEntry("Resource"))
 					{
-						auto qs = FileProgramStream::parseQualitySetting(programEntry.getEntry("Resource"), resourceMgr, filepath, useSpecifiedMesh, meshSpec);
+						auto qs = FileProgramStream::parseQualitySetting(programEntry.getEntry("Resource"), resourceMgr, filepath, !useSpecifiedMesh, meshSpec);
+						programSettings[qs.first] = qs.second;
 					}
 				}
 				else if (entry.first == "Textures")
@@ -78,7 +81,16 @@ namespace mpp
 								auto samplerEntry = textureEntry.getEntry("Variable");
 								auto samplerName = samplerEntry.getValue();
 
+								auto texIt = textureSettings.find(samplerName);
+								if (texIt == textureSettings.end())
+								{
+									textureSettings[samplerName] = map<string, TextureStream::QualitySetting>();
+								}
+
+								auto& qualitySettings = textureSettings.find(samplerName)->second;
+
 								auto qs = FileTextureStream::parseQualitySetting(textureEntry.getEntry("Resource"), resourceMgr, filepath);
+								qualitySettings[qs.first] = qs.second;
 							}
 						}
 					}
@@ -99,8 +111,11 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
+			map<string, ProgramStream::QualitySetting> programSettings;
+			map<string, map<string, TextureStream::QualitySetting>> textureSettings;
+
 			// Default quality setting
-			parseForChildResourceStreams(data, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
+			parseForChildResourceStreams(data, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec, programSettings, textureSettings);
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -110,8 +125,66 @@ namespace mpp
 				if (entry.first == "Quality")
 				{
 					// Additional quality setting
-					parseForChildResourceStreams(entry.second, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
+					parseForChildResourceStreams(entry.second, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec, programSettings, textureSettings);
 				}
+			}
+
+			// Create child resource streams
+			if (!programSettings.empty())
+			{
+				auto pStr = new ProgrammaticProgramStream(getResourceMgr());
+
+				auto const& settingNames = pStr->getQualityNames();
+				for (auto const& kvp: programSettings)
+				{
+					uint32_t settingId;
+					auto settingIt = settingNames.find(kvp.first);
+					if (settingIt != settingNames.end())
+					{
+						settingId = settingIt->second;
+					}
+					else
+					{
+						settingId = pStr->createQualitySetting(kvp.first);
+					}
+
+					pStr->setAttribs(kvp.second.attribs, settingId);
+					pStr->setParser(kvp.second.parser, settingId);
+				}
+
+				addChild("Program", ResourceStreamPtr(pStr));
+			}
+
+			for (auto const& kvp: textureSettings)
+			{
+				auto const& samplerName = kvp.first;
+				auto const& qualitySettings = kvp.second;
+
+				auto tStr = new ProgrammaticTextureStream(getResourceMgr());
+
+				// Set target
+				tStr->setTarget(
+
+				auto const& settingNames = tStr->getQualityNames();
+				for (auto const& kvp : qualitySettings)
+				{
+					uint32_t settingId;
+					auto settingIt = settingNames.find(kvp.first);
+					if (settingIt != settingNames.end())
+					{
+						settingId = settingIt->second;
+					}
+					else
+					{
+						settingId = tStr->createQualitySetting(kvp.first);
+					}
+
+					tStr->setFile(kvp.second.source, getResourceMgr()->getImageLoadFunction(), settingId);
+					tStr->setParams(kvp.second.params, settingId);
+					tStr->setSampler(kvp.second.sampler, settingId);
+				}
+
+				addChild("Texture_" + samplerName, ResourceStreamPtr(tStr));
 			}
 		}
 
@@ -310,12 +383,9 @@ namespace mpp
 				}
 				else if (entry.first == "Textures")
 				{
-					int textureId = 0;
 					auto const& textures = it->second;
-					for (auto tit = textures.begin(); tit != textures.end(); ++tit, ++textureId)
+					for (auto const& entry: textures)
 					{
-						auto const& entry = *tit;
-
 						if (entry.first == "Texture")
 						{
 							auto const& textureEntry = entry.second;
@@ -333,7 +403,7 @@ namespace mpp
 							if (textureEntry.hasEntry("Resource"))
 							{
 								textureOptions.isChild = true;
-								textureOptions.existingResource = "Texture" + utils::StringUtils::toString(textureId);
+								textureOptions.existingResource = "Texture_" + samplerName;
 							}
 							else if (textureEntry.hasEntry("Ref"))
 							{

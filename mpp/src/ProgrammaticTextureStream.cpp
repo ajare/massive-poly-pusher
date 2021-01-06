@@ -300,18 +300,14 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticTextureStream::setData(TextureTarget target, ImageLoadFunction creator, uint32_t quality)
+	void ProgrammaticTextureStream::setData(ImageLoadFunction creator, uint32_t quality)
 	{
-		setTarget(target);
-
 		mQualitySettings[quality].source = "";
 		mQualitySettings[quality].loadFunc = creator;
 	}
 
-	void ProgrammaticTextureStream::setFile(TextureTarget target, string const& filename, ImageLoadFunction loader, uint32_t quality)
+	void ProgrammaticTextureStream::setFile(string const& filename, ImageLoadFunction loader, uint32_t quality)
 	{
-		setTarget(target);
-
 		mQualitySettings[quality].source = filename;
 		mQualitySettings[quality].loadFunc = loader;
 	}

@@ -76,7 +76,8 @@ namespace mpp
 
 				textureStream->setParams(texture.params);
 				textureStream->setSampler(texture.sampler);
-				textureStream->setFile(texture.target, texture.existingResource, resMgr->getImageLoadFunction());
+				textureStream->setTarget(texture.target);
+				textureStream->setFile(texture.existingResource, resMgr->getImageLoadFunction());
 
 				addChild(texture.existingResource, ResourceStreamPtr(textureStream));
 			}

@@ -29,7 +29,7 @@ namespace mpp
 			std::string source, data;
 		};
 
-	protected:
+	public:
 
 		struct QualitySetting
 		{
