@@ -18,6 +18,16 @@ namespace mpp
 		// Nothing to do here.
 	}
 
+	uint32_t RenderTextureStream::getInternalFormat() const
+	{
+		return mQualitySettings[mQualitySetting].internalFormat;
+	}
+
+	uint32_t RenderTextureStream::getTarget() const
+	{
+		return mQualitySettings[mQualitySetting].target;
+	}
+
 	size_t RenderTextureStream::getWidth() const
 	{
 		return mQualitySettings[mQualitySetting].width;

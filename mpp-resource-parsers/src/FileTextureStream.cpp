@@ -201,6 +201,14 @@ namespace mpp
 
 					qs.source = texFilepath;
 				}
+				if (entry.first == "target")
+				{
+					qs.target = parseTarget(value, filepath);
+				}
+				else if (entry.first == "internalFormat")
+				{
+					qs.internalFormat = parseInternalFormat(value, filepath);
+				}
 				else if (entry.first == "sampler")
 				{
 					qs.sampler = entry.second.getValue();
@@ -263,26 +271,20 @@ namespace mpp
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
 
-				if (entry.first == "target")
-				{
-					mTarget = parseTarget(value, getFilepath());
-				}
-				else if (entry.first == "internalFormat")
-				{
-					// Optionally, specify OpenGL internal format.  Otherwise calculate from loaded image.
-					mInternalFormat = parseInternalFormat(value, getFilepath());
-				}
-				else if (entry.first == "Quality")
+				if (entry.first == "Quality")
 				{
 					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
 					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 				}
 			}
 
-			if (mTarget == 0)
+			for (auto& entry: mQualitySettings)
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  'target' not specified.";
-				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+				if (entry.target == 0)
+				{
+					string errMsg = "Error loading " + getFilepath() + ".  'target' not specified.";
+					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
+				}
 			}
 
 			for (auto& qs: mQualitySettings)

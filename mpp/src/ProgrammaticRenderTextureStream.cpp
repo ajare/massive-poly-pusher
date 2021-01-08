@@ -46,7 +46,7 @@ namespace mpp
 		mQualitySettings[quality].params = params;
 	}
 
-	void ProgrammaticRenderTextureStream::setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels)
+	void ProgrammaticRenderTextureStream::setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels, uint32_t quality)
 	{
 		if (type == TextureInternalType::Float && normalized)
 		{
@@ -59,6 +59,7 @@ namespace mpp
 			THROW_MPP("Invalid texture channel count.", __LINE__, __FILE__, __func__);
 		}
 
+		uint32_t internalFormat{ 0 };
 		switch (type)
 		{
 		case TextureInternalType::UnsignedInteger:
@@ -69,8 +70,8 @@ namespace mpp
 				case 1:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_R8; break;
-					case 16: mInternalFormat = GL_R16; break;
+					case 8: internalFormat = GL_R8; break;
+					case 16: internalFormat = GL_R16; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -78,8 +79,8 @@ namespace mpp
 				case 2:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RG8; break;
-					case 16: mInternalFormat = GL_RG16; break;
+					case 8: internalFormat = GL_RG8; break;
+					case 16: internalFormat = GL_RG16; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -87,12 +88,12 @@ namespace mpp
 				case 3:
 					switch (bitSize)
 					{
-					case 4: mInternalFormat = GL_RGB4; break;
-					case 5: mInternalFormat = GL_RGB5; break;
-					case 8: mInternalFormat = GL_RGB8; break;
-					case 10: mInternalFormat = GL_RGB10; break;
-					case 12: mInternalFormat = GL_RGB12; break;
-					case 16: mInternalFormat = GL_RGB16; break;
+					case 4: internalFormat = GL_RGB4; break;
+					case 5: internalFormat = GL_RGB5; break;
+					case 8: internalFormat = GL_RGB8; break;
+					case 10: internalFormat = GL_RGB10; break;
+					case 12: internalFormat = GL_RGB12; break;
+					case 16: internalFormat = GL_RGB16; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -100,11 +101,11 @@ namespace mpp
 				case 4:
 					switch (bitSize)
 					{
-					case 2: mInternalFormat = GL_RGBA2; break;
-					case 4: mInternalFormat = GL_RGBA4; break;
-					case 8: mInternalFormat = GL_RGBA8; break;
-					case 12: mInternalFormat = GL_RGBA12; break;
-					case 16: mInternalFormat = GL_RGBA16; break;
+					case 2: internalFormat = GL_RGBA2; break;
+					case 4: internalFormat = GL_RGBA4; break;
+					case 8: internalFormat = GL_RGBA8; break;
+					case 12: internalFormat = GL_RGBA12; break;
+					case 16: internalFormat = GL_RGBA16; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -118,9 +119,9 @@ namespace mpp
 				case 1:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_R8UI; break;
-					case 16: mInternalFormat = GL_R16UI; break;
-					case 32: mInternalFormat = GL_R32UI; break;
+					case 8: internalFormat = GL_R8UI; break;
+					case 16: internalFormat = GL_R16UI; break;
+					case 32: internalFormat = GL_R32UI; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -128,9 +129,9 @@ namespace mpp
 				case 2:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RG8UI; break;
-					case 16: mInternalFormat = GL_RG16UI; break;
-					case 32: mInternalFormat = GL_RG32UI; break;
+					case 8: internalFormat = GL_RG8UI; break;
+					case 16: internalFormat = GL_RG16UI; break;
+					case 32: internalFormat = GL_RG32UI; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -138,9 +139,9 @@ namespace mpp
 				case 3:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RGB8UI; break;
-					case 16: mInternalFormat = GL_RGB16UI; break;
-					case 32: mInternalFormat = GL_RGB32UI; break;
+					case 8: internalFormat = GL_RGB8UI; break;
+					case 16: internalFormat = GL_RGB16UI; break;
+					case 32: internalFormat = GL_RGB32UI; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -148,9 +149,9 @@ namespace mpp
 				case 4:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RGBA8UI; break;
-					case 16: mInternalFormat = GL_RGBA16UI; break;
-					case 32: mInternalFormat = GL_RGBA32UI; break;
+					case 8: internalFormat = GL_RGBA8UI; break;
+					case 16: internalFormat = GL_RGBA16UI; break;
+					case 32: internalFormat = GL_RGBA32UI; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -167,8 +168,8 @@ namespace mpp
 				case 1:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_R8_SNORM; break;
-					case 16: mInternalFormat = GL_R16_SNORM; break;
+					case 8: internalFormat = GL_R8_SNORM; break;
+					case 16: internalFormat = GL_R16_SNORM; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -176,8 +177,8 @@ namespace mpp
 				case 2:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RG8_SNORM; break;
-					case 16: mInternalFormat = GL_RG16_SNORM; break;
+					case 8: internalFormat = GL_RG8_SNORM; break;
+					case 16: internalFormat = GL_RG16_SNORM; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -185,8 +186,8 @@ namespace mpp
 				case 3:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RGB8_SNORM; break;
-					case 16: mInternalFormat = GL_RGB16_SNORM; break;
+					case 8: internalFormat = GL_RGB8_SNORM; break;
+					case 16: internalFormat = GL_RGB16_SNORM; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -194,8 +195,8 @@ namespace mpp
 				case 4:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RGBA8_SNORM; break;
-					case 16: mInternalFormat = GL_RGBA16_SNORM; break;
+					case 8: internalFormat = GL_RGBA8_SNORM; break;
+					case 16: internalFormat = GL_RGBA16_SNORM; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -209,8 +210,8 @@ namespace mpp
 				case 1:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_R8I; break;
-					case 16: mInternalFormat = GL_R16I; break;
+					case 8: internalFormat = GL_R8I; break;
+					case 16: internalFormat = GL_R16I; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -218,8 +219,8 @@ namespace mpp
 				case 2:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RG8I; break;
-					case 16: mInternalFormat = GL_RG16I; break;
+					case 8: internalFormat = GL_RG8I; break;
+					case 16: internalFormat = GL_RG16I; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -227,8 +228,8 @@ namespace mpp
 				case 3:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RGB8I; break;
-					case 16: mInternalFormat = GL_RGB16I; break;
+					case 8: internalFormat = GL_RGB8I; break;
+					case 16: internalFormat = GL_RGB16I; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -236,8 +237,8 @@ namespace mpp
 				case 4:
 					switch (bitSize)
 					{
-					case 8: mInternalFormat = GL_RGBA8I; break;
-					case 16: mInternalFormat = GL_RGBA16I; break;
+					case 8: internalFormat = GL_RGBA8I; break;
+					case 16: internalFormat = GL_RGBA16I; break;
 					default:
 						THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 					}
@@ -252,8 +253,8 @@ namespace mpp
 			case 1:
 				switch (bitSize)
 				{
-				case 16: mInternalFormat = GL_R16F; break;
-				case 32: mInternalFormat = GL_R32F; break;
+				case 16: internalFormat = GL_R16F; break;
+				case 32: internalFormat = GL_R32F; break;
 				default:
 					THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 				}
@@ -261,8 +262,8 @@ namespace mpp
 			case 2:
 				switch (bitSize)
 				{
-				case 16: mInternalFormat = GL_RG16F; break;
-				case 32: mInternalFormat = GL_RG32F; break;
+				case 16: internalFormat = GL_RG16F; break;
+				case 32: internalFormat = GL_RG32F; break;
 				default:
 					THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 				}
@@ -270,8 +271,8 @@ namespace mpp
 			case 3:
 				switch (bitSize)
 				{
-				case 16: mInternalFormat = GL_RGB16F; break;
-				case 32: mInternalFormat = GL_RGB32F; break;
+				case 16: internalFormat = GL_RGB16F; break;
+				case 32: internalFormat = GL_RGB32F; break;
 				default:
 					THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 				}
@@ -279,8 +280,8 @@ namespace mpp
 			case 4:
 				switch (bitSize)
 				{
-				case 16: mInternalFormat = GL_RGBA16F; break;
-				case 32: mInternalFormat = GL_RGBA32F; break;
+				case 16: internalFormat = GL_RGBA16F; break;
+				case 32: internalFormat = GL_RGBA32F; break;
 				default:
 					THROW_MPP("Invalid bitsize.", __LINE__, __FILE__, __func__);
 				}
@@ -292,26 +293,31 @@ namespace mpp
 			// Error, unknown internal type
 			THROW_MPP("Unknown texture internal format.", __LINE__, __FILE__, __func__);
 		}
+
+		auto& qs = mQualitySettings[quality];
+		qs.internalFormat = internalFormat;
 	}
 
-	void ProgrammaticRenderTextureStream::setTarget(TextureTarget target)
+	void ProgrammaticRenderTextureStream::setTarget(TextureTarget target, uint32_t quality)
 	{
+		auto& qs = mQualitySettings[quality];
+
 		switch (target)
 		{
 		case TextureTarget::Texture1D:
-			mTarget = GL_TEXTURE_1D;
+			qs.target = GL_TEXTURE_1D;
 			break;
 
 		case TextureTarget::Texture2D:
-			mTarget = GL_TEXTURE_2D;
+			qs.target = GL_TEXTURE_2D;
 			break;
 
 		case TextureTarget::Texture3D:
-			mTarget = GL_TEXTURE_3D;
+			qs.target = GL_TEXTURE_3D;
 			break;
 
 		case TextureTarget::CubeMap:
-			mTarget = GL_TEXTURE_CUBE_MAP;
+			qs.target = GL_TEXTURE_CUBE_MAP;
 			break;
 
 		default:

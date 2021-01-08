@@ -8,10 +8,12 @@
 
 namespace mpp
 {
-	class _MPPAPI RenderTextureStream : public ResourceStream, public TextureStreamBase
+	class _MPPAPI RenderTextureStream : public ResourceStream
 	{
 		struct QualitySetting
 		{
+			uint32_t internalFormat{ 0 };
+			uint32_t target{ 0 };
 			size_t width, height, depth;
 			size_t bitsPerPixel;
 			uint32_t pixelFormat, pixelDataType;
@@ -34,6 +36,10 @@ namespace mpp
 	public:
 
 		RenderTextureStream(ResourceManager* resourceMgr);
+
+		uint32_t getInternalFormat() const;
+
+		uint32_t getTarget() const;
 
 		size_t getWidth() const;
 
