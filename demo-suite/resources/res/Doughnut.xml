@@ -5,6 +5,7 @@
 	
 	<Quality>
 		<name>lo-res</name>
+        <target>2D</target>
 		<filename>donut.jpg</filename>
 	</Quality>
 </Texture>

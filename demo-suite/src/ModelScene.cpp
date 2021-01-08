@@ -421,12 +421,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.back()->translate(glm::vec3(0, 280, 0));
 
 	// Load MppModel
-	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "cube/cube.mppmodel");
-	auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
-	statue->load();
+	//auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "cube/cube.mppmodel");
+	//auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
+	//statue->load();
 
-	mModels.push_back(mppScene->addModel(statue));
-	mModels.back()->scale(glm::vec3(20, 0, 20));
+	//mModels.push_back(mppScene->addModel(statue));
+	//mModels.back()->scale(glm::vec3(20, 0, 20));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);

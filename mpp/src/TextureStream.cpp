@@ -37,6 +37,16 @@ namespace mpp
 		}
 	}
 
+	uint32_t TextureStream::getInternalFormat() const
+	{
+		return mQualitySettings[mQualitySetting].internalFormat;
+	}
+
+	uint32_t TextureStream::getTarget() const
+	{
+		return mQualitySettings[mQualitySetting].target;
+	}
+
 	/*
 	 * Get raw texture data.
 	 *

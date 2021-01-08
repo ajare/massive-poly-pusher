@@ -328,6 +328,9 @@ namespace mpp
 		// Write quality settings
 		for (auto const& setting: stream->mQualitySettings)
 		{
+			writeValue(setting.target, fp);
+			writeValue(setting.internalFormat, fp);
+
 			// Texture params
 			writeValue(setting.params.minFilter, fp);
 			writeValue(setting.params.magFilter, fp);
@@ -342,9 +345,6 @@ namespace mpp
 			writeValue(setting.sampler, fp);
 			writeValue(setting.source, fp);
 		}
-
-		writeValue(stream->mInternalFormat, fp);
-		writeValue(stream->mTarget, fp);
 	}
 
 	void ResourceStreamSerializer::writeStream(ResourceStreamPtr resourceStream, ofstream& fp)
@@ -742,6 +742,9 @@ namespace mpp
 			auto quality = pStream->createQualitySetting(name);
 
 			auto& qs = pStream->mQualitySettings.at(quality);
+
+			qs.target = readUInt(fp);
+			qs.internalFormat = readUInt(fp);
 
 			qs.params.minFilter = readUInt(fp);
 			qs.params.magFilter = readUInt(fp);

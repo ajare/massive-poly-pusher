@@ -59,8 +59,9 @@ namespace mpp
 					auto const& programEntry = entry.second;
 					if (programEntry.hasEntry("Resource"))
 					{
-						auto qs = FileProgramStream::parseQualitySetting(programEntry.getEntry("Resource"), resourceMgr, filepath, !useSpecifiedMesh, meshSpec);
-						programSettings[qs.first] = qs.second;
+						// Create FileProgramStream
+						auto fpStream = new FileProgramStream(getResourceMgr(), filepath, programEntry.getEntry("Resource"));
+						addChild("Program", ResourceStreamPtr(fpStream));
 					}
 				}
 				else if (entry.first == "Textures")
@@ -81,16 +82,9 @@ namespace mpp
 								auto samplerEntry = textureEntry.getEntry("Variable");
 								auto samplerName = samplerEntry.getValue();
 
-								auto texIt = textureSettings.find(samplerName);
-								if (texIt == textureSettings.end())
-								{
-									textureSettings[samplerName] = map<string, TextureStream::QualitySetting>();
-								}
-
-								auto& qualitySettings = textureSettings.find(samplerName)->second;
-
-								auto qs = FileTextureStream::parseQualitySetting(textureEntry.getEntry("Resource"), resourceMgr, filepath);
-								qualitySettings[qs.first] = qs.second;
+								// Create FileTextureStream
+								auto ftStream = new FileTextureStream(getResourceMgr(), filepath, textureEntry.getEntry("Resource"));
+								addChild("Textures/" + samplerName, ResourceStreamPtr(ftStream));
 							}
 						}
 					}
@@ -130,6 +124,7 @@ namespace mpp
 			}
 
 			// Create child resource streams
+			/*
 			if (!programSettings.empty())
 			{
 				auto pStr = new ProgrammaticProgramStream(getResourceMgr());
@@ -154,20 +149,25 @@ namespace mpp
 
 				addChild("Program", ResourceStreamPtr(pStr));
 			}
-
+			*/
+			/*
 			for (auto const& kvp: textureSettings)
 			{
 				auto const& samplerName = kvp.first;
 				auto const& qualitySettings = kvp.second;
 
-				auto tStr = new ProgrammaticTextureStream(getResourceMgr());
+				// Move mTarget and mInternalFormat to QualitySetting
+				// Create FileTextureStream instead of ProgrammaticTextureStream
 
-				// Set target
-				tStr->setTarget(
+				auto tStr = new ProgrammaticTextureStream(getResourceMgr());
 
 				auto const& settingNames = tStr->getQualityNames();
 				for (auto const& kvp : qualitySettings)
 				{
+					// Set target
+					tStr->setTarget(kvp.second.
+
+						
 					uint32_t settingId;
 					auto settingIt = settingNames.find(kvp.first);
 					if (settingIt != settingNames.end())
@@ -186,6 +186,7 @@ namespace mpp
 
 				addChild("Texture_" + samplerName, ResourceStreamPtr(tStr));
 			}
+			*/
 		}
 
 		void FileMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
@@ -403,7 +404,7 @@ namespace mpp
 							if (textureEntry.hasEntry("Resource"))
 							{
 								textureOptions.isChild = true;
-								textureOptions.existingResource = "Texture_" + samplerName;
+								textureOptions.existingResource = "Textures/" + samplerName;
 							}
 							else if (textureEntry.hasEntry("Ref"))
 							{

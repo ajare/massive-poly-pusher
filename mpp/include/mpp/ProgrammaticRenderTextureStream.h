@@ -12,9 +12,9 @@ namespace mpp
 
 		void setParams(TextureParams const& params, uint32_t quality = 0);
 
-		void setTarget(TextureTarget target);
+		void setTarget(TextureTarget target, uint32_t quality = 0);
 
-		void setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels);
+		void setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels, uint32_t quality = 0);
 
 		void setWidth(size_t width, uint32_t quality = 0);
 
