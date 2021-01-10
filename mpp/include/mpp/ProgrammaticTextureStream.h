@@ -37,5 +37,7 @@ namespace mpp
 
 		void setSampler(std::string const& sampler, uint32_t quality = 0);
 
+		void setImageLoadFunction(ImageLoadFunction function);
+
 	};
 }

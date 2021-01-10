@@ -19,16 +19,18 @@ namespace mpp
 
 		using namespace std;
 
-		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath)
+		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
 			: TextureStream(resourceMgr)
 			, FileStream(filepath)
+			, mRelativisePaths(relativisePaths)
 		{
 			setup();
 		}
 
-		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
+		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
 			: TextureStream(resourceMgr)
 			, FileStream(filepath, data)
+			, mRelativisePaths(relativisePaths)
 		{
 			setup();
 		}
@@ -172,7 +174,7 @@ namespace mpp
 			}
 		}
 
-		pair<string, FileTextureStream::QualitySetting> FileTextureStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		pair<string, FileTextureStream::QualitySetting> FileTextureStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
 		{
 			string name;
 			QualitySetting qs;
@@ -193,7 +195,7 @@ namespace mpp
 
 					// if the filepath is relative, prepend the path of the xml file
 					filesystem::path texFp(texFilepath);
-					if (texFp.is_relative())
+					if (texFp.is_relative() && relativisePaths)
 					{
 						filesystem::path fileFp(filepath);
 						texFilepath = utils::FileSystem::concatPaths(fileFp.parent_path().string(), texFilepath);
@@ -263,7 +265,7 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath());
+			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath(), mRelativisePaths);
 			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
@@ -273,7 +275,7 @@ namespace mpp
 
 				if (entry.first == "Quality")
 				{
-					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
+					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath(), mRelativisePaths);
 					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
 				}
 			}

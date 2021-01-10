@@ -114,6 +114,11 @@ namespace mpp
 		mFragmentSource.clear();
 	}
 
+	mesh::MeshSpecification const& Program::getMeshSpecification() const
+	{
+		return mMeshSpecification;
+	}
+
 	/*
 	 * Create a variable info instance.
 	 *
@@ -280,9 +285,11 @@ namespace mpp
 		auto rs = getRenderSystem();
 		try
 		{
-			// Set up textures
 			ProgramStream* pStr = dynamic_cast<ProgramStream*>(getResourceStream().get());
 
+			mMeshSpecification = pStr->getMeshSpecification();
+
+			// Set up textures
 			auto textures = pStr->getTextures();
 			for (auto const& texture: textures)
 			{

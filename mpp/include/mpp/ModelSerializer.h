@@ -13,7 +13,7 @@
 #include <array>
 #include <fstream>
 
-#include "mpp/MaterialSpecification.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/MppException.h"
 
 #include "mpp/mesh/MeshDefinition.h"
@@ -35,36 +35,34 @@ namespace mpp
 			struct Mesh
 			{
 				std::string name;
-				uint32_t meshSpec;
 				std::string material;
 				mpp::mesh::Primitive::Type primitiveType;
 			};
 
 		private:
 
+			ResourceManager* mResourceMgr;
 			std::vector<std::string> mMaterialNames;
-			std::vector<MaterialSpecification> mMaterials;
-			std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
+			std::vector<ResourceStreamPtr> mMaterials;
 			std::vector<Mesh> mMeshes;
 
 		private:
 
 			MetadataReader(
+				ResourceManager* resourceMgr,
 				std::vector<std::string> materialNames,
-				std::vector<MaterialSpecification> const& materials,
-				std::vector<mpp::mesh::MeshSpecification> const& meshSpecifications)
-				: mMaterialNames(materialNames)
+				std::vector<ResourceStreamPtr> const& materials)
+				: mResourceMgr(resourceMgr)
+				, mMaterialNames(materialNames)
 				, mMaterials(materials)
-				, mMeshSpecifications(meshSpecifications)
 			{
 			}
 
-			void addMesh(std::string const& name, uint32_t meshSpec, std::string const& material, mpp::mesh::Primitive::Type type)
+			void addMesh(std::string const& name, std::string const& material, mpp::mesh::Primitive::Type type)
 			{
 				Mesh mesh
 				{
 					name,
-					meshSpec,
 					material,
 					type
 				};
@@ -79,7 +77,7 @@ namespace mpp
 				return mMeshes.size();
 			}
 
-			MaterialSpecification const& getMaterialByMeshId(uint32_t id, std::string* matName)
+			ResourceStreamPtr const& getMaterialByMeshId(uint32_t id, std::string* matName)
 			{
 				for (size_t i = 0; i < mMaterialNames.size(); ++i)
 				{
@@ -95,14 +93,8 @@ namespace mpp
 					}
 				}
 
-				THROW_MPP("Could not find MaterialSpecification", __LINE__, __FILE__, __func__);
+				THROW_MPP("Could not find Material", __LINE__, __FILE__, __func__);
 			}
-
-			mpp::mesh::MeshSpecification const& getMeshSpecificationByMeshId(uint32_t id)
-			{
-				return mMeshSpecifications[mMeshes[id].meshSpec];
-			}
-
 		};
 
 	private:
@@ -122,7 +114,6 @@ namespace mpp
 					Unused,
 					MaterialNames,
 					Materials,
-					MeshSpecifications,
 					VertexData,
 					IndexData,
 					MeshMetadata,
@@ -153,7 +144,6 @@ namespace mpp
 		struct Mesh
 		{
 			std::string name;
-			uint32_t meshSpec;
 			std::string material;
 			mpp::mesh::Primitive::Type primitiveType;
 			size_t primitiveCount;
@@ -164,6 +154,8 @@ namespace mpp
 
 	private:
 
+		ResourceManager* mResourceMgr;
+
 		Header mHeader;
 
 		Directory mDirectory;
@@ -173,9 +165,7 @@ namespace mpp
 		// to index with.
 		std::vector<std::string> mMaterialNames;
 
-		std::vector<MaterialSpecification> mMaterials;
-
-		std::vector<mpp::mesh::MeshSpecification> mMeshSpecifications;
+		std::vector<ResourceStreamPtr> mMaterials;
 
 		std::vector<VertexStream> mVertexStreams;
 
@@ -245,25 +235,17 @@ namespace mpp
 
 		void readMaterials(std::ifstream& fp);
 
-		MaterialSpecification readMaterial(std::ifstream& fp);
+		ResourceStreamPtr readMaterial(std::ifstream& fp);
 
 		void writeMaterialNames(std::ofstream& fp);
 
 		void writeMaterials(std::ofstream& fp);
 
-		void writeMaterial(MaterialSpecification const& matSpec, std::ofstream& fp);
-
-		void readMeshSpecifications(std::ifstream& fp);
-
-		mpp::mesh::MeshSpecification readMeshSpecification(std::ifstream& fp);
+		void writeMaterial(ResourceStreamPtr material, std::ofstream& fp);
 
 		void writeUniformCollection(UniformCollection const& uniforms, std::ofstream& fp);
 
 		UniformCollection readUniformCollection(std::ifstream& fp);
-
-		void writeMeshSpecifications(std::ofstream& fp);
-
-		void writeMeshSpecification(mpp::mesh::MeshSpecification const& meshSpec, std::ofstream& fp);
 
 		void readVertexBuffers(std::ifstream& fp);
 
@@ -291,7 +273,7 @@ namespace mpp
 
 	public:
 
-		ModelSerializer();
+		explicit ModelSerializer(ResourceManager* resourceMgr = nullptr);
 
 		void setName(size_t meshIndex, std::string const& name);
 
@@ -309,11 +291,7 @@ namespace mpp
 
 		int getPrimitiveCount(size_t meshIndex) const;
 
-		void setMeshSpecification(size_t meshIndex, mpp::mesh::MeshSpecification const& specification);
-
-		mpp::mesh::MeshSpecification const& getMeshSpecification(size_t meshIndex) const;
-
-		void addMaterial(std::string const& name, mpp::MaterialSpecification const& matSpec);
+		void addMaterial(std::string const& name, ResourceStreamPtr material);
 
 		void setMaterial(size_t meshIndex, std::string const& material);
 
@@ -321,7 +299,7 @@ namespace mpp
 
 		std::vector<std::string> const& getMaterialNames() const;
 
-		std::vector<MaterialSpecification> const& getMaterials() const;
+		std::vector<ResourceStreamPtr> const& getMaterials() const;
 
 		void addVertexStream(size_t meshIndex, size_t vertexCount, size_t vertexStride, std::shared_ptr<const int8_t> vertexData);
 

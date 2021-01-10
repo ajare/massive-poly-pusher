@@ -31,9 +31,7 @@ namespace mpp
 
 	void MppModelStream::createChildResourceStreamsImpl()
 	{
-		auto resMgr = getResourceMgr();
-
-		ModelSerializer ser;
+		ModelSerializer ser(getResourceMgr());
 		auto reader = ser.getReader(mFilename);
 
 		// Create material resources
@@ -41,18 +39,28 @@ namespace mpp
 		for (size_t i = 0; i < numMeshes; ++i)
 		{
 			string matName;
-			auto const& matSpec = reader.getMaterialByMeshId(i, &matName);
+			auto materialStream = reader.getMaterialByMeshId(i, &matName);
 
-			auto mStr = make_shared<mpp::ProgrammaticMaterialStream>(resMgr);
-			mStr->setSpecification(matSpec);
+			// Fix up paths of files so that any relative paths have the
+			// model file's directory prepended, and add the load image function
+			for (auto entry: materialStream->getChildren())
+			{
+				auto rs = entry.second;
+				rs->setFileBasePaths(utils::FileSystem::baseDirectory(mFilename));
 
-			addChild(matName, mStr);
+				if (rs->getType() == "Texture")
+				{
+					static_cast<ProgrammaticTextureStream*>(rs.get())->setImageLoadFunction(getResourceMgr()->getImageLoadFunction());
+				}
+			}
+
+			addChild(matName, materialStream);
 		}
 	}
 
 	void MppModelStream::createMeshDataStreams()
 	{
-		ModelSerializer ser;
+		ModelSerializer ser(getResourceMgr());
 		ser.load(mFilename);
 
 		// Create meshes
@@ -61,11 +69,13 @@ namespace mpp
 			auto dataStreamDef = new MeshDataStreamDefinition();
 			mMeshDataDefinitions.push_back(dataStreamDef);
 
-			dataStreamDef->specification = ser.getMeshSpecification(i);
-
 			dataStreamDef->name = ser.getName(i);
 
 			dataStreamDef->material = ser.getMaterial(i);
+
+			auto matResource = getChildren().at(dataStreamDef->material);
+			dataStreamDef->specification = static_cast<MaterialStream*>(matResource.get())->getMeshSpecification();
+
 			dataStreamDef->indexWidth = ser.getIndexWidth(i);
 			dataStreamDef->indexData = ser.getIndexData(i);
 

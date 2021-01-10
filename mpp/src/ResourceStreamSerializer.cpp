@@ -246,21 +246,6 @@ namespace mpp
 		{
 			writeParser(*setting.parser.get(), fp);
 
-			// Vertex shader
-//			writeValue((uint32_t)setting.vertexShader.type, fp);
-//			writeValue(setting.vertexShader.source, fp);
-//			writeValue(setting.vertexShader.data, fp);
-
-			// Geometry shader
-//			writeValue((uint32_t)setting.geometryShader.type, fp);
-//			writeValue(setting.geometryShader.source, fp);
-//			writeValue(setting.geometryShader.data, fp);
-
-			// Fragment shader
-//			writeValue((uint32_t)setting.fragmentShader.type, fp);
-//			writeValue(setting.fragmentShader.source, fp);
-//			writeValue(setting.fragmentShader.data, fp);
-
 			// Write attributes
 			writeValue(setting.attribs.size(), fp);
 			for (auto const& attrib : setting.attribs)
@@ -641,18 +626,6 @@ namespace mpp
 
 			qs.parser = readParser(fp);
 
-//			qs.vertexShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
-//			qs.vertexShader.source = readString(fp);
-//			qs.vertexShader.data = readString(fp);
-
-//			qs.geometryShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
-//			qs.geometryShader.source = readString(fp);
-//			qs.geometryShader.data = readString(fp);
-
-//			qs.fragmentShader.type = static_cast<ProgramStream::Shader::Type>(readUInt(fp));
-//			qs.fragmentShader.source = readString(fp);
-//			qs.fragmentShader.data = readString(fp);
-
 			auto numAttribs = readUInt(fp);
 			for (size_t i = 0; i < numAttribs; ++i)
 			{
@@ -714,7 +687,7 @@ namespace mpp
 		auto pStream = static_cast<ProgrammaticTextureStream*>(resourceStream.get());
 		pStream->mQualitySettings.clear();
 
-		// Write tiles
+		// Read tiles
 		size_t numTiles = readUInt(fp);
 		for (size_t i = 0; i < numTiles; ++i)
 		{

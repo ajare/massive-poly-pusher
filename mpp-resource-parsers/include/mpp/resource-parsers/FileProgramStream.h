@@ -25,6 +25,8 @@ namespace mpp
 
 			mesh::MeshSpecification mMeshSpecification;
 
+			bool mRelativisePaths;
+
 		private:
 
 			void setup();
@@ -35,15 +37,15 @@ namespace mpp
 
 		public:
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec);
+			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths = true);
 		};
 
 	}

@@ -364,7 +364,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto mppScene = getScene();
 
 	createSharedTextures(options);
-
+	
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
 	createGridMaterial(gridMeshSpec, options);
@@ -419,14 +419,14 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mModels.push_back(mppScene->addModel(torus));
 	mModels.back()->translate(glm::vec3(0, 280, 0));
-
+	
 	// Load MppModel
-	//auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "cube/cube.mppmodel");
-	//auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
-	//statue->load();
+	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
+	auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
+	statue->load();
 
-	//mModels.push_back(mppScene->addModel(statue));
-	//mModels.back()->scale(glm::vec3(20, 0, 20));
+	mModels.push_back(mppScene->addModel(statue));
+	//mModels.back()->scale(glm::vec3(20, 20, 20));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
@@ -452,7 +452,7 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 {
 	mTotalTime += frameTime;
-
+	
 	// Rotate sphere
 	auto& sphereModel = mModels[1];
 
@@ -468,7 +468,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate torus
 	auto& torusModel = mModels[6];
 	torusModel->rotateOrigin(speed * frameTime, glm::vec3(0, 1, 0));
-
+	
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;

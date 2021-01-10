@@ -1,4 +1,7 @@
 #include <cassert>
+#include <filesystem>
+
+#include "utils/FileSystem.h"
 
 #include "mpp/TextureStream.h"
 
@@ -125,13 +128,21 @@ namespace mpp
 	uint32_t TextureStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
-
-		if (name != "")
-		{
-			mQualityNames[name] = qualityId;
-		}
+		mQualityNames[name] = qualityId;
 
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;
+	}
+
+	void TextureStream::setFileBasePaths(string const& basepath)
+	{
+		for (auto& qs: mQualitySettings)
+		{
+			filesystem::path sourceFp(qs.source);
+			if (sourceFp.is_relative())
+			{
+				qs.source = utils::FileSystem::concatPaths(basepath, qs.source);
+			}
+		}
 	}
 }

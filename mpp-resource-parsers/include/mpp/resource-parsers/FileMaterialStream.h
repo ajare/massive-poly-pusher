@@ -20,11 +20,13 @@ namespace mpp
 
 			mesh::MeshSpecification mMeshSpec;
 
+			bool mRelativisePaths;
+
 		private:
 
 			void createChildResourceStreamsImpl();
 
-			void parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec, std::map<std::string, ProgramStream::QualitySetting> &programSettings, std::map<std::string, std::map<std::string, TextureStream::QualitySetting>> &textureSettings);
+			void parseForChildResourceStreams(utils::StructuredData const& data, std::string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec);
 
 			static void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, std::string const& filepath);
 
@@ -38,13 +40,13 @@ namespace mpp
 
 		public:
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath);
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec);
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec);
+			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
 			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 		};

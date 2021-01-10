@@ -1,4 +1,6 @@
 #include "mpp/MaterialStream.h"
+#include "mpp/ProgramStream.h"
+#include "mpp/ResourceManager.h"
 
 using namespace std;
 
@@ -32,6 +34,21 @@ namespace mpp
 		return mQualitySettings[mQualitySetting].spec.program;
 	}
 
+	mesh::MeshSpecification const& MaterialStream::getMeshSpecification()
+	{
+		auto const& qs = mQualitySettings[mQualitySetting];
+
+		if (qs.spec.program.isChild)
+		{
+			return static_cast<ProgramStream*>(getChildren().at("Program").get())->getMeshSpecification();
+		}
+		else
+		{
+			auto res = getResourceMgr()->getResource(qs.spec.program.existingResource);
+			return static_cast<Program*>(res.get())->getMeshSpecification();
+		}
+	}
+
 	/*
 	 * Get program uniforms.
 	 *
@@ -53,11 +70,7 @@ namespace mpp
 	uint32_t MaterialStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
-
-		if (name != "")
-		{
-			mQualityNames[name] = qualityId;
-		}
+		mQualityNames[name] = qualityId;
 
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;

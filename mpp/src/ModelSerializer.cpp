@@ -1,4 +1,5 @@
 #include "mpp/ModelSerializer.h"
+#include "mpp/ResourceStreamSerializer.h"
 #include "mpp/MppException.h"
 
 #define FLAG_INDEXED_VERTICES 0x0001
@@ -13,7 +14,8 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	ModelSerializer::ModelSerializer()
+	ModelSerializer::ModelSerializer(ResourceManager* resourceMgr)
+		: mResourceMgr(resourceMgr)
 	{
 	}
 
@@ -21,7 +23,6 @@ namespace mpp
 	{
 		mMaterialNames.clear();
 		mMaterials.clear();
-		mMeshSpecifications.clear();
 		mVertexStreams.clear();
 		mIndexStreamLookup.clear();
 		mIndexStreams.clear();
@@ -235,7 +236,6 @@ namespace mpp
 		mDirectory.entries[(size_t)Directory::Entry::Type::Unused] = readDirectoryEntry(fp);
 		mDirectory.entries[(size_t)Directory::Entry::Type::MaterialNames] = readDirectoryEntry(fp);
 		mDirectory.entries[(size_t)Directory::Entry::Type::Materials] = readDirectoryEntry(fp);
-		mDirectory.entries[(size_t)Directory::Entry::Type::MeshSpecifications] = readDirectoryEntry(fp);
 		mDirectory.entries[(size_t)Directory::Entry::Type::VertexData] = readDirectoryEntry(fp);
 		mDirectory.entries[(size_t)Directory::Entry::Type::IndexData] = readDirectoryEntry(fp);
 		mDirectory.entries[(size_t)Directory::Entry::Type::MeshMetadata] = readDirectoryEntry(fp);
@@ -278,7 +278,6 @@ namespace mpp
 		writeDirectoryEntry(fp, { Directory::Entry::Type::Unused, 0, 0, 0 });
 		writeDirectoryEntry(fp, { Directory::Entry::Type::MaterialNames, 0, 0, mMaterialNames.size() });
 		writeDirectoryEntry(fp, { Directory::Entry::Type::Materials, 0, 0, mMaterials.size() });
-		writeDirectoryEntry(fp, { Directory::Entry::Type::MeshSpecifications, 0, 0, mMeshes.size() });
 		writeDirectoryEntry(fp, { Directory::Entry::Type::VertexData, 0, 0, 0 });
 		writeDirectoryEntry(fp, { Directory::Entry::Type::IndexData, 0, 0, 0 });
 		writeDirectoryEntry(fp, { Directory::Entry::Type::MeshMetadata, 0, 0, 0 });
@@ -330,58 +329,19 @@ namespace mpp
 		}
 	}
 
-	MaterialSpecification ModelSerializer::readMaterial(ifstream& fp)
+	ResourceStreamPtr ModelSerializer::readMaterial(ifstream& fp)
 	{
-		MaterialSpecification matSpec;
+		ResourceStreamSerializer ser(mResourceMgr);
+		auto rs = ser.deserialize(fp);
 
-		// Program options
-		matSpec.program.resourceExists = readBool(fp);
-		matSpec.program.existingResource = readString(fp);
-		matSpec.program.isChild = readBool(fp);
-		matSpec.program.is2d = readBool(fp);
-
-		// MeshSpecification
-		matSpec.program.spec = readMeshSpecification(fp);
-
-		// Shaders
-		matSpec.program.vertexShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt32(fp));
-		matSpec.program.vertexShader.data = readString(fp);
-
-		matSpec.program.geometryShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt32(fp));
-		matSpec.program.geometryShader.data = readString(fp);
-
-		matSpec.program.fragmentShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt32(fp));
-		matSpec.program.fragmentShader.data = readString(fp);
-
-		// Uniforms
-		matSpec.uniforms = readUniformCollection(fp);
-
-		// Textures
-		size_t numTextures = readUInt32(fp);
-		for (size_t i = 0; i < numTextures; ++i)
-		{
-			MaterialSpecification::TextureOptions textureOptions;
-
-			textureOptions.resourceExists = readBool(fp);
-			textureOptions.existingResource = readString(fp);
-			textureOptions.isChild = readBool(fp);
-			textureOptions.sampler = readString(fp);
-			textureOptions.source = readString(fp);
-
-			// TextureParams
-			textureOptions.params.minFilter = readUInt32(fp);
-			textureOptions.params.magFilter = readUInt32(fp);
-			textureOptions.params.wrap = readUInt32(fp);
-			textureOptions.params.useMipmaps = readBool(fp);
-			textureOptions.params.lodBaseLevel = readInt32(fp);
-			textureOptions.params.lodMaxLevel = readInt32(fp);
-			textureOptions.params.lodBias = readFloat(fp);
-			textureOptions.params.maxAnisotropy = readFloat(fp);
+		// Extract MeshSpecification. .. we can have multiple, one per
+		// quality setting: how to do this?
 		
-			matSpec.textures.push_back(textureOptions);
-		}
+		// Set any children as having been created, so they're not
+		// created again (overwritten) when we try to create/load the resource
+		rs->_markChildrenCreated();
 
-		return matSpec;
+		return rs;
 	}
 
 	void ModelSerializer::writeUniformCollection(UniformCollection const& uniforms, ofstream& fp)
@@ -453,168 +413,10 @@ namespace mpp
 		updateDirectoryEntry(fp, Directory::Entry::Type::Materials, start, end, mMaterials.size());
 	}
 
-	void ModelSerializer::writeMaterial(MaterialSpecification const& matSpec, ofstream& fp)
+	void ModelSerializer::writeMaterial(ResourceStreamPtr material, ofstream& fp)
 	{
-		// Program options
-		writeValue(matSpec.program.resourceExists, fp);
-		writeValue(matSpec.program.existingResource, fp);
-		writeValue(matSpec.program.isChild, fp);
-		writeValue(matSpec.program.is2d, fp);
-
-		writeMeshSpecification(matSpec.program.spec, fp);
-
-		// Shaders
-		writeValue((uint32_t)matSpec.program.vertexShader.type, fp);
-		writeValue(matSpec.program.vertexShader.data, fp);
-
-		writeValue((uint32_t)matSpec.program.geometryShader.type, fp);
-		writeValue(matSpec.program.geometryShader.data, fp);
-
-		writeValue((uint32_t)matSpec.program.fragmentShader.type, fp);
-		writeValue(matSpec.program.fragmentShader.data, fp);
-
-		// Uniforms
-		writeUniformCollection(matSpec.uniforms, fp);
-
-		// Textures
-		writeValue(matSpec.textures.size(), fp);
-		for (auto const& texture: matSpec.textures)
-		{
-			writeValue(texture.resourceExists, fp);
-			writeValue(texture.existingResource, fp);
-			writeValue(texture.isChild, fp);
-			writeValue(texture.sampler, fp);
-			writeValue(texture.source, fp);
-
-			// TextureParams
-			writeValue(texture.params.minFilter, fp);
-			writeValue(texture.params.magFilter, fp);
-			writeValue(texture.params.wrap, fp);
-			writeValue(texture.params.useMipmaps, fp);
-			writeValue(texture.params.lodBaseLevel, fp);
-			writeValue(texture.params.lodMaxLevel, fp);
-			writeValue(texture.params.lodBias, fp);
-			writeValue(texture.params.maxAnisotropy, fp);
-		}
-	}
-
-	void ModelSerializer::readMeshSpecifications(ifstream& fp)
-	{
-		auto const& entry = mDirectory.entries[(int)Directory::Entry::Type::MeshSpecifications];
-
-		fp.seekg(entry.startOffset);
-
-		for (size_t i = 0; i < entry.count; ++i)
-		{
-			mMeshSpecifications.push_back(readMeshSpecification(fp));
-		}
-
-		if (fp.tellg() != entry.endOffset)
-		{
-			THROW_MPP("Invalid file position.", __LINE__, __FILE__, __func__);
-		}
-	}
-
-	/*
-	 * Read model specification
-	 *
-	 */
-	MeshSpecification ModelSerializer::readMeshSpecification(ifstream& fp)
-	{
-		/*
-		4 bytes: primitive type
-		4 bytes: storage type
-		1 byte : indexed vertices?
-		2 bytes: layout count
-		<buffer count> times: buffer data
-		*/
-		mesh::MeshSpecification meshSpec;
-
-		auto primitiveType = static_cast<mesh::Primitive::Type>(readUInt32(fp));
-		meshSpec.setPrimitiveType(primitiveType);
-
-		auto storageType = static_cast<mesh::VertexBufferStorageType>(readUInt32(fp));
-		meshSpec.setStorageType(storageType);
-
-		auto indexed = readBool(fp);
-		meshSpec.setIndexedVertices(indexed);
-
-		auto numLayouts = readSize(fp);
-		for (size_t i = 0; i < numLayouts; ++i)
-		{
-			auto isStatic = readBool(fp);
-			auto layout = meshSpec.createVertexBufferAttributeLayout(isStatic);
-
-			auto numAttribs = readSize(fp);
-			for (size_t j = 0; j < numAttribs; ++j)
-			{
-				auto component = static_cast<mesh::Vertex::Component>(readUInt32(fp));
-				auto datatype = static_cast<mesh::Vertex::DataType>(readUInt32(fp));
-				auto padToBoundary = readInt32(fp);
-				auto normalised = readBool(fp);
-
-				// Need to sort out paddingBytes
-				layout->createAttribute(component, datatype, normalised, padToBoundary);
-			}
-		}
-
-		return meshSpec;
-	}
-
-	/*
-	 * Write all MeshSpecifications.
-	 *
-	 */
-	void ModelSerializer::writeMeshSpecifications(ofstream& fp)
-	{
-		auto start = (size_t)fp.tellp();
-
-		for (size_t i = 0; i < mMeshSpecifications.size(); ++i)
-		{
-			writeMeshSpecification(mMeshSpecifications[i], fp);
-		}
-
-		auto end = (size_t)fp.tellp();
-		updateDirectoryEntry(fp, Directory::Entry::Type::MeshSpecifications, start, end, mMeshSpecifications.size());
-	}
-
-	/*
-	 * Write mesh specification
-	 *
-	 */
-	void ModelSerializer::writeMeshSpecification(MeshSpecification const& meshSpec, ofstream& fp)
-	{
-		/*
-		4 bytes: primitive type
-		4 bytes: storage type
-		1 byte : indexed vertices?
-		2 bytes: layout count
-		<buffer count> times: buffer data
-		*/
-		writeValue((uint32_t)meshSpec.getPrimitiveType(), fp);
-		writeValue((uint32_t)meshSpec.getStorageType(), fp);
-		writeValue(meshSpec.verticesIndexed(), fp);
-
-		// Write layouts
-		writeValue(meshSpec.getNumVertexBufferAttributeLayouts(), fp);
-		for (size_t i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
-
-			writeValue(layout.isStatic(), fp);
-
-			// Write attributes
-			writeValue(layout.getNumAttributes(), fp);
-			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
-			{
-				auto const& attrib = layout.getAttribute(j);
-
-				writeValue((uint32_t)attrib.component, fp);
-				writeValue((uint32_t)attrib.dataType, fp);
-				writeValue(attrib.padToBoundary, fp);
-				writeValue(attrib.normalised, fp);
-			}
-		}
+		ResourceStreamSerializer ser(nullptr);
+		ser.serialize(material, fp);
 	}
 
 	void ModelSerializer::readVertexBuffers(ifstream& fp)
@@ -812,7 +614,6 @@ namespace mpp
 		mesh.primitiveType = static_cast<mesh::Primitive::Type>(readUInt32(fp));
 		mesh.primitiveCount = readUInt32(fp);
 		mesh.material = readString(fp);
-		mesh.meshSpec = readUInt32(fp);
 
 		auto numVertexBuffers = readSize(fp);
 
@@ -861,7 +662,6 @@ namespace mpp
 		writeValue((uint32_t)mesh.primitiveType, fp);
 		writeValue(mesh.primitiveCount, fp);
 		writeValue(mesh.material, fp);
-		writeValue(mesh.meshSpec, fp);
 
 		writeValue(mesh.vertexStreams.size(), fp);
 		for (auto vb: mesh.vertexStreams)
@@ -944,29 +744,10 @@ namespace mpp
 		return mMeshes[meshIndex].primitiveCount;
 	}
 
-	/*
-	 * Set mesh specification.
-	 *
-	 */
-	void ModelSerializer::setMeshSpecification(size_t meshIndex, MeshSpecification const& specification)
-	{
-		mMeshes[meshIndex].meshSpec = mMeshSpecifications.size();
-		mMeshSpecifications.push_back(specification);
-	}
-
-	/*
-	 * Get mesh specification.
-	 *
-	 */
-	MeshSpecification const& ModelSerializer::getMeshSpecification(size_t meshIndex) const
-	{
-		return mMeshSpecifications[mMeshes[meshIndex].meshSpec];
-	}
-
-	void ModelSerializer::addMaterial(string const& name, MaterialSpecification const& matSpec)
+	void ModelSerializer::addMaterial(string const& name, ResourceStreamPtr material)
 	{
 		mMaterialNames.push_back(name);
-		mMaterials.push_back(matSpec);
+		mMaterials.push_back(material);
 	}
 
 	/*
@@ -992,7 +773,7 @@ namespace mpp
 		return mMaterialNames;
 	}
 
-	vector<MaterialSpecification> const& ModelSerializer::getMaterials() const
+	vector<ResourceStreamPtr> const& ModelSerializer::getMaterials() const
 	{
 		return mMaterials;
 	}
@@ -1074,7 +855,6 @@ namespace mpp
 
 		writeMaterialNames(fp);
 		writeMaterials(fp);
-		writeMeshSpecifications(fp);
 		writeVertexBuffers(fp);
 		writeIndexBuffers(fp);
 		writeMeshes(fp);
@@ -1102,7 +882,6 @@ namespace mpp
 
 		readMaterialNames(fp);
 		readMaterials(fp);
-		readMeshSpecifications(fp);
 		readVertexBuffers(fp);
 		readIndexBuffers(fp);
 		readMeshes(fp);
@@ -1130,21 +909,17 @@ namespace mpp
 
 			readMaterialNames(fp);
 			readMaterials(fp);
-			readMeshSpecifications(fp);
 			readMeshes(fp);
 
 			fp.close();
 		}
 
-		MetadataReader reader(
-			mMaterialNames,
-			mMaterials,
-			mMeshSpecifications);
+		MetadataReader reader(mResourceMgr, mMaterialNames, mMaterials);
 
 		for (size_t i = 0; i < mMeshes.size(); ++i)
 		{
 			auto const& mesh = mMeshes[i];
-			reader.addMesh(mesh.name, mesh.meshSpec, mesh.material, mesh.primitiveType);
+			reader.addMesh(mesh.name, mesh.material, mesh.primitiveType);
 		}
 
 		return reader;

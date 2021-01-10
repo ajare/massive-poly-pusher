@@ -70,22 +70,7 @@ namespace mpp
 	{
 		return mFragmentSource;
 	}
-	/*
-	ProgramStream::Shader const& ProgramStream::getVertexShader() const
-	{
-		return mQualitySettings[mQualitySetting].vertexShader;
-	}
 
-	ProgramStream::Shader const& ProgramStream::getGeometryShader() const
-	{
-		return mQualitySettings[mQualitySetting].geometryShader;
-	}
-
-	ProgramStream::Shader const& ProgramStream::getFragmentShader() const
-	{
-		return mQualitySettings[mQualitySetting].fragmentShader;
-	}
-	*/
 	/*
 	 * Get all source concatenated 
 	 *
@@ -93,6 +78,12 @@ namespace mpp
 	string ProgramStream::getConcatenatedSource()
 	{
 		return getVertexSource() + getFragmentSource();
+	}
+
+	mesh::MeshSpecification const& ProgramStream::getMeshSpecification() const
+	{
+		auto parser = mQualitySettings[mQualitySetting].parser;
+		return parser->getMeshSpecification();
 	}
 
 	/*
@@ -130,11 +121,7 @@ namespace mpp
 	uint32_t ProgramStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = mQualitySettings.size();
-
-		//if (name != "")
-		{
-			mQualityNames[name] = qualityId;
-		}
+		mQualityNames[name] = qualityId;
 
 		mQualitySettings.push_back(QualitySetting());
 		return qualityId;
