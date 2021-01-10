@@ -64,6 +64,8 @@ namespace mpp
 
 		void addChild(std::string const& name, std::shared_ptr<ResourceStream> child);
 
+		void _markChildrenCreated();
+
 		std::string const& getType() const;
 
 		void load(uint32_t qualitySetting);
@@ -87,6 +89,8 @@ namespace mpp
 		virtual uint32_t createQualitySetting(std::string const& name) = 0;
 
 		std::map<std::string, uint32_t> const& getQualityNames() const;
+
+		virtual void setFileBasePaths(std::string const& basepath) {}
 	};
 
 	typedef std::shared_ptr<ResourceStream> ResourceStreamPtr;

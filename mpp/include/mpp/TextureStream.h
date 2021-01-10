@@ -83,5 +83,7 @@ namespace mpp
 		std::map<std::string, Tile> const& getTiles() const;
 
 		uint32_t createQualitySetting(std::string const& name);
+
+		void setFileBasePaths(std::string const& basepath);
 	};
 }

@@ -120,6 +120,11 @@ namespace mpp
 		mChildren[name] = child;
 	}
 
+	void ResourceStream::_markChildrenCreated()
+	{
+		mChildrenCreated = true;
+	}
+
 	map<string, ResourceStreamPtr> const& ResourceStream::getChildren() const
 	{
 		return mChildren;

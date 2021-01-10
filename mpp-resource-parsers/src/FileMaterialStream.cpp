@@ -16,37 +16,41 @@ namespace mpp
 
 		using namespace std;
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath)
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
 			: MaterialStream(resourceMgr)
 			, FileStream(filepath)
 			, mUseSpecifiedMeshSpec(false)
+			, mRelativisePaths(relativisePaths)
 		{
 		}
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
 			: MaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(false)
+			, mRelativisePaths(relativisePaths)
 		{
 		}
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec)
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: MaterialStream(resourceMgr)
 			, FileStream(filepath)
 			, mUseSpecifiedMeshSpec(true)
 			, mMeshSpec(meshSpec)
+			, mRelativisePaths(relativisePaths)
 		{
 		}
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec)
+		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: MaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(true)
 			, mMeshSpec(meshSpec)
+			, mRelativisePaths(relativisePaths)
 		{
 		}
 
-		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec, map<string, ProgramStream::QualitySetting> &programSettings, map<string, map<string, TextureStream::QualitySetting>> &textureSettings)
+		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
 		{
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -60,8 +64,16 @@ namespace mpp
 					if (programEntry.hasEntry("Resource"))
 					{
 						// Create FileProgramStream
-						auto fpStream = new FileProgramStream(getResourceMgr(), filepath, programEntry.getEntry("Resource"));
-						addChild("Program", ResourceStreamPtr(fpStream));
+						if (useSpecifiedMesh)
+						{
+							auto fpStream = new FileProgramStream(getResourceMgr(), filepath, programEntry.getEntry("Resource"), *meshSpec, mRelativisePaths);
+							addChild("Program", ResourceStreamPtr(fpStream));
+						}
+						else
+						{
+							auto fpStream = new FileProgramStream(getResourceMgr(), filepath, programEntry.getEntry("Resource"), mRelativisePaths);
+							addChild("Program", ResourceStreamPtr(fpStream));
+						}
 					}
 				}
 				else if (entry.first == "Textures")
@@ -83,7 +95,7 @@ namespace mpp
 								auto samplerName = samplerEntry.getValue();
 
 								// Create FileTextureStream
-								auto ftStream = new FileTextureStream(getResourceMgr(), filepath, textureEntry.getEntry("Resource"));
+								auto ftStream = new FileTextureStream(getResourceMgr(), filepath, textureEntry.getEntry("Resource"), mRelativisePaths);
 								addChild("Textures/" + samplerName, ResourceStreamPtr(ftStream));
 							}
 						}
@@ -105,11 +117,8 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			map<string, ProgramStream::QualitySetting> programSettings;
-			map<string, map<string, TextureStream::QualitySetting>> textureSettings;
-
 			// Default quality setting
-			parseForChildResourceStreams(data, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec, programSettings, textureSettings);
+			parseForChildResourceStreams(data, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -119,74 +128,9 @@ namespace mpp
 				if (entry.first == "Quality")
 				{
 					// Additional quality setting
-					parseForChildResourceStreams(entry.second, getResourceMgr(), getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec, programSettings, textureSettings);
+					parseForChildResourceStreams(entry.second, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
 				}
 			}
-
-			// Create child resource streams
-			/*
-			if (!programSettings.empty())
-			{
-				auto pStr = new ProgrammaticProgramStream(getResourceMgr());
-
-				auto const& settingNames = pStr->getQualityNames();
-				for (auto const& kvp: programSettings)
-				{
-					uint32_t settingId;
-					auto settingIt = settingNames.find(kvp.first);
-					if (settingIt != settingNames.end())
-					{
-						settingId = settingIt->second;
-					}
-					else
-					{
-						settingId = pStr->createQualitySetting(kvp.first);
-					}
-
-					pStr->setAttribs(kvp.second.attribs, settingId);
-					pStr->setParser(kvp.second.parser, settingId);
-				}
-
-				addChild("Program", ResourceStreamPtr(pStr));
-			}
-			*/
-			/*
-			for (auto const& kvp: textureSettings)
-			{
-				auto const& samplerName = kvp.first;
-				auto const& qualitySettings = kvp.second;
-
-				// Move mTarget and mInternalFormat to QualitySetting
-				// Create FileTextureStream instead of ProgrammaticTextureStream
-
-				auto tStr = new ProgrammaticTextureStream(getResourceMgr());
-
-				auto const& settingNames = tStr->getQualityNames();
-				for (auto const& kvp : qualitySettings)
-				{
-					// Set target
-					tStr->setTarget(kvp.second.
-
-						
-					uint32_t settingId;
-					auto settingIt = settingNames.find(kvp.first);
-					if (settingIt != settingNames.end())
-					{
-						settingId = settingIt->second;
-					}
-					else
-					{
-						settingId = tStr->createQualitySetting(kvp.first);
-					}
-
-					tStr->setFile(kvp.second.source, getResourceMgr()->getImageLoadFunction(), settingId);
-					tStr->setParams(kvp.second.params, settingId);
-					tStr->setSampler(kvp.second.sampler, settingId);
-				}
-
-				addChild("Texture_" + samplerName, ResourceStreamPtr(tStr));
-			}
-			*/
 		}
 
 		void FileMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)

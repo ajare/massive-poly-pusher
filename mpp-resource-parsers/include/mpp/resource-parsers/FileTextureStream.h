@@ -16,6 +16,10 @@ namespace mpp
 
 		class _MPPRESOURCEPARSERSAPI FileTextureStream : public mpp::TextureStream, public FileStream
 		{
+			bool mRelativisePaths;
+
+		private:
+
 			void setup();
 
 			void loadImpl();
@@ -32,11 +36,11 @@ namespace mpp
 
 		public:
 
-			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath);
+			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 
-			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
+			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
 		
-			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
+			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 		};
 
 	}

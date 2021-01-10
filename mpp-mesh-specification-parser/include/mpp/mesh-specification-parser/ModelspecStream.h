@@ -19,7 +19,7 @@ namespace mpp
 
 			mesh::MeshSpecification mMeshSpec;
 
-			std::map<std::string, mpp::MaterialSpecification> mMaterials;
+			std::map<std::string, ResourceStreamPtr> mMaterials;
 
 		public:
 
@@ -29,7 +29,7 @@ namespace mpp
 
 			mesh::MeshSpecification const& getMeshSpecification() const;
 
-			std::map<std::string, mpp::MaterialSpecification> const& getMaterials() const;
+			std::map<std::string, ResourceStreamPtr> const& getMaterials() const;
 
 			void serialize(std::ofstream& fp);
 		};

@@ -423,4 +423,12 @@ namespace mpp
 	{
 		mQualitySettings[quality].sampler = sampler;
 	}
+
+	void ProgrammaticTextureStream::setImageLoadFunction(ImageLoadFunction function)
+	{
+		for (auto& qs: mQualitySettings)
+		{
+			qs.loadFunc = function;
+		}
+	}
 }

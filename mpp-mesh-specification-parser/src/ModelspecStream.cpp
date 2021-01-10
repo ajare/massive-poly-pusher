@@ -57,9 +57,11 @@ namespace mpp
 							auto name = mentry.second.getEntry("name").getValue();
 
 							// Get resource
-							resource_parsers::FileMaterialStream mstream(nullptr, getFilepath(), mentry.second.getEntry("Resource"), mMeshSpec);
-							mstream.load(0);
+							auto mstream = make_shared<resource_parsers::FileMaterialStream>(nullptr, getFilepath(), mentry.second.getEntry("Resource"), mMeshSpec, false);
+							mstream->load(0);
 							
+							// Serialize the materialstream
+
 							// Add material
 							if (mMaterials.find(name) != mMaterials.end())
 							{
@@ -67,18 +69,7 @@ namespace mpp
 								throw exception(errMsg.c_str());
 							}
 
-							mMaterials[name] = MaterialSpecification();
-
-							// Set up added material
-							auto& mat = mMaterials[name];
-
-							mat.program = mstream.getProgramOptions();
-
-							// Override mesh specification
-							mat.program.spec = mMeshSpec;
-
-							mat.uniforms = mstream.getUniforms();
-							mat.textures = mstream.getTextures();
+							mMaterials[name] = mstream;
 						}
 					}
 				}
@@ -90,7 +81,7 @@ namespace mpp
 			return mMeshSpec;
 		}
 
-		map<string, mpp::MaterialSpecification> const& ModelspecStream::getMaterials() const
+		map<string, ResourceStreamPtr> const& ModelspecStream::getMaterials() const
 		{
 			return mMaterials;
 		}
@@ -102,10 +93,7 @@ namespace mpp
 
 			for (auto const& material: mMaterials)
 			{
-				auto stream = make_shared< mpp::ProgrammaticMaterialStream>(nullptr);
-				stream->setSpecification(material.second);
-
-				ser.serialize(stream, fp);
+				ser.serialize(material.second, fp);
 			}
 		}
 	}

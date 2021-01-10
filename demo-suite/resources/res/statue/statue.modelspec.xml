@@ -45,7 +45,7 @@
 							<file>statue_lighting.frag</file>
 						</FragmentShader>
 						
-						<!-- Must match above. -->
+						<!-- Override global meshspec.
 						<MeshSpecification>
 							<primitive>triangles</primitive>
 							<indexed>true</indexed>
@@ -70,7 +70,8 @@
 									<normalised>true</normalised>
 								</Channel>
 							</Buffer>
-						</MeshSpecification>					
+						</MeshSpecification>
+                        -->
 					</Resource>
 				</Program>
 				

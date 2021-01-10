@@ -12,36 +12,40 @@ namespace mpp
 
 		using namespace std;
 
-		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath)
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath)
 			, mMeshSpecRequired(true)
+			, mRelativisePaths(relativisePaths)
 		{
 			setup();
 		}
 
-		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mMeshSpecRequired(true)
+			, mRelativisePaths(relativisePaths)
 		{
 			setup();
 		}
 
-		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec)
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath)
 			, mMeshSpecRequired(false)
 			, mMeshSpecification(meshSpec)
+			, mRelativisePaths(relativisePaths)
 		{
 			setup();
 		}
 
-		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec)
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mMeshSpecRequired(false)
 			, mMeshSpecification(meshSpec)
+			, mRelativisePaths(relativisePaths)
 		{
 			setup();
 		}
@@ -116,7 +120,7 @@ namespace mpp
 			return shader;
 		}
 
-		pair<std::string, FileProgramStream::QualitySetting> FileProgramStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec)
+		pair<std::string, FileProgramStream::QualitySetting> FileProgramStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths)
 		{
 			string name;
 

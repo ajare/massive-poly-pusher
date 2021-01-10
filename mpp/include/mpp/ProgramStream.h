@@ -65,14 +65,10 @@ namespace mpp
 		std::string const& getGeometrySource() const;
 
 		std::string const& getFragmentSource() const;
-		/*
-		Shader const& getVertexShader() const;
-
-		Shader const& getGeometryShader() const;
-
-		Shader const& getFragmentShader() const;
-		*/
+		
 		std::string getConcatenatedSource();
+
+		mesh::MeshSpecification const& getMeshSpecification() const;
 
 		std::vector<program::Attribute> getInAttributes() const;
 

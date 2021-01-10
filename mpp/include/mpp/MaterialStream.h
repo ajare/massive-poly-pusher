@@ -38,6 +38,8 @@ namespace mpp
 
 		MaterialSpecification::ProgramOptions const& getProgramOptions() const;
 
+		mesh::MeshSpecification const& getMeshSpecification();
+
 		UniformCollection const& getUniforms() const;
 
 		std::vector<MaterialSpecification::TextureOptions> const& getTextures() const;

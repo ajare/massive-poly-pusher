@@ -84,6 +84,8 @@ namespace mpp
 
 	private:
 
+		mesh::MeshSpecification mMeshSpecification;
+
 		std::string mVertexSource, mFragmentSource;
 
 		uint32_t mVertexShaderId, mFragmentShaderId;
@@ -125,6 +127,8 @@ namespace mpp
 		Program(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
 		bool operator==(Program const& other);
+
+		mesh::MeshSpecification const& getMeshSpecification() const;
 
 		int getUniformId(std::string const& name) const;
 
