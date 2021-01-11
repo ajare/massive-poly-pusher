@@ -1,17 +1,15 @@
 Main Items
 ----------
 
-0. Fix up ModelSerializer
-   a. Move to fstream
-   b. Refactor read/write functions to shared code
-   c. Get model-convert working and saving an mppmodel
-      i. Get material mapping in .modelspec file working
-   d. Get mppmodel loading in and displaying in demo-suite
-
+0. Fix up ModelSerializer [DONE]
+   a. Move to fstream [DONE]
+   b. Refactor read/write functions to shared code [DONE]
+   c. Get model-convert working and saving an mppmodel [DONE]
+      i. Get material mapping in .modelspec file working [DONE]
+   d. Get mppmodel loading in and displaying in demo-suite [DONE]
 1. RESOURCE LOADING FROM FILES
    a. Material [DONE]
    b. String [DONE]
-   c. Multi-type
 2. Cubemap loading
 3. Skyboxes
 4. Environment mapping
