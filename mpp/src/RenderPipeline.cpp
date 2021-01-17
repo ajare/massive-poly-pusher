@@ -54,7 +54,7 @@ namespace mpp
 			camera->getNearClipDistance(),
 			camera->getFarClipDistance());
 
-		auto models = scene->getObjectsInView(camera);
+		auto const& models = scene->getObjectsInView(camera);
 		for (auto const& pass: mPasses)
 		{
 			// Start pass
@@ -79,6 +79,29 @@ namespace mpp
 		for (auto const& effect: mPostEffects)
 		{
 			auto const* pe = static_cast<PostEffect const*>(effect.get());
+		}
+
+		// 2d batches
+		auto const& batches = scene->getBatchesInView();
+
+		for (auto batch: batches)
+		{
+			auto const& origin = batch->getOrigin();
+			auto const& offset = batch->getOffset();
+			float angle = batch->getAngle();
+			float orbit = batch->getOrbitAngle();
+			auto const& scale = batch->getScale();
+
+			mRenderSystem->resetTransform();
+
+			// Scale and rotate object, then rotate around the origin, then move to world position.
+			mRenderSystem->translateTransform2d(origin);
+			mRenderSystem->rotateTransform2d(orbit);
+			mRenderSystem->translateTransform2d(offset);
+			mRenderSystem->rotateTransform2d(angle);
+			mRenderSystem->scaleTransform2d(scale);
+
+			batch->render();
 		}
 
 		// Render to screen

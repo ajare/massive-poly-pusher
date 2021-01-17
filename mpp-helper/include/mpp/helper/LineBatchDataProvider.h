@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mpp/BatchDataProvider.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 
@@ -109,10 +110,8 @@ namespace mpp
 
 		// Base data provider classes: one for colour data, and one specialization where it's set to None
 		template<typename PosType, typename ColType = mpp::mesh::DataTypeNone>
-		class LineBatchDataProvider
+		class LineBatchDataProvider : public BatchDataProvider
 		{
-			size_t mNumLines{ 0 };
-
 		public:
 
 			virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0, typename PosType::builtin_type& x1, typename PosType::builtin_type& y1) = 0;
@@ -120,42 +119,16 @@ namespace mpp
 			virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 			virtual mpp::Colour diffuse() = 0;
-
-			void setNumLines(size_t numLines)
-			{
-				mNumLines = numLines;
-			}
-
-			size_t getNumLines() const
-			{
-				return mNumLines;
-			}
-
-			virtual void update(float frameTime) {}
 		};
 
 		template<typename PosType>
 		class LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>
 		{
-			size_t mNumLines{ 0 };
-
 		public:
 
 			virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0, typename PosType::builtin_type& x1, typename PosType::builtin_type& y1) = 0;
 
 			virtual mpp::Colour diffuse() = 0;
-
-			void setNumLines(size_t numLines)
-			{
-				mNumLines = numLines;
-			}
-
-			size_t getNumLines() const
-			{
-				return mNumLines;
-			}
-
-			virtual void update(float frameTime) {}
 		};
 
 	}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mpp/BatchRenderer.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/LineBatch.h>
@@ -21,7 +22,7 @@ namespace mpp
 		};
 
 		template<typename PosType, typename ColType = mpp::mesh::DataTypeNone>
-		class LineBatchRenderer
+		class LineBatchRenderer : public BatchRenderer
 		{
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
@@ -49,7 +50,7 @@ namespace mpp
 						{ params.useVertexColours ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData },
 						params.useDiffuse,
 					},
-					mDataProvider->getNumLines(),
+					mDataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
 			}
@@ -59,13 +60,13 @@ namespace mpp
 				delete mBatch;
 			}
 
-			void create()
+			void create() override
 			{
 				mBatch->load();
 				update(mBatch->getCapacity());
 			}
 
-			size_t update(size_t count)
+			size_t update(size_t count) override
 			{
 				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
 				bool newVertices{ false };
@@ -140,7 +141,7 @@ namespace mpp
 				return mBatch->getCount();
 			}
 
-			void render()
+			void render() override
 			{
 				mpp::UniformCollection uniforms;
 				if (mBatch->usingDiffuse())

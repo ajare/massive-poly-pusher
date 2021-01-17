@@ -30,7 +30,7 @@ public:
 
 	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)
 	{
-		if (index < getNumLines())
+		if (index < getNumPrimitives())
 		{
 			x0 = mLines[index * 2 + 0].x;
 			y0 = mLines[index * 2 + 0].y;
@@ -78,7 +78,7 @@ public:
 				mLines.push_back(loop.front());
 			}
 
-			setNumLines(mLines.size() / 2);
+			setNumPrimitives(mLines.size() / 2);
 			mDirty = false;
 		}
 	}
@@ -100,12 +100,12 @@ public:
 		: mRenderSystem(renderSystem)
 		, mControls(controls)
 	{
-		setNumLines(0);
+		setNumPrimitives(0);
 	}
 
 	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)
 	{
-		if (index < getNumLines())
+		if (index < getNumPrimitives())
 		{
 			x0 = mLines[index * 2 + 0].x;
 			y0 = mLines[index * 2 + 0].y;
@@ -158,7 +158,7 @@ public:
 				}
 			}
 
-			setNumLines(mLines.size() / 2);
+			setNumPrimitives(mLines.size() / 2);
 			mDirty = false;
 		}
 	}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mpp/BatchDataProvider.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 
@@ -13,10 +14,8 @@ namespace mpp
 	{
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
-		class TriangleBatchDataProvider
+		class TriangleBatchDataProvider : public BatchDataProvider
 		{
-			size_t mNumTriangles{ 0 };
-
 		public:
 
 			virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0,
@@ -30,25 +29,11 @@ namespace mpp
 			virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 			virtual mpp::Colour diffuse() = 0;
-
-			void setNumTriangles(size_t numTriangles)
-			{
-				mNumTriangles = numTriangles;
-			}
-
-			size_t getNumTriangles() const
-			{
-				return mNumTriangles;
-			}
-
-			virtual void update(float frameTime) {}
 		};
 
 		template<typename PosType, typename TexType>
-		class TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>
+		class TriangleBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone> : public BatchDataProvider
 		{
-			size_t mNumTriangles{ 0 };
-
 		public:
 
 			virtual void position(uint32_t index, typename PosType::builtin_type& x0, typename PosType::builtin_type& y0,
@@ -61,17 +46,6 @@ namespace mpp
 
 			virtual mpp::Colour diffuse() = 0;
 
-			void setNumTriangles(size_t numTriangles)
-			{
-				mNumTriangles = numTriangles;
-			}
-
-			size_t getNumTriangles() const
-			{
-				return mNumTriangles;
-			}
-
-			virtual void update(float frameTime) {}
 		};
 	}
 }

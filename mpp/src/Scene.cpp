@@ -40,14 +40,35 @@ namespace mpp
 		return sm;
 	}
 
+	SceneBatchPtr Scene::add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
+	{
+		auto sb = make_shared<SceneBatch>(dataProvider, renderer);
+		m2dBatches.push_back(sb);
+
+		return sb;
+	}
+
 	vector<SceneModelPtr> Scene::getObjectsInView(CameraPtr camera)
 	{
 		return mModels;
 	}
 
+	vector<SceneBatchPtr> Scene::getBatchesInView()
+	{
+		return m2dBatches;
+	}
+
 	Colour Scene::getClearColour() const
 	{
 		return Colour::Grey25;
+	}
+
+	void Scene::update(float frameTime)
+	{
+		for (auto batch: m2dBatches)
+		{
+			batch->update(frameTime);
+		}
 	}
 
 }
