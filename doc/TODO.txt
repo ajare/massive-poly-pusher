@@ -10,28 +10,28 @@ Main Items
 1. RESOURCE LOADING FROM FILES
    a. Material [DONE]
    b. String [DONE]
-2. Cubemap loading
-3. Skyboxes
-4. Environment mapping
-5. Reflections
+2. Get 2d batches working in Scene, with culling
+3. 3d triangle batch
+4. 3d Frustum culling
+5. Cubemap loading
+6. Skyboxes
+7. Environment mapping
+8. Reflections
    - Environment probes
    - Screen-space reflections
    - Other methods (render scene upside-down?)
-6. Normal mapping   
-7. Sponza model + mtl transformation
+9. Normal mapping   
+10. Sponza model + mtl transformation
    - Add external repo and create batch file to convert and copy over (don't check in)
-8. Dragon model, or car model for env mapping, or other models here: https://casual-effects.com/data/
-9. SCENE SYSTEM 
+11. Dragon model, or car model for env mapping, or other models here: https://casual-effects.com/data/
+12. SCENE SYSTEM 
    - To replace posteffects, define all the passes and how they feed into each other
    - Eg bloom will be a scene of 5 passes
    - Allow for MRT, eg to generate normal/specular textures etc
-10. Get 2d batches working with default 3d scenes
-11. 2D SCENE
-    - With culling
-12. 3d polygon-soup batch class
-13. PARTICLE SYSTEM
+13. Get 2d batches working with default 3d scenes
+14. PARTICLE SYSTEM
     - Look at Destiny particle system, compute shader bytecode VM
     - Soft particles, so we can race through fog/smoke/cloud etc
-14. Octree Scene manager
-15. Cell-portal Scene manager
-16. Video loading
+15. Octree Scene manager
+16. Cell-portal Scene manager
+17. Video loading

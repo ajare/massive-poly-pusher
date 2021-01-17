@@ -12,6 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\Batch.h" />
+    <ClInclude Include="..\..\include\mpp\BatchDataProvider.h" />
+    <ClInclude Include="..\..\include\mpp\BatchRenderer.h" />
     <ClInclude Include="..\..\include\mpp\BlendMode.h" />
     <ClInclude Include="..\..\include\mpp\BoxModelStream.h" />
     <ClInclude Include="..\..\include\mpp\Camera.h" />
@@ -75,6 +77,7 @@
     <ClInclude Include="..\..\include\mpp\SamplerParams.h" />
     <ClInclude Include="..\..\include\mpp\SamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\Scene.h" />
+    <ClInclude Include="..\..\include\mpp\SceneBatch.h" />
     <ClInclude Include="..\..\include\mpp\SceneFactory.h" />
     <ClInclude Include="..\..\include\mpp\SceneModel.h" />
     <ClInclude Include="..\..\include\mpp\Screen.h" />
@@ -153,6 +156,7 @@
     <ClCompile Include="..\..\src\SamplerParams.cpp" />
     <ClCompile Include="..\..\src\SamplerStream.cpp" />
     <ClCompile Include="..\..\src\Scene.cpp" />
+    <ClCompile Include="..\..\src\SceneBatch.cpp" />
     <ClCompile Include="..\..\src\SceneModel.cpp" />
     <ClCompile Include="..\..\src\Screen.cpp" />
     <ClCompile Include="..\..\src\SphereModelStream.cpp" />

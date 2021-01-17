@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mpp/BatchRenderer.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/TriangleBatch.h>
@@ -21,7 +22,7 @@ namespace mpp
 		};
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
-		class TriangleBatchRenderer
+		class TriangleBatchRenderer : public BatchRenderer
 		{
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
@@ -62,13 +63,13 @@ namespace mpp
 				delete mBatch;
 			}
 
-			void create()
+			void create() override
 			{
 				mBatch->load();
 				update(mBatch->getCapacity());
 			}
 
-			size_t update(size_t count)
+			size_t update(size_t count) override
 			{
 				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
 				bool newVertices{ false };
@@ -187,7 +188,7 @@ namespace mpp
 				return mBatch->getCount();
 			}
 
-			void render()
+			void render() override
 			{
 				mpp::UniformCollection uniforms;
 				if (mBatch->usingDiffuse())
@@ -232,7 +233,7 @@ namespace mpp
 						params.useDiffuse
 					},
 					texture,
-					mDataProvider->getNumTriangles(),
+					mDataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
 			}

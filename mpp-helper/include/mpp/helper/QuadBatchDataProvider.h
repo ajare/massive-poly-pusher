@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mpp/BatchDataProvider.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 
@@ -44,10 +45,8 @@ namespace mpp
 	{
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
-		class QuadBatchDataProvider
+		class QuadBatchDataProvider : public BatchDataProvider
 		{
-			size_t mNumQuads{ 0 };
-
 		public:
 
 			virtual void position(uint32_t index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
@@ -59,25 +58,11 @@ namespace mpp
 			virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
 			virtual mpp::Colour diffuse() = 0;
-
-			void setNumQuads(size_t numQuads)
-			{
-				mNumQuads = numQuads;
-			}
-
-			size_t getNumQuads() const
-			{
-				return mNumQuads;
-			}
-
-			virtual void update(float frameTime) {}
 		};
 
 		template<typename PosType, typename TexType>
-		class QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>
+		class QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone> : public BatchDataProvider
 		{
-			size_t mNumQuads{ 0 };
-
 		public:
 
 			virtual void position(uint32_t index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
@@ -87,18 +72,6 @@ namespace mpp
 			virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
 			virtual mpp::Colour diffuse() = 0;
-
-			void setNumQuads(size_t numQuads)
-			{
-				mNumQuads = numQuads;
-			}
-
-			size_t getNumQuads() const
-			{
-				return mNumQuads;
-			}
-
-			virtual void update(float frameTime) {}
 		};
 
 	}

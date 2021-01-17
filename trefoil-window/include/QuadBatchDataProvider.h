@@ -28,7 +28,7 @@ public:
 		: mRadius(radius)
 		, mControls(controls)
 	{
-		setNumTriangles(36);
+		setNumPrimitives(36);
 		update(0.0f);
 	}
 
@@ -56,7 +56,7 @@ public:
 			float offset = mRadius;
 			Vector2 vertex(0, mRadius);
 
-			size_t numTris = getNumTriangles();
+			size_t numTris = getNumPrimitives();
 			float angleInc = 360.0f / numTris;
 			for (size_t i = 0; i < numTris; ++i)
 			{
@@ -113,7 +113,7 @@ public:
 	void update(float frameTime)
 	{
 		mDataProvider->update(frameTime);
-		mTriRenderer->update(mDataProvider->getNumTriangles());
+		mTriRenderer->update(mDataProvider->getNumPrimitives());
 	}
 };
 
@@ -134,12 +134,12 @@ public:
 		: mRenderSystem(renderSystem)
 		, mControls(controls)
 	{
-		setNumQuads(0);
+		setNumPrimitives(0);
 	}
 
 	void position(uint32_t index, float& x, float& y)
 	{
-		if (index < getNumQuads())
+		if (index < getNumPrimitives())
 		{
 			x = mVertices[index].x;
 			y = mVertices[index].y;
@@ -197,7 +197,7 @@ public:
 				}
 			}
 
-			setNumQuads(mVertices.size());
+			setNumPrimitives(mVertices.size());
 			mDirty = false;
 		}
 	}

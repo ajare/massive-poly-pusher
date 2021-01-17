@@ -711,17 +711,17 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 	// Update control lines
 	mControlLinesDataProvider->update(frameTime);
-	mControlsLineRenderer->update(mControlLinesDataProvider->getNumLines());
+	mControlsLineRenderer->update(mControlLinesDataProvider->getNumPrimitives());
 
 	// Update control handles
 	mControlHandlesCircleRenderer->update(frameTime);
 
 	mControlHandlesDataProvider->update(frameTime);
-	mControlHandlesRenderer->update(mControlHandlesDataProvider->getNumQuads());
+	mControlHandlesRenderer->update(mControlHandlesDataProvider->getNumPrimitives());
 
 	// Update window schematic lines
 	mLineDataProvider->update(frameTime);
-	mLineRenderer->update(mLineDataProvider->getNumLines());
+	mLineRenderer->update(mLineDataProvider->getNumPrimitives());
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)

@@ -43,9 +43,11 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/OrbitCamera.h>
+#include <mpp/helper/LineBatchRenderer.h>
 
 #include "ModelScene.h"
 #include "Helper.h"
+#include "TestLineBatchDataProvider.h"
 
 using namespace std;
 using namespace mpp;
@@ -426,12 +428,32 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	statue->load();
 
 	mModels.push_back(mppScene->addModel(statue));
-	//mModels.back()->scale(glm::vec3(20, 20, 20));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
 	renderSystem->setLightCount(1);
 	renderSystem->setLight1Colour(Colour::White);
+
+	// 2d batches
+	mpp::helper::LineBatchRendererParams lineParams
+	{
+		true,
+		true,
+		false
+	};
+
+	auto batchDataProvider = make_shared<TestLineBatchDataProvider>();
+
+	auto batchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+		"TestLines",
+		lineParams,
+		batchDataProvider,
+		renderSystem,
+		resourceMgr);
+
+	batchRenderer->create();
+
+	mppScene->add2dBatch(batchDataProvider, batchRenderer);
 
 	// Pipelines
 	auto pipeline = renderSystem->createRenderPipeline(getRenderPipelineName());
@@ -473,6 +495,9 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
 	renderSystem->setLight1Position(mLightPosition);
+
+	// Update scene
+	getScene()->update(frameTime);
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
