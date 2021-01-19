@@ -69,6 +69,9 @@
     <ClInclude Include="..\..\include\TestLineBatchDataProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\TestTriangleBatchDataProvider.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sdl\InputManagerSDL.cpp">

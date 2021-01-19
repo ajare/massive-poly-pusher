@@ -204,6 +204,13 @@ public:
 
 struct TriangleBatchRendererParams
 {
+	enum class Dimension
+	{
+		P2D,
+		P3D
+	};
+
+	Dimension dimension{ Dimension::P2D };
 	bool fixedTextureData, fixedColourData;
 	bool useDiffuse;
 };
@@ -235,6 +242,9 @@ public:
 		mBatch = new mpp::TriangleBatch(
 			name,
 			{
+				params.dimension == TriangleBatchRendererParams::Dimension::P2D
+					? TriangleBatchOptions::Dimension::P2D
+					: TriangleBatchOptions::Dimension::P3D,
 				PosType::vertexDataType(),
 				{ TexType::vertexDataType(), params.fixedTextureData },
 				{ ColType::vertexDataType(), params.fixedColourData },
@@ -416,6 +426,9 @@ public:
 		mBatch = new mpp::TriangleBatch(
 			name,
 			{
+				params.dimension == TriangleBatchRendererParams::Dimension::P2D
+					? TriangleBatchOptions::Dimension::P2D
+					: TriangleBatchOptions::Dimension::P3D,
 				PosType::vertexDataType(),
 				{ TexType::vertexDataType(), params.fixedTextureData },
 				{ mpp::mesh::Vertex::DataType::None, true },

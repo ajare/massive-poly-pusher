@@ -10,6 +10,13 @@ namespace mpp
 
 	struct TriangleBatchOptions
 	{
+		enum class Dimension
+		{
+			P2D,
+			P3D
+		};
+
+		Dimension dimension{ Dimension::P2D };
 		mpp::mesh::Vertex::DataType positionType;
 		BatchVertexAttribute texcoordAttrib;
 		BatchVertexAttribute colourAttrib;

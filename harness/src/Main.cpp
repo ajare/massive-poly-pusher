@@ -437,6 +437,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		TriangleBatchRendererParams triangleParams
 		{
+			TriangleBatchRendererParams::Dimension::P2D,
 			false,
 			false,
 			true,

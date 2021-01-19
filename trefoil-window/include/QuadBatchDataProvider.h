@@ -94,6 +94,7 @@ public:
 	{
 		mpp::helper::TriangleBatchRendererParams params
 		{
+			mpp::helper::TriangleBatchRendererParams::Dimension::P2D,
 			true,
 			false,
 			false

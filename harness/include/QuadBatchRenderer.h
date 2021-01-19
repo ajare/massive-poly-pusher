@@ -73,6 +73,7 @@ public:
 		
 		TriangleBatchRendererParams params
 		{
+			TriangleBatchRendererParams::Dimension::P2D,
 			true, 
 			false, 
 			false

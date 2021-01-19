@@ -44,10 +44,12 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/OrbitCamera.h>
 #include <mpp/helper/LineBatchRenderer.h>
+#include <mpp/helper/TriangleBatchRenderer.h>
 
 #include "ModelScene.h"
 #include "Helper.h"
 #include "TestLineBatchDataProvider.h"
+#include "TestTriangleBatchDataProvider.h"
 
 using namespace std;
 using namespace mpp;
@@ -360,6 +362,54 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 	return torus;
 }
 
+void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
+{
+	auto resourceMgr = getResourceManager();
+
+	// Lines
+	mpp::helper::LineBatchRendererParams lineParams
+	{
+		true,
+		true,
+		false
+	};
+
+	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>();
+
+	auto lineBatchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+		"TestLines",
+		lineParams,
+		lineBatchDataProvider,
+		renderSystem,
+		resourceMgr);
+
+	lineBatchRenderer->create();
+
+	getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer);
+
+	// Triangles
+	mpp::helper::TriangleBatchRendererParams triParams
+	{
+		mpp::helper::TriangleBatchRendererParams::Dimension::P2D,
+		true,
+		true,
+		false
+	};
+	
+	auto triBatchDataProvider = make_shared<TestTriangleBatchDataProvider>();
+
+	auto triBatchRenderer = make_shared<mpp::helper::TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestTris",
+		triParams,
+		triBatchDataProvider,
+		resourceMgr->getResource("Electro.Texture"),
+		renderSystem, resourceMgr);
+
+	triBatchRenderer->create();
+
+	getScene()->add2dBatch(triBatchDataProvider, triBatchRenderer);
+}
+
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
@@ -435,25 +485,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLight1Colour(Colour::White);
 
 	// 2d batches
-	mpp::helper::LineBatchRendererParams lineParams
-	{
-		true,
-		true,
-		false
-	};
-
-	auto batchDataProvider = make_shared<TestLineBatchDataProvider>();
-
-	auto batchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
-		"TestLines",
-		lineParams,
-		batchDataProvider,
-		renderSystem,
-		resourceMgr);
-
-	batchRenderer->create();
-
-	mppScene->add2dBatch(batchDataProvider, batchRenderer);
+	createBatches(renderSystem);
 
 	// Pipelines
 	auto pipeline = renderSystem->createRenderPipeline(getRenderPipelineName());
