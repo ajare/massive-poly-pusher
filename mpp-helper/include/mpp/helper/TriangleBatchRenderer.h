@@ -17,6 +17,14 @@ namespace mpp
 
 		struct TriangleBatchRendererParams
 		{
+			enum class Dimension
+			{
+				P2D,
+				P3D
+			};
+
+			Dimension dimension{ Dimension::P2D };
+
 			bool fixedTextureData, fixedColourData;
 			bool useDiffuse;
 		};
@@ -47,6 +55,9 @@ namespace mpp
 				mBatch = new mpp::TriangleBatch(
 					name,
 					{
+						params.dimension == TriangleBatchOptions::Dimension::P2D 
+						 ? TriangleBatchOptions::Dimension::P2D 
+						 : TriangleBatchOptions::Dimension::P3D,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ ColType::vertexDataType(), params.fixedColourData },
@@ -202,7 +213,7 @@ namespace mpp
 		};
 
 		template<typename PosType, typename TexType>
-		class TriangleBatchRenderer<PosType, TexType, mpp::mesh::DataTypeNone>
+		class TriangleBatchRenderer<PosType, TexType, mpp::mesh::DataTypeNone> : public BatchRenderer
 		{
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
@@ -227,6 +238,9 @@ namespace mpp
 				mBatch = new mpp::TriangleBatch(
 					name,
 					{
+						params.dimension == TriangleBatchRendererParams::Dimension::P2D
+						 ? TriangleBatchOptions::Dimension::P2D
+						 : TriangleBatchOptions::Dimension::P3D,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ mpp::mesh::Vertex::DataType::None, true },
@@ -243,13 +257,13 @@ namespace mpp
 				delete mBatch;
 			}
 
-			void create()
+			void create() override
 			{
 				mBatch->load();
 				update(mBatch->getCapacity());
 			}
 
-			size_t update(size_t count)
+			size_t update(size_t count) override
 			{
 				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
 				bool newVertices{ false };
@@ -334,7 +348,7 @@ namespace mpp
 				return mBatch->getCount();
 			}
 
-			void render()
+			void render() override
 			{
 				mpp::UniformCollection uniforms;
 				if (mBatch->usingDiffuse())

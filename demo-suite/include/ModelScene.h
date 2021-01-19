@@ -42,6 +42,8 @@ private:
 
 	mpp::ResourcePtr createTorusModel(ProgramOptions const& options);
 
+	void createBatches(mpp::RenderSystem* renderSystem);
+
 public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);

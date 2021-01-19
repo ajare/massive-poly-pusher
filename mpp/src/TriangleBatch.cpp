@@ -51,7 +51,14 @@ namespace mpp
 		mesh::VertexBufferAttributeLayout* staticLayout{ nullptr };
 
 		// Position
-		dynamicLayout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
+		if (mOptions.dimension == TriangleBatchOptions::Dimension::P2D)
+		{
+			dynamicLayout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
+		}
+		else
+		{
+			dynamicLayout->createAttribute(mesh::Vertex::Component::Position3, mOptions.positionType, false);
+		}
 
 		// Texture coords
 		if (usingTexture())

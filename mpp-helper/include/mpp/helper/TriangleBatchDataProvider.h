@@ -22,9 +22,9 @@ namespace mpp
 				typename PosType::builtin_type& x1, typename PosType::builtin_type& y1,
 				typename PosType::builtin_type& x2, typename PosType::builtin_type& y2) = 0;
 
-			virtual void texcoords(uint32_t index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
-				typename PosType::builtin_type& u1, typename PosType::builtin_type& v1,
-				typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) {}
+			virtual void texcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0,
+				typename TexType::builtin_type& u1, typename TexType::builtin_type& v1,
+				typename TexType::builtin_type& u2, typename TexType::builtin_type& v2) {}
 
 			virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
@@ -40,9 +40,9 @@ namespace mpp
 				typename PosType::builtin_type& x1, typename PosType::builtin_type& y1,
 				typename PosType::builtin_type& x2, typename PosType::builtin_type& y2) = 0;
 
-			virtual void texcoords(uint32_t index, typename PosType::builtin_type& u0, typename PosType::builtin_type& v0,
-				typename PosType::builtin_type& u1, typename PosType::builtin_type& v1,
-				typename PosType::builtin_type& u2, typename PosType::builtin_type& v2) {}
+			virtual void texcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0,
+				typename TexType::builtin_type& u1, typename TexType::builtin_type& v1,
+				typename TexType::builtin_type& u2, typename TexType::builtin_type& v2) {}
 
 			virtual mpp::Colour diffuse() = 0;
 

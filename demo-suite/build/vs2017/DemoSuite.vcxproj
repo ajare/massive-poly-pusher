@@ -24,6 +24,7 @@
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
     <ClInclude Include="..\..\include\sdl\WindowSDL.h" />
     <ClInclude Include="..\..\include\TestLineBatchDataProvider.h" />
+    <ClInclude Include="..\..\include\TestTriangleBatchDataProvider.h" />
     <ClInclude Include="..\..\include\Timer.h" />
     <ClInclude Include="..\..\include\TriangleBatchRenderer.h" />
     <ClInclude Include="..\..\include\World.h" />
