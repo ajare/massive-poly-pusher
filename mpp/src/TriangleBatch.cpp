@@ -58,6 +58,7 @@ namespace mpp
 		else
 		{
 			dynamicLayout->createAttribute(mesh::Vertex::Component::Position3, mOptions.positionType, false);
+			dynamicLayout->createAttribute(mesh::Vertex::Component::Normal3, mOptions.positionType, false);
 		}
 
 		// Texture coords
@@ -118,7 +119,7 @@ namespace mpp
 			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
-		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, flags);
+		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, flags, mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
 		int vertexCount = getVertexCount(primitiveCount);
 
 		auto mesh = new Mesh(

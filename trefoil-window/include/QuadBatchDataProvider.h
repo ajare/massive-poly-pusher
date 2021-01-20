@@ -12,7 +12,7 @@
 
 #include "Control.h"
 
-class CircleDataProvider : public mpp::helper::TriangleBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
+class CircleDataProvider : public mpp::helper::TriangleBatch2DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
 {
 	float mRadius;
 
@@ -75,7 +75,7 @@ public:
 
 class CircleRenderer : public mpp::TextureRenderer
 {
-	std::shared_ptr<mpp::helper::TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>> mTriRenderer{ nullptr };
+	std::shared_ptr<mpp::helper::TriangleBatch2DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>> mTriRenderer{ nullptr };
 
 	std::shared_ptr<CircleDataProvider> mDataProvider;
 
@@ -94,13 +94,12 @@ public:
 	{
 		mpp::helper::TriangleBatchRendererParams params
 		{
-			mpp::helper::TriangleBatchRendererParams::Dimension::P2D,
 			true,
 			false,
 			false
 		};
 
-		mTriRenderer = std::make_shared<mpp::helper::TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		mTriRenderer = std::make_shared<mpp::helper::TriangleBatch2DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
 			"CircleRenderer",
 			params,
 			mDataProvider,

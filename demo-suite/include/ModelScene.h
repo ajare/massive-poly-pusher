@@ -2,6 +2,8 @@
 
 #include <mpp/mesh/MeshSpecification.h>
 
+#include <mpp/helper/TriangleBatchRenderer.h>
+
 #include "Scene.h"
 
 class ModelScene : public ::Scene
@@ -11,6 +13,8 @@ class ModelScene : public ::Scene
 	glm::vec3 mLightPosition;
 
 	std::vector<mpp::SceneModelPtr> mModels;
+
+	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> mTriangleBatch;
 
 private:
 
