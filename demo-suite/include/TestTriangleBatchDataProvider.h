@@ -7,11 +7,12 @@
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
 // Controls
-class TestTriangleBatchDataProvider : public mpp::helper::TriangleBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
+class TestTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
 {
 	struct Triangle
 	{
-		float x[3], y[3];
+		float px[3], py[3], pz[3];
+		float nx[3], ny[3], nz[3];
 		float u[3], v[3];
 	};
 	
@@ -31,16 +32,35 @@ public:
 		mDirty = true;
 	}
 
-	void position(uint32_t index, float& x0, float& y0,	float& x1, float& y1, float& x2, float& y2) override
+	void position(uint32_t index, float& x0, float& y0, float& z0, float& x1, float& y1, float& z1, float& x2, float& y2, float& z2) override
 	{
 		if (index < getNumPrimitives())
 		{
-			x0 = mTriangles[index].x[0];
-			y0 = mTriangles[index].y[0];
-			x1 = mTriangles[index].x[1];
-			y1 = mTriangles[index].y[1];
-			x2 = mTriangles[index].x[2];
-			y2 = mTriangles[index].y[2];
+			x0 = mTriangles[index].px[0];
+			y0 = mTriangles[index].py[0];
+			z0 = mTriangles[index].pz[0];
+			x1 = mTriangles[index].px[1];
+			y1 = mTriangles[index].py[1];
+			z1 = mTriangles[index].pz[1];
+			x2 = mTriangles[index].px[2];
+			y2 = mTriangles[index].py[2];
+			z2 = mTriangles[index].pz[2];
+		}
+	}
+
+	void normal(uint32_t index, float& x0, float& y0, float& z0, float& x1, float& y1, float& z1, float& x2, float& y2, float& z2) override
+	{
+		if (index < getNumPrimitives())
+		{
+			x0 = mTriangles[index].nx[0];
+			y0 = mTriangles[index].ny[0];
+			z0 = mTriangles[index].nz[0];
+			x1 = mTriangles[index].nx[1];
+			y1 = mTriangles[index].ny[1];
+			z1 = mTriangles[index].nz[1];
+			x2 = mTriangles[index].nx[2];
+			y2 = mTriangles[index].ny[2];
+			z2 = mTriangles[index].nz[2];
 		}
 	}
 
@@ -57,6 +77,14 @@ public:
 		}
 	}
 
+	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha) override
+	{
+		red = 255;
+		green = 255;
+		blue = 255;
+		alpha = 255;
+	}
+
 	mpp::Colour diffuse() override
 	{
 		return mpp::Colour::White;
@@ -66,23 +94,153 @@ public:
 	{
 		if (mDirty)
 		{
+			float scale = 20.0f;
+
 			mTriangles.clear();
 
 			// Create triangles
 			mTriangles.push_back(
-			{
-				{ 400, 400, 656 }, // X
-				{ 200, 456, 456 }, // Y
-				{ 0, 0, 1 }, // U
-				{ 0, 1, 1 }  // V
+				{
+					{ -1 * scale,  1 * scale,  1 * scale }, // X
+					{ -1 * scale, -1 * scale,  1 * scale }, // Y
+					{ -1 * scale, -1 * scale, -1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ -1, -1, -1 }, // NZ
+					{ 0, 1, 1 }, // U
+					{ 0, 0, 1 }  // V
 				});
 
 			mTriangles.push_back(
 				{
-					{ 656, 656, 400 }, // X
-					{ 456, 200, 200 }, // Y
-					{ 1, 1, 0 }, // U
-					{ 1, 0, 0 }  // V
+					{  1 * scale, -1 * scale, -1 * scale }, // X
+					{  1 * scale,  1 * scale, -1 * scale }, // Y
+					{ -1 * scale, -1 * scale, -1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ -1, -1, -1 }, // NZ
+					{ 1, 0, 0 }, // U
+					{ 1, 1, 0 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{ -1 * scale,  1 * scale,  1 * scale }, // X
+					{ -1 * scale, -1 * scale,  1 * scale }, // Y
+					{  1 * scale,  1 * scale,  1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ 1, 1, 1 }, // NZ
+					{ 0, 1, 1 }, // U
+					{ 0, 0, 1 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{  1 * scale, -1 * scale, -1 * scale }, // X
+					{  1 * scale,  1 * scale, -1 * scale }, // Y
+					{  1 * scale,  1 * scale,  1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ 1, 1, 1 }, // NZ
+					{ 1, 0, 0 }, // U
+					{ 1, 1, 0 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{  1 * scale,  1 * scale,  1 * scale }, // X
+					{ -1 * scale,  1 * scale,  1 * scale }, // Y
+					{ -1 * scale, -1 * scale,  1 * scale }, // Z
+					{ 1, 1, 1 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 0, 1, 1 }, // U
+					{ 0, 0, 1 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{  1 * scale,  1 * scale,  1 * scale }, // X
+					{  1 * scale, -1 * scale, -1 * scale }, // Y
+					{  1 * scale,  1 * scale, -1 * scale }, // Z
+					{ 1, 1, 1 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 1, 0, 0 }, // U
+					{ 1, 1, 0 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{ -1 * scale, -1 * scale, -1 * scale }, // X
+					{ -1 * scale,  1 * scale,  1 * scale }, // Y
+					{ -1 * scale, -1 * scale,  1 * scale }, // Z
+					{ -1, -1, -1 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 0, 1, 1 }, // U
+					{ 0, 0, 1 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{  -1 * scale, -1 * scale, -1 * scale }, // X
+					{  1 * scale, -1 * scale, -1 * scale }, // Y
+					{  1 * scale,  1 * scale, -1 * scale }, // Z
+					{ -1, -1, -1 }, // NX
+					{ 0, 0, 0 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 1, 0, 0 }, // U
+					{ 1, 1, 0 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{ -1 * scale,  1 * scale,  1 * scale }, // X
+					{ -1 * scale, -1 * scale, -1 * scale }, // Y
+					{ -1 * scale, -1 * scale,  1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ -1, -1, -1 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 0, 1, 1 }, // U
+					{ 0, 0, 1 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{  1 * scale, -1 * scale, -1 * scale }, // X
+					{  -1 * scale, -1 * scale, -1 * scale }, // Y
+					{  1 * scale,  1 * scale, -1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ -1, -1, -1 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 1, 0, 0 }, // U
+					{ 1, 1, 0 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{ -1 * scale,  1 * scale,  1 * scale }, // X
+					{ 1 * scale, 1 * scale, 1 * scale }, // Y
+					{ -1 * scale, -1 * scale,  1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ 1, 1, 1 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 0, 1, 1 }, // U
+					{ 0, 0, 1 }  // V
+				});
+
+			mTriangles.push_back(
+				{
+					{  1 * scale, -1 * scale, -1 * scale }, // X
+					{  1 * scale, 1 * scale, 1 * scale }, // Y
+					{  1 * scale,  1 * scale, -1 * scale }, // Z
+					{ 0, 0, 0 }, // NX
+					{ 1, 1, 1 }, // NY
+					{ 0, 0, 0 }, // NZ
+					{ 1, 0, 0 }, // U
+					{ 1, 1, 0 }  // V
 				});
 
 			setNumPrimitives(mTriangles.size());

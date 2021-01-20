@@ -365,7 +365,7 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
 	auto resourceMgr = getResourceManager();
-
+	/*
 	// Lines
 	mpp::helper::LineBatchRendererParams lineParams
 	{
@@ -386,11 +386,10 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	lineBatchRenderer->create();
 
 	getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer);
-
+	*/
 	// Triangles
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
-		mpp::helper::TriangleBatchRendererParams::Dimension::P2D,
 		true,
 		true,
 		false
@@ -398,16 +397,17 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	
 	auto triBatchDataProvider = make_shared<TestTriangleBatchDataProvider>();
 
-	auto triBatchRenderer = make_shared<mpp::helper::TriangleBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+	mTriangleBatch = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
 		"TestTris",
 		triParams,
 		triBatchDataProvider,
 		resourceMgr->getResource("Electro.Texture"),
 		renderSystem, resourceMgr);
 
-	triBatchRenderer->create();
+	mTriangleBatch->create();
 
-	getScene()->add2dBatch(triBatchDataProvider, triBatchRenderer);
+	mModels.push_back(getScene()->addModel(mTriangleBatch->getModel()));
+	mModels.back()->translate(glm::vec3(0, 120, 120));
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
@@ -416,7 +416,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto mppScene = getScene();
 
 	createSharedTextures(options);
-	
+
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
 	createGridMaterial(gridMeshSpec, options);
@@ -522,6 +522,10 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate torus
 	auto& torusModel = mModels[6];
 	torusModel->rotateOrigin(speed * frameTime, glm::vec3(0, 1, 0));
+
+	// Rotate batch box
+	auto& batchBoxModel = mModels[8];
+	batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
 	
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);

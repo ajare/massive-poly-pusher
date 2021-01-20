@@ -119,10 +119,12 @@ namespace mpp
 		mMeshes[0]->setNumPrimitives(numPrimitives);
 	}
 
-	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags)
+	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d)
 	{
 		auto resourceMgr = getResourceManager();
-		auto programResource = resourceMgr->getDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor);
+		auto programResource = is2d
+			? resourceMgr->getDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor)
+			: resourceMgr->getDefault3dProgram(mSpecification, programFlags, false, mProgramDescriptor);
 
 		return createMaterial(name, programResource, texture, programFlags);
 	}

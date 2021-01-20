@@ -56,7 +56,7 @@ namespace mpp
 
 		virtual void setMinimumCount(size_t count);
 
-		ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32_t programFlags);
+		ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d = true);
 
 		ResourcePtr createMaterial(std::string const& name, ResourcePtr program, ResourcePtr texture, uint32_t programFlags);
 
