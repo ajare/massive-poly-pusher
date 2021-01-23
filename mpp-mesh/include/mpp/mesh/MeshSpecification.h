@@ -22,6 +22,10 @@ namespace mpp
 
 			std::vector<VertexBufferAttributeLayout> mVertexBufferAttributeLayouts;
 
+		private:
+
+			bool compare(MeshSpecification const& other) const;
+
 		public:
 
 			MeshSpecification();
@@ -31,7 +35,11 @@ namespace mpp
 			MeshSpecification(Primitive::Type primitiveType, VertexBufferStorageType storageType);
 
 			MeshSpecification(MeshSpecification const& other);
+
+			bool operator==(MeshSpecification const& other) const;
 			
+			bool operator!=(MeshSpecification const& other) const;
+
 			void setPrimitiveType(Primitive::Type primitiveType);
 
 			Primitive::Type getPrimitiveType() const;

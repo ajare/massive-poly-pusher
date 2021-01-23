@@ -48,7 +48,7 @@ namespace mpp
 
 		virtual mesh::Primitive::Type getPrimitiveType() const = 0;
 
-		virtual void createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
+		virtual mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
 		
 		void createVertexBuffer(uint32_t index, Mesh* mesh, size_t vertexCount, bool staticData);
 

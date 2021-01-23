@@ -52,7 +52,7 @@ namespace mpp
 
 		void createImpl();
 
-		void createMeshSpecification(mesh::Primitive::Type primitiveType);
+		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
 	public:
 

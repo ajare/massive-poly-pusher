@@ -44,7 +44,7 @@ namespace mpp
 
 		mesh::Primitive::Type getPrimitiveType() const;
 
-		void createMeshSpecification(mesh::Primitive::Type primitiveType);
+		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
 		void createImpl();
 

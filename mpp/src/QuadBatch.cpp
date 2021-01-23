@@ -218,7 +218,7 @@ namespace mpp
 		return primitiveCount * (usingPointSprites() ? 1 : 2);
 	}
 
-	void QuadBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
+	mesh::MeshSpecification QuadBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
 		/*
 		Position holds position (xy) and centroid (zw) for when we're rotating and
@@ -232,8 +232,8 @@ namespace mpp
 		Colour is optional, but always xyzw
 		*/
 
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto dynamicLayout = mSpecification.createVertexBufferAttributeLayout(false);
+		auto meshSpec = mesh::MeshSpecification(primitiveType);
+		auto dynamicLayout = meshSpec.createVertexBufferAttributeLayout(false);
 		mesh::VertexBufferAttributeLayout* staticLayout{ nullptr };
 
 		// For position, if we're rotating with triangles, then we need to store the
@@ -253,7 +253,7 @@ namespace mpp
 		{
 			if (!staticLayout)
 			{
-				staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+				staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
 			}
 
 			rotationLayout = staticLayout;
@@ -271,7 +271,7 @@ namespace mpp
 		{
 			if (!staticLayout)
 			{
-				staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+				staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
 			}
 
 			texcoordLayout = staticLayout;
@@ -306,7 +306,7 @@ namespace mpp
 			{
 				if (!staticLayout)
 				{
-					staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+					staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
 				}
 
 				colourLayout = staticLayout;
@@ -318,6 +318,8 @@ namespace mpp
 
 			colourLayout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourAttrib.dataType, mesh::Vertex::isDataTypeNormalisable(mOptions.colourAttrib.dataType));
 		}
+
+		return meshSpec;
 	}
 
 	/*
@@ -330,7 +332,7 @@ namespace mpp
 		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
 
-		createMeshSpecification(primitiveType);
+		mSpecification = createMeshSpecification(primitiveType);
 
 		// Set program flags
 		uint32_t flags = 0

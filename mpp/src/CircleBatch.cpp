@@ -104,10 +104,10 @@ namespace mpp
 		}
 	}
 
-	void CircleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
+	mesh::MeshSpecification CircleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto layout = mSpecification.createVertexBufferAttributeLayout(false);
+		auto meshSpec = mesh::MeshSpecification(primitiveType);
+		auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 
 		if (usingPointSprites())
 		{
@@ -121,6 +121,8 @@ namespace mpp
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "OPTIONS", mesh::Vertex::DataType::Float, false);
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "BORDERCOLOUR", getColourAttribute().dataType, true);
 		layout->createAttribute(mesh::Vertex::Component::UserDefined4, "INNERCOLOUR", getColourAttribute().dataType, true);
+
+		return meshSpec;
 	}
 
 	/*
@@ -135,7 +137,7 @@ namespace mpp
 		int primitiveCount = getPrimitiveCount(getCapacity());
 		auto storageType = mesh::VertexBufferStorageType::Dynamic;
 
-		createMeshSpecification(primitiveType);
+		mSpecification = createMeshSpecification(primitiveType);
 		auto materialResource = createMaterial(getName() + "_CircleBatch", nullptr, usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
 		int vertexCount = getVertexCount(primitiveCount);
 
