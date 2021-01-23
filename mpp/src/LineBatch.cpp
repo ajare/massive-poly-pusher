@@ -32,10 +32,10 @@ namespace mpp
 	 * Create mesh specification.
 	 *
 	 */
-	void LineBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
+	mesh::MeshSpecification LineBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto dynamicLayout = mSpecification.createVertexBufferAttributeLayout(false);
+		auto meshSpec = mesh::MeshSpecification(primitiveType);
+		auto dynamicLayout = meshSpec.createVertexBufferAttributeLayout(false);
 
 		dynamicLayout->createAttribute(mesh::Vertex::Component::Position2, mOptions.positionType, false);
 
@@ -45,11 +45,13 @@ namespace mpp
 
 			if (mOptions.colourAttrib.fixedValues)
 			{
-				colourLayout = mSpecification.createVertexBufferAttributeLayout(true);
+				colourLayout = meshSpec.createVertexBufferAttributeLayout(true);
 			}
 
 			colourLayout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourAttrib.dataType, true);
 		}
+
+		return meshSpec;
 	}
 
 	/*
@@ -75,7 +77,7 @@ namespace mpp
 		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
 
-		createMeshSpecification(primitiveType);
+		mSpecification = createMeshSpecification(primitiveType);
 
 		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_LINES
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);

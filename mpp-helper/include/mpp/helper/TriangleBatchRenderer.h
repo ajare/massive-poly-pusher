@@ -229,6 +229,7 @@ namespace mpp
 					name,
 					{
 						TriangleBatchOptions::Dimension::P2D,
+						false,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ mpp::mesh::Vertex::DataType::None, true },
@@ -376,6 +377,7 @@ namespace mpp
 					name,
 					{
 						TriangleBatchOptions::Dimension::P3D,
+						false,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ ColType::vertexDataType(), params.fixedColourData },

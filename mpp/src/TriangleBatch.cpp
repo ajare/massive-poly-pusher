@@ -20,18 +20,14 @@ namespace mpp
 	 */
 	TriangleBatch::TriangleBatch(string const& name,
 		TriangleBatchOptions const& options,
-		ResourcePtr texture,
+		ResourcePtr textureOrMaterial,
 		size_t initialCapacity,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
 		: Batch(name, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, "tris", options.colourAttrib, options.useDiffuse, renderSystem, resourceMgr)
 		, mOptions(options)
-		, mTexture(texture)
+		, mTextureOrMaterial(textureOrMaterial)
 	{
-		if (mTexture && mOptions.texcoordAttrib.dataType == mesh::Vertex::DataType::None)
-		{
-			THROW_MPP("Must specify a texcoord type when using a texture.", __LINE__, __FILE__, __func__);
-		}
 	}
 
 	bool TriangleBatch::indexedVertices() const
@@ -44,10 +40,10 @@ namespace mpp
 		return mesh::Primitive::Type::Triangles;
 	}
 
-	void TriangleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
+	mesh::MeshSpecification TriangleBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
 	{
-		mSpecification = mesh::MeshSpecification(primitiveType);
-		auto dynamicLayout = mSpecification.createVertexBufferAttributeLayout(false);
+		auto meshSpec = mesh::MeshSpecification(primitiveType);
+		auto dynamicLayout = meshSpec.createVertexBufferAttributeLayout(false);
 		mesh::VertexBufferAttributeLayout* staticLayout{ nullptr };
 
 		// Position
@@ -69,7 +65,7 @@ namespace mpp
 			{
 				if (!staticLayout)
 				{
-					staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+					staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
 				}
 
 				texcoordLayout = staticLayout;
@@ -90,7 +86,7 @@ namespace mpp
 			{
 				if (!staticLayout)
 				{
-					staticLayout = mSpecification.createVertexBufferAttributeLayout(true);
+					staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
 				}
 
 				colourLayout = staticLayout;
@@ -102,6 +98,8 @@ namespace mpp
 
 			colourLayout->createAttribute(mesh::Vertex::Component::Colour4, mOptions.colourAttrib.dataType, mesh::Vertex::isDataTypeNormalisable(mOptions.colourAttrib.dataType));
 		}
+
+		return meshSpec;
 	}
 
 	/*
@@ -113,13 +111,30 @@ namespace mpp
 		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
 
-		createMeshSpecification(primitiveType);
+		if (mOptions.specifyMaterial)
+		{
+			auto mat = static_cast<Material*>(mTextureOrMaterial.get());
+			auto prog = static_cast<Program*>(mat->getProgram().get());
+			mSpecification = prog->getMeshSpecification();
+
+			auto targetSpec = createMeshSpecification(primitiveType);
+			if (mSpecification != targetSpec)
+			{
+				THROW_MPP("MeshSpecification in Material is not compatible with TriangleBatch", __LINE__, __FILE__, __func__);
+			}
+		}
+		else
+		{
+			mSpecification = createMeshSpecification(primitiveType);
+		}
 
 		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
 			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
-		auto materialResource = createMaterial(getName() + "_TriBatch", mTexture, flags, mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
+		auto materialResource = mOptions.specifyMaterial ? mTextureOrMaterial
+			: createMaterial(getName() + "_TriBatch", mTextureOrMaterial, flags, mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
+		
 		int vertexCount = getVertexCount(primitiveCount);
 
 		auto mesh = new Mesh(
@@ -156,7 +171,15 @@ namespace mpp
 
 	bool TriangleBatch::usingTexture() const
 	{
-		return mTexture != nullptr;
+		if (mOptions.specifyMaterial)
+		{
+			auto mat = static_cast<Material*>(mTextureOrMaterial.get());
+			return mat->getNumTextures() > 0;
+		}
+		else
+		{
+			return mTextureOrMaterial != nullptr;
+		}
 	}
 
 	bool TriangleBatch::positionFixed() const

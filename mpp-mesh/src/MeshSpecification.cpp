@@ -57,6 +57,108 @@ namespace mpp
 		}
 
 		/*
+		 * Compare two MeshSpecification for equality.
+		 *
+		 */
+		bool MeshSpecification::compare(MeshSpecification const& other) const
+		{
+			if (mPrimitiveType != other.mPrimitiveType)
+			{
+				return false;
+			}
+			if (mStorageType != other.mStorageType)
+			{
+				return false;
+			}
+			if (mIndexedVertices != other.mIndexedVertices)
+			{
+				return false;
+			}
+			if (getNumVertexBufferAttributeLayouts() != other.getNumVertexBufferAttributeLayouts())
+			{
+				return false;
+			}
+
+			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			{
+				auto const& thisLayout = getVertexBufferAttributeLayout(i);
+				auto const& otherLayout = other.getVertexBufferAttributeLayout(i);
+
+				if (thisLayout.getBaseId() != otherLayout.getBaseId())
+				{
+					return false;
+				}
+				if (thisLayout.isStatic() != otherLayout.isStatic())
+				{
+					return false;
+				}
+				if (thisLayout.getNumAttributes() != otherLayout.getNumAttributes())
+				{
+					return false;
+				}
+
+				for (size_t j = 0; i < thisLayout.getNumAttributes(); ++i)
+				{
+					auto const& thisAttr = thisLayout.getAttribute(j);
+					auto const& otherAttr = otherLayout.getAttribute(j);
+
+					if (thisAttr.attributeId != otherAttr.attributeId)
+					{
+						return false;
+					}
+					if (thisAttr.component != otherAttr.component)
+					{
+						return false;
+					}
+					if (thisAttr.dataType != otherAttr.dataType)
+					{
+						return false;
+					}
+					if (thisAttr.identifier != otherAttr.identifier)
+					{
+						return false;
+					}
+					if (thisAttr.normalised != otherAttr.normalised)
+					{
+						return false;
+					}
+					if (thisAttr.offsetInBytes != otherAttr.offsetInBytes)
+					{
+						return false;
+					}
+					if (thisAttr.paddingBytes != otherAttr.paddingBytes)
+					{
+						return false;
+					}
+					if (thisAttr.padToBoundary != otherAttr.padToBoundary)
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
+
+		/*
+		 * Comparison operator.
+		 *
+		 */
+		bool MeshSpecification::operator==(MeshSpecification const& other) const
+		{
+			return compare(other);
+		}
+
+		/*
+		 * Comparison operator.
+		 *
+		 */
+		bool MeshSpecification::operator!=(MeshSpecification const& other) const
+		{
+			return !compare(other);
+		}
+
+		/*
 		 * Set the primitive type, ie points/lines/triangles, etc.
 		 *
 		 */

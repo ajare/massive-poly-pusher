@@ -17,6 +17,7 @@ namespace mpp
 		};
 
 		Dimension dimension{ Dimension::P2D };
+		bool specifyMaterial{ false };
 		mpp::mesh::Vertex::DataType positionType;
 		BatchVertexAttribute texcoordAttrib;
 		BatchVertexAttribute colourAttrib;
@@ -29,7 +30,7 @@ namespace mpp
 
 	protected:
 
-		ResourcePtr mTexture;
+		ResourcePtr mTextureOrMaterial;
 
 	private:
 
@@ -41,13 +42,13 @@ namespace mpp
 
 		mesh::Primitive::Type getPrimitiveType() const;
 
-		void createMeshSpecification(mesh::Primitive::Type primitiveType);
+		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
 	public:
 
 		TriangleBatch(std::string const& name,
 			TriangleBatchOptions const& options,
-			ResourcePtr texture,
+			ResourcePtr textureOrMaterial,
 			size_t initialCapacity,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
