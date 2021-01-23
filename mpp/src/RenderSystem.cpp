@@ -91,10 +91,6 @@ namespace mpp
 		delete mProfileLines;
 #endif
 
-#ifdef MPP_DEBUG_BUILD
-		delete mStackWalker;
-#endif
-
 		delete mLogger;
 	}
 
@@ -292,10 +288,6 @@ namespace mpp
 
 #ifdef MPP_PROFILE_BUILD
 		mProfiler = new Profiler();
-#endif
-
-#ifdef MPP_DEBUG_BUILD
-		mStackWalker = new DebugStackWalker(this);
 #endif
 
 		setDefaultState();
@@ -2629,7 +2621,6 @@ namespace mpp
 	 */
 	void RenderSystem::debugStackTrace()
 	{
-		//mStackWalker->ShowCallstack();
 	}
 #endif
 } 

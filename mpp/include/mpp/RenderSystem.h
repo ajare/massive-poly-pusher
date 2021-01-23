@@ -32,7 +32,6 @@
 #include "mpp/UniformBuffer.h"
 #include "mpp/Vertex2d.h"
 #include "mpp/Logger.h"
-#include "mpp/DebugStackWalker.h"
 #include "mpp/SceneFactory.h"
 
 namespace mpp
@@ -172,7 +171,6 @@ namespace mpp
 #endif
 		
 #ifdef MPP_DEBUG_BUILD
-		DebugStackWalker* mStackWalker;
 
 	public:
 
