@@ -5,8 +5,8 @@ namespace mpp
 {
 	using namespace std;
 
-	DebugStackWalker::DebugStackWalker(MppException* exc)
-		: mException(exc)
+	DebugStackWalker::DebugStackWalker(string* trace)
+		: mTrace(trace)
 	{
 	}
 
@@ -18,7 +18,7 @@ namespace mpp
 		}
 		else
 		{
-			mException->setStackTrace(string(szText));
+			*mTrace = string(szText);
 		}
 	}
 }

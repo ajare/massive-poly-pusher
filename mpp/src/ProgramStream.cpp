@@ -77,7 +77,7 @@ namespace mpp
 	 */
 	string ProgramStream::getConcatenatedSource()
 	{
-		return getVertexSource() + getFragmentSource();
+		return getMeshSpecification().getHashString() + getVertexSource() + getFragmentSource();
 	}
 
 	mesh::MeshSpecification const& ProgramStream::getMeshSpecification() const

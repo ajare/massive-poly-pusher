@@ -6,6 +6,7 @@
 #include <string>
 
 #include "mpp/Config.h"
+#include "mpp/DebugStackWalker.h"
 
 #pragma warning(push)
 #pragma warning(disable : 4275)
@@ -24,11 +25,9 @@ namespace mpp
 
 	public:
 
-		explicit MppException(std::string const& msg);
+		explicit MppException(std::string const& msg, std::string const& trace = "not available");
 
-		MppException(std::string const& msg, int line, std::string const& file, std::string const& function);
-
-		void setStackTrace(std::string const& trace);
+		MppException(std::string const& msg, int line, std::string const& file, std::string const& function, std::string const& trace = "not available");
 
 		int getLine() const;
 
@@ -78,7 +77,15 @@ namespace mpp
 
 #pragma warning(pop)
 
-#define THROW_MPP(errMsg, line, file, function) throw mpp::MppException(errMsg, line, file, function)
+#define THROW_MPP(errMsg, line, file, function) \
+	do											\
+	{											\
+		std::string trace;						\
+		DebugStackWalker sw(&trace);			\
+		sw.ShowCallstack();						\
+		throw mpp::MppException(errMsg, line, file, function, trace); \
+	} while (false)
+
 #define THROW_MPP_IO(errMsg, line, file, function) throw mpp::MppIoException(errMsg, line, file, function)
 #define THROW_MPP_GL(errCode, line, file, function) throw mpp::MppGlException(errCode, line, file, function)
 #define THROW_MPP_NOTIMP(item, line, file, function) throw mpp::MppNotImplementedException(item, line, file, function)

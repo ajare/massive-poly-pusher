@@ -11,6 +11,7 @@ Main Items
    a. Material [DONE]
    b. String [DONE]
 2. Get 2d batches working in Scene, with culling
+   - When updating the data, update the bounding box
 3. 3d triangle batch
 4. 3d Frustum culling
 5. Cubemap loading

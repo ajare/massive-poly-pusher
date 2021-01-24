@@ -362,6 +362,39 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 	return torus;
 }
 
+mesh::MeshSpecification ModelScene::createBatchMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+
+	attribLayout = meshSpec.createVertexBufferAttributeLayout(true);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(false);
+
+	return meshSpec;
+}
+
+mpp::ResourcePtr ModelScene::createBatchMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+{
+	auto resourceMgr = getResourceManager();
+
+	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream->setProgram2d(false);
+	materialStream->setMeshSpecification(meshSpec);
+	materialStream->setTexture("TEX1", "Electro.Texture");
+
+	auto res = resourceMgr->declareResource("Batch.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	return res;
+}
+
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
 	auto resourceMgr = getResourceManager();
@@ -390,7 +423,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	// Triangles
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
-		false,
+		true,
 		true,
 		true,
 		false
@@ -402,7 +435,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		"TestTris",
 		triParams,
 		triBatchDataProvider,
-		resourceMgr->getResource("Electro.Texture"),
+		resourceMgr->getResource("Batch.Material"),
 		renderSystem, resourceMgr);
 
 	mTriangleBatch->create();
@@ -480,13 +513,16 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mModels.push_back(mppScene->addModel(statue));
 
+	// Batches
+	auto batchMeshSpec = createBatchMeshSpecification();
+	createBatchMaterial(batchMeshSpec, options);
+
+	createBatches(renderSystem);
+
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
 	renderSystem->setLightCount(1);
 	renderSystem->setLight1Colour(Colour::White);
-
-	// 2d batches
-	createBatches(renderSystem);
 
 	// Pipelines
 	auto pipeline = renderSystem->createRenderPipeline(getRenderPipelineName());
