@@ -46,6 +46,10 @@ private:
 
 	mpp::ResourcePtr createTorusModel(ProgramOptions const& options);
 
+	mpp::mesh::MeshSpecification createBatchMeshSpecification();
+
+	mpp::ResourcePtr createBatchMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+
 	void createBatches(mpp::RenderSystem* renderSystem);
 
 public:

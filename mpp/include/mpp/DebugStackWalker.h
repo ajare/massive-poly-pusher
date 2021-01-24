@@ -1,15 +1,15 @@
 #pragma once
 
+#include <string>
+
 #include "mpp/StackWalker.h"
 
 namespace mpp
 {
 
-	class MppException;
-
 	class DebugStackWalker : public StackWalker
 	{
-		MppException* mException;
+		std::string* mTrace;
 
 	protected:
 
@@ -17,6 +17,6 @@ namespace mpp
 
 	public:
 
-		explicit DebugStackWalker(MppException* exc);
+		explicit DebugStackWalker(std::string* trace);
 	};
 }

@@ -1,32 +1,22 @@
 #include "mpp/MppException.h"
-#include "mpp/DebugStackWalker.h"
 
 namespace mpp
 {
 	using namespace std;
 
-	MppException::MppException(string const& msg)
+	MppException::MppException(string const& msg, string const& trace)
 		: exception(msg.c_str())
-		, mTrace("not available")
+		, mTrace(trace)
 	{
-		DebugStackWalker sw(this);
-		sw.ShowCallstack();
 	}
 
-	MppException::MppException(string const& msg, int line, string const& file, string const& function)
+	MppException::MppException(string const& msg, int line, string const& file, string const& function, string const& trace)
 		: exception(msg.c_str())
 		, mLine(line)
 		, mFile(file)
 		, mFunction(function)
-		, mTrace("not available")
+		, mTrace(trace)
 	{
-		DebugStackWalker sw(this);
-		sw.ShowCallstack();
-	}
-
-	void MppException::setStackTrace(string const& trace)
-	{
-		mTrace = trace;
 	}
 
 	int MppException::getLine() const

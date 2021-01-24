@@ -97,7 +97,7 @@ namespace mpp
 					return false;
 				}
 
-				for (size_t j = 0; i < thisLayout.getNumAttributes(); ++i)
+				for (size_t j = 0; j < thisLayout.getNumAttributes(); ++j)
 				{
 					auto const& thisAttr = thisLayout.getAttribute(j);
 					auto const& otherAttr = otherLayout.getAttribute(j);
@@ -438,6 +438,39 @@ namespace mpp
 				(texBits << 8) +
 				(colBits << 11) +
 				(userBits << 14);
+		}
+
+		string MeshSpecification::getHashString() const
+		{
+			string hash;
+
+			hash += to_string((uint32_t)mPrimitiveType);
+			hash += to_string((uint32_t)mStorageType);
+			hash += to_string((uint32_t)mIndexedVertices ? 1 : 0);
+
+			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			{
+				auto const& layout = getVertexBufferAttributeLayout(i);
+
+				hash += to_string((uint32_t)layout.getBaseId());
+				hash += to_string((uint32_t)(layout.isStatic() ? 1 : 0));
+				hash += to_string((uint32_t)layout.getNumAttributes());
+
+				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
+				{
+					auto const& attr = layout.getAttribute(j);
+
+					hash += to_string((uint32_t)attr.attributeId);
+					hash += to_string((uint32_t)attr.component);
+					hash += to_string((uint32_t)attr.dataType);
+					hash += to_string((uint32_t)(attr.normalised ? 1 : 0));
+					hash += to_string((uint32_t)attr.offsetInBytes);
+					hash += to_string((uint32_t)attr.paddingBytes);
+					hash += to_string((uint32_t)attr.padToBoundary);
+				}
+			}
+
+			return hash;
 		}
 	}
 }
