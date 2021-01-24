@@ -5,9 +5,14 @@
 #include <exception>
 #include <string>
 
+#include "mpp/Config.h"
+
+#pragma warning(push)
+#pragma warning(disable : 4275)
+
 namespace mpp
 {
-	class MppException : public std::exception
+	class _MPPAPI MppException : public std::exception
 	{
 		int mLine{ 0 };
 
@@ -15,121 +20,63 @@ namespace mpp
 
 		std::string mFunction;
 
+		std::string mTrace;
+
 	public:
 
-		explicit MppException(std::string const& msg)
-			: std::exception(msg.c_str())
-		{
-		}
+		explicit MppException(std::string const& msg);
 
-		MppException(std::string const& msg, int line, std::string const& file, std::string const& function)
-			: std::exception(msg.c_str())
-			, mLine(line)
-			, mFile(file)
-			, mFunction(function)
-		{
-		}
+		MppException(std::string const& msg, int line, std::string const& file, std::string const& function);
 
-		int getLine() const
-		{
-			return mLine;
-		}
+		void setStackTrace(std::string const& trace);
 
-		std::string const& getFile() const
-		{
-			return mFile;
-		}
+		int getLine() const;
 
-		std::string const& getFunction() const
-		{
-			return mFunction;
-		}
+		std::string const& getFile() const;
+
+		std::string const& getFunction() const;
+
+		std::string const& getStackTrace() const;
 	};
 
-	class MppIoException : public MppException
+	class _MPPAPI MppIoException : public MppException
 	{
 	public:
 
-		explicit MppIoException(std::string const& msg)
-			: MppException(msg)
-		{
-		}
+		explicit MppIoException(std::string const& msg);
 
-		MppIoException(std::string const& msg, int line, std::string const& file, std::string const& function)
-			: MppException(msg, line, file, function)
-		{
-		}
+		MppIoException(std::string const& msg, int line, std::string const& file, std::string const& function);
 	};
 
-	class MppGlException : public MppException
+	class _MPPAPI MppGlException : public MppException
 	{
 		GLenum mErrorCode;
 
 	private:
 
-		std::string getErrorMessage(GLenum errorCode)
-		{
-			switch (errorCode)
-			{
-			case GL_INVALID_ENUM:
-				return "GL_INVALID_ENUM";
-
-			case GL_INVALID_VALUE:
-				return "GL_INVALID_VALUE";
-
-			case GL_INVALID_OPERATION:
-				return "GL_INVALID_OPERATION";
-
-			case GL_STACK_OVERFLOW:
-				return "GL_STACK_OVERFLOW";
-
-			case GL_STACK_UNDERFLOW:
-				return "GL_STACK_UNDERFLOW";
-
-			case GL_OUT_OF_MEMORY:
-				return "GL_OUT_OF_MEMORY";
-
-			default:
-				return "GL: unknown error";
-			}
-		}
+		std::string getErrorMessage(GLenum errorCode);
 
 	public:
 
-		explicit MppGlException(GLenum errorCode)
-			: MppException(getErrorMessage(errorCode))
-			, mErrorCode(errorCode)
-		{
-		}
+		explicit MppGlException(GLenum errorCode);
 
-		MppGlException(GLenum errorCode, int line, std::string const& file, std::string const& function)
-			: MppException(getErrorMessage(errorCode), line, file, function)
-			, mErrorCode(errorCode)
-		{
-		}
+		MppGlException(GLenum errorCode, int line, std::string const& file, std::string const& function);
 
-		GLenum getErrorCode() const
-		{
-			return mErrorCode;
-		}
+		GLenum getErrorCode() const;
 	};
 
-	class MppNotImplementedException : public MppException
+	class _MPPAPI MppNotImplementedException : public MppException
 	{
 	public:
 
-		MppNotImplementedException(std::string const& item, int line, std::string const& file, std::string const& function)
-			: MppException("Not yet implemented: " + item, line, file, function)
-		{
-		}
+		MppNotImplementedException(std::string const& item, int line, std::string const& file, std::string const& function);
 
-		MppNotImplementedException(int line, std::string const& file, std::string const& function)
-			: MppException("Not yet implemented: function " + function, line, file, function)
-		{
-		}
+		MppNotImplementedException(int line, std::string const& file, std::string const& function);
 	};
 
 }
+
+#pragma warning(pop)
 
 #define THROW_MPP(errMsg, line, file, function) throw mpp::MppException(errMsg, line, file, function)
 #define THROW_MPP_IO(errMsg, line, file, function) throw mpp::MppIoException(errMsg, line, file, function)

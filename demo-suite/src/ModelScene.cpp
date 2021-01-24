@@ -390,6 +390,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	// Triangles
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
+		false,
 		true,
 		true,
 		false
