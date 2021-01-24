@@ -17,6 +17,7 @@ namespace mpp
 
 		struct TriangleBatchRendererParams
 		{
+			bool useMaterialNotTexture{ false };
 			bool fixedTextureData, fixedColourData;
 			bool useDiffuse;
 		};
@@ -37,7 +38,7 @@ namespace mpp
 			TriangleBatch2DRenderer(std::string const& name,
 				TriangleBatchRendererParams const& params,
 				std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, ColType>> dataProvider,
-				mpp::ResourcePtr texture,
+				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
 				: mRenderSystem(renderSystem)
@@ -48,12 +49,13 @@ namespace mpp
 					name,
 					{
 						TriangleBatchOptions::Dimension::P2D,
+						params.useMaterialNotTexture,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ ColType::vertexDataType(), params.fixedColourData },
 						params.useDiffuse
 					},
-					texture,
+					textureOrMaterial,
 					mDataProvider->getNumTriangles(),
 					renderSystem,
 					resourceMgr);
@@ -218,7 +220,7 @@ namespace mpp
 			TriangleBatch2DRenderer(std::string const& name,
 				TriangleBatchRendererParams const& params,
 				std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> dataProvider,
-				mpp::ResourcePtr texture,
+				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
 				: mRenderSystem(renderSystem)
@@ -229,13 +231,13 @@ namespace mpp
 					name,
 					{
 						TriangleBatchOptions::Dimension::P2D,
-						false,
+						params.useMaterialNotTexture,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ mpp::mesh::Vertex::DataType::None, true },
 						params.useDiffuse
 					},
-					texture,
+					textureOrMaterial,
 					mDataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
@@ -366,7 +368,7 @@ namespace mpp
 			TriangleBatch3DRenderer(std::string const& name,
 				TriangleBatchRendererParams const& params,
 				std::shared_ptr<TriangleBatch3DDataProvider<PosType, TexType, ColType>> dataProvider,
-				mpp::ResourcePtr texture,
+				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
 				: mRenderSystem(renderSystem)
@@ -377,13 +379,13 @@ namespace mpp
 					name,
 					{
 						TriangleBatchOptions::Dimension::P3D,
-						false,
+						params.useMaterialNotTexture,
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ ColType::vertexDataType(), params.fixedColourData },
 						false
 					},
-					texture,
+					textureOrMaterial,
 					mDataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);

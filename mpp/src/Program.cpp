@@ -507,10 +507,10 @@ namespace mpp
 				}
 			}
 		}
-		catch (exception& e)
+		catch (exception&)
 		{
 			rs->errorMessage("Error creating program '" + getName() + "'.");
-			throw e;
+			throw;
 		}
 
 		rs->infoMessage("Created program '" + getName() + "'.");

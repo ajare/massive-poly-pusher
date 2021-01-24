@@ -369,6 +369,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		gLogger->message(e.what());
 		gLogger->message(" - thrown by " + e.getFunction());
 		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
+		gLogger->message(" - stack trace: " + e.getStackTrace());
 		exitCode = 1;
 	}
 	catch (mpp::mesh::MppMeshException const& e)
