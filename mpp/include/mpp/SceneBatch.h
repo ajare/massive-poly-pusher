@@ -53,6 +53,8 @@ namespace mpp
 
 		glm::vec2 const& getScale() const;
 
+		void getBounds(glm::vec3& bMin, glm::vec3& bMax);
+
 		void update(float frameTime);
 
 		void render();

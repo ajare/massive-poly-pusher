@@ -387,7 +387,7 @@ mpp::ResourcePtr ModelScene::createBatchMaterial(mpp::mesh::MeshSpecification co
 	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(meshSpec);
-	materialStream->setTexture("TEX1", "Electro.Texture");
+	materialStream->setTexture("TEX1", "Test.Texture");
 
 	auto res = resourceMgr->declareResource("Batch.Material", ResourceStreamPtr(materialStream));
 	res->load();
@@ -398,7 +398,7 @@ mpp::ResourcePtr ModelScene::createBatchMaterial(mpp::mesh::MeshSpecification co
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
 	auto resourceMgr = getResourceManager();
-	/*
+	
 	// Lines
 	mpp::helper::LineBatchRendererParams lineParams
 	{
@@ -419,7 +419,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	lineBatchRenderer->create();
 
 	getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer);
-	*/
+
 	// Triangles
 	mpp::helper::TriangleBatchRendererParams triParams
 	{

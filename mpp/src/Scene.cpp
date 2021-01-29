@@ -1,3 +1,4 @@
+#include "mpp/RenderSystem.h"
 #include "mpp/Scene.h"
 #include "mpp/GLErrorCheck.h"
 
@@ -5,7 +6,8 @@ using namespace std;
 
 namespace mpp
 {
-	Scene::Scene()
+	Scene::Scene(RenderSystem* renderSystem)
+		: mRenderSystem(renderSystem)
 	{
 	}
 
@@ -50,12 +52,50 @@ namespace mpp
 
 	vector<SceneModelPtr> Scene::getObjectsInView(CameraPtr camera)
 	{
-		return mModels;
+		vector<SceneModelPtr> inView;
+
+		// copy only positive numbers:
+		std::copy_if(mModels.begin(), mModels.end(), std::back_inserter(inView), [camera](SceneModelPtr model) 
+		{
+			return true; 
+		});
+
+		return inView;
 	}
 
 	vector<SceneBatchPtr> Scene::getBatchesInView()
 	{
-		return m2dBatches;
+		vector<SceneBatchPtr> inView;
+
+		auto width = mRenderSystem->getWindowWidth();
+		auto height = mRenderSystem->getWindowHeight();
+		
+		std::copy_if(m2dBatches.begin(), m2dBatches.end(), std::back_inserter(inView), [width, height](SceneBatchPtr batch)
+		{
+			glm::vec3 bMin, bMax;
+			batch->getBounds(bMin, bMax);
+
+			if (bMin.x > width)
+			{
+				return false;
+			}
+			if (bMin.y > height)
+			{
+				return false;
+			}
+			if (bMax.x < 0)
+			{
+				return false;
+			}
+			if (bMax.y < 0)
+			{
+				return false;
+			}
+
+			return true;
+		});
+		
+		return inView;
 	}
 
 	Colour Scene::getClearColour() const

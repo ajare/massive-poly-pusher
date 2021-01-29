@@ -28,6 +28,12 @@ public:
 		update(0.0f);
 	}
 
+	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
+	{
+		bMin.x = bMin.y = bMin.z = -1e10f;
+		bMax.x = bMax.y = bMax.z = 1e10f;
+	}
+
 	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)
 	{
 		if (index < getNumPrimitives())
@@ -101,6 +107,12 @@ public:
 		, mControls(controls)
 	{
 		setNumPrimitives(0);
+	}
+
+	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
+	{
+		bMin.x = bMin.y = bMin.z = -1e10f;
+		bMax.x = bMax.y = bMax.z = 1e10f;
 	}
 
 	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)

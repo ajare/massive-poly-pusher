@@ -78,6 +78,11 @@ namespace mpp
 		return mScale;
 	}
 
+	void SceneBatch::getBounds(glm::vec3& bMin, glm::vec3& bMax)
+	{
+		mDataProvider->getBounds(bMin, bMax);
+	}
+
 	void SceneBatch::update(float frameTime)
 	{
 		mDataProvider->update(frameTime);
