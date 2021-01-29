@@ -17,6 +17,8 @@ namespace mpp
 
 	class _MPPAPI Scene
 	{
+		RenderSystem* mRenderSystem;
+
 		std::vector<SceneModelPtr> mModels;
 
 		std::vector<SceneBatchPtr> m2dBatches;
@@ -31,7 +33,7 @@ namespace mpp
 
 	public:
 
-		explicit Scene();
+		explicit Scene(RenderSystem* renderSystem);
 
 		virtual ~Scene();
 

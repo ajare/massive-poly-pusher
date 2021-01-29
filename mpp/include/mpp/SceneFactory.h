@@ -10,6 +10,6 @@ namespace mpp
 {
 	class RenderSystem;
 
-	typedef std::function<ScenePtr()> SceneFactory;
+	typedef std::function<ScenePtr(RenderSystem*)> SceneFactory;
 
 }

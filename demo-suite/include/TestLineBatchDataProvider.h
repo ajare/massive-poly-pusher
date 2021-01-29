@@ -14,6 +14,8 @@ class TestLineBatchDataProvider : public mpp::helper::LineBatchDataProvider<mpp:
 
 	std::vector<Line> mLines;
 
+	glm::vec3 mBounds[2];
+
 	bool mDirty{ true };
 
 public:
@@ -21,6 +23,12 @@ public:
 	TestLineBatchDataProvider()
 	{
 		update(0.0f);
+	}
+
+	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
+	{
+		bMin = mBounds[0];
+		bMax = mBounds[1];
 	}
 
 	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1)
@@ -57,6 +65,9 @@ public:
 		if (mDirty)
 		{
 			mLines.clear();
+			mBounds[0] = glm::vec3(1e10f, 1e10f, 1e10f);
+			mBounds[1] = glm::vec3(-1e10f, -1e10f, -1e10f);
+
 			for (size_t i = 0; i < 100; ++i)
 			{
 				Line line
@@ -66,6 +77,23 @@ public:
 				};
 
 				mLines.push_back(line);
+
+				if (line.x[0] < mBounds[0].x)
+				{
+					mBounds[0].x = line.x[0];
+				}
+				if (line.y[0] < mBounds[0].y)
+				{
+					mBounds[0].y = line.y[0];
+				}
+				if (line.x[1] > mBounds[1].x)
+				{
+					mBounds[1].x = line.x[1];
+				}
+				if (line.y[1] > mBounds[1].y)
+				{
+					mBounds[1].y = line.y[1];
+				}
 			}
 
 			setNumPrimitives(mLines.size());

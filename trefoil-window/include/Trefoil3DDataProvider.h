@@ -7,7 +7,7 @@
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
 // Controls
-class TestTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+class Trefoil3DDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
 {
 	struct Triangle
 	{
@@ -24,7 +24,7 @@ class TestTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataPro
 
 public:
 
-	TestTriangleBatchDataProvider()
+	Trefoil3DDataProvider()
 	{
 		update(0.0f);
 	}

@@ -21,6 +21,7 @@
 
 #include "ModelScene.h"
 #include "Helper.h"
+#include "Trefoil3DDataProvider.h"
 
 using namespace std;
 using namespace mpp;
@@ -200,9 +201,27 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mControlHandlesRenderer->create();
 
-	//auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 256, 256);
-	//auto grid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream));
-	//grid->load();
+	// 3D model
+	mpp::helper::TriangleBatchRendererParams triParams
+	{
+		false,
+		true,
+		true,
+		false
+	};
+
+	auto triBatchDataProvider = make_shared<Trefoil3DDataProvider>();
+
+	auto model3d = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+		"Trefoil3D",
+		triParams,
+		triBatchDataProvider,
+		nullptr,
+		renderSystem, resourceMgr);
+
+	model3d->create();
+
+	mModels.push_back(getScene()->addModel(model3d->getModel()));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
@@ -726,7 +745,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	//renderSystem->renderScene(getScene(), getCamera(), "Default");
+	renderSystem->renderScene(getScene(), getCamera(), "Default");
 
 	// 2D UI
 	renderSystem->setProjection2dOrthographic();

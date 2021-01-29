@@ -10,10 +10,11 @@ Main Items
 1. RESOURCE LOADING FROM FILES
    a. Material [DONE]
    b. String [DONE]
-2. Get 2d batches working in Scene, with culling
-   - When updating the data, update the bounding box
-3. 3d triangle batch
+2. Get 2d batches working in Scene, with culling [DONE]
+   - When updating the data, update the bounding box [DONE]
+3. 3d triangle batch [DONE]
 4. 3d Frustum culling
+   - Need to take model transforms into account
 5. Cubemap loading
 6. Skyboxes
 7. Environment mapping

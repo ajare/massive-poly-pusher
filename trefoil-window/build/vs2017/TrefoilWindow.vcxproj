@@ -32,6 +32,7 @@
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
     <ClInclude Include="..\..\include\sdl\WindowSDL.h" />
     <ClInclude Include="..\..\include\SplinePath.h" />
+    <ClInclude Include="..\..\include\Trefoil3DDataProvider.h" />
     <ClInclude Include="..\..\include\Timer.h" />
     <ClInclude Include="..\..\include\Trefoil.h" />
     <ClInclude Include="..\..\include\TrefoilWindow.h" />

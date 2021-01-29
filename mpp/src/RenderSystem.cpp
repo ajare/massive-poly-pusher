@@ -72,7 +72,7 @@ namespace mpp
 		}
 
 		// Add scene factories
-		mSceneFactories["Default"] = [this]() { return make_shared<Scene>(); };
+		mSceneFactories["Default"] = [this](RenderSystem* renderSystem) { return make_shared<Scene>(renderSystem); };
 
 		// Initialise
 		initialise();
@@ -2507,7 +2507,7 @@ namespace mpp
 			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
-		return it->second();
+		return it->second(this);
 	}
 
 	void RenderSystem::renderScene(ScenePtr scene, CameraPtr camera, string const& pipelineName)
