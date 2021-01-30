@@ -48,6 +48,10 @@ namespace mpp
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera)
 	{
+		// Set viewport
+		auto const& viewport = scene->getViewport();
+		mRenderSystem->setViewport(viewport.x, viewport.y, (size_t)viewport.width, (size_t)viewport.height);
+
 		// Scene passes
 		mRenderSystem->setProjection3dPerspective(
 			camera->getFov(),
@@ -61,10 +65,7 @@ namespace mpp
 			pass->bindRenderTarget();
 
 			// Clear
-			auto clearColour = scene->getClearColour();
-
-			GL_CHECK(glClearColor(clearColour.red, clearColour.green, clearColour.blue, clearColour.alpha));
-			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+			mRenderSystem->clearScreen(scene->getClearColour());
 
 			// Render pass
 			pass->render(models, camera);
@@ -72,6 +73,9 @@ namespace mpp
 			// Flush
 			mRenderSystem->flushVertexBuffers();
 		}
+
+		// Reset viewport
+		mRenderSystem->resetViewport();
 
 		// Post effects
 		mRenderSystem->setProjection2dOrthographic();
@@ -105,6 +109,7 @@ namespace mpp
 		}
 
 		// Render to screen
+		mRenderSystem->resetTransform();
 		mRenderSystem->renderToScreen();
 
 		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());

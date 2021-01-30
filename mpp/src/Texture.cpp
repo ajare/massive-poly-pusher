@@ -295,7 +295,7 @@ namespace mpp
 	 * Get texture width.
 	 *
 	 */
-	int Texture::getWidth() const
+	size_t Texture::getWidth() const
 	{
 		return mWidth;
 	}
@@ -304,7 +304,7 @@ namespace mpp
 	 * Get texture height.
 	 *
 	 */
-	int Texture::getHeight() const
+	size_t Texture::getHeight() const
 	{
 		return mHeight;
 	}
@@ -313,7 +313,7 @@ namespace mpp
 	 * Get texture depth.
 	 *
 	 */
-	int Texture::getDepth() const
+	size_t Texture::getDepth() const
 	{
 		return mDepth;
 	}
@@ -322,7 +322,7 @@ namespace mpp
 	 * Get texture bits per pixel.
 	 *
 	 */
-	int Texture::getBitsPerPixel() const
+	size_t Texture::getBitsPerPixel() const
 	{
 		return mBitsPerPixel;
 	}

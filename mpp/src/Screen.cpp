@@ -18,7 +18,7 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	Screen::Screen(int width, int height)
+	Screen::Screen(size_t width, size_t height)
 		: RenderTarget(width, height)
 	{
 	}
@@ -30,7 +30,6 @@ namespace mpp
 	void Screen::activate()
 	{
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-		resetViewport();
 	}
 
 	/*
@@ -40,7 +39,6 @@ namespace mpp
 	void Screen::deactivate()
 	{
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-		resetViewport();
 	}
 }
 

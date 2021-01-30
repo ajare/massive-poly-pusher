@@ -261,7 +261,6 @@ namespace mpp
 	void RenderTexture::activate()
 	{
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
-		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
 	}
 
 	/*
@@ -277,7 +276,7 @@ namespace mpp
 	 * Get render target width.
 	 *
 	 */
-	int RenderTexture::getWidth() const
+	size_t RenderTexture::getWidth() const
 	{
 		return RenderTarget::getWidth();
 	}
@@ -286,7 +285,7 @@ namespace mpp
 	 * Get render target height.
 	 *
 	 */
-	int RenderTexture::getHeight() const
+	size_t RenderTexture::getHeight() const
 	{
 		return RenderTarget::getHeight();
 	}
@@ -295,7 +294,7 @@ namespace mpp
 	 * Override Texture functionality.
 	 *
 	 */
-	int RenderTexture::getBitsPerPixel() const
+	size_t RenderTexture::getBitsPerPixel() const
 	{
 		return 32;
 	}

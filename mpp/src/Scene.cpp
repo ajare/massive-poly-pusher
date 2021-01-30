@@ -9,6 +9,7 @@ namespace mpp
 	Scene::Scene(RenderSystem* renderSystem)
 		: mRenderSystem(renderSystem)
 	{
+		setViewport(0, 0, mRenderSystem->getWindowWidth(), mRenderSystem->getWindowHeight());
 	}
 
 	Scene::~Scene()
@@ -32,6 +33,19 @@ namespace mpp
 			unloadImpl();
 			mLoaded = false;
 		}
+	}
+
+	void Scene::setViewport(int x, int y, size_t width, size_t height)
+	{
+		mViewport.x = x;
+		mViewport.y = y;
+		mViewport.width = (int)width;
+		mViewport.height = (int)height;
+	}
+
+	ClipRectangle const& Scene::getViewport() const
+	{
+		return mViewport;
 	}
 
 	SceneModelPtr Scene::addModel(ResourcePtr model)
@@ -100,7 +114,7 @@ namespace mpp
 
 	Colour Scene::getClearColour() const
 	{
-		return Colour::Grey25;
+		return Colour::Black;
 	}
 
 	void Scene::update(float frameTime)

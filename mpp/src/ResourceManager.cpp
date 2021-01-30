@@ -205,8 +205,8 @@ namespace mpp
 		{
 			TextureData data;
 			
-			data.width = 2;
-			data.height = 2;
+			data.width = 1;
+			data.height = 1;
 			data.bitsPerPixel = 24;
 			data.dataType = GL_UNSIGNED_BYTE;
 			data.pixelFormat = GL_RGB;

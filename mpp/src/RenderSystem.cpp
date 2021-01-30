@@ -47,10 +47,12 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	RenderSystem::RenderSystem(int windowWidth, int windowHeight)
+	RenderSystem::RenderSystem(size_t windowWidth, size_t windowHeight)
 		: mLogger(nullptr)
 		, mWindowWidth(windowWidth)
 		, mWindowHeight(windowHeight)
+		, mViewportWidth(windowWidth)
+		, mViewportHeight(windowHeight)
 		, mResourceMgr(nullptr)
 		, mClearColour(0.0f, 0.0f, 0.0f, 1.0f)
 #ifdef MPP_PROFILE_BUILD
@@ -237,7 +239,7 @@ namespace mpp
 	 * Get window width.
 	 *
 	 */
-	int RenderSystem::getWindowWidth() const
+	size_t RenderSystem::getWindowWidth() const
 	{
 		return mWindowWidth;
 	}
@@ -246,7 +248,7 @@ namespace mpp
 	 * Get window height.
 	 *
 	 */
-	int RenderSystem::getWindowHeight() const
+	size_t RenderSystem::getWindowHeight() const
 	{
 		return mWindowHeight;
 	}
@@ -257,7 +259,7 @@ namespace mpp
 	 */
 	float RenderSystem::getAspectRatio() const
 	{
-		return (float)getWindowWidth() / (float)getWindowHeight();
+		return (float)mViewportWidth / (float)mViewportHeight;
 	}
 	
 	/*
@@ -805,6 +807,7 @@ namespace mpp
 	*/
 	void RenderSystem::setDefaultState()
 	{
+		GL_CHECK(glDisable(GL_SCISSOR_TEST));
 		GL_CHECK(glEnable(GL_DEPTH_TEST));
 		GL_CHECK(glDepthFunc(GL_LESS));
 
@@ -1019,13 +1022,17 @@ namespace mpp
 
 	void RenderSystem::setViewport(int x, int y, size_t width, size_t height)
 	{
-		mRenderTarget->setViewport(x, y, width, height);
+		mViewportWidth = width;
+		mViewportHeight = height;
+		GL_CHECK(glViewport(x, y, mViewportWidth, mViewportHeight));
+		GL_CHECK(glScissor(x, y, mViewportWidth, mViewportHeight));
 	}
 
 	void RenderSystem::resetViewport()
 	{
-		mRenderTarget->resetViewport();
+		setViewport(0, 0, mRenderTarget->getWidth(), mRenderTarget->getHeight());
 	}
+
 	/*
 	 * Reset the model matrix to identity.
 	 *
@@ -1363,7 +1370,10 @@ namespace mpp
 	void RenderSystem::clearScreen(Colour const& colour)
 	{
 		GL_CHECK(glClearColor(colour.red, colour.green, colour.blue, colour.alpha));
+
+		glEnable(GL_SCISSOR_TEST);
 		GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+		glDisable(GL_SCISSOR_TEST);
 	}
 
 	/*

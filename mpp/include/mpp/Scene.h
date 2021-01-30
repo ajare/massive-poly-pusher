@@ -10,6 +10,7 @@
 #include "mpp/Camera.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/Colour.h"
+#include "mpp/ClipRectangle.h"
 
 namespace mpp
 {
@@ -24,6 +25,8 @@ namespace mpp
 		std::vector<SceneBatchPtr> m2dBatches;
 
 		bool mLoaded{ false };
+
+		ClipRectangle mViewport;
 
 	private:
 
@@ -40,6 +43,10 @@ namespace mpp
 		void load();
 
 		void unload();
+
+		void setViewport(int x, int y, size_t width, size_t height);
+
+		ClipRectangle const& getViewport() const;
 
 		virtual Colour getClearColour() const;
 

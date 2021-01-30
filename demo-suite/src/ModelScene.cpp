@@ -561,8 +561,8 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	torusModel->rotateOrigin(speed * frameTime, glm::vec3(0, 1, 0));
 
 	// Rotate batch box
-	auto& batchBoxModel = mModels[8];
-	batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
+	//auto& batchBoxModel = mModels[8];
+	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
 	
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);

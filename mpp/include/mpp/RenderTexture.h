@@ -45,11 +45,11 @@ namespace mpp
 
 		~RenderTexture();
 
-		int getWidth() const;
+		size_t getWidth() const;
 
-		int getHeight() const;
+		size_t getHeight() const;
 
-		int getBitsPerPixel() const;
+		size_t getBitsPerPixel() const;
 
 		bool hasDepthBuffer() const;
 

@@ -14,7 +14,7 @@ namespace mpp
 
 	protected:
 
-		int mWidth, mHeight;
+		size_t mWidth, mHeight;
 
 	private:
 
@@ -24,15 +24,11 @@ namespace mpp
 		
 	public:
 
-		RenderTarget(int width, int height);
+		RenderTarget(size_t width, size_t height);
 
-		virtual int getWidth() const;
+		virtual size_t getWidth() const;
 
-		virtual int getHeight() const;
-
-		void setViewport(int x, int y, size_t width, size_t height);
-
-		void resetViewport();
+		virtual size_t getHeight() const;
 	};
 
 	typedef std::shared_ptr<RenderTarget> RenderTargetPtr;
