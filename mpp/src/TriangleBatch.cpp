@@ -171,15 +171,7 @@ namespace mpp
 
 	bool TriangleBatch::usingTexture() const
 	{
-		if (mOptions.specifyMaterial)
-		{
-			auto mat = static_cast<Material*>(mTextureOrMaterial.get());
-			return mat->getNumTextures() > 0;
-		}
-		else
-		{
-			return mTextureOrMaterial != nullptr;
-		}
+		return true;
 	}
 
 	bool TriangleBatch::positionFixed() const

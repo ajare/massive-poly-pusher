@@ -13,6 +13,6 @@ namespace mpp
 
 	public:
 
-		Screen(int width, int height);
+		Screen(size_t width, size_t height);
 	};
 }

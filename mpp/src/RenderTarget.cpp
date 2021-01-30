@@ -19,7 +19,7 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	RenderTarget::RenderTarget(int width, int height)
+	RenderTarget::RenderTarget(size_t width, size_t height)
 		: mWidth(width)
 		, mHeight(height)
 	{
@@ -29,7 +29,7 @@ namespace mpp
 	 * Get render target width.
 	 *
 	 */
-	int RenderTarget::getWidth() const
+	size_t RenderTarget::getWidth() const
 	{
 		return mWidth;
 	}
@@ -38,18 +38,8 @@ namespace mpp
 	 * Get render target height.
 	 *
 	 */
-	int RenderTarget::getHeight() const
+	size_t RenderTarget::getHeight() const
 	{
 		return mHeight;
-	}
-
-	void RenderTarget::setViewport(int x, int y, size_t width, size_t height)
-	{
-		GL_CHECK(glViewport(x, y, width, height));
-	}
-
-	void RenderTarget::resetViewport()
-	{
-		GL_CHECK(glViewport(0, 0, getWidth(), getHeight()));
 	}
 }

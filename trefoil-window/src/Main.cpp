@@ -335,7 +335,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 
 			// Render scenes
-			for (auto scene: gScenes)
+			for (auto scene : gScenes)
 			{
 				if (scene->getRender())
 				{

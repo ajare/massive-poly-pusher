@@ -83,7 +83,9 @@ namespace mpp
 
 		Logger* mLogger;
 
-		int mWindowWidth, mWindowHeight;
+		size_t mWindowWidth, mWindowHeight;
+
+		size_t mViewportWidth, mViewportHeight;
 
 		ResourceManager* mResourceMgr;
 
@@ -232,7 +234,7 @@ namespace mpp
 
 	public:
 
-		RenderSystem(int windowWidth, int windowHeight);
+		RenderSystem(size_t windowWidth, size_t windowHeight);
 
 		virtual ~RenderSystem();
 
@@ -240,9 +242,9 @@ namespace mpp
 
 		void _unloadCoreResources();
 
-		int getWindowWidth() const;
+		size_t getWindowWidth() const;
 
-		int getWindowHeight() const;
+		size_t getWindowHeight() const;
 
 		float getAspectRatio() const;
 

@@ -1,0 +1,2 @@
+- All materials which use default shaders should have a default texture.  Either that, or texture coords for default shaders
+  should be optional - and ideally, templated based on the number of textures.

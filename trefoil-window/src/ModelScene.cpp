@@ -108,13 +108,16 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	paneTrefoil.distance = 40;
 	paneTrefoil.radius = 40;
 
-	mTrefoilWindow->load("window.settings");
+	//mTrefoilWindow->load("window.settings");
 
 	createControls();
 
+	// Set scene up
+	auto mppScene = getScene();
+	mppScene->setViewport(renderSystem->getWindowWidth() / 2, 0, renderSystem->getWindowWidth() / 2, renderSystem->getWindowHeight());
+
 	// Create trefoil models
 	auto resourceMgr = getResourceManager();
-	auto mppScene = getScene();
 
 	createSharedTextures(options);
 
@@ -139,6 +142,8 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		resourceMgr);
 
 	mLineRenderer->create();
+	auto batch = mppScene->add2dBatch(mLineDataProvider, mLineRenderer);
+	batch->setOrigin(glm::vec2(renderSystem->getWindowWidth() / 4, 80));
 
 	// UI control lines
 	mControlLinesDataProvider = make_shared<ControlLinesDataProvider>(renderSystem, mControls);
@@ -151,6 +156,8 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		resourceMgr);
 
 	mControlsLineRenderer->create();
+	batch = mppScene->add2dBatch(mControlLinesDataProvider, mControlsLineRenderer);
+	batch->setOrigin(glm::vec2(renderSystem->getWindowWidth() / 4, 80));
 
 	// Round control handles
 	mControlHandlesCircleDataProvider = make_shared<CircleDataProvider>(8, mControls);
@@ -200,6 +207,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		resourceMgr);
 
 	mControlHandlesRenderer->create();
+	//mppScene->add2dBatch(mControlHandlesDataProvider, mControlHandlesRenderer);
 
 	// 3D model
 	mpp::helper::TriangleBatchRendererParams triParams
@@ -216,12 +224,13 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		"Trefoil3D",
 		triParams,
 		triBatchDataProvider,
-		nullptr,
+		nullptr, //resourceMgr->getResource("Marble.Texture"),		
 		renderSystem, resourceMgr);
 
 	model3d->create();
 
 	mModels.push_back(getScene()->addModel(model3d->getModel()));
+	mModels.back()->scale(glm::vec3(2, 1, 1));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
@@ -745,7 +754,8 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	renderSystem->renderScene(getScene(), getCamera(), "Default");
+/*
+	renderSystem->clearScreen(mpp::Colour::Black);
 
 	// 2D UI
 	renderSystem->setProjection2dOrthographic();
@@ -763,7 +773,6 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 	mControlHandlesRenderer->render();
 	
 	renderSystem->popModelMatrix();
-
-	//renderSystem->setViewport(0, 0, renderSystem->getWindowWidth() / 2, renderSystem->getWindowHeight());
-	//renderSystem->resetViewport();
+*/	
+	renderSystem->renderScene(getScene(), getCamera(), "Default");
 }
