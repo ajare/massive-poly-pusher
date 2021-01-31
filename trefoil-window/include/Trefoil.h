@@ -27,6 +27,7 @@ struct Trefoil
 	void save(std::ofstream& fp)
 	{
 		fp.write((char const*)&distance, sizeof(distance));
+		fp.write((char const*)&radius, sizeof(radius));
 		fp.write((char const*)&numFoils, sizeof(numFoils));
 		fp.write((char const*)&foilOffset, sizeof(foilOffset));
 	}
@@ -34,6 +35,7 @@ struct Trefoil
 	void load(std::ifstream& fp)
 	{
 		fp.read((char*)&distance, sizeof(distance));
+		fp.read((char*)&radius, sizeof(radius));
 		fp.read((char*)&numFoils, sizeof(numFoils));
 		fp.read((char*)&foilOffset, sizeof(foilOffset));
 	}

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-Control::Control(string const& name, Orientation orientation, Getter getter, Setter setter, PositionSetter positionSetter, Getter minValue, Getter maxValue)
+Control::Control(string const& name, Orientation orientation, Getter getter, Setter setter, PositionSetter positionSetter, Getter minValue, Getter maxValue, int windowHeight)
 	: mName(name)
 	, mPosition(Vector2::ZERO)
 	, mGetter(getter)
@@ -17,6 +17,7 @@ Control::Control(string const& name, Orientation orientation, Getter getter, Set
 	, mOrientation(orientation)
 	, mShowName(false)
 	, mShowValue(false)
+	, mWindowHeight(windowHeight)
 {
 	setColour(1, 1, 1);
 }
@@ -69,6 +70,7 @@ bool Control::isHovered(Vector2 const& viewOffset, Vector2 const& position)
 	}
 
 	auto p = position - viewOffset;
+	target.y = -target.y;
 	return target.distanceTo(p) < 7;
 }
 
@@ -112,6 +114,7 @@ void Control::update(Vector2 const& value)
 
 	v.x = min(max(minValue.x, v.x), maxValue.x);
 	v.y = min(max(minValue.y, v.y), maxValue.y);
+	v.y = mWindowHeight - v.y;
 
 	mSetter(v);
 }
