@@ -10,6 +10,7 @@
 #include "Control.h"
 #include "LineBatchDataProvider.h"
 #include "QuadBatchDataProvider.h"
+#include "Trefoil3DDataProvider.h"
 
 class ModelScene : public ::Scene
 {
@@ -41,14 +42,26 @@ class ModelScene : public ::Scene
 	// Window
 	TrefoilWindow* mTrefoilWindow;
 
+	std::shared_ptr<Trefoil3DDataProvider> mSchematicDataProvider;
+
+	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> mModelRenderer;
+
 	// UI Controls
 	std::vector<Control*> mControls;
+
+	Control *mHoveredControl{ nullptr }, *mSelectedControl{ nullptr };
+
+	glm::vec2 mControlOffset;
+
+	int mOldMouseX{ 0 }, mOldMouseY{ 0 };
+
+	int mWindowHeight{ 0 };
 
 private:
 
 	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
 
-	void createControls();
+	void createControls(mpp::RenderSystem* renderSystem);
 
 	mpp::CameraPtr createCamera(ProgramOptions const& options) const;
 
@@ -63,6 +76,8 @@ public:
 	ModelScene(mpp::ResourceManager* resourceMgr);
 
 	~ModelScene();
+
+	void injectInput(InputManager* inputMgr);
 
 	void update(mpp::RenderSystem* renderSystem, float frameTime);
 

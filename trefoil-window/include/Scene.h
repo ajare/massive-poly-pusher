@@ -4,6 +4,7 @@
 #include <mpp/ResourceManager.h>
 #include <mpp/Scene.h>
 
+#include "InputManager.h"
 #include "ProgramOptions.h"
 #include "World.h"
 #include "RenderOptions.h"
@@ -47,6 +48,8 @@ public:
 	void setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
 
 	virtual std::string getRenderPipelineName() const;
+
+	virtual void injectInput(InputManager* inputMgr) {}
 
 	virtual void update(mpp::RenderSystem* renderSystem, float frameTime) {}
 

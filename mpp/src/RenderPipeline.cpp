@@ -85,10 +85,17 @@ namespace mpp
 			auto const* pe = static_cast<PostEffect const*>(effect.get());
 		}
 
+		// Render to screen
+		mRenderSystem->resetTransform();
+		mRenderSystem->renderToScreen();
+
+		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
+		mRenderSystem->renderFullscreenQuad(outputRenderTexture, 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
+
 		// 2d batches
 		auto const& batches = scene->getBatchesInView();
 
-		for (auto batch: batches)
+		for (auto batch : batches)
 		{
 			auto const& origin = batch->getOrigin();
 			auto const& offset = batch->getOffset();
@@ -107,12 +114,5 @@ namespace mpp
 
 			batch->render();
 		}
-
-		// Render to screen
-		mRenderSystem->resetTransform();
-		mRenderSystem->renderToScreen();
-
-		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
-		mRenderSystem->renderFullscreenQuad(outputRenderTexture, 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
 	}
 }

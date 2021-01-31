@@ -21,7 +21,6 @@
 
 #include "ModelScene.h"
 #include "Helper.h"
-#include "Trefoil3DDataProvider.h"
 
 using namespace std;
 using namespace mpp;
@@ -89,9 +88,13 @@ mpp::ResourcePtr ModelScene::createMaterial(mpp::mesh::MeshSpecification const& 
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
 {
+	mControlOffset = glm::vec2(renderSystem->getWindowWidth() / 4, 80);
+	mWindowHeight = renderSystem->getWindowHeight();
+
 	// Create trefoil
 	mTrefoilWindow = new TrefoilWindow(2);
 
+	/*
 	mTrefoilWindow->setPaneBaseOffset(10);
 	mTrefoilWindow->setPaneUpperBufferHeight(50);
 	mTrefoilWindow->setPaneHeight(250);
@@ -107,10 +110,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	paneTrefoil.numFoils = 3;
 	paneTrefoil.distance = 40;
 	paneTrefoil.radius = 40;
+	*/
+	
+	mTrefoilWindow->load("window.settings");
 
-	//mTrefoilWindow->load("window.settings");
-
-	createControls();
+	createControls(renderSystem);
 
 	// Set scene up
 	auto mppScene = getScene();
@@ -143,7 +147,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mLineRenderer->create();
 	auto batch = mppScene->add2dBatch(mLineDataProvider, mLineRenderer);
-	batch->setOrigin(glm::vec2(renderSystem->getWindowWidth() / 4, 80));
+	batch->setOrigin(mControlOffset);
 
 	// UI control lines
 	mControlLinesDataProvider = make_shared<ControlLinesDataProvider>(renderSystem, mControls);
@@ -157,9 +161,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mControlsLineRenderer->create();
 	batch = mppScene->add2dBatch(mControlLinesDataProvider, mControlsLineRenderer);
-	batch->setOrigin(glm::vec2(renderSystem->getWindowWidth() / 4, 80));
+	batch->setOrigin(mControlOffset);
 
 	// Round control handles
+	/*
 	mControlHandlesCircleDataProvider = make_shared<CircleDataProvider>(8, mControls);
 
 	mControlHandlesCircleRenderer = make_shared<CircleRenderer>(
@@ -181,9 +186,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		16,
 		mControlHandlesCircleRenderer
 	);
-
+	*/
 	// Square control handles
-	/*
+	
 	mpp::helper::QuadBatchRendererParams quadParams(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
 		true,  // fixed texcoords
@@ -191,11 +196,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		false, // don't use vertex colours
 		true,  // use diffuse colour
 		false, // don't rotate
-		16,    // width
-		16,    // height
+		8,    // width
+		8,    // height
 		true,  // square
-		16);   // 16bit indices
-	*/
+		16);   // 16-bit indices
+	
 
 	mControlHandlesDataProvider = make_shared<ControlHandlesDataProvider>(renderSystem, mControls);
 
@@ -207,7 +212,8 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		resourceMgr);
 
 	mControlHandlesRenderer->create();
-	//mppScene->add2dBatch(mControlHandlesDataProvider, mControlHandlesRenderer);
+	batch = mppScene->add2dBatch(mControlHandlesDataProvider, mControlHandlesRenderer);
+	batch->setOrigin(mControlOffset);
 
 	// 3D model
 	mpp::helper::TriangleBatchRendererParams triParams
@@ -218,18 +224,18 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		false
 	};
 
-	auto triBatchDataProvider = make_shared<Trefoil3DDataProvider>();
+	mSchematicDataProvider = make_shared<Trefoil3DDataProvider>();
 
-	auto model3d = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+	mModelRenderer = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
 		"Trefoil3D",
 		triParams,
-		triBatchDataProvider,
+		mSchematicDataProvider,
 		nullptr, //resourceMgr->getResource("Marble.Texture"),		
 		renderSystem, resourceMgr);
 
-	model3d->create();
+	mModelRenderer->create();
 
-	mModels.push_back(getScene()->addModel(model3d->getModel()));
+	mModels.push_back(getScene()->addModel(mModelRenderer->getModel()));
 	mModels.back()->scale(glm::vec3(2, 1, 1));
 
 	// Lighting
@@ -241,8 +247,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto pipeline = renderSystem->createRenderPipeline(getRenderPipelineName());
 }
 
-void ModelScene::createControls()
+void ModelScene::createControls(mpp::RenderSystem* renderSystem)
 {
+	auto height = renderSystem->getWindowHeight();
+
 	// Pane trefoil distance
 	auto control = new Control("Pane Foil spread", Control::Orientation::Horizontal,
 		[this]()
@@ -253,9 +261,9 @@ void ModelScene::createControls()
 	{
 		this->mTrefoilWindow->getPaneTrefoil().distance = value.x;
 	},
-		[](TrefoilWindow const* window)
+		[this](TrefoilWindow const* window)
 	{
-		return Vector2(8 - 320, 920 - 100);
+		return Vector2(8 - 320, (float)this->mWindowHeight - 100);
 	},
 		[]()
 	{
@@ -264,12 +272,12 @@ void ModelScene::createControls()
 		[this]()
 	{
 		return Vector2(this->mTrefoilWindow->getPaneTrefoil().radius * 2, 0.0f);
-	});
+	}, height);
 
 	control->showName(true);
 	control->setColour(0.3f, 0.5f, 0.8f);
 	mControls.push_back(control);
-
+	
 	// Pane trefoil radius
 	control = new Control("Pane Foil Radius", Control::Orientation::Horizontal,
 		[this]()
@@ -280,9 +288,9 @@ void ModelScene::createControls()
 	{
 		this->mTrefoilWindow->getPaneTrefoil().radius = value.x;
 	},
-		[](TrefoilWindow const* window)
+		[this](TrefoilWindow const* window)
 	{
-		return Vector2(8 - 320, 920 - 132);
+		return Vector2(8 - 320, (float)this->mWindowHeight - 132);
 	},
 		[this]()
 	{
@@ -291,7 +299,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showName(true);
 	control->setColour(0.3f, 0.5f, 0.8f);
@@ -307,9 +315,9 @@ void ModelScene::createControls()
 	{
 		this->mTrefoilWindow->getUpperTrefoil().distance = value.x;
 	},
-		[](TrefoilWindow const* window)
+		[this](TrefoilWindow const* window)
 	{
-		return Vector2(8 - 320, 920 - 164);
+		return Vector2(8 - 320, (float)this->mWindowHeight - 164);
 	},
 		[]()
 	{
@@ -318,7 +326,7 @@ void ModelScene::createControls()
 		[this]()
 	{
 		return Vector2(1000.0f, 0.0f); // return Vector2(this->mTrefoilWindow->getUpperTrefoil().radius, 0.0f);
-	});
+	}, height);
 
 	control->showName(true);
 	control->setColour(0.3f, 0.5f, 0.8f);
@@ -334,9 +342,9 @@ void ModelScene::createControls()
 	{
 		this->mTrefoilWindow->getUpperTrefoil().radius = value.x;
 	},
-		[](TrefoilWindow const* window)
+		[this](TrefoilWindow const* window)
 	{
-		return Vector2(8 - 320, 920 - 196);
+		return Vector2(8 - 320, (float)this->mWindowHeight - 196);
 	},
 		[this]()
 	{
@@ -345,7 +353,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showName(true);
 	control->setColour(0.3f, 0.5f, 0.8f);
@@ -361,9 +369,9 @@ void ModelScene::createControls()
 	{
 		this->mTrefoilWindow->setTrefoilControlRadius(value.x / 10.0f);
 	},
-		[](TrefoilWindow const* window)
+		[this](TrefoilWindow const* window)
 	{
-		return Vector2(8 - 320, 920 - 292);
+		return Vector2(8 - 320, (float)this->mWindowHeight - 292);
 	},
 		[]()
 	{
@@ -372,7 +380,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showName(true);
 	control->setColour(0.3f, 0.5f, 0.8f);
@@ -405,7 +413,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->setColour(0.8f, 0.3f, 0.5f);
 	mControls.push_back(control);
@@ -432,7 +440,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
@@ -460,7 +468,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->setColour(0.5f, 0.5f, 0.5f);
 	mControls.push_back(control);
@@ -487,7 +495,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
@@ -515,7 +523,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
@@ -543,7 +551,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
@@ -571,7 +579,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
@@ -598,7 +606,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->setColour(0.8f, 0.3f, 0.5f);
 	mControls.push_back(control);
@@ -624,7 +632,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 0.0f);
-	});
+	}, height);
 
 	control->setColour(0.8f, 0.3f, 0.5f);
 	mControls.push_back(control);
@@ -654,7 +662,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 1000.0f);
-	});
+	}, height);
 
 	control->setColour(1.0f, 1.0f, 1.0f);
 	mControls.push_back(control);
@@ -684,7 +692,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(1000.0f, 1000.0f);
-	});
+	}, height);
 
 	control->setColour(1.0f, 1.0f, 1.0f);
 	mControls.push_back(control);
@@ -710,7 +718,7 @@ void ModelScene::createControls()
 		[]()
 	{
 		return Vector2(50.0f, 50.0f);
-	});
+	}, height);
 
 	control->setColour(1.0f, 1.0f, 1.0f);
 	mControls.push_back(control);
@@ -728,10 +736,67 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 	return shared_ptr<mpp::Camera>(camera);
 }
 
+void ModelScene::injectInput(InputManager* inputMgr)
+{
+	if (inputMgr->keyPressed(Key_S))
+	{
+		mTrefoilWindow->save("window.settings");
+	}
+	if (inputMgr->keyPressed(Key_L))
+	{
+		mTrefoilWindow->load("window.settings");
+		mLineDataProvider->setDirty();
+		mControlLinesDataProvider->setDirty();
+		mControlHandlesDataProvider->setDirty();
+		mSchematicDataProvider->setDirty();
+	}
+
+	int x, y;
+	inputMgr->getMousePosition(&x, &y);
+
+	Vector2 viewOffset(mControlOffset.x, mWindowHeight - mControlOffset.y);
+
+	mHoveredControl = nullptr;
+	for (auto control: mControls)
+	{
+		if (control->isHovered(viewOffset, Vector2((float)x, (float)y)))
+		{
+			mHoveredControl = control;
+
+			if (inputMgr->buttonPressed(Mouse_Left))
+			{
+				mSelectedControl = control;
+			}
+
+			break;
+		}
+	}
+
+	if (inputMgr->buttonReleased(Mouse_Left))
+	{
+		mSelectedControl = nullptr;
+	}
+
+	if (mSelectedControl)
+	{
+		Vector2 move((float)(x - mOldMouseX), (float)(y - mOldMouseY));
+		mSelectedControl->update(move);
+
+		mLineDataProvider->setDirty();
+		mControlLinesDataProvider->setDirty();
+		mControlHandlesDataProvider->setDirty();
+		mSchematicDataProvider->setDirty();
+	}
+
+	mOldMouseX = x;
+	mOldMouseY = y;
+}
+
 void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 {
 	mTotalTime += frameTime;
 
+	Vector2 viewOffset(mControlOffset.x, mControlOffset.y);
 	for (auto control: mControls)
 	{
 		control->setPosition(mTrefoilWindow);
@@ -742,7 +807,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mControlsLineRenderer->update(mControlLinesDataProvider->getNumPrimitives());
 
 	// Update control handles
-	mControlHandlesCircleRenderer->update(frameTime);
+	//mControlHandlesCircleRenderer->update(frameTime);
 
 	mControlHandlesDataProvider->update(frameTime);
 	mControlHandlesRenderer->update(mControlHandlesDataProvider->getNumPrimitives());
@@ -750,6 +815,11 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Update window schematic lines
 	mLineDataProvider->update(frameTime);
 	mLineRenderer->update(mLineDataProvider->getNumPrimitives());
+
+	// Update 3d model
+	mSchematicDataProvider->update(frameTime);
+	mModelRenderer->update(mSchematicDataProvider->getNumPrimitives());
+
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)

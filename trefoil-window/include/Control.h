@@ -46,9 +46,11 @@ private:
 
 	bool mShowValue;
 
+	int mWindowHeight;
+
 public:
 
-	Control(std::string const& name, Orientation orientation, Getter getter, Setter setter, PositionSetter positionSetter, Getter minValue, Getter maxValue);
+	Control(std::string const& name, Orientation orientation, Getter getter, Setter setter, PositionSetter positionSetter, Getter minValue, Getter maxValue, int windowHeight);
 
 	void showName(bool show);
 

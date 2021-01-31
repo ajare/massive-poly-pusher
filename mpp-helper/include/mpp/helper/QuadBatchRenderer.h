@@ -495,6 +495,7 @@ namespace mpp
 
 		template<typename PosType, typename TexType>
 		class QuadBatchRenderer<PosType, TexType, mpp::mesh::DataTypeNone>
+			: public BatchRenderer
 		{
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 

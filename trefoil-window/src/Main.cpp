@@ -273,6 +273,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				gRenderOptions.wireframe = !gRenderOptions.wireframe;
 			}
 
+			// Inject input
+			for (auto scene : gScenes)
+			{
+				scene->injectInput(gInputMgr);
+			}
+
 			// Update current state
 			while (accum >= updateFreq)
 			{
