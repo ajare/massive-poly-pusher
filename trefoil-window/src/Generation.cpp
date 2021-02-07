@@ -586,18 +586,10 @@ vector<Vector2> preprocessLoop(vector<Vector2> const& vertices)
 		Vector2 const& vertex = vertices[i];
 
 		// Don't allow multiple vertices too close to each other as this can crash the triangulator.
-		if (vertex.distanceToSq(vertices[i - 1]) < epsilonSq)
+		size_t j = i == 0 ? vertices.size() - 1 : i - 1;
+		if (vertex.distanceToSq(vertices[j]) < epsilonSq)
 		{
 			continue;
-		}
-
-		// Check last point against first
-		if (i == vertices.size() - 1)
-		{
-			if (vertex.distanceToSq(vertices[0]) < epsilonSq)
-			{
-				continue;
-			}
 		}
 
 		// Don't allow collinear points, ie three or more on a straight line.

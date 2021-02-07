@@ -114,7 +114,7 @@ void Control::update(Vector2 const& value)
 
 	v.x = min(max(minValue.x, v.x), maxValue.x);
 	v.y = min(max(minValue.y, v.y), maxValue.y);
-	v.y = mWindowHeight - v.y;
+	//v.y = mWindowHeight - v.y;
 
 	mSetter(v);
 }
