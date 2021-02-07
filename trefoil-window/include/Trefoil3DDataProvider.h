@@ -6,6 +6,9 @@
 
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
+#include "TrefoilWindow.h"
+#include "Generation.h"
+
 // Controls
 class Trefoil3DDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
 {
@@ -15,6 +18,8 @@ class Trefoil3DDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mp
 		float nx[3], ny[3], nz[3];
 		float u[3], v[3];
 	};
+
+	TrefoilWindow* mWindow{ nullptr };
 	
 	bool mDirty{ true };
 
@@ -24,7 +29,8 @@ class Trefoil3DDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mp
 
 public:
 
-	Trefoil3DDataProvider()
+	explicit Trefoil3DDataProvider(TrefoilWindow* window)
+		: mWindow(window)
 	{
 		update(0.0f);
 	}
@@ -105,6 +111,24 @@ public:
 			float scale = 20.0f;
 
 			mTriangles.clear();
+
+			auto lines = generateLines(mWindow);
+			auto vertices = generateTriangles(mWindow, lines);
+
+			for (size_t i = 0; i < vertices.size(); i += 3)
+			{
+				mTriangles.push_back(
+					{
+						{ vertices[i * 3 + 0].px,  vertices[i * 3 + 1].px,  vertices[i * 3 + 2].px }, // X
+						{ vertices[i * 3 + 0].py,  vertices[i * 3 + 1].py,  vertices[i * 3 + 2].py }, // Y
+						{ vertices[i * 3 + 0].pz,  vertices[i * 3 + 1].pz,  vertices[i * 3 + 2].pz }, // Z
+						{ vertices[i * 3 + 0].nx,  vertices[i * 3 + 1].nx,  vertices[i * 3 + 2].nx }, // NX
+						{ vertices[i * 3 + 0].ny,  vertices[i * 3 + 1].ny,  vertices[i * 3 + 2].ny }, // NY
+						{ vertices[i * 3 + 0].nz,  vertices[i * 3 + 1].nz,  vertices[i * 3 + 2].nz }, // NZ
+						{ 0, 1, 1 }, // U
+						{ 0, 0, 1 }  // V
+					});
+			}
 
 			// Create triangles
 			mTriangles.push_back(

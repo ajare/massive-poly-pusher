@@ -224,7 +224,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		false
 	};
 
-	mSchematicDataProvider = make_shared<Trefoil3DDataProvider>();
+	mSchematicDataProvider = make_shared<Trefoil3DDataProvider>(mTrefoilWindow);
 
 	mModelRenderer = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
 		"Trefoil3D",
@@ -236,7 +236,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModelRenderer->create();
 
 	mModels.push_back(getScene()->addModel(mModelRenderer->getModel()));
-	mModels.back()->scale(glm::vec3(2, 1, 1));
+	mModels.back()->scale(glm::vec3(2 / 1.0f, 1 / 1.0f, 1 / 1.0f));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
@@ -779,7 +779,7 @@ void ModelScene::injectInput(InputManager* inputMgr)
 
 	if (mSelectedControl)
 	{
-		Vector2 move((float)(x - mOldMouseX), (float)(y - mOldMouseY));
+		Vector2 move((float)(x - mOldMouseX), (float)(mOldMouseY - y));
 		mSelectedControl->update(move);
 
 		mLineDataProvider->setDirty();
@@ -824,25 +824,5 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-/*
-	renderSystem->clearScreen(mpp::Colour::Black);
-
-	// 2D UI
-	renderSystem->setProjection2dOrthographic();
-	
-	renderSystem->pushModelMatrix();
-	renderSystem->translateTransform2d(glm::vec2(renderSystem->getWindowWidth() / 4, 80));
-
-	// Render schematic
-	mLineRenderer->render();
-
-	// Render controls
-	mControlsLineRenderer->render();
-
-	mControlHandlesCircleRenderer->updateRenderTexture(mControlHandlesRenderer->getBatch()->getTexture());
-	mControlHandlesRenderer->render();
-	
-	renderSystem->popModelMatrix();
-*/	
 	renderSystem->renderScene(getScene(), getCamera(), "Default");
 }
