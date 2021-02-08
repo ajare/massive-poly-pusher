@@ -119,17 +119,17 @@ public:
 			{
 				mTriangles.push_back(
 					{
-						{ vertices[i * 3 + 0].px,  vertices[i * 3 + 1].px,  vertices[i * 3 + 2].px }, // X
-						{ vertices[i * 3 + 0].py,  vertices[i * 3 + 1].py,  vertices[i * 3 + 2].py }, // Y
-						{ vertices[i * 3 + 0].pz,  vertices[i * 3 + 1].pz,  vertices[i * 3 + 2].pz }, // Z
-						{ vertices[i * 3 + 0].nx,  vertices[i * 3 + 1].nx,  vertices[i * 3 + 2].nx }, // NX
-						{ vertices[i * 3 + 0].ny,  vertices[i * 3 + 1].ny,  vertices[i * 3 + 2].ny }, // NY
-						{ vertices[i * 3 + 0].nz,  vertices[i * 3 + 1].nz,  vertices[i * 3 + 2].nz }, // NZ
+						{ vertices[i + 0].px,  vertices[i + 1].px,  vertices[i + 2].px }, // X
+						{ vertices[i + 0].py,  vertices[i + 1].py,  vertices[i + 2].py }, // Y
+						{ vertices[i + 0].pz,  vertices[i + 1].pz,  vertices[i + 2].pz }, // Z
+						{ vertices[i + 0].nx,  vertices[i + 1].nx,  vertices[i + 2].nx }, // NX
+						{ vertices[i + 0].ny,  vertices[i + 1].ny,  vertices[i + 2].ny }, // NY
+						{ vertices[i + 0].nz,  vertices[i + 1].nz,  vertices[i + 2].nz }, // NZ
 						{ 0, 1, 1 }, // U
 						{ 0, 0, 1 }  // V
 					});
 			}
-
+/*
 			// Create triangles
 			mTriangles.push_back(
 				{
@@ -274,7 +274,7 @@ public:
 					{ 1, 0, 0 }, // U
 					{ 1, 1, 0 }  // V
 				});
-
+*/
 			setNumPrimitives(mTriangles.size());
 			mDirty = false;
 		}

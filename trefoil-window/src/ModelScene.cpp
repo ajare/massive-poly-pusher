@@ -235,8 +235,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mModelRenderer->create();
 
-	mModels.push_back(getScene()->addModel(mModelRenderer->getModel()));
-	mModels.back()->scale(glm::vec3(2 / 1.0f, 1 / 1.0f, 1 / 1.0f));
+	mModel = getScene()->addModel(mModelRenderer->getModel());
+	mModels.push_back(mModel);
+	auto modelScale = 0.50f;
+	mModel->translate(glm::vec3(0, -40, 0));
+	mModel->scale(glm::vec3(2 * modelScale, 1 * modelScale, 1 * modelScale));
 
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
@@ -733,7 +736,7 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 	camera->setClipDistances(0.1f, 1000.0f);
 	camera->setFov(45.0f);
 
-	return shared_ptr<mpp::Camera>(camera);
+	return std::shared_ptr<mpp::Camera>(camera);
 }
 
 void ModelScene::injectInput(InputManager* inputMgr)
@@ -749,6 +752,22 @@ void ModelScene::injectInput(InputManager* inputMgr)
 		mControlLinesDataProvider->setDirty();
 		mControlHandlesDataProvider->setDirty();
 		mSchematicDataProvider->setDirty();
+	}
+	if (inputMgr->keyDown(Key_UpArrow))
+	{
+		mModelMove = 50;
+	}
+	if (inputMgr->keyDown(Key_DownArrow))
+	{
+		mModelMove = -50;
+	}
+	if (inputMgr->keyDown(Key_LeftArrow))
+	{
+		mModelRotation = 1.0f;
+	}
+	if (inputMgr->keyDown(Key_RightArrow))
+	{
+		mModelRotation = -1.0f;
 	}
 
 	int x, y;
@@ -820,6 +839,12 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mSchematicDataProvider->update(frameTime);
 	mModelRenderer->update(mSchematicDataProvider->getNumPrimitives());
 
+	static_cast<mpp::helper::FreeCamera*>(getCamera().get())->forward(mModelMove * frameTime);
+	mModel->rotateSelf(mModelRotation * frameTime, glm::vec3(0, 1, 0));
+
+	// Reset input vars
+	mModelRotation = 0;
+	mModelMove = 0;
 }
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
