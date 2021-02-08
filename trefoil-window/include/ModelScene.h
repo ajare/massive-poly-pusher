@@ -20,6 +20,10 @@ class ModelScene : public ::Scene
 
 	std::vector<mpp::SceneModelPtr> mModels;
 
+	mpp::SceneModelPtr mModel;
+
+	float mModelRotation{ 0 }, mModelMove;
+
 	// Window schematic lines
 	std::shared_ptr<TrefoilWindowDataProvider> mLineDataProvider;
 
