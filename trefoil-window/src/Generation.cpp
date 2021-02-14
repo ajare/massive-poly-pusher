@@ -615,61 +615,28 @@ uint32_t addVertex(float x, float y, vector<Vector2>& vertices)
 	return index;
 }
 
-vector<Vector3> generateTriangles(TrefoilWindow const* window, VertexList const& lines)
+vector<Vector3> getTriangulation(
+	vector<p2t::Point*> const& border,
+	vector<vector<p2t::Point*>> const& holes,
+	float depth)
 {
-	VertexList points;
+	p2t::CDT* cdt = new p2t::CDT(border);
 
-	float thickness = window->getFrameThickness() * 0.5f;
-
-	const size_t BORDER_ID = 0;
-	const size_t PANE1BORDER_ID = 1;
-	const size_t PANE1_ID = PANE1BORDER_ID + window->getNumPanes();
-	const size_t UPPER_ID = PANE1_ID + window->getNumPanes();
-
-	for (auto const& loop: lines)
+	for (auto const& hole : holes)
 	{
-		points.push_back(preprocessLoop(loop));
+		auto reversed = hole;
+		//reverse(reversed.begin(), reversed.end());
+		cdt->AddHole(reversed);
 	}
-
-	vector<p2t::Point*> borderPoints;
-	for (auto const& p: points[BORDER_ID])
-	{
-		borderPoints.push_back(new p2t::Point(p.x, p.y));
-	}
-
-	// Triangulate
-	p2t::CDT* cdt = new p2t::CDT(borderPoints);
-
-	vector<vector<p2t::Point*>> paneBorderList;
-	for (size_t i = 0; i < window->getNumPanes(); ++i)
-	{
-		vector<p2t::Point*> paneBorderPoints;
-		for (auto it = points[PANE1BORDER_ID + i].rbegin(); it != points[PANE1BORDER_ID + i].rend(); ++it)
-		{
-			auto const& p = *it;
-			paneBorderPoints.push_back(new p2t::Point(p.x, p.y));
-		}
-
-		cdt->AddHole(paneBorderPoints);
-		paneBorderList.push_back(paneBorderPoints);
-	}
-
-	vector<p2t::Point*> upperTrefoilPoints;
-	for (auto it = points[UPPER_ID].rbegin(); it != points[UPPER_ID].rend(); ++it)
-	{
-		auto const& p = *it;
-		upperTrefoilPoints.push_back(new p2t::Point(p.x, p.y));
-	}
-
-	cdt->AddHole(upperTrefoilPoints);
 
 	cdt->Triangulate();
 
-	// Extract triangle data
+	// Triangulation
+	vector<Vector3> triangleData;
 	map<p2t::Point*, uint32_t> vertexMap;
 
-	vector<Vector2> triPoints;
 	vector<Vector3> finalPoints;
+	vector<Vector2> triPoints;
 	auto const& triangles = cdt->GetTriangles();
 	for (auto const& triangle : triangles)
 	{
@@ -682,7 +649,7 @@ vector<Vector3> generateTriangles(TrefoilWindow const* window, VertexList const&
 				vertexMap[p] = addVertex((float)p->x, (float)p->y, triPoints);
 			}
 
-			Vector3 point(triPoints[vertexMap[p]].x, triPoints[vertexMap[p]].y, thickness);
+			Vector3 point(triPoints[vertexMap[p]].x, triPoints[vertexMap[p]].y, depth);
 			point.nx = 0;
 			point.ny = 0;
 			point.nz = 1;
@@ -691,41 +658,108 @@ vector<Vector3> generateTriangles(TrefoilWindow const* window, VertexList const&
 		}
 	}
 
-	// Copy for back
-	auto numVertices = finalPoints.size();
-	for (size_t i = 0; i < numVertices; ++i)
-	{
-		auto fp = finalPoints[i];
-
-		fp.pz -= window->getFrameThickness();
-		fp.nz = -fp.nz;
-
-		finalPoints.push_back(fp);
-	}
-
-	// Fill in gap between
-
-	// Tidy up
 	delete cdt;
+	return finalPoints;
+}
 
-	for (auto p: borderPoints)
+vector<p2t::Point*> copyPointList(vector<p2t::Point*> const& points)
+{
+	vector<p2t::Point*> copy;
+	copy.reserve(points.size());
+
+	for (auto point : points)
 	{
-		delete p;
+		copy.push_back(new p2t::Point(point->x, point->y));
 	}
 
-	for (auto const& pb: paneBorderList)
+	return copy;
+}
+
+vector<Vector3> generateTriangles(TrefoilWindow const* window, VertexList const& lines)
+{
+	VertexList points;
+	vector<Vector3> finalPoints;
+
+	float thickness = window->getFrameThickness() * 0.5f;
+
+	const size_t BORDER_ID = 0;
+	const size_t PANE1BORDER_ID = 1;
+	const size_t PANE1_ID = PANE1BORDER_ID + window->getNumPanes();
+	const size_t UPPER_ID = PANE1_ID + window->getNumPanes();
+
+	// Preprocess lines 
+	for (auto const& loop: lines)
 	{
-		for (auto p: pb)
+		points.push_back(preprocessLoop(loop));
+	}
+
+	// Generate p2d border points
+	vector<p2t::Point*> borderPoints;
+	vector<p2t::Point*> upperTrefoilPoints;
+	vector<vector<p2t::Point*>> paneBorderPoints1, paneBorderPoints2;
+	vector<vector<p2t::Point*>> paneInnerPoints;
+
+	for (auto const& p : points[BORDER_ID])
+	{
+		borderPoints.push_back(new p2t::Point(p.x, p.y));
+	}
+	if (pointsWinding(points[BORDER_ID]) != Winding::Clockwise)
+	{
+		reverse(borderPoints.begin(), borderPoints.end());
+	}	
+
+	for (auto const& p : points[UPPER_ID])
+	{
+		upperTrefoilPoints.push_back(new p2t::Point(p.x, p.y));
+	}
+	if (pointsWinding(points[UPPER_ID]) != Winding::Clockwise)
+	{
+		reverse(upperTrefoilPoints.begin(), upperTrefoilPoints.end());
+	}
+
+	for (size_t i = 0; i < window->getNumPanes(); ++i)
+	{
+		vector<p2t::Point*> pointsList;
+		for (auto const& p : points[PANE1BORDER_ID + i])
 		{
-			delete p;
+			pointsList.push_back(new p2t::Point(p.x, p.y));
 		}
+		if (pointsWinding(points[PANE1BORDER_ID + i]) != Winding::Clockwise)
+		{
+			reverse(pointsList.begin(), pointsList.end());
+		}
+
+		paneBorderPoints1.push_back(pointsList);
+		paneBorderPoints2.push_back(copyPointList(pointsList));
+
+		pointsList.clear();
+		for (auto const& p : points[PANE1_ID + i])
+		{
+			pointsList.push_back(new p2t::Point(p.x, p.y));
+		}
+		if (pointsWinding(points[PANE1_ID + i]) != Winding::Clockwise)
+		{
+			reverse(pointsList.begin(), pointsList.end());
+		}
+
+		paneInnerPoints.push_back(pointsList);
 	}
 
-	for (auto p : upperTrefoilPoints)
+	// Main
+	vector<vector<p2t::Point*>> mainHoles = paneBorderPoints1;
+	mainHoles.push_back(upperTrefoilPoints);
+
+	auto mainTriangles = getTriangulation(borderPoints, mainHoles, thickness);
+	copy(mainTriangles.begin(), mainTriangles.end(), back_inserter(finalPoints));
+
+	// Panes
+	for (size_t i = 0; i < window->getNumPanes(); ++i)
 	{
-		delete p;
+		auto paneTriangles = getTriangulation(paneBorderPoints2[i], { paneInnerPoints[i] }, thickness * 0.5f);
+		copy(paneTriangles.begin(), paneTriangles.end(), back_inserter(finalPoints));
 	}
 
+	/*
 	// Border side
 	float frameThickness = window->getFrameThickness();
 	for (size_t i = 0; i < points[BORDER_ID].size(); ++i)
@@ -867,6 +901,34 @@ vector<Vector3> generateTriangles(TrefoilWindow const* window, VertexList const&
 		// 5
 		thisP.pz = -thickness;
 		finalPoints.push_back(thisP);
+	}
+	*/
+
+	// Clean up
+	for (auto point : borderPoints)
+	{
+		delete point;
+	}
+
+	for (auto point : upperTrefoilPoints)
+	{
+		delete point;
+	}
+
+	for (size_t i = 0; i < window->getNumPanes(); ++i)
+	{
+		for (auto point : paneBorderPoints1[i])
+		{
+			delete point;
+		}
+		for (auto point : paneBorderPoints2[i])
+		{
+			delete point;
+		}
+		for (auto point : paneInnerPoints[i])
+		{
+			delete point;
+		}
 	}
 
 	return finalPoints;
