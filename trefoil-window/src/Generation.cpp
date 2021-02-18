@@ -104,35 +104,7 @@ VertexList generateTrefoil(TrefoilWindow const* window, Trefoil const& trefoil, 
 	ClipperLib::Paths input(trefoil.numFoils);
 
 	float clipperScale{ 1000.0f };
-	/*
-	float r = trefoil.radius;
-	float rStretch = 2.0f;
-	auto tr = window->getTrefoilControlRadius();
 
-	auto const& cpos1 = window->getTrefoilControlPosition();
-	Vector2 cdir1(1, -1); cdir1.normalise(); cdir1 *= tr;
-
-	Vector2 cpos2(cpos1.x, -cpos1.y);
-	Vector2 cdir2(-1, -1); cdir2.normalise(); cdir2 *= tr;
-
-	vector<Vector2> points
-	{
-		{ 0.0f * r, 1.0f * r },
-		(cpos1 - cdir1) * r,
-		(cpos1 + cdir1) * r,
-		{ 1.0f * r, 0.0f * r },
-		(cpos2 - cdir2) * r,
-		(cpos2 + cdir2) * r,
-		{ 0.0f * r, -1.0f * r }
-	};
-
-	points[4].y *= rStretch;
-	points[5].y *= rStretch;
-	points[6].y *= rStretch;
-
-	BezierSpline spline(points);
-	float splineLength = spline.getLength();
-	*/
 	const size_t numVertices{ 32 };
 	for (size_t i = 0; i < trefoil.numFoils; ++i)
 	{
@@ -141,12 +113,6 @@ VertexList generateTrefoil(TrefoilWindow const* window, Trefoil const& trefoil, 
 		for (size_t j = 0; j < numVertices; ++j)
 		{
 			float t = j / (float)(numVertices - 1);
-			/*
-			Vector2 v = spline.getPosition(splineLength * t);
-			v.y += trefoil.distance;
-
-			Vector2 m(-v.x, v.y);
-			*/
 
 			// Teardrop 1
 			// x = sin(t) * sin(t/2)^m
@@ -154,7 +120,6 @@ VertexList generateTrefoil(TrefoilWindow const* window, Trefoil const& trefoil, 
 
 			// Teardrop 2
 			// a * x * x − (1 − y)^3 * (1 + y) = 0 
-
 
 			// Pear
 			// b^2 * y^2 = x^3(a - x)
@@ -559,6 +524,34 @@ VertexList generateLines(TrefoilWindow const* window)
 	// Upper trefoil
 	auto upperVertices = generateTrefoil(window, window->getUpperTrefoil(), Vector2(0, window->getUpperTrefoilPosition()));
 	copy(upperVertices.begin(), upperVertices.end(), back_inserter(vertices));
+
+	// Morphed pane lines
+	for (size_t i = 0; i < window->getNumPanes(); ++i)
+	{
+		VertexList paneVertices;
+		try
+		{
+			float width = window->getPaneWidth();
+			float xPos = -(window->getWidth() / 2.0f) +
+				window->getPaneSideOffset() +
+				(i + 0.5f) * width +
+				i * window->getPaneSpacing();
+
+			float yPos = window->getPaneBaseOffset();
+			float height = window->getPaneHeight();
+			float trefoilOffset = window->getPaneTrefoilOffset();
+
+			auto trefoil = window->getPaneTrefoil();
+			trefoil.radius += 10;
+
+			auto paneVertices = generateTrefoilPane_HM(window, trefoil, Vector2(xPos, yPos), width, height, trefoilOffset);
+			copy(paneVertices.begin(), paneVertices.end(), back_inserter(vertices));
+		}
+		catch (exception&)
+		{
+			continue;
+		}
+	}
 
 	return vertices;
 }

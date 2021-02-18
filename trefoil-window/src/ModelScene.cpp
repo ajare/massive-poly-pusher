@@ -362,33 +362,6 @@ void ModelScene::createControls(mpp::RenderSystem* renderSystem)
 	control->setColour(0.3f, 0.5f, 0.8f);
 	mControls.push_back(control);
 
-	// Trefoil control spread
-	control = new Control("Foil spread", Control::Orientation::Horizontal,
-		[this]()
-	{
-		return Vector2(this->mTrefoilWindow->getTrefoilControlRadius(), 0.0f) * 10.0f;
-	},
-		[this](Vector2 const& value)
-	{
-		this->mTrefoilWindow->setTrefoilControlRadius(value.x / 10.0f);
-	},
-		[this](TrefoilWindow const* window)
-	{
-		return Vector2(8 - 320, (float)this->mWindowHeight - 292);
-	},
-		[]()
-	{
-		return Vector2(0.0f, 0.0f);
-	},
-		[]()
-	{
-		return Vector2(1000.0f, 0.0f);
-	}, height);
-
-	control->showName(true);
-	control->setColour(0.3f, 0.5f, 0.8f);
-	mControls.push_back(control);
-
 	// Pane border size
 	control = new Control("Pane Border", Control::Orientation::Horizontal,
 		[this]()
@@ -502,6 +475,7 @@ void ModelScene::createControls(mpp::RenderSystem* renderSystem)
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
+	control->setLabelOffset(32);
 	mControls.push_back(control);
 
 	// Pane to pane trefoil offset
@@ -530,6 +504,7 @@ void ModelScene::createControls(mpp::RenderSystem* renderSystem)
 
 	control->showValue(true);
 	control->setColour(0.5f, 0.5f, 0.5f);
+	control->setLabelOffset(16);
 	mControls.push_back(control);
 
 	// Pane height
@@ -699,32 +674,6 @@ void ModelScene::createControls(mpp::RenderSystem* renderSystem)
 
 	control->setColour(1.0f, 1.0f, 1.0f);
 	mControls.push_back(control);
-
-	// Trefoil control point
-	control = new Control("Trefoil", Control::Orientation::Free,
-		[this]()
-	{
-		return this->mTrefoilWindow->getTrefoilControlPosition() * this->mTrefoilWindow->getUpperTrefoil().radius;
-	},
-		[this](Vector2 const& value)
-	{
-		this->mTrefoilWindow->setTrefoilControlPosition(value / this->mTrefoilWindow->getUpperTrefoil().radius);
-	},
-		[](TrefoilWindow const* window)
-	{
-		return Vector2(0, window->getUpperTrefoilPosition()) + window->getTrefoilControlPosition() * window->getUpperTrefoil().radius;
-	},
-		[]()
-	{
-		return Vector2(-50.0f, -50.0f);
-	},
-		[]()
-	{
-		return Vector2(50.0f, 50.0f);
-	}, height);
-
-	control->setColour(1.0f, 1.0f, 1.0f);
-	mControls.push_back(control);
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
@@ -850,4 +799,22 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
 	renderSystem->renderScene(getScene(), getCamera(), "Default");
+	
+	renderSystem->setProjection2dOrthographic();
+	renderSystem->translateTransform2d(glm::vec2(renderSystem->getWindowWidth() / 4, 80));
+
+	auto h = renderSystem->getWindowHeight();
+
+	// Render labels
+	for (auto control: mControls)
+	{
+		if (control->getOrientation() == Control::Orientation::Free)
+		{
+			continue;
+		}
+
+		auto const& controlPos = control->getLabelPosition();
+		renderSystem->renderText(control->getName(), controlPos.x, h - controlPos.y, mpp::Colour::White);
+	}
+	
 }

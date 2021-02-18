@@ -18,6 +18,7 @@ Control::Control(string const& name, Orientation orientation, Getter getter, Set
 	, mShowName(false)
 	, mShowValue(false)
 	, mWindowHeight(windowHeight)
+	, mLabelOffset(0)
 {
 	setColour(1, 1, 1);
 }
@@ -84,6 +85,28 @@ void Control::setPosition(TrefoilWindow const* window)
 	mPosition = mPositionSetter(window);
 }
 
+void Control::setLabelOffset(float offset)
+{
+	mLabelOffset = offset;
+}
+
+Vector2 Control::getLabelPosition() const
+{
+	auto pos = mPosition;
+	switch (mOrientation)
+	{
+	case Orientation::Horizontal:
+		pos.x += mLabelOffset;
+		break;
+
+	case Orientation::Vertical:
+		pos.y += mLabelOffset;
+		break;
+	}
+
+	return pos;
+}
+
 Control::Orientation Control::getOrientation() const
 {
 	return mOrientation;
@@ -117,113 +140,4 @@ void Control::update(Vector2 const& value)
 	//v.y = mWindowHeight - v.y;
 
 	mSetter(v);
-}
-
-void Control::render(bool hovered)
-{
-	/*
-	auto value = mGetter();
-	Vector2 target;
-	glColor3fv(mColour);
-
-	if (mOrientation != Orientation::Free)
-	{
-		glBegin(GL_LINES);
-		switch (mOrientation)
-		{
-		case Orientation::Horizontal:
-			target.set(mPosition.x + value.x, mPosition.y);
-			break;
-
-		case Orientation::Vertical:
-			target.set(mPosition.x, mPosition.y + value.x);
-			break;
-		}
-
-		glVertex2f(mPosition.x, mPosition.y);
-		glVertex2f(target.x, target.y);
-		glEnd();
-	}
-	else
-	{
-		target = mPosition + value;
-	}
-
-	const size_t fanVerts = mOrientation == Orientation::Free ? 9 : 36;
-
-	glBegin(GL_TRIANGLE_FAN);
-	glVertex2f(target.x, target.y);
-	for (size_t i = 0; i < fanVerts; ++i)
-	{
-		float angle = i * 360.0f / (float)(fanVerts - 1);
-		float radius = (float)(mOrientation == Orientation::Free ? (i % 2 ? 4 : 7) : 7);
-
-		Vector2 v(0, radius);
-		v.rotateClockwise(angle);
-		v += target;
-		
-		glVertex2f(v.x, v.y);
-	}
-	glEnd();
-
-	if (hovered)
-	{
-		float hcolours[3];
-		hcolours[0] = mColour[0] * 1.2f;
-		hcolours[1] = mColour[1] * 1.2f;
-		hcolours[2] = mColour[2] * 1.2f;
-
-		glColor3fv(hcolours);
-		glBegin(GL_LINE_LOOP);
-		for (size_t i = 0; i < fanVerts; ++i)
-		{
-			float angle = i * 360.0f / (float)(fanVerts - 1);
-			float radius = (float)(mOrientation == Orientation::Free ? (i % 2 ? 6 : 9) : 9);
-
-			Vector2 v(0, radius);
-			v.rotateClockwise(angle);
-			v += target;
-
-			glVertex2f(v.x, v.y);
-		}
-		glEnd();
-	}
-
-	if (mShowName)
-	{
-		switch (mOrientation)
-		{
-		case Orientation::Horizontal:
-			gRenderer->renderString((int)mPosition.x, (int)mPosition.y + 16, mName);
-			break;
-
-		case Orientation::Vertical:
-			gRenderer->renderString((int)mPosition.x + 16, (int)mPosition.y, mName);
-			break;
-		}
-	}
-
-	if (mShowValue)
-	{
-		ostringstream out;
-		
-		out.precision(1);
-
-		float v = mGetter().x;
-		v /= 24.0f; // Convert to cm
-		out << std::fixed << v;
-		string val = out.str();
-
-		switch (mOrientation)
-		{
-		case Orientation::Horizontal:
-			gRenderer->renderString((int)(mPosition.x + value.x + 10), (int)mPosition.y, val);
-			break;
-
-		case Orientation::Vertical:
-			gRenderer->renderString((int)(mPosition.x + 10), (int)(mPosition.y + value.x), val);
-			break;
-		}
-	}
-	*/
 }

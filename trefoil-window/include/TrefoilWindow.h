@@ -37,8 +37,6 @@ class TrefoilWindow
 	// Trefoil settings.  We have a point which we use
 	// to generate the control points.  This point has
 	// a position, a radius, and a rotation
-	Vector2 mTrefoilControlPosition;
-
 	float mTrefoilControlRadius, mTrefoilControlRotation;
 
 public:
@@ -92,18 +90,6 @@ public:
 	Vector2 getControl(uint32_t control) const;
 
 	void setControl(uint32_t control, Vector2 const& position);
-
-	Vector2 const& getTrefoilControlPosition() const;
-
-	void setTrefoilControlPosition(Vector2 const& position);
-
-	float getTrefoilControlRadius() const;
-
-	void setTrefoilControlRadius(float radius);
-
-	float getTrefoilControlRotation() const;
-
-	void setTrefoilControlRotation(float rotation);
 
 	float getPaneTrefoilOffset() const;
 

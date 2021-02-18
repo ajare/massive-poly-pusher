@@ -48,6 +48,8 @@ private:
 
 	int mWindowHeight;
 
+	float mLabelOffset;
+
 public:
 
 	Control(std::string const& name, Orientation orientation, Getter getter, Setter setter, PositionSetter positionSetter, Getter minValue, Getter maxValue, int windowHeight);
@@ -68,9 +70,11 @@ public:
 
 	void setPosition(TrefoilWindow const* window);
 
+	void setLabelOffset(float offset);
+
+	Vector2 getLabelPosition() const;
+
 	Orientation getOrientation() const;
 
 	void update(Vector2 const& value);
-	
-	void render(bool hovered);
 };
