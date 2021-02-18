@@ -145,36 +145,6 @@ void TrefoilWindow::setControl(uint32_t control, Vector2 const& position)
 	mControls[control] = position;
 }
 
-Vector2 const& TrefoilWindow::getTrefoilControlPosition() const
-{
-	return mTrefoilControlPosition;
-}
-
-void TrefoilWindow::setTrefoilControlPosition(Vector2 const& position)
-{
-	mTrefoilControlPosition = position;
-}
-
-float TrefoilWindow::getTrefoilControlRadius() const
-{
-	return mTrefoilControlRadius;
-}
-
-void TrefoilWindow::setTrefoilControlRadius(float radius)
-{
-	mTrefoilControlRadius = radius;
-}
-
-float TrefoilWindow::getTrefoilControlRotation() const
-{
-	return mTrefoilControlRotation;
-}
-
-void TrefoilWindow::setTrefoilControlRotation(float rotation)
-{
-	mTrefoilControlRotation = rotation;
-}
-
 float TrefoilWindow::getPaneTrefoilOffset() const
 {
 	return mPaneTrefoilOffset;
@@ -184,7 +154,6 @@ void TrefoilWindow::setPaneTrefoilOffset(float offset)
 {
 	mPaneTrefoilOffset = offset;
 }
-
 
 void TrefoilWindow::setFrameThickness(float thickness)
 {
@@ -231,13 +200,6 @@ Trefoil& TrefoilWindow::getPaneTrefoil()
 
 void TrefoilWindow::resetTrefoilControls()
 {
-	// Trefoil settings
-	float offset = 4 * tanf(WP_PI / 8) / 3.0f;
-	float dOffset = 1.0f - offset;
-
-	mTrefoilControlPosition.set(1.0f - dOffset * 0.5f, 1.0f - dOffset * 0.5f);
-	mTrefoilControlRadius = mTrefoilControlPosition.distanceTo(Vector2(offset, 1.0f));
-	mTrefoilControlRotation = 0.0f;
 }
 
 void TrefoilWindow::save(string const& filename)
@@ -268,10 +230,12 @@ void TrefoilWindow::save(string const& filename)
 	fp.write((char const*)&mControls[0].y, sizeof(float));
 	fp.write((char const*)&mControls[1].x, sizeof(float));
 	fp.write((char const*)&mControls[1].y, sizeof(float));
-	fp.write((char const*)&mTrefoilControlPosition.x, sizeof(float));
-	fp.write((char const*)&mTrefoilControlPosition.y, sizeof(float));
-	fp.write((char const*)&mTrefoilControlRadius, sizeof(mTrefoilControlRadius));
-	fp.write((char const*)&mTrefoilControlRotation, sizeof(mTrefoilControlRotation));
+
+	float dummy = 1.0f;
+	fp.write((char const*)&dummy, sizeof(float));
+	fp.write((char const*)&dummy, sizeof(float));
+	fp.write((char const*)&dummy, sizeof(float));
+	fp.write((char const*)&dummy, sizeof(float));
 
 	fp.close();
 }
@@ -304,10 +268,12 @@ void TrefoilWindow::load(string const& filename)
 	fp.read((char*)&mControls[0].y, sizeof(float));
 	fp.read((char*)&mControls[1].x, sizeof(float));
 	fp.read((char*)&mControls[1].y, sizeof(float));
-	fp.read((char*)&mTrefoilControlPosition.x, sizeof(float));
-	fp.read((char*)&mTrefoilControlPosition.y, sizeof(float));
-	fp.read((char*)&mTrefoilControlRadius, sizeof(mTrefoilControlRadius));
-	fp.read((char*)&mTrefoilControlRotation, sizeof(mTrefoilControlRotation));
+
+	float dummy;
+	fp.read((char*)&dummy, sizeof(float));
+	fp.read((char*)&dummy, sizeof(float));
+	fp.read((char*)&dummy, sizeof(float));
+	fp.read((char*)&dummy, sizeof(float));
 
 	fp.close();
 }
