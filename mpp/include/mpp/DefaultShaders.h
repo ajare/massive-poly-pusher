@@ -108,11 +108,12 @@ const std::string FragmentShaderFullscreenTemplate =
 R"(
 @@Version
 
+@@Uniform(vec4 DIFFUSE);
 @@Texture(sampler2D TEX1);
 
 void main()
 {
-	@Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS));
+	@Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS)) * @Uniform(DIFFUSE);
 }
 )";
 
