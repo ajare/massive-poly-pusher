@@ -332,6 +332,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Render
 			//
+			gRenderSystem->showDebugPanel(false,
+				mpp::RenderSystem::TimeUnit::Milliseconds,
+				mpp::RenderSystem::SizeUnit::Megabytes);
+
 			gRenderSystem->startStatsCollection();
 
 			// Set light positions
