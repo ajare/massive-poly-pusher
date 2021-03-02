@@ -110,6 +110,11 @@ namespace mpp
 		GL_CHECK(glGenBuffers(1, &mUBO));
 
 		bind();
+
+		// Set name for debugging
+		string label = "Uniform Buffer";
+		glObjectLabel(GL_BUFFER, mUBO, -1, label.c_str());
+
 		allocate();
 
 		glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO);

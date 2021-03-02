@@ -286,6 +286,11 @@ namespace mpp
 		GL_CHECK(glGenBuffers(1, &mVBO));
 	
 		bind();
+
+		// Set name for debugging
+		string label = "Vertex Buffer";
+		glObjectLabel(GL_BUFFER, mVBO, -1, label.c_str());
+
 		allocate(mVertexStride * mVertexCount);
 			
 		for (size_t i = 0; i < getNumAttributes(); ++i)

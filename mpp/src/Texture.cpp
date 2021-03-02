@@ -215,6 +215,10 @@ namespace mpp
 
 			GL_CHECK(glBindTexture(mTarget, texId));
 
+			// Set name for debugging
+			auto label = "Texture: " + getName();
+			glObjectLabel(GL_TEXTURE, texId, -1, label.c_str());
+
 			// Set parameters
 			switch (mTarget)
 			{
