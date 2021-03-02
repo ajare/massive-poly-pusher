@@ -189,12 +189,20 @@ namespace mpp
 		GL_CHECK(glGenFramebuffers(1, &mFrameBuffer));
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
 
+		// Set name for debugging
+		string label = "Framebuffer: " + getName();
+		glObjectLabel(GL_FRAMEBUFFER, mFrameBuffer, -1, label.c_str());
+
 		// Create textures
 		for (size_t i = 0; i < mNumAttachments; ++i)
 		{
 			GLuint texId;
 			GL_CHECK(glGenTextures(1, &texId));
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
+
+			// Set name for debugging
+			auto label = "Texture: " + getName() + "_attachment_" + utils::StringUtils::toString(i);
+			glObjectLabel(GL_TEXTURE, texId, -1, label.c_str());
 
 			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
 
@@ -213,6 +221,10 @@ namespace mpp
 		{
 			GL_CHECK(glGenRenderbuffers(1, &mDepthBuffer));
 			GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer));
+
+			// Set name for debugging
+			string label = "Renderbuffer: " + getName();
+			glObjectLabel(GL_RENDERBUFFER, mDepthBuffer, -1, label.c_str());
 
 			GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height));
 			GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer));

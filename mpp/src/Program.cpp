@@ -326,6 +326,10 @@ namespace mpp
 
 			compileShader(&mVertexShaderId, mVertexSource, "vertex");
 
+			// Set name for debugging
+			auto label = "Vertex shader: " + getName();
+			glObjectLabel(GL_SHADER, mVertexShaderId, -1, label.c_str());
+
 			// Create fragment shader
 			mFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 			if (mFragmentShaderId == 0)
@@ -334,6 +338,10 @@ namespace mpp
 			}
 
 			compileShader(&mFragmentShaderId, mFragmentSource, "fragment");
+
+			// Set name for debugging
+			label = "Fragment shader: " + getName();
+			glObjectLabel(GL_SHADER, mFragmentShaderId, -1, label.c_str());
 
 			// Create program
 			GLuint programId = glCreateProgram();
@@ -348,6 +356,10 @@ namespace mpp
 
 			// Link shaders
 			glLinkProgram(programId);
+
+			// Set name for debugging
+			label = "Program: " + getName();
+			glObjectLabel(GL_PROGRAM, programId, -1, label.c_str());
 
 			// Detach and destroy them to free memory
 			glDetachShader(programId, mVertexShaderId);

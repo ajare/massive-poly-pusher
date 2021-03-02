@@ -314,11 +314,19 @@ namespace mpp
 		GL_CHECK(glGenVertexArrays(1, &mVAO));
 		GL_CHECK(glBindVertexArray(mVAO));
 
+		// Set name for debugging
+		string label = "VertexArray: " + getName();
+		glObjectLabel(GL_VERTEX_ARRAY, mVAO, -1, label.c_str());
+
 		// Create index buffer
 		if (isIndexed())
 		{
 			GL_CHECK(glGenBuffers(1, &mIBO));
 			GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
+
+			// Set name for debugging
+			string label = "Buffer: " + getName();
+			glObjectLabel(GL_BUFFER, mIBO, -1, label.c_str());
 
 			allocateIndexData(mPrimitiveCount);
 		}
