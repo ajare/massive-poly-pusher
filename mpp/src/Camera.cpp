@@ -131,13 +131,11 @@ namespace mpp
 
 	vec3 Camera::getDirection() const
 	{
-		//return mOrientation * vec3(0, 0, -1);
 		return rotate(inverse(mOrientation), vec3(0.0f, 0.0f, -1.0f));
 	}
 
 	vec3 Camera::getUp() const
 	{
-		//return mOrientation * vec3(0, 1, 0);
 		return rotate(inverse(mOrientation), vec3(0.0f, 1.0f, 0.0f));
 	}
 
