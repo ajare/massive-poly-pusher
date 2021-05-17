@@ -43,7 +43,7 @@ namespace mpp
 
 		void FreeCamera::yaw(float yaw)
 		{
-			quat yawQuat = angleAxis(yaw * (3.14159f / 180.0f), getUp());
+			quat yawQuat = angleAxis(yaw, getUp());
 
 			mOrientation = yawQuat * mOrientation;
 			normalize(mOrientation);
@@ -52,7 +52,7 @@ namespace mpp
 		void FreeCamera::pitch(float pitch)
 		{
 			vec3 right = cross(getDirection(), getUp());
-			quat pitchQuat = angleAxis(pitch * (3.14159f / 180.0f), right);
+			quat pitchQuat = angleAxis(pitch, right);
 
 			mOrientation = pitchQuat * mOrientation;
 			normalize(mOrientation);
@@ -60,7 +60,7 @@ namespace mpp
 
 		void FreeCamera::roll(float roll)
 		{
-			quat rollQuat = angleAxis(roll * (3.14159f / 180.0f), getDirection());
+			quat rollQuat = angleAxis(roll, getDirection());
 			
 			mOrientation = rollQuat * mOrientation;
 			normalize(mOrientation);
