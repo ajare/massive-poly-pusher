@@ -131,12 +131,14 @@ namespace mpp
 
 	vec3 Camera::getDirection() const
 	{
-		return mOrientation * vec3(0, 0, -1);
+		//return mOrientation * vec3(0, 0, -1);
+		return rotate(inverse(mOrientation), vec3(0.0f, 0.0f, -1.0f));
 	}
 
 	vec3 Camera::getUp() const
 	{
-		return mOrientation * vec3(0, 1, 0);
+		//return mOrientation * vec3(0, 1, 0);
+		return rotate(inverse(mOrientation), vec3(0.0f, 1.0f, 0.0f));
 	}
 
 	mat4 Camera::getViewTransform() const
@@ -144,8 +146,8 @@ namespace mpp
 		return translate(toMat4(mOrientation), -mPosition);
 	}
 
-	glm::mat4 Camera::getProjectionTransform() const
+	mat4 Camera::getProjectionTransform() const
 	{
-		return glm::perspective(glm::radians(mFov), mAspectRatio, mNear, mFar);
+		return perspective(glm::radians(mFov), mAspectRatio, mNear, mFar);
 	}
 }
