@@ -84,20 +84,24 @@ namespace mpp
 
 				mBatch->startUpdate(count);
 
-				auto posBuffer = (PosType::builtin_type*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
+				typedef typename PosType::builtin_type PosTypeBuiltin;
+				typedef typename TexType::builtin_type TexTypeBuiltin;
+				typedef typename ColType::builtin_type ColTypeBuiltin;
 
-				TexType::builtin_type* texBuffer{ nullptr };
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
+				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+
+				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
 				if (mBatch->usingTexture())
 				{
-					texBuffer = (TexType::builtin_type*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
+					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
+					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
 				auto colBuffer = (uint8_t*)mBatch->getAttributeData("COLOUR").first;
-				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
+				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
 				size_t triangleCount = mBatch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
@@ -110,7 +114,7 @@ namespace mpp
 					//
 					if (!mBatch->positionFixed() || newVertex)
 					{
-						PosType::builtin_type x0, y0, x1, y1, x2, y2;
+						PosTypeBuiltin x0, y0, x1, y1, x2, y2;
 						mDataProvider->position(primitiveIndex, x0, y0, x1, y1, x2, y2);
 
 						posBuffer[pOffset + 0] = x0;
@@ -135,7 +139,7 @@ namespace mpp
 					//
 					if (mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
 					{
-						TexType::builtin_type u0, v0, u1, v1, u2, v2;
+						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
 						mDataProvider->texcoords(primitiveIndex, u0, v0, u1, v1, u2, v2);
 
 						texBuffer[tOffset + 0] = u0;
@@ -160,7 +164,7 @@ namespace mpp
 					//
 					if (mBatch->usingColour() && (!mBatch->colourFixed() || newVertex))
 					{
-						ColType::builtin_type red, green, blue, alpha;
+						ColTypeBuiltin red, green, blue, alpha;
 						mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
 
 						colBuffer[cOffset + 0] = red;
@@ -266,16 +270,19 @@ namespace mpp
 
 				mBatch->startUpdate(count);
 
-				auto posBuffer = (PosType::builtin_type*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
+				typedef typename PosType::builtin_type PosTypeBuiltin;
+				typedef typename TexType::builtin_type TexTypeBuiltin;
 
-				TexType::builtin_type* texBuffer{ nullptr };
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
+				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+
+				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
 				if (mBatch->usingTexture())
 				{
-					texBuffer = (TexType::builtin_type*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
+					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
+					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
 				size_t triangleCount = mBatch->getPrimitiveCount(count);
@@ -289,7 +296,7 @@ namespace mpp
 					//
 					if (!mBatch->positionFixed() || newVertex)
 					{
-						PosType::builtin_type x0, y0, x1, y1, x2, y2;
+						PosTypeBuiltin x0, y0, x1, y1, x2, y2;
 						mDataProvider->position(primitiveIndex, x0, y0, x1, y1, x2, y2);
 
 						posBuffer[pOffset + 0] = x0;
@@ -314,7 +321,7 @@ namespace mpp
 					//
 					if (mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
 					{
-						TexType::builtin_type u0, v0, u1, v1, u2, v2;
+						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
 						mDataProvider->texcoords(primitiveIndex, u0, v0, u1, v1, u2, v2);
 
 						texBuffer[tOffset + 0] = u0;
@@ -419,23 +426,27 @@ namespace mpp
 
 				batch->startUpdate(count);
 
-				auto posBuffer = (PosType::builtin_type*)batch->getAttributeData("POSITION").first;
-				auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
+				typedef typename PosType::builtin_type PosTypeBuiltin;
+				typedef typename TexType::builtin_type TexTypeBuiltin;
+				typedef typename ColType::builtin_type ColTypeBuiltin;
 
-				auto norBuffer = (PosType::builtin_type*)batch->getAttributeData("NORMAL").first;
-				auto norStride = batch->getAttributeData("NORMAL").second / sizeof(PosType::builtin_type);
+				auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
+				auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
-				TexType::builtin_type* texBuffer{ nullptr };
+				auto norBuffer = (PosTypeBuiltin*)batch->getAttributeData("NORMAL").first;
+				auto norStride = batch->getAttributeData("NORMAL").second / sizeof(PosTypeBuiltin);
+
+				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
 				if (batch->usingTexture())
 				{
-					texBuffer = (TexType::builtin_type*)batch->getAttributeData("TEXCOORDS").first;
-					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
+					texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
+					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
 				auto colBuffer = (uint8_t*)batch->getAttributeData("COLOUR").first;
-				auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
+				auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
 				size_t triangleCount = batch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, nOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
@@ -448,7 +459,7 @@ namespace mpp
 					//
 					if (!batch->positionFixed() || newVertex)
 					{
-						PosType::builtin_type x0, y0, z0, x1, y1, z1, x2, y2, z2;
+						PosTypeBuiltin x0, y0, z0, x1, y1, z1, x2, y2, z2;
 						mDataProvider->position(primitiveIndex, x0, y0, z0, x1, y1, z1, x2, y2, z2);
 
 						posBuffer[pOffset + 0] = x0;
@@ -476,7 +487,7 @@ namespace mpp
 					//
 					if (!batch->positionFixed() || newVertex)
 					{
-						PosType::builtin_type x0, y0, z0, x1, y1, z1, x2, y2, z2;
+						PosTypeBuiltin x0, y0, z0, x1, y1, z1, x2, y2, z2;
 						mDataProvider->normal(primitiveIndex, x0, y0, z0, x1, y1, z1, x2, y2, z2);
 
 						norBuffer[nOffset + 0] = x0;
@@ -504,7 +515,7 @@ namespace mpp
 					//
 					if (batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
 					{
-						TexType::builtin_type u0, v0, u1, v1, u2, v2;
+						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
 						mDataProvider->texcoords(primitiveIndex, u0, v0, u1, v1, u2, v2);
 
 						texBuffer[tOffset + 0] = u0;
@@ -529,7 +540,7 @@ namespace mpp
 					//
 					if (batch->usingColour() && (!batch->colourFixed() || newVertex))
 					{
-						ColType::builtin_type red, green, blue, alpha;
+						ColTypeBuiltin red, green, blue, alpha;
 						mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
 
 						colBuffer[cOffset + 0] = red;
