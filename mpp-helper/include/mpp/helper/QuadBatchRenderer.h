@@ -295,23 +295,27 @@ namespace mpp
 				float radiusX = mBatch->getMaxDimX() / 2.0f;
 				float radiusY = mBatch->getMaxDimY() / 2.0f;
 
-				auto posBuffer = (PosType::builtin_type*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
+				typedef typename PosTypeBuiltin PosTypeBuiltin;
+				typedef typename TexTypeBuiltin TexTypeBuiltin;
+				typedef typename ColTypeBuiltin ColTypeBuiltin;
 
-				auto rotBuffer = (PosType::builtin_type*)mBatch->getAttributeData("ROTATION").first;
-				auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosType::builtin_type);
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
+				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
-				TexType::builtin_type* texBuffer{ nullptr };
+				auto rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
+				auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+
+				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
 				if (mBatch->usingTexture())
 				{
-					texBuffer = (TexType::builtin_type*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
+					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
+					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				auto colBuffer = (uint8_t*)mBatch->getAttributeData("COLOUR").first;
-				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColType::builtin_type);
+				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
+				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
 				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 				for (size_t pOffset = 0, rOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
@@ -324,7 +328,7 @@ namespace mpp
 					//
 					if (!mBatch->positionFixed() || newVertex)
 					{
-						PosType::builtin_type x, y;
+						PosTypeBuiltin x, y;
 						mDataProvider->position(primitiveIndex, x, y);
 
 						if (mBatch->usingPointSprites())
@@ -372,7 +376,7 @@ namespace mpp
 					//
 					if (!mBatch->rotationFixed() || newVertex)
 					{
-						PosType::builtin_type angle;
+						PosTypeBuiltin angle;
 						mDataProvider->angle(primitiveIndex, angle);
 
 						rotBuffer[rOffset + 0] = sinf(angle);
@@ -388,7 +392,7 @@ namespace mpp
 						{
 							if (mBatch->usingTextureAtlas())
 							{
-								TexType::builtin_type u0, v0, u1, v1;
+								TexTypeBuiltin u0, v0, u1, v1;
 								mDataProvider->textureAtlasTexcoords(primitiveIndex, u0, v0, u1, v1);
 
 								texBuffer[tOffset + 0] = u0;
@@ -403,7 +407,7 @@ namespace mpp
 							{
 								int vertexIndex = i % 4;
 
-								TexType::builtin_type u0, v0, u1, v1;
+								TexTypeBuiltin u0, v0, u1, v1;
 								mDataProvider->textureAtlasTexcoords(primitiveIndex, u0, v0, u1, v1);
 
 								// Indexed, four vertices per quad
@@ -460,7 +464,7 @@ namespace mpp
 					//
 					if (!mBatch->colourFixed() || newVertex)
 					{
-						ColType::builtin_type red, green, blue, alpha;
+						ColTypeBuiltin red, green, blue, alpha;
 						mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
 
 						colBuffer[cOffset + 0] = red;
@@ -611,19 +615,22 @@ namespace mpp
 				float radiusX = mBatch->getMaxDimX() / 2.0f;
 				float radiusY = mBatch->getMaxDimY() / 2.0f;
 
-				auto posBuffer = (PosType::builtin_type*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosType::builtin_type);
+				typedef typename PosType::builtin_type PosTypeBuiltin;
+				typedef typename TexType::builtin_type TexTypeBuiltin;
 
-				auto rotBuffer = (PosType::builtin_type*)mBatch->getAttributeData("ROTATION").first;
-				auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosType::builtin_type);
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
+				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
-				TexType::builtin_type* texBuffer{ nullptr };
+				auto rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
+				auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+
+				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
 				if (mBatch->usingTexture())
 				{
-					texBuffer = (TexType::builtin_type*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexType::builtin_type);
+					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
+					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
 				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
@@ -637,7 +644,7 @@ namespace mpp
 					//
 					if (!mBatch->positionFixed() || newVertex)
 					{
-						PosType::builtin_type x, y;
+						PosTypeBuiltin x, y;
 						mDataProvider->position(primitiveIndex, x, y);
 
 						if (mBatch->usingPointSprites())
@@ -685,7 +692,7 @@ namespace mpp
 					//
 					if (!mBatch->rotationFixed() || newVertex)
 					{
-						PosType::builtin_type angle;
+						PosTypeBuiltin angle;
 						mDataProvider->angle(primitiveIndex, angle);
 
 						rotBuffer[rOffset + 0] = sinf(angle);
@@ -701,7 +708,7 @@ namespace mpp
 						{
 							if (mBatch->usingTextureAtlas())
 							{
-								TexType::builtin_type u0, v0, u1, v1;
+								TexTypeBuiltin u0, v0, u1, v1;
 								mDataProvider->textureAtlasTexcoords(primitiveIndex, u0, v0, u1, v1);
 
 								texBuffer[tOffset + 0] = u0;
@@ -716,7 +723,7 @@ namespace mpp
 							{
 								int vertexIndex = i % 4;
 
-								TexType::builtin_type u0, v0, u1, v1;
+								TexTypeBuiltin u0, v0, u1, v1;
 								mDataProvider->textureAtlasTexcoords(primitiveIndex, u0, v0, u1, v1);
 
 								// Indexed, four vertices per quad
