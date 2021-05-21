@@ -68,10 +68,10 @@ namespace mpp
 	{
 		vector<SceneModelPtr> inView;
 
-		// copy only positive numbers:
+		// Default Scene just checks if the object has its 'visible' flag set
 		std::copy_if(mModels.begin(), mModels.end(), std::back_inserter(inView), [camera](SceneModelPtr model) 
 		{
-			return true; 
+			return model->isVisible(); 
 		});
 
 		return inView;

@@ -10,10 +10,8 @@ namespace mpp
 
 	SceneModel::SceneModel(ResourcePtr model)
 		: mModel(model)
-	{
-	}
-
-	SceneModel::~SceneModel()
+		, mWireframe(false)
+		, mVisible(true)
 	{
 	}
 
@@ -47,5 +45,25 @@ namespace mpp
 	glm::mat4 const& SceneModel::getTransform() const
 	{
 		return mTransform;
+	}
+
+	void SceneModel::setWireframe(bool wireframe)
+	{
+		mWireframe = wireframe;
+	}
+
+	bool SceneModel::isWireframe() const
+	{
+		return mWireframe;
+	}
+
+	void SceneModel::setVisible(bool visible)
+	{
+		mVisible = visible;
+	}
+
+	bool SceneModel::isVisible() const
+	{
+		return mVisible;
 	}
 }

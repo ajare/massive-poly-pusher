@@ -17,6 +17,10 @@ namespace mpp
 	{
 		ResourcePtr mModel;
 
+		bool mWireframe;
+
+		bool mVisible;
+
 #pragma warning(push)
 #pragma warning(disable: 4324)
 		alignas(16) glm::mat4 mTransform;
@@ -26,7 +30,7 @@ namespace mpp
 
 		explicit SceneModel(ResourcePtr model);
 
-		virtual ~SceneModel();
+		virtual ~SceneModel() = default;
 
 		void translate(glm::vec3 const& translate);
 
@@ -39,6 +43,14 @@ namespace mpp
 		ResourcePtr getModel() const;
 
 		glm::mat4 const& getTransform() const;
+
+		void setWireframe(bool wireframe);
+
+		bool isWireframe() const;
+
+		void setVisible(bool visible);
+
+		bool isVisible() const;
 	};
 
 	typedef std::shared_ptr<SceneModel> SceneModelPtr;
