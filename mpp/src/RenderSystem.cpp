@@ -532,6 +532,10 @@ namespace mpp
 		infoMessage(utils::StringUtils::format("Max recommended elements: {}", mCaps.maxRecommendedElements));
 		infoMessage(utils::StringUtils::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
 		infoMessage(utils::StringUtils::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
+
+		infoMessage(utils::StringUtils::format("Max vertex shader uniforms: {}", GL_MAX_VERTEX_UNIFORM_COMPONENTS));
+		infoMessage(utils::StringUtils::format("Max geometry shader uniforms: {}", GL_MAX_GEOMETRY_UNIFORM_COMPONENTS));
+		infoMessage(utils::StringUtils::format("Max fragment shader uniforms: {}", GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
 	}
 
 	/*
