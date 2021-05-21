@@ -38,10 +38,12 @@ namespace mpp
 		// Render models in view
 		for (auto model: models)
 		{
-			mRenderSystem->renderModelBatched(
+			auto instance = mRenderSystem->renderModelBatched(
 				model->getModel(),
 				model->getTransform(),
 				camera);
+
+			instance->setWireframe(model->isWireframe());
 		}
 	}
 }
