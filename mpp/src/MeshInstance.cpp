@@ -210,6 +210,31 @@ namespace mpp
 		mUniforms.setUniform(name, value);
 	}
 
+	void MeshInstance::setUniform(std::string const& name, int const* values, size_t count)
+	{
+		mUniforms.setUniform(name, count, values);
+	}
+
+	void MeshInstance::setUniform(string const& name, float const* values, size_t count)
+	{
+		mUniforms.setUniform(name, count, values);
+	}
+
+	void MeshInstance::setUniform(string const& name, glm::vec2 const* values, size_t count)
+	{
+		mUniforms.setUniform(name, count * 2, glm::value_ptr(values[0]));
+	}
+
+	void MeshInstance::setUniform(string const& name, glm::vec3 const* values, size_t count)
+	{
+		mUniforms.setUniform(name, count * 3, glm::value_ptr(values[0]));
+	}
+
+	void MeshInstance::setUniform(string const& name, glm::vec4 const* values, size_t count)
+	{
+		mUniforms.setUniform(name, count * 4, glm::value_ptr(values[0]));
+	}
+
 	/*
 	 * Set number of primitives to render, or -1 to render all, which is default.
 	 *

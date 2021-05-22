@@ -189,6 +189,8 @@ namespace mpp
 
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
+			mpp::UniformCollection mUniforms;
+
 		public:
 
 			QuadBatchRenderer(std::string const& name,
@@ -262,6 +264,8 @@ namespace mpp
 						renderSystem,
 						resourceMgr);
 				}
+
+				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -486,14 +490,13 @@ namespace mpp
 
 			void render() override
 			{
-				mpp::UniformCollection uniforms;
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					uniforms.setUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &uniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
 			}
 		};
 
@@ -508,6 +511,8 @@ namespace mpp
 			mpp::QuadBatch* mBatch{ nullptr };
 
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider;
+
+			UniformCollection mUniforms;
 
 		public:
 
@@ -582,6 +587,8 @@ namespace mpp
 						renderSystem,
 						resourceMgr);
 				}
+
+				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -787,14 +794,13 @@ namespace mpp
 
 			void render()
 			{
-				mpp::UniformCollection uniforms;
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					uniforms.setUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &uniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
 			}
 		};
 

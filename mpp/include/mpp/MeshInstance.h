@@ -89,6 +89,16 @@ namespace mpp
 
 		void setUniform(std::string const& name, glm::vec4 const& value);
 
+		void setUniform(std::string const& name, int const* values, size_t count);
+
+		void setUniform(std::string const& name, float const* values, size_t count);
+
+		void setUniform(std::string const& name, glm::vec2 const* values, size_t count);
+
+		void setUniform(std::string const& name, glm::vec3 const* values, size_t count);
+
+		void setUniform(std::string const& name, glm::vec4 const* values, size_t count);
+
 		void setRenderCount(uint32_t count);
 
 		void translate(glm::vec3 const& translate);

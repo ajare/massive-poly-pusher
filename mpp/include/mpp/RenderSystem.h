@@ -126,6 +126,8 @@ namespace mpp
 
 		ResourcePtr mFontMesh;
 
+		UniformCollection mTextUniforms;
+
 		// Texture tiles
 		std::map<std::string, TextureTile> mTextureTiles;
 

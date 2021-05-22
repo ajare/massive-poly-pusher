@@ -295,6 +295,9 @@ namespace mpp
 		setDefaultState();
 		setDisplay(mWindowWidth, mWindowHeight);
 		createLightsData();
+
+		// Uniforms
+		mTextUniforms.setUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 	}
 
 	/*
@@ -1983,11 +1986,10 @@ namespace mpp
 		int count = buildTextVertexBuffer(vertexBuffer, text, offset, x, y);
 		vertexBuffer->mapBufferData(count);
 		
-		UniformCollection uc;
-		uc.setUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+		mTextUniforms.updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 		
 		Model* model = (Model*)mTextMesh.get();
-		renderModelImmediate(*model, true, &uc, count);
+		renderModelImmediate(*model, true, &mTextUniforms, count);
 	}
 	
 	/*
@@ -2010,11 +2012,10 @@ namespace mpp
 
 		vertexBuffer->mapBufferData(count);
 
-		UniformCollection uc;
-		uc.setUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+		mTextUniforms.updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 
 		Model* model = (Model*)mTextMesh.get();
-		renderModelImmediate(*model, true, &uc, count);
+		renderModelImmediate(*model, true, &mTextUniforms, count);
 	}
 
 	/*
@@ -2033,10 +2034,8 @@ namespace mpp
 		int count = buildColouredTextVertexBuffer(vertexBuffer, text, offset, x, y);
 		vertexBuffer->mapBufferData(count);
 
-		UniformCollection uc;
-		uc.setUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-		renderModelImmediate(*textModel, true, &uc, count);
+		mTextUniforms.updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		renderModelImmediate(*textModel, true, &mTextUniforms, count);
 	}
 	
 	/*

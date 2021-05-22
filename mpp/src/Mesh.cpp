@@ -209,7 +209,7 @@ namespace mpp
 	 */
 	VertexBuffer* Mesh::getVertexBuffer(int index)
 	{
-		assert((index >= 0 && index < getNumVertexBuffers()) && "Mesh::getVertexBuffer() 'index' argument out of range!");
+		assert((index >= 0 && index < (int)getNumVertexBuffers()) && "Mesh::getVertexBuffer() 'index' argument out of range!");
 		return mVertexBuffers[index];
 	}
 

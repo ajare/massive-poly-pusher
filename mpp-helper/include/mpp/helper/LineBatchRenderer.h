@@ -32,6 +32,8 @@ namespace mpp
 
 			std::shared_ptr<LineBatchDataProvider<PosType, ColType>> mDataProvider{ nullptr };
 
+			mpp::UniformCollection mUniforms;
+
 		public:
 
 			LineBatchRenderer(std::string const& name,
@@ -53,6 +55,8 @@ namespace mpp
 					mDataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
+
+				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~LineBatchRenderer()
@@ -146,14 +150,13 @@ namespace mpp
 
 			void render() override
 			{
-				mpp::UniformCollection uniforms;
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					uniforms.setUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &uniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
 			}
 		};
 
