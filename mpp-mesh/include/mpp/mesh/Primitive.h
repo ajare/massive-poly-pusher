@@ -16,7 +16,7 @@ namespace mpp
 
 		public:
 
-			static int size(Type type)
+			static size_t size(Type type)
 			{
 				switch (type)
 				{

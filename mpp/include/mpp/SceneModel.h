@@ -21,6 +21,8 @@ namespace mpp
 
 		bool mVisible;
 
+		size_t mInstanceCount;
+
 #pragma warning(push)
 #pragma warning(disable: 4324)
 		alignas(16) glm::mat4 mTransform;
@@ -51,6 +53,10 @@ namespace mpp
 		void setVisible(bool visible);
 
 		bool isVisible() const;
+
+		void setInstanceCount(size_t instanceCount);
+
+		size_t getInstanceCount() const;
 	};
 
 	typedef std::shared_ptr<SceneModel> SceneModelPtr;

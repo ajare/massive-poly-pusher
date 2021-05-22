@@ -44,6 +44,8 @@ namespace mpp
 		void setUniform(std::string const& name, glm::vec3 const& value);
 
 		void setWireframe(bool wireframe);
+
+		void setInstanceCount(size_t instanceCount);
 	};
 }
 
