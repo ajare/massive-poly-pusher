@@ -42,7 +42,7 @@ namespace mpp
 	 * Constructor (indexed).
 	 *
 	 */
-	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, vector<uint8_t> const& indices, mesh::VertexBufferStorageType storageType, float pointSize)
+	Mesh::Mesh(RenderSystem* renderSystem, string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, size_t indexWidth, vector<uint8_t> const& indices, mesh::VertexBufferStorageType storageType, float pointSize)
 		: mName(name)
 		, mVAO(0)
 		, mIBO(0)
@@ -129,7 +129,7 @@ namespace mpp
 	 * Set index data.
 	 *
 	 */
-	void Mesh::setIndexData(vector<uint8_t> const& indexData, int indexWidth)
+	void Mesh::setIndexData(vector<uint8_t> const& indexData, size_t indexWidth)
 	{
 		mIsIndexed = true;
 		mIndexData = indexData;
@@ -186,7 +186,7 @@ namespace mpp
 	 * Add a vertex buffer.
 	 *
 	 */
-	VertexBuffer* Mesh::createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8_t> vertexData)
+	VertexBuffer* Mesh::createVertexBuffer(size_t vertexCount, size_t vertexStride, bool streaming, bool staticData, shared_ptr<const int8_t> vertexData)
 	{
 		VertexBuffer* buf = new VertexBuffer(mwRenderSystem, mStorageType, vertexCount, vertexStride, streaming, staticData, vertexData);
 
@@ -198,9 +198,9 @@ namespace mpp
 	 * Get number of vertex buffers in this mesh.
 	 *
 	 */
-	int Mesh::getNumVertexBuffers() const
+	size_t Mesh::getNumVertexBuffers() const
 	{
-		return (int)mVertexBuffers.size();
+		return mVertexBuffers.size();
 	}
 
 	/*
@@ -278,7 +278,7 @@ namespace mpp
 	 * Allocate index data storage.
 	 *
 	 */
-	void Mesh::allocateIndexData(int numPrimitives)
+	void Mesh::allocateIndexData(size_t numPrimitives)
 	{
 		GLenum glStorageType;
 		switch (mStorageType)
@@ -437,9 +437,9 @@ namespace mpp
 	 * Size (in bytes) of a vertex
 	 *
 	 */
-	int Mesh::getVertexSize() const
+	size_t Mesh::getVertexSize() const
 	{
-		int vertexSize = 0;
+		size_t vertexSize = 0;
 		for (auto const& vertexBuffer : mVertexBuffers)
 		{
 			vertexSize += vertexBuffer->getVertexStride();

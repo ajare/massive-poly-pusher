@@ -16,7 +16,7 @@ namespace mpp
 	 * Constructor.  Pass already-created vertex data directly in.
 	 *
 	 */
-	VertexBuffer::VertexBuffer(RenderSystem* renderSystem, VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, shared_ptr<const int8_t> data)
+	VertexBuffer::VertexBuffer(RenderSystem* renderSystem, VertexBufferStorageType storageType, size_t vertexCount, size_t vertexStride, bool streaming, bool staticData, shared_ptr<const int8_t> data)
 		: mVBO(0)
 		, mwRenderSystem(renderSystem)
 		, mStorageType(storageType)
@@ -28,7 +28,7 @@ namespace mpp
 		mData.reserve(vertexCount * vertexStride);
 		int8_t const* dataPtr = data.get();
 
-		for (int i = 0; i < vertexCount * vertexStride; ++i)
+		for (size_t i = 0; i < vertexCount * vertexStride; ++i)
 		{
 			mData.push_back(*dataPtr++);
 		}
@@ -49,7 +49,7 @@ namespace mpp
 	 * Set an attribute for a program to use.
 	 *
 	 */
-	void VertexBuffer::setAttribute(int id, Vertex::DataType dataType, int componentSize, int offset, bool normalise)
+	void VertexBuffer::setAttribute(int id, Vertex::DataType dataType, size_t componentSize, int offset, bool normalise)
 	{
 		Attribute attr;
 		
@@ -84,7 +84,7 @@ namespace mpp
 	 * Get number of vertices in buffer.
 	 *
 	 */
-	int VertexBuffer::getNumVertices() const
+	size_t VertexBuffer::getNumVertices() const
 	{
 		return mVertexCount;
 	}
@@ -93,7 +93,7 @@ namespace mpp
 	 * Get vertex stride size.
 	 *
 	 */
-	int VertexBuffer::getVertexStride() const
+	size_t VertexBuffer::getVertexStride() const
 	{
 		return mVertexStride;
 	}

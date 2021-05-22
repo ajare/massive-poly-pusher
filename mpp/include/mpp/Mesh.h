@@ -23,11 +23,11 @@ namespace mpp
 
 		float mPointSize;
 		
-		int mPrimitiveSize;
+		size_t mPrimitiveSize;
 
-		int mPrimitiveCount;
+		size_t mPrimitiveCount;
 
-		int mIndexWidth, mIndexDataSize;
+		size_t mIndexWidth, mIndexDataSize;
 
 		mesh::VertexBufferStorageType mStorageType;
 
@@ -52,7 +52,7 @@ namespace mpp
 
 		void setPrimitiveData(mesh::Primitive::Type type);
 
-		void allocateIndexData(int numPrimitives);
+		void allocateIndexData(size_t numPrimitives);
 
 		void bind(bool use) const;
 
@@ -60,7 +60,7 @@ namespace mpp
 
 		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
 
-		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, int indexWidth, std::vector<uint8_t> const& indices, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
+		Mesh(RenderSystem* renderSystem, std::string const& name, ResourcePtr material, mesh::Primitive::Type type, size_t primitiveCount, size_t indexWidth, std::vector<uint8_t> const& indices, mesh::VertexBufferStorageType storageType, float pointSize = -1.0f);
 
 		~Mesh();
 
@@ -70,7 +70,7 @@ namespace mpp
 
 		ResourcePtr getMaterial() const;
 
-		void setIndexData(std::vector<uint8_t> const& indexData, int indexWidth);
+		void setIndexData(std::vector<uint8_t> const& indexData, size_t indexWidth);
 
 		bool isIndexed() const;
 
@@ -82,9 +82,9 @@ namespace mpp
 
 		float getPointSize() const;
 
-		VertexBuffer* createVertexBuffer(int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8_t> vertexData);
+		VertexBuffer* createVertexBuffer(size_t vertexCount, size_t vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8_t> vertexData);
 		
-		int getNumVertexBuffers() const;
+		size_t getNumVertexBuffers() const;
 
 		VertexBuffer* getVertexBuffer(int index);
 
@@ -106,6 +106,6 @@ namespace mpp
 
 		void setStorageType(mesh::VertexBufferStorageType storageType);
 
-		int getVertexSize() const;
+		size_t getVertexSize() const;
 	};
 }

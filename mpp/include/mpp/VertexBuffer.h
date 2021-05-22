@@ -24,7 +24,7 @@ namespace mpp
 		struct Attribute
 		{
 			int id;
-			int componentSize, sizeInBytes;
+			size_t componentSize, sizeInBytes;
 			GLenum dataType;
 			int offsetInBytes;
 			bool normalise;
@@ -38,9 +38,9 @@ namespace mpp
 
 		mesh::VertexBufferStorageType mStorageType;
 
-		int mVertexCount;
+		size_t mVertexCount;
 		
-		int mVertexStride;
+		size_t mVertexStride;
 
 		bool mStreaming;
 
@@ -58,15 +58,15 @@ namespace mpp
 
 	public:
 
-		VertexBuffer(RenderSystem* renderSystem, mesh::VertexBufferStorageType storageType, int vertexCount, int vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8_t> data);
+		VertexBuffer(RenderSystem* renderSystem, mesh::VertexBufferStorageType storageType, size_t vertexCount, size_t vertexStride, bool streaming, bool staticData, std::shared_ptr<const int8_t> data);
 
 		virtual ~VertexBuffer();
 
-		void setAttribute(int id, mesh::Vertex::DataType dataType, int componentSize, int offset, bool normalise);
+		void setAttribute(int id, mesh::Vertex::DataType dataType, size_t componentSize, int offset, bool normalise);
 
-		int getNumVertices() const;
+		size_t getNumVertices() const;
 			
-		int getVertexStride() const;
+		size_t getVertexStride() const;
 
 		bool isStatic() const;
 

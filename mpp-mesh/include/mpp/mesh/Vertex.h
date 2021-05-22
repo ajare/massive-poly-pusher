@@ -47,9 +47,9 @@ namespace mpp
 				UserDefined4 = 1 << 14
 			};
 
-			static int getComponentSize(Component component);
+			static size_t getComponentSize(Component component);
 
-			static int getDataTypeSize(DataType dataType);
+			static size_t getDataTypeSize(DataType dataType);
 
 			static bool isDataTypeNormalisable(DataType dataType);
 
