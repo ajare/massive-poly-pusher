@@ -295,9 +295,9 @@ namespace mpp
 				float radiusX = mBatch->getMaxDimX() / 2.0f;
 				float radiusY = mBatch->getMaxDimY() / 2.0f;
 
-				typedef typename PosTypeBuiltin PosTypeBuiltin;
-				typedef typename TexTypeBuiltin TexTypeBuiltin;
-				typedef typename ColTypeBuiltin ColTypeBuiltin;
+				typedef typename PosType::builtin_type PosTypeBuiltin;
+				typedef typename TexType::builtin_type TexTypeBuiltin;
+				typedef typename ColType::builtin_type ColTypeBuiltin;
 
 				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
 				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
