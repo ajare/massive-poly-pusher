@@ -104,7 +104,7 @@ namespace mpp
 					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				auto colBuffer = (uint8_t*)mBatch->getAttributeData("COLOUR").first;
+				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
 				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
 				size_t triangleCount = mBatch->getPrimitiveCount(count);
@@ -455,7 +455,7 @@ namespace mpp
 					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				auto colBuffer = (uint8_t*)batch->getAttributeData("COLOUR").first;
+				auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
 				auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
 				size_t triangleCount = batch->getPrimitiveCount(count);
