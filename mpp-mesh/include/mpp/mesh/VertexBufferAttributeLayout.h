@@ -20,7 +20,7 @@ namespace mpp
 				std::string identifier;
 				Vertex::Component component;
 				Vertex::DataType dataType;
-				int paddingBytes, padToBoundary; // padToBoundary required for (de)serialization
+				size_t paddingBytes, padToBoundary; // padToBoundary required for (de)serialization
 				bool normalised;
 
 				int offsetInBytes;
@@ -47,9 +47,9 @@ namespace mpp
 
 			VertexBufferAttributeLayout(int baseId, bool staticData);
 
-			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary = 1);
+			void createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, size_t padToBoundary = 1);
 
-			void createAttribute(Vertex::Component component, std::string const& identifier, Vertex::DataType dataType, bool normalised, int padToBoundary = 1);
+			void createAttribute(Vertex::Component component, std::string const& identifier, Vertex::DataType dataType, bool normalised, size_t padToBoundary = 1);
 
 			int getBaseId() const;
 

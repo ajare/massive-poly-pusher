@@ -21,7 +21,7 @@ namespace mpp
 		 * Create a channel in the vertex buffer specification.
 		 *
 		 */
-		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, int padToBoundary)
+		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, Vertex::DataType dataType, bool normalised, size_t padToBoundary)
 		{
 			// Get identifier name
 			string identifier;
@@ -62,7 +62,7 @@ namespace mpp
 		 * Create a channel in the vertex buffer specification.
 		 *
 		 */
-		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, string const& identifier, Vertex::DataType dataType, bool normalised, int padToBoundary)
+		void VertexBufferAttributeLayout::createAttribute(Vertex::Component component, string const& identifier, Vertex::DataType dataType, bool normalised, size_t padToBoundary)
 		{
 			// Certain datatypes must be normalised for glVertexAttribPointer
 			if ((dataType == Vertex::DataType::UnsignedInt_2_10_10_10_REV || dataType == Vertex::DataType::Int_2_10_10_10_REV) && !normalised)

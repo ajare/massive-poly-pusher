@@ -17,7 +17,7 @@ namespace mpp
 		 * Get the size of a component in 'units'.
 		 *
 		 */
-		int Vertex::getComponentSize(Vertex::Component component)
+		size_t Vertex::getComponentSize(Vertex::Component component)
 		{
 			switch (component)
 			{
@@ -51,7 +51,7 @@ namespace mpp
 		 * Get the size of a datatype.
 		 *
 		 */
-		int Vertex::getDataTypeSize(Vertex::DataType dataType)
+		size_t Vertex::getDataTypeSize(Vertex::DataType dataType)
 		{
 			switch (dataType)
 			{
