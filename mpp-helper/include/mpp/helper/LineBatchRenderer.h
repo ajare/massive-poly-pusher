@@ -79,7 +79,7 @@ namespace mpp
 				mBatch->startUpdate(count);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
-				typedef typename PosType::builtin_type ColTypeBuiltin;
+				typedef typename ColType::builtin_type ColTypeBuiltin;
 
 				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
 				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
@@ -119,7 +119,7 @@ namespace mpp
 					//
 					if (!mBatch->colourFixed() || newVertex)
 					{
-						uint8_t red, green, blue, alpha;
+						ColTypeBuiltin red, green, blue, alpha;
 						mDataProvider->colour(primitiveIndex, red, green, blue, alpha);
 
 						colBuffer[cOffset + 0] = red;
