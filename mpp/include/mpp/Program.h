@@ -130,7 +130,7 @@ namespace mpp
 
 		mesh::MeshSpecification const& getMeshSpecification() const;
 
-		int getUniformId(std::string const& name) const;
+		int getUniformId(std::string const& name, int index = -1) const;
 
 		int getViewPosId() const;
 
