@@ -105,6 +105,12 @@ namespace mpp
 
 		void setUniform(std::string const& name, size_t count, float const* values);
 
+		void setUniform(std::string const& name, size_t count, glm::vec2 const* values);
+
+		void setUniform(std::string const& name, size_t count, glm::vec3 const* values);
+
+		void setUniform(std::string const& name, size_t count, glm::vec4 const* values);
+
 		void setUniform(std::string const& name, program::GLSLType type, size_t count, char const* data);
 
 		void updateUniform(std::string const& name, int32_t value);
@@ -124,6 +130,12 @@ namespace mpp
 		void updateUniform(std::string const& name, size_t count, uint32_t const* values);
 
 		void updateUniform(std::string const& name, size_t count, float const* values);
+
+		void updateUniform(std::string const& name, size_t count, glm::vec2 const* values);
+
+		void updateUniform(std::string const& name, size_t count, glm::vec3 const* values);
+
+		void updateUniform(std::string const& name, size_t count, glm::vec4 const* values);
 
 		void bindUniforms(ResourcePtr program);
 	};

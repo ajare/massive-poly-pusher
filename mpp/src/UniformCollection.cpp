@@ -173,6 +173,48 @@ namespace mpp
 		mUniformData.emplace(name, move(ud));
 	}
 
+	void UniformCollection::setUniform(string const& name, size_t count, glm::vec2 const* values)
+	{
+		UniformData ud(
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			count,
+			sizeof(glm::vec2) * count,
+			2
+		);
+
+		memcpy(ud.data, values, ud.size);
+		mUniformData.emplace(name, move(ud));
+	}
+
+	void UniformCollection::setUniform(string const& name, size_t count, glm::vec3 const* values)
+	{
+		UniformData ud(
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			count,
+			sizeof(glm::vec3) * count,
+			3
+		);
+
+		memcpy(ud.data, values, ud.size);
+		mUniformData.emplace(name, move(ud));
+	}
+
+	void UniformCollection::setUniform(string const& name, size_t count, glm::vec4 const* values)
+	{
+		UniformData ud(
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::Float,
+			count,
+			sizeof(glm::vec4) * count,
+			4
+		);
+
+		memcpy(ud.data, values, ud.size);
+		mUniformData.emplace(name, move(ud));
+	}
+
 	void UniformCollection::setUniform(string const& name, program::GLSLType type, size_t count, char const* data)
 	{
 		size_t typeSize;
@@ -278,6 +320,24 @@ namespace mpp
 		memcpy(ud.data, values, sizeof(float) * count);
 	}
 
+	void UniformCollection::updateUniform(string const& name, size_t count, glm::vec2 const* values)
+	{
+		auto& ud = mUniformData.find(name)->second;
+		memcpy(ud.data, values, sizeof(glm::vec2) * count);
+	}
+
+	void UniformCollection::updateUniform(string const& name, size_t count, glm::vec3 const* values)
+	{
+		auto& ud = mUniformData.find(name)->second;
+		memcpy(ud.data, values, sizeof(glm::vec3) * count);
+	}
+
+	void UniformCollection::updateUniform(string const& name, size_t count, glm::vec4 const* values)
+	{
+		auto& ud = mUniformData.find(name)->second;
+		memcpy(ud.data, values, sizeof(glm::vec4) * count);
+	}
+
 	/*
 	 * Upload uniform values for rendering.
 	 *
@@ -318,15 +378,15 @@ namespace mpp
 			switch (ud.type)
 			{
 			case program::GLSLType::Int:
-				GL_CHECK(intFunctions[ud.numElements - 1](id, 1, (const GLint*)ud.data));
+				GL_CHECK(intFunctions[ud.numElements - 1](id, ud.count, (const GLint*)ud.data));
 				break;
 
 			case program::GLSLType::Uint:
-				GL_CHECK(uintFunctions[ud.numElements - 1](id, 1, (const GLuint*)ud.data));
+				GL_CHECK(uintFunctions[ud.numElements - 1](id, ud.count, (const GLuint*)ud.data));
 				break;
 
 			case program::GLSLType::Float:
-				GL_CHECK(floatFunctions[ud.numElements - 1](id, 1, (const GLfloat*)ud.data));
+				GL_CHECK(floatFunctions[ud.numElements - 1](id, ud.count, (const GLfloat*)ud.data));
 				break;
 
 			default:
