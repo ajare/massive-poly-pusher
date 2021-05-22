@@ -50,7 +50,7 @@ namespace mpp
 
 		virtual Colour getClearColour() const;
 
-		virtual SceneModelPtr addModel(ResourcePtr model);
+		virtual SceneModelPtr addModel(ResourcePtr model, UniformCollection* uniforms = nullptr);
 
 		virtual SceneBatchPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
 

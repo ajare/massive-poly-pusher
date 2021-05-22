@@ -48,9 +48,9 @@ namespace mpp
 		return mViewport;
 	}
 
-	SceneModelPtr Scene::addModel(ResourcePtr model)
+	SceneModelPtr Scene::addModel(ResourcePtr model, UniformCollection* uniforms)
 	{
-		auto sm = make_shared<SceneModel>(model);
+		auto sm = make_shared<SceneModel>(model, uniforms);
 		mModels.push_back(sm);
 
 		return sm;

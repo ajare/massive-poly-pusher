@@ -111,7 +111,7 @@ namespace mpp
 		// Default material: 2d with PTC and no texture
 		ResourcePtr mDefaultMaterial;
 
-		// Default programs.
+		// Default programs
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
 
 		ResourcePtr mActiveProgram;
@@ -399,7 +399,7 @@ namespace mpp
 
 		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, UniformCollection const* uniforms, uint32_t primitiveCount = -1);
 
 		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
 
