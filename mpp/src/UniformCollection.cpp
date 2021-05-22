@@ -169,7 +169,7 @@ namespace mpp
 			1
 		);
 
-		memcpy(&ud.data, values, ud.size);
+		memcpy(ud.data, values, ud.size);
 		mUniformData.emplace(name, move(ud));
 	}
 
