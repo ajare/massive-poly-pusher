@@ -521,6 +521,17 @@ namespace mpp
 
 		mCaps.maxAnisotropy = maxAnisotropy;
 
+		// Uniform limits
+		int maxUniforms;
+		GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &maxUniforms));
+		mCaps.maxVertexShaderUniforms = (uint32_t)maxUniforms;
+
+		GL_CHECK(glGetIntegerv(GL_MAX_GEOMETRY_UNIFORM_COMPONENTS, &maxUniforms));
+		mCaps.maxGeometryShaderUniforms = (uint32_t)maxUniforms;
+
+		GL_CHECK(glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &maxUniforms));
+		mCaps.maxFragmentShaderUniforms = (uint32_t)maxUniforms;
+
 		// Print caps
 		infoMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
 		infoMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
@@ -533,9 +544,9 @@ namespace mpp
 		infoMessage(utils::StringUtils::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
 		infoMessage(utils::StringUtils::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
 
-		infoMessage(utils::StringUtils::format("Max vertex shader uniforms: {}", GL_MAX_VERTEX_UNIFORM_COMPONENTS));
-		infoMessage(utils::StringUtils::format("Max geometry shader uniforms: {}", GL_MAX_GEOMETRY_UNIFORM_COMPONENTS));
-		infoMessage(utils::StringUtils::format("Max fragment shader uniforms: {}", GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
+		infoMessage(utils::StringUtils::format("Max vertex shader uniforms: {}", mCaps.maxVertexShaderUniforms));
+		infoMessage(utils::StringUtils::format("Max geometry shader uniforms: {}", mCaps.maxGeometryShaderUniforms));
+		infoMessage(utils::StringUtils::format("Max fragment shader uniforms: {}", mCaps.maxFragmentShaderUniforms));
 	}
 
 	/*

@@ -26,6 +26,8 @@ namespace mpp
 		float maxAnisotropy;
 
 		bool streamingGeometry;
+
+		uint32_t maxVertexShaderUniforms, maxGeometryShaderUniforms, maxFragmentShaderUniforms;
 	};
 
 }
