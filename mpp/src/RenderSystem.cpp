@@ -1829,7 +1829,7 @@ namespace mpp
 		// Bind mesh
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
-		quadMesh->render();
+		quadMesh->render(1, 1.0f);
 
 		// Unbind
 		quadMesh->bind(false);
@@ -1879,7 +1879,7 @@ namespace mpp
 		// Bind mesh
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
-		quadMesh->render();
+		quadMesh->render(1, 1.0f);
 
 		// Unbind
 		quadMesh->bind(false);
@@ -1946,7 +1946,7 @@ namespace mpp
 
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
-		quadMesh->render();
+		quadMesh->render(1, 1.0f);
 
 		// Unbind
 		quadMesh->bind(false);
@@ -2483,13 +2483,13 @@ namespace mpp
 			// Render
 			if (meshInstance.second->mPrimitivesToRender == (uint32_t)-1)
 			{
-				meshInstance.second->mwMesh->render(meshInstance.second->mPointSize);
-				mRenderInfo.primitivesRendered += meshInstance.second->mwMesh->getNumPrimitives();
+				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, meshInstance.second->mPointSize);
+				mRenderInfo.primitivesRendered += meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount;
 			}
 			else
 			{
-				meshInstance.second->mwMesh->render(meshInstance.second->mPrimitivesToRender, meshInstance.second->mPointSize);
-				mRenderInfo.primitivesRendered += meshInstance.second->mPrimitivesToRender;
+				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, meshInstance.second->mPrimitivesToRender, meshInstance.second->mPointSize);
+				mRenderInfo.primitivesRendered += meshInstance.second->mPrimitivesToRender * meshInstance.second->mInstanceCount;
 			}
 
 			mRenderInfo.batchCount++;

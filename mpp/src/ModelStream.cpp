@@ -126,14 +126,14 @@ namespace mpp
 				switch (attrib.dataType)
 				{
 				case Vertex::DataType::Byte:
-					for (int k = 0; k < componentCount; ++k)
+					for (size_t k = 0; k < componentCount; ++k)
 					{
 						*bufDataPtr++ = ((int8_t const*)stream.data.get())[componentOffset + k];
 					}
 					break;
 
 				case Vertex::DataType::UnsignedByte:
-					for (int k = 0; k < componentCount; ++k)
+					for (size_t k = 0; k < componentCount; ++k)
 					{
 						*bufDataPtr++ = ((uint8_t const*)stream.data.get())[componentOffset + k];
 					}
@@ -149,7 +149,7 @@ namespace mpp
 					THROW_MPP("Cannot convert data to unsupported type.", __LINE__, __FILE__, __func__);
 				}
 
-				for (int k = 0; k < attrib.paddingBytes; ++k)
+				for (size_t k = 0; k < attrib.paddingBytes; ++k)
 				{
 					*bufDataPtr++ = 0;
 				}

@@ -44,6 +44,7 @@ namespace mpp
 				camera);
 
 			instance->setWireframe(model->isWireframe());
+			instance->setInstanceCount(model->getInstanceCount());
 		}
 	}
 }

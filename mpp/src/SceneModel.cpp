@@ -12,6 +12,7 @@ namespace mpp
 		: mModel(model)
 		, mWireframe(false)
 		, mVisible(true)
+		, mInstanceCount(1)
 	{
 	}
 
@@ -65,5 +66,15 @@ namespace mpp
 	bool SceneModel::isVisible() const
 	{
 		return mVisible;
+	}
+
+	void SceneModel::setInstanceCount(size_t instanceCount)
+	{
+		mInstanceCount = instanceCount;
+	}
+
+	size_t SceneModel::getInstanceCount() const
+	{
+		return mInstanceCount;
 	}
 }

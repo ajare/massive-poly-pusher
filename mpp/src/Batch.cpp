@@ -105,9 +105,9 @@ namespace mpp
 				mMeshes[0]->mapIndexData(numPrimitives);
 			}
 
-			for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+			for (size_t i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
 			{
-				auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+				auto vertexBuffer = mMeshes[0]->getVertexBuffer((int)i);
 
 				if (updateFixedBuffers || !vertexBuffer->isStatic())
 				{
@@ -191,9 +191,9 @@ namespace mpp
 	{
 		if (count > mMaxCount)
 		{
-			for (int i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+			for (size_t i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
 			{
-				auto vertexBuffer = mMeshes[0]->getVertexBuffer(i);
+				auto vertexBuffer = mMeshes[0]->getVertexBuffer((int)i);
 				auto& data = vertexBuffer->getBufferData();
 
 				int newSize = getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride();

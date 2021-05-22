@@ -524,7 +524,7 @@ int8_t* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayo
 			switch (attrib.dataType)
 			{
 			case Vertex::DataType::UnsignedByte:
-				for (int k = 0; k < attribComponentSize; ++k)
+				for (size_t k = 0; k < attribComponentSize; ++k)
 				{
 					*bufDataPtr = (uint8_t)(*(((float const*)(&stream.data[streamOffset])) + k) * 255.0f);
 					bufDataPtr += sizeof(uint8_t);
@@ -532,7 +532,7 @@ int8_t* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayo
 				break;
 
 			case Vertex::DataType::HalfFloat:
-				for (int k = 0; k < attribComponentSize; ++k)
+				for (size_t k = 0; k < attribComponentSize; ++k)
 				{
 					float value = *(((float const*)(&stream.data[streamOffset])) + k);
 					uint16_t hv16 = ((half_float::half)value).data_;
@@ -551,7 +551,7 @@ int8_t* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayo
 			}
 
 			// Padding
-			for (int k = 0; k < attrib.paddingBytes; ++k)
+			for (size_t k = 0; k < attrib.paddingBytes; ++k)
 			{
 				*bufDataPtr++ = 0;
 			}

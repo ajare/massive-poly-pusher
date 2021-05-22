@@ -141,4 +141,12 @@ namespace mpp
 			meshInstance.second->wireframe(wireframe);
 		}
 	}
+
+	void ModelInstance::setInstanceCount(size_t instanceCount)
+	{
+		for (auto meshInstance: mMeshInstances)
+		{
+			meshInstance.second->setInstanceCount(instanceCount);
+		}
+	}
 }

@@ -27,6 +27,8 @@ namespace mpp
 
 		float mPointSize;
 
+		size_t mInstanceCount;
+
 		uint32_t mPrimitivesToRender;
 
 		ResourcePtr mMaterial;
@@ -68,6 +70,10 @@ namespace mpp
 		void setPointSize(float pointSize);
 
 		float getPointSize() const;
+
+		void setInstanceCount(size_t instanceCount);
+
+		size_t getInstanceCount() const;
 
 		void setMaterial(ResourcePtr material);
 

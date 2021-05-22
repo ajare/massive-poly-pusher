@@ -20,6 +20,7 @@ namespace mpp
 		, mWireframe(false)
 		, mBlend(false)
 		, mPointSize(-1.0f)
+		, mInstanceCount(1)
 		, mPrimitivesToRender((uint32_t)-1)
 	{
 		mMaterial = mesh->getMaterial();
@@ -134,6 +135,16 @@ namespace mpp
 	float MeshInstance::getPointSize() const
 	{
 		return mPointSize;
+	}
+
+	void MeshInstance::setInstanceCount(size_t instanceCount)
+	{
+		mInstanceCount = instanceCount;
+	}
+
+	size_t MeshInstance::getInstanceCount() const
+	{
+		return mInstanceCount;
 	}
 
 	/*

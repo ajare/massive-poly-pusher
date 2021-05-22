@@ -236,7 +236,7 @@ namespace mpp
 		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 		// If the data has increased in size, then reallocate
-		int newSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		auto newSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
 
 		if (newSize > mIndexDataSize)
 		{
@@ -261,8 +261,8 @@ namespace mpp
 		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 		// If the data has increased in size, then reallocate
-		int indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
-		int newSize = (startPrimitive + numPrimitives) * indexStride;
+		auto indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		size_t newSize = (startPrimitive + numPrimitives) * indexStride;
 
 		if (newSize > mIndexDataSize)
 		{
@@ -391,16 +391,16 @@ namespace mpp
 	 * Send vertex data.
 	 *
 	 */
-	void Mesh::render(float pointSize) const
+	void Mesh::render(size_t instanceCount, float pointSize) const
 	{
-		render(mPrimitiveCount, pointSize);
+		render(instanceCount, mPrimitiveCount, pointSize);
 	}
 		
 	/*
 	 * Send vertex data.
 	 *
 	 */
-	void Mesh::render(uint32_t numPrimitives, float pointSize) const
+	void Mesh::render(size_t instanceCount, uint32_t numPrimitives, float pointSize) const
 	{
 		if (mPrimitiveType == mesh::Primitive::Type::Points)
 		{
@@ -410,11 +410,25 @@ namespace mpp
 		if (mIsIndexed)
 		{
 			GLenum indexType = mIndexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-			GL_CHECK(glDrawElements(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0));
+			if (instanceCount == 1)
+			{
+				GL_CHECK(glDrawElements(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0));
+			}
+			else
+			{
+				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0, instanceCount));
+			}
 		}
 		else
 		{
-			GL_CHECK(glDrawArrays(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize));
+			if (instanceCount == 1)
+			{
+				GL_CHECK(glDrawArrays(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize));
+			}
+			else
+			{
+				GL_CHECK(glDrawArraysInstanced(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize, instanceCount));
+			}
 		}
 	}
 
