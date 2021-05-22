@@ -42,8 +42,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, &value, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	void UniformCollection::setUniform(string const& name, uint32_t value)
@@ -57,8 +56,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, &value, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	/*
@@ -76,8 +74,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, &value, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	/*
@@ -95,8 +92,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, glm::value_ptr(value), ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	/*
@@ -114,8 +110,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, glm::value_ptr(value), ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	/*
@@ -133,8 +128,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, glm::value_ptr(value), ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	void UniformCollection::setUniform(string const& name, size_t count, int32_t const* values)
@@ -148,8 +142,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, values, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	void UniformCollection::setUniform(string const& name, size_t count, uint32_t const* values)
@@ -163,8 +156,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, values, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	void UniformCollection::setUniform(string const& name, size_t count, float const* values)
@@ -178,8 +170,7 @@ namespace mpp
 		);
 
 		memcpy(&ud.data, values, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	void UniformCollection::setUniform(string const& name, program::GLSLType type, size_t count, char const* data)
@@ -214,8 +205,7 @@ namespace mpp
 		);
 
 		memcpy(ud.data, data, ud.size);
-		mUniformData[name] = ud;
-		//mUniformData.emplace(name, move(ud));
+		mUniformData.emplace(name, move(ud));
 	}
 
 	void UniformCollection::updateUniform(string const& name, int32_t value)
