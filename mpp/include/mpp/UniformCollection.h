@@ -25,12 +25,11 @@ namespace mpp
 			size_t count; // Number of values
 			size_t size; // Size of data in bytes
 			size_t numElements; // Elements, eg float/vec2/vec3 etc
-			//char* data{ nullptr };
-			char data[64];
+			char* data{ nullptr };
 
 
 		private:
-			/*
+			
 			void copyFrom(UniformData const& other)
 			{
 				this->name = other.name;
@@ -43,12 +42,12 @@ namespace mpp
 				this->data = new char[this->size];
 				memcpy(this->data, other.data, this->size);
 			}
-			*/
+			
 		public:
 
 			UniformData()
 				: size(0)
-				//, data(nullptr)
+				, data(nullptr)
 			{
 			}
 
@@ -58,11 +57,11 @@ namespace mpp
 				, count(count_)
 				, size(size_)
 				, numElements(numElements_)
-				//, data(nullptr)
+				, data(nullptr)
 			{
-				//data = new char[size];
+				data = new char[size];
 			}
-			/*
+			
 			UniformData(UniformData const& other)
 			{
 				copyFrom(other);
@@ -78,7 +77,6 @@ namespace mpp
 			{
 				delete[] data;
 			}
-			*/
 		};
 
 		std::map<std::string, UniformData> mUniformData;
