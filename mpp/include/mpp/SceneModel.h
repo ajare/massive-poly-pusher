@@ -10,7 +10,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
-
+#include "mpp/UniformCollection.h"
 namespace mpp
 {
 	class _MPPAPI __declspec(align(16)) SceneModel
@@ -23,6 +23,8 @@ namespace mpp
 
 		size_t mInstanceCount;
 
+		UniformCollection* mUniforms;
+
 #pragma warning(push)
 #pragma warning(disable: 4324)
 		alignas(16) glm::mat4 mTransform;
@@ -30,9 +32,11 @@ namespace mpp
 
 	public:
 
-		explicit SceneModel(ResourcePtr model);
+		SceneModel(ResourcePtr model);
 
-		virtual ~SceneModel() = default;
+		SceneModel(ResourcePtr model, UniformCollection* uniforms);
+
+		virtual ~SceneModel();
 
 		void translate(glm::vec3 const& translate);
 
@@ -45,6 +49,8 @@ namespace mpp
 		ResourcePtr getModel() const;
 
 		glm::mat4 const& getTransform() const;
+
+		UniformCollection* getUniformCollection();
 
 		void setWireframe(bool wireframe);
 

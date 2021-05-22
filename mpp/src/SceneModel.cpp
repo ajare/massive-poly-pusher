@@ -8,12 +8,23 @@ using namespace std;
 namespace mpp
 {
 
-	SceneModel::SceneModel(ResourcePtr model)
+	SceneModel::SceneModel(ResourcePtr model, UniformCollection* uniforms)
 		: mModel(model)
 		, mWireframe(false)
 		, mVisible(true)
 		, mInstanceCount(1)
+		, mUniforms(uniforms)
 	{
+	}
+
+	SceneModel::SceneModel(ResourcePtr model)
+		: SceneModel(model, nullptr)
+	{
+	}
+
+	SceneModel::~SceneModel()
+	{
+		delete mUniforms;
 	}
 
 	void SceneModel::translate(glm::vec3 const& translate)
@@ -46,6 +57,11 @@ namespace mpp
 	glm::mat4 const& SceneModel::getTransform() const
 	{
 		return mTransform;
+	}
+
+	UniformCollection* SceneModel::getUniformCollection()
+	{
+		return mUniforms;
 	}
 
 	void SceneModel::setWireframe(bool wireframe)

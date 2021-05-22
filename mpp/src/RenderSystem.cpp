@@ -1405,11 +1405,11 @@ namespace mpp
 
 	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms, uint32_t primitiveCount)
 	{
-		ModelInstance* mi = new ModelInstance(model, 
+		ModelInstance* mi = new ModelInstance(model,
 			viewPos,
 			m3dModelMatrix,
-			m3dModelCameraProjectionMatrix, 
-			getNormalMatrix(), 
+			m3dModelCameraProjectionMatrix,
+			getNormalMatrix(),
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
 		if (uniforms)
@@ -1429,7 +1429,7 @@ namespace mpp
 		return mi;
 	}
 
-	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, UniformCollection const* uniforms, uint32_t primitiveCount)
 	{
 		ModelInstance* mi = new ModelInstance(static_cast<Model const&>(*model.get()),
 			camera->getPosition(),
@@ -1437,6 +1437,11 @@ namespace mpp
 			camera->getProjectionTransform() * camera->getViewTransform() * transform,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+
+		if (uniforms)
+		{
+			mi->setUniformCollection((UniformCollection const&)*uniforms);
+		}
 
 		auto& instances = mi->getMeshInstances();
 		for (auto& instance: instances)

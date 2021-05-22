@@ -41,11 +41,47 @@ namespace mpp
 
 		void setUniformCollection(UniformCollection const& uniforms);
 
-		void setUniform(std::string const& name, glm::vec3 const& value);
-
 		void setWireframe(bool wireframe);
 
 		void setInstanceCount(size_t instanceCount);
+
+		void setUniform(std::string const& name, int32_t value);
+
+		void setUniform(std::string const& name, uint32_t value);
+
+		void setUniform(std::string const& name, float value);
+
+		void setUniform(std::string const& name, glm::vec2 const& value);
+
+		void setUniform(std::string const& name, glm::vec3 const& value);
+
+		void setUniform(std::string const& name, glm::vec4 const& value);
+
+		void setUniform(std::string const& name, size_t count, int32_t const* values);
+
+		void setUniform(std::string const& name, size_t count, uint32_t const* values);
+
+		void setUniform(std::string const& name, size_t count, float const* values);
+
+		void setUniform(std::string const& name, program::GLSLType type, size_t count, char const* data);
+
+		void updateUniform(std::string const& name, int32_t value);
+
+		void updateUniform(std::string const& name, uint32_t value);
+
+		void updateUniform(std::string const& name, float value);
+
+		void updateUniform(std::string const& name, glm::vec2 const& value);
+
+		void updateUniform(std::string const& name, glm::vec3 const& value);
+
+		void updateUniform(std::string const& name, glm::vec4 const& value);
+
+		void updateUniform(std::string const& name, size_t count, int32_t const* values);
+
+		void updateUniform(std::string const& name, size_t count, uint32_t const* values);
+
+		void updateUniform(std::string const& name, size_t count, float const* values);
 	};
 }
 
