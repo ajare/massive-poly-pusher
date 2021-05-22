@@ -558,9 +558,14 @@ namespace mpp
 	 * Get index for specified uniform.
 	 *
 	 */
-	int Program::getUniformId(string const& name) const
+	int Program::getUniformId(string const& name, int index) const
 	{
 		string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(name);
+		if (index >= 0)
+		{
+			markedUpUniform += "[" + utils::StringUtils::toString(index) + "]";
+		}
+
 		if (mUniformIds.find(markedUpUniform) == mUniformIds.end())
 		{
 			return -1;

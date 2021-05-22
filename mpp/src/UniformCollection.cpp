@@ -373,7 +373,8 @@ namespace mpp
 		for (auto const& it: mUniformData)
 		{
 			auto const& ud = it.second;
-			auto id = (GLint)p->getUniformId(it.first); // Use non-marked up value
+			int index = ud.count == 1 ? -1 : 0;
+			auto id = (GLint)p->getUniformId(it.first, index); // Use non-marked up value
 			
 			switch (ud.type)
 			{
