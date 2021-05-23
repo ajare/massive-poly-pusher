@@ -80,7 +80,7 @@ namespace mpp
 
 	Camera::Camera(vec3 const& position, float yaw, float pitch, float roll, float aspectRatio)
 		: mPosition(position)
-		, mOrientation(vec3(pitch, yaw, roll))
+		, mOrientation(vec3(radians(pitch), radians(yaw), radians(roll)))
 		, mFov(90.0f)
 		, mNear(0.1f)
 		, mFar(1000.0f)
@@ -90,7 +90,7 @@ namespace mpp
 
 	Camera::Camera(vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio)
 		: mPosition(position)
-		, mOrientation(vec3(pitch, yaw, roll))
+		, mOrientation(vec3(radians(pitch), radians(yaw), radians(roll)))
 		, mFov(fov)
 		, mNear(0.1f)
 		, mFar(1000.0f)

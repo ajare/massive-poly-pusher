@@ -76,7 +76,7 @@ namespace mpp
 			mPosition += mTargetUp * distance;
 			mTargetPos += mTargetUp * distance;
 		}
-
+		\
 		void OrbitCamera::trackDown(float distance)
 		{
 			// Both position and target move along up vector
