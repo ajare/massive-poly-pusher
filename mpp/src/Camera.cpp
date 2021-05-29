@@ -62,6 +62,7 @@ namespace mpp
 	{
 		if (mDirty)
 		{
+			// Pitch
 			vec3 right = cross(mDirection, mUp);
 			normalize(right);
 
@@ -80,6 +81,7 @@ namespace mpp
 			normalize(mUp);
 		}
 
+		mPitch = mYaw = mRoll = 0.0f;
 		mDirty = false;
 	}
 
