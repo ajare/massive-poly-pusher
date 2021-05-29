@@ -680,10 +680,8 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 {
 	float aspectRatio = options.screenWidth / (float)options.screenHeight;
 
-	auto camera = new helper::FreeCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f, aspectRatio);
-
+	auto camera = new helper::FreeCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f, 45.0f, aspectRatio);
 	camera->setClipDistances(0.1f, 1000.0f);
-	camera->setFov(45.0f);
 
 	return std::shared_ptr<mpp::Camera>(camera);
 }

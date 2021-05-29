@@ -17,29 +17,13 @@ namespace mpp
 	{
 	protected:
 
-		glm::vec3 mPosition;
+		glm::vec3 mPosition, mDirection, mUp;
 
-		glm::quat mOrientation;
+		float mYaw, mPitch, mRoll;
 
 		float mFov, mNear, mFar, mAspectRatio;
 
 	public:
-
-		explicit Camera(float aspectRatio);
-
-		Camera(glm::vec3 const& position, float aspectRatio);
-
-		Camera(glm::vec3 const& position, float fov, float aspectRatio);
-
-		Camera(glm::vec3 const& position, glm::quat const& orientation, float aspectRatio);
-
-		Camera(glm::vec3 const& position, glm::quat const& orientation, float fov, float aspectRatio);
-
-		Camera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float aspectRatio);
-
-		Camera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float fov, float aspectRatio);
-
-		Camera(glm::vec3 const& position, float yaw, float pitch, float roll, float aspectRatio);
 
 		Camera(glm::vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio);
 
@@ -53,13 +37,13 @@ namespace mpp
 
 		float getFarClipDistance() const;
 
-		glm::vec3 getPosition() const;
+		glm::vec3 const& getPosition() const;
 
-		glm::vec3 getDirection() const;
+		glm::vec3 const& getDirection() const;
 
-		glm::vec3 getUp() const;
+		glm::vec3 const& getUp() const;
 
-		glm::mat4 getViewTransform() const;
+		glm::mat4 getViewTransform();
 
 		virtual glm::mat4 getProjectionTransform() const;
 	};

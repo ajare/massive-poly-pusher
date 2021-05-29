@@ -288,9 +288,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					viewAngle -= 60.0f * frameTime;
 				}
 
-				// Move camera
-				//updateFreeCamera(camera, gInputMgr, frameTime);
-
 				// Light
 				if (gInputMgr->keyDown(Key_T))
 				{
@@ -319,6 +316,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// Logic
 				for (auto scene: gScenes)
 				{
+					// Move camera
+					//auto camera = scene->getCamera()
+					//updateFreeCamera(camera.get(), gInputMgr, frameTime);
+
 					scene->update(gRenderSystem, frameTime);
 				}
 			}
