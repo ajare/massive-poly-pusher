@@ -15,16 +15,19 @@ namespace mpp
 		void FreeCamera::yaw(float yaw)
 		{
 			mYaw += yaw;
+			mDirty = true;
 		}
 
 		void FreeCamera::pitch(float pitch)
 		{
 			mPitch += pitch;
+			mDirty = true;
 		}
 
 		void FreeCamera::roll(float roll)
 		{
 			mRoll += roll;
+			mDirty = true;
 		}
 
 		void FreeCamera::forward(float distance)

@@ -23,6 +23,12 @@ namespace mpp
 
 		float mFov, mNear, mFar, mAspectRatio;
 
+		bool mDirty;
+
+	private:
+
+		void update();
+
 	public:
 
 		Camera(glm::vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio);
