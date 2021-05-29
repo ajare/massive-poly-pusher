@@ -54,16 +54,6 @@ namespace mpp
 		return mPosition;
 	}
 
-	vec3 const& Camera::getDirection() const
-	{
-		return mDirection;
-	}
-
-	vec3 const& Camera::getUp() const
-	{
-		return mUp;
-	}
-
 	mat4 Camera::getViewTransform()
 	{
 		// Pitch
