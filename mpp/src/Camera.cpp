@@ -20,7 +20,11 @@ namespace mpp
 		, mNear(0.1f)
 		, mFar(1000.0f)
 		, mAspectRatio(aspectRatio)
+		, mDirty(true)
 	{
+		mDirection = vec3(0, 0, -1);
+		mUp = vec3(0, 1, 0);
+		update();
 	}
 
 	void Camera::setFov(float fov)
@@ -54,26 +58,34 @@ namespace mpp
 		return mPosition;
 	}
 
+	void Camera::update()
+	{
+		if (mDirty)
+		{
+			vec3 right = cross(mDirection, mUp);
+			normalize(right);
+
+			mDirection = rotate(mDirection, radians(mPitch), right);
+			normalize(mDirection);
+
+			mUp = rotate(mUp, radians(mPitch), right);
+			normalize(mUp);
+
+			// Yaw
+			mDirection = rotate(mDirection, radians(mYaw), mUp);
+			normalize(mDirection);
+
+			// Roll
+			mUp = rotate(mUp, radians(mYaw), mDirection);
+			normalize(mUp);
+		}
+
+		mDirty = false;
+	}
+
 	mat4 Camera::getViewTransform()
 	{
-		// Pitch
-		vec3 right = cross(mDirection, mUp);
-		normalize(right);
-
-		mDirection = rotate(mDirection, radians(mPitch), right);
-		normalize(mDirection);
-
-		mUp = rotate(mUp, radians(mPitch), right);
-		normalize(mUp);
-
-		// Yaw
-		mDirection = rotate(mDirection, radians(mYaw), mUp);
-		normalize(mDirection);
-
-		// Roll
-		mUp = rotate(mUp, radians(mYaw), mDirection);
-		normalize(mUp);
-
+		update();
 		return lookAt(mPosition, mPosition + mDirection, mUp);
 	}
 
