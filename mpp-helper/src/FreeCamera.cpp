@@ -49,13 +49,13 @@ namespace mpp
 
 		void FreeCamera::left(float distance)
 		{
-			vec3 right = cross(getDirection(), getUp());
+			vec3 right = cross(mDirection, mUp);
 			mPosition -= right * distance;
 		}
 
 		void FreeCamera::right(float distance)
 		{
-			vec3 right = cross(getDirection(), getUp());
+			vec3 right = cross(mDirection, mUp);
 			mPosition += right * distance;
 		}
 
