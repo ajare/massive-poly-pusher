@@ -17,6 +17,10 @@ namespace mpp
 
 		class FpsCamera : public mpp::Camera
 		{
+			float mCurPitch;
+
+		private:
+
 			void updateAngles() const override;
 
 		public:

@@ -15,6 +15,7 @@ namespace mpp
 
 		FpsCamera::FpsCamera(vec3 const& position, float yaw, float pitch, float fov, float aspectRatio)
 			: Camera(position, yaw, pitch, 0.0f, fov, aspectRatio)
+			, mCurPitch(pitch)
 		{
 		}
 
@@ -27,18 +28,39 @@ namespace mpp
 		void FpsCamera::pitch(float pitch)
 		{
 			mPitch += pitch;
+			mCurPitch += pitch;
+
+			if (mCurPitch < -85.0f)
+			{
+				mPitch += (-85.0f - mCurPitch);
+				mCurPitch = -85.0f;
+			}
+			else if (mCurPitch > 85.0f)
+			{
+				mPitch -= (mCurPitch - 85.0f);
+				mCurPitch = 85.0f;
+			}
+
 			mPitch = std::min<float>(std::max<float>(-85.0f, mPitch), 85.0f);
 			mDirty = true;
 		}
 
 		void FpsCamera::forward(float distance)
 		{
-			mPosition += mDirection * distance;
+			auto d = mDirection;
+			d.y = 0.0f;
+			normalize(d);
+
+			mPosition += d * distance;
 		}
 
 		void FpsCamera::backward(float distance)
 		{
-			mPosition -= mDirection * distance;
+			auto d = mDirection;
+			d.y = 0.0f;
+			normalize(d);
+
+			mPosition -= d * distance;
 		}
 
 		void FpsCamera::up(float distance)
