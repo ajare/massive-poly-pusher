@@ -42,7 +42,6 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/FileStringStream.h>
 
 #include <mpp/helper/FreeCamera.h>
-#include <mpp/helper/OrbitCamera.h>
 #include <mpp/helper/LineBatchRenderer.h>
 #include <mpp/helper/TriangleBatchRenderer.h>
 

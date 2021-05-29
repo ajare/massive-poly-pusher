@@ -17,17 +17,19 @@ namespace mpp
 	{
 	protected:
 
-		glm::vec3 mPosition, mDirection, mUp;
+		glm::vec3 mPosition;
+		
+		mutable glm::vec3 mDirection, mUp;
 
-		float mYaw, mPitch, mRoll;
+		mutable float mYaw, mPitch, mRoll;
 
 		float mFov, mNear, mFar, mAspectRatio;
 
-		bool mDirty;
+		mutable bool mDirty;
 
 	private:
 
-		void update();
+		virtual void updateAngles() const;
 
 	public:
 
@@ -44,6 +46,8 @@ namespace mpp
 		float getFarClipDistance() const;
 
 		glm::vec3 const& getPosition() const;
+
+		glm::vec3 const& getDirection() const;
 
 		glm::mat4 getViewTransform();
 

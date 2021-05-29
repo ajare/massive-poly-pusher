@@ -138,10 +138,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\FpsCamera.cpp" />
     <ClCompile Include="..\..\src\FreeCamera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\helper\Config.h" />
+    <ClInclude Include="..\..\include\mpp\helper\FpsCamera.h" />
     <ClInclude Include="..\..\include\mpp\helper\FreeCamera.h" />
     <ClInclude Include="..\..\include\mpp\helper\LineBatchDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\helper\LineBatchRenderer.h" />

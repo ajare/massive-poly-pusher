@@ -17,7 +17,6 @@
 #include <mpp/resource-parsers/FileStringStream.h>
 
 #include <mpp/helper/FreeCamera.h>
-#include <mpp/helper/OrbitCamera.h>
 
 #include "ModelScene.h"
 #include "Helper.h"
