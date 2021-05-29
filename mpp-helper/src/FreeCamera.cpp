@@ -6,35 +6,6 @@ namespace mpp
 	{
 		using namespace glm;
 
-		FreeCamera::FreeCamera(float aspectRatio) :
-			Camera(aspectRatio)
-		{
-		}
-
-		FreeCamera::FreeCamera(vec3 const& position, float aspectRatio)
-			: Camera(position, aspectRatio)
-		{
-		}
-
-		FreeCamera::FreeCamera(vec3 const& position, float fov, float aspectRatio)
-			: Camera(position, fov, aspectRatio)
-		{
-		}
-
-		FreeCamera::FreeCamera(vec3 const& position, vec3 const& direction, vec3 const& up, float aspectRatio) :
-			Camera(position, direction, up, aspectRatio)
-		{
-		}
-
-		FreeCamera::FreeCamera(vec3 const& position, vec3 const& direction, vec3 const& up, float fov, float aspectRatio)
-			: Camera(position, direction, up, fov, aspectRatio)
-		{
-		}
-
-		FreeCamera::FreeCamera(vec3 const& position, float yaw, float pitch, float roll, float aspectRatio)
-			: Camera(position, yaw, pitch, roll, aspectRatio)
-		{
-		}
 		
 		FreeCamera::FreeCamera(vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio)
 			: Camera(position, yaw, pitch, roll, fov, aspectRatio)
@@ -43,47 +14,37 @@ namespace mpp
 
 		void FreeCamera::yaw(float yaw)
 		{
-			quat yawQuat = angleAxis(radians(yaw), getUp());
-
-			mOrientation = yawQuat * mOrientation;
-			normalize(mOrientation);
+			mYaw += yaw;
 		}
 
 		void FreeCamera::pitch(float pitch)
 		{
-			vec3 right = cross(getDirection(), getUp());
-			quat pitchQuat = angleAxis(radians(pitch), right);
-
-			mOrientation = pitchQuat * mOrientation;
-			normalize(mOrientation);
+			mPitch += pitch;
 		}
 
 		void FreeCamera::roll(float roll)
 		{
-			quat rollQuat = angleAxis(radians(roll), getDirection());
-			
-			mOrientation = rollQuat * mOrientation;
-			normalize(mOrientation);
+			mRoll += roll;
 		}
 
 		void FreeCamera::forward(float distance)
 		{
-			mPosition += getDirection() * distance;
+			mPosition += mDirection * distance;
 		}
 
 		void FreeCamera::backward(float distance)
 		{
-			mPosition -= getDirection() * distance;
+			mPosition -= mDirection * distance;
 		}
 
 		void FreeCamera::up(float distance)
 		{
-			mPosition += getUp() * distance;
+			mPosition += mUp * distance;
 		}
 
 		void FreeCamera::down(float distance)
 		{
-			mPosition -= getUp() * distance;
+			mPosition -= mUp * distance;
 		}
 
 		void FreeCamera::left(float distance)

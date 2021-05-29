@@ -19,18 +19,6 @@ namespace mpp
 		{
 		public:
 
-			FreeCamera(float aspectRatio);
-
-			FreeCamera(glm::vec3 const& position, float aspectRatio);
-
-			FreeCamera(glm::vec3 const& position, float fov, float aspectRatio);
-
-			FreeCamera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float aspectRatio);
-
-			FreeCamera(glm::vec3 const& position, glm::vec3 const& direction, glm::vec3 const& up, float fov, float aspectRatio);
-
-			FreeCamera(glm::vec3 const& position, float yaw, float pitch, float roll, float aspectRatio);
-
 			FreeCamera(glm::vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio);
 
 			void yaw(float yaw);

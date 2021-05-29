@@ -2,6 +2,7 @@
 #pragma warning(disable : 4201)
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #pragma warning(pop)
 
 #include "mpp/Camera.h"
@@ -10,87 +11,11 @@ namespace mpp
 {
 	using namespace glm;
 
-	Camera::Camera(float aspectRatio)
-		: mPosition(vec3(0, 0, 0))
-		, mOrientation()
-		, mFov(90.0f)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, float aspectRatio)
-		: mPosition(position)
-		, mFov(90.0f)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, float fov, float aspectRatio)
-		: mPosition(position)
-		, mFov(fov)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, quat const& orientation, float aspectRatio)
-		: mPosition(position)
-		, mOrientation(orientation)
-		, mFov(90.0f)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, quat const& orientation, float fov, float aspectRatio)
-		: mPosition(position)
-		, mOrientation(orientation)
-		, mFov(fov)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, vec3 const& direction, vec3 const& up, float aspectRatio)
-		: mPosition(position)
-		, mOrientation(up, direction)
-		, mFov(90.0f)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, vec3 const& direction, vec3 const& up, float fov, float aspectRatio)
-		: mPosition(position)
-		, mOrientation(up, direction)
-		, mFov(fov)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
-	Camera::Camera(vec3 const& position, float yaw, float pitch, float roll, float aspectRatio)
-		: mPosition(position)
-		, mOrientation(vec3(radians(pitch), radians(yaw), radians(roll)))
-		, mFov(90.0f)
-		, mNear(0.1f)
-		, mFar(1000.0f)
-		, mAspectRatio(aspectRatio)
-	{
-	}
-
 	Camera::Camera(vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio)
 		: mPosition(position)
-		, mOrientation(vec3(radians(pitch), radians(yaw), radians(roll)))
+		, mYaw(yaw)
+		, mPitch(pitch)
+		, mRoll(roll)
 		, mFov(fov)
 		, mNear(0.1f)
 		, mFar(1000.0f)
@@ -124,28 +49,46 @@ namespace mpp
 		return mFar;
 	}
 
-	vec3 Camera::getPosition() const
+	vec3 const& Camera::getPosition() const
 	{
 		return mPosition;
 	}
 
-	vec3 Camera::getDirection() const
+	vec3 const& Camera::getDirection() const
 	{
-		return rotate(inverse(mOrientation), vec3(0.0f, 0.0f, -1.0f));
+		return mDirection;
 	}
 
-	vec3 Camera::getUp() const
+	vec3 const& Camera::getUp() const
 	{
-		return rotate(inverse(mOrientation), vec3(0.0f, 1.0f, 0.0f));
+		return mUp;
 	}
 
-	mat4 Camera::getViewTransform() const
+	mat4 Camera::getViewTransform()
 	{
-		return translate(toMat4(mOrientation), -mPosition);
+		// Pitch
+		vec3 right = cross(mDirection, mUp);
+		normalize(right);
+
+		mDirection = rotate(mDirection, radians(mPitch), right);
+		normalize(mDirection);
+
+		mUp = rotate(mUp, radians(mPitch), right);
+		normalize(mUp);
+
+		// Yaw
+		mDirection = rotate(mDirection, radians(mYaw), mUp);
+		normalize(mDirection);
+
+		// Roll
+		mUp = rotate(mUp, radians(mYaw), mDirection);
+		normalize(mUp);
+
+		return lookAt(mPosition, mPosition + mDirection, mUp);
 	}
 
 	mat4 Camera::getProjectionTransform() const
 	{
-		return perspective(glm::radians(mFov), mAspectRatio, mNear, mFar);
+		return perspective(radians(mFov), mAspectRatio, mNear, mFar);
 	}
 }
