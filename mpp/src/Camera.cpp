@@ -24,7 +24,7 @@ namespace mpp
 	{
 		mDirection = vec3(0, 0, -1);
 		mUp = vec3(0, 1, 0);
-		update();
+		updateAngles();
 	}
 
 	void Camera::setFov(float fov)
@@ -58,7 +58,13 @@ namespace mpp
 		return mPosition;
 	}
 
-	void Camera::update()
+	vec3 const& Camera::getDirection() const
+	{
+		updateAngles();
+		return mDirection;
+	}
+
+	void Camera::updateAngles() const
 	{
 		if (mDirty)
 		{
@@ -66,18 +72,18 @@ namespace mpp
 			vec3 right = cross(mDirection, mUp);
 			normalize(right);
 
-			mDirection = rotate(mDirection, radians(mPitch), right);
+			mDirection = rotate(mDirection, radians(-mPitch), right);
 			normalize(mDirection);
 
 			mUp = rotate(mUp, radians(mPitch), right);
 			normalize(mUp);
 
 			// Yaw
-			mDirection = rotate(mDirection, radians(mYaw), mUp);
+			mDirection = rotate(mDirection, radians(-mYaw), mUp);
 			normalize(mDirection);
 
 			// Roll
-			mUp = rotate(mUp, radians(mRoll), mDirection);
+			mUp = rotate(mUp, radians(-mRoll), mDirection);
 			normalize(mUp);
 		}
 
@@ -87,7 +93,7 @@ namespace mpp
 
 	mat4 Camera::getViewTransform()
 	{
-		update();
+		updateAngles();
 		return lookAt(mPosition, mPosition + mDirection, mUp);
 	}
 
