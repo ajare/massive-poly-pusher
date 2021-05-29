@@ -77,7 +77,7 @@ namespace mpp
 			normalize(mDirection);
 
 			// Roll
-			mUp = rotate(mUp, radians(mYaw), mDirection);
+			mUp = rotate(mUp, radians(mRoll), mDirection);
 			normalize(mUp);
 		}
 
