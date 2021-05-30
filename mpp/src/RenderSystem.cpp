@@ -483,11 +483,9 @@ namespace mpp
 		mCaps.aliasedLineWidthRange[1] = lineRange[1];
 
 		// Get texture info
-		GLint maxTextureUnits;
 		GLint maxTextureSize;
 		GLint maxRectTextureSize = 0;
 
-		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits));
 		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize));
 
 		if (glewIsSupported("GL_EXT_texture_rectangle"))
@@ -495,7 +493,6 @@ namespace mpp
 			GL_CHECK(glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxRectTextureSize));
 		}
 
-		mCaps.maxTextureUnits = maxTextureUnits;
 		mCaps.maxTextureSize = maxTextureSize;
 		mCaps.maxRectTextureSize = maxRectTextureSize;
 		
@@ -535,10 +532,20 @@ namespace mpp
 		GL_CHECK(glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &maxUniforms));
 		mCaps.maxFragmentShaderUniforms = (uint32_t)maxUniforms;
 
+		// Texture limits
+		int maxTextureUnits;
+		GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &maxTextureUnits));
+		mCaps.maxVertexTextureUnits = (uint32_t)maxUniforms;
+
+		GL_CHECK(glGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS, &maxTextureUnits));
+		mCaps.maxGeometryTextureUnits = (uint32_t)maxUniforms;
+
+		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits));
+		mCaps.maxFragmentTextureUnits = (uint32_t)maxUniforms;
+
 		// Print caps
 		infoMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
 		infoMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
-		infoMessage(utils::StringUtils::format("Supported texture units: {}", mCaps.maxTextureUnits));
 		infoMessage(utils::StringUtils::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
 		infoMessage(utils::StringUtils::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
 		infoMessage(utils::StringUtils::format("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
@@ -550,6 +557,10 @@ namespace mpp
 		infoMessage(utils::StringUtils::format("Max vertex shader uniforms: {}", mCaps.maxVertexShaderUniforms));
 		infoMessage(utils::StringUtils::format("Max geometry shader uniforms: {}", mCaps.maxGeometryShaderUniforms));
 		infoMessage(utils::StringUtils::format("Max fragment shader uniforms: {}", mCaps.maxFragmentShaderUniforms));
+
+		infoMessage(utils::StringUtils::format("Max vertex texture units: {}", mCaps.maxVertexTextureUnits));
+		infoMessage(utils::StringUtils::format("Max geometry texture units: {}", mCaps.maxGeometryTextureUnits));
+		infoMessage(utils::StringUtils::format("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
 	}
 
 	/*

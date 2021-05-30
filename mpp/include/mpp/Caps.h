@@ -13,7 +13,6 @@ namespace mpp
 		float pointSizeRange[2];
 		float aliasedLineWidthRange[2];
 
-		int maxTextureUnits;
 		int maxTextureSize;
 		int maxRectTextureSize;
 
@@ -28,6 +27,8 @@ namespace mpp
 		bool streamingGeometry;
 
 		uint32_t maxVertexShaderUniforms, maxGeometryShaderUniforms, maxFragmentShaderUniforms;
+
+		uint32_t maxVertexTextureUnits, maxGeometryTextureUnits, maxFragmentTextureUnits;
 	};
 
 }
