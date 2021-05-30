@@ -486,14 +486,14 @@ namespace mpp
 		string Parser::Parser::replaceTextureDeclaration(ShaderStage::Type stageType, string const& decl)
 		{
 			return regex_replace(decl,
-				regex(R"(@@Texture\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))"),
+				regex(R"(@@Texture\s*\(\s*([\w\d]+\s+)([\w\d\[\]]+)\s*\))"),
 				"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2_");
 		}
 
 		string Parser::replaceTextureUsage(ShaderStage::Type stageType, string const& usage)
 		{
 			return regex_replace(usage,
-				regex(R"(@Texture\s*\(\s*([\w\d]+)\s*\))"),
+				regex(R"(@Texture\s*\(\s*([\w\d\[\]]+)\s*\))"),
 				MPP_PROGRAM_TEXTURE_PREFIX "$1_");
 		}
 
@@ -635,7 +635,7 @@ namespace mpp
 		{
 			auto& stage = mStages[(int)stageType];
 
-			regex re(R"(@@Texture\s*\(\s*([\w\d]+)\s+([\w\d]+)\s*\))");
+			regex re(R"(@@Texture\s*\(\s*([\w\d]+\s+)([\w\d\[\]]+)\s*\))");
 			smatch match;
 
 			stage.textures.clear();
