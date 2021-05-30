@@ -41,7 +41,6 @@ namespace mpp
 				mCurPitch = 85.0f;
 			}
 
-			mPitch = std::min<float>(std::max<float>(-85.0f, mPitch), 85.0f);
 			mDirty = true;
 		}
 
