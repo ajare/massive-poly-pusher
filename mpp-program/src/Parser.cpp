@@ -485,16 +485,99 @@ namespace mpp
 
 		string Parser::Parser::replaceTextureDeclaration(ShaderStage::Type stageType, string const& decl)
 		{
-			return regex_replace(decl,
-				regex(R"(@@Texture\s*\(\s*([\w\d]+\s+)([\w\d\[\]]+)\s*\))"),
-				"uniform $1 " MPP_PROGRAM_TEXTURE_PREFIX "$2_");
+			regex re(R"(@@Texture\s*\(\s*([\w\d]+\s+)([\w\d\[\]]+)\s*\))");
+			smatch match;
+
+			if (regex_search(decl, match, re))
+			{
+				auto type = utils::StringUtils::trim(match.str(1));
+				string fullName, name = utils::StringUtils::trim(match.str(2));
+				fullName = name;
+
+				// Get count and modify name according
+				size_t count = 1;
+
+				auto firstBrace = name.find_first_of('[');
+				auto secondBrace = name.find_first_of(']');
+				if (firstBrace != string::npos && secondBrace != string::npos)
+				{
+					count = utils::StringUtils::parseInt(name.substr(firstBrace + 1, secondBrace - firstBrace - 1));
+					name = name.substr(0, firstBrace);
+				}
+
+				// Find name in texture list
+				auto const& textures = mStages[(int)stageType].textures;
+				auto textureIt = find_if(textures.begin(), textures.end(), [name](auto const& t)
+				{
+					return t.name == name;
+				});
+
+				auto const& texture = *textureIt;
+				string replacement = type + " " + MPP_PROGRAM_MARKUP_TEXTURE(name);
+
+				if (count > 1)
+				{
+					replacement += "[" + utils::StringUtils::toString(count) + "]";
+				}
+
+				replacement = "uniform " + replacement;
+
+				// Insert the replacement
+				auto const& fullMatch = match.str(0);
+				auto startIndex = decl.find(fullMatch);
+
+				auto endIndex = startIndex + fullMatch.length();
+				string pre = decl.substr(0, startIndex);
+				string post = decl.substr(endIndex);
+				return pre + replacement + post;
+			}
+			else
+			{
+				return decl;
+			}
 		}
 
 		string Parser::replaceTextureUsage(ShaderStage::Type stageType, string const& usage)
 		{
-			return regex_replace(usage,
-				regex(R"(@Texture\s*\(\s*([\w\d\[\]]+)\s*\))"),
-				MPP_PROGRAM_TEXTURE_PREFIX "$1_");
+			regex re(R"(@Texture\s*\(\s*([\w\d\[\]]+)\s*\))");
+			smatch match;
+
+			string repl = usage, res;
+			while (regex_search(repl, match, re))
+			{
+				string name = utils::StringUtils::trim(match.str(1));
+
+				// Get count and modify name according
+				string index;
+
+				auto firstBrace = name.find_first_of('[');
+				auto secondBrace = name.find_first_of(']');
+				if (firstBrace != string::npos && secondBrace != string::npos)
+				{
+					index = name.substr(firstBrace + 1, secondBrace - firstBrace - 1);
+					name = name.substr(0, firstBrace);
+				}
+
+				string replacement = MPP_PROGRAM_MARKUP_TEXTURE(name);
+				if (index != "")
+				{
+					replacement += "[" + index + "]";
+				}
+
+				// Insert the replacement
+				auto const& fullMatch = match.str(0);
+				auto startIndex = repl.find(fullMatch);
+
+				auto endIndex = startIndex + fullMatch.length();
+				string pre = repl.substr(0, startIndex);
+				string post = repl.substr(endIndex);
+
+				res += pre + replacement;
+				repl = post;
+			}
+
+			res += repl;
+			return res;
 		}
 
 		/*
@@ -646,7 +729,18 @@ namespace mpp
 				auto type = utils::StringUtils::trim(match.str(1));
 				auto name = utils::StringUtils::trim(match.str(2));
 
-				stage.textures.push_back({ name, gsGLSLTypeDecls[type] });
+				// Get count and modify name according
+				size_t count = 1;
+
+				auto firstBrace = name.find_first_of('[');
+				auto secondBrace = name.find_first_of(']');
+				if (firstBrace != string::npos && secondBrace != string::npos)
+				{
+					count = utils::StringUtils::parseInt(name.substr(firstBrace + 1, secondBrace - firstBrace - 1));
+					name = name.substr(0, firstBrace);
+				}
+
+				stage.textures.push_back({ name, gsGLSLTypeDecls[type], count });
 
 				// Look for next match
 				src = match.suffix().str();

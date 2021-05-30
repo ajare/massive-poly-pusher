@@ -13,6 +13,7 @@ namespace mpp
 		{
 			std::string name;
 			GLSLTypeDecl type;
+			size_t count;
 		};
 
 	}
