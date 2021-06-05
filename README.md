@@ -10,6 +10,8 @@ Run `git clone --recurse-submodules -j8 https://bitbucket.org/wtmrsh/massivepoly
 
 First build the submodules:
 
-```cd ext\utils
-msbuild build\vs2017\Utils.sln -target:UtilsTests:Rebuild
-```
+`msbuild ext\utils\build\vs2017\Utils.sln -target:UtilsTests:Rebuild -p:Platform=Win32 -p:Configuration=Release`
+
+Then the main project:
+
+`msbuild build\vs2017\MassivePolyPusher.sln -target:MppMesh:Rebuild;MppProgram:Rebuild;MassivePolyPusher:Rebuild;MppMeshSpecificationParser:Rebuild;MppHelper:Rebuild;MppResourceParsers:Rebuild;ProgramBuilder:Rebuild;DemoSuite:Rebuild -p:Platform=Win32 -p:Configuration=Release`
