@@ -1,11 +1,6 @@
 #pragma once
 
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
-#include <Windows.h>
-#endif
-
-#include <glew/glew.h>
-#include <gl/gl.h>
+#include "mpp/Config.h"
 
 #include <string>
 #include <memory>
@@ -13,13 +8,14 @@
 #include <array>
 #include <fstream>
 
+#include <glew/glew.h>
+#include <gl/gl.h>
+
 #include "mpp/ResourceManager.h"
 #include "mpp/MppException.h"
 
 #include "mpp/mesh/MeshDefinition.h"
 #include "mpp/mesh/MeshSpecification.h"
-
-#include "Config.h"
 
 namespace mpp
 {

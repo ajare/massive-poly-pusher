@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mpp/Config.h"
+
 #include <memory>
 
 #pragma warning(push)
@@ -8,8 +10,6 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #pragma warning(pop)
-
-#include "mpp/Config.h"
 
 namespace mpp
 {
@@ -39,7 +39,7 @@ namespace mpp
 
 		float getFov() const;
 
-		void setClipDistances(float near, float far);
+		void setClipDistances(float _near, float _far);
 
 		float getNearClipDistance() const;
 

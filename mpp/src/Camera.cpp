@@ -1,6 +1,5 @@
 #pragma warning(push)
 #pragma warning(disable : 4201)
-#include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #pragma warning(pop)
@@ -37,10 +36,10 @@ namespace mpp
 		return mFov;
 	}
 
-	void Camera::setClipDistances(float near, float far)
+	void Camera::setClipDistances(float _near, float _far)
 	{
-		mNear = near;
-		mFar = far;
+		mNear = _near;
+		mFar = _far;
 	}
 
 	float Camera::getNearClipDistance() const

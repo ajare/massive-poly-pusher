@@ -1,12 +1,11 @@
 #pragma once
 
-#include <Windows.h>
-#include <gl/GL.h>
+#include "mpp/Config.h"
+
 #include <exception>
 #include <string>
 
-#include "mpp/Config.h"
-#include "mpp/DebugStackWalker.h"
+#include <gl/GL.h>
 
 #pragma warning(push)
 #pragma warning(disable : 4275)
@@ -77,13 +76,22 @@ namespace mpp
 
 #pragma warning(pop)
 
+//		backward::StackTrace st; st.load_here(32); \
+//		backward::TraceResolver tr; tr.load_stacktrace(st); \
+//		for (size_t i = 0; i < st.size(); ++i)	\
+//		{										\
+//			backward::ResolvedTrace trace = tr.resolve(st[i]); \
+//			std::cout << "#" << i				\
+//				<< " " << trace.object_filename \
+//				<< " " << trace.object_function \
+//				<< " [" << trace.addr << "]"	\
+//				<< "\n";						\
+//		}										\
+
 #define THROW_MPP(errMsg, line, file, function) \
 	do											\
 	{											\
-		std::string trace;						\
-		DebugStackWalker sw(&trace);			\
-		sw.ShowCallstack();						\
-		throw mpp::MppException(errMsg, line, file, function, trace); \
+		throw mpp::MppException(errMsg, line, file, function); \
 	} while (false)
 
 #define THROW_MPP_IO(errMsg, line, file, function) throw mpp::MppIoException(errMsg, line, file, function)

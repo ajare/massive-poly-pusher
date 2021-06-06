@@ -1,15 +1,11 @@
 #pragma once
 
-#include "Config.h"
+#include "mpp/Config.h"
 
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
-#include <Windows.h>
-#endif
+#include <memory>
 
 #include <glew/glew.h>
 #include <gl/gl.h>
-
-#include <memory>
 
 #include "mpp/mesh/Vertex.h"
 #include "mpp/mesh/VertexBufferDefinition.h"
