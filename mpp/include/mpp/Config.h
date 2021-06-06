@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stdint.h>
+#include <Windows.h>
+
+//#include "mpp/backward.hpp"
 
 // Platform settings - based off OGRE3D (www.ogre3d.org)
 #define MPP_PLATFORM_WIN32 1

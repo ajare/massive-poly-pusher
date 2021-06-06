@@ -1,16 +1,12 @@
 #pragma once
 
-#include "Config.h"
-
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
-#include <Windows.h>
-#endif
-
-#include <glew/glew.h>
-#include <gl/gl.h>
+#include "mpp/Config.h"
 
 #include <memory>
 #include <vector>
+
+#include <glew/glew.h>
+#include <gl/gl.h>
 
 namespace mpp
 {

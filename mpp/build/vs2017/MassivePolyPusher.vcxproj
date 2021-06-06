@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\mpp\backward.hpp" />
     <ClInclude Include="..\..\include\mpp\Batch.h" />
     <ClInclude Include="..\..\include\mpp\BatchDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\BatchRenderer.h" />
@@ -24,7 +25,6 @@
     <ClInclude Include="..\..\include\mpp\Config.h" />
     <ClInclude Include="..\..\include\mpp\CylinderModelStream.h" />
     <ClInclude Include="..\..\include\mpp\DataStream.h" />
-    <ClInclude Include="..\..\include\mpp\DebugStackWalker.h" />
     <ClInclude Include="..\..\include\mpp\DefaultShaders.h" />
     <ClInclude Include="..\..\include\mpp\FileDataStream.h" />
     <ClInclude Include="..\..\include\mpp\Font.h" />
@@ -82,7 +82,6 @@
     <ClInclude Include="..\..\include\mpp\SceneModel.h" />
     <ClInclude Include="..\..\include\mpp\Screen.h" />
     <ClInclude Include="..\..\include\mpp\SphereModelStream.h" />
-    <ClInclude Include="..\..\include\mpp\StackWalker.h" />
     <ClInclude Include="..\..\include\mpp\StaticLogger.h" />
     <ClInclude Include="..\..\include\mpp\String.h" />
     <ClInclude Include="..\..\include\mpp\StringStream.h" />
@@ -110,7 +109,6 @@
     <ClCompile Include="..\..\src\ClipRectangle.cpp" />
     <ClCompile Include="..\..\src\Colour.cpp" />
     <ClCompile Include="..\..\src\CylinderModelStream.cpp" />
-    <ClCompile Include="..\..\src\DebugStackWalker.cpp" />
     <ClCompile Include="..\..\src\FileDataStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
     <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
@@ -161,7 +159,6 @@
     <ClCompile Include="..\..\src\SceneModel.cpp" />
     <ClCompile Include="..\..\src\Screen.cpp" />
     <ClCompile Include="..\..\src\SphereModelStream.cpp" />
-    <ClCompile Include="..\..\src\StackWalker.cpp" />
     <ClCompile Include="..\..\src\StaticLogger.cpp" />
     <ClCompile Include="..\..\src\String.cpp" />
     <ClCompile Include="..\..\src\StringStream.cpp" />

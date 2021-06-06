@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Windows.h>
+#include "mpp/Config.h"
+
 #include <gl/GL.h>
 
 namespace mpp

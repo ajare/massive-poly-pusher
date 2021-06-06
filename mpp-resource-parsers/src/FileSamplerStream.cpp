@@ -1,9 +1,3 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
-#	include <Windows.h>
-#endif
-
-#include <filesystem>
-
 #include <glew/glew.h>
 #include <gl/GL.h>
 
