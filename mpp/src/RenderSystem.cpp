@@ -2550,10 +2550,10 @@ namespace mpp
 		return it->second(this);
 	}
 
-	void RenderSystem::renderScene(ScenePtr scene, CameraPtr camera, string const& pipelineName)
+	void RenderSystem::renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, string const& pipelineName)
 	{
 		auto pipeline = getRenderPipeline(pipelineName);
-		pipeline->render(scene, camera);
+		pipeline->render(scene, camera, offset2d);
 	}
 
 	RenderPipelinePtr RenderSystem::createRenderPipeline(string const& name)

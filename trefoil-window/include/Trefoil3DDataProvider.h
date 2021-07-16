@@ -104,8 +104,10 @@ public:
 		return mpp::Colour::White;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		bool updated = mDirty;
+
 		if (mDirty)
 		{
 			float scale = 20.0f;
@@ -133,6 +135,8 @@ public:
 			setNumPrimitives(mTriangles.size());
 			mDirty = false;
 		}
+
+		return updated;
 	}
 };
 

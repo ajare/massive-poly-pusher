@@ -36,7 +36,7 @@ namespace mpp
 
 		void addPostEffect(ResourcePtr effect);
 
-		virtual void render(ScenePtr scene, CameraPtr camera);
+		virtual void render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d);
 
 	};
 

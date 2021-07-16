@@ -19,7 +19,10 @@ namespace mpp
 
 		virtual void getBounds(glm::vec3& bMin, glm::vec3& bMax) = 0;
 
-		virtual void update(float frameTime) {}
+		virtual bool update(float frameTime)
+		{
+			return false;
+		}
 
 		void setNumPrimitives(size_t numPrimitives)
 		{

@@ -46,7 +46,7 @@ namespace mpp
 		mPostEffects.push_back(effect);
 	}
 
-	void RenderPipeline::render(ScenePtr scene, CameraPtr camera)
+	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)
 	{
 		// Set viewport
 		auto const& viewport = scene->getViewport();
@@ -59,19 +59,25 @@ namespace mpp
 			camera->getFarClipDistance());
 
 		auto const& models = scene->getObjectsInView(camera);
-		for (auto const& pass: mPasses)
+		if (!models.empty())
 		{
-			// Start pass
-			pass->bindRenderTarget();
+			for (auto const& pass : mPasses)
+			{
+				// Start pass
+				pass->bindRenderTarget();
 
-			// Clear
-			mRenderSystem->clearScreen(scene->getClearColour());
+				// Clear
+				mRenderSystem->clearScreen(scene->getClearColour());
 
-			// Render pass
-			pass->render(models, camera);
+				// Render pass
+				if (scene->showModels())
+				{
+					pass->render(models, camera);
+				}
 
-			// Flush
-			mRenderSystem->flushVertexBuffers();
+				// Flush
+				mRenderSystem->flushVertexBuffers();
+			}
 		}
 
 		// Reset viewport
@@ -93,26 +99,33 @@ namespace mpp
 		mRenderSystem->renderFullscreenQuad(outputRenderTexture, 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
 
 		// 2d batches
-		auto const& batches = scene->getBatchesInView();
-
-		for (auto batch : batches)
+		if (scene->show2dBatches())
 		{
-			auto const& origin = batch->getOrigin();
-			auto const& offset = batch->getOffset();
-			float angle = batch->getAngle();
-			float orbit = batch->getOrbitAngle();
-			auto const& scale = batch->getScale();
+			auto const& batches = scene->getBatchesInView();
 
-			mRenderSystem->resetTransform();
+			mRenderSystem->pushModelMatrix();
+			mRenderSystem->translateTransform2d(glm::vec2(-offset2d.x, -offset2d.y));
 
-			// Scale and rotate object, then rotate around the origin, then move to world position.
-			mRenderSystem->translateTransform2d(origin);
-			mRenderSystem->rotateTransform2d(orbit);
-			mRenderSystem->translateTransform2d(offset);
-			mRenderSystem->rotateTransform2d(angle);
-			mRenderSystem->scaleTransform2d(scale);
+			for (auto batch : batches)
+			{
+				auto const& origin = batch->getOrigin();
+				auto const& offset = batch->getOffset();
+				float angle = batch->getAngle();
+				float orbit = batch->getOrbitAngle();
+				auto const& scale = batch->getScale();
 
-			batch->render();
+				mRenderSystem->resetTransform();
+
+				// Scale and rotate object, then rotate around the origin, then move to world position.
+				mRenderSystem->translateTransform2d(origin);
+				mRenderSystem->rotateTransform2d(orbit);
+				mRenderSystem->translateTransform2d(offset);
+				mRenderSystem->rotateTransform2d(angle);
+				mRenderSystem->scaleTransform2d(scale);
+
+				batch->render();
+			}
+			mRenderSystem->popModelMatrix();
 		}
 	}
 }

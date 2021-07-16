@@ -58,7 +58,7 @@ namespace mpp
 						params.useDiffuse
 					},
 					textureOrMaterial,
-					mDataProvider->getNumTriangles(),
+					mDataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
 

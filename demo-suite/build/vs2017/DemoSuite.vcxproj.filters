@@ -69,7 +69,10 @@
     <ClInclude Include="..\..\include\TestLineBatchDataProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\TestTriangleBatchDataProvider.h">
+    <ClInclude Include="..\..\include\Test3dTriangleBatchDataProvider.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\Test2dTriangleBatchDataProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

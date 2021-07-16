@@ -795,7 +795,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	renderSystem->renderScene(getScene(), getCamera(), "Default");
+	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
 	
 	renderSystem->setProjection2dOrthographic();
 	renderSystem->translateTransform2d(glm::vec2(renderSystem->getWindowWidth() / 4, 80));

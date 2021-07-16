@@ -117,6 +117,26 @@ namespace mpp
 		return Colour::Black;
 	}
 
+	void Scene::show2dBatches(bool show)
+	{
+		mShow2dBatches = show;
+	}
+
+	bool Scene::show2dBatches() const
+	{
+		return mShow2dBatches;
+	}
+
+	void Scene::showModels(bool show)
+	{
+		mShowModels = show;
+	}
+
+	bool Scene::showModels() const
+	{
+		return mShowModels;
+	}
+
 	void Scene::update(float frameTime)
 	{
 		for (auto batch: m2dBatches)

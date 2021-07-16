@@ -48,7 +48,8 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include "ModelScene.h"
 #include "Helper.h"
 #include "TestLineBatchDataProvider.h"
-#include "TestTriangleBatchDataProvider.h"
+#include "Test2dTriangleBatchDataProvider.h"
+#include "Test3dTriangleBatchDataProvider.h"
 
 using namespace std;
 using namespace mpp;
@@ -361,7 +362,24 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 	return torus;
 }
 
-mesh::MeshSpecification ModelScene::createBatchMeshSpecification()
+mesh::MeshSpecification ModelScene::createBatch2dMeshSpecification()
+{
+	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
+
+	mesh::VertexBufferAttributeLayout* attribLayout = meshSpec.createVertexBufferAttributeLayout(false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+
+	attribLayout = meshSpec.createVertexBufferAttributeLayout(true);
+	attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+	attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+	meshSpec.setStorageType(mesh::VertexBufferStorageType::Static);
+	meshSpec.setIndexedVertices(false);
+
+	return meshSpec;
+}
+
+mesh::MeshSpecification ModelScene::createBatch3dMeshSpecification()
 {
 	mesh::MeshSpecification meshSpec(mesh::Primitive::Type::Triangles);
 
@@ -379,19 +397,25 @@ mesh::MeshSpecification ModelScene::createBatchMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createBatchMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d, mpp::mesh::MeshSpecification const& spec3d, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
 	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
-	materialStream->setProgram2d(false);
-	materialStream->setMeshSpecification(meshSpec);
+	materialStream->setProgram2d(true);
+	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "Test.Texture");
 
-	auto res = resourceMgr->declareResource("Batch.Material", ResourceStreamPtr(materialStream));
+	auto res = resourceMgr->declareResource("Batch.2D.Material", ResourceStreamPtr(materialStream));
 	res->load();
 
-	return res;
+	materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream->setProgram2d(false);
+	materialStream->setMeshSpecification(spec3d);
+	materialStream->setTexture("TEX1", "Test.Texture");
+
+	res = resourceMgr->declareResource("Batch.3D.Material", ResourceStreamPtr(materialStream));
+	res->load();
 }
 
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
@@ -417,7 +441,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	lineBatchRenderer->create();
 
-	getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer);
+	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer));
 
 	// Triangles
 	mpp::helper::TriangleBatchRendererParams triParams
@@ -427,15 +451,32 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
+
+	// 2D batch
+	auto tri2dBatchDataProvider = make_shared<Test2dTriangleBatchDataProvider>();
+
+	auto tri2dBatchRenderer = make_shared<mpp::helper::TriangleBatch2DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+		"TestTrisBatch",
+		triParams,
+		tri2dBatchDataProvider,
+		resourceMgr->getResource("Batch.2D.Material"),
+		renderSystem,
+		resourceMgr);
+
+	tri2dBatchRenderer->create();
+
+	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
 	
-	auto triBatchDataProvider = make_shared<TestTriangleBatchDataProvider>();
+	// 3d model
+	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 
 	mTriangleBatch = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
-		"TestTris",
+		"TestTrisModel",
 		triParams,
-		triBatchDataProvider,
-		resourceMgr->getResource("Batch.Material"),
-		renderSystem, resourceMgr);
+		tri3dBatchDataProvider,
+		resourceMgr->getResource("Batch.3D.Material"),
+		renderSystem, 
+		resourceMgr);
 
 	mTriangleBatch->create();
 
@@ -513,9 +554,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.push_back(mppScene->addModel(statue));
 
 	// Batches
-	auto batchMeshSpec = createBatchMeshSpecification();
-	createBatchMaterial(batchMeshSpec, options);
-
+	createBatchMaterials(createBatch2dMeshSpecification(), createBatch3dMeshSpecification(), options);
 	createBatches(renderSystem);
 
 	// Lighting
@@ -535,6 +574,16 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 	camera->setClipDistances(0.1f, 1000.0f);
 
 	return shared_ptr<mpp::Camera>(camera);
+}
+
+void ModelScene::toggle2dBatches()
+{
+	getScene()->show2dBatches(!getScene()->show2dBatches());
+}
+
+void ModelScene::toggleModels()
+{
+	getScene()->showModels(!getScene()->showModels());
 }
 
 void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
@@ -560,6 +609,13 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate batch box
 	//auto& batchBoxModel = mModels[8];
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
+
+	// Animate 2d triangle batch
+	auto& lineBatch = mBatches[0];
+	lineBatch->update(frameTime);
+
+	auto& triBatch = mBatches[1];
+	triBatch->update(frameTime);
 	
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
@@ -572,5 +628,5 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	renderSystem->renderScene(getScene(), getCamera(), "Default");
+	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
 }

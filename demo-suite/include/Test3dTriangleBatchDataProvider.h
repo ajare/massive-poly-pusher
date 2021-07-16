@@ -6,8 +6,7 @@
 
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
-// Controls
-class TestTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
+class Test3dTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
 {
 	struct Triangle
 	{
@@ -24,7 +23,7 @@ class TestTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataPro
 
 public:
 
-	TestTriangleBatchDataProvider()
+	Test3dTriangleBatchDataProvider()
 	{
 		update(0.0f);
 	}
@@ -98,8 +97,10 @@ public:
 		return mpp::Colour::White;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		bool updated = mDirty;
+
 		if (mDirty)
 		{
 			float scale = 20.0f;
@@ -254,6 +255,8 @@ public:
 			setNumPrimitives(mTriangles.size());
 			mDirty = false;
 		}
+
+		return updated;
 	}
 };
 

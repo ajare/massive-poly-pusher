@@ -378,7 +378,7 @@ namespace mpp
 		// Rendering
 		ScenePtr createScene(std::string const& type);
 
-		void renderScene(ScenePtr scene, CameraPtr camera, std::string const& pipelineName);
+		void renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, std::string const& pipelineName);
 
 		RenderPipelinePtr createRenderPipeline(std::string const& name);
 

@@ -53,8 +53,10 @@ public:
 		return mpp::Colour::White;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		bool updated = mDirty;
+
 		if (mDirty)
 		{
 			mVertices.clear();
@@ -76,6 +78,8 @@ public:
 
 			mDirty = false;
 		}
+
+		return updated;
 	}
 };
 
@@ -182,8 +186,10 @@ public:
 		mDirty = true;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		bool updated = mDirty;
+
 		if (mDirty)
 		{
 			mVertices.clear();
@@ -213,6 +219,8 @@ public:
 			setNumPrimitives(mVertices.size());
 			mDirty = false;
 		}
+
+		return updated;
 	}
 };
 
