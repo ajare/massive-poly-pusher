@@ -215,6 +215,7 @@ namespace mpp
 	{
 		return mColourAttrib.dataType != mesh::Vertex::DataType::None;
 	}
+
 	bool Batch::usingDiffuse() const
 	{
 		return mUseDiffuse;

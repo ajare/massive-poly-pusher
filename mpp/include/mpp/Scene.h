@@ -26,6 +26,8 @@ namespace mpp
 
 		bool mLoaded{ false };
 
+		bool mShowModels{ true }, mShow2dBatches{ true };
+
 		ClipRectangle mViewport;
 
 	private:
@@ -57,6 +59,14 @@ namespace mpp
 		virtual std::vector<SceneModelPtr> getObjectsInView(CameraPtr camera);
 
 		virtual std::vector<SceneBatchPtr> getBatchesInView();
+
+		void show2dBatches(bool show);
+
+		bool show2dBatches() const;
+
+		void showModels(bool show);
+
+		bool showModels() const;
 
 		virtual void update(float frameTime);
 	};

@@ -16,11 +16,14 @@ class TestLineBatchDataProvider : public mpp::helper::LineBatchDataProvider<mpp:
 
 	glm::vec3 mBounds[2];
 
+	float mTotalTime;
+
 	bool mDirty{ true };
 
 public:
 
 	TestLineBatchDataProvider()
+		: mTotalTime(0.0f)
 	{
 		update(0.0f);
 	}
@@ -60,8 +63,11 @@ public:
 		mDirty = true;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		mTotalTime += frameTime;
+
+		bool updated = mDirty;
 		if (mDirty)
 		{
 			mLines.clear();
@@ -73,7 +79,7 @@ public:
 				Line line
 				{
 					{100.0f + i * 4, 100.0f + i * 4},
-					{100.0f, 200.0f}
+					{100.0f, 150.0f + sin(mTotalTime + i * 3.14159f * 2.0f / 100.0f) * 100.0f }
 				};
 
 				mLines.push_back(line);
@@ -97,7 +103,9 @@ public:
 			}
 
 			setNumPrimitives(mLines.size());
-			mDirty = false;
+			//mDirty = false;
 		}
+
+		return mDirty;
 	}
 };

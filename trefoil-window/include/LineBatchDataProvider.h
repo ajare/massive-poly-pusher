@@ -63,8 +63,9 @@ public:
 		mDirty = true;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		bool updated = mDirty;
 		if (mDirty)
 		{
 			// Regen if window changed
@@ -87,6 +88,8 @@ public:
 			setNumPrimitives(mLines.size() / 2);
 			mDirty = false;
 		}
+		
+		return updated;
 	}
 };
 
@@ -144,8 +147,10 @@ public:
 		mDirty = true;
 	}
 
-	void update(float frameTime)
+	bool update(float frameTime)
 	{
+		bool updated = mDirty;
+
 		if (mDirty)
 		{
 			mLines.clear();
@@ -173,5 +178,7 @@ public:
 			setNumPrimitives(mLines.size() / 2);
 			mDirty = false;
 		}
+
+		return updated;
 	}
 };

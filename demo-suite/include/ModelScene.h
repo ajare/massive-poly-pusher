@@ -14,13 +14,15 @@ class ModelScene : public ::Scene
 
 	std::vector<mpp::SceneModelPtr> mModels;
 
+	std::vector<mpp::SceneBatchPtr> mBatches;
+
 	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> mTriangleBatch;
 
 private:
 
-	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
+	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) override;
 
-	mpp::CameraPtr createCamera(ProgramOptions const& options) const;
+	mpp::CameraPtr createCamera(ProgramOptions const& options) const override;
 
 	void createSharedTextures(ProgramOptions const& options);
 	
@@ -46,9 +48,11 @@ private:
 
 	mpp::ResourcePtr createTorusModel(ProgramOptions const& options);
 
-	mpp::mesh::MeshSpecification createBatchMeshSpecification();
+	mpp::mesh::MeshSpecification createBatch2dMeshSpecification();
 
-	mpp::ResourcePtr createBatchMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+	mpp::mesh::MeshSpecification createBatch3dMeshSpecification();
+
+	void createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d, mpp::mesh::MeshSpecification const& spec3d, ProgramOptions const& options);
 
 	void createBatches(mpp::RenderSystem* renderSystem);
 
@@ -56,7 +60,11 @@ public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
 
-	void update(mpp::RenderSystem* renderSystem, float frameTime);
+	void toggle2dBatches();
 
-	void render(mpp::RenderSystem* renderSystemr, World const& world, RenderOptions const& options);
+	void toggleModels();
+
+	void update(mpp::RenderSystem* renderSystem, float frameTime) override;
+
+	void render(mpp::RenderSystem* renderSystemr, World const& world, RenderOptions const& options) override;
 };

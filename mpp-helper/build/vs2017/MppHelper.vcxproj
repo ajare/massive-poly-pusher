@@ -140,6 +140,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\FpsCamera.cpp" />
     <ClCompile Include="..\..\src\FreeCamera.cpp" />
+    <ClCompile Include="..\..\src\OrthoCamera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\helper\Config.h" />
@@ -147,6 +148,7 @@
     <ClInclude Include="..\..\include\mpp\helper\FreeCamera.h" />
     <ClInclude Include="..\..\include\mpp\helper\LineBatchDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\helper\LineBatchRenderer.h" />
+    <ClInclude Include="..\..\include\mpp\helper\OrthoCamera.h" />
     <ClInclude Include="..\..\include\mpp\helper\QuadBatchDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\helper\QuadBatchRenderer.h" />
     <ClInclude Include="..\..\include\mpp\helper\TriangleBatchDataProvider.h" />

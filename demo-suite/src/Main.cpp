@@ -258,6 +258,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				running = false;
 			}
 
+			if (gInputMgr->keyPressed(Key_M))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggleModels();
+			}
+			if (gInputMgr->keyPressed(Key_2))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches();
+			}
+
 			if (gInputMgr->keyPressed(Key_F9))
 			{
 				wireframe = !wireframe;

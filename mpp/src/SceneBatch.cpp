@@ -85,7 +85,10 @@ namespace mpp
 
 	void SceneBatch::update(float frameTime)
 	{
-		mDataProvider->update(frameTime);
+		if (mDataProvider->update(frameTime))
+		{
+			mRenderer->update(mDataProvider->getNumPrimitives());
+		}
 	}
 
 	void SceneBatch::render()
