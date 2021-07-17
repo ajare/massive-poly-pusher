@@ -228,6 +228,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		float viewAngle = 0.0f;
 		float lightAngle = 0.0f, lightHeight = 750.0f;
 
+		// Turn off 2d batches to start
+		static_cast<ModelScene*>(gScenes[0])->toggle2dBatches();
+
 		// Main loop
 		gTimer->reset();
 		bool running = true;
@@ -368,6 +371,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.clear();
 			lines.push_back("F1: toggle fullscreen");
 			lines.push_back("F2: toggle wireframe");
+			lines.push_back("M: toggle models");
+			lines.push_back("2: toggle 2d batches");
 
 			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 

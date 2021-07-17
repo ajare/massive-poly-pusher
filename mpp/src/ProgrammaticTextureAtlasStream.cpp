@@ -16,7 +16,7 @@ namespace mpp
 {
 
 	ProgrammaticTextureAtlasStream::ProgrammaticTextureAtlasStream(ResourceManager* resourceMgr)
-		: ProgrammaticTextureStream(resourceMgr)
+		: ProgrammaticTextureStream(resourceMgr, "TextureAtlas")
 	{
 		createQualitySetting("");
 	}

@@ -16,8 +16,8 @@ using namespace std;
 namespace mpp
 {
 
-	ProgrammaticTextureStream::ProgrammaticTextureStream(ResourceManager* resourceMgr)
-		: TextureStream(resourceMgr)
+	ProgrammaticTextureStream::ProgrammaticTextureStream(ResourceManager* resourceMgr, string const& type)
+		: TextureStream(resourceMgr, type)
 	{
 		createQualitySetting("");
 	}
