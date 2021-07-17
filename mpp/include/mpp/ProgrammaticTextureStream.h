@@ -9,7 +9,7 @@ namespace mpp
 
 	public:
 
-		explicit ProgrammaticTextureStream(ResourceManager* resourceMgr);
+		ProgrammaticTextureStream(ResourceManager* resourceMgr, std::string const& type = "Texture");
 
 		void setTarget(TextureTarget target, uint32_t quality = 0);
 

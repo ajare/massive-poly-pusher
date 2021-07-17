@@ -33,6 +33,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticMaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
+#include <mpp/ProgrammaticTextureAtlasStream.h>
 #include <mpp/ProgrammaticSamplerStream.h>
 #include <mpp/ResourceStreamSerializer.h>
 
@@ -44,12 +45,14 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/LineBatchRenderer.h>
 #include <mpp/helper/TriangleBatchRenderer.h>
+#include <mpp/helper/QuadBatchRenderer.h>
 
 #include "ModelScene.h"
 #include "Helper.h"
 #include "TestLineBatchDataProvider.h"
 #include "Test2dTriangleBatchDataProvider.h"
 #include "Test3dTriangleBatchDataProvider.h"
+#include "TestQuadBatchDataProvider.h"
 
 using namespace std;
 using namespace mpp;
@@ -96,6 +99,12 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
+
+	textureStream = new ProgrammaticTextureAtlasStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::Texture2D);
+	textureStream->setFile(options.resourceLocation + "bullets.png", loadImage);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	resourceMgr->declareResource("Bullets.Texture", ResourceStreamPtr(textureStream));
 
 	// Create texture from file definition.
 	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, options.resourceLocation + "Doughnut.xml");
@@ -410,6 +419,14 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 	res->load();
 
 	materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream->setProgram2d(true);
+	materialStream->setMeshSpecification(spec2d);
+	materialStream->setTexture("TEX1", "Bullets.Texture");
+
+	res = resourceMgr->declareResource("Bullets.Material", ResourceStreamPtr(materialStream));
+	res->load();
+
+	materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(spec3d);
 	materialStream->setTexture("TEX1", "Test.Texture");
@@ -421,7 +438,15 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
 	auto resourceMgr = getResourceManager();
-	
+
+	mpp::helper::TriangleBatchRendererParams triParams
+	{
+		true,
+		true,
+		true,
+		false
+	};
+
 	// Lines
 	mpp::helper::LineBatchRendererParams lineParams
 	{
@@ -444,13 +469,6 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer));
 
 	// Triangles
-	mpp::helper::TriangleBatchRendererParams triParams
-	{
-		true,
-		true,
-		true,
-		false
-	};
 
 	// 2D batch
 	auto tri2dBatchDataProvider = make_shared<Test2dTriangleBatchDataProvider>();
@@ -466,12 +484,93 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	tri2dBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
-	
+
+	// Quad 1
+	mpp::helper::QuadBatchRendererParams quadParams1(
+		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		true,  // use diffuse colour
+		false, // don't rotate
+		8,     // width
+		8,     // height
+		true,  // square
+		16);   // 16-bit indices
+
+
+	auto quadBatchDataProvider1 = make_shared<TestQuadBatchDataProvider>(renderSystem, 200.0f, 100, -1, false);
+
+	auto quadBatchRenderer1 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads1",
+		quadParams1,
+		quadBatchDataProvider1,
+		renderSystem,
+		resourceMgr);
+
+	quadBatchRenderer1->create();
+
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1));
+
+	// Quad 2
+	mpp::helper::QuadBatchRendererParams quadParams2(
+		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		true,  // use diffuse colour
+		true,  // rotate
+		16,     // width
+		16,     // height
+		true,  // square
+		16,   // 16-bit indices
+		resourceMgr->getResource("Test.Texture"));
+
+	auto quadBatchDataProvider2 = make_shared<TestQuadBatchDataProvider>(renderSystem, 250.0f, 50, -1, true);
+
+	auto quadBatchRenderer2 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads2",
+		quadParams2,
+		quadBatchDataProvider2,
+		renderSystem,
+		resourceMgr);
+
+	quadBatchRenderer2->create();
+
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2));
+
+	// Quad 3
+	mpp::helper::QuadBatchRendererParams quadParams3(
+		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		true,  // use diffuse colour
+		true,  // rotate
+		24,     // width
+		24,     // height
+		true,  // square
+		16,   // 16-bit indices
+		resourceMgr->getResource("Bullets.Texture"));
+
+	auto quadBatchDataProvider3 = make_shared<TestQuadBatchDataProvider>(renderSystem, 280.0f, 50, 2, true);
+
+	auto quadBatchRenderer3 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads3",
+		quadParams3,
+		quadBatchDataProvider3,
+		renderSystem,
+		resourceMgr);
+
+	quadBatchRenderer3->create();
+
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
+
 	// 3d model
 	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 
 	mTriangleBatch = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
-		"TestTrisModel",
+		"TestTris3dModel",
 		triParams,
 		tri3dBatchDataProvider,
 		resourceMgr->getResource("Batch.3D.Material"),
@@ -609,13 +708,6 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate batch box
 	//auto& batchBoxModel = mModels[8];
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
-
-	// Animate 2d triangle batch
-	auto& lineBatch = mBatches[0];
-	lineBatch->update(frameTime);
-
-	auto& triBatch = mBatches[1];
-	triBatch->update(frameTime);
 	
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);

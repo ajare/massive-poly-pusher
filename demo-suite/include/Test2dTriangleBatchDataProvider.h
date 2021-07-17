@@ -6,6 +6,10 @@
 
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
+#include <spline_library/splines/cubic_hermite_spline.h>
+
+#include "Vector2.h"
+
 class Test2dTriangleBatchDataProvider : public mpp::helper::TriangleBatch2DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
 {
 	struct Triangle
@@ -16,6 +20,10 @@ class Test2dTriangleBatchDataProvider : public mpp::helper::TriangleBatch2DDataP
 
 	bool mDirty{ true };
 
+	float mTotalTime{ 0.0f };
+
+	LoopingCubicHermiteSpline<Vector2> mSpline;
+
 	std::vector<Triangle> mTriangles;
 
 	glm::vec2 mBounds[2];
@@ -23,6 +31,7 @@ class Test2dTriangleBatchDataProvider : public mpp::helper::TriangleBatch2DDataP
 public:
 
 	Test2dTriangleBatchDataProvider()
+		: mSpline({ { 150, 150 }, { 150, 450 }, { 650, 450 }, {550, 50 } }, 0.5f)
 	{
 		update(0.0f);
 	}
@@ -80,19 +89,68 @@ public:
 	bool update(float frameTime)
 	{
 		bool updated = mDirty;
+		mTotalTime += frameTime;
 
 		if (mDirty)
 		{
 			mTriangles.clear();
 
-			// Create triangles
-			mTriangles.push_back(
+			auto maxLength = mSpline.totalLength();
+			auto maxT = mSpline.getMaxT();
+
+			const size_t numSegs{ 50 };
+			float slen{ maxLength / 2 };
+
+			// Create points
+			std::vector<Vector2> points;
+			float sp = mTotalTime;
+			while (sp > maxLength)
+			{
+				sp -= maxLength;
+			}
+
+			float st = slen / maxLength;
+			for (size_t i = 0; i <= numSegs; ++i)
+			{
+				float t = sp + st * (i / (float)numSegs);
+				if (t > 1.0f)
 				{
-					{ 0.0f,  0.0f, 50.0f }, // X
-					{ 0.0f, 50.0f, 0.0f }, // Y
-					{ 0, 0, 1 }, // U
-					{ 0, 1, 0 }  // V
-				});
+					t -= 1.0f;
+				}
+
+				auto pos = mSpline.getPosition(t * maxT);
+				auto dir = mSpline.getTangent(t * maxT).tangent;
+
+				points.push_back(pos);
+				points.push_back(dir.perpendicular().normalisedCopy());
+			}
+
+			// Create triangles
+
+			const float width{ 20.0f };
+			for (size_t i = 0; i < numSegs; ++i)
+			{
+				float w2 = width / 2;
+				auto const& p0 = points[(i + 0) * 2 + 0];
+				auto const& p1 = points[(i + 1) * 2 + 0];
+				auto const& t0 = points[(i + 0) * 2 + 1];
+				auto const& t1 = points[(i + 1) * 2 + 1];
+
+				mTriangles.push_back(
+					{
+						{ p0.x - t0.x * w2, p1.x - t1.x * w2, p1.x + t1.x * w2 }, // X
+						{ p0.y - t0.y * w2, p1.y - t1.y * w2, p1.y + t1.y * w2 }, // Y
+						{ 0, 0, 1 }, // U
+						{ 0, 0, 1 }  // V
+					});
+				mTriangles.push_back(
+					{
+						{ p1.x + t1.x * w2, p0.x + t0.x * w2, p0.x - t0.x * w2 }, // X
+						{ p1.y + t1.y * w2, p0.y + t0.y * w2, p0.y - t0.y * w2 }, // Y
+						{ 1, 1, 0 }, // U
+						{ 1, 0, 0 }  // V
+					});
+			}
 
 			setNumPrimitives(mTriangles.size());
 			//mDirty = false;
