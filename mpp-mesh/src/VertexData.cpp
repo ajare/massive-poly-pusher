@@ -12,6 +12,8 @@ namespace mpp
 		VertexData::VertexData(MeshSpecification const& spec, size_t numVertices)
 			: mStride(spec.getVertexStrideInBytes())
 			, mNumComponents(spec.getNumComponents())
+			, mOffset(0)
+			, mSpec(spec)
 		{
 			mData.resize(mStride * numVertices);
 		}
