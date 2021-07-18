@@ -106,6 +106,8 @@ namespace mpp
 
 			uint32_t mOffset{ 0 };
 
+			MeshSpecification mSpec;
+
 			std::vector<int8_t> mData;
 
 			std::vector<Vertex::DataType> mDataTypes;

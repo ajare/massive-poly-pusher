@@ -57,6 +57,7 @@ namespace mpp
 			camera->getFov(),
 			camera->getNearClipDistance(),
 			camera->getFarClipDistance());
+		
 
 		auto const& models = scene->getObjectsInView(camera);
 		if (!models.empty())
