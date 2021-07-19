@@ -566,6 +566,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
 
+	
 	// 3d model
 	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 
@@ -579,8 +580,29 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	mTriangleBatch->create();
 
-	mModels.push_back(getScene()->addModel(mTriangleBatch->getModel()));
+	mModels.push_back(getScene()->add3dModel(mTriangleBatch->getModel()));
 	mModels.back()->translate(glm::vec3(0, 120, 120));
+
+	// 2d model
+	/*
+	auto ms = make_shared<mpp::ProgrammaticModelStream>(resourceMgr);
+
+	auto meshSpec2d = createBatch2dMeshSpecification();
+	auto trianglesMeshId = ms->createMesh("Triangles", meshSpec2d, "Batch.2D.Material", 32);
+	mesh::VertexData vertexData(meshSpec2d, 4);
+	vertexData.f32(500, 300); vertexData.f32(0.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
+	vertexData.f32(532, 300); vertexData.f32(1.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
+	vertexData.f32(532, 332); vertexData.f32(1.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
+	vertexData.f32(500, 332); vertexData.f32(0.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
+	ms->addVertexData(trianglesMeshId, vertexData);
+	ms->addTriangle(trianglesMeshId, 0, 1, 2);
+	ms->addTriangle(trianglesMeshId, 2, 3, 0);
+
+	auto model2d = resourceMgr->declareResource("Model2d", ms);
+	*/
+	//model2d->load();
+	//getScene()->add2dModel(model2d);
+	//mBatches.push_back(getScene()->add2dModel(model2d));
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
@@ -598,7 +620,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto grid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream));
 	grid->load();
 
-	mModels.push_back(mppScene->addModel(grid));
+	mModels.push_back(mppScene->add3dModel(grid));
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
@@ -608,7 +630,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto sphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream));
 	sphere->load();
 	
-	mModels.push_back(mppScene->addModel(sphere));
+	mModels.push_back(mppScene->add3dModel(sphere));
 	mModels.back()->translate(glm::vec3(-80, 130, 0));
 
 	// Load Cylinder
@@ -619,10 +641,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto cylinder = resourceMgr->declareResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
 	cylinder->load();
 
-	mModels.push_back(mppScene->addModel(cylinder));
+	mModels.push_back(mppScene->add3dModel(cylinder));
 	mModels.back()->translate(glm::vec3(96, 40, 96));
 	
-	mModels.push_back(mppScene->addModel(cylinder));
+	mModels.push_back(mppScene->add3dModel(cylinder));
 	mModels.back()->translate(glm::vec3(-96, 40, 96));
 
 	// Load Box
@@ -633,16 +655,16 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto box = resourceMgr->declareResource("Model.Box", ResourceStreamPtr(boxStream));
 	box->load();
 
-	mModels.push_back(mppScene->addModel(box));
+	mModels.push_back(mppScene->add3dModel(box));
 	mModels.back()->translate(glm::vec3(96, 108, 96));
 
-	mModels.push_back(mppScene->addModel(box));
+	mModels.push_back(mppScene->add3dModel(box));
 	mModels.back()->translate(glm::vec3(-96, 108, 96));
 
 	// Load torus
 	auto torus = createTorusModel(options);
 
-	mModels.push_back(mppScene->addModel(torus));
+	mModels.push_back(mppScene->add3dModel(torus));
 	mModels.back()->translate(glm::vec3(0, 280, 0));
 	
 	// Load MppModel
@@ -650,7 +672,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto statue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
 	statue->load();
 
-	mModels.push_back(mppScene->addModel(statue));
+	mModels.push_back(mppScene->add3dModel(statue));
 
 	// Batches
 	createBatchMaterials(createBatch2dMeshSpecification(), createBatch3dMeshSpecification(), options);
@@ -677,12 +699,12 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 
 void ModelScene::toggle2dBatches()
 {
-	getScene()->show2dBatches(!getScene()->show2dBatches());
+	getScene()->show2dModels(!getScene()->show2dModels());
 }
 
 void ModelScene::toggleModels()
 {
-	getScene()->showModels(!getScene()->showModels());
+	getScene()->show3dModels(!getScene()->show3dModels());
 }
 
 void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)

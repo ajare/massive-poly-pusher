@@ -18,9 +18,9 @@ class ModelScene : public ::Scene
 
 	glm::vec3 mLightPosition;
 
-	std::vector<mpp::SceneModelPtr> mModels;
+	std::vector<mpp::SceneModel3dPtr> mModels;
 
-	mpp::SceneModelPtr mModel;
+	mpp::SceneModel3dPtr mModel;
 
 	float mModelRotation{ 0 }, mModelMove;
 

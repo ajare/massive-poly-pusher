@@ -28,7 +28,6 @@
     <ClInclude Include="..\..\include\Test3dTriangleBatchDataProvider.h" />
     <ClInclude Include="..\..\include\TestQuadBatchDataProvider.h" />
     <ClInclude Include="..\..\include\Timer.h" />
-    <ClInclude Include="..\..\include\TriangleBatchRenderer.h" />
     <ClInclude Include="..\..\include\Vector2.h" />
     <ClInclude Include="..\..\include\World.h" />
   </ItemGroup>

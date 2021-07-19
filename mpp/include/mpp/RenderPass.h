@@ -5,7 +5,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
-#include "mpp/SceneModel.h"
+#include "mpp/SceneModel3d.h"
 #include "mpp/Camera.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/Colour.h"
@@ -30,7 +30,7 @@ namespace mpp
 
 		void bindRenderTarget();
 
-		virtual void render(std::vector<SceneModelPtr> const& models, CameraPtr camera);
+		virtual void render(std::vector<SceneModel3dPtr> const& models, CameraPtr camera);
 	};
 
 	typedef std::shared_ptr<RenderPass> RenderPassPtr;

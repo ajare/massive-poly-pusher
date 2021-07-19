@@ -59,7 +59,7 @@ namespace mpp
 			camera->getFarClipDistance());
 		
 
-		auto const& models = scene->getObjectsInView(camera);
+		auto const& models = scene->get3dModelsInView(camera);
 		if (!models.empty())
 		{
 			for (auto const& pass : mPasses)
@@ -71,7 +71,7 @@ namespace mpp
 				mRenderSystem->clearScreen(scene->getClearColour());
 
 				// Render pass
-				if (scene->showModels())
+				if (scene->show3dModels())
 				{
 					pass->render(models, camera);
 				}
@@ -99,21 +99,21 @@ namespace mpp
 		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
 		mRenderSystem->renderFullscreenQuad(outputRenderTexture, 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
 
-		// 2d batches
-		if (scene->show2dBatches())
+		// 2d models
+		if (scene->show2dModels())
 		{
-			auto const& batches = scene->getBatchesInView();
+			auto const& models = scene->get2dModelsInView();
 
 			mRenderSystem->pushModelMatrix();
 			mRenderSystem->translateTransform2d(glm::vec2(-offset2d.x, -offset2d.y));
 
-			for (auto batch : batches)
+			for (auto model: models)
 			{
-				auto const& origin = batch->getOrigin();
-				auto const& offset = batch->getOffset();
-				float angle = batch->getAngle();
-				float orbit = batch->getOrbitAngle();
-				auto const& scale = batch->getScale();
+				auto const& origin = model->getOrigin();
+				auto const& offset = model->getOffset();
+				float angle = model->getAngle();
+				float orbit = model->getOrbitAngle();
+				auto const& scale = model->getScale();
 
 				mRenderSystem->resetTransform();
 
@@ -124,7 +124,7 @@ namespace mpp
 				mRenderSystem->rotateTransform2d(angle);
 				mRenderSystem->scaleTransform2d(scale);
 
-				batch->render();
+				model->render();
 			}
 			mRenderSystem->popModelMatrix();
 		}

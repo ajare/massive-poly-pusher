@@ -77,9 +77,9 @@
     <ClInclude Include="..\..\include\mpp\SamplerParams.h" />
     <ClInclude Include="..\..\include\mpp\SamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\Scene.h" />
-    <ClInclude Include="..\..\include\mpp\SceneBatch.h" />
+    <ClInclude Include="..\..\include\mpp\SceneModel2d.h" />
     <ClInclude Include="..\..\include\mpp\SceneFactory.h" />
-    <ClInclude Include="..\..\include\mpp\SceneModel.h" />
+    <ClInclude Include="..\..\include\mpp\SceneModel3d.h" />
     <ClInclude Include="..\..\include\mpp\Screen.h" />
     <ClInclude Include="..\..\include\mpp\SphereModelStream.h" />
     <ClInclude Include="..\..\include\mpp\StaticLogger.h" />
@@ -155,8 +155,8 @@
     <ClCompile Include="..\..\src\SamplerParams.cpp" />
     <ClCompile Include="..\..\src\SamplerStream.cpp" />
     <ClCompile Include="..\..\src\Scene.cpp" />
-    <ClCompile Include="..\..\src\SceneBatch.cpp" />
-    <ClCompile Include="..\..\src\SceneModel.cpp" />
+    <ClCompile Include="..\..\src\SceneModel2d.cpp" />
+    <ClCompile Include="..\..\src\SceneModel3d.cpp" />
     <ClCompile Include="..\..\src\Screen.cpp" />
     <ClCompile Include="..\..\src\SphereModelStream.cpp" />
     <ClCompile Include="..\..\src\StaticLogger.cpp" />

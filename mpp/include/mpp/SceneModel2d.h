@@ -15,11 +15,15 @@
 
 namespace mpp
 {
-	class _MPPAPI __declspec(align(16)) SceneBatch
+	class _MPPAPI __declspec(align(16)) SceneModel2d
 	{
 		BatchDataProviderPtr mDataProvider;
 
 		BatchRendererPtr mRenderer;
+
+		ResourcePtr mModel;
+
+		RenderSystem* mRenderSystem;
 
 		glm::vec2 mOrigin, mOffset, mScale;
 
@@ -27,9 +31,11 @@ namespace mpp
 
 	public:
 
-		SceneBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
+		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
 
-		virtual ~SceneBatch();
+		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem);
+
+		virtual ~SceneModel2d();
 
 		void setOrigin(glm::vec2 const& origin);
 
@@ -60,5 +66,5 @@ namespace mpp
 		void render();
 	};
 
-	typedef std::shared_ptr<SceneBatch> SceneBatchPtr;
+	typedef std::shared_ptr<SceneModel2d> SceneModel2dPtr;
 }
