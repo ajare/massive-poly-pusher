@@ -33,7 +33,7 @@ namespace mpp
 		mRenderSystem->setRenderTarget(mTarget);
 	}
 
-	void RenderPass::render(vector<SceneModelPtr> const& models, CameraPtr camera)
+	void RenderPass::render(vector<SceneModel3dPtr> const& models, CameraPtr camera)
 	{
 		// Render models in view
 		for (auto model: models)

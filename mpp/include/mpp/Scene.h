@@ -5,8 +5,8 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
-#include "mpp/SceneModel.h"
-#include "mpp/SceneBatch.h"
+#include "mpp/SceneModel2d.h"
+#include "mpp/SceneModel3d.h"
 #include "mpp/Camera.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/Colour.h"
@@ -20,9 +20,9 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem;
 
-		std::vector<SceneModelPtr> mModels;
+		std::vector<SceneModel3dPtr> m3dModels;
 
-		std::vector<SceneBatchPtr> m2dBatches;
+		std::vector<SceneModel2dPtr> m2dModels;
 
 		bool mLoaded{ false };
 
@@ -52,21 +52,23 @@ namespace mpp
 
 		virtual Colour getClearColour() const;
 
-		virtual SceneModelPtr addModel(ResourcePtr model, UniformCollection* uniforms = nullptr);
+		virtual SceneModel3dPtr add3dModel(ResourcePtr model, UniformCollection* uniforms = nullptr);
 
-		virtual SceneBatchPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
+		virtual SceneModel2dPtr add2dModel(ResourcePtr model);
 
-		virtual std::vector<SceneModelPtr> getObjectsInView(CameraPtr camera);
+		virtual SceneModel2dPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
 
-		virtual std::vector<SceneBatchPtr> getBatchesInView();
+		virtual std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr camera);
 
-		void show2dBatches(bool show);
+		virtual std::vector<SceneModel2dPtr> get2dModelsInView();
 
-		bool show2dBatches() const;
+		void show2dModels(bool show);
 
-		void showModels(bool show);
+		bool show2dModels() const;
 
-		bool showModels() const;
+		void show3dModels(bool show);
+
+		bool show3dModels() const;
 
 		virtual void update(float frameTime);
 	};

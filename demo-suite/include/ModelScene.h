@@ -12,9 +12,9 @@ class ModelScene : public ::Scene
 
 	glm::vec3 mLightPosition;
 
-	std::vector<mpp::SceneModelPtr> mModels;
+	std::vector<mpp::SceneModel3dPtr> mModels;
 
-	std::vector<mpp::SceneBatchPtr> mBatches;
+	std::vector<mpp::SceneModel2dPtr> mBatches;
 
 	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> mTriangleBatch;
 

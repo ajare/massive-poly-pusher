@@ -48,28 +48,36 @@ namespace mpp
 		return mViewport;
 	}
 
-	SceneModelPtr Scene::addModel(ResourcePtr model, UniformCollection* uniforms)
+	SceneModel3dPtr Scene::add3dModel(ResourcePtr model, UniformCollection* uniforms)
 	{
-		auto sm = make_shared<SceneModel>(model, uniforms);
-		mModels.push_back(sm);
+		auto sm = make_shared<SceneModel3d>(model, uniforms);
+		m3dModels.push_back(sm);
 
 		return sm;
 	}
 
-	SceneBatchPtr Scene::add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
+	SceneModel2dPtr Scene::add2dModel(ResourcePtr model)
 	{
-		auto sb = make_shared<SceneBatch>(dataProvider, renderer);
-		m2dBatches.push_back(sb);
+		auto sm = make_shared<SceneModel2d>(model, mRenderSystem);
+		m2dModels.push_back(sm);
+
+		return sm;
+	}
+
+	SceneModel2dPtr Scene::add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
+	{
+		auto sb = make_shared<SceneModel2d>(dataProvider, renderer);
+		m2dModels.push_back(sb);
 
 		return sb;
 	}
 
-	vector<SceneModelPtr> Scene::getObjectsInView(CameraPtr camera)
+	vector<SceneModel3dPtr> Scene::get3dModelsInView(CameraPtr camera)
 	{
-		vector<SceneModelPtr> inView;
+		vector<SceneModel3dPtr> inView;
 
 		// Default Scene just checks if the object has its 'visible' flag set
-		std::copy_if(mModels.begin(), mModels.end(), std::back_inserter(inView), [camera](SceneModelPtr model) 
+		std::copy_if(m3dModels.begin(), m3dModels.end(), std::back_inserter(inView), [camera](SceneModel3dPtr model) 
 		{
 			return model->isVisible(); 
 		});
@@ -77,14 +85,14 @@ namespace mpp
 		return inView;
 	}
 
-	vector<SceneBatchPtr> Scene::getBatchesInView()
+	vector<SceneModel2dPtr> Scene::get2dModelsInView()
 	{
-		vector<SceneBatchPtr> inView;
+		vector<SceneModel2dPtr> inView;
 
 		auto width = mRenderSystem->getWindowWidth();
 		auto height = mRenderSystem->getWindowHeight();
 		
-		std::copy_if(m2dBatches.begin(), m2dBatches.end(), std::back_inserter(inView), [width, height](SceneBatchPtr batch)
+		std::copy_if(m2dModels.begin(), m2dModels.end(), std::back_inserter(inView), [width, height](SceneModel2dPtr batch)
 		{
 			glm::vec3 bMin, bMax;
 			batch->getBounds(bMin, bMax);
@@ -117,29 +125,29 @@ namespace mpp
 		return Colour::Black;
 	}
 
-	void Scene::show2dBatches(bool show)
+	void Scene::show2dModels(bool show)
 	{
 		mShow2dBatches = show;
 	}
 
-	bool Scene::show2dBatches() const
+	bool Scene::show2dModels() const
 	{
 		return mShow2dBatches;
 	}
 
-	void Scene::showModels(bool show)
+	void Scene::show3dModels(bool show)
 	{
 		mShowModels = show;
 	}
 
-	bool Scene::showModels() const
+	bool Scene::show3dModels() const
 	{
 		return mShowModels;
 	}
 
 	void Scene::update(float frameTime)
 	{
-		for (auto batch: m2dBatches)
+		for (auto batch: m2dModels)
 		{
 			batch->update(frameTime);
 		}

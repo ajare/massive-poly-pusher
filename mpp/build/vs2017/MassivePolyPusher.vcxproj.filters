@@ -201,9 +201,6 @@
     <ClInclude Include="..\..\include\mpp\SceneFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\SceneModel.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -270,9 +267,6 @@
     <ClInclude Include="..\..\include\mpp\TextureStreamBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\SceneBatch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\BatchDataProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -280,6 +274,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\backward.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\SceneModel3d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\SceneModel2d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -431,9 +431,6 @@
     <ClCompile Include="..\..\src\Scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\SceneModel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -494,10 +491,13 @@
     <ClCompile Include="..\..\src\TextureStreamBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\SceneBatch.cpp">
+    <ClCompile Include="..\..\src\MppException.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\MppException.cpp">
+    <ClCompile Include="..\..\src\SceneModel2d.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\SceneModel3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

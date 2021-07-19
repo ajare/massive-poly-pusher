@@ -234,7 +234,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	mModelRenderer->create();
 
-	mModel = getScene()->addModel(mModelRenderer->getModel());
+	mModel = getScene()->add3dModel(mModelRenderer->getModel());
 	mModels.push_back(mModel);
 	auto modelScale = 0.50f;
 	mModel->translate(glm::vec3(0, -40, 0));

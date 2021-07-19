@@ -11,9 +11,10 @@
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
 #include "mpp/UniformCollection.h"
+
 namespace mpp
 {
-	class _MPPAPI __declspec(align(16)) SceneModel
+	class _MPPAPI __declspec(align(16)) SceneModel3d
 	{
 		ResourcePtr mModel;
 
@@ -32,11 +33,11 @@ namespace mpp
 
 	public:
 
-		SceneModel(ResourcePtr model);
+		SceneModel3d(ResourcePtr model);
 
-		SceneModel(ResourcePtr model, UniformCollection* uniforms);
+		SceneModel3d(ResourcePtr model, UniformCollection* uniforms);
 
-		virtual ~SceneModel();
+		virtual ~SceneModel3d();
 
 		void translate(glm::vec3 const& translate);
 
@@ -65,5 +66,5 @@ namespace mpp
 		size_t getInstanceCount() const;
 	};
 
-	typedef std::shared_ptr<SceneModel> SceneModelPtr;
+	typedef std::shared_ptr<SceneModel3d> SceneModel3dPtr;
 }
