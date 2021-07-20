@@ -16,7 +16,7 @@
 
 namespace mpp
 {
-	class _MPPAPI __declspec(align(16)) SceneModel2d
+	class _MPPAPI SceneModel2d
 	{
 		BatchDataProviderPtr mDataProvider;
 
