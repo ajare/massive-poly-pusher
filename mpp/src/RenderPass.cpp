@@ -42,7 +42,7 @@ namespace mpp
 				model->getModel(),
 				model->getTransform(),
 				camera,
-				model->getUniformCollection());
+				model->getUniformCollection().get());
 
 			instance->setWireframe(model->isWireframe());
 			instance->setInstanceCount(model->getInstanceCount());

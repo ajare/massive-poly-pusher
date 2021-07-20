@@ -12,6 +12,7 @@
 #include "mpp/Resource.h"
 #include "mpp/BatchDataProvider.h"
 #include "mpp/BatchRenderer.h"
+#include "mpp/UniformCollection.h"
 
 namespace mpp
 {
@@ -29,11 +30,17 @@ namespace mpp
 
 		float mAngle, mOrbit;
 
+		bool mWireframe;
+
+		bool mVisible;
+
+		std::shared_ptr<UniformCollection> mUniforms;
+
 	public:
 
-		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
+		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, bool hasUniforms = false);
 
-		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem);
+		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, bool hasUniforms = false);
 
 		virtual ~SceneModel2d();
 
@@ -58,6 +65,8 @@ namespace mpp
 		void setScale(glm::vec2 const& scale);
 
 		glm::vec2 const& getScale() const;
+
+		std::shared_ptr<UniformCollection> getUniformCollection();
 
 		void getBounds(glm::vec3& bMin, glm::vec3& bMax);
 

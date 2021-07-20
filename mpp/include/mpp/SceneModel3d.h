@@ -24,7 +24,7 @@ namespace mpp
 
 		size_t mInstanceCount;
 
-		UniformCollection* mUniforms;
+		std::shared_ptr<UniformCollection> mUniforms;
 
 #pragma warning(push)
 #pragma warning(disable: 4324)
@@ -33,10 +33,8 @@ namespace mpp
 
 	public:
 
-		SceneModel3d(ResourcePtr model);
-
-		SceneModel3d(ResourcePtr model, UniformCollection* uniforms);
-
+		explicit SceneModel3d(ResourcePtr model, bool hasUniforms = false);
+		
 		virtual ~SceneModel3d();
 
 		void translate(glm::vec3 const& translate);
@@ -51,7 +49,7 @@ namespace mpp
 
 		glm::mat4 const& getTransform() const;
 
-		UniformCollection* getUniformCollection();
+		std::shared_ptr<UniformCollection> getUniformCollection();
 
 		void setWireframe(bool wireframe);
 
