@@ -56,9 +56,9 @@ namespace mpp
 		return sm;
 	}
 
-	SceneModel2dPtr Scene::add2dModel(ResourcePtr model)
+	SceneModel2dPtr Scene::add2dModel(ResourcePtr model, bool hasUniforms)
 	{
-		auto sm = make_shared<SceneModel2d>(model, mRenderSystem);
+		auto sm = make_shared<SceneModel2d>(model, mRenderSystem, hasUniforms);
 		m2dModels.push_back(sm);
 
 		return sm;
