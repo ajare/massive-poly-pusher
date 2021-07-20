@@ -63,3 +63,5 @@
 
 // Disable warning on non-exported templates.
 #pragma warning( disable: 4251 )
+
+#define MPP_UNUSED(x) (void)(x)

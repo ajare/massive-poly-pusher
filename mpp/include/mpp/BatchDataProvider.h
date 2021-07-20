@@ -21,6 +21,7 @@ namespace mpp
 
 		virtual bool update(float frameTime)
 		{
+			MPP_UNUSED(frameTime);
 			return false;
 		}
 

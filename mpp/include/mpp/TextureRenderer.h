@@ -22,7 +22,11 @@ namespace mpp
 
 	private:
 
-		virtual void render(size_t width, size_t height) {}
+		virtual void render(size_t width, size_t height) 
+		{
+			MPP_UNUSED(width);
+			MPP_UNUSED(height);
+		}
 
 	public:
 

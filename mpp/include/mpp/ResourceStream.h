@@ -90,7 +90,10 @@ namespace mpp
 
 		std::map<std::string, uint32_t> const& getQualityNames() const;
 
-		virtual void setFileBasePaths(std::string const& basepath) {}
+		virtual void setFileBasePaths(std::string const& basepath)
+		{
+			MPP_UNUSED(basepath);
+		}
 	};
 
 	typedef std::shared_ptr<ResourceStream> ResourceStreamPtr;
