@@ -454,7 +454,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
-
+	
 	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>();
 
 	auto lineBatchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
@@ -484,7 +484,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	tri2dBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
-
+	
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -511,7 +511,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer1->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1));
-
+	
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -538,7 +538,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer2->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2));
-
+	
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -565,7 +565,6 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer3->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
-
 	
 	// 3d model
 	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
@@ -584,25 +583,24 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	mModels.back()->translate(glm::vec3(0, 120, 120));
 
 	// 2d model
-	/*
 	auto ms = make_shared<mpp::ProgrammaticModelStream>(resourceMgr);
 
 	auto meshSpec2d = createBatch2dMeshSpecification();
 	auto trianglesMeshId = ms->createMesh("Triangles", meshSpec2d, "Batch.2D.Material", 32);
-	mesh::VertexData vertexData(meshSpec2d, 4);
+	mesh::VertexData vertexData(meshSpec2d, 6);
 	vertexData.f32(500, 300); vertexData.f32(0.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
 	vertexData.f32(532, 300); vertexData.f32(1.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
 	vertexData.f32(532, 332); vertexData.f32(1.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
+	vertexData.f32(532, 332); vertexData.f32(1.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
 	vertexData.f32(500, 332); vertexData.f32(0.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
+	vertexData.f32(500, 300); vertexData.f32(0.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
 	ms->addVertexData(trianglesMeshId, vertexData);
-	ms->addTriangle(trianglesMeshId, 0, 1, 2);
-	ms->addTriangle(trianglesMeshId, 2, 3, 0);
 
 	auto model2d = resourceMgr->declareResource("Model2d", ms);
-	*/
-	//model2d->load();
-	//getScene()->add2dModel(model2d);
-	//mBatches.push_back(getScene()->add2dModel(model2d));
+	
+	model2d->load();
+	getScene()->add2dModel(model2d);
+	mBatches.push_back(getScene()->add2dModel(model2d));
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
@@ -735,7 +733,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
 	renderSystem->setLight1Position(mLightPosition);
-
+	
 	// Update scene
 	getScene()->update(frameTime);
 }
