@@ -140,7 +140,7 @@ namespace mpp
 		}
 		else if (mModel)
 		{
-			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true);
+			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mUniforms.get());
 		}
 	}
 }
