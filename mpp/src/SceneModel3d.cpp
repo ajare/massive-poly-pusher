@@ -8,23 +8,20 @@ using namespace std;
 namespace mpp
 {
 
-	SceneModel3d::SceneModel3d(ResourcePtr model, UniformCollection* uniforms)
+	SceneModel3d::SceneModel3d(ResourcePtr model, bool hasUniforms)
 		: mModel(model)
 		, mWireframe(false)
 		, mVisible(true)
 		, mInstanceCount(1)
-		, mUniforms(uniforms)
 	{
-	}
-
-	SceneModel3d::SceneModel3d(ResourcePtr model)
-		: SceneModel3d(model, nullptr)
-	{
+		if (hasUniforms)
+		{
+			mUniforms = make_shared<UniformCollection>();
+		}
 	}
 
 	SceneModel3d::~SceneModel3d()
 	{
-		delete mUniforms;
 	}
 
 	void SceneModel3d::translate(glm::vec3 const& translate)
@@ -59,7 +56,7 @@ namespace mpp
 		return mTransform;
 	}
 
-	UniformCollection* SceneModel3d::getUniformCollection()
+	shared_ptr<UniformCollection> SceneModel3d::getUniformCollection()
 	{
 		return mUniforms;
 	}

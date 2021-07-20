@@ -9,7 +9,7 @@ using namespace std;
 namespace mpp
 {
 
-	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
+	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, bool hasUniforms)
 		: mDataProvider(dataProvider)
 		, mRenderer(renderer)
 		, mModel(nullptr)
@@ -19,10 +19,16 @@ namespace mpp
 		, mScale(1, 1)
 		, mAngle(0)
 		, mOrbit(0)
+		, mWireframe(false)
+		, mVisible(true)
 	{
+		if (hasUniforms)
+		{
+			mUniforms = make_shared<UniformCollection>();
+		}
 	}
 
-	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem)
+	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, bool hasUniforms)
 		: mDataProvider(nullptr)
 		, mRenderer(nullptr)
 		, mModel(model)
@@ -32,7 +38,13 @@ namespace mpp
 		, mScale(1, 1)
 		, mAngle(0)
 		, mOrbit(0)
+		, mWireframe(false)
+		, mVisible(true)
 	{
+		if (hasUniforms)
+		{
+			mUniforms = make_shared<UniformCollection>();
+		}
 	}
 
 	SceneModel2d::~SceneModel2d()
@@ -92,6 +104,11 @@ namespace mpp
 	glm::vec2 const& SceneModel2d::getScale() const
 	{
 		return mScale;
+	}
+
+	shared_ptr<UniformCollection> SceneModel2d::getUniformCollection()
+	{
+		return mUniforms;
 	}
 
 	void SceneModel2d::getBounds(glm::vec3& bMin, glm::vec3& bMax)
