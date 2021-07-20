@@ -454,7 +454,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
-
+	
 	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>();
 
 	auto lineBatchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
@@ -484,7 +484,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	tri2dBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
-
+	
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -511,7 +511,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer1->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1));
-
+	
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -538,7 +538,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer2->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2));
-
+	
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -565,7 +565,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer3->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
-
+	
 	// 3d model
 	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 
@@ -713,7 +713,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
 	renderSystem->setLight1Position(mLightPosition);
-
+	
 	// Update scene
 	getScene()->update(frameTime);
 }
