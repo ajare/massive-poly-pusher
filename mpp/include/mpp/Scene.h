@@ -54,7 +54,7 @@ namespace mpp
 
 		virtual SceneModel3dPtr add3dModel(ResourcePtr model, UniformCollection* uniforms = nullptr);
 
-		virtual SceneModel2dPtr add2dModel(ResourcePtr model);
+		virtual SceneModel2dPtr add2dModel(ResourcePtr model, bool hasUniforms = false);
 
 		virtual SceneModel2dPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
 
