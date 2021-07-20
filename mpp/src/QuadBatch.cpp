@@ -267,18 +267,21 @@ namespace mpp
 
 		// Texture coords
 		mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };
-		if (mOptions.texcoordAttrib.fixedValues)
+		if ((usingPointSprites() && usingTextureAtlas()) || (!usingPointSprites() && (usingTexture() || usingTextureAtlas())))
 		{
-			if (!staticLayout)
+			if (mOptions.texcoordAttrib.fixedValues)
 			{
-				staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
-			}
+				if (!staticLayout)
+				{
+					staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
+				}
 
-			texcoordLayout = staticLayout;
-		}
-		else
-		{
-			texcoordLayout = dynamicLayout;
+				texcoordLayout = staticLayout;
+			}
+			else
+			{
+				texcoordLayout = dynamicLayout;
+			}
 		}
 
 		if (usingPointSprites())
