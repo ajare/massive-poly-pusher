@@ -18,6 +18,15 @@ namespace mpp
 {
 	class _MPPAPI SceneModel2d
 	{
+		enum class UniformType
+		{
+			None,
+			Single,
+			Map
+		};
+
+	private:
+
 		BatchDataProviderPtr mDataProvider;
 
 		BatchRendererPtr mRenderer;
@@ -34,15 +43,27 @@ namespace mpp
 
 		bool mVisible;
 
-		std::shared_ptr<UniformCollection> mUniforms;
+		std::map<std::string, std::shared_ptr<UniformCollection>> mUniforms;
+
+		UniformType mUniformType;
+
+
 
 	public:
 
-		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, bool hasUniforms = false);
+		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
 
-		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, bool hasUniforms = false);
+		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem);
 
-		virtual ~SceneModel2d();
+		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, std::shared_ptr<UniformCollection> uniforms);
+
+		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, std::shared_ptr<UniformCollection> uniforms);
+
+		SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms);
+
+		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms);
+
+		virtual ~SceneModel2d() = default;
 
 		void setOrigin(glm::vec2 const& origin);
 
@@ -65,8 +86,6 @@ namespace mpp
 		void setScale(glm::vec2 const& scale);
 
 		glm::vec2 const& getScale() const;
-
-		std::shared_ptr<UniformCollection> getUniformCollection();
 
 		void getBounds(glm::vec3& bMin, glm::vec3& bMax);
 

@@ -9,7 +9,7 @@ using namespace std;
 namespace mpp
 {
 
-	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, bool hasUniforms)
+	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
 		: mDataProvider(dataProvider)
 		, mRenderer(renderer)
 		, mModel(nullptr)
@@ -21,14 +21,11 @@ namespace mpp
 		, mOrbit(0)
 		, mWireframe(false)
 		, mVisible(true)
+		, mUniformType(UniformType::None)
 	{
-		if (hasUniforms)
-		{
-			mUniforms = make_shared<UniformCollection>();
-		}
 	}
 
-	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, bool hasUniforms)
+	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem)
 		: mDataProvider(nullptr)
 		, mRenderer(nullptr)
 		, mModel(model)
@@ -40,15 +37,36 @@ namespace mpp
 		, mOrbit(0)
 		, mWireframe(false)
 		, mVisible(true)
+		, mUniformType(UniformType::None)
 	{
-		if (hasUniforms)
-		{
-			mUniforms = make_shared<UniformCollection>();
-		}
 	}
 
-	SceneModel2d::~SceneModel2d()
+	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, std::shared_ptr<UniformCollection> uniforms)
+		: SceneModel2d(dataProvider, renderer)
 	{
+		mUniforms["_"] = uniforms;
+		mUniformType = UniformType::Single;
+	}
+
+	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, std::shared_ptr<UniformCollection> uniforms)
+		: SceneModel2d(model, renderSystem)
+	{
+		mUniforms["_"] = uniforms;
+		mUniformType = UniformType::Map;
+	}
+
+	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms)
+		: SceneModel2d(dataProvider, renderer)
+	{
+		mUniforms = uniforms;
+		mUniformType = UniformType::Single;
+	}
+
+	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms)
+		: SceneModel2d(model, renderSystem)
+	{
+		mUniforms = uniforms;
+		mUniformType = UniformType::Map;
 	}
 
 	void SceneModel2d::setOrigin(glm::vec2 const& origin)
@@ -106,11 +124,6 @@ namespace mpp
 		return mScale;
 	}
 
-	shared_ptr<UniformCollection> SceneModel2d::getUniformCollection()
-	{
-		return mUniforms;
-	}
-
 	void SceneModel2d::getBounds(glm::vec3& bMin, glm::vec3& bMax)
 	{
 		if (mDataProvider)
@@ -140,7 +153,19 @@ namespace mpp
 		}
 		else if (mModel)
 		{
-			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mUniforms);
+			switch (mUniformType)
+			{
+			case UniformType::None:
+				mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true);
+				break;
+			case UniformType::Single:
+				mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mUniforms["_"]);
+				break;
+			case UniformType::Map:
+				mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mUniforms);
+				break;
+
+			}
 		}
 	}
 }

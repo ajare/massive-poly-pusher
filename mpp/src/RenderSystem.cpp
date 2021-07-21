@@ -1494,19 +1494,6 @@ namespace mpp
 
 		flushVertexBuffers();
 	}
-	
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, vector<shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount)
-	{
-		auto modelInstance = renderModelBatched(model, alphaBlend, nullptr, primitiveCount);
-
-		auto& meshInstances = modelInstance->getMeshInstances();
-		for (size_t i = 0; i < uniforms.size(); ++i)
-		{
-			meshInstances[i]->setUniformCollection(uniforms[i]);
-		}
-
-		flushVertexBuffers();
-	}
 
 	/*
 	 * Set up the model used for rendering text
