@@ -110,7 +110,7 @@ namespace mpp
 	 * Sets uniforms for this model.
 	 *
 	 */
-	void ModelInstance::setUniformCollection(UniformCollection const& uniforms)
+	void ModelInstance::setUniformCollection(shared_ptr<UniformCollection> uniforms)
 	{
 		for (auto meshInstance: mMeshInstances)
 		{
@@ -142,7 +142,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -150,7 +150,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -158,7 +158,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -166,7 +166,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -174,7 +174,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -182,7 +182,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -190,7 +190,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, count, values);
+			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
 		}
 	}
 
@@ -198,7 +198,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, count, values);
+			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
 		}
 	}
 
@@ -206,7 +206,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, count, values);
+			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
 		}
 	}
 
@@ -214,7 +214,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, type, count, data);
+			meshInstance.second->getUniformCollection()->setUniform(name, type, count, data);
 		}
 	}
 
@@ -222,7 +222,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -230,7 +230,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -238,7 +238,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -246,7 +246,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -254,7 +254,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -262,7 +262,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, value);
+			meshInstance.second->getUniformCollection()->setUniform(name, value);
 		}
 	}
 
@@ -270,7 +270,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, count, values);
+			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
 		}
 	}
 
@@ -278,7 +278,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, count, values);
+			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
 		}
 	}
 
@@ -286,7 +286,7 @@ namespace mpp
 	{
 		for (auto meshInstance : mMeshInstances)
 		{
-			meshInstance.second->getUniformCollection().setUniform(name, count, values);
+			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
 		}
 	}
 }

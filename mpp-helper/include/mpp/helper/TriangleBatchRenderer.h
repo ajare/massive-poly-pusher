@@ -33,7 +33,7 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
-			mpp::UniformCollection mUniforms;
+			std::shared_ptr<mpp::UniformCollection> mUniforms;
 
 		public:
 
@@ -62,7 +62,8 @@ namespace mpp
 					renderSystem,
 					resourceMgr);
 
-				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				mUniforms = make_shared<UniformCollection>();
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~TriangleBatch2DRenderer()
@@ -204,10 +205,10 @@ namespace mpp
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
 			}
 		};
 
@@ -222,7 +223,7 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider{ nullptr };
 
-			mpp::UniformCollection mUniforms;
+			std::shared_ptr<mpp::UniformCollection> mUniforms;
 
 		public:
 
@@ -251,7 +252,8 @@ namespace mpp
 					renderSystem,
 					resourceMgr);
 
-				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				mUniforms = make_shared<UniformCollection>();
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~TriangleBatch2DRenderer()
@@ -358,10 +360,10 @@ namespace mpp
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
 			}
 		};
 
@@ -376,7 +378,7 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch3DDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
-			UniformCollection mUniforms;
+			std::shared_ptr<UniformCollection> mUniforms;
 
 		public:
 
@@ -407,7 +409,8 @@ namespace mpp
 
 				mBatch = ResourcePtr(batch);
 
-				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				mUniforms = make_shared<UniformCollection>();
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~TriangleBatch3DRenderer()

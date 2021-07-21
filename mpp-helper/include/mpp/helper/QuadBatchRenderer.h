@@ -189,7 +189,7 @@ namespace mpp
 
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
-			mpp::UniformCollection mUniforms;
+			std::shared_ptr<mpp::UniformCollection> mUniforms;
 
 		public:
 
@@ -265,7 +265,8 @@ namespace mpp
 						resourceMgr);
 				}
 
-				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				mUniforms = make_shared<UniformCollection>();
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -493,10 +494,10 @@ namespace mpp
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
 			}
 		};
 
@@ -512,7 +513,7 @@ namespace mpp
 
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider;
 
-			UniformCollection mUniforms;
+			std::shared_ptr<UniformCollection> mUniforms;
 
 		public:
 
@@ -588,7 +589,8 @@ namespace mpp
 						resourceMgr);
 				}
 
-				mUniforms.setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				mUniforms = make_shared<UniformCollection>();
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -797,10 +799,10 @@ namespace mpp
 				if (mBatch->usingDiffuse())
 				{
 					auto colour = mDataProvider->diffuse();
-					mUniforms.updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, &mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
 			}
 		};
 
