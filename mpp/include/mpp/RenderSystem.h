@@ -407,8 +407,6 @@ namespace mpp
 
 		void renderModelImmediate(Model const& model, bool alphaBlend, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, std::vector<std::shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount = -1);
-
 		//
 		// 2d rendering
 		// 
