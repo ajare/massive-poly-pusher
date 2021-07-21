@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <memory>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -33,7 +34,7 @@ namespace mpp
 
 		ResourcePtr mMaterial;
 
-		UniformCollection mUniforms;
+		std::shared_ptr<UniformCollection> mUniforms;
 
 #pragma warning(push)
 #pragma warning(disable: 4324)
@@ -77,9 +78,9 @@ namespace mpp
 
 		void setMaterial(ResourcePtr material);
 
-		void setUniformCollection(UniformCollection const& uniforms);
+		void setUniformCollection(std::shared_ptr<UniformCollection> uniforms);
 
-		UniformCollection& getUniformCollection();
+		std::shared_ptr<UniformCollection> getUniformCollection();
 
 		void setRenderCount(uint32_t count);
 

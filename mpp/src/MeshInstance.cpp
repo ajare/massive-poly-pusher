@@ -160,12 +160,12 @@ namespace mpp
 	 * Set a group of uniforms at once.
 	 *
 	 */
-	void MeshInstance::setUniformCollection(UniformCollection const& uniforms)
+	void MeshInstance::setUniformCollection(shared_ptr<UniformCollection> uniforms)
 	{
 		mUniforms = uniforms;
 	}
 
-	UniformCollection& MeshInstance::getUniformCollection()
+	shared_ptr<UniformCollection> MeshInstance::getUniformCollection()
 	{
 		return mUniforms;
 	}
@@ -187,7 +187,10 @@ namespace mpp
 	{
 		auto program = static_cast<Material*>(mMaterial.get())->getProgram();
 
-		mUniforms.bindUniforms(program);
+		if (mUniforms)
+		{
+			mUniforms->bindUniforms(program);
+		}
 
 		// Set special uniforms: Model, ModelCameraProjection & Normal matrices, half screen size.
 		Program* p = static_cast<Program*>(program.get());

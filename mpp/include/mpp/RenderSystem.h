@@ -126,7 +126,7 @@ namespace mpp
 
 		ResourcePtr mFontMesh;
 
-		UniformCollection mTextUniforms;
+		std::shared_ptr<UniformCollection> mTextUniforms;
 
 		// Texture tiles
 		std::map<std::string, TextureTile> mTextureTiles;
@@ -395,22 +395,26 @@ namespace mpp
 		//
 		// 3d rendering
 		//
-		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, UniformCollection const* uniforms, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, std::shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
+		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, UniformCollection const* uniforms = nullptr, uint32_t primitiveCount = -1);
+		void renderModelImmediate(Model const& model, bool alphaBlend, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
+
+		void renderModelImmediate(Model const& model, bool alphaBlend, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount = -1);
+
+		void renderModelImmediate(Model const& model, bool alphaBlend, std::vector<std::shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount = -1);
 
 		//
 		// 2d rendering
 		// 
 		void renderFullscreenQuad(ResourcePtr material, UniformCollection* uniforms = nullptr);
 
-		void renderFullscreenQuad(RenderTexture* texture, int attachment, BlendMode srcBlend, BlendMode dstBlend, UniformCollection* uniforms = nullptr);
+		void renderFullscreenQuad(RenderTexture* texture, int attachment, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

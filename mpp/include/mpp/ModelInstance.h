@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #pragma warning(pop)
 
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -39,7 +40,7 @@ namespace mpp
 
 		MeshInstance* getMeshInstance(std::string const& name);
 
-		void setUniformCollection(UniformCollection const& uniforms);
+		void setUniformCollection(std::shared_ptr<UniformCollection> uniforms);
 
 		void setWireframe(bool wireframe);
 
