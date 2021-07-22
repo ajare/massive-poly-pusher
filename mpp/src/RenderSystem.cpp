@@ -296,9 +296,12 @@ namespace mpp
 		setDisplay(mWindowWidth, mWindowHeight);
 		createLightsData();
 
-		// Uniforms
+		// Text settings
 		mTextUniforms = make_shared<UniformCollection>();
 		mTextUniforms->setUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+		mTextParams = make_shared<ModelRenderParams>();
+		mTextParams->setModelUniforms(mTextUniforms);
 	}
 
 	/*
@@ -1410,12 +1413,12 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
-	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, uint32_t primitiveCount)
 	{
-		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), uniforms, primitiveCount);
+		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), primitiveCount);
 	}
 
-	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, uint32_t primitiveCount)
 	{
 		ModelInstance* mi = new ModelInstance(model,
 			viewPos,
@@ -1423,11 +1426,6 @@ namespace mpp
 			m3dModelCameraProjectionMatrix,
 			getNormalMatrix(),
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
-
-		if (uniforms)
-		{
-			mi->setUniformCollection(uniforms);
-		}
 
 		auto& instances = mi->getMeshInstances();
 		for (auto& instance: instances)
@@ -1441,7 +1439,7 @@ namespace mpp
 		return mi;
 	}
 
-	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount)
 	{
 		ModelInstance* mi = new ModelInstance(static_cast<Model const&>(*model.get()),
 			camera->getPosition(),
@@ -1449,11 +1447,6 @@ namespace mpp
 			camera->getProjectionTransform() * camera->getViewTransform() * transform,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
-
-		if (uniforms)
-		{
-			mi->setUniformCollection(uniforms);
-		}
 
 		auto& instances = mi->getMeshInstances();
 		for (auto& instance: instances)
@@ -1470,34 +1463,18 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount)
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, shared_ptr<ModelRenderParams> params, uint32_t primitiveCount)
 	{
-		renderModelBatched(model, alphaBlend, viewPos, uniforms, primitiveCount);
+		renderModelBatched(model, alphaBlend, viewPos, primitiveCount)->setParams(params);
 		flushVertexBuffers();
 	}
 
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount)
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, shared_ptr<ModelRenderParams> params, uint32_t primitiveCount)
 	{
-		renderModelBatched(model, alphaBlend, uniforms, primitiveCount);
+		renderModelBatched(model, alphaBlend, primitiveCount)->setParams(params);
 		flushVertexBuffers();
 	}
 	
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, map<string, shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount)
-	{
-		auto modelInstance = renderModelBatched(model, alphaBlend, nullptr, primitiveCount);
-
-		for (auto const& kvp: uniforms)
-		{
-			if (modelInstance->hasMeshInstance(kvp.first))
-			{
-				auto meshInstance = modelInstance->getMeshInstance(kvp.first);
-				meshInstance->setUniformCollection(kvp.second);
-			}
-		}
-
-		flushVertexBuffers();
-	}
-
 	/*
 	 * Set up the model used for rendering text
 	 *
@@ -2022,7 +1999,7 @@ namespace mpp
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 		
 		Model* model = (Model*)mTextMesh.get();
-		renderModelImmediate(*model, true, mTextUniforms, count);
+		renderModelImmediate(*model, true, mTextParams, count);
 	}
 	
 	/*
@@ -2048,7 +2025,7 @@ namespace mpp
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 
 		Model* model = (Model*)mTextMesh.get();
-		renderModelImmediate(*model, true, mTextUniforms, count);
+		renderModelImmediate(*model, true, mTextParams, count);
 	}
 
 	/*
@@ -2068,7 +2045,7 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-		renderModelImmediate(*textModel, true, mTextUniforms, count);
+		renderModelImmediate(*textModel, true, mTextParams, count);
 	}
 	
 	/*

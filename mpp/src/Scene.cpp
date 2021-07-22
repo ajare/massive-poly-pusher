@@ -48,9 +48,9 @@ namespace mpp
 		return mViewport;
 	}
 
-	SceneModel3dPtr Scene::add3dModel(ResourcePtr model, UniformCollection* uniforms)
+	SceneModel3dPtr Scene::add3dModel(ResourcePtr model)
 	{
-		auto sm = make_shared<SceneModel3d>(model, uniforms);
+		auto sm = make_shared<SceneModel3d>(model);
 		m3dModels.push_back(sm);
 
 		return sm;
@@ -59,22 +59,6 @@ namespace mpp
 	SceneModel2dPtr Scene::add2dModel(ResourcePtr model)
 	{
 		auto sm = make_shared<SceneModel2d>(model, mRenderSystem);
-		m2dModels.push_back(sm);
-
-		return sm;
-	}
-
-	SceneModel2dPtr Scene::add2dModel(ResourcePtr model, shared_ptr<UniformCollection> uniforms)
-	{
-		auto sm = make_shared<SceneModel2d>(model, mRenderSystem, uniforms);
-		m2dModels.push_back(sm);
-
-		return sm;
-	}
-
-	SceneModel2dPtr Scene::add2dModel(ResourcePtr model, map<string, shared_ptr<UniformCollection>> const& uniforms)
-	{
-		auto sm = make_shared<SceneModel2d>(model, mRenderSystem, uniforms);
 		m2dModels.push_back(sm);
 
 		return sm;
@@ -92,10 +76,9 @@ namespace mpp
 	{
 		vector<SceneModel3dPtr> inView;
 
-		// Default Scene just checks if the object has its 'visible' flag set
 		std::copy_if(m3dModels.begin(), m3dModels.end(), std::back_inserter(inView), [camera](SceneModel3dPtr model) 
 		{
-			return model->isVisible(); 
+			return true;
 		});
 
 		return inView;

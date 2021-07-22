@@ -41,11 +41,9 @@ namespace mpp
 			auto instance = mRenderSystem->renderModelBatched(
 				model->getModel(),
 				model->getTransform(),
-				camera,
-				model->getUniformCollection());
+				camera);
 
-			instance->setWireframe(model->isWireframe());
-			instance->setInstanceCount(model->getInstanceCount());
+			instance->setParams(model->getParams());
 		}
 	}
 }
