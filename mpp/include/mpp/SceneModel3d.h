@@ -11,6 +11,7 @@
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/ModelRenderParams.h"
 
 namespace mpp
 {
@@ -18,13 +19,7 @@ namespace mpp
 	{
 		ResourcePtr mModel;
 
-		bool mWireframe;
-
-		bool mVisible;
-
-		size_t mInstanceCount;
-
-		std::shared_ptr<UniformCollection> mUniforms;
+		std::shared_ptr<ModelRenderParams> mParams;
 
 #pragma warning(push)
 #pragma warning(disable: 4324)
@@ -33,9 +28,9 @@ namespace mpp
 
 	public:
 
-		explicit SceneModel3d(ResourcePtr model, bool hasUniforms = false);
+		explicit SceneModel3d(ResourcePtr model);
 		
-		virtual ~SceneModel3d();
+		virtual ~SceneModel3d() = default;
 
 		void translate(glm::vec3 const& translate);
 
@@ -49,19 +44,7 @@ namespace mpp
 
 		glm::mat4 const& getTransform() const;
 
-		std::shared_ptr<UniformCollection> getUniformCollection();
-
-		void setWireframe(bool wireframe);
-
-		bool isWireframe() const;
-
-		void setVisible(bool visible);
-
-		bool isVisible() const;
-
-		void setInstanceCount(size_t instanceCount);
-
-		size_t getInstanceCount() const;
+		std::shared_ptr<ModelRenderParams> getParams();
 	};
 
 	typedef std::shared_ptr<SceneModel3d> SceneModel3dPtr;

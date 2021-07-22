@@ -52,13 +52,9 @@ namespace mpp
 
 		virtual Colour getClearColour() const;
 
-		virtual SceneModel3dPtr add3dModel(ResourcePtr model, UniformCollection* uniforms = nullptr);
+		virtual SceneModel3dPtr add3dModel(ResourcePtr model);
 
 		virtual SceneModel2dPtr add2dModel(ResourcePtr model);
-
-		virtual SceneModel2dPtr add2dModel(ResourcePtr model, std::shared_ptr<UniformCollection> uniforms);
-
-		virtual SceneModel2dPtr add2dModel(ResourcePtr model, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms);
 
 		virtual SceneModel2dPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
 

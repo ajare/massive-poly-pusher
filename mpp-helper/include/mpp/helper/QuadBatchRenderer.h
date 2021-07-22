@@ -4,6 +4,7 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/QuadBatch.h>
+#include <mpp/ModelRenderParams.h>
 
 #include <mpp/mesh/VertexTypeSpecification.h>
 
@@ -191,6 +192,8 @@ namespace mpp
 
 			std::shared_ptr<mpp::UniformCollection> mUniforms;
 
+			std::shared_ptr<mpp::ModelRenderParams> mParams;
+
 		public:
 
 			QuadBatchRenderer(std::string const& name,
@@ -267,6 +270,9 @@ namespace mpp
 
 				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+				mParams = make_shared<ModelRenderParams>();
+				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -497,7 +503,7 @@ namespace mpp
 					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
 			}
 		};
 
@@ -514,6 +520,8 @@ namespace mpp
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider;
 
 			std::shared_ptr<UniformCollection> mUniforms;
+
+			std::shared_ptr<mpp::ModelRenderParams> mParams;
 
 		public:
 
@@ -591,6 +599,9 @@ namespace mpp
 
 				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+				mParams = make_shared<ModelRenderParams>();
+				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -802,7 +813,7 @@ namespace mpp
 					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
 			}
 		};
 

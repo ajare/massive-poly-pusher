@@ -8,20 +8,10 @@ using namespace std;
 namespace mpp
 {
 
-	SceneModel3d::SceneModel3d(ResourcePtr model, bool hasUniforms)
+	SceneModel3d::SceneModel3d(ResourcePtr model)
 		: mModel(model)
-		, mWireframe(false)
-		, mVisible(true)
-		, mInstanceCount(1)
 	{
-		if (hasUniforms)
-		{
-			mUniforms = make_shared<UniformCollection>();
-		}
-	}
-
-	SceneModel3d::~SceneModel3d()
-	{
+		mParams = make_shared<ModelRenderParams>();
 	}
 
 	void SceneModel3d::translate(glm::vec3 const& translate)
@@ -56,38 +46,8 @@ namespace mpp
 		return mTransform;
 	}
 
-	shared_ptr<UniformCollection> SceneModel3d::getUniformCollection()
+	shared_ptr<ModelRenderParams> SceneModel3d::getParams()
 	{
-		return mUniforms;
-	}
-
-	void SceneModel3d::setWireframe(bool wireframe)
-	{
-		mWireframe = wireframe;
-	}
-
-	bool SceneModel3d::isWireframe() const
-	{
-		return mWireframe;
-	}
-
-	void SceneModel3d::setVisible(bool visible)
-	{
-		mVisible = visible;
-	}
-
-	bool SceneModel3d::isVisible() const
-	{
-		return mVisible;
-	}
-
-	void SceneModel3d::setInstanceCount(size_t instanceCount)
-	{
-		mInstanceCount = instanceCount;
-	}
-
-	size_t SceneModel3d::getInstanceCount() const
-	{
-		return mInstanceCount;
+		return mParams;
 	}
 }

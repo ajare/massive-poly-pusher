@@ -41,6 +41,7 @@
     <ClInclude Include="..\..\include\mpp\MeshSortFlags.h" />
     <ClInclude Include="..\..\include\mpp\Model.h" />
     <ClInclude Include="..\..\include\mpp\ModelInstance.h" />
+    <ClInclude Include="..\..\include\mpp\ModelRenderParams.h" />
     <ClInclude Include="..\..\include\mpp\ModelSerializer.h" />
     <ClInclude Include="..\..\include\mpp\ModelStream.h" />
     <ClInclude Include="..\..\include\mpp\MppException.h" />

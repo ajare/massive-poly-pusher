@@ -106,187 +106,36 @@ namespace mpp
 		return mMeshInstances[name];
 	}
 
-	/*
-	 * Sets uniforms for this model.
-	 *
-	 */
-	void ModelInstance::setUniformCollection(shared_ptr<UniformCollection> uniforms)
+	void ModelInstance::setParams(shared_ptr<ModelRenderParams> params)
 	{
-		for (auto meshInstance: mMeshInstances)
+		// Set MeshInstances, etc
+		auto const& p = params->getMeshParams();
+		
+		auto defaultIt = p.find("");
+		if (defaultIt != p.end())
 		{
-			meshInstance.second->setUniformCollection(uniforms);
+			for (auto meshInstance: mMeshInstances)
+			{
+				meshInstance.second->render((defaultIt->second.flags & ModelRenderParams::Flag_Visible) != 0);
+				meshInstance.second->wireframe((defaultIt->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+				meshInstance.second->setInstanceCount(defaultIt->second.instanceCount);
+				meshInstance.second->setUniformCollection(defaultIt->second.uniforms);
+			}
+		}
+		else
+		{
+			for (auto meshInstance : mMeshInstances)
+			{
+				auto it = p.find(meshInstance.first);
+				if (it != p.end())
+				{
+					meshInstance.second->render((it->second.flags & ModelRenderParams::Flag_Visible) != 0);
+					meshInstance.second->wireframe((it->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+					meshInstance.second->setInstanceCount(it->second.instanceCount);
+					meshInstance.second->setUniformCollection(it->second.uniforms);
+				}
+			}
 		}
 	}
 
-	/*
-	 * Render as wireframe.
-	 *
-	 */
-	void ModelInstance::setWireframe(bool wireframe)
-	{
-		for (auto meshInstance: mMeshInstances)
-		{
-			meshInstance.second->wireframe(wireframe);
-		}
-	}
-
-	void ModelInstance::setInstanceCount(size_t instanceCount)
-	{
-		for (auto meshInstance: mMeshInstances)
-		{
-			meshInstance.second->setInstanceCount(instanceCount);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, int32_t value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, uint32_t value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, float value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, glm::vec2 const& value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, glm::vec3 const& value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, glm::vec4 const& value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, size_t count, int32_t const* values)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, size_t count, uint32_t const* values)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, size_t count, float const* values)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
-		}
-	}
-
-	void ModelInstance::setUniform(string const& name, program::GLSLType type, size_t count, char const* data)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, type, count, data);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, int32_t value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, uint32_t value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, float value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, glm::vec2 const& value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, glm::vec3 const& value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, glm::vec4 const& value)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, value);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, size_t count, int32_t const* values)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, size_t count, uint32_t const* values)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
-		}
-	}
-
-	void ModelInstance::updateUniform(string const& name, size_t count, float const* values)
-	{
-		for (auto meshInstance : mMeshInstances)
-		{
-			meshInstance.second->getUniformCollection()->setUniform(name, count, values);
-		}
-	}
 }

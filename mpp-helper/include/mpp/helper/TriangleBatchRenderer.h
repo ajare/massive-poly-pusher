@@ -4,6 +4,7 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/TriangleBatch.h>
+#include <mpp/ModelRenderParams.h>
 
 #include <mpp/mesh/VertexTypeSpecification.h>
 
@@ -35,6 +36,8 @@ namespace mpp
 
 			std::shared_ptr<mpp::UniformCollection> mUniforms;
 
+			std::shared_ptr<mpp::ModelRenderParams> mParams;
+
 		public:
 
 			TriangleBatch2DRenderer(std::string const& name,
@@ -64,6 +67,9 @@ namespace mpp
 
 				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+				mParams = make_shared<ModelRenderParams>();
+				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~TriangleBatch2DRenderer()
@@ -208,7 +214,7 @@ namespace mpp
 					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
 			}
 		};
 
@@ -223,7 +229,9 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider{ nullptr };
 
-			std::shared_ptr<mpp::UniformCollection> mUniforms;
+			std::shared_ptr<mpp::UniformCollection> mUniforms; 
+
+			std::shared_ptr<mpp::ModelRenderParams> mParams;
 
 		public:
 
@@ -254,6 +262,9 @@ namespace mpp
 
 				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+				mParams = make_shared<ModelRenderParams>();
+				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~TriangleBatch2DRenderer()
@@ -363,7 +374,7 @@ namespace mpp
 					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mUniforms);
+				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
 			}
 		};
 
@@ -379,6 +390,8 @@ namespace mpp
 			std::shared_ptr<TriangleBatch3DDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
 			std::shared_ptr<UniformCollection> mUniforms;
+
+			std::shared_ptr<ModelRenderParams> mParams;
 
 		public:
 
@@ -411,6 +424,9 @@ namespace mpp
 
 				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+				mParams = make_shared<ModelRenderParams>();
+				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~TriangleBatch3DRenderer()

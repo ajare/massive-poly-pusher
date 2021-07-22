@@ -27,6 +27,7 @@
 #include "mpp/QuadDefinition.h"
 #include "mpp/QuadBatch.h"
 #include "mpp/LineBatch.h"
+#include "mpp/ModelRenderParams.h"
 #include "mpp/ModelInstance.h"
 #include "mpp/UniformCollection.h"
 #include "mpp/UniformBuffer.h"
@@ -127,6 +128,8 @@ namespace mpp
 		ResourcePtr mFontMesh;
 
 		std::shared_ptr<UniformCollection> mTextUniforms;
+
+		std::shared_ptr<ModelRenderParams> mTextParams;
 
 		// Texture tiles
 		std::map<std::string, TextureTile> mTextureTiles;
@@ -395,17 +398,15 @@ namespace mpp
 		//
 		// 3d rendering
 		//
-		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, uint32_t primitiveCount = -1);
 
-		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, std::shared_ptr<UniformCollection> uniforms, uint32_t primitiveCount = -1);
+		ModelInstance* renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
+		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, std::shared_ptr<ModelRenderParams> params, uint32_t primitiveCount = -1);
 
-		void renderModelImmediate(Model const& model, bool alphaBlend, std::shared_ptr<UniformCollection> uniforms = nullptr, uint32_t primitiveCount = -1);
-
-		void renderModelImmediate(Model const& model, bool alphaBlend, std::map<std::string, std::shared_ptr<UniformCollection>> const& uniforms, uint32_t primitiveCount = -1);
+		void renderModelImmediate(Model const& model, bool alphaBlend, std::shared_ptr<ModelRenderParams> params, uint32_t primitiveCount = -1);
 
 		//
 		// 2d rendering
