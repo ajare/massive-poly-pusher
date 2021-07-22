@@ -1488,8 +1488,11 @@ namespace mpp
 
 		for (auto const& kvp: uniforms)
 		{
-			auto meshInstance = modelInstance->getMeshInstance(kvp.first);
-			meshInstance->setUniformCollection(kvp.second);
+			if (modelInstance->hasMeshInstance(kvp.first))
+			{
+				auto meshInstance = modelInstance->getMeshInstance(kvp.first);
+				meshInstance->setUniformCollection(kvp.second);
+			}
 		}
 
 		flushVertexBuffers();
