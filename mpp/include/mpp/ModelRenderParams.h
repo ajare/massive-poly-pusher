@@ -22,6 +22,7 @@ namespace mpp
 		{
 			uint32_t flags{ Flag_Visible };
 			uint32_t instanceCount{ 1 };
+			float pointSize{ 1.0f };
 			std::shared_ptr<UniformCollection> uniforms;
 		};
 
@@ -49,6 +50,12 @@ namespace mpp
 			it->second.instanceCount = count;
 		}
 
+		void setModelPointSize(float size)
+		{
+			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			it->second.pointSize = size;
+		}
+
 		void setModelUniforms(std::shared_ptr<UniformCollection> uniforms)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
@@ -65,6 +72,12 @@ namespace mpp
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
 			it->second.instanceCount = count;
+		}
+
+		void setMeshPointSize(std::string const& mesh, float size)
+		{
+			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+			it->second.pointSize = size;
 		}
 
 		void setMeshUniforms(std::string const& mesh, std::shared_ptr<UniformCollection> uniforms)

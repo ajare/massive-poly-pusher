@@ -119,6 +119,7 @@ namespace mpp
 				meshInstance.second->render((defaultIt->second.flags & ModelRenderParams::Flag_Visible) != 0);
 				meshInstance.second->wireframe((defaultIt->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
 				meshInstance.second->setInstanceCount(defaultIt->second.instanceCount);
+				meshInstance.second->setPointSize(defaultIt->second.pointSize);
 				meshInstance.second->setUniformCollection(defaultIt->second.uniforms);
 			}
 		}
@@ -132,6 +133,7 @@ namespace mpp
 					meshInstance.second->render((it->second.flags & ModelRenderParams::Flag_Visible) != 0);
 					meshInstance.second->wireframe((it->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
 					meshInstance.second->setInstanceCount(it->second.instanceCount);
+					meshInstance.second->setPointSize(it->second.pointSize);
 					meshInstance.second->setUniformCollection(it->second.uniforms);
 				}
 			}

@@ -100,9 +100,9 @@ namespace mpp
 
 		void unload();
 
-		void render(size_t instanceCount, float pointSize) const;
+		void render(size_t instanceCount) const;
 
-		void render(size_t instanceCount, uint32_t numPrimitives, float pointSize) const;
+		void render(size_t instanceCount, uint32_t numPrimitives) const;
 
 		void setStorageType(mesh::VertexBufferStorageType storageType);
 
