@@ -2491,12 +2491,12 @@ namespace mpp
 			// Render
 			if (meshInstance.second->mPrimitivesToRender == (uint32_t)-1)
 			{
-				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, meshInstance.second->mPointSize);
+				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount);
 				mRenderInfo.primitivesRendered += meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount;
 			}
 			else
 			{
-				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, meshInstance.second->mPrimitivesToRender, meshInstance.second->mPointSize);
+				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, meshInstance.second->mPrimitivesToRender);
 				mRenderInfo.primitivesRendered += meshInstance.second->mPrimitivesToRender * meshInstance.second->mInstanceCount;
 			}
 
