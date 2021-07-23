@@ -34,10 +34,6 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
-			std::shared_ptr<mpp::UniformCollection> mUniforms;
-
-			std::shared_ptr<mpp::ModelRenderParams> mParams;
-
 		public:
 
 			TriangleBatch2DRenderer(std::string const& name,
@@ -46,7 +42,8 @@ namespace mpp
 				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
-				: mRenderSystem(renderSystem)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
 				, mDataProvider(dataProvider)
 			{
@@ -65,11 +62,7 @@ namespace mpp
 					renderSystem,
 					resourceMgr);
 
-				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				mParams = make_shared<ModelRenderParams>();
-				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~TriangleBatch2DRenderer()
@@ -229,10 +222,6 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider{ nullptr };
 
-			std::shared_ptr<mpp::UniformCollection> mUniforms; 
-
-			std::shared_ptr<mpp::ModelRenderParams> mParams;
-
 		public:
 
 			TriangleBatch2DRenderer(std::string const& name,
@@ -241,7 +230,8 @@ namespace mpp
 				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
-				: mRenderSystem(renderSystem)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
 				, mDataProvider(dataProvider)
 			{
@@ -260,11 +250,7 @@ namespace mpp
 					renderSystem,
 					resourceMgr);
 
-				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				mParams = make_shared<ModelRenderParams>();
-				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~TriangleBatch2DRenderer()
@@ -389,10 +375,6 @@ namespace mpp
 
 			std::shared_ptr<TriangleBatch3DDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
-			std::shared_ptr<UniformCollection> mUniforms;
-
-			std::shared_ptr<ModelRenderParams> mParams;
-
 		public:
 
 			TriangleBatch3DRenderer(std::string const& name,
@@ -401,7 +383,8 @@ namespace mpp
 				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
-				: mRenderSystem(renderSystem)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
 				, mDataProvider(dataProvider)
 			{
@@ -422,15 +405,7 @@ namespace mpp
 
 				mBatch = ResourcePtr(batch);
 
-				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				mParams = make_shared<ModelRenderParams>();
-				mParams->setModelUniforms(mUniforms);
-			}
-
-			virtual ~TriangleBatch3DRenderer()
-			{
 			}
 
 			void create() override
@@ -602,6 +577,14 @@ namespace mpp
 
 			void render() override
 			{
+				auto batch = static_cast<TriangleBatch*>(mBatch.get());
+				if (batch->usingDiffuse())
+				{
+					auto colour = mDataProvider->diffuse();
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+				}
+
+				mRenderSystem->renderModelBatched(*batch, true);
 			}
 
 			ResourcePtr getModel()

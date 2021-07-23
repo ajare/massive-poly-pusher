@@ -4,7 +4,6 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/QuadBatch.h>
-#include <mpp/ModelRenderParams.h>
 
 #include <mpp/mesh/VertexTypeSpecification.h>
 
@@ -190,10 +189,6 @@ namespace mpp
 
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
 
-			std::shared_ptr<mpp::UniformCollection> mUniforms;
-
-			std::shared_ptr<mpp::ModelRenderParams> mParams;
-
 		public:
 
 			QuadBatchRenderer(std::string const& name,
@@ -201,7 +196,8 @@ namespace mpp
 				std::shared_ptr<QuadBatchDataProvider<PosType, TexType, ColType>> dataProvider,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
-				: mRenderSystem(renderSystem)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
 				, mDataProvider(dataProvider)
 			{
@@ -268,11 +264,7 @@ namespace mpp
 						resourceMgr);
 				}
 
-				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				mParams = make_shared<ModelRenderParams>();
-				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~QuadBatchRenderer()
@@ -519,10 +511,6 @@ namespace mpp
 
 			std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider;
 
-			std::shared_ptr<UniformCollection> mUniforms;
-
-			std::shared_ptr<mpp::ModelRenderParams> mParams;
-
 		public:
 
 			QuadBatchRenderer(std::string const& name,
@@ -530,7 +518,8 @@ namespace mpp
 				std::shared_ptr<QuadBatchDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> dataProvider,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
-				: mRenderSystem(renderSystem)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
 				, mDataProvider(dataProvider)
 			{
@@ -597,11 +586,7 @@ namespace mpp
 						resourceMgr);
 				}
 
-				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				mParams = make_shared<ModelRenderParams>();
-				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~QuadBatchRenderer()

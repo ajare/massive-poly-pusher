@@ -6,7 +6,9 @@
 
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
+#pragma warning(push, 0)
 #include <spline_library/splines/cubic_hermite_spline.h>
+#pragma warning(pop)
 
 #include "Vector2.h"
 

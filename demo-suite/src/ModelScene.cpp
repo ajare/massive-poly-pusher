@@ -740,5 +740,17 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
+	// Set render params
+	for (auto model: mModels)
+	{
+		uint32_t flags{ ModelRenderParams::Flag_Visible };
+		if (options.wireframe)
+		{
+			flags |= ModelRenderParams::Flag_Wireframe;
+		}
+
+		model->getParams()->setModelFlags(flags);
+	}
+
 	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
 }
