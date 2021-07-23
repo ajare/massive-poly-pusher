@@ -1842,7 +1842,7 @@ namespace mpp
 		// Bind mesh
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
-		quadMesh->render(1, 1.0f);
+		quadMesh->render(1);
 
 		// Unbind
 		quadMesh->bind(false);
@@ -1892,7 +1892,7 @@ namespace mpp
 		// Bind mesh
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
-		quadMesh->render(1, 1.0f);
+		quadMesh->render(1);
 
 		// Unbind
 		quadMesh->bind(false);
@@ -1959,7 +1959,7 @@ namespace mpp
 
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
-		quadMesh->render(1, 1.0f);
+		quadMesh->render(1);
 
 		// Unbind
 		quadMesh->bind(false);
