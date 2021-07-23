@@ -404,7 +404,7 @@ namespace mpp
 	{
 		if (mPrimitiveType == mesh::Primitive::Type::Points)
 		{
-			GL_CHECK(glPointSize(pointSize > 0.0f ? pointSize : mPointSize));
+			//GL_CHECK(glPointSize(pointSize > 0.0f ? pointSize : mPointSize));
 		}
 
 		if (mIsIndexed)

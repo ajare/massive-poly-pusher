@@ -498,6 +498,11 @@ namespace mpp
 					mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
 					rs->debugMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
 				}
+				else if (uniformName == MPP_PROGRAM_POINTSIZE_NAME)
+				{
+					mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
+					rs->debugMessage("- Uniform: point size id: " + utils::StringUtils::toString(mPointSizeId));
+				}
 				else
 				{
 					auto it = find_if(mTextures.begin(), mTextures.end(), [uniformName](TextureInfo const& ti) -> bool
@@ -617,6 +622,15 @@ namespace mpp
 	int Program::getHalfWindowSizeId() const
 	{
 		return mHalfWindowSizeId;
+	}
+
+	/*
+	 * Get index for point size uniform, if using it, or -1.
+	 *
+	 */
+	int Program::getPointSizeId() const
+	{
+		return mPointSizeId;
 	}
 
 	/*

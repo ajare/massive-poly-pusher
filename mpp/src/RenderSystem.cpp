@@ -844,7 +844,7 @@ namespace mpp
 		GL_CHECK(glEnable(GL_DEPTH_TEST));
 		GL_CHECK(glDepthFunc(GL_LESS));
 
-		GL_CHECK(glDisable(GL_PROGRAM_POINT_SIZE));
+		GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
 
 		// Set matrices to identity
 		m3dCameraMatrix = glm::mat4();
@@ -1997,7 +1997,6 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 		
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
-		
 		Model* model = (Model*)mTextMesh.get();
 		renderModelImmediate(*model, true, mTextParams, count);
 	}

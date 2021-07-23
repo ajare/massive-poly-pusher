@@ -18,6 +18,7 @@
 #define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
 #define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
 #define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
+#define MPP_PROGRAM_POINTSIZE_TOKEN			"@PointSize"
 
 #define MPP_PROGRAM_IN_PREFIX				"_mpp_i_"
 #define MPP_PROGRAM_OUT_PREFIX				"_mpp_o_"
@@ -30,6 +31,7 @@
 #define MPP_PROGRAM_MCPMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "modelCameraProjection_")
 #define MPP_PROGRAM_NORMALMATRIX_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "normal_")
 #define MPP_PROGRAM_HALFWINDOWSIZE_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "halfWindowSize_")
+#define MPP_PROGRAM_POINTSIZE_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "pointSize_")
 
 #define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token + "_")
 #define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token + "_")
@@ -1054,6 +1056,7 @@ namespace mpp
 			bool mcpUsed = stage.source.find(MPP_PROGRAM_MCPMATRIX_TOKEN) != string::npos;
 			bool normalUsed = stage.source.find(MPP_PROGRAM_NORMALMATRIX_TOKEN) != string::npos;
 			bool halfWindowSizeUsed = stage.source.find(MPP_PROGRAM_HALFWINDOWSIZE_TOKEN) != string::npos;
+			bool pointSizeUsed = stage.source.find(MPP_PROGRAM_POINTSIZE_TOKEN) != string::npos;
 			
 			// Parse line by line
 			auto lines = splitSourceIntoLines(stage.source);
@@ -1137,6 +1140,11 @@ namespace mpp
 						parsedLines.push_back(utils::StringUtils::format("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
 						parsedLines.push_back("\n");
 					}
+					if (pointSizeUsed)
+					{
+						parsedLines.push_back(utils::StringUtils::format("uniform float {};", MPP_PROGRAM_POINTSIZE_NAME));
+						parsedLines.push_back("\n");
+					}
 				}
 				else
 				{
@@ -1156,6 +1164,7 @@ namespace mpp
 					utils::StringUtils::replaceAll(replaced, "@MCPMatrix", MPP_PROGRAM_MCPMATRIX_NAME);
 					utils::StringUtils::replaceAll(replaced, "@NormalMatrix", MPP_PROGRAM_NORMALMATRIX_NAME);
 					utils::StringUtils::replaceAll(replaced, "@HalfWindowSize", MPP_PROGRAM_HALFWINDOWSIZE_NAME);
+					utils::StringUtils::replaceAll(replaced, "@PointSize", MPP_PROGRAM_POINTSIZE_NAME);
 
 					// Parse user-defined uniforms
 					replaced = replaceUniformDeclaration(stage.type, replaced);
