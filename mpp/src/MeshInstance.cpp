@@ -14,12 +14,11 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize)
+	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize)
 		: mwMesh(mesh)
 		, mRender(true)
 		, mWireframe(false)
 		, mBlend(false)
-		, mPointSize(-1.0f)
 		, mInstanceCount(1)
 		, mPrimitivesToRender((uint32_t)-1)
 	{
@@ -31,13 +30,14 @@ namespace mpp
 		mLocalTransform = glm::mat4();
 		mNormalMatrix = normalMatrix;
 		mHalfWindowSize = halfWindowSize;
+		mPointSize = pointSize;
 	}
 
 	/*
 	 * Constructor.
 	 *
 	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix)
+	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize)
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
@@ -47,13 +47,14 @@ namespace mpp
 		mModelCameraProjectionMatrix = modelCameraProjMatrix;
 		mLocalTransform = glm::mat4();
 		mNormalMatrix = normalMatrix;
+		mPointSize = pointSize;
 	}
 
 	/*
 	 * Constructor.
 	 *
 	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize)
+	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize)
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
@@ -63,6 +64,7 @@ namespace mpp
 		mModelCameraProjectionMatrix = modelCameraProjMatrix;
 		mLocalTransform = glm::mat4();
 		mHalfWindowSize = halfWindowSize;
+		mPointSize = pointSize;
 	}
 
 	/*
@@ -225,6 +227,12 @@ namespace mpp
 		if (hwsId >= 0)
 		{
 			GL_CHECK(glUniform2fv(hwsId, 1, glm::value_ptr(mHalfWindowSize)));
+		}
+
+		int psId = p->getPointSizeId();
+		if (psId >= 0)
+		{
+			GL_CHECK(glUniform1f(psId, mPointSize));
 		}
 	}
 

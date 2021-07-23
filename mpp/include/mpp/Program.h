@@ -26,6 +26,7 @@
 #define MPP_PROGRAM_MCPMATRIX_TOKEN			"@MCPMatrix"
 #define MPP_PROGRAM_NORMALMATRIX_TOKEN		"@NormalMatrix"
 #define MPP_PROGRAM_HALFWINDOWSIZE_TOKEN	"@HalfWindowSize"
+#define MPP_PROGRAM_POINTSIZE_TOKEN			"@PointSize"
 
 #define MPP_PROGRAM_UNIFORM_PREFIX			"_mpp_u_"
 #define MPP_PROGRAM_TEXTURE_PREFIX			"_mpp_t_"
@@ -35,6 +36,7 @@
 #define MPP_PROGRAM_MCPMATRIX_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "modelCameraProjection_")
 #define MPP_PROGRAM_NORMALMATRIX_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "normal_")
 #define MPP_PROGRAM_HALFWINDOWSIZE_NAME		(MPP_PROGRAM_UNIFORM_PREFIX "halfWindowSize_")
+#define MPP_PROGRAM_POINTSIZE_NAME			(MPP_PROGRAM_UNIFORM_PREFIX "pointSize_")
 
 #define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token + "_")
 #define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token + "_")
@@ -92,7 +94,7 @@ namespace mpp
 
 		std::map<std::string, int> mUniformIds;
 
-		int mViewPosId, mMMatrixId, mMcpMatrixId, mNormalMatrixId, mHalfWindowSizeId;
+		int mViewPosId, mMMatrixId, mMcpMatrixId, mNormalMatrixId, mHalfWindowSizeId, mPointSizeId;
 
 		std::vector<TextureInfo> mTextures;
 
@@ -141,6 +143,8 @@ namespace mpp
 		int getNormalMatrixId() const;
 
 		int getHalfWindowSizeId() const;
+
+		int getPointSizeId() const;
 
 		void setSortId(uint32_t sortId);
 

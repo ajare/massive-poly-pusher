@@ -16,7 +16,7 @@ namespace mpp
 		{
 			Mesh const* mesh = model.getMesh(i);
 
-			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, halfWindowSize);
+			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, halfWindowSize, mesh->getPointSize());
 
 			string meshName = mesh->getName();
 			mMeshInstances[meshName] = mi;
@@ -35,7 +35,7 @@ namespace mpp
 		{
 			Mesh const* mesh = model.getMesh(i);
 
-			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix);
+			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, mesh->getPointSize());
 			mMeshInstances[mesh->getName()] = mi;
 			mOrderedMeshInstances.push_back(mi);
 		}
@@ -52,7 +52,7 @@ namespace mpp
 		{
 			Mesh const* mesh = model.getMesh(i);
 
-			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, halfWindowSize);
+			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, halfWindowSize, mesh->getPointSize());
 			mMeshInstances[mesh->getName()] = mi;
 			mOrderedMeshInstances.push_back(mi);
 		}

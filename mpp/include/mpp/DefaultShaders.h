@@ -142,6 +142,9 @@ void main()
 	@Out(vec4 COLOUR) = @In(COLOUR);
 ##
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
+## Points
+	gl_PointSize = @PointSize;
+##
 }
 )";
 
@@ -209,6 +212,9 @@ void main()
 ##
 	vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
+## Points
+	gl_PointSize = @PointSize;
+##
 }
 )";
 
