@@ -223,7 +223,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		int frameCount = 0;
 
 		bool isFullScreen = gOptions.fullScreen;
-		bool wireframe = false;
 
 		float viewAngle = 0.0f;
 		float lightAngle = 0.0f, lightHeight = 750.0f;
@@ -270,19 +269,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches();
 			}
 
-			if (gInputMgr->keyPressed(Key_F9))
+			if (gInputMgr->keyReleased(Key_F2))
 			{
-				wireframe = !wireframe;
+				gRenderOptions.wireframe = !gRenderOptions.wireframe;
 			}
 
 			if (gInputMgr->keyPressed(Key_F10))
 			{
 				gRenderdocApi->TriggerCapture();
-			}
-
-			if (gInputMgr->keyReleased(Key_F2))
-			{
-				gRenderOptions.wireframe = !gRenderOptions.wireframe;
 			}
 
 			// Update current state
@@ -328,10 +322,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// Logic
 				for (auto scene: gScenes)
 				{
-					// Move camera
-					//auto camera = scene->getCamera()
-					//updateFreeCamera(camera.get(), gInputMgr, frameTime);
-
 					scene->update(gRenderSystem, frameTime);
 				}
 			}

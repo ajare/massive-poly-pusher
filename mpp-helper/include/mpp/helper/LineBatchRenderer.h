@@ -4,7 +4,6 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/LineBatch.h>
-#include <mpp/ModelRenderParams.h>
 
 #include <mpp/mesh/VertexTypeSpecification.h>
 
@@ -33,10 +32,6 @@ namespace mpp
 
 			std::shared_ptr<LineBatchDataProvider<PosType, ColType>> mDataProvider{ nullptr };
 
-			std::shared_ptr<mpp::UniformCollection> mUniforms;
-
-			std::shared_ptr<mpp::ModelRenderParams> mParams;
-
 		public:
 
 			LineBatchRenderer(std::string const& name,
@@ -44,7 +39,8 @@ namespace mpp
 				std::shared_ptr<LineBatchDataProvider<PosType, ColType>> dataProvider,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
-				: mRenderSystem(renderSystem)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
 				, mDataProvider(dataProvider)
 			{
@@ -59,11 +55,7 @@ namespace mpp
 					renderSystem,
 					resourceMgr);
 
-				mUniforms = make_shared<UniformCollection>();
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				mParams = make_shared<ModelRenderParams>();
-				mParams->setModelUniforms(mUniforms);
 			}
 
 			virtual ~LineBatchRenderer()

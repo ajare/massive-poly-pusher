@@ -22,7 +22,7 @@ namespace mpp
 		, mWireframe(false)
 		, mVisible(true)
 	{
-		mParams = make_shared<ModelRenderParams>();
+		mParams = renderer->getParams();
 	}
 
 	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem)
