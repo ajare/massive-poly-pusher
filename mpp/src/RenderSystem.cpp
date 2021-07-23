@@ -302,6 +302,7 @@ namespace mpp
 
 		mTextParams = make_shared<ModelRenderParams>();
 		mTextParams->setModelUniforms(mTextUniforms);
+		mTextParams->setModelPointSize(16.0f);
 	}
 
 	/*
