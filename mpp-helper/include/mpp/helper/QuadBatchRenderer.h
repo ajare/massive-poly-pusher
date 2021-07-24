@@ -588,7 +588,7 @@ namespace mpp
 				}
 
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-				mParams->setModelPointSize(params.getWidth());
+				mParams->setModelPointSize((float)params.getWidth());
 			}
 
 			virtual ~QuadBatchRenderer()

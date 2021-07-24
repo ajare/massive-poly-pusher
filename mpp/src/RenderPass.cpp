@@ -39,7 +39,7 @@ namespace mpp
 		for (auto model: models)
 		{
 			auto instance = mRenderSystem->renderModelBatched(
-				model->getModel(),
+				static_cast<Model const&>(*model->getModel().get()),
 				model->getTransform(),
 				camera);
 

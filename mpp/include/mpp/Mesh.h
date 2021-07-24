@@ -102,7 +102,7 @@ namespace mpp
 
 		void render(size_t instanceCount) const;
 
-		void render(size_t instanceCount, uint32_t numPrimitives) const;
+		void render(size_t instanceCount, uint32_t start, size_t count) const;
 
 		void setStorageType(mesh::VertexBufferStorageType storageType);
 

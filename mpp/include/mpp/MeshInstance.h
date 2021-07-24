@@ -16,6 +16,10 @@ namespace mpp
 	{
 		friend class RenderSystem;
 
+	public:
+
+		typedef std::pair<uint32_t, size_t> RenderRange;
+
 	private:
 
 		Mesh const* mwMesh;
@@ -30,7 +34,7 @@ namespace mpp
 
 		size_t mInstanceCount;
 
-		uint32_t mPrimitivesToRender;
+		std::vector<RenderRange> mRenderRanges;
 
 		ResourcePtr mMaterial;
 
@@ -83,6 +87,8 @@ namespace mpp
 		std::shared_ptr<UniformCollection> getUniformCollection();
 
 		void setRenderCount(uint32_t count);
+
+		void addRenderRange(uint32_t start, size_t count);
 
 		void translate(glm::vec3 const& translate);
 
