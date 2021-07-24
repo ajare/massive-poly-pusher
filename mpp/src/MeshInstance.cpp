@@ -20,7 +20,6 @@ namespace mpp
 		, mWireframe(false)
 		, mBlend(false)
 		, mInstanceCount(1)
-		, mPrimitivesToRender((uint32_t)-1)
 	{
 		mMaterial = mesh->getMaterial();
 
@@ -173,12 +172,18 @@ namespace mpp
 	}
 
 	/*
-	 * Set number of primitives to render, or -1 to render all, which is default.
+	 * Set number of primitives to render.
 	 *
 	 */
 	void MeshInstance::setRenderCount(uint32_t count)
 	{
-		mPrimitivesToRender = count;
+		mRenderRanges.clear();
+		mRenderRanges.push_back(make_pair(0, count));
+	}
+
+	void MeshInstance::addRenderRange(uint32_t start, size_t count)
+	{
+		mRenderRanges.push_back(make_pair(start, count));
 	}
 
 	/*
