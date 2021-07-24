@@ -46,9 +46,9 @@ namespace mpp
 
 				void nextVertex()
 				{
-					uint32_t currentVertex = mIndex / mVertexData->mNumComponents;
-					mIndex = mVertexData->mNumComponents * (currentVertex + 1);
-					mOffset = mVertexData->mStride * (currentVertex + 1);
+					uint32_t currentVertex = mIndex / mVertexData->getNumComponents();
+					mIndex = mVertexData->getNumComponents() * (currentVertex + 1);
+					mOffset = mVertexData->getStride() * (currentVertex + 1);
 				}
 
 				template<typename T>
@@ -100,10 +100,6 @@ namespace mpp
 
 		private:
 
-			size_t mStride{ 0 };
-
-			size_t mNumComponents{ 0 };
-
 			uint32_t mOffset{ 0 };
 
 			MeshSpecification mSpec;
@@ -118,7 +114,11 @@ namespace mpp
 
 			void clear();
 
+			MeshSpecification const& getMeshSpecification() const;
+
 			size_t getStride() const;
+
+			size_t getNumComponents() const;
 
 			size_t getNumVertices() const;
 
@@ -200,6 +200,7 @@ namespace mpp
 
 			VertexData& f64(double data1, double data2, double data3, double data4);
 
+			void clipAgainstBoundingBox(float x0, float y0, float x1, float y1);
 		};
 	}
 }
