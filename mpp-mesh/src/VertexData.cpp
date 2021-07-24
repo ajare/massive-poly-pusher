@@ -10,12 +10,10 @@ namespace mpp
 	{
 
 		VertexData::VertexData(MeshSpecification const& spec, size_t numVertices)
-			: mStride(spec.getVertexStrideInBytes())
-			, mNumComponents(spec.getNumComponents())
-			, mOffset(0)
+			: mOffset(0)
 			, mSpec(spec)
 		{
-			mData.resize(mStride * numVertices);
+			mData.resize(getStride() * numVertices);
 		}
 
 		void VertexData::clear()
@@ -25,14 +23,24 @@ namespace mpp
 			mOffset = 0;
 		}
 
+		MeshSpecification const& VertexData::getMeshSpecification() const
+		{
+			return mSpec;
+		}
+
 		size_t VertexData::getStride() const
 		{
-			return mStride;
+			return mSpec.getVertexStrideInBytes();
+		}
+
+		size_t VertexData::getNumComponents() const
+		{
+			return mSpec.getNumComponents();
 		}
 
 		size_t VertexData::getNumVertices() const
 		{
-			return mData.size() / mStride;
+			return mData.size() / getStride();
 		}
 
 		vector<int8_t> const& VertexData::getData() const
@@ -42,7 +50,7 @@ namespace mpp
 
 		vector<int8_t> VertexData::getVertexRange(uint32_t start, size_t count) const
 		{
-			return vector<int8_t>(mData.begin() + mStride * start, mData.begin() + mStride * (start + count));
+			return vector<int8_t>(mData.begin() + getStride() * start, mData.begin() + getStride() * (start + count));
 		}
 
 		VertexData::Reader VertexData::createReader() const
@@ -257,6 +265,11 @@ namespace mpp
 		VertexData& VertexData::f64(double data1, double data2, double data3, double data4)
 		{
 			return f64(data1).f64(data2).f64(data3).f64(data4);
+		}
+
+		void VertexData::clipAgainstBoundingBox(float x0, float y0, float x1, float y1)
+		{
+
 		}
 	}
 }
