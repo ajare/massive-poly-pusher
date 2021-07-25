@@ -106,7 +106,21 @@ namespace mpp
 
 			std::vector<int8_t> mData;
 
-			std::vector<Vertex::DataType> mDataTypes;
+		private:
+
+			void interpolateVertices(int8_t const* v0, int8_t const* v1, double t, std::vector<int8_t>& output);
+
+			bool _inside(double px, double py, double p1x, double p1y, double p2x, double p2y) const;
+
+			void _intersection(double cp1x, double cp1y, double cp2x, double cp2y, double sx, double sy, double ex, double ey, double& t) const;
+
+			void _clipTriangleInputAgainstLine(double cp1x, double cp1y, double cp2x, double cp2y, std::vector<int8_t>& input, std::vector<int8_t>& output);
+
+			void clipTrianglesAgainstBoundingBox(float x0, float y0, float x1, float y1);
+
+			void clipLinesAgainstBoundingBox(float x0, float y0, float x1, float y1);
+
+			void clipPointsAgainstBoundingBox(float x0, float y0, float x1, float y1);
 
 		public:
 
