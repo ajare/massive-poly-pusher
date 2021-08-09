@@ -105,7 +105,6 @@ namespace mpp
 			auto const& models = scene->get2dModelsInView();
 
 			mRenderSystem->pushModelMatrix();
-			mRenderSystem->translateTransform2d(glm::vec2(-offset2d.x, -offset2d.y));
 
 			for (auto model: models)
 			{
@@ -116,6 +115,8 @@ namespace mpp
 				auto const& scale = model->getScale();
 
 				mRenderSystem->resetTransform();
+
+				mRenderSystem->translateTransform2d(glm::vec2(-offset2d.x, -offset2d.y));
 
 				// Scale and rotate object, then rotate around the origin, then move to world position.
 				mRenderSystem->translateTransform2d(origin);
