@@ -216,7 +216,7 @@ namespace mpp
 							params.getHeight(),
 							params.getIndexWidth()
 						},
-						params.getSameSize(),
+						params.sameSize(),
 						params.getTexture(),
 						mDataProvider->getNumQuads(),
 						renderSystem,
@@ -237,7 +237,7 @@ namespace mpp
 							params.getHeight(),
 							params.getIndexWidth()
 						},
-						params.getSameSize(),
+						params.sameSize(),
 						params.getTextureRenderer(),
 						mDataProvider->getNumQuads(),
 						renderSystem,
@@ -258,7 +258,7 @@ namespace mpp
 							params.getHeight(),
 							params.getIndexWidth()
 						},
-						params.getSameSize(),
+						params.sameSize(),
 						mDataProvider->getNumQuads(),
 						renderSystem,
 						resourceMgr);
