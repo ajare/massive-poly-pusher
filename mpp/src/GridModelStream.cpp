@@ -45,6 +45,16 @@ namespace mpp
 
 				switch (attrib.component)
 				{
+				case mesh::Vertex::Component::Position2:
+					for (size_t z = 0; z <= dimZ; ++z)
+					{
+						for (size_t x = 0; x <= dimX; ++x)
+						{
+							setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2 + dw * x, -d2 + dh * z);
+							offset += strideInBytes;
+						}
+					}
+					break;
 				case mesh::Vertex::Component::Position3:
 				case mesh::Vertex::Component::Position4:
 					for (size_t z = 0; z <= dimZ; ++z)

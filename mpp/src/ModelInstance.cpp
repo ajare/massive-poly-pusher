@@ -110,32 +110,38 @@ namespace mpp
 	{
 		// Set MeshInstances, etc
 		auto const& p = params->getMeshParams();
-		
 		auto defaultIt = p.find("");
-		if (defaultIt != p.end())
+		
+		for (auto meshInstance : mMeshInstances)
 		{
-			for (auto meshInstance: mMeshInstances)
+			auto it = p.find(meshInstance.first);
+			if (it != p.end())
+			{
+				meshInstance.second->render((it->second.flags & ModelRenderParams::Flag_Visible) != 0);
+				meshInstance.second->wireframe((it->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+				
+				for (auto const& range : it->second.renderRanges)
+				{
+					meshInstance.second->addRenderRange(range.first, range.second);
+				}
+
+				meshInstance.second->setInstanceCount(it->second.instanceCount);
+				meshInstance.second->setPointSize(it->second.pointSize);
+				meshInstance.second->setUniformCollection(it->second.uniforms);
+			}
+			else if (defaultIt != p.end())
 			{
 				meshInstance.second->render((defaultIt->second.flags & ModelRenderParams::Flag_Visible) != 0);
 				meshInstance.second->wireframe((defaultIt->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+
+				for (auto const& range: defaultIt->second.renderRanges)
+				{
+					meshInstance.second->addRenderRange(range.first, range.second);
+				}
+
 				meshInstance.second->setInstanceCount(defaultIt->second.instanceCount);
 				meshInstance.second->setPointSize(defaultIt->second.pointSize);
 				meshInstance.second->setUniformCollection(defaultIt->second.uniforms);
-			}
-		}
-		else
-		{
-			for (auto meshInstance : mMeshInstances)
-			{
-				auto it = p.find(meshInstance.first);
-				if (it != p.end())
-				{
-					meshInstance.second->render((it->second.flags & ModelRenderParams::Flag_Visible) != 0);
-					meshInstance.second->wireframe((it->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
-					meshInstance.second->setInstanceCount(it->second.instanceCount);
-					meshInstance.second->setPointSize(it->second.pointSize);
-					meshInstance.second->setUniformCollection(it->second.uniforms);
-				}
 			}
 		}
 	}

@@ -46,9 +46,9 @@ namespace mpp
 
 				void nextVertex()
 				{
-					uint32_t currentVertex = mIndex / mVertexData->mNumComponents;
-					mIndex = mVertexData->mNumComponents * (currentVertex + 1);
-					mOffset = mVertexData->mStride * (currentVertex + 1);
+					uint32_t currentVertex = mIndex / mVertexData->getNumComponents();
+					mIndex = mVertexData->getNumComponents() * (currentVertex + 1);
+					mOffset = mVertexData->getStride() * (currentVertex + 1);
 				}
 
 				template<typename T>
@@ -100,17 +100,27 @@ namespace mpp
 
 		private:
 
-			size_t mStride{ 0 };
-
-			size_t mNumComponents{ 0 };
-
 			uint32_t mOffset{ 0 };
 
 			MeshSpecification mSpec;
 
 			std::vector<int8_t> mData;
 
-			std::vector<Vertex::DataType> mDataTypes;
+		private:
+
+			void interpolateVertices(int8_t const* v0, int8_t const* v1, double t, std::vector<int8_t>& output);
+
+			bool _inside(double px, double py, double p1x, double p1y, double p2x, double p2y) const;
+
+			void _intersection(double cp1x, double cp1y, double cp2x, double cp2y, double sx, double sy, double ex, double ey, double& t) const;
+
+			void _clipTriangleInputAgainstLine(double cp1x, double cp1y, double cp2x, double cp2y, std::vector<int8_t>& input, std::vector<int8_t>& output);
+
+			void clipTrianglesAgainstBoundingBox(float x0, float y0, float x1, float y1);
+
+			void clipLinesAgainstBoundingBox(float x0, float y0, float x1, float y1);
+
+			void clipPointsAgainstBoundingBox(float x0, float y0, float x1, float y1);
 
 		public:
 
@@ -118,7 +128,11 @@ namespace mpp
 
 			void clear();
 
+			MeshSpecification const& getMeshSpecification() const;
+
 			size_t getStride() const;
+
+			size_t getNumComponents() const;
 
 			size_t getNumVertices() const;
 
@@ -200,6 +214,7 @@ namespace mpp
 
 			VertexData& f64(double data1, double data2, double data3, double data4);
 
+			void clipAgainstBoundingBox(float x0, float y0, float x1, float y1);
 		};
 	}
 }
