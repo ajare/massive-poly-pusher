@@ -304,6 +304,7 @@ namespace mpp
 
 		mTextParams = make_shared<ModelRenderParams>();
 		mTextParams->setModelUniforms(mTextUniforms);
+		mTextParams->setModelPointSize(16.0f);
 	}
 
 	/*
@@ -1415,46 +1416,34 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
-	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, uint32_t primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend)
 	{
-		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), primitiveCount);
+		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), m3dModelMatrix, m3dModelCameraProjectionMatrix);
 	}
 
-	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, uint32_t primitiveCount)
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos)
+	{
+		return renderModelBatched(model, alphaBlend, viewPos, m3dModelMatrix, m3dModelCameraProjectionMatrix);
+	}
+
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, glm::mat4 const& transform, CameraPtr camera)
+	{
+		return renderModelBatched(model, true, camera->getPosition(), transform, camera->getProjectionTransform() * camera->getViewTransform() * transform);
+	}
+
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, glm::mat4 const& transform, glm::mat4 const& mcp)
 	{
 		ModelInstance* mi = new ModelInstance(model,
 			viewPos,
-			m3dModelMatrix,
-			m3dModelCameraProjectionMatrix,
-			getNormalMatrix(),
-			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
-
-		auto& instances = mi->getMeshInstances();
-		for (auto& instance: instances)
-		{
-			instance->setRenderCount(primitiveCount);
-			instance->blend(alphaBlend);
-		}
-
-		mModelInstances.push_back(mi);
-
-		return mi;
-	}
-
-	ModelInstance* RenderSystem::renderModelBatched(ResourcePtr model, glm::mat4 const& transform, CameraPtr camera, uint32_t primitiveCount)
-	{
-		ModelInstance* mi = new ModelInstance(static_cast<Model const&>(*model.get()),
-			camera->getPosition(),
 			transform,
-			camera->getProjectionTransform() * camera->getViewTransform() * transform,
+			mcp,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
 		auto& instances = mi->getMeshInstances();
-		for (auto& instance: instances)
+		for (auto& instance : instances)
 		{
-			instance->setRenderCount(primitiveCount);
-			instance->blend(true);
+			instance->blend(alphaBlend);
 		}
 
 		mModelInstances.push_back(mi);
@@ -1465,15 +1454,15 @@ namespace mpp
 	 * Render a model.
 	 *
 	 */
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, shared_ptr<ModelRenderParams> params, uint32_t primitiveCount)
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, shared_ptr<ModelRenderParams> params)
 	{
-		renderModelBatched(model, alphaBlend, viewPos, primitiveCount)->setParams(params);
+		renderModelBatched(model, alphaBlend, viewPos)->setParams(params);
 		flushVertexBuffers();
 	}
 
-	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, shared_ptr<ModelRenderParams> params, uint32_t primitiveCount)
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, shared_ptr<ModelRenderParams> params)
 	{
-		renderModelBatched(model, alphaBlend, primitiveCount)->setParams(params);
+		renderModelBatched(model, alphaBlend)->setParams(params);
 		flushVertexBuffers();
 	}
 	
@@ -1999,8 +1988,9 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 		
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
-		Model* model = (Model*)mTextMesh.get();
-		renderModelImmediate(*model, true, mTextParams, count);
+		mTextParams->setModelPrimitiveCount(count);
+
+		renderModelImmediate(static_cast<Model const&>(*mTextMesh.get()), true, mTextParams);
 	}
 	
 	/*
@@ -2024,9 +2014,9 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+		mTextParams->setModelPrimitiveCount(count);
 
-		Model* model = (Model*)mTextMesh.get();
-		renderModelImmediate(*model, true, mTextParams, count);
+		renderModelImmediate(static_cast<Model const&>(*mTextMesh.get()), true, mTextParams);
 	}
 
 	/*
@@ -2046,7 +2036,9 @@ namespace mpp
 		vertexBuffer->mapBufferData(count);
 
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-		renderModelImmediate(*textModel, true, mTextParams, count);
+		mTextParams->setModelPrimitiveCount(count);
+
+		renderModelImmediate(static_cast<Model const&>(*mTextMesh.get()), true, mTextParams);
 	}
 	
 	/*
@@ -2491,15 +2483,20 @@ namespace mpp
 			}
 
 			// Render
-			if (meshInstance.second->mPrimitivesToRender == (uint32_t)-1)
+			auto const& renderRanges = meshInstance.second->mRenderRanges;
+			if (renderRanges.empty())
 			{
 				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount);
 				mRenderInfo.primitivesRendered += meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount;
 			}
 			else
 			{
-				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, meshInstance.second->mPrimitivesToRender);
-				mRenderInfo.primitivesRendered += meshInstance.second->mPrimitivesToRender * meshInstance.second->mInstanceCount;
+				for (auto const& range: renderRanges)
+				{
+					auto count = range.second != (size_t)-1 ? range.second : meshInstance.second->mwMesh->getNumPrimitives();
+					meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, range.first, count);
+					mRenderInfo.primitivesRendered += count * meshInstance.second->mInstanceCount;
+				}
 			}
 
 			mRenderInfo.batchCount++;

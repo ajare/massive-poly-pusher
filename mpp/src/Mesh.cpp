@@ -393,36 +393,36 @@ namespace mpp
 	 */
 	void Mesh::render(size_t instanceCount) const
 	{
-		render(instanceCount, mPrimitiveCount);
+		render(instanceCount, 0, mPrimitiveCount);
 	}
 		
 	/*
 	 * Send vertex data.
 	 *
 	 */
-	void Mesh::render(size_t instanceCount, uint32_t numPrimitives) const
+	void Mesh::render(size_t instanceCount, uint32_t start, size_t count) const
 	{
 		if (mIsIndexed)
 		{
 			GLenum indexType = mIndexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 			if (instanceCount == 1)
 			{
-				GL_CHECK(glDrawElements(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0));
+				GL_CHECK(glDrawElements(mPrimitiveRenderType, count * mPrimitiveSize, indexType, 0));
 			}
 			else
 			{
-				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, numPrimitives * mPrimitiveSize, indexType, 0, instanceCount));
+				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, count * mPrimitiveSize, indexType, 0, instanceCount));
 			}
 		}
 		else
 		{
 			if (instanceCount == 1)
 			{
-				GL_CHECK(glDrawArrays(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize));
+				GL_CHECK(glDrawArrays(mPrimitiveRenderType, start, count * mPrimitiveSize));
 			}
 			else
 			{
-				GL_CHECK(glDrawArraysInstanced(mPrimitiveRenderType, 0, numPrimitives * mPrimitiveSize, instanceCount));
+				GL_CHECK(glDrawArraysInstanced(mPrimitiveRenderType, start, count * mPrimitiveSize, instanceCount));
 			}
 		}
 	}
