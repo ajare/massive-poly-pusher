@@ -68,6 +68,7 @@ namespace mpp
 		, mShowDebugPanel(false)
 		, mTimeUnit(TimeUnit::Milliseconds)
 		, mSizeUnit(SizeUnit::Megabytes)
+		, mInternalFont(nullptr)
 	{
 		mLogger = new Logger();
 		if (!mLogger->initialise("mpp.log", Logger::Level::Debug))
@@ -88,6 +89,7 @@ namespace mpp
 	 */
 	RenderSystem::~RenderSystem()
 	{
+		delete mInternalFont;
 		destroyLightsData();
 
 #ifdef MPP_PROFILE_BUILD
