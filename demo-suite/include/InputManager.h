@@ -12,6 +12,8 @@ protected:
 
 public:
 	
+	virtual ~InputManager() = default;
+
 	void addEvent(InputEvent const& evt);
 
 	virtual void update() = 0;

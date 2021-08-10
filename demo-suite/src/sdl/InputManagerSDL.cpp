@@ -163,6 +163,8 @@ InputManagerSDL::InputManagerSDL() :
 
 InputManagerSDL::~InputManagerSDL()
 {
+	delete[] mButtonTranslator;
+
 	delete[] mCurKeyBuffer;
 	delete[] mPrevKeyBuffer;
 
