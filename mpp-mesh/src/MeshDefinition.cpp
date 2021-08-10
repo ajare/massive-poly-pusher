@@ -1,3 +1,5 @@
+#include <vld.h> // Memory tracking
+
 #include <cassert>
 #include <algorithm>
 

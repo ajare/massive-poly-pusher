@@ -1,3 +1,5 @@
+#include <vld.h> // Memory tracking
+
 #if MPP_PLATFORM == MPP_PLATFORM_WIN32
 #include <Windows.h>
 #endif

@@ -1,3 +1,5 @@
+#include <vld.h> // Memory tracking
+
 #include <algorithm>
 
 #pragma warning(push)

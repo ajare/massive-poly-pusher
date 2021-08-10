@@ -26,7 +26,7 @@ set TargetBinDir="%Root%.\build\%Solution%\bin\%Platform%\%Configuration%"
 if not exist %TargetBinDir% mkdir %TargetBinDir%
 
 @rem Copy harness 3rd party
-copy /Y "%Root%\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
+copy /Y "%Root%\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.*" %TargetBinDir%
 
 @rem Copy mpp
 copy /Y "%Root%\..\mpp\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%

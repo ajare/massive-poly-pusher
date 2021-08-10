@@ -48,9 +48,6 @@
     <ClInclude Include="..\..\include\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\TriangleBatchRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
