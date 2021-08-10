@@ -62,6 +62,8 @@ Materials specification
 
 */
 
+#include <vld.h> // Memory tracking
+
 #include <iostream>
 #include <algorithm>
 #include <functional>
