@@ -392,7 +392,7 @@ namespace mpp
 					//
 					// Rotation data
 					//
-					if (rotating() && (!mBatch->rotationFixed() || newVertex))
+					if (mBatch->rotating() && (!mBatch->rotationFixed() || newVertex))
 					{
 						PosTypeBuiltin angle;
 						mDataProvider->angle(primitiveIndex, angle);
