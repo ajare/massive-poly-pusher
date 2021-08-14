@@ -100,10 +100,16 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
 
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::Texture2D);
+	textureStream->setFile(options.resourceLocation + "dragon.png", loadImage);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
+	resourceMgr->declareResource("Dragon.Texture", ResourceStreamPtr(textureStream));
+
 	textureStream = new ProgrammaticTextureAtlasStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "bullets.png", loadImage);
-	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
 	resourceMgr->declareResource("Bullets.Texture", ResourceStreamPtr(textureStream));
 
 	// Create texture from file definition.
@@ -438,7 +444,7 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
 	auto resourceMgr = getResourceManager();
-
+	/*
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
 		true,
@@ -511,7 +517,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer1->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1));
-	
+	*/
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -538,7 +544,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer2->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2));
-	
+	/*
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -565,7 +571,36 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer3->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
-	
+	*/
+	// Quad 4
+	auto dragonTexture = resourceMgr->getResource("Dragon.Texture");
+	dragonTexture->load();
+	mpp::helper::QuadBatchRendererParams quadParams4(
+		mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		false,  // use diffuse colour
+		false,  // rotate
+		static_cast<Texture const*>(dragonTexture.get())->getWidth(),
+		static_cast<Texture const*>(dragonTexture.get())->getHeight(),
+		false,  // square
+		16,   // 16-bit indices
+		dragonTexture);
+
+	auto quadBatchDataProvider4 = make_shared<TestDragonDataProvider>(renderSystem, 1, true);
+
+	auto quadBatchRenderer4 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads4",
+		quadParams4,
+		quadBatchDataProvider4,
+		renderSystem,
+		resourceMgr);
+
+	quadBatchRenderer4->create();
+
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider4, quadBatchRenderer4));
+	/*
 	// 3d model
 	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 
@@ -601,6 +636,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	model2d->load();
 	getScene()->add2dModel(model2d);
 	mBatches.push_back(getScene()->add2dModel(model2d));
+	*/
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)

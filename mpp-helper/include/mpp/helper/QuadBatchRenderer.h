@@ -306,8 +306,14 @@ namespace mpp
 				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
 				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
-				auto rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
-				auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+				PosTypeBuiltin* rotBuffer{ nullptr };
+				size_t rotStride{ 0 };
+
+				if (mBatch->rotating())
+				{
+					rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
+					rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+				}
 
 				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
@@ -378,7 +384,7 @@ namespace mpp
 					//
 					// Rotation data
 					//
-					if (!mBatch->rotationFixed() || newVertex)
+					if (rotating() && (!mBatch->rotationFixed() || newVertex))
 					{
 						PosTypeBuiltin angle;
 						mDataProvider->angle(primitiveIndex, angle);
@@ -628,8 +634,14 @@ namespace mpp
 				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
 				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
-				auto rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
-				auto rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+				PosTypeBuiltin* rotBuffer{ nullptr };
+				size_t rotStride{ 0 };
+
+				if (mBatch->rotating())
+				{
+					rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
+					rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+				}
 
 				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
@@ -697,7 +709,7 @@ namespace mpp
 					//
 					// Rotation data
 					//
-					if (!mBatch->rotationFixed() || newVertex)
+					if (mBatch->rotating() && (!mBatch->rotationFixed() || newVertex))
 					{
 						PosTypeBuiltin angle;
 						mDataProvider->angle(primitiveIndex, angle);

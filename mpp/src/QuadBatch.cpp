@@ -233,6 +233,8 @@ namespace mpp
 		*/
 
 		auto meshSpec = mesh::MeshSpecification(primitiveType);
+		meshSpec.setIndexedVertices(indexedVertices());
+
 		auto dynamicLayout = meshSpec.createVertexBufferAttributeLayout(false);
 		mesh::VertexBufferAttributeLayout* staticLayout{ nullptr };
 
@@ -251,10 +253,10 @@ namespace mpp
 		mesh::VertexBufferAttributeLayout* rotationLayout{ nullptr };
 		if (!rotating())
 		{
-			if (!staticLayout)
-			{
-				staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
-			}
+			//if (!staticLayout)
+			//{
+			//	staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
+			//}
 
 			rotationLayout = staticLayout;
 		}
@@ -263,7 +265,10 @@ namespace mpp
 			rotationLayout = dynamicLayout;
 		}
 
-		rotationLayout->createAttribute(mesh::Vertex::Component::UserDefined2, "ROTATION", mesh::Vertex::DataType::Float, false);
+		if (rotationLayout)
+		{
+			rotationLayout->createAttribute(mesh::Vertex::Component::UserDefined2, "ROTATION", mesh::Vertex::DataType::Float, false);
+		}
 
 		// Texture coords
 		mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };

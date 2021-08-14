@@ -198,12 +198,12 @@ namespace mpp
 
 				int newSize = getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride();
 				data.resize(newSize);
+			}
 
-				// Index data
-				if (indexedVertices())
-				{
-					createIndexData(mMeshes[0]->getIndexData(), mMaxCount, count);
-				}
+			// Index data
+			if (indexedVertices())
+			{
+				createIndexData(mMeshes[0]->getIndexData(), mMaxCount, count);
 			}
 
 			mMaxCount = count;
