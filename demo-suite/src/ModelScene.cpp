@@ -112,6 +112,12 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
 	resourceMgr->declareResource("Bullets.Texture", ResourceStreamPtr(textureStream));
 
+	textureStream = new ProgrammaticTextureAtlasStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::Texture2D);
+	textureStream->setFile(options.resourceLocation + "atlas.png", loadImage);
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
+	resourceMgr->declareResource("Atlas.Texture", ResourceStreamPtr(textureStream));
+
 	// Create texture from file definition.
 	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, options.resourceLocation + "Doughnut.xml");
 	resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(fileStream));
@@ -581,7 +587,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,  // fixed colour (no colour, in fact)
 		false, // don't use vertex colours
 		false,  // use diffuse colour
-		false,  // rotate
+		true,  // rotate
 		static_cast<Texture const*>(dragonTexture.get())->getWidth(),
 		static_cast<Texture const*>(dragonTexture.get())->getHeight(),
 		false,  // square
@@ -600,6 +606,36 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer4->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider4, quadBatchRenderer4));
+
+	// Quad 5
+	auto atlasTexture = resourceMgr->getResource("Atlas.Texture");
+	atlasTexture->load();
+	mpp::helper::QuadBatchRendererParams quadParams5(
+		mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		false,  // use diffuse colour
+		true,  // rotate
+		static_cast<Texture const*>(atlasTexture.get())->getWidth(),
+		static_cast<Texture const*>(atlasTexture.get())->getHeight(),
+		false,  // square
+		16,   // 16-bit indices
+		atlasTexture);
+
+	auto quadBatchDataProvider5 = make_shared<TestAtlasDataProvider>(renderSystem, 1, true);
+
+	auto quadBatchRenderer5 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads5",
+		quadParams5,
+		quadBatchDataProvider5,
+		renderSystem,
+		resourceMgr);
+
+	quadBatchRenderer5->create();
+
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider5, quadBatchRenderer5));
+
 	/*
 	// 3d model
 	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();

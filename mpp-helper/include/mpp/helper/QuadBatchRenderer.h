@@ -296,9 +296,6 @@ namespace mpp
 
 				mBatch->startUpdate(count);
 
-				float radiusX = mBatch->getMaxDimX() / 2.0f;
-				float radiusY = mBatch->getMaxDimY() / 2.0f;
-
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
 				typedef typename ColType::builtin_type ColTypeBuiltin;
@@ -332,6 +329,17 @@ namespace mpp
 				{
 					uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
 					bool newVertex = i >= initStart;
+
+					float radiusX, radiusY;
+					if (mBatch->usingTextureAtlas() && mBatch->usingTriangles())
+					{
+						mDataProvider->radius(primitiveIndex, radiusX, radiusY);
+					}
+					else
+					{
+						radiusX = mBatch->getMaxDimX() / 2.0f;
+						radiusY = mBatch->getMaxDimY() / 2.0f;
+					}
 
 					//
 					// Position data
@@ -625,9 +633,6 @@ namespace mpp
 
 				mBatch->startUpdate(count);
 
-				float radiusX = mBatch->getMaxDimX() / 2.0f;
-				float radiusY = mBatch->getMaxDimY() / 2.0f;
-
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
 
@@ -657,6 +662,17 @@ namespace mpp
 				{
 					uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
 					bool newVertex = i >= initStart;
+
+					float radiusX, radiusY;
+					if (mBatch->usingTextureAtlas() && mBatch->usingTriangles())
+					{
+						mDataProvider->radius(primitiveIndex, radiusX, radiusY);
+					}
+					else
+					{
+						radiusX = mBatch->getMaxDimX() / 2.0f;
+						radiusY = mBatch->getMaxDimY() / 2.0f;
+					}
 
 					//
 					// Position data
