@@ -379,6 +379,8 @@ namespace mpp
 		void scaleTransform2d(glm::vec2 const& vec);
 
 		// Rendering
+		void addSceneFactory(std::string const& type, SceneFactory factory);
+
 		ScenePtr createScene(std::string const& type);
 
 		void renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, std::string const& pipelineName);

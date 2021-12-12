@@ -2532,6 +2532,17 @@ namespace mpp
 		return mRenderInfo;
 	}
 
+	void RenderSystem::addSceneFactory(string const& type, SceneFactory factory)
+	{
+		if (mSceneFactories.find(type) != mSceneFactories.end())
+		{
+			string errMsg = "Scene type: " + type + " already registered";
+			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+		}
+
+		mSceneFactories[type] = factory;
+	}
+
 	ScenePtr RenderSystem::createScene(string const& type)
 	{
 		auto it = mSceneFactories.find(type);
