@@ -63,6 +63,12 @@ namespace mpp
 		return mDirection;
 	}
 
+	vec3 const& Camera::getUp() const
+	{
+		updateAngles();
+		return mUp;
+	}
+
 	void Camera::updateAngles() const
 	{
 		if (mDirty)
