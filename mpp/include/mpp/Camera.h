@@ -49,6 +49,8 @@ namespace mpp
 
 		glm::vec3 const& getDirection() const;
 
+		glm::vec3 const& getUp() const;
+
 		virtual glm::mat4 getViewTransform();
 
 		virtual glm::mat4 getProjectionTransform() const;
