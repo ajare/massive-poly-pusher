@@ -20,15 +20,17 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem;
 
-		std::vector<SceneModel3dPtr> m3dModels;
-
-		std::vector<SceneModel2dPtr> m2dModels;
-
 		bool mLoaded{ false };
 
 		bool mShowModels{ true }, mShow2dBatches{ true };
 
 		ClipRectangle mViewport;
+
+	protected:
+
+		std::vector<SceneModel3dPtr> m3dModels;
+
+		std::vector<SceneModel2dPtr> m2dModels;
 
 	private:
 
