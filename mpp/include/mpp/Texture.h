@@ -54,6 +54,8 @@ namespace mpp
 
 		size_t getNumAttachments() const;
 
+		void uploadData(int attachment, uint8_t const* data);
+
 		virtual void bind(uint32_t unit, uint32_t attachment = 0);
 
 		void setSortId(uint32_t sortId);

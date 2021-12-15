@@ -252,10 +252,6 @@ namespace mpp
 				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, mPixelFormat, mDataType, data));
 				break;
 
-			case GL_TEXTURE_CUBE_MAP:
-				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-				break;
-
 			default:
 				THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 			}
@@ -334,6 +330,37 @@ namespace mpp
 	size_t Texture::getNumAttachments() const
 	{
 		return mNumAttachments;
+	}
+
+	/*
+	 * Upload texture data.  This ignores the resource stream,
+	 * overwriting any existing data, and assumes the size of the data
+	 * matches the existing sizes
+	 *
+	 */
+	void Texture::uploadData(int attachment, uint8_t const* data)
+	{
+		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
+
+		switch (mTarget)
+		{
+		case GL_TEXTURE_1D:
+			GL_CHECK(glTexSubImage1D(mTarget, 0, 0, mWidth, mPixelFormat, mDataType, data));
+			break;
+
+		case GL_TEXTURE_2D:
+			GL_CHECK(glTexSubImage2D(mTarget, 0, 0, 0, mWidth, mHeight, mPixelFormat, mDataType, data));
+			break;
+
+		case GL_TEXTURE_3D:
+			GL_CHECK(glTexSubImage3D(mTarget, 0, 0, 0, 0, mWidth, mHeight, mDepth, mPixelFormat, mDataType, data));
+			break;
+
+		default:
+			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
+		}
+
+		GL_CHECK(glBindTexture(mTarget, 0));
 	}
 
 	/*
