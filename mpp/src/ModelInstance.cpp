@@ -149,7 +149,7 @@ namespace mpp
 				mi->setPointSize(defaultIt->second.pointSize);
 				mi->setUniformCollection(defaultIt->second.uniforms);
 
-				if (it->second.material)
+				if (defaultIt->second.material)
 				{
 					mi->setMaterial(it->second.material);
 				}
