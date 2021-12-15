@@ -35,6 +35,8 @@ namespace mpp
 
 		int getNumTextures() const;
 
+		void setTexture(int i, ResourcePtr texture);
+
 		ResourcePtr getTexture(int i) const;
 		
 		void setUniforms();
