@@ -42,6 +42,8 @@ namespace mpp
 
 		void scale(glm::vec3 const& scale);
 
+		void setModel(ResourcePtr model);
+
 		ResourcePtr getModel() const;
 
 		glm::mat4 const& getTransform() const;

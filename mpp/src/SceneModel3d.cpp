@@ -41,6 +41,11 @@ namespace mpp
 		mTransform = glm::scale(mTransform, scale);
 	}
 
+	void SceneModel3d::setModel(ResourcePtr model)
+	{
+		mModel = model;
+	}
+
 	ResourcePtr SceneModel3d::getModel() const
 	{
 		return mModel;
