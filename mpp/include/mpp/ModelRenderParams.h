@@ -6,6 +6,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/Resource.h"
 
 namespace mpp
 {
@@ -25,6 +26,7 @@ namespace mpp
 			std::vector<std::pair<uint32_t, size_t>> renderRanges;
 			float pointSize{ 1.0f };
 			std::shared_ptr<UniformCollection> uniforms;
+			ResourcePtr material{ nullptr };
 		};
 
 	private:
@@ -71,6 +73,12 @@ namespace mpp
 			it->second.uniforms = uniforms;
 		}
 
+		void setModelMaterial(ResourcePtr material)
+		{
+			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			it->second.material = material;
+		}
+
 		void setMeshFlags(std::string const& mesh, uint32_t flags)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
@@ -101,6 +109,12 @@ namespace mpp
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
 			it->second.uniforms = uniforms;
+		}
+
+		void setMeshMaterial(std::string const& mesh, ResourcePtr material)
+		{
+			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+			it->second.material = material;
 		}
 
 		std::map<std::string, MeshRenderParams> const& getMeshParams() const
