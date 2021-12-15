@@ -118,40 +118,44 @@ namespace mpp
 			auto it = p.find(meshInstance.first);
 			if (it != p.end())
 			{
-				mi->render((it->second.flags & ModelRenderParams::Flag_Visible) != 0);
-				mi->wireframe((it->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+				auto const& rp = it->second;
+
+				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
+				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
 				
-				for (auto const& range: it->second.renderRanges)
+				for (auto const& range: rp.renderRanges)
 				{
 					mi->addRenderRange(range.first, range.second);
 				}
 
-				mi->setInstanceCount(it->second.instanceCount);
-				mi->setPointSize(it->second.pointSize);
-				mi->setUniformCollection(it->second.uniforms);
+				mi->setInstanceCount(rp.instanceCount);
+				mi->setPointSize(rp.pointSize);
+				mi->setUniformCollection(rp.uniforms);
 
-				if (it->second.material)
+				if (rp.material)
 				{
-					mi->setMaterial(it->second.material);
+					mi->setMaterial(rp.material);
 				}
 			}
 			else if (defaultIt != p.end())
 			{
-				mi->render((defaultIt->second.flags & ModelRenderParams::Flag_Visible) != 0);
-				mi->wireframe((defaultIt->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+				auto const& rp = defaultIt->second;
 
-				for (auto const& range: defaultIt->second.renderRanges)
+				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
+				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
+
+				for (auto const& range: rp.renderRanges)
 				{
 					mi->addRenderRange(range.first, range.second);
 				}
 
-				mi->setInstanceCount(defaultIt->second.instanceCount);
-				mi->setPointSize(defaultIt->second.pointSize);
-				mi->setUniformCollection(defaultIt->second.uniforms);
+				mi->setInstanceCount(rp.instanceCount);
+				mi->setPointSize(rp.pointSize);
+				mi->setUniformCollection(rp.uniforms);
 
-				if (defaultIt->second.material)
+				if (rp.material)
 				{
-					mi->setMaterial(it->second.material);
+					mi->setMaterial(rp.material);
 				}
 			}
 		}
