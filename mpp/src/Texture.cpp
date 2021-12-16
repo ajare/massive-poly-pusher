@@ -140,6 +140,38 @@ namespace mpp
 				}
 				break;
 
+			case GL_INT:
+				// Signed, unnormalised
+				channels = mBitsPerPixel / (sizeof(int32_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R32I; break;
+				case 2:
+					mInternalFormat = GL_RG32I; break;
+				case 3:
+					mInternalFormat = GL_RGB32I; break;
+				case 4:
+					mInternalFormat = GL_RGBA32I; break;
+				}
+				break;
+
+			case GL_UNSIGNED_INT:
+				// Unsigned, unnormalised
+				channels = mBitsPerPixel / (sizeof(uint32_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R32UI; break;
+				case 2:
+					mInternalFormat = GL_RG32UI; break;
+				case 3:
+					mInternalFormat = GL_RGB32UI; break;
+				case 4:
+					mInternalFormat = GL_RGBA32UI; break;
+				}
+				break;
+
 			case GL_HALF_FLOAT:
 				// Signed, unnormalised
 				channels = mBitsPerPixel / ((sizeof(float) / 2) * 8);
