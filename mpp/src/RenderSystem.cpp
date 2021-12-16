@@ -2445,9 +2445,7 @@ namespace mpp
 
 			currentMaterial = material;
 
-			// Mask off texture and see if it has changed from previous.  This assumes the mesh
-			// is only using one texture.
-			// Mask off program and see if it has changed from previous.
+			// Mask off textures and see if they have changed from previous.
 			uint64_t thisTexture0Key = meshInstance.first;
 			thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
 			thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
