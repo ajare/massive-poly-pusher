@@ -136,6 +136,14 @@ namespace mpp
 				{
 					mi->setMaterial(rp.material);
 				}
+
+				for (size_t i = 0; i < rp.textures.size(); ++i)
+				{
+					if (rp.textures[i])
+					{
+						mi->setTexture((int)i, rp.textures[i]);
+					}
+				}
 			}
 			else if (defaultIt != p.end())
 			{
@@ -156,6 +164,14 @@ namespace mpp
 				if (rp.material)
 				{
 					mi->setMaterial(rp.material);
+				}
+
+				for (size_t i = 0; i < rp.textures.size(); ++i)
+				{
+					if (rp.textures[i])
+					{
+						mi->setTexture((int)i, rp.textures[i]);
+					}
 				}
 			}
 		}
