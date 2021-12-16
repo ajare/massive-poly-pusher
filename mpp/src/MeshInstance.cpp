@@ -158,6 +158,45 @@ namespace mpp
 	}
 
 	/*
+	 * Get material of this particular instance.
+	 *
+	 */
+	ResourcePtr MeshInstance::getMaterial()
+	{
+		return mMaterial;
+	}
+
+	/*
+	 * Set texture
+	 *
+	 */
+	void MeshInstance::setTexture(int index, ResourcePtr texture)
+	{
+		if (index >= mTextureOverrides.size())
+		{
+			mTextureOverrides.resize(index + 1);
+		}
+
+		mTextureOverrides[index] = texture;
+	}
+
+	/*
+	 * Get texture (or override)
+	 *
+	 */
+	ResourcePtr MeshInstance::getTexture(int texture)
+	{
+		if (mTextureOverrides.size() > (size_t)texture && mTextureOverrides[texture])
+		{
+			return mTextureOverrides[texture];
+		}
+		else
+		{
+			return static_cast<Material*>(mMaterial.get())->getTexture(texture);
+		}
+	}
+
+	/*
 	 * Set a group of uniforms at once.
 	 *
 	 */

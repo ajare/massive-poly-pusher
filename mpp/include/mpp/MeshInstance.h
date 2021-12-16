@@ -38,6 +38,8 @@ namespace mpp
 
 		ResourcePtr mMaterial;
 
+		std::vector<ResourcePtr> mTextureOverrides;
+
 		std::shared_ptr<UniformCollection> mUniforms;
 
 #pragma warning(push)
@@ -81,6 +83,12 @@ namespace mpp
 		size_t getInstanceCount() const;
 
 		void setMaterial(ResourcePtr material);
+
+		ResourcePtr getMaterial();
+
+		void setTexture(int index, ResourcePtr texture);
+
+		ResourcePtr getTexture(int texture);
 
 		void setUniformCollection(std::shared_ptr<UniformCollection> uniforms);
 
