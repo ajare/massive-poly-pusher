@@ -370,22 +370,27 @@ namespace mpp
 	 * matches the existing sizes
 	 *
 	 */
-	void Texture::uploadData(int attachment, uint8_t const* data)
+	void Texture::uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1)
 	{
 		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
+
+		auto xoffset = (int)(mWidth * u0);
+		auto yoffset = (int)(mHeight * v0);
+		auto width = (size_t)(mWidth * (u1 - u0));
+		auto height = (size_t)(mHeight * (v1 - v0));
 
 		switch (mTarget)
 		{
 		case GL_TEXTURE_1D:
-			GL_CHECK(glTexSubImage1D(mTarget, 0, 0, mWidth, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage1D(mTarget, 0, xoffset, width, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_2D:
-			GL_CHECK(glTexSubImage2D(mTarget, 0, 0, 0, mWidth, mHeight, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage2D(mTarget, 0, xoffset, yoffset, width, height, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_3D:
-			GL_CHECK(glTexSubImage3D(mTarget, 0, 0, 0, 0, mWidth, mHeight, mDepth, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage3D(mTarget, 0, xoffset, yoffset, 0, width, height, mDepth, mPixelFormat, mDataType, data));
 			break;
 
 		default:
@@ -393,6 +398,11 @@ namespace mpp
 		}
 
 		GL_CHECK(glBindTexture(mTarget, 0));
+	}
+
+	void Texture::uploadData(int attachment, uint8_t const* data)
+	{
+		uploadData(attachment, data, 0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
 	/*
