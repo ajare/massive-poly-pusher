@@ -370,7 +370,7 @@ namespace mpp
 	 * matches the existing sizes
 	 *
 	 */
-	void Texture::uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1)
+	size_t Texture::uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1)
 	{
 		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
 
@@ -378,19 +378,23 @@ namespace mpp
 		auto yoffset = (int)(mHeight * v0);
 		auto width = (size_t)(mWidth * (u1 - u0));
 		auto height = (size_t)(mHeight * (v1 - v0));
+		auto depth = mDepth;
 
 		switch (mTarget)
 		{
 		case GL_TEXTURE_1D:
+			height = 1;
+			depth = 1;
 			GL_CHECK(glTexSubImage1D(mTarget, 0, xoffset, width, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_2D:
+			depth = 1;
 			GL_CHECK(glTexSubImage2D(mTarget, 0, xoffset, yoffset, width, height, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_3D:
-			GL_CHECK(glTexSubImage3D(mTarget, 0, xoffset, yoffset, 0, width, height, mDepth, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage3D(mTarget, 0, xoffset, yoffset, 0, width, height, depth, mPixelFormat, mDataType, data));
 			break;
 
 		default:
@@ -398,11 +402,12 @@ namespace mpp
 		}
 
 		GL_CHECK(glBindTexture(mTarget, 0));
+		return width * height * mBitsPerPixel;
 	}
 
-	void Texture::uploadData(int attachment, uint8_t const* data)
+	size_t Texture::uploadData(int attachment, uint8_t const* data)
 	{
-		uploadData(attachment, data, 0.0f, 0.0f, 1.0f, 1.0f);
+		return uploadData(attachment, data, 0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
 	/*
