@@ -112,38 +112,68 @@ namespace mpp
 		auto const& p = params->getMeshParams();
 		auto defaultIt = p.find("");
 		
-		for (auto meshInstance : mMeshInstances)
+		for (auto meshInstance: mMeshInstances)
 		{
+			auto& mi = meshInstance.second;
 			auto it = p.find(meshInstance.first);
 			if (it != p.end())
 			{
-				meshInstance.second->render((it->second.flags & ModelRenderParams::Flag_Visible) != 0);
-				meshInstance.second->wireframe((it->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+				auto const& rp = it->second;
+
+				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
+				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
 				
-				for (auto const& range : it->second.renderRanges)
+				for (auto const& range: rp.renderRanges)
 				{
-					meshInstance.second->addRenderRange(range.first, range.second);
+					mi->addRenderRange(range.first, range.second);
 				}
 
-				meshInstance.second->setInstanceCount(it->second.instanceCount);
-				meshInstance.second->setPointSize(it->second.pointSize);
-				meshInstance.second->setUniformCollection(it->second.uniforms);
+				mi->setInstanceCount(rp.instanceCount);
+				mi->setPointSize(rp.pointSize);
+				mi->setUniformCollection(rp.uniforms);
+
+				if (rp.material)
+				{
+					mi->setMaterial(rp.material);
+				}
+
+				for (size_t i = 0; i < rp.textures.size(); ++i)
+				{
+					if (rp.textures[i])
+					{
+						mi->setTexture((int)i, rp.textures[i]);
+					}
+				}
 			}
 			else if (defaultIt != p.end())
 			{
-				meshInstance.second->render((defaultIt->second.flags & ModelRenderParams::Flag_Visible) != 0);
-				meshInstance.second->wireframe((defaultIt->second.flags & ModelRenderParams::Flag_Wireframe) != 0);
+				auto const& rp = defaultIt->second;
 
-				for (auto const& range: defaultIt->second.renderRanges)
+				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
+				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
+
+				for (auto const& range: rp.renderRanges)
 				{
-					meshInstance.second->addRenderRange(range.first, range.second);
+					mi->addRenderRange(range.first, range.second);
 				}
 
-				meshInstance.second->setInstanceCount(defaultIt->second.instanceCount);
-				meshInstance.second->setPointSize(defaultIt->second.pointSize);
-				meshInstance.second->setUniformCollection(defaultIt->second.uniforms);
+				mi->setInstanceCount(rp.instanceCount);
+				mi->setPointSize(rp.pointSize);
+				mi->setUniformCollection(rp.uniforms);
+
+				if (rp.material)
+				{
+					mi->setMaterial(rp.material);
+				}
+
+				for (size_t i = 0; i < rp.textures.size(); ++i)
+				{
+					if (rp.textures[i])
+					{
+						mi->setTexture((int)i, rp.textures[i]);
+					}
+				}
 			}
 		}
 	}
-
 }

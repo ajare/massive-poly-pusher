@@ -229,6 +229,12 @@ namespace mpp
 		return (int)mTextures.size();
 	}
 
+	void Material::setTexture(int i, ResourcePtr texture)
+	{
+		assert(i >= 0 && i < getNumTextures());
+		mTextures[i] = texture;
+	}
+
 	/*
 	 * Get specified texture.
 	 *

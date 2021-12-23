@@ -140,6 +140,38 @@ namespace mpp
 				}
 				break;
 
+			case GL_INT:
+				// Signed, unnormalised
+				channels = mBitsPerPixel / (sizeof(int32_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R32I; break;
+				case 2:
+					mInternalFormat = GL_RG32I; break;
+				case 3:
+					mInternalFormat = GL_RGB32I; break;
+				case 4:
+					mInternalFormat = GL_RGBA32I; break;
+				}
+				break;
+
+			case GL_UNSIGNED_INT:
+				// Unsigned, unnormalised
+				channels = mBitsPerPixel / (sizeof(uint32_t) * 8);
+				switch (channels)
+				{
+				case 1:
+					mInternalFormat = GL_R32UI; break;
+				case 2:
+					mInternalFormat = GL_RG32UI; break;
+				case 3:
+					mInternalFormat = GL_RGB32UI; break;
+				case 4:
+					mInternalFormat = GL_RGBA32UI; break;
+				}
+				break;
+
 			case GL_HALF_FLOAT:
 				// Signed, unnormalised
 				channels = mBitsPerPixel / ((sizeof(float) / 2) * 8);
@@ -252,10 +284,6 @@ namespace mpp
 				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, mPixelFormat, mDataType, data));
 				break;
 
-			case GL_TEXTURE_CUBE_MAP:
-				//GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mData.width, mData.height, mData.depth, 0, mData.pixelFormat, mData.dataType, mData.data));
-				break;
-
 			default:
 				THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 			}
@@ -334,6 +362,52 @@ namespace mpp
 	size_t Texture::getNumAttachments() const
 	{
 		return mNumAttachments;
+	}
+
+	/*
+	 * Upload texture data.  This ignores the resource stream,
+	 * overwriting any existing data, and assumes the size of the data
+	 * matches the existing sizes
+	 *
+	 */
+	size_t Texture::uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1)
+	{
+		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
+
+		auto xoffset = (int)(mWidth * u0);
+		auto yoffset = (int)(mHeight * v0);
+		auto width = (size_t)(mWidth * (u1 - u0));
+		auto height = (size_t)(mHeight * (v1 - v0));
+		auto depth = mDepth;
+
+		switch (mTarget)
+		{
+		case GL_TEXTURE_1D:
+			height = 1;
+			depth = 1;
+			GL_CHECK(glTexSubImage1D(mTarget, 0, xoffset, width, mPixelFormat, mDataType, data));
+			break;
+
+		case GL_TEXTURE_2D:
+			depth = 1;
+			GL_CHECK(glTexSubImage2D(mTarget, 0, xoffset, yoffset, width, height, mPixelFormat, mDataType, data));
+			break;
+
+		case GL_TEXTURE_3D:
+			GL_CHECK(glTexSubImage3D(mTarget, 0, xoffset, yoffset, 0, width, height, depth, mPixelFormat, mDataType, data));
+			break;
+
+		default:
+			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
+		}
+
+		GL_CHECK(glBindTexture(mTarget, 0));
+		return width * height * mBitsPerPixel;
+	}
+
+	size_t Texture::uploadData(int attachment, uint8_t const* data)
+	{
+		return uploadData(attachment, data, 0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
 	/*
