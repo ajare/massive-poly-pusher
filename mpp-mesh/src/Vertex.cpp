@@ -103,6 +103,11 @@ namespace mpp
 			}
 		}
 
+		bool Vertex::isDataTypeFloatingPoint(DataType dataType)
+		{
+			return dataType == DataType::HalfFloat || dataType == DataType::Float || dataType == DataType::Double;
+		}
+
 		string Vertex::getComponentName(Component component)
 		{
 			switch (component)
