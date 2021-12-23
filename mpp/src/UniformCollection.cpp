@@ -131,42 +131,42 @@ namespace mpp
 		mUniformData.emplace(name, move(ud));
 	}
 
-	void UniformCollection::setUniform(string const& name, size_t count, int32_t const* values)
+	void UniformCollection::setUniform(string const& name, size_t count, size_t numElements, int32_t const* values)
 	{
 		UniformData ud(
 			MPP_PROGRAM_MARKUP_UNIFORM(name),
 			program::GLSLType::Int,
 			count,
-			sizeof(int32_t) * count,
-			1
+			sizeof(int32_t) * count * numElements,
+			numElements
 		);
 
 		memcpy(ud.data, values, ud.size);
 		mUniformData.emplace(name, move(ud));
 	}
 
-	void UniformCollection::setUniform(string const& name, size_t count, uint32_t const* values)
+	void UniformCollection::setUniform(string const& name, size_t count, size_t numElements, uint32_t const* values)
 	{
 		UniformData ud(
 			MPP_PROGRAM_MARKUP_UNIFORM(name),
 			program::GLSLType::Uint,
 			count,
-			sizeof(uint32_t) * count,
-			1
+			sizeof(uint32_t) * count * numElements,
+			numElements
 		);
 
 		memcpy(ud.data, values, ud.size);
 		mUniformData.emplace(name, move(ud));
 	}
 
-	void UniformCollection::setUniform(string const& name, size_t count, float const* values)
+	void UniformCollection::setUniform(string const& name, size_t count, size_t numElements, float const* values)
 	{
 		UniformData ud(
 			MPP_PROGRAM_MARKUP_UNIFORM(name),
 			program::GLSLType::Float,
 			count,
-			sizeof(float) * count,
-			1
+			sizeof(float) * count * numElements,
+			numElements
 		);
 
 		memcpy(ud.data, values, ud.size);
@@ -215,7 +215,7 @@ namespace mpp
 		mUniformData.emplace(name, move(ud));
 	}
 
-	void UniformCollection::setUniform(string const& name, program::GLSLType type, size_t count, char const* data)
+	void UniformCollection::setUniform(string const& name, program::GLSLType type, size_t count, size_t numElements, char const* data)
 	{
 		size_t typeSize;
 		switch (type)
@@ -242,8 +242,8 @@ namespace mpp
 			MPP_PROGRAM_MARKUP_UNIFORM(name),
 			type,
 			count,
-			typeSize * count,
-			1
+			typeSize * count * numElements,
+			numElements
 		);
 
 		memcpy(ud.data, data, ud.size);
@@ -253,13 +253,13 @@ namespace mpp
 	void UniformCollection::updateUniform(string const& name, int32_t value)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, &value, sizeof(int32_t));
+		memcpy(ud.data, &value, ud.size);
 	}
 
 	void UniformCollection::updateUniform(string const& name, uint32_t value)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, &value, sizeof(uint32_t));
+		memcpy(ud.data, &value, ud.size);
 	}
 
 	/*
@@ -269,7 +269,7 @@ namespace mpp
 	void UniformCollection::updateUniform(string const& name, float value)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, &value, sizeof(float));
+		memcpy(ud.data, &value, ud.size);
 	}
 
 	/*
@@ -279,7 +279,7 @@ namespace mpp
 	void UniformCollection::updateUniform(string const& name, glm::vec2 const& value)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, &value, sizeof(glm::vec2));
+		memcpy(ud.data, &value, ud.size);
 	}
 
 	/*
@@ -289,7 +289,7 @@ namespace mpp
 	void UniformCollection::updateUniform(string const& name, glm::vec3 const& value)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, &value, sizeof(glm::vec3));
+		memcpy(ud.data, &value, ud.size);
 	}
 
 	/*
@@ -299,43 +299,43 @@ namespace mpp
 	void UniformCollection::updateUniform(string const& name, glm::vec4 const& value)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, &value, sizeof(glm::vec4));
+		memcpy(ud.data, &value, ud.size);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, int32_t const* values)
+	void UniformCollection::updateUniform(string const& name, int32_t const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, values, sizeof(int32_t) * count);
+		memcpy(ud.data, values, ud.size);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, uint32_t const* values)
+	void UniformCollection::updateUniform(string const& name, uint32_t const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, values, sizeof(uint32_t) * count);
+		memcpy(ud.data, values, ud.size);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, float const* values)
+	void UniformCollection::updateUniform(string const& name, float const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, values, sizeof(float) * count);
+		memcpy(ud.data, values, ud.size);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, glm::vec2 const* values)
+	void UniformCollection::updateUniform(string const& name, glm::vec2 const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, values, sizeof(glm::vec2) * count);
+		memcpy(ud.data, values, ud.size);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, glm::vec3 const* values)
+	void UniformCollection::updateUniform(string const& name, glm::vec3 const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, values, sizeof(glm::vec3) * count);
+		memcpy(ud.data, values, ud.size);
 	}
 
-	void UniformCollection::updateUniform(string const& name, size_t count, glm::vec4 const* values)
+	void UniformCollection::updateUniform(string const& name, glm::vec4 const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
-		memcpy(ud.data, values, sizeof(glm::vec4) * count);
+		memcpy(ud.data, values, sizeof(glm::vec4) * ud.size);
 	}
 
 	/*

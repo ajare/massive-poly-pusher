@@ -182,7 +182,7 @@ namespace mpp
 				fvalues[i] = utils::StringUtils::parseFloat(values[i]);
 			}
 
-			uniforms.setUniform(name, count, fvalues);
+			uniforms.setUniform(name, count, 1, fvalues);
 			delete[] fvalues;
 		}
 
