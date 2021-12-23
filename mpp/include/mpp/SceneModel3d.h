@@ -32,6 +32,8 @@ namespace mpp
 		
 		virtual ~SceneModel3d() = default;
 
+		void resetTransform();
+
 		void translate(glm::vec3 const& translate);
 
 		void rotateSelf(float angle, glm::vec3 const& axis);
@@ -39,6 +41,8 @@ namespace mpp
 		void rotateOrigin(float angle, glm::vec3 const& axis);
 
 		void scale(glm::vec3 const& scale);
+
+		void setModel(ResourcePtr model);
 
 		ResourcePtr getModel() const;
 

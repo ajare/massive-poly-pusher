@@ -11,7 +11,7 @@ using namespace std;
 
 namespace mpp
 {
-	GridModelStream::GridModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, double width, double depth, size_t dimX, size_t dimZ)
+	GridModelStream::GridModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, string const& material, double width, double depth, size_t dimX, size_t dimZ, float textureRepeatU, float textureRepeatV)
 		: PrimitiveModelStream(resourceMgr, meshSpec, material)
 	{
 		// Spheres always use indexed vertices.
@@ -84,7 +84,7 @@ namespace mpp
 					{
 						for (size_t x = 0; x <= dimX; ++x)
 						{
-							setData(offset, attrib.component, attrib.dataType, attrib.normalised, (double)x / dimX, (double)z / dimZ);
+							setData(offset, attrib.component, attrib.dataType, attrib.normalised, (double)(x * textureRepeatU) / dimX, (double)(z * textureRepeatV) / dimZ);
 							offset += strideInBytes;
 						}
 					}

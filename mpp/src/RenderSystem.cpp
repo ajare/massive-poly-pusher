@@ -2356,20 +2356,26 @@ namespace mpp
 					// Create sort key
 					uint64_t sortKey = 0;
 
-					auto material = (Material*)mi->mMaterial.get();
-					int numTextures = material->getNumTextures();
+					auto material = static_cast<Material*>(mi->getMaterial().get());
+					auto numTextures = material->getNumTextures();
 
-					// Texture 0.
-					uint64_t texture0Key = (uint64_t)(numTextures > 0 ? ((Texture*)material->getTexture(0).get())->getSortId() : 0);
-					texture0Key <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-					
-					sortKey |= texture0Key;
+					// Texture 0
+					if (numTextures > 0)
+					{
+						auto texture = static_cast<Texture*>(mi->getTexture(0).get());
+						uint64_t textureKey = (uint64_t)texture->getSortId();
+						textureKey <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
+						sortKey |= textureKey;
+					}
 
 					// Texture 1
-					uint64_t texture1Key = (uint64_t)(numTextures > 1 ? ((Texture*)material->getTexture(1).get())->getSortId() : 0);
-					texture1Key <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-					
-					sortKey |= texture1Key;
+					if (numTextures > 1)
+					{
+						auto texture = static_cast<Texture*>(mi->getTexture(1).get());
+						uint64_t textureKey = (uint64_t)texture->getSortId();
+						textureKey <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
+						sortKey |= textureKey;
+					}
 
 					// Program
 					uint64_t programKey = (uint64_t)((Program*)material->getProgram().get())->getSortId();
@@ -2439,9 +2445,7 @@ namespace mpp
 
 			currentMaterial = material;
 
-			// Mask off texture and see if it has changed from previous.  This assumes the mesh
-			// is only using one texture.
-			// Mask off program and see if it has changed from previous.
+			// Mask off textures and see if they have changed from previous.
 			uint64_t thisTexture0Key = meshInstance.first;
 			thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
 			thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
