@@ -84,7 +84,18 @@ namespace mpp
 					{
 						for (size_t x = 0; x <= dimX; ++x)
 						{
-							setData(offset, attrib.component, attrib.dataType, attrib.normalised, (double)(x * textureRepeatU) / dimX, (double)(z * textureRepeatV) / dimZ);
+							double u = (double)(x * textureRepeatU);
+							double v = (double)(z * textureRepeatV);
+
+							// For non-integer types, we scale to [0,1].
+							// TODO: need an 'is-floating-point' trait to do this properly.
+							if (mesh::Vertex::isDataTypeFloatingPoint(attrib.dataType))
+							{
+								u /= dimX;
+								v /= dimZ;
+							}
+
+							setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
 							offset += strideInBytes;
 						}
 					}

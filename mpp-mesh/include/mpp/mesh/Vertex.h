@@ -53,6 +53,8 @@ namespace mpp
 
 			static bool isDataTypeNormalisable(DataType dataType);
 
+			static bool isDataTypeFloatingPoint(DataType dataType);
+
 			static std::string getComponentName(Component component);
 
 			static std::string getDataTypeName(DataType dataType);
