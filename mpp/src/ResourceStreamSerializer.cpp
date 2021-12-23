@@ -497,7 +497,7 @@ namespace mpp
 			char data[64];
 			fp.read(data, 64);
 
-			uniforms.setUniform(name, type, size, data);
+			uniforms.setUniform(name, type, size, 1, data);
 		}
 
 		return uniforms;

@@ -172,7 +172,7 @@ namespace mpp
 	 */
 	void MeshInstance::setTexture(int index, ResourcePtr texture)
 	{
-		if (index >= mTextureOverrides.size())
+		if (index >= (int)mTextureOverrides.size())
 		{
 			mTextureOverrides.resize(index + 1);
 		}

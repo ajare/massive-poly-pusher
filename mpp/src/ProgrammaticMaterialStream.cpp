@@ -264,20 +264,20 @@ namespace mpp
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.spec.uniforms.setUniform(name, count, values);
+		qs.spec.uniforms.setUniform(name, count, 1, values);
 	}
 
 	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, uint32_t const* values, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.spec.uniforms.setUniform(name, count, values);
+		qs.spec.uniforms.setUniform(name, count, 1, values);
 	}
 
 	void ProgrammaticMaterialStream::setUniform(string const& name, size_t count, float const* values, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
-		qs.spec.uniforms.setUniform(name, count, values);
+		qs.spec.uniforms.setUniform(name, count, 1, values);
 	}
 }
