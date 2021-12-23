@@ -42,8 +42,12 @@ namespace mpp
 			// Datatypes
 			mDataTypes["FLOAT16"] = mpp::mesh::Vertex::DataType::HalfFloat;
 			mDataTypes["FLOAT32"] = mpp::mesh::Vertex::DataType::Float;
+			mDataTypes["INT8"] = mpp::mesh::Vertex::DataType::Byte;
+			mDataTypes["INT16"] = mpp::mesh::Vertex::DataType::Short;
+			mDataTypes["INT32"] = mpp::mesh::Vertex::DataType::Int;
 			mDataTypes["UINT8"] = mpp::mesh::Vertex::DataType::UnsignedByte;
 			mDataTypes["UINT16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
+			mDataTypes["UINT32"] = mpp::mesh::Vertex::DataType::UnsignedInt;
 		}
 
 		mesh::Vertex::Component MeshSpecificationParser::parseMeshSpecificationBufferChannelComponent(string const& value)
