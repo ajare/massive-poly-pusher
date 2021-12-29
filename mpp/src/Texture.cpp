@@ -372,29 +372,34 @@ namespace mpp
 	 */
 	size_t Texture::uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1)
 	{
-		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
-
-		auto xoffset = (int)(mWidth * u0);
-		auto yoffset = (int)(mHeight * v0);
+		auto xoffset = (uint32_t)(mWidth * u0);
+		auto yoffset = (uint32_t)(mHeight * v0);
 		auto width = (size_t)(mWidth * (u1 - u0));
 		auto height = (size_t)(mHeight * (v1 - v0));
-		auto depth = mDepth;
+
+		return uploadData(attachment, data, xoffset, yoffset, width, height);
+	}
+
+	size_t Texture::uploadData(int attachment, uint8_t const* data, uint32_t x, uint32_t y, size_t w, size_t h)
+	{
+		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
+		auto d = mDepth;
 
 		switch (mTarget)
 		{
 		case GL_TEXTURE_1D:
-			height = 1;
-			depth = 1;
-			GL_CHECK(glTexSubImage1D(mTarget, 0, xoffset, width, mPixelFormat, mDataType, data));
+			h = 1;
+			d = 1;
+			GL_CHECK(glTexSubImage1D(mTarget, 0, x, w, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_2D:
-			depth = 1;
-			GL_CHECK(glTexSubImage2D(mTarget, 0, xoffset, yoffset, width, height, mPixelFormat, mDataType, data));
+			d = 1;
+			GL_CHECK(glTexSubImage2D(mTarget, 0, x, y, w, h, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_3D:
-			GL_CHECK(glTexSubImage3D(mTarget, 0, xoffset, yoffset, 0, width, height, depth, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage3D(mTarget, 0, x, y, 0, w, h, d, mPixelFormat, mDataType, data));
 			break;
 
 		default:
@@ -402,7 +407,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glBindTexture(mTarget, 0));
-		return width * height * mBitsPerPixel;
+		return w * h * d * mBitsPerPixel;
 	}
 
 	size_t Texture::uploadData(int attachment, uint8_t const* data)
