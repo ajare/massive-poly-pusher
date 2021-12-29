@@ -56,6 +56,8 @@ namespace mpp
 
 		size_t uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1);
 
+		size_t uploadData(int attachment, uint8_t const* data, uint32_t x, uint32_t y, size_t w, size_t h);
+
 		size_t uploadData(int attachment, uint8_t const* data);
 
 		virtual void bind(uint32_t unit, uint32_t attachment = 0);
