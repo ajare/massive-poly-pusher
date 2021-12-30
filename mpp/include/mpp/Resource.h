@@ -78,7 +78,7 @@ namespace mpp
 
 		void recreate();
 
-		void load();
+		void load(bool unloadStreamsAfterwards = false);
 
 		void unload();
 	};

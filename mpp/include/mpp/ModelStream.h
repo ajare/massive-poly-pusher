@@ -53,6 +53,8 @@ namespace mpp
 
 		void loadImpl();
 
+		void unloadImpl();
+
 		int getNumBufferDefinitions() const;
 
 		virtual void createMeshDataStreams() = 0;
