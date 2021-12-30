@@ -224,6 +224,11 @@ namespace mpp
 		}
 	}
 
+	void ModelStream::unloadImpl()
+	{
+
+	}
+
 	/*
 	 * Create a new mesh and return it.
 	 *

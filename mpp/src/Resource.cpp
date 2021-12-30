@@ -207,7 +207,7 @@ namespace mpp
  	 * Load the resource.
  	 *
  	 */
-	void Resource::load()
+	void Resource::load(bool unloadStreamsAfterwards)
 	{
 		if (!isCreated())
 		{
@@ -225,6 +225,11 @@ namespace mpp
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Load " + getType() + ": '" + getName() + "'");
 			loadImpl();
 			mLoaded = true;
+
+			if (mResourceStream && unloadStreamsAfterwards)
+			{
+				mResourceStream->unload();
+			}
 		}
 	}
 
@@ -247,4 +252,5 @@ namespace mpp
 			mResourceStream->unloadChildResources(getName());
 		}
 	}
+
 }
