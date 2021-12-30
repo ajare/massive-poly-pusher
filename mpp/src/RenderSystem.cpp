@@ -658,7 +658,7 @@ namespace mpp
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 
-			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
+			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
 
 			for (int i = 0; i < glyphCount; ++i)
 			{
@@ -676,7 +676,7 @@ namespace mpp
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
-			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
+			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
 
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
@@ -705,7 +705,7 @@ namespace mpp
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
+			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
 			for (int i = 0; i < glyphCount; ++i)
 			{
@@ -725,7 +725,7 @@ namespace mpp
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-			int textMesh = textStream->createMesh("0", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
+			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
@@ -751,7 +751,7 @@ namespace mpp
 		quadSpec.setIndexedVertices(false);
 
 		auto fullscreenProgram = resourceMgr->getDefault2dProgram(quadSpec, 0, true);
-		auto quadMesh = quadStream->createMesh("0", quadSpec, fullscreenProgram->getName(), 32, -1.0f);
+		auto quadMesh = quadStream->createMesh("fullscreen-quad", quadSpec, fullscreenProgram->getName(), 32, -1.0f);
 
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32((float)mWindowWidth).f32(0.0f).f32(1.0f).f32(0.0f));
