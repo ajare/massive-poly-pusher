@@ -40,6 +40,22 @@ namespace mpp
 		}
 	}
 
+	void TextureStream::unloadImpl()
+	{
+		if (mData.data)
+		{
+			delete[] mData.data;
+			mData.data = nullptr;
+
+			mData.width = 0;
+			mData.height = 0;
+			mData.depth = 0;
+			mData.bitsPerPixel = 0;
+			mData.pixelFormat = 0;
+			mData.dataType = 0;
+		}
+	}
+
 	uint32_t TextureStream::getInternalFormat() const
 	{
 		return mQualitySettings[mQualitySetting].internalFormat;

@@ -50,6 +50,8 @@ namespace mpp
 
 		void loadImpl();
 
+		void unloadImpl();
+
 	public:
 
 		TextureStream(ResourceManager* resourceMgr, std::string streamType = "Texture");
