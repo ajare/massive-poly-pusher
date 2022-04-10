@@ -122,7 +122,7 @@ namespace mpp
 		};
 
 		template<typename PosType>
-		class LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone>
+		class LineBatchDataProvider<PosType, mpp::mesh::DataTypeNone> : public BatchDataProvider
 		{
 		public:
 
