@@ -15,6 +15,26 @@ namespace mpp
 		{
 		}
 
+		glm::vec2 const& OrthoCamera::getOffset() const
+		{
+			return mOffset;
+		}
+
+		void OrthoCamera::setOffset(glm::vec2 const& offset)
+		{
+			mOffset = offset;
+		}
+
+		float OrthoCamera::getAngle() const
+		{
+			return mAngle;
+		}
+
+		void OrthoCamera::setAngle(float angle)
+		{
+			mAngle = angle;
+		}
+
 		glm::mat4 OrthoCamera::getViewTransform()
 		{
 			mat4 m;
