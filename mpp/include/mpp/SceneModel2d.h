@@ -10,6 +10,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
+#include "mpp/Camera.h"
 #include "mpp/BatchDataProvider.h"
 #include "mpp/BatchRenderer.h"
 #include "mpp/ModelRenderParams.h"
