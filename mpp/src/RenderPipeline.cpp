@@ -125,7 +125,7 @@ namespace mpp
 				mRenderSystem->rotateTransform2d(angle);
 				mRenderSystem->scaleTransform2d(scale);
 
-				model->render();
+				model->render(camera);
 			}
 			mRenderSystem->popModelMatrix();
 		}

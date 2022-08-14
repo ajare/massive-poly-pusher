@@ -122,7 +122,7 @@ namespace mpp
 		}
 	}
 
-	void SceneModel2d::render()
+	void SceneModel2d::render(CameraPtr camera)
 	{
 		if (mRenderer)
 		{
@@ -130,7 +130,7 @@ namespace mpp
 		}
 		else if (mModel)
 		{
-			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mParams);
+			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mParams, camera);
 		}
 	}
 }

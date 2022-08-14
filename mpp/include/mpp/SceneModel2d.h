@@ -72,7 +72,7 @@ namespace mpp
 
 		void update(float frameTime);
 
-		void render();
+		void render(CameraPtr camera);
 	};
 
 	typedef std::shared_ptr<SceneModel2d> SceneModel2dPtr;
