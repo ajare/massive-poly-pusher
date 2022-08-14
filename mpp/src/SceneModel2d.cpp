@@ -130,7 +130,7 @@ namespace mpp
 		}
 		else if (mModel)
 		{
-			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mParams, camera);
+			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mParams);
 		}
 	}
 }
