@@ -404,6 +404,8 @@ namespace mpp
 
 		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend);
 
+		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, CameraPtr camera);
+
 		ModelInstance* renderModelBatched(Model const& model, glm::mat4 const& transform, CameraPtr camera);
 
 		ModelInstance* renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, glm::mat4 const& transform, glm::mat4 const& mcp);
@@ -411,6 +413,8 @@ namespace mpp
 		void renderModelImmediate(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, std::shared_ptr<ModelRenderParams> params);
 
 		void renderModelImmediate(Model const& model, bool alphaBlend, std::shared_ptr<ModelRenderParams> params);
+
+		void renderModelImmediate(Model const& model, bool alphaBlend, std::shared_ptr<ModelRenderParams> params, CameraPtr camera);
 
 		//
 		// 2d rendering

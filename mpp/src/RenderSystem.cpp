@@ -1423,6 +1423,11 @@ namespace mpp
 		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), m3dModelMatrix, m3dModelCameraProjectionMatrix);
 	}
 
+	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, CameraPtr camera)
+	{
+		return renderModelBatched(model, alphaBlend, glm::vec3(0.0f, 0.0f, 0.0f), m3dModelMatrix, camera->getProjectionTransform() * camera->getViewTransform());
+	}
+
 	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos)
 	{
 		return renderModelBatched(model, alphaBlend, viewPos, m3dModelMatrix, m3dModelCameraProjectionMatrix);
@@ -1467,7 +1472,13 @@ namespace mpp
 		renderModelBatched(model, alphaBlend)->setParams(params);
 		flushVertexBuffers();
 	}
-	
+
+	void RenderSystem::renderModelImmediate(Model const& model, bool alphaBlend, shared_ptr<ModelRenderParams> params, CameraPtr camera)
+	{
+		renderModelBatched(model, alphaBlend, camera)->setParams(params);
+		flushVertexBuffers();
+	}
+
 	/*
 	 * Set up the model used for rendering text
 	 *
