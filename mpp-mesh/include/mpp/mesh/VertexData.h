@@ -50,52 +50,6 @@ namespace mpp
 					mIndex = mVertexData->getNumComponents() * (currentVertex + 1);
 					mOffset = mVertexData->getStride() * (currentVertex + 1);
 				}
-
-				template<typename T>
-				T unpack()
-				{
-					switch (mVertexData->mDataTypes[mIndex++])
-					{
-					case Vertex::DataType::Byte:
-						mOffset += sizeof(int8_t);
-						return (T)((int8_t)mVertexData->mData[mOffset - sizeof(int8_t)]);
-
-					case Vertex::DataType::UnsignedByte:
-						mOffset += sizeof(uint8_t);
-						return (T)((uint8_t)mVertexData->mData[mOffset - sizeof(uint8_t)]);
-
-					case Vertex::DataType::Short:
-						mOffset += sizeof(int16_t);
-						return (T)(*(int16_t*)&mVertexData->mData[mOffset - sizeof(int16_t)]);
-
-					case Vertex::DataType::UnsignedShort:
-						mOffset += sizeof(uint16_t);
-						return (T)(*(uint16_t*)&mVertexData->mData[mOffset - sizeof(uint16_t)]);
-
-					case Vertex::DataType::Int:
-						mOffset += sizeof(int32_t);
-						return (T)(*(int32_t*)&mVertexData->mData[mOffset - sizeof(int32_t)]);
-
-					case Vertex::DataType::UnsignedInt:
-						mOffset += sizeof(uint32_t);
-						return (T)(*(uint32_t*)&mVertexData->mData[mOffset - sizeof(uint32_t)]);
-
-					case Vertex::DataType::HalfFloat:
-						mOffset += sizeof(half_float::half);
-						return (T)(*(half_float::half*)&mVertexData->mData[mOffset - sizeof(half_float::half)]);
-
-					case Vertex::DataType::Float:
-						mOffset += sizeof(float);
-						return (T)(*(float*)&mVertexData->mData[mOffset - sizeof(float)]);
-
-					case Vertex::DataType::Double:
-						mOffset += sizeof(double);
-						return (T)(*(double*)&mVertexData->mData[mOffset - sizeof(double)]);
-
-					default:
-						return T();
-					}
-				}
 			};
 
 		private:
