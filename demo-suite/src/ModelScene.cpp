@@ -479,7 +479,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	lineBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer));
-	*/
+	
 	// Triangles
 
 	// 2D batch
@@ -496,7 +496,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	tri2dBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
-	/*
+	
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -635,6 +635,8 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer5->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider5, quadBatchRenderer5));
+
+	// Quad 6: use own fragment shader with two textures
 
 	/*
 	// 3d model
