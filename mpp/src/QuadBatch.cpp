@@ -345,7 +345,7 @@ namespace mpp
 		// Set program flags
 		uint32_t flags = 0
 			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
-			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
+			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE : 0)
 			| (usingTextureAtlas() ? MPP_PROGRAM_TAGS_ATLAS : 0)
 			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);

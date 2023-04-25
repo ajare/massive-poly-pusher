@@ -241,7 +241,6 @@ void main()
 
 ## !Points&Texture
 	vec2 tc = @In(TEXCOORDS).st;
-
 ## Points&!Rotation&Texture&!Atlas
 	// Use gl_PointCoord
 	vec2 tc = gl_PointCoord;
