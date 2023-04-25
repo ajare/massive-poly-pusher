@@ -548,7 +548,7 @@ namespace mpp
 			attribs.insert("Triangles");
 		}
 
-		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE)
 		{
 			attribs.insert("Texture");
 		}
@@ -616,25 +616,9 @@ namespace mpp
 		string specName = spec.getDescriptor("__mpp_p2d_");
 
 		// Add texture units, diffuse, rotation.
-		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE)
 		{
 			specName += "_s";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE1)
-		{
-			specName += "1";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE2)
-		{
-			specName += "2";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE3)
-		{
-			specName += "3";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE4)
-		{
-			specName += "4";
 		}
 
 		if (flags & (MPP_PROGRAM_TAGS_DIFFUSE | MPP_PROGRAM_TAGS_ROTATION | MPP_PROGRAM_TAGS_ATLAS))
@@ -711,25 +695,9 @@ namespace mpp
 		string specName = spec.getDescriptor("__mpp_p3d_");
 
 		// Add texture units, lights diffuse, rotation.
-		if (flags & (MPP_PROGRAM_TAGS_TEXTURE1 | MPP_PROGRAM_TAGS_TEXTURE2 | MPP_PROGRAM_TAGS_TEXTURE3 | MPP_PROGRAM_TAGS_TEXTURE4))
+		if (flags & MPP_PROGRAM_TAGS_TEXTURE)
 		{
 			specName += "_s";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE1)
-		{
-			specName += "1";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE2)
-		{
-			specName += "2";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE3)
-		{
-			specName += "3";
-		}
-		if (flags & MPP_PROGRAM_TAGS_TEXTURE4)
-		{
-			specName += "4";
 		}
 
 		if (flags & MPP_PROGRAM_TAGS_DIFFUSE)

@@ -53,22 +53,10 @@ namespace mpp
 		{
 			// Get texture usage
 			uint32_t programFlags{ 0 };
-			switch (mStr->getTextures().size())
-			{
-			case 0:
-				break;
-			case 4:
-				programFlags |= MPP_PROGRAM_TAGS_TEXTURE4;
-			case 3:
-				programFlags |= MPP_PROGRAM_TAGS_TEXTURE3;
-			case 2:
-				programFlags |= MPP_PROGRAM_TAGS_TEXTURE2;
-			case 1:
-				programFlags |= MPP_PROGRAM_TAGS_TEXTURE1;
-				break;
 
-			default:
-				THROW_MPP("Cannot use more than 4 textures in a material.", __LINE__, __FILE__, __func__);
+			if (!mStr->getTextures().empty())
+			{
+				programFlags |= MPP_PROGRAM_TAGS_TEXTURE;
 			}
 
 			// Load in shaders if required

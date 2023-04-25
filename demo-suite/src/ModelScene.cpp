@@ -450,7 +450,7 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
 	auto resourceMgr = getResourceManager();
-	/*
+	
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
 		true,
@@ -466,7 +466,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
-	
+	/*
 	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>();
 
 	auto lineBatchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
@@ -479,7 +479,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	lineBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer));
-
+	*/
 	// Triangles
 
 	// 2D batch
@@ -496,7 +496,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	tri2dBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
-	
+	/*
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,

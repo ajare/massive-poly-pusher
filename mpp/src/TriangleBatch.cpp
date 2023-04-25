@@ -129,7 +129,7 @@ namespace mpp
 		}
 
 		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
-			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE1 : 0)
+			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE : 0)
 			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
 
 		auto materialResource = mOptions.specifyMaterial ? mTextureOrMaterial
