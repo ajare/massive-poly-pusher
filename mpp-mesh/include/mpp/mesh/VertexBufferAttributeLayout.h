@@ -16,7 +16,7 @@ namespace mpp
 
 			struct Attribute
 			{
-				int attributeId;
+				int attributeId{ -1 };
 				std::string identifier;
 				Vertex::Component component;
 				Vertex::DataType dataType;

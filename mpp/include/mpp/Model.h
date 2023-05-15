@@ -12,9 +12,15 @@ namespace mpp
 {
 	class _MPPAPI Model : public Resource
 	{
+		glm::vec3 mBounds[2];
+
 	protected:
 
 		std::vector<Mesh*> mMeshes;
+
+	private:
+
+		glm::vec3 readPositionFromStream(int8_t const* stream, mesh::VertexBufferAttributeLayout::Attribute const& attrib);
 
 	protected:
 
@@ -41,6 +47,8 @@ namespace mpp
 		Mesh const* getMesh(int index) const;
 
 		Mesh* getMesh(int index);
+
+		void getBounds(glm::vec3& bMin, glm::vec3& bMax);
 
 		void setMeshesDynamic();
 

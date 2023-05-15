@@ -109,8 +109,7 @@ namespace mpp
 		}
 		else
 		{
-			// TODO
-			//static_cast<Model*>(mModel.get())->get
+			static_cast<Model*>(mModel.get())->getBounds(bMin, bMax);
 		}
 	}
 
