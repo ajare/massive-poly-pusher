@@ -8,6 +8,8 @@
 #include <glew/glew.h>
 #include <gl/gl.h>
 
+#include <half/half.hpp>
+
 #include "utils/MemTracker.h"
 
 #include "mpp/Model.h"
@@ -42,6 +44,152 @@ namespace mpp
 		}
 	}
 
+	glm::vec3 Model::readPositionFromStream(int8_t const* stream, mesh::VertexBufferAttributeLayout::Attribute const& attrib)
+	{
+		glm::vec3 pos;
+
+		int c;
+		switch (attrib.component)
+		{
+		case Vertex::Component::Position2:
+			c = 2;
+			break;
+		case Vertex::Component::Position3:
+		case Vertex::Component::Position4:
+			c = 3;
+			break;
+		default:
+			throw MppException("Vertex attribute component not supported: " + Vertex::getComponentName(attrib.component));
+		}
+
+		switch (attrib.dataType)
+		{
+		case Vertex::DataType::Byte:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(int8_t const*)(stream));
+				if (attrib.normalised)
+				{
+					pos[i] /= 255.0f;
+				}
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+		break;
+		case Vertex::DataType::UnsignedByte:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(uint8_t const*)(stream));
+				if (attrib.normalised)
+				{
+					pos[i] /= 255.0f;
+				}
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::Short:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(int16_t const*)(stream));
+				if (attrib.normalised)
+				{
+					pos[i] /= 65535.0f;
+				}
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::UnsignedShort:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(uint16_t const*)(stream));
+				if (attrib.normalised)
+				{
+					pos[i] /= 65535.0f;
+				}
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::Int:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(int32_t const*)(stream));
+				if (attrib.normalised)
+				{
+					pos[i] /= 4294967296.0f;
+				}
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::UnsignedInt:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(uint32_t const*)(stream));
+				if (attrib.normalised)
+				{
+					pos[i] /= 4294967296.0f;
+				}
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::HalfFloat:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(half_float::half const*)(stream));
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::Float:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = *(float const*)(stream);
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::Double:
+			for (int i = 0; i < c; ++i)
+			{
+				pos[i] = (float)(*(double const*)(stream));
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::Int_2_10_10_10_REV:
+			{
+				uint32_t v = *(uint32_t const*)(stream);
+				pos.x = (float)((v & 511) * -(int)(v & (1 << 9)));
+				pos.y = (float)(((v >> 10) & 511) * -(int)(v & (1 << 19)));
+				pos.z = (float)(((v >> 20) & 511) * -(int)(v & (1 << 29)));
+				if (attrib.normalised)
+				{
+					pos.x /= 511.0f;
+					pos.y /= 511.0f;
+					pos.z /= 511.0f;
+				}
+
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		case Vertex::DataType::UnsignedInt_2_10_10_10_REV:
+			{
+				uint32_t v = *(uint32_t const*)(stream);
+				pos.x = (float)(v & 1023);
+				pos.y = (float)((v >> 10) & 1023);
+				pos.z = (float)((v >> 20) & 1023);
+				if (attrib.normalised)
+				{
+					pos.x /= 1023.0f;
+					pos.y /= 1023.0f;
+					pos.z /= 1023.0f;
+				}
+
+				stream += Vertex::getDataTypeSize(attrib.dataType);
+			}
+			break;
+		default:
+			throw MppException("Vertex attribute datatype not supported: " + utils::StringUtils::toString((int)attrib.dataType));
+		}
+
+		return pos;
+	}
+
 	/*
 	 * Create the data required.
 	 *
@@ -55,6 +203,14 @@ namespace mpp
 		}
 
 		auto resourceMgr = getResourceManager();
+
+		// Initialise extents calcualation
+		mBounds[0].x = 1e10f;
+		mBounds[0].y = 1e10f;
+		mBounds[0].z = 1e10f;
+		mBounds[1].x = -1e10f;
+		mBounds[1].y = -1e10f;
+		mBounds[1].z = -1e10f;
 
 		for (size_t i = 0; i < mStr->getNumMeshDefinitions(); ++i)
 		{
@@ -118,6 +274,8 @@ namespace mpp
 					false,
 					bufferDef->getData());
 
+				// For extents calculation
+				mesh::VertexBufferAttributeLayout::Attribute posAttr;
 				for (size_t k = 0; k < bufferDef->getNumAttributes(); ++k)
 				{
 					auto const& attrib = bufferDef->getAttribute(k);
@@ -127,6 +285,52 @@ namespace mpp
 						Vertex::getComponentSize(attrib.component),
 						attrib.offsetInBytes,
 						attrib.normalised);
+
+					// Get position attribute for extents calculation
+					if (attrib.component == Vertex::Component::Position2 ||
+						attrib.component == Vertex::Component::Position3 ||
+						attrib.component == Vertex::Component::Position4)
+					{
+						posAttr = attrib;
+					}
+				}
+
+				// Get all position data from vertexbuffer and calculate model extents
+				if (posAttr.attributeId != -1)
+				{
+					auto bufferData = bufferDef->getData().get() + posAttr.offsetInBytes;
+					for (int k = 0; k < bufferDef->getVertexCount(); ++k)
+					{
+						auto pos = readPositionFromStream(bufferData, posAttr);
+
+						if (pos.x < mBounds[0].x)
+						{
+							mBounds[0].x = pos.x;
+						}
+						if (pos.y < mBounds[0].y)
+						{
+							mBounds[0].y = pos.y;
+						}
+						if (pos.z < mBounds[0].z)
+						{
+							mBounds[0].z = pos.z;
+						}
+
+						if (pos.x > mBounds[1].x)
+						{
+							mBounds[1].x = pos.x;
+						}
+						if (pos.y > mBounds[1].y)
+						{
+							mBounds[1].y = pos.y;
+						}
+						if (pos.z > mBounds[1].z)
+						{
+							mBounds[1].z = pos.z;
+						}
+
+						bufferData += bufferDef->getVertexStride();
+					}
 				}
 			}
 
@@ -253,6 +457,15 @@ namespace mpp
 	{
 		assert(index >= 0 && "Model::getMesh() 'index' argument out of range!");
 		return mMeshes[index];
+	}
+
+	/*
+	 * Get model extents
+	 */
+	void Model::getBounds(glm::vec3& bMin, glm::vec3& bMax)
+	{
+		bMin = mBounds[0];
+		bMax = mBounds[1];
 	}
 
 	/*
