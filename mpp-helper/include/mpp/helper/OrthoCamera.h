@@ -13,17 +13,15 @@ namespace mpp
 		{
 			size_t mViewWidth, mViewHeight;
 
-			glm::vec2 mOffset;
-
 			float mAngle;
 
 		public:
 
-			OrthoCamera(size_t viewWidth, size_t viewHeight);
+			OrthoCamera(glm::vec2 const& position, size_t viewWidth, size_t viewHeight);
 
-			glm::vec2 const& getOffset() const;
+			void setPosition(glm::vec2 const& position);
 
-			void setOffset(glm::vec2 const& offset);
+			void pan(glm::vec2 const& movement);
 
 			float getAngle() const;
 
