@@ -6,23 +6,26 @@ namespace mpp
 	{
 		using namespace glm;
 
-		OrthoCamera::OrthoCamera(size_t viewWidth, size_t viewHeight)
-			: Camera(vec3(0.0f, 0.0f, 0.0f), 0.0f, 0.0f, 0.0f, 0.0f, (float)viewWidth / viewHeight)
+		OrthoCamera::OrthoCamera(glm::vec2 const& position, size_t viewWidth, size_t viewHeight)
+			: Camera(vec3(position.x, 0.0f, position.y), 0.0f, 0.0f, 0.0f, 0.0f, (float)viewWidth / viewHeight)
 			, mViewWidth(viewWidth)
 			, mViewHeight(viewHeight)
-			, mOffset(0.0f, 0.0f)
 			, mAngle(0.0f)
 		{
 		}
 
-		glm::vec2 const& OrthoCamera::getOffset() const
+		void OrthoCamera::setPosition(glm::vec2 const& position)
 		{
-			return mOffset;
+			mPosition.x = position.x;
+			mPosition.y = 0.0f;
+			mPosition.z = position.y;
 		}
 
-		void OrthoCamera::setOffset(glm::vec2 const& offset)
+		void OrthoCamera::pan(glm::vec2 const& movement)
 		{
-			mOffset = offset;
+			mPosition.x += movement.x;
+			mPosition.y = 0.0f;
+			mPosition.z += movement.y;
 		}
 
 		float OrthoCamera::getAngle() const
@@ -39,7 +42,7 @@ namespace mpp
 		{
 			mat4 m;
 			
-			m = translate(m, vec3(mOffset.x, 0.0f, mOffset.y));
+			m = translate(m, mPosition);
 			return rotate(m, mAngle, vec3(0.0f, 1.0f, 0.0f));
 		}
 
