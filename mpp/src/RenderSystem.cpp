@@ -2576,12 +2576,19 @@ namespace mpp
 		pipeline->render(scene, camera, offset2d);
 	}
 
-	RenderPipelinePtr RenderSystem::createRenderPipeline(string const& name)
+	RenderPipelinePtr RenderSystem::getOrCreateRenderPipeline(string const& name)
 	{
-		auto rs = make_shared<RenderPipeline>(name, this);
-
-		mPipelines[name] = rs;
-		return rs;
+		auto it = mPipelines.find(name);
+		if (it != mPipelines.end())
+		{
+			return it->second;
+		}
+		else
+		{
+			auto rs = make_shared<RenderPipeline>(name, this);
+			mPipelines[name] = rs;
+			return rs;
+		}
 	}
 
 	RenderPipelinePtr RenderSystem::getRenderPipeline(string const& name)

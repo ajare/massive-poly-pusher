@@ -756,7 +756,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLight1Colour(Colour::White);
 
 	// Pipelines
-	auto pipeline = renderSystem->createRenderPipeline(getRenderPipelineName());
+	auto pipeline = renderSystem->getOrCreateRenderPipeline(getRenderPipelineName());
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const

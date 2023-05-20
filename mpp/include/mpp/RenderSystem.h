@@ -385,7 +385,7 @@ namespace mpp
 
 		void renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, std::string const& pipelineName);
 
-		RenderPipelinePtr createRenderPipeline(std::string const& name);
+		RenderPipelinePtr getOrCreateRenderPipeline(std::string const& name);
 
 		RenderPipelinePtr getRenderPipeline(std::string const& name);
 
