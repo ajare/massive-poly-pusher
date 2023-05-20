@@ -95,6 +95,7 @@ namespace mpp
 		// Render to screen
 		mRenderSystem->resetTransform();
 		mRenderSystem->renderToScreen();
+		mRenderSystem->clearScreen(scene->getClearColour());
 
 		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
 		mRenderSystem->renderFullscreenQuad(outputRenderTexture, 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
