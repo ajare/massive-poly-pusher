@@ -60,21 +60,18 @@ namespace mpp
 		
 
 		auto const& models = scene->get3dModelsInView(camera);
-		if (!models.empty())
+		for (auto const& pass : mPasses)
 		{
-			for (auto const& pass : mPasses)
+			// Start pass
+			pass->bindRenderTarget();
+
+			// Clear
+			mRenderSystem->clearScreen(scene->getClearColour());
+
+			// Render pass
+			if (!models.empty() && scene->show3dModels())
 			{
-				// Start pass
-				pass->bindRenderTarget();
-
-				// Clear
-				mRenderSystem->clearScreen(scene->getClearColour());
-
-				// Render pass
-				if (scene->show3dModels())
-				{
-					pass->render(models, camera);
-				}
+				pass->render(models, camera);
 
 				// Flush
 				mRenderSystem->flushVertexBuffers();
