@@ -26,6 +26,8 @@ namespace mpp
 
 		ClipRectangle mViewport;
 
+		Colour mClearColour;
+
 	protected:
 
 		std::vector<SceneModel3dPtr> m3dModels;
@@ -51,6 +53,8 @@ namespace mpp
 		void setViewport(int x, int y, size_t width, size_t height);
 
 		ClipRectangle const& getViewport() const;
+
+		void setClearColour(Colour const& colour);
 
 		virtual Colour getClearColour() const;
 
