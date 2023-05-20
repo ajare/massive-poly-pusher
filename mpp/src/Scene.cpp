@@ -8,6 +8,7 @@ namespace mpp
 {
 	Scene::Scene(RenderSystem* renderSystem)
 		: mRenderSystem(renderSystem)
+		, mClearColour(Colour::Black)
 	{
 		setViewport(0, 0, mRenderSystem->getWindowWidth(), mRenderSystem->getWindowHeight());
 	}
@@ -119,9 +120,14 @@ namespace mpp
 		return inView;
 	}
 
+	void Scene::setClearColour(Colour const& colour)
+	{
+		mClearColour = colour;
+	}
+
 	Colour Scene::getClearColour() const
 	{
-		return Colour::Black;
+		return mClearColour;
 	}
 
 	void Scene::show2dModels(bool show)
