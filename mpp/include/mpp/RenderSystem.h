@@ -24,7 +24,6 @@
 #include "mpp/Font.h"
 #include "mpp/Texture.h"
 #include "mpp/TextureTile.h"
-#include "mpp/QuadDefinition.h"
 #include "mpp/QuadBatch.h"
 #include "mpp/LineBatch.h"
 #include "mpp/ModelRenderParams.h"
@@ -130,9 +129,6 @@ namespace mpp
 		std::shared_ptr<UniformCollection> mTextUniforms;
 
 		std::shared_ptr<ModelRenderParams> mTextParams;
-
-		// Texture tiles
-		std::map<std::string, TextureTile> mTextureTiles;
 
 		// 3d Transforms
 #pragma warning(push)
@@ -289,12 +285,6 @@ namespace mpp
 		void renderToScreen();
 
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer);
-
-		TextureTile const& createTextureTile(std::string const& name, ResourcePtr texture, int offX, int offY, float u0, float v0, float u1, float v1);
-
-		void destroyTextureTile(std::string const& name);
-
-		TextureTile const& getTextureTile(std::string const& name) const;
 
 		void flushVertexBuffers();
 

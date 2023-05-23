@@ -973,53 +973,6 @@ namespace mpp
 	}
 
 	/*
-	 * Create (and return) a texture tile.
-	 *
-	 */
-	TextureTile const& RenderSystem::createTextureTile(string const& name, ResourcePtr texture, int offX, int offY, float u0, float v0, float u1, float v1)
-	{
-		if (mTextureTiles.find(name) != mTextureTiles.end())
-		{
-			string errMsg = "Texture tile named '" + name + "' already exists.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-		}
-
-		mTextureTiles[name] = TextureTile(texture, u0, v0, u1, v1);
-		return mTextureTiles[name];
-	}
-
-	/*
-	 * Delete the named texture tile
-	 *
-	 */
-	void RenderSystem::destroyTextureTile(string const& name)
-	{
-		auto it = mTextureTiles.find(name);
-		if (it == mTextureTiles.end())
-		{
-			string errMsg = "Texture tile named '" + name + "' does not exist.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-		}
-
-		mTextureTiles.erase(it);
-	}
-
-	/*
-	 * Return the named texture tile.
-	 *
-	 */
-	TextureTile const& RenderSystem::getTextureTile(std::string const& name) const
-	{
-		if (mTextureTiles.find(name) == mTextureTiles.end())
-		{
-			string errMsg = "Texture tile named '" + name + "' does not exist.";
-			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-		}
-
-		return mTextureTiles.at(name);
-	}
-
-	/*
 	 * Clip the screen.
 	 *
 	 */

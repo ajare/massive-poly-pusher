@@ -138,9 +138,6 @@
     <ClInclude Include="..\..\include\mpp\SphereModelStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\QuadDefinition.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\QuadBatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
