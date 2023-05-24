@@ -784,6 +784,34 @@ namespace mpp
 	}
 
 	/*
+	 * Specify a resource to be loaded before the current rendering
+	 * iteration.
+	 *
+	 */
+	void RenderSystem::addPreloadResource(ResourcePtr resource)
+	{
+		mPreloadResources.push(resource);
+	}
+
+	void RenderSystem::loadPreresources(int maxCount)
+	{
+		while (!mPreloadResources.empty())
+		{
+			if (maxCount == 0)
+			{
+				break;
+			}
+
+			auto res = mPreloadResources.front();
+			mPreloadResources.pop();
+
+			res->load();
+
+			maxCount--;
+		}
+	}
+
+	/*
 	 * Use the default program.
 	 *
 	 */
