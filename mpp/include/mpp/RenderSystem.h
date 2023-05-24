@@ -76,6 +76,12 @@ namespace mpp
 			Tile
 		};
 
+	public:
+
+		typedef std::function<void()> PreloadFunction;
+
+		typedef std::function<void()> PreloadFunctionCallback;
+
 	private:
 
 		typedef std::pair<uint64_t, MeshInstance*> SortableMeshInstance;
@@ -132,7 +138,7 @@ namespace mpp
 		std::shared_ptr<ModelRenderParams> mTextParams;
 
 		// Preloading
-		std::queue<ResourcePtr> mPreloadResources;
+		std::queue<std::pair<PreloadFunction, PreloadFunctionCallback>> mPreloadResources;
 
 		// 3d Transforms
 #pragma warning(push)
@@ -259,7 +265,7 @@ namespace mpp
 
 		void createCoreResources(ResourceManager* resourceMgr);
 
-		void addPreloadResource(ResourcePtr resource);
+		void addPreloadResource(PreloadFunction func, PreloadFunctionCallback callback);
 
 		void loadPreresources(int maxCount = -1);
 

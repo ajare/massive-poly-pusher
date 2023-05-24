@@ -788,9 +788,9 @@ namespace mpp
 	 * iteration.
 	 *
 	 */
-	void RenderSystem::addPreloadResource(ResourcePtr resource)
+	void RenderSystem::addPreloadResource(PreloadFunction func, PreloadFunctionCallback callback)
 	{
-		mPreloadResources.push(resource);
+		mPreloadResources.push(make_pair(func, callback));
 	}
 
 	void RenderSystem::loadPreresources(int maxCount)
@@ -805,7 +805,8 @@ namespace mpp
 			auto res = mPreloadResources.front();
 			mPreloadResources.pop();
 
-			res->load();
+			res.first();
+			res.second();
 
 			maxCount--;
 		}
