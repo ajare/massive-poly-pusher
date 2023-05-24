@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <map>
 #include <deque>
+#include <queue>
 #include <stack>
 
 #pragma warning(push)
@@ -130,6 +131,9 @@ namespace mpp
 
 		std::shared_ptr<ModelRenderParams> mTextParams;
 
+		// Preloading
+		std::queue<ResourcePtr> mPreloadResources;
+
 		// 3d Transforms
 #pragma warning(push)
 #pragma warning(disable: 4324)
@@ -254,6 +258,10 @@ namespace mpp
 		void initialise();
 
 		void createCoreResources(ResourceManager* resourceMgr);
+
+		void addPreloadResource(ResourcePtr resource);
+
+		void loadPreresources(int maxCount = -1);
 
 		void showDebugPanel(bool show, TimeUnit timeUnit = TimeUnit::Milliseconds, SizeUnit sizeUnit = SizeUnit::Megabytes);
 
