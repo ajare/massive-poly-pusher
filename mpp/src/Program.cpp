@@ -22,6 +22,7 @@
 #include "mpp/Program.h"
 #include "mpp/ProgramStream.h"
 #include "mpp/MppException.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -318,7 +319,7 @@ namespace mpp
 			}
 
 			// Create vertex shader
-			mVertexShaderId = glCreateShader(GL_VERTEX_SHADER);
+			GL_CHECK(mVertexShaderId = glCreateShader(GL_VERTEX_SHADER));
 			if (mVertexShaderId == 0)
 			{
 				THROW_MPP("Could not create vertex shader id.", __LINE__, __FILE__, __func__);
@@ -328,10 +329,10 @@ namespace mpp
 
 			// Set name for debugging
 			auto label = "Vertex shader: " + getName();
-			glObjectLabel(GL_SHADER, mVertexShaderId, -1, label.c_str());
+			GL_CHECK(glObjectLabel(GL_SHADER, mVertexShaderId, -1, label.c_str()));
 
 			// Create fragment shader
-			mFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
+			GL_CHECK(mFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER));
 			if (mFragmentShaderId == 0)
 			{
 				THROW_MPP("Could not create fragment shader id.", __LINE__, __FILE__, __func__);
@@ -341,7 +342,7 @@ namespace mpp
 
 			// Set name for debugging
 			label = "Fragment shader: " + getName();
-			glObjectLabel(GL_SHADER, mFragmentShaderId, -1, label.c_str());
+			GL_CHECK(glObjectLabel(GL_SHADER, mFragmentShaderId, -1, label.c_str()));
 
 			// Create program
 			GLuint programId = glCreateProgram();
@@ -351,41 +352,41 @@ namespace mpp
 			}
 
 			// Attach shaders
-			glAttachShader(programId, mVertexShaderId);
-			glAttachShader(programId, mFragmentShaderId);
+			GL_CHECK(glAttachShader(programId, mVertexShaderId));
+			GL_CHECK(glAttachShader(programId, mFragmentShaderId));
 
 			// Link shaders
-			glLinkProgram(programId);
+			GL_CHECK(glLinkProgram(programId));
 
 			// Set name for debugging
 			label = "Program: " + getName();
-			glObjectLabel(GL_PROGRAM, programId, -1, label.c_str());
+			GL_CHECK(glObjectLabel(GL_PROGRAM, programId, -1, label.c_str()));
 
 			// Detach and destroy them to free memory
-			glDetachShader(programId, mVertexShaderId);
-			glDeleteShader(mVertexShaderId);
+			GL_CHECK(glDetachShader(programId, mVertexShaderId));
+			GL_CHECK(glDeleteShader(mVertexShaderId));
 			mVertexShaderId = 0;
 
-			glDetachShader(programId, mFragmentShaderId);
-			glDeleteShader(mFragmentShaderId);
+			GL_CHECK(glDetachShader(programId, mFragmentShaderId));
+			GL_CHECK(glDeleteShader(mFragmentShaderId));
 			mFragmentShaderId = 0;
 
 			GLint status;
-			glGetProgramiv(programId, GL_LINK_STATUS, &status);
+			GL_CHECK(glGetProgramiv(programId, GL_LINK_STATUS, &status));
 
 			if (status == GL_FALSE)
 			{
 				string msg = "Could not link program: ";
 
 				GLint infoLogLength;
-				glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &infoLogLength);
+				GL_CHECK(glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &infoLogLength));
 				char* strInfoLog = new char[infoLogLength + 1];
 
-				glGetProgramInfoLog(programId, infoLogLength, NULL, strInfoLog);
+				GL_CHECK(glGetProgramInfoLog(programId, infoLogLength, NULL, strInfoLog));
 				msg += strInfoLog;
 
 				delete[] strInfoLog;
-				glDeleteProgram(programId);
+				GL_CHECK(glDeleteProgram(programId));
 				programId = 0;
 
 				THROW_MPP(msg, __LINE__, __FILE__, __func__);
@@ -395,7 +396,7 @@ namespace mpp
 
 			// Get attribute information
 			int attribCount;
-			glGetProgramiv(programId, GL_ACTIVE_ATTRIBUTES, &attribCount);
+			GL_CHECK(glGetProgramiv(programId, GL_ACTIVE_ATTRIBUTES, &attribCount));
 			for (int i = 0; i < attribCount; ++i)
 			{
 				//GLint location = glGetAttribLocation(programId, mVertexAttributes[i].name.c_str());
@@ -406,7 +407,7 @@ namespace mpp
 				GLenum varType;
 				char varNameBuffer[bufSize];
 
-				glGetActiveAttrib(programId, i, bufSize - 1, &lengthWritten, &varSize, &varType, varNameBuffer);
+				GL_CHECK(glGetActiveAttrib(programId, i, bufSize - 1, &lengthWritten, &varSize, &varType, varNameBuffer));
 				varNameBuffer[lengthWritten] = 0;
 
 				int location = glGetAttribLocation(programId, varNameBuffer);
@@ -457,7 +458,7 @@ namespace mpp
 
 			// Get uniform information
 			int uniformCount;
-			glGetProgramiv(programId, GL_ACTIVE_UNIFORMS, &uniformCount);
+			GL_CHECK(glGetProgramiv(programId, GL_ACTIVE_UNIFORMS, &uniformCount));
 
 			for (int i = 0; i < uniformCount; ++i)
 			{
@@ -467,7 +468,7 @@ namespace mpp
 				GLenum uniformType;
 				char uniformNameBuffer[bufSize];
 
-				glGetActiveUniform(programId, i, bufSize - 1, &lengthWritten, &uniformSize, &uniformType, uniformNameBuffer);
+				GL_CHECK(glGetActiveUniform(programId, i, bufSize - 1, &lengthWritten, &uniformSize, &uniformType, uniformNameBuffer));
 				uniformNameBuffer[lengthWritten] = 0;
 
 				string uniformName = uniformNameBuffer;
@@ -475,32 +476,32 @@ namespace mpp
 				// Is this ViewPos, MMatrix, MCPMatrix, NormalMatrix, standard uniform or a texture?
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
 				{
-					mViewPosId = glGetUniformLocation(programId, uniformNameBuffer);
+					GL_CHECK(mViewPosId = glGetUniformLocation(programId, uniformNameBuffer));
 					rs->debugMessage("- Uniform: ViewPosition id: " + utils::StringUtils::toString(mViewPosId));
 				}
 				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
 				{
-					mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
+					GL_CHECK(mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
 					rs->debugMessage("- Uniform: Model matrix id: " + utils::StringUtils::toString(mMMatrixId));
 				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
-					mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
+					GL_CHECK(mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
 					rs->debugMessage("- Uniform: ModelCameraProjection matrix id: " + utils::StringUtils::toString(mMcpMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
-					mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer);
+					GL_CHECK(mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
 					rs->debugMessage("- Uniform normal matrix id: " + utils::StringUtils::toString(mNormalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
-					mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
+					GL_CHECK(mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
 					rs->debugMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
 				}
 				else if (uniformName == MPP_PROGRAM_POINTSIZE_NAME)
 				{
-					mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer);
+					GL_CHECK(mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
 					rs->debugMessage("- Uniform: point size id: " + utils::StringUtils::toString(mPointSizeId));
 				}
 				else
@@ -512,12 +513,13 @@ namespace mpp
 
 					if (it != mTextures.end())
 					{
-						it->uniformId = glGetUniformLocation(programId, uniformNameBuffer);
+						GL_CHECK(it->uniformId = glGetUniformLocation(programId, uniformNameBuffer));
 						rs->debugMessage("- Texture: '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
 					}
 					else
 					{
-						auto uniformId = glGetUniformLocation(programId, uniformNameBuffer);
+						int32_t uniformId;
+						GL_CHECK(uniformId = glGetUniformLocation(programId, uniformNameBuffer));
 						mUniformIds[uniformName] = uniformId;
 						rs->debugMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(uniformId));
 					}
@@ -544,17 +546,17 @@ namespace mpp
 		{
 			if (mVertexShaderId != 0)
 			{
-				glDeleteShader(mVertexShaderId);
+				GL_CHECK(glDeleteShader(mVertexShaderId));
 				mVertexShaderId = 0;
 			}
 
 			if (mFragmentShaderId != 0)
 			{
-				glDeleteShader(mFragmentShaderId);
+				GL_CHECK(glDeleteShader(mFragmentShaderId));
 				mFragmentShaderId = 0;
 			}
 
-			glDeleteProgram(id);
+			GL_CHECK(glDeleteProgram(id));
 			setId(0);
 		}
 	}
@@ -580,8 +582,6 @@ namespace mpp
 			return mUniformIds.at(markedUpUniform);
 		}
 	}
-
-	//	string markedUpTexture = MPP_PROGRAM_MARKUP_TEXTURE(texture);
 
 	int Program::getViewPosId() const
 	{
@@ -685,13 +685,13 @@ namespace mpp
 	 */
 	void Program::bind()
 	{
-		glUseProgram(getId());
+		GL_CHECK(glUseProgram(getId()));
 
 		// Bind texture unit locations to samplers
 		for (uint32_t i = 0; i < mTextures.size(); ++i)
 		{
 			auto const& ti = mTextures[i];
-			glUniform1i(ti.uniformId, i);
+			GL_CHECK(glUniform1i(ti.uniformId, i));
 		}
 	}
 }
