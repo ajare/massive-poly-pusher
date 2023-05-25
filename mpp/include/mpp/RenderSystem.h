@@ -80,7 +80,7 @@ namespace mpp
 
 		typedef std::function<bool()> PreloadFunction;
 
-		typedef std::function<void()> PreloadFunctionCallback;
+		typedef std::function<void(bool)> PreloadFunctionCallback;
 
 	private:
 

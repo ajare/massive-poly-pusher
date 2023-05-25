@@ -807,7 +807,7 @@ namespace mpp
 
 			if (res.first())
 			{
-				res.second();
+				res.second(true);
 			}
 
 			maxCount--;
