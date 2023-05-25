@@ -78,7 +78,7 @@ namespace mpp
 
 	public:
 
-		typedef std::function<void()> PreloadFunction;
+		typedef std::function<bool()> PreloadFunction;
 
 		typedef std::function<void()> PreloadFunctionCallback;
 

@@ -805,8 +805,10 @@ namespace mpp
 			auto res = mPreloadResources.front();
 			mPreloadResources.pop();
 
-			res.first();
-			res.second();
+			if (res.first())
+			{
+				res.second();
+			}
 
 			maxCount--;
 		}
