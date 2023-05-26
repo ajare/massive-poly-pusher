@@ -259,11 +259,21 @@ namespace mpp
 	 */
 	void RenderTexture::unloadImpl()
 	{
+		// Frame buffer
 		if (mFrameBuffer != 0)
 		{
 			GL_CHECK(glDeleteFramebuffers(1, &mFrameBuffer));
 			mFrameBuffer = 0;
 		}
+
+		// Texture
+		GLuint id = getId();
+		if (id != 0)
+		{
+			GL_CHECK(glDeleteTextures(1, &id));
+			setId(0);
+		}
+
 	}
 
 	/*
