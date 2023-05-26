@@ -26,6 +26,8 @@ namespace mpp
 
 		RenderTarget(size_t width, size_t height);
 
+		virtual ~RenderTarget() = default;
+
 		virtual size_t getWidth() const;
 
 		virtual size_t getHeight() const;
