@@ -762,7 +762,7 @@ namespace mpp
 		ofstream fp;
 		fp.open(filepath);
 
-		fp << "Name,Type,Id,State\n";
+		fp << "Name,Type,Id,State,GL_States,GL_Count\n";
 
 		for (auto kvp : mResources)
 		{
@@ -785,7 +785,9 @@ namespace mpp
 			fp << resource->getName() << "," 
 				<< resource->getType() << "," 
 				<< resource->getId() << "," 
-				<< state << "\n";
+				<< state << ","
+				<< resource->getLiveIdCount() << ","
+				<< resource->getIdCount() << "\n";
 		}
 
 		fp.close();
