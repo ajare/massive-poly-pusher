@@ -78,7 +78,7 @@ namespace mpp
 	 */
 	int Mesh::getIdCount() const
 	{
-		return 2;
+		return isIndexed() ? 2 : 1;
 	}
 
 	/*
