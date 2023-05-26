@@ -87,6 +87,8 @@ namespace mpp
 
 		std::set<std::string> getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const;
 
+		void dumpResources(std::string const& filepath);
+
 		void debugMessage(std::string const& message);
 
 		void infoMessage(std::string const& message);
