@@ -701,7 +701,7 @@ namespace mpp
 	 */
 	int Program::getIdCount() const
 	{
-		return 3;
+		return 1;
 	}
 
 	/*
@@ -710,10 +710,8 @@ namespace mpp
 	 */
 	int Program::getLiveIdCount() const
 	{
-		int c = 0;
-		GL_CHECK(c += glIsShader(mVertexShaderId));
-		GL_CHECK(c += glIsShader(mFragmentShaderId));
-		GL_CHECK(c += glIsProgram(getId()));
+		int c;
+		GL_CHECK(c = glIsProgram(getId()));
 		return c;
 	}
 }

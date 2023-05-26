@@ -89,7 +89,12 @@ namespace mpp
 	{
 		int c = 0;
 		GL_CHECK(c += glIsVertexArray(mVAO));
-		GL_CHECK(c += glIsBuffer(mIBO));
+
+		if (isIndexed())
+		{
+			GL_CHECK(c += glIsBuffer(mIBO));
+		}
+
 		return c;
 	}
 
