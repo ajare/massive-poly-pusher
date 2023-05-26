@@ -42,6 +42,8 @@ namespace mpp
 		{
 		}
 
+		virtual ~ModelRenderParams() = default;
+
 		void setModelFlags(uint32_t flags)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;

@@ -753,6 +753,44 @@ namespace mpp
 		return mSortablePrograms[id];
 	}
 
+	/*
+	 * Write resource status to CSV.
+	 *
+	 */
+	void ResourceManager::dumpResources(string const& filepath)
+	{
+		ofstream fp;
+		fp.open(filepath);
+
+		fp << "Name,Type,Id,State\n";
+
+		for (auto kvp : mResources)
+		{
+			auto resource = kvp.second;
+
+			string state;
+			if (resource->isLoaded())
+			{
+				state = "Loaded";
+			}
+			else if (resource->isCreated())
+			{
+				state = "Created";
+			}
+			else
+			{
+				state = "Declared";
+			}
+
+			fp << resource->getName() << "," 
+				<< resource->getType() << "," 
+				<< resource->getId() << "," 
+				<< state << "\n";
+		}
+
+		fp.close();
+	}
+
 	void ResourceManager::debugMessage(string const& message)
 	{
 		mwRenderSystem->debugMessage(message);
