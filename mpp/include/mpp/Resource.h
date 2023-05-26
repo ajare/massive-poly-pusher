@@ -60,6 +60,10 @@ namespace mpp
 
 		uint32_t getId() const;
 
+		virtual int getIdCount() const;
+
+		virtual int getLiveIdCount() const;
+
 		RenderSystem* getRenderSystem();
 
 		ResourceManager* getResourceManager();

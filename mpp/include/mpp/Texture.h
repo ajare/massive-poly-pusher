@@ -65,6 +65,10 @@ namespace mpp
 		void setSortId(uint32_t sortId);
 
 		uint32_t getSortId() const;
+
+		int getIdCount() const override;
+
+		int getLiveIdCount() const override;
 	};
 
 }

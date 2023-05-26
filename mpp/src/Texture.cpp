@@ -458,4 +458,28 @@ namespace mpp
 		return mSortId;
 	}
 
+	/*
+	 * How many GL names does this resource manage?
+	 *
+	 */
+	int Texture::getIdCount() const
+	{
+		return (int)mTextureIds.size();
+	}
+
+	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Texture::getLiveIdCount() const
+	{
+		int c = 0;
+		for (auto id : mTextureIds)
+		{
+			GL_CHECK(c += (int)glIsTexture(id));
+		}
+
+		return c;
+	}
+
 }

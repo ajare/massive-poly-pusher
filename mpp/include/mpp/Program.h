@@ -127,6 +127,10 @@ namespace mpp
 
 		bool operator==(Program const& other);
 
+		int getIdCount() const override;
+
+		int getLiveIdCount() const override;
+
 		mesh::MeshSpecification const& getMeshSpecification() const;
 
 		int getUniformId(std::string const& name, int index = -1) const;

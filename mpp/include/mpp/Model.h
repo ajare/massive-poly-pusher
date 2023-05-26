@@ -40,6 +40,10 @@ namespace mpp
 
 		virtual ~Model();
 
+		int getIdCount() const override;
+
+		int getLiveIdCount() const override;
+
 		int getNumTriangles() const;
 
 		int getNumMeshes() const;
