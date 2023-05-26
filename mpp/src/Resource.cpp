@@ -81,7 +81,7 @@ namespace mpp
 	 */
 	int Resource::getLiveIdCount() const
 	{
-		return -1;
+		return 0;
 	}
 
 	/*
