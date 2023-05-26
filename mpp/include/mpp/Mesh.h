@@ -64,6 +64,10 @@ namespace mpp
 
 		~Mesh();
 
+		int getIdCount() const;
+
+		int getLiveIdCount() const;
+
 		std::string const& getName() const;
 
 		void setMaterial(ResourcePtr material);

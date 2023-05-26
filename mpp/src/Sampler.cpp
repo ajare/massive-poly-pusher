@@ -94,9 +94,29 @@ namespace mpp
 		}
 	}
 
+	/*
+	 * How many GL names does this resource manage?
+	 *
+	 */
+	int Sampler::getIdCount() const
+	{
+		return 1;
+	}
 
 	/*
-	 * Bind texture.
+	 * How many GL names are created?
+	 *
+	 */
+	int Sampler::getLiveIdCount() const
+	{
+		int c;
+		GL_CHECK(c = glIsSampler(getId()));
+		return c;
+	}
+
+
+	/*
+	 * Bind sampler.
 	 *
 	 */
 	void Sampler::bind(uint32_t unit)

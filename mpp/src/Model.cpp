@@ -491,4 +491,34 @@ namespace mpp
 			mesh->setStorageType(mesh::VertexBufferStorageType::Static);
 		}
 	}
+
+	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Model::getIdCount() const
+	{
+		int c = 0;
+		for (auto it : mMeshes)
+		{
+			c += it->getIdCount();
+		}
+
+		return c;
+	}
+
+	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Model::getLiveIdCount() const
+	{
+		int c = 0;
+		for (auto it : mMeshes)
+		{
+			c += it->getLiveIdCount();
+		}
+
+		return c;
+	}
 }

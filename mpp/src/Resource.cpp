@@ -67,6 +67,24 @@ namespace mpp
 	}
 
 	/*
+	 * How many GL names does this resource manage?
+	 *
+	 */
+	int Resource::getIdCount() const
+	{
+		return 0;
+	}
+
+	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Resource::getLiveIdCount() const
+	{
+		return -1;
+	}
+
+	/*
 	 * Has the resource been created?
 	 *
 	 */

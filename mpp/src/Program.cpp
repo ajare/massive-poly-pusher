@@ -694,5 +694,27 @@ namespace mpp
 			GL_CHECK(glUniform1i(ti.uniformId, i));
 		}
 	}
+
+	/*
+	 * How many GL names does this resource manage?
+	 *
+	 */
+	int Program::getIdCount() const
+	{
+		return 3;
+	}
+
+	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Program::getLiveIdCount() const
+	{
+		int c = 0;
+		GL_CHECK(c += glIsShader(mVertexShaderId));
+		GL_CHECK(c += glIsShader(mFragmentShaderId));
+		GL_CHECK(c += glIsProgram(getId()));
+		return c;
+	}
 }
 

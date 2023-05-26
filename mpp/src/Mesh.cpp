@@ -73,6 +73,27 @@ namespace mpp
 	}
 
 	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Mesh::getIdCount() const
+	{
+		return 2;
+	}
+
+	/*
+	 * How many GL names are created?
+	 *
+	 */
+	int Mesh::getLiveIdCount() const
+	{
+		int c = 0;
+		GL_CHECK(c += glIsVertexArray(mVAO));
+		GL_CHECK(c += glIsBuffer(mIBO));
+		return c;
+	}
+
+	/*
 	 * Get name, to be used to manipulate instances.
 	 *
 	 */
