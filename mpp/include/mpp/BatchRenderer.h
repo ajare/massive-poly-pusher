@@ -26,6 +26,8 @@ namespace mpp
 			mParams->setModelUniforms(mUniforms);
 		}
 
+		virtual ~BatchRenderer() = default;
+
 		std::shared_ptr<mpp::ModelRenderParams> getParams()
 		{
 			return mParams;

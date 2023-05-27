@@ -38,7 +38,7 @@ namespace mpp
 
 		Model(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
-		virtual ~Model();
+		~Model();
 
 		int getIdCount() const override;
 
