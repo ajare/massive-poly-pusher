@@ -78,6 +78,11 @@ namespace mpp
 	 */
 	void CircleBatch::createIndexData(vector<uint8_t>& data, uint32_t start, size_t count)
 	{
+		if (count == 0)
+		{
+			return;
+		}
+
 		size_t vertexSize{ 6 * (mIndexWidth / 8) };
 		data.resize(count * vertexSize);
 
@@ -86,20 +91,22 @@ namespace mpp
 
 		for (uint32_t i = start; i < count; ++i)
 		{
+			auto x = i * 4;
+
 			if (indexBytes == 2)
 			{
-				*ptr = (i * 4 + 0) + ((i * 4 + 1) << 16); ptr++;
-				*ptr = (i * 4 + 2) + ((i * 4 + 2) << 16); ptr++;
-				*ptr = (i * 4 + 3) + ((i * 4 + 0) << 16); ptr++;
+				*ptr++ = (x + 0) + ((x + 1) << 16);
+				*ptr++ = (x + 2) + ((x + 2) << 16);
+				*ptr++ = (x + 3) + ((x + 0) << 16);
 			}
 			else if (indexBytes == 4)
 			{
-				*ptr = i * 4 + 0; ptr++;
-				*ptr = i * 4 + 1; ptr++;
-				*ptr = i * 4 + 2; ptr++;
-				*ptr = i * 4 + 2; ptr++;
-				*ptr = i * 4 + 3; ptr++;
-				*ptr = i * 4 + 0; ptr++;
+				*ptr++ = x + 0;
+				*ptr++ = x + 1;
+				*ptr++ = x + 2;
+				*ptr++ = x + 2;
+				*ptr++ = x + 3;
+				*ptr++ = x + 0;
 			}
 		}
 	}
@@ -146,62 +153,6 @@ namespace mpp
 	int CircleBatch::getIndexWidth() const
 	{
 		return mIndexWidth;
-	}
-
-	/*
-	 * Create the data required.
-	 *
-	 */
-	void CircleBatch::createImpl()
-	{
-		/*
-		float size = mRadius * 2;
-
-		auto primitiveType = getPrimitiveType();
-		int primitiveCount = getPrimitiveCount(getCapacity());
-		auto storageType = mesh::VertexBufferStorageType::Dynamic;
-
-		mSpecification = createMeshSpecification(primitiveType);
-		auto materialResource = createMaterial(getName() + "_CircleBatch", nullptr, usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES);
-		int vertexCount = getVertexCount(primitiveCount);
-
-		Mesh* mesh{ nullptr };
-		if (indexedVertices())
-		{
-			vector<uint8_t> indices;
-			createIndexData(indices, 0, getCapacity());
-
-			mesh = new Mesh(
-				getRenderSystem(),
-				getName(),
-				materialResource,
-				primitiveType,
-				primitiveCount,
-				mIndexWidth,
-				indices,
-				storageType,
-				size);
-		}
-		else
-		{
-			mesh = new Mesh(
-				getRenderSystem(), 
-				getName(), 
-				materialResource, 
-				primitiveType, 
-				primitiveCount, 
-				storageType, 
-				size);
-		}
-
-		for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			createVertexBuffer(i, mesh, vertexCount, false);
-		}
-
-		setSpecificationPointers(mesh);
-		mMeshes.push_back(mesh);
-		*/
 	}
 
 	size_t CircleBatch::getPrimitiveCount(size_t objectCount) const

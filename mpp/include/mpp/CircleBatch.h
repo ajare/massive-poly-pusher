@@ -52,8 +52,6 @@ namespace mpp
 
 		int getIndexWidth() const override;
 
-		void createImpl();
-
 	public:
 
 		CircleBatch(std::string const& name,
