@@ -128,7 +128,6 @@ namespace mpp
 			}
 		}
 
-		mProgram->acquire();
 		mProgram->load();
 
 		// Set uniforms
@@ -162,9 +161,7 @@ namespace mpp
 				? getName() + "/" + textureOptions.existingResource
 				: textureOptions.existingResource;
 
-			auto texture = resourceMgr->getResource(textureName);
-			texture->acquire();
-			mTextures.push_back(texture);
+			mTextures.push_back(resourceMgr->getResource(textureName));
 		}
 	}
 
@@ -174,12 +171,8 @@ namespace mpp
 	 */
 	void Material::destroyImpl()
 	{
-		mProgram->release();
-
-		for (auto texture : mTextures)
-		{
-			texture->release();
-		}
+		mProgram.reset();
+		mTextures.clear();
 	}
 
 	/*
