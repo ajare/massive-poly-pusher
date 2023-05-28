@@ -280,7 +280,7 @@ namespace mpp
 
 			void create() override
 			{
-				mBatch->load();
+				mBatch->create();
 				update(mBatch->getCapacity());
 			}
 
@@ -617,7 +617,7 @@ namespace mpp
 
 			void create()
 			{
-				mBatch->load();
+				mBatch->create();
 				update(mBatch->getCapacity());
 			}
 
@@ -828,7 +828,8 @@ namespace mpp
 					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
+				auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
+				mRenderSystem->renderModelImmediate(model, true, mParams);
 			}
 		};
 

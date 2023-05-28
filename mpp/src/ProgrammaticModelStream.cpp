@@ -35,7 +35,10 @@ namespace mpp
 
 			// Go through each component in order, and build streams.
 			auto dataPtr = new int8_t[srcVertexDataSize];
-			memcpy(dataPtr, &(meshDef.vertexData[0]), srcVertexDataSize);
+			if (srcVertexDataSize > 0)
+			{
+				memcpy(dataPtr, &(meshDef.vertexData[0]), srcVertexDataSize);
+			}
 
 			auto sharedDataPtr = std::shared_ptr<const int8_t>((const int8_t*)dataPtr, [](const int8_t *p) { delete[] p; });
 
@@ -58,58 +61,54 @@ namespace mpp
 
 					switch (attrib.component)
 					{
+					case mesh::Vertex::Component::Position4:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position4] = vertexStreamDef;
+
+					case mesh::Vertex::Component::Position3:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
+
 					case mesh::Vertex::Component::Position2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
 						break;
 
-					case mesh::Vertex::Component::Position3:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
-						break;
+					case mesh::Vertex::Component::TexCoord4:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord4] = vertexStreamDef;
 
-					case mesh::Vertex::Component::Position4:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position4] = vertexStreamDef;
-						break;
+					case mesh::Vertex::Component::TexCoord3:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
 
 					case mesh::Vertex::Component::TexCoord2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
 						break;
 
-					case mesh::Vertex::Component::TexCoord3:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
-						vertexOffset += 3;
-						break;
+					case mesh::Vertex::Component::Colour4:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour4] = vertexStreamDef;
 
-					case mesh::Vertex::Component::TexCoord4:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord4] = vertexStreamDef;
-						break;
+					case mesh::Vertex::Component::Colour3:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
 
 					case mesh::Vertex::Component::Colour1:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
 						break;
 
-					case mesh::Vertex::Component::Colour3:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
-						break;
-
-					case mesh::Vertex::Component::Colour4:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour4] = vertexStreamDef;
-						break;
+					case mesh::Vertex::Component::Normal4:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal4] = vertexStreamDef;
 
 					case mesh::Vertex::Component::Normal3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
 						break;
 
-					case mesh::Vertex::Component::Normal4:
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
-						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal4] = vertexStreamDef;
+					case mesh::Vertex::Component::UserDefined4:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined4] = vertexStreamDef;
+
+					case mesh::Vertex::Component::UserDefined3:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined3] = vertexStreamDef;
+
+					case mesh::Vertex::Component::UserDefined2:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined2] = vertexStreamDef;
+
+					case mesh::Vertex::Component::UserDefined1:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined1] = vertexStreamDef;
 						break;
 					}
 				}
@@ -152,7 +151,16 @@ namespace mpp
 
 	uint8_t const* ProgrammaticModelStream::getMeshIndexData(size_t meshIndex) const
 	{
-		return &(mMeshDataDefinitions[meshIndex].indexData[0]);
+		auto const& indexData = mMeshDataDefinitions[meshIndex].indexData;
+
+		if (!indexData.empty())
+		{
+			return &(mMeshDataDefinitions[meshIndex].indexData[0]);
+		}
+		else
+		{
+			return nullptr;
+		}
 	}
 
 	string const& ProgrammaticModelStream::getMeshName(size_t meshIndex) const
@@ -173,7 +181,7 @@ namespace mpp
 			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
-		if (indexWidth != 16 && indexWidth != 32)
+		if (specification.verticesIndexed() && indexWidth != 16 && indexWidth != 32)
 		{
 			THROW_MPP("Index width must be either 16 or 32.", __LINE__, __FILE__, __func__);
 		}
@@ -236,7 +244,6 @@ namespace mpp
 	void ProgrammaticModelStream::addLine(size_t meshIndex, uint32_t v0, uint32_t v1)
 	{
 		MeshDataStreamDefinition& meshDef = mMeshDataDefinitions[meshIndex];
-
 
 		if (meshDef.indexWidth == 16)
 		{

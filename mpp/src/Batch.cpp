@@ -2,6 +2,7 @@
 
 #include "mpp/Batch.h"
 #include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ResourceManager.h"
 
 using namespace std;
@@ -25,7 +26,7 @@ namespace mpp
 		bool useDiffuse,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: Model(name, renderSystem, resourceMgr, nullptr)
+		: mName(name)
 		, mDefaultVertexShader(defaultVertexShader)
 		, mDefaultFragmentShader(defaultFragmentShader)
 		, mProgramDescriptor(descriptor)
@@ -33,7 +34,19 @@ namespace mpp
 		, mMaxCount(initialCapacity)
 		, mColourAttrib(colourAttrib)
 		, mUseDiffuse(useDiffuse)
+		, mRenderSystem(renderSystem)
+		, mResourceMgr(resourceMgr)
 	{
+	}
+
+	string const& Batch::getName() const
+	{
+		return mName;
+	}
+
+	ResourcePtr Batch::getModel()
+	{
+		return mModel;
 	}
 
 	mesh::MeshSpecification const& Batch::getSpecification() const
@@ -50,6 +63,10 @@ namespace mpp
 		}
 
 		return mDataPointers.at(name);
+	}
+
+	void Batch::addIndexedPrimitives(shared_ptr<ProgrammaticModelStream> ms, int meshIndex)
+	{
 	}
 
 	void Batch::createVertexBuffer(uint32_t index, Mesh* mesh, size_t vertexCount, bool staticData)
@@ -88,6 +105,48 @@ namespace mpp
 		return mMaxCount;
 	}
 
+	ResourcePtr Batch::getTexture()
+	{
+		return nullptr;
+	}
+
+	int Batch::getPointSize() const
+	{
+		return -1;
+	}
+
+	void Batch::create()
+	{
+		mSpecification = createMeshSpecification(getPrimitiveType());
+
+		auto material = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
+		material->load();
+
+		auto indexWidth = getIndexWidth();
+
+		auto ms = make_shared<ProgrammaticModelStream>(mResourceMgr);
+
+		auto meshIndex = ms->createMesh(getName() + "_Batch_Mesh", mSpecification, material->getName(), indexWidth, getPointSize());
+
+		auto numVertices = getVertexCount(getCapacity());
+		if (numVertices > 0)
+		{
+			ms->addVertexData(meshIndex, VertexData(mSpecification, numVertices));
+		}
+
+		if (mSpecification.verticesIndexed())
+		{
+			addIndexedPrimitives(ms, meshIndex);
+		}
+
+		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", ms);
+		mModel->load();
+
+		// Specification pointers
+		auto model = static_cast<Model*>(mModel.get());
+		setSpecificationPointers(model->getMesh(0));
+	}
+
 	void Batch::startUpdate(size_t minimumCount)
 	{
 		setMinimumCount(minimumCount);
@@ -95,19 +154,21 @@ namespace mpp
 
 	void Batch::finishUpdate(size_t count, bool updateFixedBuffers)
 	{
+		auto* mesh = static_cast<Model*>(mModel.get())->getMesh(0);
+
 		mCurCount = count;
 		auto numPrimitives = getPrimitiveCount(count);
 
 		if (numPrimitives > 0)
 		{
-			if (mMeshes[0]->isIndexed())
+			if (mesh->isIndexed())
 			{
-				mMeshes[0]->mapIndexData(numPrimitives);
+				mesh->mapIndexData(numPrimitives);
 			}
 
-			for (size_t i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+			for (size_t i = 0; i < mesh->getNumVertexBuffers(); ++i)
 			{
-				auto vertexBuffer = mMeshes[0]->getVertexBuffer((int)i);
+				auto vertexBuffer = mesh->getVertexBuffer((int)i);
 
 				if (updateFixedBuffers || !vertexBuffer->isStatic())
 				{
@@ -116,37 +177,34 @@ namespace mpp
 			}
 		}
 
-		mMeshes[0]->setNumPrimitives(numPrimitives);
+		mesh->setNumPrimitives(numPrimitives);
 	}
 
 	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d)
 	{
-		auto resourceMgr = getResourceManager();
 		auto programResource = is2d
-			? resourceMgr->getDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor)
-			: resourceMgr->getDefault3dProgram(mSpecification, programFlags, false, mProgramDescriptor);
+			? mResourceMgr->getDefault2dProgram(mDefaultVertexShader, mDefaultFragmentShader, mSpecification, programFlags, false, mProgramDescriptor)
+			: mResourceMgr->getDefault3dProgram(mSpecification, programFlags, false, mProgramDescriptor);
 
 		return createMaterial(name, programResource, texture, programFlags);
 	}
 
 	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr program, ResourcePtr texture, uint32_t programFlags)
 	{
-		auto resourceMgr = getResourceManager();
-
-		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream(resourceMgr);
+		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream(mResourceMgr);
 
 		matStream->setProgram(program->getName());
 
 		matStream->setTexture("TEX1", texture ? texture->getName() : "__mpp_tex_none__");
 
-		auto materialResource = resourceMgr->getResource(name, true);
+		auto materialResource = mResourceMgr->getResource(name, true);
 		if (materialResource)
 		{
 			materialResource->load();
 		}
 		else
 		{
-			materialResource = resourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream));
+			materialResource = mResourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream));
 			materialResource->load();
 		}
 
@@ -189,11 +247,13 @@ namespace mpp
 
 	void Batch::setMinimumCount(size_t count)
 	{
+		auto mesh = static_cast<Model*>(mModel.get())->getMesh(0);
+
 		if (count > mMaxCount)
 		{
-			for (size_t i = 0; i < mMeshes[0]->getNumVertexBuffers(); ++i)
+			for (size_t i = 0; i < mesh->getNumVertexBuffers(); ++i)
 			{
-				auto vertexBuffer = mMeshes[0]->getVertexBuffer((int)i);
+				auto vertexBuffer = mesh->getVertexBuffer((int)i);
 				auto& data = vertexBuffer->getBufferData();
 
 				int newSize = getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride();
@@ -203,11 +263,11 @@ namespace mpp
 			// Index data
 			if (indexedVertices())
 			{
-				createIndexData(mMeshes[0]->getIndexData(), mMaxCount, count);
+				createIndexData(mesh->getIndexData(), mMaxCount, count);
 			}
 
 			mMaxCount = count;
-			setSpecificationPointers(mMeshes[0]);
+			setSpecificationPointers(mesh);
 		}
 	}
 

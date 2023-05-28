@@ -35,6 +35,8 @@ namespace mpp
 			std::vector<mesh::MeshDefinition*> meshDefinitions;
 		};
 
+		bool mCalculateBounds;
+
 	protected:
 
 		std::vector<QualitySetting> mQualitySettings;
@@ -82,6 +84,10 @@ namespace mpp
 		explicit ModelStream(ResourceManager* resourceMgr);
 
 		virtual ~ModelStream();
+
+		void setCalculateBounds(bool calculate);
+
+		bool getCalculateBounds() const;
 
 		size_t getNumMeshDefinitions(uint32_t quality = 0) const;
 

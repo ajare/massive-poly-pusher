@@ -19,6 +19,7 @@ namespace mpp
 	 */
 	ModelStream::ModelStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "Model")
+		, mCalculateBounds(true)
 	{
 	}
 
@@ -35,6 +36,24 @@ namespace mpp
 				delete meshDef;
 			}
 		}
+	}
+
+	/*
+	 * Specify whether to calculate bounds or not.
+	 *
+	 */
+	void ModelStream::setCalculateBounds(bool calculate)
+	{
+		mCalculateBounds = calculate;
+	}
+
+	/*
+	 * Get whether to calculate bounds or not.
+	 *
+	 */
+	bool ModelStream::getCalculateBounds() const
+	{
+		return mCalculateBounds;
 	}
 
 	/*
@@ -180,7 +199,8 @@ namespace mpp
 			MeshDefinition* meshDef = createMeshDefinition(getMeshName(i), primitiveType, primitiveCount, meshSpec.getStorageType(), material, getMeshIndexWidth(i), getMeshPointSize(i));
 
 			// Set index data if we have any.
-			if (meshSpec.verticesIndexed())
+			meshDef->setIndexed(meshSpec.verticesIndexed());
+			if (meshDef->isIndexed())
 			{
 				uint8_t const* indexData = getMeshIndexData(i);
 				int indexWidth = getMeshIndexWidth(i);
@@ -196,7 +216,6 @@ namespace mpp
 					meshDef->setIndexData(shared_ptr<const uint8_t>(indexBuffer, [](uint8_t*p) { delete[] p; }));
 				}
 			}
-
 			
 			for (size_t j = 0; j < meshSpec.getNumVertexBufferAttributeLayouts(); ++j)
 			{

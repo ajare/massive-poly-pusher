@@ -30,6 +30,10 @@ namespace mpp
 
 		mesh::Primitive::Type getPrimitiveType() const;
 
+		uint32_t getProgramFlags() const override;
+
+		int getIndexWidth() const override;
+
 	public:
 
 		LineBatch(std::string const& name,

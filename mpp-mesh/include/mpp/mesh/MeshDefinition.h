@@ -59,6 +59,8 @@ namespace mpp
 
 			int getNumPrimitives() const;
 
+			void setIndexed(bool indexed);
+
 			bool isIndexed() const;
 
 			void setIndexData(std::shared_ptr<const uint8_t> indexData);

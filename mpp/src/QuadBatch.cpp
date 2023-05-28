@@ -131,7 +131,7 @@ namespace mpp
 		float size = (float)max(mOptions.maxSizeX, mOptions.maxSizeY);
 		bool square = mSameSize && mOptions.maxSizeX == mOptions.maxSizeY;
 
-		Caps const& caps = getRenderSystem()->getCaps();
+		Caps const& caps = mRenderSystem->getCaps();
 		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points)
 		{
 			if (mOptions.rotate && !usingTexture())
@@ -189,20 +189,22 @@ namespace mpp
 
 		for (uint32_t i = start; i < count; ++i)
 		{
+			auto x = i * 4;
+
 			if (indexBytes == 2)
 			{
-				*ptr = (i * 4 + 0) + ((i * 4 + 1) << 16); ptr++;
-				*ptr = (i * 4 + 2) + ((i * 4 + 2) << 16); ptr++;
-				*ptr = (i * 4 + 3) + ((i * 4 + 0) << 16); ptr++;
+				*ptr++ = (x + 0) + ((x + 1) << 16);
+				*ptr++ = (x + 2) + ((x + 2) << 16);
+				*ptr++ = (x + 3) + ((x + 0) << 16);
 			}
 			else if (indexBytes == 4)
 			{
-				*ptr = i * 4 + 0; ptr++;
-				*ptr = i * 4 + 1; ptr++;
-				*ptr = i * 4 + 2; ptr++;
-				*ptr = i * 4 + 2; ptr++;
-				*ptr = i * 4 + 3; ptr++;
-				*ptr = i * 4 + 0; ptr++;
+				*ptr++ = x + 0;
+				*ptr++ = x + 1;
+				*ptr++ = x + 2;
+				*ptr++ = x + 2;
+				*ptr++ = x + 3;
+				*ptr++ = x + 0;
 			}
 		}
 	}
@@ -213,9 +215,22 @@ namespace mpp
 	 */
 	size_t QuadBatch::getVertexCount(size_t primitiveCount) const
 	{
-		// Assume that if not using point sprites, primitiveCount must be a
-		// multiple of 2.
-		return primitiveCount * (usingPointSprites() ? 1 : 2);
+		size_t mult;
+
+		if (usingPointSprites())
+		{
+			mult = 1;
+		}
+		else if (indexedVertices())
+		{
+			mult = 4;
+		}
+		else
+		{
+			mult = 6;
+		}
+		
+		return primitiveCount * mult;
 	}
 
 	mesh::MeshSpecification QuadBatch::createMeshSpecification(mesh::Primitive::Type primitiveType)
@@ -253,11 +268,6 @@ namespace mpp
 		mesh::VertexBufferAttributeLayout* rotationLayout{ nullptr };
 		if (!rotating())
 		{
-			//if (!staticLayout)
-			//{
-			//	staticLayout = meshSpec.createVertexBufferAttributeLayout(true);
-			//}
-
 			rotationLayout = staticLayout;
 		}
 		else
@@ -330,12 +340,55 @@ namespace mpp
 		return meshSpec;
 	}
 
+	void QuadBatch::addIndexedPrimitives(shared_ptr<ProgrammaticModelStream> ms, int meshIndex)
+	{
+		for (size_t i = 0; i < getCapacity(); ++i)
+		{
+			auto x = i * 4;
+			ms->addTriangle(meshIndex, x + 0, x + 1, x + 2);
+			ms->addTriangle(meshIndex, x + 2, x + 3, x + 0);
+		}
+	}
+
+	uint32_t QuadBatch::getProgramFlags() const
+	{
+		uint32_t flags = 0
+			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
+			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE : 0)
+			| (usingTextureAtlas() ? MPP_PROGRAM_TAGS_ATLAS : 0)
+			| (rotating() ? MPP_PROGRAM_TAGS_ROTATION : 0)
+			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
+
+		return flags;
+	}
+
+	ResourcePtr QuadBatch::getTexture()
+	{
+		if (!mTexture && mTextureRenderer)
+		{
+			mTexture = mTextureRenderer->createRenderTexture(mOptions.maxSizeX, mOptions.maxSizeY);
+		}
+
+		return mTexture;
+	}
+
+	int QuadBatch::getIndexWidth() const
+	{
+		return mOptions.indexWidth;
+	}
+
+	int QuadBatch::getPointSize() const
+	{
+		return mPointSize;
+	}
+
 	/*
 	 * Create the data required.
 	 *
 	 */
 	void QuadBatch::createImpl()
 	{
+		/*
 		// Set primitive options
 		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
@@ -343,6 +396,7 @@ namespace mpp
 		mSpecification = createMeshSpecification(primitiveType);
 
 		// Set program flags
+		
 		uint32_t flags = 0
 			| (usingPointSprites() ? MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES)
 			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE : 0)
@@ -357,6 +411,7 @@ namespace mpp
 		}
 
 		auto materialResource = createMaterial(getName() + "_QuadBatch", mTexture, flags);
+		
 		size_t vertexCount = getVertexCount(primitiveCount);
 
 		Mesh* mesh{ nullptr };
@@ -396,6 +451,7 @@ namespace mpp
 
 		setSpecificationPointers(mesh);
 		mMeshes.push_back(mesh);
+		*/
 	}
 
 	size_t QuadBatch::getPrimitiveCount(size_t objectCount) const
@@ -456,11 +512,6 @@ namespace mpp
 	bool QuadBatch::colourFixed() const
 	{
 		return mOptions.colourAttrib.fixedValues;
-	}
-
-	ResourcePtr QuadBatch::getTexture()
-	{
-		return mTexture;
 	}
 
 }
