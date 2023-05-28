@@ -92,7 +92,7 @@ namespace mpp
 		// Release resources
 		if (mActiveProgram)
 		{
-			mActiveProgram->release()
+			mActiveProgram->release();
 		}
 
 		mNoTexture->release();
