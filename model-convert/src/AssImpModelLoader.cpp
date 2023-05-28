@@ -590,6 +590,7 @@ void AssImpModelLoader::load()
 			uint8_t* indexBuffer = new uint8_t[dataSize];
 			memcpy(indexBuffer, &(indexData[0]), dataSize);
 
+			meshDef->setIndexed(true);
 			meshDef->setIndexData(shared_ptr<const uint8_t>(indexBuffer, [](uint8_t *p) { delete[] p; }));
 		}
 
@@ -623,6 +624,7 @@ void AssImpModelLoader::load()
 				if (primitiveType == mpp::mesh::Primitive::Type::Points)
 				{
 					// Remove any index data
+					meshDef->setIndexed(false);
 					meshDef->setIndexData(nullptr);
 					meshDef->setNumPrimitives(meshDef->getNumPrimitives() * 3);
 					meshSpec.setIndexedVertices(false);

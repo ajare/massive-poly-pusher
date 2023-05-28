@@ -133,9 +133,17 @@ namespace mpp
 		 * Set as indexed.
 		 *
 		 */
+		void MeshDefinition::setIndexed(bool indexed)
+		{
+			mIsIndexed = indexed;
+		}
+
+		/*
+		 * Set index data.
+		 *
+		 */
 		void MeshDefinition::setIndexData(shared_ptr<const uint8_t> indexData)
 		{
-			mIsIndexed = true;
 			mIndexData = indexData;
 		}
 

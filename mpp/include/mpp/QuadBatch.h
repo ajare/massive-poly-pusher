@@ -54,6 +54,16 @@ namespace mpp
 
 		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
+		void addIndexedPrimitives(std::shared_ptr<ProgrammaticModelStream> ms, int meshIndex) override;
+
+		uint32_t getProgramFlags() const override;
+
+		ResourcePtr getTexture() override;
+
+		int getIndexWidth() const override;
+
+		int getPointSize() const override;
+
 	public:
 
 		QuadBatch(std::string const& name,
@@ -133,7 +143,5 @@ namespace mpp
 		bool texcoordsFixed() const;
 
 		bool colourFixed() const;
-
-		ResourcePtr getTexture();
 	};
 }

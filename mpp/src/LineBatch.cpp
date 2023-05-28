@@ -68,12 +68,26 @@ namespace mpp
 		return mesh::Primitive::Type::Lines;
 	}
 
+	uint32_t LineBatch::getProgramFlags() const
+	{
+		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_LINES
+			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
+
+		return flags;
+	}
+
+	int LineBatch::getIndexWidth() const
+	{
+		return 0;
+	}
+
 	/*
 	 * Create the data required.
 	 *
 	 */
 	void LineBatch::createImpl()
 	{
+		/*
 		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
 
@@ -100,6 +114,7 @@ namespace mpp
 
 		setSpecificationPointers(mesh);
 		mMeshes.push_back(mesh);
+		*/
 	}
 
 	size_t LineBatch::getPrimitiveCount(size_t objectCount) const

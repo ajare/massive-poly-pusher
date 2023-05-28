@@ -102,12 +102,35 @@ namespace mpp
 		return meshSpec;
 	}
 
+	uint32_t TriangleBatch::getProgramFlags() const
+	{
+		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
+			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE : 0)
+			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
+
+		return flags;
+	}
+
+	int TriangleBatch::getIndexWidth() const
+	{
+		return 0;
+	}
+
+	ResourcePtr TriangleBatch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d)
+	{
+		auto res = mOptions.specifyMaterial ? mTextureOrMaterial
+			: Batch::createMaterial(getName() + "_TriBatch", mTextureOrMaterial, getProgramFlags(), mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
+
+		return res;
+	}
+
 	/*
 	 * Create the data required.
 	 *
 	 */
 	void TriangleBatch::createImpl()
 	{
+		/*
 		auto primitiveType = getPrimitiveType();
 		int primitiveCount = getPrimitiveCount(getCapacity());
 
@@ -153,6 +176,7 @@ namespace mpp
 
 		setSpecificationPointers(mesh);
 		mMeshes.push_back(mesh);
+		*/
 	}
 	
 	size_t TriangleBatch::getPrimitiveCount(size_t objectCount) const

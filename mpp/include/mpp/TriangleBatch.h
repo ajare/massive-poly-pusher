@@ -44,6 +44,12 @@ namespace mpp
 
 		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
+		uint32_t getProgramFlags() const override;
+
+		int getIndexWidth() const override;
+
+		ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d = true) override;
+
 	public:
 
 		TriangleBatch(std::string const& name,

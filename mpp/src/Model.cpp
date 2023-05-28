@@ -190,6 +190,51 @@ namespace mpp
 		return pos;
 	}
 
+
+	/*
+	 * Calculate bounds.
+	 *
+	 */
+	void Model::calculateBounds(mesh::VertexBufferAttributeLayout::Attribute const& posAttr, mesh::VertexBufferDefinition const* bufferDef)
+	{
+		if (posAttr.attributeId != -1)
+		{
+			auto bufferData = bufferDef->getData().get() + posAttr.offsetInBytes;
+			for (int k = 0; k < bufferDef->getVertexCount(); ++k)
+			{
+				auto pos = readPositionFromStream(bufferData, posAttr);
+
+				if (pos.x < mBounds[0].x)
+				{
+					mBounds[0].x = pos.x;
+				}
+				if (pos.y < mBounds[0].y)
+				{
+					mBounds[0].y = pos.y;
+				}
+				if (pos.z < mBounds[0].z)
+				{
+					mBounds[0].z = pos.z;
+				}
+
+				if (pos.x > mBounds[1].x)
+				{
+					mBounds[1].x = pos.x;
+				}
+				if (pos.y > mBounds[1].y)
+				{
+					mBounds[1].y = pos.y;
+				}
+				if (pos.z > mBounds[1].z)
+				{
+					mBounds[1].z = pos.z;
+				}
+
+				bufferData += bufferDef->getVertexStride();
+			}
+		}
+	}
+
 	/*
 	 * Create the data required.
 	 *
@@ -205,13 +250,26 @@ namespace mpp
 		auto resourceMgr = getResourceManager();
 
 		// Initialise extents calcualation
-		mBounds[0].x = 1e10f;
-		mBounds[0].y = 1e10f;
-		mBounds[0].z = 1e10f;
-		mBounds[1].x = -1e10f;
-		mBounds[1].y = -1e10f;
-		mBounds[1].z = -1e10f;
+		if (mStr->getCalculateBounds())
+		{
+			mBounds[0].x = 1e10f;
+			mBounds[0].y = 1e10f;
+			mBounds[0].z = 1e10f;
+			mBounds[1].x = -1e10f;
+			mBounds[1].y = -1e10f;
+			mBounds[1].z = -1e10f;
+		}
+		else
+		{
+			mBounds[0].x = 0.0f;
+			mBounds[0].y = 0.0f;
+			mBounds[0].z = 0.0f;
+			mBounds[1].x = 0.0f;
+			mBounds[1].y = 0.0f;
+			mBounds[1].z = 0.0f;
+		}
 
+		// Set up meshes
 		for (size_t i = 0; i < mStr->getNumMeshDefinitions(); ++i)
 		{
 			MeshDefinition* meshDef = mStr->getMeshDefinition(i);
@@ -274,7 +332,7 @@ namespace mpp
 					false,
 					bufferDef->getData());
 
-				// For extents calculation
+				// Set attributes
 				mesh::VertexBufferAttributeLayout::Attribute posAttr;
 				for (size_t k = 0; k < bufferDef->getNumAttributes(); ++k)
 				{
@@ -296,41 +354,9 @@ namespace mpp
 				}
 
 				// Get all position data from vertexbuffer and calculate model extents
-				if (posAttr.attributeId != -1)
+				if (mStr->getCalculateBounds())
 				{
-					auto bufferData = bufferDef->getData().get() + posAttr.offsetInBytes;
-					for (int k = 0; k < bufferDef->getVertexCount(); ++k)
-					{
-						auto pos = readPositionFromStream(bufferData, posAttr);
-
-						if (pos.x < mBounds[0].x)
-						{
-							mBounds[0].x = pos.x;
-						}
-						if (pos.y < mBounds[0].y)
-						{
-							mBounds[0].y = pos.y;
-						}
-						if (pos.z < mBounds[0].z)
-						{
-							mBounds[0].z = pos.z;
-						}
-
-						if (pos.x > mBounds[1].x)
-						{
-							mBounds[1].x = pos.x;
-						}
-						if (pos.y > mBounds[1].y)
-						{
-							mBounds[1].y = pos.y;
-						}
-						if (pos.z > mBounds[1].z)
-						{
-							mBounds[1].z = pos.z;
-						}
-
-						bufferData += bufferDef->getVertexStride();
-					}
+					calculateBounds(posAttr, bufferDef);
 				}
 			}
 

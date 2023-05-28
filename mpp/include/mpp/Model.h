@@ -22,6 +22,8 @@ namespace mpp
 
 		glm::vec3 readPositionFromStream(int8_t const* stream, mesh::VertexBufferAttributeLayout::Attribute const& attrib);
 
+		void calculateBounds(mesh::VertexBufferAttributeLayout::Attribute const& posAttr, mesh::VertexBufferDefinition const* bufferDef);
+
 	protected:
 
 		void createImpl();

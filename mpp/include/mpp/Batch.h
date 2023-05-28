@@ -3,8 +3,10 @@
 #include <vector>
 
 #include "mpp/Model.h"
+#include "mpp/ProgrammaticModelStream.h"
 
 #include "mpp/mesh/Vertex.h"
+#include "mpp/mesh/VertexData.h"
 #include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
@@ -16,8 +18,10 @@ namespace mpp
 		bool fixedValues;
 	};
 
-	class _MPPAPI Batch : public Model
+	class _MPPAPI Batch
 	{
+		std::string mName;
+
 		std::string mDefaultVertexShader, mDefaultFragmentShader;
 
 		std::string mProgramDescriptor;
@@ -28,6 +32,8 @@ namespace mpp
 
 		static std::pair<char*, size_t> msNonExistentAttribute;
 
+		ResourcePtr mModel;
+
 	protected:
 
 		size_t mCurCount, mMaxCount;
@@ -35,6 +41,10 @@ namespace mpp
 		mesh::MeshSpecification mSpecification;
 
 		std::map<std::string, std::pair<char*, size_t>> mDataPointers;
+
+		RenderSystem* mRenderSystem;
+
+		ResourceManager* mResourceMgr;
 
 	private:
 
@@ -48,7 +58,17 @@ namespace mpp
 
 		virtual mesh::Primitive::Type getPrimitiveType() const = 0;
 
+		virtual uint32_t getProgramFlags() const = 0;
+
+		virtual int getIndexWidth() const = 0;
+
+		virtual int getPointSize() const;
+
+		virtual ResourcePtr getTexture();
+
 		virtual mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) = 0;
+
+		virtual void addIndexedPrimitives(std::shared_ptr<ProgrammaticModelStream> ms, int meshIndex);
 		
 		void createVertexBuffer(uint32_t index, Mesh* mesh, size_t vertexCount, bool staticData);
 
@@ -56,7 +76,7 @@ namespace mpp
 
 		virtual void setMinimumCount(size_t count);
 
-		ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d = true);
+		virtual ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d = true);
 
 		ResourcePtr createMaterial(std::string const& name, ResourcePtr program, ResourcePtr texture, uint32_t programFlags);
 
@@ -74,6 +94,10 @@ namespace mpp
 
 		virtual ~Batch() = default;
 
+		std::string const& getName() const;
+
+		ResourcePtr getModel();
+
 		mesh::MeshSpecification const& getSpecification() const;
 
 		const std::pair<char*, size_t>& getAttributeData(std::string const& name) const;
@@ -85,6 +109,8 @@ namespace mpp
 		virtual size_t getPrimitiveCount(size_t objectCount) const;
 
 		virtual size_t getVertexCount(size_t primitiveCount) const = 0;
+
+		void create();
 
 		void startUpdate(size_t minimumCount);
 

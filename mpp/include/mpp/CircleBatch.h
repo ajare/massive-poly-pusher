@@ -46,6 +46,12 @@ namespace mpp
 
 		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
+		void addIndexedPrimitives(std::shared_ptr<ProgrammaticModelStream> ms, int meshIndex) override;
+
+		uint32_t getProgramFlags() const override;
+
+		int getIndexWidth() const override;
+
 		void createImpl();
 
 	public:

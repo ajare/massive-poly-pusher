@@ -44,7 +44,7 @@ namespace mpp
 	{
 		// Set vertex options
 		float size = mRadius * 2;
-		Caps const& caps = getRenderSystem()->getCaps();
+		Caps const& caps = renderSystem->getCaps();
 		bool canUsePointSprites = caps.pointSizeRange[0] < size && caps.pointSizeRange[1] > size;
 
 		if (options.vertexOptions == CircleBatchOptions::VertexOptions::Points && !canUsePointSprites)
@@ -125,12 +125,36 @@ namespace mpp
 		return meshSpec;
 	}
 
+	void CircleBatch::addIndexedPrimitives(shared_ptr<ProgrammaticModelStream> ms, int meshIndex)
+	{
+		for (size_t i = 0; i < getCapacity(); ++i)
+		{
+			auto x = i * 4;
+			ms->addTriangle(meshIndex, x + 0, x + 1, x + 2);
+			ms->addTriangle(meshIndex, x + 2, x + 3, x + 0);
+		}
+	}
+
+	uint32_t CircleBatch::getProgramFlags() const
+	{
+		uint32_t flags = usingPointSprites() ?
+			MPP_PROGRAM_TAGS_PRIM_POINTS : MPP_PROGRAM_TAGS_PRIM_TRIANGLES;
+
+		return flags;
+	}
+
+	int CircleBatch::getIndexWidth() const
+	{
+		return mIndexWidth;
+	}
+
 	/*
 	 * Create the data required.
 	 *
 	 */
 	void CircleBatch::createImpl()
 	{
+		/*
 		float size = mRadius * 2;
 
 		auto primitiveType = getPrimitiveType();
@@ -177,6 +201,7 @@ namespace mpp
 
 		setSpecificationPointers(mesh);
 		mMeshes.push_back(mesh);
+		*/
 	}
 
 	size_t CircleBatch::getPrimitiveCount(size_t objectCount) const
