@@ -32,7 +32,7 @@ namespace mpp
 
 		static std::pair<char*, size_t> msNonExistentAttribute;
 
-		ResourcePtr mModel;
+		ResourcePtr mModel, mMaterial;
 
 	protected:
 
@@ -92,7 +92,7 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		virtual ~Batch() = default;
+		virtual ~Batch();
 
 		std::string const& getName() const;
 

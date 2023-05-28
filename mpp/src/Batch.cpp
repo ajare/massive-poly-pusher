@@ -39,6 +39,12 @@ namespace mpp
 	{
 	}
 
+	Batch::~Batch()
+	{
+		mModel->destroy();
+		mMaterial->destroy();
+	}
+
 	string const& Batch::getName() const
 	{
 		return mName;
@@ -63,6 +69,50 @@ namespace mpp
 		}
 
 		return mDataPointers.at(name);
+	}
+
+	size_t Batch::getCount() const
+	{
+		return mCurCount;
+	}
+
+	size_t Batch::getCapacity() const
+	{
+		return mMaxCount;
+	}
+
+	ResourcePtr Batch::getTexture()
+	{
+		return nullptr;
+	}
+
+	int Batch::getPointSize() const
+	{
+		return -1;
+	}
+
+	BatchVertexAttribute Batch::getColourAttribute() const
+	{
+		return mColourAttrib;
+	}
+
+	size_t Batch::getPrimitiveCount(size_t objectCount) const
+	{
+		return objectCount;
+	}
+
+	bool Batch::usingColour() const
+	{
+		return mColourAttrib.dataType != mesh::Vertex::DataType::None;
+	}
+
+	bool Batch::usingDiffuse() const
+	{
+		return mUseDiffuse;
+	}
+
+	void Batch::createIndexData(vector<uint8_t>& data, uint32_t start, size_t count)
+	{
 	}
 
 	void Batch::addIndexedPrimitives(shared_ptr<ProgrammaticModelStream> ms, int meshIndex)
@@ -91,55 +141,35 @@ namespace mpp
 		}
 	}
 
-	void Batch::createIndexData(vector<uint8_t>& data, uint32_t start, size_t count)
-	{
-	}
-
-	size_t Batch::getCount() const
-	{
-		return mCurCount;
-	}
-
-	size_t Batch::getCapacity() const
-	{
-		return mMaxCount;
-	}
-
-	ResourcePtr Batch::getTexture()
-	{
-		return nullptr;
-	}
-
-	int Batch::getPointSize() const
-	{
-		return -1;
-	}
-
 	void Batch::create()
 	{
+		// Create mesh specification
 		mSpecification = createMeshSpecification(getPrimitiveType());
 
-		auto material = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
-		material->load();
+		// Create material
+		mMaterial = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
+		mMaterial->load();
 
-		auto indexWidth = getIndexWidth();
+		// Create model data
+		auto modelStream = make_shared<ProgrammaticModelStream>(mResourceMgr);
+		modelStream->setCalculateBounds(false);
 
-		auto ms = make_shared<ProgrammaticModelStream>(mResourceMgr);
-
-		auto meshIndex = ms->createMesh(getName() + "_Batch_Mesh", mSpecification, material->getName(), indexWidth, getPointSize());
+		// Create single mesh in model
+		auto meshIndex = modelStream->createMesh(getName() + "_Batch_Mesh", mSpecification, mMaterial->getName(), getIndexWidth(), getPointSize());
 
 		auto numVertices = getVertexCount(getCapacity());
 		if (numVertices > 0)
 		{
-			ms->addVertexData(meshIndex, VertexData(mSpecification, numVertices));
+			modelStream->addVertexData(meshIndex, VertexData(mSpecification, numVertices));
 		}
 
 		if (mSpecification.verticesIndexed())
 		{
-			addIndexedPrimitives(ms, meshIndex);
+			addIndexedPrimitives(modelStream, meshIndex);
 		}
 
-		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", ms);
+		// Create and load model
+		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream);
 		mModel->load();
 
 		// Specification pointers
@@ -197,28 +227,7 @@ namespace mpp
 
 		matStream->setTexture("TEX1", texture ? texture->getName() : "__mpp_tex_none__");
 
-		auto materialResource = mResourceMgr->getResource(name, true);
-		if (materialResource)
-		{
-			materialResource->load();
-		}
-		else
-		{
-			materialResource = mResourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream));
-			materialResource->load();
-		}
-
-		return materialResource;
-	}
-
-	BatchVertexAttribute Batch::getColourAttribute() const
-	{
-		return mColourAttrib;
-	}
-
-	size_t Batch::getPrimitiveCount(size_t objectCount) const
-	{
-		return objectCount;
+		return mResourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream));
 	}
 
 	/*
@@ -271,13 +280,4 @@ namespace mpp
 		}
 	}
 
-	bool Batch::usingColour() const
-	{
-		return mColourAttrib.dataType != mesh::Vertex::DataType::None;
-	}
-
-	bool Batch::usingDiffuse() const
-	{
-		return mUseDiffuse;
-	}
 }
