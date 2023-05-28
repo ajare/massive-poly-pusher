@@ -34,8 +34,6 @@ namespace mpp
 
 	private:
 
-		void createImpl();
-
 		bool indexedVertices() const;
 
 	protected:

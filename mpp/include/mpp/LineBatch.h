@@ -20,8 +20,6 @@ namespace mpp
 
 	private:
 
-		void createImpl();
-
 		mesh::MeshSpecification createMeshSpecification(mesh::Primitive::Type primitiveType) override;
 
 		bool indexedVertices() const;

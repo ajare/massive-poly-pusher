@@ -123,61 +123,6 @@ namespace mpp
 
 		return res;
 	}
-
-	/*
-	 * Create the data required.
-	 *
-	 */
-	void TriangleBatch::createImpl()
-	{
-		/*
-		auto primitiveType = getPrimitiveType();
-		int primitiveCount = getPrimitiveCount(getCapacity());
-
-		if (mOptions.specifyMaterial)
-		{
-			auto mat = static_cast<Material*>(mTextureOrMaterial.get());
-			auto prog = static_cast<Program*>(mat->getProgram().get());
-			mSpecification = prog->getMeshSpecification();
-
-			auto targetSpec = createMeshSpecification(primitiveType);
-			if (mSpecification != targetSpec)
-			{
-				THROW_MPP("MeshSpecification in Material is not compatible with TriangleBatch", __LINE__, __FILE__, __func__);
-			}
-		}
-		else
-		{
-			mSpecification = createMeshSpecification(primitiveType);
-		}
-
-		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_TRIANGLES
-			| (usingTexture() ? MPP_PROGRAM_TAGS_TEXTURE : 0)
-			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
-
-		auto materialResource = mOptions.specifyMaterial ? mTextureOrMaterial
-			: createMaterial(getName() + "_TriBatch", mTextureOrMaterial, flags, mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
-		
-		int vertexCount = getVertexCount(primitiveCount);
-
-		auto mesh = new Mesh(
-			getRenderSystem(),
-			getName(),
-			materialResource,
-			primitiveType,
-			primitiveCount,
-			mesh::VertexBufferStorageType::Dynamic);
-
-		for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
-			createVertexBuffer(i, mesh, vertexCount, layout.isStatic());
-		}
-
-		setSpecificationPointers(mesh);
-		mMeshes.push_back(mesh);
-		*/
-	}
 	
 	size_t TriangleBatch::getPrimitiveCount(size_t objectCount) const
 	{

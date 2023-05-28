@@ -466,7 +466,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
-	/*
+	
 	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>();
 
 	auto lineBatchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
@@ -497,6 +497,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
 	
+
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -523,7 +524,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer1->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1));
-	*/
+	
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -550,7 +551,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer2->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2));
-	/*
+	
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -577,7 +578,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer3->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
-	*/
+	
 	// Quad 4
 	auto dragonTexture = resourceMgr->getResource("Dragon.Texture");
 	dragonTexture->load();
@@ -635,46 +636,6 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer5->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider5, quadBatchRenderer5));
-
-	// Quad 6: use own fragment shader with two textures
-
-	/*
-	// 3d model
-	auto tri3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
-
-	mTriangleBatch = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
-		"TestTris3dModel",
-		triParams,
-		tri3dBatchDataProvider,
-		resourceMgr->getResource("Batch.3D.Material"),
-		renderSystem, 
-		resourceMgr);
-
-	mTriangleBatch->create();
-
-	mModels.push_back(getScene()->add3dModel(mTriangleBatch->getModel()));
-	mModels.back()->translate(glm::vec3(0, 120, 120));
-
-	// 2d model
-	auto ms = make_shared<mpp::ProgrammaticModelStream>(resourceMgr);
-
-	auto meshSpec2d = createBatch2dMeshSpecification();
-	auto trianglesMeshId = ms->createMesh("Triangles", meshSpec2d, "Batch.2D.Material", 32);
-	mesh::VertexData vertexData(meshSpec2d, 6);
-	vertexData.f32(500, 300); vertexData.f32(0.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
-	vertexData.f32(532, 300); vertexData.f32(1.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
-	vertexData.f32(532, 332); vertexData.f32(1.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
-	vertexData.f32(532, 332); vertexData.f32(1.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
-	vertexData.f32(500, 332); vertexData.f32(0.0f, 1.0f); vertexData.u8(255, 255, 255, 255);
-	vertexData.f32(500, 300); vertexData.f32(0.0f, 0.0f); vertexData.u8(255, 255, 255, 255);
-	ms->addVertexData(trianglesMeshId, vertexData);
-
-	auto model2d = resourceMgr->declareResource("Model2d", ms);
-	
-	model2d->load();
-	getScene()->add2dModel(model2d);
-	mBatches.push_back(getScene()->add2dModel(model2d));
-	*/
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)

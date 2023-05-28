@@ -181,7 +181,6 @@ namespace mpp
 		}
 
 		size_t vertexSize{ 6 * (mOptions.indexWidth / 8) };
-
 		data.resize(count * vertexSize);
 
 		uint32_t* ptr = (uint32_t*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both

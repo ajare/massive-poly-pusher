@@ -81,42 +81,6 @@ namespace mpp
 		return 0;
 	}
 
-	/*
-	 * Create the data required.
-	 *
-	 */
-	void LineBatch::createImpl()
-	{
-		/*
-		auto primitiveType = getPrimitiveType();
-		int primitiveCount = getPrimitiveCount(getCapacity());
-
-		mSpecification = createMeshSpecification(primitiveType);
-
-		uint32_t flags = MPP_PROGRAM_TAGS_PRIM_LINES
-			| (usingDiffuse() ? MPP_PROGRAM_TAGS_DIFFUSE : 0);
-
-		auto materialResource = createMaterial(getName() + "_LineBatch", nullptr, flags);
-		int vertexCount = getVertexCount(primitiveCount);
-
-		auto mesh = new Mesh(
-			getRenderSystem(),
-			getName(),
-			materialResource,
-			primitiveType,
-			primitiveCount,
-			mesh::VertexBufferStorageType::Dynamic);
-
-		for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
-		{
-			createVertexBuffer(i, mesh, vertexCount, false);
-		}
-
-		setSpecificationPointers(mesh);
-		mMeshes.push_back(mesh);
-		*/
-	}
-
 	size_t LineBatch::getPrimitiveCount(size_t objectCount) const
 	{
 		return objectCount;
