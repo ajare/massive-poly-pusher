@@ -41,8 +41,8 @@ namespace mpp
 
 	Batch::~Batch()
 	{
-		mModel->release();
-		mMaterial->release();
+		mModel->destroy();
+		mMaterial->destroy();
 	}
 
 	string const& Batch::getName() const
@@ -148,7 +148,6 @@ namespace mpp
 
 		// Create material
 		mMaterial = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
-		mMaterial->acquire();
 		mMaterial->load();
 
 		// Create model data
@@ -156,7 +155,7 @@ namespace mpp
 		modelStream->setCalculateBounds(false);
 
 		// Create single mesh in model
-		auto meshIndex = modelStream->createMesh(getName() + "_Batch_Mesh", mSpecification, mMaterial->getName(), getIndexWidth(), (float)getPointSize());
+		auto meshIndex = modelStream->createMesh(getName() + "_Batch_Mesh", mSpecification, mMaterial->getName(), getIndexWidth(), getPointSize());
 
 		auto numVertices = getVertexCount(getCapacity());
 		if (numVertices > 0)
@@ -171,7 +170,6 @@ namespace mpp
 
 		// Create and load model
 		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream);
-		mModel->acquire();
 		mModel->load();
 
 		// Specification pointers

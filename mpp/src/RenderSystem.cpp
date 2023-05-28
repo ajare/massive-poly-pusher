@@ -89,21 +89,6 @@ namespace mpp
 	 */
 	RenderSystem::~RenderSystem()
 	{
-		// Release resources
-		if (mActiveProgram)
-		{
-			mActiveProgram->release()
-		}
-
-		mNoTexture->release();
-		mDefaultProgram2d->release();
-		mDefaultProgram3d->release();
-		mInternalFontTexture->release();
-		mTextMesh->release();
-		mColouredTextMesh->release();
-		mFullscreenQuad->release();
-
-		// Other internal data
 		delete mInternalFont;
 		destroyLightsData();
 
@@ -223,6 +208,38 @@ namespace mpp
 	}
 
 	/*
+	 * Load core resources, eg after recreating screen.
+	 *
+	 */
+	void RenderSystem::_loadCoreResources()
+	{
+		mNoTexture->load();
+		
+		mInternalFontTexture->load();
+		mInternalFont->setTexture(mInternalFontTexture);
+
+		mTextMesh->load();
+		mColouredTextMesh->load();
+		mFullscreenQuad->load();
+	}
+
+	/*
+	 * Unload core resources, eg before recreating screen.
+	 *
+	 */
+	void RenderSystem::_unloadCoreResources()
+	{
+		mNoTexture->unload();
+
+		mInternalFontTexture->unload();
+		mInternalFont->setTexture(nullptr);
+
+		mTextMesh->unload();
+		mColouredTextMesh->unload();
+		mFullscreenQuad->unload();
+	}
+
+	/*
 	 * Get window width.
 	 *
 	 */
@@ -314,6 +331,48 @@ namespace mpp
 	bool RenderSystem::isDebugPanelShown() const
 	{
 		return mShowDebugPanel;
+	}
+
+	/*
+	 * To be called before deleting a context (eg when resizing screen).
+	 *
+	 */
+	void RenderSystem::preContextDeletion()
+	{
+		_unloadCoreResources();
+
+#ifdef MPP_PROFILE_BUILD
+		delete mProfiler;
+		mProfiler = nullptr;
+		
+		delete mProfileLines;
+		mProfileLines = nullptr;
+#endif
+	}
+
+	/*
+	 * To be called after creating a context (eg when resizing screen).
+	 *
+	 */
+	void RenderSystem::postContextCreation(int windowWidth, int windowHeight)
+	{
+#ifdef MPP_PROFILE_BUILD
+		mProfiler = new Profiler();
+
+		mProfileLines = new LineBatch(
+			"ProfileLines",
+			Batch::ColourOptions::FloatRGBA,
+			false,
+			mSamplesToRecord * 5 + 2, // 5 seconds + 2 extra for graph
+			this,
+			mResourceMgr); 
+
+		mProfileLines->load();
+#endif
+
+		_loadCoreResources();
+		setDefaultState();
+		setDisplay(windowWidth, windowHeight);
 	}
 
 	/*
@@ -522,7 +581,7 @@ namespace mpp
 	{
 		mResourceMgr = resourceMgr;
 
-		mNoTexture = resourceMgr->acquireResource("__mpp_tex_none__");
+		mNoTexture = resourceMgr->getResource("__mpp_tex_none__");
 		
 		// Default 2d program
 		mesh::MeshSpecification spec2d(mesh::Primitive::Type::Triangles);
@@ -532,12 +591,11 @@ namespace mpp
 		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
 		mDefaultProgram2d = resourceMgr->getDefault2dProgram(spec2d, 0, true);
-		mDefaultProgram2d->acquire();
 
 		// Default 3d program
-		mDefaultProgram3d = resourceMgr->acquireResource("__mpp_p3d_tris_p3n3t2c4__");
+		mDefaultProgram3d = resourceMgr->getResource("__mpp_p3d_tris_p3n3t2c4__");
 
-		mInternalFontTexture = resourceMgr->acquireResource("__mpp_tex_internalfont__");
+		mInternalFontTexture = resourceMgr->getResource("__mpp_tex_internalfont__");
 		mInternalFont = new Font(mInternalFontTexture);
 
 		// Default material
@@ -630,7 +688,7 @@ namespace mpp
 		auto textRes = resourceMgr->declareResource("__mpp_internal_text_mesh__", textStreamPtr);
 		textRes->load();
 
-		mTextMesh = resourceMgr->acquireResource("__mpp_internal_text_mesh__");
+		mTextMesh = resourceMgr->getResource("__mpp_internal_text_mesh__");
 
 		// Coloured font mesh
 		textStream = new ProgrammaticModelStream(mResourceMgr);
@@ -680,7 +738,7 @@ namespace mpp
 		textRes = resourceMgr->declareResource("__mpp_internal_coloured_text_mesh__", textStreamPtr);
 		textRes->load();
 
-		mColouredTextMesh = resourceMgr->acquireResource("__mpp_internal_coloured_text_mesh__");
+		mColouredTextMesh = resourceMgr->getResource("__mpp_internal_coloured_text_mesh__");
 
 		// Fullscreen mesh
 		auto quadStream = new ProgrammaticModelStream(mResourceMgr);
@@ -703,11 +761,12 @@ namespace mpp
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 
 		resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream))->load();
-		mFullscreenQuad = resourceMgr->acquireResource("__mpp_mesh_fullscreen_quad__");
+		mFullscreenQuad = resourceMgr->getResource("__mpp_mesh_fullscreen_quad__");
 
 		// Render targets
 		mSceneTarget = createRenderTexture("SceneTarget", getWindowWidth(), getWindowHeight(), 1, true);
 		
+		// Set none as active
 		mActiveProgram.reset();
 
 		// Profile graph
@@ -788,18 +847,17 @@ namespace mpp
 			return;
 		}
 
-		if (mActiveProgram)
-		{
-			mActiveProgram->release();
-		}
-
 		static_cast<Program*>(program.get())->bind();
 		mActiveProgram = program;
+	}
 
-		if (mActiveProgram)
-		{
-			mActiveProgram->acquire();
-		}
+	/*
+	 * Get used program.
+	 *
+	 */
+	ResourcePtr RenderSystem::getUsedProgram()
+	{
+		return mActiveProgram;
 	}
 
 	/*
@@ -2541,6 +2599,34 @@ namespace mpp
 	 */
 	RenderInfo const& RenderSystem::finishStatsCollection()
 	{
+//		flushVertexBuffers();
+
+		// Change to 2d to render everything out.
+//		setProjection2dOrthographic();
+//		resetTransform();
+
+//		renderToScreen();
+//		renderFullscreenQuad((mpp::RenderTexture*)sceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
+
+		// Post process
+		/*
+		for (auto& effect: mPostProcessEffects)
+		{
+			// Set render target
+			setRenderTarget(mFullscreenFxTarget);
+			clearScreen(mpp::Colour::Black);
+
+			// Render effect
+			renderFullscreenQuad(mResourceMgr->getResource(effect.material), &effect.uniforms);
+
+			// Set render to screen and blend effect over it.
+			renderToScreen();
+			
+			auto fxTexture = (mpp::RenderTexture*)mFullscreenFxTarget.get();
+			renderFullscreenQuad(fxTexture, effect.attachment, effect.blendSrc, effect.blendDst);
+		}
+		*/
+
 #ifdef MPP_PROFILE_BUILD
 		mProfiler->sample();
 #endif		

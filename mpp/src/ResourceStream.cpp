@@ -137,11 +137,10 @@ namespace mpp
 			for (auto child : mChildren)
 			{
 				string name = parentName + "/" + child.first;
-				auto resStream = child.second;
+				auto res = child.second;
 
-				resStream->createChildResources(name);
-				auto childRes = mResourceMgr->declareResource(name, resStream);
-				childRes->acquire();
+				res->createChildResources(name);
+				mResourceMgr->declareResource(name, res);
 			}
 
 			mChildResourcesCreated = true;
@@ -160,8 +159,8 @@ namespace mpp
 			for (auto child : mChildren)
 			{
 				string name = parentName + "/" + child.first;
-				auto childRes = mResourceMgr->getResource(name);
-				childRes->release();
+				auto res = mResourceMgr->getResource(name);
+				res->destroy();
 
 				child.second->destroyChildResources(name);
 			}
@@ -184,8 +183,8 @@ namespace mpp
 				string name = parentName + "/" + child.first;
 				child.second->loadChildResources(name);
 
-				auto childRes = mResourceMgr->getResource(name);
-				childRes->load();
+				auto res = mResourceMgr->getResource(name);
+				res->load();
 			}
 
 			mChildResourcesLoaded = true;
@@ -199,8 +198,8 @@ namespace mpp
 			for (auto child : mChildren)
 			{
 				string name = parentName + "/" + child.first;
-				auto childRes = mResourceMgr->getResource(name);
-				childRes->release();
+				auto res = mResourceMgr->getResource(name);
+				res->unload();
 
 				child.second->unloadChildResources(name);
 			}

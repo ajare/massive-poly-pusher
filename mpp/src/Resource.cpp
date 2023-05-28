@@ -14,7 +14,6 @@ namespace mpp
 	Resource::Resource(string const& name, string const& type, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: mName(name)
 		, mType(type)
-		, mRefCount(0)
 		, mCreated(false)
 		, mLoaded(false)
 		, mId(0)
@@ -29,7 +28,6 @@ namespace mpp
 	Resource::~Resource()
 	{
 		//static_log_message(MPP_RESOURCE_LOGFILE, "Destruct " + getType() + ": '" + getName() + "'");
-		destroy();
 	}
 
 	/*
@@ -204,6 +202,26 @@ namespace mpp
 	}
 
 	/*
+	 * Recreate the resource.
+	 *
+	 */
+	void Resource::recreate()
+	{
+		if (isLoaded())
+		{
+			unload();
+		}
+
+		if (isCreated())
+		{
+			destroy();
+		}
+
+		createImpl();
+		mCreated = true;
+	}
+
+	/*
  	 * Load the resource.
  	 *
  	 */
@@ -250,26 +268,6 @@ namespace mpp
 		if (mResourceStream)
 		{
 			mResourceStream->unloadChildResources(getName());
-		}
-	}
-
-	void Resource::acquire()
-	{
-		mRefCount++;
-	}
-
-	void Resource::release(bool destroyAfterUnload)
-	{
-		mRefCount--;
-
-		if (mRefCount == 0)
-		{
-			unload();
-
-			if (destroyAfterUnload)
-			{
-				destroy();
-			}
 		}
 	}
 

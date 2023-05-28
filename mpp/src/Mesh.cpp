@@ -35,7 +35,6 @@ namespace mpp
 		, mPrimitiveCount(primitiveCount)
 		, mIsLoaded(false)
 	{
-		mMaterial->acquire();
 		setPrimitiveData(type);
 	}
 
@@ -55,7 +54,6 @@ namespace mpp
 		, mIsIndexed(true)
 		, mPrimitiveCount(primitiveCount)
 	{
-		mMaterial->acquire();
 		setPrimitiveData(type);
 		mIndexData = indices;
 	}
@@ -67,8 +65,6 @@ namespace mpp
 	Mesh::~Mesh()
 	{
 		unload();
-
-		mMaterial->release();
 
 		for (auto vertexBuffer: mVertexBuffers)
 		{

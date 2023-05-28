@@ -14,8 +14,6 @@ namespace mpp
 	{
 		glm::vec3 mBounds[2];
 
-		std::vector<ResourcePtr> mMaterials;
-
 	protected:
 
 		std::vector<Mesh*> mMeshes;

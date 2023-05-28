@@ -55,7 +55,7 @@ namespace mpp
 
 		explicit ResourceManager(RenderSystem* renderSystem);
 
-		~ResourceManager() = default;
+		~ResourceManager();
 
 		void setImageLoadFunction(ImageLoadFunction function);
 
@@ -63,11 +63,13 @@ namespace mpp
 
 		void createAllResources();
 
+		void destroyAllResources();
+
 		void loadAllResources();
 
-		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
+		void unloadAllResources();
 
-		ResourcePtr acquireResource(std::string const& name);
+		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
 
