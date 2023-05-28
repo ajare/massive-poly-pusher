@@ -18,6 +18,8 @@ namespace mpp
 
 		std::string mType;
 
+		int mRefCount;
+
 		std::set<std::string> mTags;
 
 		bool mCreated;
@@ -33,6 +35,10 @@ namespace mpp
 		ResourceStreamPtr mResourceStream;
 
 	protected:
+
+		void destroy();
+
+		void unload();
 
 		virtual void createImpl() = 0;
 
@@ -78,13 +84,11 @@ namespace mpp
 
 		void create();
 
-		void destroy();
-
-		void recreate();
-
 		void load(bool unloadStreamsAfterwards = false);
 
-		void unload();
+		void acquire();
+
+		void release(bool destroyAfterUnload = true);
 	};
 
 	typedef std::shared_ptr<Resource> ResourcePtr;

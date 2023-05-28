@@ -115,9 +115,6 @@ namespace mpp
 		// List of models to render
 		std::vector<ModelInstance*> mModelInstances;
 
-		// Default material: 2d with PTC and no texture
-		ResourcePtr mDefaultMaterial;
-
 		// Default programs
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
 
@@ -249,10 +246,6 @@ namespace mpp
 
 		virtual ~RenderSystem();
 
-		void _loadCoreResources();
-
-		void _unloadCoreResources();
-
 		size_t getWindowWidth() const;
 
 		size_t getWindowHeight() const;
@@ -272,10 +265,6 @@ namespace mpp
 		void showDebugPanel(bool show, TimeUnit timeUnit = TimeUnit::Milliseconds, SizeUnit sizeUnit = SizeUnit::Megabytes);
 
 		bool isDebugPanelShown() const;
-
-		void preContextDeletion();
-
-		void postContextCreation(int windowWidth, int windowHeight);
 
 		void setDefaultState();
 

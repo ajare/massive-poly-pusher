@@ -256,15 +256,6 @@ namespace mpp
 	}
 
 	/*
-	 * Destructor.
-	 *
-	 */
-	ResourceManager::~ResourceManager()
-	{
-		destroyAllResources();
-	}
-
-	/*
 	void ResourceManager::logResourceEvent(Resource* resource, ResourceEvent event)
 	{
 		if (mLogResourceEvents && mwLogger)
@@ -333,18 +324,6 @@ namespace mpp
 	}
 
 	/*
-	 * Destroy all resources.
-	 *
-	 */
-	void ResourceManager::destroyAllResources()
-	{
-		for (auto it: mResources)
-		{
-			it.second->destroy();
-		}
-	}
-
-	/*
 	 * Load all resources.
 	 *
 	 */
@@ -353,18 +332,6 @@ namespace mpp
 		for (auto it: mResources)
 		{
 			it.second->load();
-		}
-	}
-
-	/*
-	 * Unload all resources.
-	 *
-	 */
-	void ResourceManager::unloadAllResources()
-	{
-		for (auto it: mResources)
-		{
-			it.second->unload();
 		}
 	}
 
@@ -441,6 +408,13 @@ namespace mpp
 
 		mResources[name] = res;
 
+		return res;
+	}
+
+	ResourcePtr ResourceManager::acquireResource(string const& name)
+	{
+		auto res = getResource(name);
+		res->acquire();
 		return res;
 	}
 

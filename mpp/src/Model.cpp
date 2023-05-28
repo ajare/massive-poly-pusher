@@ -42,6 +42,11 @@ namespace mpp
 		{
 			delete mesh;
 		}
+
+		for (auto material : mMaterials)
+		{
+			material->release();
+		}
 	}
 
 	glm::vec3 Model::readPositionFromStream(int8_t const* stream, mesh::VertexBufferAttributeLayout::Attribute const& attrib)
@@ -278,7 +283,9 @@ namespace mpp
 			string materialName = mStr->markUpMaterialName(getName(), meshDef->getMaterial());
 			
 			ResourcePtr	material = resourceMgr->getResource(materialName);
+			material->acquire();
 			material->load();
+			mMaterials.push_back(material);
 
 			// Don't check vertex attribute mapping for internal resources as they may not
 			// actually have a mapping yet.
