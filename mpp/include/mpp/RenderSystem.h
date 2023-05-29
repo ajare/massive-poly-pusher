@@ -118,6 +118,8 @@ namespace mpp
 		// Default material: 2d with PTC and no texture
 		ResourcePtr mDefaultMaterial;
 
+		std::vector<ResourcePtr> mMiscMaterials;
+
 		// Default programs
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
 
@@ -130,8 +132,6 @@ namespace mpp
 
 		// Internal font
 		Font* mInternalFont;
-
-		ResourcePtr mFontMesh;
 
 		std::shared_ptr<UniformCollection> mTextUniforms;
 
@@ -156,7 +156,7 @@ namespace mpp
 		float mFarPlaneDistance;
 
 		// Fullscreen effects
-		ResourcePtr mFullscreenQuad;
+		ResourcePtr mFullscreenQuad, mFullscreenProgram;
 
 		RenderTargetPtr mSceneTarget;
 
@@ -249,10 +249,6 @@ namespace mpp
 
 		virtual ~RenderSystem();
 
-		void _loadCoreResources();
-
-		void _unloadCoreResources();
-
 		size_t getWindowWidth() const;
 
 		size_t getWindowHeight() const;
@@ -265,6 +261,8 @@ namespace mpp
 
 		void createCoreResources(ResourceManager* resourceMgr);
 
+		void destroyCoreResources();
+
 		void addPreloadResource(PreloadFunction func, PreloadFunctionCallback callback);
 
 		void loadPreresources(int maxCount = -1);
@@ -272,10 +270,6 @@ namespace mpp
 		void showDebugPanel(bool show, TimeUnit timeUnit = TimeUnit::Milliseconds, SizeUnit sizeUnit = SizeUnit::Megabytes);
 
 		bool isDebugPanelShown() const;
-
-		void preContextDeletion();
-
-		void postContextCreation(int windowWidth, int windowHeight);
 
 		void setDefaultState();
 

@@ -60,7 +60,7 @@ namespace mpp
 		auto sampler = rtStr->getSampler();
 		if (sampler != "")
 		{
-			mSampler = getResourceManager()->getResource(sampler);
+			mSampler = getResourceManager()->acquireResource(sampler);
 			mSampler->create();
 		}
 

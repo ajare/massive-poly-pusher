@@ -16,11 +16,22 @@ class ModelScene : public ::Scene
 
 	std::vector<mpp::SceneModel2dPtr> mBatches;
 
-	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> mTriangleBatch;
+	// Resources
+	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
+
+	mpp::ResourcePtr mDefaultSampler, mMarbleTexture, mCloudsTexture, mElectroTexture, mTestTexture, mDragonTexture,
+		mBulletsTexture, mAtlasTexture, mDoughnutTexture, mStripTexture;
+
+	mpp::ResourcePtr mBatch2dMaterial, mBatch3dMaterial, mBulletsMaterial, mBoxMaterial, mSphereMaterial, 
+		mCylinderMaterial, mTorusMaterial, mGridMaterial;
+
+	mpp::ResourcePtr mElevatorVertShader;
 
 private:
 
 	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) override;
+
+	void teardownImpl() override;
 
 	mpp::CameraPtr createCamera(ProgramOptions const& options) const override;
 

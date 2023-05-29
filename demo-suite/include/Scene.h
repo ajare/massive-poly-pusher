@@ -24,6 +24,8 @@ private:
 
 	virtual void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) {}
 
+	virtual void teardownImpl() {}
+
 	virtual mpp::CameraPtr createCamera(ProgramOptions const& options) const = 0;
 
 protected:
@@ -45,6 +47,8 @@ public:
 	bool getRender() const;
 
 	void setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options);
+
+	void teardown();
 
 	virtual std::string getRenderPipelineName() const;
 

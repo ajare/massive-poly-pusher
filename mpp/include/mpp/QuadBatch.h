@@ -62,7 +62,7 @@ namespace mpp
 
 		int getIndexWidth() const override;
 
-		int getPointSize() const override;
+		float getPointSize() const override;
 
 	public:
 
@@ -117,6 +117,8 @@ namespace mpp
 			std::string const& defaultFragmentShader,
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
+
+		~QuadBatch();
 
 		size_t getPrimitiveCount(size_t objectCount) const;
 

@@ -11,7 +11,16 @@ namespace mpp
 	SceneModel3d::SceneModel3d(ResourcePtr model)
 		: mModel(model)
 	{
+		mModel->acquire();
 		mParams = make_shared<ModelRenderParams>();
+	}
+
+	SceneModel3d::~SceneModel3d()
+	{
+		if (mModel)
+		{
+			mModel->release();
+		}
 	}
 
 	void SceneModel3d::resetTransform()
@@ -43,7 +52,17 @@ namespace mpp
 
 	void SceneModel3d::setModel(ResourcePtr model)
 	{
+		if (mModel)
+		{
+			mModel->release();
+		}
+
 		mModel = model;
+	
+		if (mModel)
+		{
+			mModel->acquire();
+		}
 	}
 
 	ResourcePtr SceneModel3d::getModel() const

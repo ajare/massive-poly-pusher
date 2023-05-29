@@ -48,6 +48,8 @@ namespace mpp
 
 	private:
 
+		void destroy();
+
 		virtual bool indexedVertices() const = 0;
 
 		virtual void createIndexData(std::vector<uint8_t>& data, uint32_t start, size_t count);
@@ -62,7 +64,7 @@ namespace mpp
 
 		virtual int getIndexWidth() const = 0;
 
-		virtual int getPointSize() const;
+		virtual float getPointSize() const;
 
 		virtual ResourcePtr getTexture();
 
