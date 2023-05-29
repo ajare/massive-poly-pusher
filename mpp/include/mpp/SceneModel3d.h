@@ -30,7 +30,7 @@ namespace mpp
 
 		explicit SceneModel3d(ResourcePtr model);
 		
-		virtual ~SceneModel3d() = default;
+		virtual ~SceneModel3d();
 
 		void resetTransform();
 

@@ -22,6 +22,7 @@ namespace mpp
 		, mInstanceCount(1)
 	{
 		mMaterial = mesh->getMaterial();
+		mMaterial->acquire();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -40,6 +41,7 @@ namespace mpp
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
+		mMaterial->acquire();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -57,6 +59,7 @@ namespace mpp
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
+		mMaterial->acquire();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -64,6 +67,14 @@ namespace mpp
 		mLocalTransform = glm::mat4();
 		mHalfWindowSize = halfWindowSize;
 		mPointSize = pointSize;
+	}
+
+	MeshInstance::~MeshInstance()
+	{
+		if (mMaterial)
+		{
+			mMaterial->release();
+		}
 	}
 
 	/*
@@ -154,7 +165,17 @@ namespace mpp
 	 */
 	void MeshInstance::setMaterial(ResourcePtr material)
 	{
+		if (mMaterial)
+		{
+			mMaterial->release();
+		}
+
 		mMaterial = material;
+	
+		if (mMaterial)
+		{
+			mMaterial->acquire();
+		}
 	}
 
 	/*

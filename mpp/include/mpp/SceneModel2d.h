@@ -43,7 +43,7 @@ namespace mpp
 
 		SceneModel2d(ResourcePtr model, RenderSystem* renderSystem);
 
-		virtual ~SceneModel2d() = default;
+		virtual ~SceneModel2d();
 
 		void setOrigin(glm::vec2 const& origin);
 

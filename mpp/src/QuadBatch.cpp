@@ -34,6 +34,11 @@ namespace mpp
 		, mPointSize((float)options.maxSizeX)
 	{
 		setPrimitiveOptions();
+
+		if (mTexture)
+		{
+			mTexture->acquire();
+		}
 	}
 
 	/*
@@ -123,6 +128,14 @@ namespace mpp
 		ResourceManager* resourceMgr)
 		: QuadBatch(name, options, sameSize, initialCapacity, VertexShader2dTemplate, FragmentShader2dTemplate, renderSystem, resourceMgr)
 	{
+	}
+
+	QuadBatch::~QuadBatch()
+	{
+		if (mTexture)
+		{
+			mTexture->release();
+		}
 	}
 
 	void QuadBatch::setPrimitiveOptions()
@@ -366,6 +379,7 @@ namespace mpp
 		if (!mTexture && mTextureRenderer)
 		{
 			mTexture = mTextureRenderer->createRenderTexture(mOptions.maxSizeX, mOptions.maxSizeY);
+			mTexture->acquire();
 		}
 
 		return mTexture;
@@ -376,7 +390,7 @@ namespace mpp
 		return mOptions.indexWidth;
 	}
 
-	int QuadBatch::getPointSize() const
+	float QuadBatch::getPointSize() const
 	{
 		return mPointSize;
 	}

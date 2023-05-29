@@ -41,8 +41,7 @@ namespace mpp
 
 	Batch::~Batch()
 	{
-		mModel->destroy();
-		mMaterial->destroy();
+		destroy();
 	}
 
 	string const& Batch::getName() const
@@ -86,9 +85,9 @@ namespace mpp
 		return nullptr;
 	}
 
-	int Batch::getPointSize() const
+	float Batch::getPointSize() const
 	{
-		return -1;
+		return -1.0;
 	}
 
 	BatchVertexAttribute Batch::getColourAttribute() const
@@ -148,6 +147,7 @@ namespace mpp
 
 		// Create material
 		mMaterial = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
+		mMaterial->acquire();
 		mMaterial->load();
 
 		// Create model data
@@ -170,11 +170,18 @@ namespace mpp
 
 		// Create and load model
 		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream);
+		mModel->acquire();
 		mModel->load();
 
 		// Specification pointers
 		auto model = static_cast<Model*>(mModel.get());
 		setSpecificationPointers(model->getMesh(0));
+	}
+
+	void Batch::destroy()
+	{
+		mModel->release();
+		mMaterial->release();
 	}
 
 	void Batch::startUpdate(size_t minimumCount)

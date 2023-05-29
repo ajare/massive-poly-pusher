@@ -78,15 +78,14 @@ namespace mpp
 		{
 			return ResourcePtr(new PostEffect(name, this->mwRenderSystem, this, rStream));
 		};
+	}
 
-		//
-		// Create built-in resources
-		//
-
+	void ResourceManager::createCoreResources()
+	{
 		// Default 3d program
 		{
 			mesh::MeshSpecification meshSpec;
-			
+
 			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
@@ -140,7 +139,11 @@ namespace mpp
 			auto ps = new ProgrammaticProgramStream(this);
 			ps->setParser(parser);
 			ps->setAttribs({ "Points" });
-			declareResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps))->load();
+
+			auto res = declareResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps));
+			res->acquire();
+			res->load();
+			mInternalResources.push_back(res);
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -157,7 +160,11 @@ namespace mpp
 
 			auto ps = new ProgrammaticProgramStream(this);
 			ps->setParser(parser);
-			declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps))->load();
+
+			auto res = declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps));
+			res->acquire();
+			res->load();
+			mInternalResources.push_back(res);
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -176,7 +183,11 @@ namespace mpp
 			auto ps = new ProgrammaticProgramStream(this);
 			ps->setParser(parser);
 			ps->setAttribs({ "Points", "Colours" });
-			declareResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps))->load();
+
+			auto res = declareResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps));
+			res->acquire();
+			res->load();
+			mInternalResources.push_back(res);
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -195,7 +206,11 @@ namespace mpp
 			auto ps = new ProgrammaticProgramStream(this);
 			ps->setParser(parser);
 			ps->setAttribs({ "Colours" });
-			declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps))->load();
+
+			auto res = declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps));
+			res->acquire();
+			res->load();
+			mInternalResources.push_back(res);
 		}
 
 		// Default texture
@@ -204,7 +219,7 @@ namespace mpp
 		blankStream->setData([](string const& id)
 		{
 			TextureData data;
-			
+
 			data.width = 1;
 			data.height = 1;
 			data.bitsPerPixel = 24;
@@ -212,7 +227,7 @@ namespace mpp
 			data.pixelFormat = GL_RGB;
 
 			size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
-			
+
 			data.data = new uint8_t[dataSize];
 			memset(data.data, 255, dataSize);
 
@@ -246,7 +261,10 @@ namespace mpp
 
 		ts->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
 
-		declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts))->load();
+		auto res = declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts));
+		res->acquire();
+		res->load();
+		mInternalResources.push_back(res);
 
 		// 2D materials
 		// ...
@@ -255,13 +273,12 @@ namespace mpp
 		// ...
 	}
 
-	/*
-	 * Destructor.
-	 *
-	 */
-	ResourceManager::~ResourceManager()
+	void ResourceManager::destroyCoreResources()
 	{
-		destroyAllResources();
+		for (auto res : mInternalResources)
+		{
+			res->release();
+		}
 	}
 
 	/*
@@ -333,18 +350,6 @@ namespace mpp
 	}
 
 	/*
-	 * Destroy all resources.
-	 *
-	 */
-	void ResourceManager::destroyAllResources()
-	{
-		for (auto it: mResources)
-		{
-			it.second->destroy();
-		}
-	}
-
-	/*
 	 * Load all resources.
 	 *
 	 */
@@ -353,18 +358,6 @@ namespace mpp
 		for (auto it: mResources)
 		{
 			it.second->load();
-		}
-	}
-
-	/*
-	 * Unload all resources.
-	 *
-	 */
-	void ResourceManager::unloadAllResources()
-	{
-		for (auto it: mResources)
-		{
-			it.second->unload();
 		}
 	}
 
@@ -441,6 +434,13 @@ namespace mpp
 
 		mResources[name] = res;
 
+		return res;
+	}
+
+	ResourcePtr ResourceManager::acquireResource(string const& name)
+	{
+		auto res = getResource(name);
+		res->acquire();
 		return res;
 	}
 
@@ -762,7 +762,7 @@ namespace mpp
 		ofstream fp;
 		fp.open(filepath);
 
-		fp << "Name,Type,Id,State,GL_States,GL_Count\n";
+		fp << "Name,Type,Id,Ref_Count,State,GL_States,GL_Count\n";
 
 		for (auto kvp : mResources)
 		{
@@ -785,6 +785,7 @@ namespace mpp
 			fp << resource->getName() << "," 
 				<< resource->getType() << "," 
 				<< resource->getId() << "," 
+				<< resource->getRefCount() << ","
 				<< state << ","
 				<< resource->getLiveIdCount() << ","
 				<< resource->getIdCount() << "\n";

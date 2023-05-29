@@ -14,6 +14,7 @@ namespace mpp
 	Resource::Resource(string const& name, string const& type, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: mName(name)
 		, mType(type)
+		, mRefCount(0)
 		, mCreated(false)
 		, mLoaded(false)
 		, mId(0)
@@ -28,6 +29,7 @@ namespace mpp
 	Resource::~Resource()
 	{
 		//static_log_message(MPP_RESOURCE_LOGFILE, "Destruct " + getType() + ": '" + getName() + "'");
+		destroy();
 	}
 
 	/*
@@ -64,6 +66,15 @@ namespace mpp
 	string const& Resource::getType() const
 	{
 		return mType;
+	}
+
+	/*
+	 * How many references are there to this resource?
+	 *
+	 */
+	int Resource::getRefCount() const
+	{
+		return mRefCount;
 	}
 
 	/*
@@ -191,34 +202,16 @@ namespace mpp
 		{
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Destroy " + getType() + ": '" + getName() + "'");
 			destroyImpl();
+
+			// Destroy child resources
+			if (mResourceStream)
+			{
+				mResourceStream->destroyChildResources(getName());
+			}
+
 			mCreated = false;
 		}
 
-		// Destroy child resources
-		if (mResourceStream)
-		{
-			mResourceStream->destroyChildResources(getName());
-		}
-	}
-
-	/*
-	 * Recreate the resource.
-	 *
-	 */
-	void Resource::recreate()
-	{
-		if (isLoaded())
-		{
-			unload();
-		}
-
-		if (isCreated())
-		{
-			destroy();
-		}
-
-		createImpl();
-		mCreated = true;
 	}
 
 	/*
@@ -261,13 +254,36 @@ namespace mpp
 		{
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Unload " + getType() + ": '" + getName() + "'");
 			unloadImpl();
+
+			// Unload child resources
+			if (mResourceStream)
+			{
+				mResourceStream->unloadChildResources(getName());
+			}
+
 			mLoaded = false;
 		}
+	}
 
-		// Unload child resources
-		if (mResourceStream)
+	void Resource::acquire()
+	{
+		mRefCount++;
+	}
+
+	void Resource::release(bool destroyAfterUnload)
+	{
+		mRefCount--;
+
+		assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");
+
+		if (mRefCount == 0)
 		{
-			mResourceStream->unloadChildResources(getName());
+			unload();
+
+			if (destroyAfterUnload)
+			{
+				destroy();
+			}
 		}
 	}
 

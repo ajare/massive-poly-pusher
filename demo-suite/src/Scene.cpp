@@ -41,6 +41,11 @@ void Scene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options
 	setupImpl(renderSystem, options);
 }
 
+void Scene::teardown()
+{
+	teardownImpl();
+}
+
 string Scene::getRenderPipelineName() const
 {
 	return "Default";

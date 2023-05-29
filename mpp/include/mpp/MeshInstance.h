@@ -60,6 +60,8 @@ namespace mpp
 
 		MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize);
 
+		virtual ~MeshInstance();
+
 		bool operator <(MeshInstance const* other);
 
 		void render(bool render);
