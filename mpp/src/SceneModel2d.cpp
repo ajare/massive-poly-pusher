@@ -38,7 +38,11 @@ namespace mpp
 		, mWireframe(false)
 		, mVisible(true)
 	{
-		mModel->acquire();
+		if (mModel)
+		{
+			mModel->acquire();
+		}
+
 		mParams = make_shared<ModelRenderParams>();
 	}
 

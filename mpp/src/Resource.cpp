@@ -211,7 +211,6 @@ namespace mpp
 
 			mCreated = false;
 		}
-
 	}
 
 	/*
@@ -267,11 +266,13 @@ namespace mpp
 
 	void Resource::acquire()
 	{
+		static_log_message(MPP_RESOURCE_LOGFILE, "Acquire " + getType() + ": '" + getName() + "': " + utils::StringUtils::toString(mRefCount));
 		mRefCount++;
 	}
 
 	void Resource::release(bool destroyAfterUnload)
 	{
+		static_log_message(MPP_RESOURCE_LOGFILE, "Release " + getType() + ": '" + getName() + "': " + utils::StringUtils::toString(mRefCount));
 		mRefCount--;
 
 		assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");

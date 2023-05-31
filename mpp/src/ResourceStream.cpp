@@ -140,8 +140,7 @@ namespace mpp
 				auto resStream = child.second;
 
 				resStream->createChildResources(name);
-				auto childRes = mResourceMgr->declareResource(name, resStream);
-				childRes->acquire();
+				mResourceMgr->declareAndAcquireResource(name, resStream);
 			}
 
 			mChildResourcesCreated = true;
