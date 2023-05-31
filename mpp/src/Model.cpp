@@ -534,8 +534,6 @@ namespace mpp
 	 */
 	int Model::getIdCount() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		int c = 0;
 		for (auto it : mMeshes)
 		{
@@ -551,8 +549,6 @@ namespace mpp
 	 */
 	int Model::getLiveIdCount() const
 	{
-		THROW_IF_NOT_LOADED; 
-		
 		int c = 0;
 		for (auto it : mMeshes)
 		{

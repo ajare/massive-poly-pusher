@@ -22,11 +22,7 @@ namespace mpp
 		, mInstanceCount(1)
 	{
 		mMaterial = mesh->getMaterial();
-
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		ACQUIRE_RESOURCE(mMaterial);
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -45,11 +41,7 @@ namespace mpp
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
-
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		ACQUIRE_RESOURCE(mMaterial);
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -67,11 +59,7 @@ namespace mpp
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
-
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		ACQUIRE_RESOURCE(mMaterial);
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -83,10 +71,7 @@ namespace mpp
 
 	MeshInstance::~MeshInstance()
 	{
-		if (mMaterial)
-		{
-			mMaterial->release();
-		}
+		RELEASE_RESOURCE_TO_DESTROY(mMaterial);
 	}
 
 	/*
@@ -177,17 +162,9 @@ namespace mpp
 	 */
 	void MeshInstance::setMaterial(ResourcePtr material)
 	{
-		if (mMaterial)
-		{
-			mMaterial->release();
-		}
-
+		RELEASE_RESOURCE_TO_DESTROY(mMaterial);
 		mMaterial = material;
-	
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		ACQUIRE_RESOURCE(mMaterial);
 	}
 
 	/*

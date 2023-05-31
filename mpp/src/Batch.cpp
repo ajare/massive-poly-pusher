@@ -147,8 +147,7 @@ namespace mpp
 
 		// Create material
 		mMaterial = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
-		mMaterial->acquire();
-		mMaterial->load();
+		ACQUIRE_RESOURCE_AND_LOAD(mMaterial);
 
 		// Create model data
 		auto modelStream = make_shared<ProgrammaticModelStream>(mResourceMgr);
@@ -179,8 +178,8 @@ namespace mpp
 
 	void Batch::destroy()
 	{
-		mModel->release();
-		mMaterial->release();
+		RELEASE_RESOURCE_TO_DESTROY(mModel);
+		RELEASE_RESOURCE_TO_DESTROY(mMaterial);
 	}
 
 	void Batch::startUpdate(size_t minimumCount)

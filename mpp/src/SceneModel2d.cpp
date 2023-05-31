@@ -38,20 +38,14 @@ namespace mpp
 		, mWireframe(false)
 		, mVisible(true)
 	{
-		if (mModel)
-		{
-			mModel->acquire();
-		}
+		ACQUIRE_RESOURCE(mModel);
 
 		mParams = make_shared<ModelRenderParams>();
 	}
 
 	SceneModel2d::~SceneModel2d()
 	{
-		if (mModel)
-		{
-			mModel->release();
-		}
+		RELEASE_RESOURCE_TO_DESTROY(mModel);
 	}
 
 	void SceneModel2d::setOrigin(glm::vec2 const& origin)
