@@ -434,14 +434,8 @@ namespace mpp
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
 
-		if (mSampler)
-		{
-			static_cast<Sampler*>(mSampler.get())->bind(unit);
-		}
-		else
-		{
-			GL_CHECK(glBindSampler(unit, 0));
-		}
+		auto samplerId = mSampler ? mSampler->getId() : 0;
+		GL_CHECK(glBindSampler(unit, samplerId));
 	}
 
 	/*
@@ -449,7 +443,7 @@ namespace mpp
 	 * we have assigned to texture in the sort key.
 	 *
 	 */
-	void Texture::setSortId(uint32_t sortId)
+	void Texture::_setSortId(uint32_t sortId)
 	{
 		mSortId = sortId;
 	}
@@ -469,6 +463,8 @@ namespace mpp
 	 */
 	int Texture::getIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return (int)mTextureIds.size();
 	}
 
@@ -478,6 +474,8 @@ namespace mpp
 	 */
 	int Texture::getLiveIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		int c = 0;
 		for (auto id : mTextureIds)
 		{

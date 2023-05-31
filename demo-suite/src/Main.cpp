@@ -173,7 +173,7 @@ void startup()
 //
 void shutdown()
 {
-	// Delete scenes
+	// Delete scenes	
 	for (auto scene: gScenes)
 	{
 		scene->teardown();
@@ -189,7 +189,7 @@ void shutdown()
 	gRenderSystem->destroyCoreResources();
 	delete gRenderSystem;
 
-	gResourceManager->dumpResources("final-resources.csv");
+//	gResourceManager->dumpResources("final-resources.csv");
 	delete gResourceManager;
 
 	if (gWindow)

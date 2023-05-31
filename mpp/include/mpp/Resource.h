@@ -6,9 +6,20 @@
 
 #include "mpp/Config.h"
 #include "mpp/ResourceStream.h"
+#include "mpp/MppException.h"
 
 namespace mpp
 {
+
+#define THROW_IF_NOT_LOADED \
+	do                      \
+    {                       \
+	    if (!isLoaded())    \
+        {                   \
+            THROW_MPP("Resource '" + getName() + "' accessed but not loaded", __LINE__, __FILE__, __FUNCTION__); \
+        }                   \
+    } while (false)
+
 	class RenderSystem;
 	class ResourceManager;
 	
