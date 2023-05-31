@@ -44,6 +44,8 @@ namespace mpp
 
 	RenderTargetPtr PostEffect::getOuputRenderTarget()
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mOutput.target;
 	}
 }

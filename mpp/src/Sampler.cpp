@@ -43,7 +43,7 @@ namespace mpp
 	}
 
 	/*
-	 * Destroy the texture data.
+	 * Destroy the sampler data.
 	 *
 	 */
 	void Sampler::destroyImpl()
@@ -109,23 +109,10 @@ namespace mpp
 	 */
 	int Sampler::getLiveIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		int c;
 		GL_CHECK(c = glIsSampler(getId()));
 		return c;
-	}
-
-
-	/*
-	 * Bind sampler.
-	 *
-	 */
-	void Sampler::bind(uint32_t unit)
-	{
-		if (!isLoaded())
-		{
-			load();
-		}
-
-		GL_CHECK(glBindSampler(unit, getId()));
 	}
 }

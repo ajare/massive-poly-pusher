@@ -117,7 +117,16 @@ namespace mpp
 
 	mesh::MeshSpecification const& Program::getMeshSpecification() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mMeshSpecification;
+	}
+
+	vector<Program::TextureInfo> const& Program::getTextureInfo() const
+	{
+		THROW_IF_NOT_LOADED;
+
+		return mTextures;
 	}
 
 	/*
@@ -130,6 +139,8 @@ namespace mpp
 		vi.def = def;
 		vi.name = name;
 		vi.type = type;
+
+		THROW_IF_NOT_LOADED;
 
 		if (vi.type == "bool" || vi.type == "int" || vi.type == "uint" || vi.type == "float" || vi.type == "double" ||
 			vi.type == "bvec2" || vi.type == "bvec3" || vi.type == "bvec4" ||
@@ -567,6 +578,8 @@ namespace mpp
 	 */
 	int Program::getUniformId(string const& name, int index) const
 	{
+		THROW_IF_NOT_LOADED;
+
 		string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(name);
 		if (index >= 0)
 		{
@@ -585,6 +598,8 @@ namespace mpp
 
 	int Program::getViewPosId() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mViewPosId;
 	}
 
@@ -594,6 +609,8 @@ namespace mpp
 	 */
 	int Program::getModelMatrixId() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mMMatrixId;
 	}
 
@@ -603,6 +620,8 @@ namespace mpp
 	 */
 	int Program::getModelCameraProjectionMatrixId() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mMcpMatrixId;
 	}
 
@@ -612,6 +631,8 @@ namespace mpp
 	 */	
 	int Program::getNormalMatrixId() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mNormalMatrixId;
 	}
 
@@ -621,6 +642,8 @@ namespace mpp
 	 */	
 	int Program::getHalfWindowSizeId() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mHalfWindowSizeId;
 	}
 
@@ -630,6 +653,8 @@ namespace mpp
 	 */
 	int Program::getPointSizeId() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mPointSizeId;
 	}
 
@@ -638,7 +663,7 @@ namespace mpp
 	 * we have assigned to program in the sort key.
 	 *
 	 */
-	void Program::setSortId(uint32_t sortId)
+	void Program::_setSortId(uint32_t sortId)
 	{
 		mSortId = sortId;
 	}
@@ -658,6 +683,8 @@ namespace mpp
 	 */
 	int Program::getNumSamplers() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mTextures.size();
 	}
 
@@ -667,6 +694,8 @@ namespace mpp
 	 */
 	string const& Program::getSamplerName(int index) const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mTextures[index].samplerName;
 	}
 
@@ -676,23 +705,9 @@ namespace mpp
 	 */
 	vector<Program::VariableInfo> const& Program::getVertexAttributes() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mVertexAttributes;
-	}
-
-	/*
-	 * Activate program
-	 *
-	 */
-	void Program::bind()
-	{
-		GL_CHECK(glUseProgram(getId()));
-
-		// Bind texture unit locations to samplers
-		for (uint32_t i = 0; i < mTextures.size(); ++i)
-		{
-			auto const& ti = mTextures[i];
-			GL_CHECK(glUniform1i(ti.uniformId, i));
-		}
 	}
 
 	/*
@@ -710,6 +725,8 @@ namespace mpp
 	 */
 	int Program::getLiveIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		int c;
 		GL_CHECK(c = glIsProgram(getId()));
 		return c;

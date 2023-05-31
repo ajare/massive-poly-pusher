@@ -210,7 +210,7 @@ namespace mpp
 
 			Texture* t = static_cast<Texture*>(res.get());
 
-			t->setSortId(msSortableTextureId++);
+			t->_setSortId(msSortableTextureId++);
 			mSortableTextures.push_back(res);
 		}
 		else if (type == "Program")
@@ -224,7 +224,7 @@ namespace mpp
 
 			Program* p = static_cast<Program*>(res.get());
 
-			p->setSortId(msSortableProgramId++);
+			p->_setSortId(msSortableProgramId++);
 			mSortablePrograms.push_back(res);
 
 			// Add to cache

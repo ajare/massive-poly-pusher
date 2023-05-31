@@ -133,6 +133,8 @@ namespace mpp
 
 		mesh::MeshSpecification const& getMeshSpecification() const;
 
+		std::vector<TextureInfo> const& getTextureInfo() const;
+
 		int getUniformId(std::string const& name, int index = -1) const;
 
 		int getViewPosId() const;
@@ -147,7 +149,7 @@ namespace mpp
 
 		int getPointSizeId() const;
 
-		void setSortId(uint32_t sortId);
+		void _setSortId(uint32_t sortId);
 
 		uint32_t getSortId() const;
 
@@ -156,8 +158,6 @@ namespace mpp
 		std::string const& getSamplerName(int index) const;
 
 		std::vector<VariableInfo> const& getVertexAttributes() const;
-
-		void bind();
 	};
 
 }
