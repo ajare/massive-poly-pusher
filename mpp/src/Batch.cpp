@@ -169,8 +169,7 @@ namespace mpp
 		}
 
 		// Create and load model
-		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream);
-		mModel->acquire();
+		mModel = mResourceMgr->declareAndAcquireResource(getName() + "_Batch_Model", modelStream);
 		mModel->load();
 
 		// Specification pointers

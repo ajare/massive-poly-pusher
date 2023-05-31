@@ -28,6 +28,12 @@ namespace mpp
 		, mOptions(options)
 		, mTextureOrMaterial(textureOrMaterial)
 	{
+		mTextureOrMaterial->acquire();
+	}
+
+	TriangleBatch::~TriangleBatch()
+	{
+		mTextureOrMaterial->release();
 	}
 
 	bool TriangleBatch::indexedVertices() const

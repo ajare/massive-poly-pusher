@@ -11,7 +11,11 @@ namespace mpp
 	SceneModel3d::SceneModel3d(ResourcePtr model)
 		: mModel(model)
 	{
-		mModel->acquire();
+		if (mModel)
+		{
+			mModel->acquire();
+		}
+
 		mParams = make_shared<ModelRenderParams>();
 	}
 
