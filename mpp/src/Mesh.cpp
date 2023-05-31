@@ -33,7 +33,7 @@ namespace mpp
 		, mMaterial(material)
 		, mIsIndexed(false)
 		, mPrimitiveCount(primitiveCount)
-		, mIsLoaded(false)
+		, mLoaded(false)
 	{
 		setPrimitiveData(type);
 
@@ -344,40 +344,43 @@ namespace mpp
 	 */
 	void Mesh::load()
 	{
-		// Load into one vertex buffer
-		GL_CHECK(glGenVertexArrays(1, &mVAO));
-		GL_CHECK(glBindVertexArray(mVAO));
-
-		// Set name for debugging
-		string label = "VertexArray: " + getName();
-		glObjectLabel(GL_VERTEX_ARRAY, mVAO, -1, label.c_str());
-
-		// Create index buffer
-		if (isIndexed())
+		if (!mLoaded)
 		{
-			GL_CHECK(glGenBuffers(1, &mIBO));
-			GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
+			// Load into one vertex buffer
+			GL_CHECK(glGenVertexArrays(1, &mVAO));
+			GL_CHECK(glBindVertexArray(mVAO));
 
 			// Set name for debugging
-			string label = "Buffer: " + getName();
-			glObjectLabel(GL_BUFFER, mIBO, -1, label.c_str());
+			string label = "VertexArray: " + getName();
+			glObjectLabel(GL_VERTEX_ARRAY, mVAO, -1, label.c_str());
 
-			allocateIndexData(mPrimitiveCount);
+			// Create index buffer
+			if (isIndexed())
+			{
+				GL_CHECK(glGenBuffers(1, &mIBO));
+				GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
+
+				// Set name for debugging
+				string label = "Buffer: " + getName();
+				glObjectLabel(GL_BUFFER, mIBO, -1, label.c_str());
+
+				allocateIndexData(mPrimitiveCount);
+			}
+
+			// Create vertex buffers
+			for (auto vertexBuffer : mVertexBuffers)
+			{
+				vertexBuffer->load();
+			}
+
+			// Unbind VAO
+			GL_CHECK(glBindVertexArray(0));
+
+			// Load material
+			mMaterial->load();
+
+			mLoaded = true;
 		}
-
-		// Create vertex buffers
-		for (auto vertexBuffer: mVertexBuffers)
-		{
-			vertexBuffer->load();
-		}
-
-		// Unbind VAO
-		GL_CHECK(glBindVertexArray(0));
-
-		// Load material
-		mMaterial->load();
-
-		mIsLoaded = true;
 	}
 
 	/*
@@ -386,23 +389,26 @@ namespace mpp
 	*/
 	void Mesh::unload()
 	{
-		if (mVAO != 0)
+		if (mLoaded)
 		{
-			GL_CHECK(glDeleteVertexArrays(1, &mVAO));
-			mVAO = 0;
-		}
-		if (mIBO != 0)
-		{
-			GL_CHECK(glDeleteBuffers(1, &mIBO));
-			mIBO = 0;
-		}
+			if (mVAO != 0)
+			{
+				GL_CHECK(glDeleteVertexArrays(1, &mVAO));
+				mVAO = 0;
+			}
+			if (mIBO != 0)
+			{
+				GL_CHECK(glDeleteBuffers(1, &mIBO));
+				mIBO = 0;
+			}
 
-		for (auto vertexBuffer: mVertexBuffers)
-		{
-			vertexBuffer->unload();
-		}
+			for (auto vertexBuffer : mVertexBuffers)
+			{
+				vertexBuffer->unload();
+			}
 
-		mIsLoaded = false;
+			mLoaded = false;
+		}
 	}
 
 	/*
@@ -469,7 +475,7 @@ namespace mpp
 	{
 		mStorageType = storageType;
 
-		if (mIsLoaded)
+		if (mLoaded)
 		{
 			unload();
 			load();

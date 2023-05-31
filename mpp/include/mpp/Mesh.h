@@ -43,7 +43,7 @@ namespace mpp
 
 		bool mIsIndexed;
 
-		bool mIsLoaded;
+		bool mLoaded;
 
 	private:
 
