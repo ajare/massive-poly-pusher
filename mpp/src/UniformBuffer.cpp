@@ -106,18 +106,20 @@ namespace mpp
 	 */
 	void UniformBuffer::load()
 	{
-		unload();
-		GL_CHECK(glGenBuffers(1, &mUBO));
+		if (!mLoaded)
+		{
+			GL_CHECK(glGenBuffers(1, &mUBO));
 
-		bind();
+			bind();
 
-		// Set name for debugging
-		string label = "Uniform Buffer";
-		glObjectLabel(GL_BUFFER, mUBO, -1, label.c_str());
+			// Set name for debugging
+			string label = "Uniform Buffer";
+			glObjectLabel(GL_BUFFER, mUBO, -1, label.c_str());
 
-		allocate();
+			allocate();
 
-		glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO);
+			glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO);
+		}
 	}
 
 	/*
@@ -126,10 +128,13 @@ namespace mpp
 	 */
 	void UniformBuffer::unload()
 	{
-		if (mUBO != 0)
+		if (mLoaded)
 		{
-			GL_CHECK(glDeleteBuffers(1, &mUBO));
-			mUBO = 0;
+			if (mUBO != 0)
+			{
+				GL_CHECK(glDeleteBuffers(1, &mUBO));
+				mUBO = 0;
+			}
 		}
 	}
 }

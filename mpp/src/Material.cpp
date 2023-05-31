@@ -171,12 +171,6 @@ namespace mpp
 	 */
 	void Material::destroyImpl()
 	{
-		RELEASE_RESOURCE_TO_DESTROY(mProgram);
-		
-		for (auto texture : mTextures)
-		{
-			RELEASE_RESOURCE_TO_DESTROY(texture);
-		}
 	}
 
 	/*
@@ -199,8 +193,12 @@ namespace mpp
 	 */
 	void Material::unloadImpl()
 	{
-		// Todo: reference counting on the resource such that it will unload
-		// when not referenced?
+		RELEASE_RESOURCE_TO_UNLOAD(mProgram);
+
+		for (auto texture : mTextures)
+		{
+			RELEASE_RESOURCE_TO_UNLOAD(texture);
+		}
 	}
 
 	/*
