@@ -49,6 +49,8 @@ namespace mpp
 
 	TextureAtlas::Tile const& TextureAtlas::getTile(string const& name) const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return mTiles.at(name);
 	}
 }

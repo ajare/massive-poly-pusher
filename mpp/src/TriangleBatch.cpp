@@ -28,7 +28,7 @@ namespace mpp
 		, mOptions(options)
 		, mTextureOrMaterial(textureOrMaterial)
 	{
-		mTextureOrMaterial->acquire();
+		ACQUIRE_RESOURCE(mTextureOrMaterial);
 	}
 
 	TriangleBatch::~TriangleBatch()

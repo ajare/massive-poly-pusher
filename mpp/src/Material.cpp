@@ -128,8 +128,7 @@ namespace mpp
 			}
 		}
 
-		mProgram->acquire();
-		mProgram->load();
+		ACQUIRE_RESOURCE_AND_LOAD(mProgram);
 
 		// Set uniforms
 		mUniforms = mStr->getUniforms();
@@ -172,11 +171,11 @@ namespace mpp
 	 */
 	void Material::destroyImpl()
 	{
-		mProgram->release();
+		RELEASE_RESOURCE_TO_DESTROY(mProgram);
 		
 		for (auto texture : mTextures)
 		{
-			texture->release();
+			RELEASE_RESOURCE_TO_DESTROY(texture);
 		}
 	}
 

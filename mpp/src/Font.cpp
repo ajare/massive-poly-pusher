@@ -22,17 +22,9 @@ namespace mpp
 	 */
 	void Font::setTexture(ResourcePtr texture)
 	{
-		if (mTexture)
-		{
-			mTexture->release();
-		}
-
+		RELEASE_RESOURCE_TO_DESTROY(mTexture);
 		mTexture = texture;
-
-		if (mTexture)
-		{
-			mTexture->acquire();
-		}
+		ACQUIRE_RESOURCE(mTexture);
 	}
 
 	/*
