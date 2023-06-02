@@ -57,8 +57,6 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
-		~TriangleBatch();
-
 		size_t getPrimitiveCount(size_t objectCount) const;
 
 		size_t getVertexCount(size_t primitiveCount) const;

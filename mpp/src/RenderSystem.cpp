@@ -31,17 +31,14 @@
 #include "mpp/TextureStream.h"
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
-#include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ProgrammaticMaterialStream.h"
-#include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/ProgrammaticRenderTextureStream.h"
 #include "mpp/Profiler.h"
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
-#include "mpp/DefaultShaders.h"
 
 using namespace std;
 
@@ -510,202 +507,24 @@ namespace mpp
 	{
 		mResourceMgr = resourceMgr;
 
-		// Default 3d program
-		{
-			mesh::MeshSpecification meshSpec;
+		mFullscreenProgram = resourceMgr->acquireResource("__mpp_p2d_fullscreen__");
 
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
-
-			auto parser = make_shared<program::Parser>();
-
-			parser->setMeshSpecification(meshSpec);
-			parser->setVertexSource(VertexShader3dTemplate);
-			parser->setFragmentSource(FragmentShader3dTemplate);
-
-			auto ps = new ProgrammaticProgramStream(mResourceMgr);
-			ps->setParser(parser);
-
-			mDefaultProgram3d = mResourceMgr->declareAndAcquireResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps));
-			mDefaultProgram3d->load();
-		}
-
-		// 2d fullscreen program
-		{
-			mesh::MeshSpecification meshSpec;
-
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-
-			auto parser = make_shared<program::Parser>();
-
-			parser->setMeshSpecification(meshSpec);
-			parser->setVertexSource(VertexShaderFullscreenTemplate);
-			parser->setFragmentSource(FragmentShaderFullscreenTemplate);
-
-			auto ps = new ProgrammaticProgramStream(mResourceMgr);
-			ps->setParser(parser);
-
-			mFullscreenProgram = mResourceMgr->declareAndAcquireResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps));
-			mFullscreenProgram->load();
-		}
-
-		// Internal text programs
-		{
-			mesh::MeshSpecification meshSpec;
-
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
-
-			auto parser = make_shared<program::Parser>();
-
-			parser->setMeshSpecification(meshSpec);
-			parser->setVertexSource(VertexShaderTextTemplate);
-			parser->setFragmentSource(FragmentShaderTextTemplate);
-
-			auto ps = new ProgrammaticProgramStream(mResourceMgr);
-			ps->setParser(parser);
-			ps->setAttribs({ "Points" });
-
-			mPointsTextProgram = mResourceMgr->declareAndAcquireResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps));
-			mPointsTextProgram->load();
-		}
-		{
-			mesh::MeshSpecification meshSpec;
-
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-
-			auto parser = make_shared<program::Parser>();
-
-			parser->setMeshSpecification(meshSpec);
-			parser->setVertexSource(VertexShaderTextTemplate);
-			parser->setFragmentSource(FragmentShaderTextTemplate);
-
-			auto ps = new ProgrammaticProgramStream(mResourceMgr);
-			ps->setParser(parser);
-
-			mTrisTextProgram = mResourceMgr->declareAndAcquireResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps));
-			mTrisTextProgram->load();
-		}
-		{
-			mesh::MeshSpecification meshSpec;
-
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
-
-			auto parser = make_shared<program::Parser>();
-
-			parser->setMeshSpecification(meshSpec);
-			parser->setVertexSource(VertexShaderTextTemplate);
-			parser->setFragmentSource(FragmentShaderTextTemplate);
-
-			auto ps = new ProgrammaticProgramStream(mResourceMgr);
-			ps->setParser(parser);
-			ps->setAttribs({ "Points", "Colours" });
-
-			mPointsTextColouredProgram = mResourceMgr->declareAndAcquireResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps));
-			mPointsTextColouredProgram->load();
-		}
-		{
-			mesh::MeshSpecification meshSpec;
-
-			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
-
-			auto parser = make_shared<program::Parser>();
-
-			parser->setMeshSpecification(meshSpec);
-			parser->setVertexSource(VertexShaderTextTemplate);
-			parser->setFragmentSource(FragmentShaderTextTemplate);
-
-			auto ps = new ProgrammaticProgramStream(mResourceMgr);
-			ps->setParser(parser);
-			ps->setAttribs({ "Colours" });
-
-			mTrisTextColouredProgram = mResourceMgr->declareAndAcquireResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps));
-			mTrisTextColouredProgram->load();
-		}
-
-		// Default texture
-		{
-			auto blankStream = new ProgrammaticTextureStream(mResourceMgr);
-			blankStream->setTarget(TextureTarget::Texture2D);
-			blankStream->setData([](string const& id)
-			{
-				TextureData data;
-
-				data.width = 1;
-				data.height = 1;
-				data.bitsPerPixel = 24;
-				data.dataType = GL_UNSIGNED_BYTE;
-				data.pixelFormat = GL_RGB;
-
-				size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
-
-				data.data = new uint8_t[dataSize];
-				memset(data.data, 255, dataSize);
-
-				return data;
-			});
-
-			blankStream->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
-			mNoTexture = mResourceMgr->declareAndAcquireResource("__mpp_tex_none__", ResourceStreamPtr(blankStream));
-			mNoTexture->load();
-		}
-
-		// Internal font texture
-		{
-			auto ts = new ProgrammaticTextureStream(mResourceMgr);
-			ts->setTarget(TextureTarget::Texture2D);
-			ts->setData([](string const& id)
-			{
-				InternalFont internalFont;
-				TextureData data;
-
-				data.width = internalFont.getWidth();
-				data.height = internalFont.getHeight();
-				data.bitsPerPixel = 32;
-				data.dataType = GL_UNSIGNED_BYTE;
-				data.pixelFormat = GL_RGBA;
-
-				size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
-
-				data.data = new uint8_t[dataSize];
-				memcpy(data.data, (uint8_t const*)internalFont.getData(), dataSize);
-
-				return data;
-			});
-
-			ts->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
-
-			mInternalFontTexture = mResourceMgr->declareAndAcquireResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts));
-			mInternalFontTexture->load();
-		}
-
+		mNoTexture = resourceMgr->acquireResource("__mpp_tex_none__");
+		
 		// Default 2d program
-		{
-			mesh::MeshSpecification spec2d(mesh::Primitive::Type::Triangles);
-			auto layout = spec2d.createVertexBufferAttributeLayout(false);
-			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+		mesh::MeshSpecification spec2d(mesh::Primitive::Type::Triangles);
+		auto layout = spec2d.createVertexBufferAttributeLayout(false);
+		layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+		layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
-			mDefaultProgram2d = resourceMgr->getDefault2dProgram(spec2d, 0, true);
-			mDefaultProgram2d->acquire();
-		}
+		mDefaultProgram2d = resourceMgr->getDefault2dProgram(spec2d, 0, true);
+		mDefaultProgram2d->acquire();
 
-		// Internal font
+		// Default 3d program
+		mDefaultProgram3d = resourceMgr->acquireResource("__mpp_p3d_tris_p3n3t2c4__");
+
+		mInternalFontTexture = resourceMgr->acquireResource("__mpp_tex_internalfont__");
 		mInternalFont = new Font(mInternalFontTexture);
 
 		// Default material
@@ -713,7 +532,8 @@ namespace mpp
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
-		mDefaultMaterial = resourceMgr->declareAndAcquireResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream));
+		mDefaultMaterial = resourceMgr->declareResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream));
+		mDefaultMaterial->acquire();
 		mDefaultMaterial->load();
 
 		// Internal font
@@ -723,7 +543,8 @@ namespace mpp
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
 		textMatStream->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStream->setTexture("TEX1", "__mpp_tex_internalfont__");
-		auto res = resourceMgr->declareAndAcquireResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream));
+		auto res = resourceMgr->declareResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream));
+		res->acquire();
 		res->load();
 		mMiscMaterials.push_back(res);
 
@@ -731,7 +552,8 @@ namespace mpp
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
 		textMatStreamColoured->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
-		res = resourceMgr->declareAndAcquireResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured));
+		res = resourceMgr->declareResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured));
+		res->acquire();
 		res->load();
 		mMiscMaterials.push_back(res);
 
@@ -800,7 +622,8 @@ namespace mpp
 		}
 
 		auto textStreamPtr = ResourceStreamPtr(textStream);
-		mTextMesh = resourceMgr->declareAndAcquireResource("__mpp_internal_text_mesh__", textStreamPtr);
+		mTextMesh = resourceMgr->declareResource("__mpp_internal_text_mesh__", textStreamPtr);
+		mTextMesh->acquire();
 		mTextMesh->load();
 
 		// Coloured font mesh
@@ -848,8 +671,8 @@ namespace mpp
 		}
 
 		textStreamPtr = ResourceStreamPtr(textStream);
-		mColouredTextMesh = resourceMgr->declareAndAcquireResource("__mpp_internal_coloured_text_mesh__", textStreamPtr);
-		mColouredTextMesh->load();
+		mColouredTextMesh = resourceMgr->declareResource("__mpp_internal_coloured_text_mesh__", textStreamPtr);
+		mColouredTextMesh->acquire();
 
 		// Fullscreen mesh
 		auto quadStream = new ProgrammaticModelStream(mResourceMgr);
@@ -871,7 +694,8 @@ namespace mpp
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32((float)mWindowHeight).f32(0.0f).f32(1.0f));
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 
-		mFullscreenQuad = resourceMgr->declareAndAcquireResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream));
+		mFullscreenQuad = resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream));
+		mFullscreenQuad->acquire();
 		mFullscreenQuad->load();
 
 		// Render targets
@@ -899,17 +723,12 @@ namespace mpp
 		mNoTexture->release();
 		mColouredTextMesh->release();
 		mTextMesh->release();
-		mPointsTextProgram->release();
-		mTrisTextProgram->release();
-		mPointsTextColouredProgram->release();
-		mTrisTextColouredProgram->release();
 		mFullscreenQuad->release();
 		mFullscreenProgram->release();
 		mDefaultMaterial->release();
 		mDefaultProgram2d->release();
 		mDefaultProgram3d->release();
 		mInternalFontTexture->release();
-
 		for (auto res : mMiscMaterials)
 		{
 			res->release();

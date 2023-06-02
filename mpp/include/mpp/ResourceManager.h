@@ -51,6 +51,8 @@ namespace mpp
 
 		size_t mProgramIdCounter{ 0 };
 
+		std::vector<ResourcePtr> mInternalResources;
+
 	public:
 
 		explicit ResourceManager(RenderSystem* renderSystem);
@@ -61,14 +63,16 @@ namespace mpp
 
 		ImageLoadFunction getImageLoadFunction();
 
+		void createCoreResources();
+
+		void destroyCoreResources();
+
 		void createAllResources();
 
 		void loadAllResources();
 
 		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
 
-		ResourcePtr declareAndAcquireResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
-		
 		ResourcePtr acquireResource(std::string const& name);
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);

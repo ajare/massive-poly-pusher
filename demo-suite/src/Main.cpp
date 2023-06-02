@@ -147,6 +147,7 @@ void startup()
 	
 	gResourceManager = new ResourceManager(gRenderSystem);
 	gResourceManager->setImageLoadFunction(loadImage);
+	gResourceManager->createCoreResources();
 
 	gRenderSystem->createCoreResources(gResourceManager);
 
@@ -189,6 +190,7 @@ void shutdown()
 	gRenderSystem->destroyCoreResources();
 	delete gRenderSystem;
 
+	gResourceManager->destroyCoreResources();
 	gResourceManager->dumpResources("final-resources.csv");
 	delete gResourceManager;
 

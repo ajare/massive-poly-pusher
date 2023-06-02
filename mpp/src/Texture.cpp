@@ -322,10 +322,7 @@ namespace mpp
 			setId(0);
 		}
 
-		if (mSampler)
-		{
-			mSampler->release();
-		}
+		mSampler->release();
 	}
 	
 	/*

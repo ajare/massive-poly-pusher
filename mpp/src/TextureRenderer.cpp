@@ -28,6 +28,7 @@ namespace mpp
 		rtStream->setNumAttachments(1);
 
 		auto rt = mResourceMgr->declareResource(mName, ResourceStreamPtr(rtStream));
+
 		rt->load();
 
 		updateRenderTexture(rt);
