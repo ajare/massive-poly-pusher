@@ -26,6 +26,8 @@ namespace mpp
 		int getIdCount() const override;
 
 		int getLiveIdCount() const override;
+
+		void bind(uint32_t unit);
 	};
 
 }

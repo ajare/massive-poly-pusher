@@ -981,17 +981,7 @@ namespace mpp
 			return;
 		}
 
-		// Bind program
-		GL_CHECK(glUseProgram(program->getId()));
-
-		// Bind texture unit locations to samplers
-		auto const& textureInfo = static_cast<Program*>(program.get())->getTextureInfo();
-		for (uint32_t i = 0; i < textureInfo.size(); ++i)
-		{
-			auto const& ti = textureInfo[i];
-			GL_CHECK(glUniform1i(ti.uniformId, i));
-		}
-
+		static_cast<Program*>(program.get())->bind();
 		mActiveProgram = program;
 	}
 

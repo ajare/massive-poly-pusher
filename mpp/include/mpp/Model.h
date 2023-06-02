@@ -36,10 +36,6 @@ namespace mpp
 
 		bool checkVertexAttributeMapping(ResourcePtr material, mesh::MeshDefinition* meshDef);
 
-		void setMeshesDynamic();
-
-		void setMeshesStatic();
-
 	public:
 
 		Model(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
@@ -59,6 +55,10 @@ namespace mpp
 		Mesh* getMesh(int index);
 
 		void getBounds(glm::vec3& bMin, glm::vec3& bMax);
+
+		void setMeshesDynamic();
+
+		void setMeshesStatic();
 	};
 
 }

@@ -5,6 +5,8 @@
 #include <exception>
 #include <string>
 
+#include <gl/GL.h>
+
 #pragma warning(push)
 #pragma warning(disable : 4275)
 
@@ -44,6 +46,23 @@ namespace mpp
 		MppIoException(std::string const& msg, int line, std::string const& file, std::string const& function);
 	};
 
+	class _MPPAPI MppGlException : public MppException
+	{
+		GLenum mErrorCode;
+
+	private:
+
+		std::string getErrorMessage(GLenum errorCode);
+
+	public:
+
+		explicit MppGlException(GLenum errorCode);
+
+		MppGlException(GLenum errorCode, int line, std::string const& file, std::string const& function);
+
+		GLenum getErrorCode() const;
+	};
+
 	class _MPPAPI MppNotImplementedException : public MppException
 	{
 	public:
@@ -76,5 +95,6 @@ namespace mpp
 	} while (false)
 
 #define THROW_MPP_IO(errMsg, line, file, function) throw mpp::MppIoException(errMsg, line, file, function)
+#define THROW_MPP_GL(errCode, line, file, function) throw mpp::MppGlException(errCode, line, file, function)
 #define THROW_MPP_NOTIMP(item, line, file, function) throw mpp::MppNotImplementedException(item, line, file, function)
 #define THROW_MPP_FN_NOTIMP(line, file, function) throw mpp::MppNotImplementedException(line, file, function)

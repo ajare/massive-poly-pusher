@@ -1,5 +1,6 @@
 #include "mpp/RenderPass.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
