@@ -24,8 +24,6 @@ namespace mpp
 		
 		uint32_t mBinding;
 
-		bool mLoaded;
-
 	private:
 
 		void allocate();
