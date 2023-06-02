@@ -37,7 +37,10 @@ namespace mpp
 	{
 		setPrimitiveData(type);
 
-		ACQUIRE_RESOURCE(mMaterial);
+		if (mMaterial)
+		{
+			mMaterial->acquire();
+		}
 	}
 
 	/*
@@ -59,7 +62,10 @@ namespace mpp
 		setPrimitiveData(type);
 		mIndexData = indices;
 
-		ACQUIRE_RESOURCE(mMaterial);
+		if (mMaterial)
+		{
+			mMaterial->acquire();
+		}
 	}
 
 	/*
@@ -75,7 +81,10 @@ namespace mpp
 			delete vertexBuffer;
 		}
 
-		RELEASE_RESOURCE_TO_DESTROY(mMaterial);
+		if (mMaterial)
+		{
+			mMaterial->release();
+		}
 	}
 
 	/*
@@ -145,9 +154,17 @@ namespace mpp
 	 */
 	void Mesh::setMaterial(ResourcePtr material)
 	{
-		RELEASE_RESOURCE_TO_UNLOAD(mMaterial);
+		if (mMaterial)
+		{
+			mMaterial->release();
+		}
+
 		mMaterial = material;
-		ACQUIRE_RESOURCE(mMaterial);
+
+		if (mMaterial)
+		{
+			mMaterial->acquire();
+		}
 	}
 
 	/*

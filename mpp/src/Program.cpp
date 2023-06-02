@@ -725,6 +725,8 @@ namespace mpp
 	 */
 	int Program::getLiveIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		int c;
 		GL_CHECK(c = glIsProgram(getId()));
 		return c;

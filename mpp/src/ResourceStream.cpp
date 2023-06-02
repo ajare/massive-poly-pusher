@@ -198,7 +198,7 @@ namespace mpp
 			{
 				string name = parentName + "/" + child.first;
 				auto childRes = mResourceMgr->getResource(name);
-				RELEASE_RESOURCE_TO_DESTROY(childRes);
+				childRes->release();
 
 				child.second->unloadChildResources(name);
 			}
