@@ -29,7 +29,6 @@ namespace mpp
 	Resource::~Resource()
 	{
 		//static_log_message(MPP_RESOURCE_LOGFILE, "Destruct " + getType() + ": '" + getName() + "'");
-		destroy();
 	}
 
 	/*
@@ -285,6 +284,11 @@ namespace mpp
 				destroy();
 			}
 		}
+	}
+
+	void Resource::_destroy()
+	{
+		destroy();
 	}
 
 }

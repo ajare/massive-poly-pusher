@@ -80,6 +80,15 @@ namespace mpp
 		};
 	}
 
+	ResourceManager::~ResourceManager()
+	{
+		for (auto const& kvp : mResources)
+		{
+			auto resource = kvp.second;
+			resource->_destroy();
+		}
+	}
+
 	void ResourceManager::createCoreResources()
 	{
 		// Default 3d program

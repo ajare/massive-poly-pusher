@@ -57,7 +57,7 @@ namespace mpp
 
 		explicit ResourceManager(RenderSystem* renderSystem);
 
-		~ResourceManager() = default;
+		~ResourceManager();
 
 		void setImageLoadFunction(ImageLoadFunction function);
 
