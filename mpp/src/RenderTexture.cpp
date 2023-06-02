@@ -282,8 +282,6 @@ namespace mpp
 	 */
 	void RenderTexture::activate()
 	{
-		THROW_IF_NOT_LOADED;
-
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
 	}
 
@@ -293,8 +291,6 @@ namespace mpp
 	 */
 	void RenderTexture::deactivate()
 	{
-		THROW_IF_NOT_LOADED;
-
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
@@ -322,29 +318,16 @@ namespace mpp
 	 */
 	size_t RenderTexture::getBitsPerPixel() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return 32;
-	}
-
-	GLuint RenderTexture::getFrameBuffer() const
-	{
-		THROW_IF_NOT_LOADED;
-
-		return mFrameBuffer;
 	}
 
 	bool RenderTexture::hasDepthBuffer() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return mUseDepthBuffer;
 	}
 
 	bool RenderTexture::hasStencilBuffer() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return false;
 	}
 }

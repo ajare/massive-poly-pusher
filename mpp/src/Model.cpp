@@ -447,8 +447,6 @@ namespace mpp
 	 */
 	int Model::getNumTriangles() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		int tris = 0;
 		for (auto it : mMeshes)
 		{
@@ -464,8 +462,6 @@ namespace mpp
 	 */
 	int Model::getNumMeshes() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return (int)mMeshes.size();
 	}
 
@@ -475,8 +471,6 @@ namespace mpp
 	 */
 	Mesh const* Model::getMesh(int index) const
 	{
-		THROW_IF_NOT_LOADED;
-
 		assert(index >= 0 && "Model::getMesh() 'index' argument out of range!");
 		return mMeshes[index];
 	}
@@ -487,8 +481,6 @@ namespace mpp
 	 */
 	Mesh* Model::getMesh(int index)
 	{
-		THROW_IF_NOT_LOADED;
-
 		assert(index >= 0 && "Model::getMesh() 'index' argument out of range!");
 		return mMeshes[index];
 	}
@@ -498,8 +490,6 @@ namespace mpp
 	 */
 	void Model::getBounds(glm::vec3& bMin, glm::vec3& bMax)
 	{
-		THROW_IF_NOT_LOADED;
-
 		bMin = mBounds[0];
 		bMax = mBounds[1];
 	}
@@ -534,8 +524,6 @@ namespace mpp
 	 */
 	int Model::getIdCount() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		int c = 0;
 		for (auto it : mMeshes)
 		{
@@ -551,8 +539,6 @@ namespace mpp
 	 */
 	int Model::getLiveIdCount() const
 	{
-		THROW_IF_NOT_LOADED; 
-		
 		int c = 0;
 		for (auto it : mMeshes)
 		{

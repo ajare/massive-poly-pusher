@@ -45,8 +45,7 @@ namespace mpp
 	 */
 	string const& String::getData()
 	{
-		THROW_IF_NOT_LOADED;
-
+		load();
 		return mData;
 	}
 

@@ -48,8 +48,6 @@ namespace mpp
 
 		size_t getBitsPerPixel() const;
 
-		GLuint getFrameBuffer() const;
-
 		bool hasDepthBuffer() const;
 
 		bool hasStencilBuffer() const;

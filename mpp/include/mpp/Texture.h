@@ -62,7 +62,7 @@ namespace mpp
 
 		virtual void bind(uint32_t unit, uint32_t attachment = 0);
 
-		void _setSortId(uint32_t sortId);
+		void setSortId(uint32_t sortId);
 
 		uint32_t getSortId() const;
 
