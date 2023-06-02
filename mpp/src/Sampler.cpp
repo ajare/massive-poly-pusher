@@ -109,6 +109,8 @@ namespace mpp
 	 */
 	int Sampler::getLiveIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		int c;
 		GL_CHECK(c = glIsSampler(getId()));
 		return c;

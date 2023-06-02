@@ -702,7 +702,7 @@ namespace mpp
 			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 
 			mDefaultProgram2d = resourceMgr->getDefault2dProgram(spec2d, 0, true);
-			ACQUIRE_RESOURCE(mDefaultProgram2d);
+			mDefaultProgram2d->acquire();
 		}
 
 		// Internal font
@@ -896,23 +896,23 @@ namespace mpp
 
 	void RenderSystem::destroyCoreResources()
 	{
-		RELEASE_RESOURCE_TO_DESTROY(mNoTexture);
-		RELEASE_RESOURCE_TO_DESTROY(mColouredTextMesh);
-		RELEASE_RESOURCE_TO_DESTROY(mTextMesh);
-		RELEASE_RESOURCE_TO_DESTROY(mPointsTextProgram);
-		RELEASE_RESOURCE_TO_DESTROY(mTrisTextProgram);
-		RELEASE_RESOURCE_TO_DESTROY(mPointsTextColouredProgram);
-		RELEASE_RESOURCE_TO_DESTROY(mTrisTextColouredProgram);
-		RELEASE_RESOURCE_TO_DESTROY(mFullscreenQuad);
-		RELEASE_RESOURCE_TO_DESTROY(mFullscreenProgram);
-		RELEASE_RESOURCE_TO_DESTROY(mDefaultMaterial);
-		RELEASE_RESOURCE_TO_DESTROY(mDefaultProgram2d);
-		RELEASE_RESOURCE_TO_DESTROY(mDefaultProgram3d);
-		RELEASE_RESOURCE_TO_DESTROY(mInternalFontTexture);
+		mNoTexture->release();
+		mColouredTextMesh->release();
+		mTextMesh->release();
+		mPointsTextProgram->release();
+		mTrisTextProgram->release();
+		mPointsTextColouredProgram->release();
+		mTrisTextColouredProgram->release();
+		mFullscreenQuad->release();
+		mFullscreenProgram->release();
+		mDefaultMaterial->release();
+		mDefaultProgram2d->release();
+		mDefaultProgram3d->release();
+		mInternalFontTexture->release();
 
 		for (auto res : mMiscMaterials)
 		{
-			RELEASE_RESOURCE_TO_DESTROY(res);
+			res->release();
 		}
 	}
 

@@ -20,43 +20,6 @@ namespace mpp
         }                   \
     } while (false)
 
-#define ACQUIRE_RESOURCE(res) \
-    do                        \
-    {                         \
-        if (res)              \
-        {                     \
-          res->acquire();     \
-        }                     \
-    } while (false)
-
-#define ACQUIRE_RESOURCE_AND_LOAD(res) \
-    do                        \
-    {                         \
-        if (res)              \
-        {                     \
-          res->acquire();     \
-          res->load();        \
-        }                     \
-    } while (false)
-
-#define RELEASE_RESOURCE_TO_UNLOAD(res) \
-    do                         \
-    {                          \
-        if (res)               \
-        {                      \
-          res->release(false); \
-        }                      \
-    } while (false)
-
-#define RELEASE_RESOURCE_TO_DESTROY(res) \
-    do                         \
-    {                          \
-        if (res)               \
-        {                      \
-          res->release(true);  \
-        }                      \
-    } while (false)
-
 	class RenderSystem;
 	class ResourceManager;
 	

@@ -11,13 +11,20 @@ namespace mpp
 	SceneModel3d::SceneModel3d(ResourcePtr model)
 		: mModel(model)
 	{
-		ACQUIRE_RESOURCE(mModel);
+		if (mModel)
+		{
+			mModel->acquire();
+		}
+
 		mParams = make_shared<ModelRenderParams>();
 	}
 
 	SceneModel3d::~SceneModel3d()
 	{
-		RELEASE_RESOURCE_TO_DESTROY(mModel);
+		if (mModel)
+		{
+			mModel->release();
+		}
 	}
 
 	void SceneModel3d::resetTransform()

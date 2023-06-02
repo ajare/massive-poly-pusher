@@ -334,8 +334,6 @@ namespace mpp
 	 */
 	size_t Texture::getWidth() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return mWidth;
 	}
 
@@ -345,8 +343,6 @@ namespace mpp
 	 */
 	size_t Texture::getHeight() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return mHeight;
 	}
 
@@ -356,8 +352,6 @@ namespace mpp
 	 */
 	size_t Texture::getDepth() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return mDepth;
 	}
 
@@ -367,8 +361,6 @@ namespace mpp
 	 */
 	size_t Texture::getBitsPerPixel() const
 	{
-		THROW_IF_NOT_LOADED;
-
 		return mBitsPerPixel;
 	}
 
@@ -434,7 +426,10 @@ namespace mpp
 	 */
 	void Texture::bind(uint32_t unit, uint32_t attachment)
 	{
-		THROW_IF_NOT_LOADED;
+		if (!isLoaded())
+		{
+			load();
+		}
 
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
@@ -468,6 +463,8 @@ namespace mpp
 	 */
 	int Texture::getIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		return (int)mTextureIds.size();
 	}
 
@@ -477,6 +474,8 @@ namespace mpp
 	 */
 	int Texture::getLiveIdCount() const
 	{
+		THROW_IF_NOT_LOADED;
+
 		int c = 0;
 		for (auto id : mTextureIds)
 		{

@@ -34,7 +34,11 @@ namespace mpp
 		, mPointSize((float)options.maxSizeX)
 	{
 		setPrimitiveOptions();
-		ACQUIRE_RESOURCE(mTexture);
+
+		if (mTexture)
+		{
+			mTexture->acquire();
+		}
 	}
 
 	/*
@@ -128,7 +132,10 @@ namespace mpp
 
 	QuadBatch::~QuadBatch()
 	{
-		RELEASE_RESOURCE_TO_DESTROY(mTexture);
+		if (mTexture)
+		{
+			mTexture->release();
+		}
 	}
 
 	void QuadBatch::setPrimitiveOptions()
@@ -372,7 +379,7 @@ namespace mpp
 		if (!mTexture && mTextureRenderer)
 		{
 			mTexture = mTextureRenderer->createRenderTexture(mOptions.maxSizeX, mOptions.maxSizeY);
-			ACQUIRE_RESOURCE(mTexture);
+			mTexture->acquire();
 		}
 
 		return mTexture;
