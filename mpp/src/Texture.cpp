@@ -322,7 +322,10 @@ namespace mpp
 			setId(0);
 		}
 
-		RELEASE_RESOURCE_TO_UNLOAD(mSampler);
+		if (mSampler)
+		{
+			mSampler->release();
+		}
 	}
 	
 	/*
