@@ -22,11 +22,7 @@ namespace mpp
 		, mInstanceCount(1)
 	{
 		mMaterial = mesh->getMaterial();
-
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		mMaterial->acquire();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -45,11 +41,7 @@ namespace mpp
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
-
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		mMaterial->acquire();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -67,11 +59,7 @@ namespace mpp
 		: mwMesh(mesh)
 	{
 		mMaterial = mesh->getMaterial();
-
-		if (mMaterial)
-		{
-			mMaterial->acquire();
-		}
+		mMaterial->acquire();
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;

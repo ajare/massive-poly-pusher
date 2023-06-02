@@ -162,8 +162,6 @@ namespace mpp
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
-		
-		ResourcePtr mPointsTextProgram, mTrisTextProgram, mPointsTextColouredProgram, mTrisTextColouredProgram;
 
 #ifdef MPP_PROFILE_BUILD
 		Profiler* mProfiler;
@@ -450,7 +448,6 @@ namespace mpp
 		{
 			_aligned_free(p);
 		}
-
 	};
 
 }
