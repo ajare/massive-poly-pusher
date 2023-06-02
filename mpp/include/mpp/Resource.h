@@ -91,6 +91,8 @@ namespace mpp
 		void acquire();
 
 		void release(bool destroyAfterUnload = true);
+
+		void _destroy();
 	};
 
 	typedef std::shared_ptr<Resource> ResourcePtr;
