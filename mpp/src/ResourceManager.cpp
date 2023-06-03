@@ -577,7 +577,7 @@ namespace mpp
 		return res;
 	}
 
-	vector<ResourcePtr> const& ResourceManager::getAllUnreferencedResources() const
+	vector<ResourcePtr> ResourceManager::getAllUnreferencedResources() const
 	{
 		vector<ResourcePtr> resources;
 
