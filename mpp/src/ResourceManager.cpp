@@ -234,7 +234,6 @@ namespace mpp
 			auto createdProgram = mProgramCache.find(fullSource);
 			if (createdProgram != mProgramCache.end())
 			{
-				mResources[name] = createdProgram->second;
 				return createdProgram->second;
 			}
 		}
