@@ -83,7 +83,7 @@ namespace mpp
 
 		ResourcePtr getDefault3dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
-		std::vector<ResourcePtr> const& getAllUnreferencedResources() const;
+		std::vector<ResourcePtr> getAllUnreferencedResources() const;
 
 		ResourcePtr getTextureBySortId(uint32_t id);
 
