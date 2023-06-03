@@ -613,7 +613,7 @@ namespace mpp
 			ps->setParser(parser);
 
 			auto res = resourceMgr->declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps));
-			addCoreResource(res, false);
+			addCoreResource(res, true);
 		}
 		{
 			mesh::MeshSpecification meshSpec;
@@ -655,7 +655,7 @@ namespace mpp
 			ps->setAttribs({ "Colours" });
 
 			auto res = resourceMgr->declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps));
-			addCoreResource(res, false);
+			addCoreResource(res, true);
 		}
 
 		// Default texture
