@@ -28,6 +28,15 @@ namespace mpp
 	}
 
 	/*
+	 * Destructor
+	 *
+	 */
+	Sampler::~Sampler()
+	{
+		destroy();
+	}
+
+	/*
 	 * Create the data required for the program from the resource stream.
 	 *
 	 */
@@ -43,7 +52,7 @@ namespace mpp
 	}
 
 	/*
-	 * Destroy the texture data.
+	 * Destroy the sampler data.
 	 *
 	 */
 	void Sampler::destroyImpl()

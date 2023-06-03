@@ -38,6 +38,15 @@ namespace mpp
 	}
 
 	/*
+	 * Destructor
+	 *
+	 */
+	Texture::~Texture()
+	{
+		destroy();
+	}
+
+	/*
 	 * Create the data required for the program from the resource stream.
 	 *
 	 */
