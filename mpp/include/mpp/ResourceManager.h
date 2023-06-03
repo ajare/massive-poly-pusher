@@ -65,9 +65,9 @@ namespace mpp
 
 		void loadAllResources();
 
-		void unloadAllFreeResources();
+		void unloadAllUnreferencedResources();
 
-		void destroyAllFreeResources();
+		void destroyAllUnreferencedResources();
 
 		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
 
@@ -82,6 +82,8 @@ namespace mpp
 		ResourcePtr getDefault3dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
 		ResourcePtr getDefault3dProgram(std::string const& defaultVertexShader, std::string const& defaultFragmentShader, mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
+
+		std::vector<ResourcePtr> const& getAllUnreferencedResources() const;
 
 		ResourcePtr getTextureBySortId(uint32_t id);
 
