@@ -175,7 +175,7 @@ namespace mpp
 	 * Unload all resources with no references.
 	 *
 	 */
-	void ResourceManager::unloadAllFreeResources()
+	void ResourceManager::unloadAllUnreferencedResources()
 	{
 		for (auto it : mResources)
 		{
@@ -191,7 +191,7 @@ namespace mpp
 	 * Destroy all resources with no references.
 	 *
 	 */
-	void ResourceManager::destroyAllFreeResources()
+	void ResourceManager::destroyAllUnreferencedResources()
 	{
 		for (auto it : mResources)
 		{
@@ -575,6 +575,22 @@ namespace mpp
 		}
 
 		return res;
+	}
+
+	vector<ResourcePtr> const& ResourceManager::getAllUnreferencedResources() const
+	{
+		vector<ResourcePtr> resources;
+
+		for (auto kvp : mResources)
+		{
+			if (kvp.second->isUnreferenced())
+			{
+				resources.push_back(kvp.second);
+			}
+		}
+
+		return resources;
+
 	}
 
 	/*
