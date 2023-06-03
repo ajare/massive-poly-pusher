@@ -71,7 +71,7 @@ namespace mpp
 	 * Are we safe to unload/destroy this resource?
 	 *
 	 */
-	int Resource::isAvailableForUnload() const
+	int Resource::isUnreferenced() const
 	{
 		return mRefCount == 0;
 	}
