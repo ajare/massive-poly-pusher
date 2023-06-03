@@ -16,6 +16,15 @@ namespace mpp
 	}
 
 	/*
+	 * Destructor
+	 *
+	 */
+	String::~String()
+	{
+		destroy();
+	}
+
+	/*
 	 * Create string.
 	 *
 	 */

@@ -24,6 +24,8 @@ namespace mpp
 
 		String(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
+		~String();
+
 		std::string const& getData();
 	};
 }

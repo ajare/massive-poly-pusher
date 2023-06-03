@@ -21,6 +21,15 @@ namespace mpp
 	}
 
 	/*
+	 * Destructor
+	 *
+	 */
+	Material::~Material()
+	{
+		destroy();
+	}
+
+	/*
 	 * Create material.
 	 *
 	 */

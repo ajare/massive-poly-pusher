@@ -31,6 +31,8 @@ namespace mpp
 
 		Material(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
+		~Material();
+
 		ResourcePtr getProgram();
 
 		int getNumTextures() const;

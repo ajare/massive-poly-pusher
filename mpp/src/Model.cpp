@@ -38,10 +38,7 @@ namespace mpp
 	 */
 	Model::~Model()
 	{
-		for (auto mesh: mMeshes)
-		{
-			delete mesh;
-		}
+		destroy();
 	}
 
 	glm::vec3 Model::readPositionFromStream(int8_t const* stream, mesh::VertexBufferAttributeLayout::Attribute const& attrib)

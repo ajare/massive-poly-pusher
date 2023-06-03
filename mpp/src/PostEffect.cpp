@@ -18,6 +18,15 @@ namespace mpp
 	{
 	}
 
+	/*
+	 * Destructor
+	 *
+	 */
+	PostEffect::~PostEffect()
+	{
+		destroy();
+	}
+
 	void PostEffect::createImpl()
 	{
 		PostEffectStream* peStr = dynamic_cast<PostEffectStream*>(getResourceStream().get());

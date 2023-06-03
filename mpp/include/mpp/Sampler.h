@@ -23,6 +23,8 @@ namespace mpp
 
 		Sampler(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
+		~Sampler();
+
 		int getIdCount() const override;
 
 		int getLiveIdCount() const override;

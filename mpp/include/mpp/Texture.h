@@ -44,6 +44,8 @@ namespace mpp
 
 		Texture(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
+		~Texture();
+
 		virtual size_t getWidth() const;
 
 		virtual size_t getHeight() const;
