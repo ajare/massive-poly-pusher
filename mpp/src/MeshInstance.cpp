@@ -10,70 +10,91 @@ using namespace std;
 
 namespace mpp
 {
-	/*
-	 * Constructor.
-	 *
-	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize)
-		: mwMesh(mesh)
+	MeshInstance::MeshInstance()
+		: mwMesh(nullptr)
 		, mRender(true)
 		, mWireframe(false)
 		, mBlend(false)
-		, mInstanceCount(1)
+		, mInstanceCount(0)
 	{
-		mMaterial = mesh->getMaterial();
-		mMaterial->acquire();
-
-		mViewPos = viewPos;
-		mModelMatrix = modelMatrix;
-		mModelCameraProjectionMatrix = modelCameraProjMatrix;
-		mLocalTransform = glm::mat4();
-		mNormalMatrix = normalMatrix;
-		mHalfWindowSize = halfWindowSize;
-		mPointSize = pointSize;
-	}
-
-	/*
-	 * Constructor.
-	 *
-	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize)
-		: mwMesh(mesh)
-	{
-		mMaterial = mesh->getMaterial();
-		mMaterial->acquire();
-
-		mViewPos = viewPos;
-		mModelMatrix = modelMatrix;
-		mModelCameraProjectionMatrix = modelCameraProjMatrix;
-		mLocalTransform = glm::mat4();
-		mNormalMatrix = normalMatrix;
-		mPointSize = pointSize;
-	}
-
-	/*
-	 * Constructor.
-	 *
-	 */
-	MeshInstance::MeshInstance(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize)
-		: mwMesh(mesh)
-	{
-		mMaterial = mesh->getMaterial();
-		mMaterial->acquire();
-
-		mViewPos = viewPos;
-		mModelMatrix = modelMatrix;
-		mModelCameraProjectionMatrix = modelCameraProjMatrix;
-		mLocalTransform = glm::mat4();
-		mHalfWindowSize = halfWindowSize;
-		mPointSize = pointSize;
 	}
 
 	MeshInstance::~MeshInstance()
 	{
+		teardown();
+	}
+
+	void MeshInstance::commonSetup(Mesh const* mesh)
+	{
+		teardown();
+
+		mwMesh = mesh;
+		mRender = true;
+		mWireframe = false;
+		mBlend = false;
+		mInstanceCount = 1;
+
+		mMaterial = mesh->getMaterial();
+		mMaterial->acquire();
+	}
+
+	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize)
+	{
+		commonSetup(mesh);
+
+		mViewPos = viewPos;
+		mModelMatrix = modelMatrix;
+		mModelCameraProjectionMatrix = modelCameraProjMatrix;
+		mLocalTransform = glm::mat4();
+		mNormalMatrix = normalMatrix;
+		mHalfWindowSize = halfWindowSize;
+		mPointSize = pointSize;
+	}
+
+	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize)
+	{
+		commonSetup(mesh);
+
+		mViewPos = viewPos;
+		mModelMatrix = modelMatrix;
+		mModelCameraProjectionMatrix = modelCameraProjMatrix;
+		mLocalTransform = glm::mat4();
+		mNormalMatrix = normalMatrix;
+		mPointSize = pointSize;
+	}
+
+	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize)
+	{
+		commonSetup(mesh);
+
+		mViewPos = viewPos;
+		mModelMatrix = modelMatrix;
+		mModelCameraProjectionMatrix = modelCameraProjMatrix;
+		mLocalTransform = glm::mat4();
+		mHalfWindowSize = halfWindowSize;
+		mPointSize = pointSize;
+	}
+
+	void MeshInstance::teardown()
+	{
+		mwMesh = nullptr;
+		mRender = true;
+		mWireframe = false;
+		mBlend = false;
+		mInstanceCount = 0;
+
 		if (mMaterial)
 		{
 			mMaterial->release();
+			mMaterial.reset();
+		}
+
+		mRenderRanges.clear();
+		mTextureOverrides.clear();
+
+		if (mUniforms)
+		{
+			mUniforms.reset();
 		}
 	}
 

@@ -13,6 +13,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Caps.h"
+#include "mpp/Pool.h"
 #include "mpp/Resource.h"
 #include "mpp/RenderPipeline.h"
 #include "mpp/RenderTarget.h"
@@ -118,7 +119,9 @@ namespace mpp
 		ProjectionType mProjectionType;
 
 		// List of models to render
-		std::vector<ModelInstance*> mModelInstances;
+		Pool<ModelInstance>* mModelInstances;
+
+		Pool<MeshInstance>* mMeshInstances;
 
 		//
 		// Core resources
