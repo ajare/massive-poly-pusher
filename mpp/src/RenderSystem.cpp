@@ -68,6 +68,8 @@ namespace mpp
 		, mRenderTarget(nullptr)
 		, mScreen(nullptr)
 		, mProjectionType(ProjectionType::Unknown)
+		, mModelInstances(nullptr)
+		, mMeshInstances(nullptr)
 		, mShowDebugPanel(false)
 		, mTimeUnit(TimeUnit::Milliseconds)
 		, mSizeUnit(SizeUnit::Megabytes)
@@ -92,6 +94,8 @@ namespace mpp
 	 */
 	RenderSystem::~RenderSystem()
 	{
+		delete mModelInstances;
+		delete mMeshInstances;
 		delete mInternalFont;
 		destroyLightsData();
 
@@ -267,6 +271,14 @@ namespace mpp
 		mProfiler = new Profiler();
 #endif
 
+		// Pools for rendering objects
+		delete mModelInstances;
+		mModelInstances = new Pool<ModelInstance>(32);
+
+		delete mMeshInstances;
+		mMeshInstances = new Pool<MeshInstance>(64);
+
+		// Set state and display
 		setDefaultState();
 		setDisplay(mWindowWidth, mWindowHeight);
 		createLightsData();
@@ -1544,21 +1556,24 @@ namespace mpp
 
 	ModelInstance* RenderSystem::renderModelBatched(Model const& model, bool alphaBlend, glm::vec3 const& viewPos, glm::mat4 const& transform, glm::mat4 const& mcp)
 	{
-		ModelInstance* mi = new ModelInstance(model,
+		auto modelInstance = mModelInstances->acquireObject();
+		
+		modelInstance->setup(
+			model,
 			viewPos,
 			transform,
 			mcp,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
-			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f),
+			mMeshInstances);
 
-		auto& instances = mi->getMeshInstances();
+		auto& instances = modelInstance->getMeshInstances();
 		for (auto& instance : instances)
 		{
 			instance->blend(alphaBlend);
 		}
 
-		mModelInstances.push_back(mi);
-		return mi;
+		return modelInstance;
 	}
 
 	/*
@@ -2459,9 +2474,11 @@ namespace mpp
 		// Extract and sort list of meshes
 		vector<SortableMeshInstance> meshInstances;
 
-		for (auto modelInstance: mModelInstances)
+		for (size_t i = 0; i < mModelInstances->getCount(); ++i)
 		{
+			auto modelInstance = mModelInstances->getObject(i);
 			auto const& modelMeshInstances = modelInstance->getMeshInstances();
+		
 			for (auto const& mi: modelMeshInstances)
 			{
 				if (mi->render())
@@ -2631,13 +2648,8 @@ namespace mpp
 			}
 		}
 
-		// Delete all ModelInstances now that they're rendered.
-		for (auto modelInstance: mModelInstances)
-		{
-			delete modelInstance;
-		}
-
-		mModelInstances.clear();
+		mModelInstances->releaseAllObjects();
+		mMeshInstances->releaseAllObjects();
 	}
 	
 	/*

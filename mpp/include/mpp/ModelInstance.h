@@ -14,24 +14,31 @@
 #include "mpp/Resource.h"
 #include "mpp/Model.h"
 #include "mpp/ModelRenderParams.h"
+#include "mpp/Pool.h"
 
 namespace mpp
 {
+	class RenderSystem;
+
 	class _MPPAPI ModelInstance
 	{
 		std::map<std::string, MeshInstance*> mMeshInstances;
 
 		std::vector<MeshInstance*> mOrderedMeshInstances;
 
+	private:
+
+		void teardown();
+
 	public:
 
-		ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize);
-
-		ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix);
-
-		ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize);
-
 		~ModelInstance();
+
+		void setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool);
+
+		void setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, Pool<MeshInstance>* pool);
+
+		void setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool);
 
 		std::vector<MeshInstance*>& getMeshInstances();
 

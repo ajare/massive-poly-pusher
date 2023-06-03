@@ -47,6 +47,7 @@
     <ClInclude Include="..\..\include\mpp\ModelStream.h" />
     <ClInclude Include="..\..\include\mpp\MppException.h" />
     <ClInclude Include="..\..\include\mpp\MppModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\Pool.h" />
     <ClInclude Include="..\..\include\mpp\PostEffect.h" />
     <ClInclude Include="..\..\include\mpp\PostEffectStream.h" />
     <ClInclude Include="..\..\include\mpp\PrimitiveModelStream.h" />

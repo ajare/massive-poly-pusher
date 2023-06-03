@@ -5,18 +5,25 @@ using namespace std;
 
 namespace mpp
 {
-	/*
-	 * Constructor.
-	 *
-	 */
-	ModelInstance::ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize)
+
+	ModelInstance::~ModelInstance()
 	{
+		teardown();
+	}
+
+	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool)
+	{
+		teardown();
+
 		// Iterate over model and create MeshInstances
 		for (int i = 0; i < model.getNumMeshes(); ++i)
 		{
 			Mesh const* mesh = model.getMesh(i);
 
-			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, halfWindowSize, mesh->getPointSize());
+			//auto mi = new MeshInstance();
+			auto mi = pool->acquireObject();
+
+			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, halfWindowSize, mesh->getPointSize());
 
 			string meshName = mesh->getName();
 			mMeshInstances[meshName] = mi;
@@ -24,50 +31,53 @@ namespace mpp
 		}
 	}
 
-	/*
-	* Constructor.
-	*
-	*/
-	ModelInstance::ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix)
+	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, Pool<MeshInstance>* pool)
 	{
+		teardown();
+
 		// Iterate over model and create MeshInstances
 		for (int i = 0; i < model.getNumMeshes(); ++i)
 		{
 			Mesh const* mesh = model.getMesh(i);
 
-			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, mesh->getPointSize());
+			//auto mi = new MeshInstance();
+			auto mi = pool->acquireObject();
+
+			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, mesh->getPointSize());
+
 			mMeshInstances[mesh->getName()] = mi;
 			mOrderedMeshInstances.push_back(mi);
 		}
 	}
 
-	/*
-	 * Constructor.
-	 *
-	 */
-	ModelInstance::ModelInstance(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize)
+	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool)
 	{
+		teardown();
+
 		// Iterate over model and create MeshInstances
 		for (int i = 0; i < model.getNumMeshes(); ++i)
 		{
 			Mesh const* mesh = model.getMesh(i);
 
-			MeshInstance* mi = new MeshInstance(mesh, viewPos, modelMatrix, modelCameraProjMatrix, halfWindowSize, mesh->getPointSize());
+			//auto mi = new MeshInstance();
+			auto mi = pool->acquireObject();
+
+			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, halfWindowSize, mesh->getPointSize());
+
 			mMeshInstances[mesh->getName()] = mi;
 			mOrderedMeshInstances.push_back(mi);
 		}
 	}
-	
-	/*
-	 * Destructor
-	 *
-	 */
-	ModelInstance::~ModelInstance()
+
+	void ModelInstance::teardown()
 	{
-		for (auto mesh: mMeshInstances)
+		for (auto kvp : mMeshInstances)
 		{
-			delete mesh.second;
+			//delete kvp.second;
 		}
+
+		mMeshInstances.clear();
+		mOrderedMeshInstances.clear();
 	}
 
 	/*
