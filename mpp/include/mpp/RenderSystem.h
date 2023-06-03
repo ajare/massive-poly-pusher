@@ -100,6 +100,9 @@ namespace mpp
 
 		glm::vec4 mClearColour;
 
+		//
+		// Rendering
+		//
 		std::map<std::string, RenderPipelinePtr> mPipelines;
 
 		RenderTargetPtr mRenderTarget;
@@ -110,15 +113,19 @@ namespace mpp
 
 		RenderTargetPtr mScreen;
 
+		RenderTargetPtr mSceneTarget;
+
 		ProjectionType mProjectionType;
 
 		// List of models to render
 		std::vector<ModelInstance*> mModelInstances;
 
+		//
+		// Core resources
+		//
+
 		// Default material: 2d with PTC and no texture
 		ResourcePtr mDefaultMaterial;
-
-		std::vector<ResourcePtr> mMiscMaterials;
 
 		// Default programs
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
@@ -130,17 +137,32 @@ namespace mpp
 
 		ResourcePtr mInternalFontTexture;
 
+		// Fullscreen effects
+		ResourcePtr mFullscreenQuad, mFullscreenProgram;
+
+		// Text rendering
+		ResourcePtr mTextMesh, mColouredTextMesh;
+
+		// Lookup for ease
+		std::vector<ResourcePtr> mCoreResources;
+
+		//
 		// Internal font
+		//
 		Font* mInternalFont;
 
 		std::shared_ptr<UniformCollection> mTextUniforms;
 
 		std::shared_ptr<ModelRenderParams> mTextParams;
 
+		//
 		// Preloading
+		//
 		std::queue<std::pair<PreloadFunction, PreloadFunctionCallback>> mPreloadResources;
 
+		//
 		// 3d Transforms
+		//
 #pragma warning(push)
 #pragma warning(disable: 4324)
 		alignas(16) glm::mat4 m3dModelCameraProjectionMatrix;
@@ -154,14 +176,6 @@ namespace mpp
 #pragma warning(pop)
 
 		float mFarPlaneDistance;
-
-		// Fullscreen effects
-		ResourcePtr mFullscreenQuad, mFullscreenProgram;
-
-		RenderTargetPtr mSceneTarget;
-
-		// Text rendering
-		ResourcePtr mTextMesh, mColouredTextMesh;
 
 #ifdef MPP_PROFILE_BUILD
 		Profiler* mProfiler;
@@ -199,6 +213,9 @@ namespace mpp
 		std::map<std::string, OpenGLError> mOpenGLErrors;
 #endif
 		
+		//
+		// Debug and info
+		//
 		bool mShowDebugPanel;
 
 		TimeUnit mTimeUnit;
@@ -207,10 +224,14 @@ namespace mpp
 		
 		RenderInfo mRenderInfo;
 
+		//
 		// Built-in lights
+		//
 		UniformBuffer* mLightsBuffer{ nullptr };
 
-		// Scene
+		//
+		// Scenes
+		//
 		std::map<std::string, SceneFactory> mSceneFactories;
 
 	private:
@@ -242,6 +263,8 @@ namespace mpp
 		void createLightsData();
 
 		void destroyLightsData();
+
+		void addCoreResource(ResourcePtr resource, bool load);
 
 	public:
 

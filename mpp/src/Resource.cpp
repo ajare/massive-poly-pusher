@@ -68,12 +68,12 @@ namespace mpp
 	}
 
 	/*
-	 * How many references are there to this resource?
+	 * Are we safe to unload/destroy this resource?
 	 *
 	 */
-	int Resource::getRefCount() const
+	int Resource::isAvailableForUnload() const
 	{
-		return mRefCount;
+		return mRefCount == 0;
 	}
 
 	/*
@@ -92,6 +92,15 @@ namespace mpp
 	int Resource::getLiveIdCount() const
 	{
 		return 0;
+	}
+
+	/*
+	 * Get number of references to this resource
+	 *
+	 */
+	int Resource::getRefCount() const
+	{
+		return mRefCount;
 	}
 
 	/*
@@ -269,26 +278,10 @@ namespace mpp
 		mRefCount++;
 	}
 
-	void Resource::release(bool destroyAfterUnload)
+	void Resource::release()
 	{
 		mRefCount--;
-
 		assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");
-
-		if (mRefCount == 0)
-		{
-			unload();
-
-			if (destroyAfterUnload)
-			{
-				destroy();
-			}
-		}
-	}
-
-	void Resource::_destroy()
-	{
-		destroy();
 	}
 
 }

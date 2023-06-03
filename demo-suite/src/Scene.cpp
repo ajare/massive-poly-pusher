@@ -41,9 +41,32 @@ void Scene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options
 	setupImpl(renderSystem, options);
 }
 
+void Scene::addResource(mpp::ResourcePtr resource, bool load)
+{
+	resource->acquire();
+	if (load)
+	{
+		resource->load();
+	}
+
+	mResources.push_back(resource);
+}
+
 void Scene::teardown()
 {
+	// Let the scene release its specific resources
 	teardownImpl();
+
+	// Release and unload any generic scene resources
+	for (auto res : mResources)
+	{
+		res->release();
+
+		if (res->isAvailableForUnload())
+		{
+			res->destroy();
+		}
+	}
 }
 
 string Scene::getRenderPipelineName() const
