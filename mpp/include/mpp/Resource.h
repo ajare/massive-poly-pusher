@@ -36,10 +36,6 @@ namespace mpp
 
 	protected:
 
-		void destroy();
-
-		void unload();
-
 		virtual void createImpl() = 0;
 
 		virtual void destroyImpl() = 0;
@@ -64,13 +60,15 @@ namespace mpp
 
 		bool isLoaded() const;
 
-		int getRefCount() const;
+		int isAvailableForUnload() const;
 		
 		uint32_t getId() const;
 
 		virtual int getIdCount() const;
 
 		virtual int getLiveIdCount() const;
+
+		int getRefCount() const;
 
 		RenderSystem* getRenderSystem();
 
@@ -86,13 +84,15 @@ namespace mpp
 
 		void create();
 
+		void destroy();
+
 		void load(bool unloadStreamsAfterwards = false);
+
+		void unload();
 
 		void acquire();
 
-		void release(bool destroyAfterUnload = true);
-
-		void _destroy();
+		void release();
 	};
 
 	typedef std::shared_ptr<Resource> ResourcePtr;

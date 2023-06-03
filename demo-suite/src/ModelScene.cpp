@@ -70,8 +70,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	// Create a Sampler resource.  This holds parameters that shaders use when sampling textures.
 	auto samplerStream = new ProgrammaticSamplerStream(resourceMgr);
 	samplerStream->setFiltering(mpp::SamplerParams::MinFilter::Linear, mpp::SamplerParams::MagFilter::Linear);
-	mDefaultSampler = resourceMgr->declareResource("Default.Sampler", ResourceStreamPtr(samplerStream));
-	mDefaultSampler->acquire();
+	addResource(resourceMgr->declareResource("Default.Sampler", ResourceStreamPtr(samplerStream)), false);
 
 	// Create texture with sampler.
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
@@ -79,57 +78,49 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
-	mMarbleTexture = resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream));
-	mMarbleTexture->acquire();
+	addResource(resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream)), false);
 	
 	// Create texture programmatically.  This is a 16bit texture.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "clouds_16.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
-	mCloudsTexture = resourceMgr->declareResource("Clouds.Texture", ResourceStreamPtr(textureStream));
-	mCloudsTexture->acquire();
+	addResource(resourceMgr->declareResource("Clouds.Texture", ResourceStreamPtr(textureStream)), false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "electbubbles.jpg", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
 	textureStream->enableMipMaps(true);
-	mElectroTexture = resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream));
-	mElectroTexture->acquire();
+	addResource(resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream)), false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
-	mTestTexture = resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream));
-	mTestTexture->acquire();
+	addResource(resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream)), false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "dragon.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
-	mDragonTexture = resourceMgr->declareResource("Dragon.Texture", ResourceStreamPtr(textureStream));
-	mDragonTexture->acquire();
+	addResource(resourceMgr->declareResource("Dragon.Texture", ResourceStreamPtr(textureStream)), false);
 
 	textureStream = new ProgrammaticTextureAtlasStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "bullets.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
-	mBulletsTexture = resourceMgr->declareResource("Bullets.Texture", ResourceStreamPtr(textureStream));
-	mBulletsTexture->acquire();
+	addResource(resourceMgr->declareResource("Bullets.Texture", ResourceStreamPtr(textureStream)), false);
 
 	textureStream = new ProgrammaticTextureAtlasStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "atlas.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
-	mAtlasTexture = resourceMgr->declareResource("Atlas.Texture", ResourceStreamPtr(textureStream));
-	mAtlasTexture->acquire();
+	addResource(resourceMgr->declareResource("Atlas.Texture", ResourceStreamPtr(textureStream)), false);
 
 	// Create texture from file definition.
 	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, options.resourceLocation + "Doughnut.xml");
-	mDoughnutTexture = resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(fileStream));
-	mDoughnutTexture->acquire();
+	addResource(resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(fileStream)), false);
 
 	// Create 1D texture from programmatic data.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
@@ -158,8 +149,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	});
 
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
-	mStripTexture = resourceMgr->declareResource("Strip.Texture", ResourceStreamPtr(textureStream));
-	mStripTexture->acquire();
+	addResource(resourceMgr->declareResource("Strip.Texture", ResourceStreamPtr(textureStream)), false);
 }
 
 mesh::MeshSpecification ModelScene::createGridMeshSpecification()
@@ -178,15 +168,13 @@ mesh::MeshSpecification ModelScene::createGridMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+void ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
 	// Create a String resource, which contains a vertex shader
 	auto vertStream = new mpp::resource_parsers::FileStringStream(resourceMgr, options.resourceLocation + "Elevator.Vert.xml");
-	mElevatorVertShader = resourceMgr->declareResource("Elevator.Vert", ResourceStreamPtr(vertStream));
-	mElevatorVertShader->acquire();
-	mElevatorVertShader->load();
+	addResource(resourceMgr->declareResource("Elevator.Vert", ResourceStreamPtr(vertStream)), true);
 
 	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
@@ -197,12 +185,7 @@ mpp::ResourcePtr ModelScene::createGridMaterial(mpp::mesh::MeshSpecification con
 	materialStream->setTexture("TEX1", "Clouds.Texture");
 
 	ResourceStreamPtr matStreamPtr(materialStream);
-
-	mGridMaterial = resourceMgr->declareResource("Grid.Material", matStreamPtr);
-	mGridMaterial->acquire();
-	mGridMaterial->load();
-
-	return mGridMaterial;
+	addResource(resourceMgr->declareResource("Grid.Material", matStreamPtr), true);
 }
 
 mesh::MeshSpecification ModelScene::createSphereMeshSpecification()
@@ -221,16 +204,12 @@ mesh::MeshSpecification ModelScene::createSphereMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+void ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
 	auto materialStream = new resource_parsers::FileMaterialStream(resourceMgr, options.resourceLocation + "ElectricMaterial.xml");
-	mSphereMaterial = resourceMgr->declareResource("Sphere.Material", ResourceStreamPtr(materialStream));
-	mSphereMaterial->acquire();
-	mSphereMaterial->load();
-
-	return mSphereMaterial;
+	addResource(resourceMgr->declareResource("Sphere.Material", ResourceStreamPtr(materialStream)), true);
 }
 
 mesh::MeshSpecification ModelScene::createCylinderMeshSpecification()
@@ -249,7 +228,7 @@ mesh::MeshSpecification ModelScene::createCylinderMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+void ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -258,11 +237,7 @@ mpp::ResourcePtr ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification
 	materialStream->setMeshSpecification(meshSpec);
 	materialStream->setTexture("TEX1", "Marble.Texture");
 
-	mCylinderMaterial = resourceMgr->declareResource("Cylinder.Material", ResourceStreamPtr(materialStream));
-	mCylinderMaterial->acquire();
-	mCylinderMaterial->load();
-
-	return mCylinderMaterial;
+	addResource(resourceMgr->declareResource("Cylinder.Material", ResourceStreamPtr(materialStream)), true);
 }
 
 mesh::MeshSpecification ModelScene::createBoxMeshSpecification()
@@ -281,7 +256,7 @@ mesh::MeshSpecification ModelScene::createBoxMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+void ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -290,11 +265,7 @@ mpp::ResourcePtr ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification cons
 	materialStream->setMeshSpecification(meshSpec);
 	materialStream->setTexture("TEX1", "Test.Texture");
 
-	mBoxMaterial = resourceMgr->declareResource("Box.Material", ResourceStreamPtr(materialStream));
-	mBoxMaterial->acquire();
-	mBoxMaterial->load();
-
-	return mBoxMaterial;
+	addResource(resourceMgr->declareResource("Box.Material", ResourceStreamPtr(materialStream)), true);
 }
 
 mesh::MeshSpecification ModelScene::createTorusMeshSpecification()
@@ -313,7 +284,7 @@ mesh::MeshSpecification ModelScene::createTorusMeshSpecification()
 	return meshSpec;
 }
 
-mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
+void ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
 
@@ -322,11 +293,7 @@ mpp::ResourcePtr ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification co
 	materialStream->setMeshSpecification(meshSpec);
 	materialStream->setTexture("TEX1", "Doughnut.Texture");
 
-	mTorusMaterial = resourceMgr->declareResource("Torus.Material", ResourceStreamPtr(materialStream));
-	mTorusMaterial->acquire();
-	mTorusMaterial->load();
-
-	return mTorusMaterial;
+	addResource(resourceMgr->declareResource("Torus.Material", ResourceStreamPtr(materialStream)), true);
 }
 
 ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
@@ -444,27 +411,21 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "Test.Texture");
 
-	mBatch2dMaterial = resourceMgr->declareResource("Batch.2D.Material", ResourceStreamPtr(materialStream));
-	mBatch2dMaterial->acquire();
-	mBatch2dMaterial->load();
+	addResource(resourceMgr->declareResource("Batch.2D.Material", ResourceStreamPtr(materialStream)), true);
 
 	materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(true);
 	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "Bullets.Texture");
 
-	mBulletsMaterial = resourceMgr->declareResource("Bullets.Material", ResourceStreamPtr(materialStream));
-	mBulletsMaterial->acquire();
-	mBulletsMaterial->load();
+	addResource(resourceMgr->declareResource("Bullets.Material", ResourceStreamPtr(materialStream)), true);
 
 	materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(spec3d);
 	materialStream->setTexture("TEX1", "Test.Texture");
 
-	mBatch3dMaterial = resourceMgr->declareResource("Batch.3D.Material", ResourceStreamPtr(materialStream));
-	mBatch3dMaterial->acquire();
-	mBatch3dMaterial->load();
+	addResource(resourceMgr->declareResource("Batch.3D.Material", ResourceStreamPtr(materialStream)), true);
 }
 
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
@@ -753,28 +714,6 @@ void ModelScene::teardownImpl()
 	mBox->release();
 	mTorus->release();
 	mStatue->release();
-
-	mDefaultSampler->release();
-	mMarbleTexture->release();
-	mCloudsTexture->release();
-	mElectroTexture->release();
-	mTestTexture->release();
-	mDragonTexture->release();
-	mBulletsTexture->release();
-	mAtlasTexture->release();
-	mDoughnutTexture->release();
-	mStripTexture->release();
-
-	mElevatorVertShader->release();
-
-	mBatch2dMaterial->release();
-	mBatch3dMaterial->release();
-	mBulletsMaterial->release();
-	mBoxMaterial->release();
-	mSphereMaterial->release();
-	mCylinderMaterial->release();
-	mTorusMaterial->release();
-	mGridMaterial->release();
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const

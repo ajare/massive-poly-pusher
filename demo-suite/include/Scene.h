@@ -20,6 +20,8 @@ class Scene
 
 	bool mRender{ true };
 
+	std::vector<mpp::ResourcePtr> mResources;
+
 private:
 
 	virtual void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) {}
@@ -31,6 +33,8 @@ private:
 protected:
 
 	mpp::ResourceManager* getResourceManager();
+
+	void addResource(mpp::ResourcePtr resource, bool load);
 
 public:
 

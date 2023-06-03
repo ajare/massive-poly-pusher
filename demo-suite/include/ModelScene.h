@@ -19,14 +19,6 @@ class ModelScene : public ::Scene
 	// Resources
 	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
 
-	mpp::ResourcePtr mDefaultSampler, mMarbleTexture, mCloudsTexture, mElectroTexture, mTestTexture, mDragonTexture,
-		mBulletsTexture, mAtlasTexture, mDoughnutTexture, mStripTexture;
-
-	mpp::ResourcePtr mBatch2dMaterial, mBatch3dMaterial, mBulletsMaterial, mBoxMaterial, mSphereMaterial, 
-		mCylinderMaterial, mTorusMaterial, mGridMaterial;
-
-	mpp::ResourcePtr mElevatorVertShader;
-
 private:
 
 	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) override;
@@ -39,23 +31,23 @@ private:
 	
 	mpp::mesh::MeshSpecification createGridMeshSpecification();
 
-	mpp::ResourcePtr createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+	void createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createSphereMeshSpecification();
 
-	mpp::ResourcePtr createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+	void createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createCylinderMeshSpecification();
 
-	mpp::ResourcePtr createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+	void createCylinderMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createBoxMeshSpecification();
 
-	mpp::ResourcePtr createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+	void createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::mesh::MeshSpecification createTorusMeshSpecification();
 
-	mpp::ResourcePtr createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
+	void createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options);
 
 	mpp::ResourcePtr createTorusModel(ProgramOptions const& options);
 
