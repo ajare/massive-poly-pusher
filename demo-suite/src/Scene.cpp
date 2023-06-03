@@ -62,7 +62,7 @@ void Scene::teardown()
 	{
 		res->release();
 
-		if (res->isAvailableForUnload())
+		if (res->isUnreferenced())
 		{
 			res->destroy();
 		}

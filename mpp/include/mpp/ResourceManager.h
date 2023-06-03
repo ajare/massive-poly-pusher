@@ -65,6 +65,10 @@ namespace mpp
 
 		void loadAllResources();
 
+		void unloadAllFreeResources();
+
+		void destroyAllFreeResources();
+
 		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
 
 		ResourcePtr acquireResource(std::string const& name);

@@ -84,8 +84,8 @@ namespace mpp
 	{
 		for (auto const& kvp : mResources)
 		{
-			auto resource = kvp.second;
-			resource->destroy();
+			auto res = kvp.second;
+			res->destroy();
 		}
 	}
 
@@ -153,7 +153,8 @@ namespace mpp
 	{
 		for (auto it: mResources)
 		{
-			it.second->create();
+			auto res = it.second;
+			res->create();
 		}
 	}
 
@@ -165,8 +166,42 @@ namespace mpp
 	{
 		for (auto it: mResources)
 		{
-			it.second->load();
+			auto res = it.second;
+			res->load();
 		}
+	}
+
+	/*
+	 * Unload all resources with no references.
+	 *
+	 */
+	void ResourceManager::unloadAllFreeResources()
+	{
+		for (auto it : mResources)
+		{
+			auto res = it.second;
+			if (res->isUnreferenced())
+			{
+				res->unload();
+			}
+		}
+	}
+
+	/*
+	 * Destroy all resources with no references.
+	 *
+	 */
+	void ResourceManager::destroyAllFreeResources()
+	{
+		for (auto it : mResources)
+		{
+			auto res = it.second;
+			if (res->isUnreferenced())
+			{
+				res->destroy();
+			}
+		}
+
 	}
 
 	ResourcePtr ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream, uint32_t quality)
