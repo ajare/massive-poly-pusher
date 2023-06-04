@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "mpp/ResourceWrangler.h"
 #include "mpp/Model.h"
 #include "mpp/ProgrammaticModelStream.h"
 
@@ -18,7 +19,7 @@ namespace mpp
 		bool fixedValues;
 	};
 
-	class _MPPAPI Batch
+	class _MPPAPI Batch : public ResourceWrangler
 	{
 		std::string mName;
 

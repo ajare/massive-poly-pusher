@@ -3,12 +3,13 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/Scene.h>
+#include <mpp/ResourceWrangler.h>
 
 #include "ProgramOptions.h"
 #include "World.h"
 #include "RenderOptions.h"
 
-class Scene
+class Scene : public mpp::ResourceWrangler
 {
 	mpp::ScenePtr mScene;
 

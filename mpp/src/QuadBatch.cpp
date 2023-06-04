@@ -37,7 +37,7 @@ namespace mpp
 
 		if (mTexture)
 		{
-			mTexture->acquire();
+			mTexture->acquire(this);
 		}
 	}
 
@@ -134,7 +134,7 @@ namespace mpp
 	{
 		if (mTexture)
 		{
-			mTexture->release();
+			mTexture->release(this);
 		}
 	}
 
@@ -379,7 +379,7 @@ namespace mpp
 		if (!mTexture && mTextureRenderer)
 		{
 			mTexture = mTextureRenderer->createRenderTexture(mOptions.maxSizeX, mOptions.maxSizeY);
-			mTexture->acquire();
+			mTexture->acquire(this);
 		}
 
 		return mTexture;

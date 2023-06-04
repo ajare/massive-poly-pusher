@@ -361,7 +361,7 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 	}
 
 	mTorus= resourceMgr->declareResource("Model.Torus", ResourceStreamPtr(torusStream));
-	mTorus->acquire();
+	mTorus->acquire(this);
 	mTorus->load();
 
 	return mTorus;
@@ -632,7 +632,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 256, 256);
 	mGrid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream));
-	mGrid->acquire();
+	mGrid->acquire(this);
 	mGrid->load();
 
 	mModels.push_back(mppScene->add3dModel(mGrid));
@@ -643,7 +643,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	
 	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
 	mSphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream));
-	mSphere->acquire();
+	mSphere->acquire(this);
 	mSphere->load();
 	
 	mModels.push_back(mppScene->add3dModel(mSphere));
@@ -655,7 +655,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	auto cylinderStream = new CylinderModelStream(resourceMgr, cylinderMeshSpec, "Cylinder.Material", 80, 24, 24, 16);
 	mCylinder = resourceMgr->declareResource("Model.Cylinder", ResourceStreamPtr(cylinderStream));
-	mCylinder->acquire();
+	mCylinder->acquire(this);
 	mCylinder->load();
 
 	mModels.push_back(mppScene->add3dModel(mCylinder));
@@ -670,7 +670,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	auto boxStream = new BoxModelStream(resourceMgr, cylinderMeshSpec, "Box.Material", 32, 32, 32);
 	mBox = resourceMgr->declareResource("Model.Box", ResourceStreamPtr(boxStream));
-	mBox->acquire();
+	mBox->acquire(this);
 	mBox->load();
 
 	mModels.push_back(mppScene->add3dModel(mBox));
@@ -688,7 +688,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// Load MppModel
 	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
 	mStatue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream));
-	mStatue->acquire();
+	mStatue->acquire(this);
 	mStatue->load();
 
 	mModels.push_back(mppScene->add3dModel(mStatue));
@@ -708,12 +708,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 void ModelScene::teardownImpl()
 {
-	mGrid->release();
-	mSphere->release();
-	mCylinder->release();
-	mBox->release();
-	mTorus->release();
-	mStatue->release();
+	mGrid->release(this);
+	mSphere->release(this);
+	mCylinder->release(this);
+	mBox->release(this);
+	mTorus->release(this);
+	mStatue->release(this);
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const

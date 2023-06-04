@@ -3,7 +3,8 @@
 using namespace std;
 
 Scene::Scene(string const& sceneType, mpp::ResourceManager* resourceMgr)
-	: mSceneType(sceneType)
+	: ResourceWrangler("Scene_" + sceneType)
+	, mSceneType(sceneType)
 	, mResourceMgr(resourceMgr)
 {
 }
@@ -43,7 +44,7 @@ void Scene::setup(mpp::RenderSystem* renderSystem, ProgramOptions const& options
 
 void Scene::addResource(mpp::ResourcePtr resource, bool load)
 {
-	resource->acquire();
+	resource->acquire(this);
 	if (load)
 	{
 		resource->load();
@@ -60,7 +61,7 @@ void Scene::teardown()
 	// Release and unload any generic scene resources
 	for (auto res : mResources)
 	{
-		res->release();
+		res->release(this);
 
 		if (!res->isReferenced())
 		{

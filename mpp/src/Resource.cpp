@@ -12,7 +12,8 @@ namespace mpp
 	 *
 	 */
 	Resource::Resource(string const& name, string const& type, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
-		: mName(name)
+		: ResourceWrangler(name)
+		, mName(name)
 		, mType(type)
 		, mRefCount(0)
 		, mCreated(false)
@@ -273,19 +274,37 @@ namespace mpp
 		}
 	}
 
-	void Resource::acquire()
+	void Resource::acquire(ResourceWrangler* acquirer)
 	{
-		mRefCount++;
+		auto it = mDependingResources.insert(acquirer);
+		if (it.second)
+		{
+			mRefCount++;
+		}
+		else
+		{
+			throw MppException("Object '" + acquirer->getWranglerName() + "' tried to acquire resource '" + getName() + "' more than once.");
+		}
 	}
 
-	void Resource::release()
+	void Resource::release(ResourceWrangler* releaser)
 	{
-		mRefCount--;
-		assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");
-
-		if (mRefCount == 0)
+		auto it = mDependingResources.find(releaser);
+		if (it != mDependingResources.end())
 		{
-			releaseDependentResources();
+			mRefCount--;
+			assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");
+
+			mDependingResources.erase(it);
+
+			if (mRefCount == 0)
+			{
+				releaseDependentResources();
+			}
+		}
+		else
+		{
+			throw MppException("Object '" + releaser->getWranglerName() + "' tried to release resource '" + getName() + "' without acquiring it.");
 		}
 	}
 
@@ -294,7 +313,7 @@ namespace mpp
 		auto inserted = mDependentResources.insert(resource);
 		if (inserted.second)
 		{
-			resource->acquire();
+			resource->acquire(this);
 		}
 	}
 
@@ -302,8 +321,10 @@ namespace mpp
 	{
 		for (auto res : mDependentResources)
 		{
-			res->release();
+			res->release(this);
 		}
+
+		mDependentResources.clear();
 	}
 
 }

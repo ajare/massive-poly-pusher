@@ -6,13 +6,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "mpp/Config.h"
+#include "mpp/ResourceWrangler.h"
 #include "mpp/Material.h"
 #include "mpp/Mesh.h"
 #include "mpp/UniformCollection.h"
 
 namespace mpp
 {
-	class _MPPAPI __declspec(align(16)) MeshInstance
+	class _MPPAPI __declspec(align(16)) MeshInstance : public ResourceWrangler
 	{
 		friend class RenderSystem;
 

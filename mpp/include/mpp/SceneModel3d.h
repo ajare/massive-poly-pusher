@@ -10,12 +10,13 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
+#include "mpp/ResourceWrangler.h"
 #include "mpp/UniformCollection.h"
 #include "mpp/ModelRenderParams.h"
 
 namespace mpp
 {
-	class _MPPAPI __declspec(align(16)) SceneModel3d
+	class _MPPAPI __declspec(align(16)) SceneModel3d : public ResourceWrangler
 	{
 		ResourcePtr mModel;
 

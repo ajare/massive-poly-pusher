@@ -11,7 +11,8 @@ using namespace std;
 namespace mpp
 {
 	MeshInstance::MeshInstance()
-		: mwMesh(nullptr)
+		: ResourceWrangler("MeshInstance")
+		, mwMesh(nullptr)
 		, mRender(true)
 		, mWireframe(false)
 		, mBlend(false)
@@ -35,7 +36,7 @@ namespace mpp
 		mInstanceCount = 1;
 
 		mMaterial = mesh->getMaterial();
-		mMaterial->acquire();
+		mMaterial->acquire(this);
 	}
 
 	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize)
@@ -85,7 +86,7 @@ namespace mpp
 
 		if (mMaterial)
 		{
-			mMaterial->release();
+			mMaterial->release(this);
 			mMaterial.reset();
 		}
 
@@ -188,14 +189,14 @@ namespace mpp
 	{
 		if (mMaterial)
 		{
-			mMaterial->release();
+			mMaterial->release(this);
 		}
 
 		mMaterial = material;
 	
 		if (mMaterial)
 		{
-			mMaterial->acquire();
+			mMaterial->acquire(this);
 		}
 	}
 
