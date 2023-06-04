@@ -14,14 +14,12 @@ namespace mpp
 	Font::Font(ResourcePtr texture)
 		: mTexture(texture)
 	{
+		mTexture->acquire();
 	}
 
 	Font::~Font()
 	{
-		if (mTexture)
-		{
-			mTexture->release();
-		}
+		mTexture->release();
 	}
 
 	/*
@@ -30,17 +28,9 @@ namespace mpp
 	 */
 	void Font::setTexture(ResourcePtr texture)
 	{
-		if (mTexture)
-		{
-			mTexture->release();
-		}
-
+		mTexture->release();
 		mTexture = texture;
-
-		if (mTexture)
-		{
-			mTexture->acquire();
-		}
+		mTexture->acquire();
 	}
 
 	/*
