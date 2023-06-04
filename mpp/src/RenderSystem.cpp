@@ -911,6 +911,11 @@ namespace mpp
 		for (auto res : mCoreResources)
 		{
 			res->release();
+
+			if (!res->isReferenced())
+			{
+				res->destroy();
+			}
 		}
 	}
 
