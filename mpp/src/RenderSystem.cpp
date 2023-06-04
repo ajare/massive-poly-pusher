@@ -99,6 +99,15 @@ namespace mpp
 		delete mInternalFont;
 		destroyLightsData();
 
+		// Deleting the above may have freed up more resources, so sweep once more
+		for (auto res : mCoreResources)
+		{
+			if (!res->isReferenced())
+			{
+				res->destroy();
+			}
+		}
+
 #ifdef MPP_PROFILE_BUILD
 		delete mProfiler;
 		delete mProfileLines;
