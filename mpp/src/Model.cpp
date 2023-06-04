@@ -275,6 +275,7 @@ namespace mpp
 			string materialName = mStr->markUpMaterialName(getName(), meshDef->getMaterial());
 			
 			ResourcePtr	material = resourceMgr->getResource(materialName);
+			acquireDependentResource(material);
 			material->load();
 
 			// Don't check vertex attribute mapping for internal resources as they may not
