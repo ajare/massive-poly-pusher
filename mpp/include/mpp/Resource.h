@@ -60,7 +60,7 @@ namespace mpp
 
 		bool isLoaded() const;
 
-		int isUnreferenced() const;
+		bool isReferenced() const;
 		
 		uint32_t getId() const;
 
