@@ -282,6 +282,25 @@ namespace mpp
 	{
 		mRefCount--;
 		assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");
+
+		if (mRefCount == 0)
+		{
+			releaseDependentResources();
+		}
+	}
+
+	void Resource::acquireDependentResource(ResourcePtr resource)
+	{
+		resource->acquire();
+		mDependentResources.insert(resource);
+	}
+
+	void Resource::releaseDependentResources()
+	{
+		for (auto res : mDependentResources)
+		{
+			res->release();
+		}
 	}
 
 }
