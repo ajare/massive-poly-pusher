@@ -291,8 +291,11 @@ namespace mpp
 
 	void Resource::acquireDependentResource(ResourcePtr resource)
 	{
-		resource->acquire();
-		mDependentResources.insert(resource);
+		auto inserted = mDependentResources.insert(resource);
+		if (inserted.second)
+		{
+			resource->acquire();
+		}
 	}
 
 	void Resource::releaseDependentResources()
