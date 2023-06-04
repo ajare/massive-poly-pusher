@@ -180,7 +180,7 @@ namespace mpp
 		for (auto it : mResources)
 		{
 			auto res = it.second;
-			if (res->isUnreferenced())
+			if (!res->isReferenced())
 			{
 				res->unload();
 			}
@@ -196,7 +196,7 @@ namespace mpp
 		for (auto it : mResources)
 		{
 			auto res = it.second;
-			if (res->isUnreferenced())
+			if (!res->isReferenced())
 			{
 				res->destroy();
 			}
