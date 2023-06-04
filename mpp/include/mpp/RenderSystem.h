@@ -77,11 +77,6 @@ namespace mpp
 			Tile
 		};
 
-	public:
-
-		typedef std::function<bool()> PreloadFunction;
-
-		typedef std::function<void(bool)> PreloadFunctionCallback;
 
 	private:
 
@@ -157,11 +152,6 @@ namespace mpp
 		std::shared_ptr<UniformCollection> mTextUniforms;
 
 		std::shared_ptr<ModelRenderParams> mTextParams;
-
-		//
-		// Preloading
-		//
-		std::queue<std::pair<PreloadFunction, PreloadFunctionCallback>> mPreloadResources;
 
 		//
 		// 3d Transforms
@@ -288,10 +278,6 @@ namespace mpp
 		void createCoreResources(ResourceManager* resourceMgr);
 
 		void destroyCoreResources();
-
-		void addPreloadResource(PreloadFunction func, PreloadFunctionCallback callback);
-
-		void loadPreresources(int maxCount = -1);
 
 		void showDebugPanel(bool show, TimeUnit timeUnit = TimeUnit::Milliseconds, SizeUnit sizeUnit = SizeUnit::Megabytes);
 
