@@ -280,6 +280,10 @@ namespace mpp
 		if (it.second)
 		{
 			mRefCount++;
+
+			static_log_message(MPP_RESOURCE_LOGFILE,
+				"Object '" + acquirer->getWranglerName() + "' acquired '" + getName() + "' for "
+				+ utils::StringUtils::toString(mRefCount) + " references.");
 		}
 		else
 		{
@@ -296,6 +300,10 @@ namespace mpp
 			assert(mRefCount >= 0 && "Resource ref-count dropped below zero.");
 
 			mDependingResources.erase(it);
+
+			static_log_message(MPP_RESOURCE_LOGFILE, 
+				"Object '" + releaser->getWranglerName() + "' released '" + getName() + "' to " 
+				+ utils::StringUtils::toString(mRefCount) + " references.");
 
 			if (mRefCount == 0)
 			{
