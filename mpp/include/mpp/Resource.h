@@ -34,6 +34,8 @@ namespace mpp
 
 		ResourceStreamPtr mResourceStream;
 
+		std::set<std::shared_ptr<Resource>> mDependentResources;
+
 	protected:
 
 		virtual void createImpl() = 0;
@@ -45,6 +47,10 @@ namespace mpp
 		virtual void unloadImpl() = 0;
 
 		void setId(uint32_t id);
+
+		void acquireDependentResource(std::shared_ptr<Resource> resource);
+
+		void releaseDependentResources();
 
 	public:
 

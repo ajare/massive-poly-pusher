@@ -16,6 +16,14 @@ namespace mpp
 	{
 	}
 
+	Font::~Font()
+	{
+		if (mTexture)
+		{
+			mTexture->release();
+		}
+	}
+
 	/*
 	 * Set a glyph.
 	 *

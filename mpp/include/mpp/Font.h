@@ -34,7 +34,9 @@ namespace mpp
 
 	public:
 
-		Font(ResourcePtr texture);
+		explicit Font(ResourcePtr texture);
+		
+		~Font();
 
 		void setGlyph(uint8_t index, int x, int y, int width, int height, int kern, int raise);
 

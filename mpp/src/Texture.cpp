@@ -74,7 +74,8 @@ namespace mpp
 		auto sampler = tStr->getSampler();
 		if (sampler != "")
 		{
-			mSampler = getResourceManager()->acquireResource(sampler);
+			mSampler = getResourceManager()->getResource(sampler);
+			acquireDependentResource(mSampler);
 			mSampler->create();
 		}
 
@@ -329,11 +330,6 @@ namespace mpp
 		{
 			GL_CHECK(glDeleteTextures(1, &id));
 			setId(0);
-		}
-
-		if (mSampler)
-		{
-			mSampler->release();
 		}
 	}
 	
