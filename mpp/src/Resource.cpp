@@ -68,12 +68,12 @@ namespace mpp
 	}
 
 	/*
-	 * Are we safe to unload/destroy this resource?
+	 * Is this resource referenced?
 	 *
 	 */
-	int Resource::isUnreferenced() const
+	bool Resource::isReferenced() const
 	{
-		return mRefCount == 0;
+		return mRefCount > 0;
 	}
 
 	/*

@@ -577,20 +577,34 @@ namespace mpp
 		return res;
 	}
 
-	vector<ResourcePtr> ResourceManager::getAllUnreferencedResources() const
+	vector<ResourcePtr> ResourceManager::getAllReferencedResources() const
 	{
 		vector<ResourcePtr> resources;
 
 		for (auto kvp : mResources)
 		{
-			if (kvp.second->isUnreferenced())
+			if (kvp.second->isReferenced())
 			{
 				resources.push_back(kvp.second);
 			}
 		}
 
 		return resources;
+	}
 
+	vector<ResourcePtr> ResourceManager::getAllUnreferencedResources() const
+	{
+		vector<ResourcePtr> resources;
+
+		for (auto kvp : mResources)
+		{
+			if (!kvp.second->isReferenced())
+			{
+				resources.push_back(kvp.second);
+			}
+		}
+
+		return resources;
 	}
 
 	/*
