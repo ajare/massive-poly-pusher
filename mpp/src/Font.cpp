@@ -12,14 +12,15 @@ namespace mpp
 	 *
 	 */
 	Font::Font(ResourcePtr texture)
-		: mTexture(texture)
+		: ResourceWrangler("Font")
+		, mTexture(texture)
 	{
-		mTexture->acquire();
+		mTexture->acquire(this);
 	}
 
 	Font::~Font()
 	{
-		mTexture->release();
+		mTexture->release(this);
 	}
 
 	/*
@@ -28,9 +29,9 @@ namespace mpp
 	 */
 	void Font::setTexture(ResourcePtr texture)
 	{
-		mTexture->release();
+		mTexture->release(this);
 		mTexture = texture;
-		mTexture->acquire();
+		mTexture->acquire(this);
 	}
 
 	/*

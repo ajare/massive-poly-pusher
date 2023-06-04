@@ -53,7 +53,8 @@ namespace mpp
 	 *
 	 */
 	RenderSystem::RenderSystem(size_t windowWidth, size_t windowHeight)
-		: mLogger(nullptr)
+		: ResourceWrangler("RenderSystem")
+		, mLogger(nullptr)
 		, mWindowWidth(windowWidth)
 		, mWindowHeight(windowHeight)
 		, mViewportWidth(windowWidth)
@@ -524,7 +525,7 @@ namespace mpp
 
 	void RenderSystem::addCoreResource(ResourcePtr resource, bool load)
 	{
-		resource->acquire();
+		resource->acquire(this);
 		if (load)
 		{
 			resource->load();
@@ -920,7 +921,7 @@ namespace mpp
 		// Release
 		for (auto res : mCoreResources)
 		{
-			res->release();
+			res->release(this);
 
 		}
 

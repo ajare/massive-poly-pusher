@@ -28,7 +28,8 @@ namespace mpp
 	 *
 	 */
 	ResourceManager::ResourceManager(RenderSystem* renderSystem)
-		: mwRenderSystem(renderSystem)
+		: ResourceWrangler("ResourceManager")
+		, mwRenderSystem(renderSystem)
 	{
 		// Pad sortable vectors
 		for (uint32_t i = 0; i < msSortableTextureId; ++i)
@@ -279,10 +280,10 @@ namespace mpp
 		return res;
 	}
 
-	ResourcePtr ResourceManager::acquireResource(string const& name)
+	ResourcePtr ResourceManager::acquireResource(ResourceWrangler* wrangler, string const& name)
 	{
 		auto res = getResource(name);
-		res->acquire();
+		res->acquire(wrangler);
 		return res;
 	}
 

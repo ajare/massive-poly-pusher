@@ -10,6 +10,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
+#include "mpp/ResourceWrangler.h"
 #include "mpp/Camera.h"
 #include "mpp/BatchDataProvider.h"
 #include "mpp/BatchRenderer.h"
@@ -17,7 +18,7 @@
 
 namespace mpp
 {
-	class _MPPAPI SceneModel2d
+	class _MPPAPI SceneModel2d : public ResourceWrangler
 	{
 		BatchDataProviderPtr mDataProvider;
 

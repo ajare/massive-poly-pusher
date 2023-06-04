@@ -9,9 +9,10 @@ namespace mpp
 {
 
 	SceneModel3d::SceneModel3d(ResourcePtr model)
-		: mModel(model)
+		: ResourceWrangler("SceneModel2d")
+		, mModel(model)
 	{
-		mModel->acquire();
+		mModel->acquire(this);
 		mParams = make_shared<ModelRenderParams>();
 	}
 
@@ -19,7 +20,7 @@ namespace mpp
 	{
 		if (mModel)
 		{
-			mModel->release();
+			mModel->release(this);
 		}
 	}
 
@@ -54,14 +55,14 @@ namespace mpp
 	{
 		if (mModel)
 		{
-			mModel->release();
+			mModel->release(this);
 		}
 
 		mModel = model;
 	
 		if (mModel)
 		{
-			mModel->acquire();
+			mModel->acquire(this);
 		}
 	}
 

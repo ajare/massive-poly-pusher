@@ -11,7 +11,8 @@ namespace mpp
 	 *
 	 */
 	ResourceStream::ResourceStream(ResourceManager* resourceMgr, string const& type)
-		: mType(type)
+		: ResourceWrangler("ResourceStream_" + type)
+		, mType(type)
 		, mLoaded(false)
 		, mChildrenCreated(false)
 		, mChildResourcesCreated(false)
@@ -141,7 +142,7 @@ namespace mpp
 
 				resStream->createChildResources(name);
 				auto childRes = mResourceMgr->declareResource(name, resStream);
-				childRes->acquire();
+				childRes->acquire(this);
 			}
 
 			mChildResourcesCreated = true;
@@ -199,7 +200,7 @@ namespace mpp
 			{
 				string name = parentName + "/" + child.first;
 				auto childRes = mResourceMgr->getResource(name);
-				childRes->release();
+				childRes->release(this);
 
 				child.second->unloadChildResources(name);
 			}

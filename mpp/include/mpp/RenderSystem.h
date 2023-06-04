@@ -13,6 +13,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Caps.h"
+#include "mpp/ResourceWrangler.h"
 #include "mpp/Pool.h"
 #include "mpp/Resource.h"
 #include "mpp/RenderPipeline.h"
@@ -42,7 +43,7 @@ namespace mpp
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
-	class _MPPAPI __declspec(align(16)) RenderSystem
+	class _MPPAPI __declspec(align(16)) RenderSystem : public ResourceWrangler
 	{
 		enum class ProjectionType
 		{

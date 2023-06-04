@@ -26,7 +26,8 @@ namespace mpp
 		bool useDiffuse,
 		RenderSystem* renderSystem,
 		ResourceManager* resourceMgr)
-		: mName(name)
+		: ResourceWrangler(name)
+		, mName(name)
 		, mDefaultVertexShader(defaultVertexShader)
 		, mDefaultFragmentShader(defaultFragmentShader)
 		, mProgramDescriptor(descriptor)
@@ -147,7 +148,7 @@ namespace mpp
 
 		// Create material
 		mMaterial = createMaterial(getName() + "_Batch_Material", getTexture(), getProgramFlags());
-		mMaterial->acquire();
+		mMaterial->acquire(this);
 		mMaterial->load();
 
 		// Create model data
@@ -170,7 +171,7 @@ namespace mpp
 
 		// Create and load model
 		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream);
-		mModel->acquire();
+		mModel->acquire(this);
 		mModel->load();
 
 		// Specification pointers
@@ -180,8 +181,8 @@ namespace mpp
 
 	void Batch::destroy()
 	{
-		mModel->release();
-		mMaterial->release();
+		mModel->release(this);
+		mMaterial->release(this);
 	}
 
 	void Batch::startUpdate(size_t minimumCount)

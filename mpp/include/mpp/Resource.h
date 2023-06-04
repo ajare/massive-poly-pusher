@@ -6,13 +6,14 @@
 
 #include "mpp/Config.h"
 #include "mpp/ResourceStream.h"
+#include "mpp/ResourceWrangler.h"
 
 namespace mpp
 {
 	class RenderSystem;
 	class ResourceManager;
 	
-	class _MPPAPI Resource
+	class _MPPAPI Resource : public ResourceWrangler
 	{
 		std::string mName;
 
@@ -35,6 +36,8 @@ namespace mpp
 		ResourceStreamPtr mResourceStream;
 
 		std::set<std::shared_ptr<Resource>> mDependentResources;
+
+		std::set<ResourceWrangler*> mDependingResources;
 
 	protected:
 
@@ -96,9 +99,9 @@ namespace mpp
 
 		void unload();
 
-		void acquire();
+		void acquire(ResourceWrangler* acquirer);
 
-		void release();
+		void release(ResourceWrangler* releaser);
 	};
 
 	typedef std::shared_ptr<Resource> ResourcePtr;

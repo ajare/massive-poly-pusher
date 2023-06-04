@@ -1,11 +1,12 @@
 #pragma once
 
+#include "mpp/ResourceWrangler.h"
 #include "mpp/Config.h"
 #include "mpp/Texture.h"
 
 namespace mpp
 {
-	class _MPPAPI Font
+	class _MPPAPI Font : public ResourceWrangler
 	{
 	public:
 

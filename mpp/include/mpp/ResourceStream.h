@@ -5,6 +5,7 @@
 #include <map>
 
 #include "mpp/Config.h"
+#include "mpp/ResourceWrangler.h"
 
 #define MPP_RESOURCE_LOGFILE "mpp-resources.log"
 
@@ -13,7 +14,7 @@ namespace mpp
 	class ResourceManager;
 	class Resource;
 
-	class _MPPAPI ResourceStream
+	class _MPPAPI ResourceStream : ResourceWrangler
 	{
 		friend class Resource;
 		friend class ResourceStreamSerializer;

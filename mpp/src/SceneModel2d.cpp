@@ -10,7 +10,8 @@ namespace mpp
 {
 
 	SceneModel2d::SceneModel2d(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
-		: mDataProvider(dataProvider)
+		: ResourceWrangler("SceneModel2d")
+		, mDataProvider(dataProvider)
 		, mRenderer(renderer)
 		, mModel(nullptr)
 		, mRenderSystem(nullptr)
@@ -26,7 +27,8 @@ namespace mpp
 	}
 
 	SceneModel2d::SceneModel2d(ResourcePtr model, RenderSystem* renderSystem)
-		: mDataProvider(nullptr)
+		: ResourceWrangler("SceneModel2d")
+		, mDataProvider(nullptr)
 		, mRenderer(nullptr)
 		, mModel(model)
 		, mRenderSystem(renderSystem)
@@ -38,7 +40,7 @@ namespace mpp
 		, mWireframe(false)
 		, mVisible(true)
 	{
-		mModel->acquire();
+		mModel->acquire(this);
 		mParams = make_shared<ModelRenderParams>();
 	}
 
@@ -46,7 +48,7 @@ namespace mpp
 	{
 		if (mModel)
 		{
-			mModel->release();
+			mModel->release(this);
 		}
 	}
 

@@ -13,6 +13,7 @@
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
 #include "mpp/ResourceStream.h"
+#include "mpp/ResourceWrangler.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
@@ -27,7 +28,7 @@ namespace mpp
 
 	typedef std::function<ResourcePtr(std::string const&, ResourceStreamPtr)> ResourceFactory;
 
-	class _MPPAPI ResourceManager
+	class _MPPAPI ResourceManager : public ResourceWrangler
 	{
 		std::map<std::string, ResourceFactory> mResourceFactories;
 
@@ -71,7 +72,7 @@ namespace mpp
 
 		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
 
-		ResourcePtr acquireResource(std::string const& name);
+		ResourcePtr acquireResource(ResourceWrangler* wrangler, std::string const& name);
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
 
