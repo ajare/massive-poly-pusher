@@ -908,10 +908,16 @@ namespace mpp
 
 	void RenderSystem::destroyCoreResources()
 	{
+		// Release
 		for (auto res : mCoreResources)
 		{
 			res->release();
 
+		}
+
+		// Destroy what we can
+		for (auto res : mCoreResources)
+		{
 			if (!res->isReferenced())
 			{
 				res->destroy();
