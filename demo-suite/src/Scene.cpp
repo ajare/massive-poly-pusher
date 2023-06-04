@@ -62,7 +62,7 @@ void Scene::teardown()
 	{
 		res->release();
 
-		if (res->isUnreferenced())
+		if (!res->isReferenced())
 		{
 			res->destroy();
 		}
