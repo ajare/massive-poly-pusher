@@ -98,11 +98,23 @@ namespace mpp
 			if (res->getDependingObjectCount() != 0)
 			{
 				mLogger->warn("Resource '" + res->getName() + "' has objects which have not yet released it.");
+				
+				auto const& deps = res->getDependingResources();
+				for (auto dep : deps)
+				{
+					mLogger->warn("Resource '" + res->getName() + "' is awaiting release from '" + dep->getWranglerName() + "'.");
+				}
 			}
 
 			if (res->getDependentResourceCount() != 0)
 			{
 				mLogger->warn("Resource '" + res->getName() + "' has dependent resources it has not released yet.");
+			
+				auto const& deps = res->getDependentResources();
+				for (auto dep : deps)
+				{
+					mLogger->warn("Resource '" + res->getName() + "' is yet to release '" + dep->getName() + "'.");
+				}
 			}
 
 			res->destroy();

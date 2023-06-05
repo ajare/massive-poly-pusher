@@ -83,6 +83,10 @@ namespace mpp
 
 		int getDependingObjectCount() const;
 
+		std::set<std::shared_ptr<Resource>> const& getDependentResources() const;
+
+		std::set<ResourceWrangler*> const& getDependingResources() const;
+
 		RenderSystem* getRenderSystem();
 
 		ResourceManager* getResourceManager();
