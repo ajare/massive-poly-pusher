@@ -63,6 +63,7 @@ InputManager* gInputMgr = nullptr;
 
 RenderSystem* gRenderSystem = nullptr;
 ResourceManager* gResourceManager = nullptr;
+mpp::Logger* gMppLogger = nullptr;
 
 vector<::Scene*> gScenes;
 World gWorld;
@@ -128,6 +129,12 @@ void startup()
 	if (!gLogger->initialise("DemoSuite.log"))
 		throw exception("Could not create logger!");
 
+	gMppLogger = new mpp::Logger();
+	if (!gMppLogger->initialise("mpp.log", mpp::Logger::Level::Debug))
+	{
+		THROW_MPP("Could not initialise MPP logger", __LINE__, __FILE__, __func__);
+	}
+
 #ifdef _DEBUG
 	//hookRenderdoc();
 #endif
@@ -143,9 +150,9 @@ void startup()
 
 	mpp::enable_static_log(MPP_RESOURCE_LOGFILE, true);
 
-	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight());
+	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight(), gMppLogger);
 	
-	gResourceManager = new ResourceManager(gRenderSystem);
+	gResourceManager = new ResourceManager(gRenderSystem, gMppLogger);
 	gResourceManager->setImageLoadFunction(loadImage);
 
 	gRenderSystem->createCoreResources(gResourceManager);
@@ -191,6 +198,8 @@ void shutdown()
 
 	gResourceManager->dumpResources("final-resources.csv");
 	delete gResourceManager;
+
+	delete gMppLogger;
 
 	if (gWindow)
 	{

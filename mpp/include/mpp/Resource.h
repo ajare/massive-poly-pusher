@@ -79,6 +79,10 @@ namespace mpp
 
 		int getRefCount() const;
 
+		int getDependentResourceCount() const;
+
+		int getDependingObjectCount() const;
+
 		RenderSystem* getRenderSystem();
 
 		ResourceManager* getResourceManager();

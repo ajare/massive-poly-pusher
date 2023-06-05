@@ -20,6 +20,7 @@
 #include "mpp/TextureAtlas.h"
 #include "mpp/ProgramStream.h"
 #include "mpp/TextureStream.h"
+#include "mpp/Logger.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -52,9 +53,11 @@ namespace mpp
 
 		size_t mProgramIdCounter{ 0 };
 
+		Logger* mLogger;
+
 	public:
 
-		explicit ResourceManager(RenderSystem* renderSystem);
+		ResourceManager(RenderSystem* renderSystem, Logger* logger);
 
 		~ResourceManager();
 
