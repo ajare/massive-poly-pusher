@@ -78,17 +78,13 @@ namespace mpp
 
 	void MeshInstance::teardown()
 	{
+		release();
+
 		mwMesh = nullptr;
 		mRender = true;
 		mWireframe = false;
 		mBlend = false;
 		mInstanceCount = 0;
-
-		if (mMaterial)
-		{
-			mMaterial->release(this);
-			mMaterial.reset();
-		}
 
 		mRenderRanges.clear();
 		mTextureOverrides.clear();
@@ -96,6 +92,15 @@ namespace mpp
 		if (mUniforms)
 		{
 			mUniforms.reset();
+		}
+	}
+
+	void MeshInstance::release()
+	{
+		if (mMaterial)
+		{
+			mMaterial->release(this);
+			mMaterial.reset();
 		}
 	}
 

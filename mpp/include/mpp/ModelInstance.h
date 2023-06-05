@@ -40,6 +40,8 @@ namespace mpp
 
 		void setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool);
 
+		void release();
+
 		std::vector<MeshInstance*>& getMeshInstances();
 
 		std::vector<MeshInstance*> const& getMeshInstances() const;

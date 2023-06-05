@@ -57,6 +57,8 @@ namespace mpp
 
 		void commonSetup(Mesh const* mesh);
 
+		void teardown();
+
 	public:
 
 		MeshInstance();
@@ -71,7 +73,7 @@ namespace mpp
 
 		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize);
 
-		void teardown();
+		void release();
 
 		void render(bool render);
 

@@ -71,13 +71,14 @@ namespace mpp
 
 	void ModelInstance::teardown()
 	{
-		for (auto kvp : mMeshInstances)
-		{
-			//delete kvp.second;
-		}
+		release();
 
 		mMeshInstances.clear();
 		mOrderedMeshInstances.clear();
+	}
+
+	void ModelInstance::release()
+	{
 	}
 
 	/*
