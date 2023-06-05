@@ -85,11 +85,12 @@ namespace mpp
 	ResourceManager::~ResourceManager()
 	{
 		mLogger->info("Clearing up resources.");
+
+		// Check integrity first
 		for (auto const& kvp : mResources)
 		{
 			auto res = kvp.second;
 
-			// Check integrity
 			if (res->getRefCount() != 0)
 			{
 				mLogger->warn("Resource '" + res->getName() + "' is still referenced.");
@@ -98,7 +99,7 @@ namespace mpp
 			if (res->getDependingObjectCount() != 0)
 			{
 				mLogger->warn("Resource '" + res->getName() + "' has objects which have not yet released it.");
-				
+
 				auto const& deps = res->getDependingResources();
 				for (auto dep : deps)
 				{
@@ -109,14 +110,19 @@ namespace mpp
 			if (res->getDependentResourceCount() != 0)
 			{
 				mLogger->warn("Resource '" + res->getName() + "' has dependent resources it has not released yet.");
-			
+
 				auto const& deps = res->getDependentResources();
 				for (auto dep : deps)
 				{
 					mLogger->warn("Resource '" + res->getName() + "' is yet to release '" + dep->getName() + "'.");
 				}
 			}
+		}
 
+		// Clean up
+		for (auto const& kvp : mResources)
+		{
+			auto res = kvp.second;
 			res->destroy();
 		}
 	}
