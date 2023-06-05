@@ -94,7 +94,10 @@ namespace mpp
 
 		void releaseAllObjects()
 		{
-			mCount = 0;
+			while (mCount > 0)
+			{
+				mObjects[--mCount]->release();
+			}
 		}
 	};
 }
