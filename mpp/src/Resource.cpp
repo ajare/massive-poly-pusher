@@ -122,6 +122,17 @@ namespace mpp
 		return (int)mDependingResources.size();
 	}
 
+	set<shared_ptr<Resource>> const& Resource::getDependentResources() const
+	{
+		return mDependentResources;
+	}
+
+	set<ResourceWrangler*> const& Resource::getDependingResources() const
+	{
+		return mDependingResources;
+	}
+
+
 	/*
 	 * Has the resource been created?
 	 *
