@@ -105,6 +105,24 @@ namespace mpp
 	}
 
 	/*
+	 * Get number of objects still acquiring this resource.
+	 *
+	 */
+	int Resource::getDependentResourceCount() const
+	{
+		return (int)mDependentResources.size();
+	}
+
+	/*
+	 * Get number of objects still acquiring this resource.
+	 *
+	 */
+	int Resource::getDependingObjectCount() const
+	{
+		return (int)mDependingResources.size();
+	}
+
+	/*
 	 * Has the resource been created?
 	 *
 	 */

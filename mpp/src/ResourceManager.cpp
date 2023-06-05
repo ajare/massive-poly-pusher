@@ -27,9 +27,10 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	ResourceManager::ResourceManager(RenderSystem* renderSystem)
+	ResourceManager::ResourceManager(RenderSystem* renderSystem, Logger* logger)
 		: ResourceWrangler("ResourceManager")
 		, mwRenderSystem(renderSystem)
+		, mLogger(logger)
 	{
 		// Pad sortable vectors
 		for (uint32_t i = 0; i < msSortableTextureId; ++i)
@@ -83,9 +84,27 @@ namespace mpp
 
 	ResourceManager::~ResourceManager()
 	{
+		mLogger->info("Clearing up resources.");
 		for (auto const& kvp : mResources)
 		{
 			auto res = kvp.second;
+
+			// Check integrity
+			if (res->getRefCount() != 0)
+			{
+				mLogger->warn("Resource '" + res->getName() + "' is still referenced.");
+			}
+
+			if (res->getDependingObjectCount() != 0)
+			{
+				mLogger->warn("Resource '" + res->getName() + "' has objects which have not yet released it.");
+			}
+
+			if (res->getDependentResourceCount() != 0)
+			{
+				mLogger->warn("Resource '" + res->getName() + "' has dependent resources it has not released yet.");
+			}
+
 			res->destroy();
 		}
 	}

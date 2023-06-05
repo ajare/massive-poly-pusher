@@ -262,7 +262,7 @@ namespace mpp
 
 	public:
 
-		RenderSystem(size_t windowWidth, size_t windowHeight);
+		RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger);
 
 		virtual ~RenderSystem();
 

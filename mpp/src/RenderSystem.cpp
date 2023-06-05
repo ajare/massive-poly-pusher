@@ -52,9 +52,9 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	RenderSystem::RenderSystem(size_t windowWidth, size_t windowHeight)
+	RenderSystem::RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger)
 		: ResourceWrangler("RenderSystem")
-		, mLogger(nullptr)
+		, mLogger(logger)
 		, mWindowWidth(windowWidth)
 		, mWindowHeight(windowHeight)
 		, mViewportWidth(windowWidth)
@@ -76,12 +76,6 @@ namespace mpp
 		, mSizeUnit(SizeUnit::Megabytes)
 		, mInternalFont(nullptr)
 	{
-		mLogger = new Logger();
-		if (!mLogger->initialise("mpp.log", Logger::Level::Debug))
-		{
-			THROW_MPP("Could not initialise RenderSystem logger", __LINE__, __FILE__, __func__);
-		}
-
 		// Add scene factories
 		mSceneFactories["Default"] = [this](RenderSystem* renderSystem) { return make_shared<Scene>(renderSystem); };
 
@@ -113,8 +107,6 @@ namespace mpp
 		delete mProfiler;
 		delete mProfileLines;
 #endif
-
-		delete mLogger;
 	}
 
 	/*
