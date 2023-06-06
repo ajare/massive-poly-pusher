@@ -55,6 +55,10 @@ namespace mpp
 
 		Logger* mLogger;
 
+	private:
+
+		bool validateForRemoval(ResourcePtr resource);
+
 	public:
 
 		ResourceManager(RenderSystem* renderSystem, Logger* logger);
@@ -64,6 +68,8 @@ namespace mpp
 		void setImageLoadFunction(ImageLoadFunction function);
 
 		ImageLoadFunction getImageLoadFunction();
+
+		void removeResource(std::string const& name);
 
 		void createAllResources();
 

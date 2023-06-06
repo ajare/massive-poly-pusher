@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cassert>
 
 #include "mpp/program/Parser.h"
@@ -90,33 +91,7 @@ namespace mpp
 		for (auto const& kvp : mResources)
 		{
 			auto res = kvp.second;
-
-			if (res->getRefCount() != 0)
-			{
-				mLogger->warn("Resource '" + res->getName() + "' is still referenced.");
-			}
-
-			if (res->getDependingObjectCount() != 0)
-			{
-				mLogger->warn("Resource '" + res->getName() + "' has objects which have not yet released it.");
-
-				auto const& deps = res->getDependingResources();
-				for (auto dep : deps)
-				{
-					mLogger->warn("Resource '" + res->getName() + "' is awaiting release from '" + dep->getWranglerName() + "'.");
-				}
-			}
-
-			if (res->getDependentResourceCount() != 0)
-			{
-				mLogger->warn("Resource '" + res->getName() + "' has dependent resources it has not released yet.");
-
-				auto const& deps = res->getDependentResources();
-				for (auto dep : deps)
-				{
-					mLogger->warn("Resource '" + res->getName() + "' is yet to release '" + dep->getName() + "'.");
-				}
-			}
+			validateForRemoval(res);
 		}
 
 		// Clean up
@@ -181,6 +156,84 @@ namespace mpp
 	ImageLoadFunction ResourceManager::getImageLoadFunction()
 	{
 		return mImageLoadFunction;
+	}
+
+	/*
+	* Check a resource's integrity before removing it.
+	*
+	*/
+	bool ResourceManager::validateForRemoval(ResourcePtr resource)
+	{
+		bool valid{ true };
+
+		if (resource->getRefCount() != 0)
+		{
+			mLogger->warn("Resource '" + resource->getName() + "' is still referenced.");
+			valid = false;
+		}
+
+		if (resource->getDependingObjectCount() != 0)
+		{
+			mLogger->warn("Resource '" + resource->getName() + "' has objects which have not yet released it.");
+
+			auto const& deps = resource->getDependingResources();
+			for (auto dep : deps)
+			{
+				mLogger->warn("Resource '" + resource->getName() + "' is awaiting release from '" + dep->getWranglerName() + "'.");
+			}
+
+			valid = false;
+		}
+
+		if (resource->getDependentResourceCount() != 0)
+		{
+			mLogger->warn("Resource '" + resource->getName() + "' has dependent resources it has not released yet.");
+
+			auto const& deps = resource->getDependentResources();
+			for (auto dep : deps)
+			{
+				mLogger->warn("Resource '" + resource->getName() + "' is yet to release '" + dep->getName() + "'.");
+			}
+
+			valid = false;
+		}
+
+		return valid;
+	}
+
+	/*
+	* Remove a resource completely from the system.
+	*
+	*/
+	void ResourceManager::removeResource(string const& name)
+	{
+		auto res = getResource(name);
+		if (!validateForRemoval(res))
+		{
+			throw MppException("Could not remove resource '" + name + "' from system as it still has references.");
+		}
+
+		// If we have any other references, this will not yet delete the resource, but it will at least remove it from the system
+		mResources.erase(name);
+
+		auto type = res->getType();
+		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
+		{
+			mSortableTextures.erase(remove(mSortableTextures.begin(), mSortableTextures.end(), res), mSortableTextures.end());
+		}
+		if (type == "Program")
+		{
+			mSortablePrograms.erase(remove(mSortablePrograms.begin(), mSortablePrograms.end(), res), mSortablePrograms.end());
+
+			// Remove from program cache: this is a bit awkward
+			auto it = find_if(mProgramCache.begin(), mProgramCache.end(), [res](auto const& kvp)
+			{
+				auto const&[key, value] = kvp;
+				return value == res;
+			});
+
+			mProgramCache.erase(it);
+		}
 	}
 
 	/*
