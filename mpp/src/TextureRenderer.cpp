@@ -27,7 +27,7 @@ namespace mpp
 		rtStream->setDepthBuffer(true);
 		rtStream->setNumAttachments(1);
 
-		auto rt = mResourceMgr->declareResource(mName, ResourceStreamPtr(rtStream));
+		auto rt = mResourceMgr->declareResource(mName, ResourceStreamPtr(rtStream)).first;
 
 		rt->load();
 

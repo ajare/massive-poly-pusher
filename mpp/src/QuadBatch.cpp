@@ -136,6 +136,11 @@ namespace mpp
 		{
 			mTexture->release(this);
 		}
+
+		if (mTextureRenderer && mTexture && !mTexture->getRefCount())
+		{
+			mResourceMgr->deleteResource(mTexture->getName());
+		}
 	}
 
 	void QuadBatch::setPrimitiveOptions()

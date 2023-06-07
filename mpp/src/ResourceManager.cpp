@@ -205,31 +205,81 @@ namespace mpp
 	* Remove a resource completely from the system.
 	*
 	*/
-	void ResourceManager::removeResource(string const& name)
+	void ResourceManager::deleteResource(string const& name)
 	{
-		auto res = getResource(name);
-		if (!validateForRemoval(res))
+		auto resource = getResource(name);
+		if (!validateForRemoval(resource))
 		{
 			throw MppException("Could not remove resource '" + name + "' from system as it still has references.");
 		}
 
+		removeResource(resource);
+	}
+
+	void ResourceManager::insertResource(ResourcePtr resource, ResourceStreamPtr resourceStream)
+	{
+		auto const& name = resource->getName();
+		auto const& type = resource->getType();
+
+		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
+		{
+			// Set sort id
+			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
+			if (msSortableTextureId == (uint32_t)(1 << maxBits))
+			{
+				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
+				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+			}
+
+			Texture* t = static_cast<Texture*>(resource.get());
+
+			t->setSortId(msSortableTextureId++);
+			mSortableTextures.push_back(resource);
+		}
+		else if (type == "Program")
+		{
+			// Caching
+			if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
+			{
+				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
+				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+			}
+
+			Program* p = static_cast<Program*>(resource.get());
+
+			p->setSortId(msSortableProgramId++);
+			mSortablePrograms.push_back(resource);
+
+			// Add to cache
+			auto programStream = dynamic_cast<ProgramStream*>(resourceStream.get());
+			auto sourceCode = programStream->getConcatenatedSource();
+			mProgramCache[sourceCode] = resource;
+		}
+
+		mResources[name] = resource;
+	}
+
+	void ResourceManager::removeResource(ResourcePtr resource)
+	{
+		auto const& name = resource->getName();
+
 		// If we have any other references, this will not yet delete the resource, but it will at least remove it from the system
 		mResources.erase(name);
 
-		auto type = res->getType();
+		auto type = resource->getType();
 		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
 		{
-			mSortableTextures.erase(remove(mSortableTextures.begin(), mSortableTextures.end(), res), mSortableTextures.end());
+			mSortableTextures.erase(remove(mSortableTextures.begin(), mSortableTextures.end(), resource), mSortableTextures.end());
 		}
 		if (type == "Program")
 		{
-			mSortablePrograms.erase(remove(mSortablePrograms.begin(), mSortablePrograms.end(), res), mSortablePrograms.end());
+			mSortablePrograms.erase(remove(mSortablePrograms.begin(), mSortablePrograms.end(), resource), mSortablePrograms.end());
 
 			// Remove from program cache: this is a bit awkward
-			auto it = find_if(mProgramCache.begin(), mProgramCache.end(), [res](auto const& kvp)
+			auto it = find_if(mProgramCache.begin(), mProgramCache.end(), [resource](auto const& kvp)
 			{
 				auto const&[key, value] = kvp;
-				return value == res;
+				return value == resource;
 			});
 
 			mProgramCache.erase(it);
@@ -292,10 +342,9 @@ namespace mpp
 				res->destroy();
 			}
 		}
-
 	}
 
-	ResourcePtr ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream, uint32_t quality)
+	pair<ResourcePtr, bool> ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream, uint32_t quality)
 	{
 		// Check name doen't exist
 		if (mResources.find(name) != mResources.end())
@@ -313,61 +362,26 @@ namespace mpp
 		string type = resourceStream->getType();
 
 		// Check caching
-		string fullSource{ "" };
 		if (type == "Program")
 		{
 			// Must load to get source
 			resourceStream->load(quality);
 
 			auto programStream = dynamic_cast<ProgramStream*>(resourceStream.get());
-			fullSource = programStream->getConcatenatedSource();
+			auto sourceCode = programStream->getConcatenatedSource();
+			auto createdProgram = mProgramCache.find(sourceCode);
 
-			auto createdProgram = mProgramCache.find(fullSource);
 			if (createdProgram != mProgramCache.end())
 			{
-				return createdProgram->second;
+				return make_pair(createdProgram->second, false);
 			}
 		}
 
-		// Create resource
-		auto res = mResourceFactories[type](name, resourceStream);
+		// Create resource and insert
+		auto resource = mResourceFactories[type](name, resourceStream);
+		insertResource(resource, resourceStream);
 
-		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
-		{
-			// Set sort id
-			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
-			if (msSortableTextureId == (uint32_t)(1 << maxBits))
-			{
-				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
-				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-			}
-
-			Texture* t = static_cast<Texture*>(res.get());
-
-			t->setSortId(msSortableTextureId++);
-			mSortableTextures.push_back(res);
-		}
-		else if (type == "Program")
-		{
-			// Caching
-			if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
-			{
-				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
-				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
-			}
-
-			Program* p = static_cast<Program*>(res.get());
-
-			p->setSortId(msSortableProgramId++);
-			mSortablePrograms.push_back(res);
-
-			// Add to cache
-			mProgramCache[fullSource] = res;
-		}
-
-		mResources[name] = res;
-
-		return res;
+		return make_pair(resource, true);
 	}
 
 	ResourcePtr ResourceManager::acquireResource(ResourceWrangler* wrangler, string const& name)
@@ -583,7 +597,7 @@ namespace mpp
 
 		specName += "__";
 
-		auto res = declareResource(specName, ResourceStreamPtr(ps));
+		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
 		if (load)
 		{
@@ -658,7 +672,7 @@ namespace mpp
 
 		specName += "__";
 
-		auto res = declareResource(specName, ResourceStreamPtr(ps));
+		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
 		if (load)
 		{

@@ -59,6 +59,10 @@ namespace mpp
 
 		bool validateForRemoval(ResourcePtr resource);
 
+		void insertResource(ResourcePtr resource, ResourceStreamPtr resourceStream);
+
+		void removeResource(ResourcePtr resource);
+
 	public:
 
 		ResourceManager(RenderSystem* renderSystem, Logger* logger);
@@ -69,7 +73,7 @@ namespace mpp
 
 		ImageLoadFunction getImageLoadFunction();
 
-		void removeResource(std::string const& name);
+		void deleteResource(std::string const& name);
 
 		void createAllResources();
 
@@ -79,7 +83,7 @@ namespace mpp
 
 		void destroyAllUnreferencedResources();
 
-		ResourcePtr declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
+		std::pair<ResourcePtr, bool> declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
 
 		ResourcePtr acquireResource(ResourceWrangler* wrangler, std::string const& name);
 

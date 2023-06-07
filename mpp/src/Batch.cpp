@@ -43,6 +43,17 @@ namespace mpp
 	Batch::~Batch()
 	{
 		destroy();
+
+		// Remove resources
+		if (mModel && !mModel->getRefCount())
+		{
+			mResourceMgr->deleteResource(mModel->getName());
+		}
+
+		if (mMaterial && !mMaterial->getRefCount())
+		{
+			mResourceMgr->deleteResource(mMaterial->getName());
+		}
 	}
 
 	string const& Batch::getName() const
@@ -170,7 +181,7 @@ namespace mpp
 		}
 
 		// Create and load model
-		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream);
+		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream).first;
 		mModel->acquire(this);
 		mModel->load();
 
@@ -235,7 +246,7 @@ namespace mpp
 
 		matStream->setTexture("TEX1", texture ? texture->getName() : "__mpp_tex_none__");
 
-		return mResourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream));
+		return mResourceMgr->declareResource(name, mpp::ResourceStreamPtr(matStream)).first;
 	}
 
 	/*
