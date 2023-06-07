@@ -541,6 +541,9 @@ namespace mpp
 	 */
 	void Program::unloadImpl()
 	{
+		mTextures.clear();
+		mVertexAttributes.clear();
+
 		GLuint id = getId();
 		if (id != 0)
 		{
