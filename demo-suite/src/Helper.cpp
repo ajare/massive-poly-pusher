@@ -213,7 +213,7 @@ void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resource
 		tStr->setFile(filePath, loadImage);
 		tStr->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 
-		mpp::ResourcePtr tex = resourceMgr->declareResource(imageName, mpp::ResourceStreamPtr(tStr));
+		mpp::ResourcePtr tex = resourceMgr->declareResource(imageName, mpp::ResourceStreamPtr(tStr)).first;
 		tex->load();
 	}
 }

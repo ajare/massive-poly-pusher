@@ -553,7 +553,7 @@ namespace mpp
 
 			auto ps = new ProgrammaticProgramStream(resourceMgr);
 			ps->setParser(parser);
-			mDefaultProgram3d = resourceMgr->declareResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps));
+			mDefaultProgram3d = resourceMgr->declareResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps)).first;
 			addCoreResource(mDefaultProgram3d, true);
 		}
 
@@ -573,7 +573,7 @@ namespace mpp
 
 			auto ps = new ProgrammaticProgramStream(resourceMgr);
 			ps->setParser(parser);
-			mFullscreenProgram = resourceMgr->declareResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps));
+			mFullscreenProgram = resourceMgr->declareResource("__mpp_p2d_fullscreen__", ResourceStreamPtr(ps)).first;
 			addCoreResource(mFullscreenProgram, true);
 		}
 
@@ -595,7 +595,7 @@ namespace mpp
 			ps->setParser(parser);
 			ps->setAttribs({ "Points" });
 
-			auto res = resourceMgr->declareResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps));
+			auto res = resourceMgr->declareResource("__mpp_p2d_points_text__", ResourceStreamPtr(ps)).first;
 			addCoreResource(res, false);
 		}
 		{
@@ -614,7 +614,7 @@ namespace mpp
 			auto ps = new ProgrammaticProgramStream(resourceMgr);
 			ps->setParser(parser);
 
-			auto res = resourceMgr->declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps));
+			auto res = resourceMgr->declareResource("__mpp_p2d_tris_text__", ResourceStreamPtr(ps)).first;
 			addCoreResource(res, true);
 		}
 		{
@@ -635,7 +635,7 @@ namespace mpp
 			ps->setParser(parser);
 			ps->setAttribs({ "Points", "Colours" });
 
-			auto res = resourceMgr->declareResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps));
+			auto res = resourceMgr->declareResource("__mpp_p2d_points_text_coloured__", ResourceStreamPtr(ps)).first;
 			addCoreResource(res, false);
 		}
 		{
@@ -656,7 +656,7 @@ namespace mpp
 			ps->setParser(parser);
 			ps->setAttribs({ "Colours" });
 
-			auto res = resourceMgr->declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps));
+			auto res = resourceMgr->declareResource("__mpp_p2d_tris_text_coloured__", ResourceStreamPtr(ps)).first;
 			addCoreResource(res, true);
 		}
 
@@ -682,7 +682,7 @@ namespace mpp
 		});
 
 		blankStream->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
-		mNoTexture = resourceMgr->declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream));
+		mNoTexture = resourceMgr->declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream)).first;
 		addCoreResource(mNoTexture, true);
 
 		// Internal font texture
@@ -709,7 +709,7 @@ namespace mpp
 
 		ts->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
 
-		mInternalFontTexture = resourceMgr->declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts));
+		mInternalFontTexture = resourceMgr->declareResource("__mpp_tex_internalfont__", ResourceStreamPtr(ts)).first;
 		addCoreResource(mInternalFontTexture, true);
 
 		mInternalFont = new Font(mInternalFontTexture);
@@ -729,7 +729,7 @@ namespace mpp
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
-		mDefaultMaterial = resourceMgr->declareResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream));
+		mDefaultMaterial = resourceMgr->declareResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream)).first;
 		addCoreResource(mDefaultMaterial, true);
 
 		// Internal font
@@ -739,14 +739,14 @@ namespace mpp
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
 		textMatStream->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStream->setTexture("TEX1", "__mpp_tex_internalfont__");
-		auto res = resourceMgr->declareResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream));
+		auto res = resourceMgr->declareResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream)).first;
 		addCoreResource(res, true);
 
 		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream(mResourceMgr);
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
 		textMatStreamColoured->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
-		res = resourceMgr->declareResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured));
+		res = resourceMgr->declareResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured)).first;
 		addCoreResource(res, true);
 
 		int fontTextureWidth = ((Texture&)*mInternalFontTexture).getWidth();
@@ -814,7 +814,7 @@ namespace mpp
 		}
 
 		auto textStreamPtr = ResourceStreamPtr(textStream);
-		mTextMesh = resourceMgr->declareResource("__mpp_internal_text_mesh__", textStreamPtr);
+		mTextMesh = resourceMgr->declareResource("__mpp_internal_text_mesh__", textStreamPtr).first;
 		addCoreResource(mTextMesh, true);
 
 		// Coloured font mesh
@@ -862,7 +862,7 @@ namespace mpp
 		}
 
 		textStreamPtr = ResourceStreamPtr(textStream);
-		mColouredTextMesh = resourceMgr->declareResource("__mpp_internal_coloured_text_mesh__", textStreamPtr);
+		mColouredTextMesh = resourceMgr->declareResource("__mpp_internal_coloured_text_mesh__", textStreamPtr).first;
 		addCoreResource(mColouredTextMesh, true);
 
 		// Fullscreen mesh
@@ -885,7 +885,7 @@ namespace mpp
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32((float)mWindowHeight).f32(0.0f).f32(1.0f));
 		quadStream->addVertexData(quadMesh, mesh::VertexData(quadSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 
-		mFullscreenQuad = resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream));
+		mFullscreenQuad = resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream)).first;
 		addCoreResource(mFullscreenQuad, true);
 
 		// Render targets
