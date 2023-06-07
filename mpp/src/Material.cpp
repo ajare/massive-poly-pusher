@@ -206,8 +206,6 @@ namespace mpp
 	 */
 	void Material::unloadImpl()
 	{
-		// Todo: reference counting on the resource such that it will unload
-		// when not referenced?
 	}
 
 	/*
