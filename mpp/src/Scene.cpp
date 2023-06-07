@@ -31,6 +31,9 @@ namespace mpp
 	{
 		if (mLoaded)
 		{
+			m2dModels.clear();
+			m3dModels.clear();
+
 			unloadImpl();
 			mLoaded = false;
 		}
