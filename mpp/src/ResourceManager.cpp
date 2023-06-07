@@ -213,6 +213,7 @@ namespace mpp
 			throw MppException("Could not remove resource '" + name + "' from system as it still has references.");
 		}
 
+		resource->destroy();
 		removeResource(resource);
 	}
 
