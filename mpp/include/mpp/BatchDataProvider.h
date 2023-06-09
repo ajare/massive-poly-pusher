@@ -11,7 +11,7 @@
 
 namespace mpp
 {
-	class BatchDataProvider
+	class _MPPAPI BatchDataProvider
 	{
 		size_t mNumPrimitives{ 0 };
 
@@ -19,21 +19,11 @@ namespace mpp
 
 		virtual void getBounds(glm::vec3& bMin, glm::vec3& bMax) = 0;
 
-		virtual bool update(float frameTime)
-		{
-			MPP_UNUSED(frameTime);
-			return false;
-		}
+		virtual bool update(float frameTime);
 
-		void setNumPrimitives(size_t numPrimitives)
-		{
-			mNumPrimitives = numPrimitives;
-		}
+		void setNumPrimitives(size_t numPrimitives);
 
-		size_t getNumPrimitives() const
-		{
-			return mNumPrimitives;
-		}
+		size_t getNumPrimitives() const;
 	};
 
 	typedef std::shared_ptr<BatchDataProvider> BatchDataProviderPtr;

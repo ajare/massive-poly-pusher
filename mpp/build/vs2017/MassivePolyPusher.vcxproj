@@ -105,6 +105,7 @@
     <ClInclude Include="..\..\include\mpp\VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\include\mpp\BatchDataProvider.cpp" />
     <ClCompile Include="..\..\src\Batch.cpp" />
     <ClCompile Include="..\..\src\BoxModelStream.cpp" />
     <ClCompile Include="..\..\src\Camera.cpp" />
