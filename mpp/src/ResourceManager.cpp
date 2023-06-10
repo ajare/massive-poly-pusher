@@ -687,11 +687,12 @@ namespace mpp
 	{
 		vector<ResourcePtr> resources;
 
-		for (auto kvp : mResources)
+		for (auto item : mResources)
 		{
-			if (kvp.second->isReferenced())
+			auto resource = item.second;
+			if (resource->isReferenced())
 			{
-				resources.push_back(kvp.second);
+				resources.push_back(resource);
 			}
 		}
 
@@ -702,15 +703,41 @@ namespace mpp
 	{
 		vector<ResourcePtr> resources;
 
-		for (auto kvp : mResources)
+		for (auto item : mResources)
 		{
-			if (!kvp.second->isReferenced())
+			auto resource = item.second;
+			if (!resource->isReferenced())
 			{
-				resources.push_back(kvp.second);
+				resources.push_back(resource);
 			}
 		}
 
 		return resources;
+	}
+
+	void ResourceManager::getResourceCounts(uint32_t& numResources, uint32_t& numDeclared, uint32_t& numCreated, uint32_t& numLoaded) const
+	{
+		numResources = mResources.size();
+		numDeclared = 0;
+		numCreated = 0;
+		numLoaded = 0;
+
+		for (auto item : mResources)
+		{
+			auto resource = item.second;
+			if (resource->isLoaded())
+			{
+				numLoaded++;
+			}
+			else if (resource->isCreated())
+			{
+				numCreated++;
+			}
+			else
+			{
+				numDeclared++;
+			}
+		}
 	}
 
 	/*

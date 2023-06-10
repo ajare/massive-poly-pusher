@@ -210,6 +210,10 @@ namespace mpp
 		//
 		// Debug and info
 		//
+		std::vector<std::string> mDebugPreMessages;
+		
+		std::vector<std::string> mDebugPostMessages;
+
 		bool mShowDebugPanel;
 
 		TimeUnit mTimeUnit;
@@ -283,6 +287,10 @@ namespace mpp
 		void showDebugPanel(bool show, TimeUnit timeUnit = TimeUnit::Milliseconds, SizeUnit sizeUnit = SizeUnit::Megabytes);
 
 		bool isDebugPanelShown() const;
+
+		void setDebugPreMessages(std::vector<std::string> const& messages);
+
+		void setDebugPostMessages(std::vector<std::string> const& messages);
 
 		void setDefaultState();
 
@@ -443,6 +451,8 @@ namespace mpp
 		void renderText(std::vector<std::string> const& text, int x, int y, Colour const& colour);
 
 		void renderTextFormatted(std::string const& text, int x, int y);
+
+		void renderTextFormatted(std::vector<std::string> const& text, int x, int y);
 
 		// Debug
 #ifdef MPP_DEBUG_BUILD
