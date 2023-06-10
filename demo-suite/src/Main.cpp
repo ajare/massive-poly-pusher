@@ -344,6 +344,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Render
 			//
+			gRenderSystem->setDebugPreMessages({ "FPS: " + utils::StringUtils::toString(fps) });
+			gRenderSystem->showDebugPanel(true);
 			gRenderSystem->startStatsCollection();
 
 			// Set light positions
@@ -364,16 +366,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Finish scene
 			auto ri = gRenderSystem->finishStatsCollection();
 
-			// Text
 			vector<string> lines;
-			lines.push_back("FPS: " + utils::StringUtils::toString(fps));
-			lines.push_back("Primitives: " + utils::StringUtils::toString(ri.primitivesRendered));
-			lines.push_back("Program switches: " + utils::StringUtils::toString(ri.programSwitches));
-			lines.push_back("Texture switches: " + utils::StringUtils::toString(ri.textureSwitches));
-
-			gRenderSystem->renderText(lines, 8, gRenderSystem->getWindowHeight() - 80, Colour::White);
-
-			lines.clear();
 			lines.push_back("F1: toggle fullscreen");
 			lines.push_back("F2: toggle wireframe");
 			lines.push_back("M: toggle models");

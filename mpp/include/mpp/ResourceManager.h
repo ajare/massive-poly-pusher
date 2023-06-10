@@ -101,6 +101,8 @@ namespace mpp
 
 		std::vector<ResourcePtr> getAllUnreferencedResources() const;
 
+		void getResourceCounts(uint32_t& numResources, uint32_t& numDeclared, uint32_t& numCreated, uint32_t& numLoaded) const;
+
 		ResourcePtr getTextureBySortId(uint32_t id);
 
 		ResourcePtr getProgramBySortId(uint32_t id);

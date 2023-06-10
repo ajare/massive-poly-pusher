@@ -623,7 +623,8 @@ namespace mpp
 			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			//layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
 
 			auto parser = make_shared<program::Parser>();
 
@@ -644,7 +645,8 @@ namespace mpp
 			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
 			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			//layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
 
 			auto parser = make_shared<program::Parser>();
 
@@ -830,7 +832,8 @@ namespace mpp
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
-			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			//attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
 
 			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
@@ -850,7 +853,8 @@ namespace mpp
 
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
-			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			//attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
 
 			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
@@ -2135,7 +2139,7 @@ namespace mpp
 	 * Render coloured text using tags.
 	 *
 	 */
-	void RenderSystem::renderTextFormatted(std::string const& text, int x, int y)
+	void RenderSystem::renderTextFormatted(string const& text, int x, int y)
 	{
 		Model* textModel = (Model*)mColouredTextMesh.get();
 		Mesh* textMesh = textModel->getMesh(0);
@@ -2150,9 +2154,40 @@ namespace mpp
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		mTextParams->setModelPrimitiveCount(count);
 
-		renderModelImmediate(static_cast<Model const&>(*mTextMesh.get()), true, mTextParams);
+		renderModelImmediate(static_cast<Model const&>(*mColouredTextMesh.get()), true, mTextParams);
 	}
 	
+	void RenderSystem::renderTextFormatted(vector<string> const& text, int x, int y)
+	{
+		Model* textModel = (Model*)mColouredTextMesh.get();
+		Mesh* textMesh = textModel->getMesh(0);
+		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
+
+		y = mWindowHeight - y - 16;
+		int count = 0, offset = 0;
+		for (uint32_t i = 0; i < text.size(); ++i)
+		{
+			count += buildColouredTextVertexBuffer(vertexBuffer, text[i], offset, x, y - i * 16);
+		}
+
+		vertexBuffer->mapBufferData(count);
+
+		mTextUniforms->updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		mTextParams->setModelPrimitiveCount(count);
+
+		renderModelImmediate(static_cast<Model const&>(*mColouredTextMesh.get()), true, mTextParams);
+	}
+
+	void RenderSystem::setDebugPreMessages(vector<string> const& messages)
+	{
+		mDebugPreMessages = messages;
+	}
+
+	void RenderSystem::setDebugPostMessages(vector<string> const& messages)
+	{
+		mDebugPostMessages = messages;
+	}
+
 	/*
 	 * Render debugging panel.
 	 *
@@ -2162,6 +2197,8 @@ namespace mpp
 		setProjection2dOrthographic();
 
 		vector<string> lines;
+
+		copy(mDebugPreMessages.begin(), mDebugPreMessages.end(), back_inserter(lines));
 
 #ifdef MPP_PROFILE_BUILD
 		map<string, uint64_t> profileResults = mProfiler->getSamples();
@@ -2288,10 +2325,33 @@ namespace mpp
 		lines.push_back(utils::StringUtils::format("Texture switches: {}", mRenderInfo.textureSwitches));
 		lines.push_back(utils::StringUtils::format("Screen quads: {}", mRenderInfo.fullscreenQuads));
 
-		int width = 0;
+		copy(mDebugPostMessages.begin(), mDebugPostMessages.end(), back_inserter(lines));
+
+		// Get resource info
+		uint32_t numTotalResources, numDeclaredResources, numCreatedResources, numLoadedResources;
+		mResourceMgr->getResourceCounts(numTotalResources, numDeclaredResources, numCreatedResources, numLoadedResources);
+
+		lines.push_back(utils::StringUtils::format("Resources : {} ([#FF0000FF]{}[#FFFFFFFF] / [#FFFF00FF]{}[#FFFFFFFF] / [#00FF00FF]{}[#FFFFFFFF])", 
+			numTotalResources, 
+			numDeclaredResources, 
+			numCreatedResources, 
+			numLoadedResources));
+
+		// Calculate padding and placement
+		size_t width = 0;
 		for (auto const& line: lines)
 		{
-			width = max(width, (int)line.length());
+			auto thisWidth = line.length();
+
+			// Factor out colour formatting
+			string::size_type pos{ 0 };
+			while ((pos = line.find("[#", pos)) != string::npos)
+			{
+				thisWidth -= 11;
+				pos += 2;
+			}
+
+			width = max(width, thisWidth);
 		}
 
 		// Background, in case the screen in that location is the same colour as the text
@@ -2301,7 +2361,7 @@ namespace mpp
 		renderQuad(x, mWindowHeight, w, h, Colour(0.5f, 0.625f, 0.87f, 0.85f), true, false);
 
 		// Render batch information
-		renderText(lines, x, y, mpp::Colour::Yellow);
+		renderTextFormatted(lines, x, y);
 
 #ifdef MPP_PROFILE_BUILD
 
