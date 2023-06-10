@@ -60,18 +60,18 @@ namespace mpp
 		return sm;
 	}
 
-	SceneModel2dPtr Scene::add2dModel(ResourcePtr model)
+	SceneModel2dPtr Scene::add2dModel(ResourcePtr model, int order)
 	{
 		auto sm = make_shared<SceneModel2d>(model, mRenderSystem);
-		m2dModels.push_back(sm);
+		m2dModels.push_back(make_pair(sm, order));
 
 		return sm;
 	}
 
-	SceneModel2dPtr Scene::add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer)
+	SceneModel2dPtr Scene::add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, int order)
 	{
 		auto sb = make_shared<SceneModel2d>(dataProvider, renderer);
-		m2dModels.push_back(sb);
+		m2dModels.push_back(make_pair(sb, order));
 
 		return sb;
 	}
@@ -88,17 +88,19 @@ namespace mpp
 		return inView;
 	}
 
-	vector<SceneModel2dPtr> Scene::get2dModelsInView()
+	vector<pair<SceneModel2dPtr, int>> Scene::get2dModelsInView()
 	{
-		vector<SceneModel2dPtr> inView;
+		vector<pair<SceneModel2dPtr, int>> inView;
 
 		auto width = mRenderSystem->getWindowWidth();
 		auto height = mRenderSystem->getWindowHeight();
 		
-		std::copy_if(m2dModels.begin(), m2dModels.end(), std::back_inserter(inView), [width, height](SceneModel2dPtr batch)
+		std::copy_if(m2dModels.begin(), m2dModels.end(), std::back_inserter(inView), [width, height](pair<SceneModel2dPtr, int> item)
 		{
 			glm::vec3 bMin, bMax;
-			batch->getBounds(bMin, bMax);
+
+			auto model = item.first;
+			model->getBounds(bMin, bMax);
 
 			if (bMin.x > width)
 			{
@@ -155,9 +157,10 @@ namespace mpp
 
 	void Scene::update(float frameTime)
 	{
-		for (auto batch: m2dModels)
+		for (auto item: m2dModels)
 		{
-			batch->update(frameTime);
+			auto model = item.first;
+			model->update(frameTime);
 		}
 	}
 
