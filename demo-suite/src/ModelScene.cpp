@@ -430,6 +430,7 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
+	int batchRenderOrder = 0;
 	auto resourceMgr = getResourceManager();
 	
 	mpp::helper::TriangleBatchRendererParams triParams
@@ -459,7 +460,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	lineBatchRenderer->create();
 
-	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer));
+	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer, batchRenderOrder++));
 	
 	// Triangles
 
@@ -476,7 +477,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	tri2dBatchRenderer->create();
 
-	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer));
+	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer, batchRenderOrder++));
 	
 
 	// Quad 1
@@ -504,7 +505,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	quadBatchRenderer1->create();
 
-	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1));
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1, batchRenderOrder++));
 	
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
@@ -531,7 +532,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	quadBatchRenderer2->create();
 
-	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2));
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2, batchRenderOrder++));
 	
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
@@ -558,7 +559,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	quadBatchRenderer3->create();
 
-	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3));
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3, batchRenderOrder++));
 	
 	// Quad 4
 	auto dragonTexture = resourceMgr->getResource("Dragon.Texture");
@@ -587,7 +588,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	quadBatchRenderer4->create();
 
-	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider4, quadBatchRenderer4));
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider4, quadBatchRenderer4, 100));
 
 	// Quad 5
 	auto atlasTexture = resourceMgr->getResource("Atlas.Texture");
@@ -616,7 +617,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	quadBatchRenderer5->create();
 
-	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider5, quadBatchRenderer5));
+	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider5, quadBatchRenderer5, batchRenderOrder++));
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)

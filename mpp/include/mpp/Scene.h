@@ -32,7 +32,7 @@ namespace mpp
 
 		std::vector<SceneModel3dPtr> m3dModels;
 
-		std::vector<SceneModel2dPtr> m2dModels;
+		std::vector<std::pair<SceneModel2dPtr, int>> m2dModels;
 
 	private:
 
@@ -60,13 +60,13 @@ namespace mpp
 
 		virtual SceneModel3dPtr add3dModel(ResourcePtr model);
 
-		virtual SceneModel2dPtr add2dModel(ResourcePtr model);
+		virtual SceneModel2dPtr add2dModel(ResourcePtr model, int order);
 
-		virtual SceneModel2dPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer);
+		virtual SceneModel2dPtr add2dBatch(BatchDataProviderPtr dataProvider, BatchRendererPtr renderer, int order);
 
 		virtual std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr camera);
 
-		virtual std::vector<SceneModel2dPtr> get2dModelsInView();
+		virtual std::vector<std::pair<SceneModel2dPtr, int>> get2dModelsInView();
 
 		void show2dModels(bool show);
 

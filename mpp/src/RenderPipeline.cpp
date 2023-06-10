@@ -100,12 +100,20 @@ namespace mpp
 		// 2d models
 		if (scene->show2dModels())
 		{
-			auto const& models = scene->get2dModelsInView();
+			auto orderedModels = scene->get2dModelsInView();
+
+			// Sort models.
+			sort(orderedModels.begin(), orderedModels.end(), [](auto const& a, auto const& b)
+			{
+				return a.second < b.second;
+			});
 
 			mRenderSystem->pushModelMatrix();
 
-			for (auto model: models)
+			for (auto orderedModel: orderedModels)
 			{
+				auto model = orderedModel.first;
+
 				auto const& origin = model->getOrigin();
 				auto const& offset = model->getOffset();
 				float angle = model->getAngle();
