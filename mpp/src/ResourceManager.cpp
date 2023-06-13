@@ -57,10 +57,6 @@ namespace mpp
 		{
 			return ResourcePtr(new Texture(name, this->mwRenderSystem, this, rStream));
 		};
-		mResourceFactories["TextureAtlas"] = [this](string const& name, ResourceStreamPtr rStream)
-		{
-			return ResourcePtr(new TextureAtlas(name, this->mwRenderSystem, this, rStream));
-		};
 		mResourceFactories["RenderTexture"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new RenderTexture(name, this->mwRenderSystem, this, rStream));
@@ -222,7 +218,7 @@ namespace mpp
 		auto const& name = resource->getName();
 		auto const& type = resource->getType();
 
-		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
+		if (type == "Texture" || type == "RenderTexture")
 		{
 			// Set sort id
 			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
@@ -268,7 +264,7 @@ namespace mpp
 		mResources.erase(name);
 
 		auto type = resource->getType();
-		if (type == "Texture" || type == "TextureAtlas" || type == "RenderTexture")
+		if (type == "Texture" || type == "RenderTexture")
 		{
 			mSortableTextures.erase(remove(mSortableTextures.begin(), mSortableTextures.end(), resource), mSortableTextures.end());
 		}

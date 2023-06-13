@@ -17,7 +17,6 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
-#include "mpp/TextureAtlas.h"
 #include "mpp/ProgramStream.h"
 #include "mpp/TextureStream.h"
 #include "mpp/Logger.h"

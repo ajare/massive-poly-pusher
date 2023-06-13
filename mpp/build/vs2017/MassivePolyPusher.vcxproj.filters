@@ -171,9 +171,6 @@
     <ClInclude Include="..\..\include\mpp\CircleBatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\TextureAtlas.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\RenderTextureStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -220,9 +217,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\mpp\ProgrammaticTextureAtlasStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\TextureData.h">
@@ -413,9 +407,6 @@
     <ClCompile Include="..\..\src\CircleBatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\TextureAtlas.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\RenderTextureStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -453,9 +444,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\ProgrammaticTextureStream.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\ProgrammaticTextureAtlasStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\TextureData.cpp">

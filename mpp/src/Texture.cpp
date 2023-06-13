@@ -25,6 +25,7 @@ namespace mpp
 	 */
 	Texture::Texture(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: Resource(name, "Texture", renderSystem, resourceMgr, resourceStream)
+		, mIsAtlas(false)
 		, mNumAttachments(1)
 		, mSortId(0)
 		, mInternalFormat(0)
@@ -47,6 +48,15 @@ namespace mpp
 	}
 
 	/*
+	 * Should this be treated as a texture atlas?
+	 *
+	 */
+	bool Texture::isAtlas() const
+	{
+		return mIsAtlas;
+	}
+
+	/*
 	 * Create the data required for the program from the resource stream.
 	 *
 	 */
@@ -60,6 +70,7 @@ namespace mpp
 
 		auto dataSize = tStr->getDataSize();
 
+		mIsAtlas = tStr->isAtlas();
 		mInternalFormat = tStr->getInternalFormat();
 		mTarget = tStr->getTarget();
 		mParams = tStr->getParams();
