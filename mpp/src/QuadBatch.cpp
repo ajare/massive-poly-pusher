@@ -299,7 +299,7 @@ namespace mpp
 
 		// Texture coords
 		mesh::VertexBufferAttributeLayout* texcoordLayout{ nullptr };
-		if ((usingPointSprites() && usingTextureAtlas()) || (!usingPointSprites() && (usingTexture() || usingTextureAtlas())))
+		if ((usingPointSprites() && usingTextureAtlas()) || (!usingPointSprites() && usingTexture()))
 		{
 			if (mOptions.texcoordAttrib.fixedValues)
 			{
@@ -437,7 +437,7 @@ namespace mpp
 
 	bool QuadBatch::usingTextureAtlas() const
 	{
-		return mTexture && mTexture->getType() == "TextureAtlas";
+		return mTexture && static_cast<Texture*>(mTexture.get())->isAtlas();
 	}
 
 	bool QuadBatch::positionFixed() const

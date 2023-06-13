@@ -22,6 +22,11 @@ namespace mpp
 		createQualitySetting("");
 	}
 
+	void ProgrammaticTextureStream::setAtlas(bool isAtlas)
+	{
+		mIsAtlas = isAtlas;
+	}
+
 	void ProgrammaticTextureStream::setParams(TextureParams const& params, uint32_t quality)
 	{
 		mQualitySettings[quality].params = params;

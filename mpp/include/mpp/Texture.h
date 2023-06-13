@@ -10,6 +10,8 @@ namespace mpp
 {
 	class _MPPAPI Texture : public Resource
 	{
+		bool mIsAtlas;
+
 	protected:
 
 		TextureParams mParams;
@@ -45,6 +47,8 @@ namespace mpp
 		Texture(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream);
 
 		~Texture();
+
+		bool isAtlas() const;
 
 		virtual size_t getWidth() const;
 

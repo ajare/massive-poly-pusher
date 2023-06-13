@@ -20,14 +20,6 @@ namespace mpp
 
 	public:
 
-		struct Tile
-		{
-			float u[2];
-			float v[2];
-		};
-
-	public:
-
 		struct QualitySetting
 		{
 			uint32_t internalFormat{ 0 };
@@ -40,7 +32,7 @@ namespace mpp
 
 	protected:
 
-		std::map<std::string, Tile> mTiles;
+		bool mIsAtlas;
 
 		TextureData mData;
 
@@ -57,6 +49,8 @@ namespace mpp
 		TextureStream(ResourceManager* resourceMgr, std::string streamType = "Texture");
 
 		virtual ~TextureStream();
+
+		bool isAtlas() const;
 
 		uint32_t getInternalFormat() const;
 
@@ -81,8 +75,6 @@ namespace mpp
 		TextureParams const& getParams() const;
 
 		std::string const& getSampler() const;
-
-		std::map<std::string, Tile> const& getTiles() const;
 
 		uint32_t createQualitySetting(std::string const& name);
 

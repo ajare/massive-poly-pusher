@@ -16,6 +16,7 @@ namespace mpp
 	 */
 	TextureStream::TextureStream(ResourceManager* resourceMgr, string streamType)
 		: ResourceStream(resourceMgr, streamType)
+		, mIsAtlas(false)
 	{
 	}
 
@@ -54,6 +55,11 @@ namespace mpp
 			mData.pixelFormat = 0;
 			mData.dataType = 0;
 		}
+	}
+
+	bool TextureStream::isAtlas() const
+	{
+		return mIsAtlas;
 	}
 
 	uint32_t TextureStream::getInternalFormat() const
@@ -134,11 +140,6 @@ namespace mpp
 	string const& TextureStream::getSampler() const
 	{
 		return mQualitySettings[mQualitySetting].sampler;
-	}
-
-	map<string, TextureStream::Tile> const& TextureStream::getTiles() const
-	{
-		return mTiles;
 	}
 
 	uint32_t TextureStream::createQualitySetting(string const& name)

@@ -59,7 +59,6 @@
     <ClInclude Include="..\..\include\mpp\ProgrammaticRenderTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticSamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticStringStream.h" />
-    <ClInclude Include="..\..\include\mpp\ProgrammaticTextureAtlasStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\QuadBatch.h" />
@@ -89,7 +88,6 @@
     <ClInclude Include="..\..\include\mpp\String.h" />
     <ClInclude Include="..\..\include\mpp\StringStream.h" />
     <ClInclude Include="..\..\include\mpp\Texture.h" />
-    <ClInclude Include="..\..\include\mpp\TextureAtlas.h" />
     <ClInclude Include="..\..\include\mpp\TextureData.h" />
     <ClInclude Include="..\..\include\mpp\TextureParams.h" />
     <ClInclude Include="..\..\include\mpp\TextureRenderer.h" />
@@ -141,7 +139,6 @@
     <ClCompile Include="..\..\src\ProgrammaticRenderTextureStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticSamplerStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticStringStream.cpp" />
-    <ClCompile Include="..\..\src\ProgrammaticTextureAtlasStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticTextureStream.cpp" />
     <ClCompile Include="..\..\src\ProgramStream.cpp" />
     <ClCompile Include="..\..\src\QuadBatch.cpp" />
@@ -168,7 +165,6 @@
     <ClCompile Include="..\..\src\String.cpp" />
     <ClCompile Include="..\..\src\StringStream.cpp" />
     <ClCompile Include="..\..\src\Texture.cpp" />
-    <ClCompile Include="..\..\src\TextureAtlas.cpp" />
     <ClCompile Include="..\..\src\TextureData.cpp" />
     <ClCompile Include="..\..\src\TextureParams.cpp" />
     <ClCompile Include="..\..\src\TextureRenderer.cpp" />

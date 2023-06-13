@@ -296,17 +296,6 @@ namespace mpp
 	{
 		auto stream = dynamic_cast<TextureStream*>(resourceStream.get());
 
-		// Write tiles
-		writeValue(stream->mTiles.size(), fp);
-		for (auto const& kvp: stream->mTiles)
-		{
-			writeValue(kvp.first, fp);
-			writeValue(kvp.second.u[0], fp);
-			writeValue(kvp.second.u[1], fp);
-			writeValue(kvp.second.v[0], fp);
-			writeValue(kvp.second.v[1], fp);
-		}
-
 		// Write number of quality settings
 		writeValue(stream->mQualitySettings.size(), fp);
 
@@ -687,7 +676,9 @@ namespace mpp
 		auto pStream = static_cast<ProgrammaticTextureStream*>(resourceStream.get());
 		pStream->mQualitySettings.clear();
 
-		// Read tiles
+		// Read tiles.
+		// NOTE: tiles have been removed, but this code has been left in to load existing models which were saved with tile information.
+		//       new models will be written without.
 		size_t numTiles = readUInt(fp);
 		for (size_t i = 0; i < numTiles; ++i)
 		{
@@ -697,12 +688,14 @@ namespace mpp
 			float v0 = readFloat(fp);
 			float v1 = readFloat(fp);
 
+			/*
 			TextureStream::Tile tile
 			{
 				{ u0, u1 }, { v0, v1 }
 			};
 
 			pStream->mTiles[tileName] = tile;
+			*/
 		}
 
 		// Read number of quality settings

@@ -10,7 +10,6 @@
 
 #include <mpp/MaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
-#include <mpp/ProgrammaticTextureAtlasStream.h>
 
 #include "Helper.h"
 #include "Logger.h"
@@ -182,19 +181,6 @@ mpp::TextureData loadImage(string const& filename)
 		string errMsg = "Couldn't open '" + filename + "'.";
 		throw exception(errMsg.c_str());
 	}
-}
-
-mpp::TextureStream* loadImageAtlas(string const& filename)
-{
-	auto tStr = new mpp::ProgrammaticTextureAtlasStream(gResourceManager);
-	tStr->setTarget(mpp::TextureTarget::Texture2D);
-	tStr->setData([filename](std::string const& f)
-	{
-		return loadImage(filename);
-	});
-
-	tStr->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
-	return tStr;
 }
 
 void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resourceMgr)

@@ -11,6 +11,8 @@ namespace mpp
 
 		ProgrammaticTextureStream(ResourceManager* resourceMgr, std::string const& type = "Texture");
 
+		void setAtlas(bool isAtlas);
+
 		void setTarget(TextureTarget target, uint32_t quality = 0);
 
 		void setParams(TextureParams const& params, uint32_t quality = 0);
