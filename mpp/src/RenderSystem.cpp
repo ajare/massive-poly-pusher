@@ -1911,60 +1911,10 @@ namespace mpp
 	}
 
 	/*
-	 * Render a fullscreen quad, for effects.
+	 * Render a texture as a fullscreen quad
 	 *
 	 */
-	void RenderSystem::renderFullscreenQuad(ResourcePtr material, UniformCollection* uniforms)
-	{
-		flushVertexBuffers();
-
-		Material* m = (Material*)material.get();
-
-		// Set program
-		auto program = m->getProgram();
-		auto p = static_cast<Program*>(program.get());
-
-		setUsedProgram(program);
-		mRenderInfo.programSwitches++;
-
-		// Set uniforms
-		m->setUniforms();
-
-		if (uniforms)
-		{
-			uniforms->bindUniforms(program);
-		}
-
-		int mcpId = p->getModelCameraProjectionMatrixId();
-		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
-
-		int hwsId = p->getHalfWindowSizeId();
-		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
-
-		// Set texture
-		for (int i = 0; i < m->getNumTextures(); ++i)
-		{
-			((Texture*)m->getTexture(i).get())->bind(i);
-			mRenderInfo.textureSwitches++;
-		}
-
-		// Bind mesh
-		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
-		quadMesh->bind(true);
-		quadMesh->render(1);
-
-		// Unbind
-		quadMesh->bind(false);
-
-		mRenderInfo.batchCount++;
-		mRenderInfo.fullscreenQuads++;
-	}
-
-	/*
-	 * Render a rendertexture as a fullscreen quad
-	 *
-	 */
-	void RenderSystem::renderFullscreenQuad(RenderTexture* texture, int attachment, BlendMode srcBlend, BlendMode dstBlend, shared_ptr<UniformCollection> uniforms)
+	void RenderSystem::renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, shared_ptr<UniformCollection> uniforms)
 	{
 		flushVertexBuffers();
 
@@ -1979,6 +1929,12 @@ namespace mpp
 		{
 			uniforms->bindUniforms(mFullscreenProgram);
 		}
+		else
+		{
+			// Set defaults manually
+			int diffuseId = p->getUniformId("DIFFUSE");
+			GL_CHECK(glUniform4f(diffuseId, 1, 1, 1, 1));
+		}
 
 		int mcpId = p->getModelCameraProjectionMatrixId();
 		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
@@ -1986,11 +1942,8 @@ namespace mpp
 		int hwsId = p->getHalfWindowSizeId();
 		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
-		int diffuseId = p->getUniformId("DIFFUSE");
-		GL_CHECK(glUniform4f(diffuseId, 1, 1, 1, 1));
-
 		// Set texture
-		texture->bind(attachment, 0);
+		texture->bind(0, 0);
 		mRenderInfo.textureSwitches++;
 
 		// Set blend
@@ -2771,34 +2724,6 @@ namespace mpp
 	 */
 	RenderInfo const& RenderSystem::finishStatsCollection()
 	{
-//		flushVertexBuffers();
-
-		// Change to 2d to render everything out.
-//		setProjection2dOrthographic();
-//		resetTransform();
-
-//		renderToScreen();
-//		renderFullscreenQuad((mpp::RenderTexture*)sceneTarget.get(), 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
-
-		// Post process
-		/*
-		for (auto& effect: mPostProcessEffects)
-		{
-			// Set render target
-			setRenderTarget(mFullscreenFxTarget);
-			clearScreen(mpp::Colour::Black);
-
-			// Render effect
-			renderFullscreenQuad(mResourceMgr->getResource(effect.material), &effect.uniforms);
-
-			// Set render to screen and blend effect over it.
-			renderToScreen();
-			
-			auto fxTexture = (mpp::RenderTexture*)mFullscreenFxTarget.get();
-			renderFullscreenQuad(fxTexture, effect.attachment, effect.blendSrc, effect.blendDst);
-		}
-		*/
-
 #ifdef MPP_PROFILE_BUILD
 		mProfiler->sample();
 #endif		
