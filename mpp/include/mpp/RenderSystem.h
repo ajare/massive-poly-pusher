@@ -438,9 +438,7 @@ namespace mpp
 		//
 		// 2d rendering
 		// 
-		void renderFullscreenQuad(ResourcePtr material, UniformCollection* uniforms = nullptr);
-
-		void renderFullscreenQuad(RenderTexture* texture, int attachment, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
+		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

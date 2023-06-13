@@ -95,7 +95,7 @@ namespace mpp
 		mRenderSystem->clearScreen(scene->getClearColour());
 
 		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
-		mRenderSystem->renderFullscreenQuad(outputRenderTexture, 0, mpp::BlendMode::One, mpp::BlendMode::Zero);
+		mRenderSystem->renderFullscreenQuad(outputRenderTexture, mpp::BlendMode::One, mpp::BlendMode::Zero);
 
 		// 2d models
 		if (scene->show2dModels())
