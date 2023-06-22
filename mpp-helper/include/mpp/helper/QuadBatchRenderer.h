@@ -389,8 +389,9 @@ namespace mpp
 						PosTypeBuiltin angle;
 						mDataProvider->angle(primitiveIndex, angle);
 
-						rotBuffer[rOffset + 0] = sinf(angle);
-						rotBuffer[rOffset + 1] = cosf(angle);
+						auto rads = glm::radians(270.0f - angle);
+						rotBuffer[rOffset + 0] = sinf(rads);
+						rotBuffer[rOffset + 1] = cosf(rads);
 					}
 
 					//
