@@ -46,6 +46,10 @@ namespace mpp
 
 		virtual ~SceneModel2d();
 
+		void setVisible(bool visible);
+
+		bool isVisible() const;
+
 		void setOrigin(glm::vec2 const& origin);
 
 		glm::vec2 const& getOrigin() const;
