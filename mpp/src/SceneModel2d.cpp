@@ -52,6 +52,16 @@ namespace mpp
 		}
 	}
 
+	void SceneModel2d::setVisible(bool visible)
+	{
+		mVisible = visible;
+	}
+
+	bool SceneModel2d::isVisible() const
+	{
+		return mVisible;
+	}
+
 	void SceneModel2d::setOrigin(glm::vec2 const& origin)
 	{
 		mOrigin = origin;
@@ -134,6 +144,11 @@ namespace mpp
 
 	void SceneModel2d::render(CameraPtr camera)
 	{
+		if (!isVisible())
+		{
+			return;
+		}
+
 		if (mRenderer)
 		{
 			mRenderer->render();
