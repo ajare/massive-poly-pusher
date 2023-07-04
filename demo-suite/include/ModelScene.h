@@ -8,6 +8,15 @@
 
 class ModelScene : public ::Scene
 {
+	struct Label
+	{
+		bool visible;
+		int x, y;
+		std::string text;
+	};
+
+private:
+
 	float mTotalTime{ 0 };
 
 	glm::vec3 mLightPosition;
@@ -15,6 +24,8 @@ class ModelScene : public ::Scene
 	std::vector<mpp::SceneModel3dPtr> mModels;
 
 	std::vector<mpp::SceneModel2dPtr> mBatches;
+
+	std::vector<Label> mBatchLabels;
 
 	// Resources
 	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
@@ -63,7 +74,7 @@ public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
 
-	void toggle2dBatches();
+	void toggle2dBatches(int batchId);
 
 	void toggleModels();
 

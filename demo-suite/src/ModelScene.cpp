@@ -431,18 +431,51 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 
 void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 {
+	// 8 batches, arranged across the screen in 4x2 tiles
+	const int tilesX{ 4 };
+	const int tilesY{ 2 };
+
+	auto tileWidth = renderSystem->getWindowWidth() / tilesX;
+	auto tileHeight = renderSystem->getWindowHeight() / tilesY;
+
+	struct Tile
+	{
+		int x0, y0, x1, y1, cx, cy;
+		int tx, ty;
+	};
+
+	vector<Tile> tiles;
+	for (int y = 0; y < tilesY; ++y)
+	{
+		for (int x = 0; x < tilesX; ++x)
+		{
+			Tile t{
+				x * tileWidth, y * tileHeight,
+				(x + 1) * tileWidth, (y + 1) * tileHeight,
+				(x + 0.5f) * tileWidth, (y + 0.5f) * tileHeight,
+				x * tileWidth + 32, (y + 1) * tileHeight - 16
+			};
+
+			tiles.push_back(t);
+
+			Label label{
+				false, t.tx, t.ty, ""
+			};
+
+			mBatchLabels.push_back(label);
+		}
+	}
+
+
+
 	int batchRenderOrder = 0;
 	auto resourceMgr = getResourceManager();
 
-	mpp::helper::TriangleBatchRendererParams triParams
-	{
-		true,
-		true,
-		true,
-		false
-	};
-
+	//
 	// Lines
+	//
+	auto const* tile = &tiles[0];
+
 	mpp::helper::LineBatchRendererParams lineParams
 	{
 		true,
@@ -450,7 +483,11 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		false
 	};
 	
-	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>();
+	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>(
+		tile->x0,
+		tile->y0,
+		tile->x1 - tile->x0,
+		tile->ty - tile->y0);
 
 	auto lineBatchRenderer = make_shared<mpp::helper::LineBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
 		"TestLines",
@@ -462,10 +499,21 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	lineBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer, batchRenderOrder++));
-	
+	mBatchLabels[0].text = "Lines";
+
+	//
 	// Triangles
+	//
+	mpp::helper::TriangleBatchRendererParams triParams
+	{
+		true,
+		true,
+		true,
+		false
+	};
 
 	// 2D batch
+	/**
 	auto tri2dBatchDataProvider = make_shared<Test2dTriangleBatchDataProvider>();
 
 	auto tri2dBatchRenderer = make_shared<mpp::helper::TriangleBatch2DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
@@ -506,7 +554,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer1->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider1, quadBatchRenderer1, batchRenderOrder++));
-	
+
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -533,7 +581,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer2->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2, batchRenderOrder++));
-
+*/
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
@@ -548,7 +596,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		16,   // 16-bit indices
 		resourceMgr->getResource("Bullets.Texture"));
 
-	auto quadBatchDataProvider3 = make_shared<TestQuadBatchDataProvider>(renderSystem, 280.0f, 50, 2, true);
+	auto quadBatchDataProvider3 = make_shared<TestQuadBatchDataProvider>(renderSystem, 0.0f, 1, 2, true);
 
 	auto quadBatchRenderer3 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
 		"TestQuads3",
@@ -560,7 +608,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer3->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3, batchRenderOrder++));
-
+/*
 	// Quad 4
 	auto dragonTexture = resourceMgr->getResource("Dragon.Texture");
 	dragonTexture->load();
@@ -618,6 +666,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer5->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider5, quadBatchRenderer5, batchRenderOrder++));
+	*/
 }
 
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
@@ -727,9 +776,11 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 	return shared_ptr<mpp::Camera>(camera);
 }
 
-void ModelScene::toggle2dBatches()
+void ModelScene::toggle2dBatches(int batchId)
 {
-	getScene()->show2dModels(!getScene()->show2dModels());
+	auto visible = !mBatches[batchId]->isVisible();
+	mBatches[batchId]->setVisible(visible);
+	mBatchLabels[batchId].visible = visible;
 }
 
 void ModelScene::toggleModels()
@@ -785,4 +836,15 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 	}
 
 	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
+
+	// Batch text
+	for (int i = 0; i < 8; ++i)
+	{
+		auto const& label = mBatchLabels[i];
+
+		if (label.visible)
+		{
+			renderSystem->renderText(label.text, label.x, label.y, mpp::Colour::White);
+		}
+	}
 }
