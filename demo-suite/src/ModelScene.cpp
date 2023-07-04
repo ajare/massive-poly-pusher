@@ -410,6 +410,13 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(true);
 	materialStream->setMeshSpecification(spec2d);
+	materialStream->setTexture("TEX1", "__mpp_tex_none__");
+
+	addResource(resourceMgr->declareResource("Default.Material", ResourceStreamPtr(materialStream)).first, true);
+
+	materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream->setProgram2d(true);
+	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "Test.Texture");
 
 	addResource(resourceMgr->declareResource("Batch.2D.Material", ResourceStreamPtr(materialStream)).first, true);
@@ -466,8 +473,6 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		}
 	}
 
-
-
 	int batchRenderOrder = 0;
 	auto resourceMgr = getResourceManager();
 
@@ -499,11 +504,13 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	lineBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(lineBatchDataProvider, lineBatchRenderer, batchRenderOrder++));
-	mBatchLabels[0].text = "Lines";
+	mBatchLabels[0].text = "Lines (per-line colour)";
 
 	//
 	// Triangles
 	//
+	tile = &tiles[1];
+
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
 		true,
@@ -512,22 +519,26 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		false
 	};
 
-	// 2D batch
-	/**
-	auto tri2dBatchDataProvider = make_shared<Test2dTriangleBatchDataProvider>();
+	auto tri2dBatchDataProvider = make_shared<Test2dTriangleBatchDataProvider>(
+		tile->x0,
+		tile->y0,
+		tile->x1 - tile->x0,
+		tile->ty - tile->y0);
 
 	auto tri2dBatchRenderer = make_shared<mpp::helper::TriangleBatch2DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
 		"TestTrisBatch",
 		triParams,
 		tri2dBatchDataProvider,
-		resourceMgr->getResource("Batch.2D.Material"),
+		resourceMgr->getResource("Default.Material"),
 		renderSystem,
 		resourceMgr);
 
 	tri2dBatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer, batchRenderOrder++));
+	mBatchLabels[1].text = "Triangles (unindexed)";
 
+	/*
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,

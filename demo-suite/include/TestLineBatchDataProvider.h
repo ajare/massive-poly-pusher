@@ -27,8 +27,6 @@ class TestLineBatchDataProvider : public mpp::helper::LineBatchDataProvider<mpp:
 
 	float mTotalTime;
 
-	bool mDirty{ true };
-
 public:
 
 	TestLineBatchDataProvider(int x, int y, int width, int height)
