@@ -242,7 +242,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		float lightAngle = 0.0f, lightHeight = 750.0f;
 
 		// Turn off 2d batches to start
-		static_cast<ModelScene*>(gScenes[0])->toggle2dBatches();
+		for (int i = 0; i < 1; ++i)
+		{
+			static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(i);
+		}
 
 		// Main loop
 		gTimer->reset();
@@ -278,9 +281,37 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggleModels();
 			}
+			if (gInputMgr->keyPressed(Key_1))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(0);
+			}
 			if (gInputMgr->keyPressed(Key_2))
 			{
-				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches();
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(1);
+			}
+			if (gInputMgr->keyPressed(Key_3))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(2);
+			}
+			if (gInputMgr->keyPressed(Key_4))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(3);
+			}
+			if (gInputMgr->keyPressed(Key_5))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(4);
+			}
+			if (gInputMgr->keyPressed(Key_6))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(5);
+			}
+			if (gInputMgr->keyPressed(Key_7))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(6);
+			}
+			if (gInputMgr->keyPressed(Key_8))
+			{
+				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(7);
 			}
 
 			if (gInputMgr->keyReleased(Key_F2))
@@ -369,7 +400,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("F1: toggle fullscreen");
 			lines.push_back("F2: toggle wireframe");
 			lines.push_back("M: toggle models");
-			lines.push_back("2: toggle 2d batches");
+			lines.push_back("[1-8]: toggle 2d batches");
 
 			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 

@@ -392,7 +392,7 @@ namespace mpp
 							PosTypeBuiltin angle;
 							mDataProvider->angle(primitiveIndex, angle);
 
-							auto rads = glm::radians(angle + 90.0f);
+							auto rads = glm::radians(angle);
 							rotBuffer[rOffset + 0] = sinf(rads);
 							rotBuffer[rOffset + 1] = cosf(rads);
 							break;
@@ -740,7 +740,7 @@ namespace mpp
 							PosTypeBuiltin angle;
 							mDataProvider->angle(primitiveIndex, angle);
 
-							auto rads = glm::radians(angle + 90.0f);
+							auto rads = glm::radians(angle);
 							rotBuffer[rOffset + 0] = sinf(rads);
 							rotBuffer[rOffset + 1] = cosf(rads);
 							break;

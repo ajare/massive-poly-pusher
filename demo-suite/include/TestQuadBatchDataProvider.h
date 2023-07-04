@@ -60,7 +60,7 @@ public:
 	{
 		if (mRotate)
 		{
-			angle = mTotalTime;
+			angle = mTotalTime * 10;
 		}
 		else
 		{
@@ -81,6 +81,7 @@ public:
 	{
 		if (mTextureIndex >= 0)
 		{
+			index = 2;
 			u0 = (index % 3) / 8.0f;
 			v0 = 0.0f;
 			u1 = ((index % 3) + 1) / 8.0f;
@@ -120,8 +121,8 @@ public:
 		{
 			mVertexData.clear();
 
-			float cx = 400;
-			float cy = 300;
+			float cx = 200;
+			float cy = 400;
 
 			for (size_t i = 0; i < mCount; ++i)
 			{

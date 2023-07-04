@@ -183,15 +183,15 @@ void main()
 ## Points&Rotation
 	vec2 d = normalize(@In(ROTATION).xy);
 	@Out(mat4 TEXROTATION) =
-	mat4(d.x, d.y, 0.0, 0.0,
-		-d.y, d.x, 0.0, 0.0,
+	mat4(d.y, d.x, 0.0, 0.0,
+		-d.x, d.y, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0);
 ## Triangles&Rotation
 	vec2 d = normalize(@In(ROTATION).xy);
 	mat4 rotationMatrix =
-	mat4(d.x, d.y, 0.0, 0.0,
-		-d.y, d.x, 0.0, 0.0,
+	mat4(d.y, -d.x, 0.0, 0.0,
+		-d.x, d.y, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0);
 ## Colour
