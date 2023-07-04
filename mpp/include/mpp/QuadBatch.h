@@ -15,13 +15,20 @@ namespace mpp
 			Points,
 			Triangles
 		};
+
+		enum class RotationOptions
+		{
+			None,
+			Angle,
+			Direction
+		};
 		
 		PrimitiveOptions primitiveOptions{ PrimitiveOptions::Auto };
+		RotationOptions rotation{ RotationOptions::None };
 		mpp::mesh::Vertex::DataType positionType{ mpp::mesh::Vertex::DataType::Float };
 		BatchVertexAttribute texcoordAttrib{ mpp::mesh::Vertex::DataType::Float, false };
 		BatchVertexAttribute colourAttrib{ mpp::mesh::Vertex::DataType::Float, false };
 		bool useDiffuse{ false };
-		bool rotate{ false };
 		size_t maxSizeX{ 1 }, maxSizeY{ 1 };
 		size_t indexWidth{ 32 };
 	};
@@ -127,6 +134,8 @@ namespace mpp
 		int getMaxDimX() const;
 
 		int getMaxDimY() const;
+
+		QuadBatchOptions::RotationOptions getRotationType() const;
 
 		bool usingPointSprites() const;
 

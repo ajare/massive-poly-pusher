@@ -19,13 +19,13 @@ namespace mpp
 		{
 			mpp::QuadBatchOptions::PrimitiveOptions mPrimitiveOptions;
 
+			mpp::QuadBatchOptions::RotationOptions mRotationOptions;
+
 			bool mFixedTextureData, mFixedColourData;
 
 			bool mUseVertexColours, mUseDiffuse;
 
 			bool mSameSize;
-
-			bool mRotate;
 
 			size_t mWidth, mHeight;
 
@@ -39,11 +39,11 @@ namespace mpp
 
 			QuadBatchRendererParams(
 				mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions,
+				mpp::QuadBatchOptions::RotationOptions rotationOptions,
 				bool fixedTextureData,
 				bool fixedColourData,
 				bool useVertexColours,
 				bool useDiffuse,
-				bool rotate,
 				size_t width,
 				size_t height,
 				bool sameSize,
@@ -53,7 +53,7 @@ namespace mpp
 				, mFixedColourData(fixedColourData)
 				, mUseVertexColours(useVertexColours)
 				, mUseDiffuse(useDiffuse)
-				, mRotate(rotate)
+				, mRotationOptions(rotationOptions)
 				, mSameSize(sameSize)
 				, mWidth(width)
 				, mHeight(height)
@@ -65,11 +65,11 @@ namespace mpp
 
 			QuadBatchRendererParams(
 				mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions,
+				mpp::QuadBatchOptions::RotationOptions rotationOptions, 
 				bool fixedTextureData,
 				bool fixedColourData,
 				bool useVertexColours,
 				bool useDiffuse,
-				bool rotate,
 				size_t width,
 				size_t height,
 				bool sameSize,
@@ -80,7 +80,7 @@ namespace mpp
 				, mFixedColourData(fixedColourData)
 				, mUseVertexColours(useVertexColours)
 				, mUseDiffuse(useDiffuse)
-				, mRotate(rotate)
+				, mRotationOptions(rotationOptions)
 				, mSameSize(sameSize)
 				, mWidth(width)
 				, mHeight(height)
@@ -92,11 +92,11 @@ namespace mpp
 
 			QuadBatchRendererParams(
 				mpp::QuadBatchOptions::PrimitiveOptions primitiveOptions,
+				mpp::QuadBatchOptions::RotationOptions rotationOptions,
 				bool fixedTextureData,
 				bool fixedColourData,
 				bool useVertexColours,
 				bool useDiffuse,
-				bool rotate,
 				size_t width,
 				size_t height,
 				bool sameSize,
@@ -107,7 +107,7 @@ namespace mpp
 				, mFixedColourData(fixedColourData)
 				, mUseVertexColours(useVertexColours)
 				, mUseDiffuse(useDiffuse)
-				, mRotate(rotate)
+				, mRotationOptions(rotationOptions)
 				, mSameSize(sameSize)
 				, mWidth(width)
 				, mHeight(height)
@@ -120,6 +120,11 @@ namespace mpp
 			mpp::QuadBatchOptions::PrimitiveOptions getPrimitiveOptions() const
 			{
 				return mPrimitiveOptions;
+			}
+
+			mpp::QuadBatchOptions::RotationOptions getRotationOptions() const
+			{
+				return mRotationOptions;
 			}
 
 			bool fixedTextureData() const
@@ -140,11 +145,6 @@ namespace mpp
 			bool useDiffuse() const
 			{
 				return mUseDiffuse;
-			}
-
-			bool rotate() const
-			{
-				return mRotate;
 			}
 
 			size_t getWidth() const
@@ -386,12 +386,25 @@ namespace mpp
 					//
 					if (mBatch->rotating() && (!mBatch->rotationFixed() || newVertex))
 					{
-						PosTypeBuiltin angle;
-						mDataProvider->angle(primitiveIndex, angle);
+						switch (mBatch->getRotationType())
+						{
+						case QuadBatchOptions::RotationOptions::Angle:
+							PosTypeBuiltin angle;
+							mDataProvider->angle(primitiveIndex, angle);
 
-						auto rads = glm::radians(angle + 90.0f);
-						rotBuffer[rOffset + 0] = sinf(rads);
-						rotBuffer[rOffset + 1] = cosf(rads);
+							auto rads = glm::radians(angle + 90.0f);
+							rotBuffer[rOffset + 0] = sinf(rads);
+							rotBuffer[rOffset + 1] = cosf(rads);
+							break;
+
+						case QuadBatchOptions::RotationOptions::Direction:
+							float x, y;
+							mDataProvider->direction(primitiveIndex, x, y);
+
+							rotBuffer[rOffset + 0] = y;
+							rotBuffer[rOffset + 1] = -x;
+							break;
+						}
 					}
 
 					//
@@ -537,11 +550,11 @@ namespace mpp
 						name,
 						{
 							params.getPrimitiveOptions(),
+							params.getRotationOptions(),
 							PosType::vertexDataType(),
 							{ TexType::vertexDataType(), params.fixedTextureData() },
 							{ mpp::mesh::Vertex::DataType::None, true },
 							params.useDiffuse(),
-							params.rotate(),
 							params.getWidth(),
 							params.getHeight(),
 							params.getIndexWidth()
@@ -558,11 +571,11 @@ namespace mpp
 						name,
 						{
 							params.getPrimitiveOptions(),
+							params.getRotationOptions(),
 							PosType::vertexDataType(),
 							{ TexType::vertexDataType(), params.fixedTextureData() },
 							{ mpp::mesh::Vertex::DataType::None, true },
 							params.useDiffuse(),
-							params.rotate(),
 							params.getWidth(),
 							params.getHeight(),
 							params.getIndexWidth()
@@ -579,11 +592,11 @@ namespace mpp
 						name,
 						{
 							params.getPrimitiveOptions(),
+							params.getRotationOptions(),
 							PosType::vertexDataType(),
 							{ TexType::vertexDataType(), params.fixedTextureData() },
 							{ mpp::mesh::Vertex::DataType::None, true },
 							params.useDiffuse(),
-							params.rotate(),
 							params.getWidth(),
 							params.getHeight(),
 							params.getIndexWidth()
@@ -720,12 +733,28 @@ namespace mpp
 					//
 					if (mBatch->rotating() && (!mBatch->rotationFixed() || newVertex))
 					{
-						PosTypeBuiltin angle;
-						mDataProvider->angle(primitiveIndex, angle);
+						switch (mBatch->getRotationType())
+						{
+						case QuadBatchOptions::RotationOptions::Angle:
+						{
+							PosTypeBuiltin angle;
+							mDataProvider->angle(primitiveIndex, angle);
 
-						auto rads = glm::radians(angle + 90.0f);
-						rotBuffer[rOffset + 0] = sinf(rads);
-						rotBuffer[rOffset + 1] = cosf(rads);
+							auto rads = glm::radians(angle + 90.0f);
+							rotBuffer[rOffset + 0] = sinf(rads);
+							rotBuffer[rOffset + 1] = cosf(rads);
+							break;
+						}
+						case QuadBatchOptions::RotationOptions::Direction:
+						{
+							float x, y;
+							mDataProvider->direction(primitiveIndex, x, y);
+
+							rotBuffer[rOffset + 0] = y;
+							rotBuffer[rOffset + 1] = -x;
+							break;
+						}
+						}
 					}
 
 					//

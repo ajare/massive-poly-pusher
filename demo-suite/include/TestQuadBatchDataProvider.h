@@ -68,6 +68,15 @@ public:
 		}
 	}
 
+	void direction(uint32_t index, float& x, float& y)
+	{
+		float a;
+		
+		angle(index, a);
+		x = sinf(a * 3.14159f / 180);
+		y = cosf(a * 3.14159f / 180);
+	}
+
 	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)
 	{
 		if (mTextureIndex >= 0)
@@ -181,6 +190,15 @@ public:
 		}
 	}
 
+	void direction(uint32_t index, float& x, float& y)
+	{
+		float a;
+
+		angle(index, a);
+		x = sinf(a * 3.14159f / 180);
+		y = cosf(a * 3.14159f / 180);
+	}
+
 	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)
 	{
 		u0 = 0.0f;
@@ -275,6 +293,15 @@ public:
 		{
 			angle = 0.0f;
 		}
+	}
+
+	void direction(uint32_t index, float& x, float& y)
+	{
+		float a;
+
+		angle(index, a);
+		x = sinf(a * 3.14159f / 180);
+		y = cosf(a * 3.14159f / 180);
 	}
 
 	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)

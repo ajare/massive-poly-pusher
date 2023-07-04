@@ -483,11 +483,11 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		mpp::QuadBatchOptions::RotationOptions::None,
 		true,  // fixed texcoords
 		true,  // fixed colour (no colour, in fact)
 		false, // don't use vertex colours
 		true,  // use diffuse colour
-		false, // don't rotate
 		8,     // width
 		8,     // height
 		true,  // square
@@ -510,11 +510,11 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	// Quad 2
 	mpp::helper::QuadBatchRendererParams quadParams2(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		mpp::QuadBatchOptions::RotationOptions::Angle,
 		true,  // fixed texcoords
 		true,  // fixed colour (no colour, in fact)
 		false, // don't use vertex colours
 		true,  // use diffuse colour
-		true,  // rotate
 		16,     // width
 		16,     // height
 		true,  // square
@@ -537,11 +537,11 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	// Quad 3
 	mpp::helper::QuadBatchRendererParams quadParams3(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		mpp::QuadBatchOptions::RotationOptions::Angle,
 		true,  // fixed texcoords
 		true,  // fixed colour (no colour, in fact)
 		false, // don't use vertex colours
 		true,  // use diffuse colour
-		true,  // rotate
 		24,     // width
 		24,     // height
 		true,  // square
@@ -566,11 +566,11 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	dragonTexture->load();
 	mpp::helper::QuadBatchRendererParams quadParams4(
 		mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+		mpp::QuadBatchOptions::RotationOptions::Angle,
 		true,  // fixed texcoords
 		true,  // fixed colour (no colour, in fact)
 		false, // don't use vertex colours
 		false,  // use diffuse colour
-		true,  // rotate
 		static_cast<Texture const*>(dragonTexture.get())->getWidth(),
 		static_cast<Texture const*>(dragonTexture.get())->getHeight(),
 		false,  // square
@@ -595,11 +595,11 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	atlasTexture->load();
 	mpp::helper::QuadBatchRendererParams quadParams5(
 		mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+		mpp::QuadBatchOptions::RotationOptions::Angle,
 		true,  // fixed texcoords
 		true,  // fixed colour (no colour, in fact)
 		false, // don't use vertex colours
 		false,  // use diffuse colour
-		true,  // rotate
 		static_cast<Texture const*>(atlasTexture.get())->getWidth(),
 		static_cast<Texture const*>(atlasTexture.get())->getHeight(),
 		false,  // square

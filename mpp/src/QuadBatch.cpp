@@ -152,7 +152,7 @@ namespace mpp
 		Caps const& caps = mRenderSystem->getCaps();
 		if (mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points)
 		{
-			if (mOptions.rotate && !usingTexture())
+			if (mOptions.rotation != QuadBatchOptions::RotationOptions::None && !usingTexture())
 			{
 				THROW_MPP("Cannot use point sprites when rotating with no texture.", __LINE__, __FILE__, __func__);
 			}
@@ -415,6 +415,11 @@ namespace mpp
 		return mOptions.maxSizeY;
 	}
 
+	QuadBatchOptions::RotationOptions QuadBatch::getRotationType() const
+	{
+		return mOptions.rotation;
+	}
+
 	bool QuadBatch::usingPointSprites() const
 	{
 		return mOptions.primitiveOptions == QuadBatchOptions::PrimitiveOptions::Points;
@@ -427,7 +432,7 @@ namespace mpp
 
 	bool QuadBatch::rotating() const
 	{
-		return mOptions.rotate;
+		return mOptions.rotation != QuadBatchOptions::RotationOptions::None;
 	}
 
 	bool QuadBatch::usingTexture() const
@@ -447,7 +452,7 @@ namespace mpp
 
 	bool QuadBatch::rotationFixed() const
 	{
-		return !mOptions.rotate;
+		return mOptions.rotation == QuadBatchOptions::RotationOptions::None;
 	}
 
 	bool QuadBatch::texcoordsFixed() const
