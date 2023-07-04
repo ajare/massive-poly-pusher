@@ -1,46 +1,81 @@
 #pragma once
 
+#include <cmath>
+
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/TextureRenderer.h>
 
 #include <mpp/helper/TriangleBatchDataProvider.h>
 
-#pragma warning(push, 0)
-#include <spline_library/splines/cubic_hermite_spline.h>
-#pragma warning(pop)
-
 #include "Vector2.h"
+
+#define DEGTORAD(d) ((d) * 3.14159f / 180.0f)
 
 class Test2dTriangleBatchDataProvider : public mpp::helper::TriangleBatch2DDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>
 {
-	struct Triangle
+	struct Point
 	{
-		float px[3], py[3];
-		float u[3], v[3];
+		Vector2 pos, dir;
 	};
 
-	bool mDirty{ true };
+	struct Triangle
+	{
+		Vector2 p[3];
+	};
 
-	float mTotalTime{ 0.0f };
+private:
 
-	LoopingCubicHermiteSpline<Vector2> mSpline;
+	const int NumPoints = 90;
+
+	std::vector<Point> mPoints;
 
 	std::vector<Triangle> mTriangles;
 
 	glm::vec2 mBounds[2];
 
+	int mX, mY, mWidth, mHeight;
+
+	float mTotalTime;
+
 public:
 
-	Test2dTriangleBatchDataProvider()
-		: mSpline({ { 150, 150 }, { 150, 450 }, { 650, 450 }, {550, 50 } }, 0.5f)
+	Test2dTriangleBatchDataProvider(int x, int y, int width, int height)
+		: mX(x)
+		, mY(y)
+		, mWidth(width)
+		, mHeight(height)
+		, mTotalTime(0.0f)
 	{
-		update(0.0f);
-	}
+		// Generate points in a grid, one point per cell
+		// Assign each point a cardinal direction
+		// Each update, move the point in that direction, and
+		// do a random check.  If that check passes, rotate direction
+		// by 90 degrees.
+		// If a point goes out of bounds, move back and rotate direction.
+		// To colour, use blank texture, and set triangle colour
+		// based on its size.
 
-	void setDirty()
-	{
-		mDirty = true;
+		int w2 = width * 0.8f;
+		int h2 = height * 0.8f;
+		for (int i = 0; i < NumPoints; ++i)
+		{
+			int xp = rand() % w2;
+			int yp = rand() % h2;
+
+			Vector2 p(x + xp + width * 0.1f, y + yp + height * 0.1f);
+
+			int angle = rand() % 360;
+			Vector2 d(sinf(DEGTORAD(angle)), cosf(DEGTORAD(angle)));
+
+			Point point{
+				p, d
+			};
+
+			mPoints.push_back(point);
+		}
+
+		update(0.0f);
 	}
 
 	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
@@ -53,12 +88,12 @@ public:
 	{
 		if (index < getNumPrimitives())
 		{
-			x0 = mTriangles[index].px[0];
-			y0 = mTriangles[index].py[0];
-			x1 = mTriangles[index].px[1];
-			y1 = mTriangles[index].py[1];
-			x2 = mTriangles[index].px[2];
-			y2 = mTriangles[index].py[2];
+			x0 = mTriangles[index].p[0].x;
+			y0 = mTriangles[index].p[0].y;
+			x1 = mTriangles[index].p[1].x;
+			y1 = mTriangles[index].p[1].y;
+			x2 = mTriangles[index].p[2].x;
+			y2 = mTriangles[index].p[2].y;
 		}
 	}
 
@@ -66,21 +101,49 @@ public:
 	{
 		if (index < getNumPrimitives())
 		{
-			u0 = mTriangles[index].u[0];
-			v0 = mTriangles[index].v[0];
-			u1 = mTriangles[index].u[1];
-			v1 = mTriangles[index].v[1];
-			u2 = mTriangles[index].u[2];
-			v2 = mTriangles[index].v[2];
+			u0 = 0;
+			v0 = 0;
+			u1 = 1;
+			v1 = 0;
+			u2 = 0.5f;
+			v2 = 1;
 		}
 	}
 
 	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha) override
 	{
-		red = 255;
-		green = 255;
-		blue = 255;
-		alpha = 255;
+		auto const& tri = mTriangles[index];
+
+		// Area
+		Vector2 a = tri.p[1] - tri.p[0];
+		Vector2 b = tri.p[2] - tri.p[0];
+		float area = fabs(a.x * b.y - a.y * b.x) / 2.0f;
+
+		float cellArea2 = mWidth * mHeight * 0.5f;
+		uint8_t d = (uint8_t)(255.0f * area / cellArea2);
+
+		uint8_t dr = (uint8_t)((sinf(mTotalTime) + 1.0f) * 127);
+
+		switch (index % 3)
+		{
+		case 0:
+			red = dr;
+			green = (d * 1023) & 255;
+			blue = 255 - (d % 47);
+			break;
+		case 1:
+			red = 255 - (d % 47);
+			green = 255 - d;
+			blue = (d * 1719) & 255;
+			break;
+		case 2:
+			red = d;
+			green = dr;
+			blue = rand() % 255;
+			break;
+		}
+
+		alpha = 128;
 	}
 
 	mpp::Colour diffuse() override
@@ -90,75 +153,46 @@ public:
 
 	bool update(float frameTime)
 	{
-		bool updated = mDirty;
 		mTotalTime += frameTime;
 
-		if (mDirty)
+		// Update points
+		for (auto& point : mPoints)
 		{
-			mTriangles.clear();
-
-			auto maxLength = mSpline.totalLength();
-			auto maxT = mSpline.getMaxT();
-
-			const size_t numSegs{ 50 };
-			float slen{ maxLength / 2 };
-
-			// Create points
-			std::vector<Vector2> points;
-			float sp = mTotalTime;
-			while (sp > maxLength)
+			bool newDir{ true };
+			
+			Vector2 p = point.pos + point.dir * 20 * frameTime;
+			if (p.x >= mX && p.x < (mX + mWidth) && p.y >= mY && p.y < (mY + mHeight))
 			{
-				sp -= maxLength;
+				point.pos = p;
+				newDir = rand() % 1000 > 999;
 			}
 
-			float st = slen / maxLength;
-			for (size_t i = 0; i <= numSegs; ++i)
+			if (newDir)
 			{
-				float t = sp + st * (i / (float)numSegs);
-				if (t > 1.0f)
-				{
-					t -= 1.0f;
-				}
-
-				auto pos = mSpline.getPosition(t * maxT);
-				auto dir = mSpline.getTangent(t * maxT).tangent;
-
-				points.push_back(pos);
-				points.push_back(dir.perpendicular().normalisedCopy());
+				point.dir = point.dir.perpendicular();
 			}
-
-			// Create triangles
-
-			const float width{ 20.0f };
-			for (size_t i = 0; i < numSegs; ++i)
-			{
-				float w2 = width / 2;
-				auto const& p0 = points[(i + 0) * 2 + 0];
-				auto const& p1 = points[(i + 1) * 2 + 0];
-				auto const& t0 = points[(i + 0) * 2 + 1];
-				auto const& t1 = points[(i + 1) * 2 + 1];
-
-				mTriangles.push_back(
-					{
-						{ p0.x - t0.x * w2, p1.x - t1.x * w2, p1.x + t1.x * w2 }, // X
-						{ p0.y - t0.y * w2, p1.y - t1.y * w2, p1.y + t1.y * w2 }, // Y
-						{ 0, 0, 1 }, // U
-						{ 0, 0, 1 }  // V
-					});
-				mTriangles.push_back(
-					{
-						{ p1.x + t1.x * w2, p0.x + t0.x * w2, p0.x - t0.x * w2 }, // X
-						{ p1.y + t1.y * w2, p0.y + t0.y * w2, p0.y - t0.y * w2 }, // Y
-						{ 1, 1, 0 }, // U
-						{ 1, 0, 0 }  // V
-					});
-			}
-
-			setNumPrimitives(mTriangles.size());
-			//mDirty = false;
 		}
 
-		return updated;
+		// Triangulate
+		mTriangles.clear();
+
+		for (int i = 0; i < NumPoints; i += 3)
+		{
+			Triangle t
+			{
+				{
+					mPoints[i + 0].pos,
+					mPoints[i + 1].pos,
+					mPoints[i + 2].pos
+				}
+			};
+
+			mTriangles.push_back(t);
+		}
+
+		setNumPrimitives(mTriangles.size());
+
+		return true;
 	}
 };
 
