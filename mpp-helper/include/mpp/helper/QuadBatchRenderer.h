@@ -207,11 +207,11 @@ namespace mpp
 						name,
 						{
 							params.getPrimitiveOptions(),
+							params.getRotationOptions(),
 							PosType::vertexDataType(),
 							{ TexType::vertexDataType(), params.fixedTextureData() },
 							{ params.useVertexColours() ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData() },
 							params.useDiffuse(),
-							params.rotate(),
 							params.getWidth(),
 							params.getHeight(),
 							params.getIndexWidth()
@@ -228,11 +228,11 @@ namespace mpp
 						name,
 						{
 							params.getPrimitiveOptions(),
+							params.getRotationOptions(),
 							PosType::vertexDataType(),
 							{ TexType::vertexDataType(), params.fixedTextureData() },
 							{ params.useVertexColours() ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData() },
 							params.useDiffuse(),
-							params.rotate(),
 							params.getWidth(),
 							params.getHeight(),
 							params.getIndexWidth()
@@ -249,11 +249,11 @@ namespace mpp
 						name,
 						{
 							params.getPrimitiveOptions(),
+							params.getRotationOptions(),
 							PosType::vertexDataType(),
 							{ TexType::vertexDataType(), params.fixedTextureData() },
 							{ params.useVertexColours() ? ColType::vertexDataType() : mpp::mesh::Vertex::DataType::None, params.fixedColourData() },
 							params.useDiffuse(),
-							params.rotate(),
 							params.getWidth(),
 							params.getHeight(),
 							params.getIndexWidth()
