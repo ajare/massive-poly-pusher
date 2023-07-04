@@ -53,6 +53,8 @@ namespace mpp
 
 			virtual void angle(uint32_t index, float& angle) = 0;
 
+			virtual void direction(uint32_t index, float&x, float& y) = 0;
+
 			virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
 			virtual void radius(uint32_t index, float& radiusX, float& radiusY) = 0;
@@ -70,6 +72,8 @@ namespace mpp
 			virtual void position(uint32_t index, typename PosType::builtin_type& x, typename PosType::builtin_type& y) = 0;
 
 			virtual void angle(uint32_t index, float& angle) = 0;
+
+			virtual void direction(uint32_t index, float&x, float& y) = 0;
 
 			virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
