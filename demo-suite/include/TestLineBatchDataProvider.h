@@ -15,6 +15,8 @@ class TestLineBatchDataProvider : public mpp::helper::LineBatchDataProvider<mpp:
 		uint8_t c[4];
 	};
 
+private:
+
 	std::vector<Line> mLines;
 
 	uint32_t mNumLines;

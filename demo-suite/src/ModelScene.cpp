@@ -459,7 +459,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 			Tile t{
 				x * tileWidth, y * tileHeight,
 				(x + 1) * tileWidth, (y + 1) * tileHeight,
-				(x + 0.5f) * tileWidth, (y + 0.5f) * tileHeight,
+				(int)((x + 0.5f) * tileWidth), (int)((y + 0.5f) * tileHeight),
 				x * tileWidth + 32, (y + 1) * tileHeight - 16
 			};
 
@@ -538,6 +538,43 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	mBatches.push_back(getScene()->add2dBatch(tri2dBatchDataProvider, tri2dBatchRenderer, batchRenderOrder++));
 	mBatchLabels[1].text = "Triangles (unindexed)";
 
+	//
+	// Bullets, rotating by angle
+	//
+	tile = &tiles[2];
+
+	mpp::helper::QuadBatchRendererParams bulletParams(
+		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		mpp::QuadBatchOptions::RotationOptions::Angle,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		true,  // use diffuse colour
+		24,    // width
+		24,    // height
+		true,  // square
+		16,    // 16-bit indices
+		resourceMgr->getResource("Bullets.Texture"));
+
+	auto bulletsBatchDataProvider = make_shared<BulletsQuadBatchDataProvider>(
+		tile->x0,
+		tile->y0,
+		tile->x1 - tile->x0,
+		tile->ty - tile->y0,
+		16);
+
+	auto bulletsBatchRenderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads3",
+		bulletParams,
+		bulletsBatchDataProvider,
+		renderSystem,
+		resourceMgr);
+
+	bulletsBatchRenderer->create();
+
+	mBatches.push_back(getScene()->add2dBatch(bulletsBatchDataProvider, bulletsBatchRenderer, batchRenderOrder++));
+	mBatchLabels[2].text = "Quads (rotate by angle)";
+
 	/*
 	// Quad 1
 	mpp::helper::QuadBatchRendererParams quadParams1(
@@ -592,34 +629,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	quadBatchRenderer2->create();
 
 	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider2, quadBatchRenderer2, batchRenderOrder++));
-*/
-	// Quad 3
-	mpp::helper::QuadBatchRendererParams quadParams3(
-		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
-		mpp::QuadBatchOptions::RotationOptions::Angle,
-		true,  // fixed texcoords
-		true,  // fixed colour (no colour, in fact)
-		false, // don't use vertex colours
-		true,  // use diffuse colour
-		24,     // width
-		24,     // height
-		true,  // square
-		16,   // 16-bit indices
-		resourceMgr->getResource("Bullets.Texture"));
 
-	auto quadBatchDataProvider3 = make_shared<TestQuadBatchDataProvider>(renderSystem, 0.0f, 1, 2, true);
-
-	auto quadBatchRenderer3 = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
-		"TestQuads3",
-		quadParams3,
-		quadBatchDataProvider3,
-		renderSystem,
-		resourceMgr);
-
-	quadBatchRenderer3->create();
-
-	mBatches.push_back(getScene()->add2dBatch(quadBatchDataProvider3, quadBatchRenderer3, batchRenderOrder++));
-/*
 	// Quad 4
 	auto dragonTexture = resourceMgr->getResource("Dragon.Texture");
 	dragonTexture->load();
