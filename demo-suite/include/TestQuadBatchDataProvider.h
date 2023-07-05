@@ -289,6 +289,19 @@ public:
 	{
 		radiusX = 125 / 2.0f;
 		radiusY = 177 / 2.0f;
+
+		switch (index)
+		{
+		case 0:
+			radiusX *= (sin(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			radiusY *= (sin(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			break;
+
+		case 1:
+			radiusX *= (cos(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			radiusY *= (cos(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			break;
+		}
 	}
 
 	mpp::Colour diffuse()
