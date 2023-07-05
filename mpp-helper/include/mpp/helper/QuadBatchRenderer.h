@@ -669,17 +669,6 @@ namespace mpp
 					uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
 					bool newVertex = i >= initStart;
 
-					float radiusX, radiusY;
-					if (mBatch->usingTextureAtlas() && mBatch->usingTriangles())
-					{
-						mDataProvider->radius(primitiveIndex, radiusX, radiusY);
-					}
-					else
-					{
-						radiusX = mBatch->getMaxDimX() / 2.0f;
-						radiusY = mBatch->getMaxDimY() / 2.0f;
-					}
-
 					//
 					// Position data
 					//
@@ -696,6 +685,9 @@ namespace mpp
 						}
 						else
 						{
+							float radiusX, radiusY;
+							mDataProvider->radius(primitiveIndex, radiusX, radiusY);
+
 							// Indexed, four vertices per quad
 							int vertexIndex = i % 4;
 
