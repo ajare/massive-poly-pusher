@@ -216,24 +216,17 @@ public:
 
 class TestDragonDataProvider : public mpp::helper::QuadBatchDataProvider<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>
 {
-	mpp::RenderSystem* mRenderSystem{ nullptr };
-
-	bool mDirty{ true };
-
-	std::vector<float> mVertexData;
+	int mX, mY, mWidth, mHeight;
 
 	float mTotalTime;
 
-	size_t mCount;
-
-	bool mRotate;
-
 public:
 
-	TestDragonDataProvider(mpp::RenderSystem* renderSystem, size_t count, bool rotate)
-		: mRenderSystem(renderSystem)
-		, mCount(count)
-		, mRotate(rotate)
+	TestDragonDataProvider(int x, int y, int width, int height)
+		: mX(x)
+		, mY(y)
+		, mWidth(width)
+		, mHeight(height)
 		, mTotalTime(0.0f)
 	{
 		setNumPrimitives(0);
@@ -247,22 +240,31 @@ public:
 
 	void position(uint32_t index, float& x, float& y)
 	{
-		if (index < getNumPrimitives())
-		{
-			x = mVertexData[index * 2 + 0];
-			y = mVertexData[index * 2 + 1];
+		switch (index)
+		{ 
+		case 0:
+			x = mX + mWidth * 0.333f;
+			y = mY + mHeight * 0.5f;
+			break;
+
+		case 1:
+			x = mX + mWidth * 0.666f;
+			y = mY + mHeight * 0.5f;
+			break;
 		}
 	}
 
 	void angle(uint32_t index, float& angle)
 	{
-		if (mRotate)
+		switch (index)
 		{
-			angle = mTotalTime;
-		}
-		else
-		{
-			angle = 0.0f;
+		case 0:
+			angle = mTotalTime * 20;
+			break;
+
+		case 1:
+			angle = -mTotalTime * 10;
+			break;
 		}
 	}
 
@@ -285,8 +287,8 @@ public:
 
 	void radius(uint32_t index, float& radiusX, float& radiusY)
 	{
-		radiusX = 128.0f;
-		radiusY = 128.0f;
+		radiusX = 125 / 2.0f;
+		radiusY = 177 / 2.0f;
 	}
 
 	mpp::Colour diffuse()
@@ -294,28 +296,13 @@ public:
 		return mpp::Colour::White;
 	}
 
-	void setDirty()
-	{
-		mDirty = true;
-	}
-
 	bool update(float frameTime)
 	{
-		bool updated = mDirty;
 		mTotalTime += frameTime;
 
-		if (mDirty)
-		{
-			mVertexData.clear();
+		setNumPrimitives(2);
 
-			mVertexData.push_back(400);
-			mVertexData.push_back(300);
-
-			setNumPrimitives(mCount);
-			//mDirty = false;
-		}
-
-		return updated;
+		return true;
 	}
 };
 
