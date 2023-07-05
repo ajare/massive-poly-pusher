@@ -273,8 +273,8 @@ public:
 		float a;
 
 		angle(index, a);
-		x = sinf(a * 3.14159f / 180);
-		y = cosf(a * 3.14159f / 180);
+		x = sinf(DEGTORAD(a));
+		y = cosf(DEGTORAD(a));
 	}
 
 	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)
