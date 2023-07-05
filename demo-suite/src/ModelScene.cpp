@@ -573,7 +573,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	bullets1BatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(bullets1BatchDataProvider, bullets1BatchRenderer, batchRenderOrder++));
-	mBatchLabels[2].text = "Quads (rotate by angle)";
+	mBatchLabels[2].text = "Quads (uv-rotate by angle)";
 
 	//
 	// Bullets, rotating by direction
@@ -610,7 +610,45 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	bullets2BatchRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(bullets2BatchDataProvider, bullets2BatchRenderer, batchRenderOrder++));
-	mBatchLabels[3].text = "Quads (rotate by direction)";
+	mBatchLabels[3].text = "Quads (uv-rotate by dir)";
+
+	//
+	// Large rectangles, rotating by angle
+	//
+	tile = &tiles[4];
+
+	auto dragonTexture = resourceMgr->getResource("Dragon.Texture");
+	dragonTexture->load();
+	mpp::helper::QuadBatchRendererParams dragonParams(
+		mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+		mpp::QuadBatchOptions::RotationOptions::Angle,
+		true,   // fixed texcoords
+		true,   // fixed colour (no colour, in fact)
+		false,  // don't use vertex colours
+		false,  // use diffuse colour
+		static_cast<Texture const*>(dragonTexture.get())->getWidth(),
+		static_cast<Texture const*>(dragonTexture.get())->getHeight(),
+		false,  // not square
+		16,     // 16-bit indices
+		dragonTexture);
+
+	auto dragonDataProvider = make_shared<TestDragonDataProvider>(
+		tile->x0,
+		tile->y0,
+		tile->x1 - tile->x0,
+		tile->ty - tile->y0);
+
+	auto dragonRenderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads5",
+		dragonParams,
+		dragonDataProvider,
+		renderSystem,
+		resourceMgr);
+
+	dragonRenderer->create();
+
+	mBatches.push_back(getScene()->add2dBatch(dragonDataProvider, dragonRenderer, batchRenderOrder++));
+	mBatchLabels[4].text = "Rects (vert-rotate by dir)";
 
 	/*
 	// Quad 1
