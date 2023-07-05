@@ -543,7 +543,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	//
 	tile = &tiles[2];
 
-	mpp::helper::QuadBatchRendererParams bulletParams(
+	mpp::helper::QuadBatchRendererParams bullet1Params(
 		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
 		mpp::QuadBatchOptions::RotationOptions::Angle,
 		true,  // fixed texcoords
@@ -556,24 +556,61 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		16,    // 16-bit indices
 		resourceMgr->getResource("Bullets.Texture"));
 
-	auto bulletsBatchDataProvider = make_shared<BulletsQuadBatchDataProvider>(
+	auto bullets1BatchDataProvider = make_shared<BulletsByAngleQuadBatchDataProvider>(
 		tile->x0,
 		tile->y0,
 		tile->x1 - tile->x0,
 		tile->ty - tile->y0,
 		16);
 
-	auto bulletsBatchRenderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+	auto bullets1BatchRenderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
 		"TestQuads3",
-		bulletParams,
-		bulletsBatchDataProvider,
+		bullet1Params,
+		bullets1BatchDataProvider,
 		renderSystem,
 		resourceMgr);
 
-	bulletsBatchRenderer->create();
+	bullets1BatchRenderer->create();
 
-	mBatches.push_back(getScene()->add2dBatch(bulletsBatchDataProvider, bulletsBatchRenderer, batchRenderOrder++));
+	mBatches.push_back(getScene()->add2dBatch(bullets1BatchDataProvider, bullets1BatchRenderer, batchRenderOrder++));
 	mBatchLabels[2].text = "Quads (rotate by angle)";
+
+	//
+	// Bullets, rotating by direction
+	//
+	tile = &tiles[3];
+
+	mpp::helper::QuadBatchRendererParams bullet2Params(
+		mpp::QuadBatchOptions::PrimitiveOptions::Auto,
+		mpp::QuadBatchOptions::RotationOptions::Direction,
+		true,  // fixed texcoords
+		true,  // fixed colour (no colour, in fact)
+		false, // don't use vertex colours
+		true,  // use diffuse colour
+		24,    // width
+		24,    // height
+		true,  // square
+		16,    // 16-bit indices
+		resourceMgr->getResource("Bullets.Texture"));
+
+	auto bullets2BatchDataProvider = make_shared<BulletsByDirQuadBatchDataProvider>(
+		tile->x0,
+		tile->y0,
+		tile->x1 - tile->x0,
+		tile->ty - tile->y0,
+		16);
+
+	auto bullets2BatchRenderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads4",
+		bullet2Params,
+		bullets2BatchDataProvider,
+		renderSystem,
+		resourceMgr);
+
+	bullets2BatchRenderer->create();
+
+	mBatches.push_back(getScene()->add2dBatch(bullets2BatchDataProvider, bullets2BatchRenderer, batchRenderOrder++));
+	mBatchLabels[3].text = "Quads (rotate by direction)";
 
 	/*
 	// Quad 1
