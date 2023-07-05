@@ -242,7 +242,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		float lightAngle = 0.0f, lightHeight = 750.0f;
 
 		// Turn off 2d batches to start
-		for (int i = 0; i < 5; ++i)
+		for (int i = 0; i < 6; ++i)
 		{
 			static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(i);
 		}

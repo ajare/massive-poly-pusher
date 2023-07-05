@@ -460,7 +460,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 				x * tileWidth, y * tileHeight,
 				(x + 1) * tileWidth, (y + 1) * tileHeight,
 				(int)((x + 0.5f) * tileWidth), (int)((y + 0.5f) * tileHeight),
-				x * tileWidth + 32, (y + 1) * tileHeight - 16
+				x * tileWidth + 32, (y + 1) * tileHeight
 			};
 
 			tiles.push_back(t);
@@ -649,6 +649,42 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 
 	mBatches.push_back(getScene()->add2dBatch(dragonDataProvider, dragonRenderer, batchRenderOrder++));
 	mBatchLabels[4].text = "Rects (vert-rotate by dir)";
+
+	//
+	// Large rectangles, rotating by direction
+	//
+	tile = &tiles[5];
+
+	mpp::helper::QuadBatchRendererParams dragon2Params(
+		mpp::QuadBatchOptions::PrimitiveOptions::Triangles,
+		mpp::QuadBatchOptions::RotationOptions::Direction,
+		true,   // fixed texcoords
+		true,   // fixed colour (no colour, in fact)
+		false,  // don't use vertex colours
+		false,  // use diffuse colour
+		static_cast<Texture const*>(dragonTexture.get())->getWidth(),
+		static_cast<Texture const*>(dragonTexture.get())->getHeight(),
+		false,  // not square
+		16,     // 16-bit indices
+		dragonTexture);
+
+	auto drago2nDataProvider = make_shared<TestDragonDataProvider>(
+		tile->x0,
+		tile->y0,
+		tile->x1 - tile->x0,
+		tile->ty - tile->y0);
+
+	auto dragon2Renderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
+		"TestQuads6",
+		dragon2Params,
+		drago2nDataProvider,
+		renderSystem,
+		resourceMgr);
+
+	dragon2Renderer->create();
+
+	mBatches.push_back(getScene()->add2dBatch(drago2nDataProvider, dragon2Renderer, batchRenderOrder++));
+	mBatchLabels[5].text = "Rects (uv-rotate by dir)";
 
 	/*
 	// Quad 1
@@ -940,7 +976,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 
 		if (label.visible)
 		{
-			renderSystem->renderText(label.text, label.x, label.y, mpp::Colour::White);
+			renderSystem->renderText(label.text, label.x, renderSystem->getWindowHeight() - label.y, mpp::Colour::White);
 		}
 	}
 }
