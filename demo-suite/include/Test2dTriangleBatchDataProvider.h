@@ -56,8 +56,8 @@ public:
 		// To colour, use blank texture, and set triangle colour
 		// based on its size.
 
-		int w2 = width * 0.8f;
-		int h2 = height * 0.8f;
+		int w2 = (int)(width * 0.8f);
+		int h2 = (int)(height * 0.8f);
 		for (int i = 0; i < NumPoints; ++i)
 		{
 			int xp = rand() % w2;
