@@ -401,8 +401,8 @@ namespace mpp
 							float x, y;
 							mDataProvider->direction(primitiveIndex, x, y);
 
-							rotBuffer[rOffset + 0] = y;
-							rotBuffer[rOffset + 1] = -x;
+							rotBuffer[rOffset + 0] = x;
+							rotBuffer[rOffset + 1] = y;
 							break;
 						}
 					}
@@ -742,8 +742,8 @@ namespace mpp
 							float x, y;
 							mDataProvider->direction(primitiveIndex, x, y);
 
-							rotBuffer[rOffset + 0] = y;
-							rotBuffer[rOffset + 1] = -x;
+							rotBuffer[rOffset + 0] = x;
+							rotBuffer[rOffset + 1] = y;
 							break;
 						}
 						}
