@@ -102,10 +102,13 @@ public:
 			float sinAngle = sin(DEGTORAD(angle));
 			float cosAngle = cos(DEGTORAD(angle));
 
+			float sinAngle90 = sin(DEGTORAD(angle + 90));
+			float cosAngle90 = cos(DEGTORAD(angle + 90));
+
 			bullet.pos.x = cx + sinAngle * radius;
 			bullet.pos.y = cy + cosAngle * radius;
-			bullet.dir.x = sinAngle;
-			bullet.dir.y = cosAngle;
+			bullet.dir.x = sinAngle90;
+			bullet.dir.y = cosAngle90;
 		}
 
 		setNumPrimitives(count);
@@ -165,8 +168,8 @@ public:
 		float a;
 
 		angle(index, a);
-		x = sinf(a * 3.14159f / 180);
-		y = cosf(a * 3.14159f / 180);
+		x = sinf(DEGTORAD(a));
+		y = cosf(DEGTORAD(a));
 	}
 
 	void textureAtlasTexcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1)
