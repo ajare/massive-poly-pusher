@@ -648,7 +648,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	dragonRenderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(dragonDataProvider, dragonRenderer, batchRenderOrder++));
-	mBatchLabels[4].text = "Rects (vert-rotate by dir)";
+	mBatchLabels[4].text = "Rects (vert-rotate by angle)";
 
 	//
 	// Large rectangles, rotating by direction
@@ -684,7 +684,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	dragon2Renderer->create();
 
 	mBatches.push_back(getScene()->add2dBatch(drago2nDataProvider, dragon2Renderer, batchRenderOrder++));
-	mBatchLabels[5].text = "Rects (uv-rotate by dir)";
+	mBatchLabels[5].text = "Rects (vert-rotate by dir)";
 
 	/*
 	// Quad 1
