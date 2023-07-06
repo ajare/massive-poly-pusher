@@ -346,8 +346,8 @@ namespace mpp
 						}
 						else
 						{
-							float radiusX, radiusY;
-							mDataProvider->radius(primitiveIndex, radiusX, radiusY);
+							float halfWidth, halfHeight;
+							mDataProvider->dimensions(primitiveIndex, halfWidth, halfHeight);
 
 							// Indexed, four vertices per quad
 							int vertexIndex = i % 4;
@@ -355,20 +355,20 @@ namespace mpp
 							switch (vertexIndex)
 							{
 							case 0:
-								posBuffer[pOffset + 0] = x - radiusX;
-								posBuffer[pOffset + 1] = y - radiusY;
+								posBuffer[pOffset + 0] = x - halfWidth;
+								posBuffer[pOffset + 1] = y - halfHeight;
 								break;
 							case 1:
-								posBuffer[pOffset + 0] = x + radiusX;
-								posBuffer[pOffset + 1] = y - radiusY;
+								posBuffer[pOffset + 0] = x + halfWidth;
+								posBuffer[pOffset + 1] = y - halfHeight;
 								break;
 							case 2:
-								posBuffer[pOffset + 0] = x + radiusX;
-								posBuffer[pOffset + 1] = y + radiusY;
+								posBuffer[pOffset + 0] = x + halfWidth;
+								posBuffer[pOffset + 1] = y + halfHeight;
 								break;
 							case 3:
-								posBuffer[pOffset + 0] = x - radiusX;
-								posBuffer[pOffset + 1] = y + radiusY;
+								posBuffer[pOffset + 0] = x - halfWidth;
+								posBuffer[pOffset + 1] = y + halfHeight;
 								break;
 							}
 						}
@@ -685,8 +685,8 @@ namespace mpp
 						}
 						else
 						{
-							float radiusX, radiusY;
-							mDataProvider->radius(primitiveIndex, radiusX, radiusY);
+							float halfWidth, halfHeight;
+							mDataProvider->dimensions(primitiveIndex, halfWidth, halfHeight);
 
 							// Indexed, four vertices per quad
 							int vertexIndex = i % 4;
@@ -694,20 +694,20 @@ namespace mpp
 							switch (vertexIndex)
 							{
 							case 0:
-								posBuffer[pOffset + 0] = x - radiusX;
-								posBuffer[pOffset + 1] = y - radiusY;
+								posBuffer[pOffset + 0] = x - halfWidth;
+								posBuffer[pOffset + 1] = y - halfHeight;
 								break;
 							case 1:
-								posBuffer[pOffset + 0] = x + radiusX;
-								posBuffer[pOffset + 1] = y - radiusY;
+								posBuffer[pOffset + 0] = x + halfWidth;
+								posBuffer[pOffset + 1] = y - halfHeight;
 								break;
 							case 2:
-								posBuffer[pOffset + 0] = x + radiusX;
-								posBuffer[pOffset + 1] = y + radiusY;
+								posBuffer[pOffset + 0] = x + halfWidth;
+								posBuffer[pOffset + 1] = y + halfHeight;
 								break;
 							case 3:
-								posBuffer[pOffset + 0] = x - radiusX;
-								posBuffer[pOffset + 1] = y + radiusY;
+								posBuffer[pOffset + 0] = x - halfWidth;
+								posBuffer[pOffset + 1] = y + halfHeight;
 								break;
 							}
 						}

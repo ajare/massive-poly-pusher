@@ -57,7 +57,7 @@ namespace mpp
 
 			virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
-			virtual void radius(uint32_t index, float& radiusX, float& radiusY) = 0;
+			virtual void dimensions(uint32_t index, float& halfWidth, float& halfHeight) = 0;
 
 			virtual void colour(uint32_t index, typename ColType::builtin_type& red, typename ColType::builtin_type& green, typename ColType::builtin_type& blue, typename ColType::builtin_type& alpha) = 0;
 
@@ -77,7 +77,7 @@ namespace mpp
 
 			virtual void textureAtlasTexcoords(uint32_t index, typename TexType::builtin_type& u0, typename TexType::builtin_type& v0, typename TexType::builtin_type& u1, typename TexType::builtin_type& v1) = 0;
 
-			virtual void radius(uint32_t index, float& radiusX, float& radiusY) = 0; 
+			virtual void dimensions(uint32_t index, float& halfWidth, float& halfHeight) = 0;
 			
 			virtual mpp::Colour diffuse() = 0;
 		};
