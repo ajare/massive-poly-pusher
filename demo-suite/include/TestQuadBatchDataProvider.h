@@ -73,10 +73,10 @@ public:
 		v1 = 1.0f;
 	}
 
-	void radius(uint32_t index, float& radiusX, float& radiusY)
+	void dimensions(uint32_t index, float& halfWidth, float& halfHeight)
 	{
-		radiusX = 16;
-		radiusY = 16;
+		halfWidth = 16;
+		halfHeight = 16;
 	}
 
 	mpp::Colour diffuse()
@@ -180,10 +180,10 @@ public:
 		v1 = 1.0f;
 	}
 
-	void radius(uint32_t index, float& radiusX, float& radiusY)
+	void dimensions(uint32_t index, float& halfWidth, float& halfHeight)
 	{
-		radiusX = 16;
-		radiusY = 16;
+		halfWidth = 16;
+		halfHeight = 16;
 	}
 
 	mpp::Colour diffuse()
@@ -288,21 +288,21 @@ public:
 		v1 = 1.0f;
 	}
 
-	void radius(uint32_t index, float& radiusX, float& radiusY)
+	void dimensions(uint32_t index, float& halfWidth, float& halfHeight)
 	{
-		radiusX = 125 / 2.0f;
-		radiusY = 177 / 2.0f;
+		halfWidth = 125 / 2.0f;
+		halfHeight = 177 / 2.0f;
 
 		switch (index)
 		{
 		case 0:
-			radiusX *= (sin(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
-			radiusY *= (sin(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			halfWidth *= (sin(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			halfHeight *= (sin(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
 			break;
 
 		case 1:
-			radiusX *= (cos(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
-			radiusY *= (cos(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			halfWidth *= (cos(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
+			halfHeight *= (cos(mTotalTime / 2) * 0.5f + 0.5f) * 0.75f;
 			break;
 		}
 	}
@@ -391,10 +391,10 @@ public:
 		v1 = 1.0f;
 	}
 
-	void radius(uint32_t index, float& radiusX, float& radiusY)
+	void dimensions(uint32_t index, float& halfWidth, float& halfHeight)
 	{
-		radiusX = 128.0f;
-		radiusY = 128.0f;
+		halfWidth = 128.0f;
+		halfHeight = 128.0f;
 	}
 
 	mpp::Colour diffuse()
