@@ -66,7 +66,7 @@ namespace mpp
 			if (count >= curSize)
 			{
 				auto newSize = curSize;
-				while (newSize < count)
+				while (newSize <= count)
 				{
 					newSize *= 3;
 					newSize /= 2;
