@@ -203,14 +203,14 @@ namespace mpp
 		qs.spec.textures.push_back(textureOptions);
 	}
 
-	void ProgrammaticMaterialStream::setDefaultTexture(uint32_t quality)
+	void ProgrammaticMaterialStream::setDefaultTexture(string const& sampler, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
 
 		MaterialSpecification::TextureOptions textureOptions;
 
 		textureOptions.existingResource = true;
-		textureOptions.sampler = "TEX1";
+		textureOptions.sampler = sampler;
 
 		textureOptions.isChild = false;
 		textureOptions.existingResource = "__mpp_tex_none__";
