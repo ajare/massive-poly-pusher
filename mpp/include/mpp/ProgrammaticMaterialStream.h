@@ -50,7 +50,7 @@ namespace mpp
 
 		void setTexture(std::string const& sampler, std::string const& texture, uint32_t quality = 0);
 
-		void setDefaultTexture(uint32_t quality = 0);
+		void setDefaultTexture(std::string const& sampler, uint32_t quality = 0);
 
 		void setUniforms(UniformCollection const& uniforms, uint32_t quality = 0);
 
