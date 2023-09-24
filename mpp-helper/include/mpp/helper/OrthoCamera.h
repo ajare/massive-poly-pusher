@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Config.h"
-
 #include "mpp/Camera.h"
+
+#include "Config.h"
 
 namespace mpp
 {
 	namespace helper
 	{
 
-		class OrthoCamera : public mpp::Camera
+		class _MPPHELPERAPI OrthoCamera : public mpp::Camera
 		{
 			size_t mViewWidth, mViewHeight;
 

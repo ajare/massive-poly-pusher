@@ -6,16 +6,16 @@
 #include <glm/gtc/quaternion.hpp>
 #pragma warning(pop)
 
-#include "Config.h"
-
 #include "mpp/Camera.h"
+
+#include "Config.h"
 
 namespace mpp
 {
 	namespace helper
 	{
 
-		class FpsCamera : public mpp::Camera
+		class _MPPHELPERAPI FpsCamera : public mpp::Camera
 		{
 			float mCurPitch;
 

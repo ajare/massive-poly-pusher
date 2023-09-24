@@ -39,22 +39,22 @@
 
 // DLL Export
 #if MPP_PLATFORM == MPP_PLATFORM_WIN32
-#	if defined(MPP_MESH_DLL_EXPORT)
-#		define _MPPMESHAPI __declspec( dllexport )
-#	elif defined(MPP_MESH_STATIC_LIB)
-#		define _MPPMESHAPI
+#	if defined(MPP_HELPER_DLL_EXPORT)
+#		define _MPPHELPERAPI __declspec( dllexport )
+#	elif defined(MPP_HELPER_STATIC_LIB)
+#		define _MPPHELPERAPI
 #	else
 #		if defined(__MINGW32__)
-#			define _MPPMESHAPI
+#			define _MPPHELPERAPI
 #		else
-#			define _MPPMESHAPI __declspec( dllimport )
+#			define _MPPHELPERAPI __declspec( dllimport )
 #		endif
 #	endif
 #elif MPP_PLATFORM == MPP_PLATFORM_LINUX
-#	if defined(MPP_MESH_DLL_EXPORT)
-#		define _MPPMESHAPI __attribute__((visibility("default")))
+#	if defined(MPP_HELPER_DLL_EXPORT)
+#		define _MPPHELPERAPI __attribute__((visibility("default")))
 #	else
-#		define _MPPMESHAPI
+#		define _MPPHELPERAPI
 #	endif
 #endif
 
