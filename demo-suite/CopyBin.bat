@@ -41,6 +41,8 @@ copy /Y "%Root%\..\mpp-program\build\%Solution%\bin\%Platform%\%Configuration%\*
 @rem Copy mpp-resource-parsers
 copy /Y "%Root%\..\mpp-resource-parsers\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
+@rem Copy mpp-helper
+copy /Y "%Root%\..\mpp-helper\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
 @rem Copy resources
 copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
