@@ -6,8 +6,6 @@
 #include <glew/glew.h>
 #include <gl/gl.h>
 
-#include "utils/MemTracker.h"
-
 #include "mpp/Mesh.h"
 #include "mpp/ModelStream.h"
 #include "mpp/RenderSystem.h"

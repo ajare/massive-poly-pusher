@@ -36,7 +36,6 @@
     <ClInclude Include="..\..\include\mpp\Material.h" />
     <ClInclude Include="..\..\include\mpp\MaterialSpecification.h" />
     <ClInclude Include="..\..\include\mpp\MaterialStream.h" />
-    <ClInclude Include="..\..\include\mpp\Memory.h" />
     <ClInclude Include="..\..\include\mpp\Mesh.h" />
     <ClInclude Include="..\..\include\mpp\MeshInstance.h" />
     <ClInclude Include="..\..\include\mpp\MeshSortFlags.h" />
@@ -119,7 +118,6 @@
     <ClCompile Include="..\..\src\Logger.cpp" />
     <ClCompile Include="..\..\src\Material.cpp" />
     <ClCompile Include="..\..\src\MaterialStream.cpp" />
-    <ClCompile Include="..\..\src\Memory.cpp" />
     <ClCompile Include="..\..\src\Mesh.cpp" />
     <ClCompile Include="..\..\src\MeshInstance.cpp" />
     <ClCompile Include="..\..\src\Model.cpp" />
