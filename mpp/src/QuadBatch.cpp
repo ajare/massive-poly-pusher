@@ -1,7 +1,5 @@
 #include <cmath>
 
-#include "utils/MemTracker.h"
-
 #include "mpp/QuadBatch.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/ProgrammaticMaterialStream.h"

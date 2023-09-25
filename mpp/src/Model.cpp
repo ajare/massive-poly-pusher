@@ -10,8 +10,6 @@
 
 #include <half/half.hpp>
 
-#include "utils/MemTracker.h"
-
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
 #include "mpp/ResourceManager.h"
