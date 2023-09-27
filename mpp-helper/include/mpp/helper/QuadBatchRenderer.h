@@ -389,6 +389,7 @@ namespace mpp
 						switch (mBatch->getRotationType())
 						{
 						case QuadBatchOptions::RotationOptions::Angle:
+						{
 							PosTypeBuiltin angle;
 							mDataProvider->angle(primitiveIndex, angle);
 
@@ -396,14 +397,16 @@ namespace mpp
 							rotBuffer[rOffset + 0] = sinf(rads);
 							rotBuffer[rOffset + 1] = cosf(rads);
 							break;
-
+						}
 						case QuadBatchOptions::RotationOptions::Direction:
+						{
 							float x, y;
 							mDataProvider->direction(primitiveIndex, x, y);
 
 							rotBuffer[rOffset + 0] = x;
 							rotBuffer[rOffset + 1] = y;
 							break;
+						}
 						}
 					}
 
@@ -516,7 +519,9 @@ namespace mpp
 					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 				}
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
+				auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
+				mRenderSystem->renderModelImmediate(model, true, mParams);
+
 			}
 		};
 
