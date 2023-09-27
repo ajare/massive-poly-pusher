@@ -218,7 +218,7 @@ namespace mpp
 						},
 						params.sameSize(),
 						params.getTexture(),
-						mDataProvider->getNumQuads(),
+						mDataProvider->getNumPrimitives(),
 						renderSystem,
 						resourceMgr);
 				}
@@ -239,7 +239,7 @@ namespace mpp
 						},
 						params.sameSize(),
 						params.getTextureRenderer(),
-						mDataProvider->getNumQuads(),
+						mDataProvider->getNumPrimitives(),
 						renderSystem,
 						resourceMgr);
 				}
@@ -259,7 +259,7 @@ namespace mpp
 							params.getIndexWidth()
 						},
 						params.sameSize(),
-						mDataProvider->getNumQuads(),
+						mDataProvider->getNumPrimitives(),
 						renderSystem,
 						resourceMgr);
 				}
