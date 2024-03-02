@@ -1,0 +1,293 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\mpp\backward.hpp" />
+    <ClInclude Include="..\..\include\mpp\Batch.h" />
+    <ClInclude Include="..\..\include\mpp\BatchDataProvider.h" />
+    <ClInclude Include="..\..\include\mpp\BatchModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\BatchRenderer.h" />
+    <ClInclude Include="..\..\include\mpp\BlendMode.h" />
+    <ClInclude Include="..\..\include\mpp\BoxModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\Camera.h" />
+    <ClInclude Include="..\..\include\mpp\Caps.h" />
+    <ClInclude Include="..\..\include\mpp\CircleBatch.h" />
+    <ClInclude Include="..\..\include\mpp\ClipRectangle.h" />
+    <ClInclude Include="..\..\include\mpp\Colour.h" />
+    <ClInclude Include="..\..\include\mpp\Config.h" />
+    <ClInclude Include="..\..\include\mpp\CylinderModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\DataStream.h" />
+    <ClInclude Include="..\..\include\mpp\DefaultShaders.h" />
+    <ClInclude Include="..\..\include\mpp\FileDataStream.h" />
+    <ClInclude Include="..\..\include\mpp\Font.h" />
+    <ClInclude Include="..\..\include\mpp\GLErrorCheck.h" />
+    <ClInclude Include="..\..\include\mpp\InternalFont.h" />
+    <ClInclude Include="..\..\include\mpp\LineBatch.h" />
+    <ClInclude Include="..\..\include\mpp\Logger.h" />
+    <ClInclude Include="..\..\include\mpp\Material.h" />
+    <ClInclude Include="..\..\include\mpp\MaterialSpecification.h" />
+    <ClInclude Include="..\..\include\mpp\MaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\Mesh.h" />
+    <ClInclude Include="..\..\include\mpp\MeshInstance.h" />
+    <ClInclude Include="..\..\include\mpp\MeshSortFlags.h" />
+    <ClInclude Include="..\..\include\mpp\Model.h" />
+    <ClInclude Include="..\..\include\mpp\ModelInstance.h" />
+    <ClInclude Include="..\..\include\mpp\ModelRenderParams.h" />
+    <ClInclude Include="..\..\include\mpp\ModelSerializer.h" />
+    <ClInclude Include="..\..\include\mpp\ModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\MppException.h" />
+    <ClInclude Include="..\..\include\mpp\MppModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\Pool.h" />
+    <ClInclude Include="..\..\include\mpp\PostEffect.h" />
+    <ClInclude Include="..\..\include\mpp\PostEffectStream.h" />
+    <ClInclude Include="..\..\include\mpp\PrimitiveModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\Profiler.h" />
+    <ClInclude Include="..\..\include\mpp\Program.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticMaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticProgramStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticRenderTextureStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticSamplerStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticStringStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticTextureStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgramStream.h" />
+    <ClInclude Include="..\..\include\mpp\QuadBatch.h" />
+    <ClInclude Include="..\..\include\mpp\QuadBatchSpecification.h" />
+    <ClInclude Include="..\..\include\mpp\RenderInfo.h" />
+    <ClInclude Include="..\..\include\mpp\RenderPass.h" />
+    <ClInclude Include="..\..\include\mpp\RenderPipeline.h" />
+    <ClInclude Include="..\..\include\mpp\RenderSystem.h" />
+    <ClInclude Include="..\..\include\mpp\RenderTarget.h" />
+    <ClInclude Include="..\..\include\mpp\RenderTexture.h" />
+    <ClInclude Include="..\..\include\mpp\RenderTextureStream.h" />
+    <ClInclude Include="..\..\include\mpp\Resource.h" />
+    <ClInclude Include="..\..\include\mpp\ResourceManager.h" />
+    <ClInclude Include="..\..\include\mpp\ResourceStream.h" />
+    <ClInclude Include="..\..\include\mpp\ResourceStreamSerializer.h" />
+    <ClInclude Include="..\..\include\mpp\ResourceWrangler.h" />
+    <ClInclude Include="..\..\include\mpp\Sampler.h" />
+    <ClInclude Include="..\..\include\mpp\SamplerParams.h" />
+    <ClInclude Include="..\..\include\mpp\SamplerStream.h" />
+    <ClInclude Include="..\..\include\mpp\Scene.h" />
+    <ClInclude Include="..\..\include\mpp\SceneModel2d.h" />
+    <ClInclude Include="..\..\include\mpp\SceneFactory.h" />
+    <ClInclude Include="..\..\include\mpp\SceneModel3d.h" />
+    <ClInclude Include="..\..\include\mpp\Screen.h" />
+    <ClInclude Include="..\..\include\mpp\SphereModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\StaticLogger.h" />
+    <ClInclude Include="..\..\include\mpp\String.h" />
+    <ClInclude Include="..\..\include\mpp\StringStream.h" />
+    <ClInclude Include="..\..\include\mpp\Texture.h" />
+    <ClInclude Include="..\..\include\mpp\TextureData.h" />
+    <ClInclude Include="..\..\include\mpp\TextureParams.h" />
+    <ClInclude Include="..\..\include\mpp\TextureRenderer.h" />
+    <ClInclude Include="..\..\include\mpp\TextureStream.h" />
+    <ClInclude Include="..\..\include\mpp\TextureStreamBase.h" />
+    <ClInclude Include="..\..\include\mpp\TextureTile.h" />
+    <ClInclude Include="..\..\include\mpp\GridModelStream.h" />
+    <ClInclude Include="..\..\include\mpp\TriangleBatch.h" />
+    <ClInclude Include="..\..\include\mpp\TriangleBatchSpecification.h" />
+    <ClInclude Include="..\..\include\mpp\UniformBuffer.h" />
+    <ClInclude Include="..\..\include\mpp\UniformCollection.h" />
+    <ClInclude Include="..\..\include\mpp\Vertex2d.h" />
+    <ClInclude Include="..\..\include\mpp\VertexBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\Batch.cpp" />
+    <ClCompile Include="..\..\src\BatchDataProvider.cpp" />
+    <ClCompile Include="..\..\src\BoxModelStream.cpp" />
+    <ClCompile Include="..\..\src\Camera.cpp" />
+    <ClCompile Include="..\..\src\CircleBatch.cpp" />
+    <ClCompile Include="..\..\src\ClipRectangle.cpp" />
+    <ClCompile Include="..\..\src\Colour.cpp" />
+    <ClCompile Include="..\..\src\CylinderModelStream.cpp" />
+    <ClCompile Include="..\..\src\FileDataStream.cpp" />
+    <ClCompile Include="..\..\src\Font.cpp" />
+    <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
+    <ClCompile Include="..\..\src\InternalFont.cpp" />
+    <ClCompile Include="..\..\src\LineBatch.cpp" />
+    <ClCompile Include="..\..\src\Logger.cpp" />
+    <ClCompile Include="..\..\src\Material.cpp" />
+    <ClCompile Include="..\..\src\MaterialStream.cpp" />
+    <ClCompile Include="..\..\src\Mesh.cpp" />
+    <ClCompile Include="..\..\src\MeshInstance.cpp" />
+    <ClCompile Include="..\..\src\Model.cpp" />
+    <ClCompile Include="..\..\src\ModelInstance.cpp" />
+    <ClCompile Include="..\..\src\ModelSerializer.cpp" />
+    <ClCompile Include="..\..\src\ModelStream.cpp" />
+    <ClCompile Include="..\..\src\MppException.cpp" />
+    <ClCompile Include="..\..\src\MppModelStream.cpp" />
+    <ClCompile Include="..\..\src\PostEffect.cpp" />
+    <ClCompile Include="..\..\src\PostEffectStream.cpp" />
+    <ClCompile Include="..\..\src\PrimitiveModelStream.cpp" />
+    <ClCompile Include="..\..\src\Profiler.cpp" />
+    <ClCompile Include="..\..\src\Program.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticMaterialStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticProgramStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticRenderTextureStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticSamplerStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticStringStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticTextureStream.cpp" />
+    <ClCompile Include="..\..\src\ProgramStream.cpp" />
+    <ClCompile Include="..\..\src\QuadBatch.cpp" />
+    <ClCompile Include="..\..\src\RenderPass.cpp" />
+    <ClCompile Include="..\..\src\RenderPipeline.cpp" />
+    <ClCompile Include="..\..\src\RenderSystem.cpp" />
+    <ClCompile Include="..\..\src\RenderTarget.cpp" />
+    <ClCompile Include="..\..\src\RenderTexture.cpp" />
+    <ClCompile Include="..\..\src\RenderTextureStream.cpp" />
+    <ClCompile Include="..\..\src\Resource.cpp" />
+    <ClCompile Include="..\..\src\ResourceManager.cpp" />
+    <ClCompile Include="..\..\src\ResourceStream.cpp" />
+    <ClCompile Include="..\..\src\ResourceStreamSerializer.cpp" />
+    <ClCompile Include="..\..\src\ResourceWrangler.cpp" />
+    <ClCompile Include="..\..\src\Sampler.cpp" />
+    <ClCompile Include="..\..\src\SamplerParams.cpp" />
+    <ClCompile Include="..\..\src\SamplerStream.cpp" />
+    <ClCompile Include="..\..\src\Scene.cpp" />
+    <ClCompile Include="..\..\src\SceneModel2d.cpp" />
+    <ClCompile Include="..\..\src\SceneModel3d.cpp" />
+    <ClCompile Include="..\..\src\Screen.cpp" />
+    <ClCompile Include="..\..\src\SphereModelStream.cpp" />
+    <ClCompile Include="..\..\src\StaticLogger.cpp" />
+    <ClCompile Include="..\..\src\String.cpp" />
+    <ClCompile Include="..\..\src\StringStream.cpp" />
+    <ClCompile Include="..\..\src\Texture.cpp" />
+    <ClCompile Include="..\..\src\TextureData.cpp" />
+    <ClCompile Include="..\..\src\TextureParams.cpp" />
+    <ClCompile Include="..\..\src\TextureRenderer.cpp" />
+    <ClCompile Include="..\..\src\TextureStream.cpp" />
+    <ClCompile Include="..\..\src\GridModelStream.cpp" />
+    <ClCompile Include="..\..\src\TextureStreamBase.cpp" />
+    <ClCompile Include="..\..\src\TriangleBatch.cpp" />
+    <ClCompile Include="..\..\src\UniformBuffer.cpp" />
+    <ClCompile Include="..\..\src\UniformCollection.cpp" />
+    <ClCompile Include="..\..\src\VertexBuffer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\mpp-mesh\build\vs2017\MppMesh.vcxproj">
+      <Project>{4201332e-dd6a-40b6-8bcd-73ad3008d9c8}</Project>
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\version\Version.rc" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9EE39F33-DF1C-4120-8CF5-5865CC11E152}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>MassivePolyPusher</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(WindowsTargetPlatformVersion)'==''">
+    <!-- Latest Target Version property -->
+    <LatestTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</LatestTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(WindowsTargetPlatformVersion)' == ''">$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+    <TargetPlatformVersion>$(WindowsTargetPlatformVersion)</TargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)d</TargetName>
+    <IncludePath>C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;MPP_DEBUG_BUILD;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
+      <AdditionalDependencies>Utilsd.lib;fmtd.lib;MppProgramd.lib;opengl32.lib;glew32d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
+      <AdditionalDependencies>Utils.lib;fmt.lib;MppProgram.lib;opengl32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

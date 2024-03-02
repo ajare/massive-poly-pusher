@@ -1,4 +1,4 @@
-#include "utils/StringUtils.h"
+#include <fmt/format.h>
 
 #include "Attribute.h"
 #include "MppProgramException.h"
@@ -21,7 +21,7 @@ namespace mpp
 			case 1:
 				glslType = ""; break;
 			default:
-				glslType = "vec" + utils::StringUtils::toString(componentSize);
+				glslType = fmt::format("vec{}", componentSize);
 			}
 
 			// Get type

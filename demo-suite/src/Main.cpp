@@ -7,6 +7,8 @@
 #include <glm/gtx/rotate_vector.hpp>
 #pragma warning(pop)
 
+#include <fmt/format.h>
+
 #include "utils/StringUtils.h"
 
 // RenderSystem
@@ -374,7 +376,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Render
 			//
-			gRenderSystem->setDebugPreMessages({ "FPS: " + utils::StringUtils::toString(fps) });
+			gRenderSystem->setDebugPreMessages({ fmt::format("FPS: {}", fps) });
 			gRenderSystem->showDebugPanel(true);
 			gRenderSystem->startStatsCollection();
 

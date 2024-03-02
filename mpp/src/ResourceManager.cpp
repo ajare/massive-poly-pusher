@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cassert>
 
+#include <fmt/format.h>
+
 #include "mpp/program/Parser.h"
 
 #include "mpp/ResourceManager.h"
@@ -589,10 +591,7 @@ namespace mpp
 
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
-		specName += "_";
-		specName += utils::StringUtils::toString(++mProgramIdCounter);
-
-		specName += "__";
+		specName += fmt::format("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
@@ -664,10 +663,7 @@ namespace mpp
 
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
-		specName += "_";
-		specName += utils::StringUtils::toString(++mProgramIdCounter);
-
-		specName += "__";
+		specName += fmt::format("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
