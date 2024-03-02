@@ -10,6 +10,8 @@
 
 #include <half/half.hpp>
 
+#include <fmt/format.h>
+
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
 #include "mpp/ResourceManager.h"
@@ -179,7 +181,7 @@ namespace mpp
 			}
 			break;
 		default:
-			throw MppException("Vertex attribute datatype not supported: " + utils::StringUtils::toString((int)attrib.dataType));
+			throw MppException(fmt::format("Vertex attribute datatype not supported: {}", attrib.dataType));
 		}
 
 		return pos;

@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/Resource.h"
@@ -310,13 +312,13 @@ namespace mpp
 		{
 			mRefCount++;
 
-			static_log_message(MPP_RESOURCE_LOGFILE,
-				"Object '" + acquirer->getWranglerName() + "' acquired '" + getName() + "' for "
-				+ utils::StringUtils::toString(mRefCount) + " references.");
+			string msg = fmt::format("Object '{}' acquired '{}' for {} references.", acquirer->getWranglerName(), getName(), mRefCount);
+			static_log_message(MPP_RESOURCE_LOGFILE, msg);
 		}
 		else
 		{
-			throw MppException("Object '" + acquirer->getWranglerName() + "' tried to acquire resource '" + getName() + "' more than once.");
+			string errMsg = fmt::format("Object {} tried to acquire resource {} more than once.", acquirer->getWranglerName(), getName());
+			throw MppException(errMsg);
 		}
 	}
 
@@ -330,9 +332,8 @@ namespace mpp
 
 			mDependingResources.erase(it);
 
-			static_log_message(MPP_RESOURCE_LOGFILE, 
-				"Object '" + releaser->getWranglerName() + "' released '" + getName() + "' to " 
-				+ utils::StringUtils::toString(mRefCount) + " references.");
+			string msg = fmt::format("Object '{}' released {} to {} references.", releaser->getWranglerName(), getName(), mRefCount);
+			static_log_message(MPP_RESOURCE_LOGFILE, msg);
 
 			if (mRefCount == 0)
 			{

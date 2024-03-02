@@ -2,6 +2,8 @@
 #include <cassert>
 #include <regex>
 
+#include <fmt/format.h>
+
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 #include <assimp/Importer.hpp>
@@ -213,7 +215,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		dataStreamDef->name = inputMesh->mName.C_Str();
 		if (dataStreamDef->name == "")
 		{
-			dataStreamDef->name = utils::StringUtils::toString(j);
+			dataStreamDef->name = fmt::format("{}", j);
 		}
 
 		// Material

@@ -25,14 +25,14 @@ set TargetBinDir="%Root%.\build\%Solution%\bin\%Platform%\%Configuration%"
 
 if not exist %TargetBinDir% mkdir %TargetBinDir%
 
-@rem Copy 3rd party
-copy /Y "%Root%\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.*" %TargetBinDir%
+@rem Copy vendor
+copy /Y "%Root%\vendor\bin\%Solution%\%Platform%\%Configuration%\*.*" %TargetBinDir%
 
 @rem Copy utils
 copy /Y "%Root%\..\ext\utils\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
 @rem Copy mpp
-copy /Y "%Root%\..\mpp\3rd party\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
+copy /Y "%Root%\..\mpp\vendor\bin\%Solution%\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 copy /Y "%Root%\..\mpp\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
 @rem Copy mpp-mesh

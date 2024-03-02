@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 #include "utils/FileSystem.h"
 
 #include "mpp/DefaultShaders.h"
@@ -138,8 +140,8 @@ namespace mpp
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = "Error loading " + filepath + ".  '" + type + "' specified for uniform '" + name + "'  but "
-					+ utils::StringUtils::toString(values.size()) + " values found.";
+				string errMsg = fmt::format("Error loading {}.  '{}' specified for uniform '{}'  but {} values found.", 
+					filepath, type, name, values.size());
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -171,8 +173,7 @@ namespace mpp
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = "Error loading " + filepath + ".  '" + type + "' specified for uniform '" + name + "'  but "
-					+ utils::StringUtils::toString(values.size()) + " values found.";
+				string errMsg = fmt::format("Error loading {}. '{}' specified for uniform {} but {} values found.", filepath, type, name, values.size());
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 

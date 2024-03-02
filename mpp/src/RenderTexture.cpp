@@ -1,5 +1,7 @@
 #include <exception>
 
+#include <fmt/format.h>
+
 #include "mpp/Config.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/RenderTexture.h"
@@ -201,7 +203,7 @@ namespace mpp
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
 
 			// Set name for debugging
-			auto label = "Texture: " + getName() + "_attachment_" + utils::StringUtils::toString(i);
+			auto label = fmt::format("Texture: {}_attachment_{}", getName(), i);
 			glObjectLabel(GL_TEXTURE, texId, -1, label.c_str());
 
 			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));

@@ -6,6 +6,8 @@
 #include <regex>
 #include <sstream>
 
+#include <fmt/format.h>
+
 #include <utils/StringUtils.h>
 
 #include "Parser.h"
@@ -418,7 +420,7 @@ namespace mpp
 
 				if (count > 1)
 				{
-					replacement += "[" + utils::StringUtils::toString(count) + "]";
+					replacement += fmt::format("[{}]", count);
 				}
 
 				if (!uniform.inBlock)
@@ -521,7 +523,7 @@ namespace mpp
 
 				if (count > 1)
 				{
-					replacement += "[" + utils::StringUtils::toString(count) + "]";
+					replacement += fmt::format("[{}]", count);
 				}
 
 				replacement = "uniform " + replacement;

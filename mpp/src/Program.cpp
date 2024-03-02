@@ -8,8 +8,10 @@
 #include <numeric>
 #include <regex>
 #include <list>
+
 #include <glew/glew.h>
 #include <gl/gl.h>
+#include <fmt/format.h>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -477,32 +479,32 @@ namespace mpp
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
 				{
 					GL_CHECK(mViewPosId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage("- Uniform: ViewPosition id: " + utils::StringUtils::toString(mViewPosId));
+					rs->debugMessage(fmt::format("- Uniform: ViewPosition id: {}", mViewPosId));
 				}
 				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
 				{
 					GL_CHECK(mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage("- Uniform: Model matrix id: " + utils::StringUtils::toString(mMMatrixId));
+					rs->debugMessage(fmt::format("- Uniform: Model matrix id: {}", mMMatrixId));
 				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
 					GL_CHECK(mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage("- Uniform: ModelCameraProjection matrix id: " + utils::StringUtils::toString(mMcpMatrixId));
+					rs->debugMessage(fmt::format("- Uniform: ModelCameraProjection matrix id: {}", mMcpMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
 					GL_CHECK(mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage("- Uniform normal matrix id: " + utils::StringUtils::toString(mNormalMatrixId));
+					rs->debugMessage(fmt::format("- Uniform normal matrix id: {}", mNormalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
 					GL_CHECK(mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage("- Uniform: half window size id: " + utils::StringUtils::toString(mHalfWindowSizeId));
+					rs->debugMessage(fmt::format("- Uniform: half window size id: {}", mHalfWindowSizeId));
 				}
 				else if (uniformName == MPP_PROGRAM_POINTSIZE_NAME)
 				{
 					GL_CHECK(mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage("- Uniform: point size id: " + utils::StringUtils::toString(mPointSizeId));
+					rs->debugMessage(fmt::format("- Uniform: point size id: {}", mPointSizeId));
 				}
 				else
 				{
@@ -514,14 +516,14 @@ namespace mpp
 					if (it != mTextures.end())
 					{
 						GL_CHECK(it->uniformId = glGetUniformLocation(programId, uniformNameBuffer));
-						rs->debugMessage("- Texture: '" + uniformName + "' id: " + utils::StringUtils::toString(it->uniformId));
+						rs->debugMessage(fmt::format("- Texture: '{}' id: {}", uniformName, it->uniformId));
 					}
 					else
 					{
 						int32_t uniformId;
 						GL_CHECK(uniformId = glGetUniformLocation(programId, uniformNameBuffer));
 						mUniformIds[uniformName] = uniformId;
-						rs->debugMessage("- Uniform: '" + uniformName + "' id: " + utils::StringUtils::toString(uniformId));
+						rs->debugMessage(fmt::format("- Texture: '{}' id: {}", uniformName, uniformId));
 					}
 				}
 			}
@@ -573,7 +575,7 @@ namespace mpp
 		string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(name);
 		if (index >= 0)
 		{
-			markedUpUniform += "[" + utils::StringUtils::toString(index) + "]";
+			markedUpUniform += fmt::format("[{}]", index);
 		}
 
 		if (mUniformIds.find(markedUpUniform) == mUniformIds.end())
