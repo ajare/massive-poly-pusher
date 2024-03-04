@@ -46,9 +46,9 @@ namespace mpp
 
 				void nextVertex()
 				{
-					uint32_t currentVertex = mIndex / mVertexData->getNumComponents();
-					mIndex = mVertexData->getNumComponents() * (currentVertex + 1);
-					mOffset = mVertexData->getStride() * (currentVertex + 1);
+					uint32_t currentVertex = mIndex / (uint32_t)mVertexData->getNumComponents();
+					mIndex = (uint32_t)mVertexData->getNumComponents() * (currentVertex + 1);
+					mOffset = (uint32_t)mVertexData->getStride() * (currentVertex + 1);
 				}
 			};
 

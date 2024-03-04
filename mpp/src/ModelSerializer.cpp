@@ -31,7 +31,7 @@ namespace mpp
 
 	void ModelSerializer::writeValue(string const& value, ofstream& fp)
 	{
-		size_t len = value.length();
+		auto len = (uint32_t)value.length();
 		fp.write((char const*)&len, sizeof(len));
 
 		if (len > 0)
@@ -82,7 +82,7 @@ namespace mpp
 
 	string ModelSerializer::readString(ifstream& fp)
 	{
-		size_t len;
+		uint32_t len;
 		fp.read((char*)&len, sizeof(len));
 
 		if (len > 0)
@@ -233,12 +233,12 @@ namespace mpp
 	 */
 	void ModelSerializer::readDirectory(ifstream& fp)
 	{
-		mDirectory.entries[(size_t)Directory::Entry::Type::Unused] = readDirectoryEntry(fp);
-		mDirectory.entries[(size_t)Directory::Entry::Type::MaterialNames] = readDirectoryEntry(fp);
-		mDirectory.entries[(size_t)Directory::Entry::Type::Materials] = readDirectoryEntry(fp);
-		mDirectory.entries[(size_t)Directory::Entry::Type::VertexData] = readDirectoryEntry(fp);
-		mDirectory.entries[(size_t)Directory::Entry::Type::IndexData] = readDirectoryEntry(fp);
-		mDirectory.entries[(size_t)Directory::Entry::Type::MeshMetadata] = readDirectoryEntry(fp);
+		mDirectory.entries[(uint32_t)Directory::Entry::Type::Unused] = readDirectoryEntry(fp);
+		mDirectory.entries[(uint32_t)Directory::Entry::Type::MaterialNames] = readDirectoryEntry(fp);
+		mDirectory.entries[(uint32_t)Directory::Entry::Type::Materials] = readDirectoryEntry(fp);
+		mDirectory.entries[(uint32_t)Directory::Entry::Type::VertexData] = readDirectoryEntry(fp);
+		mDirectory.entries[(uint32_t)Directory::Entry::Type::IndexData] = readDirectoryEntry(fp);
+		mDirectory.entries[(uint32_t)Directory::Entry::Type::MeshMetadata] = readDirectoryEntry(fp);
 	}
 
 	/*
@@ -290,9 +290,9 @@ namespace mpp
 	void ModelSerializer::writeDirectoryEntry(ofstream& fp, Directory::Entry const& entry)
 	{
 		writeValue((uint32_t)entry.type, fp);
-		writeValue(entry.startOffset, fp);
-		writeValue(entry.endOffset, fp);
-		writeValue(entry.count, fp);
+		writeValue((uint32_t)entry.startOffset, fp);
+		writeValue((uint32_t)entry.endOffset, fp);
+		writeValue((uint32_t)entry.count, fp);
 	}
 
 	void ModelSerializer::readMaterialNames(ifstream& fp)
@@ -346,7 +346,7 @@ namespace mpp
 
 	void ModelSerializer::writeUniformCollection(UniformCollection const& uniforms, ofstream& fp)
 	{
-		writeValue(uniforms.getNumUniforms(), fp);
+		writeValue((uint32_t)uniforms.getNumUniforms(), fp);
 
 		auto const& uniformData = uniforms.getUniformData();
 
@@ -356,7 +356,7 @@ namespace mpp
 
 			writeValue(data.name, fp);
 			writeValue((uint32_t)data.type, fp);
-			writeValue(data.size, fp);
+			writeValue((uint32_t)data.size, fp);
 			writeValue(data.data, 64, fp);
 		}
 	}
@@ -497,10 +497,10 @@ namespace mpp
 		*/
 
 		size_t vertexDataSize = vertexStream.vertexCount * vertexStream.vertexStride;
-		writeValue(vertexDataSize, fp);
+		writeValue((uint32_t)vertexDataSize, fp);
 
-		writeValue(vertexStream.vertexCount, fp);
-		writeValue(vertexStream.vertexStride, fp);
+		writeValue((uint32_t)vertexStream.vertexCount, fp);
+		writeValue((uint32_t)vertexStream.vertexStride, fp);
 		writeValue((char*)vertexStream.vertexData.get(), vertexDataSize, fp);
 	}
 
@@ -551,7 +551,7 @@ namespace mpp
 
 		for (size_t i = 0; i < mIndexStreams.size(); ++i)
 		{
-			auto const& mesh = mMeshes[mIndexStreamLookup[i]];
+			auto const& mesh = mMeshes[mIndexStreamLookup[(uint32_t)i]];
 			writeIndexBuffer(fp, mIndexStreams[i], mesh.primitiveType, mesh.primitiveCount);
 		}
 
@@ -570,8 +570,8 @@ namespace mpp
 			mesh::Primitive::size(primitiveType) *
 			indexStream.indexWidth / 8;
 
-		writeValue(indexDataSize, fp);
-		writeValue(indexStream.indexWidth, fp);
+		writeValue((uint32_t)indexDataSize, fp);
+		writeValue((uint32_t)indexStream.indexWidth, fp);
 		writeValue((char const*)indexStream.indexData.get(), indexDataSize, fp);
 	}
 
@@ -660,10 +660,10 @@ namespace mpp
 		
 		// Write material, meshspec, index buffer and vertex buffer IDs
 		writeValue((uint32_t)mesh.primitiveType, fp);
-		writeValue(mesh.primitiveCount, fp);
+		writeValue((uint32_t)mesh.primitiveCount, fp);
 		writeValue(mesh.material, fp);
 
-		writeValue(mesh.vertexStreams.size(), fp);
+		writeValue((uint32_t)mesh.vertexStreams.size(), fp);
 		for (auto vb: mesh.vertexStreams)
 		{
 			writeValue(vb, fp);
@@ -741,7 +741,7 @@ namespace mpp
 	 */
 	int ModelSerializer::getPrimitiveCount(size_t meshIndex) const
 	{
-		return mMeshes[meshIndex].primitiveCount;
+		return (int)mMeshes[meshIndex].primitiveCount;
 	}
 
 	void ModelSerializer::addMaterial(string const& name, ResourceStreamPtr material)
@@ -784,7 +784,7 @@ namespace mpp
 	 */
 	void ModelSerializer::addVertexStream(size_t meshIndex, size_t vertexCount, size_t vertexStride, std::shared_ptr<const int8_t> vertexData)
 	{
-		mMeshes[meshIndex].vertexStreams.push_back(mVertexStreams.size());
+		mMeshes[meshIndex].vertexStreams.push_back((uint32_t)mVertexStreams.size());
 
 		VertexStream vs;
 		vs.vertexCount = vertexCount;
@@ -813,8 +813,8 @@ namespace mpp
 	void ModelSerializer::setIndexBuffer(size_t meshIndex, shared_ptr<const uint8_t> indexData, size_t indexWidth)
 	{
 		auto streamIndex = mIndexStreams.size();
-		mMeshes[meshIndex].indexStream = streamIndex;
-		mIndexStreamLookup[streamIndex] = meshIndex;
+		mMeshes[meshIndex].indexStream = (uint32_t)streamIndex;
+		mIndexStreamLookup[(uint32_t)streamIndex] = (uint32_t)meshIndex;
 
 		IndexStream is;
 		is.indexData = indexData;
@@ -834,7 +834,7 @@ namespace mpp
 
 	int ModelSerializer::getIndexWidth(size_t meshIndex) const
 	{
-		return mIndexStreams[mMeshes[meshIndex].indexStream].indexWidth;
+		return (int)mIndexStreams[mMeshes[meshIndex].indexStream].indexWidth;
 	}
 
 	/*

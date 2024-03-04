@@ -12,7 +12,13 @@ namespace mpp
 		ResourcePtr texture;
 
 		TextureTile()
+			: width(0)
+			, height(0)
 		{
+			u[0] = 0;
+			u[1] = 1;
+			v[0] = 0;
+			v[1] = 1;
 		}
 
 		TextureTile(ResourcePtr tex, float u0, float v0, float u1, float v1)

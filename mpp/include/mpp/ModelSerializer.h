@@ -127,7 +127,7 @@ namespace mpp
 
 		struct VertexStream
 		{
-			size_t vertexCount, vertexStride;
+			size_t vertexCount{ 0 }, vertexStride{ 0 };
 			std::shared_ptr<const int8_t> vertexData;
 		};
 

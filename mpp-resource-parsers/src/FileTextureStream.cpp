@@ -1,4 +1,4 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #	include <Windows.h>
 #endif
 

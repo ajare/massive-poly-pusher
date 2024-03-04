@@ -1,4 +1,4 @@
-#include <vld.h> // Memory tracking
+//#include <vld.h> // Memory tracking
 
 #include "mpp/resource-parsers/Serializer.h"
 

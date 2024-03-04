@@ -160,7 +160,7 @@ namespace mpp
 			
 			if (it == materialTextures.end())
 			{
-				string errMsg = utils::StringUtils::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
+				string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
 					samplerName, program->getName(), getName());
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}

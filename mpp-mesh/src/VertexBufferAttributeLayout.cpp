@@ -82,7 +82,7 @@ namespace mpp
 			// Add attrib
 			Attribute attrib;
 
-			attrib.attributeId = mBaseId + mAttributes.size();
+			attrib.attributeId = mBaseId + (int)mAttributes.size();
 			attrib.identifier = identifier;
 			attrib.component = component;
 			attrib.dataType = dataType;
@@ -108,7 +108,7 @@ namespace mpp
 			attrib.offsetInBytes = mVertexSize;
 
 			mAttributes.push_back(attrib);
-			mVertexSize += attrib.sizeInBytes();
+			mVertexSize += (int)attrib.sizeInBytes();
 		}
 
 		/*

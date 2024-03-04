@@ -1,4 +1,4 @@
-#include <vld.h> // Memory tracking
+//#include <vld.h> // Memory tracking
 
 #include <set>
 #include <map>
@@ -6,7 +6,13 @@
 #include <regex>
 #include <sstream>
 
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include <utils/StringUtils.h>
 
@@ -294,7 +300,7 @@ namespace mpp
 				else
 				{
 					addError(stageType, "unknown variable in cast: " + match.str(0));
-					string replacement = utils::StringUtils::format("vec{}({})", dim, fullVar);
+					string replacement = STR_FORMAT("vec{}({})", dim, fullVar);
 					parsedSrc = parsedSrc.substr(0, match.position()) + replacement + parsedSrc.substr(match.position() + match.length());
 					continue;
 				}
@@ -304,7 +310,7 @@ namespace mpp
 				if (varSize == 0)
 				{
 					addError(stageType, "unknown variable in cast: " + match.str(0));
-					string replacement = utils::StringUtils::format("vec{}({})", dim, fullVar);
+					string replacement = STR_FORMAT("vec{}({})", dim, fullVar);
 					parsedSrc = parsedSrc.substr(0, match.position()) + replacement + parsedSrc.substr(match.position() + match.length());
 					continue;
 				}
@@ -322,7 +328,7 @@ namespace mpp
 					if (swizzle == "")
 					{
 						// Set the swizzle
-						char* swizzleChars{ "xyzw" };
+						char const* swizzleChars{ "xyzw" };
 						for (size_t i = 0; i < dim; ++i)
 						{
 							swizzle += swizzleChars[i];
@@ -338,7 +344,7 @@ namespace mpp
 					fullVar = bareVar + "." + swizzle;
 				}
 
-				string replacement = utils::StringUtils::format("vec{}({}", dim, fullVar);
+				string replacement = STR_FORMAT("vec{}({}", dim, fullVar);
 
 				GLSLTypeDecl varDeclType;
 				switch (varType)
@@ -374,7 +380,7 @@ namespace mpp
 
 				for (size_t i = varSize; i < dim; ++i)
 				{
-					auto value = getComponentIndexDefault(varName, varDeclType.isFloatingPoint, i, varName + ".x");
+					auto value = getComponentIndexDefault(varName, varDeclType.isFloatingPoint, (int)i, varName + ".x");
 					replacement += ", " + value;
 				}
 
@@ -420,7 +426,7 @@ namespace mpp
 
 				if (count > 1)
 				{
-					replacement += fmt::format("[{}]", count);
+					replacement += STR_FORMAT("[{}]", count);
 				}
 
 				if (!uniform.inBlock)
@@ -523,7 +529,7 @@ namespace mpp
 
 				if (count > 1)
 				{
-					replacement += fmt::format("[{}]", count);
+					replacement += STR_FORMAT("[{}]", count);
 				}
 
 				replacement = "uniform " + replacement;
@@ -606,7 +612,7 @@ namespace mpp
 				}
 
 				stage.mainLine = 0;
-				int stringPos = stringMatch.position(0);
+				int stringPos = (int)stringMatch.position(0);
 				while (stringPos >= 0)
 				{
 					if (stage.source[stringPos] == '\n' || stage.source[stringPos] == ';')
@@ -765,7 +771,7 @@ namespace mpp
 
 			for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto const& layout = mSpecification.getVertexBufferAttributeLayout(i);
+				auto const& layout = mSpecification.getVertexBufferAttributeLayout((uint32_t)i);
 				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto const& meshAttrib = layout.getAttribute(j);
@@ -985,8 +991,8 @@ namespace mpp
 				return !prev;
 			}
 
-			uint32_t orPos = lineFragment.find_first_of('|');
-			uint32_t andPos = lineFragment.find_first_of('&');
+			uint32_t orPos = (uint32_t)lineFragment.find_first_of('|');
+			uint32_t andPos = (uint32_t)lineFragment.find_first_of('&');
 
 			if (orPos == -1 && andPos == -1)
 			{
@@ -1090,14 +1096,14 @@ namespace mpp
 					int location = 0;
 					for (auto const& attrib: stage.inAttribs)
 					{
-						string attribLine = utils::StringUtils::format("layout(location = {}) in {} {};", 
+						string attribLine = STR_FORMAT("layout(location = {}) in {} {};", 
 							location, 
 							attrib.type.name,
 							MPP_PROGRAM_IN_PREFIX + attrib.name);
 
 						parsedLines.push_back(attribLine);
 						parsedLines.push_back("\n");
-						location += attrib.type.size[0];
+						location += (int)attrib.type.size[0];
 					}
 
 					parsedLines.push_back("\n");
@@ -1106,14 +1112,14 @@ namespace mpp
 					location = 0;
 					for (auto const& attrib: stage.outAttribs)
 					{
-						string attribLine = utils::StringUtils::format("layout(location = {}) out {} {};",
+						string attribLine = STR_FORMAT("layout(location = {}) out {} {};",
 							location,
 							attrib.type.name,
 							MPP_PROGRAM_OUT_PREFIX + attrib.name);
 
 						parsedLines.push_back(attribLine);
 						parsedLines.push_back("\n");
-						location += attrib.type.size[0];
+						location += (int)attrib.type.size[0];
 					}
 
 					parsedLines.push_back("\n");
@@ -1121,32 +1127,32 @@ namespace mpp
 					// Add built-in uniforms
 					if (vpUsed)
 					{
-						parsedLines.push_back(utils::StringUtils::format("uniform vec3 {};", MPP_PROGRAM_VIEWPOS_NAME));
+						parsedLines.push_back(STR_FORMAT("uniform vec3 {};", MPP_PROGRAM_VIEWPOS_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (mUsed)
 					{
-						parsedLines.push_back(utils::StringUtils::format("uniform mat4 {};", MPP_PROGRAM_MMATRIX_NAME));
+						parsedLines.push_back(STR_FORMAT("uniform mat4 {};", MPP_PROGRAM_MMATRIX_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (mcpUsed)
 					{
-						parsedLines.push_back(utils::StringUtils::format("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
+						parsedLines.push_back(STR_FORMAT("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (normalUsed)
 					{
-						parsedLines.push_back(utils::StringUtils::format("uniform mat3 {};", MPP_PROGRAM_NORMALMATRIX_NAME));
+						parsedLines.push_back(STR_FORMAT("uniform mat3 {};", MPP_PROGRAM_NORMALMATRIX_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (halfWindowSizeUsed)
 					{
-						parsedLines.push_back(utils::StringUtils::format("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
+						parsedLines.push_back(STR_FORMAT("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (pointSizeUsed)
 					{
-						parsedLines.push_back(utils::StringUtils::format("uniform float {};", MPP_PROGRAM_POINTSIZE_NAME));
+						parsedLines.push_back(STR_FORMAT("uniform float {};", MPP_PROGRAM_POINTSIZE_NAME));
 						parsedLines.push_back("\n");
 					}
 				}

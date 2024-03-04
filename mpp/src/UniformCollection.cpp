@@ -1,4 +1,4 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
 
@@ -379,15 +379,15 @@ namespace mpp
 			switch (ud.type)
 			{
 			case program::GLSLType::Int:
-				GL_CHECK(intFunctions[ud.numElements - 1](id, ud.count, (const GLint*)ud.data));
+				GL_CHECK(intFunctions[ud.numElements - 1](id, (GLsizei)ud.count, (const GLint*)ud.data));
 				break;
 
 			case program::GLSLType::Uint:
-				GL_CHECK(uintFunctions[ud.numElements - 1](id, ud.count, (const GLuint*)ud.data));
+				GL_CHECK(uintFunctions[ud.numElements - 1](id, (GLsizei)ud.count, (const GLuint*)ud.data));
 				break;
 
 			case program::GLSLType::Float:
-				GL_CHECK(floatFunctions[ud.numElements - 1](id, ud.count, (const GLfloat*)ud.data));
+				GL_CHECK(floatFunctions[ud.numElements - 1](id, (GLsizei)ud.count, (const GLfloat*)ud.data));
 				break;
 
 			default:

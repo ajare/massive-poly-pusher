@@ -97,7 +97,7 @@ namespace mpp
 				return false;
 			}
 
-			vertexOffset += attrib.sizeInBytes();
+			vertexOffset += (int)attrib.sizeInBytes();
 		}
 
 		if (vertexOffset != streamStride1)
@@ -196,14 +196,14 @@ namespace mpp
 			string material = getMeshMaterial(i);
 
 			auto primitiveType = meshSpec.getPrimitiveType();
-			MeshDefinition* meshDef = createMeshDefinition(getMeshName(i), primitiveType, primitiveCount, meshSpec.getStorageType(), material, getMeshIndexWidth(i), getMeshPointSize(i));
+			MeshDefinition* meshDef = createMeshDefinition(getMeshName(i), primitiveType, (int)primitiveCount, meshSpec.getStorageType(), material, (int)getMeshIndexWidth(i), getMeshPointSize(i));
 
 			// Set index data if we have any.
 			meshDef->setIndexed(meshSpec.verticesIndexed());
 			if (meshDef->isIndexed())
 			{
 				uint8_t const* indexData = getMeshIndexData(i);
-				int indexWidth = getMeshIndexWidth(i);
+				int indexWidth = (int)getMeshIndexWidth(i);
 				int indexWidthBytes = indexWidth / 8;
 
 				if (indexData)
@@ -219,7 +219,7 @@ namespace mpp
 			
 			for (size_t j = 0; j < meshSpec.getNumVertexBufferAttributeLayouts(); ++j)
 			{
-				auto const& bufferSpec = meshSpec.getVertexBufferAttributeLayout(j);
+				auto const& bufferSpec = meshSpec.getVertexBufferAttributeLayout((uint32_t)j);
 
 				// Acquire the vertex streams needed and work out the stride.
 				int vertexStride = 0;
@@ -229,16 +229,16 @@ namespace mpp
 					auto const& attrib = bufferSpec.getAttribute(k);
 
 					componentStreams[attrib.component] = getMeshDataStream(i, attrib.component);
-					vertexStride += Vertex::getComponentSize(attrib.component) * Vertex::getDataTypeSize(attrib.dataType) + attrib.paddingBytes;
+					vertexStride += (int)(Vertex::getComponentSize(attrib.component) * Vertex::getDataTypeSize(attrib.dataType) + attrib.paddingBytes);
 				}
 
 				// See whether or not the streams are the same, and are packed tightly.
 				// If they are, we can load the data in one go.
 				int8_t* bufData = streamsAreTightlyPacked(bufferSpec, componentStreams)
-					? copyVertexBufferData(bufferSpec, componentStreams.begin()->second, vertexCount, vertexStride)
-					: deinterlaceVertexBufferData(bufferSpec, componentStreams, vertexCount, vertexStride);
+					? copyVertexBufferData(bufferSpec, componentStreams.begin()->second, (int)vertexCount, vertexStride)
+					: deinterlaceVertexBufferData(bufferSpec, componentStreams, (int)vertexCount, vertexStride);
 
-				VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, vertexCount, vertexStride, shared_ptr<const int8_t>(bufData, [](int8_t const* p) { delete[] p; }));
+				VertexBufferDefinition* vertexBufDef = meshDef->createVertexBufferDefinition(bufferSpec, (int)vertexCount, vertexStride, shared_ptr<const int8_t>(bufData, [](int8_t const* p) { delete[] p; }));
 			}
 		}
 	}
@@ -288,7 +288,7 @@ namespace mpp
 
 	uint32_t ModelStream::createQualitySetting(string const& name)
 	{
-		auto qualityId = mQualitySettings.size();
+		auto qualityId = (uint32_t)mQualitySettings.size();
 		mQualityNames[name] = qualityId;
 
 		mQualitySettings.push_back(QualitySetting());

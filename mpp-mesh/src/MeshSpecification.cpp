@@ -81,8 +81,8 @@ namespace mpp
 
 			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto const& thisLayout = getVertexBufferAttributeLayout(i);
-				auto const& otherLayout = other.getVertexBufferAttributeLayout(i);
+				auto const& thisLayout = getVertexBufferAttributeLayout((uint32_t)i);
+				auto const& otherLayout = other.getVertexBufferAttributeLayout((uint32_t)i);
 
 				if (thisLayout.getBaseId() != otherLayout.getBaseId())
 				{
@@ -219,7 +219,7 @@ namespace mpp
 		VertexBufferAttributeLayout* MeshSpecification::createVertexBufferAttributeLayout(bool staticData)
 		{
 			int baseId = mVertexBufferAttributeLayouts.empty() ? 0 
-				: mVertexBufferAttributeLayouts.back().getBaseId() + mVertexBufferAttributeLayouts.back().getNumAttributes();
+				: mVertexBufferAttributeLayouts.back().getBaseId() + (int)mVertexBufferAttributeLayouts.back().getNumAttributes();
 			mVertexBufferAttributeLayouts.push_back(VertexBufferAttributeLayout(baseId, staticData));
 			return &(mVertexBufferAttributeLayouts.back());
 		}
@@ -263,7 +263,7 @@ namespace mpp
 
 			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto layout = getVertexBufferAttributeLayout(i);
+				auto layout = getVertexBufferAttributeLayout((uint32_t)i);
 
 				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
@@ -285,7 +285,7 @@ namespace mpp
 
 			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto layout = getVertexBufferAttributeLayout(i);
+				auto layout = getVertexBufferAttributeLayout((uint32_t)i);
 
 				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
@@ -371,7 +371,7 @@ namespace mpp
 			int posBits = 0, normalBits = 0, texBits = 0, colBits = 0, userBits = 0;
 			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto const& layout = getVertexBufferAttributeLayout(i);
+				auto const& layout = getVertexBufferAttributeLayout((uint32_t)i);
 				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto const& attrib = layout.getAttribute(j);
@@ -450,7 +450,7 @@ namespace mpp
 
 			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto const& layout = getVertexBufferAttributeLayout(i);
+				auto const& layout = getVertexBufferAttributeLayout((uint32_t)i);
 
 				hash += to_string((uint32_t)layout.getBaseId());
 				hash += to_string((uint32_t)(layout.isStatic() ? 1 : 0));

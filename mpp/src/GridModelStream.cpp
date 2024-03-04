@@ -34,14 +34,14 @@ namespace mpp
 
 		for (size_t i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
+			auto const& layout = meshSpec.getVertexBufferAttributeLayout((uint32_t)i);
 
 			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 
 				// Get offset and stride for component
-				auto offset = componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+				auto offset = (int)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
 				switch (attrib.component)
 				{
@@ -51,7 +51,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2 + dw * x, -d2 + dh * z);
-							offset += strideInBytes;
+							offset += (int)strideInBytes;
 						}
 					}
 					break;
@@ -62,7 +62,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2 + dw * x, 0.0, -d2 + dh * z);
-							offset += strideInBytes;
+							offset += (int)strideInBytes;
 						}
 					}
 					break;
@@ -73,7 +73,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, 1.0, 0.0);
-							offset += strideInBytes;
+							offset += (int)strideInBytes;
 						}
 					}
 					break;
@@ -96,7 +96,7 @@ namespace mpp
 							}
 
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
-							offset += strideInBytes;
+							offset += (int)strideInBytes;
 						}
 					}
 					break;
@@ -106,7 +106,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-							offset += strideInBytes;
+							offset += (int)strideInBytes;
 						}
 					}
 					break;
@@ -117,7 +117,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-							offset += strideInBytes;
+							offset += (int)strideInBytes;
 						}
 					}
 					break;
@@ -130,9 +130,9 @@ namespace mpp
 		{
 			for (size_t x = 0; x < dimX; ++x)
 			{
-				size_t offset = (dimX + 1) * z + x;
-				addTriangle(offset, offset + dimX + 1, offset + dimX + 2);
-				addTriangle(offset + dimX + 2, offset + 1, offset);
+				auto offset = (dimX + 1) * z + x;
+				addTriangle((uint32_t)offset, (uint32_t)(offset + dimX + 1), (uint32_t)(offset + dimX + 2));
+				addTriangle((uint32_t)(offset + dimX + 2), (uint32_t)(offset + 1), (uint32_t)offset);
 			}
 		}
 	}

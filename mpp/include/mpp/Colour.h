@@ -1,5 +1,13 @@
 #pragma once
 
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
+
 #include "utils/StringUtils.h"
 
 #include "mpp/Config.h"
@@ -16,6 +24,11 @@ namespace mpp
 	public:
 
 		Colour()
+			: red(1.0f)
+			, green(1.0f)
+			, blue(1.0f)
+			, alpha(1.0f)
+
 		{
 		}
 
@@ -83,12 +96,12 @@ namespace mpp
 
 		std::string toStringFloat(std::string const& start, std::string const& end, std::string const& sep) const
 		{
-			return utils::StringUtils::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, red, green, blue, alpha);
+			return STR_FORMAT("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, red, green, blue, alpha);
 		}
 
 		std::string toStringUint8(std::string const& start, std::string const& end, std::string const& sep) const
 		{
-			return utils::StringUtils::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, (uint8_t)(red * 255.0f), (uint8_t)(green * 255.0f), (uint8_t)(blue * 255.0f), (uint8_t)(alpha * 255.0f));
+			return STR_FORMAT("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, (uint8_t)(red * 255.0f), (uint8_t)(green * 255.0f), (uint8_t)(blue * 255.0f), (uint8_t)(alpha * 255.0f));
 		}
 
 		std::string toStringHex(std::string const& start, std::string const& end, std::string const& sep) const
@@ -111,7 +124,7 @@ namespace mpp
 			ah[0] = hexChars[a / 16];
 			ah[1] = hexChars[a % 16];
 
-			return utils::StringUtils::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, rh, gh, bh, ah);
+			return STR_FORMAT("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, rh, gh, bh, ah);
 		}
 
 		static Colour Black;

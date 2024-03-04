@@ -46,7 +46,7 @@ namespace mpp
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
 		// Write magic number
-		char* magic{ "RSER" };
+		char const* magic{ "RSER" };
 		fp.write(magic, 4);
 
 		// Recursively write streams and their children
@@ -81,8 +81,8 @@ namespace mpp
 
 	void ResourceStreamSerializer::writeValue(string const& value, ofstream& fp)
 	{
-		size_t len = value.length();
-		fp.write((char const*)&len, sizeof(len));
+		uint32_t len = (uint32_t)value.length();
+		fp.write((char const*)&len, len);
 
 		if (len > 0)
 		{
@@ -120,22 +120,22 @@ namespace mpp
 		writeValue(ms.verticesIndexed(), fp);
 
 		// Write layouts
-		writeValue(ms.getNumVertexBufferAttributeLayouts(), fp);
+		writeValue((uint32_t)ms.getNumVertexBufferAttributeLayouts(), fp);
 		for (size_t i = 0; i < ms.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto const& layout = ms.getVertexBufferAttributeLayout(i);
+			auto const& layout = ms.getVertexBufferAttributeLayout((uint32_t)i);
 
 			writeValue(layout.isStatic(), fp);
 
 			// Write attributes
-			writeValue(layout.getNumAttributes(), fp);
+			writeValue((uint32_t)layout.getNumAttributes(), fp);
 			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
 
 				writeValue((uint32_t)attrib.component, fp);
 				writeValue((uint32_t)attrib.dataType, fp);
-				writeValue(attrib.padToBoundary, fp);
+				writeValue((uint32_t)attrib.padToBoundary, fp);
 				writeValue(attrib.normalised, fp);
 			}
 		}
@@ -143,7 +143,7 @@ namespace mpp
 
 	void ResourceStreamSerializer::writeUniformCollection(UniformCollection const& uniforms, ofstream& fp)
 	{
-		writeValue(uniforms.getNumUniforms(), fp);
+		writeValue((uint32_t)uniforms.getNumUniforms(), fp);
 
 		auto const& uniformData = uniforms.getUniformData();
 
@@ -153,7 +153,7 @@ namespace mpp
 
 			writeValue(data.name, fp);
 			writeValue((uint32_t)data.type, fp);
-			writeValue(data.size, fp);
+			writeValue((uint32_t)data.size, fp);
 
 			fp.write(data.data, 64);
 		}
@@ -179,7 +179,7 @@ namespace mpp
 		auto stream = dynamic_cast<MaterialStream*>(resourceStream.get());
 
 		// Write number of quality settings
-		writeValue(stream->mQualitySettings.size(), fp);
+		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 
 		// Write quality settings
 		for (auto const& setting: stream->mQualitySettings)
@@ -206,7 +206,7 @@ namespace mpp
 			writeUniformCollection(setting.spec.uniforms, fp);
 
 			// Textures
-			writeValue(setting.spec.textures.size(), fp);
+			writeValue((uint32_t)setting.spec.textures.size(), fp);
 			for (auto const& texture: setting.spec.textures)
 			{
 				writeValue(texture.resourceExists, fp);
@@ -239,7 +239,7 @@ namespace mpp
 		writeValue(stream->mFragmentSource, fp);
 
 		// Write number of quality settings
-		writeValue(stream->mQualitySettings.size(), fp);
+		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 
 		// Write quality settings
 		for (auto const& setting: stream->mQualitySettings)
@@ -247,7 +247,7 @@ namespace mpp
 			writeParser(*setting.parser.get(), fp);
 
 			// Write attributes
-			writeValue(setting.attribs.size(), fp);
+			writeValue((uint32_t)setting.attribs.size(), fp);
 			for (auto const& attrib : setting.attribs)
 			{
 				writeValue(attrib, fp);
@@ -261,7 +261,7 @@ namespace mpp
 		auto stream = dynamic_cast<SamplerStream*>(resourceStream.get());
 
 		// Write number of quality settings
-		writeValue(stream->mQualitySettings.size(), fp);
+		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 
 		// Write quality settings
 		for (auto const& setting: stream->mQualitySettings)
@@ -281,7 +281,7 @@ namespace mpp
 		auto stream = dynamic_cast<StringStream*>(resourceStream.get());
 
 		// Write number of quality settings
-		writeValue(stream->mQualitySettings.size(), fp);
+		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 
 		// Write quality settings
 		for (auto const& setting: stream->mQualitySettings)
@@ -297,7 +297,7 @@ namespace mpp
 		auto stream = dynamic_cast<TextureStream*>(resourceStream.get());
 
 		// Write number of quality settings
-		writeValue(stream->mQualitySettings.size(), fp);
+		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 
 		// Write quality settings
 		for (auto const& setting: stream->mQualitySettings)
@@ -330,7 +330,7 @@ namespace mpp
 		// Write children
 		auto const& children = resourceStream->getChildren();
 
-		writeValue(children.size(), fp);
+		writeValue((uint32_t)children.size(), fp);
 		for (auto const& kvp: children)
 		{
 			auto const& name = kvp.first;
@@ -341,7 +341,7 @@ namespace mpp
 		}
 
 		// Write number of quality settings
-		writeValue(resourceStream->mQualityNames.size(), fp);
+		writeValue((uint32_t)resourceStream->mQualityNames.size(), fp);
 
 		// Write quality settings names
 		for (auto const& kvp: resourceStream->mQualityNames)
@@ -383,7 +383,7 @@ namespace mpp
 
 	string ResourceStreamSerializer::readString(ifstream& fp)
 	{
-		size_t len;
+		uint32_t len;
 		fp.read((char*)&len, sizeof(len));
 
 		if (len > 0)
@@ -449,15 +449,15 @@ namespace mpp
 		auto indexed = readBool(fp);
 		meshSpec.setIndexedVertices(indexed);
 
-		size_t numLayouts = readUInt(fp);
-		for (size_t i = 0; i < numLayouts; ++i)
+		uint32_t numLayouts = readUInt(fp);
+		for (uint32_t i = 0; i < numLayouts; ++i)
 		{
 			auto isStatic = readBool(fp);
 
 			auto layout = meshSpec.createVertexBufferAttributeLayout(isStatic);
 
-			size_t numAttribs = readUInt(fp);
-			for (size_t j = 0; j < numAttribs; ++j)
+			uint32_t numAttribs = readUInt(fp);
+			for (uint32_t j = 0; j < numAttribs; ++j)
 			{
 				auto component = static_cast<mesh::Vertex::Component>(readUInt(fp));
 				auto datatype = static_cast<mesh::Vertex::DataType>(readUInt(fp));
@@ -476,8 +476,8 @@ namespace mpp
 	{
 		UniformCollection uniforms;
 
-		size_t numUniforms = readUInt(fp);
-		for (size_t i = 0; i < numUniforms; ++i)
+		uint32_t numUniforms = readUInt(fp);
+		for (uint32_t i = 0; i < numUniforms; ++i)
 		{
 			string name = readString(fp);
 			auto type = static_cast<program::GLSLType>(readUInt(fp));
@@ -531,12 +531,12 @@ namespace mpp
 		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
-		size_t numSettings = readUInt(fp);
+		uint32_t numSettings = readUInt(fp);
 
 		// Read quality settings
-		for (size_t i = 0; i < numSettings; ++i)
+		for (uint32_t i = 0; i < numSettings; ++i)
 		{
-			string name = qualityNames.at(i);
+			string name = qualityNames.at((uint32_t)i);
 			auto quality = pStream->createQualitySetting(name);
 
 			// Program options
@@ -565,8 +565,8 @@ namespace mpp
 			qs.spec.uniforms = readUniformCollection(fp);
 
 			// Textures
-			size_t numTextures = readUInt(fp);
-			for (size_t j = 0; j < numTextures; ++j)
+			uint32_t numTextures = readUInt(fp);
+			for (uint32_t j = 0; j < numTextures; ++j)
 			{
 				MaterialSpecification::TextureOptions textureOptions;
 
@@ -603,12 +603,12 @@ namespace mpp
 		auto fragmentSource = readString(fp);
 
 		// Read number of quality settings
-		size_t numSettings = readUInt(fp);
+		uint32_t numSettings = readUInt(fp);
 
 		// Read quality settings
-		for (size_t i = 0; i < numSettings; ++i)
+		for (uint32_t i = 0; i < numSettings; ++i)
 		{
-			string name = qualityNames.at(i);
+			string name = qualityNames.at((uint32_t)i);
 			auto quality = pStream->createQualitySetting(name);
 
 			auto& qs = pStream->mQualitySettings[quality];
@@ -616,7 +616,7 @@ namespace mpp
 			qs.parser = readParser(fp);
 
 			auto numAttribs = readUInt(fp);
-			for (size_t i = 0; i < numAttribs; ++i)
+			for (uint32_t i = 0; i < numAttribs; ++i)
 			{
 				qs.attribs.insert(readString(fp));
 			}
@@ -629,12 +629,12 @@ namespace mpp
 		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
-		size_t numSettings = readUInt(fp);
+		uint32_t numSettings = readUInt(fp);
 
 		// Read quality settings
-		for (size_t i = 0; i < numSettings; ++i)
+		for (uint32_t i = 0; i < numSettings; ++i)
 		{
-			string name = qualityNames.at(i);
+			string name = qualityNames.at((uint32_t)i);
 			auto quality = pStream->createQualitySetting(name);
 
 			auto& qs = pStream->mQualitySettings.at(quality);
@@ -655,12 +655,12 @@ namespace mpp
 		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
-		size_t numSettings = readUInt(fp);
+		uint32_t numSettings = readUInt(fp);
 
 		// Read quality settings
-		for (size_t i = 0; i < numSettings; ++i)
+		for (uint32_t i = 0; i < numSettings; ++i)
 		{
-			string name = qualityNames.at(i);
+			string name = qualityNames.at((uint32_t)i);
 			auto quality = pStream->createQualitySetting(name);
 
 			auto& qs = pStream->mQualitySettings.at(quality);
@@ -679,8 +679,8 @@ namespace mpp
 		// Read tiles.
 		// NOTE: tiles have been removed, but this code has been left in to load existing models which were saved with tile information.
 		//       new models will be written without.
-		size_t numTiles = readUInt(fp);
-		for (size_t i = 0; i < numTiles; ++i)
+		uint32_t numTiles = readUInt(fp);
+		for (uint32_t i = 0; i < numTiles; ++i)
 		{
 			string tileName = readString(fp);
 			float u0 = readFloat(fp);
@@ -699,12 +699,12 @@ namespace mpp
 		}
 
 		// Read number of quality settings
-		size_t numSettings = readUInt(fp);
+		uint32_t numSettings = readUInt(fp);
 
 		// Read quality settings
-		for (size_t i = 0; i < numSettings; ++i)
+		for (uint32_t i = 0; i < numSettings; ++i)
 		{
-			string name = qualityNames.at(i);
+			string name = qualityNames.at((uint32_t)i);
 			auto quality = pStream->createQualitySetting(name);
 
 			auto& qs = pStream->mQualitySettings.at(quality);
@@ -762,8 +762,8 @@ namespace mpp
 		resourceStream->mQualityNames.clear();
 
 		// Read children
-		size_t numChildren = readUInt(fp);
-		for (size_t i = 0; i < numChildren; ++i)
+		uint32_t numChildren = readUInt(fp);
+		for (uint32_t i = 0; i < numChildren; ++i)
 		{
 			auto name = readString(fp);
 			auto res = readStream(fp);
@@ -772,11 +772,11 @@ namespace mpp
 		}
 
 		// Read number of quality settings
-		size_t numSettings = readUInt(fp);
+		uint32_t numSettings = readUInt(fp);
 
 		// Read quality settings names
 		map<uint32_t, string> settingNames;
-		for (size_t i = 0; i < numSettings; ++i)
+		for (uint32_t i = 0; i < numSettings; ++i)
 		{
 			auto name = readString(fp);
 			auto id = readUInt(fp);

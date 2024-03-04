@@ -30,12 +30,12 @@ namespace mpp
 		mStrideInBytes = mMeshDataDefinition.specification.getVertexStrideInBytes();
 
 		// Set counts
-		mMeshDataDefinition.vertexCount = (int)mMeshDataDefinition.vertexData.size() / mStrideInBytes;
+		mMeshDataDefinition.vertexCount = (int)(mMeshDataDefinition.vertexData.size() / mStrideInBytes);
 
-		int elementSize = mesh::Primitive::size(mMeshDataDefinition.specification.getPrimitiveType());
-		int indexWidthBytes = mMeshDataDefinition.indexWidth / 8;
+		auto elementSize = (int)mesh::Primitive::size(mMeshDataDefinition.specification.getPrimitiveType());
+		auto indexWidthBytes = (int)(mMeshDataDefinition.indexWidth / 8);
 
-		mMeshDataDefinition.primitiveCount = mMeshDataDefinition.specification.verticesIndexed() ? ((mMeshDataDefinition.indexData.size() * sizeof(uint32_t)) / (elementSize * indexWidthBytes)) : (mMeshDataDefinition.vertexCount / elementSize);
+		mMeshDataDefinition.primitiveCount = mMeshDataDefinition.specification.verticesIndexed() ? (int)((mMeshDataDefinition.indexData.size() * sizeof(uint32_t)) / (elementSize * indexWidthBytes)) : (int)(mMeshDataDefinition.vertexCount / elementSize);
 
 		// Go through each component in order, and build streams.
 		auto dataPtr = new int8_t[mMeshDataDefinition.vertexData.size()];
@@ -45,7 +45,7 @@ namespace mpp
 
 		for (size_t i = 0; i < mMeshDataDefinition.specification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto layout = mMeshDataDefinition.specification.getVertexBufferAttributeLayout(i);
+			auto layout = mMeshDataDefinition.specification.getVertexBufferAttributeLayout((uint32_t)i);
 
 			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
@@ -56,9 +56,9 @@ namespace mpp
 				vertexStreamDef.data = sharedDataPtr;
 				vertexStreamDef.dataType = attrib.dataType;
 				vertexStreamDef.offset = vertexOffset;
-				vertexStreamDef.stride = mStrideInBytes;
+				vertexStreamDef.stride = (int)mStrideInBytes;
 
-				vertexOffset += attrib.sizeInBytes();
+				vertexOffset += (int)attrib.sizeInBytes();
 
 				switch (attrib.component)
 				{
@@ -127,7 +127,7 @@ namespace mpp
 
 		for (size_t i = 0; i < meshSpec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto const& layout = meshSpec.getVertexBufferAttributeLayout(i);
+			auto const& layout = meshSpec.getVertexBufferAttributeLayout((uint32_t)i);
 
 			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{

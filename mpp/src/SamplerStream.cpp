@@ -39,7 +39,7 @@ namespace mpp
 
 	uint32_t SamplerStream::createQualitySetting(string const& name)
 	{
-		auto qualityId = mQualitySettings.size();
+		auto qualityId = (uint32_t)mQualitySettings.size();
 		mQualityNames[name] = qualityId;
 
 		mQualitySettings.push_back(QualitySetting());

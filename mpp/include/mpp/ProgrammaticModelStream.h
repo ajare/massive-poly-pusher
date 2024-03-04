@@ -25,6 +25,14 @@ namespace mpp
 			// Component data
 			size_t vertexCount, primitiveCount;
 			std::map<mpp::mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
+
+			MeshDataStreamDefinition()
+				: indexWidth(32)
+				, pointSize(1.0f)
+				, vertexCount(0)
+				, primitiveCount(0)
+			{
+			}
 		};
 
 	private:

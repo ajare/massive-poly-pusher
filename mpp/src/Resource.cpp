@@ -1,4 +1,10 @@
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
@@ -312,12 +318,12 @@ namespace mpp
 		{
 			mRefCount++;
 
-			string msg = fmt::format("Object '{}' acquired '{}' for {} references.", acquirer->getWranglerName(), getName(), mRefCount);
+			string msg = STR_FORMAT("Object '{}' acquired '{}' for {} references.", acquirer->getWranglerName(), getName(), mRefCount);
 			static_log_message(MPP_RESOURCE_LOGFILE, msg);
 		}
 		else
 		{
-			string errMsg = fmt::format("Object {} tried to acquire resource {} more than once.", acquirer->getWranglerName(), getName());
+			string errMsg = STR_FORMAT("Object {} tried to acquire resource {} more than once.", acquirer->getWranglerName(), getName());
 			throw MppException(errMsg);
 		}
 	}
@@ -332,7 +338,7 @@ namespace mpp
 
 			mDependingResources.erase(it);
 
-			string msg = fmt::format("Object '{}' released {} to {} references.", releaser->getWranglerName(), getName(), mRefCount);
+			string msg = STR_FORMAT("Object '{}' released {} to {} references.", releaser->getWranglerName(), getName(), mRefCount);
 			static_log_message(MPP_RESOURCE_LOGFILE, msg);
 
 			if (mRefCount == 0)

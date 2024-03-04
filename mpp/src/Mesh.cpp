@@ -1,4 +1,4 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
 
@@ -10,6 +10,7 @@
 #include "mpp/ModelStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -304,7 +305,7 @@ namespace mpp
 	 */
 	void Mesh::allocateIndexData(size_t numPrimitives)
 	{
-		GLenum glStorageType;
+		GLenum glStorageType{ 0 };
 		switch (mStorageType)
 		{
 		case mesh::VertexBufferStorageType::Static:
@@ -314,6 +315,9 @@ namespace mpp
 		case mesh::VertexBufferStorageType::Dynamic:
 			glStorageType = GL_DYNAMIC_DRAW;
 			break;
+
+		default:
+			throw MppException("Unsupported VertexBufferStorageType value.");
 		}
 
 		mIndexDataSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
@@ -431,22 +435,22 @@ namespace mpp
 			GLenum indexType = mIndexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 			if (instanceCount == 1)
 			{
-				GL_CHECK(glDrawElements(mPrimitiveRenderType, count * mPrimitiveSize, indexType, 0));
+				GL_CHECK(glDrawElements(mPrimitiveRenderType, (GLsizei)(count * mPrimitiveSize), indexType, 0));
 			}
 			else
 			{
-				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, count * mPrimitiveSize, indexType, 0, instanceCount));
+				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, (GLsizei)(count * mPrimitiveSize), indexType, 0, (GLsizei)instanceCount));
 			}
 		}
 		else
 		{
 			if (instanceCount == 1)
 			{
-				GL_CHECK(glDrawArrays(mPrimitiveRenderType, start, count * mPrimitiveSize));
+				GL_CHECK(glDrawArrays(mPrimitiveRenderType, start, (GLsizei)(count * mPrimitiveSize)));
 			}
 			else
 			{
-				GL_CHECK(glDrawArraysInstanced(mPrimitiveRenderType, start, count * mPrimitiveSize, instanceCount));
+				GL_CHECK(glDrawArraysInstanced(mPrimitiveRenderType, start, (GLsizei)(count * mPrimitiveSize), (GLsizei)instanceCount));
 			}
 		}
 	}

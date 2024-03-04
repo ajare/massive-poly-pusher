@@ -356,8 +356,8 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 			auto i2 = ((i + 1) % numRings) * ringSize + ((j + 1) % ringSize);
 			auto i3 = ((i + 1) % numRings) * ringSize + j;
 
-			torusStream->addTriangle(torusMeshId, i0, i1, i2);
-			torusStream->addTriangle(torusMeshId, i2, i3, i0);
+			torusStream->addTriangle(torusMeshId, (uint32_t)i0, (uint32_t)i1, (uint32_t)i2);
+			torusStream->addTriangle(torusMeshId, (uint32_t)i2, (uint32_t)i3, (uint32_t)i0);
 		}
 	}
 
@@ -457,10 +457,10 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		for (int x = 0; x < tilesX; ++x)
 		{
 			Tile t{
-				x * tileWidth, y * tileHeight,
-				(x + 1) * tileWidth, (y + 1) * tileHeight,
+				(int)(x * tileWidth), (int)(y * tileHeight),
+				(int)((x + 1) * tileWidth), (int)((y + 1) * tileHeight),
 				(int)((x + 0.5f) * tileWidth), (int)((y + 0.5f) * tileHeight),
-				x * tileWidth + 32, (y + 1) * tileHeight
+				(int)(x * tileWidth + 32), (int)((y + 1) * tileHeight)
 			};
 
 			tiles.push_back(t);
@@ -976,7 +976,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 
 		if (label.visible)
 		{
-			renderSystem->renderText(label.text, label.x, renderSystem->getWindowHeight() - label.y, mpp::Colour::White);
+			renderSystem->renderText(label.text, label.x, (int)renderSystem->getWindowHeight() - label.y, mpp::Colour::White);
 		}
 	}
 }

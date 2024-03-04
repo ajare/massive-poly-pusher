@@ -93,7 +93,7 @@ namespace mpp
 				size_t lineCount = mBatch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, cOffset = 0, i = 0; i < lineCount; ++i)
 				{
-					uint32_t primitiveIndex = i;
+					auto primitiveIndex = (uint32_t)i;
 					bool newVertex = i >= initStart;
 
 					//

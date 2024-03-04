@@ -1,6 +1,6 @@
 #include "mpp/Config.h"
 
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
 
@@ -10,7 +10,13 @@
 
 #include <half/half.hpp>
 
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
@@ -181,7 +187,7 @@ namespace mpp
 			}
 			break;
 		default:
-			throw MppException(fmt::format("Vertex attribute datatype not supported: {}", attrib.dataType));
+			throw MppException(STR_FORMAT("Vertex attribute datatype not supported: {}", (uint32_t)attrib.dataType));
 		}
 
 		return pos;
@@ -196,7 +202,7 @@ namespace mpp
 	{
 		if (posAttr.attributeId != -1)
 		{
-			auto bufferData = bufferDef->getData().get() + posAttr.offsetInBytes;
+			auto bufferData = bufferDef->getData().get() + (int)posAttr.offsetInBytes;
 			for (int k = 0; k < bufferDef->getVertexCount(); ++k)
 			{
 				auto pos = readPositionFromStream(bufferData, posAttr);
@@ -284,7 +290,7 @@ namespace mpp
 				!checkVertexAttributeMapping(material, meshDef))
 			{
 				THROW_MPP(
-					utils::StringUtils::format("Vertex attribute mismatch between material '{}' and mesh '{}' of model '{}'.",
+					STR_FORMAT("Vertex attribute mismatch between material '{}' and mesh '{}' of model '{}'.",
 						material->getName(), meshDef->getName(), getName()),
 					__LINE__, __FILE__, __func__);
 			}
@@ -294,7 +300,7 @@ namespace mpp
 			// Get index data and convert as required
 			auto storageType = meshDef->getStorageType();
 			auto primitiveType = meshDef->getPrimitiveType();
-			int primitiveSize = mesh::Primitive::size(primitiveType);
+			int primitiveSize = (int)mesh::Primitive::size(primitiveType);
 			int primitiveCount = meshDef->getNumPrimitives();
 			float pointSize = meshDef->getPointSize();
 
@@ -334,12 +340,12 @@ namespace mpp
 				mesh::VertexBufferAttributeLayout::Attribute posAttr;
 				for (size_t k = 0; k < bufferDef->getNumAttributes(); ++k)
 				{
-					auto const& attrib = bufferDef->getAttribute(k);
+					auto const& attrib = bufferDef->getAttribute((int)k);
 					buffer->setAttribute(
 						attrib.attributeId,
 						attrib.dataType,
 						Vertex::getComponentSize(attrib.component),
-						attrib.offsetInBytes,
+						(int)attrib.offsetInBytes,
 						attrib.normalised);
 
 					// Get position attribute for extents calculation
@@ -413,7 +419,7 @@ namespace mpp
 			auto vbDef = meshDef->getVertexBufferDefinition(i);
 			for (size_t j = 0; j < vbDef->getNumAttributes(); ++j)
 			{
-				auto attrib = vbDef->getAttribute(j);
+				auto attrib = vbDef->getAttribute((int)j);
 				meshComponentSizes.push_back(Vertex::getComponentSize(attrib.component));
 			}
 		}
@@ -448,7 +454,7 @@ namespace mpp
 		int tris = 0;
 		for (auto it : mMeshes)
 		{
-			tris += it->getNumPrimitives();
+			tris += (int)it->getNumPrimitives();
 		}
 
 		return tris;

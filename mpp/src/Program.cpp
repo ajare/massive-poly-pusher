@@ -1,6 +1,6 @@
 #include "mpp/Config.h"
 
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
 
@@ -11,7 +11,14 @@
 
 #include <glew/glew.h>
 #include <gl/gl.h>
-#include <fmt/format.h>
+
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -195,7 +202,7 @@ namespace mpp
 					if (stripped[i + 1] == '/')
 					{
 						// Find '\n'
-						int commentStart = i, commentEnd = -1;
+						int commentStart = (int)i, commentEnd = -1;
 						for (size_t j = (size_t)commentStart; j < stripped.length(); ++j)
 						{
 							if (stripped[j] == '\n')
@@ -208,7 +215,7 @@ namespace mpp
 						// Check if we hit the end of the file
 						if (commentEnd == -1)
 						{
-							commentEnd = stripped.length() - 1;
+							commentEnd = (int)(stripped.length() - 1);
 						}
 
 						stripped.erase(commentStart, commentEnd - commentStart + 1);
@@ -217,7 +224,7 @@ namespace mpp
 					if (stripped[i + 1] == '*')
 					{
 						// Find '*/'
-						int commentStart = i, commentEnd = -1;
+						int commentStart = (int)i, commentEnd = -1;
 						for (size_t j = (size_t)commentStart; j < stripped.length(); ++j)
 						{
 							if (stripped[j - 1] == '*' && stripped[j] == '/')
@@ -313,7 +320,7 @@ namespace mpp
 				vi.def = "in";
 				vi.name = inAttrib.name;
 				vi.type = inAttrib.type.name;
-				vi.numComponents = inAttrib.type.size[0] * inAttrib.type.size[1];
+				vi.numComponents = (int)(inAttrib.type.size[0] * inAttrib.type.size[1]);
 				vi.streamOffset = mVertexAttributes.empty() ? 0 :
 					mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;
 					
@@ -455,7 +462,7 @@ namespace mpp
 				default: typeName = "unknown type"; break;
 				}
 				
-				rs->debugMessage(utils::StringUtils::format("Vertex attribute {}: {} ({}[{}]).", location, varName, typeName, varSize));
+				rs->debugMessage(STR_FORMAT("Vertex attribute {}: {} ({}[{}]).", location, varName, typeName, varSize));
 			}
 
 			// Get uniform information
@@ -479,32 +486,32 @@ namespace mpp
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
 				{
 					GL_CHECK(mViewPosId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(fmt::format("- Uniform: ViewPosition id: {}", mViewPosId));
+					rs->debugMessage(STR_FORMAT("- Uniform: ViewPosition id: {}", mViewPosId));
 				}
 				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
 				{
 					GL_CHECK(mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(fmt::format("- Uniform: Model matrix id: {}", mMMatrixId));
+					rs->debugMessage(STR_FORMAT("- Uniform: Model matrix id: {}", mMMatrixId));
 				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
 					GL_CHECK(mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(fmt::format("- Uniform: ModelCameraProjection matrix id: {}", mMcpMatrixId));
+					rs->debugMessage(STR_FORMAT("- Uniform: ModelCameraProjection matrix id: {}", mMcpMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
 					GL_CHECK(mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(fmt::format("- Uniform normal matrix id: {}", mNormalMatrixId));
+					rs->debugMessage(STR_FORMAT("- Uniform normal matrix id: {}", mNormalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
 					GL_CHECK(mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage(fmt::format("- Uniform: half window size id: {}", mHalfWindowSizeId));
+					rs->debugMessage(STR_FORMAT("- Uniform: half window size id: {}", mHalfWindowSizeId));
 				}
 				else if (uniformName == MPP_PROGRAM_POINTSIZE_NAME)
 				{
 					GL_CHECK(mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage(fmt::format("- Uniform: point size id: {}", mPointSizeId));
+					rs->debugMessage(STR_FORMAT("- Uniform: point size id: {}", mPointSizeId));
 				}
 				else
 				{
@@ -516,14 +523,14 @@ namespace mpp
 					if (it != mTextures.end())
 					{
 						GL_CHECK(it->uniformId = glGetUniformLocation(programId, uniformNameBuffer));
-						rs->debugMessage(fmt::format("- Texture: '{}' id: {}", uniformName, it->uniformId));
+						rs->debugMessage(STR_FORMAT("- Texture: '{}' id: {}", uniformName, it->uniformId));
 					}
 					else
 					{
 						int32_t uniformId;
 						GL_CHECK(uniformId = glGetUniformLocation(programId, uniformNameBuffer));
 						mUniformIds[uniformName] = uniformId;
-						rs->debugMessage(fmt::format("- Texture: '{}' id: {}", uniformName, uniformId));
+						rs->debugMessage(STR_FORMAT("- Texture: '{}' id: {}", uniformName, uniformId));
 					}
 				}
 			}
@@ -575,7 +582,7 @@ namespace mpp
 		string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(name);
 		if (index >= 0)
 		{
-			markedUpUniform += fmt::format("[{}]", index);
+			markedUpUniform += STR_FORMAT("[{}]", index);
 		}
 
 		if (mUniformIds.find(markedUpUniform) == mUniformIds.end())
@@ -663,7 +670,7 @@ namespace mpp
 	 */
 	int Program::getNumSamplers() const
 	{
-		return mTextures.size();
+		return (int)mTextures.size();
 	}
 
 	/*

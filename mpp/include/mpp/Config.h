@@ -6,7 +6,7 @@
 //#include "mpp/backward.hpp"
 
 // Platform settings - based off OGRE3D (www.ogre3d.org)
-#define MPP_PLATFORM_WIN32 1
+#define MPP_PLATFORM_WINDOWS 1
 #define MPP_PLATFORM_LINUX 2
 #define MPP_PLATFORM_APPLE 3
 
@@ -32,8 +32,8 @@
 #endif
 
 // Set platform
-#if defined( __WIN32__ ) || defined( _WIN32 )
-#   define MPP_PLATFORM MPP_PLATFORM_WIN32
+#if defined( _WIN32 )
+#   define MPP_PLATFORM MPP_PLATFORM_WINDOWS
 #elif defined( __APPLE_CC__)
 #   define MPP_PLATFORM MPP_PLATFORM_APPLE
 #else
@@ -41,7 +41,7 @@
 #endif
 
 // DLL Export
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #	if defined(MPP_DLL_EXPORT)
 #		define _MPPAPI __declspec( dllexport )
 #	elif defined(MPP_STATIC_LIB)

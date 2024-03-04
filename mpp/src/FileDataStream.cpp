@@ -38,7 +38,7 @@ namespace mpp
 	 */
 	int FileDataStream::getDataSize() const
 	{
-		return mFileData.length();
+		return (int)mFileData.length();
 	}
 
 	/*

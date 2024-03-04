@@ -22,7 +22,7 @@ namespace mpp
 			int id;
 			size_t componentSize, sizeInBytes;
 			GLenum dataType;
-			int offsetInBytes;
+			size_t offsetInBytes;
 			bool normalise;
 		};
 

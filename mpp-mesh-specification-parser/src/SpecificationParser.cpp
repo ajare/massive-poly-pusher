@@ -151,7 +151,7 @@ namespace mpp
 
 								if (uniformType != "int" && uniformType != "uint" && uniformType != "float")
 								{
-									string errMsg = utils::StringUtils::format(
+									string errMsg = STR_FORMAT(
 										"Found {}-type uniform '{}' while parsing material.  Only int/uint/float types are supported.",
 										uniformType, uniformName);
 
@@ -165,7 +165,7 @@ namespace mpp
 
 								if (componentCount < 1 || componentCount > 4)
 								{
-									string errMsg = utils::StringUtils::format(
+									string errMsg = STR_FORMAT(
 										"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional types are supported.",
 										componentCount, uniformName);
 

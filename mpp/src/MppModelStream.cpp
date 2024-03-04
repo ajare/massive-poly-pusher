@@ -39,7 +39,7 @@ namespace mpp
 		for (size_t i = 0; i < numMeshes; ++i)
 		{
 			string matName;
-			auto materialStream = reader.getMaterialByMeshId(i, &matName);
+			auto materialStream = reader.getMaterialByMeshId((uint32_t)i, &matName);
 
 			// Fix up paths of files so that any relative paths have the
 			// model file's directory prepended, and add the load image function
@@ -84,7 +84,7 @@ namespace mpp
 
 			for (size_t j = 0; j < dataStreamDef->specification.getNumVertexBufferAttributeLayouts(); ++j)
 			{
-				auto layout = dataStreamDef->specification.getVertexBufferAttributeLayout(j);
+				auto layout = dataStreamDef->specification.getVertexBufferAttributeLayout((uint32_t)j);
 
 				size_t vertexCount, vertexStride;
 				shared_ptr<const int8_t> vertexData;
@@ -105,11 +105,11 @@ namespace mpp
 
 					vertexStreamDef.dataType = attrib.dataType;
 					vertexStreamDef.offset = offset;
-					vertexStreamDef.stride = vertexStride;
+					vertexStreamDef.stride = (int)vertexStride;
 
 					dataStreamDef->componentStreams[attrib.component] = vertexStreamDef;
 
-					offset += attrib.sizeInBytes();
+					offset += (int)attrib.sizeInBytes();
 				}
 			}
 		}

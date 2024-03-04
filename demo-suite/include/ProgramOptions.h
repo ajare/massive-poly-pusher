@@ -5,8 +5,8 @@
 struct ProgramOptions
 {
 	// Video
-	int screenWidth, screenHeight;
-	bool fullScreen, vSync;
+	int screenWidth{ 0 }, screenHeight{ 0 };
+	bool fullScreen{ false }, vSync{ true };
 
 	// Resources
 	std::string resourceLocation;
