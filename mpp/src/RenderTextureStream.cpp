@@ -9,6 +9,8 @@ namespace mpp
 
 	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "RenderTexture")
+		, mUseDepthBuffer(false)
+		, mNumAttachments(0)
 
 	{
 	}
@@ -80,7 +82,7 @@ namespace mpp
 
 	uint32_t RenderTextureStream::createQualitySetting(string const& name)
 	{
-		auto qualityId = mQualitySettings.size();
+		auto qualityId = (uint32_t)mQualitySettings.size();
 		mQualityNames[name] = qualityId;
 
 		mQualitySettings.push_back(QualitySetting());

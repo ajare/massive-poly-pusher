@@ -671,7 +671,7 @@ namespace mpp
 				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 				for (size_t pOffset = 0, rOffset = 0, tOffset = 0, i = 0; i < vertexCount; ++i)
 				{
-					uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
+					uint32_t primitiveIndex = (uint32_t)(mBatch->usingPointSprites() ? i : i / 4);
 					bool newVertex = i >= initStart;
 
 					//
@@ -728,7 +728,7 @@ namespace mpp
 					//
 					// Rotation data
 					//
-					if (mBatch->rotating() && (!mBatch->rotationFixed() || newVertex))
+					if (rotBuffer && mBatch->rotating() && (!mBatch->rotationFixed() || newVertex))
 					{
 						switch (mBatch->getRotationType())
 						{
@@ -774,7 +774,7 @@ namespace mpp
 						}
 						else
 						{
-							if (mBatch->usingTexture())
+							if (texBuffer && mBatch->usingTexture())
 							{
 								int vertexIndex = i % 4;
 

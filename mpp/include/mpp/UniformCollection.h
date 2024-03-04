@@ -46,7 +46,10 @@ namespace mpp
 		public:
 
 			UniformData()
-				: size(0)
+				: type(program::GLSLType::Unknown)
+				, count(0)
+				, size(0)
+				, numElements(0)
 				, data(nullptr)
 			{
 			}

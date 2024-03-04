@@ -1,4 +1,4 @@
-#include <vld.h> // Memory tracking
+//#include <vld.h> // Memory tracking
 
 #include <iostream>
 
@@ -7,7 +7,13 @@
 #include <glm/gtx/rotate_vector.hpp>
 #pragma warning(pop)
 
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include "utils/StringUtils.h"
 
@@ -376,7 +382,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Render
 			//
-			gRenderSystem->setDebugPreMessages({ fmt::format("FPS: {}", fps) });
+			gRenderSystem->setDebugPreMessages({ STR_FORMAT("FPS: {}", fps) });
 			gRenderSystem->showDebugPanel(true);
 			gRenderSystem->startStatsCollection();
 

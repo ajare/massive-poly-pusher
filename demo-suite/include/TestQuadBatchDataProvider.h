@@ -19,6 +19,11 @@ class BulletsByDirQuadBatchDataProvider : public mpp::helper::QuadBatchDataProvi
 	{
 		Vector2 pos, dir;
 		float speed;
+
+		Bullet()
+			: speed(0.0f)
+		{
+		}
 	};
 
 private:
@@ -123,6 +128,11 @@ class BulletsByAngleQuadBatchDataProvider : public mpp::helper::QuadBatchDataPro
 	{
 		Vector2 pos;
 		float angle;
+
+		Bullet()
+			: angle(0.0f)
+		{
+		}
 	};
 
 private:

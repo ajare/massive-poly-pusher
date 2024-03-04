@@ -74,7 +74,7 @@ namespace mpp
 
 		attr.componentSize = componentSize;
 		attr.sizeInBytes = componentSize * Vertex::getDataTypeSize(dataType);
-		attr.offsetInBytes = offset;
+		attr.offsetInBytes = (size_t)offset;
 		attr.normalise = normalise;
 
 		mAttributes.push_back(attr);
@@ -142,21 +142,21 @@ namespace mpp
 			case GL_UNSIGNED_INT_2_10_10_10_REV:
 				if (attrib.normalise)
 				{
-					GL_CHECK(glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+					GL_CHECK(glVertexAttribPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				}
 				else
 				{
-					GL_CHECK(glVertexAttribIPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+					GL_CHECK(glVertexAttribIPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				}
 				break;
 
 			case GL_FLOAT:
 			case GL_HALF_FLOAT:
-				GL_CHECK(glVertexAttribPointer(attrib.id, attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+				GL_CHECK(glVertexAttribPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				break;
 
 			case GL_DOUBLE:
-				GL_CHECK(glVertexAttribLPointer(attrib.id, attrib.componentSize, attrib.dataType, mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+				GL_CHECK(glVertexAttribLPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
 				break;
 
 			default:
@@ -184,7 +184,7 @@ namespace mpp
 	 */
 	void VertexBuffer::allocate(size_t size)
 	{
-		GLenum glStorageType;
+		GLenum glStorageType{ 0 };
 		switch (mStorageType)
 		{
 		case mesh::VertexBufferStorageType::Static:
@@ -194,6 +194,9 @@ namespace mpp
 		case mesh::VertexBufferStorageType::Dynamic:
 			glStorageType = GL_DYNAMIC_DRAW;
 			break;
+
+		default:
+			throw MppException("Unsupported VertexBufferStorageType value.");
 		}
 
 		if (mStreaming)
@@ -295,7 +298,7 @@ namespace mpp
 			
 		for (size_t i = 0; i < getNumAttributes(); ++i)
 		{
-			enableAttribute(i, true);
+			enableAttribute((uint32_t)i, true);
 		}
 	}
 

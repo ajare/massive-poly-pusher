@@ -1,6 +1,12 @@
 #include <exception>
 
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include "mpp/Config.h"
 #include "mpp/ResourceManager.h"
@@ -203,10 +209,10 @@ namespace mpp
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
 
 			// Set name for debugging
-			auto label = fmt::format("Texture: {}_attachment_{}", getName(), i);
+			auto label = STR_FORMAT("Texture: {}_attachment_{}", getName(), i);
 			glObjectLabel(GL_TEXTURE, texId, -1, label.c_str());
 
-			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)width, (GLsizei)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
 
 			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
 			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
@@ -228,7 +234,7 @@ namespace mpp
 			string label = "Renderbuffer: " + getName();
 			glObjectLabel(GL_RENDERBUFFER, mDepthBuffer, -1, label.c_str());
 
-			GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height));
+			GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, (GLsizei)width, (GLsizei)height));
 			GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer));
 		}
 		else
@@ -239,12 +245,12 @@ namespace mpp
 		GLenum* drawBuffers = new GLenum[mNumAttachments];
 		for (size_t i = 0; i < mNumAttachments; ++i)
 		{
-			GLenum attachment = GL_COLOR_ATTACHMENT0 + i;
+			GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + i);
 			GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, mTextureIds[i], 0));
 			drawBuffers[i] = attachment;
 		}
 
-		GL_CHECK(glDrawBuffers(mNumAttachments, drawBuffers));
+		GL_CHECK(glDrawBuffers((GLsizei)mNumAttachments, drawBuffers));
 		delete[] drawBuffers;
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)

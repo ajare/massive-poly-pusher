@@ -1,4 +1,4 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #	include <Windows.h>
 #endif
 
@@ -108,7 +108,7 @@ mpp::TextureData loadImage(string const& filename)
 		int y0, y1, inc;
 		
 		y0 = 0;
-		y1 = dataHeight;
+		y1 = (int)dataHeight;
 		inc = 1;
 
 		uint8_t* ptr = (uint8_t*)FreeImage_GetBits(bitmap);
@@ -292,11 +292,11 @@ DisplayModeSet getVideoModes(int displayDevice)
 
 	for_each(sortedModes.begin(), sortedModes.end(), [](pair<pair<int, int>, vector<SDL_DisplayMode>> modes)
 	{
-		gLogger->message(utils::StringUtils::format("Display modes at {}x{}", modes.first.first, modes.first.second));
+		gLogger->message(STR_FORMAT("Display modes at {}x{}", modes.first.first, modes.first.second));
 
 		for_each(modes.second.begin(), modes.second.end(), [](SDL_DisplayMode const& mode)
 		{
-			gLogger->message(utils::StringUtils::format("{}x{} @ {}Hz", mode.w, mode.h, mode.refresh_rate));
+			gLogger->message(STR_FORMAT("{}x{} @ {}Hz", mode.w, mode.h, mode.refresh_rate));
 		});
 	});
 

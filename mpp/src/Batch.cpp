@@ -147,7 +147,7 @@ namespace mpp
 				attrib.attributeId,
 				attrib.dataType,
 				mesh::Vertex::getComponentSize(attrib.component),
-				attrib.offsetInBytes,
+				(int)attrib.offsetInBytes,
 				attrib.normalised);
 		}
 	}
@@ -177,7 +177,7 @@ namespace mpp
 
 		if (mSpecification.verticesIndexed())
 		{
-			addIndexedPrimitives(modelStream, meshIndex);
+			addIndexedPrimitives(modelStream, (int)meshIndex);
 		}
 
 		// Create and load model
@@ -259,14 +259,14 @@ namespace mpp
 
 		for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto& layout = mSpecification.getVertexBufferAttributeLayout(i);
+			auto& layout = mSpecification.getVertexBufferAttributeLayout((uint32_t)i);
 
 			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto& attrib = layout.getAttribute(j);
 				if (buffers[i]->getBufferData().size() > 0)
 				{
-					auto dataPtr = (char*)&((buffers[i]->getBufferData()[0])) + attrib.offsetInBytes;
+					auto dataPtr = (char*)&((buffers[i]->getBufferData()[0])) + (int)attrib.offsetInBytes;
 					mDataPointers[attrib.identifier] = make_pair(dataPtr, layout.getVertexSize());
 				}
 			}
@@ -284,14 +284,14 @@ namespace mpp
 				auto vertexBuffer = mesh->getVertexBuffer((int)i);
 				auto& data = vertexBuffer->getBufferData();
 
-				int newSize = getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride();
+				int newSize = (int)(getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride());
 				data.resize(newSize);
 			}
 
 			// Index data
 			if (indexedVertices())
 			{
-				createIndexData(mesh->getIndexData(), mMaxCount, count);
+				createIndexData(mesh->getIndexData(), (uint32_t)mMaxCount, count);
 			}
 
 			mMaxCount = count;

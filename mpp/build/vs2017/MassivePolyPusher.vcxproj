@@ -244,7 +244,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;MPP_DEBUG_BUILD;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\vendor\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -253,7 +253,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <AdditionalDependencies>Utilsd.lib;fmtd.lib;MppProgramd.lib;opengl32.lib;glew32d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -269,7 +269,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;MPP_DLL_EXPORT;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\3rd party\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\vendor\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -280,7 +280,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <AdditionalDependencies>Utils.lib;fmt.lib;MppProgram.lib;opengl32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\3rd party\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-program\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2017\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2017\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>

@@ -26,6 +26,13 @@ namespace mpp
 			std::shared_ptr<const int8_t> data;
 			mesh::Vertex::DataType dataType;
 			int offset, stride;
+
+			VertexDataStreamDefinition()
+				: dataType(mesh::Vertex::DataType::None)
+				, offset(0)
+				, stride(0)
+			{
+			}
 		};
 
 	private:

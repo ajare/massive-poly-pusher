@@ -16,6 +16,11 @@ namespace mpp
 		{
 			std::string data, file;
 			bool isFile;
+
+			QualitySetting()
+				: isFile(false)
+			{
+			}
 		};
 
 	protected:

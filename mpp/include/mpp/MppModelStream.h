@@ -23,6 +23,15 @@ namespace mpp
 			// Component data
 			size_t vertexCount, primitiveCount;
 			std::map<mesh::Vertex::Component, VertexDataStreamDefinition> componentStreams;
+
+			MeshDataStreamDefinition()
+				: primitiveType(mesh::Primitive::Type::Triangles)
+				, pointSize(1.0f)
+				, indexWidth(32)
+				, vertexCount(0)
+				, primitiveCount(0)
+			{
+			}
 		};
 
 	private:

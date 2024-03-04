@@ -264,7 +264,7 @@ namespace mpp
 		{
 			for (size_t i = 0; i < mSpec.getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto const& layout = mSpec.getVertexBufferAttributeLayout(i);
+				auto const& layout = mSpec.getVertexBufferAttributeLayout((uint32_t)i);
 				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
 					auto const& attrib = layout.getAttribute(j);
@@ -485,7 +485,7 @@ namespace mpp
 			}
 
 			mData = clippedData;
-			mOffset = mData.size();
+			mOffset = (uint32_t)mData.size();
 		}
 
 		void VertexData::clipLinesAgainstBoundingBox(float x0, float y0, float ex, float ey)

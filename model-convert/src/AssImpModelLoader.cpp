@@ -1,8 +1,16 @@
+#define NOMINMAX
+
 #include <iostream>
 #include <cassert>
 #include <regex>
 
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
@@ -215,7 +223,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		dataStreamDef->name = inputMesh->mName.C_Str();
 		if (dataStreamDef->name == "")
 		{
-			dataStreamDef->name = fmt::format("{}", j);
+			dataStreamDef->name = STR_FORMAT("{}", j);
 		}
 
 		// Material

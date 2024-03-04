@@ -1,4 +1,10 @@
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include "Attribute.h"
 #include "MppProgramException.h"
@@ -13,7 +19,7 @@ namespace mpp
 		string Attribute::getGlslType(mesh::Vertex::DataType dataType, size_t size[2]) const
 		{
 			string glslType;
-			int componentSize = size[0] * size[1];
+			int componentSize = (int)(size[0] * size[1]);
 
 			// Get dimension
 			switch (componentSize)
@@ -21,7 +27,7 @@ namespace mpp
 			case 1:
 				glslType = ""; break;
 			default:
-				glslType = fmt::format("vec{}", componentSize);
+				glslType = STR_FORMAT("vec{}", componentSize);
 			}
 
 			// Get type

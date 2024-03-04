@@ -1,7 +1,13 @@
 #include <algorithm>
 #include <cassert>
 
-#include <fmt/format.h>
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include "mpp/program/Parser.h"
 
@@ -226,7 +232,7 @@ namespace mpp
 			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
 			if (msSortableTextureId == (uint32_t)(1 << maxBits))
 			{
-				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
+				string errMsg = STR_FORMAT("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -240,7 +246,7 @@ namespace mpp
 			// Caching
 			if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
 			{
-				string errMsg = utils::StringUtils::format("Cannot create resource '{}'.  Limit reached!", name);
+				string errMsg = STR_FORMAT("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -349,7 +355,7 @@ namespace mpp
 		if (mResources.find(name) != mResources.end())
 		{
 			THROW_MPP(
-				utils::StringUtils::format("Resource '{}' already exists.", name),
+				STR_FORMAT("Resource '{}' already exists.", name),
 				__LINE__, __FILE__, __func__);
 		}
 
@@ -404,7 +410,7 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP(utils::StringUtils::format("Resource '{}' not found.", name), __LINE__, __FILE__, __func__);
+				THROW_MPP(STR_FORMAT("Resource '{}' not found.", name), __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -418,7 +424,7 @@ namespace mpp
 		// Mesh specification
 		for (size_t i = 0; i < spec.getNumVertexBufferAttributeLayouts(); ++i)
 		{
-			auto const& layout = spec.getVertexBufferAttributeLayout(i);
+			auto const& layout = spec.getVertexBufferAttributeLayout((uint32_t)i);
 			for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 			{
 				auto const& attrib = layout.getAttribute(j);
@@ -591,7 +597,7 @@ namespace mpp
 
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
-		specName += fmt::format("_{}__", ++mProgramIdCounter);
+		specName += STR_FORMAT("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
@@ -663,7 +669,7 @@ namespace mpp
 
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
-		specName += fmt::format("_{}__", ++mProgramIdCounter);
+		specName += STR_FORMAT("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
@@ -709,7 +715,7 @@ namespace mpp
 
 	void ResourceManager::getResourceCounts(uint32_t& numResources, uint32_t& numDeclared, uint32_t& numCreated, uint32_t& numLoaded) const
 	{
-		numResources = mResources.size();
+		numResources = (uint32_t)mResources.size();
 		numDeclared = 0;
 		numCreated = 0;
 		numLoaded = 0;

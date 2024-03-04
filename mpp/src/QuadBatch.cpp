@@ -200,7 +200,7 @@ namespace mpp
 		data.resize(count * vertexSize);
 
 		uint32_t* ptr = (uint32_t*)&data[start * vertexSize]; // Indices will be 16 or 32-bit, so use 32 to cover both
-		int indexBytes = mOptions.indexWidth / 8;
+		int indexBytes = (int)mOptions.indexWidth / 8;
 
 		for (uint32_t i = start; i < count; ++i)
 		{
@@ -359,7 +359,7 @@ namespace mpp
 	{
 		for (size_t i = 0; i < getCapacity(); ++i)
 		{
-			auto x = i * 4;
+			auto x = (uint32_t)i * 4;
 			ms->addTriangle(meshIndex, x + 0, x + 1, x + 2);
 			ms->addTriangle(meshIndex, x + 2, x + 3, x + 0);
 		}
@@ -390,7 +390,7 @@ namespace mpp
 
 	int QuadBatch::getIndexWidth() const
 	{
-		return mOptions.indexWidth;
+		return (int)mOptions.indexWidth;
 	}
 
 	float QuadBatch::getPointSize() const
@@ -405,12 +405,12 @@ namespace mpp
 
 	int QuadBatch::getMaxDimX() const
 	{
-		return mOptions.maxSizeX;
+		return (int)mOptions.maxSizeX;
 	}
 
 	int QuadBatch::getMaxDimY() const
 	{
-		return mOptions.maxSizeY;
+		return (int)mOptions.maxSizeY;
 	}
 
 	QuadBatchOptions::RotationOptions QuadBatch::getRotationType() const

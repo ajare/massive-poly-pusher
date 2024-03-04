@@ -110,7 +110,7 @@ namespace mpp
 				size_t triangleCount = mBatch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 				{
-					uint32_t primitiveIndex = i;
+					auto primitiveIndex = (uint32_t)i;
 					bool newVertex = i >= initStart;
 
 					//
@@ -141,7 +141,7 @@ namespace mpp
 					//
 					// Texture data
 					//
-					if (mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
+					if (texBuffer && mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
 					{
 						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
 						mDataProvider->texcoords(primitiveIndex, u0, v0, u1, v1, u2, v2);

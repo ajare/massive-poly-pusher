@@ -1,11 +1,19 @@
-#include <vld.h> // Memory tracking
+//#include <vld.h> // Memory tracking
 
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
 
 #include <glew/glew.h>
 #include <gl/gl.h>
+
+#if _MSC_VER >= 1930
+#  include <format>
+#  define STR_FORMAT std::format
+#else
+#  include <fmt/format.h>
+#  define STR_FORMAT fmt::format
+#endif
 
 #include <cassert>
 #include <algorithm>
@@ -282,7 +290,7 @@ namespace mpp
 
 		// Set state and display
 		setDefaultState();
-		setDisplay(mWindowWidth, mWindowHeight);
+		setDisplay((int)mWindowWidth, (int)mWindowHeight);
 		createLightsData();
 
 		// Text settings
@@ -496,23 +504,23 @@ namespace mpp
 		mCaps.maxFragmentTextureUnits = (uint32_t)maxUniforms;
 
 		// Print caps
-		infoMessage(utils::StringUtils::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
-		infoMessage(utils::StringUtils::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
-		infoMessage(utils::StringUtils::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
-		infoMessage(utils::StringUtils::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
-		infoMessage(utils::StringUtils::format("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
-		infoMessage(utils::StringUtils::format("Max anisotropy: {}", mCaps.maxAnisotropy));
-		infoMessage(utils::StringUtils::format("Max recommended elements: {}", mCaps.maxRecommendedElements));
-		infoMessage(utils::StringUtils::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
-		infoMessage(utils::StringUtils::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
+		infoMessage(STR_FORMAT("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
+		infoMessage(STR_FORMAT("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
+		infoMessage(STR_FORMAT("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
+		infoMessage(STR_FORMAT("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
+		infoMessage(STR_FORMAT("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
+		infoMessage(STR_FORMAT("Max anisotropy: {}", mCaps.maxAnisotropy));
+		infoMessage(STR_FORMAT("Max recommended elements: {}", mCaps.maxRecommendedElements));
+		infoMessage(STR_FORMAT("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
+		infoMessage(STR_FORMAT("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
 
-		infoMessage(utils::StringUtils::format("Max vertex shader uniforms: {}", mCaps.maxVertexShaderUniforms));
-		infoMessage(utils::StringUtils::format("Max geometry shader uniforms: {}", mCaps.maxGeometryShaderUniforms));
-		infoMessage(utils::StringUtils::format("Max fragment shader uniforms: {}", mCaps.maxFragmentShaderUniforms));
+		infoMessage(STR_FORMAT("Max vertex shader uniforms: {}", mCaps.maxVertexShaderUniforms));
+		infoMessage(STR_FORMAT("Max geometry shader uniforms: {}", mCaps.maxGeometryShaderUniforms));
+		infoMessage(STR_FORMAT("Max fragment shader uniforms: {}", mCaps.maxFragmentShaderUniforms));
 
-		infoMessage(utils::StringUtils::format("Max vertex texture units: {}", mCaps.maxVertexTextureUnits));
-		infoMessage(utils::StringUtils::format("Max geometry texture units: {}", mCaps.maxGeometryTextureUnits));
-		infoMessage(utils::StringUtils::format("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
+		infoMessage(STR_FORMAT("Max vertex texture units: {}", mCaps.maxVertexTextureUnits));
+		infoMessage(STR_FORMAT("Max geometry texture units: {}", mCaps.maxGeometryTextureUnits));
+		infoMessage(STR_FORMAT("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
 	}
 
 	void RenderSystem::addCoreResource(ResourcePtr resource, bool load)
@@ -751,8 +759,8 @@ namespace mpp
 		res = resourceMgr->declareResource("__mpp_mat_text_ptc__", mpp::ResourceStreamPtr(textMatStreamColoured)).first;
 		addCoreResource(res, true);
 
-		int fontTextureWidth = ((Texture&)*mInternalFontTexture).getWidth();
-		int fontTextureHeight = ((Texture&)*mInternalFontTexture).getHeight();
+		int fontTextureWidth = (int)((Texture&)*mInternalFontTexture).getWidth();
+		int fontTextureHeight = (int)((Texture&)*mInternalFontTexture).getHeight();
 		int glyphWidth = fontTextureWidth / 16;
 		int glyphHeight = fontTextureHeight / 16;
 		for (int i = 0; i < 256; ++i)
@@ -789,7 +797,7 @@ namespace mpp
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord4, mesh::Vertex::DataType::Float, false);
 
-			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
+			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
 
 			for (int i = 0; i < glyphCount; ++i)
 			{
@@ -807,7 +815,7 @@ namespace mpp
 			attribLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
 			attribLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
 
-			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
+			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
 
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
@@ -835,7 +843,7 @@ namespace mpp
 			//attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
 
-			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
+			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
 			for (int i = 0; i < glyphCount; ++i)
 			{
@@ -856,7 +864,7 @@ namespace mpp
 			//attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
 			attribLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
 
-			int textMesh = textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
+			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
 			for (int i = 0; i < glyphCount * 6; ++i)
 			{
@@ -1151,12 +1159,12 @@ namespace mpp
 		if (mClipStack.empty())
 		{
 			// Set to target size.
-			GL_CHECK(glScissor(0, 0, mRenderTarget->getWidth(), mRenderTarget->getHeight()));
+			GL_CHECK(glScissor(0, 0, (GLsizei)mRenderTarget->getWidth(), (GLsizei)mRenderTarget->getHeight()));
 		}
 		else
 		{
 			ClipRectangle const& cr = mClipStack.top();
-			GL_CHECK(glScissor(cr.x, cr.y, cr.width, cr.height));
+			GL_CHECK(glScissor(cr.x, cr.y, (GLsizei)cr.width, (GLsizei)cr.height));
 		}
 	}
 
@@ -1164,8 +1172,8 @@ namespace mpp
 	{
 		mViewportWidth = width;
 		mViewportHeight = height;
-		GL_CHECK(glViewport(x, y, mViewportWidth, mViewportHeight));
-		GL_CHECK(glScissor(x, y, mViewportWidth, mViewportHeight));
+		GL_CHECK(glViewport(x, y, (GLsizei)mViewportWidth, (GLsizei)mViewportHeight));
+		GL_CHECK(glScissor(x, y, (GLsizei)mViewportWidth, (GLsizei)mViewportHeight));
 	}
 
 	void RenderSystem::resetViewport()
@@ -1498,7 +1506,7 @@ namespace mpp
 		fp += offset;
 
 		// Count
-		*fp = count;
+		*fp = (int)count;
 
 		mLightsBuffer->updateData(offset * sizeof(float), 4);
 	}
@@ -1591,9 +1599,9 @@ namespace mpp
 	int RenderSystem::buildTextVertexBuffer(VertexBuffer* buffer, string const& text, int& offset, int x, int y)
 	{
 		char const* textPtr = text.c_str();
-		int numChars = strlen(textPtr);
+		int numChars = (int)strlen(textPtr);
 
-		int vertexStride = buffer->getVertexStride() / sizeof(float);
+		int vertexStride = (int)buffer->getVertexStride() / sizeof(float);
 
 		vector<int8_t>& bufferData = buffer->getBufferData();
 		float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
@@ -1689,9 +1697,9 @@ namespace mpp
 	int RenderSystem::buildColouredTextVertexBuffer(VertexBuffer* buffer, string const& text, int& offset, int x, int y)
 	{
 		char const* textPtr = text.c_str();
-		int numChars = strlen(textPtr);
+		int numChars = (int)strlen(textPtr);
 
-		int vertexStride = buffer->getVertexStride() / sizeof(float);
+		int vertexStride = (int)buffer->getVertexStride() / sizeof(float);
 
 		vector<int8_t>& bufferData = buffer->getBufferData();
 		float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
@@ -1867,31 +1875,31 @@ namespace mpp
 		*fp++ = 0.0f;
 		*fp++ = 0.0f;
 		*fp++ = 0.0f;
-		*fp++;
+		fp++;
 
 		// Light1 position
 		*fp++ = 0.0f;
 		*fp++ = 0.0f;
 		*fp++ = 0.0f;
-		*fp++;
+		fp++;
 
 		// Light1 colour
 		*fp++ = 1.0f;
 		*fp++ = 1.0f;
 		*fp++ = 1.0f;
-		*fp++;
+		fp++;
 
 		// Light2 position
 		*fp++ = 0.0f;
 		*fp++ = 0.0f;
 		*fp++ = 0.0f;
-		*fp++;
+		fp++;
 
 		// Light2 colour
 		*fp++ = 1.0f;
 		*fp++ = 1.0f;
 		*fp++ = 1.0f;
-		*fp++;
+		fp++;
 
 		// Count
 		*(int32_t*)(fp) = 0;
@@ -2050,7 +2058,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = mWindowHeight - y - 16;
+		y = (int)(mWindowHeight - y - 16);
 		
 		int offset = 0;
 		int count = buildTextVertexBuffer(vertexBuffer, text, offset, x, y);
@@ -2073,7 +2081,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = mWindowHeight - y - 16; 
+		y = (int)(mWindowHeight - y - 16); 
 		int count = 0, offset = 0;
 		for (uint32_t i = 0; i < text.size(); ++i)
 		{
@@ -2098,7 +2106,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = mWindowHeight - y - 16;
+		y = (int)(mWindowHeight - y - 16);
 
 		int offset = 0;
 		int count = buildColouredTextVertexBuffer(vertexBuffer, text, offset, x, y);
@@ -2116,7 +2124,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = mWindowHeight - y - 16;
+		y = (int)(mWindowHeight - y - 16);
 		int count = 0, offset = 0;
 		for (uint32_t i = 0; i < text.size(); ++i)
 		{
@@ -2228,7 +2236,7 @@ namespace mpp
 					break;
 				}
 
-				msg = utils::StringUtils::format("{}: {} {}", profile, result, unit);
+				msg = STR_FORMAT("{}: {} {}", profile, result, unit);
 			}
 			else if (profile == "OGL memory allocated" ||
 				profile == "OGL memory allocated (textures)" ||
@@ -2254,29 +2262,29 @@ namespace mpp
 					break;
 				}
 
-				msg = utils::StringUtils::format("{}: {} {}", profile, result, unit);
+				msg = STR_FORMAT("{}: {} {}", profile, result, unit);
 			}
 			else if (profile == "Total GPU memory" ||
 				profile == "Total available GPU memory" ||
 				profile == "Current available GPU memory")
 			{
-				msg = utils::StringUtils::format("{}: {} Kb", profile, result);
+				msg = STR_FORMAT("{}: {} Kb", profile, result);
 			}
 			else
 			{
-				msg = utils::StringUtils::format("{}: {}", profile, result);
+				msg = STR_FORMAT("{}: {}", profile, result);
 			}
 
 			lines.push_back(msg);
 		}
 #else
-		lines.push_back(utils::StringUtils::format("Batches: {}", mRenderInfo.batchCount));
-		lines.push_back(utils::StringUtils::format("Primitives: {}", mRenderInfo.primitivesRendered));
+		lines.push_back(STR_FORMAT("Batches: {}", mRenderInfo.batchCount));
+		lines.push_back(STR_FORMAT("Primitives: {}", mRenderInfo.primitivesRendered));
 #endif
 
-		lines.push_back(utils::StringUtils::format("Program switches: {}", mRenderInfo.programSwitches));
-		lines.push_back(utils::StringUtils::format("Texture switches: {}", mRenderInfo.textureSwitches));
-		lines.push_back(utils::StringUtils::format("Screen quads: {}", mRenderInfo.fullscreenQuads));
+		lines.push_back(STR_FORMAT("Program switches: {}", mRenderInfo.programSwitches));
+		lines.push_back(STR_FORMAT("Texture switches: {}", mRenderInfo.textureSwitches));
+		lines.push_back(STR_FORMAT("Screen quads: {}", mRenderInfo.fullscreenQuads));
 
 		copy(mDebugPostMessages.begin(), mDebugPostMessages.end(), back_inserter(lines));
 
@@ -2284,7 +2292,7 @@ namespace mpp
 		uint32_t numTotalResources, numDeclaredResources, numCreatedResources, numLoadedResources;
 		mResourceMgr->getResourceCounts(numTotalResources, numDeclaredResources, numCreatedResources, numLoadedResources);
 
-		lines.push_back(utils::StringUtils::format("Resources : {} ([#FF0000FF]{}[#FFFFFFFF] / [#FFFF00FF]{}[#FFFFFFFF] / [#00FF00FF]{}[#FFFFFFFF])", 
+		lines.push_back(STR_FORMAT("Resources : {} ([#FF0000FF]{}[#FFFFFFFF] / [#FFFF00FF]{}[#FFFFFFFF] / [#00FF00FF]{}[#FFFFFFFF])", 
 			numTotalResources, 
 			numDeclaredResources, 
 			numCreatedResources, 
@@ -2308,10 +2316,10 @@ namespace mpp
 		}
 
 		// Background, in case the screen in that location is the same colour as the text
-		int w = width * 8, h = (lines.size() + 1) * 16 - 8;
-		int x = 0, y = mWindowHeight - h;
+		int w = (int)width * 8, h = (int)(lines.size() + 1) * 16 - 8;
+		int x = 0, y = (GLsizei)mWindowHeight - h;
 		
-		renderQuad(x, mWindowHeight, w, h, Colour(0.5f, 0.625f, 0.87f, 0.85f), true, false);
+		renderQuad(x, (GLsizei)mWindowHeight, w, h, Colour(0.5f, 0.625f, 0.87f, 0.85f), true, false);
 
 		// Render batch information
 		renderTextFormatted(lines, x, y);
@@ -2471,7 +2479,7 @@ namespace mpp
 
 		for (size_t i = 0; i < mModelInstances->getCount(); ++i)
 		{
-			auto modelInstance = mModelInstances->getObject(i);
+			auto modelInstance = mModelInstances->getObject((uint32_t)i);
 			auto const& modelMeshInstances = modelInstance->getMeshInstances();
 		
 			for (auto const& mi: modelMeshInstances)
@@ -2618,7 +2626,7 @@ namespace mpp
 			if (renderRanges.empty())
 			{
 				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount);
-				mRenderInfo.primitivesRendered += meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount;
+				mRenderInfo.primitivesRendered += (int)(meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount);
 			}
 			else
 			{
@@ -2626,7 +2634,7 @@ namespace mpp
 				{
 					auto count = range.second != (size_t)-1 ? range.second : meshInstance.second->mwMesh->getNumPrimitives();
 					meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, range.first, count);
-					mRenderInfo.primitivesRendered += count * meshInstance.second->mInstanceCount;
+					mRenderInfo.primitivesRendered += (int)(count * meshInstance.second->mInstanceCount);
 				}
 			}
 

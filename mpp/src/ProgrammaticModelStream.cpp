@@ -28,8 +28,8 @@ namespace mpp
 			// Set counts
 			meshDef.vertexCount = srcVertexDataSize / vertexStride;
 
-			int elementSize = mesh::Primitive::size(meshDef.specification.getPrimitiveType());
-			int indexWidthBytes = meshDef.indexWidth / 8;
+			auto elementSize = (int)mesh::Primitive::size(meshDef.specification.getPrimitiveType());
+			int indexWidthBytes = (int)meshDef.indexWidth / 8;
 
 			meshDef.primitiveCount = meshDef.specification.verticesIndexed() ? (meshDef.indexData.size() / (elementSize * indexWidthBytes)) : (meshDef.vertexCount / elementSize);
 
@@ -44,7 +44,7 @@ namespace mpp
 
 			for (size_t i = 0; i < meshDef.specification.getNumVertexBufferAttributeLayouts(); ++i)
 			{
-				auto layout = meshDef.specification.getVertexBufferAttributeLayout(i);
+				auto layout = meshDef.specification.getVertexBufferAttributeLayout((uint32_t)i);
 
 				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 				{
@@ -55,17 +55,19 @@ namespace mpp
 					vertexStreamDef.data = sharedDataPtr;
 					vertexStreamDef.dataType = attrib.dataType;
 					vertexStreamDef.offset = vertexOffset;
-					vertexStreamDef.stride = vertexStride;
+					vertexStreamDef.stride = (int)vertexStride;
 
-					vertexOffset += attrib.sizeInBytes();
+					vertexOffset += (int)attrib.sizeInBytes();
 
 					switch (attrib.component)
 					{
 					case mesh::Vertex::Component::Position4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position4] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::Position3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position3] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::Position2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Position2] = vertexStreamDef;
@@ -73,9 +75,11 @@ namespace mpp
 
 					case mesh::Vertex::Component::TexCoord4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord4] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::TexCoord3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord3] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::TexCoord2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::TexCoord2] = vertexStreamDef;
@@ -83,9 +87,11 @@ namespace mpp
 
 					case mesh::Vertex::Component::Colour4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour4] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::Colour3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour3] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::Colour1:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
@@ -93,6 +99,7 @@ namespace mpp
 
 					case mesh::Vertex::Component::Normal4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal4] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::Normal3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal3] = vertexStreamDef;
@@ -100,12 +107,15 @@ namespace mpp
 
 					case mesh::Vertex::Component::UserDefined4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined4] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::UserDefined3:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined3] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::UserDefined2:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined2] = vertexStreamDef;
+						[[fallthrough]];
 
 					case mesh::Vertex::Component::UserDefined1:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::UserDefined1] = vertexStreamDef;

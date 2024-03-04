@@ -1,6 +1,6 @@
 #include "mpp/Config.h"
 
-#if MPP_PLATFORM == MPP_PLATFORM_WIN32
+#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
 
@@ -35,6 +35,7 @@ namespace mpp
 		, mBitsPerPixel(0)
 		, mPixelFormat(0)
 		, mDataType(0)
+		, mTarget(0)
 	{
 	}
 
@@ -276,10 +277,13 @@ namespace mpp
 			switch (mTarget)
 			{
 			case GL_TEXTURE_3D:
+				[[fallthrough]];
 			case GL_TEXTURE_CUBE_MAP:
 				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_R, mParams.wrap));
+				[[fallthrough]];
 			case GL_TEXTURE_2D:
 				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_WRAP_T, mParams.wrap));
+				[[fallthrough]];
 			case GL_TEXTURE_1D:
 				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
 				GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
@@ -294,15 +298,15 @@ namespace mpp
 			switch (mTarget)
 			{
 			case GL_TEXTURE_1D:
-				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, mWidth, 0, mPixelFormat, mDataType, data));
+				GL_CHECK(glTexImage1D(mTarget, 0, mInternalFormat, (GLsizei)mWidth, 0, mPixelFormat, mDataType, data));
 				break;
 
 			case GL_TEXTURE_2D:
-				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, mWidth, mHeight, 0, mPixelFormat, mDataType, data));
+				GL_CHECK(glTexImage2D(mTarget, 0, mInternalFormat, (GLsizei)mWidth, (GLsizei)mHeight, 0, mPixelFormat, mDataType, data));
 				break;
 
 			case GL_TEXTURE_3D:
-				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, mWidth, mHeight, mDepth, 0, mPixelFormat, mDataType, data));
+				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, (GLsizei)mWidth, (GLsizei)mHeight, (GLsizei)mDepth, 0, mPixelFormat, mDataType, data));
 				break;
 
 			default:
@@ -411,16 +415,16 @@ namespace mpp
 		case GL_TEXTURE_1D:
 			h = 1;
 			d = 1;
-			GL_CHECK(glTexSubImage1D(mTarget, 0, x, w, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage1D(mTarget, 0, x, (GLsizei)w, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_2D:
 			d = 1;
-			GL_CHECK(glTexSubImage2D(mTarget, 0, x, y, w, h, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage2D(mTarget, 0, x, y, (GLsizei)w, (GLsizei)h, mPixelFormat, mDataType, data));
 			break;
 
 		case GL_TEXTURE_3D:
-			GL_CHECK(glTexSubImage3D(mTarget, 0, x, y, 0, w, h, d, mPixelFormat, mDataType, data));
+			GL_CHECK(glTexSubImage3D(mTarget, 0, x, y, 0, (GLsizei)w, (GLsizei)h, (GLsizei)d, mPixelFormat, mDataType, data));
 			break;
 
 		default:

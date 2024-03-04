@@ -14,9 +14,9 @@ namespace mpp
 		{
 			uint32_t internalFormat{ 0 };
 			uint32_t target{ 0 };
-			size_t width, height, depth;
-			size_t bitsPerPixel;
-			uint32_t pixelFormat, pixelDataType;
+			size_t width{ 0 }, height{ 0 }, depth{ 0 };
+			size_t bitsPerPixel{ 0 };
+			uint32_t pixelFormat{ 0 }, pixelDataType{ 0 };
 			TextureParams params;
 			std::string sampler;
 		};
