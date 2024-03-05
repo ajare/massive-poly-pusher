@@ -23,7 +23,7 @@ namespace mpp
 
 		float mPointSize;
 		
-		size_t mPrimitiveSize;
+		uint32_t mPrimitiveSize;
 
 		size_t mPrimitiveCount;
 
