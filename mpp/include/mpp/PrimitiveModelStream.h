@@ -38,7 +38,7 @@ namespace mpp
 
 	private:
 
-		size_t mStrideInBytes;
+		uint32_t mStrideInBytes;
 
 	protected:
 
@@ -48,7 +48,7 @@ namespace mpp
 
 		void createMeshDataStreams();
 
-		std::map<std::string, size_t> getComponentOffsets(size_t& strideInBytes);
+		std::map<std::string, size_t> getComponentOffsets(uint32_t& strideInBytes);
 
 		size_t getNumMeshes() const;
 
@@ -69,7 +69,7 @@ namespace mpp
 		std::string const& getMeshMaterial(size_t meshIndex) const;
 
 		template<typename T>
-		void setVertexData(int offset, std::initializer_list<T> const& vertex)
+		void setVertexData(uint32_t offset, std::initializer_list<T> const& vertex)
 		{
 			uint8_t* dataPtr = ((uint8_t*)&mMeshDataDefinition.vertexData[0]) + offset;
 			for (auto it: vertex)
@@ -86,6 +86,6 @@ namespace mpp
 
 		PrimitiveModelStream(ResourceManager* resourceMgr, mesh::MeshSpecification const& meshSpec, std::string const& material);
 
-		void setData(int offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y = 0.0, double z = 0.0, double w = 1.0);
+		void setData(uint32_t offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y = 0.0, double z = 0.0, double w = 1.0);
 	};
 }

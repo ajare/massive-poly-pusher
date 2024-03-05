@@ -62,7 +62,10 @@ Materials specification
 
 */
 
-//#include <vld.h> // Memory tracking
+#if _MSC_VER < 1930
+#  include <vld.h> // Memory tracking
+#endif
+
 
 #include <iostream>
 #include <algorithm>

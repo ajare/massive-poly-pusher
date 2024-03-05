@@ -1,5 +1,3 @@
-//#include <vld.h> // Memory tracking
-
 #include <set>
 #include <map>
 #include <list>
@@ -10,6 +8,7 @@
 #  include <format>
 #  define STR_FORMAT std::format
 #else
+#  include <vld.h> // Memory tracking
 #  include <fmt/format.h>
 #  define STR_FORMAT fmt::format
 #endif

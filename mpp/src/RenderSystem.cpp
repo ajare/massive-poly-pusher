@@ -1,5 +1,3 @@
-//#include <vld.h> // Memory tracking
-
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
@@ -11,6 +9,7 @@
 #  include <format>
 #  define STR_FORMAT std::format
 #else
+#  include <vld.h>
 #  include <fmt/format.h>
 #  define STR_FORMAT fmt::format
 #endif

@@ -15,12 +15,12 @@ namespace mpp
 		// Cylinders always use indexed vertices.
 		mMeshDataDefinition.specification.setIndexedVertices(true);
 
-		size_t strideInBytes;
-		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
+		uint32_t strideInBytes;
+		auto componentOffsets = getComponentOffsets(strideInBytes);
 
 		// Preallocate vertex buffer
 		const int numVertices = (res + 1) * 4 + 2; // Two extra for caps centres.
-		int bufferSize = (int)(strideInBytes * numVertices);
+		auto bufferSize = strideInBytes * numVertices;
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
 
@@ -36,7 +36,7 @@ namespace mpp
 				auto const& attrib = layout.getAttribute(j);
 
 				// Get offset and stride for component
-				int offset = (int)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+				auto offset = (uint32_t)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
 				switch (attrib.component)
 				{
@@ -44,11 +44,11 @@ namespace mpp
 				case mesh::Vertex::Component::Position4:
 					// Top cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, l2, 0.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 					
 					// Bottom cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, -l2, 0.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Sides
 					for (int i = 0; i <= res; ++i)
@@ -65,27 +65,27 @@ namespace mpp
 						z2 = nz * radius2;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x1, l2, z1);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x1, l2, z1);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x2, -l2, z2);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, x2, -l2, z2);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 					}
 					break;
 				case mesh::Vertex::Component::Normal3:
 				case mesh::Vertex::Component::Normal4:
 					// Top cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, 1.0, 0.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Top cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, -1.0, 0.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Sides
 					for (int i = 0; i <= res; ++i)
@@ -96,16 +96,16 @@ namespace mpp
 						nz = cos(angleInc * i);
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, nx, 0, nz);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, nx, 0, nz);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 					}
 					break;
 				case mesh::Vertex::Component::TexCoord2:
@@ -113,11 +113,11 @@ namespace mpp
 				case mesh::Vertex::Component::TexCoord4:
 					// Top cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.5, 0.5);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Bottom cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.5, 0.5);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Sides
 					for (int i = 0; i <= res; ++i)
@@ -127,67 +127,67 @@ namespace mpp
 						double v = cos(angleInc) * 0.5 + 0.5;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, i / (double)res, 1);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, i / (double)res, 0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 					}
 					break;
 				case mesh::Vertex::Component::Colour1:
 					// Top cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Bottom cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Sides
 					for (int i = 0; i <= res; ++i)
 					{
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 					}
 					break;
 				case mesh::Vertex::Component::Colour3:
 				case mesh::Vertex::Component::Colour4:
 					// Top cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Bottom cap
 					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-					offset += (int)strideInBytes;
+					offset += strideInBytes;
 
 					// Sides
 					for (int i = 0; i <= res; ++i)
 					{
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-						offset += (int)strideInBytes;
+						offset += strideInBytes;
 					}
 					break;
 				}
