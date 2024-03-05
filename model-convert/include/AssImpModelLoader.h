@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <map>
+
 #include <assimp/scene.h>
 
 #include "mpp/mesh/MeshDefinition.h"

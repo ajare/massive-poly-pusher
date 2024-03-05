@@ -12,14 +12,6 @@
 #include <glew/glew.h>
 #include <gl/gl.h>
 
-#if _MSC_VER >= 1930
-#  include <format>
-#  define STR_FORMAT std::format
-#else
-#  include <fmt/format.h>
-#  define STR_FORMAT fmt::format
-#endif
-
 #pragma warning(push)
 #pragma warning(disable : 4201)
 #include <glm/gtc/type_ptr.hpp>

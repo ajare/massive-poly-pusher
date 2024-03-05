@@ -5,15 +5,6 @@
 #include <glew/glew.h>
 #include <gl/gl.h>
 
-#if _MSC_VER >= 1930
-#  include <format>
-#  define STR_FORMAT std::format
-#else
-#  include <vld.h>
-#  include <fmt/format.h>
-#  define STR_FORMAT fmt::format
-#endif
-
 #include <cassert>
 #include <algorithm>
 #include <string>

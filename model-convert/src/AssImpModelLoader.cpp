@@ -1,16 +1,6 @@
-#define NOMINMAX
-
 #include <iostream>
 #include <cassert>
 #include <regex>
-
-#if _MSC_VER >= 1930
-#  include <format>
-#  define STR_FORMAT std::format
-#else
-#  include <fmt/format.h>
-#  define STR_FORMAT fmt::format
-#endif
 
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
