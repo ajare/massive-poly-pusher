@@ -1,10 +1,4 @@
-#if _MSC_VER >= 1930
-#  include <format>
-#  define STR_FORMAT std::format
-#else
-#  include <fmt/format.h>
-#  define STR_FORMAT fmt::format
-#endif
+#include "utils/StringUtils.h"
 
 #include "Attribute.h"
 #include "MppProgramException.h"

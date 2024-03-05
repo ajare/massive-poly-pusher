@@ -4,16 +4,7 @@
 #include <regex>
 #include <sstream>
 
-#if _MSC_VER >= 1930
-#  include <format>
-#  define STR_FORMAT std::format
-#else
-#  include <vld.h> // Memory tracking
-#  include <fmt/format.h>
-#  define STR_FORMAT fmt::format
-#endif
-
-#include <utils/StringUtils.h>
+#include "utils/StringUtils.h"
 
 #include "Parser.h"
 #include "Attribute.h"
