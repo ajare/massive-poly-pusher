@@ -17,12 +17,12 @@ namespace mpp
 		// Spheres always use indexed vertices.
 		mMeshDataDefinition.specification.setIndexedVertices(true);
 
-		size_t strideInBytes;
-		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
+		uint32_t strideInBytes;
+		auto componentOffsets = getComponentOffsets(strideInBytes);
 
 		// Preallocate vertex buffer
 		const size_t numVertices = (dimX + 1) * (dimZ + 1);
-		size_t bufferSize = strideInBytes * numVertices;
+		auto bufferSize = strideInBytes * numVertices;
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
 
@@ -41,7 +41,7 @@ namespace mpp
 				auto const& attrib = layout.getAttribute(j);
 
 				// Get offset and stride for component
-				auto offset = (int)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+				auto offset = (uint32_t)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
 				switch (attrib.component)
 				{
@@ -51,7 +51,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2 + dw * x, -d2 + dh * z);
-							offset += (int)strideInBytes;
+							offset += strideInBytes;
 						}
 					}
 					break;
@@ -62,7 +62,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2 + dw * x, 0.0, -d2 + dh * z);
-							offset += (int)strideInBytes;
+							offset += strideInBytes;
 						}
 					}
 					break;
@@ -73,7 +73,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0.0, 1.0, 0.0);
-							offset += (int)strideInBytes;
+							offset += strideInBytes;
 						}
 					}
 					break;
@@ -96,7 +96,7 @@ namespace mpp
 							}
 
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, u, v);
-							offset += (int)strideInBytes;
+							offset += strideInBytes;
 						}
 					}
 					break;
@@ -106,7 +106,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
-							offset += (int)strideInBytes;
+							offset += strideInBytes;
 						}
 					}
 					break;
@@ -117,7 +117,7 @@ namespace mpp
 						for (size_t x = 0; x <= dimX; ++x)
 						{
 							setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
-							offset += (int)strideInBytes;
+							offset += strideInBytes;
 						}
 					}
 					break;

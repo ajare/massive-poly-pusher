@@ -757,7 +757,7 @@ namespace mpp
 					//
 					// Texture data
 					//
-					if (!mBatch->texcoordsFixed() || newVertex)
+					if (texBuffer && !mBatch->texcoordsFixed() || newVertex)
 					{
 						if (mBatch->usingPointSprites())
 						{

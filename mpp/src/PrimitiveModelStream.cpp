@@ -27,7 +27,7 @@ namespace mpp
 	void PrimitiveModelStream::createMeshDataStreams()
 	{
 		int vertexOffset = 0;
-		mStrideInBytes = mMeshDataDefinition.specification.getVertexStrideInBytes();
+		mStrideInBytes = (uint32_t)mMeshDataDefinition.specification.getVertexStrideInBytes();
 
 		// Set counts
 		mMeshDataDefinition.vertexCount = (int)(mMeshDataDefinition.vertexData.size() / mStrideInBytes);
@@ -119,7 +119,7 @@ namespace mpp
 		}
 	}
 
-	map<string, size_t> PrimitiveModelStream::getComponentOffsets(size_t& strideInBytes)
+	map<string, size_t> PrimitiveModelStream::getComponentOffsets(uint32_t& strideInBytes)
 	{
 		auto const& meshSpec = getMeshSpecification(0);
 		map<string, size_t> componentOffsets;
@@ -139,7 +139,7 @@ namespace mpp
 				componentOffsets[mesh::Vertex::getComponentName(attrib.component)] = strideInBytes;
 
 				// Calculate total stride
-				strideInBytes += componentSize;
+				strideInBytes += (uint32_t)componentSize;
 			}
 		}
 
@@ -199,7 +199,7 @@ namespace mpp
 		mMeshDataDefinition.indexData.push_back(v2);
 	}
 
-	void PrimitiveModelStream::setData(int offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y, double z, double w)
+	void PrimitiveModelStream::setData(uint32_t offset, mesh::Vertex::Component component, mesh::Vertex::DataType dataType, bool normalised, double x, double y, double z, double w)
 	{
 		switch (component)
 		{

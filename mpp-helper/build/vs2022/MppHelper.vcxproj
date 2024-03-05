@@ -119,7 +119,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\include;..\..\..\vendor\include;..\..\..\mpp\include;..\..\..\mpp-mesh\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp-mesh\include;..\..\..\mpp\include;..\..\..\vendor\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PreprocessorDefinitions>_DEBUG;MPP_HELPER_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
@@ -162,7 +162,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\include;..\..\..\vendor\include;..\..\..\mpp\include;..\..\..\mpp-mesh\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;..\..\..\mpp-mesh\include;..\..\..\mpp\include;..\..\..\vendor\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PreprocessorDefinitions>MPP_HELPER_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>

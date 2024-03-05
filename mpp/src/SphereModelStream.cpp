@@ -16,8 +16,8 @@ namespace mpp
 		// Spheres always use indexed vertices.
 		mMeshDataDefinition.specification.setIndexedVertices(true);
 
-		size_t strideInBytes;
-		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
+		uint32_t strideInBytes;
+		auto componentOffsets = getComponentOffsets(strideInBytes);
 
 		// Generate triangle indices first, as they are needed for subdividing
 		// the position data.
@@ -83,20 +83,20 @@ namespace mpp
 				auto const& attrib = layout.getAttribute(j);
 
 				// Get offset and stride for component
-				auto offset = (int)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+				auto offset = (uint32_t)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
 				switch (attrib.component)
 				{
 				case mesh::Vertex::Component::Position3:
 				case mesh::Vertex::Component::Position4:
-					for (size_t i = 0; i < positions.size(); i += 3, offset += (int)strideInBytes)
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, positions[i + 0], positions[i + 1], positions[i + 2]);
 					}
 					break;
 				case mesh::Vertex::Component::Normal3:
 				case mesh::Vertex::Component::Normal4:
-					for (size_t i = 0; i < positions.size(); i += 3, offset += (int)strideInBytes)
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
 						auto len = sqrt(positions[i + 0] * positions[i + 0] +
 							positions[i + 1] * positions[i + 1] +
@@ -108,7 +108,7 @@ namespace mpp
 				case mesh::Vertex::Component::TexCoord2:
 				case mesh::Vertex::Component::TexCoord3:
 				case mesh::Vertex::Component::TexCoord4:
-					for (size_t i = 0; i < positions.size(); i += 3, offset += (int)strideInBytes)
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
 						auto len = sqrt(positions[i + 0] * positions[i + 0] +
 							positions[i + 1] * positions[i + 1] +
@@ -120,14 +120,14 @@ namespace mpp
 					}
 					break;
 				case mesh::Vertex::Component::Colour1:
-					for (size_t i = 0; i < positions.size(); i += 3, offset += (int)strideInBytes)
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0);
 					}
 					break;
 				case mesh::Vertex::Component::Colour3:
 				case mesh::Vertex::Component::Colour4:
-					for (size_t i = 0; i < positions.size(); i += 3, offset += (int)strideInBytes)
+					for (size_t i = 0; i < positions.size(); i += 3, offset += strideInBytes)
 					{
 						setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1.0, 1.0, 1.0);
 					}

@@ -15,13 +15,13 @@ namespace mpp
 		// Boxes always use indexed vertices.
 		mMeshDataDefinition.specification.setIndexedVertices(true);
 
-		size_t strideInBytes;
-		map<string, size_t> componentOffsets = getComponentOffsets(strideInBytes);
+		uint32_t strideInBytes;
+		auto componentOffsets = getComponentOffsets(strideInBytes);
 
 		// Preallocate vertex buffer
 		int verticesPerFace = (meshSpec.verticesIndexed() ? 4 : 6);
 		const int numVertices = verticesPerFace * 6;
-		int bufferSize = (int)(strideInBytes * numVertices);
+		auto bufferSize = strideInBytes * numVertices;
 
 		mMeshDataDefinition.vertexData.resize(bufferSize);
 
@@ -39,170 +39,170 @@ namespace mpp
 				auto const& attrib = layout.getAttribute(j);
 
 				// Get offset and stride for component
-				int offset = (int)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
+				auto offset = (uint32_t)componentOffsets[mesh::Vertex::getComponentName(attrib.component)];
 
 				switch (attrib.component)
 				{
 				case mesh::Vertex::Component::Position3:
 				case mesh::Vertex::Component::Position4:
 					// Top face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
 
 					// Bottom face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
 
 					// Front face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
 
 					// Back face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
 
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
 
 					// Right face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, -h2, d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, d2); offset += strideInBytes;
 
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, w2, h2, -d2); offset += strideInBytes;
 
 					// Left face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, -d2); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, h2, d2); offset += strideInBytes;
 
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, d2); offset += strideInBytes;
 					if (!meshSpec.verticesIndexed())
 					{
-						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += (int)strideInBytes;
+						setData(offset, attrib.component, attrib.dataType, attrib.normalised, -w2, -h2, -d2); offset += strideInBytes;
 					}
 					break;
 				case mesh::Vertex::Component::Normal3:
 				case mesh::Vertex::Component::Normal4:
 					// Top face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0);	offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0);	offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1, 0); offset += strideInBytes;
 
 					// Bottom face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, -1, 0); offset += strideInBytes;
 
 					// Front face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, 1); offset += strideInBytes;
 
 					// Back face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0, -1); offset += strideInBytes;
 
 					// Right face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0, 0); offset += strideInBytes;
 
 					// Left face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, -1, 0, 0); offset += strideInBytes;
 					break;
 				case mesh::Vertex::Component::TexCoord2:
 				case mesh::Vertex::Component::TexCoord3:
 				case mesh::Vertex::Component::TexCoord4:
 					// Top face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
 
 					// Bottom face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
 
 					// Front face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
 
 					// Back face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
 
 					// Right face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
 
 					// Left face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 0); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 0, 1); offset += strideInBytes;
 					break;
 				case mesh::Vertex::Component::Colour1:
 				case mesh::Vertex::Component::Colour3:
 				case mesh::Vertex::Component::Colour4:
 					// Top face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 
 					// Bottom face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 
 					// Front face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 
 					// Back face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 
 					// Right face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 
 					// Left face
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
-					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += (int)strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
+					setData(offset, attrib.component, attrib.dataType, attrib.normalised, 1, 1, 1); offset += strideInBytes;
 					break;
 				}
 			}

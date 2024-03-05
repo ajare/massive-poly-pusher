@@ -137,8 +137,8 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -151,8 +151,8 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -181,14 +181,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\vendor\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2d.lib;FreeImage.lib;Utilsd.lib;MppMeshd.lib;MppHelperd.lib;MppResourceParsersd.lib;MassivePolyPusherd.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\vendor\lib\vs2022\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-helper\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-helper\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2022\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)..\..\CopyBin.bat" vs2022 $(Platform) $(Configuration)</Command>
@@ -227,7 +227,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\vendor\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -236,7 +236,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>SDL2.lib;FreeImage.lib;Utils.lib;MppMesh.lib;MppHelper.lib;MppResourceParsers.lib;MassivePolyPusher.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\vendor\lib\vs2022\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-helper\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-helper\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2022\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)..\..\CopyBin.bat" vs2022 $(Platform) $(Configuration)</Command>
