@@ -1,17 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
@@ -31,19 +23,6 @@
     <TargetPlatformVersion>$(WindowsTargetPlatformVersion)</TargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
@@ -53,27 +32,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files (x86)\Visual Leak Detector\lib\Win32;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
@@ -82,62 +41,6 @@
     <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;NOMINMAX;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\vendor\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\mpp\vendor\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-mesh-specification-parser\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\vendor\lib\vs2022\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Utilsd.lib;MassivePolyPusherd.lib;MppMeshSpecificationParserd.lib;MppResourceParsersd.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\vendor\bin\vs2022\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp\vendor\bin\vs2022\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-program\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NOMINMAX;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\vendor\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\mpp\vendor\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-mesh-specification-parser\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\ext\utils\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\vendor\lib\vs2022\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Utils.lib;MassivePolyPusher.lib;MppMeshSpecificationParser.lib;MppResourceParsers.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\vendor\bin\vs2022\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp\vendor\bin\vs2022\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-program\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)
-copy /Y "$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\bin\$(Platform)\$(Configuration)\*.dll" $(OutDir)</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;NOMINMAX;_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING</PreprocessorDefinitions>
