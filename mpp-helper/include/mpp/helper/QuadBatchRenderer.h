@@ -327,7 +327,7 @@ namespace mpp
 				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 				for (size_t pOffset = 0, rOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
 				{
-					uint32_t primitiveIndex = mBatch->usingPointSprites() ? i : i / 4;
+					uint32_t primitiveIndex = (uint32_t)(mBatch->usingPointSprites() ? i : i / 4);
 					bool newVertex = i >= initStart;
 
 					//
