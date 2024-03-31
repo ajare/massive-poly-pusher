@@ -58,7 +58,6 @@ namespace mpp
 		, mViewportWidth(windowWidth)
 		, mViewportHeight(windowHeight)
 		, mResourceMgr(nullptr)
-		, mClearColour(0.0f, 0.0f, 0.0f, 1.0f)
 #ifdef MPP_PROFILE_BUILD
 		, mProfiler(nullptr)
 		, mProfileLines(nullptr)
@@ -185,33 +184,6 @@ namespace mpp
 
 		strMsg += msg;
 		renderSystem->errorMessage(strMsg);
-
-#ifdef MPP_DEBUG_BUILD
-		RenderSystem::OpenGLError::Severity svrty;
-		switch (severity)
-		{
-		case GL_DEBUG_SEVERITY_HIGH_ARB:
-			svrty = RenderSystem::OpenGLError::Severity::High;
-			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __func__);
-			break;
-
-		case GL_DEBUG_SEVERITY_MEDIUM_ARB:
-			svrty = RenderSystem::OpenGLError::Severity::Medium;
-			break;
-
-		case GL_DEBUG_SEVERITY_LOW_ARB:
-			svrty = RenderSystem::OpenGLError::Severity::Low;
-			break;
-
-		default:
-			svrty = RenderSystem::OpenGLError::Severity::High;
-			THROW_MPP("OpenGL error caught: check log.", __LINE__, __FILE__, __func__);
-			break;
-		}
-
-		//renderSystem->addOpenGLError(message, svrty);
-		renderSystem->debugStackTrace();
-#endif
 	}
 
 	/*
@@ -1003,8 +975,6 @@ namespace mpp
 		m3dProjectionMatrix = glm::mat4();
 		m3dModelMatrix = glm::mat4();
 		m3dModelCameraProjectionMatrix = glm::mat4();
-
-		mClearColour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
 	/*
@@ -2739,34 +2709,4 @@ namespace mpp
 		return mRenderInfo;
 	}
 
-#ifdef MPP_DEBUG_BUILD
-	/*
-	 * Add an error to our report.
-	 *
-	 */
-	void RenderSystem::addOpenGLError(string const& error, OpenGLError::Severity severity)
-	{
-		if (mOpenGLErrors.find(error) == mOpenGLErrors.end())
-		{
-			OpenGLError err;
-			err.message = error;
-			err.severity = severity;
-			err.count = 1;
-			mOpenGLErrors[error] = err;
-		}
-		else
-		{
-			OpenGLError &err = mOpenGLErrors[error];
-			err.count++;
-		}
-	}
-
-	/*
-	 * Get a stack trace.  Used to find where an bad GL command was issued from.
-	 *
-	 */
-	void RenderSystem::debugStackTrace()
-	{
-	}
-#endif
 } 
