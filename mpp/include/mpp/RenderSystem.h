@@ -43,7 +43,7 @@ namespace mpp
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
-	class _MPPAPI __declspec(align(16)) RenderSystem : public ResourceWrangler
+	class _MPPAPI RenderSystem : public ResourceWrangler
 	{
 		enum class ProjectionType
 		{
@@ -94,8 +94,6 @@ namespace mpp
 		ResourceManager* mResourceMgr;
 
 		Caps mCaps;
-
-		glm::vec4 mClearColour;
 
 		//
 		// Rendering
@@ -189,22 +187,6 @@ namespace mpp
 		};
 
 		std::deque<TimeSample> mProfileTimeSamples;
-#endif
-		
-#ifdef MPP_DEBUG_BUILD
-
-	public:
-
-		struct OpenGLError
-		{
-			std::string message;
-			enum class Severity { Low, Medium, High } severity;
-			int count;
-		};
-
-	private:
-
-		std::map<std::string, OpenGLError> mOpenGLErrors;
 #endif
 		
 		//
@@ -452,14 +434,8 @@ namespace mpp
 
 		void renderTextFormatted(std::vector<std::string> const& text, int x, int y);
 
-		// Debug
-#ifdef MPP_DEBUG_BUILD
-		void addOpenGLError(std::string const& error, OpenGLError::Severity severity);
-
-		void debugStackTrace();
-#endif
-
 		// Override new/delete to force alignment on 16-byte boundary.
+		/*
 		void* operator new(size_t size)
 		{
 			return _aligned_malloc(size, 16);
@@ -469,6 +445,7 @@ namespace mpp
 		{
 			_aligned_free(p);
 		}
+		*/
 	};
 
 }
