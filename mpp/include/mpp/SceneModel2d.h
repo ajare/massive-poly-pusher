@@ -32,6 +32,8 @@ namespace mpp
 
 		float mAngle, mOrbit;
 
+		bool mScreenSpace;
+
 		bool mWireframe;
 
 		bool mVisible;
@@ -71,6 +73,10 @@ namespace mpp
 		void setScale(glm::vec2 const& scale);
 
 		glm::vec2 const& getScale() const;
+
+		void setScreenSpace(bool screenSpace);
+
+		bool inScreenSpace() const;
 
 		std::shared_ptr<ModelRenderParams> getParams();
 

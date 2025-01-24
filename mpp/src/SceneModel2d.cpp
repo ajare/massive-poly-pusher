@@ -20,6 +20,7 @@ namespace mpp
 		, mScale(1, 1)
 		, mAngle(0)
 		, mOrbit(0)
+		, mScreenSpace(false)
 		, mWireframe(false)
 		, mVisible(true)
 	{
@@ -117,6 +118,16 @@ namespace mpp
 		return mScale;
 	}
 
+	void SceneModel2d::setScreenSpace(bool screenSpace)
+	{
+		mScreenSpace = screenSpace;
+	}
+
+	bool SceneModel2d::inScreenSpace() const
+	{
+		return mScreenSpace;
+	}
+
 	shared_ptr<ModelRenderParams> SceneModel2d::getParams()
 	{
 		return mParams;
@@ -149,6 +160,12 @@ namespace mpp
 			return;
 		}
 
+		if (mScreenSpace)
+		{
+			mRenderSystem->pushModelMatrix();
+			mRenderSystem->resetTransform();
+		}
+
 		if (mRenderer)
 		{
 			mRenderer->render();
@@ -156,6 +173,11 @@ namespace mpp
 		else if (mModel)
 		{
 			mRenderSystem->renderModelImmediate(*static_cast<Model*>(mModel.get()), true, mParams);
+		}
+
+		if (mScreenSpace)
+		{
+			mRenderSystem->popModelMatrix();
 		}
 	}
 }
