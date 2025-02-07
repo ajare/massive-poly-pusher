@@ -38,6 +38,7 @@ namespace mpp
 		, mScale(1, 1)
 		, mAngle(0)
 		, mOrbit(0)
+		, mScreenSpace(false)
 		, mWireframe(false)
 		, mVisible(true)
 	{
