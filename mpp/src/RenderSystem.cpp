@@ -746,8 +746,6 @@ namespace mpp
 		// Create font mesh
 		auto textStream = new ProgrammaticModelStream(mResourceMgr);
 
-		int glyphCount = 2048;
-
 		if (textAsPoints)
 		{
 			mesh::MeshSpecification textSpec(mesh::Primitive::Type::Points);
@@ -761,7 +759,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, 16.0f);
 
-			for (int i = 0; i < glyphCount; ++i)
+			for (uint32_t i = 0; i < MaxTextGlyphs; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f).f32(1.0f).f32(1.0f));
 			}
@@ -779,7 +777,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
 
-			for (int i = 0; i < glyphCount * 6; ++i)
+			for (int i = 0; i < MaxTextGlyphs * 6; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 			}
@@ -807,7 +805,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
-			for (int i = 0; i < glyphCount; ++i)
+			for (int i = 0; i < MaxTextGlyphs; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
 					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
@@ -828,7 +826,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
-			for (int i = 0; i < glyphCount * 6; ++i)
+			for (int i = 0; i < MaxTextGlyphs * 6; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
 					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
@@ -1564,17 +1562,18 @@ namespace mpp
 		int vertexStride = (int)buffer->getVertexStride() / sizeof(float);
 
 		vector<int8_t>& bufferData = buffer->getBufferData();
-		float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 		float xpos = (float)x + 8; // 8 to offset default kerning
 		float ypos = (float)y;
 
 		if (mCaps.pointSizeRange[1] >= 16)
 		{
-			if (offset + numChars > 2048)
+			if (offset + numChars > MaxTextGlyphs)
 			{
 				return 0;
 			}
+
+			float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 			for (int i = 0; i < numChars; ++i)
 			{
@@ -1599,10 +1598,12 @@ namespace mpp
 		}
 		else
 		{
-			if (offset + numChars * 6 > 2048)
+			if (offset + numChars * 6 > MaxTextGlyphs)
 			{
 				return 0;
 			}
+
+			float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 			for (int i = 0; i < numChars; ++i)
 			{
@@ -1662,7 +1663,6 @@ namespace mpp
 		int vertexStride = (int)buffer->getVertexStride() / sizeof(float);
 
 		vector<int8_t>& bufferData = buffer->getBufferData();
-		float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 		float xpos = (float)x + 8; // 8 to offset default kerning
 		float ypos = (float)y;
@@ -1671,10 +1671,12 @@ namespace mpp
 
 		if (mCaps.pointSizeRange[1] >= 16)
 		{
-			if (offset + numChars > 2048)
+			if (offset + numChars > MaxTextGlyphs)
 			{
 				return 0;
 			}
+
+			float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 			int i = 0, numSpecial = 0;
 			while (i < numChars)
@@ -1743,10 +1745,12 @@ namespace mpp
 		}
 		else
 		{
-			if (offset + numChars * 6 > 2048)
+			if (offset + numChars * 6 > MaxTextGlyphs)
 			{
 				return 0;
 			}
+
+			float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
 			for (int i = 0; i < numChars; ++i)
 			{

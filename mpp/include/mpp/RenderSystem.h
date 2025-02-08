@@ -82,6 +82,8 @@ namespace mpp
 	private:
 
 		typedef std::pair<uint64_t, MeshInstance*> SortableMeshInstance;
+
+		const uint32_t MaxTextGlyphs = 4096;
 		
 	private:
 
