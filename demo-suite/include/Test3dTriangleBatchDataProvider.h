@@ -15,22 +15,16 @@ class Test3dTriangleBatchDataProvider : public mpp::helper::TriangleBatch3DDataP
 		float u[3], v[3];
 	};
 	
-	bool mDirty{ true };
+	float mTotalTime;
 
 	std::vector<Triangle> mTriangles;
-
-	glm::vec3 mBounds[2];
 
 public:
 
 	Test3dTriangleBatchDataProvider()
+		: mTotalTime(0.0f)
 	{
 		update(0.0f);
-	}
-
-	void setDirty()
-	{
-		mDirty = true;
 	}
 
 	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
@@ -99,164 +93,159 @@ public:
 
 	bool update(float frameTime)
 	{
-		bool updated = mDirty;
+		float scale = 20.0f + sin(mTotalTime * 2.3f) * 80.0f;
 
-		if (mDirty)
-		{
-			float scale = 20.0f;
+		mTriangles.clear();
 
-			mTriangles.clear();
+		// Create triangles
+		mTriangles.push_back(
+			{
+				{ -1 * scale,  1 * scale,  1 * scale }, // X
+				{ -1 * scale, -1 * scale,  1 * scale }, // Y
+				{ -1 * scale, -1 * scale, -1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ -1, -1, -1 }, // NZ
+				{ 0, 1, 1 }, // U
+				{ 0, 0, 1 }  // V
+			});
 
-			// Create triangles
-			mTriangles.push_back(
-				{
-					{ -1 * scale,  1 * scale,  1 * scale }, // X
-					{ -1 * scale, -1 * scale,  1 * scale }, // Y
-					{ -1 * scale, -1 * scale, -1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ -1, -1, -1 }, // NZ
-					{ 0, 1, 1 }, // U
-					{ 0, 0, 1 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  1 * scale, -1 * scale, -1 * scale }, // X
+				{  1 * scale,  1 * scale, -1 * scale }, // Y
+				{ -1 * scale, -1 * scale, -1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ -1, -1, -1 }, // NZ
+				{ 1, 0, 0 }, // U
+				{ 1, 1, 0 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  1 * scale, -1 * scale, -1 * scale }, // X
-					{  1 * scale,  1 * scale, -1 * scale }, // Y
-					{ -1 * scale, -1 * scale, -1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ -1, -1, -1 }, // NZ
-					{ 1, 0, 0 }, // U
-					{ 1, 1, 0 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{ -1 * scale,  1 * scale,  1 * scale }, // X
+				{ -1 * scale, -1 * scale,  1 * scale }, // Y
+				{  1 * scale,  1 * scale,  1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ 1, 1, 1 }, // NZ
+				{ 0, 1, 1 }, // U
+				{ 0, 0, 1 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{ -1 * scale,  1 * scale,  1 * scale }, // X
-					{ -1 * scale, -1 * scale,  1 * scale }, // Y
-					{  1 * scale,  1 * scale,  1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ 1, 1, 1 }, // NZ
-					{ 0, 1, 1 }, // U
-					{ 0, 0, 1 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  1 * scale, -1 * scale, -1 * scale }, // X
+				{  1 * scale,  1 * scale, -1 * scale }, // Y
+				{  1 * scale,  1 * scale,  1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ 1, 1, 1 }, // NZ
+				{ 1, 0, 0 }, // U
+				{ 1, 1, 0 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  1 * scale, -1 * scale, -1 * scale }, // X
-					{  1 * scale,  1 * scale, -1 * scale }, // Y
-					{  1 * scale,  1 * scale,  1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ 1, 1, 1 }, // NZ
-					{ 1, 0, 0 }, // U
-					{ 1, 1, 0 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  1 * scale,  1 * scale,  1 * scale }, // X
+				{ -1 * scale,  1 * scale,  1 * scale }, // Y
+				{ -1 * scale, -1 * scale,  1 * scale }, // Z
+				{ 1, 1, 1 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 0, 1, 1 }, // U
+				{ 0, 0, 1 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  1 * scale,  1 * scale,  1 * scale }, // X
-					{ -1 * scale,  1 * scale,  1 * scale }, // Y
-					{ -1 * scale, -1 * scale,  1 * scale }, // Z
-					{ 1, 1, 1 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 0, 1, 1 }, // U
-					{ 0, 0, 1 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  1 * scale,  1 * scale,  1 * scale }, // X
+				{  1 * scale, -1 * scale, -1 * scale }, // Y
+				{  1 * scale,  1 * scale, -1 * scale }, // Z
+				{ 1, 1, 1 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 1, 0, 0 }, // U
+				{ 1, 1, 0 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  1 * scale,  1 * scale,  1 * scale }, // X
-					{  1 * scale, -1 * scale, -1 * scale }, // Y
-					{  1 * scale,  1 * scale, -1 * scale }, // Z
-					{ 1, 1, 1 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 1, 0, 0 }, // U
-					{ 1, 1, 0 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{ -1 * scale, -1 * scale, -1 * scale }, // X
+				{ -1 * scale,  1 * scale,  1 * scale }, // Y
+				{ -1 * scale, -1 * scale,  1 * scale }, // Z
+				{ -1, -1, -1 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 0, 1, 1 }, // U
+				{ 0, 0, 1 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{ -1 * scale, -1 * scale, -1 * scale }, // X
-					{ -1 * scale,  1 * scale,  1 * scale }, // Y
-					{ -1 * scale, -1 * scale,  1 * scale }, // Z
-					{ -1, -1, -1 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 0, 1, 1 }, // U
-					{ 0, 0, 1 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  -1 * scale, -1 * scale, -1 * scale }, // X
+				{  1 * scale, -1 * scale, -1 * scale }, // Y
+				{  1 * scale,  1 * scale, -1 * scale }, // Z
+				{ -1, -1, -1 }, // NX
+				{ 0, 0, 0 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 1, 0, 0 }, // U
+				{ 1, 1, 0 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  -1 * scale, -1 * scale, -1 * scale }, // X
-					{  1 * scale, -1 * scale, -1 * scale }, // Y
-					{  1 * scale,  1 * scale, -1 * scale }, // Z
-					{ -1, -1, -1 }, // NX
-					{ 0, 0, 0 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 1, 0, 0 }, // U
-					{ 1, 1, 0 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{ -1 * scale,  1 * scale,  1 * scale }, // X
+				{ -1 * scale, -1 * scale, -1 * scale }, // Y
+				{ -1 * scale, -1 * scale,  1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ -1, -1, -1 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 0, 1, 1 }, // U
+				{ 0, 0, 1 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{ -1 * scale,  1 * scale,  1 * scale }, // X
-					{ -1 * scale, -1 * scale, -1 * scale }, // Y
-					{ -1 * scale, -1 * scale,  1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ -1, -1, -1 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 0, 1, 1 }, // U
-					{ 0, 0, 1 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  1 * scale, -1 * scale, -1 * scale }, // X
+				{  -1 * scale, -1 * scale, -1 * scale }, // Y
+				{  1 * scale,  1 * scale, -1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ -1, -1, -1 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 1, 0, 0 }, // U
+				{ 1, 1, 0 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  1 * scale, -1 * scale, -1 * scale }, // X
-					{  -1 * scale, -1 * scale, -1 * scale }, // Y
-					{  1 * scale,  1 * scale, -1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ -1, -1, -1 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 1, 0, 0 }, // U
-					{ 1, 1, 0 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{ -1 * scale,  1 * scale,  1 * scale }, // X
+				{ 1 * scale, 1 * scale, 1 * scale }, // Y
+				{ -1 * scale, -1 * scale,  1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ 1, 1, 1 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 0, 1, 1 }, // U
+				{ 0, 0, 1 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{ -1 * scale,  1 * scale,  1 * scale }, // X
-					{ 1 * scale, 1 * scale, 1 * scale }, // Y
-					{ -1 * scale, -1 * scale,  1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ 1, 1, 1 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 0, 1, 1 }, // U
-					{ 0, 0, 1 }  // V
-				});
+		mTriangles.push_back(
+			{
+				{  1 * scale, -1 * scale, -1 * scale }, // X
+				{  1 * scale, 1 * scale, 1 * scale }, // Y
+				{  1 * scale,  1 * scale, -1 * scale }, // Z
+				{ 0, 0, 0 }, // NX
+				{ 1, 1, 1 }, // NY
+				{ 0, 0, 0 }, // NZ
+				{ 1, 0, 0 }, // U
+				{ 1, 1, 0 }  // V
+			});
 
-			mTriangles.push_back(
-				{
-					{  1 * scale, -1 * scale, -1 * scale }, // X
-					{  1 * scale, 1 * scale, 1 * scale }, // Y
-					{  1 * scale,  1 * scale, -1 * scale }, // Z
-					{ 0, 0, 0 }, // NX
-					{ 1, 1, 1 }, // NY
-					{ 0, 0, 0 }, // NZ
-					{ 1, 0, 0 }, // U
-					{ 1, 1, 0 }  // V
-				});
-
-			setNumPrimitives(mTriangles.size());
-			mDirty = false;
-		}
-
-		return updated;
+		setNumPrimitives(mTriangles.size());
+	
+		mTotalTime += frameTime;
+		return true;
 	}
 };
 

@@ -5,6 +5,8 @@
 #include <mpp/helper/TriangleBatchRenderer.h>
 
 #include "Scene.h"
+#include "Test3dTriangleBatchDataProvider.h"
+
 
 class ModelScene : public ::Scene
 {
@@ -24,6 +26,10 @@ private:
 	std::vector<mpp::SceneModel3dPtr> mModels;
 
 	std::vector<mpp::SceneModel2dPtr> mBatches;
+
+	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> m3dTestRenderer;
+
+	std::shared_ptr<Test3dTriangleBatchDataProvider> m3dBatchDataProvider;
 
 	std::vector<Label> mBatchLabels;
 

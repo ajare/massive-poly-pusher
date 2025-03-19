@@ -668,7 +668,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		16,     // 16-bit indices
 		dragonTexture);
 
-	auto drago2nDataProvider = make_shared<TestDragonDataProvider>(
+	auto dragon2DataProvider = make_shared<TestDragonDataProvider>(
 		tile->x0,
 		tile->y0,
 		tile->x1 - tile->x0,
@@ -677,13 +677,13 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	auto dragon2Renderer = make_shared<mpp::helper::QuadBatchRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat>>(
 		"TestQuads6",
 		dragon2Params,
-		drago2nDataProvider,
+		dragon2DataProvider,
 		renderSystem,
 		resourceMgr);
 
 	dragon2Renderer->create();
 
-	mBatches.push_back(getScene()->add2dBatch(drago2nDataProvider, dragon2Renderer, batchRenderOrder++));
+	mBatches.push_back(getScene()->add2dBatch(dragon2DataProvider, dragon2Renderer, batchRenderOrder++));
 	mBatchLabels[5].text = "Rects (vert-rotate by dir)";
 
 	/*
@@ -807,6 +807,32 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto mppScene = getScene();
 
 	createSharedTextures(options);
+	createBatchMaterials(createBatch2dMeshSpecification(), createBatch3dMeshSpecification(), options);
+
+	//
+	// 3d renderer
+	//
+	m3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
+
+	mpp::helper::TriangleBatchRendererParams triParams
+	{
+		true,
+		true,
+		true,
+		false
+	};
+
+	m3dTestRenderer = make_shared<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+		"Test3dBatch",
+		triParams,
+		m3dBatchDataProvider,
+		resourceMgr->getResource("Batch.3D.Material"),
+		renderSystem,
+		resourceMgr);
+
+	m3dTestRenderer->create();
+
+	mModels.push_back(getScene()->add3dModel(m3dTestRenderer->getModel()));
 
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
@@ -876,7 +902,6 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.push_back(mppScene->add3dModel(mStatue));
 
 	// Batches
-	createBatchMaterials(createBatch2dMeshSpecification(), createBatch3dMeshSpecification(), options);
 	createBatches(renderSystem);
 
 	// Lighting
@@ -924,6 +949,9 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 {
 	mTotalTime += frameTime;
 	
+	// Scale cube
+	m3dBatchDataProvider->update(frameTime);
+
 	// Rotate sphere
 	auto& sphereModel = mModels[1];
 
@@ -943,7 +971,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate batch box
 	//auto& batchBoxModel = mModels[8];
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
-	
+	// 
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
@@ -955,6 +983,9 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
+	// Update 3d renderer
+	m3dTestRenderer->update(m3dBatchDataProvider->getNumPrimitives());
+	
 	// Set render params
 	for (auto model: mModels)
 	{
