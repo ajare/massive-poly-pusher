@@ -133,7 +133,11 @@ namespace mpp
 
 				model->render(camera);
 			}
+
 			mRenderSystem->popModelMatrix();
+
+			// In case final model was batched and we're not rendering anything else this frame
+			mRenderSystem->flushVertexBuffers();  
 		}
 	}
 }
