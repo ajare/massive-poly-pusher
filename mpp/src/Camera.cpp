@@ -21,7 +21,7 @@ namespace mpp
 		, mAspectRatio(aspectRatio)
 		, mDirty(true)
 	{
-		mDirection = vec3(0, 0, -1);
+		mDirection = vec3(0, 0, 1);
 		mUp = vec3(0, 1, 0);
 		updateAngles();
 	}
