@@ -99,7 +99,9 @@ namespace mpp
 	mat4 Camera::getViewTransform()
 	{
 		updateAngles();
-		return lookAt(mPosition, mPosition + mDirection, mUp);
+
+		// Invert up vector to transform from left-handed to right-handed
+		return lookAt(mPosition, mPosition + mDirection, -mUp);
 	}
 
 	mat4 Camera::getProjectionTransform() const
