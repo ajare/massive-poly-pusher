@@ -76,6 +76,51 @@ namespace mpp
 		return sb;
 	}
 
+	void Scene::remove3dModel(SceneModel3dPtr model)
+	{
+		auto c = (uint32_t)m3dModels.size();
+
+		for (uint32_t i = 0; i < c; ++i)
+		{
+			if (model == m3dModels[i])
+			{
+				while (i < (c - 1))
+				{
+					m3dModels[i] = m3dModels[i + 1];
+					i++;
+				}
+
+				m3dModels.pop_back();
+				break;
+			}
+		}
+	}
+
+	void Scene::remove2dModel(SceneModel2dPtr model)
+	{
+		auto c = (uint32_t)m2dModels.size();
+
+		for (uint32_t i = 0; i < c; ++i)
+		{
+			if (model == m2dModels[i].first)
+			{
+				while (i < (c - 1))
+				{
+					m2dModels[i] = m2dModels[i + 1];
+					i++;
+				}
+
+				m2dModels.pop_back();
+				break;
+			}
+		}
+	}
+
+	void Scene::remove2dBatch(SceneModel2dPtr batch)
+	{
+		remove2dModel(batch);
+	}
+
 	vector<SceneModel3dPtr> Scene::get3dModelsInView(CameraPtr camera)
 	{
 		vector<SceneModel3dPtr> inView;
