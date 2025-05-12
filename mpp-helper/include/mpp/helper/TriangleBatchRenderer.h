@@ -21,6 +21,7 @@ namespace mpp
 			bool useMaterialNotTexture{ false };
 			bool fixedTextureData, fixedColourData;
 			bool useDiffuse;
+			bool indexedVertices{ false };
 		};
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
@@ -55,7 +56,8 @@ namespace mpp
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ ColType::vertexDataType(), params.fixedColourData },
-						params.useDiffuse
+						params.useDiffuse,
+						params.indexedVertices
 					},
 					textureOrMaterial,
 					mDataProvider->getNumPrimitives(),
@@ -244,7 +246,8 @@ namespace mpp
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ mpp::mesh::Vertex::DataType::None, true },
-						params.useDiffuse
+						params.useDiffuse,
+						params.indexedVertices
 					},
 					textureOrMaterial,
 					mDataProvider->getNumPrimitives(),
@@ -397,7 +400,8 @@ namespace mpp
 						PosType::vertexDataType(),
 						{ TexType::vertexDataType(), params.fixedTextureData },
 						{ ColType::vertexDataType(), params.fixedColourData },
-						params.useDiffuse
+						params.useDiffuse,
+						params.indexedVertices
 					},
 					textureOrMaterial,
 					mDataProvider->getNumPrimitives(),

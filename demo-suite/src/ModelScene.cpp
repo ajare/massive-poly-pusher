@@ -516,6 +516,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		true,
 		true,
+		false,
 		false
 	};
 

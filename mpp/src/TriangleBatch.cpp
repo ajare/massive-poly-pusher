@@ -30,7 +30,7 @@ namespace mpp
 
 	bool TriangleBatch::indexedVertices() const
 	{
-		return false;
+		return mOptions.indexed;
 	}
 
 	mesh::Primitive::Type TriangleBatch::getPrimitiveType() const
