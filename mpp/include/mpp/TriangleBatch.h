@@ -22,6 +22,7 @@ namespace mpp
 		BatchVertexAttribute texcoordAttrib;
 		BatchVertexAttribute colourAttrib;
 		bool useDiffuse;
+		bool indexed{ false };
 	};
 
 	class _MPPAPI TriangleBatch : public Batch
