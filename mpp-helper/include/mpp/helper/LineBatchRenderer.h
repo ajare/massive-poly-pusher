@@ -66,11 +66,13 @@ namespace mpp
 			void create() override
 			{
 				mBatch->create();
-				update(mBatch->getCapacity());
+				update();
 			}
 
-			size_t update(size_t count) override
+			size_t update() override
 			{
+				size_t count = mDataProvider->getNumPrimitives();
+
 				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
 				bool newVertices{ false };
 				if (count > batchSize)

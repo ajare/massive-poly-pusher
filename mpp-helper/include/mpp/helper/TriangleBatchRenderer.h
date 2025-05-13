@@ -225,136 +225,143 @@ namespace mpp
 					auto [batch, dataProvider] = entry;
 
 					batch->create();
-					update(batch->getCapacity());
+					update();
 				}
 			}
 
-			size_t update(size_t count) override
+			size_t update() override
 			{
-				uint32_t batchIndex = 0;
+				size_t totalCount{ 0 };
+				auto numBatches = (uint32_t)mBatches.size();
 
-				auto entry = mBatches[batchIndex];
-				auto [batch, dataProvider] = entry;
-				
-				size_t initStart{ ~0u }, batchSize = batch->getCount();
-				bool newVertices{ false };
-				if (count > batchSize)
+				for (uint32_t batchIndex = 0; batchIndex < numBatches; ++batchIndex)
 				{
-					initStart = batch->getPrimitiveCount(batchSize);
-					newVertices = true;
+					auto entry = mBatches[batchIndex];
+					auto [batch, dataProvider] = entry;
+
+					size_t count = dataProvider->getNumPrimitives();
+					size_t initStart{ ~0u }, batchSize = batch->getCount();
+					bool newVertices{ false };
+					if (count > batchSize)
+					{
+						initStart = batch->getPrimitiveCount(batchSize);
+						newVertices = true;
+					}
+
+					batch->startUpdate(count);
+
+					typedef typename PosType::builtin_type PosTypeBuiltin;
+					typedef typename TexType::builtin_type TexTypeBuiltin;
+					typedef typename ColType::builtin_type ColTypeBuiltin;
+
+					auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
+					auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+
+					TexTypeBuiltin* texBuffer{ nullptr };
+					size_t texStride{ 0 };
+
+					if (batch->usingTexture())
+					{
+						texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
+						texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+					}
+
+					auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
+					auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
+
+					size_t triangleCount = batch->getPrimitiveCount(count);
+					for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
+					{
+						auto primitiveIndex = (uint32_t)i;
+						bool newVertex = i >= initStart;
+
+						//
+						// Position data
+						//
+						if (!batch->positionFixed() || newVertex)
+						{
+							PosTypeBuiltin x0, y0, x1, y1, x2, y2;
+							dataProvider->position(batchIndex, primitiveIndex, x0, y0, x1, y1, x2, y2);
+
+							posBuffer[pOffset + 0] = x0;
+							posBuffer[pOffset + 1] = y0;
+							pOffset += posStride;
+
+							posBuffer[pOffset + 0] = x1;
+							posBuffer[pOffset + 1] = y1;
+							pOffset += posStride;
+
+							posBuffer[pOffset + 0] = x2;
+							posBuffer[pOffset + 1] = y2;
+							pOffset += posStride;
+						}
+						else
+						{
+							pOffset += posStride * 3;
+						}
+
+						//
+						// Texture data
+						//
+						if (texBuffer && batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
+						{
+							TexTypeBuiltin u0, v0, u1, v1, u2, v2;
+							dataProvider->texcoords(batchIndex, primitiveIndex, u0, v0, u1, v1, u2, v2);
+
+							texBuffer[tOffset + 0] = u0;
+							texBuffer[tOffset + 1] = v0;
+							tOffset += texStride;
+
+							texBuffer[tOffset + 0] = u1;
+							texBuffer[tOffset + 1] = v1;
+							tOffset += texStride;
+
+							texBuffer[tOffset + 0] = u2;
+							texBuffer[tOffset + 1] = v2;
+							tOffset += texStride;
+						}
+						else
+						{
+							tOffset += texStride * 3;
+						}
+
+						//
+						// Colour data
+						//
+						if (batch->usingColour() && (!batch->colourFixed() || newVertex))
+						{
+							ColTypeBuiltin red, green, blue, alpha;
+							dataProvider->colour(batchIndex, primitiveIndex, red, green, blue, alpha);
+
+							colBuffer[cOffset + 0] = red;
+							colBuffer[cOffset + 1] = green;
+							colBuffer[cOffset + 2] = blue;
+							colBuffer[cOffset + 3] = alpha;
+							cOffset += colStride;
+
+							colBuffer[cOffset + 0] = red;
+							colBuffer[cOffset + 1] = green;
+							colBuffer[cOffset + 2] = blue;
+							colBuffer[cOffset + 3] = alpha;
+							cOffset += colStride;
+
+							colBuffer[cOffset + 0] = red;
+							colBuffer[cOffset + 1] = green;
+							colBuffer[cOffset + 2] = blue;
+							colBuffer[cOffset + 3] = alpha;
+							cOffset += colStride;
+						}
+						else
+						{
+							cOffset += colStride * 3;
+						}
+					}
+
+					batch->finishUpdate(count, newVertices);
+					totalCount += batch->getCount();
 				}
 
-				batch->startUpdate(count);
-
-				typedef typename PosType::builtin_type PosTypeBuiltin;
-				typedef typename TexType::builtin_type TexTypeBuiltin;
-				typedef typename ColType::builtin_type ColTypeBuiltin;
-
-				auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
-				auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
-
-				TexTypeBuiltin* texBuffer{ nullptr };
-				size_t texStride{ 0 };
-
-				if (batch->usingTexture())
-				{
-					texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
-					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
-				}
-
-				auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
-				auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
-
-				size_t triangleCount = batch->getPrimitiveCount(count);
-				for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
-				{
-					auto primitiveIndex = (uint32_t)i;
-					bool newVertex = i >= initStart;
-
-					//
-					// Position data
-					//
-					if (!batch->positionFixed() || newVertex)
-					{
-						PosTypeBuiltin x0, y0, x1, y1, x2, y2;
-						dataProvider->position(batchIndex, primitiveIndex, x0, y0, x1, y1, x2, y2);
-
-						posBuffer[pOffset + 0] = x0;
-						posBuffer[pOffset + 1] = y0;
-						pOffset += posStride;
-
-						posBuffer[pOffset + 0] = x1;
-						posBuffer[pOffset + 1] = y1;
-						pOffset += posStride;
-
-						posBuffer[pOffset + 0] = x2;
-						posBuffer[pOffset + 1] = y2;
-						pOffset += posStride;
-					}
-					else
-					{
-						pOffset += posStride * 3;
-					}
-
-					//
-					// Texture data
-					//
-					if (texBuffer && batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
-					{
-						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
-						dataProvider->texcoords(batchIndex, primitiveIndex, u0, v0, u1, v1, u2, v2);
-
-						texBuffer[tOffset + 0] = u0;
-						texBuffer[tOffset + 1] = v0;
-						tOffset += texStride;
-
-						texBuffer[tOffset + 0] = u1;
-						texBuffer[tOffset + 1] = v1;
-						tOffset += texStride;
-
-						texBuffer[tOffset + 0] = u2;
-						texBuffer[tOffset + 1] = v2;
-						tOffset += texStride;
-					}
-					else
-					{
-						tOffset += texStride * 3;
-					}
-
-					//
-					// Colour data
-					//
-					if (batch->usingColour() && (!batch->colourFixed() || newVertex))
-					{
-						ColTypeBuiltin red, green, blue, alpha;
-						dataProvider->colour(batchIndex, primitiveIndex, red, green, blue, alpha);
-
-						colBuffer[cOffset + 0] = red;
-						colBuffer[cOffset + 1] = green;
-						colBuffer[cOffset + 2] = blue;
-						colBuffer[cOffset + 3] = alpha;
-						cOffset += colStride;
-
-						colBuffer[cOffset + 0] = red;
-						colBuffer[cOffset + 1] = green;
-						colBuffer[cOffset + 2] = blue;
-						colBuffer[cOffset + 3] = alpha;
-						cOffset += colStride;
-
-						colBuffer[cOffset + 0] = red;
-						colBuffer[cOffset + 1] = green;
-						colBuffer[cOffset + 2] = blue;
-						colBuffer[cOffset + 3] = alpha;
-						cOffset += colStride;
-					}
-					else
-					{
-						cOffset += colStride * 3;
-					}
-				}
-
-				batch->finishUpdate(count, newVertices);
-				return batch->getCount();
+				return totalCount;
 			}
 
 			void render() override
@@ -445,95 +452,103 @@ namespace mpp
 
 			size_t update(size_t count) override
 			{
-				uint32_t batchIndex = 0;
+				size_t totalCount{ 0 };
+				auto numBatches = (uint32_t)mBatches.size();
 
-				auto entry = mBatches[batchIndex];
-				auto [batch, dataProvider] = entry;
-
-				size_t initStart{ ~0u }, batchSize = batch->getCount();
-				bool newVertices{ false };
-				if (count > batchSize)
+				for (uint32_t batchIndex = 0; batchIndex < numBatches; ++batchIndex)
 				{
-					initStart = batch->getPrimitiveCount(batchSize);
-					newVertices = true;
+					auto entry = mBatches[batchIndex];
+					auto [batch, dataProvider] = entry;
+
+					size_t count = dataProvider->getNumPrimitives();
+
+					size_t initStart{ ~0u }, batchSize = batch->getCount();
+					bool newVertices{ false };
+					if (count > batchSize)
+					{
+						initStart = batch->getPrimitiveCount(batchSize);
+						newVertices = true;
+					}
+
+					batch->startUpdate(count);
+
+					typedef typename PosType::builtin_type PosTypeBuiltin;
+					typedef typename TexType::builtin_type TexTypeBuiltin;
+
+					auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
+					auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+
+					TexTypeBuiltin* texBuffer{ nullptr };
+					size_t texStride{ 0 };
+
+					if (batch->usingTexture())
+					{
+						texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
+						texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+					}
+
+					size_t triangleCount = batch->getPrimitiveCount(count);
+					for (size_t pOffset = 0, tOffset = 0, i = 0; i < triangleCount; ++i)
+					{
+						uint32_t primitiveIndex = i;
+						bool newVertex = i >= initStart;
+
+						//
+						// Position data
+						//
+						if (!batch->positionFixed() || newVertex)
+						{
+							PosTypeBuiltin x0, y0, x1, y1, x2, y2;
+							dataProvider->position(batchIndex, primitiveIndex, x0, y0, x1, y1, x2, y2);
+
+							posBuffer[pOffset + 0] = x0;
+							posBuffer[pOffset + 1] = y0;
+							pOffset += posStride;
+
+							posBuffer[pOffset + 0] = x1;
+							posBuffer[pOffset + 1] = y1;
+							pOffset += posStride;
+
+							posBuffer[pOffset + 0] = x2;
+							posBuffer[pOffset + 1] = y2;
+							pOffset += posStride;
+						}
+						else
+						{
+							pOffset += posStride * 3;
+						}
+
+						//
+						// Texture data
+						//
+						if (batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
+						{
+							TexTypeBuiltin u0, v0, u1, v1, u2, v2;
+							dataProvider->texcoords(batchIndex, primitiveIndex, u0, v0, u1, v1, u2, v2);
+
+							texBuffer[tOffset + 0] = u0;
+							texBuffer[tOffset + 1] = v0;
+							tOffset += texStride;
+
+							texBuffer[tOffset + 0] = u1;
+							texBuffer[tOffset + 1] = v1;
+							tOffset += texStride;
+
+							texBuffer[tOffset + 0] = u2;
+							texBuffer[tOffset + 1] = v2;
+							tOffset += texStride;
+						}
+						else
+						{
+							tOffset += texStride * 3;
+						}
+					}
+
+					batch->finishUpdate(count, newVertices);
+					totalCount += batch->getCount();
 				}
 
-				batch->startUpdate(count);
-
-				typedef typename PosType::builtin_type PosTypeBuiltin;
-				typedef typename TexType::builtin_type TexTypeBuiltin;
-
-				auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
-				auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
-
-				TexTypeBuiltin* texBuffer{ nullptr };
-				size_t texStride{ 0 };
-
-				if (batch->usingTexture())
-				{
-					texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
-					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
-				}
-
-				size_t triangleCount = batch->getPrimitiveCount(count);
-				for (size_t pOffset = 0, tOffset = 0, i = 0; i < triangleCount; ++i)
-				{
-					uint32_t primitiveIndex = i;
-					bool newVertex = i >= initStart;
-
-					//
-					// Position data
-					//
-					if (!batch->positionFixed() || newVertex)
-					{
-						PosTypeBuiltin x0, y0, x1, y1, x2, y2;
-						dataProvider->position(batchIndex, primitiveIndex, x0, y0, x1, y1, x2, y2);
-
-						posBuffer[pOffset + 0] = x0;
-						posBuffer[pOffset + 1] = y0;
-						pOffset += posStride;
-
-						posBuffer[pOffset + 0] = x1;
-						posBuffer[pOffset + 1] = y1;
-						pOffset += posStride;
-
-						posBuffer[pOffset + 0] = x2;
-						posBuffer[pOffset + 1] = y2;
-						pOffset += posStride;
-					}
-					else
-					{
-						pOffset += posStride * 3;
-					}
-
-					//
-					// Texture data
-					//
-					if (batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
-					{
-						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
-						dataProvider->texcoords(batchIndex, primitiveIndex, u0, v0, u1, v1, u2, v2);
-
-						texBuffer[tOffset + 0] = u0;
-						texBuffer[tOffset + 1] = v0;
-						tOffset += texStride;
-
-						texBuffer[tOffset + 0] = u1;
-						texBuffer[tOffset + 1] = v1;
-						tOffset += texStride;
-
-						texBuffer[tOffset + 0] = u2;
-						texBuffer[tOffset + 1] = v2;
-						tOffset += texStride;
-					}
-					else
-					{
-						tOffset += texStride * 3;
-					}
-				}
-
-				batch->finishUpdate(count, newVertices);
-				return batch->getCount();
+				return totalCount;
 			}
 
 			void render() override
@@ -612,11 +627,12 @@ namespace mpp
 			void create() override
 			{
 				mBatch->create();
-				update(mBatch->getCapacity());
+				update();
 			}
 
-			size_t update(size_t count) override
+			size_t update() override
 			{
+				size_t count = mDataProvider->getNumPrimitives();
 				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
 				bool newVertices{ false };
 				if (count > batchSize)
