@@ -84,7 +84,7 @@ public:
 		bMax.x = bMax.y = bMax.z = 1e10f;
 	}
 
-	void position(uint32_t index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2) override
+	void position(uint32_t batch, uint32_t index, float& x0, float& y0, float& x1, float& y1, float& x2, float& y2) override
 	{
 		if (index < getNumPrimitives())
 		{
@@ -97,7 +97,7 @@ public:
 		}
 	}
 
-	void texcoords(uint32_t index, float& u0, float& v0, float& u1, float& v1, float& u2, float& v2) override
+	void texcoords(uint32_t batch, uint32_t index, float& u0, float& v0, float& u1, float& v1, float& u2, float& v2) override
 	{
 		if (index < getNumPrimitives())
 		{
@@ -110,7 +110,7 @@ public:
 		}
 	}
 
-	void colour(uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha) override
+	void colour(uint32_t batch, uint32_t index, uint8_t& red, uint8_t& green, uint8_t& blue, uint8_t& alpha) override
 	{
 		auto const& tri = mTriangles[index];
 
@@ -146,7 +146,7 @@ public:
 		alpha = 128;
 	}
 
-	mpp::Colour diffuse() override
+	mpp::Colour diffuse(uint32_t batch) override
 	{
 		return mpp::Colour::White;
 	}

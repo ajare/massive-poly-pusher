@@ -273,9 +273,6 @@
     <ClInclude Include="..\..\include\mpp\ModelRenderParams.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\BatchModelStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mpp\Pool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
