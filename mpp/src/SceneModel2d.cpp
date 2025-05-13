@@ -150,7 +150,7 @@ namespace mpp
 	{
 		if (mDataProvider && mDataProvider->update(frameTime))
 		{
-			mRenderer->update(mDataProvider->getNumPrimitives());
+			mRenderer->update();
 		}
 	}
 

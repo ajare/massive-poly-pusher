@@ -35,10 +35,7 @@ namespace mpp
 
 		virtual void create() = 0;
 
-		virtual size_t update(size_t count) 
-		{ 
-			return count; 
-		}
+		virtual size_t update() = 0;
 
 		virtual void render() = 0;
 	};

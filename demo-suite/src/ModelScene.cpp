@@ -985,7 +985,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
 	// Update 3d renderer
-	m3dTestRenderer->update(m3dBatchDataProvider->getNumPrimitives());
+	m3dTestRenderer->update();
 	
 	// Set render params
 	for (auto model: mModels)
