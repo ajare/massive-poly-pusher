@@ -165,28 +165,31 @@ namespace mpp
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
 		class TriangleBatch2DRenderer : public BatchRenderer
 		{
+			typedef TriangleBatch2DDataProvider<PosType, TexType, ColType> T2DDataProvider;
+
+			typedef std::pair<mpp::TriangleBatch*, std::shared_ptr<T2DDataProvider>> BatchEntry;
+
+		private:
+
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
 			mpp::ResourceManager* mResourceMgr{ nullptr };
 
-			mpp::TriangleBatch* mBatch{ nullptr };
-
-			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
+			std::vector<BatchEntry> mBatches;
 
 		public:
 
 			TriangleBatch2DRenderer(std::string const& name,
 				TriangleBatchRendererParams const& params,
-				std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, ColType>> dataProvider,
+				std::shared_ptr<T2DDataProvider> dataProvider,
 				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
 				: BatchRenderer()
 				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
-				, mDataProvider(dataProvider)
 			{
-				mBatch = new mpp::TriangleBatch(
+				auto batch = new mpp::TriangleBatch(
 					name,
 					{
 						TriangleBatchOptions::Dimension::P2D,
@@ -198,56 +201,71 @@ namespace mpp
 						params.indexedVertices
 					},
 					textureOrMaterial,
-					mDataProvider->getNumPrimitives(),
+					dataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
+
+				mBatches.push_back(make_pair(batch, dataProvider));
 
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~TriangleBatch2DRenderer()
 			{
-				delete mBatch;
+				for (auto entry : mBatches)
+				{
+					delete entry.first;
+				}
 			}
 
 			void create() override
 			{
-				mBatch->create();
-				update(mBatch->getCapacity());
+				for (auto entry : mBatches)
+				{
+					auto [batch, dataProvider] = entry;
+
+					batch->create();
+					update(batch->getCapacity());
+				}
 			}
 
 			size_t update(size_t count) override
 			{
-				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+				uint32_t batchIndex = 0;
+
+				auto entry = mBatches[batchIndex];
+				auto [batch, dataProvider] = entry;
+				
+				size_t initStart{ ~0u }, batchSize = batch->getCount();
 				bool newVertices{ false };
 				if (count > batchSize)
 				{
-					initStart = mBatch->getPrimitiveCount(batchSize);
+					initStart = batch->getPrimitiveCount(batchSize);
 					newVertices = true;
 				}
 
-				mBatch->startUpdate(count);
+				batch->startUpdate(count);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
 				typedef typename ColType::builtin_type ColTypeBuiltin;
 
-				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+				auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
+				auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
 				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
-				if (mBatch->usingTexture())
+				if (batch->usingTexture())
 				{
-					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+					texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
+					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
-				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
+				auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
+				auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
-				size_t triangleCount = mBatch->getPrimitiveCount(count);
+				size_t triangleCount = batch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 				{
 					auto primitiveIndex = (uint32_t)i;
@@ -256,10 +274,10 @@ namespace mpp
 					//
 					// Position data
 					//
-					if (!mBatch->positionFixed() || newVertex)
+					if (!batch->positionFixed() || newVertex)
 					{
 						PosTypeBuiltin x0, y0, x1, y1, x2, y2;
-						mDataProvider->position(0, primitiveIndex, x0, y0, x1, y1, x2, y2);
+						dataProvider->position(batchIndex, primitiveIndex, x0, y0, x1, y1, x2, y2);
 
 						posBuffer[pOffset + 0] = x0;
 						posBuffer[pOffset + 1] = y0;
@@ -281,10 +299,10 @@ namespace mpp
 					//
 					// Texture data
 					//
-					if (texBuffer && mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
+					if (texBuffer && batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
 					{
 						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
-						mDataProvider->texcoords(0, primitiveIndex, u0, v0, u1, v1, u2, v2);
+						dataProvider->texcoords(batchIndex, primitiveIndex, u0, v0, u1, v1, u2, v2);
 
 						texBuffer[tOffset + 0] = u0;
 						texBuffer[tOffset + 1] = v0;
@@ -306,10 +324,10 @@ namespace mpp
 					//
 					// Colour data
 					//
-					if (mBatch->usingColour() && (!mBatch->colourFixed() || newVertex))
+					if (batch->usingColour() && (!batch->colourFixed() || newVertex))
 					{
 						ColTypeBuiltin red, green, blue, alpha;
-						mDataProvider->colour(0, primitiveIndex, red, green, blue, alpha);
+						dataProvider->colour(batchIndex, primitiveIndex, red, green, blue, alpha);
 
 						colBuffer[cOffset + 0] = red;
 						colBuffer[cOffset + 1] = green;
@@ -335,48 +353,57 @@ namespace mpp
 					}
 				}
 
-				mBatch->finishUpdate(count, newVertices);
-				return mBatch->getCount();
+				batch->finishUpdate(count, newVertices);
+				return batch->getCount();
 			}
 
 			void render() override
 			{
-				if (mBatch->usingDiffuse())
+				auto numBatches = (uint32_t)mBatches.size();
+				for (uint32_t batchIndex = 0; batchIndex < numBatches; ++batchIndex)
 				{
-					auto colour = mDataProvider->diffuse(0);
-					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
-				}
+					auto [batch, dataProvider] = mBatches[batchIndex];
 
-				auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
-				mRenderSystem->renderModelBatched(model, true);
+					if (batch->usingDiffuse())
+					{
+						auto colour = dataProvider->diffuse(batchIndex);
+						mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					}
+
+					auto const& model = static_cast<Model const&>(*batch->getModel().get());
+					mRenderSystem->renderModelBatched(model, true);
+				}
 			}
 		};
 
 		template<typename PosType, typename TexType>
 		class TriangleBatch2DRenderer<PosType, TexType, mpp::mesh::DataTypeNone> : public BatchRenderer
 		{
+			typedef TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone> T2DDataProvider;
+
+			typedef std::pair<mpp::TriangleBatch*, std::shared_ptr<T2DDataProvider>> BatchEntry;
+
+		private:
+
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
 			mpp::ResourceManager* mResourceMgr{ nullptr };
 
-			mpp::TriangleBatch* mBatch{ nullptr };
-
-			std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> mDataProvider{ nullptr };
+			std::vector<BatchEntry> mBatches;
 
 		public:
 
 			TriangleBatch2DRenderer(std::string const& name,
 				TriangleBatchRendererParams const& params,
-				std::shared_ptr<TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone>> dataProvider,
+				std::shared_ptr<T2DDataProvider> dataProvider,
 				mpp::ResourcePtr textureOrMaterial,
 				mpp::RenderSystem* renderSystem,
 				mpp::ResourceManager* resourceMgr)
 				: BatchRenderer()
 				, mRenderSystem(renderSystem)
 				, mResourceMgr(resourceMgr)
-				, mDataProvider(dataProvider)
 			{
-				mBatch = new mpp::TriangleBatch(
+				auto batch = new mpp::TriangleBatch(
 					name,
 					{
 						TriangleBatchOptions::Dimension::P2D,
@@ -388,52 +415,67 @@ namespace mpp
 						params.indexedVertices
 					},
 					textureOrMaterial,
-					mDataProvider->getNumPrimitives(),
+					dataProvider->getNumPrimitives(),
 					renderSystem,
 					resourceMgr);
+
+				mBatches.push_back(make_pair(batch, dataProvider));
 
 				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 
 			virtual ~TriangleBatch2DRenderer()
 			{
-				delete mBatch;
+				for (auto entry : mBatches)
+				{
+					delete entry.first;
+				}
 			}
 
 			void create() override
 			{
-				mBatch->load();
-				update(mBatch->getCapacity());
+				for (auto entry : mBatches)
+				{
+					auto [batch, dataProvider] = entry;
+
+					batch->create();
+					update(batch->getCapacity());
+				}
 			}
 
 			size_t update(size_t count) override
 			{
-				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+				uint32_t batchIndex = 0;
+
+				auto entry = mBatches[batchIndex];
+				auto [batch, dataProvider] = entry;
+
+				size_t initStart{ ~0u }, batchSize = batch->getCount();
 				bool newVertices{ false };
 				if (count > batchSize)
 				{
-					initStart = mBatch->getPrimitiveCount(batchSize);
+					initStart = batch->getPrimitiveCount(batchSize);
 					newVertices = true;
 				}
 
-				mBatch->startUpdate(count);
+				batch->startUpdate(count);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
 
-				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+				auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
+				auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
 
 				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
-				if (mBatch->usingTexture())
+				if (batch->usingTexture())
 				{
-					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+					texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
+					texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				size_t triangleCount = mBatch->getPrimitiveCount(count);
+				size_t triangleCount = batch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, tOffset = 0, i = 0; i < triangleCount; ++i)
 				{
 					uint32_t primitiveIndex = i;
@@ -442,10 +484,10 @@ namespace mpp
 					//
 					// Position data
 					//
-					if (!mBatch->positionFixed() || newVertex)
+					if (!batch->positionFixed() || newVertex)
 					{
 						PosTypeBuiltin x0, y0, x1, y1, x2, y2;
-						mDataProvider->position(primitiveIndex, x0, y0, x1, y1, x2, y2);
+						dataProvider->position(batchIndex, primitiveIndex, x0, y0, x1, y1, x2, y2);
 
 						posBuffer[pOffset + 0] = x0;
 						posBuffer[pOffset + 1] = y0;
@@ -467,10 +509,10 @@ namespace mpp
 					//
 					// Texture data
 					//
-					if (mBatch->usingTexture() && (!mBatch->texcoordsFixed() || newVertex))
+					if (batch->usingTexture() && (!batch->texcoordsFixed() || newVertex))
 					{
 						TexTypeBuiltin u0, v0, u1, v1, u2, v2;
-						mDataProvider->texcoords(primitiveIndex, u0, v0, u1, v1, u2, v2);
+						dataProvider->texcoords(batchIndex, primitiveIndex, u0, v0, u1, v1, u2, v2);
 
 						texBuffer[tOffset + 0] = u0;
 						texBuffer[tOffset + 1] = v0;
@@ -490,20 +532,28 @@ namespace mpp
 					}
 				}
 
-				mBatch->finishUpdate(count, newVertices);
-				return mBatch->getCount();
+				batch->finishUpdate(count, newVertices);
+				return batch->getCount();
 			}
 
 			void render() override
 			{
-				if (mBatch->usingDiffuse())
-				{
-					auto colour = mDataProvider->diffuse();
-					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
-				}
+				auto numBatches = (uint32_t)mBatches.size();
 
-				mRenderSystem->renderModelImmediate(*mBatch, true, mParams);
+				for (uint32_t batchIndex = 0; batchIndex < numBatches; ++batchIndex)
+				{
+					auto [batch, dataProvider] = mBatches[batchIndex];
+
+					if (batch->usingDiffuse())
+					{
+						auto colour = dataProvider->diffuse(batchIndex);
+						mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+					}
+
+					mRenderSystem->renderModelImmediate(*batch, true, mParams);
+				}
 			}
+
 		};
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
