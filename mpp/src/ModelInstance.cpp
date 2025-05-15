@@ -134,9 +134,9 @@ namespace mpp
 				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
 				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
 				
-				for (auto const& range: rp.renderRanges)
+				for (auto const& renderCmd: rp.renderCommands)
 				{
-					mi->addRenderRange(range.first, range.second);
+					mi->addRenderCommand(renderCmd);
 				}
 
 				mi->setInstanceCount(rp.instanceCount);
@@ -163,9 +163,9 @@ namespace mpp
 				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
 				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
 
-				for (auto const& range: rp.renderRanges)
+				for (auto const& renderCmd: rp.renderCommands)
 				{
-					mi->addRenderRange(range.first, range.second);
+					mi->addRenderCommand(renderCmd);
 				}
 
 				mi->setInstanceCount(rp.instanceCount);

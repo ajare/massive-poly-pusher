@@ -86,7 +86,7 @@ namespace mpp
 		mBlend = false;
 		mInstanceCount = 0;
 
-		mRenderRanges.clear();
+		mRenderCommands.clear();
 		mTextureOverrides.clear();
 
 		if (mUniforms)
@@ -264,13 +264,12 @@ namespace mpp
 	 */
 	void MeshInstance::setRenderCount(uint32_t count)
 	{
-		mRenderRanges.clear();
-		mRenderRanges.push_back(make_pair(0, count));
+		mRenderCommands = { { 0, count } };
 	}
 
-	void MeshInstance::addRenderRange(uint32_t start, size_t count)
+	void MeshInstance::addRenderCommand(VertexBufferRenderCommand const& renderCmd)
 	{
-		mRenderRanges.push_back(make_pair(start, count));
+		mRenderCommands.push_back(renderCmd);
 	}
 
 	/*
