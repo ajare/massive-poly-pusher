@@ -26,150 +26,16 @@ namespace mpp
 			bool indexedVertices{ false };
 		};
 
-		/*
-		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
-		class TriangleMultiBatch2DRenderer : public BatchRenderer
-		{
-			mpp::RenderSystem* mRenderSystem{ nullptr };
-
-			mpp::ResourceManager* mResourceMgr{ nullptr };
-
-			std::string mName;
-
-			TriangleBatchRendererParams mTriParams;
-
-			std::vector<mpp::TriangleBatch*> mBatches;
-
-		public:
-
-			TriangleMultiBatch2DRenderer(std::string const& name,
-				TriangleBatchRendererParams const& params,
-				uint32_t batchCount,
-				mpp::RenderSystem* renderSystem,
-				mpp::ResourceManager* resourceMgr)
-				: BatchRenderer()
-				, mRenderSystem(renderSystem)
-				, mResourceMgr(resourceMgr)
-				, mName(name)
-				, mTriParams(params)
-			{
-				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-			}
-
-			~TriangleMultiBatch2DRenderer()
-			{
-				for (auto batch : mBatches)
-				{
-					delete batch;
-				}
-			}
-
-			uint32_t addBatch(mpp::ResourcePtr textureOrMaterial, size_t initialCapacity)
-			{
-				auto index = (uint32_t)mBatches.size();
-
-				auto batch = new mpp::TriangleBatch(
-					std::format("{}_{}",  mName, index),
-					{
-						TriangleBatchOptions::Dimension::P2D,
-						mTriParams.useMaterialNotTexture,
-						PosType::vertexDataType(),
-						{ TexType::vertexDataType(), mTriParams.fixedTextureData },
-						{ ColType::vertexDataType(), mTriParams.fixedColourData },
-						mTriParams.useDiffuse,
-						mTriParams.indexedVertices
-					},
-					textureOrMaterial,
-					initialCapacity,
-					mRenderSystem,
-					mResourceMgr);
-
-
-				mBatches.push_back(batch);
-
-				return index;
-			}
-
-			void create() override
-			{
-				for (auto batch : mBatches)
-				{
-					batch->create();
-				}
-			}
-
-			uint32_t getNumBatches() const
-			{
-				return (uint32_t)mBatches.size();
-			}
-
-			size_t update(size_t count) override
-			{
-				return 0;
-			}
-
-			size_t updateBatch(uint32_t index, size_t count)
-			{
-				auto batch = mBatches[index];
-
-				size_t initStart{ ~0u }, batchSize = batch->getCount();
-				bool newVertices{ false };
-				if (count > batchSize)
-				{
-					initStart = batch->getPrimitiveCount(batchSize);
-					newVertices = true;
-				}
-
-				batch->startUpdate(count);
-
-				// Get buffer pointers
-				typedef typename PosType::builtin_type PosTypeBuiltin;
-				typedef typename TexType::builtin_type TexTypeBuiltin;
-				typedef typename ColType::builtin_type ColTypeBuiltin;
-
-				auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
-
-				TexTypeBuiltin* texBuffer{ nullptr };
-
-				if (batch->usingTexture())
-				{
-					texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
-				}
-
-				auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
-
-				// Copy data to pointers
-
-				// Finish
-				batch->finishUpdate(count, newVertices);
-				return batch->getCount();
-			}
-
-			void render() override
-			{
-				for (auto batch : mBatches)
-				{
-					if (batch->usingDiffuse())
-					{
-						auto colour = mDataProvider->diffuse();
-						mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
-					}
-
-					auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
-					mRenderSystem->renderModelBatched(model, true);
-				}
-			}
-
-		};
-		*/
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
 		class TriangleBatch2DRenderer : public BatchRenderer
 		{
+		protected:
+			
 			typedef TriangleBatch2DDataProvider<PosType, TexType, ColType> T2DDataProvider;
 
 			typedef std::pair<mpp::TriangleBatch*, std::shared_ptr<T2DDataProvider>> BatchEntry;
 
-		private:
+		protected:
 
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
@@ -225,8 +91,9 @@ namespace mpp
 					auto [batch, dataProvider] = entry;
 
 					batch->create();
-					update();
 				}
+
+				update();
 			}
 
 			size_t update() override
@@ -386,11 +253,13 @@ namespace mpp
 		template<typename PosType, typename TexType>
 		class TriangleBatch2DRenderer<PosType, TexType, mpp::mesh::DataTypeNone> : public BatchRenderer
 		{
+		protected:
+
 			typedef TriangleBatch2DDataProvider<PosType, TexType, mpp::mesh::DataTypeNone> T2DDataProvider;
 
 			typedef std::pair<mpp::TriangleBatch*, std::shared_ptr<T2DDataProvider>> BatchEntry;
 
-		private:
+		protected:
 
 			mpp::RenderSystem* mRenderSystem{ nullptr };
 
@@ -446,8 +315,9 @@ namespace mpp
 					auto [batch, dataProvider] = entry;
 
 					batch->create();
-					update(batch->getCapacity());
 				}
+
+				update();
 			}
 
 			size_t update(size_t count) override
@@ -568,7 +438,55 @@ namespace mpp
 					mRenderSystem->renderModelImmediate(*batch, true, mParams);
 				}
 			}
+		};
 
+		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
+		class TriangleMultiBatch2DRenderer : public TriangleBatch2DRenderer<PosType, TexType, ColType>
+		{
+			TriangleBatchRendererParams mTriParams;
+
+		public:
+
+			TriangleMultiBatch2DRenderer(std::string const& name,
+				TriangleBatchRendererParams const& params,
+				std::shared_ptr<typename TriangleBatch2DRenderer<PosType, TexType, ColType>::T2DDataProvider> dataProvider,
+				mpp::ResourcePtr textureOrMaterial,
+				mpp::RenderSystem* renderSystem,
+				mpp::ResourceManager* resourceMgr)
+				: TriangleBatch2DRenderer(name, params, dataProvider, textureOrMaterial, renderSystem, resourceMgr)
+				, mTriParams(params)
+			{
+			}
+
+			uint32_t addBatch(mpp::ResourcePtr textureOrMaterial, bool useMaterialNotTexture, std::shared_ptr<typename TriangleBatch2DRenderer<PosType, TexType, ColType>::T2DDataProvider> dataProvider, bool create)
+			{
+				auto index = (uint32_t)this->mBatches.size();
+
+				auto batch = new mpp::TriangleBatch(
+					std::format("{}_{}", this->mName, index),
+					{
+						TriangleBatchOptions::Dimension::P2D,
+						useMaterialNotTexture,
+						PosType::vertexDataType(),
+						{ TexType::vertexDataType(), mTriParams.fixedTextureData },
+						{ ColType::vertexDataType(), mTriParams.fixedColourData },
+						mTriParams.useDiffuse,
+						mTriParams.indexedVertices
+					},
+					textureOrMaterial,
+					dataProvider->getNumPrimitives(),
+					this->mRenderSystem,
+					this->mResourceMgr);
+
+				this->mBatches.push_back(make_pair(batch, dataProvider));
+
+				if (create)
+				{
+					batch->create();
+				}
+
+				return index;
+			}
 		};
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>

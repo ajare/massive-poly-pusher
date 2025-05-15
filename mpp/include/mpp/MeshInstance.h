@@ -10,16 +10,13 @@
 #include "mpp/Material.h"
 #include "mpp/Mesh.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/VertexBufferRenderCommand.h"
 
 namespace mpp
 {
 	class _MPPAPI __declspec(align(16)) MeshInstance : public ResourceWrangler
 	{
 		friend class RenderSystem;
-
-	public:
-
-		typedef std::pair<uint32_t, size_t> RenderRange;
 
 	private:
 
@@ -35,7 +32,7 @@ namespace mpp
 
 		size_t mInstanceCount;
 
-		std::vector<RenderRange> mRenderRanges;
+		std::vector<VertexBufferRenderCommand> mRenderCommands;
 
 		ResourcePtr mMaterial;
 
@@ -109,7 +106,7 @@ namespace mpp
 
 		void setRenderCount(uint32_t count);
 
-		void addRenderRange(uint32_t start, size_t count);
+		void addRenderCommand(VertexBufferRenderCommand const& renderCmd);
 
 		void translate(glm::vec3 const& translate);
 

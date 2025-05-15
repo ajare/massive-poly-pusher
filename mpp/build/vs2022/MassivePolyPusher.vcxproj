@@ -99,6 +99,7 @@
     <ClInclude Include="..\..\include\mpp\UniformCollection.h" />
     <ClInclude Include="..\..\include\mpp\Vertex2d.h" />
     <ClInclude Include="..\..\include\mpp\VertexBuffer.h" />
+    <ClInclude Include="..\..\include\mpp\VertexBufferRenderCommand.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Batch.cpp" />

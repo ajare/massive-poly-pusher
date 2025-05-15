@@ -777,7 +777,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_pt__", 32, -1.0f);
 
-			for (int i = 0; i < MaxTextGlyphs * 6; ++i)
+			for (uint32_t i = 0; i < MaxTextGlyphs * 6; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f));
 			}
@@ -805,7 +805,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, 16.0f);
 
-			for (int i = 0; i < MaxTextGlyphs; ++i)
+			for (uint32_t i = 0; i < MaxTextGlyphs; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
 					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
@@ -826,7 +826,7 @@ namespace mpp
 
 			int textMesh = (int)textStream->createMesh("text-mesh", textSpec, "__mpp_mat_text_ptc__", 32, -1.0f);
 
-			for (int i = 0; i < MaxTextGlyphs * 6; ++i)
+			for (uint32_t i = 0; i < MaxTextGlyphs * 6; ++i)
 			{
 				textStream->addVertexData(textMesh, mesh::VertexData(textSpec, 1).f32(0.0f).f32(0.0f).f32(0.0f).f32(0.0f)
 					.f32(1.0f).f32(1.0f).u8(255).u8(255).u8(255).u8(255));
@@ -1568,7 +1568,8 @@ namespace mpp
 
 		if (mCaps.pointSizeRange[1] >= 16)
 		{
-			if (offset + numChars > MaxTextGlyphs)
+			auto glyphOffset = (uint32_t)(offset + numChars);
+			if (glyphOffset > MaxTextGlyphs)
 			{
 				return 0;
 			}
@@ -1598,7 +1599,8 @@ namespace mpp
 		}
 		else
 		{
-			if (offset + numChars * 6 > MaxTextGlyphs)
+			auto glyphOffset = (uint32_t)(offset + numChars * 6);
+			if (glyphOffset > MaxTextGlyphs)
 			{
 				return 0;
 			}
@@ -1671,7 +1673,8 @@ namespace mpp
 
 		if (mCaps.pointSizeRange[1] >= 16)
 		{
-			if (offset + numChars > MaxTextGlyphs)
+			auto glyphOffset = (uint32_t)(offset + numChars);
+			if (glyphOffset > MaxTextGlyphs)
 			{
 				return 0;
 			}
@@ -1745,7 +1748,8 @@ namespace mpp
 		}
 		else
 		{
-			if (offset + numChars * 6 > MaxTextGlyphs)
+			auto glyphOffset = (uint32_t)(offset + numChars * 6);
+			if (glyphOffset > MaxTextGlyphs)
 			{
 				return 0;
 			}
@@ -2586,18 +2590,18 @@ namespace mpp
 			}
 
 			// Render
-			auto const& renderRanges = meshInstance.second->mRenderRanges;
-			if (renderRanges.empty())
+			auto const& renderCmds = meshInstance.second->mRenderCommands;
+			if (renderCmds.empty())
 			{
 				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount);
 				mRenderInfo.primitivesRendered += (int)(meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount);
 			}
 			else
 			{
-				for (auto const& range: renderRanges)
+				for (auto const& renderCmd: renderCmds)
 				{
-					auto count = range.second != (size_t)-1 ? range.second : meshInstance.second->mwMesh->getNumPrimitives();
-					meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, range.first, count);
+					auto count = renderCmd.count != ~0u ? renderCmd.count : meshInstance.second->mwMesh->getNumPrimitives();
+					meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, renderCmd.offset, count);
 					mRenderInfo.primitivesRendered += (int)(count * meshInstance.second->mInstanceCount);
 				}
 			}

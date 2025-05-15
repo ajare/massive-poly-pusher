@@ -7,6 +7,7 @@
 #include "mpp/Config.h"
 #include "mpp/UniformCollection.h"
 #include "mpp/Resource.h"
+#include "mpp/VertexBufferRenderCommand.h"
 
 namespace mpp
 {
@@ -23,7 +24,7 @@ namespace mpp
 		{
 			uint32_t flags{ Flag_Visible };
 			size_t instanceCount{ 1 };
-			std::vector<std::pair<uint32_t, size_t>> renderRanges;
+			std::vector<VertexBufferRenderCommand> renderCommands;
 			float pointSize{ 1.0f };
 			std::shared_ptr<UniformCollection> uniforms;
 			ResourcePtr material{ nullptr };
@@ -47,38 +48,42 @@ namespace mpp
 		void setModelFlags(uint32_t flags)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			
 			it->second.flags = flags;
 		}
 
 		void setModelInstanceCount(size_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			
 			it->second.instanceCount = count;
 		}
 
 		void setModelPrimitiveCount(size_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
-
-			auto range = std::pair<uint32_t, size_t>(0, count);
-			it->second.renderRanges = { range };
+			
+			it->second.renderCommands = { { 0, (uint32_t)count } };
 		}
 
 		void setModelPointSize(float size)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			
 			it->second.pointSize = size;
 		}
 
 		void setModelUniforms(std::shared_ptr<UniformCollection> uniforms)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			
 			it->second.uniforms = uniforms;
 		}
 
 		void setModelMaterial(ResourcePtr material)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			
 			it->second.material = material;
 		}
 
@@ -98,12 +103,14 @@ namespace mpp
 		void setMeshFlags(std::string const& mesh, uint32_t flags)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+			
 			it->second.flags = flags;
 		}
 
 		void setMeshInstanceCount(std::string const& mesh, uint32_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+			
 			it->second.instanceCount = count;
 		}
 
@@ -111,25 +118,27 @@ namespace mpp
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
 			
-			auto range = std::pair<uint32_t, size_t>(0, count);
-			it->second.renderRanges = { range };
+			it->second.renderCommands = { { 0, (uint32_t)count} };
 		}
 
 		void setMeshPointSize(std::string const& mesh, float size)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+
 			it->second.pointSize = size;
 		}
 
 		void setMeshUniforms(std::string const& mesh, std::shared_ptr<UniformCollection> uniforms)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+
 			it->second.uniforms = uniforms;
 		}
 
 		void setMeshMaterial(std::string const& mesh, ResourcePtr material)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+
 			it->second.material = material;
 		}
 
