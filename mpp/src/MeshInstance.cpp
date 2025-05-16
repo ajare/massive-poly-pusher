@@ -18,6 +18,8 @@ namespace mpp
 		, mBlend(false)
 		, mInstanceCount(0)
 	{
+		mTextureOverrides[0] = nullptr;
+		mTextureOverrides[1] = nullptr;
 	}
 
 	MeshInstance::~MeshInstance()
@@ -87,7 +89,8 @@ namespace mpp
 		mInstanceCount = 0;
 
 		mRenderCommands.clear();
-		mTextureOverrides.clear();
+		mTextureOverrides[0] = nullptr;
+		mTextureOverrides[1] = nullptr;
 
 		if (mUniforms)
 		{
@@ -220,10 +223,7 @@ namespace mpp
 	 */
 	void MeshInstance::setTexture(int index, ResourcePtr texture)
 	{
-		if (index >= (int)mTextureOverrides.size())
-		{
-			mTextureOverrides.resize(index + 1);
-		}
+		assert(index >= 0 && index < 2);
 
 		mTextureOverrides[index] = texture;
 	}
@@ -234,14 +234,10 @@ namespace mpp
 	 */
 	ResourcePtr MeshInstance::getTexture(int texture)
 	{
-		if (mTextureOverrides.size() > (size_t)texture && mTextureOverrides[texture])
-		{
-			return mTextureOverrides[texture];
-		}
-		else
-		{
-			return static_cast<Material*>(mMaterial.get())->getTexture(texture);
-		}
+		assert(texture >= 0 && texture < 2);
+
+		return mTextureOverrides[texture] ? mTextureOverrides[texture] 
+			: static_cast<Material*>(mMaterial.get())->getTexture(texture);
 	}
 
 	/*
@@ -264,12 +260,44 @@ namespace mpp
 	 */
 	void MeshInstance::setRenderCount(uint32_t count)
 	{
-		mRenderCommands = { { 0, count } };
+		mRenderCommands = { { 0, count, mMaterial, { mTextureOverrides[0], mTextureOverrides[1] } } };
 	}
 
+	/*
+	 * Add a command with a given range, texture, etc.
+	 *
+	 */
 	void MeshInstance::addRenderCommand(VertexBufferRenderCommand const& renderCmd)
 	{
-		mRenderCommands.push_back(renderCmd);
+		auto material = renderCmd.material ? renderCmd.material : mMaterial;
+		
+		ResourcePtr textures[2];
+
+		for (int i = 0; i < 2; ++i)
+		{
+			if (renderCmd.textures[i])
+			{
+				textures[i] = renderCmd.textures[i];
+			}
+			else if (mTextureOverrides[i])
+			{
+				textures[i] = mTextureOverrides[i];
+			}
+			else
+			{
+				auto m = static_cast<Material*>(material.get());
+				if (m->getNumTextures() > i)
+				{
+					textures[i] = m->getTexture(i);
+				}
+				else
+				{
+					textures[i] = nullptr;
+				}
+			}
+		}
+
+		mRenderCommands.push_back({ renderCmd.offset, renderCmd.count, material, { textures[0], textures[1] } });
 	}
 
 	/*

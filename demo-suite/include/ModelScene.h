@@ -10,12 +10,16 @@
 
 class ModelScene : public ::Scene
 {
-	struct Label
+	struct Batch2d
 	{
-		bool visible;
+		mpp::SceneModel2dPtr batch;
 		int x, y;
-		std::string text;
+		std::string label;
 	};
+
+private:
+
+	static const uint32_t kNum2dBatches{ 6 };
 
 private:
 
@@ -25,13 +29,11 @@ private:
 
 	std::vector<mpp::SceneModel3dPtr> mModels;
 
-	std::vector<mpp::SceneModel2dPtr> mBatches;
+	std::array<Batch2d, kNum2dBatches> m2dBatches;
 
 	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> m3dTestRenderer;
 
 	std::shared_ptr<Test3dTriangleBatchDataProvider> m3dBatchDataProvider;
-
-	std::vector<Label> mBatchLabels;
 
 	// Resources
 	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
@@ -83,6 +85,8 @@ public:
 	void toggle2dBatches(int batchId);
 
 	void toggleModels();
+
+	void toggleModel(uint32_t index);
 
 	void update(mpp::RenderSystem* renderSystem, float frameTime) override;
 

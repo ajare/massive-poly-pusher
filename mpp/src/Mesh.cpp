@@ -433,13 +433,15 @@ namespace mpp
 		if (mIsIndexed)
 		{
 			GLenum indexType = mIndexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+			auto offset = (void*)(intptr_t)(start * mPrimitiveSize * (mIndexWidth >> 3));
+
 			if (instanceCount == 1)
 			{
-				GL_CHECK(glDrawElements(mPrimitiveRenderType, (GLsizei)(count * mPrimitiveSize), indexType, 0));
+				GL_CHECK(glDrawElements(mPrimitiveRenderType, (GLsizei)(count * mPrimitiveSize), indexType, offset));
 			}
 			else
 			{
-				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, (GLsizei)(count * mPrimitiveSize), indexType, 0, (GLsizei)instanceCount));
+				GL_CHECK(glDrawElementsInstanced(mPrimitiveRenderType, (GLsizei)(count * mPrimitiveSize), indexType, offset, (GLsizei)instanceCount));
 			}
 		}
 		else

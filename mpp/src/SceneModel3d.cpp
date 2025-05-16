@@ -9,7 +9,7 @@ namespace mpp
 {
 
 	SceneModel3d::SceneModel3d(ResourcePtr model)
-		: ResourceWrangler("SceneModel2d")
+		: ResourceWrangler("SceneModel3d")
 		, mModel(model)
 	{
 		mModel->acquire(this);

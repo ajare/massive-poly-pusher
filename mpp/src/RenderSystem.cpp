@@ -2436,14 +2436,99 @@ namespace mpp
 #endif
 	}
 
+	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, uint64_t* currentTexture0Key, uint64_t* currentTexture1Key, Material** currentMaterial)
+	{
+		// Mask off program and see if it has changed from previous.
+		uint64_t thisProgramKey = sortKey;
+		thisProgramKey >>= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
+		thisProgramKey &= ((1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE) - 1);
+
+		// Set program
+		bool programChanged = false;
+		if (thisProgramKey != *currentProgramKey)
+		{
+			auto program = mResourceMgr->getProgramBySortId((uint32_t)thisProgramKey);
+			setUsedProgram(program);
+
+			*currentProgramKey = thisProgramKey;
+			programChanged = true;
+			mRenderInfo.programSwitches++;
+		}
+
+		// Set uniforms if the program or material have changed.
+		auto material = static_cast<Material*>(renderCmd.material.get());
+		if (programChanged || material != *currentMaterial)
+		{
+			material->setUniforms();
+		}
+
+		*currentMaterial = material;
+
+		// Mask off textures and see if they have changed from previous.
+		uint64_t thisTexture0Key = sortKey;
+		thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
+		thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
+
+		if (thisTexture0Key > 0 && (thisTexture0Key != *currentTexture0Key || programChanged))
+		{
+			auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture0Key).get());
+			texture->bind(0);
+
+			*currentTexture0Key = thisTexture0Key;
+			mRenderInfo.textureSwitches++;
+		}
+
+		uint64_t thisTexture1Key = sortKey;
+		thisTexture1Key >>= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
+		thisTexture1Key &= ((1 << MPP_RENDER_SORT_TEXTURE1_BITS_SIZE) - 1);
+
+		if (thisTexture1Key > 0 && (thisTexture1Key != *currentTexture1Key || programChanged))
+		{
+			auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture1Key).get());
+			texture->bind(1);
+
+			*currentTexture1Key = thisTexture1Key;
+			mRenderInfo.textureSwitches++;
+		}
+
+		// Bind mesh material (including program), and vertex buffers
+		meshInstance->mwMesh->bind(true);
+
+		// Go through all mesh uniforms and set them.
+		meshInstance->bindUniforms();
+
+		// Wireframe?
+		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance->mWireframe ? GL_LINE : GL_FILL));
+
+		// Blend?
+		if (meshInstance->mBlend)
+		{
+			GL_CHECK(glEnable(GL_BLEND));
+			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+		}
+	}
+
+	void RenderSystem::teardownRenderMeshInstance(MeshInstance* meshInstance)
+	{
+		// Unbind
+		meshInstance->mwMesh->bind(false);
+
+		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+
+		if (meshInstance->mBlend)
+		{
+			GL_CHECK(glDisable(GL_BLEND));
+		}
+	}
+
 	/*
 	 * Render any meshes we have.
 	 *
 	 */
 	void RenderSystem::flushVertexBuffers()
 	{
-		// Extract and sort list of meshes
-		vector<SortableMeshInstance> meshInstances;
+		// Extract and sort list of render commands
+		vector<SortedRenderCommand> renderCommands;
 
 		for (size_t i = 0; i < mModelInstances->getCount(); ++i)
 		{
@@ -2454,52 +2539,64 @@ namespace mpp
 			{
 				if (mi->render())
 				{
-					// Create sort key
-					uint64_t sortKey = 0;
-
-					auto material = static_cast<Material*>(mi->getMaterial().get());
-					auto numTextures = material->getNumTextures();
-
-					// Texture 0
-					if (numTextures > 0)
+					// Fix up render commands here.  If there are none, then add a default one.
+					if (mi->mRenderCommands.empty())
 					{
-						auto texture = static_cast<Texture*>(mi->getTexture(0).get());
-						uint64_t textureKey = (uint64_t)texture->getSortId();
-						textureKey <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-						sortKey |= textureKey;
+						mi->addRenderCommand({});
 					}
 
-					// Texture 1
-					if (numTextures > 1)
+					for (auto const& renderCmd : mi->mRenderCommands)
 					{
-						auto texture = static_cast<Texture*>(mi->getTexture(1).get());
-						uint64_t textureKey = (uint64_t)texture->getSortId();
-						textureKey <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-						sortKey |= textureKey;
+						// Create sort key
+						uint64_t sortKey = 0;
+
+						auto material = static_cast<Material*>(renderCmd.material.get());
+						auto numTextures = material->getNumTextures();
+
+						// Texture 0
+						if (numTextures > 0)
+						{
+							auto texture = static_cast<Texture*>(renderCmd.textures[0].get());
+							uint64_t textureKey = (uint64_t)texture->getSortId();
+							textureKey <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
+							sortKey |= textureKey;
+						}
+
+						// Texture 1
+						if (numTextures > 1)
+						{
+							auto texture = static_cast<Texture*>(renderCmd.textures[1].get());
+							uint64_t textureKey = (uint64_t)texture->getSortId();
+							textureKey <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
+							sortKey |= textureKey;
+						}
+
+						// Program
+						uint64_t programKey = (uint64_t)((Program*)material->getProgram().get())->getSortId();
+						programKey <<= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
+						sortKey |= programKey;
+
+						renderCommands.push_back({ sortKey,	renderCmd, mi });
+
+						// Depth
+						// modelMatrix is used to create final transform, so can use this
+						// (Not used at the moment)
+						/*
+						auto modelMatrix = mi->mModelMatrix * mi->mLocalTransform;
+
+						auto cameraPos = mi->mViewPos;
+						auto modelPos = glm::vec3(modelMatrix[3]);
+
+						float distanceToModel = glm::distance(cameraPos, modelPos);
+						float distanceInScene = min(distanceToModel / mFarPlaneDistance, 1.0f);
+
+						uint64_t distanceKey = 1 << MPP_RENDER_SORT_DEPTH_BITS_SIZE;
+						distanceKey = (uint64_t)(distanceKey * distanceInScene);
+
+						distanceKey <<= MPP_RENDER_SORT_DEPTH_BITS_OFFSET;
+						sortKey |= distanceKey;
+						*/
 					}
-
-					// Program
-					uint64_t programKey = (uint64_t)((Program*)material->getProgram().get())->getSortId();
-					programKey <<= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
-					sortKey |= programKey;
-
-					meshInstances.push_back(make_pair(sortKey, mi));
-
-					// Depth
-					// modelMatrix is used to create final transform, so can use this
-					auto modelMatrix = mi->mModelMatrix * mi->mLocalTransform;
-					
-					auto cameraPos = mi->mViewPos;
-					auto modelPos = glm::vec3(modelMatrix[3]);
-
-					float distanceToModel = glm::distance(cameraPos, modelPos);
-					float distanceInScene = min(distanceToModel / mFarPlaneDistance, 1.0f);
-
-					uint64_t distanceKey = 1 << MPP_RENDER_SORT_DEPTH_BITS_SIZE;
-					distanceKey = (uint64_t)(distanceKey * distanceInScene);
-
-					distanceKey <<= MPP_RENDER_SORT_DEPTH_BITS_OFFSET;
-					sortKey |= distanceKey;
 				}
 			}
 		}
@@ -2507,9 +2604,9 @@ namespace mpp
 		// Sort in 3D mode.  In Orthographic/2D assume everything is specified in order.
 		if (mProjectionType == ProjectionType::Perspective3D)
 		{
-			sort(meshInstances.begin(), meshInstances.end(), [](SortableMeshInstance const& a, SortableMeshInstance const& b) -> bool
+			sort(renderCommands.begin(), renderCommands.end(), [](SortedRenderCommand const& a, SortedRenderCommand const& b) -> bool
 			{
-				return a.first < b.first;
+				return a.key < b.key;
 			});
 		}
 
@@ -2518,105 +2615,21 @@ namespace mpp
 		uint64_t currentTexture0Key = 0, currentTexture1Key = 0;
 
 		Material* currentMaterial{ nullptr };
-		for (auto meshInstance: meshInstances)
+		for (auto const& renderCommand: renderCommands)
 		{
-			// Mask off program and see if it has changed from previous.
-			uint64_t thisProgramKey = meshInstance.first;
-			thisProgramKey >>= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
-			thisProgramKey &= ((1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE) - 1);
+			auto [key, cmd, meshInstance] = renderCommand;
+			auto mesh = meshInstance->mwMesh;
+			auto instanceCount = meshInstance->mInstanceCount;
+			auto numPrimitives = mesh->getNumPrimitives();
 
-			// Set program
-			bool programChanged = false;
-			if (thisProgramKey != currentProgramKey)
-			{
-				auto program = mResourceMgr->getProgramBySortId((uint32_t)thisProgramKey);
-				setUsedProgram(program);
+			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTexture0Key, &currentTexture1Key, &currentMaterial);
 
-				currentProgramKey = thisProgramKey;
-				programChanged = true;
-				mRenderInfo.programSwitches++;
-			}
-
-			// Set uniforms if the program or material have changed.
-			auto material = static_cast<Material*>(meshInstance.second->mMaterial.get());
-			if (programChanged || material != currentMaterial)
-			{
-				material->setUniforms();
-			}
-
-			currentMaterial = material;
-
-			// Mask off textures and see if they have changed from previous.
-			uint64_t thisTexture0Key = meshInstance.first;
-			thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-			thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
-
-			if (thisTexture0Key > 0 && (thisTexture0Key != currentTexture0Key || programChanged))
-			{
-				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture0Key).get());
-				texture->bind(0);
-
-				currentTexture0Key = thisTexture0Key;
-				mRenderInfo.textureSwitches++;
-			}
-
-			uint64_t thisTexture1Key = meshInstance.first;
-			thisTexture1Key >>= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-			thisTexture1Key &= ((1 << MPP_RENDER_SORT_TEXTURE1_BITS_SIZE) - 1);
-
-			if (thisTexture1Key > 0 && (thisTexture1Key != currentTexture1Key || programChanged))
-			{
-				auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture1Key).get());
-				texture->bind(1);
-
-				currentTexture1Key = thisTexture1Key;
-				mRenderInfo.textureSwitches++;
-			}
-
-			// Bind mesh material (including program), and vertex buffers
-			meshInstance.second->mwMesh->bind(true);
-
-			// Go through all mesh uniforms and set them.
-			meshInstance.second->bindUniforms();
-
-			// Wireframe?
-			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance.second->mWireframe ? GL_LINE : GL_FILL));
-
-			// Blend?
-			if (meshInstance.second->mBlend)
-			{
-				GL_CHECK(glEnable(GL_BLEND));
-				GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-			}
-
-			// Render
-			auto const& renderCmds = meshInstance.second->mRenderCommands;
-			if (renderCmds.empty())
-			{
-				meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount);
-				mRenderInfo.primitivesRendered += (int)(meshInstance.second->mwMesh->getNumPrimitives() * meshInstance.second->mInstanceCount);
-			}
-			else
-			{
-				for (auto const& renderCmd: renderCmds)
-				{
-					auto count = renderCmd.count != ~0u ? renderCmd.count : meshInstance.second->mwMesh->getNumPrimitives();
-					meshInstance.second->mwMesh->render(meshInstance.second->mInstanceCount, renderCmd.offset, count);
-					mRenderInfo.primitivesRendered += (int)(count * meshInstance.second->mInstanceCount);
-				}
-			}
-
+			auto count = cmd.count != ~0u ? cmd.count : numPrimitives;
+			mesh->render(instanceCount, cmd.offset, count);
+			mRenderInfo.primitivesRendered += (int)(count * instanceCount);
 			mRenderInfo.batchCount++;
 
-			// Unbind
-			meshInstance.second->mwMesh->bind(false);
-
-			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
-
-			if (meshInstance.second->mBlend)
-			{
-				GL_CHECK(glDisable(GL_BLEND));
-			}
+			teardownRenderMeshInstance(meshInstance);
 		}
 
 		mModelInstances->releaseAllObjects();
