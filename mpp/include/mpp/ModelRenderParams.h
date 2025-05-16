@@ -45,6 +45,20 @@ namespace mpp
 
 		virtual ~ModelRenderParams() = default;
 
+		uint32_t getModelFlags() const
+		{
+			auto it = mMeshParams.find("");
+
+			if (it != mMeshParams.end())
+			{
+				return it->second.flags;
+			}
+			else
+			{
+				return Flag_Visible;
+			}
+		}
+
 		void setModelFlags(uint32_t flags)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
@@ -63,7 +77,8 @@ namespace mpp
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
 			
-			it->second.renderCommands = { { 0, (uint32_t)count } };
+			it->second.renderCommands.clear();
+			it->second.renderCommands.push_back({ 0, (uint32_t)count });
 		}
 
 		void setModelPointSize(float size)
@@ -98,6 +113,13 @@ namespace mpp
 			}
 
 			mrp.textures[index] = texture;
+		}
+
+		void addModelRenderCommand(VertexBufferRenderCommand const& cmd)
+		{
+			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+
+			it->second.renderCommands.push_back(cmd);
 		}
 
 		void setMeshFlags(std::string const& mesh, uint32_t flags)
@@ -153,6 +175,13 @@ namespace mpp
 			}
 
 			mrp.textures[index] = texture;
+		}
+
+		void addMeshRenderCommand(std::string const& mesh, VertexBufferRenderCommand const& cmd)
+		{
+			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+
+			it->second.renderCommands.push_back(cmd);
 		}
 
 		std::map<std::string, MeshRenderParams> const& getMeshParams() const

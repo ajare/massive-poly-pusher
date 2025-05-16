@@ -127,62 +127,33 @@ namespace mpp
 		{
 			auto& mi = meshInstance.second;
 			auto it = p.find(meshInstance.first);
-			if (it != p.end())
+
+			auto const* rp = it != p.end() ? &it->second : (defaultIt != p.end() ? &defaultIt->second : nullptr);
+
+			if (rp)
 			{
-				auto const& rp = it->second;
+				mi->render((rp->flags & ModelRenderParams::Flag_Visible) != 0);
+				mi->wireframe((rp->flags & ModelRenderParams::Flag_Wireframe) != 0);
+				mi->setInstanceCount(rp->instanceCount);
+				mi->setPointSize(rp->pointSize);
+				mi->setUniformCollection(rp->uniforms);
 
-				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
-				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
-				
-				for (auto const& renderCmd: rp.renderCommands)
+				if (rp->material)
 				{
-					mi->addRenderCommand(renderCmd);
+					mi->setMaterial(rp->material);
 				}
 
-				mi->setInstanceCount(rp.instanceCount);
-				mi->setPointSize(rp.pointSize);
-				mi->setUniformCollection(rp.uniforms);
-
-				if (rp.material)
+				for (size_t i = 0; i < rp->textures.size(); ++i)
 				{
-					mi->setMaterial(rp.material);
-				}
-
-				for (size_t i = 0; i < rp.textures.size(); ++i)
-				{
-					if (rp.textures[i])
+					if (rp->textures[i])
 					{
-						mi->setTexture((int)i, rp.textures[i]);
+						mi->setTexture((int)i, rp->textures[i]);
 					}
 				}
-			}
-			else if (defaultIt != p.end())
-			{
-				auto const& rp = defaultIt->second;
 
-				mi->render((rp.flags & ModelRenderParams::Flag_Visible) != 0);
-				mi->wireframe((rp.flags & ModelRenderParams::Flag_Wireframe) != 0);
-
-				for (auto const& renderCmd: rp.renderCommands)
+				for (auto const& renderCmd : rp->renderCommands)
 				{
 					mi->addRenderCommand(renderCmd);
-				}
-
-				mi->setInstanceCount(rp.instanceCount);
-				mi->setPointSize(rp.pointSize);
-				mi->setUniformCollection(rp.uniforms);
-
-				if (rp.material)
-				{
-					mi->setMaterial(rp.material);
-				}
-
-				for (size_t i = 0; i < rp.textures.size(); ++i)
-				{
-					if (rp.textures[i])
-					{
-						mi->setTexture((int)i, rp.textures[i]);
-					}
 				}
 			}
 		}

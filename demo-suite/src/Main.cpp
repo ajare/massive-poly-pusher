@@ -278,9 +278,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			auto camera = static_cast<mpp::helper::FreeCamera*>(gScenes[0]->getCamera().get());
 			updateFreeCamera(*camera, gInputMgr, frameTime);
 
-			if (gInputMgr->keyPressed(Key_M))
+			static int selected3dModel = 0;
+			if (gInputMgr->keyPressed(Key_Tab))
 			{
-				static_cast<ModelScene*>(gScenes[0])->toggleModels();
+				selected3dModel = (selected3dModel + 1) % 7;
+				static_cast<ModelScene*>(gScenes[0])->toggleModel(selected3dModel);
 			}
 			if (gInputMgr->keyPressed(Key_1))
 			{
@@ -305,14 +307,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (gInputMgr->keyPressed(Key_6))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(5);
-			}
-			if (gInputMgr->keyPressed(Key_7))
-			{
-				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(6);
-			}
-			if (gInputMgr->keyPressed(Key_8))
-			{
-				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(7);
 			}
 
 			if (gInputMgr->keyReleased(Key_F2))
@@ -357,7 +351,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					lightHeight -= 60 * frameTime;
 				}
-
+				
 				// Change video mode to fullscreen
 				if (gInputMgr->keyPressed(Key_F1))
 				{
@@ -400,8 +394,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			vector<string> lines;
 			lines.push_back("F1: toggle fullscreen");
 			lines.push_back("F2: toggle wireframe");
-			lines.push_back("M: toggle models");
-			lines.push_back("[1-8]: toggle 2d batches");
+			lines.push_back("T/Y: light angle");
+			lines.push_back("G/B: light height");
+			lines.push_back("W/A/S/D/R/V: move camera");
+			lines.push_back("Q/E: roll camera");
+			lines.push_back("Tab: toggle 3d model");
+			lines.push_back("[1-6]: toggle 2d batches");
 
 			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 

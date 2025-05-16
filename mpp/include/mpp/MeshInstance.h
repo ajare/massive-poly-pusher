@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <array>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -36,7 +37,7 @@ namespace mpp
 
 		ResourcePtr mMaterial;
 
-		std::vector<ResourcePtr> mTextureOverrides;
+		std::array<ResourcePtr, 2> mTextureOverrides;
 
 		std::shared_ptr<UniformCollection> mUniforms;
 

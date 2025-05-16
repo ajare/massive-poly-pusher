@@ -78,6 +78,14 @@ namespace mpp
 			Tile
 		};
 
+	private:
+
+		struct SortedRenderCommand
+		{
+			uint64_t key;
+			VertexBufferRenderCommand cmd;
+			MeshInstance* meshInstance;
+		};
 
 	private:
 
@@ -247,6 +255,10 @@ namespace mpp
 		void destroyLightsData();
 
 		void addCoreResource(ResourcePtr resource, bool load);
+
+		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, uint64_t* currentTexture0Key, uint64_t* currentTexture1Key, Material** currentMaterial);
+
+		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
 	public:
 
