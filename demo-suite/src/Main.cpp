@@ -388,6 +388,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 			}
 
+			mpp::VertexBufferRenderCommand cmd{ 0, ~0u, gResourceManager->getResource("__mpp_mat_internal__") };
+			gRenderSystem->renderIndexed224DataImmediate(nullptr, 20, nullptr, 16, { cmd });
+
 			// Finish scene
 			auto ri = gRenderSystem->finishStatsCollection();
 

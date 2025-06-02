@@ -72,6 +72,8 @@ namespace mpp
 		, mTimeUnit(TimeUnit::Milliseconds)
 		, mSizeUnit(SizeUnit::Megabytes)
 		, mInternalFont(nullptr)
+		, mInternalVBO(0)
+		, mInternalIBO(0)
 	{
 		// Add scene factories
 		mSceneFactories["Default"] = [this](RenderSystem* renderSystem) { return make_shared<Scene>(renderSystem); };
@@ -86,6 +88,15 @@ namespace mpp
 	 */
 	RenderSystem::~RenderSystem()
 	{
+		if (mInternalVBO != 0)
+		{
+			GL_CHECK(glDeleteBuffers(1, &mInternalVBO));
+		}
+		if (mInternalIBO != 0)
+		{
+			GL_CHECK(glDeleteBuffers(1, &mInternalIBO));
+		}
+
 		delete mModelInstances;
 		delete mMeshInstances;
 		delete mInternalFont;
@@ -262,6 +273,10 @@ namespace mpp
 		mTextParams = make_shared<ModelRenderParams>();
 		mTextParams->setModelUniforms(mTextUniforms);
 		mTextParams->setModelPointSize(16.0f);
+
+		// Internal buffer objects
+		GL_CHECK(glGenBuffers(1, &mInternalVBO));
+		GL_CHECK(glGenBuffers(1, &mInternalIBO));
 	}
 
 	/*
@@ -697,12 +712,36 @@ namespace mpp
 		addCoreResource(mDefaultProgram2d, false);
 
 		// Default material
-		ProgrammaticMaterialStream* defaultMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+		auto defaultMatStream = new ProgrammaticMaterialStream(mResourceMgr);
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
 		mDefaultMaterial = resourceMgr->declareResource("__mpp_mat_default__", mpp::ResourceStreamPtr(defaultMatStream)).first;
 		addCoreResource(mDefaultMaterial, true);
+
+		// Internal 2d program
+		{
+			mesh::MeshSpecification spec2dinternal(mesh::Primitive::Type::Triangles);
+			spec2dinternal.setIndexedVertices(true);
+
+			auto layout = spec2dinternal.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+			mInternalProgram2d = resourceMgr->getDefault2dProgram(spec2dinternal, MPP_PROGRAM_TAGS_TEXTURE, true);
+			addCoreResource(mInternalProgram2d, true);
+		}
+
+		// Internal 2d material
+		{
+			auto internalMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+
+			internalMatStream->setProgram(mInternalProgram2d->getName());
+			internalMatStream->setTexture("TEX1", "__mpp_tex_none__");
+			mInternalMaterial = resourceMgr->declareResource("__mpp_mat_internal__", mpp::ResourceStreamPtr(internalMatStream)).first;
+			addCoreResource(mInternalMaterial, true);
+		}
 
 		// Internal font
 		bool textAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
@@ -2105,6 +2144,141 @@ namespace mpp
 		mTextParams->setModelPrimitiveCount(count);
 
 		renderModelImmediate(static_cast<Model const&>(*mColouredTextMesh.get()), true, mTextParams);
+	}
+
+	void RenderSystem::renderIndexed224DataImmediate(int8_t const* vertexData, uint32_t vertexStride, int8_t* const indexData, uint32_t indexWidth, vector<VertexBufferRenderCommand> const& commands)
+	{
+		flushVertexBuffers();
+
+		// Create VAO.  The VAO stores the vertex attributes and the VBO and IBO
+		GLuint vao{ 0 };
+		GL_CHECK(glGenVertexArrays(1, &vao));
+
+		GL_CHECK(glBindVertexArray(vao));
+		
+		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, mInternalVBO));
+		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mInternalIBO));
+
+		// Enable vertex attributes
+		size_t posOffset{ 0 }, texOffset{ 8 }, colOffset{ 16 };
+
+		GL_CHECK(glEnableVertexAttribArray(0));
+		GL_CHECK(glEnableVertexAttribArray(1));
+		GL_CHECK(glEnableVertexAttribArray(2));
+		GL_CHECK(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (GLsizei)vertexStride, (GLvoid const*)posOffset));
+		GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (GLsizei)vertexStride, (GLvoid const*)texOffset));
+		GL_CHECK(glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, (GLsizei)vertexStride, (GLvoid const*)colOffset));
+
+		// Upload vertex and index data
+		auto vdSize = 3 * vertexStride;
+
+		auto widthBytes = indexWidth >> 3;
+		auto idSize = 3 * widthBytes;
+
+		int8_t* vd = new int8_t[vdSize];
+		int8_t* id = new int8_t[idSize];
+
+		float x0 = 300, y0 = 200, x1 = 500, y1 = 200, x2 = 400, y2 = 300;
+		float u0 = 0, v0 = 0, u1 = 1, v1 = 1;
+		uint8_t c = 255;
+
+		int i = 0;
+		memcpy(&vd[i + 0], &x0, sizeof(float));
+		memcpy(&vd[i + 4], &y0, sizeof(float));
+		memcpy(&vd[i + 8], &u0, sizeof(float));
+		memcpy(&vd[i + 12], &v0, sizeof(float));
+		memcpy(&vd[i + 16], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 17], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 18], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 19], &c, sizeof(uint8_t));
+
+		i += vertexStride;
+		memcpy(&vd[i + 0], &x1, sizeof(float));
+		memcpy(&vd[i + 4], &y1, sizeof(float));
+		memcpy(&vd[i + 8], &u1, sizeof(float));
+		memcpy(&vd[i + 12], &v0, sizeof(float));
+		memcpy(&vd[i + 16], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 17], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 18], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 19], &c, sizeof(uint8_t));
+
+		i += vertexStride;
+		memcpy(&vd[i + 0], &x2, sizeof(float));
+		memcpy(&vd[i + 4], &y2, sizeof(float));
+		memcpy(&vd[i + 8], &u1, sizeof(float));
+		memcpy(&vd[i + 12], &v1, sizeof(float));
+		memcpy(&vd[i + 16], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 17], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 18], &c, sizeof(uint8_t));
+		memcpy(&vd[i + 19], &c, sizeof(uint8_t));
+
+		for (int j = 0; j < 3; ++j)
+		{
+			if (widthBytes == 2)
+			{
+				uint16_t ii = j;
+				memcpy(&id[j * widthBytes], &ii, widthBytes);
+			}
+			else
+			{
+				uint32_t ii = j;
+				memcpy(&id[j * widthBytes], &ii, widthBytes);
+			}
+		}
+
+		GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vdSize, (const GLvoid*)vd, GL_STREAM_DRAW));
+		GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, idSize, (const GLvoid*)id, GL_STREAM_DRAW));
+
+		delete[] vd;
+		delete[] id;
+
+		// Render
+		for (auto const& cmd : commands)
+		{
+			// Set program, uniforms, textures
+			auto mat = static_cast<Material*>(cmd.material.get());
+
+			setUsedProgram(mat->getProgram());
+			mat->setUniforms();
+
+			// Uniforms
+			auto p = static_cast<Program*>(mat->getProgram().get());
+			
+			auto hwsId = p->getHalfWindowSizeId();
+			auto mcpId = p->getModelCameraProjectionMatrixId();
+
+			if (hwsId >= 0)
+			{
+				glm::vec2 halfWindowSize(mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+				GL_CHECK(glUniform2fv(hwsId, 1, glm::value_ptr(halfWindowSize)));
+			}
+
+			if (mcpId >= 0)
+			{
+				glm::mat4 mcp;
+				GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcp)));
+			}
+
+			// Textures
+			static_cast<Texture*>(mat->getTexture(0).get())->bind(0);
+
+			if (mat->getNumTextures() > 1)
+			{
+				static_cast<Texture*>(mat->getTexture(1).get())->bind(1);
+			}
+
+			// Draw
+			GLenum indexType = indexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+			auto offset = (void*)(intptr_t)(cmd.offset * 3 * (indexWidth >> 3));
+
+			//GL_CHECK(glDrawElements(GL_TRIANGLES, (GLsizei)(cmd.count * 3), indexType, offset));
+
+			uint32_t count = 1;
+			GL_CHECK(glDrawElements(GL_TRIANGLES, (GLsizei)(count * 3), indexType, offset));
+		}
+
+		// Destroy VAO
+		GL_CHECK(glDeleteVertexArrays(1, &vao));
 	}
 
 	void RenderSystem::setDebugPreMessages(vector<string> const& messages)

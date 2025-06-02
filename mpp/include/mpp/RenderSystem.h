@@ -132,12 +132,15 @@ namespace mpp
 		//
 
 		// Default material: 2d with PTC and no texture
-		ResourcePtr mDefaultMaterial;
+		ResourcePtr mDefaultMaterial, mInternalMaterial;
 
 		// Default programs
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
 
 		ResourcePtr mActiveProgram;
+
+		// Internal programs
+		ResourcePtr mInternalProgram2d;
 
 		// Internal textures
 		ResourcePtr mNoTexture;
@@ -161,6 +164,11 @@ namespace mpp
 		std::shared_ptr<UniformCollection> mTextUniforms;
 
 		std::shared_ptr<ModelRenderParams> mTextParams;
+
+		//
+		// Internal buffer objects for 2d rendering
+		//
+		uint32_t mInternalVBO, mInternalIBO;
 
 		//
 		// 3d Transforms
@@ -447,6 +455,8 @@ namespace mpp
 		void renderTextFormatted(std::string const& text, int x, int y);
 
 		void renderTextFormatted(std::vector<std::string> const& text, int x, int y);
+
+		void renderIndexed224DataImmediate(int8_t const* vertexData, uint32_t vertexStride, int8_t* const indexData, uint32_t indexWidth, std::vector<VertexBufferRenderCommand> const& commands);
 
 		// Override new/delete to force alignment on 16-byte boundary.
 		/*
