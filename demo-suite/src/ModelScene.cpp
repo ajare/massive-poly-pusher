@@ -954,6 +954,72 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 
 	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
 
+	// Test immediate buffer 
+	uint32_t vertexStride{ 20 };
+	uint32_t indexWidth{ 16 };
+
+	auto vdSize = 3 * vertexStride;
+
+	auto widthBytes = indexWidth >> 3;
+	auto idSize = 3 * widthBytes;
+
+	int8_t* vd = new int8_t[vdSize];
+	int8_t* id = new int8_t[idSize];
+
+	float x0 = 300, y0 = 200, x1 = 500, y1 = 200, x2 = 400, y2 = 300;
+	float u0 = 0, v0 = 0, u1 = 1, v1 = 1;
+	uint8_t c = 255;
+
+	int i = 0;
+	memcpy(&vd[i + 0], &x0, sizeof(float));
+	memcpy(&vd[i + 4], &y0, sizeof(float));
+	memcpy(&vd[i + 8], &u0, sizeof(float));
+	memcpy(&vd[i + 12], &v0, sizeof(float));
+	memcpy(&vd[i + 16], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 17], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 18], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 19], &c, sizeof(uint8_t));
+
+	i += vertexStride;
+	memcpy(&vd[i + 0], &x1, sizeof(float));
+	memcpy(&vd[i + 4], &y1, sizeof(float));
+	memcpy(&vd[i + 8], &u1, sizeof(float));
+	memcpy(&vd[i + 12], &v0, sizeof(float));
+	memcpy(&vd[i + 16], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 17], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 18], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 19], &c, sizeof(uint8_t));
+
+	i += vertexStride;
+	memcpy(&vd[i + 0], &x2, sizeof(float));
+	memcpy(&vd[i + 4], &y2, sizeof(float));
+	memcpy(&vd[i + 8], &u1, sizeof(float));
+	memcpy(&vd[i + 12], &v1, sizeof(float));
+	memcpy(&vd[i + 16], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 17], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 18], &c, sizeof(uint8_t));
+	memcpy(&vd[i + 19], &c, sizeof(uint8_t));
+
+	for (int j = 0; j < 3; ++j)
+	{
+		if (widthBytes == 2)
+		{
+			uint16_t ii = j;
+			memcpy(&id[j * widthBytes], &ii, widthBytes);
+		}
+		else
+		{
+			uint32_t ii = j;
+			memcpy(&id[j * widthBytes], &ii, widthBytes);
+		}
+	}
+
+	mpp::VertexBufferRenderCommand cmd{ 0, ~0u, nullptr, { getResourceManager()->getResource("Clouds.Texture"), nullptr } };
+	renderSystem->renderBufferImmediate(vd, vertexStride, 3, id, indexWidth, 3, { cmd });
+
+	delete[] vd;
+	delete[] id;
+
 	// Batch text
 	for (int i = 0; i < kNum2dBatches; ++i)
 	{

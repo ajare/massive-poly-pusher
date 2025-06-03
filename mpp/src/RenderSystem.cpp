@@ -2146,9 +2146,12 @@ namespace mpp
 		renderModelImmediate(static_cast<Model const&>(*mColouredTextMesh.get()), true, mTextParams);
 	}
 
-	void RenderSystem::renderIndexed224DataImmediate(int8_t const* vertexData, uint32_t vertexStride, int8_t* const indexData, uint32_t indexWidth, vector<VertexBufferRenderCommand> const& commands)
+	void RenderSystem::renderBufferImmediate(int8_t const* vertexData, uint32_t vertexStride, uint32_t numVertices, int8_t* const indexData, uint32_t indexWidth, uint32_t numIndices, vector<VertexBufferRenderCommand> const& commands)
 	{
 		flushVertexBuffers();
+
+		size_t indexBytes = indexWidth >> 3;
+		bool useIndices = indexData != nullptr && (indexBytes == 2 || indexBytes == 4);
 
 		// Create VAO.  The VAO stores the vertex attributes and the VBO and IBO
 		GLuint vao{ 0 };
@@ -2157,7 +2160,11 @@ namespace mpp
 		GL_CHECK(glBindVertexArray(vao));
 		
 		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, mInternalVBO));
-		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mInternalIBO));
+
+		if (useIndices)
+		{
+			GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mInternalIBO));
+		}
 
 		// Enable vertex attributes
 		size_t posOffset{ 0 }, texOffset{ 8 }, colOffset{ 16 };
@@ -2170,73 +2177,21 @@ namespace mpp
 		GL_CHECK(glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, (GLsizei)vertexStride, (GLvoid const*)colOffset));
 
 		// Upload vertex and index data
-		auto vdSize = 3 * vertexStride;
-
-		auto widthBytes = indexWidth >> 3;
-		auto idSize = 3 * widthBytes;
-
-		int8_t* vd = new int8_t[vdSize];
-		int8_t* id = new int8_t[idSize];
-
-		float x0 = 300, y0 = 200, x1 = 500, y1 = 200, x2 = 400, y2 = 300;
-		float u0 = 0, v0 = 0, u1 = 1, v1 = 1;
-		uint8_t c = 255;
-
-		int i = 0;
-		memcpy(&vd[i + 0], &x0, sizeof(float));
-		memcpy(&vd[i + 4], &y0, sizeof(float));
-		memcpy(&vd[i + 8], &u0, sizeof(float));
-		memcpy(&vd[i + 12], &v0, sizeof(float));
-		memcpy(&vd[i + 16], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 17], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 18], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 19], &c, sizeof(uint8_t));
-
-		i += vertexStride;
-		memcpy(&vd[i + 0], &x1, sizeof(float));
-		memcpy(&vd[i + 4], &y1, sizeof(float));
-		memcpy(&vd[i + 8], &u1, sizeof(float));
-		memcpy(&vd[i + 12], &v0, sizeof(float));
-		memcpy(&vd[i + 16], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 17], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 18], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 19], &c, sizeof(uint8_t));
-
-		i += vertexStride;
-		memcpy(&vd[i + 0], &x2, sizeof(float));
-		memcpy(&vd[i + 4], &y2, sizeof(float));
-		memcpy(&vd[i + 8], &u1, sizeof(float));
-		memcpy(&vd[i + 12], &v1, sizeof(float));
-		memcpy(&vd[i + 16], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 17], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 18], &c, sizeof(uint8_t));
-		memcpy(&vd[i + 19], &c, sizeof(uint8_t));
-
-		for (int j = 0; j < 3; ++j)
+		size_t vertexDataSize = vertexStride * numVertices;
+		GL_CHECK(glBufferData(GL_ARRAY_BUFFER, (GLsizei)vertexDataSize, (GLvoid const*)vertexData, GL_STREAM_DRAW));
+		
+		if (useIndices)
 		{
-			if (widthBytes == 2)
-			{
-				uint16_t ii = j;
-				memcpy(&id[j * widthBytes], &ii, widthBytes);
-			}
-			else
-			{
-				uint32_t ii = j;
-				memcpy(&id[j * widthBytes], &ii, widthBytes);
-			}
+			size_t indexDataSize = indexBytes * numIndices;
+			GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizei)indexDataSize, (GLvoid const*)indexData, GL_STREAM_DRAW));
 		}
-
-		GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vdSize, (const GLvoid*)vd, GL_STREAM_DRAW));
-		GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, idSize, (const GLvoid*)id, GL_STREAM_DRAW));
-
-		delete[] vd;
-		delete[] id;
 
 		// Render
 		for (auto const& cmd : commands)
 		{
 			// Set program, uniforms, textures
-			auto mat = static_cast<Material*>(cmd.material.get());
+			auto materialRes = cmd.material ? cmd.material : mInternalMaterial;
+			auto mat = static_cast<Material*>(materialRes.get());
 
 			setUsedProgram(mat->getProgram());
 			mat->setUniforms();
@@ -2255,26 +2210,44 @@ namespace mpp
 
 			if (mcpId >= 0)
 			{
-				glm::mat4 mcp;
+				glm::mat4 mcp;  // Identity
 				GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcp)));
 			}
 
 			// Textures
-			static_cast<Texture*>(mat->getTexture(0).get())->bind(0);
-
-			if (mat->getNumTextures() > 1)
+			ResourcePtr textureRes;
+			switch (mat->getNumTextures())
 			{
-				static_cast<Texture*>(mat->getTexture(1).get())->bind(1);
+			case 2:
+				textureRes = cmd.textures[1] ? cmd.textures[1] : mat->getTexture(1);
+				static_cast<Texture*>(textureRes.get())->bind(1);
+				[[fallthrough]];
+			case 1:
+				textureRes = cmd.textures[0] ? cmd.textures[0] : mat->getTexture(0);
+				static_cast<Texture*>(textureRes.get())->bind(0);
+				break;
+
+			default:
+				break;
 			}
 
 			// Draw
-			GLenum indexType = indexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-			auto offset = (void*)(intptr_t)(cmd.offset * 3 * (indexWidth >> 3));
+			if (useIndices)
+			{
+				GLenum indexType = indexBytes == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 
-			//GL_CHECK(glDrawElements(GL_TRIANGLES, (GLsizei)(cmd.count * 3), indexType, offset));
+				auto offset = (void*)(intptr_t)(cmd.offset * 3 * indexBytes);
+				size_t count = cmd.count != ~0u ? (size_t)(cmd.count * 3) : (numIndices - cmd.offset * 3);
 
-			uint32_t count = 1;
-			GL_CHECK(glDrawElements(GL_TRIANGLES, (GLsizei)(count * 3), indexType, offset));
+				GL_CHECK(glDrawElements(GL_TRIANGLES, (GLsizei)count, indexType, offset));
+			}
+			else
+			{
+				uint32_t offset = cmd.offset * 3;
+				size_t count = cmd.count != ~0u ? (size_t)(cmd.count * 3) : (numVertices - cmd.offset * 3);
+
+				GL_CHECK(glDrawArrays(GL_TRIANGLES, offset, (GLsizei)count));
+			}
 		}
 
 		// Destroy VAO
