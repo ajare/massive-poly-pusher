@@ -456,7 +456,7 @@ namespace mpp
 
 		void renderTextFormatted(std::vector<std::string> const& text, int x, int y);
 
-		void renderIndexed224DataImmediate(int8_t const* vertexData, uint32_t vertexStride, int8_t* const indexData, uint32_t indexWidth, std::vector<VertexBufferRenderCommand> const& commands);
+		void renderBufferImmediate(int8_t const* vertexData, uint32_t vertexStride, uint32_t numVertices, int8_t* const indexData, uint32_t indexWidth, uint32_t numIndices, std::vector<VertexBufferRenderCommand> const& commands);
 
 		// Override new/delete to force alignment on 16-byte boundary.
 		/*
