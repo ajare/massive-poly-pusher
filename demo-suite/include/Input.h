@@ -132,11 +132,21 @@ enum InputEventType
 	IET_ButtonPressed,
 	IET_ButtonReleased,
 	IET_MouseWheel,
-	IET_MouseMotion
+	IET_MouseMotion,
+	IET_TextInput,
+	IET_WindowEnter,
+	IET_WindowExit,
+	IET_FocusGained,
+	IET_FocusLost
 };
 
 struct InputEvent
 {
 	int type;
-	int code;
+	unsigned int code;
+	unsigned int key;
+	unsigned int mod;
+	int b;
+	char s[32];
+	float x, y, z;
 };

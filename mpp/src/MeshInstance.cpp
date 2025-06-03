@@ -260,7 +260,8 @@ namespace mpp
 	 */
 	void MeshInstance::setRenderCount(uint32_t count)
 	{
-		mRenderCommands = { { 0, count, mMaterial, { mTextureOverrides[0], mTextureOverrides[1] } } };
+		VertexBufferRenderCommand cmd{ 0, count, mMaterial, { mTextureOverrides[0], mTextureOverrides[1] } };
+		mRenderCommands = { cmd };
 	}
 
 	/*
@@ -297,7 +298,8 @@ namespace mpp
 			}
 		}
 
-		mRenderCommands.push_back({ renderCmd.offset, renderCmd.count, material, { textures[0], textures[1] } });
+		VertexBufferRenderCommand cmd{ renderCmd.offset, renderCmd.count, material, { textures[0], textures[1] } };
+		mRenderCommands.push_back(cmd);
 	}
 
 	/*

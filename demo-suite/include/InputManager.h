@@ -16,6 +16,10 @@ public:
 
 	void addEvent(InputEvent const& evt);
 
+	void clearEvents();
+
+	std::vector<InputEvent> const& getEvents() const;
+
 	virtual void update() = 0;
 	
 	virtual bool keyDown(int key) = 0;

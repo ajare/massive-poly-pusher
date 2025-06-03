@@ -275,6 +275,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				running = false;
 			}
 
+			gScenes[0]->handleInput(gInputMgr);
+
 			auto camera = static_cast<mpp::helper::FreeCamera*>(gScenes[0]->getCamera().get());
 			updateFreeCamera(*camera, gInputMgr, frameTime);
 

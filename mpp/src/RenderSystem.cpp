@@ -2153,6 +2153,8 @@ namespace mpp
 		size_t indexBytes = indexWidth >> 3;
 		bool useIndices = indexData != nullptr && (indexBytes == 2 || indexBytes == 4);
 
+		glEnable(GL_SCISSOR_TEST);
+
 		// Create VAO.  The VAO stores the vertex attributes and the VBO and IBO
 		GLuint vao{ 0 };
 		GL_CHECK(glGenVertexArrays(1, &vao));
@@ -2231,6 +2233,11 @@ namespace mpp
 				break;
 			}
 
+			if (cmd.clipSize[0] > 0 && cmd.clipSize[1] > 0)
+			{
+				glScissor(cmd.clipMin[0], cmd.clipMin[1], cmd.clipSize[0], cmd.clipSize[1]);
+			}
+
 			// Draw
 			if (useIndices)
 			{
@@ -2252,6 +2259,8 @@ namespace mpp
 
 		// Destroy VAO
 		GL_CHECK(glDeleteVertexArrays(1, &vao));
+
+		glDisable(GL_SCISSOR_TEST);
 	}
 
 	void RenderSystem::setDebugPreMessages(vector<string> const& messages)
@@ -2689,7 +2698,8 @@ namespace mpp
 					// Fix up render commands here.  If there are none, then add a default one.
 					if (mi->mRenderCommands.empty())
 					{
-						mi->addRenderCommand({});
+						VertexBufferRenderCommand cmd{};
+						mi->addRenderCommand(cmd);
 					}
 
 					for (auto const& renderCmd : mi->mRenderCommands)

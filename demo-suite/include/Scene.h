@@ -8,6 +8,7 @@
 #include "ProgramOptions.h"
 #include "World.h"
 #include "RenderOptions.h"
+#include "InputManager.h"
 
 class Scene : public mpp::ResourceWrangler
 {
@@ -56,6 +57,8 @@ public:
 	void teardown();
 
 	virtual std::string getRenderPipelineName() const;
+
+	virtual void handleInput(InputManager* inputMgr) {}
 
 	virtual void update(mpp::RenderSystem* renderSystem, float frameTime) {}
 

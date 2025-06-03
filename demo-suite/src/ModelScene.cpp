@@ -47,6 +47,8 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/helper/TriangleBatchRenderer.h>
 #include <mpp/helper/QuadBatchRenderer.h>
 
+#include "imgui/imgui.h"
+
 #include "ModelScene.h"
 #include "Helper.h"
 #include "TestLineBatchDataProvider.h"
@@ -60,6 +62,7 @@ using namespace mpp;
 ModelScene::ModelScene(mpp::ResourceManager* resourceMgr)
 	: Scene("Default", resourceMgr)
 	, mLightPosition(0, 256, 256)
+	, mImGuiRenderer(nullptr)
 {
 }
 
@@ -720,6 +723,70 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 	};
 }
 
+void ModelScene::setupImGui(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, mpp::ScenePtr scene)
+{
+	// ImGui setup
+	ImGui::CreateContext();
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+	// TODO: Set optional io.ConfigFlags values, e.g. 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard' to enable keyboard controls.
+	// TODO: Fill optional fields of the io structure later.
+	// TODO: Load TTF/OTF fonts if you don't want to use the default font.
+
+	// Build and load the texture atlas into a texture.
+	// This should be lazily created for when we re-enter the state!
+
+	// At this point you've got the texture data and you need to upload that to your graphic system:
+	// After we have created the texture, store its pointer/identifier (_in whichever format your engine uses_) in 'io.Fonts->TexID'.
+	// This will be passed back to your via the renderer. Basically ImTextureID == void*. Read FAQ for details about ImTextureID.
+	// 
+
+	auto fontRes = resourceMgr->getResource("__ImGui_Font__", true);
+	if (!fontRes)
+	{
+		int fontWidth, fontHeight;
+		unsigned char* fontData{ nullptr };
+
+		io.Fonts->GetTexDataAsRGBA32(&fontData, &fontWidth, &fontHeight);
+
+		auto fontTextureStr = new mpp::ProgrammaticTextureStream(resourceMgr);
+
+		fontTextureStr->setTarget(mpp::TextureTarget::Texture2D);
+		fontTextureStr->setData([fontData, fontWidth, fontHeight](string const&)
+		{
+			mpp::TextureData data;
+
+			data.width = fontWidth;
+			data.height = fontHeight;
+			data.bitsPerPixel = 32;
+			data.dataType = GL_UNSIGNED_BYTE;
+			data.pixelFormat = GL_RGBA;
+
+			size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
+
+			data.data = new uint8_t[dataSize];
+			memcpy(data.data, fontData, dataSize);
+
+			return data;
+		});
+
+		fontTextureStr->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+
+		fontRes = resourceMgr->declareResource("__ImGui_Font__", mpp::ResourceStreamPtr(fontTextureStr)).first;
+		fontRes->load();
+	}
+
+	io.Fonts->SetTexID((ImTextureID)(intptr_t)fontRes->getId());
+
+	io.DisplaySize.x = (float)renderSystem->getWindowWidth();
+	io.DisplaySize.y = (float)renderSystem->getWindowHeight();
+
+	ImGui::StyleColorsDark();
+}
+
 void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options)
 {
 	auto resourceMgr = getResourceManager();
@@ -824,6 +891,15 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// Batches
 	createBatches(renderSystem);
 
+	// ImGui
+	setupImGui(renderSystem, resourceMgr, mppScene);
+
+	vector<mpp::ResourcePtr> imGuiTextures;
+	imGuiTextures.push_back(resourceMgr->getResource("__ImGui_Font__"));
+
+	mImGuiDataProvider = make_shared<ImGuiDataProvider>(imGuiTextures);
+	mImGuiRenderer = new mpp::BufferRenderer(mImGuiDataProvider);
+
 	// Lighting
 	renderSystem->setAmbientColour(Colour::Grey25);
 	renderSystem->setLightCount(1);
@@ -833,8 +909,16 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto pipeline = renderSystem->getOrCreateRenderPipeline(getRenderPipelineName());
 }
 
+void ModelScene::teardownImGui()
+{
+	delete mImGuiRenderer;
+	mImGuiRenderer = nullptr;
+}
+
 void ModelScene::teardownImpl()
 {
+	teardownImGui();
+
 	mGrid->release(this);
 	mSphere->release(this);
 	mCylinder->release(this);
@@ -885,10 +969,84 @@ void ModelScene::toggleModel(uint32_t index)
 	}
 }
 
+void ModelScene::handleInput(InputManager* inputMgr)
+{
+	ImGuiIO& io = ImGui::GetIO();
+
+	auto const& events = inputMgr->getEvents();
+	for (auto const& evt : events)
+	{
+		switch (evt.type)
+		{
+		case InputEventType::IET_KeyPressed:
+			break;
+
+		case InputEventType::IET_KeyReleased:
+			break;
+
+		case InputEventType::IET_ButtonPressed:
+			break;
+
+		case InputEventType::IET_ButtonReleased:
+			break;
+
+		case InputEventType::IET_MouseWheel:
+			break;
+
+		case InputEventType::IET_MouseMotion:
+			break;
+
+		case InputEventType::IET_TextInput:
+			break;
+
+		case InputEventType::IET_WindowEnter:
+			break;
+
+		case InputEventType::IET_WindowExit:
+			break;
+
+		case InputEventType::IET_FocusGained:
+			break;
+
+		case InputEventType::IET_FocusLost:
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
+void ModelScene::updateImGui(float frameTime)
+{
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.DeltaTime = frameTime;
+
+	ImGui::NewFrame();
+
+	auto drawList = ImGui::GetBackgroundDrawList();
+
+	//drawList->AddRectFilled({ 200, 200 }, { 500, 500 }, ImColor(1.0f, 1.0f, 0.5f, 1.0f));
+
+	if (ImGui::Begin("DemoSuite"))
+	{
+		ImGui::Text("Hello, world");
+	}
+	ImGui::End();
+
+	ImGui::EndFrame();
+	ImGui::Render();
+
+	mImGuiDataProvider->setDrawData(ImGui::GetDrawData());
+}
+
 void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 {
 	mTotalTime += frameTime;
-	
+
+	updateImGui(frameTime);
+
 	// Rotate all models
 	for (auto model : mModels)
 	{
@@ -954,7 +1112,11 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 
 	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
 
+	// ImGui
+	mImGuiRenderer->render(renderSystem);
+
 	// Test immediate buffer 
+	/*
 	uint32_t vertexStride{ 20 };
 	uint32_t indexWidth{ 16 };
 
@@ -1019,6 +1181,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 
 	delete[] vd;
 	delete[] id;
+	*/
 
 	// Batch text
 	for (int i = 0; i < kNum2dBatches; ++i)

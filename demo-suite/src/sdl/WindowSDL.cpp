@@ -102,6 +102,8 @@ void WindowSDL::show()
 
 void WindowSDL::processEvents(InputManager* inputMgr)
 {
+	inputMgr->clearEvents();
+
 	SDL_Event evt;
 	while (SDL_PollEvent(&evt))
 	{
@@ -111,31 +113,73 @@ void WindowSDL::processEvents(InputManager* inputMgr)
 		{
 		case SDL_KEYDOWN:
 			ie.type = IET_KeyPressed;
-			ie.code = evt.key.keysym.sym;
+			ie.code = evt.key.keysym.scancode;
+			ie.key = evt.key.keysym.sym;
+			ie.mod = evt.key.keysym.mod;
 			inputMgr->addEvent(ie);
 			break;
 
 		case SDL_KEYUP:
 			ie.type = IET_KeyReleased;
-			ie.code = evt.key.keysym.sym;
+			ie.code = evt.key.keysym.scancode;
+			ie.key = evt.key.keysym.sym;
+			ie.mod = evt.key.keysym.mod;
 			inputMgr->addEvent(ie);
 			break;
 
 		case SDL_MOUSEBUTTONDOWN:
 			ie.type = IET_ButtonPressed;
-			ie.code = evt.button.button;
+			ie.b = evt.button.button;
+			ie.code = evt.button.which;
 			inputMgr->addEvent(ie);
 			break;
 
 		case SDL_MOUSEBUTTONUP:
 			ie.type = IET_ButtonReleased;
-			ie.code = evt.button.button; 
+			ie.b = evt.button.button;
+			ie.code = evt.button.which;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_MOUSEWHEEL:
+			ie.type = IET_MouseWheel;
+			ie.x = (float)-evt.wheel.x;
+			ie.y = (float)evt.wheel.y;
+			ie.code = evt.motion.which;
 			inputMgr->addEvent(ie);
 			break;
 
 		case SDL_MOUSEMOTION:
 			ie.type = IET_MouseMotion;
-			ie.code = evt.motion.xrel;
+			ie.x = (float)evt.motion.x;
+			ie.y = (float)evt.motion.y;
+			ie.code = evt.motion.which;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_TEXTINPUT:
+			ie.type = IET_TextInput;
+			strcpy(ie.s, evt.text.text);
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_WINDOWEVENT_ENTER:
+			ie.type = IET_WindowEnter;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_WINDOWEVENT_LEAVE:
+			ie.type = IET_WindowExit;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_WINDOWEVENT_FOCUS_GAINED:
+			ie.type = IET_FocusGained;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_WINDOWEVENT_FOCUS_LOST:
+			ie.type = IET_FocusLost;
 			inputMgr->addEvent(ie);
 			break;
 
