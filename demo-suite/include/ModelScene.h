@@ -1,11 +1,14 @@
 #pragma once
 
+#include <mpp/BufferRenderer.h>
+
 #include <mpp/mesh/MeshSpecification.h>
 
 #include <mpp/helper/TriangleBatchRenderer.h>
 
 #include "Scene.h"
 #include "Test3dTriangleBatchDataProvider.h"
+#include "ImGuiDataProvider.h"
 
 
 class ModelScene : public ::Scene
@@ -35,12 +38,20 @@ private:
 
 	std::shared_ptr<Test3dTriangleBatchDataProvider> m3dBatchDataProvider;
 
+	std::shared_ptr<ImGuiDataProvider> mImGuiDataProvider;
+
+	mpp::BufferRenderer* mImGuiRenderer;
+
 	// Resources
 	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
 
 private:
 
+	void setupImGui(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, mpp::ScenePtr scene);
+
 	void setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const& options) override;
+
+	void teardownImGui();
 
 	void teardownImpl() override;
 
@@ -78,6 +89,8 @@ private:
 
 	void createBatches(mpp::RenderSystem* renderSystem);
 
+	void updateImGui(float frameTime);
+
 public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
@@ -87,6 +100,8 @@ public:
 	void toggleModels();
 
 	void toggleModel(uint32_t index);
+
+	void handleInput(InputManager* inputMgr) override;
 
 	void update(mpp::RenderSystem* renderSystem, float frameTime) override;
 

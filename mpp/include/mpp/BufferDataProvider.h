@@ -19,19 +19,21 @@ namespace mpp
 
 		virtual void getBounds(glm::vec3& bMin, glm::vec3& bMax) = 0;
 
-		virtual int8_t* const getVertexData() = 0;
+		virtual uint32_t getNumCommands() = 0;
 
-		virtual uint32_t getVertexStride() = 0;
+		virtual int8_t* const getVertexData(uint32_t command) = 0;
 
-		virtual uint32_t getVertexCount() = 0;
+		virtual uint32_t getVertexStride(uint32_t command) = 0;
 
-		virtual int8_t* const getIndexData() = 0;
+		virtual uint32_t getVertexCount(uint32_t command) = 0;
 
-		virtual uint32_t getIndexWidth() = 0;
+		virtual int8_t* const getIndexData(uint32_t command) = 0;
 
-		virtual uint32_t getIndexCount() = 0;
+		virtual uint32_t getIndexWidth(uint32_t command) = 0;
 
-		virtual std::vector<VertexBufferRenderCommand> getRenderCommands() = 0;
+		virtual uint32_t getIndexCount(uint32_t command) = 0;
+
+		virtual std::vector<VertexBufferRenderCommand> getRenderCommands(uint32_t command) = 0;
 
 		virtual bool update(float frameTime);
 	};

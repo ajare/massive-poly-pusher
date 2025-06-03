@@ -14,6 +14,8 @@ namespace mpp
 		uint32_t count{ ~0u };
 		ResourcePtr material{ nullptr };
 		ResourcePtr textures[2] = { nullptr, nullptr };
+		int clipMin[2] = { 0, 0 };
+		int clipSize[2] = { -1, -1 };
 	};
 
 }

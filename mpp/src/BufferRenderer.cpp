@@ -9,14 +9,18 @@ namespace mpp
 
 	void BufferRenderer::render(RenderSystem* renderSystem)
 	{
-		renderSystem->renderBufferImmediate(
-			mDataProvider->getVertexData(),
-			mDataProvider->getVertexStride(),
-			mDataProvider->getVertexCount(),
-			mDataProvider->getIndexData(),
-			mDataProvider->getIndexWidth(),
-			mDataProvider->getIndexCount(),
-			mDataProvider->getRenderCommands()
-		);
+		auto numCmds = mDataProvider->getNumCommands();
+		for (uint32_t i = 0; i < numCmds; ++i)
+		{
+			renderSystem->renderBufferImmediate(
+				mDataProvider->getVertexData(i),
+				mDataProvider->getVertexStride(i),
+				mDataProvider->getVertexCount(i),
+				mDataProvider->getIndexData(i),
+				mDataProvider->getIndexWidth(i),
+				mDataProvider->getIndexCount(i),
+				mDataProvider->getRenderCommands(i)
+			);
+		}
 	}
 }
