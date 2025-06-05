@@ -907,6 +907,17 @@ void ModelScene::handleInput(InputManager* inputMgr)
 {
 }
 
+void ModelScene::renderUI()
+{
+	auto drawList = ImGui::GetBackgroundDrawList();
+
+	if (ImGui::Begin("DemoSuite"))
+	{
+		ImGui::Text("Hello, world");
+	}
+	ImGui::End();
+}
+
 void ModelScene::updateImGui(float frameTime)
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -915,15 +926,7 @@ void ModelScene::updateImGui(float frameTime)
 
 	ImGui::NewFrame();
 
-	auto drawList = ImGui::GetBackgroundDrawList();
-
-	//drawList->AddRectFilled({ 200, 200 }, { 500, 500 }, ImColor(1.0f, 1.0f, 0.5f, 1.0f));
-
-	if (ImGui::Begin("DemoSuite"))
-	{
-		ImGui::Text("Hello, world");
-	}
-	ImGui::End();
+	renderUI();
 
 	ImGui::EndFrame();
 	ImGui::Render();

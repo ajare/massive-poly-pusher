@@ -91,6 +91,8 @@ private:
 
 	void updateImGui(float frameTime);
 
+	void renderUI();
+
 public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
