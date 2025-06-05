@@ -29,6 +29,7 @@
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
 
+#include "ImGuiPlatform.h"
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
@@ -61,6 +62,8 @@ InputManager* gInputMgr = nullptr;
 RenderSystem* gRenderSystem = nullptr;
 ResourceManager* gResourceManager = nullptr;
 mpp::Logger* gMppLogger = nullptr;
+
+ImGuiBackendData gImGuiBackendData;
 
 vector<::Scene*> gScenes;
 World gWorld;
@@ -154,6 +157,8 @@ void startup()
 
 	gRenderSystem->createCoreResources(gResourceManager);
 
+	imGuiSetup(gRenderSystem, gResourceManager, &gImGuiBackendData);
+
 	gInputMgr = new InputManagerSDL();
 	gTimer = new TimerSDL();
 
@@ -185,6 +190,8 @@ void shutdown()
 	}
 
 	gScenes.clear();
+
+	imGuiShutdown(&gImGuiBackendData);
 
 	// Delete systems
 	delete gTimer;
@@ -268,6 +275,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			// Process window messages
 			gWindow->processEvents(gInputMgr);
+
+			// Handle ImGui before calling InputManager::update() because
+			// that consumes the events.
+			imGuiHandleInput(gInputMgr, &gImGuiBackendData);
+
 			gInputMgr->update();
 
 			if (gInputMgr->keyPressed(Key_Escape))
@@ -360,6 +372,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					isFullScreen = !isFullScreen;
 					gWindow->setFullscreen(isFullScreen);
 				}
+
+				imGuiNewFrame(static_cast<WindowSDL*>(gWindow)->getWindow(), &gImGuiBackendData);
 
 				// Logic
 				for (auto scene: gScenes)

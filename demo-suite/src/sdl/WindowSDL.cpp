@@ -9,6 +9,11 @@ WindowSDL::WindowSDL() :
 {
 }
 
+SDL_Window* WindowSDL::getWindow()
+{
+	return mWindow;
+}
+
 void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 {
 	mWidth = width;
@@ -113,7 +118,7 @@ void WindowSDL::processEvents(InputManager* inputMgr)
 		{
 		case SDL_KEYDOWN:
 			ie.type = IET_KeyPressed;
-			ie.code = evt.key.keysym.scancode;
+			ie.code = evt.key.keysym.sym;
 			ie.key = evt.key.keysym.sym;
 			ie.mod = evt.key.keysym.mod;
 			inputMgr->addEvent(ie);
