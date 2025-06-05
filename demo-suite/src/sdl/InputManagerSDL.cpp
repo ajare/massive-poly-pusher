@@ -341,17 +341,17 @@ void InputManagerSDL::update()
 		switch (mEvents[i].type)
 		{
 		case IET_KeyPressed:
-			tCode = translateKeyCode(mEvents[i].code);
+			tCode = translateKeyCode(mEvents[i].key);
 			mCurKeyBuffer[tCode] = 1;
 			break;
 
 		case IET_KeyReleased:
-			tCode = translateKeyCode(mEvents[i].code);
+			tCode = translateKeyCode(mEvents[i].key);
 			mCurKeyBuffer[tCode] = 0;
 			break;
 
 		case IET_ButtonPressed:
-			tCode = translateMouseCode(mEvents[i].code);
+			tCode = translateMouseCode(mEvents[i].b);
 			mCurMouseBuffer[tCode] = 1;
 
 			if (mMouseDoubleClickCounter[tCode] == 0)
@@ -367,7 +367,7 @@ void InputManagerSDL::update()
 			break;
 
 		case IET_ButtonReleased:
-			tCode = translateMouseCode(mEvents[i].code);
+			tCode = translateMouseCode(mEvents[i].b);
 			mCurMouseBuffer[tCode] = 0;
 
 			if (mMouseDoubleClickCounter[tCode] == 1 ||

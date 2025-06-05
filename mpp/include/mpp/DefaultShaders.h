@@ -210,6 +210,7 @@ void main()
 ## Else
 	vec4 transVertex = @MCPMatrix * vec4(@In(POSITION).xy, 0, 1);
 ##
+	transVertex.y = @HalfWindowSize.y * 2 - transVertex.y;
 	vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
 	gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
 ## Points

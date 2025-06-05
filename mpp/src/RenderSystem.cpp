@@ -2153,7 +2153,10 @@ namespace mpp
 		size_t indexBytes = indexWidth >> 3;
 		bool useIndices = indexData != nullptr && (indexBytes == 2 || indexBytes == 4);
 
-		glEnable(GL_SCISSOR_TEST);
+		GL_CHECK(glEnable(GL_SCISSOR_TEST));
+		GL_CHECK(glEnable(GL_BLEND));
+		GL_CHECK(glBlendEquation(GL_FUNC_ADD));
+		GL_CHECK(glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
 
 		// Create VAO.  The VAO stores the vertex attributes and the VBO and IBO
 		GLuint vao{ 0 };
@@ -2243,8 +2246,8 @@ namespace mpp
 			{
 				GLenum indexType = indexBytes == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 
-				auto offset = (void*)(intptr_t)(cmd.offset * 3 * indexBytes);
-				size_t count = cmd.count != ~0u ? (size_t)(cmd.count * 3) : (numIndices - cmd.offset * 3);
+				auto offset = (void*)(intptr_t)(cmd.offset * indexBytes);
+				size_t count = cmd.count != ~0u ? (size_t)cmd.count : (numIndices - cmd.offset);
 
 				GL_CHECK(glDrawElements(GL_TRIANGLES, (GLsizei)count, indexType, offset));
 			}
@@ -2260,7 +2263,8 @@ namespace mpp
 		// Destroy VAO
 		GL_CHECK(glDeleteVertexArrays(1, &vao));
 
-		glDisable(GL_SCISSOR_TEST);
+		GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		GL_CHECK(glDisable(GL_BLEND));
 	}
 
 	void RenderSystem::setDebugPreMessages(vector<string> const& messages)

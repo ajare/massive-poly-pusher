@@ -15,6 +15,8 @@ public:
 
 	WindowSDL();
 
+	SDL_Window* getWindow();
+
 	void create(int width, int height, bool fullScreen, bool vsync);
 
 	void destroy();
