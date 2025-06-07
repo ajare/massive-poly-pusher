@@ -25,6 +25,7 @@ const std::string FragmentShader3dTemplate =
 R"(
 @@Version
 
+@@Uniform(float GAMMA);
 ## Texture
 @@Texture(sampler2D TEX1);
 ##
@@ -83,6 +84,7 @@ void main()
 ## Else
     @Out(vec4 COLOUR) = shadedColour;
 ##
+	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
 }
 )";
 
@@ -104,10 +106,13 @@ void main()
 }
 )";
 
+// Don't apply gamma correction as this is used to render framebuffers which have
+// already been gamma-corrected.
 const std::string FragmentShaderFullscreenTemplate =
 R"(
 @@Version
 
+@@Uniform(float GAMMA);
 @@Uniform(vec4 DIFFUSE);
 @@Texture(sampler2D TEX1);
 
@@ -152,6 +157,7 @@ const std::string FragmentShaderTextTemplate =
 R"(
 @@Version
 
+@@Uniform(float GAMMA);
 @@Uniform(vec4 COLOUR);
 @@Texture(sampler2D TEX1);
 
@@ -167,6 +173,8 @@ void main()
 ## Colours
 	@Out(COLOUR) *= @In(COLOUR);
 ##
+
+	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
 }
 )";
 
@@ -223,6 +231,7 @@ const std::string FragmentShader2dTemplate =
 R"(
 @@Version
 
+@@Uniform(float GAMMA);
 ## Diffuse
 @@Uniform(vec4 DIFFUSE);
 ## Texture
@@ -269,6 +278,8 @@ void main()
 ## Else
 	@Out(vec4 COLOUR) = colour;
 ##
+
+	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
 }
 )";
 
@@ -302,6 +313,7 @@ const std::string FragmentShader2dCircle =
 R"(
 @@Version
 
+@@Uniform(float GAMMA);
 ## Diffuse
 @@Uniform(vec4 DIFFUSE);
 ##
@@ -340,6 +352,8 @@ void main()
 	{
 		@Out(COLOUR) = vec4(0.0);
 	}
+
+	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
 }
 )";
 
@@ -347,6 +361,7 @@ const std::string FragmentShader2dCircleAntialiased =
 R"(
 @@Version
 
+@@Uniform(float GAMMA);
 ## Diffuse
 @@Uniform(vec4 DIFFUSE);
 ##
@@ -394,5 +409,7 @@ void main()
 	{
 		@Out(COLOUR) = vec4(0.0);
 	}
+
+	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
 }
 )";

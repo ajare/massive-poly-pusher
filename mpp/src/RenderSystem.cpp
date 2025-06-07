@@ -68,6 +68,7 @@ namespace mpp
 		, mProjectionType(ProjectionType::Unknown)
 		, mModelInstances(nullptr)
 		, mMeshInstances(nullptr)
+		, mGamma(2.2f)
 		, mShowDebugPanel(false)
 		, mTimeUnit(TimeUnit::Milliseconds)
 		, mSizeUnit(SizeUnit::Megabytes)
@@ -1521,6 +1522,16 @@ namespace mpp
 		glDisable(GL_SCISSOR_TEST);
 	}
 
+	void RenderSystem::setGamma(float gamma)
+	{
+		mGamma = gamma;
+	}
+
+	float RenderSystem::getGamma() const
+	{
+		return mGamma;
+	}
+
 	/*
 	 * Render a model.
 	 *
@@ -1556,6 +1567,7 @@ namespace mpp
 			mcp,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
 			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f),
+			getGamma(),
 			mMeshInstances);
 
 		auto& instances = modelInstance->getMeshInstances();
@@ -1947,15 +1959,18 @@ namespace mpp
 		else
 		{
 			// Set defaults manually
-			int diffuseId = p->getUniformId("DIFFUSE");
-			GL_CHECK(glUniform4f(diffuseId, 1, 1, 1, 1));
+			GL_CHECK(glUniform4f(p->getUniformId("DIFFUSE"), 1, 1, 1, 1));
 		}
 
-		int mcpId = p->getModelCameraProjectionMatrixId();
-		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
-		int hwsId = p->getHalfWindowSizeId();
-		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+		int gammaId = p->getUniformId("GAMMA");
+
+		if (gammaId >= 0)
+		{
+			GL_CHECK(glUniform1f(gammaId, mGamma));
+		}
 
 		// Set texture
 		texture->bind(0, 0);
@@ -2007,14 +2022,17 @@ namespace mpp
 		translateTransform2d(glm::vec2(x, mWindowHeight - y));
 		GL_CHECK(scaleTransform2d(glm::vec2(width / (float)mWindowWidth, height / (float)mWindowHeight)));
 
-		int mcpId = p->getModelCameraProjectionMatrixId();
-		GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mWindowWidth / 2.0f, mWindowHeight / 2.0f));
 
-		int hwsId = p->getHalfWindowSizeId();
-		GL_CHECK(glUniform2f(hwsId, mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+		int gammaId = p->getUniformId("GAMMA");
 
-		int diffuseId = p->getUniformId("DIFFUSE");
-		GL_CHECK(glUniform4f(diffuseId, colour.red, colour.green, colour.blue, colour.alpha));
+		if (gammaId >= 0)
+		{
+			GL_CHECK(glUniform1f(gammaId, mGamma));
+		}
+
+		GL_CHECK(glUniform4f(p->getUniformId("DIFFUSE"), colour.red, colour.green, colour.blue, colour.alpha));
 
 		// Set texture
 		((Texture*)texture.get())->bind(0);
@@ -2217,6 +2235,13 @@ namespace mpp
 			{
 				glm::mat4 mcp;  // Identity
 				GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcp)));
+			}
+
+			int gammaId = p->getUniformId("GAMMA");
+
+			if (gammaId >= 0)
+			{
+				GL_CHECK(glUniform1f(gammaId, mGamma));
 			}
 
 			// Textures

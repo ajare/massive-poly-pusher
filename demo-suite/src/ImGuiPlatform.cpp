@@ -47,6 +47,11 @@ static void platformSetImeData(ImGuiContext* context, ImGuiViewport* viewport, I
 
 void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd)
 {
+	if (ImGui::GetCurrentContext() != nullptr)
+	{
+		return;
+	}
+
 	ImGui::CreateContext();
 
 	// Create backend data
@@ -139,6 +144,11 @@ void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceM
 
 void imGuiShutdown(ImGuiBackendData* bd)
 {
+	if (ImGui::GetCurrentContext() == nullptr)
+	{
+		return;
+	}
+
 	ImGuiIO& io = ImGui::GetIO();
 
 	if (bd->clipboardTextData)

@@ -89,9 +89,9 @@ private:
 
 	void createBatches(mpp::RenderSystem* renderSystem);
 
-	void updateImGui(float frameTime);
+	void updateImGui(float frameTime, mpp::RenderSystem* renderSystem);
 
-	void renderUI();
+	void renderUI(mpp::RenderSystem* renderSystem);
 
 public:
 
