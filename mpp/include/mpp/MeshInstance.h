@@ -37,6 +37,8 @@ namespace mpp
 
 		ResourcePtr mMaterial;
 
+		float mGamma;
+
 		std::array<ResourcePtr, 2> mTextureOverrides;
 
 		std::shared_ptr<UniformCollection> mUniforms;
@@ -53,7 +55,7 @@ namespace mpp
 
 	private:
 
-		void commonSetup(Mesh const* mesh);
+		void commonSetup(Mesh const* mesh, float gamma);
 
 		void teardown();
 
@@ -65,11 +67,11 @@ namespace mpp
 
 		bool operator <(MeshInstance const* other);
 
-		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize);
+		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize, float gamma);
 
-		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize);
+		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize, float gamma);
 
-		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize);
+		void setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize, float gamma);
 
 		void release();
 
@@ -92,6 +94,10 @@ namespace mpp
 		void setInstanceCount(size_t instanceCount);
 
 		size_t getInstanceCount() const;
+
+		void setGamma(float gamma);
+
+		float getGamma() const;
 
 		void setMaterial(ResourcePtr material);
 

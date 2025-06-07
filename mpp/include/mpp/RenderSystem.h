@@ -127,6 +127,8 @@ namespace mpp
 
 		Pool<MeshInstance>* mMeshInstances;
 
+		float mGamma;
+
 		//
 		// Core resources
 		//
@@ -419,6 +421,10 @@ namespace mpp
 		RenderInfo const& finishStatsCollection();
 
 		void clearScreen(Colour const& colour);
+
+		void setGamma(float gamma);
+
+		float getGamma() const;
 		 
 		//
 		// 3d rendering

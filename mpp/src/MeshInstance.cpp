@@ -17,6 +17,7 @@ namespace mpp
 		, mWireframe(false)
 		, mBlend(false)
 		, mInstanceCount(0)
+		, mGamma(2.2f)
 	{
 		mTextureOverrides[0] = nullptr;
 		mTextureOverrides[1] = nullptr;
@@ -27,7 +28,7 @@ namespace mpp
 		teardown();
 	}
 
-	void MeshInstance::commonSetup(Mesh const* mesh)
+	void MeshInstance::commonSetup(Mesh const* mesh, float gamma)
 	{
 		teardown();
 
@@ -36,14 +37,15 @@ namespace mpp
 		mWireframe = false;
 		mBlend = false;
 		mInstanceCount = 1;
+		mGamma = gamma;
 
 		mMaterial = mesh->getMaterial();
 		mMaterial->acquire(this);
 	}
 
-	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize)
+	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float pointSize, float gamma)
 	{
-		commonSetup(mesh);
+		commonSetup(mesh, gamma);
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -54,9 +56,9 @@ namespace mpp
 		mPointSize = pointSize;
 	}
 
-	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize)
+	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float pointSize, float gamma)
 	{
-		commonSetup(mesh);
+		commonSetup(mesh, gamma);
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -66,9 +68,9 @@ namespace mpp
 		mPointSize = pointSize;
 	}
 
-	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize)
+	void MeshInstance::setup(Mesh const* mesh, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float pointSize, float gamma)
 	{
-		commonSetup(mesh);
+		commonSetup(mesh, gamma);
 
 		mViewPos = viewPos;
 		mModelMatrix = modelMatrix;
@@ -87,6 +89,7 @@ namespace mpp
 		mWireframe = false;
 		mBlend = false;
 		mInstanceCount = 0;
+		mGamma = 2.2f;
 
 		mRenderCommands.clear();
 		mTextureOverrides[0] = nullptr;
@@ -187,6 +190,16 @@ namespace mpp
 	size_t MeshInstance::getInstanceCount() const
 	{
 		return mInstanceCount;
+	}
+
+	void MeshInstance::setGamma(float gamma)
+	{
+		mGamma = gamma;
+	}
+
+	float MeshInstance::getGamma() const
+	{
+		return mGamma;
 	}
 
 	/*
@@ -354,6 +367,13 @@ namespace mpp
 		if (psId >= 0)
 		{
 			GL_CHECK(glUniform1f(psId, mPointSize));
+		}
+
+		int gammaId = p->getUniformId("GAMMA");
+
+		if (gammaId >= 0)
+		{
+			GL_CHECK(glUniform1f(gammaId, mGamma));
 		}
 	}
 

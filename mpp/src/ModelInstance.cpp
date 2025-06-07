@@ -11,7 +11,7 @@ namespace mpp
 		teardown();
 	}
 
-	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool)
+	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, glm::vec2 const& halfWindowSize, float gamma, Pool<MeshInstance>* pool)
 	{
 		teardown();
 
@@ -23,7 +23,7 @@ namespace mpp
 			//auto mi = new MeshInstance();
 			auto mi = pool->acquireObject();
 
-			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, halfWindowSize, mesh->getPointSize());
+			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, halfWindowSize, mesh->getPointSize(), gamma);
 
 			string meshName = mesh->getName();
 			mMeshInstances[meshName] = mi;
@@ -31,7 +31,7 @@ namespace mpp
 		}
 	}
 
-	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, Pool<MeshInstance>* pool)
+	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::mat3 const& normalMatrix, float gamma, Pool<MeshInstance>* pool)
 	{
 		teardown();
 
@@ -43,14 +43,14 @@ namespace mpp
 			//auto mi = new MeshInstance();
 			auto mi = pool->acquireObject();
 
-			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, mesh->getPointSize());
+			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, normalMatrix, mesh->getPointSize(), gamma);
 
 			mMeshInstances[mesh->getName()] = mi;
 			mOrderedMeshInstances.push_back(mi);
 		}
 	}
 
-	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, Pool<MeshInstance>* pool)
+	void ModelInstance::setup(Model const& model, glm::vec3 const& viewPos, glm::mat4 const& modelMatrix, glm::mat4 const& modelCameraProjMatrix, glm::vec2 const& halfWindowSize, float gamma, Pool<MeshInstance>* pool)
 	{
 		teardown();
 
@@ -62,7 +62,7 @@ namespace mpp
 			//auto mi = new MeshInstance();
 			auto mi = pool->acquireObject();
 
-			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, halfWindowSize, mesh->getPointSize());
+			mi->setup(mesh, viewPos, modelMatrix, modelCameraProjMatrix, halfWindowSize, mesh->getPointSize(), gamma);
 
 			mMeshInstances[mesh->getName()] = mi;
 			mOrderedMeshInstances.push_back(mi);

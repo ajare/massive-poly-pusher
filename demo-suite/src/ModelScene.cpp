@@ -907,18 +907,22 @@ void ModelScene::handleInput(InputManager* inputMgr)
 {
 }
 
-void ModelScene::renderUI()
+void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 {
 	auto drawList = ImGui::GetBackgroundDrawList();
 
 	if (ImGui::Begin("DemoSuite"))
 	{
-		ImGui::Text("Hello, world");
+		float gamma = renderSystem->getGamma();
+		if (ImGui::SliderFloat("Gamma", &gamma, 1.0f, 4.0f))
+		{
+			renderSystem->setGamma(gamma);
+		}
 	}
 	ImGui::End();
 }
 
-void ModelScene::updateImGui(float frameTime)
+void ModelScene::updateImGui(float frameTime, mpp::RenderSystem* renderSystem)
 {
 	ImGuiIO& io = ImGui::GetIO();
 
@@ -926,7 +930,7 @@ void ModelScene::updateImGui(float frameTime)
 
 	ImGui::NewFrame();
 
-	renderUI();
+	renderUI(renderSystem);
 
 	ImGui::EndFrame();
 	ImGui::Render();
@@ -938,7 +942,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 {
 	mTotalTime += frameTime;
 
-	updateImGui(frameTime);
+	updateImGui(frameTime, renderSystem);
 
 	// Rotate all models
 	for (auto model : mModels)
