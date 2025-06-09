@@ -75,11 +75,14 @@ namespace mpp
 	{
 		bind();
 
-		int8_t* bufferPtr{ nullptr };
-		GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY));
+		// glMapBuffer blocks
+		//int8_t* bufferPtr{ nullptr };
+		//GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY));
 
-		memcpy(bufferPtr, &(mData[0]), mDataSize);
-		GL_CHECK(glUnmapBuffer(GL_UNIFORM_BUFFER));
+		//memcpy(bufferPtr, &(mData[0]), mDataSize);
+		//GL_CHECK(glUnmapBuffer(GL_UNIFORM_BUFFER));
+
+		GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, mDataSize, &(mData[0]), GL_DYNAMIC_DRAW));
 	}
 
 	/*

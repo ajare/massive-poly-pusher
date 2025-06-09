@@ -45,6 +45,8 @@ namespace mpp
 
 		bool mIsLoaded;
 
+		bool mUseBufferDataMethod;
+
 	private:
 
 		// Methods to be used by RenderSystem

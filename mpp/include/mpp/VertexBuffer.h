@@ -48,6 +48,8 @@ namespace mpp
 
 		size_t mMaxDataSize;
 
+		bool mUseBufferDataMethod;
+
 	private:
 
 		void allocate(size_t size);
