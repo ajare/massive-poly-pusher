@@ -140,6 +140,9 @@ public:
 
 					mpp::VertexBufferRenderCommand vbrc;
 
+					//vbrc.scale[0] = 2.0f;
+					//vbrc.scale[1] = 2.0f;
+
 					vbrc.clipMin[0] = (int)clipMin.x;
 					vbrc.clipMin[1] = (int)((float)fbHeight - clipMax.y);
 					vbrc.clipSize[0] = (int)(clipMax.x - clipMin.x);
