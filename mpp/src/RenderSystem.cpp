@@ -2233,7 +2233,13 @@ namespace mpp
 
 			if (mcpId >= 0)
 			{
-				glm::mat4 mcp;  // Identity
+				glm::mat4 mcp(
+					cmd.scale[0], 0.0f, 0.0f, 0.0f,
+					0.0f, cmd.scale[1], 0.0f, 0.0f,
+					0.0f, 0.0f, cmd.scale[2], 0.0f,
+					0.0f, 0.0f, 0.0f, 1.0f
+				);
+				
 				GL_CHECK(glUniformMatrix4fv(mcpId, 1, GL_FALSE, glm::value_ptr(mcp)));
 			}
 
