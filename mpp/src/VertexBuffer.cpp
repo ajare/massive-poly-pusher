@@ -24,6 +24,7 @@ namespace mpp
 		, mVertexStride(vertexStride)
 		, mStreaming(streaming)
 		, mStatic(staticData)
+		, mUseBufferDataMethod(true)
 	{
 		mData.reserve(vertexCount * vertexStride);
 		int8_t const* dataPtr = data.get();
@@ -215,7 +216,7 @@ namespace mpp
 			}
 		}
 
-		mMaxDataSize = size;
+		mMaxDataSize = max(mMaxDataSize, size);
 	}
 
 	/*
@@ -230,16 +231,25 @@ namespace mpp
 
 		// If the data has increased in size, then reallocate
 		size_t curSize = numVertices * mVertexStride;
-		if (curSize > mMaxDataSize)
+		if (mUseBufferDataMethod)
 		{
 			allocate(curSize);
 		}
-		
-		int8_t* bufferPtr{ nullptr };
-		GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
+		else
+		{
+			if (curSize > mMaxDataSize)
+			{
+				allocate(curSize);
+			}
+			else
+			{
+				int8_t* bufferPtr{ nullptr };
+				GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
 
-		memcpy(bufferPtr, &(mData[0]), curSize);
-		GL_CHECK(glUnmapBuffer(GL_ARRAY_BUFFER));
+				memcpy(bufferPtr, &(mData[0]), curSize);
+				GL_CHECK(glUnmapBuffer(GL_ARRAY_BUFFER));
+			}
+		}
 	}
 
 	/*
@@ -257,8 +267,10 @@ namespace mpp
 		{
 			allocate(curSize);
 		}
-		
-		GL_CHECK(glBufferSubData(GL_ARRAY_BUFFER, startVertex * mVertexStride, numVertices * mVertexStride, &(mData[startVertex * mVertexStride])));
+		else
+		{
+			GL_CHECK(glBufferSubData(GL_ARRAY_BUFFER, startVertex * mVertexStride, numVertices * mVertexStride, &(mData[startVertex * mVertexStride])));
+		}
 	}
 
 	/*

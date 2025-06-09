@@ -33,6 +33,7 @@ namespace mpp
 		, mIsIndexed(false)
 		, mPrimitiveCount(primitiveCount)
 		, mIsLoaded(false)
+		, mUseBufferDataMethod(true)
 	{
 		setPrimitiveData(type);
 	}
@@ -263,17 +264,24 @@ namespace mpp
 		// If the data has increased in size, then reallocate
 		auto newSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
 
-		if (newSize > mIndexDataSize)
+		if (mUseBufferDataMethod)
 		{
 			allocateIndexData(numPrimitives);
 		}
 		else
 		{
-			int8_t* bufferPtr{ nullptr };
-			GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY));
+			if (newSize > mIndexDataSize)
+			{
+				allocateIndexData(numPrimitives);
+			}
+			else
+			{
+				int8_t* bufferPtr{ nullptr };
+				GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY));
 
-			memcpy(bufferPtr, &(mIndexData[0]), mIndexDataSize);
-			GL_CHECK(glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER));
+				memcpy(bufferPtr, &(mIndexData[0]), mIndexDataSize);
+				GL_CHECK(glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER));
+			}
 		}
 	}
 
