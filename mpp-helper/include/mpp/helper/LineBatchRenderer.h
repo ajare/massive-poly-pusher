@@ -81,7 +81,7 @@ namespace mpp
 					newVertices = true;
 				}
 
-				mBatch->startUpdate(count);
+				mBatch->startUpdate(count, count * 2);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename ColType::builtin_type ColTypeBuiltin;
@@ -145,7 +145,7 @@ namespace mpp
 					}
 				}
 
-				mBatch->finishUpdate(count, newVertices);
+				mBatch->finishUpdate(count, count * 2, newVertices);
 				return mBatch->getCount();
 			}
 

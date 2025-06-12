@@ -77,7 +77,7 @@ namespace mpp
 
 		void setSpecificationPointers(Mesh* mesh);
 
-		virtual void setMinimumCount(size_t count);
+		virtual void setMinimumCount(size_t count, size_t vertexCount);
 
 		virtual ResourcePtr createMaterial(std::string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d = true);
 
@@ -115,9 +115,9 @@ namespace mpp
 
 		void create();
 
-		void startUpdate(size_t minimumCount);
+		void startUpdate(size_t minimumCount, size_t vertexCount);
 
-		virtual void finishUpdate(size_t count, bool updateFixedBuffers);
+		virtual void finishUpdate(size_t primitiveCount, size_t vertexCount, bool updateFixedBuffers);
 
 		bool usingDiffuse() const;
 

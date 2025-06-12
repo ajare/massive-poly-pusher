@@ -17,6 +17,8 @@ namespace mpp
 
 	public:
 
+		virtual ~BatchDataProvider() = default;
+
 		virtual void getBounds(glm::vec3& bMin, glm::vec3& bMax) = 0;
 
 		virtual bool update(float frameTime);

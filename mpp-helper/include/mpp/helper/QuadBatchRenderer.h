@@ -296,7 +296,9 @@ namespace mpp
 					newVertices = true;
 				}
 
-				mBatch->startUpdate(count);
+				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
+
+				mBatch->startUpdate(count, vertexCount);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
@@ -326,7 +328,6 @@ namespace mpp
 				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
 				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
-				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 				for (size_t pOffset = 0, rOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < vertexCount; ++i)
 				{
 					uint32_t primitiveIndex = (uint32_t)(mBatch->usingPointSprites() ? i : i / 4);
@@ -509,7 +510,7 @@ namespace mpp
 					cOffset += colStride;
 				}
 
-				mBatch->finishUpdate(count, newVertices);
+				mBatch->finishUpdate(count, vertexCount, newVertices);
 				return mBatch->getCount();
 			}
 
@@ -645,7 +646,9 @@ namespace mpp
 					newVertices = true;
 				}
 
-				mBatch->startUpdate(count);
+				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
+
+				mBatch->startUpdate(count, vertexCount);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
@@ -671,7 +674,6 @@ namespace mpp
 					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				size_t vertexCount = mBatch->getVertexCount(mBatch->getPrimitiveCount(count));
 				for (size_t pOffset = 0, rOffset = 0, tOffset = 0, i = 0; i < vertexCount; ++i)
 				{
 					uint32_t primitiveIndex = (uint32_t)(mBatch->usingPointSprites() ? i : i / 4);
@@ -839,7 +841,7 @@ namespace mpp
 					tOffset += texStride;
 				}
 
-				mBatch->finishUpdate(count, newVertices);
+				mBatch->finishUpdate(count, vertexCount, newVertices);
 				return mBatch->getCount();
 			}
 

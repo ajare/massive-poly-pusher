@@ -36,7 +36,11 @@ private:
 
 	std::shared_ptr<mpp::helper::TriangleBatch3DRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> m3dTestRenderer;
 
+	std::shared_ptr<mpp::helper::TriangleBatch3DBufferRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>> m3dTestBufferRenderer;
+
 	std::shared_ptr<Test3dTriangleBatchDataProvider> m3dBatchDataProvider;
+
+	std::shared_ptr<Test3dTriangleBatchBufferDataProvider> m3dBatchBufferDataProvider;
 
 	std::shared_ptr<ImGuiDataProvider> mImGuiDataProvider;
 

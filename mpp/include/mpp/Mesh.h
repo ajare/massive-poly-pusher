@@ -78,6 +78,8 @@ namespace mpp
 
 		void setIndexData(std::vector<uint8_t> const& indexData, size_t indexWidth);
 
+		void setIndexData(int8_t const* indexData, uint32_t numIndices, size_t indexWidth);
+
 		bool isIndexed() const;
 
 		void setNumPrimitives(size_t count);

@@ -66,6 +66,7 @@ namespace mpp
 						params.useDiffuse,
 						params.indexedVertices
 					},
+					0,
 					textureOrMaterial,
 					dataProvider->getNumPrimitives(),
 					renderSystem,
@@ -115,7 +116,9 @@ namespace mpp
 						newVertices = true;
 					}
 
-					batch->startUpdate(count);
+					size_t triangleCount = batch->getPrimitiveCount(count);
+
+					batch->startUpdate(count, triangleCount * 3);
 
 					typedef typename PosType::builtin_type PosTypeBuiltin;
 					typedef typename TexType::builtin_type TexTypeBuiltin;
@@ -136,7 +139,6 @@ namespace mpp
 					auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
 					auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
-					size_t triangleCount = batch->getPrimitiveCount(count);
 					for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 					{
 						auto primitiveIndex = (uint32_t)i;
@@ -224,7 +226,7 @@ namespace mpp
 						}
 					}
 
-					batch->finishUpdate(count, newVertices);
+					batch->finishUpdate(count, triangleCount * 3, newVertices);
 					totalCount += batch->getCount();
 				}
 
@@ -414,7 +416,7 @@ namespace mpp
 						}
 					}
 
-					batch->finishUpdate(count, newVertices);
+					batch->finishUpdate(count, triangleCount * 3, newVertices);
 					totalCount += batch->getCount();
 				}
 
@@ -524,6 +526,7 @@ namespace mpp
 						params.useDiffuse,
 						params.indexedVertices
 					},
+					0,
 					textureOrMaterial,
 					mDataProvider->getNumPrimitives(),
 					renderSystem,
@@ -559,7 +562,9 @@ namespace mpp
 					newVertices = true;
 				}
 
-				mBatch->startUpdate(count);
+				size_t triangleCount = mBatch->getPrimitiveCount(count);
+
+				mBatch->startUpdate(count, triangleCount * 3);
 
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
@@ -583,7 +588,6 @@ namespace mpp
 				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
 				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
 
-				size_t triangleCount = mBatch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, nOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 				{
 					auto primitiveIndex = (uint32_t)i;
@@ -693,7 +697,98 @@ namespace mpp
 					}
 				}
 
-				mBatch->finishUpdate(count, newVertices);
+				mBatch->finishUpdate(count, triangleCount * 3, newVertices);
+				return mBatch->getCount();
+			}
+
+			void render() override
+			{
+				if (mBatch->usingDiffuse())
+				{
+					auto colour = mDataProvider->diffuse();
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+				}
+
+				auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
+				mRenderSystem->renderModelBatched(model, true);
+			}
+		};
+
+		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
+		class TriangleBatch3DBufferRenderer : public BatchRenderer
+		{
+			mpp::RenderSystem* mRenderSystem{ nullptr };
+
+			mpp::ResourceManager* mResourceMgr{ nullptr };
+
+			mpp::TriangleBatch* mBatch{ nullptr };
+
+			std::shared_ptr<TriangleBatch3DBufferDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
+
+		public:
+
+			TriangleBatch3DBufferRenderer(std::string const& name,
+				TriangleBatchRendererParams const& params,
+				std::shared_ptr<TriangleBatch3DBufferDataProvider<PosType, TexType, ColType>> dataProvider,
+				size_t indexWidth,
+				mpp::ResourcePtr textureOrMaterial,
+				mpp::RenderSystem* renderSystem,
+				mpp::ResourceManager* resourceMgr)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
+				, mResourceMgr(resourceMgr)
+				, mDataProvider(dataProvider)
+			{
+				mBatch = new mpp::TriangleBatch(
+					name,
+					{
+						TriangleBatchOptions::Dimension::P3D,
+						params.useMaterialNotTexture,
+						PosType::vertexDataType(),
+						{ TexType::vertexDataType(), params.fixedTextureData },
+						{ ColType::vertexDataType(), params.fixedColourData },
+						params.useDiffuse,
+						params.indexedVertices
+					},
+					indexWidth,
+					textureOrMaterial,
+					params.indexedVertices ? 0 : mDataProvider->getNumPrimitives(),
+					renderSystem,
+					resourceMgr);
+
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			}
+
+			virtual ~TriangleBatch3DBufferRenderer()
+			{
+				delete mBatch;
+			}
+
+			ResourcePtr getModel()
+			{
+				return mBatch->getModel();
+			}
+
+			void create() override
+			{
+				mBatch->create();
+				update();
+			}
+
+			size_t update() override
+			{
+				size_t count = mDataProvider->getNumPrimitives();
+				mBatch->startUpdate(count, mDataProvider->getNumVertices());
+
+				// Copy vertex buffer data to first (and only!) vertex buffer
+				auto vertexBuffer = (int8_t*)mBatch->getAttributeData("POSITION").first;
+				memcpy(vertexBuffer, mDataProvider->getVertexData(), mDataProvider->getVertexDataSize());
+
+				// Copy index data to first (and only!) mesh
+				auto mesh = static_cast<mpp::Model*>(mBatch->getModel().get())->getMesh(0);
+				mesh->setIndexData(mDataProvider->getIndexData(), mDataProvider->getNumIndices(), mDataProvider->getIndexWidth());
+
+				mBatch->finishUpdate(count, mDataProvider->getNumVertices(), true);
 				return mBatch->getCount();
 			}
 

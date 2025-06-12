@@ -278,7 +278,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			// Handle ImGui before calling InputManager::update() because
 			// that consumes the events.
-			imGuiHandleInput(gInputMgr, &gImGuiBackendData);
+			//imGuiHandleInput(gInputMgr, &gImGuiBackendData);
 
 			gInputMgr->update();
 

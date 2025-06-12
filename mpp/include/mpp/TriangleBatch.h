@@ -29,6 +29,8 @@ namespace mpp
 	{
 		TriangleBatchOptions mOptions;
 
+		size_t mIndexWidth;
+
 	protected:
 
 		ResourcePtr mTextureOrMaterial;
@@ -53,6 +55,7 @@ namespace mpp
 
 		TriangleBatch(std::string const& name,
 			TriangleBatchOptions const& options,
+			size_t indexWidth,
 			ResourcePtr textureOrMaterial,
 			size_t initialCapacity,
 			RenderSystem* renderSystem,

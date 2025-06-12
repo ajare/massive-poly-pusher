@@ -196,17 +196,17 @@ namespace mpp
 		mMaterial->release(this);
 	}
 
-	void Batch::startUpdate(size_t minimumCount)
+	void Batch::startUpdate(size_t minimumCount, size_t vertexCount)
 	{
-		setMinimumCount(minimumCount);
+		setMinimumCount(minimumCount, vertexCount);
 	}
 
-	void Batch::finishUpdate(size_t count, bool updateFixedBuffers)
+	void Batch::finishUpdate(size_t primitiveCount, size_t vertexCount, bool updateFixedBuffers)
 	{
 		auto* mesh = static_cast<Model*>(mModel.get())->getMesh(0);
 
-		mCurCount = count;
-		auto numPrimitives = getPrimitiveCount(count);
+		mCurCount = primitiveCount;
+		auto numPrimitives = getPrimitiveCount(primitiveCount);
 
 		if (numPrimitives > 0)
 		{
@@ -221,7 +221,7 @@ namespace mpp
 
 				if (updateFixedBuffers || !vertexBuffer->isStatic())
 				{
-					vertexBuffer->mapBufferData(getVertexCount(numPrimitives));
+					vertexBuffer->mapBufferData(vertexCount);
 				}
 			}
 		}
@@ -273,7 +273,7 @@ namespace mpp
 		}
 	}
 
-	void Batch::setMinimumCount(size_t count)
+	void Batch::setMinimumCount(size_t count, size_t vertexCount)
 	{
 		auto mesh = static_cast<Model*>(mModel.get())->getMesh(0);
 
@@ -284,7 +284,7 @@ namespace mpp
 				auto vertexBuffer = mesh->getVertexBuffer((int)i);
 				auto& data = vertexBuffer->getBufferData();
 
-				int newSize = (int)(getVertexCount(getPrimitiveCount(count)) * vertexBuffer->getVertexStride());
+				int newSize = (int)(vertexCount * vertexBuffer->getVertexStride());
 				data.resize(newSize);
 			}
 
