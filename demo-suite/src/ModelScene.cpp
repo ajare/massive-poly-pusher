@@ -732,9 +732,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	createBatchMaterials(createBatch2dMeshSpecification(), createBatch3dMeshSpecification(), options);
 
 	//
-	// 3d renderer
+	// 3d renderers
 	//
 	m3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
+	m3dBatchBufferDataProvider = make_shared<Test3dTriangleBatchBufferDataProvider>();
 
 	mpp::helper::TriangleBatchRendererParams triParams
 	{
@@ -754,7 +755,30 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	m3dTestRenderer->create();
 
+	mpp::helper::TriangleBatchRendererParams bufferTriParams
+	{
+		true,
+		false,
+		false,
+		false,
+		true
+	};
+
+	m3dTestBufferRenderer = make_shared<mpp::helper::TriangleBatch3DBufferRenderer<mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeFloat, mpp::mesh::DataTypeUnsignedByte>>(
+		"Test3dBufferBatch",
+		bufferTriParams,
+		m3dBatchBufferDataProvider,
+		16,
+		resourceMgr->getResource("Batch.3D.Material"),
+		renderSystem,
+		resourceMgr);
+
+	m3dTestBufferRenderer->create();
+
+	mModels.push_back(getScene()->add3dModel(m3dTestBufferRenderer->getModel()));
+
 	mModels.push_back(getScene()->add3dModel(m3dTestRenderer->getModel()));
+	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
 	// Load Grid
 	auto gridMeshSpec = createGridMeshSpecification();
@@ -985,9 +1009,10 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options)
 {
-	// Update 3d renderer
+	// Update 3d renderers
 	m3dTestRenderer->update();
-	
+	m3dTestBufferRenderer->update();
+
 	// Set render params
 	for (auto model: mModels)
 	{
