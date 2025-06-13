@@ -777,18 +777,26 @@ namespace mpp
 
 			size_t update() override
 			{
-				size_t count = mDataProvider->getNumPrimitives();
-				mBatch->startUpdate(count, mDataProvider->getNumVertices());
+				auto numVertices = mDataProvider->getNumVertices();
+				auto numPrimitives = mDataProvider->getNumPrimitives();
+				
+				mBatch->startUpdate(numPrimitives, numVertices);
 
 				// Copy vertex buffer data to first (and only!) vertex buffer
-				auto vertexBuffer = (int8_t*)mBatch->getAttributeData("POSITION").first;
-				memcpy(vertexBuffer, mDataProvider->getVertexData(), mDataProvider->getVertexDataSize());
+				if (numVertices > 0)
+				{
+					auto vertexBuffer = (int8_t*)mBatch->getAttributeData("POSITION").first;
+					memcpy(vertexBuffer, mDataProvider->getVertexData(), mDataProvider->getVertexDataSize());
+				}
 
 				// Copy index data to first (and only!) mesh
-				auto mesh = static_cast<mpp::Model*>(mBatch->getModel().get())->getMesh(0);
-				mesh->setIndexData(mDataProvider->getIndexData(), mDataProvider->getNumIndices(), mDataProvider->getIndexWidth());
+				if (numPrimitives > 0)
+				{
+					auto mesh = static_cast<mpp::Model*>(mBatch->getModel().get())->getMesh(0);
+					mesh->setIndexData(mDataProvider->getIndexData(), mDataProvider->getNumIndices(), mDataProvider->getIndexWidth());
+				}
 
-				mBatch->finishUpdate(count, mDataProvider->getNumVertices(), true);
+				mBatch->finishUpdate(numPrimitives, numVertices, true);
 				return mBatch->getCount();
 			}
 
