@@ -53,6 +53,7 @@ namespace mpp
 		, mMaterial(material)
 		, mIsIndexed(true)
 		, mPrimitiveCount(primitiveCount)
+		, mUseBufferDataMethod(true)
 	{
 		setPrimitiveData(type);
 		mIndexData = indices;
