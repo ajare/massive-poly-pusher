@@ -71,6 +71,26 @@ namespace mpp
 		};
 
 		template<typename PosType, typename TexType, typename ColType>
+		class TriangleBatch2DBufferDataProvider : public BatchDataProvider
+		{
+		public:
+
+			virtual uint32_t getNumVertices() const = 0;
+
+			virtual int8_t* getVertexData() const = 0;
+
+			virtual uint32_t getVertexDataSize() const = 0;
+
+			virtual int8_t* getIndexData() const = 0;
+
+			virtual uint32_t getNumIndices() const = 0;
+
+			virtual uint32_t getIndexWidth() const = 0;
+
+			virtual mpp::Colour diffuse() = 0;
+		};
+
+		template<typename PosType, typename TexType, typename ColType>
 		class TriangleBatch3DBufferDataProvider : public BatchDataProvider
 		{
 		public:
