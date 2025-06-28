@@ -809,7 +809,7 @@ namespace mpp
 				}
 
 				auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
-				mRenderSystem->renderModelImmediate(model, true);
+				mRenderSystem->renderModelImmediate(model, true, mParams);
 			}
 		};
 
