@@ -715,6 +715,105 @@ namespace mpp
 		};
 
 		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
+		class TriangleBatch2DBufferRenderer : public BatchRenderer
+		{
+			mpp::RenderSystem* mRenderSystem{ nullptr };
+
+			mpp::ResourceManager* mResourceMgr{ nullptr };
+
+			mpp::TriangleBatch* mBatch{ nullptr };
+
+			std::shared_ptr<TriangleBatch2DBufferDataProvider<PosType, TexType, ColType>> mDataProvider{ nullptr };
+
+		public:
+
+			TriangleBatch2DBufferRenderer(std::string const& name,
+				TriangleBatchRendererParams const& params,
+				std::shared_ptr<TriangleBatch2DBufferDataProvider<PosType, TexType, ColType>> dataProvider,
+				size_t indexWidth,
+				mpp::ResourcePtr textureOrMaterial,
+				mpp::RenderSystem* renderSystem,
+				mpp::ResourceManager* resourceMgr)
+				: BatchRenderer()
+				, mRenderSystem(renderSystem)
+				, mResourceMgr(resourceMgr)
+				, mDataProvider(dataProvider)
+			{
+				mBatch = new mpp::TriangleBatch(
+					name,
+					{
+						TriangleBatchOptions::Dimension::P2D,
+						params.useMaterialNotTexture,
+						PosType::vertexDataType(),
+						{ TexType::vertexDataType(), params.fixedTextureData },
+						{ ColType::vertexDataType(), params.fixedColourData },
+						params.useDiffuse,
+						params.indexedVertices
+					},
+					indexWidth,
+					textureOrMaterial,
+					params.indexedVertices ? 0 : mDataProvider->getNumPrimitives(),
+					renderSystem,
+					resourceMgr);
+
+				mUniforms->setUniform("DIFFUSE", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			}
+
+			virtual ~TriangleBatch2DBufferRenderer()
+			{
+				delete mBatch;
+			}
+
+			ResourcePtr getModel()
+			{
+				return mBatch->getModel();
+			}
+
+			void create() override
+			{
+				mBatch->create();
+				update();
+			}
+
+			size_t update() override
+			{
+				auto numVertices = mDataProvider->getNumVertices();
+				auto numPrimitives = mDataProvider->getNumPrimitives();
+
+				mBatch->startUpdate(numPrimitives, numVertices);
+
+				// Copy vertex buffer data to first (and only!) vertex buffer
+				if (numVertices > 0)
+				{
+					auto vertexBuffer = (int8_t*)mBatch->getAttributeData("POSITION").first;
+					memcpy(vertexBuffer, mDataProvider->getVertexData(), mDataProvider->getVertexDataSize());
+				}
+
+				// Copy index data to first (and only!) mesh
+				if (numPrimitives > 0)
+				{
+					auto mesh = static_cast<mpp::Model*>(mBatch->getModel().get())->getMesh(0);
+					mesh->setIndexData(mDataProvider->getIndexData(), mDataProvider->getNumIndices(), mDataProvider->getIndexWidth());
+				}
+
+				mBatch->finishUpdate(numPrimitives, numVertices, true);
+				return mBatch->getCount();
+			}
+
+			void render() override
+			{
+				if (mBatch->usingDiffuse())
+				{
+					auto colour = mDataProvider->diffuse();
+					mUniforms->updateUniform("DIFFUSE", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
+				}
+
+				auto const& model = static_cast<Model const&>(*mBatch->getModel().get());
+				mRenderSystem->renderModelImmediate(model, true);
+			}
+		};
+
+		template<typename PosType, typename TexType, typename ColType = mpp::mesh::DataTypeNone>
 		class TriangleBatch3DBufferRenderer : public BatchRenderer
 		{
 			mpp::RenderSystem* mRenderSystem{ nullptr };
