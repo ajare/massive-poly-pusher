@@ -72,7 +72,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2026\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>MppMeshd.lib;MppProgramd.lib;MppMeshSpecificationParserd.lib;Utilsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -95,7 +95,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-program\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2026\lib\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>MppMesh.lib;MppProgram.lib;MppMeshSpecificationParser.lib;Utils.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

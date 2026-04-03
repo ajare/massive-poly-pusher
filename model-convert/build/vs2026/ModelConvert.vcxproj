@@ -49,7 +49,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2022\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2026\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Utilsd.lib;MassivePolyPusherd.lib;MppMeshSpecificationParserd.lib;MppResourceParsersd.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -60,12 +60,12 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2022\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2022\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\mpp-mesh-specification-parser\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp-resource-parsers\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\mpp\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\ext\utils\build\vs2026\lib\$(Platform)\$(Configuration);$(ProjectDir)..\..\..\vendor\lib\vs2026\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Utils.lib;MassivePolyPusher.lib;MppMeshSpecificationParser.lib;MppResourceParsers.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\mpp-mesh\build\vs2022\MppMesh.vcxproj">
+    <ProjectReference Include="..\..\..\mpp-mesh\build\vs2026\MppMesh.vcxproj">
       <Project>{4201332e-dd6a-40b6-8bcd-73ad3008d9c8}</Project>
     </ProjectReference>
   </ItemGroup>
