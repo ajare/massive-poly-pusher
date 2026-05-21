@@ -56,10 +56,9 @@ goto exit_success
 
 :exit_noparam
 @echo syntax: CopyBin.bat <solution> <platform> <configuration>
-exit 1
+exit /b 1
 
 @rem SUCCESS
 
 :exit_success
-exit 0
-f
+exit /b 0
