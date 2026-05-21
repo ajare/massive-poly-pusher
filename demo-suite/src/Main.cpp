@@ -289,8 +289,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			gScenes[0]->handleInput(gInputMgr);
 
-			auto camera = static_cast<mpp::helper::FreeCamera*>(gScenes[0]->getCamera().get());
-			updateFreeCamera(*camera, gInputMgr, frameTime);
+			//auto camera = static_cast<mpp::helper::FpsCamera*>(gScenes[0]->getCamera().get());
+			//updateFreeCamera(*camera, gInputMgr, frameTime);
+
+			auto camera = static_cast<mpp::helper::FpsCamera*>(gScenes[0]->getCamera().get());
+			updateFpsCamera(*camera, gInputMgr, frameTime);
 
 			static int selected3dModel = 0;
 			if (gInputMgr->keyPressed(Key_Tab))

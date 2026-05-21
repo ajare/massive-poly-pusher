@@ -21,7 +21,7 @@ namespace mpp
 		, mAspectRatio(aspectRatio)
 		, mDirty(true)
 	{
-		mDirection = vec3(0, 0, 1);
+		mDirection = vec3(0, 0, -1);
 		mUp = vec3(0, 1, 0);
 		updateAngles();
 	}
@@ -100,8 +100,7 @@ namespace mpp
 	{
 		updateAngles();
 
-		// Invert up vector to transform from left-handed to right-handed
-		return lookAt(mPosition, mPosition + mDirection, -mUp);
+		return lookAt(mPosition, mPosition + mDirection, mUp);
 	}
 
 	mat4 Camera::getProjectionTransform() const
