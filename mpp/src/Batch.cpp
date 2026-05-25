@@ -152,6 +152,29 @@ namespace mpp
 		}
 	}
 
+	shared_ptr<ModelStream> Batch::createModelStream()
+	{
+		auto modelStream = make_shared<ProgrammaticModelStream>(mResourceMgr);
+		modelStream->setCalculateBounds(false);
+
+		// Create single mesh in model
+		auto meshIndex = modelStream->createMesh(getName() + "_Batch_Mesh", getSpecification(), mMaterial->getName(), getIndexWidth(), getPointSize());
+
+		auto numVertices = getVertexCount(getCapacity());
+
+		if (numVertices > 0)
+		{
+			modelStream->addVertexData(meshIndex, VertexData(getSpecification(), numVertices));
+		}
+
+		if (mSpecification.verticesIndexed())
+		{
+			addIndexedPrimitives(modelStream, (int)meshIndex);
+		}
+
+		return modelStream;
+	}
+
 	void Batch::create()
 	{
 		// Create mesh specification
@@ -163,22 +186,7 @@ namespace mpp
 		mMaterial->load();
 
 		// Create model data
-		auto modelStream = make_shared<ProgrammaticModelStream>(mResourceMgr);
-		modelStream->setCalculateBounds(false);
-
-		// Create single mesh in model
-		auto meshIndex = modelStream->createMesh(getName() + "_Batch_Mesh", mSpecification, mMaterial->getName(), getIndexWidth(), getPointSize());
-
-		auto numVertices = getVertexCount(getCapacity());
-		if (numVertices > 0)
-		{
-			modelStream->addVertexData(meshIndex, VertexData(mSpecification, numVertices));
-		}
-
-		if (mSpecification.verticesIndexed())
-		{
-			addIndexedPrimitives(modelStream, (int)meshIndex);
-		}
+		auto modelStream = createModelStream();
 
 		// Create and load model
 		mModel = mResourceMgr->declareResource(getName() + "_Batch_Model", modelStream).first;
