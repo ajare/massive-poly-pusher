@@ -103,6 +103,8 @@ namespace mpp
 
 		ResourcePtr getModel();
 
+		ResourcePtr getMaterial();
+
 		mesh::MeshSpecification const& getSpecification() const;
 
 		const std::pair<char*, size_t>& getAttributeData(std::string const& name) const;
