@@ -66,6 +66,11 @@ namespace mpp
 		return mModel;
 	}
 
+	ResourcePtr Batch::getMaterial()
+	{
+		return mMaterial;
+	}
+
 	mesh::MeshSpecification const& Batch::getSpecification() const
 	{
 		return mSpecification;
