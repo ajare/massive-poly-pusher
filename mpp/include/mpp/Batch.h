@@ -59,6 +59,8 @@ namespace mpp
 
 		BatchVertexAttribute getColourAttribute() const;
 
+		virtual std::shared_ptr<ModelStream> createModelStream();
+
 		virtual mesh::Primitive::Type getPrimitiveType() const = 0;
 
 		virtual uint32_t getProgramFlags() const = 0;
