@@ -340,27 +340,27 @@ public:
 		bMax.x = bMax.y = bMax.z = 1e10f;
 	}
 
-	uint32_t getNumVertices() const override
+	uint32_t getNumVertices(uint32_t meshIndex) const override
 	{
 		return mNumVertices;
 	}
 
-	int8_t* getVertexData() const override
+	int8_t* getVertexData(uint32_t meshIndex) const override
 	{
 		return mVertexData;
 	}
 
-	uint32_t getVertexDataSize() const override
+	uint32_t getVertexDataSize(uint32_t meshIndex) const override
 	{
 		return mVertexDataSize;
 	}
 
-	int8_t* getIndexData() const override
+	int8_t* getIndexData(uint32_t meshIndex) const override
 	{
 		return (int8_t*)mIndexData;
 	}
 
-	uint32_t getNumIndices() const override
+	uint32_t getNumIndices(uint32_t meshIndex) const override
 	{
 		return mNumTriangles * 3;
 	}
