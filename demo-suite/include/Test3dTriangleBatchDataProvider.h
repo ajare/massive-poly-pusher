@@ -340,7 +340,7 @@ public:
 		bMax.x = bMax.y = bMax.z = 1e10f;
 	}
 
-	uint32_t getNumVertices(uint32_t meshIndex) const override
+	uint32_t getNumVertices() const override
 	{
 		return mNumVertices;
 	}
