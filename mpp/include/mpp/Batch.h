@@ -19,15 +19,16 @@ namespace mpp
 		bool fixedValues;
 	};
 
+	struct BatchMesh
+	{
+		std::map<std::string, std::pair<char*, size_t>> dataPointers;
+		size_t curCount{ 0 };
+		size_t maxCount{ 0 };
+	};
+
 	class _MPPAPI Batch : public ResourceWrangler
 	{
 		std::string mName;
-
-		std::string mDefaultVertexShader, mDefaultFragmentShader;
-
-		std::string mProgramDescriptor;
-
-		BatchVertexAttribute mColourAttrib;
 		
 		bool mUseDiffuse;
 
@@ -35,13 +36,19 @@ namespace mpp
 
 		ResourcePtr mModel, mMaterial;
 
-	protected:
+		std::string mDefaultVertexShader, mDefaultFragmentShader;
 
-		size_t mCurCount, mMaxCount;
+		std::string mProgramDescriptor;
 
 		mesh::MeshSpecification mSpecification;
 
-		std::map<std::string, std::pair<char*, size_t>> mDataPointers;
+		BatchVertexAttribute mColourAttrib;
+
+		std::vector<BatchMesh> mMeshes;
+
+	protected:
+
+		size_t mInitialCapacity;
 
 		RenderSystem* mRenderSystem;
 
@@ -77,7 +84,7 @@ namespace mpp
 		
 		void createVertexBuffer(uint32_t index, Mesh* mesh, size_t vertexCount, bool staticData);
 
-		void setSpecificationPointers(Mesh* mesh);
+		void setSpecificationPointers(uint32_t meshIndex, Mesh* mesh);
 
 		virtual void setMinimumCount(size_t count, size_t vertexCount);
 
@@ -107,11 +114,11 @@ namespace mpp
 
 		mesh::MeshSpecification const& getSpecification() const;
 
-		const std::pair<char*, size_t>& getAttributeData(std::string const& name) const;
+		const std::pair<char*, size_t>& getAttributeData(uint32_t meshIndex, std::string const& name) const;
 
-		size_t getCount() const;
+		size_t getCount(uint32_t meshIndex) const;
 
-		size_t getCapacity() const;
+		size_t getCapacity(uint32_t meshIndex) const;
 
 		virtual size_t getPrimitiveCount(size_t objectCount) const;
 

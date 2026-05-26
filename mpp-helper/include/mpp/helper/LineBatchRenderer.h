@@ -73,7 +73,7 @@ namespace mpp
 			{
 				size_t count = mDataProvider->getNumPrimitives();
 
-				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+				size_t initStart{ ~0u }, batchSize = mBatch->getCount(0);
 				bool newVertices{ false };
 				if (count > batchSize)
 				{
@@ -86,11 +86,11 @@ namespace mpp
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename ColType::builtin_type ColTypeBuiltin;
 
-				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData(0, "POSITION").first;
+				auto posStride = mBatch->getAttributeData(0, "POSITION").second / sizeof(PosTypeBuiltin);
 
-				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
-				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
+				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData(0, "COLOUR").first;
+				auto colStride = mBatch->getAttributeData(0, "COLOUR").second / sizeof(ColTypeBuiltin);
 
 				size_t lineCount = mBatch->getPrimitiveCount(count);
 				for (size_t pOffset = 0, cOffset = 0, i = 0; i < lineCount; ++i)
@@ -146,7 +146,7 @@ namespace mpp
 				}
 
 				mBatch->finishUpdate(count, count * 2, newVertices);
-				return mBatch->getCount();
+				return mBatch->getCount(0);
 			}
 
 			void render() override

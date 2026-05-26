@@ -31,9 +31,8 @@ namespace mpp
 		, mDefaultVertexShader(defaultVertexShader)
 		, mDefaultFragmentShader(defaultFragmentShader)
 		, mProgramDescriptor(descriptor)
-		, mCurCount(0)
-		, mMaxCount(initialCapacity)
 		, mColourAttrib(colourAttrib)
+		, mInitialCapacity(initialCapacity)
 		, mUseDiffuse(useDiffuse)
 		, mRenderSystem(renderSystem)
 		, mResourceMgr(resourceMgr)
@@ -76,25 +75,25 @@ namespace mpp
 		return mSpecification;
 	}
 
-	const pair<char*, size_t>& Batch::getAttributeData(string const& name) const
+	const pair<char*, size_t>& Batch::getAttributeData(uint32_t meshIndex, string const& name) const
 	{
-		auto it = mDataPointers.find(name);
-		if (it == mDataPointers.end())
+		auto it = mMeshes[meshIndex].dataPointers.find(name);
+		if (it == mMeshes[meshIndex].dataPointers.end())
 		{
 			return msNonExistentAttribute;
 		}
 
-		return mDataPointers.at(name);
+		return mMeshes[meshIndex].dataPointers.at(name);
 	}
 
-	size_t Batch::getCount() const
+	size_t Batch::getCount(uint32_t meshIndex) const
 	{
-		return mCurCount;
+		return mMeshes[meshIndex].curCount;
 	}
 
-	size_t Batch::getCapacity() const
+	size_t Batch::getCapacity(uint32_t meshIndex) const
 	{
-		return mMaxCount;
+		return mMeshes[meshIndex].maxCount;
 	}
 
 	ResourcePtr Batch::getTexture()
@@ -165,7 +164,7 @@ namespace mpp
 		// Create single mesh in model
 		auto meshIndex = modelStream->createMesh(getName() + "_Batch_Mesh", getSpecification(), mMaterial->getName(), getIndexWidth(), getPointSize());
 
-		auto numVertices = getVertexCount(getCapacity());
+		auto numVertices = getVertexCount(mInitialCapacity);
 
 		if (numVertices > 0)
 		{
@@ -198,9 +197,20 @@ namespace mpp
 		mModel->acquire(this);
 		mModel->load();
 
-		// Specification pointers
-		auto model = static_cast<Model*>(mModel.get());
-		setSpecificationPointers(model->getMesh(0));
+		// Create mesh data
+		auto model = static_pointer_cast<Model>(mModel);
+
+		for (int i = 0; i < model->getNumMeshes(); ++i)
+		{
+			mMeshes.push_back({
+				{},
+				0,
+				mInitialCapacity
+			});
+
+			// Specification pointers
+			setSpecificationPointers((uint32_t)i, model->getMesh(i));
+		}
 	}
 
 	void Batch::destroy()
@@ -216,30 +226,33 @@ namespace mpp
 
 	void Batch::finishUpdate(size_t primitiveCount, size_t vertexCount, bool updateFixedBuffers)
 	{
-		auto* mesh = static_cast<Model*>(mModel.get())->getMesh(0);
-
-		mCurCount = primitiveCount;
-		auto numPrimitives = getPrimitiveCount(primitiveCount);
-
-		if (numPrimitives > 0)
+		for (uint32_t meshIndex = 0; meshIndex < (uint32_t)mMeshes.size(); ++meshIndex)
 		{
-			if (mesh->isIndexed())
-			{
-				mesh->mapIndexData(numPrimitives);
-			}
+			auto* mesh = static_cast<Model*>(mModel.get())->getMesh(meshIndex);
 
-			for (size_t i = 0; i < mesh->getNumVertexBuffers(); ++i)
-			{
-				auto vertexBuffer = mesh->getVertexBuffer((int)i);
+			mMeshes[meshIndex].curCount = primitiveCount;
+			auto numPrimitives = getPrimitiveCount(primitiveCount);
 
-				if (updateFixedBuffers || !vertexBuffer->isStatic())
+			if (numPrimitives > 0)
+			{
+				if (mesh->isIndexed())
 				{
-					vertexBuffer->mapBufferData(vertexCount);
+					mesh->mapIndexData(numPrimitives);
+				}
+
+				for (size_t i = 0; i < mesh->getNumVertexBuffers(); ++i)
+				{
+					auto vertexBuffer = mesh->getVertexBuffer((int)i);
+
+					if (updateFixedBuffers || !vertexBuffer->isStatic())
+					{
+						vertexBuffer->mapBufferData(vertexCount);
+					}
 				}
 			}
-		}
 
-		mesh->setNumPrimitives(numPrimitives);
+			mesh->setNumPrimitives(numPrimitives);
+		}
 	}
 
 	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d)
@@ -266,7 +279,7 @@ namespace mpp
 	 * Set the data pointers for the mesh specification.
 	 *
 	 */
-	void Batch::setSpecificationPointers(Mesh* mesh)
+	void Batch::setSpecificationPointers(uint32_t meshIndex, Mesh* mesh)
 	{
 		auto buffers = mesh->getVertexBuffers();
 
@@ -280,7 +293,7 @@ namespace mpp
 				if (buffers[i]->getBufferData().size() > 0)
 				{
 					auto dataPtr = (char*)&((buffers[i]->getBufferData()[0])) + (int)attrib.offsetInBytes;
-					mDataPointers[attrib.identifier] = make_pair(dataPtr, layout.getVertexSize());
+					mMeshes[meshIndex].dataPointers[attrib.identifier] = make_pair(dataPtr, layout.getVertexSize());
 				}
 			}
 		}
@@ -288,28 +301,30 @@ namespace mpp
 
 	void Batch::setMinimumCount(size_t count, size_t vertexCount)
 	{
-		auto mesh = static_cast<Model*>(mModel.get())->getMesh(0);
-
-		if (count > mMaxCount)
+		for (uint32_t meshIndex = 0; meshIndex < (uint32_t)mMeshes.size(); ++meshIndex)
 		{
-			for (size_t i = 0; i < mesh->getNumVertexBuffers(); ++i)
+			auto mesh = static_cast<Model*>(mModel.get())->getMesh(meshIndex);
+
+			if (count > mMeshes[meshIndex].maxCount)
 			{
-				auto vertexBuffer = mesh->getVertexBuffer((int)i);
-				auto& data = vertexBuffer->getBufferData();
+				for (size_t i = 0; i < mesh->getNumVertexBuffers(); ++i)
+				{
+					auto vertexBuffer = mesh->getVertexBuffer((int)i);
+					auto& data = vertexBuffer->getBufferData();
 
-				int newSize = (int)(vertexCount * vertexBuffer->getVertexStride());
-				data.resize(newSize);
+					int newSize = (int)(vertexCount * vertexBuffer->getVertexStride());
+					data.resize(newSize);
+				}
+
+				// Index data
+				if (indexedVertices())
+				{
+					createIndexData(mesh->getIndexData(), (uint32_t)mMeshes[meshIndex].maxCount, count);
+				}
+
+				mMeshes[meshIndex].maxCount = count;
+				setSpecificationPointers(meshIndex, mesh);
 			}
-
-			// Index data
-			if (indexedVertices())
-			{
-				createIndexData(mesh->getIndexData(), (uint32_t)mMaxCount, count);
-			}
-
-			mMaxCount = count;
-			setSpecificationPointers(mesh);
 		}
 	}
-
 }
