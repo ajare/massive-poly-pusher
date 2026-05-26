@@ -95,15 +95,15 @@ namespace mpp
 		{
 		public:
 
-			virtual uint32_t getNumVertices() const = 0;
+			virtual uint32_t getNumVertices(uint32_t meshIndex) const = 0;
 
-			virtual int8_t* getVertexData() const = 0;
+			virtual int8_t* getVertexData(uint32_t meshIndex) const = 0;
 
-			virtual uint32_t getVertexDataSize() const = 0;
+			virtual uint32_t getVertexDataSize(uint32_t meshIndex) const = 0;
 
-			virtual int8_t* getIndexData() const = 0;
+			virtual int8_t* getIndexData(uint32_t meshIndex) const = 0;
 
-			virtual uint32_t getNumIndices() const = 0;
+			virtual uint32_t getNumIndices(uint32_t meshIndex) const = 0;
 
 			virtual uint32_t getIndexWidth() const = 0;
 

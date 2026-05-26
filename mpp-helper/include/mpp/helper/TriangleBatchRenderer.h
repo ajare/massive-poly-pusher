@@ -876,7 +876,9 @@ namespace mpp
 
 			size_t update() override
 			{
-				auto numVertices = mDataProvider->getNumVertices();
+				uint32_t meshIndex{ 0 };
+
+				auto numVertices = mDataProvider->getNumVertices(meshIndex);
 				auto numPrimitives = mDataProvider->getNumPrimitives();
 				
 				mBatch->startUpdate(numPrimitives, numVertices);
@@ -884,19 +886,19 @@ namespace mpp
 				// Copy vertex buffer data to first (and only!) vertex buffer
 				if (numVertices > 0)
 				{
-					auto vertexBuffer = (int8_t*)mBatch->getAttributeData(0, "POSITION").first;
-					memcpy(vertexBuffer, mDataProvider->getVertexData(), mDataProvider->getVertexDataSize());
+					auto vertexBuffer = (int8_t*)mBatch->getAttributeData(meshIndex, "POSITION").first;
+					memcpy(vertexBuffer, mDataProvider->getVertexData(meshIndex), mDataProvider->getVertexDataSize(meshIndex));
 				}
 
 				// Copy index data to first (and only!) mesh
 				if (numPrimitives > 0)
 				{
-					auto mesh = static_cast<mpp::Model*>(mBatch->getModel().get())->getMesh(0);
-					mesh->setIndexData(mDataProvider->getIndexData(), mDataProvider->getNumIndices(), mDataProvider->getIndexWidth());
+					auto mesh = static_cast<mpp::Model*>(mBatch->getModel().get())->getMesh(meshIndex);
+					mesh->setIndexData(mDataProvider->getIndexData(meshIndex), mDataProvider->getNumIndices(meshIndex), mDataProvider->getIndexWidth());
 				}
 
 				mBatch->finishUpdate(numPrimitives, numVertices, true);
-				return mBatch->getCount(0);
+				return mBatch->getCount(meshIndex);
 			}
 
 			void render() override
