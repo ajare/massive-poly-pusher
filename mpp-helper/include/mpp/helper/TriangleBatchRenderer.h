@@ -878,7 +878,7 @@ namespace mpp
 			{
 				uint32_t meshIndex{ 0 };
 
-				auto numVertices = mDataProvider->getNumVertices(meshIndex);
+				auto numVertices = mDataProvider->getNumVertices();
 				auto numPrimitives = mDataProvider->getNumPrimitives();
 				
 				mBatch->startUpdate(numPrimitives, numVertices);
