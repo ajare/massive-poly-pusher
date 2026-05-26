@@ -44,12 +44,12 @@ namespace mpp
 
 		BatchVertexAttribute mColourAttrib;
 
-		std::vector<BatchMesh> mMeshes;
-
 	protected:
 
 		size_t mInitialCapacity;
 
+		std::vector<BatchMesh> mMeshes;
+		
 		RenderSystem* mRenderSystem;
 
 		ResourceManager* mResourceMgr;
