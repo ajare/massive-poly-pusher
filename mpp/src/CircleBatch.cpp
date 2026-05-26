@@ -132,7 +132,7 @@ namespace mpp
 
 	void CircleBatch::addIndexedPrimitives(shared_ptr<ProgrammaticModelStream> ms, int meshIndex)
 	{
-		for (size_t i = 0; i < getCapacity(); ++i)
+		for (size_t i = 0; i < getCapacity(~0u); ++i)
 		{
 			auto x = (uint32_t)i * 4;
 			ms->addTriangle(meshIndex, x + 0, x + 1, x + 2);

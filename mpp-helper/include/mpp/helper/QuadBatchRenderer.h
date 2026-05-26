@@ -638,7 +638,7 @@ namespace mpp
 			size_t update() override
 			{
 				size_t count = mDataProvider->getNumPrimitives();
-				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+				size_t initStart{ ~0u }, batchSize = mBatch->getCount(0);
 				bool newVertices{ false };
 				if (count > batchSize)
 				{
@@ -653,16 +653,16 @@ namespace mpp
 				typedef typename PosType::builtin_type PosTypeBuiltin;
 				typedef typename TexType::builtin_type TexTypeBuiltin;
 
-				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData(0, "POSITION").first;
+				auto posStride = mBatch->getAttributeData(0, "POSITION").second / sizeof(PosTypeBuiltin);
 
 				PosTypeBuiltin* rotBuffer{ nullptr };
 				size_t rotStride{ 0 };
 
 				if (mBatch->rotating())
 				{
-					rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("ROTATION").first;
-					rotStride = mBatch->getAttributeData("ROTATION").second / sizeof(PosTypeBuiltin);
+					rotBuffer = (PosTypeBuiltin*)mBatch->getAttributeData(0, "ROTATION").first;
+					rotStride = mBatch->getAttributeData(0, "ROTATION").second / sizeof(PosTypeBuiltin);
 				}
 
 				TexTypeBuiltin* texBuffer{ nullptr };
@@ -670,8 +670,8 @@ namespace mpp
 
 				if (mBatch->usingTexture())
 				{
-					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData(0, "TEXCOORDS").first;
+					texStride = mBatch->getAttributeData(0, "TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
 				for (size_t pOffset = 0, rOffset = 0, tOffset = 0, i = 0; i < vertexCount; ++i)
@@ -842,7 +842,7 @@ namespace mpp
 				}
 
 				mBatch->finishUpdate(count, vertexCount, newVertices);
-				return mBatch->getCount();
+				return mBatch->getCount(0);
 			}
 
 			void render()

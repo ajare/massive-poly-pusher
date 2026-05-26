@@ -108,7 +108,7 @@ namespace mpp
 					auto [batch, dataProvider] = entry;
 
 					size_t count = dataProvider->getNumPrimitives();
-					size_t initStart{ ~0u }, batchSize = batch->getCount();
+					size_t initStart{ ~0u }, batchSize = batch->getCount(0);
 					bool newVertices{ false };
 					if (count > batchSize)
 					{
@@ -124,20 +124,20 @@ namespace mpp
 					typedef typename TexType::builtin_type TexTypeBuiltin;
 					typedef typename ColType::builtin_type ColTypeBuiltin;
 
-					auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData("POSITION").first;
-					auto posStride = batch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+					auto posBuffer = (PosTypeBuiltin*)batch->getAttributeData(0, "POSITION").first;
+					auto posStride = batch->getAttributeData(0, "POSITION").second / sizeof(PosTypeBuiltin);
 
 					TexTypeBuiltin* texBuffer{ nullptr };
 					size_t texStride{ 0 };
 
 					if (batch->usingTexture())
 					{
-						texBuffer = (TexTypeBuiltin*)batch->getAttributeData("TEXCOORDS").first;
-						texStride = batch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+						texBuffer = (TexTypeBuiltin*)batch->getAttributeData(0, "TEXCOORDS").first;
+						texStride = batch->getAttributeData(0, "TEXCOORDS").second / sizeof(TexTypeBuiltin);
 					}
 
-					auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData("COLOUR").first;
-					auto colStride = batch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
+					auto colBuffer = (ColTypeBuiltin*)batch->getAttributeData(0, "COLOUR").first;
+					auto colStride = batch->getAttributeData(0, "COLOUR").second / sizeof(ColTypeBuiltin);
 
 					for (size_t pOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 					{
@@ -227,7 +227,7 @@ namespace mpp
 					}
 
 					batch->finishUpdate(count, triangleCount * 3, newVertices);
-					totalCount += batch->getCount();
+					totalCount += batch->getCount(0);
 				}
 
 				return totalCount;
@@ -554,7 +554,7 @@ namespace mpp
 			size_t update() override
 			{
 				size_t count = mDataProvider->getNumPrimitives();
-				size_t initStart{ ~0u }, batchSize = mBatch->getCount();
+				size_t initStart{ ~0u }, batchSize = mBatch->getCount(0);
 				bool newVertices{ false };
 				if (count > batchSize)
 				{
@@ -570,23 +570,23 @@ namespace mpp
 				typedef typename TexType::builtin_type TexTypeBuiltin;
 				typedef typename ColType::builtin_type ColTypeBuiltin;
 
-				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("POSITION").first;
-				auto posStride = mBatch->getAttributeData("POSITION").second / sizeof(PosTypeBuiltin);
+				auto posBuffer = (PosTypeBuiltin*)mBatch->getAttributeData(0, "POSITION").first;
+				auto posStride = mBatch->getAttributeData(0, "POSITION").second / sizeof(PosTypeBuiltin);
 
-				auto nmlBuffer = (PosTypeBuiltin*)mBatch->getAttributeData("NORMAL").first;
-				auto nmlStride = mBatch->getAttributeData("NORMAL").second / sizeof(PosTypeBuiltin);
+				auto nmlBuffer = (PosTypeBuiltin*)mBatch->getAttributeData(0, "NORMAL").first;
+				auto nmlStride = mBatch->getAttributeData(0, "NORMAL").second / sizeof(PosTypeBuiltin);
 
 				TexTypeBuiltin* texBuffer{ nullptr };
 				size_t texStride{ 0 };
 
 				if (mBatch->usingTexture())
 				{
-					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData("TEXCOORDS").first;
-					texStride = mBatch->getAttributeData("TEXCOORDS").second / sizeof(TexTypeBuiltin);
+					texBuffer = (TexTypeBuiltin*)mBatch->getAttributeData(0, "TEXCOORDS").first;
+					texStride = mBatch->getAttributeData(0, "TEXCOORDS").second / sizeof(TexTypeBuiltin);
 				}
 
-				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData("COLOUR").first;
-				auto colStride = mBatch->getAttributeData("COLOUR").second / sizeof(ColTypeBuiltin);
+				auto colBuffer = (ColTypeBuiltin*)mBatch->getAttributeData(0, "COLOUR").first;
+				auto colStride = mBatch->getAttributeData(0, "COLOUR").second / sizeof(ColTypeBuiltin);
 
 				for (size_t pOffset = 0, nOffset = 0, tOffset = 0, cOffset = 0, i = 0; i < triangleCount; ++i)
 				{
@@ -698,7 +698,7 @@ namespace mpp
 				}
 
 				mBatch->finishUpdate(count, triangleCount * 3, newVertices);
-				return mBatch->getCount();
+				return mBatch->getCount(0);
 			}
 
 			void render() override
@@ -884,7 +884,7 @@ namespace mpp
 				// Copy vertex buffer data to first (and only!) vertex buffer
 				if (numVertices > 0)
 				{
-					auto vertexBuffer = (int8_t*)mBatch->getAttributeData("POSITION").first;
+					auto vertexBuffer = (int8_t*)mBatch->getAttributeData(0, "POSITION").first;
 					memcpy(vertexBuffer, mDataProvider->getVertexData(), mDataProvider->getVertexDataSize());
 				}
 
@@ -896,7 +896,7 @@ namespace mpp
 				}
 
 				mBatch->finishUpdate(numPrimitives, numVertices, true);
-				return mBatch->getCount();
+				return mBatch->getCount(0);
 			}
 
 			void render() override

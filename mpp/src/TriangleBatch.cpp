@@ -121,7 +121,10 @@ namespace mpp
 	ResourcePtr TriangleBatch::createMaterial(string const& name, ResourcePtr texture, uint32_t programFlags, bool is2d)
 	{
 		auto res = mOptions.specifyMaterial ? mTextureOrMaterial
-			: Batch::createMaterial(getName() + "_TriBatch", mTextureOrMaterial, getProgramFlags(), mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
+			: Batch::createMaterial(getName() + "_TriBatch", 
+				mTextureOrMaterial, 
+				getProgramFlags(), 
+				mOptions.dimension == TriangleBatchOptions::Dimension::P2D);
 
 		return res;
 	}
