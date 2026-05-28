@@ -19,7 +19,7 @@ namespace mpp
 		{
 			float mCurPitch;
 
-		private:
+		protected:
 
 			void updateAngles() const override;
 
