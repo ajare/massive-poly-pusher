@@ -27,7 +27,7 @@ namespace mpp
 
 		mutable bool mDirty;
 
-	protcted:
+	protected:
 
 		virtual void updateAngles() const;
 
