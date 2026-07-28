@@ -261,7 +261,8 @@ namespace mpp
 	{
 		auto oldPos = fp.tellp();
 
-		size_t newPos = sizeof(Header) + (size_t)type * sizeof(Directory::Entry);
+		constexpr size_t kOnDiskEntrySize = 4 * sizeof(uint32_t);
+		size_t newPos = sizeof(Header) + (size_t)type * kOnDiskEntrySize;
 
 		fp.seekp((streampos)newPos);
 		writeDirectoryEntry(fp, { type, start, end, count });
