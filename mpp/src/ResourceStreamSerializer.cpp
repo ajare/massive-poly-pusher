@@ -82,7 +82,7 @@ namespace mpp
 	void ResourceStreamSerializer::writeValue(string const& value, ofstream& fp)
 	{
 		uint32_t len = (uint32_t)value.length();
-		fp.write((char const*)&len, len);
+		fp.write((char const*)&len, sizeof(len));
 
 		if (len > 0)
 		{
