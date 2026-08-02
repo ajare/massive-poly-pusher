@@ -325,6 +325,42 @@ namespace mpp
 						THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 					}
 				}
+				else if (entry.first == "Pbr")
+				{
+					auto& pbr = qs.spec.pbr;
+					pbr.enabled = true;
+					for (auto pit = entry.second.begin(); pit != entry.second.end(); ++pit)
+					{
+						auto const& pbrEntry = *pit;
+						auto const rawValue = pbrEntry.second.getValue();
+						auto const pbrValue = utils::StringUtils::toUpper(rawValue);
+						if (pbrEntry.first == "baseColourFactor")
+						{
+							auto values = utils::StringUtils::split(rawValue, " ,");
+							if (values.size() != 4) THROW_MPP_RESOURCE_PARSERS("Pbr baseColourFactor requires four values.", __LINE__, __FILE__, __func__);
+							pbr.baseColourFactor = glm::vec4(utils::StringUtils::parseFloat(values[0]), utils::StringUtils::parseFloat(values[1]), utils::StringUtils::parseFloat(values[2]), utils::StringUtils::parseFloat(values[3]));
+						}
+						else if (pbrEntry.first == "metallicFactor") pbr.metallicFactor = utils::StringUtils::parseFloat(rawValue);
+						else if (pbrEntry.first == "roughnessFactor") pbr.roughnessFactor = utils::StringUtils::parseFloat(rawValue);
+						else if (pbrEntry.first == "normalScale") pbr.normalScale = utils::StringUtils::parseFloat(rawValue);
+						else if (pbrEntry.first == "occlusionStrength") pbr.occlusionStrength = utils::StringUtils::parseFloat(rawValue);
+						else if (pbrEntry.first == "alphaCutoff") pbr.alphaCutoff = utils::StringUtils::parseFloat(rawValue);
+						else if (pbrEntry.first == "doubleSided") pbr.doubleSided = utils::StringUtils::parseBool(pbrValue);
+						else if (pbrEntry.first == "emissiveFactor")
+						{
+							auto values = utils::StringUtils::split(rawValue, " ,");
+							if (values.size() != 3) THROW_MPP_RESOURCE_PARSERS("Pbr emissiveFactor requires three values.", __LINE__, __FILE__, __func__);
+							pbr.emissiveFactor = glm::vec3(utils::StringUtils::parseFloat(values[0]), utils::StringUtils::parseFloat(values[1]), utils::StringUtils::parseFloat(values[2]));
+						}
+						else if (pbrEntry.first == "alphaMode")
+						{
+							if (pbrValue == "OPAQUE") pbr.alphaMode = MaterialSpecification::PbrAlphaMode::Opaque;
+							else if (pbrValue == "MASK") pbr.alphaMode = MaterialSpecification::PbrAlphaMode::Mask;
+							else if (pbrValue == "BLEND") pbr.alphaMode = MaterialSpecification::PbrAlphaMode::Blend;
+							else THROW_MPP_RESOURCE_PARSERS("Unknown Pbr alphaMode.", __LINE__, __FILE__, __func__);
+						}
+					}
+				}
 				else if (entry.first == "Textures")
 				{
 					auto const& textures = it->second;

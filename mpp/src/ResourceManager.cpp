@@ -457,6 +457,10 @@ namespace mpp
 					attribs.insert("TexCoords4");
 					attribs.insert("TexCoords");
 					break;
+				case mesh::Vertex::Component::Tangent4:
+					attribs.insert("Tangent4");
+					attribs.insert("Tangent");
+					break;
 				case mesh::Vertex::Component::Colour1:
 					attribs.insert("Colour1");
 					attribs.insert("Alpha");

@@ -76,23 +76,25 @@ Every milestone is incomplete until DemoSuite is updated to visibly render `demo
 
 **Outcome:** authored resources can express standard metallic-roughness materials and supply the geometry they require.
 
-- [ ] Extend `MaterialSpecification`/material resources with an optional PBR surface definition:
-  - [ ] base-colour, metallic, roughness, emissive factors;
-  - [ ] normal scale and ambient-occlusion strength;
-  - [ ] base-colour, metallic-roughness, normal, occlusion, and emissive texture slots;
-  - [ ] alpha mode (`opaque`, `mask`, `blend`), alpha cutoff, and double-sided state.
-- [ ] Provide neutral fallback textures and default factor values so every PBR texture is optional.
-- [ ] Add a `Tangent4` vertex semantic, or an equivalent documented `TANGENT` vec4 named attribute, including parser and serialization support.
-- [ ] Update model creation and `model-convert`/Assimp integration to import or generate tangents from positions, normals, and UV0.
-- [ ] Preserve current model/material resources and their legacy shader selection.
+- [x] Extend `MaterialSpecification`/material resources with an optional PBR surface definition:
+  - [x] base-colour, metallic, roughness, emissive factors;
+  - [x] normal scale and ambient-occlusion strength;
+  - [x] base-colour, metallic-roughness, normal, occlusion, and emissive texture slots through the existing named material sampler list;
+  - [x] alpha mode (`opaque`, `mask`, `blend`), alpha cutoff, and double-sided state.
+- [x] Provide neutral fallback textures and default factor values so every PBR texture is optional.
+- [x] Add a `Tangent4` vertex semantic, including parser and serialization support.
+- [x] Update model creation and `model-convert`/Assimp integration to import or generate tangents from positions, normals, and UV0.
+- [x] Preserve current model/material resources and their legacy shader selection.
 - [ ] Add a later, optional glTF 2.0 material mapping task after the resource contract is proven with native resources.
 
 **Acceptance:** a PBR material can be authored with only factors or with all five maps; normal-mapped geometry exposes a valid tangent frame; legacy material files still load unchanged.
 
 ### DemoSuite checkpoint
 
-- [ ] Add a PBR material for `statue/statue.mppmodel` (or a PBR material override for each statue mesh) and render it visibly through `PBR`.
+- [x] Add a PBR material for `statue/statue.mppmodel` (or a PBR material override for each statue mesh) and render it visibly through `PBR`.
 - [ ] Exercise factor-only and texture-backed variants, including normal mapping when tangents are available, and capture the result.
+
+**Implementation note (Milestone 3):** PBR factors, alpha state, XML parsing, dynamic named sampler slots, neutral fallback maps, and `Tangent4` conversion support are implemented. The statue uses a PBR material override with factor values. An authored normal-map validation asset remains the only outstanding acceptance test.
 
 ---
 

@@ -44,7 +44,8 @@ namespace mpp
 				UserDefined1 = 1 << 11,
 				UserDefined2 = 1 << 12,
 				UserDefined3 = 1 << 13,
-				UserDefined4 = 1 << 14
+				UserDefined4 = 1 << 14,
+				Tangent4 = 1 << 15
 			};
 
 			static size_t getComponentSize(Component component);

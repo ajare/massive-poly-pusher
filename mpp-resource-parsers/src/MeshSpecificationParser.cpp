@@ -34,6 +34,7 @@ namespace mpp
 			mComponentTypes["COLOUR1"] = mpp::mesh::Vertex::Component::Colour1;
 			mComponentTypes["COLOUR3"] = mpp::mesh::Vertex::Component::Colour3;
 			mComponentTypes["COLOUR4"] = mpp::mesh::Vertex::Component::Colour4;
+			mComponentTypes["TANGENT4"] = mpp::mesh::Vertex::Component::Tangent4;
 			mComponentTypes["USER1"] = mpp::mesh::Vertex::Component::UserDefined1;
 			mComponentTypes["USER2"] = mpp::mesh::Vertex::Component::UserDefined2;
 			mComponentTypes["USER3"] = mpp::mesh::Vertex::Component::UserDefined3;

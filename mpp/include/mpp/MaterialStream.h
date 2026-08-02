@@ -42,6 +42,8 @@ namespace mpp
 
 		UniformCollection const& getUniforms() const;
 
+		MaterialSpecification::PbrSurface const& getPbrSurface() const;
+
 		std::vector<MaterialSpecification::TextureOptions> const& getTextures() const;
 
 		uint32_t createQualitySetting(std::string const& name);
