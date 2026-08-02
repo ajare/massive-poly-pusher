@@ -143,6 +143,13 @@ namespace mpp
 		// Set uniforms
 		mUniforms = mStr->getUniforms();
 		mPbrSurface = mStr->getPbrSurface();
+		// MPP model files retain backwards-compatible material streams. PBR
+		// metadata is mirrored into PBR_* uniforms by FileMaterialStream, so
+		// recover the fallback-texture contract after deserializing such a model.
+		if (!mPbrSurface.enabled && mUniforms.getUniformData().find(MPP_PROGRAM_MARKUP_UNIFORM(string("PBR_ENABLED"))) != mUniforms.getUniformData().end())
+		{
+			mPbrSurface.enabled = true;
+		}
 		if (mPbrSurface.enabled)
 		{
 			mUniforms.setUniform("PBR_BASE_COLOUR_FACTOR", mPbrSurface.baseColourFactor);
@@ -151,12 +158,25 @@ namespace mpp
 			mUniforms.setUniform("PBR_EMISSIVE_FACTOR", mPbrSurface.emissiveFactor);
 			mUniforms.setUniform("PBR_NORMAL_SCALE", mPbrSurface.normalScale);
 			mUniforms.setUniform("PBR_OCCLUSION_STRENGTH", mPbrSurface.occlusionStrength);
+			mUniforms.setUniform("PBR_ALPHA_MODE", (int32_t)mPbrSurface.alphaMode);
 			mUniforms.setUniform("PBR_ALPHA_CUTOFF", mPbrSurface.alphaCutoff);
+			mUniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(mPbrSurface.doubleSided ? 1 : 0));
 		}
 		
 		// Set textures
 		Program* program = (Program*)(mProgram.get());
 		auto const& materialTextures = mStr->getTextures();
+
+		// A serialized legacy stream may predate PbrSurface itself. The standard
+		// PBR sampler contract is also sufficient to select its neutral maps.
+		for (int i = 0; i < program->getNumSamplers(); ++i)
+		{
+			if (program->getSamplerName(i).rfind("PBR_", 0) == 0)
+			{
+				mPbrSurface.enabled = true;
+				break;
+			}
+		}
 
 		// Go through each texture, get the binding location.
 		for (int i = 0; i < program->getNumSamplers(); ++i)

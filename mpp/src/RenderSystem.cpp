@@ -2141,7 +2141,7 @@ namespace mpp
 		mRenderInfo.fullscreenQuads++;
 	}
 
-	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure)
+	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap)
 	{
 		flushVertexBuffers();
 
@@ -2153,6 +2153,7 @@ namespace mpp
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		GL_CHECK(glUniform1f(program->getUniformId("EXPOSURE"), exposure));
 		GL_CHECK(glUniform1f(program->getUniformId("GAMMA"), mGamma));
+		GL_CHECK(glUniform1i(program->getUniformId("TONE_MAP_OPERATOR"), useAcesToneMap ? 1 : 0));
 
 		texture->bind(0, 0);
 		mRenderInfo.textureSwitches++;

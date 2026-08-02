@@ -481,7 +481,7 @@ namespace mpp
 		// 
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 
-		void renderToneMappedFullscreenQuad(Texture* texture, float exposure);
+		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

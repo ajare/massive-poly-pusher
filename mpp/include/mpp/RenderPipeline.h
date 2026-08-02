@@ -28,10 +28,17 @@ namespace mpp
 		PbrForward
 	};
 
+	enum class PbrToneMapOperator
+	{
+		Reinhard,
+		Aces
+	};
+
 	struct _MPPAPI RenderPipelineOptions
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
 		float exposure{ 1.0f };
+		PbrToneMapOperator toneMapOperator{ PbrToneMapOperator::Aces };
 		PbrEnvironmentPtr environment;
 	};
 
@@ -56,6 +63,10 @@ namespace mpp
 		std::string const& getName() const;
 
 		RenderPipelineOptions const& getOptions() const;
+
+		void setExposure(float exposure);
+
+		void setToneMapOperator(PbrToneMapOperator toneMapOperator);
 
 		RenderTargetPtr getOutputRenderTarget();
 

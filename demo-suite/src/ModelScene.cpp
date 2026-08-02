@@ -954,7 +954,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	pbrOptions.environment->brdfIntegrationLut = resourceMgr->getResource("PBR.Preview.BrdfLut");
 	pbrOptions.environment->backgroundMap = resourceMgr->getResource("PBR.Preview.Environment");
 	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
-	renderSystem->getOrCreateRenderPipeline(getRenderPipelineName());
+	renderSystem->getOrCreateRenderPipeline("Default");
 }
 
 void ModelScene::teardownImGui()
@@ -985,6 +985,11 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 	camera->setClipDistances(0.1f, 1000.0f);
 
 	return shared_ptr<mpp::Camera>(camera);
+}
+
+string ModelScene::getRenderPipelineName() const
+{
+	return "PBR";
 }
 
 void ModelScene::toggle2dBatches(int batchId)
@@ -1035,8 +1040,19 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			renderSystem->setGamma(gamma);
 		}
 
-		ImGui::TextUnformatted("Pipeline: PBR (HDR preview)");
-		ImGui::Text("Texture bindings: 3 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
+		ImGui::TextUnformatted("Pipeline: PBR (Cook-Torrance HDR)");
+		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
+		float exposure = pbrPipeline->getOptions().exposure;
+		if (ImGui::SliderFloat("PBR Exposure", &exposure, 0.0f, 8.0f))
+		{
+			pbrPipeline->setExposure(exposure);
+		}
+		int toneMapOperator = pbrPipeline->getOptions().toneMapOperator == mpp::PbrToneMapOperator::Aces ? 1 : 0;
+		if (ImGui::Combo("PBR Tone Map", &toneMapOperator, "Reinhard\0ACES\0"))
+		{
+			pbrPipeline->setToneMapOperator(toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces);
+		}
+		ImGui::Text("Texture bindings: 8 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
 		ImGui::TextUnformatted("Base/environment: sRGB; detail: linear; environment: cube map");
 		ImGui::Text("PBR lights: 1 / %zu; environment: neutral precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
 	}

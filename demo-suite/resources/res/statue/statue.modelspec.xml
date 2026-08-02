@@ -16,6 +16,10 @@
 				<type>float32</type>
 			</Channel>
 			<Channel>
+				<data>tangent4</data>
+				<type>float32</type>
+			</Channel>
+			<Channel>
 				<data>texcoord2</data>
 				<type>float16</type>
 			</Channel>
@@ -41,8 +45,11 @@
 						<positionType>3D</positionType>
 						<textures>1</textures>			
 					
+						<VertexShader>
+							<file>statue_pbr.vert</file>
+						</VertexShader>
 						<FragmentShader>
-							<file>statue_lighting.frag</file>
+							<file>statue_pbr.frag</file>
 						</FragmentShader>
 						
 						<!-- Override global meshspec.
@@ -91,13 +98,26 @@
 
 				<Textures>
 					<Texture>
-						<Variable>TEX1</Variable>
+						<Variable>PBR_BASE_COLOUR_MAP</Variable>
 						<Resource>
 							<target>2D</target>
 							<filename>statue_marble.jpg</filename>
+							<colourSpace>SRGB</colourSpace>
 							<minFilter>LINEAR</minFilter>
 							<magFilter>LINEAR</magFilter>
 						</Resource>
+					</Texture>
+					<Texture>
+						<Variable>PBR_IRRADIANCE_MAP</Variable>
+						<Ref>PBR.Preview.Environment</Ref>
+					</Texture>
+					<Texture>
+						<Variable>PBR_PREFILTERED_SPECULAR_MAP</Variable>
+						<Ref>PBR.Preview.Environment</Ref>
+					</Texture>
+					<Texture>
+						<Variable>PBR_BRDF_LUT</Variable>
+						<Ref>PBR.Preview.BrdfLut</Ref>
 					</Texture>
 				</Textures>
 				
