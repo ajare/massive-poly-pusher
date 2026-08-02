@@ -47,7 +47,7 @@ private:
 	mpp::BufferRenderer* mImGuiRenderer;
 
 	// Resources
-	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
+	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue, mPbrPreviewMaterial;
 
 private:
 

@@ -230,6 +230,22 @@ namespace mpp
 				THROW_MPP("Unsupported data type.", __LINE__, __FILE__, __func__);
 			}
 		}
+
+		if (mParams.colourSpace == TextureColourSpace::Srgb)
+		{
+			if (mInternalFormat == GL_RGB8)
+			{
+				mInternalFormat = GL_SRGB8;
+			}
+			else if (mInternalFormat == GL_RGBA8)
+			{
+				mInternalFormat = GL_SRGB8_ALPHA8;
+			}
+			else
+			{
+				THROW_MPP("sRGB textures require an RGB8 or RGBA8 source format.", __LINE__, __FILE__, __func__);
+			}
+		}
 	}
 
 	/*
@@ -307,6 +323,15 @@ namespace mpp
 
 			case GL_TEXTURE_3D:
 				GL_CHECK(glTexImage3D(mTarget, 0, mInternalFormat, (GLsizei)mWidth, (GLsizei)mHeight, (GLsizei)mDepth, 0, mPixelFormat, mDataType, data));
+				break;
+
+			case GL_TEXTURE_CUBE_MAP:
+				// A stream may provide a single fallback image; callers can replace
+				// each face with uploadCubeFace after creation.
+				for (uint32_t face = 0; face < 6; ++face)
+				{
+					GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, mInternalFormat, (GLsizei)mWidth, (GLsizei)mHeight, 0, mPixelFormat, mDataType, data));
+				}
 				break;
 
 			default:
@@ -427,6 +452,11 @@ namespace mpp
 			GL_CHECK(glTexSubImage3D(mTarget, 0, x, y, 0, (GLsizei)w, (GLsizei)h, (GLsizei)d, mPixelFormat, mDataType, data));
 			break;
 
+		case GL_TEXTURE_CUBE_MAP:
+			d = 1;
+			GL_CHECK(glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, x, y, (GLsizei)w, (GLsizei)h, mPixelFormat, mDataType, data));
+			break;
+
 		default:
 			THROW_MPP("Invalid target.", __LINE__, __FILE__, __func__);
 		}
@@ -438,6 +468,21 @@ namespace mpp
 	size_t Texture::uploadData(int attachment, uint8_t const* data)
 	{
 		return uploadData(attachment, data, 0.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+	void Texture::uploadCubeFace(uint32_t face, uint8_t const* data)
+	{
+		if (mTarget != GL_TEXTURE_CUBE_MAP || face >= 6)
+		{
+			THROW_MPP("Invalid cube-map face upload.", __LINE__, __FILE__, __func__);
+		}
+		GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, mTextureIds.at(0)));
+		GL_CHECK(glTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, 0, 0, (GLsizei)mWidth, (GLsizei)mHeight, mPixelFormat, mDataType, data));
+		if (mParams.useMipmaps)
+		{
+			GL_CHECK(glGenerateMipmap(GL_TEXTURE_CUBE_MAP));
+		}
+		GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
 	}
 
 	/*
@@ -452,7 +497,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mTextureIds[attachment]));
+		GL_CHECK(glBindTexture(mTarget, mTextureIds[attachment]));
 
 		if (mSampler)
 		{

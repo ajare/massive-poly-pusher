@@ -265,7 +265,7 @@ namespace mpp
 
 		void addCoreResource(ResourcePtr resource, bool load);
 
-		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, uint64_t* currentTexture0Key, uint64_t* currentTexture1Key, Material** currentMaterial);
+		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
 
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 

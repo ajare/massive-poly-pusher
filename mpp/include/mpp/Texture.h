@@ -66,6 +66,8 @@ namespace mpp
 
 		size_t uploadData(int attachment, uint8_t const* data);
 
+		void uploadCubeFace(uint32_t face, uint8_t const* data);
+
 		virtual void bind(uint32_t unit, uint32_t attachment = 0);
 
 		void setSortId(uint32_t sortId);

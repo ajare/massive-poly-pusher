@@ -39,7 +39,7 @@ namespace mpp
 
 		float mGamma;
 
-		std::array<ResourcePtr, 2> mTextureOverrides;
+		std::vector<ResourcePtr> mTextureOverrides;
 
 		std::shared_ptr<UniformCollection> mUniforms;
 

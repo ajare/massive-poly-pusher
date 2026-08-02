@@ -49,24 +49,26 @@ Every milestone is incomplete until DemoSuite is updated to visibly render `demo
 
 **Outcome:** materials and passes can bind all textures required by PBR and can distinguish colour from data textures.
 
-- [ ] Replace the fixed two-texture assumption in `VertexBufferRenderCommand`, `MeshInstance`, and `RenderSystem::setupRenderMeshInstance` with dynamic texture lists.
-- [ ] Retain the existing two-texture methods/initializers as compatibility wrappers.
-- [ ] Update render-state caching and sorting so arbitrary sampler counts are correct; favour program/material grouping over the present two-texture packed sort key.
-- [ ] Validate sampler count against `Caps::maxFragmentTextureUnits` and emit actionable errors.
-- [ ] Make `Texture::bind` bind its actual target rather than always `GL_TEXTURE_2D`.
-- [ ] Implement cube-map allocation, face upload, mipmap generation, and binding.
-- [ ] Add texture colour-space metadata:
-  - [ ] sRGB: base-colour and emissive maps;
-  - [ ] linear: normal, metallic-roughness, occlusion, BRDF LUT, and environment maps;
-  - [ ] linear HDR: radiance/environment input and HDR targets.
-- [ ] Map sRGB 8-bit colour textures to appropriate OpenGL sRGB internal formats.
+- [x] Replace the fixed two-texture assumption in `VertexBufferRenderCommand`, `MeshInstance`, and `RenderSystem::setupRenderMeshInstance` with dynamic texture lists.
+- [x] Retain the existing two-texture methods/initializers as compatibility wrappers.
+- [x] Update render-state caching and sorting so arbitrary sampler counts are correct; favour program/material grouping over the present two-texture packed sort key.
+- [x] Validate sampler count against `Caps::maxFragmentTextureUnits` and emit actionable errors.
+- [x] Make `Texture::bind` bind its actual target rather than always `GL_TEXTURE_2D`.
+- [x] Implement cube-map allocation, face upload, mipmap generation, and binding.
+- [x] Add texture colour-space metadata:
+  - [x] sRGB: base-colour and emissive maps;
+  - [x] linear: normal, metallic-roughness, occlusion, BRDF LUT, and environment maps;
+  - [x] linear HDR: radiance/environment input and HDR targets.
+- [x] Map sRGB 8-bit colour textures to appropriate OpenGL sRGB internal formats.
 
 **Acceptance:** a program with at least eight samplers receives the intended textures; a cube map can be sampled; sRGB source textures are decoded to linear shader values.
 
 ### DemoSuite checkpoint
 
-- [ ] Continue rendering the visible statue through `PBR`; bind representative linear and sRGB textures through the new sampler path and a cube-map placeholder/environment.
-- [ ] Add a debug/status display for active sampler count and colour-space assignments, then capture the updated preview.
+- [x] Continue rendering the visible statue through `PBR`; bind representative linear and sRGB textures through the new sampler path and a cube-map placeholder/environment.
+- [x] Add a debug/status display for active sampler count and colour-space assignments, then capture the updated preview.
+
+**Implementation note (Milestone 2):** the statue now uses a temporary three-sampler PBR-preview material: an sRGB base texture, a linear detail texture, and an sRGB cube-map placeholder. Debug/x64 DemoSuite builds and smoke-runs without logged OpenGL or resource errors. Capture remains manual validation.
 
 ---
 

@@ -80,6 +80,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
 	addResource(resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream)).first, false);
@@ -103,6 +104,27 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	addResource(resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream)).first, false);
+
+	// Milestone 2 texture-system smoke resource. A neutral colour is repeated
+	// across cube faces until environment preprocessing is added in Milestone 4.
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::CubeMap);
+	textureStream->setData([](string const&)
+	{
+		TextureData data;
+		data.width = 1;
+		data.height = 1;
+		data.bitsPerPixel = 24;
+		data.dataType = GL_UNSIGNED_BYTE;
+		data.pixelFormat = GL_RGB;
+		data.data = new uint8_t[3]{ 128, 160, 255 };
+		return data;
+	});
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
+	textureStream->setWrapping(mpp::TextureParams::Wrapping::ClampToEdge);
+	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
+	textureStream->enableMipMaps(true);
+	addResource(resourceMgr->declareResource("PBR.Preview.Environment", ResourceStreamPtr(textureStream)).first, true);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
@@ -847,7 +869,30 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mStatue->acquire(this);
 	mStatue->load();
 
+	// Bind two 2D textures and a cube map to the statue through the PBR preview
+	// path. This is intentionally a temporary material until PBR material
+	// resources are introduced in Milestone 3.
+	mesh::MeshSpecification pbrPreviewSpec(mesh::Primitive::Type::Triangles);
+	pbrPreviewSpec.setIndexedVertices(true);
+	auto pbrPreviewLayout = pbrPreviewSpec.createVertexBufferAttributeLayout(false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::HalfFloat, false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+	auto pbrPreviewMaterialStream = new ProgrammaticMaterialStream(resourceMgr);
+	pbrPreviewMaterialStream->setProgram2d(false);
+	pbrPreviewMaterialStream->setMeshSpecification(pbrPreviewSpec);
+	pbrPreviewMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "PbrPreview.frag");
+	pbrPreviewMaterialStream->setTexture("TEX1", "Marble.Texture");
+	pbrPreviewMaterialStream->setTexture("TEX2", "Test.Texture");
+	pbrPreviewMaterialStream->setTexture("ENVIRONMENT", "PBR.Preview.Environment");
+	mPbrPreviewMaterial = resourceMgr->declareResource("PBR.Preview.Material", ResourceStreamPtr(pbrPreviewMaterialStream)).first;
+	mPbrPreviewMaterial->acquire(this);
+	mPbrPreviewMaterial->load();
+
 	mModels.push_back(mppScene->add3dModel(mStatue));
+	mModels.back()->getParams()->setModelMaterial(mPbrPreviewMaterial);
 	//mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
 	// Batches
@@ -889,6 +934,7 @@ void ModelScene::teardownImpl()
 	mBox->release(this);
 	mTorus->release(this);
 	mStatue->release(this);
+	mPbrPreviewMaterial->release(this);
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
@@ -949,6 +995,10 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			renderSystem->setGamma(gamma);
 		}
+
+		ImGui::TextUnformatted("Pipeline: PBR (HDR preview)");
+		ImGui::Text("Texture bindings: 3 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
+		ImGui::TextUnformatted("Base/environment: sRGB; detail: linear; environment: cube map");
 	}
 	ImGui::End();
 }

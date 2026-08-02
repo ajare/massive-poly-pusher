@@ -2326,20 +2326,12 @@ namespace mpp
 			}
 
 			// Textures
-			ResourcePtr textureRes;
-			switch (mat->getNumTextures())
+			for (int i = 0; i < mat->getNumTextures(); ++i)
 			{
-			case 2:
-				textureRes = cmd.textures[1] ? cmd.textures[1] : mat->getTexture(1);
-				static_cast<Texture*>(textureRes.get())->bind(1);
-				[[fallthrough]];
-			case 1:
-				textureRes = cmd.textures[0] ? cmd.textures[0] : mat->getTexture(0);
-				static_cast<Texture*>(textureRes.get())->bind(0);
-				break;
-
-			default:
-				break;
+				auto textureRes = (size_t)i < cmd.textures.size() && cmd.textures[i]
+					? cmd.textures[i]
+					: mat->getTexture(i);
+				static_cast<Texture*>(textureRes.get())->bind((uint32_t)i);
 			}
 
 			if (cmd.clipSize[0] > 0 && cmd.clipSize[1] > 0)
@@ -2702,7 +2694,7 @@ namespace mpp
 #endif
 	}
 
-	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, uint64_t* currentTexture0Key, uint64_t* currentTexture1Key, Material** currentMaterial)
+	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, vector<uint64_t>* currentTextureKeys, Material** currentMaterial)
 	{
 		// Mask off program and see if it has changed from previous.
 		uint64_t thisProgramKey = sortKey;
@@ -2730,31 +2722,30 @@ namespace mpp
 
 		*currentMaterial = material;
 
-		// Mask off textures and see if they have changed from previous.
-		uint64_t thisTexture0Key = sortKey;
-		thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-		thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
-
-		if (thisTexture0Key > 0 && (thisTexture0Key != *currentTexture0Key || programChanged))
+		// Bind every material sampler. Texture keys are intentionally kept outside
+		// the packed sort key: PBR needs more than the legacy two texture units.
+		const size_t textureCount = (size_t)material->getNumTextures();
+		if (textureCount > mCaps.maxFragmentTextureUnits)
 		{
-			auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture0Key).get());
-			texture->bind(0);
-
-			*currentTexture0Key = thisTexture0Key;
-			mRenderInfo.textureSwitches++;
+			THROW_MPP("Material requires more fragment texture units than supported by this renderer.", __LINE__, __FILE__, __func__);
 		}
-
-		uint64_t thisTexture1Key = sortKey;
-		thisTexture1Key >>= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-		thisTexture1Key &= ((1 << MPP_RENDER_SORT_TEXTURE1_BITS_SIZE) - 1);
-
-		if (thisTexture1Key > 0 && (thisTexture1Key != *currentTexture1Key || programChanged))
+		if (currentTextureKeys->size() < textureCount)
 		{
-			auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture1Key).get());
-			texture->bind(1);
-
-			*currentTexture1Key = thisTexture1Key;
-			mRenderInfo.textureSwitches++;
+			currentTextureKeys->resize(textureCount, 0);
+		}
+		for (size_t i = 0; i < textureCount; ++i)
+		{
+			ResourcePtr textureResource = i < renderCmd.textures.size() && renderCmd.textures[i]
+				? renderCmd.textures[i]
+				: material->getTexture((int)i);
+			auto texture = static_cast<Texture*>(textureResource.get());
+			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;
+			if ((*currentTextureKeys)[i] != textureKey)
+			{
+				texture->bind((uint32_t)i);
+				(*currentTextureKeys)[i] = textureKey;
+				mRenderInfo.textureSwitches++;
+			}
 		}
 
 		// Bind mesh material (including program), and vertex buffers
@@ -2818,27 +2809,9 @@ namespace mpp
 						uint64_t sortKey = 0;
 
 						auto material = static_cast<Material*>(renderCmd.material.get());
-						auto numTextures = material->getNumTextures();
 
-						// Texture 0
-						if (numTextures > 0)
-						{
-							auto texture = static_cast<Texture*>(renderCmd.textures[0].get());
-							uint64_t textureKey = (uint64_t)texture->getSortId();
-							textureKey <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-							sortKey |= textureKey;
-						}
-
-						// Texture 1
-						if (numTextures > 1)
-						{
-							auto texture = static_cast<Texture*>(renderCmd.textures[1].get());
-							uint64_t textureKey = (uint64_t)texture->getSortId();
-							textureKey <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-							sortKey |= textureKey;
-						}
-
-						// Program
+						// Program. Textures are bound from their dynamic sampler list in
+						// setupRenderMeshInstance rather than being limited to two keys.
 						uint64_t programKey = (uint64_t)((Program*)material->getProgram().get())->getSortId();
 						programKey <<= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
 						sortKey |= programKey;
@@ -2879,7 +2852,7 @@ namespace mpp
 
 		// Now render all the meshes.
 		uint64_t currentProgramKey = 0; // Sort ids start at 1, so this is guaranteed not to be one.
-		uint64_t currentTexture0Key = 0, currentTexture1Key = 0;
+		vector<uint64_t> currentTextureKeys;
 
 		Material* currentMaterial{ nullptr };
 		for (auto const& renderCommand: renderCommands)
@@ -2889,7 +2862,7 @@ namespace mpp
 			auto instanceCount = meshInstance->mInstanceCount;
 			auto numPrimitives = mesh->getNumPrimitives();
 
-			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTexture0Key, &currentTexture1Key, &currentMaterial);
+			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTextureKeys, &currentMaterial);
 
 			auto count = cmd.count != ~0u ? cmd.count : numPrimitives;
 			mesh->render(instanceCount, cmd.offset, count);
