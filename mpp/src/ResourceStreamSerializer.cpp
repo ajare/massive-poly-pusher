@@ -490,6 +490,15 @@ namespace mpp
 			char data[64];
 			fp.read(data, 64);
 
+			// UniformData stores the generated GLSL name. setUniform() adds that
+			// markup itself, so convert serialized names back to their authored
+			// form rather than generating a double-prefixed uniform name.
+			constexpr char uniformPrefix[] = "_mpp_u_";
+			const size_t prefixLength = sizeof(uniformPrefix) - 1;
+			if (name.size() > prefixLength && name.compare(0, prefixLength, uniformPrefix) == 0 && name.back() == '_')
+			{
+				name = name.substr(prefixLength, name.size() - prefixLength - 1);
+			}
 			uniforms.setUniform(name, type, size, 1, data);
 		}
 

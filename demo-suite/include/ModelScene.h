@@ -101,6 +101,8 @@ public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
 
+	std::string getRenderPipelineName() const override;
+
 	void toggle2dBatches(int batchId);
 
 	void toggleModels();

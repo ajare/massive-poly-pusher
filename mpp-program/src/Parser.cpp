@@ -788,6 +788,7 @@ namespace mpp
 					case mesh::Vertex::Component::Position4:
 					case mesh::Vertex::Component::Normal4:
 					case mesh::Vertex::Component::TexCoord4:
+					case mesh::Vertex::Component::Tangent4:
 					case mesh::Vertex::Component::Colour4:
 					case mesh::Vertex::Component::UserDefined4:
 						size[0] = 1; size[1] = 4;

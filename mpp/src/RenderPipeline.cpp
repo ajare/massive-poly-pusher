@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "mpp/RenderPipeline.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/GLErrorCheck.h"
@@ -29,6 +31,16 @@ namespace mpp
 	RenderPipelineOptions const& RenderPipeline::getOptions() const
 	{
 		return mOptions;
+	}
+
+	void RenderPipeline::setExposure(float exposure)
+	{
+		mOptions.exposure = std::max(exposure, 0.0f);
+	}
+
+	void RenderPipeline::setToneMapOperator(PbrToneMapOperator toneMapOperator)
+	{
+		mOptions.toneMapOperator = toneMapOperator;
 	}
 
 	RenderTargetPtr RenderPipeline::getOutputRenderTarget()
@@ -112,7 +124,7 @@ namespace mpp
 		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
 		{
-			mRenderSystem->renderToneMappedFullscreenQuad(outputRenderTexture, mOptions.exposure);
+			mRenderSystem->renderToneMappedFullscreenQuad(outputRenderTexture, mOptions.exposure, mOptions.toneMapOperator == PbrToneMapOperator::Aces);
 		}
 		else
 		{

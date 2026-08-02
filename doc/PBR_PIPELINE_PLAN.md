@@ -128,24 +128,26 @@ Every milestone is incomplete until DemoSuite is updated to visibly render `demo
 
 **Outcome:** the renderer performs physically based shading in linear HDR and only encodes display colour at the final step.
 
-- [ ] Add PBR vertex shader templates that provide world position, transformed normal, UV0, tangent frame, and view direction inputs.
-- [ ] Add metallic-roughness fragment shader templates using Cook-Torrance BRDF:
-  - [ ] GGX normal-distribution function;
-  - [ ] Smith visibility term;
-  - [ ] Schlick Fresnel;
-  - [ ] direct directional/point lights;
-  - [ ] irradiance, prefiltered-specular, and BRDF-LUT IBL;
-  - [ ] normal, AO, emissive, alpha-mask, and double-sided handling.
-- [ ] Keep all PBR lighting and compositing values linear in the HDR scene target.
-- [ ] Add a fullscreen tone-map shader, initially ACES or Reinhard, with exposure and one final gamma encode.
-- [ ] Do not apply the legacy per-surface gamma transform in the PBR shader path.
+- [x] Add PBR vertex shader templates that provide world position, transformed normal, UV0, tangent frame, and view direction inputs.
+- [x] Add metallic-roughness fragment shader templates using Cook-Torrance BRDF:
+  - [x] GGX normal-distribution function;
+  - [x] Smith visibility term;
+  - [x] Schlick Fresnel;
+  - [x] direct directional/point lights;
+  - [x] irradiance, prefiltered-specular, and BRDF-LUT IBL;
+  - [x] normal, AO, emissive, alpha-mask, and double-sided handling.
+- [x] Keep all PBR lighting and compositing values linear in the HDR scene target.
+- [x] Add a fullscreen tone-map shader, initially ACES or Reinhard, with exposure and one final gamma encode.
+- [x] Do not apply the legacy per-surface gamma transform in the PBR shader path.
 
 **Acceptance:** high-radiance input is retained in the HDR target; changing exposure changes the final presentation without changing material lighting; no double gamma correction occurs.
 
 ### DemoSuite checkpoint
 
-- [ ] Replace the temporary PBR-path shaders used by the statue with the Cook-Torrance and tone-map shaders.
+- [x] Replace the temporary PBR-path shaders used by the statue with the Cook-Torrance and tone-map shaders.
 - [ ] Expose at least exposure and tone-map selection in DemoSuite; verify that the visible statue has no double-gamma artefacts and capture comparison images.
+
+**Implementation note (Milestone 5):** `statue_pbr.vert`/`statue_pbr.frag` implement tangent-space normal mapping, metallic-roughness Cook-Torrance direct lighting, and split-sum IBL. The PBR pipeline writes linear HDR values and presents them through selectable ACES or Reinhard tone mapping with a single final gamma encode. Debug and Release/x64 smoke runs completed without logged shader, resource, or OpenGL errors; visual capture remains manual validation.
 
 ---
 
