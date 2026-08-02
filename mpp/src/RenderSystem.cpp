@@ -102,6 +102,7 @@ namespace mpp
 		delete mMeshInstances;
 		delete mInternalFont;
 		destroyLightsData();
+		destroyPbrLightsData();
 
 		// Deleting the above may have freed up more resources, so sweep once more
 		for (auto res : mCoreResources)
@@ -266,6 +267,7 @@ namespace mpp
 		setDefaultState();
 		setDisplay((int)mWindowWidth, (int)mWindowHeight);
 		createLightsData();
+		createPbrLightsData();
 
 		// Text settings
 		mTextUniforms = make_shared<UniformCollection>();
@@ -2010,6 +2012,75 @@ namespace mpp
 			delete mLightsBuffer;
 			mLightsBuffer = nullptr;
 		}
+	}
+
+	void RenderSystem::createPbrLightsData()
+	{
+		destroyPbrLightsData();
+
+		// std140 layout: vec4 ambientAndCount, followed by MaxPbrLights entries
+		// of vec4 colourIntensity, vec4 positionRange, vec4 directionType.
+		const size_t uniformSize = 16 + MaxPbrLights * 48;
+		shared_ptr<const int8_t> uniformData(new int8_t[uniformSize](), [](int8_t* p) { delete[] p; });
+		auto fp = reinterpret_cast<float*>(const_cast<int8_t*>(uniformData.get()));
+		fp[0] = 0.03f;
+		fp[1] = 0.03f;
+		fp[2] = 0.03f;
+		fp[3] = 0.0f;
+
+		mPbrLightsBuffer = new UniformBuffer(this, uniformData, uniformSize, 1);
+		mPbrLightsBuffer->load();
+	}
+
+	void RenderSystem::destroyPbrLightsData()
+	{
+		if (mPbrLightsBuffer)
+		{
+			mPbrLightsBuffer->unload();
+			delete mPbrLightsBuffer;
+			mPbrLightsBuffer = nullptr;
+		}
+	}
+
+	void RenderSystem::setPbrAmbientColour(Colour const& colour)
+	{
+		auto fp = reinterpret_cast<float*>(mPbrLightsBuffer->getBufferData().data());
+		fp[0] = colour.red;
+		fp[1] = colour.green;
+		fp[2] = colour.blue;
+		mPbrLightsBuffer->updateData(0, 12);
+	}
+
+	void RenderSystem::setPbrLights(vector<PbrLight> const& lights)
+	{
+		if (lights.size() > MaxPbrLights)
+		{
+			THROW_MPP("Too many PBR lights for the PBR light uniform buffer.", __LINE__, __FILE__, __func__);
+		}
+
+		auto& data = mPbrLightsBuffer->getBufferData();
+		fill(data.begin() + 16, data.end(), 0);
+		auto fp = reinterpret_cast<float*>(data.data());
+		fp[3] = (float)lights.size();
+		for (size_t i = 0; i < lights.size(); ++i)
+		{
+			auto const& light = lights[i];
+			fp += 4 + i * 12;
+			fp[0] = light.colour.r;
+			fp[1] = light.colour.g;
+			fp[2] = light.colour.b;
+			fp[3] = light.intensity;
+			fp[4] = light.position.x;
+			fp[5] = light.position.y;
+			fp[6] = light.position.z;
+			fp[7] = light.range;
+			fp[8] = light.direction.x;
+			fp[9] = light.direction.y;
+			fp[10] = light.direction.z;
+			fp[11] = light.type == PbrLightType::Point ? 1.0f : 0.0f;
+			fp -= 4 + i * 12;
+		}
+		mPbrLightsBuffer->mapBufferData();
 	}
 
 	/*

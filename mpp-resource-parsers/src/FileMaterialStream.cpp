@@ -360,6 +360,20 @@ namespace mpp
 							else THROW_MPP_RESOURCE_PARSERS("Unknown Pbr alphaMode.", __LINE__, __FILE__, __func__);
 						}
 					}
+
+					// Preserve PBR values through the legacy material stream format.
+					// Unknown uniforms are harmless to legacy shaders and therefore keep
+					// old Release builds able to load regenerated models.
+					qs.spec.uniforms.setUniform("PBR_ENABLED", (int32_t)1);
+					qs.spec.uniforms.setUniform("PBR_BASE_COLOUR_FACTOR", pbr.baseColourFactor);
+					qs.spec.uniforms.setUniform("PBR_METALLIC_FACTOR", pbr.metallicFactor);
+					qs.spec.uniforms.setUniform("PBR_ROUGHNESS_FACTOR", pbr.roughnessFactor);
+					qs.spec.uniforms.setUniform("PBR_EMISSIVE_FACTOR", pbr.emissiveFactor);
+					qs.spec.uniforms.setUniform("PBR_NORMAL_SCALE", pbr.normalScale);
+					qs.spec.uniforms.setUniform("PBR_OCCLUSION_STRENGTH", pbr.occlusionStrength);
+					qs.spec.uniforms.setUniform("PBR_ALPHA_MODE", (int32_t)pbr.alphaMode);
+					qs.spec.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
+					qs.spec.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
 				}
 				else if (entry.first == "Textures")
 				{

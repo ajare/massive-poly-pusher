@@ -296,6 +296,10 @@ namespace mpp
 	{
 		auto stream = dynamic_cast<TextureStream*>(resourceStream.get());
 
+		// Compatibility placeholder for the removed tile list. The reader still
+		// consumes this count when loading legacy and newly exported models.
+		writeValue((uint32_t)0, fp);
+
 		// Write number of quality settings
 		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 

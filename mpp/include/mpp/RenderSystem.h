@@ -43,6 +43,22 @@ namespace mpp
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
+	enum class PbrLightType
+	{
+		Directional,
+		Point
+	};
+
+	struct _MPPAPI PbrLight
+	{
+		PbrLightType type{ PbrLightType::Directional };
+		glm::vec3 colour{ 1.0f };
+		float intensity{ 1.0f };
+		glm::vec3 position{ 0.0f };
+		float range{ 0.0f }; // Zero means unlimited.
+		glm::vec3 direction{ 0.0f, -1.0f, 0.0f };
+	};
+
 	class _MPPAPI RenderSystem : public ResourceWrangler
 	{
 		enum class ProjectionType
@@ -227,6 +243,8 @@ namespace mpp
 		// Built-in lights
 		//
 		UniformBuffer* mLightsBuffer{ nullptr };
+		UniformBuffer* mPbrLightsBuffer{ nullptr };
+		static constexpr size_t MaxPbrLights{ 8 };
 
 		//
 		// Scenes
@@ -262,6 +280,10 @@ namespace mpp
 		void createLightsData();
 
 		void destroyLightsData();
+
+		void createPbrLightsData();
+
+		void destroyPbrLightsData();
 
 		void addCoreResource(ResourcePtr resource, bool load);
 
@@ -380,6 +402,12 @@ namespace mpp
 		void setLight2Position(glm::vec3 const& pos);
 
 		void setLight2Colour(Colour const& colour);
+
+		void setPbrAmbientColour(Colour const& colour);
+
+		void setPbrLights(std::vector<PbrLight> const& lights);
+
+		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
 
 		//
 		// 3d operations

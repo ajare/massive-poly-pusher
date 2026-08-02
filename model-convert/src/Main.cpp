@@ -235,7 +235,19 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 		MeshDefinition* meshDef = loader.getMeshDefinition(i);
 
 		fileSaver.setName(i, meshDef->getName());
-		fileSaver.setMaterial(i, meshDef->getMaterial());
+		auto materialName = meshDef->getMaterial();
+		if (materials.find(materialName) == materials.end())
+		{
+			// Some Assimp importers expose a truncated or generated material name.
+			// A one-material specification is unambiguous, so map it to that
+			// authored material rather than emitting an unloadable model.
+			if (materials.size() != 1)
+			{
+				throw exception("Mesh material does not match a material in the model specification.");
+			}
+			materialName = materials.begin()->first;
+		}
+		fileSaver.setMaterial(i, materialName);
 		fileSaver.setPrimitiveType(i, meshDef->getPrimitiveType());
 		fileSaver.setPrimitiveCount(i, meshDef->getNumPrimitives());
 		fileSaver.setIndexBuffer(i, meshDef->getIndexData(), meshDef->getIndexWidth());
