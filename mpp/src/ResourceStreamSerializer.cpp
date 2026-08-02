@@ -490,6 +490,29 @@ namespace mpp
 			char data[64];
 			fp.read(data, 64);
 
+			// The legacy stream stores a value's byte size, rather than count and
+			// component count. Decode a single scalar/vector value from that size.
+			size_t componentSize = 0;
+			switch (type)
+			{
+			case program::GLSLType::Bool:
+			case program::GLSLType::Int:
+			case program::GLSLType::Uint:
+			case program::GLSLType::Float:
+				componentSize = 4;
+				break;
+			case program::GLSLType::Double:
+				componentSize = 8;
+				break;
+			default:
+				THROW_MPP("Unsupported serialized uniform type.", __LINE__, __FILE__, __func__);
+			}
+			if (size == 0 || size > sizeof(data) || size % componentSize != 0)
+			{
+				THROW_MPP("Invalid serialized uniform size.", __LINE__, __FILE__, __func__);
+			}
+			size_t numElements = size / componentSize;
+
 			// UniformData stores the generated GLSL name. setUniform() adds that
 			// markup itself, so convert serialized names back to their authored
 			// form rather than generating a double-prefixed uniform name.
@@ -499,7 +522,7 @@ namespace mpp
 			{
 				name = name.substr(prefixLength, name.size() - prefixLength - 1);
 			}
-			uniforms.setUniform(name, type, size, 1, data);
+			uniforms.setUniform(name, type, 1, numElements, data);
 		}
 
 		return uniforms;
