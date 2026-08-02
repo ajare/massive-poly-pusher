@@ -22,7 +22,7 @@ renderSystem->getOrCreateRenderPipeline("PBR", options);
 renderSystem->renderScene(scene, camera, {}, "PBR");
 ```
 
-A PBR pipeline owns an RGBA16F scene target. Surface lighting stays linear in this target. Presentation applies the selected ACES or Reinhard tone map and one final gamma encode. `RenderPipeline::setExposure()` and `setToneMapOperator()` can be used at runtime.
+A PBR pipeline owns an RGBA16F scene target. Surface lighting stays linear in this target. Presentation applies the selected ACES or Reinhard tone map and one final gamma encode. `RenderPipeline::setExposure()` and `setToneMapOperator()` can be used at runtime. DemoSuite exposes `PBR` and `Default` in its **Render Pipeline** combo; `Default` remains the legacy path.
 
 ## 2. Supply PBR lights and an environment
 
@@ -201,7 +201,7 @@ Build `MassivePolyPusher`, `ModelConvert`, and DemoSuite in the same configurati
 
 ## Current limitations
 
-- `BLEND` preserves authored fragment alpha, but a dedicated transparent PBR pass with back-to-front sorting and depth-write control is not implemented yet. Use `OPAQUE` or `MASK` for reliable current rendering.
-- PBR/legacy pipeline selection and full environment selection are still DemoSuite follow-up work. DemoSuite currently provides a fixed placeholder cube map and BRDF LUT.
+- `BLEND` PBR meshes render after opaque/masked meshes, back-to-front, with source-alpha blending and depth writes disabled. It is intended for conventional non-refractive transparency.
+- DemoSuite selects `PBR` or `Default`, but currently supplies only a fixed placeholder cube map and BRDF LUT; an interactive environment selector is still follow-up work.
 - HDR panorama decoding and GPU IBL preprocessing are not implemented. Supply precomputed environment resources.
 - Visual reference captures and full PBR regression assets remain outstanding.

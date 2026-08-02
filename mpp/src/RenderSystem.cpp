@@ -2083,6 +2083,27 @@ namespace mpp
 		mPbrLightsBuffer->mapBufferData();
 	}
 
+	void RenderSystem::setActivePbrEnvironment(PbrEnvironmentPtr environment)
+	{
+		mActivePbrEnvironment = std::move(environment);
+		if (!mActivePbrEnvironment)
+		{
+			return;
+		}
+
+		for (auto const& resource : {
+			mActivePbrEnvironment->irradianceMap,
+			mActivePbrEnvironment->prefilteredSpecularMap,
+			mActivePbrEnvironment->brdfIntegrationLut,
+			mActivePbrEnvironment->backgroundMap })
+		{
+			if (resource)
+			{
+				resource->load();
+			}
+		}
+	}
+
 	/*
 	 * Render a texture as a fullscreen quad
 	 *
@@ -2836,6 +2857,26 @@ namespace mpp
 			ResourcePtr textureResource = i < renderCmd.textures.size() && renderCmd.textures[i]
 				? renderCmd.textures[i]
 				: material->getTexture((int)i);
+
+			// Pipeline-owned IBL is authoritative for PBR environment samplers.
+			// Other sampler bindings remain material-owned and fully dynamic.
+			if (mActivePbrEnvironment)
+			{
+				auto program = static_cast<Program*>(material->getProgram().get());
+				auto const& samplerName = program->getSamplerName((int)i);
+				if (samplerName == "PBR_IRRADIANCE_MAP" && mActivePbrEnvironment->irradianceMap)
+				{
+					textureResource = mActivePbrEnvironment->irradianceMap;
+				}
+				else if (samplerName == "PBR_PREFILTERED_SPECULAR_MAP" && mActivePbrEnvironment->prefilteredSpecularMap)
+				{
+					textureResource = mActivePbrEnvironment->prefilteredSpecularMap;
+				}
+				else if (samplerName == "PBR_BRDF_LUT" && mActivePbrEnvironment->brdfIntegrationLut)
+				{
+					textureResource = mActivePbrEnvironment->brdfIntegrationLut;
+				}
+			}
 			auto texture = static_cast<Texture*>(textureResource.get());
 			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;
 			if ((*currentTextureKeys)[i] != textureKey)
@@ -2860,6 +2901,7 @@ namespace mpp
 		{
 			GL_CHECK(glEnable(GL_BLEND));
 			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+			GL_CHECK(glDepthMask(GL_FALSE));
 		}
 	}
 
@@ -2873,6 +2915,7 @@ namespace mpp
 		if (meshInstance->mBlend)
 		{
 			GL_CHECK(glDisable(GL_BLEND));
+			GL_CHECK(glDepthMask(GL_TRUE));
 		}
 	}
 
@@ -2944,6 +2987,20 @@ namespace mpp
 		{
 			sort(renderCommands.begin(), renderCommands.end(), [](SortedRenderCommand const& a, SortedRenderCommand const& b) -> bool
 			{
+				bool const aTransparent = a.meshInstance->sortTransparent();
+				bool const bTransparent = b.meshInstance->sortTransparent();
+				if (aTransparent != bTransparent)
+				{
+					return !aTransparent; // Opaque and masked geometry first.
+				}
+				if (aTransparent)
+				{
+					auto const aPos = glm::vec3((a.meshInstance->mModelMatrix * a.meshInstance->mLocalTransform)[3]);
+					auto const bPos = glm::vec3((b.meshInstance->mModelMatrix * b.meshInstance->mLocalTransform)[3]);
+					auto const aDelta = aPos - a.meshInstance->mViewPos;
+					auto const bDelta = bPos - b.meshInstance->mViewPos;
+					return glm::dot(aDelta, aDelta) > glm::dot(bDelta, bDelta);
+				}
 				return a.key < b.key;
 			});
 		}

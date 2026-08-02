@@ -1042,7 +1042,12 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			renderSystem->setGamma(gamma);
 		}
 
-		ImGui::TextUnformatted("Pipeline: PBR (Cook-Torrance HDR)");
+		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : 1;
+		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR\0Default\0"))
+		{
+			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : "Default";
+		}
+		ImGui::TextUnformatted("PBR: Cook-Torrance HDR");
 		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
 		float exposure = pbrPipeline->getOptions().exposure;
 		if (ImGui::SliderFloat("PBR Exposure", &exposure, 0.0f, 8.0f))
@@ -1155,7 +1160,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 	}
 
 	//getScene()->setClearColour(mpp::Colour::Grey50);
-	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "PBR");
+	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), mSelectedPipeline);
 
 	// ImGui
 	mImGuiRenderer->render(renderSystem);

@@ -87,6 +87,10 @@ namespace mpp
 		
 
 		auto const& models = scene->get3dModelsInView(camera);
+		if (mOptions.mode == RenderPipelineMode::PbrForward)
+		{
+			mRenderSystem->setActivePbrEnvironment(mOptions.environment);
+		}
 		for (auto const& pass : mPasses)
 		{
 			// Start pass
@@ -103,6 +107,10 @@ namespace mpp
 				// Flush
 				mRenderSystem->flushVertexBuffers();
 			}
+		}
+		if (mOptions.mode == RenderPipelineMode::PbrForward)
+		{
+			mRenderSystem->setActivePbrEnvironment(nullptr);
 		}
 
 		// Reset viewport

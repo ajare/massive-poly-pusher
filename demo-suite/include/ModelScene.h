@@ -28,6 +28,8 @@ private:
 
 	float mTotalTime{ 0 };
 
+	std::string mSelectedPipeline{ "PBR" };
+
 	glm::vec3 mLightPosition;
 
 	std::vector<mpp::SceneModel3dPtr> mModels;

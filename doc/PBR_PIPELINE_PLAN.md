@@ -157,15 +157,15 @@ Every milestone is incomplete until DemoSuite is updated to visibly render `demo
 
 **Outcome:** PBR is selectable through the current scene-rendering process while `Default` remains unchanged.
 
-- [ ] Add `RenderPipelineMode` and `RenderPipelineOptions` with `LegacyForward` as the default.
-- [ ] Implement `PbrForwardPipeline` as a specialised `RenderPipeline`, or dispatch internally from `RenderPipeline` based on its immutable options.
-- [ ] Allocate and own a resize-aware RGBA16F scene target per PBR pipeline.
-- [ ] Render PBR opaque and masked objects to the HDR target with depth writes enabled.
-- [ ] Render PBR blended objects after opaque geometry, sorted back-to-front with appropriate blend/depth-write state.
-- [ ] Bind PBR frame data and environment textures around the PBR scene flush.
-- [ ] Tone-map the HDR output to the screen, then continue with the existing 2D/UI rendering flow.
-- [ ] Keep the legacy `RenderPass` behaviour intact. Do not make its incomplete post-effect support a dependency of PBR.
-- [ ] Document pipeline setup and selection, including environment ownership and resize behaviour.
+- [x] Add `RenderPipelineMode` and `RenderPipelineOptions` with `LegacyForward` as the default.
+- [x] Implement `PbrForwardPipeline` as a specialised `RenderPipeline`, or dispatch internally from `RenderPipeline` based on its immutable options.
+- [x] Allocate and own a resize-aware RGBA16F scene target per PBR pipeline.
+- [x] Render PBR opaque and masked objects to the HDR target with depth writes enabled.
+- [x] Render PBR blended objects after opaque geometry, sorted back-to-front with appropriate blend/depth-write state.
+- [x] Bind PBR frame data and environment textures around the PBR scene flush.
+- [x] Tone-map the HDR output to the screen, then continue with the existing 2D/UI rendering flow.
+- [x] Keep the legacy `RenderPass` behaviour intact. Do not make its incomplete post-effect support a dependency of PBR.
+- [x] Document pipeline setup and selection, including environment ownership and resize behaviour.
 
 **Example intended usage:**
 
@@ -181,8 +181,10 @@ renderSystem->renderScene(scene, camera, {}, "PBR");
 
 ### DemoSuite checkpoint
 
-- [ ] Make `PBR` and `Default` selectable in DemoSuite and ensure `statue/statue.mppmodel` is visible when `PBR` is selected.
+- [x] Make `PBR` and `Default` selectable in DemoSuite and ensure `statue/statue.mppmodel` is visible when `PBR` is selected.
 - [ ] Verify the same application can switch modes without hiding the statue or regressing legacy scenes; capture both outputs.
+
+**Implementation note (Milestone 6):** `RenderPipeline` dispatches by immutable pipeline mode while retaining the legacy default. During a PBR pass, the selected `PbrEnvironment` overrides material IBL sampler bindings and is loaded before the scene flush. PBR opaque/masked meshes write depth; PBR `BLEND` meshes are depth-sorted back-to-front, blend with `SRC_ALPHA`/`ONE_MINUS_SRC_ALPHA`, and disable depth writes. DemoSuite now exposes a `PBR`/`Default` pipeline selector. Debug/x64 smoke validation completed; interactive switching and image capture remain manual validation.
 
 ---
 
