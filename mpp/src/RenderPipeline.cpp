@@ -7,12 +7,14 @@ using namespace std;
 namespace mpp
 {
 
-	RenderPipeline::RenderPipeline(string const& name, RenderSystem* renderSystem)
+	RenderPipeline::RenderPipeline(string const& name, RenderSystem* renderSystem, RenderPipelineOptions const& options)
 		: mName(name)
 		, mRenderSystem(renderSystem)
+		, mOptions(options)
 	{
-		// Default pass
-		mPasses.push_back(make_shared<RenderPass>(renderSystem));
+		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
+		// their RGBA8 target and existing presentation behaviour.
+		mPasses.push_back(make_shared<RenderPass>(renderSystem, mOptions.mode == RenderPipelineMode::PbrForward));
 	}
 
 	RenderPipeline::~RenderPipeline()
@@ -24,6 +26,11 @@ namespace mpp
 		return mName;
 	}
 
+	RenderPipelineOptions const& RenderPipeline::getOptions() const
+	{
+		return mOptions;
+	}
+
 	RenderTargetPtr RenderPipeline::getOutputRenderTarget()
 	{
 		if (mPostEffects.empty())
@@ -33,6 +40,14 @@ namespace mpp
 		else
 		{
 			return static_cast<PostEffect*>(mPostEffects.back().get())->getOuputRenderTarget();
+		}
+	}
+
+	void RenderPipeline::resize(size_t width, size_t height)
+	{
+		for (auto const& pass : mPasses)
+		{
+			pass->resize(width, height);
 		}
 	}
 
@@ -95,7 +110,14 @@ namespace mpp
 		mRenderSystem->clearScreen(scene->getClearColour());
 
 		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
-		mRenderSystem->renderFullscreenQuad(outputRenderTexture, mpp::BlendMode::One, mpp::BlendMode::Zero);
+		if (mOptions.mode == RenderPipelineMode::PbrForward)
+		{
+			mRenderSystem->renderToneMappedFullscreenQuad(outputRenderTexture, mOptions.exposure);
+		}
+		else
+		{
+			mRenderSystem->renderFullscreenQuad(outputRenderTexture, mpp::BlendMode::One, mpp::BlendMode::Zero);
+		}
 
 		// 2d models
 		if (scene->show2dModels())

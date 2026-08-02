@@ -42,4 +42,9 @@ namespace mpp
 	{
 		return mHeight;
 	}
+
+	bool RenderTarget::resize(size_t width, size_t height)
+	{
+		return false;
+	}
 }

@@ -9,7 +9,7 @@ namespace mpp
 
 	RenderTextureStream::RenderTextureStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "RenderTexture")
-		, mUseDepthBuffer(false)
+		, mDepthAttachment(RenderTextureDepthAttachment::None)
 		, mNumAttachments(0)
 
 	{
@@ -72,7 +72,12 @@ namespace mpp
 
 	bool RenderTextureStream::useDepthBuffer() const
 	{
-		return mUseDepthBuffer;
+		return mDepthAttachment != RenderTextureDepthAttachment::None;
+	}
+
+	RenderTextureDepthAttachment RenderTextureStream::getDepthAttachment() const
+	{
+		return mDepthAttachment;
 	}
 
 	size_t RenderTextureStream::getNumAttachments() const

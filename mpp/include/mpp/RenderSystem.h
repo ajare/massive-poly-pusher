@@ -118,7 +118,6 @@ namespace mpp
 
 		RenderTargetPtr mScreen;
 
-		RenderTargetPtr mSceneTarget;
 
 		ProjectionType mProjectionType;
 
@@ -150,7 +149,7 @@ namespace mpp
 		ResourcePtr mInternalFontTexture;
 
 		// Fullscreen effects
-		ResourcePtr mFullscreenQuad, mFullscreenProgram;
+		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -321,6 +320,8 @@ namespace mpp
 
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer);
 
+		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options);
+
 		void flushVertexBuffers();
 
 		// Clipping
@@ -412,6 +413,8 @@ namespace mpp
 
 		RenderPipelinePtr getOrCreateRenderPipeline(std::string const& name);
 
+		RenderPipelinePtr getOrCreateRenderPipeline(std::string const& name, RenderPipelineOptions const& options);
+
 		RenderPipelinePtr getRenderPipeline(std::string const& name);
 
 		RenderInfo const& getRenderInfo() const;
@@ -449,6 +452,8 @@ namespace mpp
 		// 2d rendering
 		// 
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
+
+		void renderToneMappedFullscreenQuad(Texture* texture, float exposure);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

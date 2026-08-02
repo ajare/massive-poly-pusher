@@ -8,6 +8,26 @@
 
 namespace mpp
 {
+	enum class RenderTextureDepthAttachment
+	{
+		None,
+		DepthRenderbuffer,
+		DepthStencilRenderbuffer,
+		DepthTexture,
+		DepthStencilTexture
+	};
+
+	struct _MPPAPI RenderTextureOptions
+	{
+		size_t numAttachments{ 1 };
+		RenderTextureDepthAttachment depthAttachment{ RenderTextureDepthAttachment::None };
+		TextureInternalType colourType{ TextureInternalType::UnsignedInteger };
+		bool colourNormalised{ true };
+		size_t colourBitSize{ 8 };
+		size_t colourChannels{ 4 };
+		TextureParams params;
+	};
+
 	class _MPPAPI RenderTextureStream : public ResourceStream
 	{
 		struct QualitySetting
@@ -25,7 +45,7 @@ namespace mpp
 
 		std::vector<QualitySetting> mQualitySettings;
 
-		bool mUseDepthBuffer;
+		RenderTextureDepthAttachment mDepthAttachment;
 
 		size_t mNumAttachments;
 
@@ -58,6 +78,8 @@ namespace mpp
 		std::string const& getSampler() const;
 
 		bool useDepthBuffer() const;
+
+		RenderTextureDepthAttachment getDepthAttachment() const;
 
 		size_t getNumAttachments() const;
 
