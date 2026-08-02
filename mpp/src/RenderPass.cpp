@@ -1,5 +1,6 @@
 #include "mpp/RenderPass.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/Material.h"
 #include "mpp/GLErrorCheck.h"
 
 using namespace std;
@@ -7,13 +8,14 @@ using namespace std;
 namespace mpp
 {
 
-	RenderPass::RenderPass(RenderSystem* renderSystem, bool highDynamicRange)
+	RenderPass::RenderPass(RenderSystem* renderSystem, bool pbrForward)
 		: mRenderSystem(renderSystem)
+		, mPbrForward(pbrForward)
 	{
 		RenderTextureOptions options;
 		options.numAttachments = 1;
 		options.depthAttachment = RenderTextureDepthAttachment::DepthRenderbuffer;
-		if (highDynamicRange)
+		if (mPbrForward)
 		{
 			options.colourType = TextureInternalType::Float;
 			options.colourNormalised = false;
@@ -59,6 +61,20 @@ namespace mpp
 				camera);
 
 			instance->setParams(model->getParams());
+
+			if (mPbrForward)
+			{
+				// Render opaque and masked PBR materials first with depth writes.
+				// Blend materials are rendered afterwards by the transparent sort.
+				for (auto meshInstance : instance->getMeshInstances())
+				{
+					auto material = static_cast<Material*>(meshInstance->getMaterial().get());
+					bool transparent = material->isPbr() &&
+						material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend;
+					meshInstance->blend(transparent);
+					meshInstance->sortTransparent(transparent);
+				}
+			}
 		}
 	}
 }

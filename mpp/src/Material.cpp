@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "utils/FileSystem.h"
 
 #include "mpp/Material.h"
@@ -145,10 +147,22 @@ namespace mpp
 		mPbrSurface = mStr->getPbrSurface();
 		// MPP model files retain backwards-compatible material streams. PBR
 		// metadata is mirrored into PBR_* uniforms by FileMaterialStream, so
-		// recover the fallback-texture contract after deserializing such a model.
-		if (!mPbrSurface.enabled && mUniforms.getUniformData().find(MPP_PROGRAM_MARKUP_UNIFORM(string("PBR_ENABLED"))) != mUniforms.getUniformData().end())
+		// recover the material state needed by the renderer after deserialization.
+		auto const& serializedUniforms = mUniforms.getUniformData();
+		if (!mPbrSurface.enabled && serializedUniforms.find("PBR_ENABLED") != serializedUniforms.end())
 		{
 			mPbrSurface.enabled = true;
+		}
+		auto alphaModeIt = serializedUniforms.find("PBR_ALPHA_MODE");
+		if (alphaModeIt != serializedUniforms.end() && alphaModeIt->second.size >= sizeof(int32_t))
+		{
+			int32_t alphaMode;
+			memcpy(&alphaMode, alphaModeIt->second.data, sizeof(alphaMode));
+			if (alphaMode >= (int32_t)MaterialSpecification::PbrAlphaMode::Opaque &&
+				alphaMode <= (int32_t)MaterialSpecification::PbrAlphaMode::Blend)
+			{
+				mPbrSurface.alphaMode = (MaterialSpecification::PbrAlphaMode)alphaMode;
+			}
 		}
 		if (mPbrSurface.enabled)
 		{

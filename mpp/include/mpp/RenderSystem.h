@@ -134,6 +134,9 @@ namespace mpp
 
 		RenderTargetPtr mScreen;
 
+		// Set only while a PBR pipeline is flushing its scene pass. Environment
+		// samplers then override per-material placeholder bindings.
+		PbrEnvironmentPtr mActivePbrEnvironment;
 
 		ProjectionType mProjectionType;
 
@@ -406,6 +409,8 @@ namespace mpp
 		void setPbrAmbientColour(Colour const& colour);
 
 		void setPbrLights(std::vector<PbrLight> const& lights);
+
+		void setActivePbrEnvironment(PbrEnvironmentPtr environment);
 
 		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
 

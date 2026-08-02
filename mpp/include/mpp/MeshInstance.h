@@ -29,6 +29,10 @@ namespace mpp
 
 		bool mBlend;
 
+		// Only PBR Blend materials need depth ordering. Legacy callers retain
+		// their existing batching/sort behaviour.
+		bool mSortTransparent;
+
 		float mPointSize;
 
 		size_t mInstanceCount;
@@ -86,6 +90,10 @@ namespace mpp
 		void blend(bool blend);
 
 		bool blend() const;
+
+		void sortTransparent(bool sortTransparent);
+
+		bool sortTransparent() const;
 
 		void setPointSize(float pointSize);
 

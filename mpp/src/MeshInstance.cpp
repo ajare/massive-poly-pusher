@@ -17,6 +17,7 @@ namespace mpp
 		, mRender(true)
 		, mWireframe(false)
 		, mBlend(false)
+		, mSortTransparent(false)
 		, mInstanceCount(0)
 		, mGamma(2.2f)
 	{
@@ -35,6 +36,7 @@ namespace mpp
 		mRender = true;
 		mWireframe = false;
 		mBlend = false;
+		mSortTransparent = false;
 		mInstanceCount = 1;
 		mGamma = gamma;
 
@@ -87,6 +89,7 @@ namespace mpp
 		mRender = true;
 		mWireframe = false;
 		mBlend = false;
+		mSortTransparent = false;
 		mInstanceCount = 0;
 		mGamma = 2.2f;
 
@@ -160,6 +163,16 @@ namespace mpp
 	bool MeshInstance::blend() const
 	{
 		return mBlend;
+	}
+
+	void MeshInstance::sortTransparent(bool sortTransparent)
+	{
+		mSortTransparent = sortTransparent;
+	}
+
+	bool MeshInstance::sortTransparent() const
+	{
+		return mSortTransparent;
 	}
 
 	/*

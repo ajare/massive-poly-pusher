@@ -20,9 +20,11 @@ namespace mpp
 
 		RenderTargetPtr mTarget;
 
+		bool mPbrForward;
+
 	public:
 
-		explicit RenderPass(RenderSystem* renderSystem, bool highDynamicRange = false);
+		explicit RenderPass(RenderSystem* renderSystem, bool pbrForward = false);
 
 		virtual ~RenderPass();
 
