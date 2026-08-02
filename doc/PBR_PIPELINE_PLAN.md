@@ -6,6 +6,8 @@ Add an opt-in, forward, metallic-roughness PBR pipeline with image-based lightin
 
 The initial implementation deliberately does **not** introduce deferred rendering or a general render graph. It establishes the target, texture, material, and pass capabilities that a render graph could use later.
 
+For the authored material and runtime setup supported by completed milestones, see [PBR Material Setup](PBR_MATERIAL_SETUP.md). Update that guide whenever a PBR milestone changes the material or pipeline contract.
+
 ## Progressive DemoSuite requirement
 
 Every milestone is incomplete until DemoSuite is updated to visibly render `demo-suite/resources/res/statue/statue.mppmodel` through the opt-in `PBR` pipeline in the state delivered by that milestone. The preview must be selectable or enabled in DemoSuite, must not be hidden by the existing model visibility controls, and must retain previously completed PBR capabilities. A screenshot/manual validation record should accompany each checkpoint.
