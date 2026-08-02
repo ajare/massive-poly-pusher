@@ -193,18 +193,21 @@ renderSystem->renderScene(scene, camera, {}, "PBR");
 **Outcome:** PBR correctness and legacy compatibility are observable and regressions are caught.
 
 - [ ] Add a PBR demo scene containing a metallic/roughness sphere grid, normal-mapped object, emissive object, alpha-mask object, alpha-blended object, and an IBL environment.
-- [ ] Add controls for exposure, tone-map operator, environment, and PBR/legacy pipeline selection.
+- [x] Add controls for exposure, tone-map operator, environment, PBR material factors/light intensity, and PBR/legacy pipeline selection.
 - [ ] Add target-format, attachment-lifetime, resize, cube-map, sampler-limit, and sRGB/linear tests where unit coverage is feasible.
+- [x] Define a repeatable manual validation procedure and reference-image naming convention for the PBR demo.
 - [ ] Capture visual reference images for the PBR demo and compare them in a repeatable graphics test/manual validation procedure.
 - [ ] Re-run existing demo scenes against the legacy `Default` pipeline and verify unchanged behaviour.
-- [ ] Document material slots, texture colour-space rules, tangent requirements, environment asset format, light limits, and the PBR opt-in API.
+- [x] Document material slots, texture colour-space rules, tangent requirements, environment asset format, light limits, and the PBR opt-in API.
 
 **Acceptance:** the demo demonstrates the expected metallic/roughness and IBL response, tests cover the new resource foundations, and existing legacy scenes remain functional.
 
 ### DemoSuite checkpoint
 
-- [ ] Make the statue PBR preview a permanent, visible DemoSuite regression scenario, including its environment and documented setup.
+- [x] Make the statue PBR preview a permanent, visible DemoSuite regression scenario, including selectable placeholder environments and documented setup.
 - [ ] Record the final reference image and manual validation steps for the visible statue in both `PBR` and `Default` modes.
+
+**Implementation note (Milestone 7):** DemoSuite now exposes controls for PBR base colour, metallic, roughness, direct-light intensity, cool/warm placeholder IBL, exposure, tone mapping, and pipeline selection. `doc/PBR_VALIDATION.md` defines the current manual regression and image-capture procedure. Dedicated validation assets, automated coverage, legacy visual regression, and captured reference images remain outstanding.
 
 ---
 

@@ -68,6 +68,8 @@ namespace mpp
 
 		void setToneMapOperator(PbrToneMapOperator toneMapOperator);
 
+		void setPbrEnvironment(PbrEnvironmentPtr environment);
+
 		RenderTargetPtr getOutputRenderTarget();
 
 		void resize(size_t width, size_t height);

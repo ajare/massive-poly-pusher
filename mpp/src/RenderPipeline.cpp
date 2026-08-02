@@ -43,6 +43,11 @@ namespace mpp
 		mOptions.toneMapOperator = toneMapOperator;
 	}
 
+	void RenderPipeline::setPbrEnvironment(PbrEnvironmentPtr environment)
+	{
+		mOptions.environment = std::move(environment);
+	}
+
 	RenderTargetPtr RenderPipeline::getOutputRenderTarget()
 	{
 		if (mPostEffects.empty())
