@@ -142,6 +142,17 @@ namespace mpp
 
 		// Set uniforms
 		mUniforms = mStr->getUniforms();
+		mPbrSurface = mStr->getPbrSurface();
+		if (mPbrSurface.enabled)
+		{
+			mUniforms.setUniform("PBR_BASE_COLOUR_FACTOR", mPbrSurface.baseColourFactor);
+			mUniforms.setUniform("PBR_METALLIC_FACTOR", mPbrSurface.metallicFactor);
+			mUniforms.setUniform("PBR_ROUGHNESS_FACTOR", mPbrSurface.roughnessFactor);
+			mUniforms.setUniform("PBR_EMISSIVE_FACTOR", mPbrSurface.emissiveFactor);
+			mUniforms.setUniform("PBR_NORMAL_SCALE", mPbrSurface.normalScale);
+			mUniforms.setUniform("PBR_OCCLUSION_STRENGTH", mPbrSurface.occlusionStrength);
+			mUniforms.setUniform("PBR_ALPHA_CUTOFF", mPbrSurface.alphaCutoff);
+		}
 		
 		// Set textures
 		Program* program = (Program*)(mProgram.get());
@@ -158,18 +169,43 @@ namespace mpp
 				return textureOptions.sampler == samplerName;
 			});
 			
+			string textureName;
 			if (it == materialTextures.end())
 			{
-				string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
-					samplerName, program->getName(), getName());
-				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+				if (mPbrSurface.enabled)
+				{
+					if (samplerName == "PBR_BASE_COLOUR_MAP" || samplerName == "PBR_OCCLUSION_MAP")
+					{
+						textureName = "__mpp_tex_pbr_white__";
+					}
+					else if (samplerName == "PBR_METALLIC_ROUGHNESS_MAP")
+					{
+						textureName = "__mpp_tex_pbr_metallic_roughness__";
+					}
+					else if (samplerName == "PBR_NORMAL_MAP")
+					{
+						textureName = "__mpp_tex_pbr_normal__";
+					}
+					else if (samplerName == "PBR_EMISSIVE_MAP")
+					{
+						textureName = "__mpp_tex_pbr_black__";
+					}
+				}
+
+				if (textureName.empty())
+				{
+					string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
+						samplerName, program->getName(), getName());
+					THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+				}
 			}
-
-			auto const& textureOptions = *it;
-
-			string textureName = textureOptions.isChild
-				? getName() + "/" + textureOptions.existingResource
-				: textureOptions.existingResource;
+			else
+			{
+				auto const& textureOptions = *it;
+				textureName = textureOptions.isChild
+					? getName() + "/" + textureOptions.existingResource
+					: textureOptions.existingResource;
+			}
 
 			// Add as acquired resource
 			auto texRes = resourceMgr->getResource(textureName);
@@ -215,6 +251,16 @@ namespace mpp
 	ResourcePtr Material::getProgram()
 	{
 		return mProgram;
+	}
+
+	bool Material::isPbr() const
+	{
+		return mPbrSurface.enabled;
+	}
+
+	MaterialSpecification::PbrSurface const& Material::getPbrSurface() const
+	{
+		return mPbrSurface;
 	}
 	
 	/*

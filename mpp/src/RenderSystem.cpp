@@ -692,6 +692,32 @@ namespace mpp
 		mNoTexture = resourceMgr->declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream)).first;
 		addCoreResource(mNoTexture, true);
 
+		// Standard PBR fallback maps. PBR materials can omit any texture map;
+		// Material resolves the corresponding canonical sampler to these values.
+		auto addPbrFallbackTexture = [this, resourceMgr](string const& name, uint8_t red, uint8_t green, uint8_t blue, TextureColourSpace colourSpace)
+		{
+			auto stream = new ProgrammaticTextureStream(resourceMgr);
+			stream->setTarget(TextureTarget::Texture2D);
+			stream->setColourSpace(colourSpace);
+			stream->setData([red, green, blue](string const&)
+			{
+				TextureData data;
+				data.width = 1;
+				data.height = 1;
+				data.bitsPerPixel = 24;
+				data.dataType = GL_UNSIGNED_BYTE;
+				data.pixelFormat = GL_RGB;
+				data.data = new uint8_t[3]{ red, green, blue };
+				return data;
+			});
+			auto texture = resourceMgr->declareResource(name, ResourceStreamPtr(stream)).first;
+			addCoreResource(texture, true);
+		};
+		addPbrFallbackTexture("__mpp_tex_pbr_white__", 255, 255, 255, TextureColourSpace::Srgb);
+		addPbrFallbackTexture("__mpp_tex_pbr_black__", 0, 0, 0, TextureColourSpace::Srgb);
+		addPbrFallbackTexture("__mpp_tex_pbr_normal__", 128, 128, 255, TextureColourSpace::Linear);
+		addPbrFallbackTexture("__mpp_tex_pbr_metallic_roughness__", 0, 255, 255, TextureColourSpace::Linear);
+
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(resourceMgr);
 		ts->setTarget(TextureTarget::Texture2D);

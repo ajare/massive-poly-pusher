@@ -49,7 +49,7 @@ private:
 
 private:
 
-	void addBuildVertex(aiMesh const* mesh, int index, aiMaterial* material, std::vector<float>& vertices, bool hasPositions, bool hasNormals, bool hasTexCoords, bool hasColours);
+	void addBuildVertex(aiMesh const* mesh, int index, aiMaterial* material, std::vector<float>& vertices, bool hasPositions, bool hasNormals, bool hasTangents, bool hasTexCoords, bool hasColours);
 
 	void addBuildFace(uint32_t index0, uint32_t index1, uint32_t index2, std::vector<uint32_t>& faces);
 

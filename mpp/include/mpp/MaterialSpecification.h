@@ -4,6 +4,12 @@
 #include <map>
 #include <vector>
 
+#pragma warning(push)
+#pragma warning(disable : 4201)
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+#pragma warning(pop)
+
 #include "mpp/TextureParams.h"
 #include "mpp/UniformCollection.h"
 
@@ -41,6 +47,27 @@ namespace mpp
 			Shader vertexShader, geometryShader, fragmentShader;
 		};
 
+		enum class PbrAlphaMode
+		{
+			Opaque,
+			Mask,
+			Blend
+		};
+
+		struct PbrSurface
+		{
+			bool enabled{ false };
+			glm::vec4 baseColourFactor{ 1.0f };
+			float metallicFactor{ 1.0f };
+			float roughnessFactor{ 1.0f };
+			glm::vec3 emissiveFactor{ 0.0f };
+			float normalScale{ 1.0f };
+			float occlusionStrength{ 1.0f };
+			PbrAlphaMode alphaMode{ PbrAlphaMode::Opaque };
+			float alphaCutoff{ 0.5f };
+			bool doubleSided{ false };
+		};
+
 		struct TextureOptions
 		{
 			bool resourceExists{ false };
@@ -61,6 +88,7 @@ namespace mpp
 
 		ProgramOptions program;
 		UniformCollection uniforms;
+		PbrSurface pbr;
 		std::vector<TextureOptions> textures;
 	};
 

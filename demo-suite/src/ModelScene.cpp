@@ -884,6 +884,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	pbrPreviewMaterialStream->setProgram2d(false);
 	pbrPreviewMaterialStream->setMeshSpecification(pbrPreviewSpec);
 	pbrPreviewMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "PbrPreview.frag");
+	mpp::MaterialSpecification::PbrSurface pbrPreviewSurface;
+	pbrPreviewSurface.enabled = true;
+	pbrPreviewSurface.metallicFactor = 0.0f;
+	pbrPreviewSurface.roughnessFactor = 0.75f;
+	pbrPreviewMaterialStream->setPbrSurface(pbrPreviewSurface);
 	pbrPreviewMaterialStream->setTexture("TEX1", "Marble.Texture");
 	pbrPreviewMaterialStream->setTexture("TEX2", "Test.Texture");
 	pbrPreviewMaterialStream->setTexture("ENVIRONMENT", "PBR.Preview.Environment");
