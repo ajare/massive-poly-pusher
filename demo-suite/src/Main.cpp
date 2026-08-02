@@ -276,9 +276,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			// Process window messages
 			gWindow->processEvents(gInputMgr);
 
-			// Handle ImGui before calling InputManager::update() because
-			// that consumes the events.
-			//imGuiHandleInput(gInputMgr, &gImGuiBackendData);
+			// Feed the raw SDL-derived events to ImGui before InputManager::update()
+			// consumes them. Without this, sliders and combo boxes are rendered but
+			// never receive mouse or keyboard interaction.
+			imGuiHandleInput(gInputMgr, &gImGuiBackendData);
 
 			gInputMgr->update();
 
