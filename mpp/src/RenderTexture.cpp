@@ -13,33 +13,72 @@ using namespace std;
 
 namespace mpp
 {
-	/*
-	* Constructor.
-	*
-	*/
+	namespace
+	{
+		uint32_t getPixelFormat(uint32_t internalFormat)
+		{
+			switch (internalFormat)
+			{
+			case GL_R8: case GL_R16: case GL_R16F: case GL_R32F: case GL_R8UI: case GL_R16UI: case GL_R32UI: case GL_R8I: case GL_R16I: case GL_R32I:
+				return GL_RED;
+			case GL_RG8: case GL_RG16: case GL_RG16F: case GL_RG32F: case GL_RG8UI: case GL_RG16UI: case GL_RG32UI: case GL_RG8I: case GL_RG16I: case GL_RG32I:
+				return GL_RG;
+			case GL_RGB4: case GL_RGB5: case GL_RGB8: case GL_RGB10: case GL_RGB12: case GL_RGB16: case GL_RGB16F: case GL_RGB32F:
+				return GL_RGB;
+			default:
+				return GL_RGBA;
+			}
+		}
+
+		uint32_t getPixelDataType(uint32_t internalFormat)
+		{
+			switch (internalFormat)
+			{
+			case GL_R16F: case GL_RG16F: case GL_RGB16F: case GL_RGBA16F:
+				return GL_HALF_FLOAT;
+			case GL_R32F: case GL_RG32F: case GL_RGB32F: case GL_RGBA32F:
+				return GL_FLOAT;
+			default:
+				return GL_UNSIGNED_BYTE;
+			}
+		}
+
+		size_t getFormatBitsPerPixel(uint32_t internalFormat)
+		{
+			switch (internalFormat)
+			{
+			case GL_R16F: return 16;
+			case GL_RG16F: return 32;
+			case GL_RGB16F: return 48;
+			case GL_RGBA16F: return 64;
+			case GL_R32F: return 32;
+			case GL_RG32F: return 64;
+			case GL_RGB32F: return 96;
+			case GL_RGBA32F: return 128;
+			case GL_R8: return 8;
+			case GL_RG8: return 16;
+			case GL_RGB8: return 24;
+			default: return 32;
+			}
+		}
+	}
+
 	RenderTexture::RenderTexture(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: RenderTarget(0, 0)
 		, Texture(name, renderSystem, resourceMgr, resourceStream)
 		, mRenderSystem(renderSystem)
-		, mUseDepthBuffer(false)
+		, mDepthAttachment(RenderTextureDepthAttachment::None)
 		, mFrameBuffer(0)
 		, mDepthBuffer(0)
+		, mDepthTexture(0)
 	{
 	}
 
-	/*
-	 * Destructor.
-	 *
-	 */
 	RenderTexture::~RenderTexture()
 	{
 		destroy();
 	}
 
-	/*
-	 * Create the data required.
-	 *
-	 */
 	void RenderTexture::createImpl()
 	{
 		RenderTextureStream* rtStr = dynamic_cast<RenderTextureStream*>(getResourceStream().get());
@@ -52,12 +91,34 @@ namespace mpp
 		mTarget = rtStr->getTarget();
 		mParams = rtStr->getParams();
 
+		if (mTarget != GL_TEXTURE_2D)
+		{
+			THROW_MPP("Render textures currently support only Texture2D colour attachments.", __LINE__, __FILE__, __func__);
+		}
+
 		Texture::mWidth = RenderTarget::mWidth = rtStr->getWidth();
 		Texture::mHeight = RenderTarget::mHeight = rtStr->getHeight();
 		Texture::mDepth = rtStr->getDepth();
 		mBitsPerPixel = rtStr->getBitsPerPixel();
 		mPixelFormat = rtStr->getPixelFormat();
 		mDataType = rtStr->getPixelDataType();
+
+		if (mInternalFormat == 0)
+		{
+			THROW_MPP("Render texture internal format must be specified.", __LINE__, __FILE__, __func__);
+		}
+		if (mPixelFormat == 0)
+		{
+			mPixelFormat = getPixelFormat(mInternalFormat);
+		}
+		if (mDataType == 0)
+		{
+			mDataType = getPixelDataType(mInternalFormat);
+		}
+		if (mBitsPerPixel == 0)
+		{
+			mBitsPerPixel = getFormatBitsPerPixel(mInternalFormat);
+		}
 
 		auto sampler = rtStr->getSampler();
 		if (sampler != "")
@@ -66,271 +127,231 @@ namespace mpp
 			mSampler->create();
 		}
 
-		if (mInternalFormat == 0)
-		{
-			// If we haven't specified the format, work it out from bpp/pixelformat/datatype
-			size_t channels{ 0 };
-
-			switch (mDataType)
-			{
-			case GL_BYTE:
-				// Signed, normalised
-				channels = mBitsPerPixel / (sizeof(int8_t) * 8);
-				switch (channels)
-				{
-				case 1:
-					mInternalFormat = GL_R8_SNORM; break;
-				case 2:
-					mInternalFormat = GL_RG8_SNORM; break;
-				case 3:
-					mInternalFormat = GL_RGB8_SNORM; break;
-				case 4:
-					mInternalFormat = GL_RGBA8_SNORM; break;
-				}
-				break;
-
-			case GL_UNSIGNED_BYTE:
-				// Unsigned, normalised
-				channels = mBitsPerPixel / (sizeof(uint8_t) * 8);
-				switch (channels)
-				{
-				case 1:
-					mInternalFormat = GL_R8; break;
-				case 2:
-					mInternalFormat = GL_RG8; break;
-				case 3:
-					mInternalFormat = GL_RGB8; break;
-				case 4:
-					mInternalFormat = GL_RGBA8; break;
-				}
-				break;
-
-			case GL_SHORT:
-				// Signed, normalised
-				channels = mBitsPerPixel / (sizeof(int16_t) * 8);
-				switch (channels)
-				{
-				case 1:
-					mInternalFormat = GL_R16_SNORM; break;
-				case 2:
-					mInternalFormat = GL_RG16_SNORM; break;
-				case 3:
-					mInternalFormat = GL_RGB16_SNORM; break;
-				case 4:
-					mInternalFormat = GL_RGBA16_SNORM; break;
-				}
-				break;
-
-			case GL_UNSIGNED_SHORT:
-				// Unsigned, normalised
-				channels = mBitsPerPixel / (sizeof(uint16_t) * 8);
-				switch (channels)
-				{
-				case 1:
-					mInternalFormat = GL_R16; break;
-				case 2:
-					mInternalFormat = GL_RG16; break;
-				case 3:
-					mInternalFormat = GL_RGB16; break;
-				case 4:
-					mInternalFormat = GL_RGBA16; break;
-				}
-				break;
-
-			case GL_HALF_FLOAT:
-				// Signed, unnormalised
-				channels = mBitsPerPixel / ((sizeof(float) / 2) * 8);
-				switch (channels)
-				{
-				case 1:
-					mInternalFormat = GL_R16F; break;
-				case 2:
-					mInternalFormat = GL_RG16F; break;
-				case 3:
-					mInternalFormat = GL_RGB16F; break;
-				case 4:
-					mInternalFormat = GL_RGBA16F; break;
-				}
-				break;
-
-			case GL_FLOAT:
-				// Signed, unnormalised
-				channels = mBitsPerPixel / (sizeof(float) * 8);
-				switch (channels)
-				{
-				case 1:
-					mInternalFormat = GL_R32F; break;
-				case 2:
-					mInternalFormat = GL_RG32F; break;
-				case 3:
-					mInternalFormat = GL_RGB32F; break;
-				case 4:
-					mInternalFormat = GL_RGBA32F; break;
-				}
-				break;
-
-			default:
-				THROW_MPP("Unsupported data type.", __LINE__, __FILE__, __func__);
-			}
-		}
-
-		mUseDepthBuffer = rtStr->useDepthBuffer();
+		mDepthAttachment = rtStr->getDepthAttachment();
 		mNumAttachments = rtStr->getNumAttachments();
+		if (mNumAttachments == 0 && mDepthAttachment == RenderTextureDepthAttachment::None)
+		{
+			THROW_MPP("Render texture needs at least one colour or depth attachment.", __LINE__, __FILE__, __func__);
+		}
 	}
 
-	/*
-	 * Create OpenGL rendertexture.
-	 *
-	 */
 	void RenderTexture::loadImpl()
 	{
-		auto width = getWidth();
-		auto height = getHeight();
+		const auto width = getWidth();
+		const auto height = getHeight();
+		if (width == 0 || height == 0)
+		{
+			THROW_MPP("Render texture dimensions must be non-zero.", __LINE__, __FILE__, __func__);
+		}
 
-		// Create framebuffer
 		GL_CHECK(glGenFramebuffers(1, &mFrameBuffer));
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
-
-		// Set name for debugging
 		string label = "Framebuffer: " + getName();
-		glObjectLabel(GL_FRAMEBUFFER, mFrameBuffer, -1, label.c_str());
+		GL_CHECK(glObjectLabel(GL_FRAMEBUFFER, mFrameBuffer, -1, label.c_str()));
 
-		// Create textures
+		mTextureIds.clear();
 		for (size_t i = 0; i < mNumAttachments; ++i)
 		{
-			GLuint texId;
+			GLuint texId{ 0 };
 			GL_CHECK(glGenTextures(1, &texId));
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texId));
 
-			// Set name for debugging
-			auto label = STR_FORMAT("Texture: {}_attachment_{}", getName(), i);
-			glObjectLabel(GL_TEXTURE, texId, -1, label.c_str());
+			label = STR_FORMAT("Texture: {}_attachment_{}", getName(), i);
+			GL_CHECK(glObjectLabel(GL_TEXTURE, texId, -1, label.c_str()));
+			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, mInternalFormat, (GLsizei)width, (GLsizei)height, 0, mPixelFormat, mDataType, nullptr));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mParams.wrap));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, mParams.wrap));
+			GL_CHECK(glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+			if (mParams.useMipmaps)
+			{
+				GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+				GL_CHECK(glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
+			}
 
-			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)width, (GLsizei)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-
-			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-
+			const GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + i);
+			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texId, 0));
 			mTextureIds.push_back(texId);
 		}
 
-		setId(mTextureIds.front());
-
-		// Create depth buffer
-		if (mUseDepthBuffer)
+		if (!mTextureIds.empty())
 		{
-			GL_CHECK(glGenRenderbuffers(1, &mDepthBuffer));
-			GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer));
-
-			// Set name for debugging
-			string label = "Renderbuffer: " + getName();
-			glObjectLabel(GL_RENDERBUFFER, mDepthBuffer, -1, label.c_str());
-
-			GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, (GLsizei)width, (GLsizei)height));
-			GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer));
+			setId(mTextureIds.front());
 		}
 		else
 		{
-			mDepthBuffer = 0;
+			setId(0);
 		}
 
-		GLenum* drawBuffers = new GLenum[mNumAttachments];
-		for (size_t i = 0; i < mNumAttachments; ++i)
+		mDepthBuffer = 0;
+		mDepthTexture = 0;
+		switch (mDepthAttachment)
 		{
-			GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + i);
-			GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, mTextureIds[i], 0));
-			drawBuffers[i] = attachment;
+		case RenderTextureDepthAttachment::None:
+			break;
+		case RenderTextureDepthAttachment::DepthRenderbuffer:
+		case RenderTextureDepthAttachment::DepthStencilRenderbuffer:
+		{
+			GL_CHECK(glGenRenderbuffers(1, &mDepthBuffer));
+			GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, mDepthBuffer));
+			label = "Renderbuffer: " + getName();
+			GL_CHECK(glObjectLabel(GL_RENDERBUFFER, mDepthBuffer, -1, label.c_str()));
+			const bool stencil = mDepthAttachment == RenderTextureDepthAttachment::DepthStencilRenderbuffer;
+			GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height));
+			GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer));
+			break;
+		}
+		case RenderTextureDepthAttachment::DepthTexture:
+		case RenderTextureDepthAttachment::DepthStencilTexture:
+		{
+			GL_CHECK(glGenTextures(1, &mDepthTexture));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
+			const bool stencil = mDepthAttachment == RenderTextureDepthAttachment::DepthStencilTexture;
+			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, stencil ? GL_UNSIGNED_INT_24_8 : GL_UNSIGNED_INT, nullptr));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mDepthTexture, 0));
+			break;
+		}
 		}
 
-		GL_CHECK(glDrawBuffers((GLsizei)mNumAttachments, drawBuffers));
-		delete[] drawBuffers;
+		if (mNumAttachments == 0)
+		{
+			GL_CHECK(glDrawBuffer(GL_NONE));
+			GL_CHECK(glReadBuffer(GL_NONE));
+		}
+		else
+		{
+			vector<GLenum> drawBuffers(mNumAttachments);
+			for (size_t i = 0; i < mNumAttachments; ++i)
+			{
+				drawBuffers[i] = (GLenum)(GL_COLOR_ATTACHMENT0 + i);
+			}
+			GL_CHECK(glDrawBuffers((GLsizei)drawBuffers.size(), drawBuffers.data()));
+		}
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
 			THROW_MPP("Could not create framebuffer.", __LINE__, __FILE__, __func__);
 		}
 
+		GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
-	/*
-	 * Destroy the OpenGL rendertexture.
-	 *
-	 */
 	void RenderTexture::unloadImpl()
 	{
-		// Frame buffer
 		if (mFrameBuffer != 0)
 		{
 			GL_CHECK(glDeleteFramebuffers(1, &mFrameBuffer));
 			mFrameBuffer = 0;
 		}
-
-		// Texture
-		GLuint id = getId();
-		if (id != 0)
+		if (mDepthBuffer != 0)
 		{
-			GL_CHECK(glDeleteTextures(1, &id));
-			setId(0);
+			GL_CHECK(glDeleteRenderbuffers(1, &mDepthBuffer));
+			mDepthBuffer = 0;
 		}
-
+		if (mDepthTexture != 0)
+		{
+			GL_CHECK(glDeleteTextures(1, &mDepthTexture));
+			mDepthTexture = 0;
+		}
+		for (auto textureId : mTextureIds)
+		{
+			GLuint id = textureId;
+			GL_CHECK(glDeleteTextures(1, &id));
+		}
+		mTextureIds.clear();
+		setId(0);
 	}
 
-	/*
-	 * Set the texture as the active RenderTarget.
-	 *
-	 */
 	void RenderTexture::activate()
 	{
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
 	}
 
-	/*
-	 * Unset the texture from being the active RenderTarget.
-	 *
-	 */
 	void RenderTexture::deactivate()
 	{
+		if (mParams.useMipmaps)
+		{
+			for (auto textureId : mTextureIds)
+			{
+				GL_CHECK(glBindTexture(GL_TEXTURE_2D, textureId));
+				GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+			}
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		}
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
-	/*
-	 * Get render target width.
-	 *
-	 */
 	size_t RenderTexture::getWidth() const
 	{
 		return RenderTarget::getWidth();
 	}
 
-	/*
-	 * Get render target height.
-	 *
-	 */
 	size_t RenderTexture::getHeight() const
 	{
 		return RenderTarget::getHeight();
 	}
 
-	/*
-	 * Override Texture functionality.
-	 *
-	 */
 	size_t RenderTexture::getBitsPerPixel() const
 	{
-		return 32;
+		return mBitsPerPixel;
 	}
 
 	bool RenderTexture::hasDepthBuffer() const
 	{
-		return mUseDepthBuffer;
+		return mDepthAttachment != RenderTextureDepthAttachment::None;
 	}
 
 	bool RenderTexture::hasStencilBuffer() const
 	{
-		return false;
+		return mDepthAttachment == RenderTextureDepthAttachment::DepthStencilRenderbuffer ||
+			mDepthAttachment == RenderTextureDepthAttachment::DepthStencilTexture;
+	}
+
+	bool RenderTexture::resize(size_t width, size_t height)
+	{
+		if (width == 0 || height == 0)
+		{
+			return false;
+		}
+		if (width == RenderTarget::mWidth && height == RenderTarget::mHeight)
+		{
+			return true;
+		}
+
+		const bool loaded = isLoaded();
+		if (loaded)
+		{
+			unloadImpl();
+		}
+		Texture::mWidth = RenderTarget::mWidth = width;
+		Texture::mHeight = RenderTarget::mHeight = height;
+		if (loaded)
+		{
+			loadImpl();
+		}
+		return true;
+	}
+
+	uint32_t RenderTexture::getDepthTextureId() const
+	{
+		return mDepthTexture;
+	}
+
+	uint32_t RenderTexture::getColourAttachmentId(size_t attachment) const
+	{
+		if (attachment >= mTextureIds.size())
+		{
+			THROW_MPP("Render texture colour attachment index out of range.", __LINE__, __FILE__, __func__);
+		}
+		return mTextureIds[attachment];
 	}
 }
-

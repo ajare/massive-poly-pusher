@@ -840,8 +840,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.push_back(mppScene->add3dModel(mTorus));
 	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
-	// Load MppModel
-	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "Random_Track.mppmodel");
+	// Load the PBR preview model. It remains visible by default and is rendered
+	// through the opt-in PBR pipeline below.
+	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
 	mStatue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream)).first;
 	mStatue->acquire(this);
 	mStatue->load();
@@ -864,8 +865,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLightCount(1);
 	renderSystem->setLight1Colour(Colour::White);
 
-	// Pipelines
-	auto pipeline = renderSystem->getOrCreateRenderPipeline(getRenderPipelineName());
+	// PBR is an opt-in pipeline. Milestone 1 uses the statue as the visible
+	// HDR preview while later milestones replace its temporary shading path.
+	mpp::RenderPipelineOptions pbrOptions;
+	pbrOptions.mode = mpp::RenderPipelineMode::PbrForward;
+	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
+	renderSystem->getOrCreateRenderPipeline(getRenderPipelineName());
 }
 
 void ModelScene::teardownImGui()
@@ -1034,7 +1039,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 		params->setModelFlags(flags);
 	}
 
-	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
+	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "PBR");
 
 	// ImGui
 	mImGuiRenderer->render(renderSystem);

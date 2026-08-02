@@ -122,6 +122,24 @@ void main()
 }
 )";
 
+// Temporary HDR presentation shader used by the opt-in PBR pipeline. Surface
+// shading remains replaceable while the PBR material model is introduced.
+const std::string FragmentShaderToneMapTemplate =
+R"(
+@@Version
+
+@@Uniform(float EXPOSURE);
+@@Uniform(float GAMMA);
+@@Texture(sampler2D TEX1);
+
+void main()
+{
+	vec3 colour = texture(@Texture(TEX1), @In(TEXCOORDS)).rgb * @Uniform(EXPOSURE);
+	colour = colour / (colour + vec3(1.0));
+	@Out(vec4 COLOUR) = vec4(pow(colour, vec3(1.0 / @Uniform(GAMMA))), 1.0);
+}
+)";
+
 /*
  * Text shader.
  *

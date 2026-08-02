@@ -563,6 +563,25 @@ namespace mpp
 			addCoreResource(mFullscreenProgram, true);
 		}
 
+		// HDR tone-map program used by the opt-in PBR preview pipeline.
+		{
+			mesh::MeshSpecification meshSpec;
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+
+			auto parser = make_shared<program::Parser>();
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderFullscreenTemplate);
+			parser->setFragmentSource(FragmentShaderToneMapTemplate);
+
+			auto ps = new ProgrammaticProgramStream(resourceMgr);
+			ps->setParser(parser);
+			mToneMapProgram = resourceMgr->declareResource("__mpp_p2d_tonemap__", ResourceStreamPtr(ps)).first;
+			addCoreResource(mToneMapProgram, true);
+		}
+
 		// Internal text programs
 		{
 			mesh::MeshSpecification meshSpec;
@@ -900,9 +919,9 @@ namespace mpp
 		mFullscreenQuad = resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream)).first;
 		addCoreResource(mFullscreenQuad, true);
 
-		// Render targets
-		mSceneTarget = createRenderTexture("SceneTarget", getWindowWidth(), getWindowHeight(), 1, true);
-		
+		// Render targets are owned by render passes/pipelines. Do not create a
+		// duplicate global scene target here.
+
 		// Set none as active
 		mActiveProgram.reset();
 
@@ -1026,8 +1045,33 @@ namespace mpp
 			mScreen.reset();
 		}
 
+		mWindowWidth = (size_t)width;
+		mWindowHeight = (size_t)height;
 		mScreen = RenderTargetPtr(new Screen(width, height));
 		setRenderTarget(mScreen);
+
+		for (auto const& [name, pipeline] : mPipelines)
+		{
+			pipeline->resize(mWindowWidth, mWindowHeight);
+		}
+
+		if (mFullscreenQuad)
+		{
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+			auto buffer = mesh->getVertexBuffer(0);
+			auto& data = buffer->getBufferData();
+			const float vertices[] =
+			{
+				0.0f, 0.0f, 0.0f, 0.0f,
+				(float)mWindowWidth, 0.0f, 1.0f, 0.0f,
+				(float)mWindowWidth, (float)mWindowHeight, 1.0f, 1.0f,
+				(float)mWindowWidth, (float)mWindowHeight, 1.0f, 1.0f,
+				0.0f, (float)mWindowHeight, 0.0f, 1.0f,
+				0.0f, 0.0f, 0.0f, 0.0f
+			};
+			memcpy(data.data(), vertices, sizeof(vertices));
+			buffer->mapBufferData(6);
+		}
 	}
 
 	/*
@@ -1069,9 +1113,6 @@ namespace mpp
 
 		mRenderTarget = renderTarget;
 		mRenderTarget->activate();
-
-		mWindowWidth = mRenderTarget->getWidth();
-		mWindowHeight = mRenderTarget->getHeight();
 	}
 
 	void RenderSystem::pushRenderTarget(RenderTargetPtr renderTarget)
@@ -1111,17 +1152,25 @@ namespace mpp
 	 */
 	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer)
 	{
+		RenderTextureOptions options;
+		options.numAttachments = numAttachments;
+		options.depthAttachment = depthBuffer ? RenderTextureDepthAttachment::DepthRenderbuffer : RenderTextureDepthAttachment::None;
+		return createRenderTexture(name, width, height, options);
+	}
+
+	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, RenderTextureOptions const& options)
+	{
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
 
 		rtStream->setTarget(TextureTarget::Texture2D);
-		rtStream->setInternalFormat(TextureInternalType::UnsignedInteger, true, 8, 4);
+		rtStream->setInternalFormat(options.colourType, options.colourNormalised, options.colourBitSize, options.colourChannels);
+		rtStream->setParams(options.params);
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
-		rtStream->setDepthBuffer(depthBuffer);
-		rtStream->setNumAttachments(numAttachments);
+		rtStream->setDepthAttachment(options.depthAttachment);
+		rtStream->setNumAttachments(options.numAttachments);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
-
 		rt->load();
 
 		return RenderTargetPtr(rt);
@@ -1566,7 +1615,7 @@ namespace mpp
 			transform,
 			mcp,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
-			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f),
+			glm::vec2(mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f),
 			getGamma(),
 			mMeshInstances);
 
@@ -1963,7 +2012,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
-		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 
 		int gammaId = p->getUniformId("GAMMA");
 
@@ -1995,6 +2044,32 @@ namespace mpp
 		mRenderInfo.fullscreenQuads++;
 	}
 
+	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure)
+	{
+		flushVertexBuffers();
+
+		auto program = static_cast<Program*>(mToneMapProgram.get());
+		setUsedProgram(mToneMapProgram);
+		mRenderInfo.programSwitches++;
+
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniform1f(program->getUniformId("EXPOSURE"), exposure));
+		GL_CHECK(glUniform1f(program->getUniformId("GAMMA"), mGamma));
+
+		texture->bind(0, 0);
+		mRenderInfo.textureSwitches++;
+
+		GL_CHECK(glDisable(GL_BLEND));
+		auto quadMesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		quadMesh->bind(true);
+		quadMesh->render(1);
+		quadMesh->bind(false);
+
+		mRenderInfo.batchCount++;
+		mRenderInfo.fullscreenQuads++;
+	}
+
 	/*
 	 * Render a simple quad.
 	 *
@@ -2019,11 +2094,11 @@ namespace mpp
 		mRenderInfo.programSwitches++;
 
 		pushModelMatrix();
-		translateTransform2d(glm::vec2(x, mWindowHeight - y));
-		GL_CHECK(scaleTransform2d(glm::vec2(width / (float)mWindowWidth, height / (float)mWindowHeight)));
+		translateTransform2d(glm::vec2(x, mRenderTarget->getHeight() - y));
+		GL_CHECK(scaleTransform2d(glm::vec2(width / (float)mRenderTarget->getWidth(), height / (float)mRenderTarget->getHeight())));
 
 		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
-		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 
 		int gammaId = p->getUniformId("GAMMA");
 
@@ -2227,7 +2302,7 @@ namespace mpp
 
 			if (hwsId >= 0)
 			{
-				glm::vec2 halfWindowSize(mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+				glm::vec2 halfWindowSize(mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f);
 				GL_CHECK(glUniform2fv(hwsId, 1, glm::value_ptr(halfWindowSize)));
 			}
 
@@ -2868,17 +2943,24 @@ namespace mpp
 
 	RenderPipelinePtr RenderSystem::getOrCreateRenderPipeline(string const& name)
 	{
+		return getOrCreateRenderPipeline(name, {});
+	}
+
+	RenderPipelinePtr RenderSystem::getOrCreateRenderPipeline(string const& name, RenderPipelineOptions const& options)
+	{
 		auto it = mPipelines.find(name);
 		if (it != mPipelines.end())
 		{
+			if (it->second->getOptions().mode != options.mode)
+			{
+				THROW_MPP("RenderPipeline '" + name + "' already exists with different options.", __LINE__, __FILE__, __func__);
+			}
 			return it->second;
 		}
-		else
-		{
-			auto rs = make_shared<RenderPipeline>(name, this);
-			mPipelines[name] = rs;
-			return rs;
-		}
+
+		auto pipeline = make_shared<RenderPipeline>(name, this, options);
+		mPipelines[name] = pipeline;
+		return pipeline;
 	}
 
 	RenderPipelinePtr RenderSystem::getRenderPipeline(string const& name)
