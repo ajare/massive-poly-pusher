@@ -84,7 +84,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
 	addResource(resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream)).first, false);
-	
+
 	// Create texture programmatically.  This is a 16bit texture.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
@@ -179,7 +179,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 		data.pixelFormat = GL_RGB;
 
 		size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
-		
+
 		data.data = new uint8_t[dataSize];
 		for (int i = 0; i < 256; ++i)
 		{
@@ -461,7 +461,7 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 			float x = nx * (radius + cosf(phi) * thickness);
 			float y = ny * thickness;
 			float z = nz * (radius + cosf(phi) * thickness);
-			
+
 			// Hypertrochoid
 			//float x = pow(cosf(theta), 3) * (radius + cosf(phi) * thickness);
 			//float z = pow(sinf(theta), 3) * (radius + cosf(phi) * thickness);
@@ -543,7 +543,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
-	
+
 	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>(
 		tile->x0,
 		tile->y0,
@@ -773,6 +773,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	//
 	// 3d renderers
 	//
+
 	m3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 	m3dBatchBufferDataProvider = make_shared<Test3dTriangleBatchBufferDataProvider>();
 
@@ -834,12 +835,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
 	createSphereMaterial(sphereMeshSpec, options);
-	
+
 	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
 	mSphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream)).first;
 	mSphere->acquire(this);
 	mSphere->load();
-	
+
 	auto sphereModel = mppScene->add3dModel(mSphere);
 	mModels.push_back(sphereModel);
 
@@ -888,6 +889,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// Bind two 2D textures and a cube map to the statue through the PBR preview
 	// path. This is intentionally a temporary material until PBR material
 	// resources are introduced in Milestone 3.
+
 	mesh::MeshSpecification pbrPreviewSpec(mesh::Primitive::Type::Triangles);
 	pbrPreviewSpec.setIndexedVertices(true);
 	auto pbrPreviewLayout = pbrPreviewSpec.createVertexBufferAttributeLayout(false);
@@ -902,13 +904,13 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	pbrPreviewMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "PbrPreview.frag");
 	// PBR factors are authored in statue.modelspec.xml and are embedded in the
 	// regenerated statue.mppmodel. Do not override them in DemoSuite.
-	/*
+
 	mpp::MaterialSpecification::PbrSurface pbrPreviewSurface;
 	pbrPreviewSurface.enabled = true;
 	pbrPreviewSurface.metallicFactor = 0.0f;
 	pbrPreviewSurface.roughnessFactor = 0.75f;
 	pbrPreviewMaterialStream->setPbrSurface(pbrPreviewSurface);
-	*/
+
 	pbrPreviewMaterialStream->setTexture("TEX1", "Marble.Texture");
 	pbrPreviewMaterialStream->setTexture("TEX2", "Test.Texture");
 	pbrPreviewMaterialStream->setTexture("ENVIRONMENT", "PBR.Preview.Environment");
@@ -1096,7 +1098,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 	float speed = 1.5f;
 	sphereModel->rotateOrigin(-speed * frameTime, glm::vec3(0, 1, 0));
-	
+
 	// Rotate boxes
 	auto a1 = glm::rotateX(glm::vec3(0, 1, 0), mTotalTime);
 	auto a2 = glm::rotateZ(glm::vec3(0, 1, 0), mTotalTime);
@@ -1110,7 +1112,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate batch box
 	//auto& batchBoxModel = mModels[8];
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
-	// 
+	//
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
@@ -1122,7 +1124,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	pbrLight.intensity = 120000.0f;
 	pbrLight.range = 1200.0f;
 	renderSystem->setPbrLights({ pbrLight });
-	
+
 	// Update scene
 	getScene()->update(frameTime);
 }
@@ -1152,6 +1154,7 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 		params->setModelFlags(flags);
 	}
 
+	//getScene()->setClearColour(mpp::Colour::Grey50);
 	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "PBR");
 
 	// ImGui
