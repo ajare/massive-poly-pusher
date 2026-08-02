@@ -8,6 +8,8 @@ The runnable reference is:
 - shaders: `demo-suite/resources/res/statue/statue_pbr.vert` and `statue_pbr.frag`
 - exported model: `demo-suite/resources/res/statue/statue.mppmodel`
 
+Use [PBR DemoSuite Validation](PBR_VALIDATION.md) to exercise and capture the current PBR controls.
+
 ## 1. Opt in to the PBR pipeline
 
 The existing `Default` pipeline remains the legacy forward/Phong path. Create a separate pipeline with `PbrForward` and render the PBR scene through its name:

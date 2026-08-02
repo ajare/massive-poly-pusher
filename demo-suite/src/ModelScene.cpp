@@ -126,6 +126,27 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->enableMipMaps(true);
 	addResource(resourceMgr->declareResource("PBR.Preview.Environment", ResourceStreamPtr(textureStream)).first, true);
 
+	// Alternate warm environment for the PBR validation controls. Both are
+	// precomputed cube-map placeholders until HDR panorama preprocessing exists.
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::CubeMap);
+	textureStream->setData([](string const&)
+	{
+		TextureData data;
+		data.width = 1;
+		data.height = 1;
+		data.bitsPerPixel = 24;
+		data.dataType = GL_UNSIGNED_BYTE;
+		data.pixelFormat = GL_RGB;
+		data.data = new uint8_t[3]{ 255, 176, 104 };
+		return data;
+	});
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
+	textureStream->setWrapping(mpp::TextureParams::Wrapping::ClampToEdge);
+	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
+	textureStream->enableMipMaps(true);
+	addResource(resourceMgr->declareResource("PBR.Preview.EnvironmentWarm", ResourceStreamPtr(textureStream)).first, true);
+
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setData([](string const&)
@@ -919,6 +940,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mPbrPreviewMaterial->load();
 
 	mModels.push_back(mppScene->add3dModel(mStatue));
+	mPbrStatueUniforms = make_shared<UniformCollection>();
+	mPbrStatueUniforms->setUniform("PBR_BASE_COLOUR_FACTOR", mPbrBaseColour);
+	mPbrStatueUniforms->setUniform("PBR_METALLIC_FACTOR", mPbrMetallic);
+	mPbrStatueUniforms->setUniform("PBR_ROUGHNESS_FACTOR", mPbrRoughness);
+	mModels.back()->getParams()->setModelUniforms(mPbrStatueUniforms);
 	//mModels.back()->getParams()->setModelMaterial(mPbrPreviewMaterial);
 	//mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
@@ -941,7 +967,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	pbrLight.type = mpp::PbrLightType::Point;
 	pbrLight.position = glm::vec3(0.0f, 256.0f, 256.0f);
 	pbrLight.colour = glm::vec3(1.0f);
-	pbrLight.intensity = 120000.0f;
+	pbrLight.intensity = mPbrLightIntensity;
 	pbrLight.range = 1200.0f;
 	renderSystem->setPbrAmbientColour(Colour(0.03f, 0.03f, 0.03f));
 	renderSystem->setPbrLights({ pbrLight });
@@ -950,11 +976,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// HDR preview while later milestones replace its temporary shading path.
 	mpp::RenderPipelineOptions pbrOptions;
 	pbrOptions.mode = mpp::RenderPipelineMode::PbrForward;
-	pbrOptions.environment = make_shared<mpp::PbrEnvironment>();
-	pbrOptions.environment->irradianceMap = resourceMgr->getResource("PBR.Preview.Environment");
-	pbrOptions.environment->prefilteredSpecularMap = resourceMgr->getResource("PBR.Preview.Environment");
-	pbrOptions.environment->brdfIntegrationLut = resourceMgr->getResource("PBR.Preview.BrdfLut");
-	pbrOptions.environment->backgroundMap = resourceMgr->getResource("PBR.Preview.Environment");
+	mPbrEnvironment = make_shared<mpp::PbrEnvironment>();
+	mPbrEnvironment->irradianceMap = resourceMgr->getResource("PBR.Preview.Environment");
+	mPbrEnvironment->prefilteredSpecularMap = resourceMgr->getResource("PBR.Preview.Environment");
+	mPbrEnvironment->brdfIntegrationLut = resourceMgr->getResource("PBR.Preview.BrdfLut");
+	mPbrEnvironment->backgroundMap = resourceMgr->getResource("PBR.Preview.Environment");
+	pbrOptions.environment = mPbrEnvironment;
 	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
 	renderSystem->getOrCreateRenderPipeline("Default");
 }
@@ -1059,9 +1086,33 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			pbrPipeline->setToneMapOperator(toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces);
 		}
+		if (ImGui::ColorEdit4("PBR Base Colour", &mPbrBaseColour.x))
+		{
+			mPbrStatueUniforms->updateUniform("PBR_BASE_COLOUR_FACTOR", mPbrBaseColour);
+		}
+		if (ImGui::SliderFloat("PBR Metallic", &mPbrMetallic, 0.0f, 1.0f))
+		{
+			mPbrStatueUniforms->updateUniform("PBR_METALLIC_FACTOR", mPbrMetallic);
+		}
+		if (ImGui::SliderFloat("PBR Roughness", &mPbrRoughness, 0.04f, 1.0f))
+		{
+			mPbrStatueUniforms->updateUniform("PBR_ROUGHNESS_FACTOR", mPbrRoughness);
+		}
+		if (ImGui::SliderFloat("PBR Light Intensity", &mPbrLightIntensity, 0.0f, 250000.0f, "%.0f"))
+		{
+			// update() uploads the selected intensity into the dedicated PBR UBO.
+		}
+		if (ImGui::Combo("PBR Environment", &mPbrEnvironmentIndex, "Cool placeholder\0Warm placeholder\0"))
+		{
+			auto environmentMap = getResourceManager()->getResource(mPbrEnvironmentIndex == 0 ? "PBR.Preview.Environment" : "PBR.Preview.EnvironmentWarm");
+			mPbrEnvironment->irradianceMap = environmentMap;
+			mPbrEnvironment->prefilteredSpecularMap = environmentMap;
+			mPbrEnvironment->backgroundMap = environmentMap;
+			pbrPipeline->setPbrEnvironment(mPbrEnvironment);
+		}
 		ImGui::Text("Texture bindings: 8 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
-		ImGui::TextUnformatted("Base/environment: sRGB; detail: linear; environment: cube map");
-		ImGui::Text("PBR lights: 1 / %zu; environment: neutral precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
+		ImGui::TextUnformatted("Base/emissive: sRGB; normal, AO and metallic-roughness: linear");
+		ImGui::Text("PBR lights: 1 / %zu; environment: selected precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
 	}
 	ImGui::End();
 }
@@ -1126,7 +1177,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	pbrLight.type = mpp::PbrLightType::Point;
 	pbrLight.position = mLightPosition;
 	pbrLight.colour = glm::vec3(1.0f);
-	pbrLight.intensity = 120000.0f;
+	pbrLight.intensity = mPbrLightIntensity;
 	pbrLight.range = 1200.0f;
 	renderSystem->setPbrLights({ pbrLight });
 
