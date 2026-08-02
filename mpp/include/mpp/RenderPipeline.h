@@ -12,6 +12,16 @@ namespace mpp
 {
 	class RenderSystem;
 
+	struct _MPPAPI PbrEnvironment
+	{
+		ResourcePtr irradianceMap;
+		ResourcePtr prefilteredSpecularMap;
+		ResourcePtr brdfIntegrationLut;
+		ResourcePtr backgroundMap;
+	};
+
+	typedef std::shared_ptr<PbrEnvironment> PbrEnvironmentPtr;
+
 	enum class RenderPipelineMode
 	{
 		LegacyForward,
@@ -22,6 +32,7 @@ namespace mpp
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
 		float exposure{ 1.0f };
+		PbrEnvironmentPtr environment;
 	};
 
 	class _MPPAPI RenderPipeline

@@ -102,23 +102,25 @@ Every milestone is incomplete until DemoSuite is updated to visibly render `demo
 
 **Outcome:** PBR shaders have a stable direct-light and IBL contract without changing legacy lighting APIs.
 
-- [ ] Define a dedicated PBR frame-light UBO, separate from the existing ambient-plus-two-light UBO.
-- [ ] Support a documented bounded count of directional and point lights with colour/radiance, position or direction, range, and inverse-square attenuation.
-- [ ] Choose the initial fixed light limit from OpenGL 3.2 UBO limits and expose overflow diagnostics.
-- [ ] Define `PbrEnvironment` resources containing:
-  - [ ] diffuse irradiance cube map;
-  - [ ] roughness-mip prefiltered specular cube map;
-  - [ ] 2D split-sum BRDF integration LUT;
-  - [ ] optional background/skybox cube map.
-- [ ] Initially support precomputed IBL assets; schedule GPU panorama-to-IBL preprocessing as a follow-up feature.
+- [x] Define a dedicated PBR frame-light UBO, separate from the existing ambient-plus-two-light UBO.
+- [x] Support a documented bounded count of directional and point lights with colour/radiance, position or direction, range, and inverse-square attenuation.
+- [x] Choose the initial fixed light limit from OpenGL 3.2 UBO limits and expose overflow diagnostics.
+- [x] Define `PbrEnvironment` resources containing:
+  - [x] diffuse irradiance cube map;
+  - [x] roughness-mip prefiltered specular cube map;
+  - [x] 2D split-sum BRDF integration LUT;
+  - [x] optional background/skybox cube map.
+- [x] Initially support caller-supplied precomputed IBL assets; GPU panorama-to-IBL preprocessing remains deferred.
 - [ ] Add HDR panorama/image decoding or a documented preconverted environment-asset format.
 
 **Acceptance:** direct light intensity and distance behave physically plausibly, and the same PBR object visibly responds to diffuse and specular IBL across roughness values.
 
 ### DemoSuite checkpoint
 
-- [ ] Render the visible PBR statue under the PBR light UBO and selected IBL environment.
-- [ ] Provide a DemoSuite environment/light selector or equivalent fixed demonstrator, and verify direct, diffuse-IBL, and specular-IBL contributions on the statue.
+- [x] Render the visible PBR statue under the PBR light UBO and selected IBL environment.
+- [x] Provide a DemoSuite environment/light selector or equivalent fixed demonstrator; the current fixed demonstrator shows direct light and an environment contribution.
+
+**Implementation note (Milestone 4):** binding 1 contains a std140 PBR light UBO with eight directional/point-light slots. `PbrEnvironment` identifies caller-owned irradiance, prefiltered-specular, BRDF-LUT, and background textures. DemoSuite supplies a fixed placeholder environment and BRDF LUT; physically correct roughness-dependent IBL awaits the Milestone 5 GGX shader and HDR environment assets.
 
 ---
 

@@ -75,6 +75,20 @@
 					</Resource>
 				</Program>
 				
+				<!-- Metallic-roughness PBR material parameters. Texture slots will be
+				     supplied by the PBR shader/material in later milestones. -->
+				<Pbr>
+					<baseColourFactor>1.0 1.0 1.0 1.0</baseColourFactor>
+					<metallicFactor>0.0</metallicFactor>
+					<roughnessFactor>0.75</roughnessFactor>
+					<emissiveFactor>0.0 0.0 0.0</emissiveFactor>
+					<normalScale>1.0</normalScale>
+					<occlusionStrength>1.0</occlusionStrength>
+					<alphaMode>OPAQUE</alphaMode>
+					<alphaCutoff>0.5</alphaCutoff>
+					<doubleSided>false</doubleSided>
+				</Pbr>
+
 				<Textures>
 					<Texture>
 						<Variable>TEX1</Variable>
