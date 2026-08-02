@@ -138,5 +138,8 @@ void main()
     vec3 specular = prefiltered * (fresnel * brdf.x + brdf.y);
     vec3 ambient = (kD * diffuse + specular) * occlusion + AMBIENT_AND_COUNT.rgb * baseColour.rgb;
 
-    @Out(vec4 COLOUR) = vec4(ambient + direct + emissive, baseColour.a);
+    // Opaque and masked materials must not inherit an undefined/blended
+    // framebuffer alpha. Only Blend materials expose the authored alpha.
+    float outputAlpha = @Uniform(PBR_ALPHA_MODE) == 2 ? baseColour.a : 1.0;
+    @Out(vec4 COLOUR) = vec4(ambient + direct + emissive, outputAlpha);
 }
