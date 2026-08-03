@@ -1043,7 +1043,7 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 
 	//auto camera = new helper::FreeCamera(glm::vec3(0, 200, 750), 0.0f, 0.0f, 0.0f, 45.0f, aspectRatio);
 	auto camera = new helper::FpsCamera(glm::vec3(0, 200, 750), 0.0f, 0.0f, 45.0f, aspectRatio);
-	camera->setClipDistances(0.1f, 1000.0f);
+	camera->setClipDistances(0.1f, 2000.0f);
 
 	return shared_ptr<mpp::Camera>(camera);
 }
