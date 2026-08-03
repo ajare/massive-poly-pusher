@@ -839,7 +839,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto gridMeshSpec = createGridMeshSpecification();
 	createGridMaterial(gridMeshSpec, options);
 
-	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 512, 512, 32, 32);
+	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1600, 1600, 32, 32);
 	mGrid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream)).first;
 	mGrid->acquire(this);
 	mGrid->load();
@@ -859,10 +859,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		mShadowWalls.push_back(wall);
 	};
 	constexpr float halfPi = 1.57079632679f;
-	addShadowWall(glm::vec3(0.0f, 256.0f, -256.0f), halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
-	addShadowWall(glm::vec3(0.0f, 256.0f, 256.0f), -halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
-	addShadowWall(glm::vec3(-256.0f, 256.0f, 0.0f), -halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
-	addShadowWall(glm::vec3(256.0f, 256.0f, 0.0f), halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
+	addShadowWall(glm::vec3(0.0f, 800.0f, -800.0f), halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
+	addShadowWall(glm::vec3(0.0f, 800.0f, 800.0f), -halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
+	addShadowWall(glm::vec3(-800.0f, 800.0f, 0.0f), -halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
+	addShadowWall(glm::vec3(800.0f, 800.0f, 0.0f), halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
@@ -1008,6 +1008,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// HDR preview while later milestones replace its temporary shading path.
 	mShadowOptions.enabled = true;
 	mShadowOptions.resolution = 1024;
+	mShadowOptions.orthoHalfWidth = 1000.0f;
 	mShadowOptions.light.direction = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 	renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", mShadowOptions);
 
@@ -1158,7 +1159,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			mShadowOptions.resolution = shadowResolution == 0 ? 512 : (shadowResolution == 1 ? 1024 : 2048);
 			shadowOptionsChanged = true;
 		}
-		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Extent", &mShadowOptions.orthoHalfWidth, 64.0f, 1000.0f, "%.0f");
+		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Extent", &mShadowOptions.orthoHalfWidth, 64.0f, 2000.0f, "%.0f");
 		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Constant Bias", &mShadowOptions.constantBias, 0.0f, 0.01f, "%.5f");
 		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Normal Bias", &mShadowOptions.normalBias, 0.0f, 0.02f, "%.5f");
 		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Filter Radius", &mShadowOptions.filterRadiusTexels, 0.25f, 3.0f, "%.2f");
