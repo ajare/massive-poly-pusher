@@ -8,7 +8,7 @@ The runnable reference is:
 - shaders: `demo-suite/resources/res/statue/statue_pbr.vert` and `statue_pbr.frag`
 - exported model: `demo-suite/resources/res/statue/statue.mppmodel`
 
-Use [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md) to create ModelSpec or programmatic materials, then use [PBR DemoSuite Validation](PBR_VALIDATION.md) to exercise and capture the current PBR controls.
+Use [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md) to create ModelSpec or programmatic materials, [Generic Soft Shadow Setup](SHADOW_SETUP.md) to opt a PBR pipeline into shadows, then use [PBR DemoSuite Validation](PBR_VALIDATION.md) to exercise and capture the current PBR controls.
 
 ## 1. Opt in to the PBR pipeline
 

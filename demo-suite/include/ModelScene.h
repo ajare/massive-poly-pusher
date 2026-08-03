@@ -38,6 +38,7 @@ private:
 	glm::vec4 mPbrBaseColour{ 1.0f };
 	std::shared_ptr<mpp::UniformCollection> mPbrStatueUniforms;
 	mpp::PbrEnvironmentPtr mPbrEnvironment;
+	mpp::ShadowOptions mShadowOptions;
 
 	glm::vec3 mLightPosition;
 
