@@ -51,6 +51,7 @@ private:
 	std::vector<mpp::SceneModel3dPtr> mModels;
 	std::vector<mpp::SceneModel3dPtr> mShadowWalls;
 	mpp::SceneModel3dPtr mLightMarker;
+	mpp::SceneModel3dPtr mShadowCube;
 
 	std::array<Batch2d, kNum2dBatches> m2dBatches;
 
