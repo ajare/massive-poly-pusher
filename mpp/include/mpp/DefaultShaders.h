@@ -108,6 +108,27 @@ void main()
 
 // Don't apply gamma correction as this is used to render framebuffers which have
 // already been gamma-corrected.
+// Depth-only programs used by generic shadow domains. They depend only on
+// position, so meshes from PBR and non-PBR materials share the same caster path.
+const std::string VertexShaderShadowDepthTemplate =
+R"(
+@@Version
+
+void main()
+{
+    gl_Position = @MCPMatrix * @Vec4(@In(POSITION));
+}
+)";
+
+const std::string FragmentShaderShadowDepthTemplate =
+R"(
+@@Version
+
+void main()
+{
+}
+)";
+
 const std::string FragmentShaderFullscreenTemplate =
 R"(
 @@Version

@@ -104,6 +104,11 @@ namespace mpp
 		
 
 		auto const& models = scene->get3dModelsInView(camera);
+		if (!mOptions.shadowDomain.empty())
+		{
+			mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
+		}
+
 		map<string, ResourcePtr> pipelineSamplerOverrides;
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
 		{

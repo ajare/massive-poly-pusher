@@ -1120,7 +1120,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		ImGui::Text("Texture bindings: 8 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
 		ImGui::TextUnformatted("Base/emissive: sRGB; normal, AO and metallic-roughness: linear");
 		ImGui::Text("PBR lights: 1 / %zu; environment: selected precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
-		ImGui::TextUnformatted("Shadow domain: MainDirectionalShadow (depth-target foundation; no shadow pass yet)");
+		ImGui::TextUnformatted("Shadow domain: MainDirectionalShadow (opaque depth-caster pass; receiver shaders pending)");
 	}
 	ImGui::End();
 }
