@@ -879,13 +879,28 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto boxMeshSpec = createBoxMeshSpecification();
 	createBoxMaterial(boxMeshSpec, options);
 
-	auto boxStream = new BoxModelStream(resourceMgr, cylinderMeshSpec, "Box.Material", 32, 32, 32);
+	auto boxStream = new BoxModelStream(resourceMgr, boxMeshSpec, "Box.Material", 32, 32, 32);
 	mBox = resourceMgr->declareResource("Model.Box", ResourceStreamPtr(boxStream)).first;
 	mBox->acquire(this);
 	mBox->load();
 
 	mModels.push_back(mppScene->add3dModel(mBox));
 	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
+
+	// A separate, unlit material makes the light marker visible without
+	// receiving the generic shadow sampler.
+	auto lightMarkerMaterialStream = new ProgrammaticMaterialStream(resourceMgr);
+	lightMarkerMaterialStream->setProgram2d(false);
+	lightMarkerMaterialStream->setMeshSpecification(boxMeshSpec);
+	lightMarkerMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "LightMarker.frag");
+	auto lightMarkerMaterial = resourceMgr->declareResource("Light.Marker.Material", ResourceStreamPtr(lightMarkerMaterialStream)).first;
+	addResource(lightMarkerMaterial, true);
+
+	mLightMarker = mppScene->add3dModel(mBox);
+	mLightMarker->getParams()->setModelMaterial(lightMarkerMaterial);
+	mLightMarker->getParams()->setModelFlags(mpp::ModelRenderParams::Flag_Visible);
+	mLightMarker->translate(mLightPosition);
+	mLightMarker->scale(glm::vec3(0.5f));
 
 	// Load torus
 	createTorusModel(options);
@@ -1008,8 +1023,8 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 {
 	float aspectRatio = options.screenWidth / (float)options.screenHeight;
 
-	//auto camera = new helper::FreeCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f, 45.0f, aspectRatio);
-	auto camera = new helper::FpsCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 45.0f, aspectRatio);
+	//auto camera = new helper::FreeCamera(glm::vec3(0, 200, 750), 0.0f, 0.0f, 0.0f, 45.0f, aspectRatio);
+	auto camera = new helper::FpsCamera(glm::vec3(0, 200, 750), 0.0f, 0.0f, 45.0f, aspectRatio);
 	camera->setClipDistances(0.1f, 1000.0f);
 
 	return shared_ptr<mpp::Camera>(camera);
@@ -1196,10 +1211,10 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// target; Shift+Arrow moves the shared directional/legacy light instead.
 	mCameraOrbitAngle += mCameraOrbitInput * frameTime * 0.8f;
 	mCameraOrbitTarget.y += mCameraTargetVerticalInput * frameTime * 120.0f;
-	const float orbitRadius = 550.0f;
+	const float orbitRadius = 750.0f;
 	const glm::vec3 orbitPosition(
 		sinf(mCameraOrbitAngle) * orbitRadius,
-		150.0f,
+		200.0f,
 		cosf(mCameraOrbitAngle) * orbitRadius);
 	getCamera()->setLookAt(orbitPosition, mCameraOrbitTarget);
 
@@ -1236,6 +1251,9 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
 	//
 	// Lighting
+	mLightMarker->resetTransform();
+	mLightMarker->translate(mLightPosition);
+	mLightMarker->scale(glm::vec3(0.5f));
 	renderSystem->setLight1Position(mLightPosition);
 	mpp::PbrLight pbrLight;
 	pbrLight.type = mpp::PbrLightType::Directional;
