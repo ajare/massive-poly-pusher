@@ -24,7 +24,7 @@ renderSystem->getOrCreateRenderPipeline("PBR", options);
 renderSystem->renderScene(scene, camera, {}, "PBR");
 ```
 
-A PBR pipeline owns an RGBA16F scene target. Surface lighting stays linear in this target. Presentation applies the selected ACES or Reinhard tone map and one final gamma encode. `RenderPipeline::setExposure()` and `setToneMapOperator()` can be used at runtime. DemoSuite exposes `PBR` and `Default` in its **Render Pipeline** combo; `Default` remains the legacy path.
+A PBR pipeline owns an RGBA16F scene target. Surface lighting stays linear in this target. Presentation applies the selected ACES or Reinhard tone map and one final gamma encode. `RenderPipeline::setExposure()` and `setToneMapOperator()` can be used at runtime. DemoSuite exposes `PBR` and `Default` in its **Render Pipeline** combo; `Default` remains the legacy path. See [Post Effects and Bloom](POST_EFFECTS_AND_BLOOM.md) for pipeline bloom and the post-effect-system roadmap.
 
 ## 2. Supply PBR lights and an environment
 

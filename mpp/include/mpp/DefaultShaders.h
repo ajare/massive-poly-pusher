@@ -219,6 +219,60 @@ void main()
  * Text shader.
  *
  */
+/*
+ * Pipeline-owned bloom shaders. Bloom is image-space and therefore works for
+ * any material rendered into the pipeline scene target.
+ */
+const std::string FragmentShaderBloomExtractTemplate =
+R"(
+@@Version
+
+@@Uniform(float THRESHOLD);
+@@Texture(sampler2D TEX1);
+
+void main()
+{
+    vec3 colour = texture(@Texture(TEX1), @In(TEXCOORDS)).rgb;
+    @Out(vec4 COLOUR) = vec4(max(colour - vec3(@Uniform(THRESHOLD)), vec3(0.0)), 1.0);
+}
+)";
+
+const std::string FragmentShaderBloomBlurTemplate =
+R"(
+@@Version
+
+@@Uniform(vec2 DIRECTION);
+@@Texture(sampler2D TEX1);
+
+void main()
+{
+    vec2 texel = 1.0 / vec2(textureSize(@Texture(TEX1), 0));
+    vec2 offset = @Uniform(DIRECTION) * texel;
+    vec3 colour = texture(@Texture(TEX1), @In(TEXCOORDS)).rgb * 0.227027;
+    colour += texture(@Texture(TEX1), @In(TEXCOORDS) + offset * 1.384615).rgb * 0.316216;
+    colour += texture(@Texture(TEX1), @In(TEXCOORDS) - offset * 1.384615).rgb * 0.316216;
+    colour += texture(@Texture(TEX1), @In(TEXCOORDS) + offset * 3.230769).rgb * 0.070270;
+    colour += texture(@Texture(TEX1), @In(TEXCOORDS) - offset * 3.230769).rgb * 0.070270;
+    @Out(vec4 COLOUR) = vec4(colour, 1.0);
+}
+)";
+
+const std::string FragmentShaderBloomCombineTemplate =
+R"(
+@@Version
+
+@@Uniform(float INTENSITY);
+@@Texture(sampler2D SCENE);
+@@Texture(sampler2D BLOOM);
+
+void main()
+{
+    vec3 scene = texture(@Texture(SCENE), @In(TEXCOORDS)).rgb;
+    vec3 bloom = texture(@Texture(BLOOM), @In(TEXCOORDS)).rgb;
+    @Out(vec4 COLOUR) = vec4(scene + bloom * @Uniform(INTENSITY), 1.0);
+}
+)";
+
 const std::string VertexShaderTextTemplate =
 R"(
 @@Version

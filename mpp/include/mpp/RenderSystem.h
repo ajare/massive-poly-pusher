@@ -184,6 +184,7 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -526,6 +527,12 @@ namespace mpp
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 
 		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
+
+		void renderBloomExtract(Texture* source, float threshold);
+
+		void renderBloomBlur(Texture* source, glm::vec2 const& direction);
+
+		void renderBloomCombine(Texture* scene, Texture* bloom, float intensity);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

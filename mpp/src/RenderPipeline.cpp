@@ -43,6 +43,45 @@ namespace mpp
 		mOptions.toneMapOperator = toneMapOperator;
 	}
 
+	void RenderPipeline::setBloomOptions(BloomOptions const& bloomOptions)
+	{
+		mOptions.bloom = bloomOptions;
+	}
+
+	void RenderPipeline::ensureBloomTargets(size_t width, size_t height)
+	{
+		if (!mOptions.bloom.enabled)
+		{
+			mBloomExtractTarget.reset();
+			mBloomPingTarget.reset();
+			mBloomPongTarget.reset();
+			mBloomCompositeTarget.reset();
+			return;
+		}
+
+		auto needsCreate = [&](RenderTargetPtr const& target)
+		{
+			return !target || target->getWidth() != width || target->getHeight() != height;
+		};
+		if (!needsCreate(mBloomExtractTarget))
+		{
+			return;
+		}
+
+		RenderTextureOptions options;
+		options.numAttachments = 1;
+		options.colourType = TextureInternalType::Float;
+		options.colourNormalised = false;
+		options.colourBitSize = 16;
+		options.params.minFilter = GL_LINEAR;
+		options.params.magFilter = GL_LINEAR;
+		options.params.wrap = GL_CLAMP_TO_EDGE;
+		mBloomExtractTarget = mRenderSystem->createRenderTexture(mName + ".BloomExtract", width, height, options);
+		mBloomPingTarget = mRenderSystem->createRenderTexture(mName + ".BloomPing", width, height, options);
+		mBloomPongTarget = mRenderSystem->createRenderTexture(mName + ".BloomPong", width, height, options);
+		mBloomCompositeTarget = mRenderSystem->createRenderTexture(mName + ".BloomComposite", width, height, options);
+	}
+
 	void RenderPipeline::setPbrEnvironment(PbrEnvironmentPtr environment)
 	{
 		mOptions.environment = std::move(environment);
@@ -55,6 +94,10 @@ namespace mpp
 
 	RenderTargetPtr RenderPipeline::getOutputRenderTarget()
 	{
+		if (mOptions.bloom.enabled && mBloomCompositeTarget)
+		{
+			return mBloomCompositeTarget;
+		}
 		if (mPostEffects.empty())
 		{
 			return mPasses.back()->getRenderTarget();
@@ -149,12 +192,32 @@ namespace mpp
 		// Reset viewport
 		mRenderSystem->resetViewport();
 
-		// Post effects
+		// Pipeline image effects run after all material shading. PBR bloom is
+		// therefore composed in HDR before tone mapping; legacy uses the same
+		// effect sequence on its completed LDR scene target.
 		mRenderSystem->setProjection2dOrthographic();
-
-		for (auto const& effect: mPostEffects)
+		mRenderSystem->resetTransform();
+		auto sceneTexture = static_cast<RenderTexture*>(mPasses.back()->getRenderTarget().get());
+		Texture* presentationTexture = sceneTexture;
+		ensureBloomTargets(sceneTexture->getWidth(), sceneTexture->getHeight());
+		if (mOptions.bloom.enabled)
 		{
-			auto const* pe = static_cast<PostEffect const*>(effect.get());
+			mRenderSystem->setRenderTarget(mBloomExtractTarget);
+			mRenderSystem->renderBloomExtract(sceneTexture, mOptions.bloom.threshold);
+
+			Texture* blurredTexture = static_cast<RenderTexture*>(mBloomExtractTarget.get());
+			for (uint32_t pass = 0; pass < mOptions.bloom.blurPasses; ++pass)
+			{
+				mRenderSystem->setRenderTarget(mBloomPingTarget);
+				mRenderSystem->renderBloomBlur(blurredTexture, glm::vec2(1.0f, 0.0f));
+				mRenderSystem->setRenderTarget(mBloomPongTarget);
+				mRenderSystem->renderBloomBlur(static_cast<RenderTexture*>(mBloomPingTarget.get()), glm::vec2(0.0f, 1.0f));
+				blurredTexture = static_cast<RenderTexture*>(mBloomPongTarget.get());
+			}
+
+			mRenderSystem->setRenderTarget(mBloomCompositeTarget);
+			mRenderSystem->renderBloomCombine(sceneTexture, blurredTexture, mOptions.bloom.intensity);
+			presentationTexture = static_cast<RenderTexture*>(mBloomCompositeTarget.get());
 		}
 
 		// Render to screen
@@ -162,14 +225,13 @@ namespace mpp
 		mRenderSystem->renderToScreen();
 		mRenderSystem->clearScreen(scene->getClearColour());
 
-		auto outputRenderTexture = static_cast<RenderTexture*>(getOutputRenderTarget().get());
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
 		{
-			mRenderSystem->renderToneMappedFullscreenQuad(outputRenderTexture, mOptions.exposure, mOptions.toneMapOperator == PbrToneMapOperator::Aces);
+			mRenderSystem->renderToneMappedFullscreenQuad(presentationTexture, mOptions.exposure, mOptions.toneMapOperator == PbrToneMapOperator::Aces);
 		}
 		else
 		{
-			mRenderSystem->renderFullscreenQuad(outputRenderTexture, mpp::BlendMode::One, mpp::BlendMode::Zero);
+			mRenderSystem->renderFullscreenQuad(presentationTexture, mpp::BlendMode::One, mpp::BlendMode::Zero);
 		}
 
 		// 2d models

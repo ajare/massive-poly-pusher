@@ -41,6 +41,16 @@ namespace mpp
 		Aces
 	};
 
+	// A pipeline-owned image-space effect. It operates on the completed scene
+	// target, so PBR and legacy materials need no material-level bloom binding.
+	struct _MPPAPI BloomOptions
+	{
+		bool enabled{ false };
+		float threshold{ 1.0f };
+		float intensity{ 0.15f };
+		uint32_t blurPasses{ 2 };
+	};
+
 	enum class ShadowLightType
 	{
 		Directional
@@ -81,6 +91,7 @@ namespace mpp
 		float exposure{ 1.0f };
 		PbrToneMapOperator toneMapOperator{ PbrToneMapOperator::Aces };
 		PbrEnvironmentPtr environment;
+		BloomOptions bloom;
 		// Empty means this pipeline is not a shadow-domain participant.
 		std::string shadowDomain;
 	};
@@ -97,6 +108,13 @@ namespace mpp
 
 		std::vector<ResourcePtr> mPostEffects;
 
+		RenderTargetPtr mBloomExtractTarget;
+		RenderTargetPtr mBloomPingTarget;
+		RenderTargetPtr mBloomPongTarget;
+		RenderTargetPtr mBloomCompositeTarget;
+
+		void ensureBloomTargets(size_t width, size_t height);
+
 	public:
 
 		RenderPipeline(std::string const& name, RenderSystem* renderSystem, RenderPipelineOptions const& options = {});
@@ -110,6 +128,8 @@ namespace mpp
 		void setExposure(float exposure);
 
 		void setToneMapOperator(PbrToneMapOperator toneMapOperator);
+
+		void setBloomOptions(BloomOptions const& bloomOptions);
 
 		void setPbrEnvironment(PbrEnvironmentPtr environment);
 
