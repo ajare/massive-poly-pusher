@@ -191,13 +191,15 @@ Start with one center comparison to validate projection and bias, then implement
 
 **Outcome:** all adopting shaders use the same stable soft-shadow helper.
 
-- [ ] Replace center comparison with fixed 3×3 PCF using `MAP_TEXEL_SIZE_AND_RADIUS`.
-- [ ] Keep offsets in texel units so artist-facing radius behaves consistently across resolutions.
-- [ ] Add bounded quality presets: `Hard` (1 tap), `Soft` (3×3), and optional `SoftHigh` (fixed 16-tap Poisson). Do not expose unbounded runtime loop sizes.
-- [ ] Keep the default deterministic; consider interleaved/rotated Poisson only after temporal-stability review.
+- [x] Replace center comparison with fixed 3×3 PCF using `MAP_TEXEL_SIZE_AND_RADIUS`.
+- [x] Keep offsets in texel units so artist-facing radius behaves consistently across resolutions.
+- [x] Add bounded `Hard` (1 tap) and `Soft` (3×3) modes. `SoftHigh` (fixed 16-tap Poisson) remains optional follow-up; no unbounded runtime loop sizes are exposed.
+- [x] Keep the default deterministic; interleaved/rotated Poisson remains deferred pending temporal-stability review.
 - [ ] Profile each preset at 1024² and 2048² with both PBR and legacy adapter scenes.
 
 **Acceptance:** the same settings visibly soften PBR and non-PBR shadows without grid banding, instability, light leakage beyond normal PCF limits, or unacceptable documented frame-time regression.
+
+**Implementation note (Milestone S4):** `ShadowFilterMode` selects either the existing one-tap hard comparison or a deterministic 3×3 PCF kernel. The UBO carries filter mode, texel size, and texel-space radius, so PBR and legacy adapters execute the same bounded filter. `Pcf3x3` is the default. Performance profiling and UI controls remain validation/demo work.
 
 ### Milestone S5 — DemoSuite, documentation, and validation
 

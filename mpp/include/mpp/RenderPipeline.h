@@ -55,6 +55,12 @@ namespace mpp
 		glm::vec3 focusPoint{ 0.0f };
 	};
 
+	enum class ShadowFilterMode
+	{
+		Hard,
+		Pcf3x3
+	};
+
 	struct _MPPAPI ShadowOptions
 	{
 		bool enabled{ false };
@@ -66,6 +72,7 @@ namespace mpp
 		float constantBias{ 0.0008f };
 		float normalBias{ 0.0025f };
 		float filterRadiusTexels{ 1.0f };
+		ShadowFilterMode filterMode{ ShadowFilterMode::Pcf3x3 };
 	};
 
 	struct _MPPAPI RenderPipelineOptions
