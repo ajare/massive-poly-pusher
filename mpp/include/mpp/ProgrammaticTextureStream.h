@@ -27,6 +27,8 @@ namespace mpp
 
 		void setWrapping(TextureParams::Wrapping wrapping, uint32_t quality = 0);
 
+		void setColourSpace(TextureColourSpace colourSpace, uint32_t quality = 0);
+
 		void enableMipMaps(bool enable, uint32_t quality = 0);
 
 		void setLodBaseLevel(int32_t level, uint32_t quality = 0);

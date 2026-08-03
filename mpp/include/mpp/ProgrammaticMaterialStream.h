@@ -52,6 +52,8 @@ namespace mpp
 
 		void setDefaultTexture(std::string const& sampler, uint32_t quality = 0);
 
+		void setPbrSurface(MaterialSpecification::PbrSurface const& surface, uint32_t quality = 0);
+
 		void setUniforms(UniformCollection const& uniforms, uint32_t quality = 0);
 
 		void setUniform(std::string const& name, int32_t value, uint32_t quality = 0);

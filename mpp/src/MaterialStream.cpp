@@ -58,6 +58,11 @@ namespace mpp
 		return mQualitySettings[mQualitySetting].spec.uniforms;
 	}
 
+	MaterialSpecification::PbrSurface const& MaterialStream::getPbrSurface() const
+	{
+		return mQualitySettings[mQualitySetting].spec.pbr;
+	}
+
 	/*
 	 * Get textures.
 	 *

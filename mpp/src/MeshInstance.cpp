@@ -1,6 +1,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4201)
 #include <glm/gtc/type_ptr.hpp>
+#include <algorithm>
 #pragma warning(pop)
 
 #include "mpp/MeshInstance.h"
@@ -16,11 +17,10 @@ namespace mpp
 		, mRender(true)
 		, mWireframe(false)
 		, mBlend(false)
+		, mSortTransparent(false)
 		, mInstanceCount(0)
 		, mGamma(2.2f)
 	{
-		mTextureOverrides[0] = nullptr;
-		mTextureOverrides[1] = nullptr;
 	}
 
 	MeshInstance::~MeshInstance()
@@ -36,6 +36,7 @@ namespace mpp
 		mRender = true;
 		mWireframe = false;
 		mBlend = false;
+		mSortTransparent = false;
 		mInstanceCount = 1;
 		mGamma = gamma;
 
@@ -88,12 +89,12 @@ namespace mpp
 		mRender = true;
 		mWireframe = false;
 		mBlend = false;
+		mSortTransparent = false;
 		mInstanceCount = 0;
 		mGamma = 2.2f;
 
 		mRenderCommands.clear();
-		mTextureOverrides[0] = nullptr;
-		mTextureOverrides[1] = nullptr;
+		mTextureOverrides.clear();
 
 		if (mUniforms)
 		{
@@ -162,6 +163,16 @@ namespace mpp
 	bool MeshInstance::blend() const
 	{
 		return mBlend;
+	}
+
+	void MeshInstance::sortTransparent(bool sortTransparent)
+	{
+		mSortTransparent = sortTransparent;
+	}
+
+	bool MeshInstance::sortTransparent() const
+	{
+		return mSortTransparent;
 	}
 
 	/*
@@ -236,8 +247,11 @@ namespace mpp
 	 */
 	void MeshInstance::setTexture(int index, ResourcePtr texture)
 	{
-		assert(index >= 0 && index < 2);
-
+		assert(index >= 0);
+		if ((size_t)index >= mTextureOverrides.size())
+		{
+			mTextureOverrides.resize((size_t)index + 1);
+		}
 		mTextureOverrides[index] = texture;
 	}
 
@@ -247,10 +261,12 @@ namespace mpp
 	 */
 	ResourcePtr MeshInstance::getTexture(int texture)
 	{
-		assert(texture >= 0 && texture < 2);
-
-		return mTextureOverrides[texture] ? mTextureOverrides[texture] 
-			: static_cast<Material*>(mMaterial.get())->getTexture(texture);
+		assert(texture >= 0);
+		if ((size_t)texture < mTextureOverrides.size() && mTextureOverrides[texture])
+		{
+			return mTextureOverrides[texture];
+		}
+		return static_cast<Material*>(mMaterial.get())->getTexture(texture);
 	}
 
 	/*
@@ -273,7 +289,7 @@ namespace mpp
 	 */
 	void MeshInstance::setRenderCount(uint32_t count)
 	{
-		VertexBufferRenderCommand cmd{ 0, count, mMaterial, { mTextureOverrides[0], mTextureOverrides[1] } };
+		VertexBufferRenderCommand cmd{ 0, count, mMaterial, mTextureOverrides };
 		mRenderCommands = { cmd };
 	}
 
@@ -285,33 +301,27 @@ namespace mpp
 	{
 		auto material = renderCmd.material ? renderCmd.material : mMaterial;
 		
-		ResourcePtr textures[2];
+		auto m = static_cast<Material*>(material.get());
+		const size_t textureCount = max({ renderCmd.textures.size(), mTextureOverrides.size(), (size_t)m->getNumTextures() });
+		vector<ResourcePtr> textures(textureCount);
 
-		for (int i = 0; i < 2; ++i)
+		for (size_t i = 0; i < textureCount; ++i)
 		{
-			if (renderCmd.textures[i])
+			if (i < renderCmd.textures.size() && renderCmd.textures[i])
 			{
 				textures[i] = renderCmd.textures[i];
 			}
-			else if (mTextureOverrides[i])
+			else if (i < mTextureOverrides.size() && mTextureOverrides[i])
 			{
 				textures[i] = mTextureOverrides[i];
 			}
-			else
+			else if (i < (size_t)m->getNumTextures())
 			{
-				auto m = static_cast<Material*>(material.get());
-				if (m->getNumTextures() > i)
-				{
-					textures[i] = m->getTexture(i);
-				}
-				else
-				{
-					textures[i] = nullptr;
-				}
+				textures[i] = m->getTexture((int)i);
 			}
 		}
 
-		VertexBufferRenderCommand cmd{ renderCmd.offset, renderCmd.count, material, { textures[0], textures[1] } };
+		VertexBufferRenderCommand cmd{ renderCmd.offset, renderCmd.count, material, textures };
 		mRenderCommands.push_back(cmd);
 	}
 

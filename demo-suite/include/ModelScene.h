@@ -2,6 +2,8 @@
 
 #include <mpp/BufferRenderer.h>
 
+#include <glm/vec4.hpp>
+
 #include <mpp/mesh/MeshSpecification.h>
 
 #include <mpp/helper/TriangleBatchRenderer.h>
@@ -28,6 +30,15 @@ private:
 
 	float mTotalTime{ 0 };
 
+	std::string mSelectedPipeline{ "PBR" };
+	int mPbrEnvironmentIndex{ 0 };
+	float mPbrMetallic{ 0.0f };
+	float mPbrRoughness{ 0.75f };
+	float mPbrLightIntensity{ 120000.0f };
+	glm::vec4 mPbrBaseColour{ 1.0f };
+	std::shared_ptr<mpp::UniformCollection> mPbrStatueUniforms;
+	mpp::PbrEnvironmentPtr mPbrEnvironment;
+
 	glm::vec3 mLightPosition;
 
 	std::vector<mpp::SceneModel3dPtr> mModels;
@@ -47,7 +58,7 @@ private:
 	mpp::BufferRenderer* mImGuiRenderer;
 
 	// Resources
-	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue;
+	mpp::ResourcePtr mGrid, mSphere, mCylinder, mBox, mTorus, mStatue, mPbrPreviewMaterial;
 
 private:
 
@@ -100,6 +111,8 @@ private:
 public:
 
 	ModelScene(mpp::ResourceManager* resourceMgr);
+
+	std::string getRenderPipelineName() const override;
 
 	void toggle2dBatches(int batchId);
 

@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "utils/FileSystem.h"
 
 #include "mpp/Material.h"
@@ -142,10 +144,53 @@ namespace mpp
 
 		// Set uniforms
 		mUniforms = mStr->getUniforms();
+		mPbrSurface = mStr->getPbrSurface();
+		// MPP model files retain backwards-compatible material streams. PBR
+		// metadata is mirrored into PBR_* uniforms by FileMaterialStream, so
+		// recover the material state needed by the renderer after deserialization.
+		auto const& serializedUniforms = mUniforms.getUniformData();
+		if (!mPbrSurface.enabled && serializedUniforms.find("PBR_ENABLED") != serializedUniforms.end())
+		{
+			mPbrSurface.enabled = true;
+		}
+		auto alphaModeIt = serializedUniforms.find("PBR_ALPHA_MODE");
+		if (alphaModeIt != serializedUniforms.end() && alphaModeIt->second.size >= sizeof(int32_t))
+		{
+			int32_t alphaMode;
+			memcpy(&alphaMode, alphaModeIt->second.data, sizeof(alphaMode));
+			if (alphaMode >= (int32_t)MaterialSpecification::PbrAlphaMode::Opaque &&
+				alphaMode <= (int32_t)MaterialSpecification::PbrAlphaMode::Blend)
+			{
+				mPbrSurface.alphaMode = (MaterialSpecification::PbrAlphaMode)alphaMode;
+			}
+		}
+		if (mPbrSurface.enabled)
+		{
+			mUniforms.setUniform("PBR_BASE_COLOUR_FACTOR", mPbrSurface.baseColourFactor);
+			mUniforms.setUniform("PBR_METALLIC_FACTOR", mPbrSurface.metallicFactor);
+			mUniforms.setUniform("PBR_ROUGHNESS_FACTOR", mPbrSurface.roughnessFactor);
+			mUniforms.setUniform("PBR_EMISSIVE_FACTOR", mPbrSurface.emissiveFactor);
+			mUniforms.setUniform("PBR_NORMAL_SCALE", mPbrSurface.normalScale);
+			mUniforms.setUniform("PBR_OCCLUSION_STRENGTH", mPbrSurface.occlusionStrength);
+			mUniforms.setUniform("PBR_ALPHA_MODE", (int32_t)mPbrSurface.alphaMode);
+			mUniforms.setUniform("PBR_ALPHA_CUTOFF", mPbrSurface.alphaCutoff);
+			mUniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(mPbrSurface.doubleSided ? 1 : 0));
+		}
 		
 		// Set textures
 		Program* program = (Program*)(mProgram.get());
 		auto const& materialTextures = mStr->getTextures();
+
+		// A serialized legacy stream may predate PbrSurface itself. The standard
+		// PBR sampler contract is also sufficient to select its neutral maps.
+		for (int i = 0; i < program->getNumSamplers(); ++i)
+		{
+			if (program->getSamplerName(i).rfind("PBR_", 0) == 0)
+			{
+				mPbrSurface.enabled = true;
+				break;
+			}
+		}
 
 		// Go through each texture, get the binding location.
 		for (int i = 0; i < program->getNumSamplers(); ++i)
@@ -158,18 +203,43 @@ namespace mpp
 				return textureOptions.sampler == samplerName;
 			});
 			
+			string textureName;
 			if (it == materialTextures.end())
 			{
-				string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
-					samplerName, program->getName(), getName());
-				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+				if (mPbrSurface.enabled)
+				{
+					if (samplerName == "PBR_BASE_COLOUR_MAP" || samplerName == "PBR_OCCLUSION_MAP")
+					{
+						textureName = "__mpp_tex_pbr_white__";
+					}
+					else if (samplerName == "PBR_METALLIC_ROUGHNESS_MAP")
+					{
+						textureName = "__mpp_tex_pbr_metallic_roughness__";
+					}
+					else if (samplerName == "PBR_NORMAL_MAP")
+					{
+						textureName = "__mpp_tex_pbr_normal__";
+					}
+					else if (samplerName == "PBR_EMISSIVE_MAP")
+					{
+						textureName = "__mpp_tex_pbr_black__";
+					}
+				}
+
+				if (textureName.empty())
+				{
+					string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
+						samplerName, program->getName(), getName());
+					THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
+				}
 			}
-
-			auto const& textureOptions = *it;
-
-			string textureName = textureOptions.isChild
-				? getName() + "/" + textureOptions.existingResource
-				: textureOptions.existingResource;
+			else
+			{
+				auto const& textureOptions = *it;
+				textureName = textureOptions.isChild
+					? getName() + "/" + textureOptions.existingResource
+					: textureOptions.existingResource;
+			}
 
 			// Add as acquired resource
 			auto texRes = resourceMgr->getResource(textureName);
@@ -215,6 +285,16 @@ namespace mpp
 	ResourcePtr Material::getProgram()
 	{
 		return mProgram;
+	}
+
+	bool Material::isPbr() const
+	{
+		return mPbrSurface.enabled;
+	}
+
+	MaterialSpecification::PbrSurface const& Material::getPbrSurface() const
+	{
+		return mPbrSurface;
 	}
 	
 	/*

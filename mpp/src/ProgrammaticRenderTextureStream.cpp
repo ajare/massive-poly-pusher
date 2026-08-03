@@ -433,7 +433,12 @@ namespace mpp
 
 	void ProgrammaticRenderTextureStream::setDepthBuffer(bool use)
 	{
-		mUseDepthBuffer = use;
+		setDepthAttachment(use ? RenderTextureDepthAttachment::DepthRenderbuffer : RenderTextureDepthAttachment::None);
+	}
+
+	void ProgrammaticRenderTextureStream::setDepthAttachment(RenderTextureDepthAttachment attachment)
+	{
+		mDepthAttachment = attachment;
 	}
 
 	void ProgrammaticRenderTextureStream::setNumAttachments(size_t numAttachments)

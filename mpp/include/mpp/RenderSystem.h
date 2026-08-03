@@ -43,6 +43,22 @@ namespace mpp
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
+	enum class PbrLightType
+	{
+		Directional,
+		Point
+	};
+
+	struct _MPPAPI PbrLight
+	{
+		PbrLightType type{ PbrLightType::Directional };
+		glm::vec3 colour{ 1.0f };
+		float intensity{ 1.0f };
+		glm::vec3 position{ 0.0f };
+		float range{ 0.0f }; // Zero means unlimited.
+		glm::vec3 direction{ 0.0f, -1.0f, 0.0f };
+	};
+
 	class _MPPAPI RenderSystem : public ResourceWrangler
 	{
 		enum class ProjectionType
@@ -118,7 +134,9 @@ namespace mpp
 
 		RenderTargetPtr mScreen;
 
-		RenderTargetPtr mSceneTarget;
+		// Set only while a PBR pipeline is flushing its scene pass. Environment
+		// samplers then override per-material placeholder bindings.
+		PbrEnvironmentPtr mActivePbrEnvironment;
 
 		ProjectionType mProjectionType;
 
@@ -150,7 +168,7 @@ namespace mpp
 		ResourcePtr mInternalFontTexture;
 
 		// Fullscreen effects
-		ResourcePtr mFullscreenQuad, mFullscreenProgram;
+		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -228,6 +246,8 @@ namespace mpp
 		// Built-in lights
 		//
 		UniformBuffer* mLightsBuffer{ nullptr };
+		UniformBuffer* mPbrLightsBuffer{ nullptr };
+		static constexpr size_t MaxPbrLights{ 8 };
 
 		//
 		// Scenes
@@ -264,9 +284,13 @@ namespace mpp
 
 		void destroyLightsData();
 
+		void createPbrLightsData();
+
+		void destroyPbrLightsData();
+
 		void addCoreResource(ResourcePtr resource, bool load);
 
-		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, uint64_t* currentTexture0Key, uint64_t* currentTexture1Key, Material** currentMaterial);
+		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
 
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
@@ -320,6 +344,8 @@ namespace mpp
 		void renderToScreen();
 
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer);
+
+		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options);
 
 		void flushVertexBuffers();
 
@@ -380,6 +406,14 @@ namespace mpp
 
 		void setLight2Colour(Colour const& colour);
 
+		void setPbrAmbientColour(Colour const& colour);
+
+		void setPbrLights(std::vector<PbrLight> const& lights);
+
+		void setActivePbrEnvironment(PbrEnvironmentPtr environment);
+
+		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
+
 		//
 		// 3d operations
 		//
@@ -411,6 +445,8 @@ namespace mpp
 		void renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, std::string const& pipelineName);
 
 		RenderPipelinePtr getOrCreateRenderPipeline(std::string const& name);
+
+		RenderPipelinePtr getOrCreateRenderPipeline(std::string const& name, RenderPipelineOptions const& options);
 
 		RenderPipelinePtr getRenderPipeline(std::string const& name);
 
@@ -449,6 +485,8 @@ namespace mpp
 		// 2d rendering
 		// 
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
+
+		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

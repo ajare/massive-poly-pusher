@@ -296,6 +296,10 @@ namespace mpp
 	{
 		auto stream = dynamic_cast<TextureStream*>(resourceStream.get());
 
+		// Compatibility placeholder for the removed tile list. The reader still
+		// consumes this count when loading legacy and newly exported models.
+		writeValue((uint32_t)0, fp);
+
 		// Write number of quality settings
 		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
 
@@ -486,7 +490,39 @@ namespace mpp
 			char data[64];
 			fp.read(data, 64);
 
-			uniforms.setUniform(name, type, size, 1, data);
+			// The legacy stream stores a value's byte size, rather than count and
+			// component count. Decode a single scalar/vector value from that size.
+			size_t componentSize = 0;
+			switch (type)
+			{
+			case program::GLSLType::Bool:
+			case program::GLSLType::Int:
+			case program::GLSLType::Uint:
+			case program::GLSLType::Float:
+				componentSize = 4;
+				break;
+			case program::GLSLType::Double:
+				componentSize = 8;
+				break;
+			default:
+				THROW_MPP("Unsupported serialized uniform type.", __LINE__, __FILE__, __func__);
+			}
+			if (size == 0 || size > sizeof(data) || size % componentSize != 0)
+			{
+				THROW_MPP("Invalid serialized uniform size.", __LINE__, __FILE__, __func__);
+			}
+			size_t numElements = size / componentSize;
+
+			// UniformData stores the generated GLSL name. setUniform() adds that
+			// markup itself, so convert serialized names back to their authored
+			// form rather than generating a double-prefixed uniform name.
+			constexpr char uniformPrefix[] = "_mpp_u_";
+			const size_t prefixLength = sizeof(uniformPrefix) - 1;
+			if (name.size() > prefixLength && name.compare(0, prefixLength, uniformPrefix) == 0 && name.back() == '_')
+			{
+				name = name.substr(prefixLength, name.size() - prefixLength - 1);
+			}
+			uniforms.setUniform(name, type, 1, numElements, data);
 		}
 
 		return uniforms;

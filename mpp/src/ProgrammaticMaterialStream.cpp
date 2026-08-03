@@ -218,6 +218,11 @@ namespace mpp
 		qs.spec.textures.push_back(textureOptions);
 	}
 
+	void ProgrammaticMaterialStream::setPbrSurface(MaterialSpecification::PbrSurface const& surface, uint32_t quality)
+	{
+		mQualitySettings[quality].spec.pbr = surface;
+	}
+
 	void ProgrammaticMaterialStream::setUniforms(UniformCollection const& uniforms, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];

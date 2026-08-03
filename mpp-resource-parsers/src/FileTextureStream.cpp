@@ -215,6 +215,21 @@ namespace mpp
 				{
 					qs.sampler = entry.second.getValue();
 				}
+				else if (entry.first == "colourSpace")
+				{
+					if (value == "SRGB")
+					{
+						qs.params.colourSpace = TextureColourSpace::Srgb;
+					}
+					else if (value == "LINEAR")
+					{
+						qs.params.colourSpace = TextureColourSpace::Linear;
+					}
+					else
+					{
+						THROW_MPP_RESOURCE_PARSERS("Unknown texture colour space in " + filepath + ".", __LINE__, __FILE__, __func__);
+					}
+				}
 				else if (entry.first == "mipmaps")
 				{
 					qs.params.useMipmaps = utils::StringUtils::parseBool(value);

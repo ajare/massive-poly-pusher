@@ -97,6 +97,10 @@ namespace mpp
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Colour1] = vertexStreamDef;
 						break;
 
+					case mesh::Vertex::Component::Tangent4:
+						meshDef.componentStreams[mpp::mesh::Vertex::Component::Tangent4] = vertexStreamDef;
+						break;
+
 					case mesh::Vertex::Component::Normal4:
 						meshDef.componentStreams[mpp::mesh::Vertex::Component::Normal4] = vertexStreamDef;
 						[[fallthrough]];

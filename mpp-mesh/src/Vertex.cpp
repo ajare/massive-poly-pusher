@@ -41,6 +41,7 @@ namespace mpp
 			case Vertex::Component::TexCoord4:
 			case Vertex::Component::Colour4:
 			case Vertex::Component::UserDefined4:
+			case Vertex::Component::Tangent4:
 				return 4;
 			default:
 				throw MppMeshException("Vertex::getComponentSize() unknown component!");
@@ -140,6 +141,8 @@ namespace mpp
 				return "UserDefined3";
 			case Component::UserDefined4:
 				return "UserDefined4";
+			case Component::Tangent4:
+				return "Tangent4";
 			default:
 				return "Unknown";
 			}

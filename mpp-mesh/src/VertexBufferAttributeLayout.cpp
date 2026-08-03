@@ -37,6 +37,9 @@ namespace mpp
 			case mesh::Vertex::Component::Normal4:
 				identifier = "NORMAL";
 				break;
+			case mesh::Vertex::Component::Tangent4:
+				identifier = "TANGENT";
+				break;
 			case mesh::Vertex::Component::TexCoord2:
 			case mesh::Vertex::Component::TexCoord3:
 			case mesh::Vertex::Component::TexCoord4:

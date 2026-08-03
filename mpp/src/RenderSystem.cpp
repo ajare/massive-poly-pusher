@@ -102,6 +102,7 @@ namespace mpp
 		delete mMeshInstances;
 		delete mInternalFont;
 		destroyLightsData();
+		destroyPbrLightsData();
 
 		// Deleting the above may have freed up more resources, so sweep once more
 		for (auto res : mCoreResources)
@@ -266,6 +267,7 @@ namespace mpp
 		setDefaultState();
 		setDisplay((int)mWindowWidth, (int)mWindowHeight);
 		createLightsData();
+		createPbrLightsData();
 
 		// Text settings
 		mTextUniforms = make_shared<UniformCollection>();
@@ -563,6 +565,25 @@ namespace mpp
 			addCoreResource(mFullscreenProgram, true);
 		}
 
+		// HDR tone-map program used by the opt-in PBR preview pipeline.
+		{
+			mesh::MeshSpecification meshSpec;
+
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+
+			auto parser = make_shared<program::Parser>();
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderFullscreenTemplate);
+			parser->setFragmentSource(FragmentShaderToneMapTemplate);
+
+			auto ps = new ProgrammaticProgramStream(resourceMgr);
+			ps->setParser(parser);
+			mToneMapProgram = resourceMgr->declareResource("__mpp_p2d_tonemap__", ResourceStreamPtr(ps)).first;
+			addCoreResource(mToneMapProgram, true);
+		}
+
 		// Internal text programs
 		{
 			mesh::MeshSpecification meshSpec;
@@ -672,6 +693,32 @@ namespace mpp
 		blankStream->setFiltering(TextureParams::MinFilter::Nearest, TextureParams::MagFilter::Nearest);
 		mNoTexture = resourceMgr->declareResource("__mpp_tex_none__", ResourceStreamPtr(blankStream)).first;
 		addCoreResource(mNoTexture, true);
+
+		// Standard PBR fallback maps. PBR materials can omit any texture map;
+		// Material resolves the corresponding canonical sampler to these values.
+		auto addPbrFallbackTexture = [this, resourceMgr](string const& name, uint8_t red, uint8_t green, uint8_t blue, TextureColourSpace colourSpace)
+		{
+			auto stream = new ProgrammaticTextureStream(resourceMgr);
+			stream->setTarget(TextureTarget::Texture2D);
+			stream->setColourSpace(colourSpace);
+			stream->setData([red, green, blue](string const&)
+			{
+				TextureData data;
+				data.width = 1;
+				data.height = 1;
+				data.bitsPerPixel = 24;
+				data.dataType = GL_UNSIGNED_BYTE;
+				data.pixelFormat = GL_RGB;
+				data.data = new uint8_t[3]{ red, green, blue };
+				return data;
+			});
+			auto texture = resourceMgr->declareResource(name, ResourceStreamPtr(stream)).first;
+			addCoreResource(texture, true);
+		};
+		addPbrFallbackTexture("__mpp_tex_pbr_white__", 255, 255, 255, TextureColourSpace::Srgb);
+		addPbrFallbackTexture("__mpp_tex_pbr_black__", 0, 0, 0, TextureColourSpace::Srgb);
+		addPbrFallbackTexture("__mpp_tex_pbr_normal__", 128, 128, 255, TextureColourSpace::Linear);
+		addPbrFallbackTexture("__mpp_tex_pbr_metallic_roughness__", 0, 255, 255, TextureColourSpace::Linear);
 
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(resourceMgr);
@@ -900,9 +947,9 @@ namespace mpp
 		mFullscreenQuad = resourceMgr->declareResource("__mpp_mesh_fullscreen_quad__", ResourceStreamPtr(quadStream)).first;
 		addCoreResource(mFullscreenQuad, true);
 
-		// Render targets
-		mSceneTarget = createRenderTexture("SceneTarget", getWindowWidth(), getWindowHeight(), 1, true);
-		
+		// Render targets are owned by render passes/pipelines. Do not create a
+		// duplicate global scene target here.
+
 		// Set none as active
 		mActiveProgram.reset();
 
@@ -1026,8 +1073,33 @@ namespace mpp
 			mScreen.reset();
 		}
 
+		mWindowWidth = (size_t)width;
+		mWindowHeight = (size_t)height;
 		mScreen = RenderTargetPtr(new Screen(width, height));
 		setRenderTarget(mScreen);
+
+		for (auto const& [name, pipeline] : mPipelines)
+		{
+			pipeline->resize(mWindowWidth, mWindowHeight);
+		}
+
+		if (mFullscreenQuad)
+		{
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+			auto buffer = mesh->getVertexBuffer(0);
+			auto& data = buffer->getBufferData();
+			const float vertices[] =
+			{
+				0.0f, 0.0f, 0.0f, 0.0f,
+				(float)mWindowWidth, 0.0f, 1.0f, 0.0f,
+				(float)mWindowWidth, (float)mWindowHeight, 1.0f, 1.0f,
+				(float)mWindowWidth, (float)mWindowHeight, 1.0f, 1.0f,
+				0.0f, (float)mWindowHeight, 0.0f, 1.0f,
+				0.0f, 0.0f, 0.0f, 0.0f
+			};
+			memcpy(data.data(), vertices, sizeof(vertices));
+			buffer->mapBufferData(6);
+		}
 	}
 
 	/*
@@ -1069,9 +1141,6 @@ namespace mpp
 
 		mRenderTarget = renderTarget;
 		mRenderTarget->activate();
-
-		mWindowWidth = mRenderTarget->getWidth();
-		mWindowHeight = mRenderTarget->getHeight();
 	}
 
 	void RenderSystem::pushRenderTarget(RenderTargetPtr renderTarget)
@@ -1111,17 +1180,25 @@ namespace mpp
 	 */
 	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer)
 	{
+		RenderTextureOptions options;
+		options.numAttachments = numAttachments;
+		options.depthAttachment = depthBuffer ? RenderTextureDepthAttachment::DepthRenderbuffer : RenderTextureDepthAttachment::None;
+		return createRenderTexture(name, width, height, options);
+	}
+
+	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, RenderTextureOptions const& options)
+	{
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
 
 		rtStream->setTarget(TextureTarget::Texture2D);
-		rtStream->setInternalFormat(TextureInternalType::UnsignedInteger, true, 8, 4);
+		rtStream->setInternalFormat(options.colourType, options.colourNormalised, options.colourBitSize, options.colourChannels);
+		rtStream->setParams(options.params);
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
-		rtStream->setDepthBuffer(depthBuffer);
-		rtStream->setNumAttachments(numAttachments);
+		rtStream->setDepthAttachment(options.depthAttachment);
+		rtStream->setNumAttachments(options.numAttachments);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
-
 		rt->load();
 
 		return RenderTargetPtr(rt);
@@ -1566,7 +1643,7 @@ namespace mpp
 			transform,
 			mcp,
 			glm::transpose(glm::inverse(glm::mat3(transform))),
-			glm::vec2(mWindowWidth / 2.0f, mWindowHeight / 2.0f),
+			glm::vec2(mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f),
 			getGamma(),
 			mMeshInstances);
 
@@ -1937,6 +2014,96 @@ namespace mpp
 		}
 	}
 
+	void RenderSystem::createPbrLightsData()
+	{
+		destroyPbrLightsData();
+
+		// std140 layout: vec4 ambientAndCount, followed by MaxPbrLights entries
+		// of vec4 colourIntensity, vec4 positionRange, vec4 directionType.
+		const size_t uniformSize = 16 + MaxPbrLights * 48;
+		shared_ptr<const int8_t> uniformData(new int8_t[uniformSize](), [](int8_t* p) { delete[] p; });
+		auto fp = reinterpret_cast<float*>(const_cast<int8_t*>(uniformData.get()));
+		fp[0] = 0.03f;
+		fp[1] = 0.03f;
+		fp[2] = 0.03f;
+		fp[3] = 0.0f;
+
+		mPbrLightsBuffer = new UniformBuffer(this, uniformData, uniformSize, 1);
+		mPbrLightsBuffer->load();
+	}
+
+	void RenderSystem::destroyPbrLightsData()
+	{
+		if (mPbrLightsBuffer)
+		{
+			mPbrLightsBuffer->unload();
+			delete mPbrLightsBuffer;
+			mPbrLightsBuffer = nullptr;
+		}
+	}
+
+	void RenderSystem::setPbrAmbientColour(Colour const& colour)
+	{
+		auto fp = reinterpret_cast<float*>(mPbrLightsBuffer->getBufferData().data());
+		fp[0] = colour.red;
+		fp[1] = colour.green;
+		fp[2] = colour.blue;
+		mPbrLightsBuffer->updateData(0, 12);
+	}
+
+	void RenderSystem::setPbrLights(vector<PbrLight> const& lights)
+	{
+		if (lights.size() > MaxPbrLights)
+		{
+			THROW_MPP("Too many PBR lights for the PBR light uniform buffer.", __LINE__, __FILE__, __func__);
+		}
+
+		auto& data = mPbrLightsBuffer->getBufferData();
+		fill(data.begin() + 16, data.end(), 0);
+		auto fp = reinterpret_cast<float*>(data.data());
+		fp[3] = (float)lights.size();
+		for (size_t i = 0; i < lights.size(); ++i)
+		{
+			auto const& light = lights[i];
+			fp += 4 + i * 12;
+			fp[0] = light.colour.r;
+			fp[1] = light.colour.g;
+			fp[2] = light.colour.b;
+			fp[3] = light.intensity;
+			fp[4] = light.position.x;
+			fp[5] = light.position.y;
+			fp[6] = light.position.z;
+			fp[7] = light.range;
+			fp[8] = light.direction.x;
+			fp[9] = light.direction.y;
+			fp[10] = light.direction.z;
+			fp[11] = light.type == PbrLightType::Point ? 1.0f : 0.0f;
+			fp -= 4 + i * 12;
+		}
+		mPbrLightsBuffer->mapBufferData();
+	}
+
+	void RenderSystem::setActivePbrEnvironment(PbrEnvironmentPtr environment)
+	{
+		mActivePbrEnvironment = std::move(environment);
+		if (!mActivePbrEnvironment)
+		{
+			return;
+		}
+
+		for (auto const& resource : {
+			mActivePbrEnvironment->irradianceMap,
+			mActivePbrEnvironment->prefilteredSpecularMap,
+			mActivePbrEnvironment->brdfIntegrationLut,
+			mActivePbrEnvironment->backgroundMap })
+		{
+			if (resource)
+			{
+				resource->load();
+			}
+		}
+	}
+
 	/*
 	 * Render a texture as a fullscreen quad
 	 *
@@ -1963,7 +2130,7 @@ namespace mpp
 		}
 
 		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
-		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 
 		int gammaId = p->getUniformId("GAMMA");
 
@@ -1995,6 +2162,33 @@ namespace mpp
 		mRenderInfo.fullscreenQuads++;
 	}
 
+	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap)
+	{
+		flushVertexBuffers();
+
+		auto program = static_cast<Program*>(mToneMapProgram.get());
+		setUsedProgram(mToneMapProgram);
+		mRenderInfo.programSwitches++;
+
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniform1f(program->getUniformId("EXPOSURE"), exposure));
+		GL_CHECK(glUniform1f(program->getUniformId("GAMMA"), mGamma));
+		GL_CHECK(glUniform1i(program->getUniformId("TONE_MAP_OPERATOR"), useAcesToneMap ? 1 : 0));
+
+		texture->bind(0, 0);
+		mRenderInfo.textureSwitches++;
+
+		GL_CHECK(glDisable(GL_BLEND));
+		auto quadMesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		quadMesh->bind(true);
+		quadMesh->render(1);
+		quadMesh->bind(false);
+
+		mRenderInfo.batchCount++;
+		mRenderInfo.fullscreenQuads++;
+	}
+
 	/*
 	 * Render a simple quad.
 	 *
@@ -2019,11 +2213,11 @@ namespace mpp
 		mRenderInfo.programSwitches++;
 
 		pushModelMatrix();
-		translateTransform2d(glm::vec2(x, mWindowHeight - y));
-		GL_CHECK(scaleTransform2d(glm::vec2(width / (float)mWindowWidth, height / (float)mWindowHeight)));
+		translateTransform2d(glm::vec2(x, mRenderTarget->getHeight() - y));
+		GL_CHECK(scaleTransform2d(glm::vec2(width / (float)mRenderTarget->getWidth(), height / (float)mRenderTarget->getHeight())));
 
 		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
-		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mWindowWidth / 2.0f, mWindowHeight / 2.0f));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 
 		int gammaId = p->getUniformId("GAMMA");
 
@@ -2227,7 +2421,7 @@ namespace mpp
 
 			if (hwsId >= 0)
 			{
-				glm::vec2 halfWindowSize(mWindowWidth / 2.0f, mWindowHeight / 2.0f);
+				glm::vec2 halfWindowSize(mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f);
 				GL_CHECK(glUniform2fv(hwsId, 1, glm::value_ptr(halfWindowSize)));
 			}
 
@@ -2251,20 +2445,12 @@ namespace mpp
 			}
 
 			// Textures
-			ResourcePtr textureRes;
-			switch (mat->getNumTextures())
+			for (int i = 0; i < mat->getNumTextures(); ++i)
 			{
-			case 2:
-				textureRes = cmd.textures[1] ? cmd.textures[1] : mat->getTexture(1);
-				static_cast<Texture*>(textureRes.get())->bind(1);
-				[[fallthrough]];
-			case 1:
-				textureRes = cmd.textures[0] ? cmd.textures[0] : mat->getTexture(0);
-				static_cast<Texture*>(textureRes.get())->bind(0);
-				break;
-
-			default:
-				break;
+				auto textureRes = (size_t)i < cmd.textures.size() && cmd.textures[i]
+					? cmd.textures[i]
+					: mat->getTexture(i);
+				static_cast<Texture*>(textureRes.get())->bind((uint32_t)i);
 			}
 
 			if (cmd.clipSize[0] > 0 && cmd.clipSize[1] > 0)
@@ -2627,7 +2813,7 @@ namespace mpp
 #endif
 	}
 
-	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, uint64_t* currentTexture0Key, uint64_t* currentTexture1Key, Material** currentMaterial)
+	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, vector<uint64_t>* currentTextureKeys, Material** currentMaterial)
 	{
 		// Mask off program and see if it has changed from previous.
 		uint64_t thisProgramKey = sortKey;
@@ -2655,31 +2841,50 @@ namespace mpp
 
 		*currentMaterial = material;
 
-		// Mask off textures and see if they have changed from previous.
-		uint64_t thisTexture0Key = sortKey;
-		thisTexture0Key >>= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-		thisTexture0Key &= ((1 << MPP_RENDER_SORT_TEXTURE0_BITS_SIZE) - 1);
-
-		if (thisTexture0Key > 0 && (thisTexture0Key != *currentTexture0Key || programChanged))
+		// Bind every material sampler. Texture keys are intentionally kept outside
+		// the packed sort key: PBR needs more than the legacy two texture units.
+		const size_t textureCount = (size_t)material->getNumTextures();
+		if (textureCount > mCaps.maxFragmentTextureUnits)
 		{
-			auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture0Key).get());
-			texture->bind(0);
-
-			*currentTexture0Key = thisTexture0Key;
-			mRenderInfo.textureSwitches++;
+			THROW_MPP("Material requires more fragment texture units than supported by this renderer.", __LINE__, __FILE__, __func__);
 		}
-
-		uint64_t thisTexture1Key = sortKey;
-		thisTexture1Key >>= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-		thisTexture1Key &= ((1 << MPP_RENDER_SORT_TEXTURE1_BITS_SIZE) - 1);
-
-		if (thisTexture1Key > 0 && (thisTexture1Key != *currentTexture1Key || programChanged))
+		if (currentTextureKeys->size() < textureCount)
 		{
-			auto texture = static_cast<Texture*>(mResourceMgr->getTextureBySortId((uint32_t)thisTexture1Key).get());
-			texture->bind(1);
+			currentTextureKeys->resize(textureCount, 0);
+		}
+		for (size_t i = 0; i < textureCount; ++i)
+		{
+			ResourcePtr textureResource = i < renderCmd.textures.size() && renderCmd.textures[i]
+				? renderCmd.textures[i]
+				: material->getTexture((int)i);
 
-			*currentTexture1Key = thisTexture1Key;
-			mRenderInfo.textureSwitches++;
+			// Pipeline-owned IBL is authoritative for PBR environment samplers.
+			// Other sampler bindings remain material-owned and fully dynamic.
+			if (mActivePbrEnvironment)
+			{
+				auto program = static_cast<Program*>(material->getProgram().get());
+				auto const& samplerName = program->getSamplerName((int)i);
+				if (samplerName == "PBR_IRRADIANCE_MAP" && mActivePbrEnvironment->irradianceMap)
+				{
+					textureResource = mActivePbrEnvironment->irradianceMap;
+				}
+				else if (samplerName == "PBR_PREFILTERED_SPECULAR_MAP" && mActivePbrEnvironment->prefilteredSpecularMap)
+				{
+					textureResource = mActivePbrEnvironment->prefilteredSpecularMap;
+				}
+				else if (samplerName == "PBR_BRDF_LUT" && mActivePbrEnvironment->brdfIntegrationLut)
+				{
+					textureResource = mActivePbrEnvironment->brdfIntegrationLut;
+				}
+			}
+			auto texture = static_cast<Texture*>(textureResource.get());
+			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;
+			if ((*currentTextureKeys)[i] != textureKey)
+			{
+				texture->bind((uint32_t)i);
+				(*currentTextureKeys)[i] = textureKey;
+				mRenderInfo.textureSwitches++;
+			}
 		}
 
 		// Bind mesh material (including program), and vertex buffers
@@ -2696,6 +2901,7 @@ namespace mpp
 		{
 			GL_CHECK(glEnable(GL_BLEND));
 			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+			GL_CHECK(glDepthMask(GL_FALSE));
 		}
 	}
 
@@ -2709,6 +2915,7 @@ namespace mpp
 		if (meshInstance->mBlend)
 		{
 			GL_CHECK(glDisable(GL_BLEND));
+			GL_CHECK(glDepthMask(GL_TRUE));
 		}
 	}
 
@@ -2743,27 +2950,9 @@ namespace mpp
 						uint64_t sortKey = 0;
 
 						auto material = static_cast<Material*>(renderCmd.material.get());
-						auto numTextures = material->getNumTextures();
 
-						// Texture 0
-						if (numTextures > 0)
-						{
-							auto texture = static_cast<Texture*>(renderCmd.textures[0].get());
-							uint64_t textureKey = (uint64_t)texture->getSortId();
-							textureKey <<= MPP_RENDER_SORT_TEXTURE0_BITS_OFFSET;
-							sortKey |= textureKey;
-						}
-
-						// Texture 1
-						if (numTextures > 1)
-						{
-							auto texture = static_cast<Texture*>(renderCmd.textures[1].get());
-							uint64_t textureKey = (uint64_t)texture->getSortId();
-							textureKey <<= MPP_RENDER_SORT_TEXTURE1_BITS_OFFSET;
-							sortKey |= textureKey;
-						}
-
-						// Program
+						// Program. Textures are bound from their dynamic sampler list in
+						// setupRenderMeshInstance rather than being limited to two keys.
 						uint64_t programKey = (uint64_t)((Program*)material->getProgram().get())->getSortId();
 						programKey <<= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
 						sortKey |= programKey;
@@ -2798,13 +2987,27 @@ namespace mpp
 		{
 			sort(renderCommands.begin(), renderCommands.end(), [](SortedRenderCommand const& a, SortedRenderCommand const& b) -> bool
 			{
+				bool const aTransparent = a.meshInstance->sortTransparent();
+				bool const bTransparent = b.meshInstance->sortTransparent();
+				if (aTransparent != bTransparent)
+				{
+					return !aTransparent; // Opaque and masked geometry first.
+				}
+				if (aTransparent)
+				{
+					auto const aPos = glm::vec3((a.meshInstance->mModelMatrix * a.meshInstance->mLocalTransform)[3]);
+					auto const bPos = glm::vec3((b.meshInstance->mModelMatrix * b.meshInstance->mLocalTransform)[3]);
+					auto const aDelta = aPos - a.meshInstance->mViewPos;
+					auto const bDelta = bPos - b.meshInstance->mViewPos;
+					return glm::dot(aDelta, aDelta) > glm::dot(bDelta, bDelta);
+				}
 				return a.key < b.key;
 			});
 		}
 
 		// Now render all the meshes.
 		uint64_t currentProgramKey = 0; // Sort ids start at 1, so this is guaranteed not to be one.
-		uint64_t currentTexture0Key = 0, currentTexture1Key = 0;
+		vector<uint64_t> currentTextureKeys;
 
 		Material* currentMaterial{ nullptr };
 		for (auto const& renderCommand: renderCommands)
@@ -2814,7 +3017,7 @@ namespace mpp
 			auto instanceCount = meshInstance->mInstanceCount;
 			auto numPrimitives = mesh->getNumPrimitives();
 
-			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTexture0Key, &currentTexture1Key, &currentMaterial);
+			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTextureKeys, &currentMaterial);
 
 			auto count = cmd.count != ~0u ? cmd.count : numPrimitives;
 			mesh->render(instanceCount, cmd.offset, count);
@@ -2868,17 +3071,24 @@ namespace mpp
 
 	RenderPipelinePtr RenderSystem::getOrCreateRenderPipeline(string const& name)
 	{
+		return getOrCreateRenderPipeline(name, {});
+	}
+
+	RenderPipelinePtr RenderSystem::getOrCreateRenderPipeline(string const& name, RenderPipelineOptions const& options)
+	{
 		auto it = mPipelines.find(name);
 		if (it != mPipelines.end())
 		{
+			if (it->second->getOptions().mode != options.mode)
+			{
+				THROW_MPP("RenderPipeline '" + name + "' already exists with different options.", __LINE__, __FILE__, __func__);
+			}
 			return it->second;
 		}
-		else
-		{
-			auto rs = make_shared<RenderPipeline>(name, this);
-			mPipelines[name] = rs;
-			return rs;
-		}
+
+		auto pipeline = make_shared<RenderPipeline>(name, this, options);
+		mPipelines[name] = pipeline;
+		return pipeline;
 	}
 
 	RenderPipelinePtr RenderSystem::getRenderPipeline(string const& name)

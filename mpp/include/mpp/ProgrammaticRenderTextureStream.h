@@ -40,6 +40,8 @@ namespace mpp
 
 		void setDepthBuffer(bool use);
 
+		void setDepthAttachment(RenderTextureDepthAttachment attachment);
+
 		void setNumAttachments(size_t numAttachments);
 	};
 }
