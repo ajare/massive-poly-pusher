@@ -159,15 +159,17 @@ Start with one center comparison to validate projection and bias, then implement
 
 **Outcome:** visible mesh geometry from every material type is submitted once into the shared domain depth map before participating colour passes.
 
-- [ ] Add a `ShadowPass` invoked by a shadow domain before its first participating colour pass each frame.
-- [ ] Build a stable directional view matrix from `ShadowLight::direction` and `focusPoint`, selecting a safe up vector for near-parallel directions.
-- [ ] Start with explicit documented orthographic bounds; defer automatic camera-frustum fitting.
-- [ ] Add a depth-only override-program submission path in `RenderSystem`. It must retain mesh/submesh ranges, indexed/non-indexed draws, instancing, transforms, and visibility flags without permanently replacing materials.
+- [x] Add a `ShadowPass` invoked by a shadow domain before its first participating colour pass each frame.
+- [x] Build a stable directional view matrix from `ShadowLight::direction` and `focusPoint`, selecting a safe up vector for near-parallel directions.
+- [x] Start with explicit documented orthographic bounds; defer automatic camera-frustum fitting.
+- [x] Add a depth-only override-program submission path in `RenderSystem`. It retains mesh/submesh ranges, indexed/non-indexed draws, instance counts, transforms, and visibility flags without permanently replacing materials.
 - [ ] Add generic `ShadowCasterSpecification` parsing, serialization, and programmatic-material support.
-- [ ] Render the union of opaque/default casters regardless of whether their colour material is PBR, legacy, or custom; implement generic mask shader/material binding; skip blend/disabled casters with diagnostics.
+- [x] Render the union of opaque/default casters regardless of whether their colour material is PBR, legacy, or custom; skip PBR `BLEND` casters. Generic mask shader/material binding and disabled-caster metadata remain outstanding.
 - [ ] Test non-PBR meshes, PBR meshes, mixed-material scenes, custom material overrides, and double-sided casters.
 
 **Acceptance:** one depth-map preview contains the same transformed PBR and non-PBR casters, and the pass does not corrupt following HDR, LDR, 2D, or UI draws.
+
+**Implementation note (Milestone S2):** an enabled domain now renders a depth-only pass before its participating colour pass. The pass uses an internal position-only shader, directional orthographic projection, front-face culling, polygon offset, and restores target/viewport/depth/blend/cull state afterward. It submits visible opaque PBR, legacy, and custom meshes through their existing render-command ranges; PBR `BLEND` meshes are skipped. The map is updated each render invocation. Generic caster metadata, alpha-mask casting, double-sided culling policy, cross-pipeline frame caching, and a depth-map UI preview remain subsequent work.
 
 ### Milestone S3 — Generic receive contract and shader adapters
 

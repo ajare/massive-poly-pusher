@@ -173,6 +173,7 @@ namespace mpp
 
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
+		ResourcePtr mShadowDepthProgram;
 
 		// Internal textures
 		ResourcePtr mNoTexture;
@@ -441,6 +442,8 @@ namespace mpp
 		RenderTargetPtr getShadowDomainDepthTarget(std::string const& name);
 
 		void ensureShadowDomainResources(std::string const& name);
+
+		void renderShadowDomain(std::string const& name, std::vector<SceneModel3dPtr> const& models);
 
 		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
 
