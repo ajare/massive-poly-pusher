@@ -8,7 +8,7 @@ The runnable reference is:
 - shaders: `demo-suite/resources/res/statue/statue_pbr.vert` and `statue_pbr.frag`
 - exported model: `demo-suite/resources/res/statue/statue.mppmodel`
 
-Use [PBR DemoSuite Validation](PBR_VALIDATION.md) to exercise and capture the current PBR controls.
+Use [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md) to create ModelSpec or programmatic materials, then use [PBR DemoSuite Validation](PBR_VALIDATION.md) to exercise and capture the current PBR controls.
 
 ## 1. Opt in to the PBR pipeline
 
@@ -204,6 +204,6 @@ Build `MassivePolyPusher`, `ModelConvert`, and DemoSuite in the same configurati
 ## Current limitations
 
 - `BLEND` PBR meshes render after opaque/masked meshes, back-to-front, with source-alpha blending and depth writes disabled. It is intended for conventional non-refractive transparency.
-- DemoSuite selects `PBR` or `Default`, but currently supplies only a fixed placeholder cube map and BRDF LUT; an interactive environment selector is still follow-up work.
+- DemoSuite selects `PBR` or `Default` and provides cool/warm placeholder environment controls, but those cube maps and the BRDF LUT are not physically correct HDR IBL assets.
 - HDR panorama decoding and GPU IBL preprocessing are not implemented. Supply precomputed environment resources.
 - Visual reference captures and full PBR regression assets remain outstanding.
