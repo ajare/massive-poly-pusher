@@ -134,6 +134,7 @@ namespace mpp
 			{
 				mi->render((rp->flags & ModelRenderParams::Flag_Visible) != 0);
 				mi->wireframe((rp->flags & ModelRenderParams::Flag_Wireframe) != 0);
+				mi->cullBackFaces((rp->flags & ModelRenderParams::Flag_CullBackFaces) != 0);
 				mi->setInstanceCount(rp->instanceCount);
 				mi->setPointSize(rp->pointSize);
 				mi->setUniformCollection(rp->uniforms);

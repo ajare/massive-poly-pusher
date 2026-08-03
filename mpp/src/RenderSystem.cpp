@@ -3204,6 +3204,12 @@ namespace mpp
 		// Wireframe?
 		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance->mWireframe ? GL_LINE : GL_FILL));
 
+		if (meshInstance->mCullBackFaces)
+		{
+			GL_CHECK(glEnable(GL_CULL_FACE));
+			GL_CHECK(glCullFace(GL_BACK));
+		}
+
 		// Blend?
 		if (meshInstance->mBlend)
 		{
@@ -3219,6 +3225,11 @@ namespace mpp
 		meshInstance->mwMesh->bind(false);
 
 		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+
+		if (meshInstance->mCullBackFaces)
+		{
+			GL_CHECK(glDisable(GL_CULL_FACE));
+		}
 
 		if (meshInstance->mBlend)
 		{

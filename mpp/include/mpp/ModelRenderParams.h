@@ -18,6 +18,7 @@ namespace mpp
 		static const uint32_t Flag_Visible		= 0x01;
 		static const uint32_t Flag_Wireframe	= 0x02;
 		static const uint32_t Flag_CastShadows	= 0x04;
+		static const uint32_t Flag_CullBackFaces	= 0x08;
 
 	public:
 
