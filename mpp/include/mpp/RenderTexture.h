@@ -8,6 +8,7 @@
 #include <gl/gl.h>
 
 #include "mpp/RenderTarget.h"
+#include "mpp/RenderTextureStream.h"
 #include "mpp/Texture.h"
 
 namespace mpp
@@ -16,11 +17,13 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem{ nullptr };
 
-		bool mUseDepthBuffer;
+		RenderTextureDepthAttachment mDepthAttachment;
 
 		GLuint mFrameBuffer;
 
 		GLuint mDepthBuffer;
+
+		GLuint mDepthTexture;
 
 	private:
 
@@ -51,6 +54,12 @@ namespace mpp
 		bool hasDepthBuffer() const;
 
 		bool hasStencilBuffer() const;
+
+		bool resize(size_t width, size_t height) override;
+
+		uint32_t getDepthTextureId() const;
+
+		uint32_t getColourAttachmentId(size_t attachment) const;
 
 	};
 }

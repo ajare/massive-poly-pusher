@@ -80,10 +80,11 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
 	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
 	addResource(resourceMgr->declareResource("Marble.Texture", ResourceStreamPtr(textureStream)).first, false);
-	
+
 	// Create texture programmatically.  This is a 16bit texture.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
@@ -103,6 +104,64 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	addResource(resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream)).first, false);
+
+	// Milestone 2 texture-system smoke resource. A neutral colour is repeated
+	// across cube faces until environment preprocessing is added in Milestone 4.
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::CubeMap);
+	textureStream->setData([](string const&)
+	{
+		TextureData data;
+		data.width = 1;
+		data.height = 1;
+		data.bitsPerPixel = 24;
+		data.dataType = GL_UNSIGNED_BYTE;
+		data.pixelFormat = GL_RGB;
+		data.data = new uint8_t[3]{ 128, 160, 255 };
+		return data;
+	});
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
+	textureStream->setWrapping(mpp::TextureParams::Wrapping::ClampToEdge);
+	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
+	textureStream->enableMipMaps(true);
+	addResource(resourceMgr->declareResource("PBR.Preview.Environment", ResourceStreamPtr(textureStream)).first, true);
+
+	// Alternate warm environment for the PBR validation controls. Both are
+	// precomputed cube-map placeholders until HDR panorama preprocessing exists.
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::CubeMap);
+	textureStream->setData([](string const&)
+	{
+		TextureData data;
+		data.width = 1;
+		data.height = 1;
+		data.bitsPerPixel = 24;
+		data.dataType = GL_UNSIGNED_BYTE;
+		data.pixelFormat = GL_RGB;
+		data.data = new uint8_t[3]{ 255, 176, 104 };
+		return data;
+	});
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
+	textureStream->setWrapping(mpp::TextureParams::Wrapping::ClampToEdge);
+	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
+	textureStream->enableMipMaps(true);
+	addResource(resourceMgr->declareResource("PBR.Preview.EnvironmentWarm", ResourceStreamPtr(textureStream)).first, true);
+
+	textureStream = new ProgrammaticTextureStream(resourceMgr);
+	textureStream->setTarget(TextureTarget::Texture2D);
+	textureStream->setData([](string const&)
+	{
+		TextureData data;
+		data.width = 1;
+		data.height = 1;
+		data.bitsPerPixel = 16;
+		data.dataType = GL_UNSIGNED_BYTE;
+		data.pixelFormat = GL_RG;
+		data.data = new uint8_t[2]{ 255, 255 };
+		return data;
+	});
+	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	addResource(resourceMgr->declareResource("PBR.Preview.BrdfLut", ResourceStreamPtr(textureStream)).first, true);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
@@ -141,7 +200,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 		data.pixelFormat = GL_RGB;
 
 		size_t dataSize = (data.width * data.height * data.bitsPerPixel / 8);
-		
+
 		data.data = new uint8_t[dataSize];
 		for (int i = 0; i < 256; ++i)
 		{
@@ -423,7 +482,7 @@ ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
 			float x = nx * (radius + cosf(phi) * thickness);
 			float y = ny * thickness;
 			float z = nz * (radius + cosf(phi) * thickness);
-			
+
 			// Hypertrochoid
 			//float x = pow(cosf(theta), 3) * (radius + cosf(phi) * thickness);
 			//float z = pow(sinf(theta), 3) * (radius + cosf(phi) * thickness);
@@ -505,7 +564,7 @@ void ModelScene::createBatches(mpp::RenderSystem* renderSystem)
 		true,
 		false
 	};
-	
+
 	auto lineBatchDataProvider = make_shared<TestLineBatchDataProvider>(
 		tile->x0,
 		tile->y0,
@@ -735,6 +794,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	//
 	// 3d renderers
 	//
+
 	m3dBatchDataProvider = make_shared<Test3dTriangleBatchDataProvider>();
 	m3dBatchBufferDataProvider = make_shared<Test3dTriangleBatchBufferDataProvider>();
 
@@ -796,12 +856,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
 	createSphereMaterial(sphereMeshSpec, options);
-	
+
 	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
 	mSphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream)).first;
 	mSphere->acquire(this);
 	mSphere->load();
-	
+
 	auto sphereModel = mppScene->add3dModel(mSphere);
 	mModels.push_back(sphereModel);
 
@@ -840,13 +900,52 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mModels.push_back(mppScene->add3dModel(mTorus));
 	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
-	// Load MppModel
-	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "Random_Track.mppmodel");
+	// Load the PBR preview model. It remains visible by default and is rendered
+	// through the opt-in PBR pipeline below.
+	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
 	mStatue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream)).first;
 	mStatue->acquire(this);
 	mStatue->load();
 
+	// Bind two 2D textures and a cube map to the statue through the PBR preview
+	// path. This is intentionally a temporary material until PBR material
+	// resources are introduced in Milestone 3.
+
+	mesh::MeshSpecification pbrPreviewSpec(mesh::Primitive::Type::Triangles);
+	pbrPreviewSpec.setIndexedVertices(true);
+	auto pbrPreviewLayout = pbrPreviewSpec.createVertexBufferAttributeLayout(false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::HalfFloat, false);
+	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
+
+	auto pbrPreviewMaterialStream = new ProgrammaticMaterialStream(resourceMgr);
+	pbrPreviewMaterialStream->setProgram2d(false);
+	pbrPreviewMaterialStream->setMeshSpecification(pbrPreviewSpec);
+	pbrPreviewMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "PbrPreview.frag");
+	// PBR factors are authored in statue.modelspec.xml and are embedded in the
+	// regenerated statue.mppmodel. Do not override them in DemoSuite.
+
+	mpp::MaterialSpecification::PbrSurface pbrPreviewSurface;
+	pbrPreviewSurface.enabled = true;
+	pbrPreviewSurface.metallicFactor = 0.0f;
+	pbrPreviewSurface.roughnessFactor = 0.75f;
+	pbrPreviewMaterialStream->setPbrSurface(pbrPreviewSurface);
+
+	pbrPreviewMaterialStream->setTexture("TEX1", "Marble.Texture");
+	pbrPreviewMaterialStream->setTexture("TEX2", "Test.Texture");
+	pbrPreviewMaterialStream->setTexture("ENVIRONMENT", "PBR.Preview.Environment");
+	mPbrPreviewMaterial = resourceMgr->declareResource("PBR.Preview.Material", ResourceStreamPtr(pbrPreviewMaterialStream)).first;
+	mPbrPreviewMaterial->acquire(this);
+	mPbrPreviewMaterial->load();
+
 	mModels.push_back(mppScene->add3dModel(mStatue));
+	mPbrStatueUniforms = make_shared<UniformCollection>();
+	mPbrStatueUniforms->setUniform("PBR_BASE_COLOUR_FACTOR", mPbrBaseColour);
+	mPbrStatueUniforms->setUniform("PBR_METALLIC_FACTOR", mPbrMetallic);
+	mPbrStatueUniforms->setUniform("PBR_ROUGHNESS_FACTOR", mPbrRoughness);
+	mModels.back()->getParams()->setModelUniforms(mPbrStatueUniforms);
+	//mModels.back()->getParams()->setModelMaterial(mPbrPreviewMaterial);
 	//mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
 	// Batches
@@ -864,8 +963,27 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLightCount(1);
 	renderSystem->setLight1Colour(Colour::White);
 
-	// Pipelines
-	auto pipeline = renderSystem->getOrCreateRenderPipeline(getRenderPipelineName());
+	mpp::PbrLight pbrLight;
+	pbrLight.type = mpp::PbrLightType::Point;
+	pbrLight.position = glm::vec3(0.0f, 256.0f, 256.0f);
+	pbrLight.colour = glm::vec3(1.0f);
+	pbrLight.intensity = mPbrLightIntensity;
+	pbrLight.range = 1200.0f;
+	renderSystem->setPbrAmbientColour(Colour(0.03f, 0.03f, 0.03f));
+	renderSystem->setPbrLights({ pbrLight });
+
+	// PBR is an opt-in pipeline. Milestone 1 uses the statue as the visible
+	// HDR preview while later milestones replace its temporary shading path.
+	mpp::RenderPipelineOptions pbrOptions;
+	pbrOptions.mode = mpp::RenderPipelineMode::PbrForward;
+	mPbrEnvironment = make_shared<mpp::PbrEnvironment>();
+	mPbrEnvironment->irradianceMap = resourceMgr->getResource("PBR.Preview.Environment");
+	mPbrEnvironment->prefilteredSpecularMap = resourceMgr->getResource("PBR.Preview.Environment");
+	mPbrEnvironment->brdfIntegrationLut = resourceMgr->getResource("PBR.Preview.BrdfLut");
+	mPbrEnvironment->backgroundMap = resourceMgr->getResource("PBR.Preview.Environment");
+	pbrOptions.environment = mPbrEnvironment;
+	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
+	renderSystem->getOrCreateRenderPipeline("Default");
 }
 
 void ModelScene::teardownImGui()
@@ -884,6 +1002,7 @@ void ModelScene::teardownImpl()
 	mBox->release(this);
 	mTorus->release(this);
 	mStatue->release(this);
+	mPbrPreviewMaterial->release(this);
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
@@ -895,6 +1014,11 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 	camera->setClipDistances(0.1f, 1000.0f);
 
 	return shared_ptr<mpp::Camera>(camera);
+}
+
+string ModelScene::getRenderPipelineName() const
+{
+	return "PBR";
 }
 
 void ModelScene::toggle2dBatches(int batchId)
@@ -944,6 +1068,51 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			renderSystem->setGamma(gamma);
 		}
+
+		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : 1;
+		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR\0Default\0"))
+		{
+			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : "Default";
+		}
+		ImGui::TextUnformatted("PBR: Cook-Torrance HDR");
+		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
+		float exposure = pbrPipeline->getOptions().exposure;
+		if (ImGui::SliderFloat("PBR Exposure", &exposure, 0.0f, 8.0f))
+		{
+			pbrPipeline->setExposure(exposure);
+		}
+		int toneMapOperator = pbrPipeline->getOptions().toneMapOperator == mpp::PbrToneMapOperator::Aces ? 1 : 0;
+		if (ImGui::Combo("PBR Tone Map", &toneMapOperator, "Reinhard\0ACES\0"))
+		{
+			pbrPipeline->setToneMapOperator(toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces);
+		}
+		if (ImGui::ColorEdit4("PBR Base Colour", &mPbrBaseColour.x))
+		{
+			mPbrStatueUniforms->updateUniform("PBR_BASE_COLOUR_FACTOR", mPbrBaseColour);
+		}
+		if (ImGui::SliderFloat("PBR Metallic", &mPbrMetallic, 0.0f, 1.0f))
+		{
+			mPbrStatueUniforms->updateUniform("PBR_METALLIC_FACTOR", mPbrMetallic);
+		}
+		if (ImGui::SliderFloat("PBR Roughness", &mPbrRoughness, 0.04f, 1.0f))
+		{
+			mPbrStatueUniforms->updateUniform("PBR_ROUGHNESS_FACTOR", mPbrRoughness);
+		}
+		if (ImGui::SliderFloat("PBR Light Intensity", &mPbrLightIntensity, 0.0f, 250000.0f, "%.0f"))
+		{
+			// update() uploads the selected intensity into the dedicated PBR UBO.
+		}
+		if (ImGui::Combo("PBR Environment", &mPbrEnvironmentIndex, "Cool placeholder\0Warm placeholder\0"))
+		{
+			auto environmentMap = getResourceManager()->getResource(mPbrEnvironmentIndex == 0 ? "PBR.Preview.Environment" : "PBR.Preview.EnvironmentWarm");
+			mPbrEnvironment->irradianceMap = environmentMap;
+			mPbrEnvironment->prefilteredSpecularMap = environmentMap;
+			mPbrEnvironment->backgroundMap = environmentMap;
+			pbrPipeline->setPbrEnvironment(mPbrEnvironment);
+		}
+		ImGui::Text("Texture bindings: 8 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
+		ImGui::TextUnformatted("Base/emissive: sRGB; normal, AO and metallic-roughness: linear");
+		ImGui::Text("PBR lights: 1 / %zu; environment: selected precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
 	}
 	ImGui::End();
 }
@@ -985,7 +1154,7 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 	float speed = 1.5f;
 	sphereModel->rotateOrigin(-speed * frameTime, glm::vec3(0, 1, 0));
-	
+
 	// Rotate boxes
 	auto a1 = glm::rotateX(glm::vec3(0, 1, 0), mTotalTime);
 	auto a2 = glm::rotateZ(glm::vec3(0, 1, 0), mTotalTime);
@@ -999,12 +1168,19 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	// Rotate batch box
 	//auto& batchBoxModel = mModels[8];
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
-	// 
+	//
 	// Lighting
 	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
 	renderSystem->setLight1Position(mLightPosition);
-	
+	mpp::PbrLight pbrLight;
+	pbrLight.type = mpp::PbrLightType::Point;
+	pbrLight.position = mLightPosition;
+	pbrLight.colour = glm::vec3(1.0f);
+	pbrLight.intensity = mPbrLightIntensity;
+	pbrLight.range = 1200.0f;
+	renderSystem->setPbrLights({ pbrLight });
+
 	// Update scene
 	getScene()->update(frameTime);
 }
@@ -1034,7 +1210,8 @@ void ModelScene::render(mpp::RenderSystem* renderSystem, World const& world, Ren
 		params->setModelFlags(flags);
 	}
 
-	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), "Default");
+	//getScene()->setClearColour(mpp::Colour::Grey50);
+	renderSystem->renderScene(getScene(), getCamera(), glm::vec2(0.0f, 0.0f), mSelectedPipeline);
 
 	// ImGui
 	mImGuiRenderer->render(renderSystem);

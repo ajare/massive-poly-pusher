@@ -399,6 +399,11 @@ namespace mpp
 		}
 	}
 
+	void ProgrammaticTextureStream::setColourSpace(TextureColourSpace colourSpace, uint32_t quality)
+	{
+		mQualitySettings[quality].params.colourSpace = colourSpace;
+	}
+
 	void ProgrammaticTextureStream::enableMipMaps(bool enable, uint32_t quality)
 	{
 		mQualitySettings[quality].params.useMipmaps = enable;

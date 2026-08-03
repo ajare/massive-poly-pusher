@@ -21,6 +21,7 @@ namespace mpp
 		, lodMaxLevel(1000)
 		, lodBias(0.0f)
 		, maxAnisotropy(1.0f)
+		, colourSpace(TextureColourSpace::Linear)
 	{
 	}
 

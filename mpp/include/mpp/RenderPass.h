@@ -20,15 +20,19 @@ namespace mpp
 
 		RenderTargetPtr mTarget;
 
+		bool mPbrForward;
+
 	public:
 
-		explicit RenderPass(RenderSystem* renderSystem);
+		explicit RenderPass(RenderSystem* renderSystem, bool pbrForward = false);
 
 		virtual ~RenderPass();
 
 		RenderTargetPtr getRenderTarget();
 
 		void bindRenderTarget();
+
+		bool resize(size_t width, size_t height);
 
 		virtual void render(std::vector<SceneModel3dPtr> const& models, CameraPtr camera);
 	};

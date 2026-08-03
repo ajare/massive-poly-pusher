@@ -50,7 +50,7 @@ AssImpModelLoader::~AssImpModelLoader()
  * Add a vertex to list to be processed.
  *
  */
-void AssImpModelLoader::addBuildVertex(aiMesh const* mesh, int index, aiMaterial* material, vector<float>& vertices, bool hasPositions, bool hasNormals, bool hasTexCoords, bool hasColours)
+void AssImpModelLoader::addBuildVertex(aiMesh const* mesh, int index, aiMaterial* material, vector<float>& vertices, bool hasPositions, bool hasNormals, bool hasTangents, bool hasTexCoords, bool hasColours)
 {
 	// Positions
 	if (hasPositions)
@@ -66,6 +66,20 @@ void AssImpModelLoader::addBuildVertex(aiMesh const* mesh, int index, aiMaterial
 		vertices.push_back(mesh->mNormals[index].x);
 		vertices.push_back(mesh->mNormals[index].y);
 		vertices.push_back(mesh->mNormals[index].z);
+	}
+
+	// Tangent frame. The fourth component stores handedness for reconstructing
+	// the bitangent in the shader.
+	if (hasTangents)
+	{
+		auto const& tangent = mesh->mTangents[index];
+		auto const& bitangent = mesh->mBitangents[index];
+		auto const& normal = mesh->mNormals[index];
+		float handedness = (normal ^ tangent) * bitangent < 0.0f ? -1.0f : 1.0f;
+		vertices.push_back(tangent.x);
+		vertices.push_back(tangent.y);
+		vertices.push_back(tangent.z);
+		vertices.push_back(handedness);
 	}
 
 	// Texcoords
@@ -179,6 +193,23 @@ void AssImpModelLoader::createMeshDataStreams()
 	Importer importer;
 
 	unsigned int pFlags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_SplitLargeMeshes;
+	bool requiresTangents{ false };
+	for (size_t i = 0; i < mSpecification.getNumVertexBufferAttributeLayouts(); ++i)
+	{
+		auto const& layout = mSpecification.getVertexBufferAttributeLayout((uint32_t)i);
+		for (size_t j = 0; j < layout.getNumAttributes(); ++j)
+		{
+			if (layout.getAttribute(j).component == Vertex::Component::Tangent4)
+			{
+				requiresTangents = true;
+				break;
+			}
+		}
+	}
+	if (requiresTangents)
+	{
+		pFlags |= aiProcess_CalcTangentSpace;
+	}
 	if (mSpecification.verticesIndexed())
 	{
 		pFlags |= aiProcess_JoinIdenticalVertices;
@@ -246,6 +277,17 @@ void AssImpModelLoader::createMeshDataStreams()
 			vertexStride += 3;
 		}
 
+		// Tangents
+		bool hasTangents = requiresTangents && inputMesh->HasTangentsAndBitangents();
+		if (requiresTangents && !hasTangents)
+		{
+			throw exception("Model requires Tangent4 data, but Assimp could not generate a tangent frame.");
+		}
+		if (hasTangents)
+		{
+			vertexStride += 4;
+		}
+
 		// TexCoords
 		bool hasTexCoords = inputMesh->HasTextureCoords(0);
 		if (hasTexCoords)
@@ -280,7 +322,7 @@ void AssImpModelLoader::createMeshDataStreams()
 			// Copy the vertex data straight.
 			for (uint32_t k = 0; k < inputMesh->mNumVertices; ++k)
 			{
-				addBuildVertex(inputMesh, k, material, vertices, hasPositions, hasNormals, hasTexCoords, hasColours);
+				addBuildVertex(inputMesh, k, material, vertices, hasPositions, hasNormals, hasTangents, hasTexCoords, hasColours);
 			}
 
 			// Copy over index data
@@ -299,7 +341,7 @@ void AssImpModelLoader::createMeshDataStreams()
 
 				for (int l = 0; l < 3; ++l)
 				{
-					addBuildVertex(inputMesh, face.mIndices[l], material, vertices, hasPositions, hasNormals, hasTexCoords, hasColours);
+					addBuildVertex(inputMesh, face.mIndices[l], material, vertices, hasPositions, hasNormals, hasTangents, hasTexCoords, hasColours);
 				}
 			}
 		}
@@ -337,6 +379,19 @@ void AssImpModelLoader::createMeshDataStreams()
 
 			dataStreamDef->componentStreams[Vertex::Component::Normal3] = vertexStreamDef;
 			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 3;
+		}
+
+		if (hasTangents)
+		{
+			VertexDataStreamDefinition vertexStreamDef;
+
+			vertexStreamDef.data = (int8_t*)dataPtr;
+			vertexStreamDef.dataType = Vertex::DataType::Float;
+			vertexStreamDef.offset = vertexOffset;
+			vertexStreamDef.stride = vertexStride * Vertex::getDataTypeSize(vertexStreamDef.dataType);
+
+			dataStreamDef->componentStreams[Vertex::Component::Tangent4] = vertexStreamDef;
+			vertexOffset += mpp::mesh::Vertex::getDataTypeSize(vertexStreamDef.dataType) * 4;
 		}
 
 		if (hasTexCoords)

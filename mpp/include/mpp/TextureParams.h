@@ -20,6 +20,12 @@ namespace mpp
 		Float
 	};
 
+	enum class TextureColourSpace
+	{
+		Linear,
+		Srgb
+	};
+
 	struct _MPPAPI TextureParams
 	{
 		enum class MinFilter
@@ -56,6 +62,7 @@ namespace mpp
 		int32_t lodBaseLevel, lodMaxLevel;
 		float lodBias;
 		float maxAnisotropy;
+		TextureColourSpace colourSpace;
 
 	public:
 

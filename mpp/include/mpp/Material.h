@@ -6,6 +6,7 @@
 #include "mpp/Texture.h"
 #include "mpp/Program.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/MaterialSpecification.h"
 
 namespace mpp
 {
@@ -14,6 +15,8 @@ namespace mpp
 		ResourcePtr mProgram;
 
 		UniformCollection mUniforms;
+
+		MaterialSpecification::PbrSurface mPbrSurface;
 
 		std::vector<ResourcePtr> mTextures;
 
@@ -34,6 +37,10 @@ namespace mpp
 		~Material();
 
 		ResourcePtr getProgram();
+
+		bool isPbr() const;
+
+		MaterialSpecification::PbrSurface const& getPbrSurface() const;
 
 		int getNumTextures() const;
 
