@@ -57,6 +57,20 @@ namespace mpp
 		return mPosition;
 	}
 
+	void Camera::setLookAt(vec3 const& position, vec3 const& target, vec3 const& up)
+	{
+		vec3 direction = target - position;
+		if (dot(direction, direction) < 0.000001f || dot(up, up) < 0.000001f)
+		{
+			return;
+		}
+		mPosition = position;
+		mDirection = normalize(direction);
+		mUp = normalize(up);
+		mYaw = mPitch = mRoll = 0.0f;
+		mDirty = false;
+	}
+
 	vec3 const& Camera::getDirection() const
 	{
 		updateAngles();

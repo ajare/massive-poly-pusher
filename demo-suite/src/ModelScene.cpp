@@ -1172,11 +1172,16 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 	updateImGui(frameTime, renderSystem);
 
-	// Rotate all models
-	for (auto model : mModels)
-	{
-		model->rotateSelf(2 * frameTime, glm::vec3(0, 1, 0));
-	}
+	// Keep scene geometry stationary for material/shadow inspection and orbit
+	// the camera slowly around the statue instead.
+	mCameraOrbitAngle += frameTime * 0.12f;
+	const glm::vec3 orbitTarget(0.0f, 80.0f, 0.0f);
+	const float orbitRadius = 550.0f;
+	const glm::vec3 orbitPosition(
+		sinf(mCameraOrbitAngle) * orbitRadius,
+		150.0f,
+		cosf(mCameraOrbitAngle) * orbitRadius);
+	getCamera()->setLookAt(orbitPosition, orbitTarget);
 
 	// Scale cube
 	/*
