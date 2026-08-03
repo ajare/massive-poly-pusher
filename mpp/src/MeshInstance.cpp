@@ -16,6 +16,7 @@ namespace mpp
 		, mwMesh(nullptr)
 		, mRender(true)
 		, mWireframe(false)
+		, mCullBackFaces(false)
 		, mBlend(false)
 		, mSortTransparent(false)
 		, mInstanceCount(0)
@@ -35,6 +36,7 @@ namespace mpp
 		mwMesh = mesh;
 		mRender = true;
 		mWireframe = false;
+		mCullBackFaces = false;
 		mBlend = false;
 		mSortTransparent = false;
 		mInstanceCount = 1;
@@ -88,6 +90,7 @@ namespace mpp
 		mwMesh = nullptr;
 		mRender = true;
 		mWireframe = false;
+		mCullBackFaces = false;
 		mBlend = false;
 		mSortTransparent = false;
 		mInstanceCount = 0;
@@ -145,6 +148,16 @@ namespace mpp
 	bool MeshInstance::wireframe() const
 	{
 		return mWireframe;
+	}
+
+	void MeshInstance::cullBackFaces(bool cullBackFaces)
+	{
+		mCullBackFaces = cullBackFaces;
+	}
+
+	bool MeshInstance::cullBackFaces() const
+	{
+		return mCullBackFaces;
 	}
 
 	/*

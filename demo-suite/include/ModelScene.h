@@ -49,6 +49,7 @@ private:
 	glm::vec3 mLightPosition;
 
 	std::vector<mpp::SceneModel3dPtr> mModels;
+	std::vector<mpp::SceneModel3dPtr> mShadowWalls;
 	mpp::SceneModel3dPtr mLightMarker;
 
 	std::array<Batch2d, kNum2dBatches> m2dBatches;

@@ -27,6 +27,8 @@ namespace mpp
 
 		bool mWireframe;
 
+		bool mCullBackFaces;
+
 		bool mBlend;
 
 		// Only PBR Blend materials need depth ordering. Legacy callers retain
@@ -86,6 +88,10 @@ namespace mpp
 		void wireframe(bool wireframe);
 
 		bool wireframe() const;
+
+		void cullBackFaces(bool cullBackFaces);
+
+		bool cullBackFaces() const;
 
 		void blend(bool blend);
 

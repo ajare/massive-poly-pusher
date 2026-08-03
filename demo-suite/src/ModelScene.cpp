@@ -845,6 +845,24 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mGrid->load();
 
 	mModels.push_back(mppScene->add3dModel(mGrid));
+	// The floor and walls receive shadows but do not contribute depth as casters.
+	mModels.back()->getParams()->setModelFlags(mpp::ModelRenderParams::Flag_Visible);
+
+	// Four inward-facing single-plane walls surround the statue. They reuse the
+	// legacy-lit grid material so PBR casters can visibly shadow non-PBR receivers.
+	auto addShadowWall = [&](glm::vec3 const& position, float angle, glm::vec3 const& axis)
+	{
+		auto wall = mppScene->add3dModel(mGrid);
+		wall->getParams()->setModelFlags(mpp::ModelRenderParams::Flag_Visible | mpp::ModelRenderParams::Flag_CullBackFaces);
+		wall->translate(position);
+		wall->rotateSelf(angle, axis);
+		mShadowWalls.push_back(wall);
+	};
+	constexpr float halfPi = 1.57079632679f;
+	addShadowWall(glm::vec3(0.0f, 256.0f, -256.0f), halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
+	addShadowWall(glm::vec3(0.0f, 256.0f, 256.0f), -halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
+	addShadowWall(glm::vec3(-256.0f, 256.0f, 0.0f), -halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
+	addShadowWall(glm::vec3(256.0f, 256.0f, 0.0f), halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
