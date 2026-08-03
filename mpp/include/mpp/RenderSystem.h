@@ -149,6 +149,8 @@ namespace mpp
 			std::shared_ptr<UniformBuffer> frameBuffer;
 		};
 		std::map<std::string, ShadowDomainState> mShadowDomains;
+		RenderTargetPtr mActiveShadowDepthTarget;
+		std::shared_ptr<UniformBuffer> mShadowDisabledFrameBuffer;
 
 		ProjectionType mProjectionType;
 
@@ -305,6 +307,8 @@ namespace mpp
 
 		void createShadowDomainResources(std::string const& name, ShadowDomainState& domain);
 
+		void createShadowDisabledFrameBuffer();
+
 		void addCoreResource(ResourcePtr resource, bool load);
 
 		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
@@ -444,6 +448,8 @@ namespace mpp
 		void ensureShadowDomainResources(std::string const& name);
 
 		void renderShadowDomain(std::string const& name, std::vector<SceneModel3dPtr> const& models);
+
+		void setActiveShadowDomain(std::string const& name);
 
 		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
 

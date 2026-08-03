@@ -579,6 +579,7 @@ namespace mpp
 			mShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_shadow_depth__", ResourceStreamPtr(ps)).first;
 			addCoreResource(mShadowDepthProgram, true);
 		}
+		createShadowDisabledFrameBuffer();
 
 		// 2d fullscreen program
 		{
@@ -2121,7 +2122,22 @@ namespace mpp
 
 	void RenderSystem::destroyShadowDomains()
 	{
+		mActiveShadowDepthTarget.reset();
+		mShadowDisabledFrameBuffer.reset();
 		mShadowDomains.clear();
+	}
+
+	void RenderSystem::createShadowDisabledFrameBuffer()
+	{
+		if (mShadowDisabledFrameBuffer)
+		{
+			return;
+		}
+		ShadowFrameData frame;
+		shared_ptr<const int8_t> frameBytes(new int8_t[sizeof(frame)](), [](int8_t* p) { delete[] p; });
+		memcpy(const_cast<int8_t*>(frameBytes.get()), &frame, sizeof(frame));
+		mShadowDisabledFrameBuffer = make_shared<UniformBuffer>(this, frameBytes, sizeof(frame), 2);
+		mShadowDisabledFrameBuffer->load();
 	}
 
 	void RenderSystem::createShadowDomainResources(string const& name, ShadowDomainState& domain)
@@ -2327,6 +2343,31 @@ namespace mpp
 		GL_CHECK(glDepthMask(depthWriteEnabled));
 		GL_CHECK(glUseProgram(0));
 		mActiveProgram.reset();
+	}
+
+	void RenderSystem::setActiveShadowDomain(string const& name)
+	{
+		mActiveShadowDepthTarget.reset();
+		if (name.empty())
+		{
+			if (mShadowDisabledFrameBuffer)
+			{
+				mShadowDisabledFrameBuffer->activate();
+			}
+			return;
+		}
+
+		ensureShadowDomainResources(name);
+		auto& domain = mShadowDomains.at(name);
+		if (domain.options.enabled)
+		{
+			domain.frameBuffer->activate();
+			mActiveShadowDepthTarget = domain.depthTarget;
+		}
+		else if (mShadowDisabledFrameBuffer)
+		{
+			mShadowDisabledFrameBuffer->activate();
+		}
 	}
 
 	void RenderSystem::setActivePbrEnvironment(PbrEnvironmentPtr environment)
@@ -3121,6 +3162,13 @@ namespace mpp
 			// maps without making them material-owned texture slots.
 			auto program = static_cast<Program*>(material->getProgram().get());
 			auto const& samplerName = program->getSamplerName((int)i);
+			if (samplerName == "SHADOW_MAP" && mActiveShadowDepthTarget)
+			{
+				static_cast<RenderTexture*>(mActiveShadowDepthTarget.get())->bindDepth((uint32_t)i);
+				(*currentTextureKeys)[i] = (uint64_t)(uintptr_t)mActiveShadowDepthTarget.get();
+				mRenderInfo.textureSwitches++;
+				continue;
+			}
 			auto pipelineSampler = mActivePipelineSamplerOverrides.find(samplerName);
 			if (pipelineSampler != mActivePipelineSamplerOverrides.end() && pipelineSampler->second)
 			{

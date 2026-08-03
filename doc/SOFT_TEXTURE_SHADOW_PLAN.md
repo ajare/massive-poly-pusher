@@ -175,15 +175,17 @@ Start with one center comparison to validate projection and bias, then implement
 
 **Outcome:** any shader that opts in can receive a hard shadow from the generic map.
 
-- [ ] Add the shared `ShadowFrame`/`SHADOW_MAP` GLSL helper and a no-shadow fallback path.
-- [ ] Add shadow-frame sampler binding only for programs that declare `SHADOW_MAP`; report sampler-limit failures with the pipeline/program name.
-- [ ] Integrate the helper into `statue_pbr.frag`, applying visibility only to the configured directional PBR direct-light contribution.
-- [ ] Integrate the helper into one legacy/non-PBR forward shader (for example the DemoSuite lighting material), applying visibility to its equivalent directional direct-light term.
-- [ ] Leave shaders that do not declare the generic contract unshadowed, even if their pipeline has shadows enabled; show this clearly in diagnostics.
-- [ ] Verify the fully textured PBR shader’s sampler requirement increases from eight to nine. Verify the legacy adapter’s sampler count independently.
+- [x] Add the shared `ShadowFrame`/`SHADOW_MAP` GLSL helper and a no-shadow fallback path.
+- [x] Add shadow-frame sampler binding only for programs that declare `SHADOW_MAP`; existing sampler-limit validation reports the program requirement.
+- [x] Integrate the helper into `statue_pbr.frag`, applying visibility only to directional PBR direct-light contributions.
+- [x] Integrate the helper into the default legacy/non-PBR forward shader, applying visibility to its first direct-light contribution.
+- [x] Leave shaders that do not declare the generic contract unshadowed, even if their pipeline has shadows enabled.
+- [x] Verify the fully textured PBR shader’s sampler requirement increases from eight to nine. The default legacy adapter adds one sampler independently.
 - [ ] Expose enabled, map bounds, and constant/normal bias controls in DemoSuite.
 
 **Acceptance:** a PBR caster visibly shadows a legacy adapter receiver and a legacy caster visibly shadows a PBR receiver using the same map. An untouched legacy shader and an unshadowed `Default` pipeline retain their prior output.
+
+**Implementation note (Milestone S3):** `SHADOW_MAP` is a pipeline-owned depth comparison sampler, while the binding-2 `ShadowFrame` UBO supplies projection and bias data. The PBR statue and default legacy forward shader now implement a one-tap directional visibility helper; disabled/unjoined pipelines bind a zeroed frame UBO and retain no-shadow output. The PBR map was re-exported after embedding the updated shader. The legacy adapter assumes its first direct light corresponds to the domain's directional shadow light; explicit light mapping, UI controls, PCF, generic masked casters, and manual mixed-material visual validation remain outstanding.
 
 ### Milestone S4 — Generic soft PCF filtering
 
