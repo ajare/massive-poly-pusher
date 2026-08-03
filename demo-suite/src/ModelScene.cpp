@@ -920,6 +920,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mLightMarker->translate(mLightPosition);
 	mLightMarker->scale(glm::vec3(0.5f));
 
+	// A legacy-lit cube behind the PBR statue exercises bidirectional
+	// mixed-material casting/receiving through the shared shadow domain.
+	mShadowCube = mppScene->add3dModel(mBox);
+	mShadowCube->translate(glm::vec3(0.0f, 32.0f, -160.0f));
+	mShadowCube->scale(glm::vec3(2.0f));
+
 	// Load torus
 	createTorusModel(options);
 
