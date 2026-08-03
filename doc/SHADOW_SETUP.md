@@ -29,6 +29,14 @@ An empty `RenderPipelineOptions::shadowDomain` is the compatibility default: it 
 
 The generic shadow direction must match the directional light contribution that a receiving shader shadows. DemoSuite uses the same direction for its PBR directional light and `MainDirectionalShadow`.
 
+Render the scene through a pipeline that joined the domain:
+
+```cpp
+renderSystem->renderScene(scene, camera, {}, "PBR");
+```
+
+To share one map between multiple colour pipelines, configure one domain name and assign that exact name to each participating `RenderPipelineOptions::shadowDomain`. Pipelines with an empty domain remain completely unshadowed.
+
 ## Shader contract
 
 A receiving shader must declare:
@@ -49,6 +57,27 @@ Transform world position by `LIGHT_VIEW_PROJECTION`, remap to `[0, 1]`, and samp
 
 `SHADOW_MAP` is pipeline-owned. Do not add it to a ModelSpec texture list. The material system supplies a no-texture fallback outside a shadow domain and the renderer replaces it with the domain depth texture while shadowing is active.
 
+For a ModelSpec PBR shader, add the `ShadowFrame`/`SHADOW_MAP` contract to the fragment shader, apply visibility only to the chosen directional direct-light term, and re-export the `.mppmodel`. `demo-suite/resources/res/statue/statue_pbr.frag` is the reference. A custom non-PBR shader must implement the same contract to receive shadows; `FragmentShader3dTemplate` is the legacy reference.
+
+## Configure casters and one-sided receivers
+
+Shadow casting is model-render state, independent of whether the material is PBR:
+
+```cpp
+// Default flags are visible and cast shadows.
+params->setModelFlags(mpp::ModelRenderParams::Flag_Visible |
+                      mpp::ModelRenderParams::Flag_CastShadows);
+
+// A visible marker/receiver that must not cast.
+params->setModelFlags(mpp::ModelRenderParams::Flag_Visible);
+
+// A single-plane wall that shows only its front face.
+params->setModelFlags(mpp::ModelRenderParams::Flag_Visible |
+                      mpp::ModelRenderParams::Flag_CullBackFaces);
+```
+
+`Flag_CullBackFaces` affects colour rendering only. Orient a one-sided wall so its front face points toward the intended viewer/receiver side. DemoSuite places the camera inside the inward-facing walls; viewing their exterior intentionally culls them.
+
 ## Casting behaviour and limitations
 
 - Visible opaque PBR, legacy, and custom meshes cast into the domain depth pass.
@@ -65,4 +94,23 @@ Transform world position by `LIGHT_VIEW_PROJECTION`, remap to `[0, 1]`, and samp
 - **Filter radius:** PCF radius in shadow-map texels. Larger values soften edges and can increase light leakage.
 - **Resolution:** 512 is a fast preview; 1024 is the DemoSuite default; 2048 improves detail at a higher memory/fill cost.
 
-DemoSuite exposes these controls for `MainDirectionalShadow`. The visible statue is PBR; its flat grid receiver uses the legacy adapter, exercising mixed-material shadowing.
+DemoSuite exposes these controls for `MainDirectionalShadow`. The visible statue is PBR; its floor, walls, and rear cube use the legacy adapter, exercising mixed-material shadowing. See [Shadow Validation](SHADOW_VALIDATION.md) for the manual checks and captures.
+
+## Possible improvements
+
+| Improvement | What it achieves | Main trade-off |
+|---|---|---|
+| Tight light-space fit and texel snapping | Fits the directional orthographic projection to visible casters/receivers and snaps it to depth-map texels, improving effective resolution and reducing shimmer while the camera moves. | More camera/frustum logic; must handle scene changes robustly. |
+| Cascaded shadow maps | Uses several directional maps at increasing ranges, preserving nearby detail in large scenes without an enormous single map. | Multiple depth passes/maps and cascade-transition tuning. |
+| Alpha-mask caster metadata | Lets foliage, fences, decals, and cut-out PBR materials discard transparent texels in the depth pass instead of casting solid silhouettes. | Requires serialized generic caster metadata and a mask-aware depth shader. |
+| Point and spot shadow maps | Adds omnidirectional point-light cube shadows and perspective spot-light shadows. | Point lights require six faces per update; more light/shader management. |
+| PCSS/contact hardening | Makes penumbrae widen as receiver distance from the caster increases, approximating finite area lights. | More depth samples, more noise/artifacts, higher GPU cost. |
+| Poisson/rotated PCF or temporal filtering | Reduces the visible 3×3 PCF grid and permits higher-quality soft edges. | Can introduce temporal noise/shimmer and needs careful filtering. |
+| VSM/EVSM | Enables wide, efficiently filtered soft shadows using moment textures. | Light bleeding, floating-point targets, blur passes, and extra memory. |
+| Receiver-plane depth bias | Derives bias from depth derivatives, reducing acne/peter-panning compared with only constant/normal bias. | Sensitive to derivatives and difficult geometry; needs fallback tuning. |
+| Shadow-map preview and diagnostics | Displays the depth map, bounds, active caster counts, and receiver capability to make projection/bias problems obvious. | Debug UI and depth-to-display conversion work. |
+| Static shadow caching | Reuses a domain map until a caster, light, or relevant transform changes. | Invalidation tracking; animated scenes still update every frame. |
+| Per-material receive/cast policies | Supports unshadowed emissive markers, receive-only decals, and explicit custom shader policies without relying solely on model flags. | Extends material contracts and serialization. |
+| Resolution/quality scaling | Adapts map size and PCF preset to device performance or screen size. | Variable quality and additional profiling/quality policy. |
+
+The detailed staged roadmap, including deferred point lights, cascades, PCSS, and caching, is in [Generic Soft Texture Shadow Implementation Plan](SOFT_TEXTURE_SHADOW_PLAN.md).
