@@ -2,6 +2,13 @@
 
 #include <vector>
 #include <memory>
+#include <string>
+#include <map>
+
+#pragma warning(push)
+#pragma warning(disable : 4201)
+#include <glm/vec3.hpp>
+#pragma warning(pop)
 
 #include "mpp/Config.h"
 #include "mpp/RenderPass.h"
@@ -34,12 +41,48 @@ namespace mpp
 		Aces
 	};
 
+	enum class ShadowLightType
+	{
+		Directional
+	};
+
+	// Shadow lights deliberately do not reuse PbrLight or the legacy light
+	// API: a named shadow domain can be shared by arbitrary forward pipelines.
+	struct _MPPAPI ShadowLight
+	{
+		ShadowLightType type{ ShadowLightType::Directional };
+		glm::vec3 direction{ 0.0f, -1.0f, 0.0f };
+		glm::vec3 focusPoint{ 0.0f };
+	};
+
+	enum class ShadowFilterMode
+	{
+		Hard,
+		Pcf3x3
+	};
+
+	struct _MPPAPI ShadowOptions
+	{
+		bool enabled{ false };
+		ShadowLight light;
+		size_t resolution{ 2048 };
+		float orthoHalfWidth{ 450.0f };
+		float nearPlane{ 1.0f };
+		float farPlane{ 1800.0f };
+		float constantBias{ 0.0008f };
+		float normalBias{ 0.0025f };
+		float filterRadiusTexels{ 1.0f };
+		ShadowFilterMode filterMode{ ShadowFilterMode::Pcf3x3 };
+	};
+
 	struct _MPPAPI RenderPipelineOptions
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
 		float exposure{ 1.0f };
 		PbrToneMapOperator toneMapOperator{ PbrToneMapOperator::Aces };
 		PbrEnvironmentPtr environment;
+		// Empty means this pipeline is not a shadow-domain participant.
+		std::string shadowDomain;
 	};
 
 	class _MPPAPI RenderPipeline
@@ -69,6 +112,8 @@ namespace mpp
 		void setToneMapOperator(PbrToneMapOperator toneMapOperator);
 
 		void setPbrEnvironment(PbrEnvironmentPtr environment);
+
+		void setShadowDomain(std::string const& shadowDomain);
 
 		RenderTargetPtr getOutputRenderTarget();
 

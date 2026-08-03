@@ -17,10 +17,19 @@ namespace mpp
 		DepthStencilTexture
 	};
 
+	// Depth textures need sampler state even when the render target has no
+	// colour attachment, as is the case for a shadow map.
+	struct _MPPAPI RenderTextureDepthParams
+	{
+		TextureParams params;
+		bool compareRefToTexture{ false };
+	};
+
 	struct _MPPAPI RenderTextureOptions
 	{
 		size_t numAttachments{ 1 };
 		RenderTextureDepthAttachment depthAttachment{ RenderTextureDepthAttachment::None };
+		RenderTextureDepthParams depthParams;
 		TextureInternalType colourType{ TextureInternalType::UnsignedInteger };
 		bool colourNormalised{ true };
 		size_t colourBitSize{ 8 };
@@ -46,6 +55,7 @@ namespace mpp
 		std::vector<QualitySetting> mQualitySettings;
 
 		RenderTextureDepthAttachment mDepthAttachment;
+		RenderTextureDepthParams mDepthParams;
 
 		size_t mNumAttachments;
 
@@ -80,6 +90,8 @@ namespace mpp
 		bool useDepthBuffer() const;
 
 		RenderTextureDepthAttachment getDepthAttachment() const;
+
+		RenderTextureDepthParams const& getDepthParams() const;
 
 		size_t getNumAttachments() const;
 

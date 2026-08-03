@@ -7,6 +7,9 @@
 
 #include <cassert>
 #include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <cstddef>
 #include <string>
 #include <regex>
 
@@ -45,6 +48,19 @@ using namespace std;
 
 namespace mpp
 {
+	namespace
+	{
+		struct alignas(16) ShadowFrameData
+		{
+			glm::mat4 lightViewProjection{ 1.0f };
+			glm::vec4 mapTexelSizeAndRadius{ 0.0f };
+			glm::vec4 biasAndEnabled{ 0.0f };
+		};
+		static_assert(offsetof(ShadowFrameData, lightViewProjection) == 0);
+		static_assert(offsetof(ShadowFrameData, mapTexelSizeAndRadius) == 64);
+		static_assert(offsetof(ShadowFrameData, biasAndEnabled) == 80);
+		static_assert(sizeof(ShadowFrameData) == 96);
+	}
 
 	/*
 	 * Constructor.
@@ -103,6 +119,7 @@ namespace mpp
 		delete mInternalFont;
 		destroyLightsData();
 		destroyPbrLightsData();
+		destroyShadowDomains();
 
 		// Deleting the above may have freed up more resources, so sweep once more
 		for (auto res : mCoreResources)
@@ -544,6 +561,25 @@ namespace mpp
 			mDefaultProgram3d = resourceMgr->declareResource("__mpp_p3d_tris_p3n3t2c4__", ResourceStreamPtr(ps)).first;
 			addCoreResource(mDefaultProgram3d, true);
 		}
+
+		// Generic shadow caster program: position is the only material-independent
+		// vertex requirement, so PBR and legacy meshes use the same depth pass.
+		{
+			mesh::MeshSpecification meshSpec;
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+
+			auto parser = make_shared<program::Parser>();
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderShadowDepthTemplate);
+			parser->setFragmentSource(FragmentShaderShadowDepthTemplate);
+
+			auto ps = new ProgrammaticProgramStream(resourceMgr);
+			ps->setParser(parser);
+			mShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_shadow_depth__", ResourceStreamPtr(ps)).first;
+			addCoreResource(mShadowDepthProgram, true);
+		}
+		createShadowDisabledFrameBuffer();
 
 		// 2d fullscreen program
 		{
@@ -1196,6 +1232,7 @@ namespace mpp
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
 		rtStream->setDepthAttachment(options.depthAttachment);
+		rtStream->setDepthParams(options.depthParams);
 		rtStream->setNumAttachments(options.numAttachments);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
@@ -2083,6 +2120,267 @@ namespace mpp
 		mPbrLightsBuffer->mapBufferData();
 	}
 
+	void RenderSystem::destroyShadowDomains()
+	{
+		mActiveShadowDepthTarget.reset();
+		mShadowDisabledFrameBuffer.reset();
+		mShadowDomains.clear();
+	}
+
+	void RenderSystem::createShadowDisabledFrameBuffer()
+	{
+		if (mShadowDisabledFrameBuffer)
+		{
+			return;
+		}
+		ShadowFrameData frame;
+		shared_ptr<const int8_t> frameBytes(new int8_t[sizeof(frame)](), [](int8_t* p) { delete[] p; });
+		memcpy(const_cast<int8_t*>(frameBytes.get()), &frame, sizeof(frame));
+		mShadowDisabledFrameBuffer = make_shared<UniformBuffer>(this, frameBytes, sizeof(frame), 2);
+		mShadowDisabledFrameBuffer->load();
+	}
+
+	void RenderSystem::createShadowDomainResources(string const& name, ShadowDomainState& domain)
+	{
+		if (!domain.options.enabled || domain.depthTarget)
+		{
+			return;
+		}
+		if (!mResourceMgr)
+		{
+			THROW_MPP("Cannot create a shadow domain before core resources are available.", __LINE__, __FILE__, __func__);
+		}
+
+		RenderTextureOptions targetOptions;
+		targetOptions.numAttachments = 0;
+		targetOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
+		targetOptions.depthParams.params.minFilter = GL_LINEAR;
+		targetOptions.depthParams.params.magFilter = GL_LINEAR;
+		targetOptions.depthParams.params.wrap = GL_CLAMP_TO_BORDER;
+		targetOptions.depthParams.compareRefToTexture = true;
+		domain.depthTarget = createRenderTexture(
+			"ShadowDomain." + name + ".Depth",
+			domain.options.resolution,
+			domain.options.resolution,
+			targetOptions);
+
+		// std140: mat4 (64 bytes), then two vec4 values. Keep this independent
+		// of PBR lighting so legacy/custom shaders can use the same frame data.
+		ShadowFrameData frame;
+		const float texelSize = 1.0f / (float)domain.options.resolution;
+		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
+			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
+		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+
+		shared_ptr<const int8_t> frameBytes(new int8_t[sizeof(frame)](), [](int8_t* p) { delete[] p; });
+		memcpy(const_cast<int8_t*>(frameBytes.get()), &frame, sizeof(frame));
+		domain.frameBuffer = make_shared<UniformBuffer>(this, frameBytes, sizeof(frame), 2);
+		domain.frameBuffer->load();
+	}
+
+	void RenderSystem::configureShadowDomain(string const& name, ShadowOptions const& options)
+	{
+		if (name.empty())
+		{
+			THROW_MPP("Shadow domain name cannot be empty.", __LINE__, __FILE__, __func__);
+		}
+		if (options.enabled)
+		{
+			if (options.resolution == 0 || options.orthoHalfWidth <= 0.0f || options.nearPlane < 0.0f ||
+				options.farPlane <= options.nearPlane || options.constantBias < 0.0f || options.normalBias < 0.0f ||
+				options.filterRadiusTexels < 0.0f || !isfinite(options.orthoHalfWidth) ||
+				!isfinite(options.nearPlane) || !isfinite(options.farPlane) ||
+				!isfinite(options.constantBias) || !isfinite(options.normalBias) || !isfinite(options.filterRadiusTexels) ||
+				!isfinite(options.light.direction.x) || !isfinite(options.light.direction.y) || !isfinite(options.light.direction.z) ||
+				glm::dot(options.light.direction, options.light.direction) < 0.000001f)
+			{
+				THROW_MPP("Invalid shadow domain options.", __LINE__, __FILE__, __func__);
+			}
+		}
+
+		auto& domain = mShadowDomains[name];
+		// Direction, projection bounds, bias, and filter values are uploaded on
+		// the next shadow pass. Only a resolution or enabled-state change needs
+		// to discard GL resources, which keeps interactive light movement cheap.
+		const bool recreateResources = domain.depthTarget &&
+			(!options.enabled || domain.options.resolution != options.resolution);
+		if (recreateResources)
+		{
+			domain.depthTarget.reset();
+			domain.frameBuffer.reset();
+		}
+		domain.options = options;
+	}
+
+	bool RenderSystem::hasShadowDomain(string const& name) const
+	{
+		return mShadowDomains.find(name) != mShadowDomains.end();
+	}
+
+	ShadowOptions const& RenderSystem::getShadowDomainOptions(string const& name) const
+	{
+		auto it = mShadowDomains.find(name);
+		if (it == mShadowDomains.end())
+		{
+			THROW_MPP("Unknown shadow domain.", __LINE__, __FILE__, __func__);
+		}
+		return it->second.options;
+	}
+
+	RenderTargetPtr RenderSystem::getShadowDomainDepthTarget(string const& name)
+	{
+		ensureShadowDomainResources(name);
+		return mShadowDomains.at(name).depthTarget;
+	}
+
+	void RenderSystem::ensureShadowDomainResources(string const& name)
+	{
+		auto it = mShadowDomains.find(name);
+		if (it == mShadowDomains.end())
+		{
+			THROW_MPP("Pipeline references an unknown shadow domain.", __LINE__, __FILE__, __func__);
+		}
+		createShadowDomainResources(name, it->second);
+	}
+
+	void RenderSystem::renderShadowDomain(string const& name, vector<SceneModel3dPtr> const& models)
+	{
+		ensureShadowDomainResources(name);
+		auto& domain = mShadowDomains.at(name);
+		if (!domain.options.enabled)
+		{
+			return;
+		}
+
+		auto depthTarget = domain.depthTarget;
+		auto shadowProgram = static_cast<Program*>(mShadowDepthProgram.get());
+		glm::vec3 direction = glm::normalize(domain.options.light.direction);
+		glm::vec3 up = abs(direction.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+		float lightDistance = (domain.options.farPlane - domain.options.nearPlane) * 0.5f;
+		glm::mat4 lightView = glm::lookAt(domain.options.light.focusPoint - direction * lightDistance, domain.options.light.focusPoint, up);
+		float extent = domain.options.orthoHalfWidth;
+		glm::mat4 lightProjection = glm::ortho(-extent, extent, -extent, extent, domain.options.nearPlane, domain.options.farPlane);
+		glm::mat4 lightViewProjection = lightProjection * lightView;
+
+		ShadowFrameData frame;
+		frame.lightViewProjection = lightViewProjection;
+		float texelSize = 1.0f / (float)domain.options.resolution;
+		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
+			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
+		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+		auto& frameBytes = domain.frameBuffer->getBufferData();
+		memcpy(frameBytes.data(), &frame, sizeof(frame));
+		domain.frameBuffer->mapBufferData();
+
+		GLint previousViewport[4];
+		GLint previousCullMode;
+		GLboolean depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+		GLboolean blendEnabled = glIsEnabled(GL_BLEND);
+		GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+		GLboolean polygonOffsetEnabled = glIsEnabled(GL_POLYGON_OFFSET_FILL);
+		GLboolean depthWriteEnabled;
+		GLfloat previousPolygonOffsetFactor, previousPolygonOffsetUnits;
+		GL_CHECK(glGetIntegerv(GL_VIEWPORT, previousViewport));
+		GL_CHECK(glGetIntegerv(GL_CULL_FACE_MODE, &previousCullMode));
+		GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteEnabled));
+		GL_CHECK(glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &previousPolygonOffsetFactor));
+		GL_CHECK(glGetFloatv(GL_POLYGON_OFFSET_UNITS, &previousPolygonOffsetUnits));
+
+		pushRenderTarget(depthTarget);
+		GL_CHECK(glViewport(0, 0, (GLsizei)depthTarget->getWidth(), (GLsizei)depthTarget->getHeight()));
+		GL_CHECK(glEnable(GL_DEPTH_TEST));
+		GL_CHECK(glDepthMask(GL_TRUE));
+		GL_CHECK(glDisable(GL_BLEND));
+		GL_CHECK(glEnable(GL_CULL_FACE));
+		GL_CHECK(glCullFace(GL_FRONT));
+		GL_CHECK(glEnable(GL_POLYGON_OFFSET_FILL));
+		GL_CHECK(glPolygonOffset(2.0f, 4.0f));
+		GL_CHECK(glClearDepth(1.0));
+		GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
+
+		setUsedProgram(mShadowDepthProgram);
+		for (auto const& sceneModel : models)
+		{
+			auto params = sceneModel->getParams();
+			auto const& meshParams = params->getMeshParams();
+			auto defaultParams = meshParams.find("");
+			auto model = static_cast<Model*>(sceneModel->getModel().get());
+			glm::mat4 modelLightProjection = lightViewProjection * sceneModel->getTransform();
+
+			for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+			{
+				auto mesh = model->getMesh(meshIndex);
+				auto meshParamsIt = meshParams.find(mesh->getName());
+				auto const* renderParams = meshParamsIt != meshParams.end() ? &meshParamsIt->second :
+					(defaultParams != meshParams.end() ? &defaultParams->second : nullptr);
+				if (renderParams && ((renderParams->flags & ModelRenderParams::Flag_Visible) == 0 ||
+					(renderParams->flags & ModelRenderParams::Flag_CastShadows) == 0))
+				{
+					continue;
+				}
+
+				auto material = static_cast<Material*>(mesh->getMaterial().get());
+				if (material->isPbr() && material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend)
+				{
+					continue; // Conventional blended materials do not cast in S2.
+				}
+
+				GL_CHECK(glUniformMatrix4fv(shadowProgram->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(modelLightProjection)));
+				mesh->bind(true);
+				size_t instanceCount = renderParams ? renderParams->instanceCount : 1;
+				if (renderParams && !renderParams->renderCommands.empty())
+				{
+					for (auto const& command : renderParams->renderCommands)
+					{
+						mesh->render(instanceCount, command.offset, command.count);
+					}
+				}
+				else
+				{
+					mesh->render(instanceCount);
+				}
+				mesh->bind(false);
+			}
+		}
+
+		popRenderTarget();
+		GL_CHECK(glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]));
+		if (depthTestEnabled) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
+		if (blendEnabled) GL_CHECK(glEnable(GL_BLEND)); else GL_CHECK(glDisable(GL_BLEND));
+		if (cullEnabled) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
+		GL_CHECK(glCullFace(previousCullMode));
+		if (polygonOffsetEnabled) GL_CHECK(glEnable(GL_POLYGON_OFFSET_FILL)); else GL_CHECK(glDisable(GL_POLYGON_OFFSET_FILL));
+		GL_CHECK(glPolygonOffset(previousPolygonOffsetFactor, previousPolygonOffsetUnits));
+		GL_CHECK(glDepthMask(depthWriteEnabled));
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::setActiveShadowDomain(string const& name)
+	{
+		mActiveShadowDepthTarget.reset();
+		if (name.empty())
+		{
+			if (mShadowDisabledFrameBuffer)
+			{
+				mShadowDisabledFrameBuffer->activate();
+			}
+			return;
+		}
+
+		ensureShadowDomainResources(name);
+		auto& domain = mShadowDomains.at(name);
+		if (domain.options.enabled)
+		{
+			domain.frameBuffer->activate();
+			mActiveShadowDepthTarget = domain.depthTarget;
+		}
+		else if (mShadowDisabledFrameBuffer)
+		{
+			mShadowDisabledFrameBuffer->activate();
+		}
+	}
+
 	void RenderSystem::setActivePbrEnvironment(PbrEnvironmentPtr environment)
 	{
 		mActivePbrEnvironment = std::move(environment);
@@ -2096,6 +2394,18 @@ namespace mpp
 			mActivePbrEnvironment->prefilteredSpecularMap,
 			mActivePbrEnvironment->brdfIntegrationLut,
 			mActivePbrEnvironment->backgroundMap })
+		{
+			if (resource)
+			{
+				resource->load();
+			}
+		}
+	}
+
+	void RenderSystem::setActivePipelineSamplerOverrides(map<string, ResourcePtr> const& overrides)
+	{
+		mActivePipelineSamplerOverrides = overrides;
+		for (auto const& [sampler, resource] : mActivePipelineSamplerOverrides)
 		{
 			if (resource)
 			{
@@ -2858,24 +3168,22 @@ namespace mpp
 				? renderCmd.textures[i]
 				: material->getTexture((int)i);
 
-			// Pipeline-owned IBL is authoritative for PBR environment samplers.
-			// Other sampler bindings remain material-owned and fully dynamic.
-			if (mActivePbrEnvironment)
+			// Pipeline-owned samplers are authoritative for matching shader names.
+			// This generalizes PBR IBL binding and will also bind generic shadow
+			// maps without making them material-owned texture slots.
+			auto program = static_cast<Program*>(material->getProgram().get());
+			auto const& samplerName = program->getSamplerName((int)i);
+			if (samplerName == "SHADOW_MAP" && mActiveShadowDepthTarget)
 			{
-				auto program = static_cast<Program*>(material->getProgram().get());
-				auto const& samplerName = program->getSamplerName((int)i);
-				if (samplerName == "PBR_IRRADIANCE_MAP" && mActivePbrEnvironment->irradianceMap)
-				{
-					textureResource = mActivePbrEnvironment->irradianceMap;
-				}
-				else if (samplerName == "PBR_PREFILTERED_SPECULAR_MAP" && mActivePbrEnvironment->prefilteredSpecularMap)
-				{
-					textureResource = mActivePbrEnvironment->prefilteredSpecularMap;
-				}
-				else if (samplerName == "PBR_BRDF_LUT" && mActivePbrEnvironment->brdfIntegrationLut)
-				{
-					textureResource = mActivePbrEnvironment->brdfIntegrationLut;
-				}
+				static_cast<RenderTexture*>(mActiveShadowDepthTarget.get())->bindDepth((uint32_t)i);
+				(*currentTextureKeys)[i] = (uint64_t)(uintptr_t)mActiveShadowDepthTarget.get();
+				mRenderInfo.textureSwitches++;
+				continue;
+			}
+			auto pipelineSampler = mActivePipelineSamplerOverrides.find(samplerName);
+			if (pipelineSampler != mActivePipelineSamplerOverrides.end() && pipelineSampler->second)
+			{
+				textureResource = pipelineSampler->second;
 			}
 			auto texture = static_cast<Texture*>(textureResource.get());
 			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;
@@ -2896,6 +3204,12 @@ namespace mpp
 		// Wireframe?
 		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance->mWireframe ? GL_LINE : GL_FILL));
 
+		if (meshInstance->mCullBackFaces)
+		{
+			GL_CHECK(glEnable(GL_CULL_FACE));
+			GL_CHECK(glCullFace(GL_BACK));
+		}
+
 		// Blend?
 		if (meshInstance->mBlend)
 		{
@@ -2911,6 +3225,11 @@ namespace mpp
 		meshInstance->mwMesh->bind(false);
 
 		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+
+		if (meshInstance->mCullBackFaces)
+		{
+			GL_CHECK(glDisable(GL_CULL_FACE));
+		}
 
 		if (meshInstance->mBlend)
 		{

@@ -138,6 +138,20 @@ namespace mpp
 		// samplers then override per-material placeholder bindings.
 		PbrEnvironmentPtr mActivePbrEnvironment;
 
+		// Pipeline-owned samplers (environment now; shadow maps later) override
+		// material bindings by shader sampler name during a scene flush.
+		std::map<std::string, ResourcePtr> mActivePipelineSamplerOverrides;
+
+		struct ShadowDomainState
+		{
+			ShadowOptions options;
+			RenderTargetPtr depthTarget;
+			std::shared_ptr<UniformBuffer> frameBuffer;
+		};
+		std::map<std::string, ShadowDomainState> mShadowDomains;
+		RenderTargetPtr mActiveShadowDepthTarget;
+		std::shared_ptr<UniformBuffer> mShadowDisabledFrameBuffer;
+
 		ProjectionType mProjectionType;
 
 		// List of models to render
@@ -161,6 +175,7 @@ namespace mpp
 
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
+		ResourcePtr mShadowDepthProgram;
 
 		// Internal textures
 		ResourcePtr mNoTexture;
@@ -288,6 +303,12 @@ namespace mpp
 
 		void destroyPbrLightsData();
 
+		void destroyShadowDomains();
+
+		void createShadowDomainResources(std::string const& name, ShadowDomainState& domain);
+
+		void createShadowDisabledFrameBuffer();
+
 		void addCoreResource(ResourcePtr resource, bool load);
 
 		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
@@ -411,6 +432,24 @@ namespace mpp
 		void setPbrLights(std::vector<PbrLight> const& lights);
 
 		void setActivePbrEnvironment(PbrEnvironmentPtr environment);
+
+		void setActivePipelineSamplerOverrides(std::map<std::string, ResourcePtr> const& overrides);
+
+		// A shadow domain is shared by all pipelines that name it in their
+		// RenderPipelineOptions. No domain means no shadow allocations or binds.
+		void configureShadowDomain(std::string const& name, ShadowOptions const& options);
+
+		bool hasShadowDomain(std::string const& name) const;
+
+		ShadowOptions const& getShadowDomainOptions(std::string const& name) const;
+
+		RenderTargetPtr getShadowDomainDepthTarget(std::string const& name);
+
+		void ensureShadowDomainResources(std::string const& name);
+
+		void renderShadowDomain(std::string const& name, std::vector<SceneModel3dPtr> const& models);
+
+		void setActiveShadowDomain(std::string const& name);
 
 		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
 

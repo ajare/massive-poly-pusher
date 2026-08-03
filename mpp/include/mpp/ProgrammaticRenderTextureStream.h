@@ -42,6 +42,8 @@ namespace mpp
 
 		void setDepthAttachment(RenderTextureDepthAttachment attachment);
 
+		void setDepthParams(RenderTextureDepthParams const& params);
+
 		void setNumAttachments(size_t numAttachments);
 	};
 }

@@ -47,6 +47,8 @@ namespace mpp
 
 		glm::vec3 const& getPosition() const;
 
+		void setLookAt(glm::vec3 const& position, glm::vec3 const& target, glm::vec3 const& up = glm::vec3(0.0f, 1.0f, 0.0f));
+
 		glm::vec3 const& getDirection() const;
 
 		glm::vec3 const& getUp() const;

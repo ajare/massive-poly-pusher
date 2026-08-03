@@ -80,6 +80,11 @@ namespace mpp
 		return mDepthAttachment;
 	}
 
+	RenderTextureDepthParams const& RenderTextureStream::getDepthParams() const
+	{
+		return mDepthParams;
+	}
+
 	size_t RenderTextureStream::getNumAttachments() const
 	{
 		return mNumAttachments;

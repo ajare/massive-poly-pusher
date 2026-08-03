@@ -429,8 +429,11 @@ void imGuiHandleInput(InputManager* inputMgr, ImGuiBackendData* bd)
 		{
 			updateKeyModifiers((SDL_Keymod)event.mod);
 			ImGuiKey key = keyEventToImGuiKey(event.key, (SDL_Scancode)event.code);
-			io.AddKeyEvent(key, true);
-			io.SetKeyEventNativeData(key, event.key, event.code, event.code); // To support legacy indexing (<1.87 user code). Legacy backend uses SDLK_*** as indices to IsKeyXXX() functions.
+			if (key != ImGuiKey_None)
+			{
+				io.AddKeyEvent(key, true);
+				io.SetKeyEventNativeData(key, event.key, event.code, event.code);
+			}
 			break;
 		}
 
@@ -438,8 +441,11 @@ void imGuiHandleInput(InputManager* inputMgr, ImGuiBackendData* bd)
 		{
 			updateKeyModifiers((SDL_Keymod)event.mod);
 			ImGuiKey key = keyEventToImGuiKey(event.key, (SDL_Scancode)event.code);
-			io.AddKeyEvent(key, false);
-			io.SetKeyEventNativeData(key, event.key, event.code, event.code); // To support legacy indexing (<1.87 user code). Legacy backend uses SDLK_*** as indices to IsKeyXXX() functions.
+			if (key != ImGuiKey_None)
+			{
+				io.AddKeyEvent(key, false);
+				io.SetKeyEventNativeData(key, event.key, event.code, event.code);
+			}
 			break;
 		}
 

@@ -2,6 +2,7 @@
 
 #include <mpp/BufferRenderer.h>
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include <mpp/mesh/MeshSpecification.h>
@@ -29,19 +30,28 @@ private:
 private:
 
 	float mTotalTime{ 0 };
+	float mCameraOrbitAngle{ 0.0f };
+	float mCameraOrbitInput{ 0.0f };
+	float mCameraTargetVerticalInput{ 0.0f };
+	glm::vec3 mCameraOrbitTarget{ 0.0f, 80.0f, 0.0f };
+	glm::vec2 mLightMoveInput{ 0.0f };
 
 	std::string mSelectedPipeline{ "PBR" };
 	int mPbrEnvironmentIndex{ 0 };
 	float mPbrMetallic{ 0.0f };
 	float mPbrRoughness{ 0.75f };
-	float mPbrLightIntensity{ 120000.0f };
+	float mPbrLightIntensity{ 2.0f };
 	glm::vec4 mPbrBaseColour{ 1.0f };
 	std::shared_ptr<mpp::UniformCollection> mPbrStatueUniforms;
 	mpp::PbrEnvironmentPtr mPbrEnvironment;
+	mpp::ShadowOptions mShadowOptions;
 
 	glm::vec3 mLightPosition;
 
 	std::vector<mpp::SceneModel3dPtr> mModels;
+	std::vector<mpp::SceneModel3dPtr> mShadowWalls;
+	mpp::SceneModel3dPtr mLightMarker;
+	mpp::SceneModel3dPtr mShadowCube;
 
 	std::array<Batch2d, kNum2dBatches> m2dBatches;
 

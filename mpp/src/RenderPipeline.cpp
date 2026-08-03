@@ -48,6 +48,11 @@ namespace mpp
 		mOptions.environment = std::move(environment);
 	}
 
+	void RenderPipeline::setShadowDomain(string const& shadowDomain)
+	{
+		mOptions.shadowDomain = shadowDomain;
+	}
+
 	RenderTargetPtr RenderPipeline::getOutputRenderTarget()
 	{
 		if (mPostEffects.empty())
@@ -84,6 +89,13 @@ namespace mpp
 		auto const& viewport = scene->getViewport();
 		mRenderSystem->setViewport(viewport.x, viewport.y, (size_t)viewport.width, (size_t)viewport.height);
 
+		// Lazily create shadow-domain resources for any participating pipeline.
+		// The depth pass and shader consumption follow in later shadow milestones.
+		if (!mOptions.shadowDomain.empty())
+		{
+			mRenderSystem->ensureShadowDomainResources(mOptions.shadowDomain);
+		}
+
 		// Scene passes
 		mRenderSystem->setProjection3dPerspective(
 			camera->getFov(),
@@ -92,10 +104,24 @@ namespace mpp
 		
 
 		auto const& models = scene->get3dModelsInView(camera);
+		if (!mOptions.shadowDomain.empty())
+		{
+			mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
+		}
+		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
+
+		map<string, ResourcePtr> pipelineSamplerOverrides;
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
 		{
 			mRenderSystem->setActivePbrEnvironment(mOptions.environment);
+			if (mOptions.environment)
+			{
+				pipelineSamplerOverrides["PBR_IRRADIANCE_MAP"] = mOptions.environment->irradianceMap;
+				pipelineSamplerOverrides["PBR_PREFILTERED_SPECULAR_MAP"] = mOptions.environment->prefilteredSpecularMap;
+				pipelineSamplerOverrides["PBR_BRDF_LUT"] = mOptions.environment->brdfIntegrationLut;
+			}
 		}
+		mRenderSystem->setActivePipelineSamplerOverrides(pipelineSamplerOverrides);
 		for (auto const& pass : mPasses)
 		{
 			// Start pass
@@ -113,6 +139,8 @@ namespace mpp
 				mRenderSystem->flushVertexBuffers();
 			}
 		}
+		mRenderSystem->setActivePipelineSamplerOverrides({});
+		mRenderSystem->setActiveShadowDomain("");
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
 		{
 			mRenderSystem->setActivePbrEnvironment(nullptr);

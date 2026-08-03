@@ -42,6 +42,8 @@ namespace mpp
 
 		void bind();
 
+		void activate();
+
 		void unbind();
 
 		void load();
