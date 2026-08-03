@@ -85,7 +85,22 @@ float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDir
 
     float nDotL = max(dot(normal, lightDirection), 0.0);
     float bias = BIAS_AND_ENABLED.x + BIAS_AND_ENABLED.y * (1.0 - nDotL);
-    return texture(@Texture(SHADOW_MAP), vec3(shadowCoords.xy, shadowCoords.z - bias));
+    vec3 compareCoords = vec3(shadowCoords.xy, shadowCoords.z - bias);
+    if (MAP_TEXEL_SIZE_AND_RADIUS.w < 0.5)
+    {
+        return texture(@Texture(SHADOW_MAP), compareCoords);
+    }
+
+    float visibility = 0.0;
+    for (int y = -1; y <= 1; ++y)
+    {
+        for (int x = -1; x <= 1; ++x)
+        {
+            vec2 offset = vec2(float(x), float(y)) * MAP_TEXEL_SIZE_AND_RADIUS.xy * MAP_TEXEL_SIZE_AND_RADIUS.z;
+            visibility += texture(@Texture(SHADOW_MAP), vec3(compareCoords.xy + offset, compareCoords.z));
+        }
+    }
+    return visibility / 9.0;
 }
 
 void main()

@@ -2168,7 +2168,8 @@ namespace mpp
 		// of PBR lighting so legacy/custom shaders can use the same frame data.
 		ShadowFrameData frame;
 		const float texelSize = 1.0f / (float)domain.options.resolution;
-		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels, 0.0f);
+		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
+			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
 		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
 
 		shared_ptr<const int8_t> frameBytes(new int8_t[sizeof(frame)](), [](int8_t* p) { delete[] p; });
@@ -2256,7 +2257,8 @@ namespace mpp
 		ShadowFrameData frame;
 		frame.lightViewProjection = lightViewProjection;
 		float texelSize = 1.0f / (float)domain.options.resolution;
-		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels, 0.0f);
+		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
+			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
 		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
 		auto& frameBytes = domain.frameBuffer->getBufferData();
 		memcpy(frameBytes.data(), &frame, sizeof(frame));
