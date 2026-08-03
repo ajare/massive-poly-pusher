@@ -1012,8 +1012,14 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mShadowOptions.light.direction = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 	renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", mShadowOptions);
 
+	mBloomOptions.enabled = true;
+	mBloomOptions.threshold = 0.7f;
+	mBloomOptions.intensity = 0.2f;
+	mBloomOptions.blurPasses = 2;
+
 	mpp::RenderPipelineOptions pbrOptions;
 	pbrOptions.mode = mpp::RenderPipelineMode::PbrForward;
+	pbrOptions.bloom = mBloomOptions;
 	pbrOptions.shadowDomain = "DemoSuite.MainDirectionalShadow";
 	mPbrEnvironment = make_shared<mpp::PbrEnvironment>();
 	mPbrEnvironment->irradianceMap = resourceMgr->getResource("PBR.Preview.Environment");
@@ -1022,7 +1028,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mPbrEnvironment->backgroundMap = resourceMgr->getResource("PBR.Preview.Environment");
 	pbrOptions.environment = mPbrEnvironment;
 	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
-	renderSystem->getOrCreateRenderPipeline("Default");
+	mpp::RenderPipelineOptions defaultOptions;
+	defaultOptions.bloom = mBloomOptions;
+	renderSystem->getOrCreateRenderPipeline("Default", defaultOptions);
 }
 
 void ModelScene::teardownImGui()
@@ -1143,6 +1151,22 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		if (ImGui::Combo("PBR Tone Map", &toneMapOperator, "Reinhard\0ACES\0"))
 		{
 			pbrPipeline->setToneMapOperator(toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces);
+		}
+
+		bool bloomChanged = false;
+		bloomChanged |= ImGui::Checkbox("Bloom Enabled", &mBloomOptions.enabled);
+		bloomChanged |= ImGui::SliderFloat("Bloom Threshold", &mBloomOptions.threshold, 0.0f, 4.0f, "%.2f");
+		bloomChanged |= ImGui::SliderFloat("Bloom Intensity", &mBloomOptions.intensity, 0.0f, 2.0f, "%.2f");
+		int bloomPasses = (int)mBloomOptions.blurPasses;
+		if (ImGui::SliderInt("Bloom Blur Passes", &bloomPasses, 1, 4))
+		{
+			mBloomOptions.blurPasses = (uint32_t)bloomPasses;
+			bloomChanged = true;
+		}
+		if (bloomChanged)
+		{
+			pbrPipeline->setBloomOptions(mBloomOptions);
+			renderSystem->getRenderPipeline("Default")->setBloomOptions(mBloomOptions);
 		}
 
 		bool shadowOptionsChanged = false;
