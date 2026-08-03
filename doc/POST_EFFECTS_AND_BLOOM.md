@@ -31,6 +31,22 @@ pipeline->setBloomOptions(bloom);
 
 DemoSuite exposes **Bloom Enabled**, threshold, intensity, and blur-pass controls. The same options are applied to its `PBR` and `Default` pipelines.
 
+## Bloom input and blur textures
+
+Bloom does not use a ModelSpec or material-authored texture as its blur input. The completed pipeline scene target is sampled by the pipeline-owned bright-pass shader, which creates the texture that the blur passes consume:
+
+```text
+scene target
+  -> BloomExtract target   // thresholded bright pixels
+  -> BloomPing target      // horizontal blur
+  -> BloomPong target      // vertical blur
+  -> BloomComposite target // scene + blurred bloom
+```
+
+`RenderPipeline::ensureBloomTargets()` allocates these resize-aware RGBA16F render textures through `RenderSystem::createRenderTexture()`. `BloomExtract` is the texture that defines what is rendered into the blur targets: `FragmentShaderBloomExtractTemplate` samples the completed scene target and retains colour above `BloomOptions::threshold`.
+
+To change what blooms, change or replace the extract shader. For example, a future effect graph could extract emissive-only output, a dedicated bloom mask attachment, or an application-defined bright-pass rule. Material textures are not bound directly to the blur pass; they first contribute to the rendered scene colour.
+
 ## Effect sequence
 
 When enabled, the pipeline allocates four resize-aware RGBA16F intermediate targets matching the scene target:
