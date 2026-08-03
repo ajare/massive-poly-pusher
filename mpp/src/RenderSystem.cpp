@@ -2313,7 +2313,8 @@ namespace mpp
 				auto meshParamsIt = meshParams.find(mesh->getName());
 				auto const* renderParams = meshParamsIt != meshParams.end() ? &meshParamsIt->second :
 					(defaultParams != meshParams.end() ? &defaultParams->second : nullptr);
-				if (renderParams && (renderParams->flags & ModelRenderParams::Flag_Visible) == 0)
+				if (renderParams && ((renderParams->flags & ModelRenderParams::Flag_Visible) == 0 ||
+					(renderParams->flags & ModelRenderParams::Flag_CastShadows) == 0))
 				{
 					continue;
 				}
