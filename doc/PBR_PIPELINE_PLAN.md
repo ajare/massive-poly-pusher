@@ -219,5 +219,5 @@ These are intentionally outside the initial forward-PBR milestone set:
 - Bloom, screen-space effects, and a completed `PostEffect` implementation.
 - GPU panorama conversion and IBL prefilter generation.
 - Deferred, tiled, clustered, or Forward+ light management.
-- Shadows, reflection probes, screen-space reflections, and transmission/clearcoat material extensions.
+- [Soft texture shadows](SOFT_TEXTURE_SHADOW_PLAN.md), reflection probes, screen-space reflections, and transmission/clearcoat material extensions.
 - Full native glTF scene/material import.
