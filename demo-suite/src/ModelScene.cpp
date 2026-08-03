@@ -974,8 +974,15 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// PBR is an opt-in pipeline. Milestone 1 uses the statue as the visible
 	// HDR preview while later milestones replace its temporary shading path.
+	mpp::ShadowOptions shadowOptions;
+	shadowOptions.enabled = true;
+	shadowOptions.resolution = 1024;
+	shadowOptions.light.direction = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
+	renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", shadowOptions);
+
 	mpp::RenderPipelineOptions pbrOptions;
 	pbrOptions.mode = mpp::RenderPipelineMode::PbrForward;
+	pbrOptions.shadowDomain = "DemoSuite.MainDirectionalShadow";
 	mPbrEnvironment = make_shared<mpp::PbrEnvironment>();
 	mPbrEnvironment->irradianceMap = resourceMgr->getResource("PBR.Preview.Environment");
 	mPbrEnvironment->prefilteredSpecularMap = resourceMgr->getResource("PBR.Preview.Environment");
@@ -1113,6 +1120,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		ImGui::Text("Texture bindings: 8 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
 		ImGui::TextUnformatted("Base/emissive: sRGB; normal, AO and metallic-roughness: linear");
 		ImGui::Text("PBR lights: 1 / %zu; environment: selected precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
+		ImGui::TextUnformatted("Shadow domain: MainDirectionalShadow (depth-target foundation; no shadow pass yet)");
 	}
 	ImGui::End();
 }

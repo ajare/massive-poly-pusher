@@ -7,6 +7,9 @@
 
 #include <cassert>
 #include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <cstddef>
 #include <string>
 #include <regex>
 
@@ -103,6 +106,7 @@ namespace mpp
 		delete mInternalFont;
 		destroyLightsData();
 		destroyPbrLightsData();
+		destroyShadowDomains();
 
 		// Deleting the above may have freed up more resources, so sweep once more
 		for (auto res : mCoreResources)
@@ -1196,6 +1200,7 @@ namespace mpp
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
 		rtStream->setDepthAttachment(options.depthAttachment);
+		rtStream->setDepthParams(options.depthParams);
 		rtStream->setNumAttachments(options.numAttachments);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
@@ -2083,6 +2088,116 @@ namespace mpp
 		mPbrLightsBuffer->mapBufferData();
 	}
 
+	void RenderSystem::destroyShadowDomains()
+	{
+		mShadowDomains.clear();
+	}
+
+	void RenderSystem::createShadowDomainResources(string const& name, ShadowDomainState& domain)
+	{
+		if (!domain.options.enabled || domain.depthTarget)
+		{
+			return;
+		}
+		if (!mResourceMgr)
+		{
+			THROW_MPP("Cannot create a shadow domain before core resources are available.", __LINE__, __FILE__, __func__);
+		}
+
+		RenderTextureOptions targetOptions;
+		targetOptions.numAttachments = 0;
+		targetOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
+		targetOptions.depthParams.params.minFilter = GL_LINEAR;
+		targetOptions.depthParams.params.magFilter = GL_LINEAR;
+		targetOptions.depthParams.params.wrap = GL_CLAMP_TO_BORDER;
+		targetOptions.depthParams.compareRefToTexture = true;
+		domain.depthTarget = createRenderTexture(
+			"ShadowDomain." + name + ".Depth",
+			domain.options.resolution,
+			domain.options.resolution,
+			targetOptions);
+
+		// std140: mat4 (64 bytes), then two vec4 values. Keep this independent
+		// of PBR lighting so legacy/custom shaders can use the same frame data.
+		struct alignas(16) ShadowFrameData
+		{
+			glm::mat4 lightViewProjection{ 1.0f };
+			glm::vec4 mapTexelSizeAndRadius{ 0.0f };
+			glm::vec4 biasAndEnabled{ 0.0f };
+		};
+		static_assert(offsetof(ShadowFrameData, lightViewProjection) == 0);
+		static_assert(offsetof(ShadowFrameData, mapTexelSizeAndRadius) == 64);
+		static_assert(offsetof(ShadowFrameData, biasAndEnabled) == 80);
+		static_assert(sizeof(ShadowFrameData) == 96);
+
+		ShadowFrameData frame;
+		const float texelSize = 1.0f / (float)domain.options.resolution;
+		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels, 0.0f);
+		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+
+		shared_ptr<const int8_t> frameBytes(new int8_t[sizeof(frame)](), [](int8_t* p) { delete[] p; });
+		memcpy(const_cast<int8_t*>(frameBytes.get()), &frame, sizeof(frame));
+		domain.frameBuffer = make_shared<UniformBuffer>(this, frameBytes, sizeof(frame), 2);
+		domain.frameBuffer->load();
+	}
+
+	void RenderSystem::configureShadowDomain(string const& name, ShadowOptions const& options)
+	{
+		if (name.empty())
+		{
+			THROW_MPP("Shadow domain name cannot be empty.", __LINE__, __FILE__, __func__);
+		}
+		if (options.enabled)
+		{
+			if (options.resolution == 0 || options.orthoHalfWidth <= 0.0f || options.nearPlane < 0.0f ||
+				options.farPlane <= options.nearPlane || options.constantBias < 0.0f || options.normalBias < 0.0f ||
+				options.filterRadiusTexels < 0.0f || !isfinite(options.orthoHalfWidth) ||
+				!isfinite(options.nearPlane) || !isfinite(options.farPlane) ||
+				!isfinite(options.constantBias) || !isfinite(options.normalBias) || !isfinite(options.filterRadiusTexels) ||
+				!isfinite(options.light.direction.x) || !isfinite(options.light.direction.y) || !isfinite(options.light.direction.z) ||
+				glm::dot(options.light.direction, options.light.direction) < 0.000001f)
+			{
+				THROW_MPP("Invalid shadow domain options.", __LINE__, __FILE__, __func__);
+			}
+		}
+
+		auto& domain = mShadowDomains[name];
+		domain.depthTarget.reset();
+		domain.frameBuffer.reset();
+		domain.options = options;
+	}
+
+	bool RenderSystem::hasShadowDomain(string const& name) const
+	{
+		return mShadowDomains.find(name) != mShadowDomains.end();
+	}
+
+	ShadowOptions const& RenderSystem::getShadowDomainOptions(string const& name) const
+	{
+		auto it = mShadowDomains.find(name);
+		if (it == mShadowDomains.end())
+		{
+			THROW_MPP("Unknown shadow domain.", __LINE__, __FILE__, __func__);
+		}
+		return it->second.options;
+	}
+
+	RenderTargetPtr RenderSystem::getShadowDomainDepthTarget(string const& name)
+	{
+		ensureShadowDomainResources(name);
+		return mShadowDomains.at(name).depthTarget;
+	}
+
+	void RenderSystem::ensureShadowDomainResources(string const& name)
+	{
+		auto it = mShadowDomains.find(name);
+		if (it == mShadowDomains.end())
+		{
+			THROW_MPP("Pipeline references an unknown shadow domain.", __LINE__, __FILE__, __func__);
+		}
+		createShadowDomainResources(name, it->second);
+	}
+
 	void RenderSystem::setActivePbrEnvironment(PbrEnvironmentPtr environment)
 	{
 		mActivePbrEnvironment = std::move(environment);
@@ -2096,6 +2211,18 @@ namespace mpp
 			mActivePbrEnvironment->prefilteredSpecularMap,
 			mActivePbrEnvironment->brdfIntegrationLut,
 			mActivePbrEnvironment->backgroundMap })
+		{
+			if (resource)
+			{
+				resource->load();
+			}
+		}
+	}
+
+	void RenderSystem::setActivePipelineSamplerOverrides(map<string, ResourcePtr> const& overrides)
+	{
+		mActivePipelineSamplerOverrides = overrides;
+		for (auto const& [sampler, resource] : mActivePipelineSamplerOverrides)
 		{
 			if (resource)
 			{
@@ -2858,24 +2985,15 @@ namespace mpp
 				? renderCmd.textures[i]
 				: material->getTexture((int)i);
 
-			// Pipeline-owned IBL is authoritative for PBR environment samplers.
-			// Other sampler bindings remain material-owned and fully dynamic.
-			if (mActivePbrEnvironment)
+			// Pipeline-owned samplers are authoritative for matching shader names.
+			// This generalizes PBR IBL binding and will also bind generic shadow
+			// maps without making them material-owned texture slots.
+			auto program = static_cast<Program*>(material->getProgram().get());
+			auto const& samplerName = program->getSamplerName((int)i);
+			auto pipelineSampler = mActivePipelineSamplerOverrides.find(samplerName);
+			if (pipelineSampler != mActivePipelineSamplerOverrides.end() && pipelineSampler->second)
 			{
-				auto program = static_cast<Program*>(material->getProgram().get());
-				auto const& samplerName = program->getSamplerName((int)i);
-				if (samplerName == "PBR_IRRADIANCE_MAP" && mActivePbrEnvironment->irradianceMap)
-				{
-					textureResource = mActivePbrEnvironment->irradianceMap;
-				}
-				else if (samplerName == "PBR_PREFILTERED_SPECULAR_MAP" && mActivePbrEnvironment->prefilteredSpecularMap)
-				{
-					textureResource = mActivePbrEnvironment->prefilteredSpecularMap;
-				}
-				else if (samplerName == "PBR_BRDF_LUT" && mActivePbrEnvironment->brdfIntegrationLut)
-				{
-					textureResource = mActivePbrEnvironment->brdfIntegrationLut;
-				}
+				textureResource = pipelineSampler->second;
 			}
 			auto texture = static_cast<Texture*>(textureResource.get());
 			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;

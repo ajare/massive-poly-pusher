@@ -18,6 +18,7 @@ namespace mpp
 		RenderSystem* mRenderSystem{ nullptr };
 
 		RenderTextureDepthAttachment mDepthAttachment;
+		RenderTextureDepthParams mDepthParams;
 
 		GLuint mFrameBuffer;
 
@@ -58,6 +59,8 @@ namespace mpp
 		bool resize(size_t width, size_t height) override;
 
 		uint32_t getDepthTextureId() const;
+
+		void bindDepth(uint32_t unit);
 
 		uint32_t getColourAttachmentId(size_t attachment) const;
 

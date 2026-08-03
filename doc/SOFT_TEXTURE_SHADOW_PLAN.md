@@ -144,14 +144,16 @@ Start with one center comparison to validate projection and bias, then implement
 
 **Outcome:** any participating pipeline uses a shared, complete shadow-domain depth texture and generic shadow UBO.
 
-- [ ] Add `ShadowLight`, `ShadowOptions`, `ShadowDomain`, and empty `RenderPipelineOptions::shadowDomain`; the empty name remains the default for all existing pipelines.
-- [ ] Add `RenderSystem` APIs to create/configure/find a named shadow domain and `RenderPipeline` accessors to join/leave one. Validate that all members of a domain use compatible options.
-- [ ] Allocate a lazily loaded depth-only `RenderTexture` per domain at the configured resolution. Recreate it only when that domain's shadow resolution/options change, not merely because the window resizes.
-- [ ] Add explicit depth-texture binding and compare-sampler configuration to `RenderTexture`/texture parameters.
-- [ ] Create/update the generic binding-2 `ShadowFrame` UBO with std140 offset/size checks.
-- [ ] Refactor PBR environment texture replacement into generic named pipeline-frame sampler bindings without changing current PBR output.
+- [x] Add `ShadowLight`, `ShadowOptions`, `ShadowDomain`, and empty `RenderPipelineOptions::shadowDomain`; the empty name remains the default for all existing pipelines.
+- [x] Add `RenderSystem` APIs to create/configure/find a named shadow domain and `RenderPipeline` accessors to join/leave one. A domain owns its one canonical option set, so every member necessarily uses compatible options.
+- [x] Allocate a lazily loaded depth-only `RenderTexture` per domain at the configured resolution. Recreate it only when that domain's shadow resolution/options change, not merely because the window resizes.
+- [x] Add explicit depth-texture binding and compare-sampler configuration to `RenderTexture`/texture parameters.
+- [x] Create/update the generic binding-2 `ShadowFrame` UBO with std140 offset/size checks.
+- [x] Refactor PBR environment texture replacement into generic named pipeline-frame sampler bindings without changing current PBR output.
 
 **Acceptance:** a test non-PBR pipeline and `PBR` joined to one domain bind the exact same complete depth target/UBO contract; pipelines outside every domain do not allocate or bind shadow resources.
+
+**Implementation note (Milestone S1):** `RenderSystem` now owns named, lazily allocated shadow domains. A participating `RenderPipeline` names its domain through `RenderPipelineOptions::shadowDomain`; an empty name remains a no-op. Each enabled domain creates a depth-only `GL_DEPTH_COMPONENT24` target with linear compare sampling, clamp-to-border, a binding-2 96-byte std140 frame UBO, and an explicit depth-texture bind API. DemoSuite configures a 1024² PBR domain to validate allocation; no depth-caster pass or receiver shader is active until S2/S3. Pipeline sampler overrides are now generic by shader sampler name, preserving the PBR IBL override behaviour.
 
 ### Milestone S2 — Generic depth-caster pass
 
