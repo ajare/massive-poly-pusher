@@ -2,6 +2,7 @@
 
 #include <mpp/BufferRenderer.h>
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include <mpp/mesh/MeshSpecification.h>
@@ -30,6 +31,10 @@ private:
 
 	float mTotalTime{ 0 };
 	float mCameraOrbitAngle{ 0.0f };
+	float mCameraOrbitInput{ 0.0f };
+	float mCameraTargetVerticalInput{ 0.0f };
+	glm::vec3 mCameraOrbitTarget{ 0.0f, 80.0f, 0.0f };
+	glm::vec2 mLightMoveInput{ 0.0f };
 
 	std::string mSelectedPipeline{ "PBR" };
 	int mPbrEnvironmentIndex{ 0 };

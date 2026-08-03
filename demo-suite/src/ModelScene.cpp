@@ -1054,6 +1054,25 @@ void ModelScene::toggleModel(uint32_t index)
 
 void ModelScene::handleInput(InputManager* inputMgr)
 {
+	mCameraOrbitInput = 0.0f;
+	mCameraTargetVerticalInput = 0.0f;
+	mLightMoveInput = glm::vec2(0.0f);
+
+	const bool moveLight = inputMgr->keyDown(Key_LeftShift) || inputMgr->keyDown(Key_RightShift);
+	if (moveLight)
+	{
+		if (inputMgr->keyDown(Key_LeftArrow)) mLightMoveInput.x -= 1.0f;
+		if (inputMgr->keyDown(Key_RightArrow)) mLightMoveInput.x += 1.0f;
+		if (inputMgr->keyDown(Key_UpArrow)) mLightMoveInput.y -= 1.0f;
+		if (inputMgr->keyDown(Key_DownArrow)) mLightMoveInput.y += 1.0f;
+	}
+	else
+	{
+		if (inputMgr->keyDown(Key_LeftArrow)) mCameraOrbitInput -= 1.0f;
+		if (inputMgr->keyDown(Key_RightArrow)) mCameraOrbitInput += 1.0f;
+		if (inputMgr->keyDown(Key_UpArrow)) mCameraTargetVerticalInput += 1.0f;
+		if (inputMgr->keyDown(Key_DownArrow)) mCameraTargetVerticalInput -= 1.0f;
+	}
 }
 
 void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
@@ -1146,6 +1165,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		ImGui::Text("PBR lights: 1 / %zu; environment: selected precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
 		ImGui::Text("Shadow domain: MainDirectionalShadow (%zux%zu, %s)", mShadowOptions.resolution, mShadowOptions.resolution,
 			mShadowOptions.filterMode == mpp::ShadowFilterMode::Pcf3x3 ? "3x3 PCF" : "hard");
+		ImGui::TextUnformatted("Arrows: orbit / move look target; Shift+Arrows: move light");
 	}
 	ImGui::End();
 }
@@ -1172,16 +1192,24 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 	updateImGui(frameTime, renderSystem);
 
-	// Keep scene geometry stationary for material/shadow inspection and orbit
-	// the camera slowly around the statue instead.
-	mCameraOrbitAngle += frameTime * 0.12f;
-	const glm::vec3 orbitTarget(0.0f, 80.0f, 0.0f);
+	// Keep geometry stationary. Arrow keys orbit the camera or move its look-at
+	// target; Shift+Arrow moves the shared directional/legacy light instead.
+	mCameraOrbitAngle += mCameraOrbitInput * frameTime * 0.8f;
+	mCameraOrbitTarget.y += mCameraTargetVerticalInput * frameTime * 120.0f;
 	const float orbitRadius = 550.0f;
 	const glm::vec3 orbitPosition(
 		sinf(mCameraOrbitAngle) * orbitRadius,
 		150.0f,
 		cosf(mCameraOrbitAngle) * orbitRadius);
-	getCamera()->setLookAt(orbitPosition, orbitTarget);
+	getCamera()->setLookAt(orbitPosition, mCameraOrbitTarget);
+
+	if (mLightMoveInput != glm::vec2(0.0f))
+	{
+		mLightPosition.x += mLightMoveInput.x * frameTime * 180.0f;
+		mLightPosition.y += mLightMoveInput.y * frameTime * 180.0f;
+		mShadowOptions.light.direction = glm::normalize(mShadowOptions.light.focusPoint - mLightPosition);
+		renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", mShadowOptions);
+	}
 
 	// Scale cube
 	/*
@@ -1208,8 +1236,6 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
 	//
 	// Lighting
-	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
-	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
 	renderSystem->setLight1Position(mLightPosition);
 	mpp::PbrLight pbrLight;
 	pbrLight.type = mpp::PbrLightType::Directional;

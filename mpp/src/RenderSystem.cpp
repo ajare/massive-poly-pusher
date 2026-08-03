@@ -2199,8 +2199,16 @@ namespace mpp
 		}
 
 		auto& domain = mShadowDomains[name];
-		domain.depthTarget.reset();
-		domain.frameBuffer.reset();
+		// Direction, projection bounds, bias, and filter values are uploaded on
+		// the next shadow pass. Only a resolution or enabled-state change needs
+		// to discard GL resources, which keeps interactive light movement cheap.
+		const bool recreateResources = domain.depthTarget &&
+			(!options.enabled || domain.options.resolution != options.resolution);
+		if (recreateResources)
+		{
+			domain.depthTarget.reset();
+			domain.frameBuffer.reset();
+		}
 		domain.options = options;
 	}
 
