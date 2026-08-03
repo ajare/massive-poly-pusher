@@ -85,7 +85,7 @@
 							<target>2D</target>
 							<filename>stone-1024__Jpg_ORM.png</filename>
 							<colourSpace>LINEAR</colourSpace>
-							<minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
+							<minFilter>LINEAR</minFilter>
 							<magFilter>LINEAR</magFilter>
 						</Resource>
 					</Texture>
@@ -95,7 +95,7 @@
 							<target>2D</target>
 							<filename>stone-1024__Jpg_normal.png</filename>
 							<colourSpace>LINEAR</colourSpace>
-							<minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
+							<minFilter>LINEAR</minFilter>
 							<magFilter>LINEAR</magFilter>
 						</Resource>
 					</Texture>
@@ -105,7 +105,7 @@
 							<target>2D</target>
 							<filename>stone-1024__Jpg_ao.png</filename>
 							<colourSpace>LINEAR</colourSpace>
-							<minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
+							<minFilter>LINEAR</minFilter>
 							<magFilter>LINEAR</magFilter>
 						</Resource>
 					</Texture>
