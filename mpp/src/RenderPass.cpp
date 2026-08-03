@@ -62,18 +62,25 @@ namespace mpp
 
 			instance->setParams(model->getParams());
 
-			if (mPbrForward)
+			// renderModelBatched historically marks every model as blended. Preserve
+			// that legacy behaviour for non-PBR materials in Default, but always
+			// restore the authored alpha semantics for a PBR material. Otherwise an
+			// OPAQUE PBR model shown through Default has depth writes disabled and its
+			// back-facing triangles can draw over its front-facing triangles.
+			for (auto meshInstance : instance->getMeshInstances())
 			{
-				// Render opaque and masked PBR materials first with depth writes.
-				// Blend materials are rendered afterwards by the transparent sort.
-				for (auto meshInstance : instance->getMeshInstances())
+				auto material = static_cast<Material*>(meshInstance->getMaterial().get());
+				if (!mPbrForward && !material->isPbr())
 				{
-					auto material = static_cast<Material*>(meshInstance->getMaterial().get());
-					bool transparent = material->isPbr() &&
-						material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend;
-					meshInstance->blend(transparent);
-					meshInstance->sortTransparent(transparent);
+					continue;
 				}
+
+				// Render opaque and masked PBR materials with depth writes. Blend
+				// materials are drawn later by the transparent sort.
+				bool transparent = material->isPbr() &&
+					material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend;
+				meshInstance->blend(transparent);
+				meshInstance->sortTransparent(transparent);
 			}
 		}
 	}
