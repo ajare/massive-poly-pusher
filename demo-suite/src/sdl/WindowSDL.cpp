@@ -118,7 +118,9 @@ void WindowSDL::processEvents(InputManager* inputMgr)
 		{
 		case SDL_KEYDOWN:
 			ie.type = IET_KeyPressed;
-			ie.code = evt.key.keysym.sym;
+			// ImGui's native/legacy key index must be a scancode, not the
+			// SDLK_* value (arrow keys are far outside that index range).
+			ie.code = evt.key.keysym.scancode;
 			ie.key = evt.key.keysym.sym;
 			ie.mod = evt.key.keysym.mod;
 			inputMgr->addEvent(ie);

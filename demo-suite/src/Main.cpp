@@ -243,7 +243,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		bool isFullScreen = gOptions.fullScreen;
 
-		float viewAngle = 0.0f;
 		float lightAngle = 0.0f, lightHeight = 750.0f;
 
 		// Turn off 2d batches to start
@@ -341,16 +340,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			while (accum >= updateFreq)
 			{
 				accum -= updateFreq;
-
-				// Rotate model
-				if (gInputMgr->keyDown(Key_LeftArrow))
-				{
-					viewAngle += 60.0f * frameTime;
-				}
-				if (gInputMgr->keyDown(Key_RightArrow))
-				{
-					viewAngle -= 60.0f * frameTime;
-				}
 
 				// Light
 				if (gInputMgr->keyDown(Key_T))

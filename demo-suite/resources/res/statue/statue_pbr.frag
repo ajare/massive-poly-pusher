@@ -18,6 +18,14 @@
 @@Texture(samplerCube PBR_IRRADIANCE_MAP);
 @@Texture(samplerCube PBR_PREFILTERED_SPECULAR_MAP);
 @@Texture(sampler2D PBR_BRDF_LUT);
+@@Texture(sampler2DShadow SHADOW_MAP);
+
+layout(std140, binding = 2) uniform ShadowFrame
+{
+    mat4 LIGHT_VIEW_PROJECTION;
+    vec4 MAP_TEXEL_SIZE_AND_RADIUS;
+    vec4 BIAS_AND_ENABLED;
+};
 
 struct PbrLight
 {
@@ -65,6 +73,42 @@ vec3 fresnelSchlick(float cosine, vec3 f0)
 vec3 fresnelSchlickRoughness(float cosine, vec3 f0, float roughness)
 {
     return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(1.0 - cosine, 5.0);
+}
+
+float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
+{
+    if (BIAS_AND_ENABLED.z < 0.5)
+    {
+        return 1.0;
+    }
+
+    vec4 shadowPosition = LIGHT_VIEW_PROJECTION * vec4(worldPosition, 1.0);
+    shadowPosition.xyz /= max(shadowPosition.w, 0.00001);
+    vec3 shadowCoords = shadowPosition.xyz * 0.5 + 0.5;
+    if (shadowCoords.x <= 0.0 || shadowCoords.x >= 1.0 || shadowCoords.y <= 0.0 || shadowCoords.y >= 1.0 ||
+        shadowCoords.z <= 0.0 || shadowCoords.z >= 1.0)
+    {
+        return 1.0;
+    }
+
+    float nDotL = max(dot(normal, lightDirection), 0.0);
+    float bias = BIAS_AND_ENABLED.x + BIAS_AND_ENABLED.y * (1.0 - nDotL);
+    vec3 compareCoords = vec3(shadowCoords.xy, shadowCoords.z - bias);
+    if (MAP_TEXEL_SIZE_AND_RADIUS.w < 0.5)
+    {
+        return texture(@Texture(SHADOW_MAP), compareCoords);
+    }
+
+    float visibility = 0.0;
+    for (int y = -1; y <= 1; ++y)
+    {
+        for (int x = -1; x <= 1; ++x)
+        {
+            vec2 offset = vec2(float(x), float(y)) * MAP_TEXEL_SIZE_AND_RADIUS.xy * MAP_TEXEL_SIZE_AND_RADIUS.z;
+            visibility += texture(@Texture(SHADOW_MAP), vec3(compareCoords.xy + offset, compareCoords.z));
+        }
+    }
+    return visibility / 9.0;
 }
 
 void main()
@@ -123,7 +167,8 @@ void main()
         vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
         float nDotL = max(dot(normal, lightDirection), 0.0);
         vec3 radiance = light.colourIntensity.rgb * light.colourIntensity.a * attenuation;
-        direct += (kD * baseColour.rgb / PI + specular) * radiance * nDotL;
+        float shadow = isPoint > 0.5 ? 1.0 : directionalShadowVisibility(@In(WORLD_POSITION), normal, lightDirection);
+        direct += (kD * baseColour.rgb / PI + specular) * radiance * nDotL * shadow;
     }
 
     float nDotV = max(dot(normal, viewDirection), 0.0);

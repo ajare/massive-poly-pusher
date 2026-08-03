@@ -29,6 +29,14 @@ R"(
 ## Texture
 @@Texture(sampler2D TEX1);
 ##
+@@Texture(sampler2DShadow SHADOW_MAP);
+
+layout(std140, binding = 2) uniform ShadowFrame
+{
+    mat4 LIGHT_VIEW_PROJECTION;
+    vec4 MAP_TEXEL_SIZE_AND_RADIUS;
+    vec4 BIAS_AND_ENABLED;
+};
 
 struct Light
 {
@@ -59,6 +67,42 @@ float phong(vec3 v, vec3 n, vec3 l)
     return strength * spec;
 }
 
+float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
+{
+    if (BIAS_AND_ENABLED.z < 0.5)
+    {
+        return 1.0;
+    }
+
+    vec4 shadowPosition = LIGHT_VIEW_PROJECTION * vec4(worldPosition, 1.0);
+    shadowPosition.xyz /= max(shadowPosition.w, 0.00001);
+    vec3 shadowCoords = shadowPosition.xyz * 0.5 + 0.5;
+    if (shadowCoords.x <= 0.0 || shadowCoords.x >= 1.0 || shadowCoords.y <= 0.0 || shadowCoords.y >= 1.0 ||
+        shadowCoords.z <= 0.0 || shadowCoords.z >= 1.0)
+    {
+        return 1.0;
+    }
+
+    float nDotL = max(dot(normal, lightDirection), 0.0);
+    float bias = BIAS_AND_ENABLED.x + BIAS_AND_ENABLED.y * (1.0 - nDotL);
+    vec3 compareCoords = vec3(shadowCoords.xy, shadowCoords.z - bias);
+    if (MAP_TEXEL_SIZE_AND_RADIUS.w < 0.5)
+    {
+        return texture(@Texture(SHADOW_MAP), compareCoords);
+    }
+
+    float visibility = 0.0;
+    for (int y = -1; y <= 1; ++y)
+    {
+        for (int x = -1; x <= 1; ++x)
+        {
+            vec2 offset = vec2(float(x), float(y)) * MAP_TEXEL_SIZE_AND_RADIUS.xy * MAP_TEXEL_SIZE_AND_RADIUS.z;
+            visibility += texture(@Texture(SHADOW_MAP), vec3(compareCoords.xy + offset, compareCoords.z));
+        }
+    }
+    return visibility / 9.0;
+}
+
 void main()
 {
     vec3 normalDir = @In(NORMAL);
@@ -74,7 +118,8 @@ void main()
         float diffuse = lambert(normalDir, lightDir);
         float specular = phong(viewDir, normalDir, lightDir);
         
-        colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular);
+        float shadow = i == 0 ? directionalShadowVisibility(@In(FRAGPOSITION), normalDir, lightDir) : 1.0;
+        colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular) * shadow;
     }
 
     vec4 shadedColour = vec4(colourContrib, 1.0) * @In(COLOUR);
@@ -108,6 +153,27 @@ void main()
 
 // Don't apply gamma correction as this is used to render framebuffers which have
 // already been gamma-corrected.
+// Depth-only programs used by generic shadow domains. They depend only on
+// position, so meshes from PBR and non-PBR materials share the same caster path.
+const std::string VertexShaderShadowDepthTemplate =
+R"(
+@@Version
+
+void main()
+{
+    gl_Position = @MCPMatrix * @Vec4(@In(POSITION));
+}
+)";
+
+const std::string FragmentShaderShadowDepthTemplate =
+R"(
+@@Version
+
+void main()
+{
+}
+)";
+
 const std::string FragmentShaderFullscreenTemplate =
 R"(
 @@Version

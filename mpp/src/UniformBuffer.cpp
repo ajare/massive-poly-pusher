@@ -98,6 +98,11 @@ namespace mpp
 	 * Unbind buffer
 	 *
 	 */
+	void UniformBuffer::activate()
+	{
+		GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO));
+	}
+
 	void UniformBuffer::unbind()
 	{
 		GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, 0));

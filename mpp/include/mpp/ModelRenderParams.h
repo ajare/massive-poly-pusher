@@ -17,12 +17,14 @@ namespace mpp
 
 		static const uint32_t Flag_Visible		= 0x01;
 		static const uint32_t Flag_Wireframe	= 0x02;
+		static const uint32_t Flag_CastShadows	= 0x04;
+		static const uint32_t Flag_CullBackFaces	= 0x08;
 
 	public:
 
 		struct MeshRenderParams
 		{
-			uint32_t flags{ Flag_Visible };
+			uint32_t flags{ Flag_Visible | Flag_CastShadows };
 			size_t instanceCount{ 1 };
 			std::vector<VertexBufferRenderCommand> renderCommands;
 			float pointSize{ 1.0f };
@@ -55,7 +57,7 @@ namespace mpp
 			}
 			else
 			{
-				return Flag_Visible;
+				return Flag_Visible | Flag_CastShadows;
 			}
 		}
 

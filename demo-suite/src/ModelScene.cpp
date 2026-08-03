@@ -310,17 +310,11 @@ void ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec
 {
 	auto resourceMgr = getResourceManager();
 
-	// Create a String resource, which contains a vertex shader
-	auto vertStream = new mpp::resource_parsers::FileStringStream(resourceMgr, options.resourceLocation + "Elevator.Vert.xml");
-	addResource(resourceMgr->declareResource("Elevator.Vert", ResourceStreamPtr(vertStream)).first, true);
-
 	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(meshSpec);
-
-	// Use a vertex shader which raises the grid vertices up based on a texture, to create a heightmap effect.
-	materialStream->setProgramVertexShaderResource("Elevator.Vert");
-	materialStream->setTexture("TEX1", "Clouds.Texture");
+	// A flat legacy-lit receiver for the generic shadow demonstration.
+	materialStream->setTexture("TEX1", "Marble.Texture");
 
 	ResourceStreamPtr matStreamPtr(materialStream);
 	addResource(resourceMgr->declareResource("Grid.Material", matStreamPtr).first, true);
@@ -845,13 +839,30 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto gridMeshSpec = createGridMeshSpecification();
 	createGridMaterial(gridMeshSpec, options);
 
-	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1024, 1024, 256, 256);
+	auto gridStream = new GridModelStream(resourceMgr, gridMeshSpec, "Grid.Material", 1600, 1600, 32, 32);
 	mGrid = resourceMgr->declareResource("Model.Grid", ResourceStreamPtr(gridStream)).first;
 	mGrid->acquire(this);
 	mGrid->load();
 
 	mModels.push_back(mppScene->add3dModel(mGrid));
-	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
+	// The floor and walls receive shadows but do not contribute depth as casters.
+	mModels.back()->getParams()->setModelFlags(mpp::ModelRenderParams::Flag_Visible);
+
+	// Four inward-facing single-plane walls surround the statue. They reuse the
+	// legacy-lit grid material so PBR casters can visibly shadow non-PBR receivers.
+	auto addShadowWall = [&](glm::vec3 const& position, float angle, glm::vec3 const& axis)
+	{
+		auto wall = mppScene->add3dModel(mGrid);
+		wall->getParams()->setModelFlags(mpp::ModelRenderParams::Flag_Visible | mpp::ModelRenderParams::Flag_CullBackFaces);
+		wall->translate(position);
+		wall->rotateSelf(angle, axis);
+		mShadowWalls.push_back(wall);
+	};
+	constexpr float halfPi = 1.57079632679f;
+	addShadowWall(glm::vec3(0.0f, 800.0f, -800.0f), halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
+	addShadowWall(glm::vec3(0.0f, 800.0f, 800.0f), -halfPi, glm::vec3(1.0f, 0.0f, 0.0f));
+	addShadowWall(glm::vec3(-800.0f, 800.0f, 0.0f), -halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
+	addShadowWall(glm::vec3(800.0f, 800.0f, 0.0f), halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	// Load Sphere
 	auto sphereMeshSpec = createSphereMeshSpecification();
@@ -886,13 +897,34 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto boxMeshSpec = createBoxMeshSpecification();
 	createBoxMaterial(boxMeshSpec, options);
 
-	auto boxStream = new BoxModelStream(resourceMgr, cylinderMeshSpec, "Box.Material", 32, 32, 32);
+	auto boxStream = new BoxModelStream(resourceMgr, boxMeshSpec, "Box.Material", 32, 32, 32);
 	mBox = resourceMgr->declareResource("Model.Box", ResourceStreamPtr(boxStream)).first;
 	mBox->acquire(this);
 	mBox->load();
 
 	mModels.push_back(mppScene->add3dModel(mBox));
 	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
+
+	// A separate, unlit material makes the light marker visible without
+	// receiving the generic shadow sampler.
+	auto lightMarkerMaterialStream = new ProgrammaticMaterialStream(resourceMgr);
+	lightMarkerMaterialStream->setProgram2d(false);
+	lightMarkerMaterialStream->setMeshSpecification(boxMeshSpec);
+	lightMarkerMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "LightMarker.frag");
+	auto lightMarkerMaterial = resourceMgr->declareResource("Light.Marker.Material", ResourceStreamPtr(lightMarkerMaterialStream)).first;
+	addResource(lightMarkerMaterial, true);
+
+	mLightMarker = mppScene->add3dModel(mBox);
+	mLightMarker->getParams()->setModelMaterial(lightMarkerMaterial);
+	mLightMarker->getParams()->setModelFlags(mpp::ModelRenderParams::Flag_Visible);
+	mLightMarker->translate(mLightPosition);
+	mLightMarker->scale(glm::vec3(0.5f));
+
+	// A legacy-lit cube behind the PBR statue exercises bidirectional
+	// mixed-material casting/receiving through the shared shadow domain.
+	mShadowCube = mppScene->add3dModel(mBox);
+	mShadowCube->translate(glm::vec3(0.0f, 32.0f, -160.0f));
+	mShadowCube->scale(glm::vec3(2.0f));
 
 	// Load torus
 	createTorusModel(options);
@@ -964,18 +996,25 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLight1Colour(Colour::White);
 
 	mpp::PbrLight pbrLight;
-	pbrLight.type = mpp::PbrLightType::Point;
-	pbrLight.position = glm::vec3(0.0f, 256.0f, 256.0f);
+	pbrLight.type = mpp::PbrLightType::Directional;
+	pbrLight.direction = mShadowOptions.light.direction;
 	pbrLight.colour = glm::vec3(1.0f);
 	pbrLight.intensity = mPbrLightIntensity;
-	pbrLight.range = 1200.0f;
+	pbrLight.range = 0.0f;
 	renderSystem->setPbrAmbientColour(Colour(0.03f, 0.03f, 0.03f));
 	renderSystem->setPbrLights({ pbrLight });
 
 	// PBR is an opt-in pipeline. Milestone 1 uses the statue as the visible
 	// HDR preview while later milestones replace its temporary shading path.
+	mShadowOptions.enabled = true;
+	mShadowOptions.resolution = 1024;
+	mShadowOptions.orthoHalfWidth = 1000.0f;
+	mShadowOptions.light.direction = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
+	renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", mShadowOptions);
+
 	mpp::RenderPipelineOptions pbrOptions;
 	pbrOptions.mode = mpp::RenderPipelineMode::PbrForward;
+	pbrOptions.shadowDomain = "DemoSuite.MainDirectionalShadow";
 	mPbrEnvironment = make_shared<mpp::PbrEnvironment>();
 	mPbrEnvironment->irradianceMap = resourceMgr->getResource("PBR.Preview.Environment");
 	mPbrEnvironment->prefilteredSpecularMap = resourceMgr->getResource("PBR.Preview.Environment");
@@ -1009,9 +1048,9 @@ mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const
 {
 	float aspectRatio = options.screenWidth / (float)options.screenHeight;
 
-	//auto camera = new helper::FreeCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 0.0f, 45.0f, aspectRatio);
-	auto camera = new helper::FpsCamera(glm::vec3(0, 150, 550), 0.0f, 0.0f, 45.0f, aspectRatio);
-	camera->setClipDistances(0.1f, 1000.0f);
+	//auto camera = new helper::FreeCamera(glm::vec3(0, 200, 750), 0.0f, 0.0f, 0.0f, 45.0f, aspectRatio);
+	auto camera = new helper::FpsCamera(glm::vec3(0, 200, 750), 0.0f, 0.0f, 45.0f, aspectRatio);
+	camera->setClipDistances(0.1f, 2000.0f);
 
 	return shared_ptr<mpp::Camera>(camera);
 }
@@ -1055,6 +1094,25 @@ void ModelScene::toggleModel(uint32_t index)
 
 void ModelScene::handleInput(InputManager* inputMgr)
 {
+	mCameraOrbitInput = 0.0f;
+	mCameraTargetVerticalInput = 0.0f;
+	mLightMoveInput = glm::vec2(0.0f);
+
+	const bool moveLight = inputMgr->keyDown(Key_LeftShift) || inputMgr->keyDown(Key_RightShift);
+	if (moveLight)
+	{
+		if (inputMgr->keyDown(Key_LeftArrow)) mLightMoveInput.x -= 1.0f;
+		if (inputMgr->keyDown(Key_RightArrow)) mLightMoveInput.x += 1.0f;
+		if (inputMgr->keyDown(Key_UpArrow)) mLightMoveInput.y -= 1.0f;
+		if (inputMgr->keyDown(Key_DownArrow)) mLightMoveInput.y += 1.0f;
+	}
+	else
+	{
+		if (inputMgr->keyDown(Key_LeftArrow)) mCameraOrbitInput -= 1.0f;
+		if (inputMgr->keyDown(Key_RightArrow)) mCameraOrbitInput += 1.0f;
+		if (inputMgr->keyDown(Key_UpArrow)) mCameraTargetVerticalInput += 1.0f;
+		if (inputMgr->keyDown(Key_DownArrow)) mCameraTargetVerticalInput -= 1.0f;
+	}
 }
 
 void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
@@ -1086,6 +1144,38 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			pbrPipeline->setToneMapOperator(toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces);
 		}
+
+		bool shadowOptionsChanged = false;
+		shadowOptionsChanged |= ImGui::Checkbox("Shadows Enabled", &mShadowOptions.enabled);
+		int shadowFilter = mShadowOptions.filterMode == mpp::ShadowFilterMode::Pcf3x3 ? 1 : 0;
+		if (ImGui::Combo("Shadow Filter", &shadowFilter, "Hard (1 tap)\0Soft (3x3 PCF)\0"))
+		{
+			mShadowOptions.filterMode = shadowFilter == 0 ? mpp::ShadowFilterMode::Hard : mpp::ShadowFilterMode::Pcf3x3;
+			shadowOptionsChanged = true;
+		}
+		int shadowResolution = mShadowOptions.resolution == 512 ? 0 : (mShadowOptions.resolution == 2048 ? 2 : 1);
+		if (ImGui::Combo("Shadow Resolution", &shadowResolution, "512\0 1024\0 2048\0"))
+		{
+			mShadowOptions.resolution = shadowResolution == 0 ? 512 : (shadowResolution == 1 ? 1024 : 2048);
+			shadowOptionsChanged = true;
+		}
+		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Extent", &mShadowOptions.orthoHalfWidth, 64.0f, 2000.0f, "%.0f");
+		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Constant Bias", &mShadowOptions.constantBias, 0.0f, 0.01f, "%.5f");
+		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Normal Bias", &mShadowOptions.normalBias, 0.0f, 0.02f, "%.5f");
+		shadowOptionsChanged |= ImGui::SliderFloat("Shadow Filter Radius", &mShadowOptions.filterRadiusTexels, 0.25f, 3.0f, "%.2f");
+		if (ImGui::SliderFloat3("Shadow Light Direction", &mShadowOptions.light.direction.x, -1.0f, 1.0f))
+		{
+			if (glm::dot(mShadowOptions.light.direction, mShadowOptions.light.direction) > 0.0001f)
+			{
+				mShadowOptions.light.direction = glm::normalize(mShadowOptions.light.direction);
+				shadowOptionsChanged = true;
+			}
+		}
+		if (shadowOptionsChanged)
+		{
+			renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", mShadowOptions);
+		}
+
 		if (ImGui::ColorEdit4("PBR Base Colour", &mPbrBaseColour.x))
 		{
 			mPbrStatueUniforms->updateUniform("PBR_BASE_COLOUR_FACTOR", mPbrBaseColour);
@@ -1098,7 +1188,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			mPbrStatueUniforms->updateUniform("PBR_ROUGHNESS_FACTOR", mPbrRoughness);
 		}
-		if (ImGui::SliderFloat("PBR Light Intensity", &mPbrLightIntensity, 0.0f, 250000.0f, "%.0f"))
+		if (ImGui::SliderFloat("PBR Light Intensity", &mPbrLightIntensity, 0.0f, 10.0f, "%.2f"))
 		{
 			// update() uploads the selected intensity into the dedicated PBR UBO.
 		}
@@ -1110,9 +1200,12 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			mPbrEnvironment->backgroundMap = environmentMap;
 			pbrPipeline->setPbrEnvironment(mPbrEnvironment);
 		}
-		ImGui::Text("Texture bindings: 8 dynamic samplers (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
+		ImGui::Text("Texture bindings: 9 dynamic samplers with shadows (limit: %u)", renderSystem->getCaps().maxFragmentTextureUnits);
 		ImGui::TextUnformatted("Base/emissive: sRGB; normal, AO and metallic-roughness: linear");
 		ImGui::Text("PBR lights: 1 / %zu; environment: selected precomputed placeholder", mpp::RenderSystem::getMaxPbrLights());
+		ImGui::Text("Shadow domain: MainDirectionalShadow (%zux%zu, %s)", mShadowOptions.resolution, mShadowOptions.resolution,
+			mShadowOptions.filterMode == mpp::ShadowFilterMode::Pcf3x3 ? "3x3 PCF" : "hard");
+		ImGui::TextUnformatted("Arrows: orbit / move look target; Shift+Arrows: move light");
 	}
 	ImGui::End();
 }
@@ -1139,10 +1232,23 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 
 	updateImGui(frameTime, renderSystem);
 
-	// Rotate all models
-	for (auto model : mModels)
+	// Keep geometry stationary. Arrow keys orbit the camera or move its look-at
+	// target; Shift+Arrow moves the shared directional/legacy light instead.
+	mCameraOrbitAngle += mCameraOrbitInput * frameTime * 0.8f;
+	mCameraOrbitTarget.y += mCameraTargetVerticalInput * frameTime * 120.0f;
+	const float orbitRadius = 750.0f;
+	const glm::vec3 orbitPosition(
+		sinf(mCameraOrbitAngle) * orbitRadius,
+		200.0f,
+		cosf(mCameraOrbitAngle) * orbitRadius);
+	getCamera()->setLookAt(orbitPosition, mCameraOrbitTarget);
+
+	if (mLightMoveInput != glm::vec2(0.0f))
 	{
-		model->rotateSelf(2 * frameTime, glm::vec3(0, 1, 0));
+		mLightPosition.x += mLightMoveInput.x * frameTime * 180.0f;
+		mLightPosition.y += mLightMoveInput.y * frameTime * 180.0f;
+		mShadowOptions.light.direction = glm::normalize(mShadowOptions.light.focusPoint - mLightPosition);
+		renderSystem->configureShadowDomain("DemoSuite.MainDirectionalShadow", mShadowOptions);
 	}
 
 	// Scale cube
@@ -1170,15 +1276,16 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	//batchBoxModel->rotateSelf(speed * frameTime, glm::normalize(glm::vec3(1, 1, 0)));
 	//
 	// Lighting
-	mLightPosition = glm::rotateY(mLightPosition, (2 * 3.14159f / 5.0f) * frameTime);
-	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
+	mLightMarker->resetTransform();
+	mLightMarker->translate(mLightPosition);
+	mLightMarker->scale(glm::vec3(0.5f));
 	renderSystem->setLight1Position(mLightPosition);
 	mpp::PbrLight pbrLight;
-	pbrLight.type = mpp::PbrLightType::Point;
-	pbrLight.position = mLightPosition;
+	pbrLight.type = mpp::PbrLightType::Directional;
+	pbrLight.direction = mShadowOptions.light.direction;
 	pbrLight.colour = glm::vec3(1.0f);
 	pbrLight.intensity = mPbrLightIntensity;
-	pbrLight.range = 1200.0f;
+	pbrLight.range = 0.0f;
 	renderSystem->setPbrLights({ pbrLight });
 
 	// Update scene

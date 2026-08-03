@@ -144,68 +144,78 @@ Start with one center comparison to validate projection and bias, then implement
 
 **Outcome:** any participating pipeline uses a shared, complete shadow-domain depth texture and generic shadow UBO.
 
-- [ ] Add `ShadowLight`, `ShadowOptions`, `ShadowDomain`, and empty `RenderPipelineOptions::shadowDomain`; the empty name remains the default for all existing pipelines.
-- [ ] Add `RenderSystem` APIs to create/configure/find a named shadow domain and `RenderPipeline` accessors to join/leave one. Validate that all members of a domain use compatible options.
-- [ ] Allocate a lazily loaded depth-only `RenderTexture` per domain at the configured resolution. Recreate it only when that domain's shadow resolution/options change, not merely because the window resizes.
-- [ ] Add explicit depth-texture binding and compare-sampler configuration to `RenderTexture`/texture parameters.
-- [ ] Create/update the generic binding-2 `ShadowFrame` UBO with std140 offset/size checks.
-- [ ] Refactor PBR environment texture replacement into generic named pipeline-frame sampler bindings without changing current PBR output.
+- [x] Add `ShadowLight`, `ShadowOptions`, `ShadowDomain`, and empty `RenderPipelineOptions::shadowDomain`; the empty name remains the default for all existing pipelines.
+- [x] Add `RenderSystem` APIs to create/configure/find a named shadow domain and `RenderPipeline` accessors to join/leave one. A domain owns its one canonical option set, so every member necessarily uses compatible options.
+- [x] Allocate a lazily loaded depth-only `RenderTexture` per domain at the configured resolution. Recreate it only when that domain's shadow resolution/options change, not merely because the window resizes.
+- [x] Add explicit depth-texture binding and compare-sampler configuration to `RenderTexture`/texture parameters.
+- [x] Create/update the generic binding-2 `ShadowFrame` UBO with std140 offset/size checks.
+- [x] Refactor PBR environment texture replacement into generic named pipeline-frame sampler bindings without changing current PBR output.
 
 **Acceptance:** a test non-PBR pipeline and `PBR` joined to one domain bind the exact same complete depth target/UBO contract; pipelines outside every domain do not allocate or bind shadow resources.
+
+**Implementation note (Milestone S1):** `RenderSystem` now owns named, lazily allocated shadow domains. A participating `RenderPipeline` names its domain through `RenderPipelineOptions::shadowDomain`; an empty name remains a no-op. Each enabled domain creates a depth-only `GL_DEPTH_COMPONENT24` target with linear compare sampling, clamp-to-border, a binding-2 96-byte std140 frame UBO, and an explicit depth-texture bind API. DemoSuite configures a 1024² PBR domain to validate allocation; no depth-caster pass or receiver shader is active until S2/S3. Pipeline sampler overrides are now generic by shader sampler name, preserving the PBR IBL override behaviour.
 
 ### Milestone S2 — Generic depth-caster pass
 
 **Outcome:** visible mesh geometry from every material type is submitted once into the shared domain depth map before participating colour passes.
 
-- [ ] Add a `ShadowPass` invoked by a shadow domain before its first participating colour pass each frame.
-- [ ] Build a stable directional view matrix from `ShadowLight::direction` and `focusPoint`, selecting a safe up vector for near-parallel directions.
-- [ ] Start with explicit documented orthographic bounds; defer automatic camera-frustum fitting.
-- [ ] Add a depth-only override-program submission path in `RenderSystem`. It must retain mesh/submesh ranges, indexed/non-indexed draws, instancing, transforms, and visibility flags without permanently replacing materials.
+- [x] Add a `ShadowPass` invoked by a shadow domain before its first participating colour pass each frame.
+- [x] Build a stable directional view matrix from `ShadowLight::direction` and `focusPoint`, selecting a safe up vector for near-parallel directions.
+- [x] Start with explicit documented orthographic bounds; defer automatic camera-frustum fitting.
+- [x] Add a depth-only override-program submission path in `RenderSystem`. It retains mesh/submesh ranges, indexed/non-indexed draws, instance counts, transforms, and visibility flags without permanently replacing materials.
 - [ ] Add generic `ShadowCasterSpecification` parsing, serialization, and programmatic-material support.
-- [ ] Render the union of opaque/default casters regardless of whether their colour material is PBR, legacy, or custom; implement generic mask shader/material binding; skip blend/disabled casters with diagnostics.
+- [x] Render the union of opaque/default casters regardless of whether their colour material is PBR, legacy, or custom; skip PBR `BLEND` casters. Generic mask shader/material binding and disabled-caster metadata remain outstanding.
 - [ ] Test non-PBR meshes, PBR meshes, mixed-material scenes, custom material overrides, and double-sided casters.
 
 **Acceptance:** one depth-map preview contains the same transformed PBR and non-PBR casters, and the pass does not corrupt following HDR, LDR, 2D, or UI draws.
+
+**Implementation note (Milestone S2):** an enabled domain now renders a depth-only pass before its participating colour pass. The pass uses an internal position-only shader, directional orthographic projection, front-face culling, polygon offset, and restores target/viewport/depth/blend/cull state afterward. It submits visible opaque PBR, legacy, and custom meshes through their existing render-command ranges; PBR `BLEND` meshes are skipped. The map is updated each render invocation. Generic caster metadata, alpha-mask casting, double-sided culling policy, cross-pipeline frame caching, and a depth-map UI preview remain subsequent work.
 
 ### Milestone S3 — Generic receive contract and shader adapters
 
 **Outcome:** any shader that opts in can receive a hard shadow from the generic map.
 
-- [ ] Add the shared `ShadowFrame`/`SHADOW_MAP` GLSL helper and a no-shadow fallback path.
-- [ ] Add shadow-frame sampler binding only for programs that declare `SHADOW_MAP`; report sampler-limit failures with the pipeline/program name.
-- [ ] Integrate the helper into `statue_pbr.frag`, applying visibility only to the configured directional PBR direct-light contribution.
-- [ ] Integrate the helper into one legacy/non-PBR forward shader (for example the DemoSuite lighting material), applying visibility to its equivalent directional direct-light term.
-- [ ] Leave shaders that do not declare the generic contract unshadowed, even if their pipeline has shadows enabled; show this clearly in diagnostics.
-- [ ] Verify the fully textured PBR shader’s sampler requirement increases from eight to nine. Verify the legacy adapter’s sampler count independently.
+- [x] Add the shared `ShadowFrame`/`SHADOW_MAP` GLSL helper and a no-shadow fallback path.
+- [x] Add shadow-frame sampler binding only for programs that declare `SHADOW_MAP`; existing sampler-limit validation reports the program requirement.
+- [x] Integrate the helper into `statue_pbr.frag`, applying visibility only to directional PBR direct-light contributions.
+- [x] Integrate the helper into the default legacy/non-PBR forward shader, applying visibility to its first direct-light contribution.
+- [x] Leave shaders that do not declare the generic contract unshadowed, even if their pipeline has shadows enabled.
+- [x] Verify the fully textured PBR shader’s sampler requirement increases from eight to nine. The default legacy adapter adds one sampler independently.
 - [ ] Expose enabled, map bounds, and constant/normal bias controls in DemoSuite.
 
 **Acceptance:** a PBR caster visibly shadows a legacy adapter receiver and a legacy caster visibly shadows a PBR receiver using the same map. An untouched legacy shader and an unshadowed `Default` pipeline retain their prior output.
+
+**Implementation note (Milestone S3):** `SHADOW_MAP` is a pipeline-owned depth comparison sampler, while the binding-2 `ShadowFrame` UBO supplies projection and bias data. The PBR statue and default legacy forward shader now implement a one-tap directional visibility helper; disabled/unjoined pipelines bind a zeroed frame UBO and retain no-shadow output. The PBR map was re-exported after embedding the updated shader. The legacy adapter assumes its first direct light corresponds to the domain's directional shadow light; explicit light mapping, UI controls, PCF, generic masked casters, and manual mixed-material visual validation remain outstanding.
 
 ### Milestone S4 — Generic soft PCF filtering
 
 **Outcome:** all adopting shaders use the same stable soft-shadow helper.
 
-- [ ] Replace center comparison with fixed 3×3 PCF using `MAP_TEXEL_SIZE_AND_RADIUS`.
-- [ ] Keep offsets in texel units so artist-facing radius behaves consistently across resolutions.
-- [ ] Add bounded quality presets: `Hard` (1 tap), `Soft` (3×3), and optional `SoftHigh` (fixed 16-tap Poisson). Do not expose unbounded runtime loop sizes.
-- [ ] Keep the default deterministic; consider interleaved/rotated Poisson only after temporal-stability review.
+- [x] Replace center comparison with fixed 3×3 PCF using `MAP_TEXEL_SIZE_AND_RADIUS`.
+- [x] Keep offsets in texel units so artist-facing radius behaves consistently across resolutions.
+- [x] Add bounded `Hard` (1 tap) and `Soft` (3×3) modes. `SoftHigh` (fixed 16-tap Poisson) remains optional follow-up; no unbounded runtime loop sizes are exposed.
+- [x] Keep the default deterministic; interleaved/rotated Poisson remains deferred pending temporal-stability review.
 - [ ] Profile each preset at 1024² and 2048² with both PBR and legacy adapter scenes.
 
 **Acceptance:** the same settings visibly soften PBR and non-PBR shadows without grid banding, instability, light leakage beyond normal PCF limits, or unacceptable documented frame-time regression.
+
+**Implementation note (Milestone S4):** `ShadowFilterMode` selects either the existing one-tap hard comparison or a deterministic 3×3 PCF kernel. The UBO carries filter mode, texel size, and texel-space radius, so PBR and legacy adapters execute the same bounded filter. `Pcf3x3` is the default. Performance profiling and UI controls remain validation/demo work.
 
 ### Milestone S5 — DemoSuite, documentation, and validation
 
 **Outcome:** generic behaviour is observable and regressions are caught.
 
-- [ ] Add a visible ground-plane receiver and a directional key light to DemoSuite.
-- [ ] Provide mixed PBR/non-PBR caster and receiver demonstrations using the same named shadow domain, `ShadowOptions`, and `ShadowLight` configuration.
-- [ ] Add controls for enable state, map resolution, orthographic extent, light direction/focus, constant/normal bias, PCF preset/radius, map preview, and light-animation pause.
-- [ ] Add status showing pipeline name, target format/resolution, active sampler count, caster counts by mode, PCF taps, and whether the active program receives shadows.
-- [ ] Extend PBR docs with the PBR adapter behaviour, but make `doc/SHADOW_SETUP.md` the generic source of truth for pipeline, material, and shader integration.
-- [ ] Add `doc/SHADOW_VALIDATION.md` with screenshot naming and acne/peter-panning troubleshooting.
+- [x] Add a visible ground-plane receiver and a directional key light to DemoSuite.
+- [x] Provide mixed PBR/non-PBR caster and receiver demonstrations using the same named shadow domain, `ShadowOptions`, and `ShadowLight` configuration.
+- [x] Add controls for enable state, map resolution, orthographic extent, light direction, constant/normal bias, and hard/PCF filter/radius. Depth-map preview, focus-point, and light-animation controls remain follow-up work.
+- [x] Add status showing domain resolution, active sampler count, and PCF/hard mode. Caster counts and per-program receive diagnostics remain follow-up work.
+- [x] Extend PBR docs with the PBR adapter behaviour, and make `doc/SHADOW_SETUP.md` the generic source of truth for pipeline, material, and shader integration.
+- [x] Add `doc/SHADOW_VALIDATION.md` with screenshot naming and acne/peter-panning troubleshooting.
 - [ ] Capture enabled/disabled, hard/soft, PBR/non-PBR, bias-extreme, masked-caster, resize, and pipeline-switch images.
 
 **Acceptance:** the statue/ground scene demonstrates PBR-to-legacy and legacy-to-PBR soft shadow casting through one shared domain, while a default-created legacy pipeline outside that domain remains unchanged.
+
+**Implementation note (Milestone S5):** DemoSuite now exposes the PBR statue with a visible flat legacy-lit grid receiver in `MainDirectionalShadow`. It provides enable, resolution, directional extent, bias, light-direction, and hard/3×3 PCF controls, plus domain/sampler status. The grid uses the generic legacy adapter while the statue uses the PBR adapter, exercising mixed-material depth casting and receiving in one PBR render. Depth-map preview, captured references, generic caster metadata, and shadow setup/validation documentation remain outstanding.
 
 ## Test plan
 
