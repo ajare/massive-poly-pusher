@@ -102,9 +102,71 @@ public:
 
 `GraphPassBuilder` has distinct methods for `readSampled()`, `readDepth()`, `writeColour()`, `writeDepth()`, and `readWrite()` (the last is rejected initially unless a future input-attachment/subpass implementation supports it). The execution callback receives resolved image views and must not bind graph-owned targets directly.
 
+### XML graph declaration
+
+Graphs must be expressible as a resource so applications can author a fixed pipeline without C++ graph-builder code. Programmatic construction remains the preferred route for dynamic topology, but both paths compile to the same `RenderGraphBuilder` representation.
+
+Declare an XML graph resource with named images and ordered pass declarations. Inputs/outputs refer to image names; an output creates the next version of that image. The parser resolves names to versioned handles and rejects a pass that reads an image version it also writes.
+
+```xml
+<RenderGraph>
+    <Images>
+        <Image name="SceneHdr" format="RGBA16F" colourSpace="LINEAR_HDR"
+               scale="1.0 1.0" transient="false" usage="colourAttachment,sampled" />
+        <Image name="SceneDepth" format="DEPTH24" colourSpace="LINEAR"
+               scale="1.0 1.0" transient="false" usage="depthAttachment,sampled" />
+        <Image name="BloomExtract" format="RGBA16F" colourSpace="LINEAR_HDR"
+               scale="0.5 0.5" transient="true" usage="colourAttachment,sampled" />
+        <Image name="BloomPing" format="RGBA16F" colourSpace="LINEAR_HDR"
+               scale="0.5 0.5" transient="true" usage="colourAttachment,sampled" />
+        <Image name="Presented" format="RGBA8" colourSpace="DISPLAY"
+               external="screen" transient="false" usage="presentation" />
+    </Images>
+
+    <Passes>
+        <Pass name="Scene" type="scene" stage="linearHdr">
+            <Colours>
+                <Output image="SceneHdr" load="clear" store="store" clear="0 0 0 1" />
+            </Colours>
+            <Depth image="SceneDepth" load="clear" store="store" clear="1" />
+        </Pass>
+
+        <Pass name="BloomExtract" type="fullscreen" shader="Effects.BloomExtract" stage="linearHdr">
+            <Inputs>
+                <Sampled semantic="TEX1" image="SceneHdr" />
+            </Inputs>
+            <Colours>
+                <Output image="BloomExtract" load="dontCare" store="store" />
+            </Colours>
+            <Parameters>
+                <Float name="THRESHOLD" value="0.7" />
+            </Parameters>
+        </Pass>
+
+        <Pass name="BloomBlurHorizontal" type="fullscreen" shader="Effects.BloomBlur" stage="linearHdr">
+            <Inputs><Sampled semantic="TEX1" image="BloomExtract" /></Inputs>
+            <Colours><Output image="BloomPing" load="dontCare" store="store" /></Colours>
+            <Parameters><Vec2 name="DIRECTION" value="1 0" /></Parameters>
+        </Pass>
+    </Passes>
+</RenderGraph>
+```
+
+The exact element spelling may evolve, but these rules are required:
+
+- `Image` declares format, size (`scale` or absolute width/height), colour space, usage, filtering/wrapping, sample count, mip count, and transient/external lifetime.
+- `Pass` declares `type` (`scene`, `fullscreen`, `compute` when supported, `present`), stage, shader/program resource, inputs, colour outputs in MRT location order, optional depth output, and typed parameters.
+- `Output` declares `load`/`store` and clear values. Multiple ordered `Output` elements map to `layout(location = 0..n)` for MRT.
+- `Sampled semantic` maps a graph image to a shader sampler name. The parser validates the named sampler/program contract at load/compile time.
+- XML may reference a named resource (`shader="Effects.BloomExtract"`) or define a child program resource using the existing program XML conventions.
+- `external="screen"` and future named imported resources are the only way XML can refer to non-transient images; arbitrary raw GL names are never serialized.
+- Scene passes may use a named scene-render callback/factory registered by the application. XML cannot serialize arbitrary C++ lambdas.
+
+`RenderGraphStream` and a programmatic `ProgrammaticRenderGraphStream` should mirror existing resource stream patterns. Parsed graph resources are immutable topology templates; runtime code can supply a viewport, imported targets, scene callback, and parameter overrides before compilation.
+
 ### Compilation and execution
 
-1. **Build:** pipeline code creates images and declares passes.
+1. **Build:** pipeline code or an XML graph template creates images and declares passes.
 2. **Validate:** reject missing producer, format/type mismatch, same-version read/write feedback, unsupported format/usage, invalid attachment load/store combinations, and unsupported MRT count.
 3. **Topologically sort:** derive pass order from handle dependencies; report a named cycle.
 4. **Calculate lifetimes:** first write through last read for every transient version.
@@ -167,13 +229,14 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG1 — Graph data model and validation foundation
 
-- [ ] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, and compiled graph types under `mpp/include/mpp` and `mpp/src`.
+- [ ] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, compiled graph types, `RenderGraphStream`, and `ProgrammaticRenderGraphStream` under `mpp/include/mpp` and `mpp/src`.
 - [ ] Extend `Caps` with draw-buffer/colour-attachment limits and validate graph requirements.
 - [ ] Add graph image format mapping to the existing render-texture format system.
 - [ ] Support imported targets and transient 2D colour/depth images at absolute/relative sizes.
 - [ ] Implement dependency sorting, version validation, cycle diagnostics, attachment/dimension checks, and load/store clear semantics.
 - [ ] Add a debug dump describing passes, image versions, lifetimes, formats, and allocations.
-- [ ] Unit-test graph validation without an OpenGL context where feasible.
+- [ ] Parse/serialize XML graph templates, including typed parameters, image descriptors, load/store operations, sampler semantics, child/external resource references, and MRT output order.
+- [ ] Unit-test graph validation and XML diagnostics without an OpenGL context where feasible.
 
 **Acceptance:** a synthetic graph rejects feedback/cycle/format errors with named diagnostics and compiles a valid two-pass colour chain.
 
@@ -219,7 +282,8 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 ### RG6 — Resource-authored effects and optimizations
 
 - [ ] Replace the stub `PostEffect` execution model with graph-pass declaration/execution APIs.
-- [ ] Extend `PostEffectStream`/serialization for input semantics, output descriptor, uniforms, shader resource, stage, and quality settings.
+- [ ] Extend `PostEffectStream`/serialization for input semantics, output descriptor, uniforms, shader resource, stage, and quality settings; allow a `PostEffect` to reference an XML `RenderGraph` subgraph template.
+- [ ] Support application-registered XML scene-pass factories and reject unregistered scene callback names with named diagnostics.
 - [ ] Add transient lifetime aliasing after correctness tests; add optional framebuffer invalidation/discard optimization.
 - [ ] Add pass timing, attachment previews, graph JSON/dot dump, and RenderDoc labels.
 - [ ] Migrate built-in bloom to a resource-authored/reference effect only after the custom-effect contract is stable.
