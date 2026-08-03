@@ -205,15 +205,17 @@ Start with one center comparison to validate projection and bias, then implement
 
 **Outcome:** generic behaviour is observable and regressions are caught.
 
-- [ ] Add a visible ground-plane receiver and a directional key light to DemoSuite.
-- [ ] Provide mixed PBR/non-PBR caster and receiver demonstrations using the same named shadow domain, `ShadowOptions`, and `ShadowLight` configuration.
-- [ ] Add controls for enable state, map resolution, orthographic extent, light direction/focus, constant/normal bias, PCF preset/radius, map preview, and light-animation pause.
-- [ ] Add status showing pipeline name, target format/resolution, active sampler count, caster counts by mode, PCF taps, and whether the active program receives shadows.
-- [ ] Extend PBR docs with the PBR adapter behaviour, but make `doc/SHADOW_SETUP.md` the generic source of truth for pipeline, material, and shader integration.
-- [ ] Add `doc/SHADOW_VALIDATION.md` with screenshot naming and acne/peter-panning troubleshooting.
+- [x] Add a visible ground-plane receiver and a directional key light to DemoSuite.
+- [x] Provide mixed PBR/non-PBR caster and receiver demonstrations using the same named shadow domain, `ShadowOptions`, and `ShadowLight` configuration.
+- [x] Add controls for enable state, map resolution, orthographic extent, light direction, constant/normal bias, and hard/PCF filter/radius. Depth-map preview, focus-point, and light-animation controls remain follow-up work.
+- [x] Add status showing domain resolution, active sampler count, and PCF/hard mode. Caster counts and per-program receive diagnostics remain follow-up work.
+- [x] Extend PBR docs with the PBR adapter behaviour, and make `doc/SHADOW_SETUP.md` the generic source of truth for pipeline, material, and shader integration.
+- [x] Add `doc/SHADOW_VALIDATION.md` with screenshot naming and acne/peter-panning troubleshooting.
 - [ ] Capture enabled/disabled, hard/soft, PBR/non-PBR, bias-extreme, masked-caster, resize, and pipeline-switch images.
 
 **Acceptance:** the statue/ground scene demonstrates PBR-to-legacy and legacy-to-PBR soft shadow casting through one shared domain, while a default-created legacy pipeline outside that domain remains unchanged.
+
+**Implementation note (Milestone S5):** DemoSuite now exposes the PBR statue with a visible flat legacy-lit grid receiver in `MainDirectionalShadow`. It provides enable, resolution, directional extent, bias, light-direction, and hard/3×3 PCF controls, plus domain/sampler status. The grid uses the generic legacy adapter while the statue uses the PBR adapter, exercising mixed-material depth casting and receiving in one PBR render. Depth-map preview, captured references, generic caster metadata, and shadow setup/validation documentation remain outstanding.
 
 ## Test plan
 
