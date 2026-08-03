@@ -441,6 +441,11 @@ namespace mpp
 		mDepthAttachment = attachment;
 	}
 
+	void ProgrammaticRenderTextureStream::setDepthParams(RenderTextureDepthParams const& params)
+	{
+		mDepthParams = params;
+	}
+
 	void ProgrammaticRenderTextureStream::setNumAttachments(size_t numAttachments)
 	{
 		mNumAttachments = numAttachments;

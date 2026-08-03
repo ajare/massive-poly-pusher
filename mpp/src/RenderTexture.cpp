@@ -128,6 +128,7 @@ namespace mpp
 		}
 
 		mDepthAttachment = rtStr->getDepthAttachment();
+		mDepthParams = rtStr->getDepthParams();
 		mNumAttachments = rtStr->getNumAttachments();
 		if (mNumAttachments == 0 && mDepthAttachment == RenderTextureDepthAttachment::None)
 		{
@@ -211,10 +212,21 @@ namespace mpp
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
 			const bool stencil = mDepthAttachment == RenderTextureDepthAttachment::DepthStencilTexture;
 			GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, stencil ? GL_UNSIGNED_INT_24_8 : GL_UNSIGNED_INT, nullptr));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mDepthParams.params.minFilter));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mDepthParams.params.magFilter));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mDepthParams.params.wrap));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, mDepthParams.params.wrap));
+			if (mDepthParams.compareRefToTexture)
+			{
+				const GLfloat litBorder[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE));
+				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL));
+				GL_CHECK(glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, litBorder));
+			}
+			else
+			{
+				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE));
+			}
 			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mDepthTexture, 0));
 			break;
 		}
@@ -344,6 +356,16 @@ namespace mpp
 	uint32_t RenderTexture::getDepthTextureId() const
 	{
 		return mDepthTexture;
+	}
+
+	void RenderTexture::bindDepth(uint32_t unit)
+	{
+		if (mDepthTexture == 0)
+		{
+			THROW_MPP("Render texture has no depth texture attachment.", __LINE__, __FILE__, __func__);
+		}
+		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
 	}
 
 	uint32_t RenderTexture::getColourAttachmentId(size_t attachment) const
