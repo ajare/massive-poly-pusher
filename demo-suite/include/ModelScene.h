@@ -34,7 +34,7 @@ private:
 	int mPbrEnvironmentIndex{ 0 };
 	float mPbrMetallic{ 0.0f };
 	float mPbrRoughness{ 0.75f };
-	float mPbrLightIntensity{ 120000.0f };
+	float mPbrLightIntensity{ 2.0f };
 	glm::vec4 mPbrBaseColour{ 1.0f };
 	std::shared_ptr<mpp::UniformCollection> mPbrStatueUniforms;
 	mpp::PbrEnvironmentPtr mPbrEnvironment;

@@ -29,6 +29,14 @@ R"(
 ## Texture
 @@Texture(sampler2D TEX1);
 ##
+@@Texture(sampler2DShadow SHADOW_MAP);
+
+layout(std140, binding = 2) uniform ShadowFrame
+{
+    mat4 LIGHT_VIEW_PROJECTION;
+    vec4 MAP_TEXEL_SIZE_AND_RADIUS;
+    vec4 BIAS_AND_ENABLED;
+};
 
 struct Light
 {
@@ -59,6 +67,27 @@ float phong(vec3 v, vec3 n, vec3 l)
     return strength * spec;
 }
 
+float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
+{
+    if (BIAS_AND_ENABLED.z < 0.5)
+    {
+        return 1.0;
+    }
+
+    vec4 shadowPosition = LIGHT_VIEW_PROJECTION * vec4(worldPosition, 1.0);
+    shadowPosition.xyz /= max(shadowPosition.w, 0.00001);
+    vec3 shadowCoords = shadowPosition.xyz * 0.5 + 0.5;
+    if (shadowCoords.x <= 0.0 || shadowCoords.x >= 1.0 || shadowCoords.y <= 0.0 || shadowCoords.y >= 1.0 ||
+        shadowCoords.z <= 0.0 || shadowCoords.z >= 1.0)
+    {
+        return 1.0;
+    }
+
+    float nDotL = max(dot(normal, lightDirection), 0.0);
+    float bias = BIAS_AND_ENABLED.x + BIAS_AND_ENABLED.y * (1.0 - nDotL);
+    return texture(@Texture(SHADOW_MAP), vec3(shadowCoords.xy, shadowCoords.z - bias));
+}
+
 void main()
 {
     vec3 normalDir = @In(NORMAL);
@@ -74,7 +103,8 @@ void main()
         float diffuse = lambert(normalDir, lightDir);
         float specular = phong(viewDir, normalDir, lightDir);
         
-        colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular);
+        float shadow = i == 0 ? directionalShadowVisibility(@In(FRAGPOSITION), normalDir, lightDir) : 1.0;
+        colourContrib += @Uniform(LIGHTS[i]).colour * (diffuse + specular) * shadow;
     }
 
     vec4 shadedColour = vec4(colourContrib, 1.0) * @In(COLOUR);

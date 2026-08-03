@@ -206,7 +206,13 @@ namespace mpp
 			string textureName;
 			if (it == materialTextures.end())
 			{
-				if (mPbrSurface.enabled)
+				if (samplerName == "SHADOW_MAP")
+				{
+					// Shadow domains replace this binding during an opted-in scene flush.
+					// The normal no-texture fallback keeps non-shadow pipelines valid.
+					textureName = "__mpp_tex_none__";
+				}
+				else if (mPbrSurface.enabled)
 				{
 					if (samplerName == "PBR_BASE_COLOUR_MAP" || samplerName == "PBR_OCCLUSION_MAP")
 					{

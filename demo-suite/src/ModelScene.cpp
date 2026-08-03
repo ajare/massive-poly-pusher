@@ -964,11 +964,11 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->setLight1Colour(Colour::White);
 
 	mpp::PbrLight pbrLight;
-	pbrLight.type = mpp::PbrLightType::Point;
-	pbrLight.position = glm::vec3(0.0f, 256.0f, 256.0f);
+	pbrLight.type = mpp::PbrLightType::Directional;
+	pbrLight.direction = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 	pbrLight.colour = glm::vec3(1.0f);
 	pbrLight.intensity = mPbrLightIntensity;
-	pbrLight.range = 1200.0f;
+	pbrLight.range = 0.0f;
 	renderSystem->setPbrAmbientColour(Colour(0.03f, 0.03f, 0.03f));
 	renderSystem->setPbrLights({ pbrLight });
 
@@ -1105,7 +1105,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			mPbrStatueUniforms->updateUniform("PBR_ROUGHNESS_FACTOR", mPbrRoughness);
 		}
-		if (ImGui::SliderFloat("PBR Light Intensity", &mPbrLightIntensity, 0.0f, 250000.0f, "%.0f"))
+		if (ImGui::SliderFloat("PBR Light Intensity", &mPbrLightIntensity, 0.0f, 10.0f, "%.2f"))
 		{
 			// update() uploads the selected intensity into the dedicated PBR UBO.
 		}
@@ -1182,11 +1182,11 @@ void ModelScene::update(mpp::RenderSystem* renderSystem, float frameTime)
 	mLightPosition.y = 128.0f + sinf(mTotalTime * 2.0f) * 128.0f;
 	renderSystem->setLight1Position(mLightPosition);
 	mpp::PbrLight pbrLight;
-	pbrLight.type = mpp::PbrLightType::Point;
-	pbrLight.position = mLightPosition;
+	pbrLight.type = mpp::PbrLightType::Directional;
+	pbrLight.direction = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
 	pbrLight.colour = glm::vec3(1.0f);
 	pbrLight.intensity = mPbrLightIntensity;
-	pbrLight.range = 1200.0f;
+	pbrLight.range = 0.0f;
 	renderSystem->setPbrLights({ pbrLight });
 
 	// Update scene

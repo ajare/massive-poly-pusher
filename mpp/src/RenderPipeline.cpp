@@ -108,6 +108,7 @@ namespace mpp
 		{
 			mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
 		}
+		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
 
 		map<string, ResourcePtr> pipelineSamplerOverrides;
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
@@ -139,6 +140,7 @@ namespace mpp
 			}
 		}
 		mRenderSystem->setActivePipelineSamplerOverrides({});
+		mRenderSystem->setActiveShadowDomain("");
 		if (mOptions.mode == RenderPipelineMode::PbrForward)
 		{
 			mRenderSystem->setActivePbrEnvironment(nullptr);
