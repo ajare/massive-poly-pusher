@@ -6,7 +6,7 @@ Add an opt-in, forward, metallic-roughness PBR pipeline with image-based lightin
 
 The initial implementation deliberately does **not** introduce deferred rendering or a general render graph. It establishes the target, texture, material, and pass capabilities that a render graph could use later.
 
-For the authored material and runtime setup supported by completed milestones, see [PBR Material Setup](PBR_MATERIAL_SETUP.md). Update that guide whenever a PBR milestone changes the material or pipeline contract.
+For the authored material and runtime setup supported by completed milestones, see [PBR Material Setup](PBR_MATERIAL_SETUP.md) and [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md). Update those guides whenever a PBR milestone changes the material or pipeline contract.
 
 ## Progressive DemoSuite requirement
 
