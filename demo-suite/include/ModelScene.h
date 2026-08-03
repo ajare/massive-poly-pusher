@@ -29,6 +29,7 @@ private:
 private:
 
 	float mTotalTime{ 0 };
+	float mCameraOrbitAngle{ 0.0f };
 
 	std::string mSelectedPipeline{ "PBR" };
 	int mPbrEnvironmentIndex{ 0 };
