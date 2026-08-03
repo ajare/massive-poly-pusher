@@ -620,6 +620,29 @@ namespace mpp
 			addCoreResource(mToneMapProgram, true);
 		}
 
+		// Fullscreen bloom programs. Targets are owned by RenderPipeline, while
+		// these reusable programs perform extraction, separable blur, and combine.
+		auto createBloomProgram = [&](string const& name, string const& fragmentSource)
+		{
+			mesh::MeshSpecification meshSpec;
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			auto parser = make_shared<program::Parser>();
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderFullscreenTemplate);
+			parser->setFragmentSource(fragmentSource);
+			auto ps = new ProgrammaticProgramStream(resourceMgr);
+			ps->setParser(parser);
+			return resourceMgr->declareResource(name, ResourceStreamPtr(ps)).first;
+		};
+		mBloomExtractProgram = createBloomProgram("__mpp_p2d_bloom_extract__", FragmentShaderBloomExtractTemplate);
+		addCoreResource(mBloomExtractProgram, true);
+		mBloomBlurProgram = createBloomProgram("__mpp_p2d_bloom_blur__", FragmentShaderBloomBlurTemplate);
+		addCoreResource(mBloomBlurProgram, true);
+		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
+		addCoreResource(mBloomCombineProgram, true);
+
 		// Internal text programs
 		{
 			mesh::MeshSpecification meshSpec;
@@ -2503,6 +2526,51 @@ namespace mpp
 	 * Render a simple quad.
 	 *
 	 */
+	void RenderSystem::renderBloomExtract(Texture* source, float threshold)
+	{
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mBloomExtractProgram.get());
+		setUsedProgram(mBloomExtractProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniform1f(program->getUniformId("THRESHOLD"), threshold));
+		source->bind(0);
+		GL_CHECK(glDisable(GL_BLEND));
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderBloomBlur(Texture* source, glm::vec2 const& direction)
+	{
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mBloomBlurProgram.get());
+		setUsedProgram(mBloomBlurProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"), direction.x, direction.y));
+		source->bind(0);
+		GL_CHECK(glDisable(GL_BLEND));
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderBloomCombine(Texture* scene, Texture* bloom, float intensity)
+	{
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mBloomCombineProgram.get());
+		setUsedProgram(mBloomCombineProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniform1f(program->getUniformId("INTENSITY"), intensity));
+		scene->bind(0); bloom->bind(1);
+		GL_CHECK(glDisable(GL_BLEND));
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += 2; mRenderInfo.fullscreenQuads++;
+	}
+
 	void RenderSystem::renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame)
 	{
 		renderQuad(x, y, width, height, colour, alphaBlend, wireFrame, mNoTexture);
