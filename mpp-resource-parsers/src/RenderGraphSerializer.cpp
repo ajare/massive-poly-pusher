@@ -82,7 +82,7 @@ namespace mpp::resource_parsers
 				{
 					auto sampled = inputs->createChild("Sampled");
 					auto binding = std::find_if(info.samplerBindings.begin(), info.samplerBindings.end(), [&](GraphSamplerBinding const& current) { return current.image.id == image.id && current.image.version == image.version; });
-					if (binding != info.samplerBindings.end()) sampled->createChild("sampler")->setValue(binding->sampler);
+					if (binding != info.samplerBindings.end()) { sampled->createChild("sampler")->setValue(binding->sampler); if (binding->mipLevel != UINT32_MAX) sampled->createChild("mipLevel")->setValue(binding->mipLevel); }
 					sampled->createChild("image")->setValue(imageName(graph, image));
 				}
 			}
@@ -104,9 +104,9 @@ namespace mpp::resource_parsers
 			if (!info.colourOutputs.empty())
 			{
 				auto colours = pass->createChild("Colours");
-				for (auto const& output : info.colourOutputs) { auto node = colours->createChild("Output"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(vec4(output.clearColour)); }
+				for (auto const& output : info.colourOutputs) { auto node = colours->createChild("Output"); node->createChild("image")->setValue(imageName(graph, output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(vec4(output.clearColour)); }
 			}
-			if (!info.depthOutputs.empty()) { auto const& output = info.depthOutputs.front(); auto node = pass->createChild("Depth"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(output.clearDepth); }
+			if (!info.depthOutputs.empty()) { auto const& output = info.depthOutputs.front(); auto node = pass->createChild("Depth"); node->createChild("image")->setValue(imageName(graph, output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(output.clearDepth); }
 		}
 		writer.write(filepath);
 	}

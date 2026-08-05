@@ -24,10 +24,10 @@ namespace mpp
 			PassBuilder(RenderGraph* graph, GraphPassHandle pass) : mGraph(graph), mPass(pass) {}
 			GraphPassHandle getHandle() const { return mPass; }
 			PassBuilder& sampled(GraphImageHandle image) { mGraph->readSampled(mPass, image); return *this; }
-			PassBuilder& sampler(std::string const& name, GraphImageHandle image) { mGraph->bindSampler(mPass, name, image); return *this; }
+			PassBuilder& sampler(std::string const& name, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX) { mGraph->bindSampler(mPass, name, image, mipLevel); return *this; }
 			PassBuilder& program(std::string const& resource) { mGraph->setPassProgramResource(mPass, resource); return *this; }
-			GraphImageHandle colour(GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f)) { return mGraph->writeColour(mPass, image, load, store, clear); }
-			GraphImageHandle depth(GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f) { return mGraph->writeDepth(mPass, image, load, store, clear); }
+			GraphImageHandle colour(GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f), uint32_t mipLevel = 0) { return mGraph->writeColour(mPass, image, load, store, clear, mipLevel); }
+			GraphImageHandle depth(GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f, uint32_t mipLevel = 0) { return mGraph->writeDepth(mPass, image, load, store, clear, mipLevel); }
 			PassBuilder& callbackFactory(std::string const& name) { mGraph->setPassCallbackFactory(mPass, name); return *this; }
 		};
 

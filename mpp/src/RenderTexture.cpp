@@ -301,6 +301,40 @@ namespace mpp
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
+	void RenderTexture::applyMipView(uint32_t mipLevel)
+	{
+		for (auto textureId : mTextureIds)
+		{
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, textureId));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, (GLint)mipLevel));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)mipLevel));
+		}
+		if (mDepthTexture != 0)
+		{
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, (GLint)mipLevel));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)mipLevel));
+		}
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+	}
+
+	void RenderTexture::restoreMipView()
+	{
+		for (auto textureId : mTextureIds)
+		{
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, textureId));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+		}
+		if (mDepthTexture != 0)
+		{
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mDepthParams.params.lodBaseLevel));
+			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mDepthParams.params.lodMaxLevel));
+		}
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+	}
+
 	void RenderTexture::generateMipMaps()
 	{
 		if (mParams.useMipmaps)

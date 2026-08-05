@@ -87,6 +87,7 @@ namespace mpp
 	struct _MPPAPI GraphColourOutput
 	{
 		GraphImageHandle image;
+		uint32_t mipLevel{ 0 };
 		GraphLoadOp load{ GraphLoadOp::DontCare };
 		GraphStoreOp store{ GraphStoreOp::Store };
 		glm::vec4 clearColour{ 0.0f };
@@ -95,6 +96,7 @@ namespace mpp
 	struct _MPPAPI GraphDepthOutput
 	{
 		GraphImageHandle image;
+		uint32_t mipLevel{ 0 };
 		GraphLoadOp load{ GraphLoadOp::DontCare };
 		GraphStoreOp store{ GraphStoreOp::Store };
 		float clearDepth{ 1.0f };
@@ -104,6 +106,9 @@ namespace mpp
 	{
 		std::string sampler;
 		GraphImageHandle image;
+		// UINT32_MAX exposes the declared chain; otherwise this mip is presented
+		// as the sampler's base/max level for the duration of the pass.
+		uint32_t mipLevel{ UINT32_MAX };
 	};
 
 	struct _MPPAPI GraphPassInfo
@@ -178,10 +183,10 @@ namespace mpp
 		void setPassCallbackFactory(GraphPassHandle pass, std::string const& factoryName);
 
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
-		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image);
+		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX);
 		void setPassParameters(GraphPassHandle pass, UniformCollection const& parameters);
-		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f));
-		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f);
+		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f), uint32_t mipLevel = 0);
+		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f, uint32_t mipLevel = 0);
 
 		size_t getImageCount() const;
 		size_t getPassCount() const;

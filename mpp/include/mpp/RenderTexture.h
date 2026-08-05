@@ -65,6 +65,9 @@ namespace mpp
 		// Regenerates declared colour/depth mip chains after level-zero writes.
 		void generateMipMaps();
 
+		void applyMipView(uint32_t mipLevel);
+		void restoreMipView();
+
 		uint32_t getColourAttachmentId(size_t attachment) const;
 
 	};

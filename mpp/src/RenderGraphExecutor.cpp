@@ -48,8 +48,8 @@ namespace mpp
 			}
 
 		public:
-			GraphFramebufferTarget(string const& name, vector<RenderTargetPtr> const& colours, RenderTargetPtr const& depth)
-				: RenderTarget(colours.empty() ? depth->getWidth() : colours.front()->getWidth(), colours.empty() ? depth->getHeight() : colours.front()->getHeight())
+			GraphFramebufferTarget(string const& name, vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips, RenderTargetPtr const& depth, uint32_t depthMip)
+				: RenderTarget(colours.empty() ? max<size_t>(1, depth->getWidth() >> depthMip) : max<size_t>(1, colours.front()->getWidth() >> colourMips.front()), colours.empty() ? max<size_t>(1, depth->getHeight() >> depthMip) : max<size_t>(1, colours.front()->getHeight() >> colourMips.front()))
 			{
 				GL_CHECK(glGenFramebuffers(1, &mFramebuffer));
 				GL_CHECK(glObjectLabel(GL_FRAMEBUFFER, mFramebuffer, -1, ("RenderGraphPass: " + name).c_str()));
@@ -57,24 +57,24 @@ namespace mpp
 				for (size_t index = 0; index < colours.size(); ++index)
 				{
 					auto texture = requireRenderTexture(colours[index]);
-					mMipTargets.push_back(texture);
-					if (texture->getWidth() != mWidth || texture->getHeight() != mHeight)
+					if (colourMips[index] == 0) mMipTargets.push_back(texture);
+					if (max<size_t>(1, texture->getWidth() >> colourMips[index]) != mWidth || max<size_t>(1, texture->getHeight() >> colourMips[index]) != mHeight)
 					{
 						THROW_MPP("Render graph pass attachment dimensions do not match.", __LINE__, __FILE__, __func__);
 					}
 					GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + index);
-					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture->getColourAttachmentId(0), 0));
+					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture->getColourAttachmentId(0), (GLint)colourMips[index]));
 					mDrawBuffers.push_back(attachment);
 				}
 				if (depth)
 				{
 					auto texture = requireRenderTexture(depth);
-					mMipTargets.push_back(texture);
-					if (texture->getWidth() != mWidth || texture->getHeight() != mHeight)
+					if (depthMip == 0) mMipTargets.push_back(texture);
+					if (max<size_t>(1, texture->getWidth() >> depthMip) != mWidth || max<size_t>(1, texture->getHeight() >> depthMip) != mHeight)
 					{
 						THROW_MPP("Render graph depth attachment dimensions do not match colour attachments.", __LINE__, __FILE__, __func__);
 					}
-					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture->getDepthTextureId(), 0));
+					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture->getDepthTextureId(), (GLint)depthMip));
 				}
 				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 				{
@@ -236,16 +236,20 @@ namespace mpp
 					(pass.callbackFactory.empty() ? "." : " (factory '" + pass.callbackFactory + "')."), __LINE__, __FILE__, __func__);
 			}
 			vector<RenderTargetPtr> colours;
+			vector<uint32_t> colourMips;
 			for (auto const& output : pass.colourOutputs)
 			{
 				auto target = targets.get(output.image);
 				if (!target) THROW_MPP("Render graph colour output has no allocated or imported target.", __LINE__, __FILE__, __func__);
 				colours.push_back(target);
+				colourMips.push_back(output.mipLevel);
 			}
 			RenderTargetPtr depth;
+			uint32_t depthMip = 0;
 			if (!pass.depthOutputs.empty())
 			{
 				depth = targets.get(pass.depthOutputs.front().image);
+				depthMip = pass.depthOutputs.front().mipLevel;
 				if (!depth) THROW_MPP("Render graph depth output has no allocated or imported target.", __LINE__, __FILE__, __func__);
 			}
 
@@ -254,13 +258,24 @@ namespace mpp
 				THROW_MPP("Render graph executor supports graphics passes with at least one output.", __LINE__, __FILE__, __func__);
 			}
 			RenderTargetPtr passTarget;
-			if (colours.size() == 1 && !depth)
+			if (colours.size() == 1 && colourMips.front() == 0 && !depth)
 			{
 				passTarget = colours.front();
 			}
 			else
 			{
-				passTarget = make_shared<GraphFramebufferTarget>(pass.name, colours, depth);
+				passTarget = make_shared<GraphFramebufferTarget>(pass.name, colours, colourMips, depth, depthMip);
+			}
+			map<RenderTexture*, uint32_t> mipViews;
+			for (auto const& binding : pass.samplerBindings)
+			{
+				if (binding.mipLevel == UINT32_MAX) continue;
+				auto texture = dynamic_cast<RenderTexture*>(targets.get(binding.image).get());
+				if (!texture) THROW_MPP("Explicit graph mip views require RenderTexture inputs.", __LINE__, __FILE__, __func__);
+				auto existing = mipViews.find(texture);
+				if (existing != mipViews.end() && existing->second != binding.mipLevel)
+					THROW_MPP("One graph pass cannot bind different mip views of the same texture without texture-view support.", __LINE__, __FILE__, __func__);
+				mipViews[texture] = binding.mipLevel;
 			}
 			mRenderSystem->pushRenderTarget(passTarget);
 			mRenderSystem->setExpectedGraphColourOutputs(pass.colourOutputs.size());
@@ -298,6 +313,7 @@ namespace mpp
 			};
 			try
 			{
+				for (auto const& view : mipViews) view.first->applyMipView(view.second);
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				clearPassOutputs(pass);
 				if (callback) callback(context);
@@ -310,12 +326,14 @@ namespace mpp
 					mRenderSystem->renderGraphFullscreen(mExecutingTemplate->getProgram(passHandle), samplers, context.getParameters());
 				}
 				discardDontCareOutputs(pass);
+				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
 			}
 			catch (...)
 			{
+				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
