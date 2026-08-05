@@ -318,10 +318,10 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG5 — Migrate legacy/custom forward passes
 
-- [ ] Add a graph legacy-forward scene pass that imports existing legacy light/material state but writes a declared colour/depth image.
-- [ ] Keep default-created `Default` pipeline on the old path; expose graph legacy only by explicit option.
-- [ ] Verify PBR and legacy materials can appear in the same graph scene/dependency chain where shaders/targets are compatible.
-- [ ] Document legacy LDR bloom limitations and optional linear-legacy migration.
+- [x] Add a graph legacy-forward scene pass that uses existing legacy light/material state and writes declared RGBA8/depth images. It reuses `RenderPass` batching and graph bloom/presentation callbacks.
+- [x] Keep default-created `Default` pipeline on the old path; expose `GraphLegacyForward` only by explicit option. DemoSuite exposes separate manual/graph Default selections.
+- [~] Verify PBR and legacy materials can appear in the same graph scene/dependency chain where shaders/targets are compatible. GraphLegacyForward uses the same scene-model batching path, but visual compatibility captures remain outstanding.
+- [x] Document legacy LDR bloom limitations and optional linear-legacy migration. GraphLegacyForward deliberately retains LDR scene shading; its float bloom intermediates are aesthetic compatibility processing rather than physically comparable HDR bloom.
 
 **Acceptance:** graph legacy preserves existing output with bloom disabled and can opt into the same graph bloom chain.
 

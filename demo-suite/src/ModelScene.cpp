@@ -1034,6 +1034,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mpp::RenderPipelineOptions defaultOptions;
 	defaultOptions.bloom = mBloomOptions;
 	renderSystem->getOrCreateRenderPipeline("Default", defaultOptions);
+	auto graphDefaultOptions = defaultOptions;
+	graphDefaultOptions.mode = mpp::RenderPipelineMode::GraphLegacyForward;
+	renderSystem->getOrCreateRenderPipeline("GraphDefault", graphDefaultOptions);
 }
 
 void ModelScene::teardownImGui()
@@ -1138,10 +1141,10 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			renderSystem->setGamma(gamma);
 		}
 
-		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : (mSelectedPipeline == "GraphPBR" ? 1 : 2);
-		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR (manual reference)\0PBR (render graph)\0Default\0"))
+		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : (mSelectedPipeline == "GraphPBR" ? 1 : (mSelectedPipeline == "Default" ? 2 : 3));
+		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR (manual reference)\0PBR (render graph)\0Default (manual reference)\0Default (render graph)\0"))
 		{
-			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : (pipelineIndex == 1 ? "GraphPBR" : "Default");
+			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : (pipelineIndex == 1 ? "GraphPBR" : (pipelineIndex == 2 ? "Default" : "GraphDefault"));
 		}
 		ImGui::TextUnformatted("PBR: Cook-Torrance HDR; graph mode is explicit validation opt-in");
 		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
@@ -1183,6 +1186,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			pbrPipeline->setBloomOptions(mBloomOptions);
 			graphPbrPipeline->setBloomOptions(mBloomOptions);
 			renderSystem->getRenderPipeline("Default")->setBloomOptions(mBloomOptions);
+			renderSystem->getRenderPipeline("GraphDefault")->setBloomOptions(mBloomOptions);
 		}
 
 		bool shadowOptionsChanged = false;

@@ -17,7 +17,7 @@ namespace mpp
 	{
 		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
 		// their RGBA8 target and existing presentation behaviour.
-		mPasses.push_back(make_shared<RenderPass>(renderSystem, mOptions.mode != RenderPipelineMode::LegacyForward));
+		mPasses.push_back(make_shared<RenderPass>(renderSystem, mOptions.mode == RenderPipelineMode::PbrForward || mOptions.mode == RenderPipelineMode::GraphPbrForward));
 	}
 
 	RenderPipeline::~RenderPipeline()
@@ -127,7 +127,7 @@ namespace mpp
 		mPostEffects.push_back(effect);
 	}
 
-	void RenderPipeline::renderGraphPbr(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models)
+	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
 	{
 		if (!mGraphTargets)
 		{
@@ -148,9 +148,9 @@ namespace mpp
 			desc.params.wrap = GL_CLAMP_TO_EDGE;
 			return desc;
 		};
-		bool const useMrtEmissiveMask = mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
+		bool const useMrtEmissiveMask = pbr && mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
 			mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2;
-		auto sceneHdr = graph.createImage("SceneHdr", makeColour(GraphImageFormat::Rgba16f));
+		auto sceneHdr = graph.createImage(pbr ? "SceneHdr" : "SceneLdr", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
 		GraphImageHandle bloomMask;
 		if (useMrtEmissiveMask)
 		{
@@ -178,7 +178,7 @@ namespace mpp
 			shadowDepthOutput = graph.writeDepth(shadowPass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
 		}
 
-		auto scenePass = graph.addPass("PbrScene");
+		auto scenePass = graph.addPass(pbr ? "PbrScene" : "LegacyScene");
 		if (shadowDepthOutput.isValid()) graph.readSampled(scenePass, shadowDepthOutput);
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
@@ -291,9 +291,17 @@ namespace mpp
 			}
 			}
 		}
-		mGraphExecutor->setPassCallback(toneMapPass, [this, presentationTexture](RenderGraphExecutionContext const& context)
+		mGraphExecutor->setPassCallback(toneMapPass, [this, presentationTexture, pbr](RenderGraphExecutionContext const& context)
 		{
-			mRenderSystem->renderToneMappedFullscreenQuad(static_cast<RenderTexture*>(context.getImage(presentationTexture).get()), mOptions.exposure, mOptions.toneMapOperator == PbrToneMapOperator::Aces);
+			auto texture = static_cast<RenderTexture*>(context.getImage(presentationTexture).get());
+			if (pbr)
+			{
+				mRenderSystem->renderToneMappedFullscreenQuad(texture, mOptions.exposure, mOptions.toneMapOperator == PbrToneMapOperator::Aces);
+			}
+			else
+			{
+				mRenderSystem->renderFullscreenQuad(texture, BlendMode::One, BlendMode::Zero);
+			}
 		});
 		mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
 	}
@@ -320,7 +328,9 @@ namespace mpp
 
 		auto const& models = scene->get3dModelsInView(camera);
 		bool const graphPbr = mOptions.mode == RenderPipelineMode::GraphPbrForward;
-		if (!graphPbr && !mOptions.shadowDomain.empty())
+		bool const graphLegacy = mOptions.mode == RenderPipelineMode::GraphLegacyForward;
+		bool const graphForward = graphPbr || graphLegacy;
+		if (!graphForward && !mOptions.shadowDomain.empty())
 		{
 			mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
 		}
@@ -338,9 +348,9 @@ namespace mpp
 			}
 		}
 		mRenderSystem->setActivePipelineSamplerOverrides(pipelineSamplerOverrides);
-		if (graphPbr)
+		if (graphForward)
 		{
-			renderGraphPbr(scene, camera, models);
+			renderGraphForward(scene, camera, models, graphPbr);
 		}
 		else
 		{
@@ -372,7 +382,7 @@ namespace mpp
 		// Reset viewport
 		mRenderSystem->resetViewport();
 
-		if (!graphPbr)
+		if (!graphForward)
 		{
 			// Pipeline image effects run after all material shading. PBR bloom is
 			// therefore composed in HDR before tone mapping; legacy uses the same

@@ -33,9 +33,10 @@ namespace mpp
 	{
 		LegacyForward,
 		PbrForward,
-		// Explicit opt-in graph path. PbrForward retains the validated manual
-		// target/presentation sequence until graph output is independently proven.
-		GraphPbrForward
+		// Explicit opt-in graph paths. Default/PbrForward retain validated manual
+		// target/presentation sequences until graph output is independently proven.
+		GraphPbrForward,
+		GraphLegacyForward
 	};
 
 	enum class PbrToneMapOperator
@@ -123,7 +124,7 @@ namespace mpp
 		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
 
 		void ensureBloomTargets(size_t width, size_t height);
-		void renderGraphPbr(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models);
+		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);
 
 	public:
 
