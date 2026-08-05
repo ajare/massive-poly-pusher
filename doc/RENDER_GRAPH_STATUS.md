@@ -14,18 +14,20 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 - [x] `Caps` reports draw-buffer and colour-attachment limits; caps-aware compilation rejects oversized MRT declarations.
 - [x] Context-free graph diagnostics through `RenderGraph::describe()`.
 - [x] Context-free allocation planning through `RenderGraph::buildAllocationPlan(viewport)`, including per-version resolved size and first/last-use interval.
-- [x] Initial physical attachment allocation through `RenderGraphTargets`: one owned `RenderTexture` per planned non-imported image version, with RGBA8, RGBA16F, RG16F, depth24, and depth24-stencil8 mappings.
+- [x] Physical attachment allocation through `RenderGraphTargets`: RenderTexture mappings for RGBA8, RGBA16F, RG16F, depth24, and depth24-stencil8, with compatible non-overlapping plan intervals aliased to one target.
+- [x] Imported-target binding, resolving every version of an external logical image to its application-provided backing target.
+- [x] Graphics-pass execution through `RenderGraphExecutor`: per-pass framebuffer views, MRT draw buffers, colour/depth clear load operations, callback execution, and RenderSystem target-stack restoration on exceptions.
 - [x] Nested XML topology parser (`RenderGraphParser`) for images, sampled reads, colour outputs, one depth output, load/store operations, and clear values.
 - [x] Debug builds of `MassivePolyPusher` and `MppResourceParsers` after the graph work.
 
 ## In progress
 
 - [~] RG1 resource authoring: parser subset exists, but graph resource streams, serialization, program references, typed parameters, and imported-target names are not implemented.
-- [~] RG2 allocation: physical `RenderTexture` objects can be allocated from a plan, but no pooling, aliasing, imported-target binding, MSAA, or mip allocation occurs.
+- [~] RG2 allocation/execution: same-plan aliasing and imported target bindings work; allocations rebuild when a new viewport plan is supplied. Cross-frame pooling, MSAA, mip allocation, store invalidation, compute passes, and GPU frame tests remain absent.
 
 ## Not started
 
-- [ ] Graph framebuffer binding, `glDrawBuffers`, clears, load/store invalidation, and execution callbacks.
+- [~] Store invalidation and GPU frame tests. Framebuffer binding, `glDrawBuffers`, clear operations, and execution callbacks are implemented; `DontCare` store remains a safe no-op rather than an invalidate optimization.
 - [ ] Shader output-location validation and runtime MRT fallback.
 - [ ] Opt-in graph PBR pipeline and migration of shadows, bloom, tone mapping, and presentation.
 - [ ] DemoSuite graph controls and screenshot/RenderDoc comparisons.
