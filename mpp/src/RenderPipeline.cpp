@@ -148,7 +148,14 @@ namespace mpp
 			desc.params.wrap = GL_CLAMP_TO_EDGE;
 			return desc;
 		};
+		bool const useMrtEmissiveMask = mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
+			mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2;
 		auto sceneHdr = graph.createImage("SceneHdr", makeColour(GraphImageFormat::Rgba16f));
+		GraphImageHandle bloomMask;
+		if (useMrtEmissiveMask)
+		{
+			bloomMask = graph.createImage("BloomMaskHdr", makeColour(GraphImageFormat::Rgba16f));
+		}
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment;
@@ -175,21 +182,27 @@ namespace mpp
 		if (shadowDepthOutput.isValid()) graph.readSampled(scenePass, shadowDepthOutput);
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
+		if (useMrtEmissiveMask) bloomMask = graph.writeColour(scenePass, bloomMask, GraphLoadOp::Clear, GraphStoreOp::Store);
 		graph.writeDepth(scenePass, sceneDepth, GraphLoadOp::Clear, GraphStoreOp::DontCare);
 
 		GraphImageHandle presentationTexture = sceneHdr;
+		enum class BloomGraphStep { Extract, Horizontal, Vertical, Composite };
 		vector<GraphPassHandle> bloomPasses;
 		vector<GraphImageHandle> bloomInputs;
+		vector<BloomGraphStep> bloomSteps;
 		if (mOptions.bloom.enabled)
 		{
-			auto bloomExtract = graph.createImage("BloomExtract", makeColour(GraphImageFormat::Rgba16f));
-			auto extractPass = graph.addPass("BloomExtract");
-			graph.readSampled(extractPass, sceneHdr);
-			bloomExtract = graph.writeColour(extractPass, bloomExtract);
-			bloomPasses.push_back(extractPass);
-			bloomInputs.push_back(sceneHdr);
-
-			GraphImageHandle blurred = bloomExtract;
+			GraphImageHandle blurred = bloomMask;
+			if (!useMrtEmissiveMask)
+			{
+				auto bloomExtract = graph.createImage("BloomExtract", makeColour(GraphImageFormat::Rgba16f));
+				auto extractPass = graph.addPass("BloomExtract");
+				graph.readSampled(extractPass, sceneHdr);
+				blurred = graph.writeColour(extractPass, bloomExtract);
+				bloomPasses.push_back(extractPass);
+				bloomInputs.push_back(sceneHdr);
+				bloomSteps.push_back(BloomGraphStep::Extract);
+			}
 			for (uint32_t index = 0; index < mOptions.bloom.blurPasses; ++index)
 			{
 				auto ping = graph.createImage("BloomPing" + to_string(index), makeColour(GraphImageFormat::Rgba16f));
@@ -198,6 +211,7 @@ namespace mpp
 				ping = graph.writeColour(pingPass, ping);
 				bloomPasses.push_back(pingPass);
 				bloomInputs.push_back(blurred);
+				bloomSteps.push_back(BloomGraphStep::Horizontal);
 
 				auto pong = graph.createImage("BloomPong" + to_string(index), makeColour(GraphImageFormat::Rgba16f));
 				auto pongPass = graph.addPass("BloomBlurVertical" + to_string(index));
@@ -205,6 +219,7 @@ namespace mpp
 				blurred = graph.writeColour(pongPass, pong);
 				bloomPasses.push_back(pongPass);
 				bloomInputs.push_back(ping);
+				bloomSteps.push_back(BloomGraphStep::Vertical);
 			}
 			auto composite = graph.createImage("BloomComposite", makeColour(GraphImageFormat::Rgba16f));
 			auto compositePass = graph.addPass("BloomComposite");
@@ -213,6 +228,7 @@ namespace mpp
 			presentationTexture = graph.writeColour(compositePass, composite);
 			bloomPasses.push_back(compositePass);
 			bloomInputs.push_back(blurred);
+			bloomSteps.push_back(BloomGraphStep::Composite);
 		}
 
 		auto screen = graph.createImage("Presentation", makeColour(GraphImageFormat::Rgba8, true));
@@ -246,28 +262,33 @@ namespace mpp
 		{
 			auto pass = bloomPasses[index];
 			auto input = bloomInputs[index];
-			if (index == 0)
+			switch (bloomSteps[index])
 			{
+			case BloomGraphStep::Extract:
 				mGraphExecutor->setPassCallback(pass, [this, input](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderBloomExtract(static_cast<RenderTexture*>(context.getImage(input).get()), mOptions.bloom.threshold);
 				});
+				break;
+			case BloomGraphStep::Horizontal:
+			case BloomGraphStep::Vertical:
+			{
+				bool const horizontal = bloomSteps[index] == BloomGraphStep::Horizontal;
+				mGraphExecutor->setPassCallback(pass, [this, input, horizontal](RenderGraphExecutionContext const& context)
+				{
+					mRenderSystem->renderBloomBlur(static_cast<RenderTexture*>(context.getImage(input).get()), horizontal ? glm::vec2(1.0f, 0.0f) : glm::vec2(0.0f, 1.0f));
+				});
+				break;
 			}
-			else if (index + 1 == bloomPasses.size())
+			case BloomGraphStep::Composite:
 			{
 				auto sceneInput = sceneHdr;
 				mGraphExecutor->setPassCallback(pass, [this, sceneInput, input](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderBloomCombine(static_cast<RenderTexture*>(context.getImage(sceneInput).get()), static_cast<RenderTexture*>(context.getImage(input).get()), mOptions.bloom.intensity);
 				});
+				break;
 			}
-			else
-			{
-				bool const horizontal = (index % 2) == 1;
-				mGraphExecutor->setPassCallback(pass, [this, input, horizontal](RenderGraphExecutionContext const& context)
-				{
-					mRenderSystem->renderBloomBlur(static_cast<RenderTexture*>(context.getImage(input).get()), horizontal ? glm::vec2(1.0f, 0.0f) : glm::vec2(0.0f, 1.0f));
-				});
 			}
 		}
 		mGraphExecutor->setPassCallback(toneMapPass, [this, presentationTexture](RenderGraphExecutionContext const& context)
