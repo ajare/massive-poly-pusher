@@ -65,6 +65,7 @@
     <ClInclude Include="..\..\include\mpp\QuadBatchSpecification.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraph.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphBuilder.h" />
+    <ClInclude Include="..\..\include\mpp\RenderGraphBuiltInPasses.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphTargets.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphExecutor.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphFrameContext.h" />
@@ -162,6 +163,7 @@
     <ClCompile Include="..\..\src\RenderGraphPassFactoryRegistry.cpp" />
     <ClCompile Include="..\..\src\RenderGraphImportRegistry.cpp" />
     <ClCompile Include="..\..\src\RenderGraphTests.cpp" />
+    <ClCompile Include="..\..\src\RenderGraphBuiltInPasses.cpp" />
     <ClCompile Include="..\..\src\RenderGraphTargets.cpp" />
     <ClCompile Include="..\..\src\RenderPass.cpp" />    <ClCompile Include="..\..\src\RenderPipeline.cpp" />
     <ClCompile Include="..\..\src\RenderSystem.cpp" />

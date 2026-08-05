@@ -3,6 +3,7 @@
 #include "mpp/RenderPipeline.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphExecutor.h"
+#include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/GLErrorCheck.h"
 
 using namespace std;
@@ -133,6 +134,8 @@ namespace mpp
 		{
 			mGraphTargets = make_unique<RenderGraphTargets>(mRenderSystem);
 			mGraphExecutor = make_unique<RenderGraphExecutor>(mRenderSystem);
+			registerBuiltInRenderGraphPasses(mGraphPassFactories);
+			mGraphExecutor->setPassFactoryRegistry(&mGraphPassFactories);
 		}
 
 		RenderGraph graph;
