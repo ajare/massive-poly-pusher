@@ -74,6 +74,7 @@
     <ClInclude Include="..\..\include\mpp\RenderGraphPassFactoryRegistry.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphScenePass.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphImportRegistry.h" />
+    <ClInclude Include="..\..\include\mpp\RenderGraphGpuTests.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphTests.h" />
     <ClInclude Include="..\..\include\mpp\RenderInfo.h" />
     <ClInclude Include="..\..\include\mpp\RenderPass.h" />
@@ -162,6 +163,7 @@
     <ClCompile Include="..\..\src\RenderGraphTemplate.cpp" />
     <ClCompile Include="..\..\src\RenderGraphPassFactoryRegistry.cpp" />
     <ClCompile Include="..\..\src\RenderGraphImportRegistry.cpp" />
+    <ClCompile Include="..\..\src\RenderGraphGpuTests.cpp" />
     <ClCompile Include="..\..\src\RenderGraphTests.cpp" />
     <ClCompile Include="..\..\src\RenderGraphBuiltInPasses.cpp" />
     <ClCompile Include="..\..\src\RenderGraphTargets.cpp" />
