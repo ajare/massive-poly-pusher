@@ -21,12 +21,14 @@ namespace mpp
 		RenderGraphTargets const* mTargets;
 		UniformCollection const* mParameters;
 		RenderGraphFrameContext const* mFrame;
+		GraphPassInfo const* mPass;
 
 	public:
-		explicit RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters = nullptr, RenderGraphFrameContext const* frame = nullptr);
+		explicit RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters = nullptr, RenderGraphFrameContext const* frame = nullptr, GraphPassInfo const* pass = nullptr);
 		RenderTargetPtr getImage(GraphImageHandle image) const;
 		UniformCollection const& getParameters() const;
 		RenderGraphFrameContext const& getFrame() const;
+		GraphPassInfo const& getPass() const;
 	};
 
 	// Executes graphics passes supplied by application callbacks. It creates a
