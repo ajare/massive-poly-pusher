@@ -206,11 +206,11 @@ namespace mpp
 			auto const& shadowOptions = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
 			shadowDesc.absoluteSize = glm::uvec2((uint32_t)shadowOptions.resolution);
 			shadowDepth = graph.createImage("ShadowDepth", shadowDesc);
-			shadowPass = graph.addPass("ShadowDepth");
+			shadowPass = graph.addPass("ShadowDepth", GraphPassType::Scene);
 			shadowDepthOutput = graph.writeDepth(shadowPass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
 		}
 
-		auto scenePass = graph.addPass(pbr ? "PbrScene" : "LegacyScene");
+		auto scenePass = graph.addPass(pbr ? "PbrScene" : "LegacyScene", GraphPassType::Scene);
 		if (shadowDepthOutput.isValid()) graph.readSampled(scenePass, shadowDepthOutput);
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
@@ -228,7 +228,7 @@ namespace mpp
 			if (!useMrtEmissiveMask)
 			{
 				auto bloomExtract = graph.createImage("BloomExtract", makeColour(GraphImageFormat::Rgba16f));
-				auto extractPass = graph.addPass("BloomExtract");
+				auto extractPass = graph.addPass("BloomExtract", GraphPassType::Fullscreen);
 				graph.readSampled(extractPass, sceneHdr);
 				blurred = graph.writeColour(extractPass, bloomExtract);
 				bloomPasses.push_back(extractPass);
@@ -238,7 +238,7 @@ namespace mpp
 			for (uint32_t index = 0; index < mOptions.bloom.blurPasses; ++index)
 			{
 				auto ping = graph.createImage("BloomPing" + to_string(index), makeColour(GraphImageFormat::Rgba16f));
-				auto pingPass = graph.addPass("BloomBlurHorizontal" + to_string(index));
+				auto pingPass = graph.addPass("BloomBlurHorizontal" + to_string(index), GraphPassType::Fullscreen);
 				graph.readSampled(pingPass, blurred);
 				ping = graph.writeColour(pingPass, ping);
 				bloomPasses.push_back(pingPass);
@@ -246,7 +246,7 @@ namespace mpp
 				bloomSteps.push_back(BloomGraphStep::Horizontal);
 
 				auto pong = graph.createImage("BloomPong" + to_string(index), makeColour(GraphImageFormat::Rgba16f));
-				auto pongPass = graph.addPass("BloomBlurVertical" + to_string(index));
+				auto pongPass = graph.addPass("BloomBlurVertical" + to_string(index), GraphPassType::Fullscreen);
 				graph.readSampled(pongPass, ping);
 				blurred = graph.writeColour(pongPass, pong);
 				bloomPasses.push_back(pongPass);
@@ -254,7 +254,7 @@ namespace mpp
 				bloomSteps.push_back(BloomGraphStep::Vertical);
 			}
 			auto composite = graph.createImage("BloomComposite", makeColour(GraphImageFormat::Rgba16f));
-			auto compositePass = graph.addPass("BloomComposite");
+			auto compositePass = graph.addPass("BloomComposite", GraphPassType::Fullscreen);
 			graph.readSampled(compositePass, sceneHdr);
 			graph.readSampled(compositePass, blurred);
 			presentationTexture = graph.writeColour(compositePass, composite);
@@ -264,7 +264,7 @@ namespace mpp
 		}
 
 		auto screen = graph.createImage("Presentation", makeColour(GraphImageFormat::Rgba8, true));
-		auto toneMapPass = graph.addPass("ToneMapPresentation");
+		auto toneMapPass = graph.addPass("ToneMapPresentation", GraphPassType::Present);
 		graph.readSampled(toneMapPass, presentationTexture);
 		graph.writeColour(toneMapPass, screen, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
