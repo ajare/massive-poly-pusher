@@ -91,7 +91,12 @@ namespace mpp
 			THROW_MPP("Cannot allocate an invalid render graph allocation plan.", __LINE__, __FILE__, __func__);
 		}
 		mTargets.clear();
-		struct ActivePoolEntry { size_t poolIndex; uint32_t lastPass; };
+		struct Assignment
+		{
+			uint32_t firstPass;
+			uint32_t lastPass;
+			bool transient;
+		};
 		vector<GraphImageLifetime const*> lifetimes;
 		lifetimes.reserve(plan.allocatedImages.size());
 		for (auto const& lifetime : plan.allocatedImages) lifetimes.push_back(&lifetime);
@@ -99,32 +104,48 @@ namespace mpp
 		{
 			return left->firstPass < right->firstPass;
 		});
-		vector<ActivePoolEntry> active;
+		vector<vector<Assignment>> assignments(mPool.size());
+		auto intervalsOverlap = [](Assignment const& left, GraphImageLifetime const& right)
+		{
+			return !(left.lastPass < right.firstPass || right.lastPass < left.firstPass);
+		};
 		for (auto const* lifetime : lifetimes)
 		{
-			// Keep every version distinct for an entire graph execution. The
-			// lifetime analysis is retained for diagnostics, but same-frame aliasing
-			// is disabled until GPU validation proves that no callback retains an
-			// image view past its declared last use. This favours correctness and
-			// prevents intermittent graph/UI flicker from accidental aliasing.
-			auto pooled = find_if(mPool.begin(), mPool.end(), [&](PoolEntry const& candidate)
+			size_t poolIndex = SIZE_MAX;
+			for (size_t index = 0; index < mPool.size(); ++index)
 			{
-				if (!compatibleForAliasing(candidate.lifetime, *lifetime)) return false;
-				return find_if(active.begin(), active.end(), [&](ActivePoolEntry const& inUse) { return inUse.poolIndex == (size_t)(&candidate - mPool.data()); }) == active.end();
-			});
-			size_t poolIndex;
-			if (pooled != mPool.end())
-			{
-				poolIndex = (size_t)(pooled - mPool.begin());
+				if (!compatibleForAliasing(mPool[index].lifetime, *lifetime)) continue;
+				auto const& used = assignments[index];
+				if (used.empty())
+				{
+					poolIndex = index; // Cross-frame reuse, not same-frame aliasing.
+					break;
+				}
+				if (!lifetime->desc.transient) continue;
+				bool safe = all_of(used.begin(), used.end(), [&](Assignment const& previous)
+				{
+					return previous.transient && !intervalsOverlap(previous, *lifetime);
+				});
+				if (safe)
+				{
+					poolIndex = index;
+					break;
+				}
 			}
-			else
+			if (poolIndex == SIZE_MAX)
 			{
 				auto const options = makeOptions(lifetime->desc);
 				string const name = "RenderGraph_Image" + to_string(lifetime->image.id) + "_v" + to_string(lifetime->image.version);
 				mPool.push_back({ *lifetime, mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, options) });
+				assignments.emplace_back();
 				poolIndex = mPool.size() - 1;
 			}
-			active.push_back({ poolIndex, lifetime->lastPass });
+			for (auto const& previous : assignments[poolIndex])
+			{
+				if (intervalsOverlap(previous, *lifetime))
+					THROW_MPP("Render graph allocator attempted to alias overlapping image lifetimes.", __LINE__, __FILE__, __func__);
+			}
+			assignments[poolIndex].push_back({ lifetime->firstPass, lifetime->lastPass, lifetime->desc.transient });
 			mTargets.emplace(makeKey(lifetime->image), mPool[poolIndex].target);
 		}
 	}
