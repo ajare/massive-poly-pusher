@@ -259,6 +259,27 @@ namespace mpp
 				passTarget = make_shared<GraphFramebufferTarget>(pass.name, colours, depth);
 			}
 			mRenderSystem->pushRenderTarget(passTarget);
+			bool const imagePass = pass.type == GraphPassType::Fullscreen || pass.type == GraphPassType::Present;
+			GLboolean depthEnabled = GL_FALSE, cullEnabled = GL_FALSE, scissorEnabled = GL_FALSE, depthWriteEnabled = GL_TRUE;
+			if (imagePass)
+			{
+				depthEnabled = glIsEnabled(GL_DEPTH_TEST);
+				cullEnabled = glIsEnabled(GL_CULL_FACE);
+				scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+				GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteEnabled));
+				GL_CHECK(glDisable(GL_DEPTH_TEST));
+				GL_CHECK(glDepthMask(GL_FALSE));
+				GL_CHECK(glDisable(GL_CULL_FACE));
+				GL_CHECK(glDisable(GL_SCISSOR_TEST));
+			}
+			auto restoreImagePassState = [&]()
+			{
+				if (!imagePass) return;
+				if (depthEnabled) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
+				GL_CHECK(glDepthMask(depthWriteEnabled));
+				if (cullEnabled) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
+				if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+			};
 			try
 			{
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
@@ -273,10 +294,12 @@ namespace mpp
 					mRenderSystem->renderGraphFullscreen(mExecutingTemplate->getProgram(passHandle), samplers, context.getParameters());
 				}
 				discardDontCareOutputs(pass);
+				restoreImagePassState();
 				mRenderSystem->popRenderTarget();
 			}
 			catch (...)
 			{
+				restoreImagePassState();
 				mRenderSystem->popRenderTarget();
 				throw;
 			}
