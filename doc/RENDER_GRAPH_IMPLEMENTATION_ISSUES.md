@@ -8,7 +8,7 @@
 
 | Item | Why it is not yet complete | Resolution path |
 |---|---|---|
-| XML graph resources | No `RenderGraphStream`, parser, serializer, or resource factory exists yet. XML scene passes also need a registered callback/factory name because arbitrary C++ execution callbacks cannot be serialized. | Implement streams and parser in `mpp-resource-parsers`, add ResourceManager factory, and add application scene-pass-factory registration. |
+| XML graph resources | No `RenderGraphStream`, parser, serializer, or resource factory exists yet. Existing engine XML resources use nested elements/`StructuredData`, while the first design example used compact attributes; the concrete schema must use the existing nested-element convention. XML scene passes also need a registered callback/factory name because arbitrary C++ execution callbacks cannot be serialized. | Implement streams and parser in `mpp-resource-parsers`, normalize the documented schema to nested elements, add ResourceManager factory, and add application scene-pass-factory registration. |
 | Graph execution | `RenderGraph` currently produces an ordered topology only. It does not allocate targets or invoke pass callbacks. | Add graph image allocation, compiled framebuffer objects, execution context, and target pooling. |
 | Load/store operations | Declarations are represented, but no OpenGL clear/discard behavior executes. | Implement clear through graph framebuffer setup; add optional invalidation only after capability checks. |
 | MRT runtime | Descriptor validation checks dimensions/samples, but no framebuffer/draw-buffer or shader-output validation exists. | Extend Caps, target creation, draw-buffer setup, and program output-location validation. |
