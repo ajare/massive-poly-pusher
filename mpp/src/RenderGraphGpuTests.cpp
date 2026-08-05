@@ -72,6 +72,29 @@ namespace mpp
 			if (!resizedTarget || resizedTarget->getWidth() != 37 || resizedTarget->getHeight() != 29) return fail("resized graph target dimensions are wrong");
 			resizedTarget.reset();
 
+			RenderGraph aliasGraph;
+			auto aliasFirst = aliasGraph.createImage("GpuTestAliasFirst", colour);
+			auto aliasMiddle = aliasGraph.createImage("GpuTestAliasMiddle", colour);
+			auto aliasLast = aliasGraph.createImage("GpuTestAliasLast", colour);
+			auto aliasPass0 = aliasGraph.addPass("GpuTestAlias0", GraphPassType::Fullscreen);
+			aliasFirst = aliasGraph.writeColour(aliasPass0, aliasFirst, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0, 0, 1));
+			auto aliasPass1 = aliasGraph.addPass("GpuTestAlias1", GraphPassType::Fullscreen);
+			aliasGraph.readSampled(aliasPass1, aliasFirst);
+			aliasMiddle = aliasGraph.writeColour(aliasPass1, aliasMiddle, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 1, 0, 1));
+			auto aliasPass2 = aliasGraph.addPass("GpuTestAlias2", GraphPassType::Fullscreen);
+			aliasGraph.readSampled(aliasPass2, aliasMiddle);
+			aliasLast = aliasGraph.writeColour(aliasPass2, aliasLast, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 0, 1, 1));
+			RenderGraphTargets aliasTargets(renderSystem);
+			aliasTargets.allocate(aliasGraph.buildAllocationPlan({ 24, 24 }));
+			if (aliasTargets.get(aliasFirst) != aliasTargets.get(aliasLast)) return fail("non-overlapping transient lifetimes were not aliased");
+			if (aliasTargets.get(aliasFirst) == aliasTargets.get(aliasMiddle)) return fail("overlapping transient lifetimes were aliased");
+			RenderGraphExecutor aliasExecutor(renderSystem);
+			aliasExecutor.setPassCallback(aliasPass0, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasPass1, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasPass2, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
+			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
+
 			if (renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2)
 			{
 				RenderGraph mrt;
