@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "mpp/RenderGraphExecutor.h"
+#include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/Caps.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
@@ -146,6 +147,11 @@ namespace mpp
 		mCallbacks[pass.id] = move(callback);
 	}
 
+	void RenderGraphExecutor::setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry)
+	{
+		mFactoryRegistry = registry;
+	}
+
 	void RenderGraphExecutor::clearPassCallbacks()
 	{
 		mCallbacks.clear();
@@ -164,12 +170,18 @@ namespace mpp
 		RenderGraphExecutionContext context(&targets);
 		for (auto const passHandle : compiled.passOrder)
 		{
-			auto const callback = mCallbacks.find(passHandle.id);
-			if (callback == mCallbacks.end())
-			{
-				THROW_MPP("No callback registered for render graph pass.", __LINE__, __FILE__, __func__);
-			}
 			auto const pass = graph.getPassInfo(passHandle);
+			auto const explicitCallback = mCallbacks.find(passHandle.id);
+			RenderGraphPassCallback callback = explicitCallback == mCallbacks.end() ? RenderGraphPassCallback() : explicitCallback->second;
+			if (!callback && mFactoryRegistry && !pass.callbackFactory.empty())
+			{
+				callback = mFactoryRegistry->findFactory(pass.callbackFactory);
+			}
+			if (!callback)
+			{
+				THROW_MPP("No callback registered for render graph pass '" + pass.name + "'" +
+					(pass.callbackFactory.empty() ? "." : " (factory '" + pass.callbackFactory + "')."), __LINE__, __FILE__, __func__);
+			}
 			vector<RenderTargetPtr> colours;
 			for (auto const& output : pass.colourOutputs)
 			{
@@ -202,7 +214,7 @@ namespace mpp
 			{
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				clearPassOutputs(pass);
-				callback->second(context);
+				callback(context);
 				discardDontCareOutputs(pass);
 				mRenderSystem->popRenderTarget();
 			}
