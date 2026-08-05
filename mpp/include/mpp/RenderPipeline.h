@@ -110,6 +110,9 @@ namespace mpp
 		PbrEnvironmentPtr environment;
 		// Optional immutable XML graph topology for XmlGraphPbrForward.
 		ResourcePtr graphTemplate;
+		// Optional emissive-mask MRT variant. XmlGraphPbrForward selects it only
+		// when requested and all hardware/material output requirements validate.
+		ResourcePtr graphTemplateMrt;
 		BloomOptions bloom;
 		GraphPassDebugOptions graphPasses;
 		// Empty means this pipeline is not a shadow-domain participant.
