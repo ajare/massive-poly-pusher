@@ -309,6 +309,7 @@ namespace mpp
 		frameContext.camera = camera;
 		frameContext.visibleModels = models;
 		frameContext.pipelineOptions = &mOptions;
+		frameContext.sceneRenderPass = mPasses.back();
 		mGraphExecutor->setFrameContext(&frameContext);
 		mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
 		mGraphExecutor->setFrameContext(nullptr);
