@@ -8,11 +8,32 @@
 #include "mpp/RenderGraphImportRegistry.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
+#include "mpp/Material.h"
+#include "mpp/Program.h"
 
 using namespace std;
 
 namespace mpp
 {
+	namespace
+	{
+		bool sceneProgramsSupportOutputs(vector<SceneModel3dPtr> const& models, size_t requiredCount)
+		{
+			for (auto const& sceneModel : models)
+			{
+				auto model = static_cast<Model*>(sceneModel->getModel().get());
+				for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+				{
+					auto material = static_cast<Material*>(model->getMesh(meshIndex)->getMaterial().get());
+					auto program = static_cast<Program*>(material->getProgram().get());
+					string diagnostic;
+					if (!program || !program->validateFragmentOutputLocations(requiredCount, diagnostic)) return false;
+				}
+			}
+			return true;
+		}
+	}
+
 
 	RenderPipeline::RenderPipeline(string const& name, RenderSystem* renderSystem, RenderPipelineOptions const& options)
 		: mName(name)
@@ -205,7 +226,8 @@ namespace mpp
 			return desc;
 		};
 		bool const useMrtEmissiveMask = pbr && mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
-			mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2;
+			mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2 &&
+			sceneProgramsSupportOutputs(models, 2);
 		auto sceneHdr = graph.createImage(pbr ? "SceneHdr" : "SceneLdr", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
 		GraphImageHandle bloomMask;
 		if (useMrtEmissiveMask)

@@ -1085,6 +1085,14 @@ namespace mpp
 	 */
 	void RenderSystem::setUsedProgram(ResourcePtr program)
 	{
+		if (mExpectedGraphColourOutputs > 0)
+		{
+			string diagnostic;
+			if (!static_cast<Program*>(program.get())->validateFragmentOutputLocations(mExpectedGraphColourOutputs, diagnostic))
+			{
+				THROW_MPP(diagnostic, __LINE__, __FILE__, __func__);
+			}
+		}
 		if (program == mActiveProgram)
 		{
 			return;
@@ -1242,6 +1250,11 @@ namespace mpp
 
 		mRenderTarget = mScreen;
 		mScreen->activate();
+	}
+
+	void RenderSystem::setExpectedGraphColourOutputs(size_t count)
+	{
+		mExpectedGraphColourOutputs = count;
 	}
 
 	RenderTargetPtr RenderSystem::getScreenRenderTarget() const

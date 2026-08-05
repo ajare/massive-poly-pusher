@@ -678,6 +678,31 @@ namespace mpp
 	 * Get vertex attributes.
 	 *
 	 */
+	bool Program::validateFragmentOutputLocations(size_t requiredCount, string& diagnostic) const
+	{
+		diagnostic.clear();
+		if (requiredCount == 0 || (!GLEW_VERSION_4_3 && !GLEW_ARB_program_interface_query)) return true;
+		GLint resourceCount = 0;
+		GL_CHECK(glGetProgramInterfaceiv(getId(), GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &resourceCount));
+		vector<bool> locations(requiredCount, false);
+		GLenum const property = GL_LOCATION;
+		for (GLint resource = 0; resource < resourceCount; ++resource)
+		{
+			GLint location = -1;
+			GL_CHECK(glGetProgramResourceiv(getId(), GL_PROGRAM_OUTPUT, resource, 1, &property, 1, nullptr, &location));
+			if (location >= 0 && (size_t)location < requiredCount) locations[(size_t)location] = true;
+		}
+		for (size_t location = 0; location < requiredCount; ++location)
+		{
+			if (!locations[location])
+			{
+				diagnostic = "Program '" + getName() + "' has no active fragment output at required location " + to_string(location) + ".";
+				return false;
+			}
+		}
+		return true;
+	}
+
 	vector<Program::VariableInfo> const& Program::getVertexAttributes() const
 	{
 		return mVertexAttributes;

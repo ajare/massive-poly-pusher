@@ -172,6 +172,7 @@ namespace mpp
 		ResourcePtr mDefaultProgram2d, mDefaultProgram3d;
 
 		ResourcePtr mActiveProgram;
+		size_t mExpectedGraphColourOutputs{ 0 };
 
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
@@ -373,6 +374,10 @@ namespace mpp
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options);
 
 		void flushVertexBuffers();
+
+		// Executor contract used to validate MRT shader output locations whenever
+		// a program is selected during a graph pass. Zero disables validation.
+		void setExpectedGraphColourOutputs(size_t count);
 
 		// Clipping
 		void pushClipRectangle(ClipRectangle const& clipRect);
