@@ -33,7 +33,7 @@ namespace mpp
 
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc) { return mGraph.createImage(name, desc); }
 		GraphImageHandle importImage(std::string const& name, GraphImageDesc desc) { desc.external = true; desc.transient = false; return mGraph.createImage(name, desc); }
-		PassBuilder addPass(std::string const& name) { return PassBuilder(&mGraph, mGraph.addPass(name)); }
+		PassBuilder addPass(std::string const& name, GraphPassType type = GraphPassType::Scene) { return PassBuilder(&mGraph, mGraph.addPass(name, type)); }
 		RenderGraph build() { return std::move(mGraph); }
 	};
 }

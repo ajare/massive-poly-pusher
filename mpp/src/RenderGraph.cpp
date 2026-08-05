@@ -32,6 +32,7 @@ namespace mpp
 	struct RenderGraph::Pass
 	{
 		string name;
+		GraphPassType type{ GraphPassType::Scene };
 		string callbackFactory;
 		string programResource;
 		vector<GraphImageHandle> sampledInputs;
@@ -100,13 +101,13 @@ namespace mpp
 		return result;
 	}
 
-	GraphPassHandle RenderGraph::addPass(string const& name)
+	GraphPassHandle RenderGraph::addPass(string const& name, GraphPassType type)
 	{
 		if (name.empty() || find_if(mPasses.begin(), mPasses.end(), [&](Pass const& pass) { return pass.name == name; }) != mPasses.end())
 		{
 			THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
 		}
-		mPasses.push_back({ name });
+		mPasses.push_back({ name, type });
 		return { (uint32_t)mPasses.size() - 1 };
 	}
 
@@ -193,7 +194,7 @@ namespace mpp
 			THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		}
 		auto const& source = mPasses[pass.id];
-		return { source.name, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.parameters, source.colourOutputs, source.depthOutputs };
+		return { source.name, source.type, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.parameters, source.colourOutputs, source.depthOutputs };
 	}
 
 	RenderGraphCompileResult RenderGraph::compile() const

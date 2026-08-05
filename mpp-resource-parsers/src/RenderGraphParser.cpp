@@ -66,6 +66,15 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph colour space in " + filepath + ".", __LINE__, __FILE__, __func__);
 			}
 
+			GraphPassType parsePassType(string value, string const& filepath)
+			{
+				utils::StringUtils::toUpper(value);
+				if (value == "SCENE") return GraphPassType::Scene;
+				if (value == "FULLSCREEN") return GraphPassType::Fullscreen;
+				if (value == "PRESENT") return GraphPassType::Present;
+				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph pass type in " + filepath + ".", __LINE__, __FILE__, __func__);
+			}
+
 			uint32_t parseMinFilter(string value, string const& filepath)
 			{
 				utils::StringUtils::toUpper(value);
@@ -143,7 +152,7 @@ namespace mpp
 			{
 				if (entry.first != "Pass") continue;
 				auto const& passData = entry.second;
-				auto pass = graph.addPass(passData.getEntry("name").getValue());
+				auto pass = graph.addPass(passData.getEntry("name").getValue(), passData.hasEntry("type") ? parsePassType(passData.getEntry("type").getValue(), filepath) : GraphPassType::Scene);
 				if (passData.hasEntry("factory")) graph.setPassCallbackFactory(pass, passData.getEntry("factory").getValue());
 				else if (passData.hasEntry("callback")) graph.setPassCallbackFactory(pass, passData.getEntry("callback").getValue());
 				if (passData.hasEntry("program")) graph.setPassProgramResource(pass, passData.getEntry("program").getValue());
