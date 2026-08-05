@@ -129,5 +129,9 @@ namespace mpp
 
 		RenderGraphCompileResult compile() const;
 		RenderGraphCompileResult compile(Caps const& caps) const;
+
+		// Context-free diagnostic dump for logs and tests. It reports declared
+		// images, their produced versions, and each pass's graph dependencies.
+		std::string describe() const;
 	};
 }

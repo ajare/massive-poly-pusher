@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <queue>
 #include <set>
+#include <sstream>
 
 #include "mpp/RenderGraph.h"
 #include "mpp/Caps.h"
@@ -186,6 +187,34 @@ namespace mpp
 		}
 		result.valid = true;
 		return result;
+	}
+
+	string RenderGraph::describe() const
+	{
+		ostringstream output;
+		output << "RenderGraph: " << mImages.size() << " image(s), " << mPasses.size() << " pass(es)\n";
+		for (uint32_t id = 0; id < mImages.size(); ++id)
+		{
+			auto const& image = mImages[id];
+			output << "  Image[" << id << "] '" << image.name << "': versions=0.." << image.latestVersion
+				<< ", size=" << image.desc.absoluteSize.x << "x" << image.desc.absoluteSize.y
+				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y
+				<< ", samples=" << image.desc.samples << ", transient=" << (image.desc.transient ? "true" : "false")
+				<< ", external=" << (image.desc.external ? "true" : "false") << "\n";
+		}
+		for (uint32_t id = 0; id < mPasses.size(); ++id)
+		{
+			auto const& pass = mPasses[id];
+			output << "  Pass[" << id << "] '" << pass.name << "': sampled=" << pass.sampledInputs.size()
+				<< ", colour=" << pass.colourOutputs.size() << ", depth=" << pass.depthOutputs.size() << "\n";
+			for (auto const& input : pass.sampledInputs)
+				output << "    reads Image[" << input.id << "]@" << input.version << "\n";
+			for (auto const& target : pass.colourOutputs)
+				output << "    writes colour Image[" << target.image.id << "]@" << target.image.version << "\n";
+			for (auto const& target : pass.depthOutputs)
+				output << "    writes depth Image[" << target.image.id << "]@" << target.image.version << "\n";
+		}
+		return output.str();
 	}
 
 	RenderGraphCompileResult RenderGraph::compile(Caps const& caps) const

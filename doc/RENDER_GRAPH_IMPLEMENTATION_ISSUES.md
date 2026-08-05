@@ -4,6 +4,8 @@
 
 `mpp::RenderGraph` currently supports programmatic declaration of versioned images and passes, sampled reads, colour/depth writes, dependency sorting, missing-producer diagnostics, read/write-feedback diagnostics, cycle diagnostics, usage validation, and compatible MRT descriptor validation. It deliberately has no OpenGL allocation/execution side effects, so this validation layer can be used before a graphics context exists.
 
+`RenderGraph::describe()` provides a context-free diagnostic dump of images, versions, and pass dependencies. It is suitable for parser/validation logs; allocation and lifetime details cannot be reported until RG2.
+
 ## Outstanding blockers for the full plan
 
 | Item | Why it is not yet complete | Resolution path |
