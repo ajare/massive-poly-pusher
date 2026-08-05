@@ -21,7 +21,7 @@ namespace mpp
 	{
 		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
 		// their RGBA8 target and existing presentation behaviour.
-		mPasses.push_back(make_shared<RenderPass>(renderSystem, mOptions.mode == RenderPipelineMode::PbrForward || mOptions.mode == RenderPipelineMode::GraphPbrForward));
+		mPasses.push_back(make_shared<RenderPass>(renderSystem, mOptions.mode == RenderPipelineMode::PbrForward || mOptions.mode == RenderPipelineMode::GraphPbrForward || mOptions.mode == RenderPipelineMode::XmlGraphPbrForward));
 	}
 
 	RenderPipeline::~RenderPipeline()
