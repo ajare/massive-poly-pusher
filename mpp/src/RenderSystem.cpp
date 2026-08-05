@@ -1244,6 +1244,11 @@ namespace mpp
 		mScreen->activate();
 	}
 
+	RenderTargetPtr RenderSystem::getScreenRenderTarget() const
+	{
+		return mScreen;
+	}
+
 	/*
 	 * Create a new render texture.
 	 *

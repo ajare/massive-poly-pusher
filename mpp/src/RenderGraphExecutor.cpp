@@ -200,6 +200,7 @@ namespace mpp
 			mRenderSystem->pushRenderTarget(passTarget);
 			try
 			{
+				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				clearPassOutputs(pass);
 				callback->second(context);
 				discardDontCareOutputs(pass);

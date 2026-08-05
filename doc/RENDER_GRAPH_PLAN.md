@@ -298,11 +298,11 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG3 — Migrate PBR scene, presentation, and bloom
 
-- [ ] Add an opt-in `RenderPipelineMode::GraphPbrForward` (or equivalent explicit graph option); do not replace current `PbrForward` until validated.
-- [ ] Express shadow depth, HDR scene, bloom extract/blur/composite, and tone-map presentation as graph passes.
-- [ ] Import the screen/presentation target and retain current UI ordering.
-- [ ] Replace pipeline-owned bloom target fields with graph images once outputs match existing bloom.
-- [ ] Compare current PBR and graph-PBR bloom screenshots/RenderDoc captures.
+- [x] Add an opt-in `RenderPipelineMode::GraphPbrForward`; `PbrForward` remains the manual reference path. DemoSuite exposes separate manual and graph PBR selections.
+- [x] Express shadow depth, HDR scene, bloom extract/blur/composite, and tone-map presentation as graph passes. Graph callbacks reuse existing scene/shadow/bloom/tone-map rendering contracts.
+- [x] Import the screen/presentation target and retain current UI ordering. The graph presents before existing 2D/UI rendering.
+- [~] Replace pipeline-owned bloom target fields with graph images once outputs match existing bloom. `GraphPbrForward` uses graph images exclusively; manual `PbrForward` retains its existing bloom fields as the reference path.
+- [ ] Compare current PBR and graph-PBR bloom screenshots/RenderDoc captures. DemoSuite supports switching between both paths, but captures have not yet been recorded.
 
 **Acceptance:** graph PBR renders the statue, shadows, bloom, and tone mapping equivalently to current PBR with no material changes.
 

@@ -22,6 +22,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 
 ## In progress
 
+- [~] RG3 graph PBR: `GraphPbrForward` executes graph shadow, HDR scene, bloom, tone-map, and imported-screen presentation passes; manual `PbrForward` remains the reference. DemoSuite offers an explicit graph-PBR selection, but screenshot/RenderDoc equivalence captures remain outstanding.
 - [~] RG1 resource authoring: parser subset exists, but graph resource streams, serialization, program references, typed parameters, and imported-target names are not implemented.
 - [~] RG2 allocation/execution: same-plan aliasing, cross-frame compatible-target pooling, imported target bindings, and capability-guarded `DontCare` store invalidation work. MSAA, mip allocation, compute passes, and automated GPU frame tests remain absent.
 
