@@ -303,7 +303,15 @@ namespace mpp
 				mRenderSystem->renderFullscreenQuad(texture, BlendMode::One, BlendMode::Zero);
 			}
 		});
+		RenderGraphFrameContext frameContext;
+		frameContext.renderSystem = mRenderSystem;
+		frameContext.scene = scene;
+		frameContext.camera = camera;
+		frameContext.visibleModels = models;
+		frameContext.pipelineOptions = &mOptions;
+		mGraphExecutor->setFrameContext(&frameContext);
 		mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
+		mGraphExecutor->setFrameContext(nullptr);
 	}
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)
