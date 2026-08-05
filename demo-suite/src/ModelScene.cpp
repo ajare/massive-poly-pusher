@@ -1028,6 +1028,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mPbrEnvironment->backgroundMap = resourceMgr->getResource("PBR.Preview.Environment");
 	pbrOptions.environment = mPbrEnvironment;
 	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
+	auto graphPbrOptions = pbrOptions;
+	graphPbrOptions.mode = mpp::RenderPipelineMode::GraphPbrForward;
+	renderSystem->getOrCreateRenderPipeline("GraphPBR", graphPbrOptions);
 	mpp::RenderPipelineOptions defaultOptions;
 	defaultOptions.bloom = mBloomOptions;
 	renderSystem->getOrCreateRenderPipeline("Default", defaultOptions);
@@ -1135,22 +1138,26 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			renderSystem->setGamma(gamma);
 		}
 
-		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : 1;
-		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR\0Default\0"))
+		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : (mSelectedPipeline == "GraphPBR" ? 1 : 2);
+		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR (manual reference)\0PBR (render graph)\0Default\0"))
 		{
-			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : "Default";
+			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : (pipelineIndex == 1 ? "GraphPBR" : "Default");
 		}
-		ImGui::TextUnformatted("PBR: Cook-Torrance HDR");
+		ImGui::TextUnformatted("PBR: Cook-Torrance HDR; graph mode is explicit validation opt-in");
 		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
+		auto graphPbrPipeline = renderSystem->getRenderPipeline("GraphPBR");
 		float exposure = pbrPipeline->getOptions().exposure;
 		if (ImGui::SliderFloat("PBR Exposure", &exposure, 0.0f, 8.0f))
 		{
 			pbrPipeline->setExposure(exposure);
+			graphPbrPipeline->setExposure(exposure);
 		}
 		int toneMapOperator = pbrPipeline->getOptions().toneMapOperator == mpp::PbrToneMapOperator::Aces ? 1 : 0;
 		if (ImGui::Combo("PBR Tone Map", &toneMapOperator, "Reinhard\0ACES\0"))
 		{
-			pbrPipeline->setToneMapOperator(toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces);
+			auto toneMap = toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces;
+			pbrPipeline->setToneMapOperator(toneMap);
+			graphPbrPipeline->setToneMapOperator(toneMap);
 		}
 
 		bool bloomChanged = false;
@@ -1166,6 +1173,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		if (bloomChanged)
 		{
 			pbrPipeline->setBloomOptions(mBloomOptions);
+			graphPbrPipeline->setBloomOptions(mBloomOptions);
 			renderSystem->getRenderPipeline("Default")->setBloomOptions(mBloomOptions);
 		}
 

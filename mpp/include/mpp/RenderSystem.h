@@ -365,6 +365,9 @@ namespace mpp
 
 		void renderToScreen();
 
+		// External/presentation target used by explicit render-graph pipelines.
+		RenderTargetPtr getScreenRenderTarget() const;
+
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer);
 
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options);

@@ -32,7 +32,10 @@ namespace mpp
 	enum class RenderPipelineMode
 	{
 		LegacyForward,
-		PbrForward
+		PbrForward,
+		// Explicit opt-in graph path. PbrForward retains the validated manual
+		// target/presentation sequence until graph output is independently proven.
+		GraphPbrForward
 	};
 
 	enum class PbrToneMapOperator
@@ -113,7 +116,11 @@ namespace mpp
 		RenderTargetPtr mBloomPongTarget;
 		RenderTargetPtr mBloomCompositeTarget;
 
+		std::unique_ptr<class RenderGraphTargets> mGraphTargets;
+		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
+
 		void ensureBloomTargets(size_t width, size_t height);
+		void renderGraphPbr(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models);
 
 	public:
 
