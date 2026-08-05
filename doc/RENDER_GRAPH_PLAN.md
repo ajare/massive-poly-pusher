@@ -215,8 +215,8 @@ The exact element spelling may evolve, but these rules are required:
 1. **Build:** pipeline code or an XML graph template creates images and declares passes.
 2. **Validate:** reject missing producer, format/type mismatch, same-version read/write feedback, unsupported format/usage, invalid attachment load/store combinations, and unsupported MRT count.
 3. **Topologically sort:** derive pass order from handle dependencies; report a named cycle.
-4. **Calculate lifetimes:** first write through last read for every transient version.
-5. **Allocate/alias:** assign compatible non-overlapping transient lifetimes to pooled `RenderTexture`/attachment allocations. First implementation may allocate one target per image; aliasing is enabled only after lifetime tests pass.
+4. **Calculate lifetimes:** first write through last read for every transient version. **Implemented topology stage:** `RenderGraph::buildAllocationPlan(viewport)` resolves each produced image version to absolute dimensions and first/last pass positions, while retaining imported external version-zero handles separately.
+5. **Allocate/alias:** assign compatible non-overlapping transient lifetimes to pooled `RenderTexture`/attachment allocations. First implementation may allocate one target per image; aliasing is enabled only after lifetime tests pass. **Not yet implemented:** the allocation plan deliberately creates no GL objects.
 6. **Execute:** bind the compiled framebuffer, set draw buffers, perform clear operations, invoke callback, then apply store/discard policy and release expired transient allocations.
 7. **Present:** graph output is handed to the existing PBR tone-map or legacy presentation step. The screen is treated as an imported external target.
 
@@ -288,7 +288,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG2 — OpenGL target allocator and execution context
 
-- [ ] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions.
+- [~] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. **Started:** `buildAllocationPlan()` calculates per-version size/lifetime requirements and distinguishes imported handles. Pooling and GL allocation are outstanding.
 - [ ] Bind graph framebuffers, configure draw/read buffers, clear declared attachments, and expose read-only image views to execution callbacks.
 - [ ] Add one colour plus optional depth attachment execution first; retain existing `RenderTexture` ownership APIs as compatibility wrappers.
 - [ ] Add resize invalidation and GL object-lifetime tests.
