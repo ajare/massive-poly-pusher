@@ -187,6 +187,11 @@ namespace mpp
 		return output;
 	}
 
+	size_t RenderGraph::getImageCount() const
+	{
+		return mImages.size();
+	}
+
 	size_t RenderGraph::getPassCount() const
 	{
 		return mPasses.size();
