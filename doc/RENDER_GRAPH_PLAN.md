@@ -275,7 +275,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG1 — Graph data model and validation foundation
 
-- [~] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, compiled graph types, `RenderGraphStream`, and `ProgrammaticRenderGraphStream` under `mpp/include/mpp` and `mpp/src`. **Started:** `RenderGraph` now provides versioned handles, image/pass declarations, dependency sorting, feedback checks, and MRT descriptor validation. `RenderGraphParser` parses the documented topology XML subset. Builder convenience APIs, resource streams, serialization, and execution are outstanding.
+- [~] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, compiled graph types, `RenderGraphStream`, and `ProgrammaticRenderGraphStream` under `mpp/include/mpp` and `mpp/src`. **Started:** `RenderGraph` now provides versioned handles, image/pass declarations, dependency sorting, feedback checks, MRT descriptor validation, and execution. `RenderGraphParser` parses the documented topology XML subset; `RenderGraphStream`/`RenderGraphTemplate` provide a programmatic immutable resource template and ResourceManager factory. Builder convenience APIs, file streams, serialization, and XML execution bindings are outstanding.
 - [~] Extend `Caps` with draw-buffer/colour-attachment limits and validate graph requirements. **Started:** `RenderSystem::checkCaps()` records and logs `maxDrawBuffers` and `maxColourAttachments`; `RenderGraph::compile(Caps const&)` rejects a pass whose output count exceeds either limit. Runtime framebuffer setup remains outstanding.
 - [ ] Add graph image format mapping to the existing render-texture format system.
 - [~] Support imported targets and transient 2D colour/depth images at absolute/relative sizes. **Started:** relative-size descriptors and transient/external flags are declared and depth/colour format-usage consistency is validated; no target allocation/import binding exists yet.
@@ -327,6 +327,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG6 — Resource-authored effects and optimizations
 
+- [~] Add graph resources as immutable topology templates. `RenderGraphStream` and `RenderGraphTemplate` now support programmatic graph resources through ResourceManager; XML parser output still needs a file stream adapter and executable binding contract.
 - [ ] Replace the stub `PostEffect` execution model with graph-pass declaration/execution APIs.
 - [ ] Extend `PostEffectStream`/serialization for input semantics, output descriptor, uniforms, shader resource, stage, and quality settings; allow a `PostEffect` to reference an XML `RenderGraph` subgraph template.
 - [ ] Support application-registered XML scene-pass factories and reject unregistered scene callback names with named diagnostics.
