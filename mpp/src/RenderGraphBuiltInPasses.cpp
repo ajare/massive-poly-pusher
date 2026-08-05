@@ -15,7 +15,7 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override
 			{
 				auto const& frame = context.getFrame();
-				if (frame.pipelineOptions && !frame.pipelineOptions->shadowDomain.empty())
+				if (frame.pipelineOptions && frame.pipelineOptions->graphPasses.shadow && !frame.pipelineOptions->shadowDomain.empty())
 					frame.renderSystem->renderShadowDomain(frame.pipelineOptions->shadowDomain, frame.visibleModels);
 			}
 		};
@@ -36,24 +36,29 @@ namespace mpp
 		class BloomExtractPass final : public RenderGraphScenePass
 		{
 		public:
-			void execute(RenderGraphExecutionContext const& context) override { context.getFrame().renderSystem->renderBloomExtract(input(context, 0), parameter(context, "THRESHOLD", 1.0f)); }
+			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomExtract(input(context, 0), parameter(context, "THRESHOLD", 1.0f)); }
 		};
 		class BloomBlurPass final : public RenderGraphScenePass
 		{
 			bool mHorizontal;
 		public:
 			explicit BloomBlurPass(bool horizontal) : mHorizontal(horizontal) {}
-			void execute(RenderGraphExecutionContext const& context) override { context.getFrame().renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1)); }
+			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1)); }
 		};
 		class BloomCompositePass final : public RenderGraphScenePass
 		{
 		public:
-			void execute(RenderGraphExecutionContext const& context) override { context.getFrame().renderSystem->renderBloomCombine(input(context, 0), input(context, 1), parameter(context, "INTENSITY", 0.15f)); }
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions->graphPasses.bloom) frame.renderSystem->renderBloomCombine(input(context, 0), input(context, 1), parameter(context, "INTENSITY", 0.15f));
+				else frame.renderSystem->renderFullscreenQuad(input(context, 0), BlendMode::One, BlendMode::Zero);
+			}
 		};
 		class ToneMapPresentPass final : public RenderGraphScenePass
 		{
 		public:
-			void execute(RenderGraphExecutionContext const& context) override { context.getFrame().renderSystem->renderToneMappedFullscreenQuad(input(context, 0), parameter(context, "EXPOSURE", 1.0f), parameter(context, "TONE_MAP_OPERATOR", 1.0f) != 0.0f); }
+			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.presentation) context.getFrame().renderSystem->renderToneMappedFullscreenQuad(input(context, 0), parameter(context, "EXPOSURE", 1.0f), parameter(context, "TONE_MAP_OPERATOR", 1.0f) != 0.0f); }
 		};
 
 		class ScenePass final : public RenderGraphScenePass
@@ -62,7 +67,7 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override
 			{
 				auto const& frame = context.getFrame();
-				if (frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
+				if (frame.pipelineOptions->graphPasses.scene && frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
 				{
 					frame.sceneRenderPass->render(frame.visibleModels, frame.camera);
 					frame.renderSystem->flushVertexBuffers();

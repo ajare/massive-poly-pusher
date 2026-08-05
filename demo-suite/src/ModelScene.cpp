@@ -1157,6 +1157,17 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
 		auto graphPbrPipeline = renderSystem->getRenderPipeline("GraphPBR");
 		auto xmlGraphPbrPipeline = renderSystem->getRenderPipeline("XmlGraphPBR");
+		bool graphPassesChanged = false;
+		graphPassesChanged |= ImGui::Checkbox("Graph: Shadow Pass", &mGraphPassDebugOptions.shadow);
+		graphPassesChanged |= ImGui::Checkbox("Graph: Scene Pass", &mGraphPassDebugOptions.scene);
+		graphPassesChanged |= ImGui::Checkbox("Graph: Bloom Passes", &mGraphPassDebugOptions.bloom);
+		graphPassesChanged |= ImGui::Checkbox("Graph: Presentation Pass", &mGraphPassDebugOptions.presentation);
+		if (graphPassesChanged)
+		{
+			graphPbrPipeline->setGraphPassDebugOptions(mGraphPassDebugOptions);
+			xmlGraphPbrPipeline->setGraphPassDebugOptions(mGraphPassDebugOptions);
+			renderSystem->getRenderPipeline("GraphDefault")->setGraphPassDebugOptions(mGraphPassDebugOptions);
+		}
 		float exposure = pbrPipeline->getOptions().exposure;
 		if (ImGui::SliderFloat("PBR Exposure", &exposure, 0.0f, 8.0f))
 		{
