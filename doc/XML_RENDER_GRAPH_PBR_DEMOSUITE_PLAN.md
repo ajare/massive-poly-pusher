@@ -75,9 +75,13 @@ ShadowDepth
 
 Declare HDR scene/bloom images, LDR imported presentation image, factory names, typed bloom/tone-map parameters, and sampler bindings. Scene shading remains the existing material system.
 
+**Status:** `demo-suite/resources/res/PbrPipeline.rendergraph.xml` declares this fixed two-blur-pass threshold-bloom topology with imports, factories, sampler bindings, and typed parameters. It is authored but not yet loaded/executed by DemoSuite.
+
 **Acceptance:** `FileRenderGraphStream` loads and validates the graph before rendering.
 
 ## 5. Template-backed RenderPipeline mode
+
+**Status:** not started. Current `GraphPbrForward` still creates its topology in C++.
 
 Add optional graph-template resource/name to `RenderPipelineOptions` and a distinct `XmlGraphPbrForward` mode.
 
@@ -97,6 +101,8 @@ Keep `GraphPbrForward` hardcoded until output parity is confirmed.
 
 ## 6. DemoSuite selector and diagnostics
 
+**Status:** DemoSuite currently offers manual and hardcoded-graph PBR selections. `PBR (XML graph)` and graph diagnostics are not wired yet.
+
 Expose:
 
 - `PBR (manual reference)`
@@ -110,6 +116,8 @@ Show XML graph load/validation state, pass order, allocation count, MRT capabili
 **Acceptance:** pipeline switching requires no restart and retains PBR controls.
 
 ## 7. Validation
+
+**Status:** not started; no manual-vs-XML screenshots or RenderDoc captures exist.
 
 Compare manual PBR and XML PBR with bloom disabled/enabled, varied exposure/tone map, varied shadow settings, window resize, and MRT bloom-mask mode. Capture screenshots and RenderDoc frames.
 
