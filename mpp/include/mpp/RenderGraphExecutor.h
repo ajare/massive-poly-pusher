@@ -17,10 +17,12 @@ namespace mpp
 	class _MPPAPI RenderGraphExecutionContext
 	{
 		RenderGraphTargets const* mTargets;
+		UniformCollection const* mParameters;
 
 	public:
-		explicit RenderGraphExecutionContext(RenderGraphTargets const* targets);
+		explicit RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters = nullptr);
 		RenderTargetPtr getImage(GraphImageHandle image) const;
+		UniformCollection const& getParameters() const;
 	};
 
 	// Executes graphics passes supplied by application callbacks. It creates a
@@ -32,6 +34,7 @@ namespace mpp
 		RenderGraphPassFactoryRegistry const* mFactoryRegistry{ nullptr };
 		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
 		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
+		std::map<uint32_t, UniformCollection> mParameterOverrides;
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);
@@ -41,6 +44,7 @@ namespace mpp
 
 		void setPassCallback(GraphPassHandle pass, std::function<void(RenderGraphExecutionContext const&)> callback);
 		void setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry);
+		void setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters);
 		void clearPassCallbacks();
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
 	};
