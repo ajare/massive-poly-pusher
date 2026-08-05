@@ -80,6 +80,7 @@ namespace mpp
 		bool isValid() const { return id != UINT32_MAX; }
 	};
 
+	enum class GraphPassType { Scene, Fullscreen, Present };
 	enum class GraphLoadOp { Load, Clear, DontCare };
 	enum class GraphStoreOp { Store, DontCare };
 
@@ -108,6 +109,7 @@ namespace mpp
 	struct _MPPAPI GraphPassInfo
 	{
 		std::string name;
+		GraphPassType type{ GraphPassType::Scene };
 		// XML stores this stable factory identifier, not executable code.
 		std::string callbackFactory;
 		// Resource name; resolution/validation occurs when a declarative
@@ -171,7 +173,7 @@ namespace mpp
 		void setImageImportName(GraphImageHandle image, std::string const& importName);
 		GraphImageInfo getImageInfo(GraphImageHandle image) const;
 		std::vector<GraphImageHandle> getImportedImages() const;
-		GraphPassHandle addPass(std::string const& name);
+		GraphPassHandle addPass(std::string const& name, GraphPassType type = GraphPassType::Scene);
 		void setPassProgramResource(GraphPassHandle pass, std::string const& resourceName);
 		void setPassCallbackFactory(GraphPassHandle pass, std::string const& factoryName);
 
