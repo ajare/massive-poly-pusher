@@ -415,6 +415,14 @@ namespace mpp
 			mRenderSystem->setActivePbrEnvironment(nullptr);
 		}
 
+		// Graph execution restores the target that was active before the graph.
+		// Explicitly reactivate the screen before UI/2D rendering; otherwise the
+		// next frame can draw UI into a transient graph target and flicker.
+		if (graphForward)
+		{
+			mRenderSystem->renderToScreen();
+		}
+
 		// Reset viewport
 		mRenderSystem->resetViewport();
 
