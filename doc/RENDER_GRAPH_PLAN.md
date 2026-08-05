@@ -308,11 +308,11 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG4 — Add optional PBR bloom-mask MRT
 
-- [ ] Add shader-output markup/location support required by graph MRT passes.
-- [ ] Extend the PBR scene shader to optionally output scene HDR plus an emissive/bright bloom mask.
-- [ ] Add an MRT material/program variant and capability fallback to threshold extraction.
-- [ ] Validate attachment count, format, and location mapping on supported GPUs.
-- [ ] Add DemoSuite controls to select threshold bloom versus bloom-mask MRT and show capability/status diagnostics.
+- [x] Add shader-output markup/location support required by graph MRT passes. Existing ordered `@Out` declarations compile to explicit `layout(location = n)` outputs; graph scene attachments use the same declaration order.
+- [x] Extend the DemoSuite PBR scene shader to output scene HDR plus authored emissive bloom mask at location 1. Single-target paths retain location 0 and discard location 1 through their draw-buffer configuration.
+- [x] Add MRT graph-PBR bloom-mask mode and capability fallback to threshold extraction. `BloomOptions::useMrtEmissiveMask` uses the mask only when both draw-buffer and colour-attachment caps are at least two.
+- [x] Validate attachment count, format, and location mapping on supported GPUs. Graph caps validation enforces count; matching RGBA16F descriptors and ordered `@Out` outputs define location mapping. Runtime framebuffer completeness remains enforced by RG2.
+- [x] Add DemoSuite controls to select threshold bloom versus bloom-mask MRT and show capability/status diagnostics.
 
 **Acceptance:** an emissive object blooms through the mask while unrelated bright albedo can be excluded; unsupported hardware falls back safely.
 

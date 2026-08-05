@@ -1162,6 +1162,14 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 
 		bool bloomChanged = false;
 		bloomChanged |= ImGui::Checkbox("Bloom Enabled", &mBloomOptions.enabled);
+		bool mrtBloomAvailable = renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2;
+		if (!mrtBloomAvailable) ImGui::BeginDisabled();
+		bloomChanged |= ImGui::Checkbox("Graph PBR Emissive Bloom Mask (MRT)", &mBloomOptions.useMrtEmissiveMask);
+		if (!mrtBloomAvailable)
+		{
+			ImGui::EndDisabled();
+			ImGui::TextUnformatted("MRT bloom mask unavailable: falling back to threshold extract");
+		}
 		bloomChanged |= ImGui::SliderFloat("Bloom Threshold", &mBloomOptions.threshold, 0.0f, 4.0f, "%.2f");
 		bloomChanged |= ImGui::SliderFloat("Bloom Intensity", &mBloomOptions.intensity, 0.0f, 2.0f, "%.2f");
 		int bloomPasses = (int)mBloomOptions.blurPasses;

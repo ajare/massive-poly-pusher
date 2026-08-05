@@ -49,6 +49,9 @@ namespace mpp
 	struct _MPPAPI BloomOptions
 	{
 		bool enabled{ false };
+		// GraphPbrForward may use an authored emissive mask in scene colour[1].
+		// It falls back to threshold extract when MRT is unavailable.
+		bool useMrtEmissiveMask{ false };
 		float threshold{ 1.0f };
 		float intensity{ 0.15f };
 		uint32_t blurPasses{ 2 };
