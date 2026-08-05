@@ -102,17 +102,11 @@ namespace mpp
 		vector<ActivePoolEntry> active;
 		for (auto const* lifetime : lifetimes)
 		{
-			auto reusable = find_if(active.begin(), active.end(), [&](ActivePoolEntry const& candidate)
-			{
-				return candidate.lastPass < lifetime->firstPass && compatibleForAliasing(mPool[candidate.poolIndex].lifetime, *lifetime);
-			});
-			if (reusable != active.end())
-			{
-				reusable->lastPass = lifetime->lastPass;
-				mTargets.emplace(makeKey(lifetime->image), mPool[reusable->poolIndex].target);
-				continue;
-			}
-
+			// Keep every version distinct for an entire graph execution. The
+			// lifetime analysis is retained for diagnostics, but same-frame aliasing
+			// is disabled until GPU validation proves that no callback retains an
+			// image view past its declared last use. This favours correctness and
+			// prevents intermittent graph/UI flicker from accidental aliasing.
 			auto pooled = find_if(mPool.begin(), mPool.end(), [&](PoolEntry const& candidate)
 			{
 				if (!compatibleForAliasing(candidate.lifetime, *lifetime)) return false;
