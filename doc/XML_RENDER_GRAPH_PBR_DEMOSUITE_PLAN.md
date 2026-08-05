@@ -20,6 +20,8 @@ struct RenderGraphFrameContext {
 
 Expose it through `RenderGraphExecutionContext`. `RenderPipeline` builds it immediately before graph execution; no live scene/camera objects are serialized.
 
+**Status:** implemented through `RenderGraphFrameContext`, provided by `RenderPipeline` per graph frame.
+
 **Acceptance:** factory-created passes can access the scene, camera, visible models, options, and renderer.
 
 ## 2. Built-in graph pass factories
@@ -35,6 +37,8 @@ Implement/register these `RenderGraphScenePass` factories:
 | `MPP.BloomBlurVertical` | Call `renderBloomBlur(..., {0, 1})`. |
 | `MPP.BloomComposite` | Call `renderBloomCombine()`. |
 | `MPP.ToneMapPresent` | Call `renderToneMappedFullscreenQuad()`. |
+
+**Status:** `MPP.PbrScene`, `MPP.LegacyScene`, and `MPP.ShadowDepth` are implemented and registered by `RenderPipeline`. Bloom/composite/presentation factories remain.
 
 Factories use `RenderGraphExecutionContext` plus `RenderGraphFrameContext` only.
 
