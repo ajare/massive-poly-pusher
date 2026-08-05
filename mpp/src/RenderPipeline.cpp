@@ -160,6 +160,30 @@ namespace mpp
 			imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
 			if (!mOptions.shadowDomain.empty()) imports.registerImport("shadowDepth", mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
 			mGraphTargets->bindImports(*graph, imports);
+			// XML supplies defaults; current pipeline controls override dynamic
+			// per-frame values without recompiling or mutating the template.
+			for (uint32_t id = 0; id < graph->getPassCount(); ++id)
+			{
+				GraphPassHandle pass{ id };
+				auto const info = graph->getPassInfo(pass);
+				UniformCollection overrides;
+				if (info.name == "BloomExtract")
+				{
+					overrides.setUniform("THRESHOLD", mOptions.bloom.threshold);
+					mGraphExecutor->setPassParameterOverrides(pass, overrides);
+				}
+				else if (info.name == "BloomComposite")
+				{
+					overrides.setUniform("INTENSITY", mOptions.bloom.intensity);
+					mGraphExecutor->setPassParameterOverrides(pass, overrides);
+				}
+				else if (info.name == "ToneMapPresentation")
+				{
+					overrides.setUniform("EXPOSURE", mOptions.exposure);
+					overrides.setUniform("TONE_MAP_OPERATOR", (int32_t)(mOptions.toneMapOperator == PbrToneMapOperator::Aces ? 1 : 0));
+					mGraphExecutor->setPassParameterOverrides(pass, overrides);
+				}
+			}
 			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back() };
 			mGraphExecutor->setFrameContext(&frameContext);
 			mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
