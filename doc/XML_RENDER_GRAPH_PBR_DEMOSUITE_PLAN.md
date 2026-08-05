@@ -38,7 +38,7 @@ Implement/register these `RenderGraphScenePass` factories:
 | `MPP.BloomComposite` | Call `renderBloomCombine()`. |
 | `MPP.ToneMapPresent` | Call `renderToneMappedFullscreenQuad()`. |
 
-**Status:** `MPP.PbrScene`, `MPP.LegacyScene`, and `MPP.ShadowDepth` are implemented and registered by `RenderPipeline`. Bloom/composite/presentation factories remain.
+**Status:** complete. Scene, shadow, bloom extract/blur/composite, and tone-map presentation factories are implemented and registered by `RenderPipeline`.
 
 Factories use `RenderGraphExecutionContext` plus `RenderGraphFrameContext` only.
 
@@ -55,6 +55,8 @@ Register imports before execution:
 | `external.*` | application-defined target |
 
 Execution sequence: allocate graph targets, populate `RenderGraphImportRegistry`, then call `RenderGraphTargets::bindImports()`.
+
+**Status:** complete for the XML PBR graph. `screen` and `shadowDepth` are registered and resolved at runtime.
 
 **Acceptance:** XML uses names only; it never contains raw GL IDs or runtime handles.
 
@@ -81,7 +83,7 @@ Declare HDR scene/bloom images, LDR imported presentation image, factory names, 
 
 ## 5. Template-backed RenderPipeline mode
 
-**Status:** not started. Current `GraphPbrForward` still creates its topology in C++.
+**Status:** complete. `XmlGraphPbrForward` executes a loaded `RenderGraphTemplate`; the separate `GraphPbrForward` mode intentionally retains its C++ topology as a comparison/reference path.
 
 Add optional graph-template resource/name to `RenderPipelineOptions` and a distinct `XmlGraphPbrForward` mode.
 
@@ -117,11 +119,11 @@ Show XML graph load/validation state, pass order, allocation count, MRT capabili
 
 ## 7. Validation
 
-**Status:** not started; no manual-vs-XML screenshots or RenderDoc captures exist.
+**Status:** visual parity confirmed by the user for manual, hardcoded-graph, and XML-graph pipelines. No automated screenshot comparison or archived RenderDoc capture exists yet.
 
 Compare manual PBR and XML PBR with bloom disabled/enabled, varied exposure/tone map, varied shadow settings, window resize, and MRT bloom-mask mode. Capture screenshots and RenderDoc frames.
 
-**Acceptance:** output matches manual PBR within agreed screenshot tolerance, without framebuffer errors or target leaks.
+**Acceptance:** visually accepted for current DemoSuite settings. Automated screenshot tolerance, leak checks, and archived RenderDoc validation remain follow-up hardening.
 
 ## 8. Follow-up after parity
 
