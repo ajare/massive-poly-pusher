@@ -17,6 +17,16 @@ namespace mpp
 		{
 			return format == GraphImageFormat::Depth24 || format == GraphImageFormat::Depth24Stencil8;
 		}
+
+		char const* formatName(GraphImageFormat format)
+		{
+			switch (format) { case GraphImageFormat::Rgba8: return "RGBA8"; case GraphImageFormat::Rgba16f: return "RGBA16F"; case GraphImageFormat::Rg16f: return "RG16F"; case GraphImageFormat::Depth24: return "DEPTH24"; default: return "DEPTH24_STENCIL8"; }
+		}
+
+		char const* passTypeName(GraphPassType type)
+		{
+			switch (type) { case GraphPassType::Scene: return "scene"; case GraphPassType::Fullscreen: return "fullscreen"; default: return "present"; }
+		}
 	}
 
 	struct RenderGraph::Image
@@ -361,17 +371,26 @@ namespace mpp
 		for (uint32_t id = 0; id < mImages.size(); ++id)
 		{
 			auto const& image = mImages[id];
-			output << "  Image[" << id << "] '" << image.name << "': versions=0.." << image.latestVersion
-				<< ", size=" << image.desc.absoluteSize.x << "x" << image.desc.absoluteSize.y
-				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y
-				<< ", samples=" << image.desc.samples << ", transient=" << (image.desc.transient ? "true" : "false")
-				<< ", external=" << (image.desc.external ? "true" : "false") << "\n";
+			output << "  Image[" << id << "] '" << image.name << "': format=" << formatName(image.desc.format)
+				<< ", versions=0.." << image.latestVersion << ", size=" << image.desc.absoluteSize.x << "x" << image.desc.absoluteSize.y
+				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y << ", samples=" << image.desc.samples
+				<< ", mips=" << image.desc.mipLevels << ", colourSpace=" << (image.desc.colourSpace == TextureColourSpace::Srgb ? "sRGB" : "linear")
+				<< ", filters=" << image.desc.params.minFilter << "/" << image.desc.params.magFilter << ", wrap=" << image.desc.params.wrap
+				<< ", transient=" << (image.desc.transient ? "true" : "false") << ", external=" << (image.desc.external ? "true" : "false");
+			if (!image.importName.empty()) output << ", import='" << image.importName << "'";
+			output << "\n";
 		}
 		for (uint32_t id = 0; id < mPasses.size(); ++id)
 		{
 			auto const& pass = mPasses[id];
-			output << "  Pass[" << id << "] '" << pass.name << "': sampled=" << pass.sampledInputs.size()
-				<< ", colour=" << pass.colourOutputs.size() << ", depth=" << pass.depthOutputs.size() << "\n";
+			output << "  Pass[" << id << "] '" << pass.name << "': type=" << passTypeName(pass.type)
+				<< ", sampled=" << pass.sampledInputs.size() << ", colour=" << pass.colourOutputs.size() << ", depth=" << pass.depthOutputs.size()
+				<< ", parameters=" << pass.parameters.getNumUniforms();
+			if (!pass.programResource.empty()) output << ", program='" << pass.programResource << "'";
+			if (!pass.callbackFactory.empty()) output << ", factory='" << pass.callbackFactory << "'";
+			output << "\n";
+			for (auto const& binding : pass.samplerBindings)
+				output << "    sampler '" << binding.sampler << "' = Image[" << binding.image.id << "]@" << binding.image.version << "\n";
 			for (auto const& input : pass.sampledInputs)
 				output << "    reads Image[" << input.id << "]@" << input.version << "\n";
 			for (auto const& target : pass.colourOutputs)
