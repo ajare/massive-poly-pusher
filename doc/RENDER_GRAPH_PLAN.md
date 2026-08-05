@@ -229,7 +229,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG1 — Graph data model and validation foundation
 
-- [ ] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, compiled graph types, `RenderGraphStream`, and `ProgrammaticRenderGraphStream` under `mpp/include/mpp` and `mpp/src`.
+- [~] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, compiled graph types, `RenderGraphStream`, and `ProgrammaticRenderGraphStream` under `mpp/include/mpp` and `mpp/src`. **Started:** `RenderGraph` now provides versioned handles, image/pass declarations, dependency sorting, feedback checks, and MRT descriptor validation. Builder convenience APIs, streams, XML parsing, and execution are outstanding.
 - [ ] Extend `Caps` with draw-buffer/colour-attachment limits and validate graph requirements.
 - [ ] Add graph image format mapping to the existing render-texture format system.
 - [ ] Support imported targets and transient 2D colour/depth images at absolute/relative sizes.
