@@ -92,8 +92,15 @@ namespace mpp
 		float clearDepth{ 1.0f };
 	};
 
-	struct _MPPAPI RenderGraphCompileResult
+	struct _MPPAPI GraphPassInfo
 	{
+		std::string name;
+		std::vector<GraphImageHandle> sampledInputs;
+		std::vector<GraphColourOutput> colourOutputs;
+		std::vector<GraphDepthOutput> depthOutputs;
+	};
+
+	struct _MPPAPI RenderGraphCompileResult	{
 		bool valid{ false };
 		std::vector<GraphPassHandle> passOrder;
 		std::vector<std::string> diagnostics;
@@ -146,6 +153,8 @@ namespace mpp
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
 		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f));
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f);
+
+		GraphPassInfo getPassInfo(GraphPassHandle pass) const;
 
 		RenderGraphCompileResult compile() const;
 		RenderGraphCompileResult compile(Caps const& caps) const;

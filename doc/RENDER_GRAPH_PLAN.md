@@ -288,11 +288,11 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG2 — OpenGL target allocator and execution context
 
-- [~] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. **Started:** `RenderGraphTargets` allocates a distinct `RenderTexture` for every non-imported planned image version (including depth-only targets) and owns them until `clear()`. Pooling, aliasing, imported-target binding, MSAA, and mip allocation are outstanding.
-- [ ] Bind graph framebuffers, configure draw/read buffers, clear declared attachments, and expose read-only image views to execution callbacks.
-- [ ] Add one colour plus optional depth attachment execution first; retain existing `RenderTexture` ownership APIs as compatibility wrappers.
-- [ ] Add resize invalidation and GL object-lifetime tests.
-- [ ] Add GPU debug labels containing graph/pass/image names.
+- [x] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. `RenderGraphTargets` allocates planned non-imported image versions (including depth-only targets), aliases compatible non-overlapping lifetimes within a plan, and supports imported backing targets. Cross-frame pooling, MSAA, and mip allocation remain future work.
+- [x] Bind graph framebuffers, configure draw/read buffers, clear declared attachments, and expose read-only image views to execution callbacks. `RenderGraphExecutor` creates pass framebuffer views, calls `glDrawBuffers`, clears `Clear` outputs, and provides `RenderGraphExecutionContext::getImage()`.
+- [x] Add one colour plus optional depth attachment execution first; retain existing `RenderTexture` ownership APIs as compatibility wrappers. Executor supports a single target, depth-only pass, colour+depth pass, and MRT through temporary framebuffer views.
+- [~] Add resize invalidation and GL object-lifetime tests. Supplying a plan built for a new viewport discards owned targets and recreates the plan; automated GPU/lifetime tests are outstanding.
+- [x] Add GPU debug labels containing graph/pass/image names. `RenderTexture` labels graph image allocations and executor-created pass framebuffers are labelled `RenderGraphPass: <pass>`.
 
 **Acceptance:** a graph executes two fullscreen passes at resized dimensions without framebuffer errors or leaked targets.
 

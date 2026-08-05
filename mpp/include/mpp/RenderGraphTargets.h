@@ -16,6 +16,7 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem;
 		std::map<uint64_t, RenderTargetPtr> mTargets;
+		std::map<uint32_t, RenderTargetPtr> mImportedTargets;
 
 		static uint64_t makeKey(GraphImageHandle image);
 
@@ -23,6 +24,9 @@ namespace mpp
 		explicit RenderGraphTargets(RenderSystem* renderSystem);
 
 		void allocate(RenderGraphAllocationPlan const& plan);
+		// An import identifies backing storage, so every version of an external
+		// logical image resolves to this target.
+		void bindImported(GraphImageHandle image, RenderTargetPtr target);
 		void clear();
 		RenderTargetPtr get(GraphImageHandle image) const;
 	};

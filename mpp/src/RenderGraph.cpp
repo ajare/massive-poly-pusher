@@ -118,6 +118,16 @@ namespace mpp
 		return output;
 	}
 
+	GraphPassInfo RenderGraph::getPassInfo(GraphPassHandle pass) const
+	{
+		if (!validPass(pass))
+		{
+			THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
+		}
+		auto const& source = mPasses[pass.id];
+		return { source.name, source.sampledInputs, source.colourOutputs, source.depthOutputs };
+	}
+
 	RenderGraphCompileResult RenderGraph::compile() const
 	{
 		RenderGraphCompileResult result;
@@ -166,6 +176,19 @@ namespace mpp
 					}
 				}
 			}
+			if (pass.depthOutputs.size() > 1)
+			{
+				result.diagnostics.push_back("Pass '" + pass.name + "' declares more than one depth output.");
+			}
+			if (!pass.colourOutputs.empty() && !pass.depthOutputs.empty())
+			{
+				auto const& colour = mImages[pass.colourOutputs.front().image.id].desc;
+				auto const& depth = mImages[pass.depthOutputs.front().image.id].desc;
+				if (colour.absoluteSize != depth.absoluteSize || colour.relativeSize != depth.relativeSize || colour.samples != depth.samples)
+				{
+					result.diagnostics.push_back("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions or sample counts.");
+				}
+			}
 		}
 
 		if (!result.diagnostics.empty()) return result;
@@ -212,7 +235,7 @@ namespace mpp
 		auto markImage = [&](GraphImageHandle handle, uint32_t passPosition)
 		{
 			auto const& image = mImages[handle.id];
-			if (handle.version == 0 && image.desc.external)
+			if (image.desc.external)
 			{
 				if (find_if(plan.importedImages.begin(), plan.importedImages.end(), [&](GraphImageHandle current)
 					{ return current.id == handle.id && current.version == handle.version; }) == plan.importedImages.end())
