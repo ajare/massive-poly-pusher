@@ -4,6 +4,7 @@
 #include "mpp/RenderGraphStream.h"
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/Program.h"
 
 namespace mpp
 {
@@ -37,6 +38,24 @@ namespace mpp
 			}
 			program->create();
 			program->load();
+			auto resolvedProgram = static_cast<Program*>(program.get());
+			for (auto const& binding : info.samplerBindings)
+			{
+				bool foundSampler = false;
+				for (int sampler = 0; sampler < resolvedProgram->getNumSamplers(); ++sampler)
+				{
+					if (resolvedProgram->getSamplerName(sampler) == binding.sampler)
+					{
+						foundSampler = true;
+						break;
+					}
+				}
+				if (!foundSampler)
+				{
+					THROW_MPP("RenderGraph pass '" + info.name + "' binds undeclared sampler '" + binding.sampler +
+						"' on program '" + info.programResource + "'.", __LINE__, __FILE__, __func__);
+				}
+			}
 			mPrograms[id] = program;
 		}
 	}
