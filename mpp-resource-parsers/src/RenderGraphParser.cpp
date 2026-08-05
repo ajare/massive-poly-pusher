@@ -99,6 +99,7 @@ namespace mpp
 				auto pass = graph.addPass(passData.getEntry("name").getValue());
 				if (passData.hasEntry("factory")) graph.setPassCallbackFactory(pass, passData.getEntry("factory").getValue());
 				else if (passData.hasEntry("callback")) graph.setPassCallbackFactory(pass, passData.getEntry("callback").getValue());
+				if (passData.hasEntry("program")) graph.setPassProgramResource(pass, passData.getEntry("program").getValue());
 				if (passData.hasEntry("Inputs"))
 				{
 					for (auto const& input : passData.getEntry("Inputs"))
@@ -106,7 +107,8 @@ namespace mpp
 						if (input.first != "Sampled") continue;
 						auto it = images.find(input.second.getEntry("image").getValue());
 						if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown sampled graph image in " + filepath, __LINE__, __FILE__, __func__);
-						graph.readSampled(pass, it->second);
+						if (input.second.hasEntry("sampler")) graph.bindSampler(pass, input.second.getEntry("sampler").getValue(), it->second);
+						else graph.readSampled(pass, it->second);
 					}
 				}
 				if (passData.hasEntry("Colours"))

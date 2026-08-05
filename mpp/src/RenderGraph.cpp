@@ -32,7 +32,9 @@ namespace mpp
 	{
 		string name;
 		string callbackFactory;
+		string programResource;
 		vector<GraphImageHandle> sampledInputs;
+		vector<GraphSamplerBinding> samplerBindings;
 		vector<GraphColourOutput> colourOutputs;
 		vector<GraphDepthOutput> depthOutputs;
 	};
@@ -82,6 +84,15 @@ namespace mpp
 		return { (uint32_t)mPasses.size() - 1 };
 	}
 
+	void RenderGraph::setPassProgramResource(GraphPassHandle pass, string const& resourceName)
+	{
+		if (!validPass(pass) || resourceName.empty())
+		{
+			THROW_MPP("Render graph pass program resource requires a valid pass and name.", __LINE__, __FILE__, __func__);
+		}
+		mPasses[pass.id].programResource = resourceName;
+	}
+
 	void RenderGraph::setPassCallbackFactory(GraphPassHandle pass, string const& factoryName)
 	{
 		if (!validPass(pass) || factoryName.empty())
@@ -98,6 +109,21 @@ namespace mpp
 			THROW_MPP("Invalid render graph sampled input.", __LINE__, __FILE__, __func__);
 		}
 		mPasses[pass.id].sampledInputs.push_back(image);
+	}
+
+	void RenderGraph::bindSampler(GraphPassHandle pass, string const& sampler, GraphImageHandle image)
+	{
+		if (!validPass(pass) || !validImage(image) || sampler.empty())
+		{
+			THROW_MPP("Invalid render graph sampler binding.", __LINE__, __FILE__, __func__);
+		}
+		auto& bindings = mPasses[pass.id].samplerBindings;
+		if (find_if(bindings.begin(), bindings.end(), [&](GraphSamplerBinding const& binding) { return binding.sampler == sampler; }) != bindings.end())
+		{
+			THROW_MPP("Duplicate render graph sampler binding.", __LINE__, __FILE__, __func__);
+		}
+		readSampled(pass, image);
+		bindings.push_back({ sampler, image });
 	}
 
 	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear)
@@ -135,7 +161,7 @@ namespace mpp
 			THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		}
 		auto const& source = mPasses[pass.id];
-		return { source.name, source.callbackFactory, source.sampledInputs, source.colourOutputs, source.depthOutputs };
+		return { source.name, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.colourOutputs, source.depthOutputs };
 	}
 
 	RenderGraphCompileResult RenderGraph::compile() const
