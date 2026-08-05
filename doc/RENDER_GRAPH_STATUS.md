@@ -14,13 +14,14 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 - [x] `Caps` reports draw-buffer and colour-attachment limits; caps-aware compilation rejects oversized MRT declarations.
 - [x] Context-free graph diagnostics through `RenderGraph::describe()`.
 - [x] Context-free allocation planning through `RenderGraph::buildAllocationPlan(viewport)`, including per-version resolved size and first/last-use interval.
+- [x] Initial physical attachment allocation through `RenderGraphTargets`: one owned `RenderTexture` per planned non-imported image version, with RGBA8, RGBA16F, RG16F, depth24, and depth24-stencil8 mappings.
 - [x] Nested XML topology parser (`RenderGraphParser`) for images, sampled reads, colour outputs, one depth output, load/store operations, and clear values.
 - [x] Debug builds of `MassivePolyPusher` and `MppResourceParsers` after the graph work.
 
 ## In progress
 
 - [~] RG1 resource authoring: parser subset exists, but graph resource streams, serialization, program references, typed parameters, and imported-target names are not implemented.
-- [~] RG2 allocation: lifetimes are planned but no `RenderTexture`/framebuffer objects are allocated and no pooling or aliasing occurs.
+- [~] RG2 allocation: physical `RenderTexture` objects can be allocated from a plan, but no pooling, aliasing, imported-target binding, MSAA, or mip allocation occurs.
 
 ## Not started
 

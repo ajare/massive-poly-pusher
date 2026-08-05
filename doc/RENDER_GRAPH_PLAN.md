@@ -288,7 +288,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG2 — OpenGL target allocator and execution context
 
-- [~] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. **Started:** `buildAllocationPlan()` calculates per-version size/lifetime requirements and distinguishes imported handles. Pooling and GL allocation are outstanding.
+- [~] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. **Started:** `RenderGraphTargets` allocates a distinct `RenderTexture` for every non-imported planned image version (including depth-only targets) and owns them until `clear()`. Pooling, aliasing, imported-target binding, MSAA, and mip allocation are outstanding.
 - [ ] Bind graph framebuffers, configure draw/read buffers, clear declared attachments, and expose read-only image views to execution callbacks.
 - [ ] Add one colour plus optional depth attachment execution first; retain existing `RenderTexture` ownership APIs as compatibility wrappers.
 - [ ] Add resize invalidation and GL object-lifetime tests.
