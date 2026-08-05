@@ -77,7 +77,7 @@ ShadowDepth
 
 Declare HDR scene/bloom images, LDR imported presentation image, factory names, typed bloom/tone-map parameters, and sampler bindings. Scene shading remains the existing material system.
 
-**Status:** `demo-suite/resources/res/PbrPipeline.rendergraph.xml` declares this fixed two-blur-pass threshold-bloom topology with imports, factories, sampler bindings, and typed parameters. DemoSuite now loads it through `FileRenderGraphStream`; `CopyBin.bat` deploys it for direct runtime loading.
+**Status:** complete. `PbrPipeline.rendergraph.xml` declares a four-iteration threshold-bloom chain; runtime pass-through makes the UI-selected blur count effective without rebuilding the immutable template. `PbrPipelineMrt.rendergraph.xml` starts the same blur chain from `BloomMaskHdr` at scene output location 1. DemoSuite loads/deploys both templates, selects MRT only when requested and validated against hardware plus every visible material program, and otherwise falls back to threshold extraction.
 
 **Acceptance:** `FileRenderGraphStream` loads and validates the graph before rendering.
 

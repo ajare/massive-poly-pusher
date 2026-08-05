@@ -50,7 +50,15 @@ namespace mpp
 			bool mHorizontal;
 		public:
 			explicit BloomBlurPass(bool horizontal) : mHorizontal(horizontal) {}
-			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->bloom.enabled && context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1)); }
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				auto const& name = context.getPass().name;
+				uint32_t iteration = !name.empty() && name.back() >= '0' && name.back() <= '9' ? (uint32_t)(name.back() - '0') : 0;
+				bool enabled = frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom && iteration < frame.pipelineOptions->bloom.blurPasses;
+				if (enabled) frame.renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1));
+				else frame.renderSystem->renderFullscreenQuad(input(context, 0), BlendMode::One, BlendMode::Zero);
+			}
 		};
 		class BloomCompositePass final : public RenderGraphScenePass
 		{

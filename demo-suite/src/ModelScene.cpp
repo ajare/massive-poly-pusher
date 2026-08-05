@@ -1037,9 +1037,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->getOrCreateRenderPipeline("GraphPBR", graphPbrOptions);
 	auto xmlGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, options.resourceLocation + "PbrPipeline.rendergraph.xml");
 	auto xmlGraph = resourceMgr->declareResource("PBR.XmlGraph", mpp::ResourceStreamPtr(xmlGraphStream)).first;
+	auto xmlMrtGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, options.resourceLocation + "PbrPipelineMrt.rendergraph.xml");
+	auto xmlMrtGraph = resourceMgr->declareResource("PBR.XmlGraphMrt", mpp::ResourceStreamPtr(xmlMrtGraphStream)).first;
 	auto xmlPbrOptions = pbrOptions;
 	xmlPbrOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
 	xmlPbrOptions.graphTemplate = xmlGraph;
+	xmlPbrOptions.graphTemplateMrt = xmlMrtGraph;
 	renderSystem->getOrCreateRenderPipeline("XmlGraphPBR", xmlPbrOptions);
 	mpp::RenderPipelineOptions defaultOptions;
 	defaultOptions.bloom = mBloomOptions;

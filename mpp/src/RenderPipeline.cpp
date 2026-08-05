@@ -169,7 +169,12 @@ namespace mpp
 
 		if (mOptions.graphTemplate)
 		{
-			auto templateResource = dynamic_cast<RenderGraphTemplate*>(mOptions.graphTemplate.get());
+			ResourcePtr selectedTemplate = mOptions.graphTemplate;
+			bool const useXmlMrt = pbr && mOptions.graphTemplateMrt && mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
+				mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2 &&
+				sceneProgramsSupportOutputs(models, 2);
+			if (useXmlMrt) selectedTemplate = mOptions.graphTemplateMrt;
+			auto templateResource = dynamic_cast<RenderGraphTemplate*>(selectedTemplate.get());
 			if (!templateResource) THROW_MPP("XmlGraphPbrForward requires a RenderGraph resource.", __LINE__, __FILE__, __func__);
 			templateResource->create();
 			templateResource->load();
