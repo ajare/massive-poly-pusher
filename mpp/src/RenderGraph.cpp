@@ -10,6 +10,14 @@ using namespace std;
 
 namespace mpp
 {
+	namespace
+	{
+		bool isDepthFormat(GraphImageFormat format)
+		{
+			return format == GraphImageFormat::Depth24 || format == GraphImageFormat::Depth24Stencil8;
+		}
+	}
+
 	struct RenderGraph::Image
 	{
 		string name;
@@ -44,9 +52,13 @@ namespace mpp
 
 	GraphImageHandle RenderGraph::createImage(string const& name, GraphImageDesc const& desc)
 	{
+		bool const depthFormat = isDepthFormat(desc.format);
+		bool const colourUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::ColourAttachment);
+		bool const depthUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::DepthAttachment);
 		if (name.empty() || desc.samples == 0 || desc.mipLevels == 0 ||
 			(desc.absoluteSize.x == 0 && desc.relativeSize.x <= 0.0f) ||
-			(desc.absoluteSize.y == 0 && desc.relativeSize.y <= 0.0f))
+			(desc.absoluteSize.y == 0 && desc.relativeSize.y <= 0.0f) ||
+			(depthFormat && (!depthUsage || colourUsage)) || (!depthFormat && depthUsage))
 		{
 			THROW_MPP("Invalid render graph image descriptor.", __LINE__, __FILE__, __func__);
 		}
@@ -79,7 +91,8 @@ namespace mpp
 
 	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear)
 	{
-		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment))
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion ||
+			!hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment) || isDepthFormat(mImages[image.id].desc.format))
 		{
 			THROW_MPP("Invalid render graph colour output.", __LINE__, __FILE__, __func__);
 		}
@@ -92,7 +105,8 @@ namespace mpp
 
 	GraphImageHandle RenderGraph::writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, float clear)
 	{
-		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment))
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion ||
+			!hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment) || !isDepthFormat(mImages[image.id].desc.format))
 		{
 			THROW_MPP("Invalid render graph depth output.", __LINE__, __FILE__, __func__);
 		}
