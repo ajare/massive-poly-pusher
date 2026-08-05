@@ -13,6 +13,7 @@ namespace mpp
 	class RenderSystem;
 	class RenderGraphPassFactoryRegistry;
 	class RenderGraphScenePass;
+	class RenderGraphTemplate;
 
 	class _MPPAPI RenderGraphExecutionContext
 	{
@@ -32,6 +33,7 @@ namespace mpp
 	{
 		RenderSystem* mRenderSystem;
 		RenderGraphPassFactoryRegistry const* mFactoryRegistry{ nullptr };
+		RenderGraphTemplate const* mExecutingTemplate{ nullptr };
 		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
 		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
 		std::map<uint32_t, UniformCollection> mParameterOverrides;
@@ -47,5 +49,6 @@ namespace mpp
 		void setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters);
 		void clearPassCallbacks();
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
+		void execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps);
 	};
 }

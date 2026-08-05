@@ -528,6 +528,7 @@ namespace mpp
 		// 2d rendering
 		// 
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
+		void renderGraphFullscreen(ResourcePtr program, std::vector<std::pair<std::string, Texture*>> const& samplers, UniformCollection const& parameters);
 
 		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
 

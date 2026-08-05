@@ -2511,6 +2511,36 @@ namespace mpp
 		mRenderInfo.fullscreenQuads++;
 	}
 
+	void RenderSystem::renderGraphFullscreen(ResourcePtr program, vector<pair<string, Texture*>> const& samplers, UniformCollection const& parameters)
+	{
+		flushVertexBuffers();
+		if (!program || program->getType() != "Program")
+		{
+			THROW_MPP("Graph fullscreen pass requires a Program resource.", __LINE__, __FILE__, __func__);
+		}
+		setUsedProgram(program);
+		auto p = static_cast<Program*>(program.get());
+		auto uniformCopy = parameters;
+		uniformCopy.bindUniforms(program);
+		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		for (uint32_t unit = 0; unit < samplers.size(); ++unit)
+		{
+			if (!samplers[unit].second) THROW_MPP("Graph fullscreen pass has an unresolved sampler target.", __LINE__, __FILE__, __func__);
+			GL_CHECK(glUniform1i(p->getUniformId(samplers[unit].first), (GLint)unit));
+			samplers[unit].second->bind(unit, 0);
+		}
+		GL_CHECK(glEnable(GL_BLEND));
+		GL_CHECK(glBlendFunc(GL_ONE, GL_ZERO));
+		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
+		quadMesh->bind(true);
+		quadMesh->render(1);
+		quadMesh->bind(false);
+		GL_CHECK(glDisable(GL_BLEND));
+		mRenderInfo.batchCount++;
+		mRenderInfo.fullscreenQuads++;
+	}
+
 	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap)
 	{
 		flushVertexBuffers();
