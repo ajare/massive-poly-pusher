@@ -92,12 +92,22 @@ namespace mpp
 		float clearDepth{ 1.0f };
 	};
 
+	struct _MPPAPI GraphSamplerBinding
+	{
+		std::string sampler;
+		GraphImageHandle image;
+	};
+
 	struct _MPPAPI GraphPassInfo
 	{
 		std::string name;
 		// XML stores this stable factory identifier, not executable code.
 		std::string callbackFactory;
+		// Resource name; resolution/validation occurs when a declarative
+		// fullscreen pass implementation is attached.
+		std::string programResource;
 		std::vector<GraphImageHandle> sampledInputs;
+		std::vector<GraphSamplerBinding> samplerBindings;
 		std::vector<GraphColourOutput> colourOutputs;
 		std::vector<GraphDepthOutput> depthOutputs;
 	};
@@ -151,9 +161,11 @@ namespace mpp
 
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc);
 		GraphPassHandle addPass(std::string const& name);
+		void setPassProgramResource(GraphPassHandle pass, std::string const& resourceName);
 		void setPassCallbackFactory(GraphPassHandle pass, std::string const& factoryName);
 
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
+		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image);
 		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f));
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f);
 
