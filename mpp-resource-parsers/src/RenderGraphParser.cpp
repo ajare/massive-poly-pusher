@@ -97,6 +97,7 @@ namespace mpp
 				if (entry.first != "Pass") continue;
 				auto const& passData = entry.second;
 				auto pass = graph.addPass(passData.getEntry("name").getValue());
+				if (passData.hasEntry("callback")) graph.setPassCallbackFactory(pass, passData.getEntry("callback").getValue());
 				if (passData.hasEntry("Inputs"))
 				{
 					for (auto const& input : passData.getEntry("Inputs"))

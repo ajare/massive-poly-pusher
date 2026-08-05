@@ -10,6 +10,7 @@
 namespace mpp
 {
 	class RenderSystem;
+	class RenderGraphPassFactoryRegistry;
 
 	class _MPPAPI RenderGraphExecutionContext
 	{
@@ -26,12 +27,14 @@ namespace mpp
 	class _MPPAPI RenderGraphExecutor
 	{
 		RenderSystem* mRenderSystem;
+		RenderGraphPassFactoryRegistry const* mFactoryRegistry{ nullptr };
 		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);
 
 		void setPassCallback(GraphPassHandle pass, std::function<void(RenderGraphExecutionContext const&)> callback);
+		void setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry);
 		void clearPassCallbacks();
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
 	};

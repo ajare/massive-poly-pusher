@@ -31,6 +31,7 @@ namespace mpp
 	struct RenderGraph::Pass
 	{
 		string name;
+		string callbackFactory;
 		vector<GraphImageHandle> sampledInputs;
 		vector<GraphColourOutput> colourOutputs;
 		vector<GraphDepthOutput> depthOutputs;
@@ -81,6 +82,15 @@ namespace mpp
 		return { (uint32_t)mPasses.size() - 1 };
 	}
 
+	void RenderGraph::setPassCallbackFactory(GraphPassHandle pass, string const& factoryName)
+	{
+		if (!validPass(pass) || factoryName.empty())
+		{
+			THROW_MPP("Render graph pass callback factory requires a valid pass and name.", __LINE__, __FILE__, __func__);
+		}
+		mPasses[pass.id].callbackFactory = factoryName;
+	}
+
 	void RenderGraph::readSampled(GraphPassHandle pass, GraphImageHandle image)
 	{
 		if (!validPass(pass) || !validImage(image))
@@ -125,7 +135,7 @@ namespace mpp
 			THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		}
 		auto const& source = mPasses[pass.id];
-		return { source.name, source.sampledInputs, source.colourOutputs, source.depthOutputs };
+		return { source.name, source.callbackFactory, source.sampledInputs, source.colourOutputs, source.depthOutputs };
 	}
 
 	RenderGraphCompileResult RenderGraph::compile() const
