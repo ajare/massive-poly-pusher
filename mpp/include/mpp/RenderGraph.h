@@ -111,6 +111,13 @@ namespace mpp
 		bool validPass(GraphPassHandle pass) const;
 
 	public:
+		RenderGraph();
+		~RenderGraph();
+		RenderGraph(RenderGraph&&) noexcept;
+		RenderGraph& operator =(RenderGraph&&) noexcept;
+		RenderGraph(RenderGraph const&) = delete;
+		RenderGraph& operator =(RenderGraph const&) = delete;
+
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc);
 		GraphPassHandle addPass(std::string const& name);
 

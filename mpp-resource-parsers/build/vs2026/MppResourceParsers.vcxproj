@@ -118,6 +118,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileStringStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\Serializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\XmlSerializer.h" />
@@ -133,6 +134,7 @@
     <ClCompile Include="..\..\src\FileStringStream.cpp" />
     <ClCompile Include="..\..\src\FileTextureStream.cpp" />
     <ClCompile Include="..\..\src\MeshSpecificationParser.cpp" />
+    <ClCompile Include="..\..\src\RenderGraphParser.cpp" />
     <ClCompile Include="..\..\src\Serializer.cpp" />
     <ClCompile Include="..\..\src\XmlSerializer.cpp" />
   </ItemGroup>

@@ -26,6 +26,11 @@ namespace mpp
 		vector<GraphDepthOutput> depthOutputs;
 	};
 
+	RenderGraph::RenderGraph() = default;
+	RenderGraph::~RenderGraph() = default;
+	RenderGraph::RenderGraph(RenderGraph&&) noexcept = default;
+	RenderGraph& RenderGraph::operator =(RenderGraph&&) noexcept = default;
+
 	bool RenderGraph::validImage(GraphImageHandle image) const
 	{
 		return image.isValid() && image.id < mImages.size() && image.version < mImages[image.id].producers.size();
