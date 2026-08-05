@@ -108,6 +108,8 @@ Graphs must be expressible as a resource so applications can author a fixed pipe
 
 Declare an XML graph resource with named images and ordered pass declarations. Inputs/outputs refer to image names; an output creates the next version of that image. The parser resolves names to versioned handles and rejects a pass that reads an image version it also writes.
 
+**Planned full schema (attribute notation is illustrative):**
+
 ```xml
 <RenderGraph>
     <Images>
@@ -151,6 +153,43 @@ Declare an XML graph resource with named images and ordered pass declarations. I
     </Passes>
 </RenderGraph>
 ```
+
+### Current parser subset
+
+`mpp::resource_parsers::RenderGraphParser::fromFile()` now parses the following nested-element subset, matching the repository's existing XML/`StructuredData` conventions. It builds and validates topology only; it does not allocate targets or execute passes yet.
+
+```xml
+<RenderGraph>
+    <Images>
+        <Image>
+            <name>SceneHdr</name>
+            <format>RGBA16F</format>
+            <scale>1.0 1.0</scale>
+            <transient>false</transient>
+            <usage>colourAttachment,sampled</usage>
+        </Image>
+        <Image>
+            <name>BloomExtract</name>
+            <format>RGBA16F</format>
+            <scale>0.5 0.5</scale>
+            <usage>colourAttachment,sampled</usage>
+        </Image>
+    </Images>
+    <Passes>
+        <Pass>
+            <name>Scene</name>
+            <Colours><Output><image>SceneHdr</image><load>clear</load><store>store</store><clear>0 0 0 1</clear></Output></Colours>
+        </Pass>
+        <Pass>
+            <name>BloomExtract</name>
+            <Inputs><Sampled><image>SceneHdr</image></Sampled></Inputs>
+            <Colours><Output><image>BloomExtract</image><load>dontCare</load><store>store</store></Output></Colours>
+        </Pass>
+    </Passes>
+</RenderGraph>
+```
+
+The parser intentionally defers pass `type`, shader/program references, sampler semantics, depth outputs, typed parameters, absolute sizes, colour-space strings, and imported targets to the `RenderGraphStream` milestone. Those fields remain in the full schema above.
 
 The exact element spelling may evolve, but these rules are required:
 
