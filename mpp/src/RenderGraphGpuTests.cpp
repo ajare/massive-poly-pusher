@@ -1,13 +1,39 @@
+#include <glew/glew.h>
+
+#include <array>
 #include <memory>
+#include <vector>
 
 #include "mpp/RenderGraphGpuTests.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphTargets.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/RenderTexture.h"
+#include "mpp/GLErrorCheck.h"
 
 namespace mpp
 {
+	namespace
+	{
+		std::array<uint8_t, 4> readFirstPixel(RenderTargetPtr const& target)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get());
+			if (!texture) return { 0, 0, 0, 0 };
+			std::vector<uint8_t> pixels(texture->getWidth() * texture->getHeight() * 4);
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->getColourAttachmentId(0)));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data()));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+			return { pixels[0], pixels[1], pixels[2], pixels[3] };
+		}
+
+		bool nearColour(std::array<uint8_t, 4> const& pixel, std::array<uint8_t, 4> const& expected)
+		{
+			for (size_t i = 0; i < 4; ++i)
+				if (std::abs((int)pixel[i] - (int)expected[i]) > 1) return false;
+			return true;
+		}
+	}
 	bool runRenderGraphGpuTests(RenderSystem* renderSystem, std::string* failure)
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
@@ -37,6 +63,8 @@ namespace mpp
 			executor.setPassCallback(firstPass, [](RenderGraphExecutionContext const&) {});
 			executor.setPassCallback(secondPass, [](RenderGraphExecutionContext const&) {});
 			executor.execute(graph, targets, renderSystem->getCaps());
+			if (!nearColour(readFirstPixel(targets.get(first)), { 255, 0, 0, 255 })) return fail("first pass clear colour readback failed");
+			if (!nearColour(readFirstPixel(targets.get(second)), { 0, 255, 0, 255 })) return fail("second pass clear colour readback failed");
 
 			auto resized = graph.buildAllocationPlan({ 37, 29 });
 			targets.allocate(resized);
@@ -50,13 +78,15 @@ namespace mpp
 				auto left = mrt.createImage("GpuTestMrt0", colour);
 				auto right = mrt.createImage("GpuTestMrt1", colour);
 				auto pass = mrt.addPass("GpuTestMrt", GraphPassType::Scene);
-				mrt.writeColour(pass, left, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0));
-				mrt.writeColour(pass, right, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0));
+				left = mrt.writeColour(pass, left, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 0, 1, 1));
+				right = mrt.writeColour(pass, right, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 1, 0, 1));
 				RenderGraphTargets mrtTargets(renderSystem);
 				mrtTargets.allocate(mrt.buildAllocationPlan({ 32, 32 }));
 				RenderGraphExecutor mrtExecutor(renderSystem);
 				mrtExecutor.setPassCallback(pass, [](RenderGraphExecutionContext const&) {});
 				mrtExecutor.execute(mrt, mrtTargets, renderSystem->getCaps());
+				if (!nearColour(readFirstPixel(mrtTargets.get(left)), { 0, 0, 255, 255 })) return fail("MRT location 0 readback failed");
+				if (!nearColour(readFirstPixel(mrtTargets.get(right)), { 255, 255, 0, 255 })) return fail("MRT location 1 readback failed");
 			}
 
 			targets.clear();
