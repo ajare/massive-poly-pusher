@@ -27,11 +27,11 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 - [x] RG4 optional bloom-mask MRT: GraphPBR can write HDR scene colour plus an emissive bloom mask, blur/composite the mask, and falls back to threshold extraction below two draw buffers/colour attachments. DemoSuite exposes the mode; the statue `.mppmodel` was regenerated after its second shader output changed.
 - [x] Context-free regression entry points: `runRenderGraphTopologyTests()` covers valid/missing-producer/feedback topology; `runRenderGraphResourceTests()` covers XML descriptors, imports, pass metadata, parameters, sampler bindings, and XML round-trip serialization. A dedicated CI test executable remains optional.
 - [x] Resource authoring: programmatic/XML graph templates, XML serialization, program/sampler references, typed parameters and overrides, named imports, executable factories, and declarative fullscreen passes are implemented.
-- [~] RG2 allocation/execution: same-plan aliasing, cross-frame compatible-target pooling, imported target bindings, and capability-guarded `DontCare` store invalidation work. MSAA, mip allocation, compute passes, and automated GPU frame tests remain absent.
+- [~] RG2 allocation/execution: cross-frame compatible-target pooling, imported bindings, and capability-guarded `DontCare` invalidation work. Same-frame aliasing is conservatively disabled after flicker investigation. DemoSuite startup now runs real-context framebuffer, resize, MRT, execution, and target-release tests. MSAA, mip allocation, and compute passes remain absent.
 
 ## Not started
 
-- [~] Automated GPU frame/lifetime tests, MSAA, mip allocation, and compute passes. Framebuffer binding, `glDrawBuffers`, clears, callbacks, cross-frame pooling, and capability-guarded `DontCare` invalidation are implemented.
+- [~] Broader GPU image/readback tests, MSAA, mip allocation, and compute passes. Automated framebuffer completeness, resize, MRT, execution, and target-release smoke tests now run during DemoSuite setup.
 - [ ] Shader output-location validation and runtime MRT fallback.
 - [x] Opt-in hardcoded and XML graph PBR pipelines with shadows, bloom, tone mapping, and presentation.
 - [~] DemoSuite graph controls and comparisons. Pipeline/pass isolation and live image-effect controls are implemented; automated screenshots and RenderDoc archives remain.
