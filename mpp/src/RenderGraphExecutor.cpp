@@ -4,6 +4,7 @@
 
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
+#include "mpp/RenderGraphScenePass.h"
 #include "mpp/Caps.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
@@ -138,6 +139,8 @@ namespace mpp
 		}
 	}
 
+	RenderGraphExecutor::~RenderGraphExecutor() = default;
+
 	void RenderGraphExecutor::setPassCallback(GraphPassHandle pass, function<void(RenderGraphExecutionContext const&)> callback)
 	{
 		if (!pass.isValid() || !callback)
@@ -155,6 +158,7 @@ namespace mpp
 	void RenderGraphExecutor::clearPassCallbacks()
 	{
 		mCallbacks.clear();
+		mScenePasses.clear();
 	}
 
 	void RenderGraphExecutor::execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps)
@@ -173,11 +177,22 @@ namespace mpp
 			auto const pass = graph.getPassInfo(passHandle);
 			auto const explicitCallback = mCallbacks.find(passHandle.id);
 			RenderGraphPassCallback callback = explicitCallback == mCallbacks.end() ? RenderGraphPassCallback() : explicitCallback->second;
+			RenderGraphScenePass* scenePass = nullptr;
 			if (!callback && mFactoryRegistry && !pass.callbackFactory.empty())
 			{
 				callback = mFactoryRegistry->findFactory(pass.callbackFactory);
+				if (!callback)
+				{
+					auto found = mScenePasses.find(passHandle.id);
+					if (found == mScenePasses.end())
+					{
+						auto created = mFactoryRegistry->createScenePass(pass.callbackFactory);
+						if (created) found = mScenePasses.emplace(passHandle.id, std::move(created)).first;
+					}
+					if (found != mScenePasses.end()) scenePass = found->second.get();
+				}
 			}
-			if (!callback)
+			if (!callback && !scenePass)
 			{
 				THROW_MPP("No callback registered for render graph pass '" + pass.name + "'" +
 					(pass.callbackFactory.empty() ? "." : " (factory '" + pass.callbackFactory + "')."), __LINE__, __FILE__, __func__);
@@ -214,7 +229,7 @@ namespace mpp
 			{
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				clearPassOutputs(pass);
-				callback(context);
+				if (callback) callback(context); else scenePass->execute(context);
 				discardDontCareOutputs(pass);
 				mRenderSystem->popRenderTarget();
 			}

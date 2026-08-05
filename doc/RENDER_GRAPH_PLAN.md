@@ -196,7 +196,7 @@ Declare an XML graph resource with named images and ordered pass declarations. I
 </RenderGraph>
 ```
 
-A pass may include `<callback>Application.PassName</callback>`. XML stores only that identifier. At execution the application registers it with `RenderGraphPassFactoryRegistry` and attaches the registry to `RenderGraphExecutor`; a missing registration produces a named execution error. Arbitrary C++/lambda code is never serialized into XML.
+A pass may include `<factory>Application.ScenePass</factory>` (or legacy `<callback>`). XML stores only that identifier. At execution the application registers `Application.ScenePass` with `RenderGraphPassFactoryRegistry::registerScenePassFactory()`; the factory returns a `RenderGraphScenePass` implementation whose `execute()` receives the live execution context. Instances are retained by the executor for the graph run and a missing registration produces a named error. Arbitrary C++/lambda code is never serialized into XML.
 
 The parser intentionally defers pass `type`, shader/program references, sampler semantics, typed parameters, absolute sizes, colour-space strings, and imported targets to the `RenderGraphStream` milestone. It parses at most one `Depth` output per pass. Those fields remain in the full schema above.
 

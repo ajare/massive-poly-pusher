@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 
 #include "mpp/Config.h"
 #include "mpp/RenderGraph.h"
@@ -11,6 +12,7 @@ namespace mpp
 {
 	class RenderSystem;
 	class RenderGraphPassFactoryRegistry;
+	class RenderGraphScenePass;
 
 	class _MPPAPI RenderGraphExecutionContext
 	{
@@ -29,9 +31,13 @@ namespace mpp
 		RenderSystem* mRenderSystem;
 		RenderGraphPassFactoryRegistry const* mFactoryRegistry{ nullptr };
 		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
+		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);
+		~RenderGraphExecutor();
+		RenderGraphExecutor(RenderGraphExecutor const&) = delete;
+		RenderGraphExecutor& operator =(RenderGraphExecutor const&) = delete;
 
 		void setPassCallback(GraphPassHandle pass, std::function<void(RenderGraphExecutionContext const&)> callback);
 		void setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry);
