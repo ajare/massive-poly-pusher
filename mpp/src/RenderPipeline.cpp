@@ -266,7 +266,7 @@ namespace mpp
 		auto screen = graph.createImage("Presentation", makeColour(GraphImageFormat::Rgba8, true));
 		auto toneMapPass = graph.addPass("ToneMapPresentation");
 		graph.readSampled(toneMapPass, presentationTexture);
-		graph.writeColour(toneMapPass, screen, GraphLoadOp::DontCare, GraphStoreOp::Store);
+		graph.writeColour(toneMapPass, screen, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
 		auto const& viewport = scene->getViewport();
 		auto plan = graph.buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height));
@@ -427,6 +427,13 @@ namespace mpp
 		if (graphForward)
 		{
 			mRenderSystem->renderToScreen();
+			// With presentation disabled no graph pass writes the double-buffered
+			// backbuffer. Clear it explicitly so alternating stale buffers do not
+			// look like graph/UI flicker during pass isolation.
+			if (!mOptions.graphPasses.presentation)
+			{
+				mRenderSystem->clearScreen(scene->getClearColour());
+			}
 		}
 
 		// Reset viewport
