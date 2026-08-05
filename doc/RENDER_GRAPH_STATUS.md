@@ -22,6 +22,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 
 ## In progress
 
+- [x] RG5 graph legacy forward: `GraphLegacyForward` renders declared LDR colour/depth images with the existing legacy material/light contract, graph bloom/presentation, and explicit DemoSuite selection. `Default` remains unchanged.
 - [~] RG3 graph PBR: `GraphPbrForward` executes graph shadow, HDR scene, bloom, tone-map, and imported-screen presentation passes; manual `PbrForward` remains the reference. DemoSuite offers an explicit graph-PBR selection, but screenshot/RenderDoc equivalence captures remain outstanding.
 - [x] RG4 optional bloom-mask MRT: GraphPBR can write HDR scene colour plus an emissive bloom mask, blur/composite the mask, and falls back to threshold extraction below two draw buffers/colour attachments. DemoSuite exposes the mode; the statue `.mppmodel` was regenerated after its second shader output changed.
 - [~] RG1 resource authoring: parser subset exists, but graph resource streams, serialization, program references, typed parameters, and imported-target names are not implemented.
