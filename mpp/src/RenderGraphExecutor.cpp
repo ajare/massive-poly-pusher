@@ -120,14 +120,21 @@ namespace mpp
 		}
 	}
 
-	RenderGraphExecutionContext::RenderGraphExecutionContext(RenderGraphTargets const* targets)
+	RenderGraphExecutionContext::RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters)
 		: mTargets(targets)
+		, mParameters(parameters)
 	{
 	}
 
 	RenderTargetPtr RenderGraphExecutionContext::getImage(GraphImageHandle image) const
 	{
 		return mTargets ? mTargets->get(image) : nullptr;
+	}
+
+	UniformCollection const& RenderGraphExecutionContext::getParameters() const
+	{
+		if (!mParameters) THROW_MPP("Render graph pass has no parameter collection.", __LINE__, __FILE__, __func__);
+		return *mParameters;
 	}
 
 	RenderGraphExecutor::RenderGraphExecutor(RenderSystem* renderSystem)
@@ -155,8 +162,13 @@ namespace mpp
 		mFactoryRegistry = registry;
 	}
 
-	void RenderGraphExecutor::clearPassCallbacks()
+	void RenderGraphExecutor::setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters)
 	{
+		if (!pass.isValid()) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
+		mParameterOverrides[pass.id] = parameters;
+	}
+
+	void RenderGraphExecutor::clearPassCallbacks()	{
 		mCallbacks.clear();
 		mScenePasses.clear();
 	}
@@ -171,7 +183,6 @@ namespace mpp
 			for (auto const& diagnostic : compiled.diagnostics) message << "\n- " << diagnostic;
 			THROW_MPP(message.str(), __LINE__, __FILE__, __func__);
 		}
-		RenderGraphExecutionContext context(&targets);
 		for (auto const passHandle : compiled.passOrder)
 		{
 			auto const pass = graph.getPassInfo(passHandle);
@@ -192,6 +203,8 @@ namespace mpp
 					if (found != mScenePasses.end()) scenePass = found->second.get();
 				}
 			}
+			auto override = mParameterOverrides.find(passHandle.id);
+			RenderGraphExecutionContext context(&targets, override == mParameterOverrides.end() ? &pass.parameters : &override->second);
 			if (!callback && !scenePass)
 			{
 				THROW_MPP("No callback registered for render graph pass '" + pass.name + "'" +

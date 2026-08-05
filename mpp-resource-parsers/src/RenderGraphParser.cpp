@@ -102,6 +102,22 @@ namespace mpp
 				if (passData.hasEntry("factory")) graph.setPassCallbackFactory(pass, passData.getEntry("factory").getValue());
 				else if (passData.hasEntry("callback")) graph.setPassCallbackFactory(pass, passData.getEntry("callback").getValue());
 				if (passData.hasEntry("program")) graph.setPassProgramResource(pass, passData.getEntry("program").getValue());
+				if (passData.hasEntry("Parameters"))
+				{
+					UniformCollection parameters;
+					for (auto const& parameter : passData.getEntry("Parameters"))
+					{
+						auto const& value = parameter.second;
+						auto const& name = value.getEntry("name").getValue();
+						if (parameter.first == "Float") parameters.setUniform(name, utils::StringUtils::parseFloat(value.getEntry("value").getValue()));
+						else if (parameter.first == "Int") parameters.setUniform(name, (int32_t)utils::StringUtils::parseInt(value.getEntry("value").getValue()));
+						else if (parameter.first == "Bool") parameters.setUniform(name, (int32_t)(parseBool(value.getEntry("value").getValue()) ? 1 : 0));
+						else if (parameter.first == "Vec2") parameters.setUniform(name, parseVec2(value.getEntry("value").getValue()));
+						else if (parameter.first == "Vec3") { istringstream input(value.getEntry("value").getValue()); glm::vec3 v; input >> v.x >> v.y >> v.z; parameters.setUniform(name, v); }
+						else if (parameter.first == "Vec4") parameters.setUniform(name, parseVec4(value.getEntry("value").getValue()));
+					}
+					graph.setPassParameters(pass, parameters);
+				}
 				if (passData.hasEntry("Inputs"))
 				{
 					for (auto const& input : passData.getEntry("Inputs"))

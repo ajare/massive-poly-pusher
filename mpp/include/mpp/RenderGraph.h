@@ -12,6 +12,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/TextureParams.h"
+#include "mpp/UniformCollection.h"
 
 namespace mpp
 {
@@ -114,6 +115,7 @@ namespace mpp
 		std::string programResource;
 		std::vector<GraphImageHandle> sampledInputs;
 		std::vector<GraphSamplerBinding> samplerBindings;
+		UniformCollection parameters;
 		std::vector<GraphColourOutput> colourOutputs;
 		std::vector<GraphDepthOutput> depthOutputs;
 	};
@@ -175,6 +177,7 @@ namespace mpp
 
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
 		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image);
+		void setPassParameters(GraphPassHandle pass, UniformCollection const& parameters);
 		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f));
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f);
 

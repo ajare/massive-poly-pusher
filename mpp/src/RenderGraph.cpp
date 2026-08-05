@@ -36,6 +36,7 @@ namespace mpp
 		string programResource;
 		vector<GraphImageHandle> sampledInputs;
 		vector<GraphSamplerBinding> samplerBindings;
+		UniformCollection parameters;
 		vector<GraphColourOutput> colourOutputs;
 		vector<GraphDepthOutput> depthOutputs;
 	};
@@ -151,6 +152,12 @@ namespace mpp
 		bindings.push_back({ sampler, image });
 	}
 
+	void RenderGraph::setPassParameters(GraphPassHandle pass, UniformCollection const& parameters)
+	{
+		if (!validPass(pass)) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
+		mPasses[pass.id].parameters = parameters;
+	}
+
 	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear)
 	{
 		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion ||
@@ -186,7 +193,7 @@ namespace mpp
 			THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		}
 		auto const& source = mPasses[pass.id];
-		return { source.name, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.colourOutputs, source.depthOutputs };
+		return { source.name, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.parameters, source.colourOutputs, source.depthOutputs };
 	}
 
 	RenderGraphCompileResult RenderGraph::compile() const
