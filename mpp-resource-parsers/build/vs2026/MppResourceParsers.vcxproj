@@ -121,6 +121,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphSerializer.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphResourceTests.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\Serializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\XmlSerializer.h" />
@@ -139,6 +140,7 @@
     <ClCompile Include="..\..\src\MeshSpecificationParser.cpp" />
     <ClCompile Include="..\..\src\RenderGraphParser.cpp" />
     <ClCompile Include="..\..\src\RenderGraphSerializer.cpp" />
+    <ClCompile Include="..\..\src\RenderGraphResourceTests.cpp" />
     <ClCompile Include="..\..\src\Serializer.cpp" />
     <ClCompile Include="..\..\src\XmlSerializer.cpp" />
   </ItemGroup>
