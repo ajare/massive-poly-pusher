@@ -59,8 +59,14 @@ namespace mpp
 		bool external{ false };
 	};
 
-	struct _MPPAPI GraphImageHandle
+	struct _MPPAPI GraphImageInfo
 	{
+		std::string name;
+		GraphImageDesc desc;
+		std::string importName;
+	};
+
+	struct _MPPAPI GraphImageHandle	{
 		uint32_t id{ UINT32_MAX };
 		uint32_t version{ 0 };
 
@@ -160,6 +166,9 @@ namespace mpp
 		RenderGraph& operator =(RenderGraph const&) = delete;
 
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc);
+		void setImageImportName(GraphImageHandle image, std::string const& importName);
+		GraphImageInfo getImageInfo(GraphImageHandle image) const;
+		std::vector<GraphImageHandle> getImportedImages() const;
 		GraphPassHandle addPass(std::string const& name);
 		void setPassProgramResource(GraphPassHandle pass, std::string const& resourceName);
 		void setPassCallbackFactory(GraphPassHandle pass, std::string const& factoryName);

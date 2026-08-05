@@ -80,7 +80,7 @@ namespace mpp
 				GraphImageDesc desc;
 				desc.format = parseFormat(image.getEntry("format").getValue(), filepath);
 				desc.relativeSize = image.hasEntry("scale") ? parseVec2(image.getEntry("scale").getValue()) : glm::vec2(1.0f);
-				desc.external = image.hasEntry("external") && parseBool(image.getEntry("external").getValue());
+				desc.external = image.hasEntry("import") || (image.hasEntry("external") && parseBool(image.getEntry("external").getValue()));
 				desc.transient = !image.hasEntry("transient") || parseBool(image.getEntry("transient").getValue());
 				string usage = image.getEntry("usage").getValue();
 				utils::StringUtils::toUpper(usage);
@@ -88,7 +88,9 @@ namespace mpp
 				if (usage.find("COLOURATTACHMENT") != string::npos) desc.usage = desc.usage | GraphImageUsage::ColourAttachment;
 				if (usage.find("DEPTHATTACHMENT") != string::npos) desc.usage = desc.usage | GraphImageUsage::DepthAttachment;
 				if (usage.find("PRESENTATION") != string::npos) desc.usage = desc.usage | GraphImageUsage::Presentation;
-				images[image.getEntry("name").getValue()] = graph.createImage(image.getEntry("name").getValue(), desc);
+				auto handle = graph.createImage(image.getEntry("name").getValue(), desc);
+				if (image.hasEntry("import")) graph.setImageImportName(handle, image.getEntry("import").getValue());
+				images[image.getEntry("name").getValue()] = handle;
 			}
 
 			if (!data.hasEntry("Passes")) return graph;

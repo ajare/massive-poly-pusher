@@ -6,6 +6,7 @@
 #include "mpp/RenderGraphTargets.h"
 
 #include "mpp/MppException.h"
+#include "mpp/RenderGraphImportRegistry.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTextureStream.h"
 
@@ -141,6 +142,24 @@ namespace mpp
 			THROW_MPP("Render graph import requires a valid image handle and target.", __LINE__, __FILE__, __func__);
 		}
 		mImportedTargets[image.id] = target;
+	}
+
+	void RenderGraphTargets::bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports)
+	{
+		for (auto const image : graph.getImportedImages())
+		{
+			auto const info = graph.getImageInfo(image);
+			if (info.importName.empty())
+			{
+				THROW_MPP("External render graph image '" + info.name + "' has no import name.", __LINE__, __FILE__, __func__);
+			}
+			auto target = imports.findImport(info.importName);
+			if (!target)
+			{
+				THROW_MPP("No target registered for render graph import '" + info.importName + "'.", __LINE__, __FILE__, __func__);
+			}
+			bindImported(image, target);
+		}
 	}
 
 	void RenderGraphTargets::clear()

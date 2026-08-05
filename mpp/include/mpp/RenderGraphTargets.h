@@ -10,6 +10,7 @@
 namespace mpp
 {
 	class RenderSystem;
+	class RenderGraphImportRegistry;
 
 	// Owns the first, deliberately non-aliased set of physical render targets
 	// for a graph allocation plan. Imported targets remain application-owned.
@@ -36,6 +37,7 @@ namespace mpp
 		// An import identifies backing storage, so every version of an external
 		// logical image resolves to this target.
 		void bindImported(GraphImageHandle image, RenderTargetPtr target);
+		void bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports);
 		void clear();
 		RenderTargetPtr get(GraphImageHandle image) const;
 	};
