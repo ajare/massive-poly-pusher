@@ -75,7 +75,7 @@ ShadowDepth
 
 Declare HDR scene/bloom images, LDR imported presentation image, factory names, typed bloom/tone-map parameters, and sampler bindings. Scene shading remains the existing material system.
 
-**Status:** `demo-suite/resources/res/PbrPipeline.rendergraph.xml` declares this fixed two-blur-pass threshold-bloom topology with imports, factories, sampler bindings, and typed parameters. It is authored but not yet loaded/executed by DemoSuite.
+**Status:** `demo-suite/resources/res/PbrPipeline.rendergraph.xml` declares this fixed two-blur-pass threshold-bloom topology with imports, factories, sampler bindings, and typed parameters. DemoSuite now loads it through `FileRenderGraphStream`; `CopyBin.bat` deploys it for direct runtime loading.
 
 **Acceptance:** `FileRenderGraphStream` loads and validates the graph before rendering.
 
@@ -101,7 +101,7 @@ Keep `GraphPbrForward` hardcoded until output parity is confirmed.
 
 ## 6. DemoSuite selector and diagnostics
 
-**Status:** DemoSuite currently offers manual and hardcoded-graph PBR selections. `PBR (XML graph)` and graph diagnostics are not wired yet.
+**Status:** DemoSuite now offers manual PBR, hardcoded GraphPBR, and `PBR (XML graph)` selections. Graph diagnostics are not wired yet.
 
 Expose:
 
