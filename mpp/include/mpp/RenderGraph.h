@@ -183,6 +183,7 @@ namespace mpp
 		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f));
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f);
 
+		size_t getImageCount() const;
 		size_t getPassCount() const;
 		GraphPassInfo getPassInfo(GraphPassHandle pass) const;
 
