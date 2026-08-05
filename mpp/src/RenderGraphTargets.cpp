@@ -29,14 +29,17 @@ namespace mpp
 
 		RenderTextureOptions makeOptions(GraphImageDesc const& desc)
 		{
-			if (desc.samples != 1 || desc.mipLevels != 1)
+			if (desc.samples != 1)
 			{
-				THROW_MPP("Render graph target allocation currently supports only one sample and one mip level.", __LINE__, __FILE__, __func__);
+				THROW_MPP("Render graph target allocation currently supports only one sample.", __LINE__, __FILE__, __func__);
 			}
 
 			RenderTextureOptions options;
 			options.params = desc.params;
 			options.params.colourSpace = desc.colourSpace;
+			options.params.useMipmaps = desc.mipLevels > 1;
+			options.params.lodBaseLevel = 0;
+			options.params.lodMaxLevel = (int32_t)desc.mipLevels - 1;
 			switch (desc.format)
 			{
 			case GraphImageFormat::Rgba8:
@@ -60,10 +63,12 @@ namespace mpp
 			case GraphImageFormat::Depth24:
 				options.numAttachments = 0;
 				options.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
+				options.depthParams.params = options.params;
 				break;
 			case GraphImageFormat::Depth24Stencil8:
 				options.numAttachments = 0;
 				options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture;
+				options.depthParams.params = options.params;
 				break;
 			}
 			return options;

@@ -341,6 +341,14 @@ namespace mpp
 				lifetime.desc = image.desc;
 				lifetime.size.x = image.desc.absoluteSize.x ? image.desc.absoluteSize.x : max(1u, (uint32_t)(viewport.x * image.desc.relativeSize.x));
 				lifetime.size.y = image.desc.absoluteSize.y ? image.desc.absoluteSize.y : max(1u, (uint32_t)(viewport.y * image.desc.relativeSize.y));
+				uint32_t maxMipLevels = 1;
+				for (uint32_t dimension = max(lifetime.size.x, lifetime.size.y); dimension > 1; dimension >>= 1) ++maxMipLevels;
+				if (image.desc.mipLevels > maxMipLevels)
+				{
+					plan.diagnostics.push_back("Image '" + image.name + "' requests " + to_string(image.desc.mipLevels) +
+						" mip levels but its resolved dimensions support at most " + to_string(maxMipLevels) + ".");
+					return;
+				}
 				lifetime.firstPass = passPosition;
 				lifetime.lastPass = passPosition;
 				index = (uint32_t)plan.allocatedImages.size();
@@ -360,7 +368,12 @@ namespace mpp
 			for (auto const& output : pass.colourOutputs) markImage(output.image, position);
 			for (auto const& output : pass.depthOutputs) markImage(output.image, position);
 		}
-		plan.valid = true;
+		plan.valid = plan.diagnostics.empty();
+		if (!plan.valid)
+		{
+			plan.allocatedImages.clear();
+			plan.importedImages.clear();
+		}
 		return plan;
 	}
 

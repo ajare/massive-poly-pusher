@@ -1,5 +1,6 @@
 #include <glew/glew.h>
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <vector>
@@ -16,13 +17,15 @@ namespace mpp
 {
 	namespace
 	{
-		std::array<uint8_t, 4> readFirstPixel(RenderTargetPtr const& target)
+		std::array<uint8_t, 4> readFirstPixel(RenderTargetPtr const& target, uint32_t mipLevel = 0)
 		{
 			auto texture = dynamic_cast<RenderTexture*>(target.get());
 			if (!texture) return { 0, 0, 0, 0 };
-			std::vector<uint8_t> pixels(texture->getWidth() * texture->getHeight() * 4);
+			size_t width = std::max<size_t>(1, texture->getWidth() >> mipLevel);
+			size_t height = std::max<size_t>(1, texture->getHeight() >> mipLevel);
+			std::vector<uint8_t> pixels(width * height * 4);
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->getColourAttachmentId(0)));
-			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data()));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, (GLint)mipLevel, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data()));
 			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 			return { pixels[0], pixels[1], pixels[2], pixels[3] };
 		}
@@ -94,6 +97,26 @@ namespace mpp
 			aliasExecutor.setPassCallback(aliasPass2, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
+
+			GraphImageDesc mipColour = colour;
+			mipColour.mipLevels = 3;
+			mipColour.params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+			RenderGraph mipGraph;
+			auto mipImage = mipGraph.createImage("GpuTestMipChain", mipColour);
+			auto mipPass = mipGraph.addPass("GpuTestMipWrite", GraphPassType::Fullscreen);
+			mipImage = mipGraph.writeColour(mipPass, mipImage, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0, 1, 1));
+			RenderGraphTargets mipTargets(renderSystem);
+			mipTargets.allocate(mipGraph.buildAllocationPlan({ 16, 8 }));
+			RenderGraphExecutor mipExecutor(renderSystem);
+			mipExecutor.setPassCallback(mipPass, [](RenderGraphExecutionContext const&) {});
+			mipExecutor.execute(mipGraph, mipTargets, renderSystem->getCaps());
+			if (!nearColour(readFirstPixel(mipTargets.get(mipImage), 2), { 255, 0, 255, 255 })) return fail("generated mip level readback failed");
+			mipColour.mipLevels = 8;
+			RenderGraph invalidMipGraph;
+			auto invalidMip = invalidMipGraph.createImage("GpuTestInvalidMipChain", mipColour);
+			auto invalidMipPass = invalidMipGraph.addPass("GpuTestInvalidMipWrite", GraphPassType::Fullscreen);
+			invalidMipGraph.writeColour(invalidMipPass, invalidMip);
+			if (invalidMipGraph.buildAllocationPlan({ 8, 8 }).valid) return fail("oversized mip chain was accepted");
 
 			if (renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2)
 			{
