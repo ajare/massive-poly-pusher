@@ -23,6 +23,7 @@ namespace mpp
 	{
 		string name;
 		GraphImageDesc desc;
+		string importName;
 		uint32_t latestVersion{ 0 };
 		// Producer pass per version. UINT32_MAX means imported/external version 0.
 		vector<uint32_t> producers{ UINT32_MAX };
@@ -72,6 +73,30 @@ namespace mpp
 		}
 		mImages.push_back({ name, desc });
 		return { (uint32_t)mImages.size() - 1, 0 };
+	}
+
+	void RenderGraph::setImageImportName(GraphImageHandle image, string const& importName)
+	{
+		if (!validImage(image) || !mImages[image.id].desc.external || importName.empty())
+		{
+			THROW_MPP("Render graph import requires an external image and name.", __LINE__, __FILE__, __func__);
+		}
+		mImages[image.id].importName = importName;
+	}
+
+	GraphImageInfo RenderGraph::getImageInfo(GraphImageHandle image) const
+	{
+		if (!validImage(image)) THROW_MPP("Invalid render graph image handle.", __LINE__, __FILE__, __func__);
+		auto const& source = mImages[image.id];
+		return { source.name, source.desc, source.importName };
+	}
+
+	vector<GraphImageHandle> RenderGraph::getImportedImages() const
+	{
+		vector<GraphImageHandle> result;
+		for (uint32_t id = 0; id < mImages.size(); ++id)
+			if (mImages[id].desc.external) result.push_back({ id, 0 });
+		return result;
 	}
 
 	GraphPassHandle RenderGraph::addPass(string const& name)

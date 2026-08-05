@@ -175,6 +175,13 @@ Declare an XML graph resource with named images and ordered pass declarations. I
             <usage>depthAttachment,sampled</usage>
         </Image>
         <Image>
+            <name>Presentation</name>
+            <format>RGBA8</format>
+            <external>true</external>
+            <import>screen</import>
+            <usage>colourAttachment,presentation</usage>
+        </Image>
+        <Image>
             <name>BloomExtract</name>
             <format>RGBA16F</format>
             <scale>0.5 0.5</scale>
@@ -198,6 +205,8 @@ Declare an XML graph resource with named images and ordered pass declarations. I
 ```
 
 A pass may include `<factory>Application.ScenePass</factory>` (or legacy `<callback>`). XML stores only that identifier. At execution the application registers `Application.ScenePass` with `RenderGraphPassFactoryRegistry::registerScenePassFactory()`; the factory returns a `RenderGraphScenePass` implementation whose `execute()` receives the live execution context. Instances are retained by the executor for the graph run and a missing registration produces a named error. Arbitrary C++/lambda code is never serialized into XML.
+
+An external image may declare `<import>screen</import>`. Before execution, the application registers that name in `RenderGraphImportRegistry` and calls `RenderGraphTargets::bindImports(graph, registry)` after allocation. Missing registrations report a named error.
 
 The parser now records a pass `<program>` resource name and optional `<sampler>` names on `Sampled` inputs. Resolution against `ResourceManager` and program sampler reflection remain executor/fullscreen-pass work. It intentionally defers pass `type`, typed parameters, absolute sizes, colour-space strings, and imported targets to the `RenderGraphStream` milestone. It parses at most one `Depth` output per pass. Those fields remain in the full schema above.
 

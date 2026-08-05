@@ -71,6 +71,7 @@
     <ClInclude Include="..\..\include\mpp\RenderGraphTemplate.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphPassFactoryRegistry.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphScenePass.h" />
+    <ClInclude Include="..\..\include\mpp\RenderGraphImportRegistry.h" />
     <ClInclude Include="..\..\include\mpp\RenderInfo.h" />
     <ClInclude Include="..\..\include\mpp\RenderPass.h" />
     <ClInclude Include="..\..\include\mpp\RenderPipeline.h" />
@@ -157,6 +158,7 @@
     <ClCompile Include="..\..\src\RenderGraphStream.cpp" />
     <ClCompile Include="..\..\src\RenderGraphTemplate.cpp" />
     <ClCompile Include="..\..\src\RenderGraphPassFactoryRegistry.cpp" />
+    <ClCompile Include="..\..\src\RenderGraphImportRegistry.cpp" />
     <ClCompile Include="..\..\src\RenderGraphTargets.cpp" />
     <ClCompile Include="..\..\src\RenderPass.cpp" />    <ClCompile Include="..\..\src\RenderPipeline.cpp" />
     <ClCompile Include="..\..\src\RenderSystem.cpp" />
