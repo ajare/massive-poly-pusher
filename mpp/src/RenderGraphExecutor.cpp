@@ -259,6 +259,7 @@ namespace mpp
 				passTarget = make_shared<GraphFramebufferTarget>(pass.name, colours, depth);
 			}
 			mRenderSystem->pushRenderTarget(passTarget);
+			mRenderSystem->setExpectedGraphColourOutputs(pass.colourOutputs.size());
 			bool const imagePass = pass.type == GraphPassType::Fullscreen || pass.type == GraphPassType::Present;
 			GLboolean depthEnabled = GL_FALSE, cullEnabled = GL_FALSE, scissorEnabled = GL_FALSE, depthWriteEnabled = GL_TRUE;
 			if (imagePass)
@@ -306,11 +307,13 @@ namespace mpp
 				}
 				discardDontCareOutputs(pass);
 				restoreImagePassState();
+				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
 			}
 			catch (...)
 			{
 				restoreImagePassState();
+				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
 				throw;
 			}

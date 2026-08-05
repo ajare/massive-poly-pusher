@@ -32,7 +32,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 ## Not started
 
 - [~] MSAA, mip allocation, compute passes, and broader effect/readback comparisons. Automated framebuffer completeness, colour readback, resize, MRT location readback, execution, and target-release tests run during DemoSuite setup.
-- [ ] Shader output-location validation and runtime MRT fallback.
+- [x] Shader output-location validation and runtime MRT fallback. During graph execution every selected program is checked for active fragment locations required by the pass (when program-interface reflection is available); extra outputs remain legal. GraphPBR enables bloom-mask MRT only when hardware and every visible scene material expose locations 0 and 1, otherwise it falls back to threshold bloom.
 - [x] Opt-in hardcoded and XML graph PBR pipelines with shadows, bloom, tone mapping, and presentation.
 - [~] DemoSuite graph controls and comparisons. Pipeline/pass isolation and live image-effect controls are implemented; automated screenshots and RenderDoc archives remain.
 
