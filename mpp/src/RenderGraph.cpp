@@ -187,6 +187,11 @@ namespace mpp
 		return output;
 	}
 
+	size_t RenderGraph::getPassCount() const
+	{
+		return mPasses.size();
+	}
+
 	GraphPassInfo RenderGraph::getPassInfo(GraphPassHandle pass) const
 	{
 		if (!validPass(pass))
