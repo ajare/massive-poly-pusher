@@ -1,0 +1,170 @@
+#include <algorithm>
+#include <queue>
+#include <set>
+
+#include "mpp/RenderGraph.h"
+#include "mpp/MppException.h"
+
+using namespace std;
+
+namespace mpp
+{
+	struct RenderGraph::Image
+	{
+		string name;
+		GraphImageDesc desc;
+		uint32_t latestVersion{ 0 };
+		// Producer pass per version. UINT32_MAX means imported/external version 0.
+		vector<uint32_t> producers{ UINT32_MAX };
+	};
+
+	struct RenderGraph::Pass
+	{
+		string name;
+		vector<GraphImageHandle> sampledInputs;
+		vector<GraphColourOutput> colourOutputs;
+		vector<GraphDepthOutput> depthOutputs;
+	};
+
+	bool RenderGraph::validImage(GraphImageHandle image) const
+	{
+		return image.isValid() && image.id < mImages.size() && image.version < mImages[image.id].producers.size();
+	}
+
+	bool RenderGraph::validPass(GraphPassHandle pass) const
+	{
+		return pass.isValid() && pass.id < mPasses.size();
+	}
+
+	GraphImageHandle RenderGraph::createImage(string const& name, GraphImageDesc const& desc)
+	{
+		if (name.empty() || desc.samples == 0 || desc.mipLevels == 0 ||
+			(desc.absoluteSize.x == 0 && desc.relativeSize.x <= 0.0f) ||
+			(desc.absoluteSize.y == 0 && desc.relativeSize.y <= 0.0f))
+		{
+			THROW_MPP("Invalid render graph image descriptor.", __LINE__, __FILE__, __func__);
+		}
+		if (find_if(mImages.begin(), mImages.end(), [&](Image const& image) { return image.name == name; }) != mImages.end())
+		{
+			THROW_MPP("Duplicate render graph image name.", __LINE__, __FILE__, __func__);
+		}
+		mImages.push_back({ name, desc });
+		return { (uint32_t)mImages.size() - 1, 0 };
+	}
+
+	GraphPassHandle RenderGraph::addPass(string const& name)
+	{
+		if (name.empty() || find_if(mPasses.begin(), mPasses.end(), [&](Pass const& pass) { return pass.name == name; }) != mPasses.end())
+		{
+			THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
+		}
+		mPasses.push_back({ name });
+		return { (uint32_t)mPasses.size() - 1 };
+	}
+
+	void RenderGraph::readSampled(GraphPassHandle pass, GraphImageHandle image)
+	{
+		if (!validPass(pass) || !validImage(image))
+		{
+			THROW_MPP("Invalid render graph sampled input.", __LINE__, __FILE__, __func__);
+		}
+		mPasses[pass.id].sampledInputs.push_back(image);
+	}
+
+	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear)
+	{
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment))
+		{
+			THROW_MPP("Invalid render graph colour output.", __LINE__, __FILE__, __func__);
+		}
+		auto& target = mImages[image.id];
+		GraphImageHandle output{ image.id, ++target.latestVersion };
+		target.producers.push_back(pass.id);
+		mPasses[pass.id].colourOutputs.push_back({ output, load, store, clear });
+		return output;
+	}
+
+	GraphImageHandle RenderGraph::writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, float clear)
+	{
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment))
+		{
+			THROW_MPP("Invalid render graph depth output.", __LINE__, __FILE__, __func__);
+		}
+		auto& target = mImages[image.id];
+		GraphImageHandle output{ image.id, ++target.latestVersion };
+		target.producers.push_back(pass.id);
+		mPasses[pass.id].depthOutputs.push_back({ output, load, store, clear });
+		return output;
+	}
+
+	RenderGraphCompileResult RenderGraph::compile() const
+	{
+		RenderGraphCompileResult result;
+		vector<set<uint32_t>> edges(mPasses.size());
+		vector<uint32_t> indegree(mPasses.size());
+
+		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
+		{
+			auto const& pass = mPasses[passId];
+			for (auto const& input : pass.sampledInputs)
+			{
+				if (!validImage(input))
+				{
+					result.diagnostics.push_back("Pass '" + pass.name + "' reads an invalid image handle.");
+					continue;
+				}
+				auto const& image = mImages[input.id];
+				if (!hasGraphImageUsage(image.desc.usage, GraphImageUsage::Sampled))
+				{
+					result.diagnostics.push_back("Pass '" + pass.name + "' samples image '" + image.name + "' without Sampled usage.");
+				}
+				uint32_t producer = image.producers[input.version];
+				if (producer == UINT32_MAX && !image.desc.external)
+				{
+					result.diagnostics.push_back("Pass '" + pass.name + "' reads unwritten non-external image '" + image.name + "'.");
+				}
+				else if (producer != UINT32_MAX && producer != passId)
+				{
+					edges[producer].insert(passId);
+				}
+				else if (producer == passId)
+				{
+					result.diagnostics.push_back("Pass '" + pass.name + "' reads and writes the same image version.");
+				}
+			}
+
+			if (pass.colourOutputs.size() > 1)
+			{
+				auto const& first = mImages[pass.colourOutputs.front().image.id].desc;
+				for (auto const& output : pass.colourOutputs)
+				{
+					auto const& desc = mImages[output.image.id].desc;
+					if (desc.absoluteSize != first.absoluteSize || desc.relativeSize != first.relativeSize || desc.samples != first.samples)
+					{
+						result.diagnostics.push_back("MRT pass '" + pass.name + "' has incompatible colour attachment dimensions or sample counts.");
+					}
+				}
+			}
+		}
+
+		if (!result.diagnostics.empty()) return result;
+		for (uint32_t source = 0; source < edges.size(); ++source)
+			for (uint32_t destination : edges[source]) ++indegree[destination];
+		queue<uint32_t> ready;
+		for (uint32_t i = 0; i < indegree.size(); ++i) if (indegree[i] == 0) ready.push(i);
+		while (!ready.empty())
+		{
+			uint32_t pass = ready.front(); ready.pop();
+			result.passOrder.push_back({ pass });
+			for (uint32_t next : edges[pass]) if (--indegree[next] == 0) ready.push(next);
+		}
+		if (result.passOrder.size() != mPasses.size())
+		{
+			result.diagnostics.push_back("Render graph contains a pass dependency cycle.");
+			result.passOrder.clear();
+			return result;
+		}
+		result.valid = true;
+		return result;
+	}
+}
