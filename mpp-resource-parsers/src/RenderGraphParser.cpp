@@ -80,7 +80,7 @@ namespace mpp
 				GraphImageDesc desc;
 				desc.format = parseFormat(image.getEntry("format").getValue(), filepath);
 				desc.relativeSize = image.hasEntry("scale") ? parseVec2(image.getEntry("scale").getValue()) : glm::vec2(1.0f);
-				desc.external = image.hasEntry("external");
+				desc.external = image.hasEntry("external") && parseBool(image.getEntry("external").getValue());
 				desc.transient = !image.hasEntry("transient") || parseBool(image.getEntry("transient").getValue());
 				string usage = image.getEntry("usage").getValue();
 				utils::StringUtils::toUpper(usage);
@@ -117,6 +117,14 @@ namespace mpp
 						auto next = graph.writeColour(pass, it->second, parseLoad(output.second.getEntry("load").getValue()), parseStore(output.second.getEntry("store").getValue()), output.second.hasEntry("clear") ? parseVec4(output.second.getEntry("clear").getValue()) : glm::vec4(0.0f));
 						it->second = next;
 					}
+				}
+				if (passData.hasEntry("Depth"))
+				{
+					auto const& output = passData.getEntry("Depth");
+					auto it = images.find(output.getEntry("image").getValue());
+					if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown depth graph image in " + filepath, __LINE__, __FILE__, __func__);
+					auto next = graph.writeDepth(pass, it->second, parseLoad(output.getEntry("load").getValue()), parseStore(output.getEntry("store").getValue()), output.hasEntry("clear") ? utils::StringUtils::parseFloat(output.getEntry("clear").getValue()) : 1.0f);
+					it->second = next;
 				}
 			}
 			return graph;

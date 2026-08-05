@@ -169,6 +169,12 @@ Declare an XML graph resource with named images and ordered pass declarations. I
             <usage>colourAttachment,sampled</usage>
         </Image>
         <Image>
+            <name>SceneDepth</name>
+            <format>DEPTH24</format>
+            <scale>1.0 1.0</scale>
+            <usage>depthAttachment,sampled</usage>
+        </Image>
+        <Image>
             <name>BloomExtract</name>
             <format>RGBA16F</format>
             <scale>0.5 0.5</scale>
@@ -179,6 +185,7 @@ Declare an XML graph resource with named images and ordered pass declarations. I
         <Pass>
             <name>Scene</name>
             <Colours><Output><image>SceneHdr</image><load>clear</load><store>store</store><clear>0 0 0 1</clear></Output></Colours>
+            <Depth><image>SceneDepth</image><load>clear</load><store>store</store><clear>1</clear></Depth>
         </Pass>
         <Pass>
             <name>BloomExtract</name>
@@ -189,7 +196,7 @@ Declare an XML graph resource with named images and ordered pass declarations. I
 </RenderGraph>
 ```
 
-The parser intentionally defers pass `type`, shader/program references, sampler semantics, depth outputs, typed parameters, absolute sizes, colour-space strings, and imported targets to the `RenderGraphStream` milestone. Those fields remain in the full schema above.
+The parser intentionally defers pass `type`, shader/program references, sampler semantics, typed parameters, absolute sizes, colour-space strings, and imported targets to the `RenderGraphStream` milestone. It parses at most one `Depth` output per pass. Those fields remain in the full schema above.
 
 The exact element spelling may evolve, but these rules are required:
 
@@ -271,8 +278,8 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 - [~] Add `RenderGraph`, `RenderGraphBuilder`, handles, image descriptors, pass descriptors, compiled graph types, `RenderGraphStream`, and `ProgrammaticRenderGraphStream` under `mpp/include/mpp` and `mpp/src`. **Started:** `RenderGraph` now provides versioned handles, image/pass declarations, dependency sorting, feedback checks, and MRT descriptor validation. `RenderGraphParser` parses the documented topology XML subset. Builder convenience APIs, resource streams, serialization, and execution are outstanding.
 - [~] Extend `Caps` with draw-buffer/colour-attachment limits and validate graph requirements. **Started:** `RenderSystem::checkCaps()` records and logs `maxDrawBuffers` and `maxColourAttachments`; `RenderGraph::compile(Caps const&)` rejects a pass whose output count exceeds either limit. Runtime framebuffer setup remains outstanding.
 - [ ] Add graph image format mapping to the existing render-texture format system.
-- [ ] Support imported targets and transient 2D colour/depth images at absolute/relative sizes.
-- [ ] Implement dependency sorting, version validation, cycle diagnostics, attachment/dimension checks, and load/store clear semantics.
+- [~] Support imported targets and transient 2D colour/depth images at absolute/relative sizes. **Started:** relative-size descriptors and transient/external flags are declared and depth/colour format-usage consistency is validated; no target allocation/import binding exists yet.
+- [~] Implement dependency sorting, version validation, cycle diagnostics, attachment/dimension checks, and load/store clear semantics. **Started:** topology checks and declarations are present; no GPU clear/store execution exists yet.
 - [ ] Add a debug dump describing passes, image versions, lifetimes, formats, and allocations.
 - [ ] Parse/serialize XML graph templates, including typed parameters, image descriptors, load/store operations, sampler semantics, child/external resource references, and MRT output order.
 - [ ] Unit-test graph validation and XML diagnostics without an OpenGL context where feasible.
