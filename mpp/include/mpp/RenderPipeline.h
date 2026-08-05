@@ -94,6 +94,14 @@ namespace mpp
 		ShadowFilterMode filterMode{ ShadowFilterMode::Pcf3x3 };
 	};
 
+	struct _MPPAPI GraphPassDebugOptions
+	{
+		bool shadow{ true };
+		bool scene{ true };
+		bool bloom{ true };
+		bool presentation{ true };
+	};
+
 	struct _MPPAPI RenderPipelineOptions
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
@@ -103,6 +111,7 @@ namespace mpp
 		// Optional immutable XML graph topology for XmlGraphPbrForward.
 		ResourcePtr graphTemplate;
 		BloomOptions bloom;
+		GraphPassDebugOptions graphPasses;
 		// Empty means this pipeline is not a shadow-domain participant.
 		std::string shadowDomain;
 	};
@@ -146,6 +155,8 @@ namespace mpp
 		void setToneMapOperator(PbrToneMapOperator toneMapOperator);
 
 		void setBloomOptions(BloomOptions const& bloomOptions);
+
+		void setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses);
 
 		void setPbrEnvironment(PbrEnvironmentPtr environment);
 

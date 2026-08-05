@@ -53,6 +53,11 @@ namespace mpp
 		mOptions.bloom = bloomOptions;
 	}
 
+	void RenderPipeline::setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses)
+	{
+		mOptions.graphPasses = graphPasses;
+	}
+
 	void RenderPipeline::ensureBloomTargets(size_t width, size_t height)
 	{
 		if (!mOptions.bloom.enabled)
@@ -191,7 +196,7 @@ namespace mpp
 		GraphImageHandle shadowDepth;
 		GraphImageHandle shadowDepthOutput;
 		GraphPassHandle shadowPass;
-		if (!mOptions.shadowDomain.empty())
+		if (!mOptions.shadowDomain.empty() && mOptions.graphPasses.shadow)
 		{
 			GraphImageDesc shadowDesc;
 			shadowDesc.format = GraphImageFormat::Depth24;
@@ -217,7 +222,7 @@ namespace mpp
 		vector<GraphPassHandle> bloomPasses;
 		vector<GraphImageHandle> bloomInputs;
 		vector<BloomGraphStep> bloomSteps;
-		if (mOptions.bloom.enabled)
+		if (mOptions.bloom.enabled && mOptions.graphPasses.bloom)
 		{
 			GraphImageHandle blurred = bloomMask;
 			if (!useMrtEmissiveMask)
@@ -279,7 +284,7 @@ namespace mpp
 		}
 		mGraphExecutor->setPassCallback(scenePass, [this, scene, models, camera](RenderGraphExecutionContext const&)
 		{
-			if (!models.empty() && scene->show3dModels() && mPasses.back())
+			if (mOptions.graphPasses.scene && !models.empty() && scene->show3dModels() && mPasses.back())
 			{
 				mPasses.back()->render(models, camera);
 				mRenderSystem->flushVertexBuffers();
@@ -320,6 +325,7 @@ namespace mpp
 		}
 		mGraphExecutor->setPassCallback(toneMapPass, [this, presentationTexture, pbr](RenderGraphExecutionContext const& context)
 		{
+			if (!mOptions.graphPasses.presentation) return;
 			auto texture = static_cast<RenderTexture*>(context.getImage(presentationTexture).get());
 			if (pbr)
 			{
