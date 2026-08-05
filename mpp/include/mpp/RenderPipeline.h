@@ -14,6 +14,7 @@
 #include "mpp/RenderPass.h"
 #include "mpp/PostEffect.h"
 #include "mpp/Scene.h"
+#include "mpp/RenderGraphPassFactoryRegistry.h"
 
 namespace mpp
 {
@@ -122,6 +123,7 @@ namespace mpp
 
 		std::unique_ptr<class RenderGraphTargets> mGraphTargets;
 		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
+		RenderGraphPassFactoryRegistry mGraphPassFactories;
 
 		void ensureBloomTargets(size_t width, size_t height);
 		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);
