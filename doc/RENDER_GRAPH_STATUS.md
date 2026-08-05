@@ -1,6 +1,6 @@
 # Render Graph Implementation Status
 
-Last updated: 2026-08-02
+Last updated: 2026-08-05
 
 This is the implementation status for `render-graph-plan`. Existing `Default` and `PbrForward` pipeline paths remain unchanged.
 
@@ -23,21 +23,21 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 ## In progress
 
 - [x] RG5 graph legacy forward: `GraphLegacyForward` renders declared LDR colour/depth images with the existing legacy material/light contract, graph bloom/presentation, and explicit DemoSuite selection. `Default` remains unchanged.
-- [x] RG3 graph PBR parity: manual PBR, hardcoded GraphPBR, and XML GraphPBR execute in DemoSuite and have user-confirmed visual parity. Automated screenshot comparison and archived RenderDoc captures remain optional hardening.
+- [x] RG3 graph PBR parity: manual PBR, hardcoded GraphPBR, and XML GraphPBR execute in DemoSuite and have user-confirmed visual parity. XML bloom threshold/intensity, exposure, tone-map operator, and bloom enabled state follow live pipeline controls through runtime overrides. Automated screenshot comparison and archived RenderDoc captures remain optional hardening.
 - [x] RG4 optional bloom-mask MRT: GraphPBR can write HDR scene colour plus an emissive bloom mask, blur/composite the mask, and falls back to threshold extraction below two draw buffers/colour attachments. DemoSuite exposes the mode; the statue `.mppmodel` was regenerated after its second shader output changed.
 - [x] Context-free regression entry points: `runRenderGraphTopologyTests()` covers valid/missing-producer/feedback topology; `runRenderGraphResourceTests()` covers XML descriptors, imports, pass metadata, parameters, sampler bindings, and XML round-trip serialization. A dedicated CI test executable remains optional.
-- [~] Resource authoring: `RenderGraphStream`/`RenderGraphTemplate` declare immutable programmatic graph resources through ResourceManager, and `FileRenderGraphStream` loads the XML topology subset as a resource. Serialization, program references, typed parameters, imported-target names, and executable bindings are not implemented.
+- [x] Resource authoring: programmatic/XML graph templates, XML serialization, program/sampler references, typed parameters and overrides, named imports, executable factories, and declarative fullscreen passes are implemented.
 - [~] RG2 allocation/execution: same-plan aliasing, cross-frame compatible-target pooling, imported target bindings, and capability-guarded `DontCare` store invalidation work. MSAA, mip allocation, compute passes, and automated GPU frame tests remain absent.
 
 ## Not started
 
 - [~] Automated GPU frame/lifetime tests, MSAA, mip allocation, and compute passes. Framebuffer binding, `glDrawBuffers`, clears, callbacks, cross-frame pooling, and capability-guarded `DontCare` invalidation are implemented.
 - [ ] Shader output-location validation and runtime MRT fallback.
-- [ ] Opt-in graph PBR pipeline and migration of shadows, bloom, tone mapping, and presentation.
-- [ ] DemoSuite graph controls and screenshot/RenderDoc comparisons.
+- [x] Opt-in hardcoded and XML graph PBR pipelines with shadows, bloom, tone mapping, and presentation.
+- [~] DemoSuite graph controls and comparisons. Pipeline/pass isolation and live image-effect controls are implemented; automated screenshots and RenderDoc archives remain.
 
 ## Current safe-use boundary
 
-The implemented graph is safe for topology declaration, XML parsing, validation, capability checks, diagnostics, and allocation planning. It is **not** an executable renderer and must not yet replace manual pipeline target creation or pass sequencing.
+The implemented graph is executable and has user-confirmed visual parity with the manual DemoSuite PBR/legacy references. Manual paths remain available as compatibility references. MSAA, compute passes, and automated GPU regression coverage remain outside the validated boundary.
 
 See `RENDER_GRAPH_PLAN.md` for design/migration detail and `RENDER_GRAPH_IMPLEMENTATION_ISSUES.md` for blockers.

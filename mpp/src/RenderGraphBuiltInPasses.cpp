@@ -27,6 +27,13 @@ namespace mpp
 			return found == values.end() || found->second.size < sizeof(float) ? fallback : *reinterpret_cast<float const*>(found->second.data);
 		}
 
+		int32_t integerParameter(RenderGraphExecutionContext const& context, std::string const& name, int32_t fallback)
+		{
+			auto const& values = context.getParameters().getUniformData();
+			auto const found = values.find(name);
+			return found == values.end() || found->second.size < sizeof(int32_t) ? fallback : *reinterpret_cast<int32_t const*>(found->second.data);
+		}
+
 		Texture* input(RenderGraphExecutionContext const& context, size_t index)
 		{
 			auto const& bindings = context.getPass().samplerBindings;
@@ -36,14 +43,14 @@ namespace mpp
 		class BloomExtractPass final : public RenderGraphScenePass
 		{
 		public:
-			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomExtract(input(context, 0), parameter(context, "THRESHOLD", 1.0f)); }
+			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->bloom.enabled && context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomExtract(input(context, 0), parameter(context, "THRESHOLD", 1.0f)); }
 		};
 		class BloomBlurPass final : public RenderGraphScenePass
 		{
 			bool mHorizontal;
 		public:
 			explicit BloomBlurPass(bool horizontal) : mHorizontal(horizontal) {}
-			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1)); }
+			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->bloom.enabled && context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1)); }
 		};
 		class BloomCompositePass final : public RenderGraphScenePass
 		{
@@ -51,14 +58,14 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override
 			{
 				auto const& frame = context.getFrame();
-				if (frame.pipelineOptions->graphPasses.bloom) frame.renderSystem->renderBloomCombine(input(context, 0), input(context, 1), parameter(context, "INTENSITY", 0.15f));
+				if (frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom) frame.renderSystem->renderBloomCombine(input(context, 0), input(context, 1), parameter(context, "INTENSITY", 0.15f));
 				else frame.renderSystem->renderFullscreenQuad(input(context, 0), BlendMode::One, BlendMode::Zero);
 			}
 		};
 		class ToneMapPresentPass final : public RenderGraphScenePass
 		{
 		public:
-			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.presentation) context.getFrame().renderSystem->renderToneMappedFullscreenQuad(input(context, 0), parameter(context, "EXPOSURE", 1.0f), parameter(context, "TONE_MAP_OPERATOR", 1.0f) != 0.0f); }
+			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.presentation) context.getFrame().renderSystem->renderToneMappedFullscreenQuad(input(context, 0), parameter(context, "EXPOSURE", 1.0f), integerParameter(context, "TONE_MAP_OPERATOR", 1) != 0); }
 		};
 
 		class ScenePass final : public RenderGraphScenePass
