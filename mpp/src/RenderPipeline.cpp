@@ -4,7 +4,10 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
+#include "mpp/RenderGraphTemplate.h"
+#include "mpp/RenderGraphImportRegistry.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -136,6 +139,27 @@ namespace mpp
 			mGraphExecutor = make_unique<RenderGraphExecutor>(mRenderSystem);
 			registerBuiltInRenderGraphPasses(mGraphPassFactories);
 			mGraphExecutor->setPassFactoryRegistry(&mGraphPassFactories);
+		}
+
+		if (mOptions.graphTemplate)
+		{
+			auto templateResource = dynamic_cast<RenderGraphTemplate*>(mOptions.graphTemplate.get());
+			if (!templateResource) THROW_MPP("XmlGraphPbrForward requires a RenderGraph resource.", __LINE__, __FILE__, __func__);
+			templateResource->create();
+			templateResource->load();
+			auto const& graph = templateResource->getGraph();
+			if (!graph) THROW_MPP("XmlGraphPbrForward graph template is empty.", __LINE__, __FILE__, __func__);
+			auto const& viewport = scene->getViewport();
+			mGraphTargets->allocate(graph->buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height)));
+			RenderGraphImportRegistry imports;
+			imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
+			if (!mOptions.shadowDomain.empty()) imports.registerImport("shadowDepth", mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
+			mGraphTargets->bindImports(*graph, imports);
+			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back() };
+			mGraphExecutor->setFrameContext(&frameContext);
+			mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
+			mGraphExecutor->setFrameContext(nullptr);
+			return;
 		}
 
 		RenderGraph graph;
@@ -339,7 +363,7 @@ namespace mpp
 		
 
 		auto const& models = scene->get3dModelsInView(camera);
-		bool const graphPbr = mOptions.mode == RenderPipelineMode::GraphPbrForward;
+		bool const graphPbr = mOptions.mode == RenderPipelineMode::GraphPbrForward || mOptions.mode == RenderPipelineMode::XmlGraphPbrForward;
 		bool const graphLegacy = mOptions.mode == RenderPipelineMode::GraphLegacyForward;
 		bool const graphForward = graphPbr || graphLegacy;
 		if (!graphForward && !mOptions.shadowDomain.empty())

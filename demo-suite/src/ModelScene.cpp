@@ -41,6 +41,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/FileProgramStream.h>
 #include <mpp/resource-parsers/FileMaterialStream.h>
 #include <mpp/resource-parsers/FileStringStream.h>
+#include <mpp/resource-parsers/FileRenderGraphStream.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/FpsCamera.h>
@@ -1031,6 +1032,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto graphPbrOptions = pbrOptions;
 	graphPbrOptions.mode = mpp::RenderPipelineMode::GraphPbrForward;
 	renderSystem->getOrCreateRenderPipeline("GraphPBR", graphPbrOptions);
+	auto xmlGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, options.resourceLocation + "PbrPipeline.rendergraph.xml");
+	auto xmlGraph = resourceMgr->declareResource("PBR.XmlGraph", mpp::ResourceStreamPtr(xmlGraphStream)).first;
+	auto xmlPbrOptions = pbrOptions;
+	xmlPbrOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
+	xmlPbrOptions.graphTemplate = xmlGraph;
+	renderSystem->getOrCreateRenderPipeline("XmlGraphPBR", xmlPbrOptions);
 	mpp::RenderPipelineOptions defaultOptions;
 	defaultOptions.bloom = mBloomOptions;
 	renderSystem->getOrCreateRenderPipeline("Default", defaultOptions);
@@ -1141,19 +1148,21 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			renderSystem->setGamma(gamma);
 		}
 
-		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : (mSelectedPipeline == "GraphPBR" ? 1 : (mSelectedPipeline == "Default" ? 2 : 3));
-		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR (manual reference)\0PBR (render graph)\0Default (manual reference)\0Default (render graph)\0"))
+		int pipelineIndex = mSelectedPipeline == "PBR" ? 0 : (mSelectedPipeline == "GraphPBR" ? 1 : (mSelectedPipeline == "XmlGraphPBR" ? 2 : (mSelectedPipeline == "Default" ? 3 : 4)));
+		if (ImGui::Combo("Render Pipeline", &pipelineIndex, "PBR (manual reference)\0PBR (hardcoded graph)\0PBR (XML graph)\0Default (manual reference)\0Default (render graph)\0"))
 		{
-			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : (pipelineIndex == 1 ? "GraphPBR" : (pipelineIndex == 2 ? "Default" : "GraphDefault"));
+			mSelectedPipeline = pipelineIndex == 0 ? "PBR" : (pipelineIndex == 1 ? "GraphPBR" : (pipelineIndex == 2 ? "XmlGraphPBR" : (pipelineIndex == 3 ? "Default" : "GraphDefault")));
 		}
 		ImGui::TextUnformatted("PBR: Cook-Torrance HDR; graph mode is explicit validation opt-in");
 		auto pbrPipeline = renderSystem->getRenderPipeline("PBR");
 		auto graphPbrPipeline = renderSystem->getRenderPipeline("GraphPBR");
+		auto xmlGraphPbrPipeline = renderSystem->getRenderPipeline("XmlGraphPBR");
 		float exposure = pbrPipeline->getOptions().exposure;
 		if (ImGui::SliderFloat("PBR Exposure", &exposure, 0.0f, 8.0f))
 		{
 			pbrPipeline->setExposure(exposure);
 			graphPbrPipeline->setExposure(exposure);
+			xmlGraphPbrPipeline->setExposure(exposure);
 		}
 		int toneMapOperator = pbrPipeline->getOptions().toneMapOperator == mpp::PbrToneMapOperator::Aces ? 1 : 0;
 		if (ImGui::Combo("PBR Tone Map", &toneMapOperator, "Reinhard\0ACES\0"))
@@ -1161,6 +1170,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 			auto toneMap = toneMapOperator == 0 ? mpp::PbrToneMapOperator::Reinhard : mpp::PbrToneMapOperator::Aces;
 			pbrPipeline->setToneMapOperator(toneMap);
 			graphPbrPipeline->setToneMapOperator(toneMap);
+			xmlGraphPbrPipeline->setToneMapOperator(toneMap);
 		}
 
 		bool bloomChanged = false;
@@ -1185,6 +1195,7 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			pbrPipeline->setBloomOptions(mBloomOptions);
 			graphPbrPipeline->setBloomOptions(mBloomOptions);
+			xmlGraphPbrPipeline->setBloomOptions(mBloomOptions);
 			renderSystem->getRenderPipeline("Default")->setBloomOptions(mBloomOptions);
 			renderSystem->getRenderPipeline("GraphDefault")->setBloomOptions(mBloomOptions);
 		}
