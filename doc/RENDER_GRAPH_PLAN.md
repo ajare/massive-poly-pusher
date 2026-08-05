@@ -280,7 +280,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 - [ ] Add graph image format mapping to the existing render-texture format system.
 - [~] Support imported targets and transient 2D colour/depth images at absolute/relative sizes. **Started:** relative-size descriptors and transient/external flags are declared and depth/colour format-usage consistency is validated; no target allocation/import binding exists yet.
 - [~] Implement dependency sorting, version validation, cycle diagnostics, attachment/dimension checks, and load/store clear semantics. **Started:** topology checks and declarations are present; no GPU clear/store execution exists yet.
-- [ ] Add a debug dump describing passes, image versions, lifetimes, formats, and allocations.
+- [~] Add a debug dump describing passes, image versions, lifetimes, formats, and allocations. **Started:** `RenderGraph::describe()` emits declared images, produced versions, and pass reads/writes without requiring an OpenGL context. Lifetime/allocation details await RG2.
 - [ ] Parse/serialize XML graph templates, including typed parameters, image descriptors, load/store operations, sampler semantics, child/external resource references, and MRT output order.
 - [ ] Unit-test graph validation and XML diagnostics without an OpenGL context where feasible.
 
