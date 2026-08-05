@@ -15,6 +15,8 @@
 
 namespace mpp
 {
+	struct Caps;
+
 	enum class GraphImageFormat
 	{
 		Rgba8,
@@ -126,5 +128,6 @@ namespace mpp
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f);
 
 		RenderGraphCompileResult compile() const;
+		RenderGraphCompileResult compile(Caps const& caps) const;
 	};
 }
