@@ -314,7 +314,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 - [x] Express shadow depth, HDR scene, bloom extract/blur/composite, and tone-map presentation as graph passes. Graph callbacks reuse existing scene/shadow/bloom/tone-map rendering contracts.
 - [x] Import the screen/presentation target and retain current UI ordering. The graph presents before existing 2D/UI rendering.
 - [~] Replace pipeline-owned bloom target fields with graph images once outputs match existing bloom. `GraphPbrForward` uses graph images exclusively; manual `PbrForward` retains its existing bloom fields as the reference path.
-- [ ] Compare current PBR and graph-PBR bloom screenshots/RenderDoc captures. DemoSuite supports switching between both paths, but captures have not yet been recorded.
+- [x] Compare current PBR and graph-PBR output. User-confirmed visual parity covers manual PBR, hardcoded GraphPBR, and XML GraphPBR in DemoSuite. Automated screenshot tolerance and archived RenderDoc captures remain follow-up hardening.
 
 **Acceptance:** graph PBR renders the statue, shadows, bloom, and tone mapping equivalently to current PBR with no material changes.
 
