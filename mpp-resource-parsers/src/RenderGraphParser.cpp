@@ -179,7 +179,7 @@ namespace mpp
 						if (input.first != "Sampled") continue;
 						auto it = images.find(input.second.getEntry("image").getValue());
 						if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown sampled graph image in " + filepath, __LINE__, __FILE__, __func__);
-						if (input.second.hasEntry("sampler")) graph.bindSampler(pass, input.second.getEntry("sampler").getValue(), it->second);
+						if (input.second.hasEntry("sampler")) graph.bindSampler(pass, input.second.getEntry("sampler").getValue(), it->second, input.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(input.second.getEntry("mipLevel").getValue()) : UINT32_MAX);
 						else graph.readSampled(pass, it->second);
 					}
 				}
@@ -190,7 +190,7 @@ namespace mpp
 						if (output.first != "Output") continue;
 						auto it = images.find(output.second.getEntry("image").getValue());
 						if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown colour graph image in " + filepath, __LINE__, __FILE__, __func__);
-						auto next = graph.writeColour(pass, it->second, parseLoad(output.second.getEntry("load").getValue()), parseStore(output.second.getEntry("store").getValue()), output.second.hasEntry("clear") ? parseVec4(output.second.getEntry("clear").getValue()) : glm::vec4(0.0f));
+						auto next = graph.writeColour(pass, it->second, parseLoad(output.second.getEntry("load").getValue()), parseStore(output.second.getEntry("store").getValue()), output.second.hasEntry("clear") ? parseVec4(output.second.getEntry("clear").getValue()) : glm::vec4(0.0f), output.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.second.getEntry("mipLevel").getValue()) : 0);
 						it->second = next;
 					}
 				}
@@ -199,7 +199,7 @@ namespace mpp
 					auto const& output = passData.getEntry("Depth");
 					auto it = images.find(output.getEntry("image").getValue());
 					if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown depth graph image in " + filepath, __LINE__, __FILE__, __func__);
-					auto next = graph.writeDepth(pass, it->second, parseLoad(output.getEntry("load").getValue()), parseStore(output.getEntry("store").getValue()), output.hasEntry("clear") ? utils::StringUtils::parseFloat(output.getEntry("clear").getValue()) : 1.0f);
+					auto next = graph.writeDepth(pass, it->second, parseLoad(output.getEntry("load").getValue()), parseStore(output.getEntry("store").getValue()), output.hasEntry("clear") ? utils::StringUtils::parseFloat(output.getEntry("clear").getValue()) : 1.0f, output.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.getEntry("mipLevel").getValue()) : 0);
 					it->second = next;
 				}
 			}

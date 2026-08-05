@@ -148,9 +148,9 @@ namespace mpp
 		mPasses[pass.id].sampledInputs.push_back(image);
 	}
 
-	void RenderGraph::bindSampler(GraphPassHandle pass, string const& sampler, GraphImageHandle image)
+	void RenderGraph::bindSampler(GraphPassHandle pass, string const& sampler, GraphImageHandle image, uint32_t mipLevel)
 	{
-		if (!validPass(pass) || !validImage(image) || sampler.empty())
+		if (!validPass(pass) || !validImage(image) || sampler.empty() || (mipLevel != UINT32_MAX && mipLevel >= mImages[image.id].desc.mipLevels))
 		{
 			THROW_MPP("Invalid render graph sampler binding.", __LINE__, __FILE__, __func__);
 		}
@@ -160,7 +160,7 @@ namespace mpp
 			THROW_MPP("Duplicate render graph sampler binding.", __LINE__, __FILE__, __func__);
 		}
 		readSampled(pass, image);
-		bindings.push_back({ sampler, image });
+		bindings.push_back({ sampler, image, mipLevel });
 	}
 
 	void RenderGraph::setPassParameters(GraphPassHandle pass, UniformCollection const& parameters)
@@ -169,9 +169,9 @@ namespace mpp
 		mPasses[pass.id].parameters = parameters;
 	}
 
-	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear)
+	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel)
 	{
-		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion ||
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || mipLevel >= mImages[image.id].desc.mipLevels ||
 			!hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment) || isDepthFormat(mImages[image.id].desc.format))
 		{
 			THROW_MPP("Invalid render graph colour output.", __LINE__, __FILE__, __func__);
@@ -179,13 +179,13 @@ namespace mpp
 		auto& target = mImages[image.id];
 		GraphImageHandle output{ image.id, ++target.latestVersion };
 		target.producers.push_back(pass.id);
-		mPasses[pass.id].colourOutputs.push_back({ output, load, store, clear });
+		mPasses[pass.id].colourOutputs.push_back({ output, mipLevel, load, store, clear });
 		return output;
 	}
 
-	GraphImageHandle RenderGraph::writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, float clear)
+	GraphImageHandle RenderGraph::writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel)
 	{
-		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion ||
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || mipLevel >= mImages[image.id].desc.mipLevels ||
 			!hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment) || !isDepthFormat(mImages[image.id].desc.format))
 		{
 			THROW_MPP("Invalid render graph depth output.", __LINE__, __FILE__, __func__);
@@ -193,7 +193,7 @@ namespace mpp
 		auto& target = mImages[image.id];
 		GraphImageHandle output{ image.id, ++target.latestVersion };
 		target.producers.push_back(pass.id);
-		mPasses[pass.id].depthOutputs.push_back({ output, load, store, clear });
+		mPasses[pass.id].depthOutputs.push_back({ output, mipLevel, load, store, clear });
 		return output;
 	}
 
@@ -253,15 +253,21 @@ namespace mpp
 				}
 			}
 
+			auto effectiveSize = [&](GraphImageDesc const& desc, uint32_t mip)
+			{
+				glm::vec2 size = desc.absoluteSize.x && desc.absoluteSize.y ? glm::vec2(desc.absoluteSize) : desc.relativeSize;
+				return size / (float)(1u << mip);
+			};
 			if (pass.colourOutputs.size() > 1)
 			{
-				auto const& first = mImages[pass.colourOutputs.front().image.id].desc;
+				auto const& firstOutput = pass.colourOutputs.front();
+				auto const& first = mImages[firstOutput.image.id].desc;
 				for (auto const& output : pass.colourOutputs)
 				{
 					auto const& desc = mImages[output.image.id].desc;
-					if (desc.absoluteSize != first.absoluteSize || desc.relativeSize != first.relativeSize || desc.samples != first.samples)
+					if (effectiveSize(desc, output.mipLevel) != effectiveSize(first, firstOutput.mipLevel) || desc.samples != first.samples)
 					{
-						result.diagnostics.push_back("MRT pass '" + pass.name + "' has incompatible colour attachment dimensions or sample counts.");
+						result.diagnostics.push_back("MRT pass '" + pass.name + "' has incompatible colour attachment mip dimensions or sample counts.");
 					}
 				}
 			}
@@ -271,9 +277,11 @@ namespace mpp
 			}
 			if (!pass.colourOutputs.empty() && !pass.depthOutputs.empty())
 			{
-				auto const& colour = mImages[pass.colourOutputs.front().image.id].desc;
-				auto const& depth = mImages[pass.depthOutputs.front().image.id].desc;
-				if (colour.absoluteSize != depth.absoluteSize || colour.relativeSize != depth.relativeSize || colour.samples != depth.samples)
+				auto const& colourOutput = pass.colourOutputs.front();
+				auto const& depthOutput = pass.depthOutputs.front();
+				auto const& colour = mImages[colourOutput.image.id].desc;
+				auto const& depth = mImages[depthOutput.image.id].desc;
+				if (effectiveSize(colour, colourOutput.mipLevel) != effectiveSize(depth, depthOutput.mipLevel) || colour.samples != depth.samples)
 				{
 					result.diagnostics.push_back("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions or sample counts.");
 				}
@@ -403,13 +411,13 @@ namespace mpp
 			if (!pass.callbackFactory.empty()) output << ", factory='" << pass.callbackFactory << "'";
 			output << "\n";
 			for (auto const& binding : pass.samplerBindings)
-				output << "    sampler '" << binding.sampler << "' = Image[" << binding.image.id << "]@" << binding.image.version << "\n";
+				output << "    sampler '" << binding.sampler << "' = Image[" << binding.image.id << "]@" << binding.image.version << (binding.mipLevel == UINT32_MAX ? " full chain" : " mip " + to_string(binding.mipLevel)) << "\n";
 			for (auto const& input : pass.sampledInputs)
 				output << "    reads Image[" << input.id << "]@" << input.version << "\n";
 			for (auto const& target : pass.colourOutputs)
-				output << "    writes colour Image[" << target.image.id << "]@" << target.image.version << "\n";
+				output << "    writes colour Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
 			for (auto const& target : pass.depthOutputs)
-				output << "    writes depth Image[" << target.image.id << "]@" << target.image.version << "\n";
+				output << "    writes depth Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
 		}
 		return output.str();
 	}

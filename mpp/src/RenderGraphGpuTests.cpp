@@ -103,14 +103,41 @@ namespace mpp
 			mipColour.params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
 			RenderGraph mipGraph;
 			auto mipImage = mipGraph.createImage("GpuTestMipChain", mipColour);
+			auto mipViewOutput = mipGraph.createImage("GpuTestMipViewOutput", colour);
 			auto mipPass = mipGraph.addPass("GpuTestMipWrite", GraphPassType::Fullscreen);
 			mipImage = mipGraph.writeColour(mipPass, mipImage, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0, 1, 1));
+			auto mipViewPass = mipGraph.addPass("GpuTestMipView", GraphPassType::Fullscreen);
+			mipGraph.bindSampler(mipViewPass, "MIP_INPUT", mipImage, 2);
+			mipViewOutput = mipGraph.writeColour(mipViewPass, mipViewOutput, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0));
 			RenderGraphTargets mipTargets(renderSystem);
 			mipTargets.allocate(mipGraph.buildAllocationPlan({ 16, 8 }));
 			RenderGraphExecutor mipExecutor(renderSystem);
 			mipExecutor.setPassCallback(mipPass, [](RenderGraphExecutionContext const&) {});
+			bool observedMipView = false;
+			mipExecutor.setPassCallback(mipViewPass, [&](RenderGraphExecutionContext const& context)
+			{
+				auto texture = static_cast<RenderTexture*>(context.getImage(mipImage).get());
+				GLint base = -1, maximum = -1;
+				GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->getColourAttachmentId(0)));
+				GL_CHECK(glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, &base));
+				GL_CHECK(glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, &maximum));
+				observedMipView = base == 2 && maximum == 2;
+			});
 			mipExecutor.execute(mipGraph, mipTargets, renderSystem->getCaps());
+			if (!observedMipView) return fail("explicit sampled mip view was not applied");
 			if (!nearColour(readFirstPixel(mipTargets.get(mipImage), 2), { 255, 0, 255, 255 })) return fail("generated mip level readback failed");
+
+			RenderGraph explicitMipGraph;
+			auto explicitMip = explicitMipGraph.createImage("GpuTestExplicitMip", mipColour);
+			auto explicitMipPass = explicitMipGraph.addPass("GpuTestExplicitMipWrite", GraphPassType::Fullscreen);
+			explicitMip = explicitMipGraph.writeColour(explicitMipPass, explicitMip, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 1, 1, 1), 2);
+			RenderGraphTargets explicitMipTargets(renderSystem);
+			explicitMipTargets.allocate(explicitMipGraph.buildAllocationPlan({ 16, 8 }));
+			RenderGraphExecutor explicitMipExecutor(renderSystem);
+			explicitMipExecutor.setPassCallback(explicitMipPass, [](RenderGraphExecutionContext const&) {});
+			explicitMipExecutor.execute(explicitMipGraph, explicitMipTargets, renderSystem->getCaps());
+			if (!nearColour(readFirstPixel(explicitMipTargets.get(explicitMip), 2), { 0, 255, 255, 255 })) return fail("explicit mip attachment readback failed");
+
 			mipColour.mipLevels = 8;
 			RenderGraph invalidMipGraph;
 			auto invalidMip = invalidMipGraph.createImage("GpuTestInvalidMipChain", mipColour);
