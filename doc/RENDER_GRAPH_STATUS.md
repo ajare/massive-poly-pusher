@@ -23,11 +23,11 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 ## In progress
 
 - [~] RG1 resource authoring: parser subset exists, but graph resource streams, serialization, program references, typed parameters, and imported-target names are not implemented.
-- [~] RG2 allocation/execution: same-plan aliasing and imported target bindings work; allocations rebuild when a new viewport plan is supplied. Cross-frame pooling, MSAA, mip allocation, store invalidation, compute passes, and GPU frame tests remain absent.
+- [~] RG2 allocation/execution: same-plan aliasing, cross-frame compatible-target pooling, imported target bindings, and capability-guarded `DontCare` store invalidation work. MSAA, mip allocation, compute passes, and automated GPU frame tests remain absent.
 
 ## Not started
 
-- [~] Store invalidation and GPU frame tests. Framebuffer binding, `glDrawBuffers`, clear operations, and execution callbacks are implemented; `DontCare` store remains a safe no-op rather than an invalidate optimization.
+- [~] Automated GPU frame/lifetime tests, MSAA, mip allocation, and compute passes. Framebuffer binding, `glDrawBuffers`, clears, callbacks, cross-frame pooling, and capability-guarded `DontCare` invalidation are implemented.
 - [ ] Shader output-location validation and runtime MRT fallback.
 - [ ] Opt-in graph PBR pipeline and migration of shadows, bloom, tone mapping, and presentation.
 - [ ] DemoSuite graph controls and screenshot/RenderDoc comparisons.

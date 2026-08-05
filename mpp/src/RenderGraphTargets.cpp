@@ -90,29 +90,47 @@ namespace mpp
 			THROW_MPP("Cannot allocate an invalid render graph allocation plan.", __LINE__, __FILE__, __func__);
 		}
 		mTargets.clear();
-		struct PoolEntry
+		struct ActivePoolEntry { size_t poolIndex; uint32_t lastPass; };
+		vector<GraphImageLifetime const*> lifetimes;
+		lifetimes.reserve(plan.allocatedImages.size());
+		for (auto const& lifetime : plan.allocatedImages) lifetimes.push_back(&lifetime);
+		sort(lifetimes.begin(), lifetimes.end(), [](GraphImageLifetime const* left, GraphImageLifetime const* right)
 		{
-			GraphImageLifetime lifetime;
-			RenderTargetPtr target;
-		};
-		vector<PoolEntry> pool;
-		for (auto const& lifetime : plan.allocatedImages)
+			return left->firstPass < right->firstPass;
+		});
+		vector<ActivePoolEntry> active;
+		for (auto const* lifetime : lifetimes)
 		{
-			auto reusable = find_if(pool.begin(), pool.end(), [&](PoolEntry const& candidate)
+			auto reusable = find_if(active.begin(), active.end(), [&](ActivePoolEntry const& candidate)
 			{
-				return candidate.lifetime.lastPass < lifetime.firstPass && compatibleForAliasing(candidate.lifetime, lifetime);
+				return candidate.lastPass < lifetime->firstPass && compatibleForAliasing(mPool[candidate.poolIndex].lifetime, *lifetime);
 			});
-			if (reusable != pool.end())
+			if (reusable != active.end())
 			{
-				reusable->lifetime.lastPass = lifetime.lastPass;
-				mTargets.emplace(makeKey(lifetime.image), reusable->target);
+				reusable->lastPass = lifetime->lastPass;
+				mTargets.emplace(makeKey(lifetime->image), mPool[reusable->poolIndex].target);
 				continue;
 			}
-			auto const options = makeOptions(lifetime.desc);
-			string const name = "RenderGraph_Image" + to_string(lifetime.image.id) + "_v" + to_string(lifetime.image.version);
-			auto target = mRenderSystem->createRenderTexture(name, lifetime.size.x, lifetime.size.y, options);
-			pool.push_back({ lifetime, target });
-			mTargets.emplace(makeKey(lifetime.image), move(target));
+
+			auto pooled = find_if(mPool.begin(), mPool.end(), [&](PoolEntry const& candidate)
+			{
+				if (!compatibleForAliasing(candidate.lifetime, *lifetime)) return false;
+				return find_if(active.begin(), active.end(), [&](ActivePoolEntry const& inUse) { return inUse.poolIndex == (size_t)(&candidate - mPool.data()); }) == active.end();
+			});
+			size_t poolIndex;
+			if (pooled != mPool.end())
+			{
+				poolIndex = (size_t)(pooled - mPool.begin());
+			}
+			else
+			{
+				auto const options = makeOptions(lifetime->desc);
+				string const name = "RenderGraph_Image" + to_string(lifetime->image.id) + "_v" + to_string(lifetime->image.version);
+				mPool.push_back({ *lifetime, mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, options) });
+				poolIndex = mPool.size() - 1;
+			}
+			active.push_back({ poolIndex, lifetime->lastPass });
+			mTargets.emplace(makeKey(lifetime->image), mPool[poolIndex].target);
 		}
 	}
 
@@ -129,6 +147,7 @@ namespace mpp
 	{
 		mTargets.clear();
 		mImportedTargets.clear();
+		mPool.clear();
 	}
 
 	RenderTargetPtr RenderGraphTargets::get(GraphImageHandle image) const
