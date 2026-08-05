@@ -1,3 +1,5 @@
+#include <glew/glew.h>
+
 #include <map>
 #include <sstream>
 
@@ -55,6 +57,40 @@ namespace mpp
 				utils::StringUtils::toUpper(value);
 				return value == "TRUE" || value == "1";
 			}
+
+			TextureColourSpace parseColourSpace(string value, string const& filepath)
+			{
+				utils::StringUtils::toUpper(value);
+				if (value == "LINEAR" || value == "LINEAR_HDR") return TextureColourSpace::Linear;
+				if (value == "SRGB" || value == "DISPLAY") return TextureColourSpace::Srgb;
+				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph colour space in " + filepath + ".", __LINE__, __FILE__, __func__);
+			}
+
+			uint32_t parseMinFilter(string value, string const& filepath)
+			{
+				utils::StringUtils::toUpper(value);
+				static map<string, uint32_t> const values = { { "NEAREST", GL_NEAREST }, { "LINEAR", GL_LINEAR }, { "NEAREST_MIPMAP_NEAREST", GL_NEAREST_MIPMAP_NEAREST }, { "LINEAR_MIPMAP_NEAREST", GL_LINEAR_MIPMAP_NEAREST }, { "NEAREST_MIPMAP_LINEAR", GL_NEAREST_MIPMAP_LINEAR }, { "LINEAR_MIPMAP_LINEAR", GL_LINEAR_MIPMAP_LINEAR } };
+				auto const found = values.find(value);
+				if (found != values.end()) return found->second;
+				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph min filter in " + filepath + ".", __LINE__, __FILE__, __func__);
+			}
+
+			uint32_t parseMagFilter(string value, string const& filepath)
+			{
+				utils::StringUtils::toUpper(value);
+				if (value == "NEAREST") return GL_NEAREST;
+				if (value == "LINEAR") return GL_LINEAR;
+				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph mag filter in " + filepath + ".", __LINE__, __FILE__, __func__);
+			}
+
+			uint32_t parseWrap(string value, string const& filepath)
+			{
+				utils::StringUtils::toUpper(value);
+				static map<string, uint32_t> const values = { { "REPEAT", GL_REPEAT }, { "MIRRORED_REPEAT", GL_MIRRORED_REPEAT }, { "CLAMP_TO_EDGE", GL_CLAMP_TO_EDGE }, { "CLAMP_TO_BORDER", GL_CLAMP_TO_BORDER } };
+				auto const found = values.find(value);
+				if (found != values.end()) return found->second;
+				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph wrapping in " + filepath + ".", __LINE__, __FILE__, __func__);
+			}
 		}
 
 		RenderGraph RenderGraphParser::fromFile(string const& filepath)
@@ -80,6 +116,15 @@ namespace mpp
 				GraphImageDesc desc;
 				desc.format = parseFormat(image.getEntry("format").getValue(), filepath);
 				desc.relativeSize = image.hasEntry("scale") ? parseVec2(image.getEntry("scale").getValue()) : glm::vec2(1.0f);
+				if (image.hasEntry("width")) desc.absoluteSize.x = utils::StringUtils::parseUInt(image.getEntry("width").getValue());
+				if (image.hasEntry("height")) desc.absoluteSize.y = utils::StringUtils::parseUInt(image.getEntry("height").getValue());
+				if (image.hasEntry("samples")) desc.samples = utils::StringUtils::parseUInt(image.getEntry("samples").getValue());
+				if (image.hasEntry("mipLevels")) desc.mipLevels = utils::StringUtils::parseUInt(image.getEntry("mipLevels").getValue());
+				if (image.hasEntry("colourSpace")) desc.colourSpace = parseColourSpace(image.getEntry("colourSpace").getValue(), filepath);
+				if (image.hasEntry("minFilter")) desc.params.minFilter = parseMinFilter(image.getEntry("minFilter").getValue(), filepath);
+				if (image.hasEntry("magFilter")) desc.params.magFilter = parseMagFilter(image.getEntry("magFilter").getValue(), filepath);
+				if (image.hasEntry("wrap")) desc.params.wrap = parseWrap(image.getEntry("wrap").getValue(), filepath);
+				desc.params.useMipmaps = desc.mipLevels > 1;
 				desc.external = image.hasEntry("import") || (image.hasEntry("external") && parseBool(image.getEntry("external").getValue()));
 				desc.transient = !image.hasEntry("transient") || parseBool(image.getEntry("transient").getValue());
 				string usage = image.getEntry("usage").getValue();
