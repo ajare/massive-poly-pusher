@@ -37,7 +37,8 @@ namespace mpp
 		// Explicit opt-in graph paths. Default/PbrForward retain validated manual
 		// target/presentation sequences until graph output is independently proven.
 		GraphPbrForward,
-		GraphLegacyForward
+		GraphLegacyForward,
+		XmlGraphPbrForward
 	};
 
 	enum class PbrToneMapOperator
@@ -99,6 +100,8 @@ namespace mpp
 		float exposure{ 1.0f };
 		PbrToneMapOperator toneMapOperator{ PbrToneMapOperator::Aces };
 		PbrEnvironmentPtr environment;
+		// Optional immutable XML graph topology for XmlGraphPbrForward.
+		ResourcePtr graphTemplate;
 		BloomOptions bloom;
 		// Empty means this pipeline is not a shadow-domain participant.
 		std::string shadowDomain;
