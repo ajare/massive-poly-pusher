@@ -263,10 +263,18 @@ namespace mpp
 			GLboolean depthEnabled = GL_FALSE, cullEnabled = GL_FALSE, scissorEnabled = GL_FALSE, depthWriteEnabled = GL_TRUE;
 			if (imagePass)
 			{
+				// Fullscreen programs use the renderer's identity 2D transform. Graph
+				// execution enters from a 3D scene projection, so preserve it and
+				// install the same transform used by the manual post-effect path.
 				depthEnabled = glIsEnabled(GL_DEPTH_TEST);
 				cullEnabled = glIsEnabled(GL_CULL_FACE);
 				scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 				GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteEnabled));
+				mRenderSystem->pushProjectionMatrix();
+				mRenderSystem->pushCameraMatrix();
+				mRenderSystem->pushModelMatrix();
+				mRenderSystem->setProjection2dOrthographic();
+				mRenderSystem->resetTransform();
 				GL_CHECK(glDisable(GL_DEPTH_TEST));
 				GL_CHECK(glDepthMask(GL_FALSE));
 				GL_CHECK(glDisable(GL_CULL_FACE));
@@ -279,6 +287,9 @@ namespace mpp
 				GL_CHECK(glDepthMask(depthWriteEnabled));
 				if (cullEnabled) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
 				if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+				mRenderSystem->popModelMatrix();
+				mRenderSystem->popCameraMatrix();
+				mRenderSystem->popProjectionMatrix();
 			};
 			try
 			{
