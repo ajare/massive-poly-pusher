@@ -232,7 +232,7 @@ Graphs should be cached by pipeline topology and recompiled when viewport size, 
 | `Clear` | Replace attachment with supplied clear value. | `glClearBuffer*` after framebuffer bind. |
 | `DontCare` load | Previous contents are never read. | Do not clear; optionally invalidate when an available extension can do so safely. |
 | `Store` | Later pass/external consumer may read results. | Keep attachment alive until last reader. |
-| `DontCare` store | No later consumer requires results. | Release transient allocation at lifetime end; optional invalidate is an optimization. |
+| `DontCare` store | No later consumer requires results. | Executor calls `glInvalidateFramebuffer` when OpenGL 4.3 / `ARB_invalidate_subdata` is available; otherwise it safely retains contents. |
 
 Do not depend on `glInvalidateFramebuffer` for correctness because it is newer than the baseline. It may be an optional optimization after capability detection.
 
@@ -291,7 +291,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 - [x] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. `RenderGraphTargets` allocates planned non-imported image versions (including depth-only targets), aliases compatible non-overlapping lifetimes within a plan, and supports imported backing targets. Cross-frame pooling, MSAA, and mip allocation remain future work.
 - [x] Bind graph framebuffers, configure draw/read buffers, clear declared attachments, and expose read-only image views to execution callbacks. `RenderGraphExecutor` creates pass framebuffer views, calls `glDrawBuffers`, clears `Clear` outputs, and provides `RenderGraphExecutionContext::getImage()`.
 - [x] Add one colour plus optional depth attachment execution first; retain existing `RenderTexture` ownership APIs as compatibility wrappers. Executor supports a single target, depth-only pass, colour+depth pass, and MRT through temporary framebuffer views.
-- [~] Add resize invalidation and GL object-lifetime tests. Supplying a plan built for a new viewport discards owned targets and recreates the plan; automated GPU/lifetime tests are outstanding.
+- [~] Add resize invalidation and GL object-lifetime tests. `RenderGraphTargets` retains a cross-frame compatible target pool, allocating only when a new plan has no compatible target; calling `clear()` releases that pool. A changed viewport produces incompatible dimensions and therefore fresh targets. Automated GPU/lifetime tests are outstanding.
 - [x] Add GPU debug labels containing graph/pass/image names. `RenderTexture` labels graph image allocations and executor-created pass framebuffers are labelled `RenderGraphPass: <pass>`.
 
 **Acceptance:** a graph executes two fullscreen passes at resized dimensions without framebuffer errors or leaked targets.

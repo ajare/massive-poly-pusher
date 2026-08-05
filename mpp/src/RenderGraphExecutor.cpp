@@ -100,6 +100,22 @@ namespace mpp
 				}
 			}
 		}
+
+		void discardDontCareOutputs(GraphPassInfo const& pass)
+		{
+			if (!GLEW_VERSION_4_3 && !GLEW_ARB_invalidate_subdata) return;
+			vector<GLenum> attachments;
+			for (size_t index = 0; index < pass.colourOutputs.size(); ++index)
+			{
+				if (pass.colourOutputs[index].store == GraphStoreOp::DontCare)
+					attachments.push_back((GLenum)(GL_COLOR_ATTACHMENT0 + index));
+			}
+			for (auto const& output : pass.depthOutputs)
+			{
+				if (output.store == GraphStoreOp::DontCare) attachments.push_back(GL_DEPTH_ATTACHMENT);
+			}
+			if (!attachments.empty()) GL_CHECK(glInvalidateFramebuffer(GL_FRAMEBUFFER, (GLsizei)attachments.size(), attachments.data()));
+		}
 	}
 
 	RenderGraphExecutionContext::RenderGraphExecutionContext(RenderGraphTargets const* targets)
@@ -186,6 +202,7 @@ namespace mpp
 			{
 				clearPassOutputs(pass);
 				callback->second(context);
+				discardDontCareOutputs(pass);
 				mRenderSystem->popRenderTarget();
 			}
 			catch (...)
