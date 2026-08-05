@@ -5,6 +5,7 @@
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphScenePass.h"
+#include "mpp/RenderGraphTemplate.h"
 #include "mpp/Caps.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
@@ -205,7 +206,8 @@ namespace mpp
 			}
 			auto override = mParameterOverrides.find(passHandle.id);
 			RenderGraphExecutionContext context(&targets, override == mParameterOverrides.end() ? &pass.parameters : &override->second);
-			if (!callback && !scenePass)
+			bool const declarativeFullscreen = !callback && !scenePass && mExecutingTemplate && pass.type == GraphPassType::Fullscreen && !pass.programResource.empty();
+			if (!callback && !scenePass && !declarativeFullscreen)
 			{
 				THROW_MPP("No callback registered for render graph pass '" + pass.name + "'" +
 					(pass.callbackFactory.empty() ? "." : " (factory '" + pass.callbackFactory + "')."), __LINE__, __FILE__, __func__);
@@ -242,7 +244,15 @@ namespace mpp
 			{
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				clearPassOutputs(pass);
-				if (callback) callback(context); else scenePass->execute(context);
+				if (callback) callback(context);
+				else if (scenePass) scenePass->execute(context);
+				else
+				{
+					vector<pair<string, Texture*>> samplers;
+					for (auto const& binding : pass.samplerBindings)
+						samplers.push_back({ binding.sampler, dynamic_cast<Texture*>(context.getImage(binding.image).get()) });
+					mRenderSystem->renderGraphFullscreen(mExecutingTemplate->getProgram(passHandle), samplers, context.getParameters());
+				}
 				discardDontCareOutputs(pass);
 				mRenderSystem->popRenderTarget();
 			}
@@ -251,6 +261,22 @@ namespace mpp
 				mRenderSystem->popRenderTarget();
 				throw;
 			}
+		}
+	}
+
+	void RenderGraphExecutor::execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps)
+	{
+		if (!graphTemplate.getGraph()) THROW_MPP("Cannot execute an unloaded RenderGraphTemplate.", __LINE__, __FILE__, __func__);
+		mExecutingTemplate = &graphTemplate;
+		try
+		{
+			execute(*graphTemplate.getGraph(), targets, caps);
+			mExecutingTemplate = nullptr;
+		}
+		catch (...)
+		{
+			mExecutingTemplate = nullptr;
+			throw;
 		}
 	}
 }
