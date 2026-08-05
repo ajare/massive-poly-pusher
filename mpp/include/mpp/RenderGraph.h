@@ -99,6 +99,26 @@ namespace mpp
 		std::vector<std::string> diagnostics;
 	};
 
+	// One physical attachment requirement for a produced image version. The
+	// first RG2 allocator may allocate one target per entry; later allocators
+	// can alias entries with compatible, non-overlapping intervals.
+	struct _MPPAPI GraphImageLifetime
+	{
+		GraphImageHandle image;
+		GraphImageDesc desc;
+		glm::uvec2 size{ 0 };
+		uint32_t firstPass{ UINT32_MAX };
+		uint32_t lastPass{ UINT32_MAX };
+	};
+
+	struct _MPPAPI RenderGraphAllocationPlan
+	{
+		bool valid{ false };
+		std::vector<GraphImageLifetime> allocatedImages;
+		std::vector<GraphImageHandle> importedImages;
+		std::vector<std::string> diagnostics;
+	};
+
 	// Declarative topology only. Allocation/execution is deliberately separate
 	// so validation is usable without an OpenGL context.
 	class _MPPAPI RenderGraph
@@ -129,6 +149,7 @@ namespace mpp
 
 		RenderGraphCompileResult compile() const;
 		RenderGraphCompileResult compile(Caps const& caps) const;
+		RenderGraphAllocationPlan buildAllocationPlan(glm::uvec2 const& viewport) const;
 
 		// Context-free diagnostic dump for logs and tests. It reports declared
 		// images, their produced versions, and each pass's graph dependencies.

@@ -189,6 +189,69 @@ namespace mpp
 		return result;
 	}
 
+	RenderGraphAllocationPlan RenderGraph::buildAllocationPlan(glm::uvec2 const& viewport) const
+	{
+		RenderGraphAllocationPlan plan;
+		if (viewport.x == 0 || viewport.y == 0)
+		{
+			plan.diagnostics.push_back("Render graph allocation viewport must be non-zero.");
+			return plan;
+		}
+		auto compiled = compile();
+		if (!compiled.valid)
+		{
+			plan.diagnostics = move(compiled.diagnostics);
+			return plan;
+		}
+
+		vector<vector<uint32_t>> allocationIndex;
+		allocationIndex.reserve(mImages.size());
+		for (auto const& image : mImages)
+			allocationIndex.emplace_back(image.producers.size(), UINT32_MAX);
+
+		auto markImage = [&](GraphImageHandle handle, uint32_t passPosition)
+		{
+			auto const& image = mImages[handle.id];
+			if (handle.version == 0 && image.desc.external)
+			{
+				if (find_if(plan.importedImages.begin(), plan.importedImages.end(), [&](GraphImageHandle current)
+					{ return current.id == handle.id && current.version == handle.version; }) == plan.importedImages.end())
+				{
+					plan.importedImages.push_back(handle);
+				}
+				return;
+			}
+			auto& index = allocationIndex[handle.id][handle.version];
+			if (index == UINT32_MAX)
+			{
+				GraphImageLifetime lifetime;
+				lifetime.image = handle;
+				lifetime.desc = image.desc;
+				lifetime.size.x = image.desc.absoluteSize.x ? image.desc.absoluteSize.x : max(1u, (uint32_t)(viewport.x * image.desc.relativeSize.x));
+				lifetime.size.y = image.desc.absoluteSize.y ? image.desc.absoluteSize.y : max(1u, (uint32_t)(viewport.y * image.desc.relativeSize.y));
+				lifetime.firstPass = passPosition;
+				lifetime.lastPass = passPosition;
+				index = (uint32_t)plan.allocatedImages.size();
+				plan.allocatedImages.push_back(lifetime);
+			}
+			else
+			{
+				plan.allocatedImages[index].firstPass = min(plan.allocatedImages[index].firstPass, passPosition);
+				plan.allocatedImages[index].lastPass = max(plan.allocatedImages[index].lastPass, passPosition);
+			}
+		};
+
+		for (uint32_t position = 0; position < compiled.passOrder.size(); ++position)
+		{
+			auto const& pass = mPasses[compiled.passOrder[position].id];
+			for (auto const& input : pass.sampledInputs) markImage(input, position);
+			for (auto const& output : pass.colourOutputs) markImage(output.image, position);
+			for (auto const& output : pass.depthOutputs) markImage(output.image, position);
+		}
+		plan.valid = true;
+		return plan;
+	}
+
 	string RenderGraph::describe() const
 	{
 		ostringstream output;
