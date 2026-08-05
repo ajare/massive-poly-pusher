@@ -452,6 +452,15 @@ namespace mpp
 
 		mCaps.maxTextureSize = maxTextureSize;
 		mCaps.maxRectTextureSize = maxRectTextureSize;
+
+		// Framebuffer/MRT limits.  These are required before a render graph may
+		// turn a declared list of colour outputs into glDrawBuffers calls.
+		GLint maxColourAttachments = 1;
+		GLint maxDrawBuffers = 1;
+		GL_CHECK(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxColourAttachments));
+		GL_CHECK(glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers));
+		mCaps.maxColourAttachments = (uint32_t)maxColourAttachments;
+		mCaps.maxDrawBuffers = (uint32_t)maxDrawBuffers;
 		
 		// Get depth range
 		GLfloat depthRange[2] = { 0.0f, 0.0f };
@@ -505,6 +514,8 @@ namespace mpp
 		infoMessage(STR_FORMAT("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
 		infoMessage(STR_FORMAT("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
 		infoMessage(STR_FORMAT("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
+		infoMessage(STR_FORMAT("Max colour attachments: {}", mCaps.maxColourAttachments));
+		infoMessage(STR_FORMAT("Max draw buffers: {}", mCaps.maxDrawBuffers));
 		infoMessage(STR_FORMAT("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
 		infoMessage(STR_FORMAT("Max anisotropy: {}", mCaps.maxAnisotropy));
 		infoMessage(STR_FORMAT("Max recommended elements: {}", mCaps.maxRecommendedElements));

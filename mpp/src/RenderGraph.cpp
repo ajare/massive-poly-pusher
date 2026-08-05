@@ -3,6 +3,7 @@
 #include <set>
 
 #include "mpp/RenderGraph.h"
+#include "mpp/Caps.h"
 #include "mpp/MppException.h"
 
 using namespace std;
@@ -170,6 +171,25 @@ namespace mpp
 			return result;
 		}
 		result.valid = true;
+		return result;
+	}
+
+	RenderGraphCompileResult RenderGraph::compile(Caps const& caps) const
+	{
+		auto result = compile();
+		for (auto const& pass : mPasses)
+		{
+			if (pass.colourOutputs.size() > caps.maxColourAttachments || pass.colourOutputs.size() > caps.maxDrawBuffers)
+			{
+				result.diagnostics.push_back("Pass '" + pass.name + "' declares " + to_string(pass.colourOutputs.size()) +
+					" colour outputs, exceeding the renderer MRT capability.");
+			}
+		}
+		if (!result.diagnostics.empty())
+		{
+			result.valid = false;
+			result.passOrder.clear();
+		}
 		return result;
 	}
 }
