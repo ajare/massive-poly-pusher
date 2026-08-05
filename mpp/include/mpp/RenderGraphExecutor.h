@@ -7,6 +7,7 @@
 #include "mpp/Config.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphTargets.h"
+#include "mpp/RenderGraphFrameContext.h"
 
 namespace mpp
 {
@@ -19,11 +20,13 @@ namespace mpp
 	{
 		RenderGraphTargets const* mTargets;
 		UniformCollection const* mParameters;
+		RenderGraphFrameContext const* mFrame;
 
 	public:
-		explicit RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters = nullptr);
+		explicit RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters = nullptr, RenderGraphFrameContext const* frame = nullptr);
 		RenderTargetPtr getImage(GraphImageHandle image) const;
 		UniformCollection const& getParameters() const;
+		RenderGraphFrameContext const& getFrame() const;
 	};
 
 	// Executes graphics passes supplied by application callbacks. It creates a
@@ -34,6 +37,7 @@ namespace mpp
 		RenderSystem* mRenderSystem;
 		RenderGraphPassFactoryRegistry const* mFactoryRegistry{ nullptr };
 		RenderGraphTemplate const* mExecutingTemplate{ nullptr };
+		RenderGraphFrameContext const* mFrameContext{ nullptr };
 		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
 		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
 		std::map<uint32_t, UniformCollection> mParameterOverrides;
@@ -46,6 +50,7 @@ namespace mpp
 
 		void setPassCallback(GraphPassHandle pass, std::function<void(RenderGraphExecutionContext const&)> callback);
 		void setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry);
+		void setFrameContext(RenderGraphFrameContext const* frameContext);
 		void setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters);
 		void clearPassCallbacks();
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);

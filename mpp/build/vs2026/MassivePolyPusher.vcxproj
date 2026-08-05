@@ -67,6 +67,7 @@
     <ClInclude Include="..\..\include\mpp\RenderGraphBuilder.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphTargets.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphExecutor.h" />
+    <ClInclude Include="..\..\include\mpp\RenderGraphFrameContext.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphStream.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphTemplate.h" />
     <ClInclude Include="..\..\include\mpp\RenderGraphPassFactoryRegistry.h" />

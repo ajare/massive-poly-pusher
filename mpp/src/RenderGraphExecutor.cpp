@@ -121,9 +121,10 @@ namespace mpp
 		}
 	}
 
-	RenderGraphExecutionContext::RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters)
+	RenderGraphExecutionContext::RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters, RenderGraphFrameContext const* frame)
 		: mTargets(targets)
 		, mParameters(parameters)
+		, mFrame(frame)
 	{
 	}
 
@@ -136,6 +137,12 @@ namespace mpp
 	{
 		if (!mParameters) THROW_MPP("Render graph pass has no parameter collection.", __LINE__, __FILE__, __func__);
 		return *mParameters;
+	}
+
+	RenderGraphFrameContext const& RenderGraphExecutionContext::getFrame() const
+	{
+		if (!mFrame) THROW_MPP("Render graph execution has no frame context.", __LINE__, __FILE__, __func__);
+		return *mFrame;
 	}
 
 	RenderGraphExecutor::RenderGraphExecutor(RenderSystem* renderSystem)
@@ -161,6 +168,11 @@ namespace mpp
 	void RenderGraphExecutor::setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry)
 	{
 		mFactoryRegistry = registry;
+	}
+
+	void RenderGraphExecutor::setFrameContext(RenderGraphFrameContext const* frameContext)
+	{
+		mFrameContext = frameContext;
 	}
 
 	void RenderGraphExecutor::setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters)
@@ -205,7 +217,7 @@ namespace mpp
 				}
 			}
 			auto override = mParameterOverrides.find(passHandle.id);
-			RenderGraphExecutionContext context(&targets, override == mParameterOverrides.end() ? &pass.parameters : &override->second);
+			RenderGraphExecutionContext context(&targets, override == mParameterOverrides.end() ? &pass.parameters : &override->second, mFrameContext);
 			bool const declarativeFullscreen = !callback && !scenePass && mExecutingTemplate && pass.type == GraphPassType::Fullscreen && !pass.programResource.empty();
 			if (!callback && !scenePass && !declarativeFullscreen)
 			{
