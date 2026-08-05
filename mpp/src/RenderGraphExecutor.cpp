@@ -22,6 +22,7 @@ namespace mpp
 		{
 			GLuint mFramebuffer{ 0 };
 			vector<GLenum> mDrawBuffers;
+			vector<RenderTexture*> mMipTargets;
 
 			static RenderTexture* requireRenderTexture(RenderTargetPtr const& target)
 			{
@@ -36,6 +37,7 @@ namespace mpp
 			void deactivate() override
 			{
 				GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+				for (auto target : mMipTargets) target->generateMipMaps();
 			}
 
 			void activate() override
@@ -55,6 +57,7 @@ namespace mpp
 				for (size_t index = 0; index < colours.size(); ++index)
 				{
 					auto texture = requireRenderTexture(colours[index]);
+					mMipTargets.push_back(texture);
 					if (texture->getWidth() != mWidth || texture->getHeight() != mHeight)
 					{
 						THROW_MPP("Render graph pass attachment dimensions do not match.", __LINE__, __FILE__, __func__);
@@ -66,6 +69,7 @@ namespace mpp
 				if (depth)
 				{
 					auto texture = requireRenderTexture(depth);
+					mMipTargets.push_back(texture);
 					if (texture->getWidth() != mWidth || texture->getHeight() != mHeight)
 					{
 						THROW_MPP("Render graph depth attachment dimensions do not match colour attachments.", __LINE__, __FILE__, __func__);

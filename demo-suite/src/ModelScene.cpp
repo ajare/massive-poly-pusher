@@ -1056,7 +1056,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	{
 		throw std::runtime_error("Render graph GPU tests failed: " + graphGpuTestFailure);
 	}
-	renderSystem->infoMessage("Render graph GPU framebuffer/readback/resize/MRT/alias/lifetime tests passed.");
+	renderSystem->infoMessage("Render graph GPU framebuffer/readback/resize/MRT/mip/alias/lifetime tests passed.");
 }
 
 void ModelScene::teardownImGui()

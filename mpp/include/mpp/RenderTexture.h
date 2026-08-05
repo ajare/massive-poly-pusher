@@ -62,6 +62,9 @@ namespace mpp
 
 		void bindDepth(uint32_t unit);
 
+		// Regenerates declared colour/depth mip chains after level-zero writes.
+		void generateMipMaps();
+
 		uint32_t getColourAttachmentId(size_t attachment) const;
 
 	};
