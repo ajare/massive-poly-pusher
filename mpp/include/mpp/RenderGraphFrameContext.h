@@ -5,6 +5,7 @@
 #include "mpp/Camera.h"
 #include "mpp/Scene.h"
 #include "mpp/SceneModel3d.h"
+#include "mpp/RenderPass.h"
 
 namespace mpp
 {
@@ -20,5 +21,6 @@ namespace mpp
 		CameraPtr camera;
 		std::vector<SceneModel3dPtr> visibleModels;
 		RenderPipelineOptions const* pipelineOptions{ nullptr };
+		RenderPassPtr sceneRenderPass;
 	};
 }
