@@ -5,6 +5,7 @@
 
 #include "mpp/PbrMaterial.h"
 #include "mpp/PbrMaterialStream.h"
+#include "mpp/PbrShaders.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/String.h"
@@ -129,7 +130,11 @@ namespace mpp
 				THROW_MPP("Unknown PbrMaterialStream::ProgramOptions::Shader::Type", __LINE__, __FILE__, __func__);
 			}
 
-			// Get or create program, either with default shaders or loaded strings in ProgOpts.
+			// An omitted program selects the engine-owned metallic-roughness shader.
+			if (progOpts.vertexShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) vertexShaderSrc = BuiltInPbrVertexShader;
+			if (progOpts.fragmentShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) fragmentShaderSrc = BuiltInPbrFragmentShader;
+
+			// Get or create program, either with built-in PBR shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)
 			{
 				mProgram = resourceMgr->getDefault2dProgram(vertexShaderSrc, fragmentShaderSrc, progOpts.spec, programFlags, false);
