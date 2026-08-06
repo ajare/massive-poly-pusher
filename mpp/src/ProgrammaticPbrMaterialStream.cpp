@@ -4,11 +4,13 @@
 #include "mpp/ProgrammaticPbrMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
 namespace mpp
 {
+	namespace { void requireExtensionName(string const& name) { if (name.rfind("PBR_EXT_", 0) != 0) THROW_MPP("PBR extension names must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__); } }
 
 	ProgrammaticPbrMaterialStream::ProgrammaticPbrMaterialStream(ResourceManager* resourceMgr)
 		: PbrMaterialStream(resourceMgr)
@@ -209,6 +211,13 @@ namespace mpp
 	void ProgrammaticPbrMaterialStream::setOcclusionMap(string const& texture, uint32_t quality) { setTexture("PBR_OCCLUSION_MAP", texture, quality); }
 	void ProgrammaticPbrMaterialStream::setEmissiveMap(string const& texture, uint32_t quality) { setTexture("PBR_EMISSIVE_MAP", texture, quality); }
 
+	void ProgrammaticPbrMaterialStream::setExtensionTexture(string const& name, string const& texture, TextureTarget target, uint32_t quality) { requireExtensionName(name); setTexture(name, texture, quality); mQualitySettings[quality].spec.textures.back().target = target; }
+	void ProgrammaticPbrMaterialStream::setExtensionUniform(string const& name, int32_t value, uint32_t quality) { requireExtensionName(name); setUniform(name, value, quality); }
+	void ProgrammaticPbrMaterialStream::setExtensionUniform(string const& name, float value, uint32_t quality) { requireExtensionName(name); setUniform(name, value, quality); }
+	void ProgrammaticPbrMaterialStream::setExtensionUniform(string const& name, glm::vec2 const& value, uint32_t quality) { requireExtensionName(name); setUniform(name, value, quality); }
+	void ProgrammaticPbrMaterialStream::setExtensionUniform(string const& name, glm::vec3 const& value, uint32_t quality) { requireExtensionName(name); setUniform(name, value, quality); }
+	void ProgrammaticPbrMaterialStream::setExtensionUniform(string const& name, glm::vec4 const& value, uint32_t quality) { requireExtensionName(name); setUniform(name, value, quality); }
+
 	void ProgrammaticPbrMaterialStream::setDefaultTexture(string const& sampler, uint32_t quality)
 	{
 		auto& qs = mQualitySettings[quality];
@@ -222,6 +231,11 @@ namespace mpp
 		textureOptions.existingResource = "__mpp_tex_none__";
 
 		qs.spec.textures.push_back(textureOptions);
+	}
+
+	void ProgrammaticPbrMaterialStream::setSurface(PbrMaterialSpecification::PbrSurface const& surface, uint32_t quality)
+	{
+		setPbrSurface(surface, quality);
 	}
 
 	void ProgrammaticPbrMaterialStream::setPbrSurface(PbrMaterialSpecification::PbrSurface const& surface, uint32_t quality)
@@ -255,6 +269,11 @@ namespace mpp
 		auto& qs = mQualitySettings[quality];
 
 		qs.spec.uniforms.setUniform(name, value);
+	}
+
+	void ProgrammaticPbrMaterialStream::setUniform(string const& name, glm::vec2 const& value, uint32_t quality)
+	{
+		mQualitySettings[quality].spec.uniforms.setUniform(name, value);
 	}
 
 	void ProgrammaticPbrMaterialStream::setUniform(string const& name, glm::vec3 const& value, uint32_t quality)

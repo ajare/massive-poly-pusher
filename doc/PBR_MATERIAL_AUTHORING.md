@@ -132,27 +132,27 @@ The supported sampler names are exactly:
 First declare/load texture resources by the names that the material will reference. A `ProgrammaticTextureStream` can create a texture resource from an image loader; configure its `TextureColourSpace`, target, filtering, and wrapping before declaration. The material stream then references those resource names with `setTexture`.
 
 ```cpp
-mpp::MaterialSpecification::PbrSurface surface;
+mpp::PbrMaterialSpecification::PbrSurface surface;
 surface.enabled = true;
 surface.baseColourFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
 surface.metallicFactor = 0.0f;
 surface.roughnessFactor = 1.0f;
 surface.normalScale = 1.0f;
 surface.occlusionStrength = 1.0f;
-surface.alphaMode = mpp::MaterialSpecification::PbrAlphaMode::Opaque;
+surface.alphaMode = mpp::PbrMaterialSpecification::PbrAlphaMode::Opaque;
 
 // texture resources must already exist, for example "Statue.Albedo".
-auto stream = new mpp::ProgrammaticMaterialStream(resourceMgr);
+auto stream = new mpp::ProgrammaticPbrMaterialStream(resourceMgr);
 stream->setProgram2d(false);
 stream->setMeshSpecification(statueMeshSpecification); // includes tangent4
 stream->setProgramVertexShaderFile("res/statue/statue_pbr.vert");
 stream->setProgramFragmentShaderFile("res/statue/statue_pbr.frag");
-stream->setPbrSurface(surface);
-stream->setTexture("PBR_BASE_COLOUR_MAP", "Statue.Albedo");
-stream->setTexture("PBR_METALLIC_ROUGHNESS_MAP", "Statue.Orm");
-stream->setTexture("PBR_NORMAL_MAP", "Statue.Normal");
-stream->setTexture("PBR_OCCLUSION_MAP", "Statue.Orm");
-stream->setTexture("PBR_EMISSIVE_MAP", "Statue.Emissive");
+stream->setSurface(surface);
+stream->setBaseColourMap("Statue.Albedo");
+stream->setMetallicRoughnessMap("Statue.Orm");
+stream->setNormalMap("Statue.Normal");
+stream->setOcclusionMap("Statue.Orm");
+stream->setEmissiveMap("Statue.Emissive");
 
 auto material = resourceMgr->declareResource(
     "Statue.PbrMaterial", mpp::ResourceStreamPtr(stream)).first;
@@ -177,7 +177,49 @@ renderSystem->getOrCreateRenderPipeline("PBR", options);
 
 During a PBR scene flush, this active environment overrides material bindings for the irradiance, prefiltered-specular, and BRDF-LUT sampler names. ModelSpec `Ref` bindings remain useful as declared fallback/resource dependencies.
 
-## 5. Generate HDR IBL assets
+## 5. Custom PBR extensions
+
+A custom PBR program must retain the complete canonical PBR interface. Project-specific material inputs are additive and must use the reserved `PBR_EXT_` prefix. Core `PBR_*` factors/maps and pipeline-owned IBL slots cannot be replaced or redeclared as extensions.
+
+Declare extension values in the typed material:
+
+```xml
+<Extensions>
+    <Uniform>
+        <name>PBR_EXT_CLEARCOAT_WEIGHT</name>
+        <type>float</type>
+        <value>0.5</value>
+    </Uniform>
+    <Texture>
+        <name>PBR_EXT_DETAIL_MAP</name>
+        <Resource>
+            <target>2D</target>
+            <filename>detail.png</filename>
+            <colourSpace>LINEAR</colourSpace>
+        </Resource>
+    </Texture>
+    <Texture>
+        <name>PBR_EXT_LOOKUP_CUBE</name>
+        <target>CUBE</target>
+        <Ref>Project.LookupCube</Ref>
+    </Texture>
+</Extensions>
+```
+
+Rules:
+
+- Every extension name starts with `PBR_EXT_`.
+- Every active `PBR_EXT_*` uniform or sampler reflected from the program must have one matching declaration; unused declarations are rejected.
+- Uniform scalar/vector type and shape must exactly match reflection. Supported extension values are signed integers and floats with one to four components. Extension arrays and matrices are not currently exposed by the semantic API.
+- Extension textures support `2D` and `CUBE`; the declared target must match `sampler2D` or `samplerCube` reflection exactly.
+- Extensions have no neutral fallback. Missing values fail material creation.
+- Canonical maps remain semantic fields such as `BaseColourMap`; do not put canonical sampler names in `Extensions`.
+
+Programmatic authoring uses `setExtensionUniform()` and `setExtensionTexture()` on `ProgrammaticPbrMaterialStream`. These APIs reject names outside the extension namespace.
+
+Per-instance overrides may replace canonical factor uniforms and declared extension uniforms, but not texture maps. `MeshInstance::setUniformCollection()` validates each override against the material declaration and resolved program before rendering; unknown or type-mismatched values fail immediately.
+
+## 6. Generate HDR IBL assets
 
 Start with a linear, high-dynamic-range equirectangular panorama (`.hdr` or `.exr`). It must represent scene radiance; do not apply sRGB conversion or tone mapping. Use an IBL preprocessor such as cmftStudio, Filament `cmgen`, Blender, or an equivalent offline tool.
 
@@ -190,7 +232,7 @@ Generate all outputs from the **same** source panorama:
 
 The irradiance, prefiltered specular, and BRDF LUT are linear floating-point inputs. The shader samples the irradiance map using the normal and samples the prefiltered map using the reflection vector and roughness-selected mip. The background map should visually match the lighting maps but does not contribute lighting by itself.
 
-## 6. Export and validate ModelSpec assets
+## 7. Export and validate ModelSpec assets
 
 After changing the OBJ, ModelSpec, shader file, or any child texture definition, regenerate the model:
 

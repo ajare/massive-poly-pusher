@@ -6,6 +6,7 @@
 
 #include "mpp/MeshInstance.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/MppException.h"
 
 using namespace std;
 
@@ -241,6 +242,9 @@ namespace mpp
 	
 		if (mMaterial)
 		{
+			auto surface = dynamic_cast<Material*>(mMaterial.get());
+			if (!surface) THROW_MPP("MeshInstance material resource is not a Material.", __LINE__, __FILE__, __func__);
+			if (mUniforms) surface->validateInstanceUniforms(*mUniforms);
 			mMaterial->acquire(this);
 		}
 	}
@@ -288,6 +292,7 @@ namespace mpp
 	 */
 	void MeshInstance::setUniformCollection(shared_ptr<UniformCollection> uniforms)
 	{
+		if (uniforms && mMaterial) static_cast<Material*>(mMaterial.get())->validateInstanceUniforms(*uniforms);
 		mUniforms = uniforms;
 	}
 

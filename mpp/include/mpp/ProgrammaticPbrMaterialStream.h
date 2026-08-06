@@ -46,37 +46,35 @@ namespace mpp
 
 		void setProgramFragmentShaderResource(std::string const& resource, uint32_t quality = 0);
 
+	private:
 		void setTextureChild(std::string const& sampler, std::string const& resource, uint32_t quality = 0);
-
 		void setTexture(std::string const& sampler, std::string const& texture, uint32_t quality = 0);
+		void setDefaultTexture(std::string const& sampler, uint32_t quality = 0);
+		void setUniforms(UniformCollection const& uniforms, uint32_t quality = 0);
+		void setUniform(std::string const& name, int32_t value, uint32_t quality = 0);
+		void setUniform(std::string const& name, uint32_t value, uint32_t quality = 0);
+		void setUniform(std::string const& name, float value, uint32_t quality = 0);
+		void setUniform(std::string const& name, glm::vec2 const& value, uint32_t quality = 0);
+		void setUniform(std::string const& name, glm::vec3 const& value, uint32_t quality = 0);
+		void setUniform(std::string const& name, glm::vec4 const& value, uint32_t quality = 0);
+		void setUniform(std::string const& name, size_t count, int32_t const* values, uint32_t quality = 0);
+		void setUniform(std::string const& name, size_t count, uint32_t const* values, uint32_t quality = 0);
+		void setUniform(std::string const& name, size_t count, float const* values, uint32_t quality = 0);
+
+	public:
 		void setBaseColourMap(std::string const& texture, uint32_t quality = 0);
 		void setMetallicRoughnessMap(std::string const& texture, uint32_t quality = 0);
 		void setNormalMap(std::string const& texture, uint32_t quality = 0);
 		void setOcclusionMap(std::string const& texture, uint32_t quality = 0);
 		void setEmissiveMap(std::string const& texture, uint32_t quality = 0);
+		void setExtensionTexture(std::string const& name, std::string const& texture, TextureTarget target = TextureTarget::Texture2D, uint32_t quality = 0);
+		void setExtensionUniform(std::string const& name, int32_t value, uint32_t quality = 0);
+		void setExtensionUniform(std::string const& name, float value, uint32_t quality = 0);
+		void setExtensionUniform(std::string const& name, glm::vec2 const& value, uint32_t quality = 0);
+		void setExtensionUniform(std::string const& name, glm::vec3 const& value, uint32_t quality = 0);
+		void setExtensionUniform(std::string const& name, glm::vec4 const& value, uint32_t quality = 0);
 
-		void setDefaultTexture(std::string const& sampler, uint32_t quality = 0);
-
+		void setSurface(PbrMaterialSpecification::PbrSurface const& surface, uint32_t quality = 0);
 		void setPbrSurface(PbrMaterialSpecification::PbrSurface const& surface, uint32_t quality = 0);
-
-		void setUniforms(UniformCollection const& uniforms, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, int32_t value, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, uint32_t value, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, float value, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, glm::vec2 const& value, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, glm::vec3 const& value, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, glm::vec4 const& value, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, size_t count, int32_t const* values, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, size_t count, uint32_t const* values, uint32_t quality = 0);
-
-		void setUniform(std::string const& name, size_t count, float const* values, uint32_t quality = 0);
 	};
 }

@@ -66,6 +66,9 @@
 					<alphaCutoff>0.5</alphaCutoff>
 					<doubleSided>false</doubleSided>
 				</Surface>
+				<Extensions>
+					<Uniform><name>PBR_EXT_EMISSIVE_SCALE</name><type>float</type><value>1.0</value></Uniform>
+				</Extensions>
 
 				<BaseColourMap><Resource>
 					<target>2D</target><filename>stone-1024__Jpg_albedo.png</filename><colourSpace>SRGB</colourSpace>

@@ -190,7 +190,13 @@ The program must use a PBR vertex and fragment shader that declare the sampler a
 
 Use those two files as a starting point. `statue_pbr.frag` implements Cook-Torrance direct lighting (GGX, Smith, Schlick Fresnel), normal mapping, AO, emissive, alpha mask, double-sided normals, and split-sum IBL.
 
-## 7. Export the model
+## 7. Extension contract
+
+Custom PBR programs may add uniforms and 2D/cube samplers under the `PBR_EXT_` namespace. Extensions are strictly additive: the full canonical metallic-roughness interface remains mandatory. Material creation verifies namespace, declaration completeness, reflected uniform type/shape, sampler target, and absence of undeclared active extension inputs. There are no extension fallbacks.
+
+Use `<Extensions>` in typed `<PbrMaterial>` XML and `ProgrammaticPbrMaterialStream::setExtensionUniform()` / `setExtensionTexture()` in C++. Canonical factor and declared extension uniforms may be overridden per instance; textures remain material-owned. See [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md#5-custom-pbr-extensions) for complete XML, API examples, supported value types, and restrictions.
+
+## 8. Export the model
 
 After changing the OBJ, model specification, shaders embedded by the model, or child texture definitions, regenerate the `.mppmodel` using matching binaries:
 

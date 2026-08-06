@@ -1,5 +1,6 @@
 #include <cfloat>
 #include <cstring>
+#include <set>
 
 #include "utils/FileSystem.h"
 
@@ -178,8 +179,16 @@ namespace mpp
 			"PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED"
 		};
 		for (auto const& uniform : requiredUniforms)
+		{
 			if (program->getUniformId(uniform) < 0)
 				THROW_MPP("PbrMaterial '" + getName() + "' program is missing required uniform '" + uniform + "'.", __LINE__, __FILE__, __func__);
+			uint32_t expectedType = GL_FLOAT;
+			if (uniform == "PBR_BASE_COLOUR_FACTOR") expectedType = GL_FLOAT_VEC4;
+			else if (uniform == "PBR_EMISSIVE_FACTOR") expectedType = GL_FLOAT_VEC3;
+			else if (uniform == "PBR_ALPHA_MODE" || uniform == "PBR_DOUBLE_SIDED") expectedType = GL_INT;
+			if (program->getUniformGlType(uniform) != expectedType)
+				THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + uniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
+		}
 		vector<string> const requiredSamplers = {
 			"PBR_BASE_COLOUR_MAP", "PBR_METALLIC_ROUGHNESS_MAP", "PBR_NORMAL_MAP",
 			"PBR_OCCLUSION_MAP", "PBR_EMISSIVE_MAP", "PBR_IRRADIANCE_MAP",
@@ -192,6 +201,9 @@ namespace mpp
 				if (program->getSamplerName(index) == sampler) { found = true; break; }
 			if (!found)
 				THROW_MPP("PbrMaterial '" + getName() + "' program is missing required sampler '" + sampler + "'.", __LINE__, __FILE__, __func__);
+			uint32_t const expectedType = sampler == "PBR_IRRADIANCE_MAP" || sampler == "PBR_PREFILTERED_SPECULAR_MAP" ? GL_SAMPLER_CUBE : GL_SAMPLER_2D;
+			if (program->getSamplerGlType(sampler) != expectedType)
+				THROW_MPP("PbrMaterial '" + getName() + "' sampler '" + sampler + "' has the wrong sampler type.", __LINE__, __FILE__, __func__);
 		}
 		string fragmentOutputDiagnostic;
 		if (!program->validateFragmentOutputLocations(1, fragmentOutputDiagnostic))
@@ -228,8 +240,49 @@ namespace mpp
 			mUniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(mPbrSurface.doubleSided ? 1 : 0));
 		}
 
+		set<string> const coreUniforms(requiredUniforms.begin(), requiredUniforms.end());
+		for (auto const& [name, value] : mUniforms.getUniformData())
+		{
+			MPP_UNUSED(value);
+			if (coreUniforms.contains(name) || name == "PBR_ENABLED") continue;
+			if (name.rfind("PBR_EXT_", 0) != 0)
+				THROW_MPP("PbrMaterial '" + getName() + "' custom uniform '" + name + "' must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
+			if (program->getUniformId(name, value.count > 1 ? 0 : -1) < 0)
+				THROW_MPP("PbrMaterial '" + getName() + "' declares extension uniform '" + name + "' which is absent from its program.", __LINE__, __FILE__, __func__);
+			uint32_t expectedType = 0;
+			if (value.type == program::GLSLType::Int) expectedType = value.numElements == 1 ? GL_INT : value.numElements == 2 ? GL_INT_VEC2 : value.numElements == 3 ? GL_INT_VEC3 : GL_INT_VEC4;
+			else if (value.type == program::GLSLType::Uint) expectedType = value.numElements == 1 ? GL_UNSIGNED_INT : value.numElements == 2 ? GL_UNSIGNED_INT_VEC2 : value.numElements == 3 ? GL_UNSIGNED_INT_VEC3 : GL_UNSIGNED_INT_VEC4;
+			else if (value.type == program::GLSLType::Float) expectedType = value.numElements == 1 ? GL_FLOAT : value.numElements == 2 ? GL_FLOAT_VEC2 : value.numElements == 3 ? GL_FLOAT_VEC3 : GL_FLOAT_VEC4;
+			if (expectedType == 0 || program->getUniformGlType(name) != expectedType)
+				THROW_MPP("PbrMaterial '" + getName() + "' extension uniform '" + name + "' does not match its reflected GLSL type.", __LINE__, __FILE__, __func__);
+		}
+		for (auto const& name : program->getUniformNames())
+			if (name.rfind("PBR_EXT_", 0) == 0 && mUniforms.getUniformData().find(name) == mUniforms.getUniformData().end())
+				THROW_MPP("PbrMaterial '" + getName() + "' program requires undeclared extension uniform '" + name + "'.", __LINE__, __FILE__, __func__);
+
 		// Set textures
 		auto const& materialTextures = mStr->getTextures();
+
+		set<string> const coreSamplers(requiredSamplers.begin(), requiredSamplers.end());
+		for (auto const& texture : materialTextures)
+		{
+			if (coreSamplers.contains(texture.sampler) || texture.sampler == "SHADOW_MAP") continue;
+			if (texture.sampler.rfind("PBR_EXT_", 0) != 0)
+				THROW_MPP("PbrMaterial '" + getName() + "' custom sampler '" + texture.sampler + "' must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
+			bool found = false;
+			for (int index = 0; index < program->getNumSamplers(); ++index) if (program->getSamplerName(index) == texture.sampler) { found = true; break; }
+			if (!found) THROW_MPP("PbrMaterial '" + getName() + "' declares extension sampler absent from its program: '" + texture.sampler + "'.", __LINE__, __FILE__, __func__);
+			uint32_t const reflectedType = program->getSamplerGlType(texture.sampler);
+			uint32_t const expectedType = texture.target == TextureTarget::CubeMap ? GL_SAMPLER_CUBE : GL_SAMPLER_2D;
+			if (reflectedType != expectedType) THROW_MPP("PbrMaterial '" + getName() + "' extension sampler '" + texture.sampler + "' target does not match its reflected sampler type.", __LINE__, __FILE__, __func__);
+		}
+		for (int index = 0; index < program->getNumSamplers(); ++index)
+		{
+			auto const& name = program->getSamplerName(index);
+			if (name.rfind("PBR_EXT_", 0) != 0) continue;
+			bool declared = any_of(materialTextures.begin(), materialTextures.end(), [&](auto const& texture) { return texture.sampler == name; });
+			if (!declared) THROW_MPP("PbrMaterial '" + getName() + "' program requires undeclared extension sampler '" + name + "'.", __LINE__, __FILE__, __func__);
+		}
 
 		// A serialized legacy stream may predate PbrSurface itself. The standard
 		// PBR sampler contract is also sufficient to select its neutral maps.
@@ -354,6 +407,24 @@ namespace mpp
 		PbrMaterialSpecification::PbrSurface const& PbrMaterial::getSurface() const
 	{
 		return mPbrSurface;
+	}
+
+	void PbrMaterial::validateInstanceUniforms(UniformCollection const& uniforms) const
+	{
+		auto const& declared = mUniforms.getUniformData();
+		for (auto const& [name, value] : uniforms.getUniformData())
+		{
+			auto expected = declared.find(name);
+			if (expected == declared.end())
+				THROW_MPP("PbrMaterial '" + getName() + "' does not declare instance uniform '" + name + "'.", __LINE__, __FILE__, __func__);
+			if (name.rfind("PBR_", 0) != 0)
+				THROW_MPP("PbrMaterial instance uniform '" + name + "' must be a canonical PBR value or use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
+			auto const& contract = expected->second;
+			if (value.type != contract.type || value.count != contract.count || value.numElements != contract.numElements)
+				THROW_MPP("PbrMaterial instance uniform '" + name + "' has a type or shape mismatch.", __LINE__, __FILE__, __func__);
+			if (static_cast<Program*>(mProgram.get())->getUniformId(name) < 0)
+				THROW_MPP("PbrMaterial program does not expose instance uniform '" + name + "'.", __LINE__, __FILE__, __func__);
+		}
 	}
 
 	/*

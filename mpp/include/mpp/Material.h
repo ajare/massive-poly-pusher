@@ -4,6 +4,7 @@
 
 namespace mpp
 {
+	class UniformCollection;
 	// Shared renderer-facing base for all surface material resources. It is
 	// deliberately abstract: concrete assets are BasicMaterial or PbrMaterial.
 	class _MPPAPI Material : public Resource
@@ -26,5 +27,6 @@ namespace mpp
 		virtual void setUniforms() = 0;
 		virtual ShadingModel getShadingModel() const = 0;
 		virtual bool isTransparent() const = 0;
+		virtual void validateInstanceUniforms(UniformCollection const& uniforms) const = 0;
 	};
 }
