@@ -168,6 +168,34 @@ namespace mpp
 		if (mPbrSurface.baseColourFactor.r < 0.0f || mPbrSurface.baseColourFactor.g < 0.0f || mPbrSurface.baseColourFactor.b < 0.0f ||
 			mPbrSurface.emissiveFactor.r < 0.0f || mPbrSurface.emissiveFactor.g < 0.0f || mPbrSurface.emissiveFactor.b < 0.0f)
 			THROW_MPP("PbrMaterial '" + getName() + "' has negative colour or emissive factors.", __LINE__, __FILE__, __func__);
+
+		// The built-in and every custom PBR program share this stable material
+		// contract. Optional maps use neutral textures, not optional interfaces.
+		Program* program = static_cast<Program*>(mProgram.get());
+		vector<string> const requiredUniforms = {
+			"PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR",
+			"PBR_EMISSIVE_FACTOR", "PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH",
+			"PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED"
+		};
+		for (auto const& uniform : requiredUniforms)
+			if (program->getUniformId(uniform) < 0)
+				THROW_MPP("PbrMaterial '" + getName() + "' program is missing required uniform '" + uniform + "'.", __LINE__, __FILE__, __func__);
+		vector<string> const requiredSamplers = {
+			"PBR_BASE_COLOUR_MAP", "PBR_METALLIC_ROUGHNESS_MAP", "PBR_NORMAL_MAP",
+			"PBR_OCCLUSION_MAP", "PBR_EMISSIVE_MAP", "PBR_IRRADIANCE_MAP",
+			"PBR_PREFILTERED_SPECULAR_MAP", "PBR_BRDF_LUT"
+		};
+		for (auto const& sampler : requiredSamplers)
+		{
+			bool found = false;
+			for (int index = 0; index < program->getNumSamplers(); ++index)
+				if (program->getSamplerName(index) == sampler) { found = true; break; }
+			if (!found)
+				THROW_MPP("PbrMaterial '" + getName() + "' program is missing required sampler '" + sampler + "'.", __LINE__, __FILE__, __func__);
+		}
+		string fragmentOutputDiagnostic;
+		if (!program->validateFragmentOutputLocations(1, fragmentOutputDiagnostic))
+			THROW_MPP("PbrMaterial '" + getName() + "' program must write fragment location 0: " + fragmentOutputDiagnostic, __LINE__, __FILE__, __func__);
 		// MPP model files retain backwards-compatible material streams. PBR
 		// metadata is mirrored into PBR_* uniforms by FilePbrMaterialStream, so
 		// recover the material state needed by the renderer after deserialization.
@@ -201,7 +229,6 @@ namespace mpp
 		}
 
 		// Set textures
-		Program* program = (Program*)(mProgram.get());
 		auto const& materialTextures = mStr->getTextures();
 
 		// A serialized legacy stream may predate PbrSurface itself. The standard
