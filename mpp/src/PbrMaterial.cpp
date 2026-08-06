@@ -280,6 +280,14 @@ namespace mpp
 					{
 						textureName = "__mpp_tex_pbr_black__";
 					}
+					else if (samplerName == "PBR_IRRADIANCE_MAP" || samplerName == "PBR_PREFILTERED_SPECULAR_MAP")
+					{
+						textureName = "__mpp_tex_pbr_ibl_cube__";
+					}
+					else if (samplerName == "PBR_BRDF_LUT")
+					{
+						textureName = "__mpp_tex_pbr_brdf_lut__";
+					}
 				}
 
 				if (textureName.empty())

@@ -1,6 +1,6 @@
 # BasicMaterial / PbrMaterial Separation Plan
 
-**Status:** Phase 1 complete (common base and BasicMaterial rename). Phases 2–5 remain planned.
+**Status:** Phases 1 and 2 complete. Phase 3 extensions/runtime contracts and later migration hardening remain.
 
 ## 1. Objective
 
@@ -316,18 +316,17 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] ResourceStreamSerializer now writes/reads an explicit `PbrMaterial` stream tag and PBR surface data, so typed PBR ModelSpecs survive `.mppmodel` conversion.
    - [ ] The old generic ModelSpec wrapper and untyped binary `Material` wire tag remain compatibility input until Phase 4 supplies the documented warning-producing converter.
 
-2. **PBR resource and built-in program** — In progress
+2. **PBR resource and built-in program** — **Complete**
    - [x] Added independent `PbrMaterial`, specification, stream, programmatic stream, file parser, and `ResourceManager` factory foundations.
    - [x] Restored explicit PBR surface state, PBR neutral-map binding behavior, alpha classification, and semantic programmatic map convenience setters to the PBR-only resource path.
    - [x] Added strict core surface range validation at PbrMaterial creation: alpha/metallic/roughness/occlusion/cutoff ranges, non-negative normal scale, and non-negative base/emissive RGB.
    - [x] Added engine-owned built-in metallic-roughness vertex/fragment shader sources. PbrMaterial selects them whenever program shader sources are omitted; the existing default-program cache supplies reuse by mesh specification.
    - [x] Added strict core reflection validation for all canonical factor uniforms, five surface samplers, three IBL samplers, and fragment output location 0. Failures name the material and missing interface member.
    - [x] Added semantic PBR XML support: `<Surface>` plus `<BaseColourMap>`, `<MetallicRoughnessMap>`, `<NormalMap>`, `<OcclusionMap>`, and `<EmissiveMap>`, each with `Resource` or `Ref`. Generic `<Pbr>`/`<Textures>` remains compatibility input only.
-   - [~] Pipeline migration is in progress. Neutral engine-owned cube/BRDF IBL resources now bind when the environment is absent or incomplete, with one warning per pipeline. BasicMaterial programs that explicitly declare canonical PBR samplers receive neutral surface/IBL resources; ordinary basic shaders remain unchanged. DemoSuite statue ModelSpec now uses direct `<PbrMaterial>` and was re-exported as a typed `.mppmodel`; runtime GPU validation remains required before Phase 2 can close.
-   - Add PBR spec/stream/resource/parser/programmatic types.
-   - Add engine-owned cached PBR shader/program creation by mesh specification.
-   - Add core semantic maps, neutral resources, ranges, reflection validation, and alpha classification.
-   - Move PBR fallback/environment behavior out of basic material code.
+   - [x] Completed pipeline migration: neutral engine-owned cube/BRDF IBL resources bind when the environment is absent or incomplete, with one warning per pipeline. BasicMaterial programs that explicitly declare canonical PBR samplers receive neutral surface/IBL resources; ordinary basic shaders remain unchanged.
+   - [x] Migrated the DemoSuite statue to direct semantic `<PbrMaterial>` authoring and re-exported its typed `.mppmodel`.
+   - [x] Fixed the BasicMaterial file-stream quality-setting regression that selected an empty descriptor and generated invalid vertex shaders.
+   - [x] Validated DemoSuite startup with the typed PBR asset and the real-context framebuffer/readback/resize/MRT/MSAA/mip/alias/lifetime GPU suite.
 
 3. **Extensions and runtime contracts**
    - Add `PBR_EXT_*` XML/programmatic representation and reflection validation.
