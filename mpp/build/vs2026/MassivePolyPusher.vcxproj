@@ -29,6 +29,7 @@
     <ClInclude Include="..\..\include\mpp\DataStream.h" />
     <ClInclude Include="..\..\include\mpp\DefaultShaders.h" />
     <ClInclude Include="..\..\include\mpp\Diagnostic.h" />
+    <ClInclude Include="..\..\include\mpp\DiagnosticTests.h" />
     <ClInclude Include="..\..\include\mpp\FileDataStream.h" />
     <ClInclude Include="..\..\include\mpp\Font.h" />
     <ClInclude Include="..\..\include\mpp\GLErrorCheck.h" />
@@ -138,6 +139,7 @@
     <ClCompile Include="..\..\src\Colour.cpp" />
     <ClCompile Include="..\..\src\CylinderModelStream.cpp" />
     <ClCompile Include="..\..\src\Diagnostic.cpp" />
+    <ClCompile Include="..\..\src\DiagnosticTests.cpp" />
     <ClCompile Include="..\..\src\FileDataStream.cpp" />
     <ClCompile Include="..\..\src\Font.cpp" />
     <ClCompile Include="..\..\src\GLErrorCheck.cpp" />
