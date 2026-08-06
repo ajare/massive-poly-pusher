@@ -1,6 +1,6 @@
 #pragma once
 
-#include "InputManager.h"
+#include "mpp/app/InputManager.h"
 
 class Window
 {

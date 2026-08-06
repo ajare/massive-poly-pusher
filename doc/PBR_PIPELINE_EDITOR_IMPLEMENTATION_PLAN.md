@@ -1,6 +1,18 @@
 # PBR Pipeline Editor Implementation Plan
 
-**Status:** Approved; implementation started.
+**Status:** Implementation in progress.
+
+## Current progress (2026-08-05)
+
+- [x] Created branch `pbr-pipeline-editor`.
+- [x] Saved the approved implementation plan (`28a1058`).
+- [x] Vendored pinned ImGui docking commit `83f668625ad45364de71d385aeb6a5dd04bee02e` under `ext/imgui` and migrated DemoSuite to it without enabling docking (`6926a8f`).
+- [x] Added the shared structured diagnostic model and CPU contract tests (`25b02da`, `9b45d9b`).
+- [x] Extracted reusable ImGui/SDL input support from DemoSuite into the `MppAppSupport` static library.
+- [x] Added document ID, immutable snapshot/generation, command-stack/save-point, deterministic path, and atomic-write foundations with startup tests.
+- [x] Verified Debug and Release builds for MPP, MppAppSupport, and DemoSuite.
+- [x] Verified DemoSuite structured diagnostics, document foundations, material migration, and render-graph GPU startup tests.
+- [ ] Phase 2 is next: stable produced values, authored ordering, formats, raster state, allocation introspection, and execution statistics.
 
 ## 1. Goal
 
@@ -163,7 +175,7 @@ The first implementation does not include:
 
 ## 4. Implementation phases
 
-### Phase 0: Baseline and dependency migration
+### Phase 0: Baseline and dependency migration — Complete
 
 1. Record baseline builds and DemoSuite startup tests.
 2. Pin the current ImGui docking snapshot and record upstream commit/version/license.
@@ -173,7 +185,7 @@ The first implementation does not include:
 
 **Exit:** DemoSuite builds/runs against the shared docking snapshot; docking APIs compile in a small smoke test.
 
-### Phase 1: Shared diagnostics and editable document foundations
+### Phase 1: Shared diagnostics and editable document foundations — Complete
 
 1. Add stable diagnostic code/severity/source/object structures.
 2. Add editor-safe IDs and reference utilities.
@@ -183,7 +195,7 @@ The first implementation does not include:
 
 **Exit:** unit tests prove diagnostic ordering, ID/reference updates, undo/redo, save-points, and atomic writes.
 
-### Phase 2: Render graph authoring model
+### Phase 2: Render graph authoring model — Next
 
 1. Add explicit produced-value IDs and stable input references.
 2. Preserve compatibility with existing runtime graph handles.

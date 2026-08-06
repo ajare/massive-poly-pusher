@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\mpp\app\CommandStack.h" />
+    <ClInclude Include="..\..\include\mpp\app\DocumentFile.h" />
+    <ClInclude Include="..\..\include\mpp\app\DocumentFoundationTests.h" />
+    <ClInclude Include="..\..\include\mpp\app\DocumentId.h" />
+    <ClInclude Include="..\..\include\mpp\app\DocumentSnapshot.h" />
+    <ClInclude Include="..\..\include\mpp\app\ImGuiBackendData.h" />
+    <ClInclude Include="..\..\include\mpp\app\ImGuiDataProvider.h" />
+    <ClInclude Include="..\..\include\mpp\app\ImGuiPlatform.h" />
+    <ClInclude Include="..\..\include\mpp\app\Input.h" />
+    <ClInclude Include="..\..\include\mpp\app\InputManager.h" />
+    <ClInclude Include="..\..\include\mpp\app\InputManagerSDL.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\CommandStack.cpp" />
+    <ClCompile Include="..\..\src\DocumentFile.cpp" />
+    <ClCompile Include="..\..\src\DocumentFoundationTests.cpp" />
+    <ClCompile Include="..\..\src\DocumentId.cpp" />
+    <ClCompile Include="..\..\src\ImGuiPlatform.cpp" />
+    <ClCompile Include="..\..\src\InputManager.cpp" />
+    <ClCompile Include="..\..\src\InputManagerSDL.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A14775A9-B967-4538-BF7E-59D421B43163}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>MppAppSupport</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(WindowsTargetPlatformVersion)'==''">
+    <LatestTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</LatestTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(WindowsTargetPlatformVersion)' == ''">10.0</WindowsTargetPlatformVersion>
+    <TargetPlatformVersion>$(WindowsTargetPlatformVersion)</TargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType><UseDebugLibraries>true</UseDebugLibraries><PlatformToolset>v145</PlatformToolset><CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries><PlatformToolset>v145</PlatformToolset><WholeProgramOptimization>true</WholeProgramOptimization><CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(ProjectDir)lib\$(Platform)\$(Configuration)\</OutDir><IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir><TargetName>MppAppSupportd</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ProjectDir)lib\$(Platform)\$(Configuration)\</OutDir><IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel><Optimization>Disabled</Optimization><PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions><LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\ext\imgui\include;$(ProjectDir)..\..\..\ext\imgui\include\imgui;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib><TargetMachine>MachineX64</TargetMachine></Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel><Optimization>MaxSpeed</Optimization><FunctionLevelLinking>true</FunctionLevelLinking><IntrinsicFunctions>true</IntrinsicFunctions><PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions><LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\ext\imgui\include;$(ProjectDir)..\..\..\ext\imgui\include\imgui;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib><TargetMachine>MachineX64</TargetMachine></Lib>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

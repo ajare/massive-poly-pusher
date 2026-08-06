@@ -4,7 +4,7 @@
 
 #include "imgui/imgui.h"
 
-#include "ImGuiPlatform.h"
+#include "mpp/app/ImGuiPlatform.h"
 
 using namespace std;
 
@@ -45,7 +45,7 @@ static void platformSetImeData(ImGuiContext* context, ImGuiViewport* viewport, I
 	}
 }
 
-void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd)
+void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd, bool enableDocking)
 {
 	if (ImGui::GetCurrentContext() != nullptr)
 	{
@@ -86,6 +86,10 @@ void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceM
 
 	// Configure ImGui
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	if (enableDocking)
+	{
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	}
 
 	// TODO: Set optional io.ConfigFlags values, e.g. 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard' to enable keyboard controls.
 	// TODO: Fill optional fields of the io structure later.

@@ -13,23 +13,17 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\Camera.h" />
     <ClInclude Include="..\..\include\Helper.h" />
-    <ClInclude Include="..\..\include\ImGuiBackendData.h" />
-    <ClInclude Include="..\..\include\ImGuiDataProvider.h" />
-    <ClInclude Include="..\..\include\ImGuiPlatform.h" />
     <ClInclude Include="..\..\..\ext\imgui\include\imgui\imconfig.h" />
     <ClInclude Include="..\..\..\ext\imgui\include\imgui\imgui.h" />
     <ClInclude Include="..\..\..\ext\imgui\include\imgui\imgui_internal.h" />
     <ClInclude Include="..\..\..\ext\imgui\include\imgui\imstb_rectpack.h" />
     <ClInclude Include="..\..\..\ext\imgui\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\..\..\ext\imgui\include\imgui\imstb_truetype.h" />
-    <ClInclude Include="..\..\include\Input.h" />
-    <ClInclude Include="..\..\include\InputManager.h" />
     <ClInclude Include="..\..\include\Logger.h" />
     <ClInclude Include="..\..\include\ModelScene.h" />
     <ClInclude Include="..\..\include\ProgramOptions.h" />
     <ClInclude Include="..\..\include\RenderOptions.h" />
     <ClInclude Include="..\..\include\Scene.h" />
-    <ClInclude Include="..\..\include\sdl\InputManagerSDL.h" />
     <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
     <ClInclude Include="..\..\include\sdl\WindowSDL.h" />
     <ClInclude Include="..\..\include\Test2dTriangleBatchDataProvider.h" />
@@ -43,25 +37,28 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\Camera.cpp" />
     <ClCompile Include="..\..\src\Helper.cpp" />
-    <ClCompile Include="..\..\src\ImGuiPlatform.cpp" />
     <ClCompile Include="..\..\..\ext\imgui\src\imgui.cpp" />
     <ClCompile Include="..\..\..\ext\imgui\src\imgui_demo.cpp" />
     <ClCompile Include="..\..\..\ext\imgui\src\imgui_draw.cpp" />
     <ClCompile Include="..\..\..\ext\imgui\src\imgui_tables.cpp" />
     <ClCompile Include="..\..\..\ext\imgui\src\imgui_widgets.cpp" />
-    <ClCompile Include="..\..\src\InputManager.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />
     <ClCompile Include="..\..\src\Main.cpp" />
     <ClCompile Include="..\..\src\ModelScene.cpp" />
     <ClCompile Include="..\..\src\ProgramOptions.cpp" />
     <ClCompile Include="..\..\src\Scene.cpp" />
-    <ClCompile Include="..\..\src\sdl\InputManagerSDL.cpp" />
     <ClCompile Include="..\..\src\sdl\TimerSDL.cpp" />
     <ClCompile Include="..\..\src\sdl\WindowSDL.cpp" />
     <ClCompile Include="..\..\src\Timer.cpp" />
     <ClCompile Include="..\..\src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\mpp-app-support\build\vs2026\MppAppSupport.vcxproj">
+      <Project>{A14775A9-B967-4538-BF7E-59D421B43163}</Project>
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\mpp-mesh\build\vs2026\MppMesh.vcxproj">
       <Project>{4201332e-dd6a-40b6-8bcd-73ad3008d9c8}</Project>
       <Private>true</Private>
@@ -135,7 +132,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\ext\imgui\include;$(ProjectDir)..\..\..\ext\imgui\include\imgui;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-app-support\include;$(ProjectDir)..\..\..\ext\imgui\include;$(ProjectDir)..\..\..\ext\imgui\include\imgui;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -157,7 +154,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\ext\imgui\include;$(ProjectDir)..\..\..\ext\imgui\include\imgui;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\..\mpp-app-support\include;$(ProjectDir)..\..\..\ext\imgui\include;$(ProjectDir)..\..\..\ext\imgui\include\imgui;$(ProjectDir)..\..\..\mpp-helper\include;$(ProjectDir)..\..\..\mpp-mesh\include;$(ProjectDir)..\..\..\mpp-program\include;$(ProjectDir)..\..\..\mpp-resource-parsers\include;$(ProjectDir)..\..\..\mpp\include;$(ProjectDir)..\..\..\ext\utils\include;$(ProjectDir)..\..\..\vendor\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>

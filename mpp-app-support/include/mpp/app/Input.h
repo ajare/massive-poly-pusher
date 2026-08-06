@@ -1,4 +1,4 @@
-#pragma
+#pragma once
 
 // Generic key definitions
 enum KeyDefinition

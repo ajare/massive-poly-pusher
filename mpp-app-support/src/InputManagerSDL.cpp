@@ -1,5 +1,5 @@
 #include <sdl/SDL.h>
-#include "sdl/InputManagerSDL.h"
+#include "mpp/app/InputManagerSDL.h"
 
 #define DOUBLECLICKTIME 0.5
 

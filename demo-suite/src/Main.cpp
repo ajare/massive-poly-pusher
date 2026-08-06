@@ -29,7 +29,7 @@
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MppMeshException.h>
 
-#include "ImGuiPlatform.h"
+#include "mpp/app/ImGuiPlatform.h"
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
@@ -42,7 +42,7 @@
 // Platform
 #include "sdl/WindowSDL.h"
 #include "sdl/TimerSDL.h"
-#include "sdl/InputManagerSDL.h"
+#include "mpp/app/InputManagerSDL.h"
 
 #include "renderdoc/renderdoc_app.h"
 
