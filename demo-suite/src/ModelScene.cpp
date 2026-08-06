@@ -42,7 +42,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 
 #include <mpp/resource-parsers/FileTextureStream.h>
 #include <mpp/resource-parsers/FileProgramStream.h>
-#include <mpp/resource-parsers/FileBasicMaterialStream.h>
+#include <mpp/resource-parsers/FileMaterialStream.h>
 #include <mpp/resource-parsers/FileStringStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 
@@ -347,8 +347,8 @@ void ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSp
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new resource_parsers::FileBasicMaterialStream(resourceMgr, options.resourceLocation + "ElectricMaterial.xml");
-	addResource(resourceMgr->declareResource("Sphere.Material", ResourceStreamPtr(materialStream)).first, true);
+	auto materialStream = resource_parsers::FileMaterialStream::fromFile(resourceMgr, options.resourceLocation + "ElectricMaterial.xml");
+	addResource(resourceMgr->declareResource("Sphere.Material", materialStream).first, true);
 }
 
 //

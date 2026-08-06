@@ -135,7 +135,7 @@ namespace mpp
 			// Parse data.  Root element should be 'Material'
 			auto rootName = data.getName();
 
-			if (rootName != "PbrMaterial" && rootName != "Resource")
+			if (rootName != "PbrMaterial" && rootName != "Material" && rootName != "Resource")
 			{
 				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'PbrMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
@@ -505,7 +505,7 @@ namespace mpp
 			// Parse data. Root element identifies the concrete PBR resource.
 			auto rootName = data.getName();
 
-			if (rootName != "PbrMaterial" && rootName != "Resource")
+			if (rootName != "PbrMaterial" && rootName != "Material" && rootName != "Resource")
 			{
 				string errMsg = "Error loading " + getFilepath() + ". Root element is neither 'PbrMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);

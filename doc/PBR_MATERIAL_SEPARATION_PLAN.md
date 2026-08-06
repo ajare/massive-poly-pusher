@@ -1,6 +1,6 @@
 # BasicMaterial / PbrMaterial Separation Plan
 
-**Status:** Phases 1–3 complete. Loader/compatibility hardening and broader automated validation remain.
+**Status:** Phases 1–4 complete. Documentation consolidation and broader automated validation remain.
 
 ## 1. Objective
 
@@ -337,11 +337,14 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Documented extension XML, programmatic APIs, types, ownership, fallback behavior, and current matrix limitation.
    - [x] Added an active `PBR_EXT_EMISSIVE_SCALE` to the DemoSuite statue custom program/material, re-exported the typed model, and validated extension XML, reflection, serialization, binding, and real-context startup GPU tests end-to-end.
 
-4. **Loaders, ModelSpec, serializer, and migration**
-   - Add tag-dispatching standalone file entry point and concrete typed file streams.
-   - Add typed ModelSpec material parsing.
-   - Version `.mppmodel` material serialization and re-export assets.
-   - Implement isolated legacy reader/converter with warnings/failures.
+4. **Loaders, ModelSpec, serializer, and migration** — **Complete**
+   - [x] Added `FileMaterialStream::fromFile()` tag dispatch to concrete Basic/PBR file streams; filenames do not select material type.
+   - [x] Added typed ModelSpec material parsing.
+   - [x] Added versioned `RSE2` stream serialization with explicit material tags and re-exported the DemoSuite PBR asset.
+   - [x] Retained `RSER` v1 reading and isolated legacy `Material` conversion with deprecation warnings.
+   - [x] Legacy basic streams convert to BasicMaterial; PBR-tagged streams recover their PBR surface and convert to PbrMaterial. Inactive legacy Phong uniforms are discarded rather than becoming extensions.
+   - [x] Strict PbrMaterial creation validates converted programs, so a genuinely non-conforming legacy PBR program fails with named missing-interface diagnostics.
+   - [x] GPU-tested both the new typed RSE2 statue and the old RSER PBR statue compatibility path.
 
 5. **Documentation and validation**
    - Rewrite PBR material authoring/setup documentation for typed resources.
