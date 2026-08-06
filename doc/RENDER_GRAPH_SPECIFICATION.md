@@ -152,6 +152,8 @@ A `Sampled` input names an image and declares that the pass reads its current ve
 | `sampler` | `bindSampler(pass, sampler, image, mipLevel)` | Optional for callback-only inputs; non-empty and unique per pass when supplied. For a program resource it must match a reflected sampler name in that `Program`. |
 | `mipLevel` | fourth `bindSampler` parameter | Optional unsigned `0..mipLevels-1`. Omitted means the full declared chain (`UINT32_MAX`). A concrete level temporarily makes it the texture base and max level during the pass. |
 
+When `mipLevel` is omitted, it does **not** select mip zero: the full declared chain remains visible and OpenGL selects the sampling LOD normally from texture-coordinate derivatives and the texture minification filter. Specify `mipLevel` only when the pass must sample one exact level.
+
 A pass cannot bind two different explicit mip levels of the same physical `RenderTexture`; that requires OpenGL texture-view support and is rejected. A sampler binding is also a sampled input, so do not add a second `readSampled` solely for the same binding.
 
 ### 3.3 Parameters
