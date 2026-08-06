@@ -48,9 +48,9 @@ namespace mpp
 
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		// Versioned stream magic. RSER remains the compatibility v1 reader;
-		// RSE2 is the first format with explicit BasicMaterial/PbrMaterial tags.
-		char const* magic{ "RSE2" };
+		// RSE3 stores one definition per stream. RSER/RSE2 remain strict
+		// compatibility inputs only when they contain one legacy definition.
+		char const* magic{ "RSE3" };
 		fp.write(magic, 4);
 
 		// Recursively write streams and their children
@@ -77,11 +77,13 @@ namespace mpp
 
 		bool const v1 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == 'R';
 		bool const v2 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '2';
-		if (!v1 && !v2)
+		bool const v3 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '3';
+		if (!v1 && !v2 && !v3)
 		{
 			THROW_MPP_IO("Could not open stream for reading. Not a valid or supported format.", __LINE__, __FILE__, __func__);
 		}
 
+		mReadVersion = v3 ? 3u : (v2 ? 2u : 1u);
 		return readStream(fp);
 	}
 
@@ -182,216 +184,86 @@ namespace mpp
 
 	void ResourceStreamSerializer::writeBasicMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<BasicMaterialStream*>(resourceStream.get());
-
-		// Write number of quality settings
-		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
-
-		// Write quality settings
-		for (auto const& setting: stream->mQualitySettings)
+		auto stream = static_cast<BasicMaterialStream*>(resourceStream.get());
+		auto const& spec = stream->mSpecification;
+		writeValue(spec.program.resourceExists, fp); writeValue(spec.program.existingResource, fp); writeValue(spec.program.isChild, fp); writeValue(spec.program.is2d, fp);
+		writeMeshSpecification(spec.program.spec, fp);
+		writeValue((uint32_t)spec.program.vertexShader.type, fp); writeValue(spec.program.vertexShader.data, fp);
+		writeValue((uint32_t)spec.program.geometryShader.type, fp); writeValue(spec.program.geometryShader.data, fp);
+		writeValue((uint32_t)spec.program.fragmentShader.type, fp); writeValue(spec.program.fragmentShader.data, fp);
+		writeUniformCollection(spec.uniforms, fp);
+		writeValue((uint32_t)spec.textures.size(), fp);
+		auto writeTextureOptions = [&](auto const& texture)
 		{
-			// Program options
-			writeValue(setting.spec.program.resourceExists, fp);
-			writeValue(setting.spec.program.existingResource, fp);
-			writeValue(setting.spec.program.isChild, fp);
-			writeValue(setting.spec.program.is2d, fp);
-
-			writeMeshSpecification(setting.spec.program.spec, fp);
-
-			// Shaders
-			writeValue((uint32_t)setting.spec.program.vertexShader.type, fp);
-			writeValue(setting.spec.program.vertexShader.data, fp);
-
-			writeValue((uint32_t)setting.spec.program.geometryShader.type, fp);
-			writeValue(setting.spec.program.geometryShader.data, fp);
-
-			writeValue((uint32_t)setting.spec.program.fragmentShader.type, fp);
-			writeValue(setting.spec.program.fragmentShader.data, fp);
-
-			// Uniforms
-			writeUniformCollection(setting.spec.uniforms, fp);
-
-			// Textures
-			writeValue((uint32_t)setting.spec.textures.size(), fp);
-			for (auto const& texture: setting.spec.textures)
-			{
-				writeValue(texture.resourceExists, fp);
-				writeValue(texture.existingResource, fp);
-				writeValue(texture.isChild, fp);
-				writeValue(texture.sampler, fp);
-				writeValue(texture.source, fp);
-				writeValue((uint32_t)texture.target, fp);
-
-				// TextureParams
-				writeValue(texture.params.minFilter, fp);
-				writeValue(texture.params.magFilter, fp);
-				writeValue(texture.params.wrap, fp);
-				writeValue(texture.params.useMipmaps, fp);
-				writeValue(texture.params.lodBaseLevel, fp);
-				writeValue(texture.params.lodMaxLevel, fp);
-				writeValue(texture.params.lodBias, fp);
-				writeValue(texture.params.maxAnisotropy, fp);
-			}
-		}
+			writeValue(texture.resourceExists, fp); writeValue(texture.existingResource, fp); writeValue(texture.isChild, fp);
+			writeValue(texture.sampler, fp); writeValue(texture.source, fp); writeValue((uint32_t)texture.target, fp);
+			writeValue(texture.params.minFilter, fp); writeValue(texture.params.magFilter, fp); writeValue(texture.params.wrap, fp);
+			writeValue(texture.params.useMipmaps, fp); writeValue(texture.params.lodBaseLevel, fp); writeValue(texture.params.lodMaxLevel, fp);
+			writeValue(texture.params.lodBias, fp); writeValue(texture.params.maxAnisotropy, fp);
+		};
+		for (auto const& texture : spec.textures) writeTextureOptions(texture);
 	}
 
 	void ResourceStreamSerializer::writePbrMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<PbrMaterialStream*>(resourceStream.get());
-
-		// Write number of quality settings
-		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
-
-		// Write quality settings
-		for (auto const& setting: stream->mQualitySettings)
+		auto stream = static_cast<PbrMaterialStream*>(resourceStream.get());
+		auto const& spec = stream->mSpecification;
+		writeValue(spec.program.resourceExists, fp); writeValue(spec.program.existingResource, fp); writeValue(spec.program.isChild, fp); writeValue(spec.program.is2d, fp);
+		writeMeshSpecification(spec.program.spec, fp);
+		writeValue((uint32_t)spec.program.vertexShader.type, fp); writeValue(spec.program.vertexShader.data, fp);
+		writeValue((uint32_t)spec.program.geometryShader.type, fp); writeValue(spec.program.geometryShader.data, fp);
+		writeValue((uint32_t)spec.program.fragmentShader.type, fp); writeValue(spec.program.fragmentShader.data, fp);
+		writeUniformCollection(spec.uniforms, fp);
+		writeValue(spec.pbr.enabled, fp);
+		writeValue(spec.pbr.baseColourFactor.x, fp); writeValue(spec.pbr.baseColourFactor.y, fp); writeValue(spec.pbr.baseColourFactor.z, fp); writeValue(spec.pbr.baseColourFactor.w, fp);
+		writeValue(spec.pbr.metallicFactor, fp); writeValue(spec.pbr.roughnessFactor, fp);
+		writeValue(spec.pbr.emissiveFactor.x, fp); writeValue(spec.pbr.emissiveFactor.y, fp); writeValue(spec.pbr.emissiveFactor.z, fp);
+		writeValue(spec.pbr.normalScale, fp); writeValue(spec.pbr.occlusionStrength, fp); writeValue((uint32_t)spec.pbr.alphaMode, fp);
+		writeValue(spec.pbr.alphaCutoff, fp); writeValue(spec.pbr.doubleSided, fp);
+		writeValue((uint32_t)spec.textures.size(), fp);
+		auto writeTextureOptions = [&](auto const& texture)
 		{
-			// Program options
-			writeValue(setting.spec.program.resourceExists, fp);
-			writeValue(setting.spec.program.existingResource, fp);
-			writeValue(setting.spec.program.isChild, fp);
-			writeValue(setting.spec.program.is2d, fp);
-
-			writeMeshSpecification(setting.spec.program.spec, fp);
-
-			// Shaders
-			writeValue((uint32_t)setting.spec.program.vertexShader.type, fp);
-			writeValue(setting.spec.program.vertexShader.data, fp);
-
-			writeValue((uint32_t)setting.spec.program.geometryShader.type, fp);
-			writeValue(setting.spec.program.geometryShader.data, fp);
-
-			writeValue((uint32_t)setting.spec.program.fragmentShader.type, fp);
-			writeValue(setting.spec.program.fragmentShader.data, fp);
-
-			// Uniforms
-			writeUniformCollection(setting.spec.uniforms, fp);
-
-			// PBR surface
-			writeValue(setting.spec.pbr.enabled, fp);
-			writeValue(setting.spec.pbr.baseColourFactor.x, fp); writeValue(setting.spec.pbr.baseColourFactor.y, fp); writeValue(setting.spec.pbr.baseColourFactor.z, fp); writeValue(setting.spec.pbr.baseColourFactor.w, fp);
-			writeValue(setting.spec.pbr.metallicFactor, fp); writeValue(setting.spec.pbr.roughnessFactor, fp);
-			writeValue(setting.spec.pbr.emissiveFactor.x, fp); writeValue(setting.spec.pbr.emissiveFactor.y, fp); writeValue(setting.spec.pbr.emissiveFactor.z, fp);
-			writeValue(setting.spec.pbr.normalScale, fp); writeValue(setting.spec.pbr.occlusionStrength, fp);
-			writeValue((uint32_t)setting.spec.pbr.alphaMode, fp); writeValue(setting.spec.pbr.alphaCutoff, fp); writeValue(setting.spec.pbr.doubleSided, fp);
-
-			// Textures
-			writeValue((uint32_t)setting.spec.textures.size(), fp);
-			for (auto const& texture: setting.spec.textures)
-			{
-				writeValue(texture.resourceExists, fp);
-				writeValue(texture.existingResource, fp);
-				writeValue(texture.isChild, fp);
-				writeValue(texture.sampler, fp);
-				writeValue(texture.source, fp);
-				writeValue((uint32_t)texture.target, fp);
-
-				// TextureParams
-				writeValue(texture.params.minFilter, fp);
-				writeValue(texture.params.magFilter, fp);
-				writeValue(texture.params.wrap, fp);
-				writeValue(texture.params.useMipmaps, fp);
-				writeValue(texture.params.lodBaseLevel, fp);
-				writeValue(texture.params.lodMaxLevel, fp);
-				writeValue(texture.params.lodBias, fp);
-				writeValue(texture.params.maxAnisotropy, fp);
-			}
-		}
+			writeValue(texture.resourceExists, fp); writeValue(texture.existingResource, fp); writeValue(texture.isChild, fp);
+			writeValue(texture.sampler, fp); writeValue(texture.source, fp); writeValue((uint32_t)texture.target, fp);
+			writeValue(texture.params.minFilter, fp); writeValue(texture.params.magFilter, fp); writeValue(texture.params.wrap, fp);
+			writeValue(texture.params.useMipmaps, fp); writeValue(texture.params.lodBaseLevel, fp); writeValue(texture.params.lodMaxLevel, fp);
+			writeValue(texture.params.lodBias, fp); writeValue(texture.params.maxAnisotropy, fp);
+		};
+		for (auto const& texture : spec.textures) writeTextureOptions(texture);
 	}
 
 	void ResourceStreamSerializer::writeProgramStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<ProgramStream*>(resourceStream.get());
-
-		// Write source
-		writeValue(stream->mVertexSource, fp);
-		writeValue(stream->mGeometrySource, fp);
-		writeValue(stream->mFragmentSource, fp);
-
-		// Write number of quality settings
-		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
-
-		// Write quality settings
-		for (auto const& setting: stream->mQualitySettings)
-		{
-			writeParser(*setting.parser.get(), fp);
-
-			// Write attributes
-			writeValue((uint32_t)setting.attribs.size(), fp);
-			for (auto const& attrib : setting.attribs)
-			{
-				writeValue(attrib, fp);
-			}
-		}
-
+		auto stream = static_cast<ProgramStream*>(resourceStream.get());
+		writeValue(stream->mVertexSource, fp); writeValue(stream->mGeometrySource, fp); writeValue(stream->mFragmentSource, fp);
+		writeParser(*stream->mParser, fp);
+		writeValue((uint32_t)stream->mAttribs.size(), fp);
+		for (auto const& attrib : stream->mAttribs) writeValue(attrib, fp);
 	}
 
 	void ResourceStreamSerializer::writeSamplerStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<SamplerStream*>(resourceStream.get());
-
-		// Write number of quality settings
-		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
-
-		// Write quality settings
-		for (auto const& setting: stream->mQualitySettings)
-		{
-			writeValue(setting.params.minFilter, fp);
-			writeValue(setting.params.magFilter, fp);
-			writeValue(setting.params.wrap, fp);
-			writeValue(setting.params.lodMinLevel, fp);
-			writeValue(setting.params.lodMaxLevel, fp);
-			writeValue(setting.params.lodBias, fp);
-			writeValue(setting.params.maxAnisotropy, fp);
-		}
+		auto const& params = static_cast<SamplerStream*>(resourceStream.get())->mParams;
+		writeValue(params.minFilter, fp); writeValue(params.magFilter, fp); writeValue(params.wrap, fp);
+		writeValue(params.lodMinLevel, fp); writeValue(params.lodMaxLevel, fp); writeValue(params.lodBias, fp); writeValue(params.maxAnisotropy, fp);
 	}
 
 	void ResourceStreamSerializer::writeStringStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<StringStream*>(resourceStream.get());
-
-		// Write number of quality settings
-		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
-
-		// Write quality settings
-		for (auto const& setting: stream->mQualitySettings)
-		{
-			writeValue(setting.data, fp);
-			writeValue(setting.file, fp);
-			writeValue(setting.isFile, fp);
-		}
+		auto stream = static_cast<StringStream*>(resourceStream.get());
+		writeValue(stream->mData, fp); writeValue(stream->mFile, fp); writeValue(stream->mIsFile, fp);
 	}
 
 	void ResourceStreamSerializer::writeTextureStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<TextureStream*>(resourceStream.get());
-
-		// Compatibility placeholder for the removed tile list. The reader still
-		// consumes this count when loading legacy and newly exported models.
-		writeValue((uint32_t)0, fp);
-
-		// Write number of quality settings
-		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
-
-		// Write quality settings
-		for (auto const& setting: stream->mQualitySettings)
-		{
-			writeValue(setting.target, fp);
-			writeValue(setting.internalFormat, fp);
-
-			// Texture params
-			writeValue(setting.params.minFilter, fp);
-			writeValue(setting.params.magFilter, fp);
-			writeValue(setting.params.wrap, fp);
-			writeValue(setting.params.useMipmaps, fp);
-			writeValue(setting.params.lodBaseLevel, fp);
-			writeValue(setting.params.lodMaxLevel, fp);
-			writeValue(setting.params.lodBias, fp);
-			writeValue(setting.params.maxAnisotropy, fp);
-
-			// Other.  Don't write the image load function, this will be provided by whatever loads this.
-			writeValue(setting.sampler, fp);
-			writeValue(setting.source, fp);
-		}
+		auto stream = static_cast<TextureStream*>(resourceStream.get());
+		writeValue((uint32_t)0, fp); // legacy tile-list placeholder
+		auto const& definition = stream->mDefinition;
+		writeValue(definition.target, fp); writeValue(definition.internalFormat, fp);
+		writeValue(definition.params.minFilter, fp); writeValue(definition.params.magFilter, fp); writeValue(definition.params.wrap, fp);
+		writeValue(definition.params.useMipmaps, fp); writeValue(definition.params.lodBaseLevel, fp); writeValue(definition.params.lodMaxLevel, fp);
+		writeValue(definition.params.lodBias, fp); writeValue(definition.params.maxAnisotropy, fp);
+		writeValue(definition.sampler, fp); writeValue(definition.source, fp);
 	}
 
 	void ResourceStreamSerializer::writeStream(ResourceStreamPtr resourceStream, ofstream& fp)
@@ -411,19 +283,6 @@ namespace mpp
 
 			writeValue(name, fp);
 			writeStream(child, fp);
-		}
-
-		// Write number of quality settings
-		writeValue((uint32_t)resourceStream->mQualityNames.size(), fp);
-
-		// Write quality settings names
-		for (auto const& kvp: resourceStream->mQualityNames)
-		{
-			auto const& name = kvp.first;
-			auto id = kvp.second;
-
-			writeValue(name, fp);
-			writeValue(id, fp);
 		}
 
 		// Write type-specific data
@@ -634,342 +493,134 @@ namespace mpp
 		return parser;
 	}
 
-	void ResourceStreamSerializer::readBasicMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readBasicMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
-		auto pStream = static_cast<ProgrammaticBasicMaterialStream*>(resourceStream.get());
-		pStream->mQualitySettings.clear();
-
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings
-		for (uint32_t i = 0; i < numSettings; ++i)
+		if (mReadVersion < 3 && readUInt(fp) != 1) THROW_MPP("Legacy BasicMaterial contains multiple quality definitions; split and re-export it.", __LINE__, __FILE__, __func__);
+		auto& spec = static_cast<ProgrammaticBasicMaterialStream*>(resourceStream.get())->mSpecification;
+		spec = {};
+		spec.program.resourceExists = readBool(fp); spec.program.existingResource = readString(fp); spec.program.isChild = readBool(fp); spec.program.is2d = readBool(fp);
+		spec.program.spec = readMeshSpecification(fp);
+		spec.program.vertexShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.vertexShader.data = readString(fp);
+		spec.program.geometryShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.geometryShader.data = readString(fp);
+		spec.program.fragmentShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.fragmentShader.data = readString(fp);
+		spec.uniforms = readUniformCollection(fp);
+		auto readTextureOptions = [&]()
 		{
-			string name = qualityNames.at((uint32_t)i);
-			auto quality = pStream->createQualitySetting(name);
-
-			// Program options
-			auto& qs = pStream->mQualitySettings[quality];
-
-			qs.spec.program.resourceExists = readBool(fp);
-			qs.spec.program.existingResource = readString(fp);
-			qs.spec.program.isChild = readBool(fp);
-			qs.spec.program.is2d = readBool(fp);
-
-			// MeshSpecification
-			auto meshSpec = readMeshSpecification(fp);
-			qs.spec.program.spec = meshSpec;
-
-			// Shaders
-			qs.spec.program.vertexShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.spec.program.vertexShader.data = readString(fp);
-
-			qs.spec.program.geometryShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.spec.program.geometryShader.data = readString(fp);
-
-			qs.spec.program.fragmentShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.spec.program.fragmentShader.data = readString(fp);
-
-			// Uniforms
-			qs.spec.uniforms = readUniformCollection(fp);
-
-			// Textures
-			uint32_t numTextures = readUInt(fp);
-			for (uint32_t j = 0; j < numTextures; ++j)
-			{
-				BasicMaterialSpecification::TextureOptions textureOptions;
-
-				textureOptions.resourceExists = readBool(fp);
-				textureOptions.existingResource = readString(fp);
-				textureOptions.isChild = readBool(fp);
-				textureOptions.sampler = readString(fp);
-				textureOptions.source = readString(fp);
-				textureOptions.target = static_cast<TextureTarget>(readUInt(fp));
-
-				// TextureParams
-				textureOptions.params.minFilter = readUInt(fp);
-				textureOptions.params.magFilter = readUInt(fp);
-				textureOptions.params.wrap = readUInt(fp);
-				textureOptions.params.useMipmaps = readBool(fp);
-				textureOptions.params.lodBaseLevel = readInt(fp);
-				textureOptions.params.lodMaxLevel = readInt(fp);
-				textureOptions.params.lodBias = readFloat(fp);
-				textureOptions.params.maxAnisotropy = readFloat(fp);
-
-				qs.spec.textures.push_back(textureOptions);
-			}
-		}
+			decltype(spec.textures)::value_type texture;
+			texture.resourceExists = readBool(fp); texture.existingResource = readString(fp); texture.isChild = readBool(fp);
+			texture.sampler = readString(fp); texture.source = readString(fp); texture.target = static_cast<TextureTarget>(readUInt(fp));
+			texture.params.minFilter = readUInt(fp); texture.params.magFilter = readUInt(fp); texture.params.wrap = readUInt(fp);
+			texture.params.useMipmaps = readBool(fp); texture.params.lodBaseLevel = readInt(fp); texture.params.lodMaxLevel = readInt(fp);
+			texture.params.lodBias = readFloat(fp); texture.params.maxAnisotropy = readFloat(fp);
+			return texture;
+		};
+		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) spec.textures.push_back(readTextureOptions());
 	}
 
-	void ResourceStreamSerializer::readPbrMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readPbrMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
-		auto pStream = static_cast<ProgrammaticPbrMaterialStream*>(resourceStream.get());
-		pStream->mQualitySettings.clear();
-
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings
-		for (uint32_t i = 0; i < numSettings; ++i)
+		if (mReadVersion < 3 && readUInt(fp) != 1) THROW_MPP("Legacy PbrMaterial contains multiple quality definitions; split and re-export it.", __LINE__, __FILE__, __func__);
+		auto& spec = static_cast<ProgrammaticPbrMaterialStream*>(resourceStream.get())->mSpecification;
+		spec = {};
+		spec.program.resourceExists = readBool(fp); spec.program.existingResource = readString(fp); spec.program.isChild = readBool(fp); spec.program.is2d = readBool(fp);
+		spec.program.spec = readMeshSpecification(fp);
+		spec.program.vertexShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.vertexShader.data = readString(fp);
+		spec.program.geometryShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.geometryShader.data = readString(fp);
+		spec.program.fragmentShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.fragmentShader.data = readString(fp);
+		spec.uniforms = readUniformCollection(fp);
+		spec.pbr.enabled = readBool(fp);
+		spec.pbr.baseColourFactor = { readFloat(fp), readFloat(fp), readFloat(fp), readFloat(fp) };
+		spec.pbr.metallicFactor = readFloat(fp); spec.pbr.roughnessFactor = readFloat(fp);
+		spec.pbr.emissiveFactor = { readFloat(fp), readFloat(fp), readFloat(fp) };
+		spec.pbr.normalScale = readFloat(fp); spec.pbr.occlusionStrength = readFloat(fp);
+		spec.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(readUInt(fp)); spec.pbr.alphaCutoff = readFloat(fp); spec.pbr.doubleSided = readBool(fp);
+		auto readTextureOptions = [&]()
 		{
-			string name = qualityNames.at((uint32_t)i);
-			auto quality = pStream->createQualitySetting(name);
-
-			// Program options
-			auto& qs = pStream->mQualitySettings[quality];
-
-			qs.spec.program.resourceExists = readBool(fp);
-			qs.spec.program.existingResource = readString(fp);
-			qs.spec.program.isChild = readBool(fp);
-			qs.spec.program.is2d = readBool(fp);
-
-			// MeshSpecification
-			auto meshSpec = readMeshSpecification(fp);
-			qs.spec.program.spec = meshSpec;
-
-			// Shaders
-			qs.spec.program.vertexShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.spec.program.vertexShader.data = readString(fp);
-
-			qs.spec.program.geometryShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.spec.program.geometryShader.data = readString(fp);
-
-			qs.spec.program.fragmentShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
-			qs.spec.program.fragmentShader.data = readString(fp);
-
-			// Uniforms
-			qs.spec.uniforms = readUniformCollection(fp);
-
-			// PBR surface
-			qs.spec.pbr.enabled = readBool(fp);
-			qs.spec.pbr.baseColourFactor = { readFloat(fp), readFloat(fp), readFloat(fp), readFloat(fp) };
-			qs.spec.pbr.metallicFactor = readFloat(fp); qs.spec.pbr.roughnessFactor = readFloat(fp);
-			qs.spec.pbr.emissiveFactor = { readFloat(fp), readFloat(fp), readFloat(fp) };
-			qs.spec.pbr.normalScale = readFloat(fp); qs.spec.pbr.occlusionStrength = readFloat(fp);
-			qs.spec.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(readUInt(fp));
-			qs.spec.pbr.alphaCutoff = readFloat(fp); qs.spec.pbr.doubleSided = readBool(fp);
-
-			// Textures
-			uint32_t numTextures = readUInt(fp);
-			for (uint32_t j = 0; j < numTextures; ++j)
-			{
-				PbrMaterialSpecification::TextureOptions textureOptions;
-
-				textureOptions.resourceExists = readBool(fp);
-				textureOptions.existingResource = readString(fp);
-				textureOptions.isChild = readBool(fp);
-				textureOptions.sampler = readString(fp);
-				textureOptions.source = readString(fp);
-				textureOptions.target = static_cast<TextureTarget>(readUInt(fp));
-
-				// TextureParams
-				textureOptions.params.minFilter = readUInt(fp);
-				textureOptions.params.magFilter = readUInt(fp);
-				textureOptions.params.wrap = readUInt(fp);
-				textureOptions.params.useMipmaps = readBool(fp);
-				textureOptions.params.lodBaseLevel = readInt(fp);
-				textureOptions.params.lodMaxLevel = readInt(fp);
-				textureOptions.params.lodBias = readFloat(fp);
-				textureOptions.params.maxAnisotropy = readFloat(fp);
-
-				qs.spec.textures.push_back(textureOptions);
-			}
-		}
+			decltype(spec.textures)::value_type texture;
+			texture.resourceExists = readBool(fp); texture.existingResource = readString(fp); texture.isChild = readBool(fp);
+			texture.sampler = readString(fp); texture.source = readString(fp); texture.target = static_cast<TextureTarget>(readUInt(fp));
+			texture.params.minFilter = readUInt(fp); texture.params.magFilter = readUInt(fp); texture.params.wrap = readUInt(fp);
+			texture.params.useMipmaps = readBool(fp); texture.params.lodBaseLevel = readInt(fp); texture.params.lodMaxLevel = readInt(fp);
+			texture.params.lodBias = readFloat(fp); texture.params.maxAnisotropy = readFloat(fp);
+			return texture;
+		};
+		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) spec.textures.push_back(readTextureOptions());
 	}
 
-	void ResourceStreamSerializer::readProgramStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readProgramStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
-		auto pStream = static_cast<ProgrammaticProgramStream*>(resourceStream.get());
-		pStream->mQualitySettings.clear();
-
-		// Read source
-		auto vertexSource = readString(fp);
-		auto geometrySource = readString(fp);
-		auto fragmentSource = readString(fp);
-
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings
-		for (uint32_t i = 0; i < numSettings; ++i)
-		{
-			string name = qualityNames.at((uint32_t)i);
-			auto quality = pStream->createQualitySetting(name);
-
-			auto& qs = pStream->mQualitySettings[quality];
-
-			qs.parser = readParser(fp);
-
-			auto numAttribs = readUInt(fp);
-			for (uint32_t i = 0; i < numAttribs; ++i)
-			{
-				qs.attribs.insert(readString(fp));
-			}
-		}
+		auto stream = static_cast<ProgrammaticProgramStream*>(resourceStream.get());
+		stream->mVertexSource = readString(fp); stream->mGeometrySource = readString(fp); stream->mFragmentSource = readString(fp);
+		if (mReadVersion < 3 && readUInt(fp) != 1) THROW_MPP("Legacy Program contains multiple quality definitions; split and re-export it.", __LINE__, __FILE__, __func__);
+		stream->mParser = readParser(fp);
+		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) stream->mAttribs.insert(readString(fp));
 	}
 
-	void ResourceStreamSerializer::readSamplerStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readSamplerStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
-		auto pStream = static_cast<ProgrammaticSamplerStream*>(resourceStream.get());
-		pStream->mQualitySettings.clear();
-
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings
-		for (uint32_t i = 0; i < numSettings; ++i)
-		{
-			string name = qualityNames.at((uint32_t)i);
-			auto quality = pStream->createQualitySetting(name);
-
-			auto& qs = pStream->mQualitySettings.at(quality);
-
-			qs.params.minFilter = readUInt(fp);
-			qs.params.magFilter = readUInt(fp);
-			qs.params.wrap = readUInt(fp);
-			qs.params.lodMinLevel = readFloat(fp);
-			qs.params.lodMaxLevel = readFloat(fp);
-			qs.params.lodBias = readFloat(fp);
-			qs.params.maxAnisotropy = readFloat(fp);
-		}
+		if (mReadVersion < 3 && readUInt(fp) != 1) THROW_MPP("Legacy Sampler contains multiple quality definitions; split and re-export it.", __LINE__, __FILE__, __func__);
+		auto& params = static_cast<ProgrammaticSamplerStream*>(resourceStream.get())->mParams;
+		params.minFilter = readUInt(fp); params.magFilter = readUInt(fp); params.wrap = readUInt(fp);
+		params.lodMinLevel = readFloat(fp); params.lodMaxLevel = readFloat(fp); params.lodBias = readFloat(fp); params.maxAnisotropy = readFloat(fp);
 	}
 
-	void ResourceStreamSerializer::readStringStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readStringStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
-		auto pStream = static_cast<ProgrammaticStringStream*>(resourceStream.get());
-		pStream->mQualitySettings.clear();
-
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings
-		for (uint32_t i = 0; i < numSettings; ++i)
-		{
-			string name = qualityNames.at((uint32_t)i);
-			auto quality = pStream->createQualitySetting(name);
-
-			auto& qs = pStream->mQualitySettings.at(quality);
-
-			qs.data = readString(fp);
-			qs.file = readString(fp);
-			qs.isFile = readBool(fp);
-		}
+		if (mReadVersion < 3 && readUInt(fp) != 1) THROW_MPP("Legacy String contains multiple quality definitions; split and re-export it.", __LINE__, __FILE__, __func__);
+		auto stream = static_cast<ProgrammaticStringStream*>(resourceStream.get());
+		stream->mData = readString(fp); stream->mFile = readString(fp); stream->mIsFile = readBool(fp);
 	}
 
-	void ResourceStreamSerializer::readTextureStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readTextureStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
-		auto pStream = static_cast<ProgrammaticTextureStream*>(resourceStream.get());
-		pStream->mQualitySettings.clear();
-
-		// Read tiles.
-		// NOTE: tiles have been removed, but this code has been left in to load existing models which were saved with tile information.
-		//       new models will be written without.
-		uint32_t numTiles = readUInt(fp);
-		for (uint32_t i = 0; i < numTiles; ++i)
-		{
-			string tileName = readString(fp);
-			float u0 = readFloat(fp);
-			float u1 = readFloat(fp);
-			float v0 = readFloat(fp);
-			float v1 = readFloat(fp);
-
-			/*
-			TextureStream::Tile tile
-			{
-				{ u0, u1 }, { v0, v1 }
-			};
-
-			pStream->mTiles[tileName] = tile;
-			*/
-		}
-
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings
-		for (uint32_t i = 0; i < numSettings; ++i)
-		{
-			string name = qualityNames.at((uint32_t)i);
-			auto quality = pStream->createQualitySetting(name);
-
-			auto& qs = pStream->mQualitySettings.at(quality);
-
-			qs.target = readUInt(fp);
-			qs.internalFormat = readUInt(fp);
-
-			qs.params.minFilter = readUInt(fp);
-			qs.params.magFilter = readUInt(fp);
-			qs.params.wrap = readUInt(fp);
-			qs.params.useMipmaps = readBool(fp);
-			qs.params.lodBaseLevel = readInt(fp);
-			qs.params.lodMaxLevel = readInt(fp);
-			qs.params.lodBias = readFloat(fp);
-			qs.params.maxAnisotropy = readFloat(fp);
-
-			// Other.  Don't read the image load function, this will be provided by whatever loads this.
-			qs.sampler = readString(fp);
-			qs.source = readString(fp);
-		}
+		auto stream = static_cast<ProgrammaticTextureStream*>(resourceStream.get());
+		uint32_t tiles = readUInt(fp);
+		for (uint32_t i = 0; i < tiles; ++i) { readString(fp); readFloat(fp); readFloat(fp); readFloat(fp); readFloat(fp); }
+		if (mReadVersion < 3 && readUInt(fp) != 1) THROW_MPP("Legacy Texture contains multiple quality definitions; split and re-export it.", __LINE__, __FILE__, __func__);
+		auto& definition = stream->mDefinition;
+		definition.target = readUInt(fp); definition.internalFormat = readUInt(fp);
+		definition.params.minFilter = readUInt(fp); definition.params.magFilter = readUInt(fp); definition.params.wrap = readUInt(fp);
+		definition.params.useMipmaps = readBool(fp); definition.params.lodBaseLevel = readInt(fp); definition.params.lodMaxLevel = readInt(fp);
+		definition.params.lodBias = readFloat(fp); definition.params.maxAnisotropy = readFloat(fp);
+		definition.sampler = readString(fp); definition.source = readString(fp);
 	}
 
 	ResourceStreamPtr ResourceStreamSerializer::convertLegacyMaterial(ResourceStreamPtr const& stream)
 	{
 		auto basic = static_cast<ProgrammaticBasicMaterialStream*>(stream.get());
-		bool pbrTagged = false;
-		for (auto const& setting : basic->mQualitySettings)
-			if (setting.spec.uniforms.getUniformData().contains("PBR_ENABLED")) { pbrTagged = true; break; }
-		if (!pbrTagged)
+		auto const& source = basic->mSpecification;
+		if (!source.uniforms.getUniformData().contains("PBR_ENABLED"))
 		{
 			if (mResourceMgr) mResourceMgr->warnMessage("Loading deprecated Material stream as BasicMaterial; re-export this asset.");
 			return stream;
 		}
-
 		auto converted = make_shared<ProgrammaticPbrMaterialStream>(mResourceMgr);
-		converted->mQualitySettings.clear();
-		converted->mQualityNames = basic->mQualityNames;
 		for (auto const& [name, child] : basic->getChildren()) converted->addChild(name, child);
-		for (auto const& source : basic->mQualitySettings)
+		auto& target = converted->mSpecification;
+		target.legacyFullContract = true;
+		target.program.resourceExists = source.program.resourceExists; target.program.existingResource = source.program.existingResource;
+		target.program.isChild = source.program.isChild; target.program.is2d = source.program.is2d; target.program.spec = source.program.spec;
+		target.program.vertexShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.program.vertexShader.type); target.program.vertexShader.data = source.program.vertexShader.data;
+		target.program.geometryShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.program.geometryShader.type); target.program.geometryShader.data = source.program.geometryShader.data;
+		target.program.fragmentShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.program.fragmentShader.type); target.program.fragmentShader.data = source.program.fragmentShader.data;
+		target.uniforms = source.uniforms;
+		for (auto it = target.uniforms.mUniformData.begin(); it != target.uniforms.mUniformData.end(); )
+			if (it->first.rfind("PBR_", 0) != 0) it = target.uniforms.mUniformData.erase(it); else ++it;
+		target.pbr.enabled = true;
+		auto const& values = source.uniforms.getUniformData();
+		auto copy = [&](char const* field, void* destination, size_t size) { auto found = values.find(field); if (found != values.end() && found->second.size >= size) memcpy(destination, found->second.data, size); };
+		copy("PBR_BASE_COLOUR_FACTOR", &target.pbr.baseColourFactor, sizeof(target.pbr.baseColourFactor));
+		copy("PBR_METALLIC_FACTOR", &target.pbr.metallicFactor, sizeof(float)); copy("PBR_ROUGHNESS_FACTOR", &target.pbr.roughnessFactor, sizeof(float));
+		copy("PBR_EMISSIVE_FACTOR", &target.pbr.emissiveFactor, sizeof(target.pbr.emissiveFactor)); copy("PBR_NORMAL_SCALE", &target.pbr.normalScale, sizeof(float));
+		copy("PBR_OCCLUSION_STRENGTH", &target.pbr.occlusionStrength, sizeof(float)); copy("PBR_ALPHA_CUTOFF", &target.pbr.alphaCutoff, sizeof(float));
+		int32_t alphaMode = 0, doubleSided = 0; copy("PBR_ALPHA_MODE", &alphaMode, sizeof(alphaMode)); copy("PBR_DOUBLE_SIDED", &doubleSided, sizeof(doubleSided));
+		target.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(alphaMode); target.pbr.doubleSided = doubleSided != 0;
+		for (auto const& texture : source.textures)
 		{
-			PbrMaterialStream::QualitySetting target;
-			target.spec.legacyFullContract = true;
-			target.spec.program.resourceExists = source.spec.program.resourceExists;
-			target.spec.program.existingResource = source.spec.program.existingResource;
-			target.spec.program.isChild = source.spec.program.isChild;
-			target.spec.program.is2d = source.spec.program.is2d;
-			target.spec.program.spec = source.spec.program.spec;
-			target.spec.program.vertexShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.spec.program.vertexShader.type);
-			target.spec.program.vertexShader.data = source.spec.program.vertexShader.data;
-			target.spec.program.geometryShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.spec.program.geometryShader.type);
-			target.spec.program.geometryShader.data = source.spec.program.geometryShader.data;
-			target.spec.program.fragmentShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.spec.program.fragmentShader.type);
-			target.spec.program.fragmentShader.data = source.spec.program.fragmentShader.data;
-			target.spec.uniforms = source.spec.uniforms;
-			// Legacy files often carried inactive Phong uniforms beside PBR data.
-			// They are not part of the PBR contract and must not become extensions.
-			for (auto it = target.spec.uniforms.mUniformData.begin(); it != target.spec.uniforms.mUniformData.end(); )
-				if (it->first.rfind("PBR_", 0) != 0) it = target.spec.uniforms.mUniformData.erase(it); else ++it;
-			target.spec.pbr.enabled = true;
-			auto const& values = source.spec.uniforms.getUniformData();
-			auto copy = [&](char const* field, void* destination, size_t size) { auto found = values.find(field); if (found != values.end() && found->second.size >= size) memcpy(destination, found->second.data, size); };
-			copy("PBR_BASE_COLOUR_FACTOR", &target.spec.pbr.baseColourFactor, sizeof(target.spec.pbr.baseColourFactor));
-			copy("PBR_METALLIC_FACTOR", &target.spec.pbr.metallicFactor, sizeof(float));
-			copy("PBR_ROUGHNESS_FACTOR", &target.spec.pbr.roughnessFactor, sizeof(float));
-			copy("PBR_EMISSIVE_FACTOR", &target.spec.pbr.emissiveFactor, sizeof(target.spec.pbr.emissiveFactor));
-			copy("PBR_NORMAL_SCALE", &target.spec.pbr.normalScale, sizeof(float));
-			copy("PBR_OCCLUSION_STRENGTH", &target.spec.pbr.occlusionStrength, sizeof(float));
-			copy("PBR_ALPHA_CUTOFF", &target.spec.pbr.alphaCutoff, sizeof(float));
-			int32_t alphaMode = 0, doubleSided = 0;
-			copy("PBR_ALPHA_MODE", &alphaMode, sizeof(alphaMode)); copy("PBR_DOUBLE_SIDED", &doubleSided, sizeof(doubleSided));
-			target.spec.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(alphaMode);
-			target.spec.pbr.doubleSided = doubleSided != 0;
-			for (auto const& texture : source.spec.textures)
-			{
-				PbrMaterialSpecification::TextureOptions result;
-				result.resourceExists = texture.resourceExists; result.sampler = texture.sampler; result.existingResource = texture.existingResource;
-				result.isChild = texture.isChild; result.source = texture.source; result.target = texture.target; result.params = texture.params;
-				target.spec.textures.push_back(result);
-			}
-			converted->mQualitySettings.push_back(target);
+			PbrMaterialSpecification::TextureOptions result;
+			result.resourceExists = texture.resourceExists; result.sampler = texture.sampler; result.existingResource = texture.existingResource;
+			result.isChild = texture.isChild; result.source = texture.source; result.target = texture.target; result.params = texture.params;
+			target.textures.push_back(result);
 		}
 		if (mResourceMgr) mResourceMgr->warnMessage("Converted deprecated PBR-tagged Material stream to PbrMaterial; re-export this asset.");
 		return converted;
@@ -1010,9 +661,6 @@ namespace mpp
 			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
-		// Clear the quality setting that gets created
-		resourceStream->mQualityNames.clear();
-
 		// Read children
 		uint32_t numChildren = readUInt(fp);
 		for (uint32_t i = 0; i < numChildren; ++i)
@@ -1023,43 +671,37 @@ namespace mpp
 			resourceStream->addChild(name, res);
 		}
 
-		// Read number of quality settings
-		uint32_t numSettings = readUInt(fp);
-
-		// Read quality settings names
-		map<uint32_t, string> settingNames;
-		for (uint32_t i = 0; i < numSettings; ++i)
+		if (mReadVersion < 3)
 		{
-			auto name = readString(fp);
-			auto id = readUInt(fp);
-
-			settingNames[id] = name;
+			uint32_t definitionCount = readUInt(fp);
+			if (definitionCount != 1) THROW_MPP("Legacy resource stream contains multiple embedded variants; split and re-export it.", __LINE__, __FILE__, __func__);
+			for (uint32_t i = 0; i < definitionCount; ++i) { readString(fp); readUInt(fp); }
 		}
 
 		// Read type-specific data
 		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			readBasicMaterialStream(resourceStream, fp, settingNames);
+			readBasicMaterialStream(resourceStream, fp);
 		}
 		else if (streamType == "PbrMaterial")
 		{
-			readPbrMaterialStream(resourceStream, fp, settingNames);
+			readPbrMaterialStream(resourceStream, fp);
 		}
 		else if (streamType == "Program")
 		{
-			readProgramStream(resourceStream, fp, settingNames);
+			readProgramStream(resourceStream, fp);
 		}
 		else if (streamType == "Sampler")
 		{
-			readSamplerStream(resourceStream, fp, settingNames);
+			readSamplerStream(resourceStream, fp);
 		}
 		else if (streamType == "String")
 		{
-			readStringStream(resourceStream, fp, settingNames);
+			readStringStream(resourceStream, fp);
 		}
 		else if (streamType == "Texture")
 		{
-			readTextureStream(resourceStream, fp, settingNames);
+			readTextureStream(resourceStream, fp);
 		}
 		else
 		{

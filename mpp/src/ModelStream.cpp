@@ -29,13 +29,7 @@ namespace mpp
 	 */
 	ModelStream::~ModelStream()
 	{
-		for (auto& qs: mQualitySettings)
-		{
-			for (auto meshDef: qs.meshDefinitions)
-			{
-				delete meshDef;
-			}
-		}
+		for (auto meshDef : mMeshDefinitions) delete meshDef;
 	}
 
 	/*
@@ -257,7 +251,7 @@ namespace mpp
 		MeshDefinition* md = new MeshDefinition(material, type, storageType, primitiveCount, indexWidth, pointSize);
 		md->setName(name);
 
-		mQualitySettings[mQualitySetting].meshDefinitions.push_back(md);
+		mMeshDefinitions.push_back(md);
 
 		return md;
 	}
@@ -266,32 +260,23 @@ namespace mpp
 	 * Get number of meshes in this stream.
 	 *
 	 */
-	size_t ModelStream::getNumMeshDefinitions(uint32_t quality) const
+	size_t ModelStream::getNumMeshDefinitions() const
 	{
-		return mQualitySettings[quality].meshDefinitions.size();
+		return mMeshDefinitions.size();
 	}
 	
 	/*
 	 * Get indexed mesh definition.
 	 *
 	 */
-	MeshDefinition* ModelStream::getMeshDefinition(size_t index, uint32_t quality)
+	MeshDefinition* ModelStream::getMeshDefinition(size_t index)
 	{
 		assert((index >= 0 && index < getNumMeshDefinitions()) && "ModelStream::getMeshDefinition() 'index' argument out of range!");
-		return mQualitySettings[quality].meshDefinitions[index];
+		return mMeshDefinitions[index];
 	}
 
 	string ModelStream::markUpMaterialName(string const& name, string const& material)
 	{
 		return material;
-	}
-
-	uint32_t ModelStream::createQualitySetting(string const& name)
-	{
-		auto qualityId = (uint32_t)mQualitySettings.size();
-		mQualityNames[name] = qualityId;
-
-		mQualitySettings.push_back(QualitySetting());
-		return qualityId;
 	}
 }

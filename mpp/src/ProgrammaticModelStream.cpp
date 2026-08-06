@@ -13,7 +13,6 @@ namespace mpp
 	ProgrammaticModelStream::ProgrammaticModelStream(ResourceManager* resourceMgr)
 		: ModelStream(resourceMgr)
 	{
-		createQualitySetting("");
 	}
 
 	void ProgrammaticModelStream::createMeshDataStreams()

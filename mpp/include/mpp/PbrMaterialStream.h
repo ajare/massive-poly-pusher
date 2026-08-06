@@ -1,14 +1,11 @@
 #pragma once
 
+#include <string>
 #include <vector>
-#include <map>
-#include <set>
 
 #include "mpp/ResourceStream.h"
-#include "mpp/FileDataStream.h"
 #include "mpp/UniformCollection.h"
 #include "mpp/PbrMaterialSpecification.h"
-
 #include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
@@ -18,36 +15,17 @@ namespace mpp
 		friend class ResourceStreamSerializer;
 
 	protected:
-
-		struct QualitySetting
-		{
-			PbrMaterialSpecification spec;
-		};
-
-	protected:
-
 		std::string mName;
-
-		std::vector<QualitySetting> mQualitySettings;
+		PbrMaterialSpecification mSpecification;
 
 	public:
-
 		explicit PbrMaterialStream(ResourceManager* resourceMgr);
-
 		std::string const& getName() const;
-
 		PbrMaterialSpecification::ProgramOptions const& getProgramOptions() const;
-
 		mesh::MeshSpecification const& getMeshSpecification();
-
 		UniformCollection const& getUniforms() const;
-
 		PbrMaterialSpecification::PbrSurface const& getPbrSurface() const;
-
 		bool usesLegacyFullContract() const;
-
 		std::vector<PbrMaterialSpecification::TextureOptions> const& getTextures() const;
-
-		uint32_t createQualitySetting(std::string const& name);
 	};
 }

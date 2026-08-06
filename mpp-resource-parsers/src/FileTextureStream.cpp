@@ -174,10 +174,10 @@ namespace mpp
 			}
 		}
 
-		pair<string, FileTextureStream::QualitySetting> FileTextureStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
+		pair<string, FileTextureStream::Definition> FileTextureStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
 		{
 			string name;
-			QualitySetting qs;
+			Definition qs;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -280,44 +280,11 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath(), mRelativisePaths);
-			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath(), mRelativisePaths);
-					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-				}
-			}
-
-			for (auto& entry: mQualitySettings)
-			{
-				if (entry.target == 0)
-				{
-					string errMsg = "Error loading " + getFilepath() + ".  'target' not specified.";
-					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
-				}
-			}
-
-			for (auto& qs: mQualitySettings)
-			{
-				if (qs.source == "")
-				{
-					string errMsg = "Error loading " + getFilepath() + ".  'filename' not specified for quality setting.";
-					THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
-				}
-				
-				auto resourceMgr = getResourceMgr();
-				if (resourceMgr)
-				{
-					qs.loadFunc = getResourceMgr()->getImageLoadFunction();
-				}
-			}
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each texture variant into a separate resource.", __LINE__, __FILE__, __func__);
+			mDefinition = parseDefinition(data, getResourceMgr(), getFilepath(), mRelativisePaths).second;
+			if (mDefinition.target == 0) THROW_MPP_RESOURCE_PARSERS("Error loading " + getFilepath() + ". 'target' not specified.", __LINE__, __FILE__, __func__);
+			if (mDefinition.source.empty()) THROW_MPP_RESOURCE_PARSERS("Error loading " + getFilepath() + ". 'filename' not specified.", __LINE__, __FILE__, __func__);
+			if (getResourceMgr()) mDefinition.loadFunc = getResourceMgr()->getImageLoadFunction();
 
 			TextureStream::loadImpl();
 		}

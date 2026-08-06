@@ -49,7 +49,7 @@ namespace mpp
 
 		auto resourceMgr = getResourceManager();
 
-		// Validate and specialize from selected material-quality data before
+		// Validate and specialize from the material definition before
 		// choosing or compiling a program.
 		mUniforms = mStr->getUniforms();
 		mPbrSurface = mStr->getPbrSurface();

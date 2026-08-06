@@ -34,15 +34,6 @@ namespace mpp
 
 	SamplerParams const& SamplerStream::getParams() const
 	{
-		return mQualitySettings[mQualitySetting].params;
-	}
-
-	uint32_t SamplerStream::createQualitySetting(string const& name)
-	{
-		auto qualityId = (uint32_t)mQualitySettings.size();
-		mQualityNames[name] = qualityId;
-
-		mQualitySettings.push_back(QualitySetting());
-		return qualityId;
+		return mParams;
 	}
 }

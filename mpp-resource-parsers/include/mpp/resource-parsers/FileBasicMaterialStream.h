@@ -48,7 +48,7 @@ namespace mpp
 
 			FileBasicMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
+			static std::pair<std::string, BasicMaterialSpecification> parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 		};
 
 	}

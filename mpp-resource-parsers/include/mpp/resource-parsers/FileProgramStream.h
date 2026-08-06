@@ -28,6 +28,11 @@ namespace mpp
 			bool mRelativisePaths;
 
 		private:
+			struct Definition
+			{
+				std::shared_ptr<program::Parser> parser;
+				std::set<std::string> attribs;
+			};
 
 			void setup();
 
@@ -45,7 +50,7 @@ namespace mpp
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths = true);
+			static std::pair<std::string, Definition> parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths = true);
 		};
 
 	}

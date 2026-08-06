@@ -19,10 +19,8 @@ namespace mpp
 		, mChildResourcesLoaded(false)
 		, mResourceMgr(resourceMgr)
 		, mwResource(nullptr)
-		, mQualitySetting(0)
 	{
 		//static_log_message(MPP_RESOURCE_LOGFILE, "Construct-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
-		//mQualityNames["Default"] = 0;
 	}
 
 	/*
@@ -67,16 +65,15 @@ namespace mpp
 	 * Load resource stream data.
 	 *
 	 */
-	void ResourceStream::load(uint32_t qualitySetting)
+	void ResourceStream::load()
 	{
-		mQualitySetting = qualitySetting;
 		createChildResourceStreams();
 
 		if (!mLoaded)
 		{
 			for (auto& child: mChildren)
 			{
-				child.second->load(mQualitySetting);
+				child.second->load();
 			}
 
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Load-stream " + getType() + ": " + (mwResource ? ("'" + mwResource->getName() + "'") : "(unattached)"));
@@ -207,10 +204,5 @@ namespace mpp
 
 			mChildResourcesLoaded = false;
 		}
-	}
-
-	map<string, uint32_t> const& ResourceStream::getQualityNames() const
-	{
-		return mQualityNames;
 	}
 }

@@ -69,7 +69,7 @@ namespace mpp
 								auto const& data = mentry.first == "Material" ? mentry.second.getEntry("Resource") : mentry.second;
 								mstream = make_shared<resource_parsers::FileBasicMaterialStream>(nullptr, getFilepath(), data, mMeshSpec, false);
 							}
-							mstream->load(0);
+							mstream->load();
 							
 							// Serialize the materialstream
 

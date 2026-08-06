@@ -120,7 +120,7 @@ namespace mpp
 			return shader;
 		}
 
-		pair<std::string, FileProgramStream::QualitySetting> FileProgramStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths)
+		pair<std::string, FileProgramStream::Definition> FileProgramStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths)
 		{
 			string name;
 
@@ -268,8 +268,7 @@ namespace mpp
 				attribs.insert("Rotation");
 			}
 
-			// Create quality settings
-			QualitySetting qs;
+			Definition qs;
 			qs.parser = make_shared<program::Parser>();
 			qs.attribs = attribs;
 
@@ -331,23 +330,10 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			// Default quality setting
-			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath(), mMeshSpecRequired, &mMeshSpecification);
-			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					// Additional quality setting
-					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath(), mMeshSpecRequired, &mMeshSpecification);
-					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-				}
-			}
-
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each program variant into a separate resource.", __LINE__, __FILE__, __func__);
+			auto definition = parseDefinition(data, getResourceMgr(), getFilepath(), mMeshSpecRequired, &mMeshSpecification).second;
+			mParser = definition.parser;
+			mAttribs = definition.attribs;
 			ProgramStream::loadImpl();
 		}
 	}

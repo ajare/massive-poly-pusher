@@ -62,16 +62,16 @@ namespace mpp
 
 		std::shared_ptr<program::Parser> readParser(std::ifstream& fp);
 
-		void readBasicMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
-		void readPbrMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+		void readBasicMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
+		void readPbrMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 
-		void readProgramStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+		void readProgramStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 
-		void readSamplerStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+		void readSamplerStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 
-		void readStringStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+		void readStringStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 
-		void readTextureStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+		void readTextureStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 
 		ResourceStreamPtr readStream(std::ifstream& fp);
 		ResourceStreamPtr convertLegacyMaterial(ResourceStreamPtr const& stream);
@@ -83,6 +83,7 @@ namespace mpp
 		mesh::MeshSpecification mMeshSpec;
 
 		bool mUseGlobalMeshSpec{ false };
+		uint32_t mReadVersion{ 3 };
 
 	public:
 

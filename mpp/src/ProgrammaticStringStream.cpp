@@ -14,29 +14,26 @@ namespace mpp
 	ProgrammaticStringStream::ProgrammaticStringStream(ResourceManager* resourceMgr)
 		: StringStream(resourceMgr)
 	{
-		createQualitySetting("");
 	}
 
 	void ProgrammaticStringStream::loadImpl()
 	{
-		auto& qs = mQualitySettings[mQualitySetting];
-		
-		if (qs.isFile)
+		if (mIsFile)
 		{
 			// Load file
-			qs.data = utils::FileSystem::readTextFile(qs.file);
+			mData = utils::FileSystem::readTextFile(mFile);
 		}
 	}
 
-	void ProgrammaticStringStream::setString(string const& data, uint32_t quality)
+	void ProgrammaticStringStream::setString(string const& data)
 	{
-		mQualitySettings[quality].data = data;
-		mQualitySettings[quality].isFile = false;
+		mData = data;
+		mIsFile = false;
 	}
 
-	void ProgrammaticStringStream::setFile(string const& file, uint32_t quality)
+	void ProgrammaticStringStream::setFile(string const& file)
 	{
-		mQualitySettings[quality].file = file;
-		mQualitySettings[quality].isFile = true;
+		mFile = file;
+		mIsFile = true;
 	}
 }

@@ -35,9 +35,9 @@ namespace mpp
 	 */
 	void TextureStream::loadImpl()
 	{
-		if (mQualitySettings[mQualitySetting].loadFunc)
+		if (mDefinition.loadFunc)
 		{
-			mData = mQualitySettings[mQualitySetting].loadFunc(mQualitySettings[mQualitySetting].source);
+			mData = mDefinition.loadFunc(mDefinition.source);
 		}
 	}
 
@@ -64,12 +64,12 @@ namespace mpp
 
 	uint32_t TextureStream::getInternalFormat() const
 	{
-		return mQualitySettings[mQualitySetting].internalFormat;
+		return mDefinition.internalFormat;
 	}
 
 	uint32_t TextureStream::getTarget() const
 	{
-		return mQualitySettings[mQualitySetting].target;
+		return mDefinition.target;
 	}
 
 	/*
@@ -134,32 +134,17 @@ namespace mpp
 
 	TextureParams const& TextureStream::getParams() const
 	{
-		return mQualitySettings[mQualitySetting].params;
+		return mDefinition.params;
 	}
 
 	string const& TextureStream::getSampler() const
 	{
-		return mQualitySettings[mQualitySetting].sampler;
-	}
-
-	uint32_t TextureStream::createQualitySetting(string const& name)
-	{
-		auto qualityId = (uint32_t)mQualitySettings.size();
-		mQualityNames[name] = qualityId;
-
-		mQualitySettings.push_back(QualitySetting());
-		return qualityId;
+		return mDefinition.sampler;
 	}
 
 	void TextureStream::setFileBasePaths(string const& basepath)
 	{
-		for (auto& qs: mQualitySettings)
-		{
-			filesystem::path sourceFp(qs.source);
-			if (sourceFp.is_relative())
-			{
-				qs.source = utils::FileSystem::concatPaths(basepath, qs.source);
-			}
-		}
+		filesystem::path sourceFp(mDefinition.source);
+		if (sourceFp.is_relative()) mDefinition.source = utils::FileSystem::concatPaths(basepath, mDefinition.source);
 	}
 }

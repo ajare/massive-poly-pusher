@@ -22,19 +22,15 @@ namespace mpp
 		{
 		}
 
-		void FileStringStream::parseQualitySetting(utils::StructuredData const& data)
+		void FileStringStream::parseDefinition(utils::StructuredData const& data)
 		{
-			string name, value, file;
+			string value, file;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
 
-				if (entry.first == "name")
-				{
-					name = entry.second.getValue();
-				}
-				else if (entry.first == "value")
+				if (entry.first == "value")
 				{
 					value = entry.second.getValue();
 				}
@@ -55,12 +51,9 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			auto newSettingId = createQualitySetting(name);
-			auto &qs = mQualitySettings[newSettingId];
-
 			if (value != "")
 			{
-				qs.data = value;
+				StringStream::mData = value;
 			}
 			else
 			{
@@ -73,7 +66,7 @@ namespace mpp
 				}
 
 				// Load file
-				qs.data = utils::FileSystem::readTextFile(file);
+				StringStream::mData = utils::FileSystem::readTextFile(file);
 			}
 		}
 
@@ -90,18 +83,8 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					parseQualitySetting(entry.second);
-				}
-			}
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each string variant into a separate resource.", __LINE__, __FILE__, __func__);
+			parseDefinition(data);
 		}
 	}
 }

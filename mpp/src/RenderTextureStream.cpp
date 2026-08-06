@@ -22,52 +22,52 @@ namespace mpp
 
 	uint32_t RenderTextureStream::getInternalFormat() const
 	{
-		return mQualitySettings[mQualitySetting].internalFormat;
+		return mDefinition.internalFormat;
 	}
 
 	uint32_t RenderTextureStream::getTarget() const
 	{
-		return mQualitySettings[mQualitySetting].target;
+		return mDefinition.target;
 	}
 
 	size_t RenderTextureStream::getWidth() const
 	{
-		return mQualitySettings[mQualitySetting].width;
+		return mDefinition.width;
 	}
 
 	size_t RenderTextureStream::getHeight() const
 	{
-		return mQualitySettings[mQualitySetting].height;
+		return mDefinition.height;
 	}
 
 	size_t RenderTextureStream::getDepth() const
 	{
-		return mQualitySettings[mQualitySetting].depth;
+		return mDefinition.depth;
 	}
 
 	size_t RenderTextureStream::getBitsPerPixel() const
 	{
-		return mQualitySettings[mQualitySetting].bitsPerPixel;
+		return mDefinition.bitsPerPixel;
 	}
 
 	uint32_t RenderTextureStream::getPixelFormat() const
 	{
-		return mQualitySettings[mQualitySetting].pixelFormat;
+		return mDefinition.pixelFormat;
 	}
 
 	uint32_t RenderTextureStream::getPixelDataType() const
 	{
-		return mQualitySettings[mQualitySetting].pixelDataType;
+		return mDefinition.pixelDataType;
 	}
 
 	TextureParams const& RenderTextureStream::getParams() const
 	{
-		return mQualitySettings[mQualitySetting].params;
+		return mDefinition.params;
 	}
 
 	string const& RenderTextureStream::getSampler() const
 	{
-		return mQualitySettings[mQualitySetting].sampler;
+		return mDefinition.sampler;
 	}
 
 	bool RenderTextureStream::useDepthBuffer() const
@@ -93,14 +93,5 @@ namespace mpp
 	uint32_t RenderTextureStream::getSamples() const
 	{
 		return mSamples;
-	}
-
-	uint32_t RenderTextureStream::createQualitySetting(string const& name)
-	{
-		auto qualityId = (uint32_t)mQualitySettings.size();
-		mQualityNames[name] = qualityId;
-
-		mQualitySettings.push_back(QualitySetting());
-		return qualityId;
 	}
 }

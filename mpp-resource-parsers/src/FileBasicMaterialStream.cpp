@@ -117,20 +117,8 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			// Default quality setting
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each material variant into a separate resource.", __LINE__, __FILE__, __func__);
 			parseForChildResourceStreams(data, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					// Additional quality setting
-					parseForChildResourceStreams(entry.second, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
-				}
-			}
 		}
 
 		void FileBasicMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
@@ -286,10 +274,10 @@ namespace mpp
 			}
 		}
 
-		pair<string, FileBasicMaterialStream::QualitySetting> FileBasicMaterialStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		pair<string, BasicMaterialSpecification> FileBasicMaterialStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
-			QualitySetting qs;
+			BasicMaterialSpecification qs;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -306,18 +294,18 @@ namespace mpp
 					auto const& programEntry = entry.second;
 					if (programEntry.hasEntry("Resource"))
 					{
-						qs.spec.program.resourceExists = true;
-						qs.spec.program.isChild = true;
-						qs.spec.program.existingResource = "Program";
+						qs.program.resourceExists = true;
+						qs.program.isChild = true;
+						qs.program.existingResource = "Program";
 					}
 					else if (programEntry.hasEntry("Ref"))
 					{
 						auto refName = programEntry.getEntry("Resource").getValue();
 
 						// Set program options
-						qs.spec.program.resourceExists = true;
-						qs.spec.program.isChild = false;
-						qs.spec.program.existingResource = refName;
+						qs.program.resourceExists = true;
+						qs.program.isChild = false;
+						qs.program.existingResource = refName;
 					}
 					else
 					{
@@ -355,7 +343,7 @@ namespace mpp
 								textureOptions.existingResource = textureEntry.getEntry("Ref").getValue();
 							}
 						
-							qs.spec.textures.push_back(textureOptions);
+							qs.textures.push_back(textureOptions);
 						}
 					}
 				}
@@ -369,7 +357,7 @@ namespace mpp
 						if (entry.first == "Uniform")
 						{
 							// Parse uniform
-							parseUniform(entry.second, qs.spec.uniforms, filepath);
+							parseUniform(entry.second, qs.uniforms, filepath);
 						}
 					}
 				}
@@ -391,22 +379,11 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			// Default quality setting
-			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath());
-			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					// Additional quality setting
-					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
-					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-				}
-			}
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each material variant into a separate resource.", __LINE__, __FILE__, __func__);
+			auto definition = parseDefinition(data, getResourceMgr(), getFilepath());
+			mName = definition.first;
+			mSpecification = definition.second;
+			if (mUseSpecifiedMeshSpec) mSpecification.program.spec = mMeshSpec;
 		}
 	}
 }
