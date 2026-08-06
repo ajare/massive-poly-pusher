@@ -4,7 +4,7 @@
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 
-#include "mpp/resource-parsers/FileMaterialStream.h"
+#include "mpp/resource-parsers/FileBasicMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/FileTextureStream.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
@@ -16,24 +16,24 @@ namespace mpp
 
 		using namespace std;
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
-			: MaterialStream(resourceMgr)
+		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
+			: BasicMaterialStream(resourceMgr)
 			, FileStream(filepath)
 			, mUseSpecifiedMeshSpec(false)
 			, mRelativisePaths(relativisePaths)
 		{
 		}
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
-			: MaterialStream(resourceMgr)
+		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
+			: BasicMaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(false)
 			, mRelativisePaths(relativisePaths)
 		{
 		}
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
-			: MaterialStream(resourceMgr)
+		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
+			: BasicMaterialStream(resourceMgr)
 			, FileStream(filepath)
 			, mUseSpecifiedMeshSpec(true)
 			, mMeshSpec(meshSpec)
@@ -41,8 +41,8 @@ namespace mpp
 		{
 		}
 
-		FileMaterialStream::FileMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
-			: MaterialStream(resourceMgr)
+		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
+			: BasicMaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(true)
 			, mMeshSpec(meshSpec)
@@ -50,7 +50,7 @@ namespace mpp
 		{
 		}
 
-		void FileMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
+		void FileBasicMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
 		{
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -104,16 +104,16 @@ namespace mpp
 			}
 		}
 
-		void FileMaterialStream::createChildResourceStreamsImpl()
+		void FileBasicMaterialStream::createChildResourceStreamsImpl()
 		{
 			auto const& data = getStructuredData();
 
 			// Parse data.  Root element should be 'Material'
 			auto rootName = data.getName();
 
-			if (rootName != "Material" && rootName != "Resource")
+			if (rootName != "BasicMaterial" && rootName != "Resource")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Material' nor 'Resource'.";
+				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'BasicMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -133,7 +133,7 @@ namespace mpp
 			}
 		}
 
-		void FileMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
+		void FileBasicMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
 		{
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
@@ -166,7 +166,7 @@ namespace mpp
 			}
 		}
 
-		void FileMaterialStream::parseUniformMatrixType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
+		void FileBasicMaterialStream::parseUniformMatrixType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
 		{
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
@@ -185,7 +185,7 @@ namespace mpp
 			delete[] fvalues;
 		}
 
-		void FileMaterialStream::parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
+		void FileBasicMaterialStream::parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
 		{
 			string name, type, value;
 			for (auto it = data.begin(); it != data.end(); ++it)
@@ -286,7 +286,7 @@ namespace mpp
 			}
 		}
 
-		pair<string, FileMaterialStream::QualitySetting> FileMaterialStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		pair<string, FileBasicMaterialStream::QualitySetting> FileBasicMaterialStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
 			QualitySetting qs;
@@ -325,56 +325,6 @@ namespace mpp
 						THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 					}
 				}
-				else if (entry.first == "Pbr")
-				{
-					auto& pbr = qs.spec.pbr;
-					pbr.enabled = true;
-					for (auto pit = entry.second.begin(); pit != entry.second.end(); ++pit)
-					{
-						auto const& pbrEntry = *pit;
-						auto const rawValue = pbrEntry.second.getValue();
-						auto const pbrValue = utils::StringUtils::toUpper(rawValue);
-						if (pbrEntry.first == "baseColourFactor")
-						{
-							auto values = utils::StringUtils::split(rawValue, " ,");
-							if (values.size() != 4) THROW_MPP_RESOURCE_PARSERS("Pbr baseColourFactor requires four values.", __LINE__, __FILE__, __func__);
-							pbr.baseColourFactor = glm::vec4(utils::StringUtils::parseFloat(values[0]), utils::StringUtils::parseFloat(values[1]), utils::StringUtils::parseFloat(values[2]), utils::StringUtils::parseFloat(values[3]));
-						}
-						else if (pbrEntry.first == "metallicFactor") pbr.metallicFactor = utils::StringUtils::parseFloat(rawValue);
-						else if (pbrEntry.first == "roughnessFactor") pbr.roughnessFactor = utils::StringUtils::parseFloat(rawValue);
-						else if (pbrEntry.first == "normalScale") pbr.normalScale = utils::StringUtils::parseFloat(rawValue);
-						else if (pbrEntry.first == "occlusionStrength") pbr.occlusionStrength = utils::StringUtils::parseFloat(rawValue);
-						else if (pbrEntry.first == "alphaCutoff") pbr.alphaCutoff = utils::StringUtils::parseFloat(rawValue);
-						else if (pbrEntry.first == "doubleSided") pbr.doubleSided = utils::StringUtils::parseBool(pbrValue);
-						else if (pbrEntry.first == "emissiveFactor")
-						{
-							auto values = utils::StringUtils::split(rawValue, " ,");
-							if (values.size() != 3) THROW_MPP_RESOURCE_PARSERS("Pbr emissiveFactor requires three values.", __LINE__, __FILE__, __func__);
-							pbr.emissiveFactor = glm::vec3(utils::StringUtils::parseFloat(values[0]), utils::StringUtils::parseFloat(values[1]), utils::StringUtils::parseFloat(values[2]));
-						}
-						else if (pbrEntry.first == "alphaMode")
-						{
-							if (pbrValue == "OPAQUE") pbr.alphaMode = MaterialSpecification::PbrAlphaMode::Opaque;
-							else if (pbrValue == "MASK") pbr.alphaMode = MaterialSpecification::PbrAlphaMode::Mask;
-							else if (pbrValue == "BLEND") pbr.alphaMode = MaterialSpecification::PbrAlphaMode::Blend;
-							else THROW_MPP_RESOURCE_PARSERS("Unknown Pbr alphaMode.", __LINE__, __FILE__, __func__);
-						}
-					}
-
-					// Preserve PBR values through the legacy material stream format.
-					// Unknown uniforms are harmless to legacy shaders and therefore keep
-					// old Release builds able to load regenerated models.
-					qs.spec.uniforms.setUniform("PBR_ENABLED", (int32_t)1);
-					qs.spec.uniforms.setUniform("PBR_BASE_COLOUR_FACTOR", pbr.baseColourFactor);
-					qs.spec.uniforms.setUniform("PBR_METALLIC_FACTOR", pbr.metallicFactor);
-					qs.spec.uniforms.setUniform("PBR_ROUGHNESS_FACTOR", pbr.roughnessFactor);
-					qs.spec.uniforms.setUniform("PBR_EMISSIVE_FACTOR", pbr.emissiveFactor);
-					qs.spec.uniforms.setUniform("PBR_NORMAL_SCALE", pbr.normalScale);
-					qs.spec.uniforms.setUniform("PBR_OCCLUSION_STRENGTH", pbr.occlusionStrength);
-					qs.spec.uniforms.setUniform("PBR_ALPHA_MODE", (int32_t)pbr.alphaMode);
-					qs.spec.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
-					qs.spec.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
-				}
 				else if (entry.first == "Textures")
 				{
 					auto const& textures = it->second;
@@ -389,7 +339,7 @@ namespace mpp
 							auto samplerName = samplerEntry.getValue();
 
 							// This can either be a reference to another resource, or an actual texture definition.
-							MaterialSpecification::TextureOptions textureOptions;
+							BasicMaterialSpecification::TextureOptions textureOptions;
 
 							textureOptions.resourceExists = true;
 							textureOptions.sampler = samplerName;
@@ -428,16 +378,16 @@ namespace mpp
 			return make_pair(name, qs);
 		}
 
-		void FileMaterialStream::loadImpl()
+		void FileBasicMaterialStream::loadImpl()
 		{
 			auto const& data = getStructuredData();
 
-			// Parse data.  Root element should be 'Material'
+			// Parse data. Root element must identify the concrete basic resource.
 			auto rootName = data.getName();
 
-			if (rootName != "Material" && rootName != "Resource")
+			if (rootName != "BasicMaterial" && rootName != "Resource")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Material' nor 'Resource'.";
+				string errMsg = "Error loading " + getFilepath() + ". Root element is neither 'BasicMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 

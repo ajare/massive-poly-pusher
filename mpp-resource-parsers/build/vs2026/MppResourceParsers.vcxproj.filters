@@ -39,7 +39,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileProgramStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\resource-parsers\FileMaterialStream.h">
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileBasicMaterialStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileRenderGraphStream.h">
@@ -76,7 +76,7 @@
     <ClCompile Include="..\..\src\FileProgramStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\FileMaterialStream.cpp">
+    <ClCompile Include="..\..\src\FileBasicMaterialStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\FileRenderGraphStream.cpp">

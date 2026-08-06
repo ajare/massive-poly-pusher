@@ -79,7 +79,7 @@ Materials specification
 #include "utils/FileSystem.h"
 
 #include <mpp/ResourceStreamSerializer.h>
-#include <mpp/MaterialStream.h>
+#include <mpp/BasicMaterialStream.h>
 #include <mpp/ModelSerializer.h>
 
 #include <mpp/mesh/MeshSpecification.h>

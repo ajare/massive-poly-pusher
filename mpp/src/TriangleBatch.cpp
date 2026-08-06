@@ -2,7 +2,7 @@
 
 #include "mpp/TriangleBatch.h"
 #include "mpp/DefaultShaders.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/MppException.h"
 

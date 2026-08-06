@@ -1,6 +1,6 @@
 # BasicMaterial / PbrMaterial Separation Plan
 
-**Status:** approved design; implementation has not started.
+**Status:** Phase 1 complete (common base and BasicMaterial rename). Phases 2–5 remain planned.
 
 ## 1. Objective
 
@@ -304,13 +304,17 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
 
 ## 11. Implementation phases
 
-1. **Common base and legacy rename**
-   - Make `Material` abstract.
-   - Create `BasicMaterial` and rename/move existing generic stream/spec/parser/programmatic code.
-   - Update renderer/model/mesh code to consume the abstract base.
-   - Register `BasicMaterial` in `ResourceManager`; remove concrete `Material` creation.
+1. **Common base and legacy rename** — **Complete**
+   - [x] Made `Material` abstract and moved shared renderer-facing operations to it.
+   - [x] Created `BasicMaterial` and renamed/moved the generic stream, specification, file parser, and programmatic stream code.
+   - [x] Updated renderer/model/mesh code to consume the abstract base.
+   - [x] Registered `BasicMaterial` in `ResourceManager` and removed concrete `Material` creation.
+   - [x] Removed PBR fields, PBR detection, and PBR fallback behavior from `BasicMaterial`.
+   - [x] Renamed the standalone DemoSuite basic material XML root to `<BasicMaterial>`.
+   - [x] Built MassivePolyPusher, MppResourceParsers, and DemoSuite successfully.
+   - [ ] The old generic ModelSpec wrapper remains until Phase 4 supplies typed ModelSpec data. The existing untyped binary `Material` wire tag is mechanically decoded as `BasicMaterial` so current models remain loadable; Phase 4 replaces this stopgap with the documented warning-producing typed compatibility converter.
 
-2. **PBR resource and built-in program**
+2. **PBR resource and built-in program** — Planned
    - Add PBR spec/stream/resource/parser/programmatic types.
    - Add engine-owned cached PBR shader/program creation by mesh specification.
    - Add core semantic maps, neutral resources, ranges, reflection validation, and alpha classification.

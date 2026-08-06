@@ -1,7 +1,7 @@
 #include <cmath>
 
 #include "mpp/Batch.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ResourceManager.h"
 
@@ -266,7 +266,7 @@ namespace mpp
 
 	ResourcePtr Batch::createMaterial(string const& name, ResourcePtr program, ResourcePtr texture, uint32_t programFlags)
 	{
-		ProgrammaticMaterialStream* matStream = new ProgrammaticMaterialStream(mResourceMgr);
+		ProgrammaticBasicMaterialStream* matStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 
 		matStream->setProgram(program->getName());
 

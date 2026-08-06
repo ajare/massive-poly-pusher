@@ -33,7 +33,7 @@
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
 #include "mpp/ProgrammaticModelStream.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticRenderTextureStream.h"
@@ -834,7 +834,7 @@ namespace mpp
 		addCoreResource(mDefaultProgram2d, false);
 
 		// Default material
-		auto defaultMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+		auto defaultMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
@@ -857,7 +857,7 @@ namespace mpp
 
 		// Internal 2d material
 		{
-			auto internalMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+			auto internalMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 
 			internalMatStream->setProgram(mInternalProgram2d->getName());
 			internalMatStream->setTexture("TEX1", "__mpp_tex_none__");
@@ -867,7 +867,7 @@ namespace mpp
 
 		// Internal font
 		bool textAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
-		ProgrammaticMaterialStream* textMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+		ProgrammaticBasicMaterialStream* textMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
 		textMatStream->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
@@ -875,7 +875,7 @@ namespace mpp
 		auto res = resourceMgr->declareResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream)).first;
 		addCoreResource(res, true);
 
-		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream(mResourceMgr);
+		ProgrammaticBasicMaterialStream* textMatStreamColoured = new ProgrammaticBasicMaterialStream(mResourceMgr);
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
 		textMatStreamColoured->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
@@ -2377,7 +2377,7 @@ namespace mpp
 				}
 
 				auto material = static_cast<Material*>(mesh->getMaterial().get());
-				if (material->isPbr() && material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend)
+				if (material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent())
 				{
 					continue; // Conventional blended materials do not cast in S2.
 				}

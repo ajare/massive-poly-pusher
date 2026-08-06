@@ -35,8 +35,9 @@
     <ClInclude Include="..\..\include\mpp\LineBatch.h" />
     <ClInclude Include="..\..\include\mpp\Logger.h" />
     <ClInclude Include="..\..\include\mpp\Material.h" />
-    <ClInclude Include="..\..\include\mpp\MaterialSpecification.h" />
-    <ClInclude Include="..\..\include\mpp\MaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\BasicMaterial.h" />
+    <ClInclude Include="..\..\include\mpp\BasicMaterialSpecification.h" />
+    <ClInclude Include="..\..\include\mpp\BasicMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\Mesh.h" />
     <ClInclude Include="..\..\include\mpp\MeshInstance.h" />
     <ClInclude Include="..\..\include\mpp\MeshSortFlags.h" />
@@ -53,7 +54,7 @@
     <ClInclude Include="..\..\include\mpp\PrimitiveModelStream.h" />
     <ClInclude Include="..\..\include\mpp\Profiler.h" />
     <ClInclude Include="..\..\include\mpp\Program.h" />
-    <ClInclude Include="..\..\include\mpp\ProgrammaticMaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\ProgrammaticBasicMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticModelStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticRenderTextureStream.h" />
@@ -133,8 +134,8 @@
     <ClCompile Include="..\..\src\InternalFont.cpp" />
     <ClCompile Include="..\..\src\LineBatch.cpp" />
     <ClCompile Include="..\..\src\Logger.cpp" />
-    <ClCompile Include="..\..\src\Material.cpp" />
-    <ClCompile Include="..\..\src\MaterialStream.cpp" />
+    <ClCompile Include="..\..\src\BasicMaterial.cpp" />
+    <ClCompile Include="..\..\src\BasicMaterialStream.cpp" />
     <ClCompile Include="..\..\src\Mesh.cpp" />
     <ClCompile Include="..\..\src\MeshInstance.cpp" />
     <ClCompile Include="..\..\src\Model.cpp" />
@@ -148,7 +149,7 @@
     <ClCompile Include="..\..\src\PrimitiveModelStream.cpp" />
     <ClCompile Include="..\..\src\Profiler.cpp" />
     <ClCompile Include="..\..\src\Program.cpp" />
-    <ClCompile Include="..\..\src\ProgrammaticMaterialStream.cpp" />
+    <ClCompile Include="..\..\src\ProgrammaticBasicMaterialStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticProgramStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticRenderTextureStream.cpp" />

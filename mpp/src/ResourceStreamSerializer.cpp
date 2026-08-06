@@ -1,12 +1,12 @@
 #include "mpp/program/ShaderStage.h"
 
 #include "mpp/ResourceStreamSerializer.h"
-#include "mpp/MaterialStream.h"
+#include "mpp/BasicMaterialStream.h"
 #include "mpp/ProgramStream.h"
 #include "mpp/SamplerStream.h"
 #include "mpp/StringStream.h"
 #include "mpp/TextureStream.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticSamplerStream.h"
 #include "mpp/ProgrammaticStringStream.h"
@@ -174,9 +174,9 @@ namespace mpp
 		writeMeshSpecification(parser.getMeshSpecification(), fp);
 	}
 
-	void ResourceStreamSerializer::writeMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
+	void ResourceStreamSerializer::writeBasicMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<MaterialStream*>(resourceStream.get());
+		auto stream = dynamic_cast<BasicMaterialStream*>(resourceStream.get());
 
 		// Write number of quality settings
 		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
@@ -358,9 +358,9 @@ namespace mpp
 		}
 
 		// Write type-specific data
-		if (streamType == "Material")
+		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			writeMaterialStream(resourceStream, fp);
+			writeBasicMaterialStream(resourceStream, fp);
 		}
 		else if (streamType == "Program")
 		{
@@ -561,9 +561,9 @@ namespace mpp
 		return parser;
 	}
 
-	void ResourceStreamSerializer::readMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readBasicMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
-		auto pStream = static_cast<ProgrammaticMaterialStream*>(resourceStream.get());
+		auto pStream = static_cast<ProgrammaticBasicMaterialStream*>(resourceStream.get());
 		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
@@ -588,13 +588,13 @@ namespace mpp
 			qs.spec.program.spec = meshSpec;
 
 			// Shaders
-			qs.spec.program.vertexShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.vertexShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
 			qs.spec.program.vertexShader.data = readString(fp);
 
-			qs.spec.program.geometryShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.geometryShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
 			qs.spec.program.geometryShader.data = readString(fp);
 
-			qs.spec.program.fragmentShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.fragmentShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
 			qs.spec.program.fragmentShader.data = readString(fp);
 
 			// Uniforms
@@ -604,7 +604,7 @@ namespace mpp
 			uint32_t numTextures = readUInt(fp);
 			for (uint32_t j = 0; j < numTextures; ++j)
 			{
-				MaterialSpecification::TextureOptions textureOptions;
+				BasicMaterialSpecification::TextureOptions textureOptions;
 
 				textureOptions.resourceExists = readBool(fp);
 				textureOptions.existingResource = readString(fp);
@@ -768,9 +768,9 @@ namespace mpp
 		auto streamType = readString(fp);
 		ResourceStreamPtr resourceStream;
 
-		if (streamType == "Material")
+		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			resourceStream.reset(new ProgrammaticMaterialStream(mResourceMgr));
+			resourceStream.reset(new ProgrammaticBasicMaterialStream(mResourceMgr));
 		}
 		else if (streamType == "Program")
 		{
@@ -821,9 +821,9 @@ namespace mpp
 		}
 
 		// Read type-specific data
-		if (streamType == "Material")
+		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			readMaterialStream(resourceStream, fp, settingNames);
+			readBasicMaterialStream(resourceStream, fp, settingNames);
 		}
 		else if (streamType == "Program")
 		{
