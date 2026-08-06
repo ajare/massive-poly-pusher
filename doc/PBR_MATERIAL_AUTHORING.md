@@ -33,85 +33,35 @@ A factor-only PBR material is supported. Omitted surface maps receive neutral fa
 
 ## 3. Author the material in a ModelSpec
 
-Add a `Pbr` block and texture bindings inside the material `Resource`. File names in child `Resource` blocks are relative to the `.modelspec.xml` file. `Ref` names identify resources declared by the application.
+Use a concrete `<PbrMaterial>` entry. `<Surface>` and the five semantic map elements replace the old generic `<Pbr>`, `<Uniforms>`, and `<Textures>` representation. File names in child `Resource` blocks are relative to the `.modelspec.xml` file; `Ref` identifies an application-declared resource.
 
 ```xml
-<Resource>
-    <Program>
-        <Resource>
-            <positionType>3D</positionType>
-            <VertexShader><file>statue_pbr.vert</file></VertexShader>
-            <FragmentShader><file>statue_pbr.frag</file></FragmentShader>
-        </Resource>
-    </Program>
-
-    <Pbr>
-        <!-- Keep RGB/alpha at one to show the authored albedo un-tinted. -->
-        <baseColourFactor>1.0 1.0 1.0 1.0</baseColourFactor>
-        <!-- Stone/non-metal: zero. Factors multiply texture values. -->
-        <metallicFactor>0.0</metallicFactor>
-        <roughnessFactor>1.0</roughnessFactor>
-        <emissiveFactor>0.0 0.0 0.0</emissiveFactor>
-        <normalScale>1.0</normalScale>
-        <occlusionStrength>1.0</occlusionStrength>
-        <alphaMode>OPAQUE</alphaMode>
-        <alphaCutoff>0.5</alphaCutoff>
-        <doubleSided>false</doubleSided>
-    </Pbr>
-
-    <Textures>
-        <Texture>
-            <Variable>PBR_BASE_COLOUR_MAP</Variable>
-            <Resource>
-                <target>2D</target>
-                <filename>statue_albedo.png</filename>
-                <colourSpace>SRGB</colourSpace>
-                <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
-                <magFilter>LINEAR</magFilter>
-            </Resource>
-        </Texture>
-        <Texture>
-            <Variable>PBR_METALLIC_ROUGHNESS_MAP</Variable>
-            <Resource>
-                <target>2D</target>
-                <filename>statue_orm.png</filename>
-                <colourSpace>LINEAR</colourSpace>
-                <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
-                <magFilter>LINEAR</magFilter>
-            </Resource>
-        </Texture>
-        <Texture>
-            <Variable>PBR_NORMAL_MAP</Variable>
-            <Resource>
-                <target>2D</target>
-                <filename>statue_normal.png</filename>
-                <colourSpace>LINEAR</colourSpace>
-                <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
-                <magFilter>LINEAR</magFilter>
-            </Resource>
-        </Texture>
-        <Texture>
-            <Variable>PBR_OCCLUSION_MAP</Variable>
-            <Resource>
-                <target>2D</target>
-                <filename>statue_orm.png</filename>
-                <colourSpace>LINEAR</colourSpace>
-                <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
-                <magFilter>LINEAR</magFilter>
-            </Resource>
-        </Texture>
-        <Texture>
-            <Variable>PBR_EMISSIVE_MAP</Variable>
-            <Resource>
-                <target>2D</target>
-                <filename>statue_emissive.png</filename>
-                <colourSpace>SRGB</colourSpace>
-                <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
-                <magFilter>LINEAR</magFilter>
-            </Resource>
-        </Texture>
-    </Textures>
-</Resource>
+<Materials>
+  <PbrMaterial>
+    <name>statue_material</name>
+    <Program><Resource>
+      <positionType>3D</positionType>
+      <VertexShader><file>statue_pbr.vert</file></VertexShader>
+      <FragmentShader><file>statue_pbr.frag</file></FragmentShader>
+    </Resource></Program>
+    <Surface>
+      <baseColourFactor>1 1 1 1</baseColourFactor>
+      <metallicFactor>0</metallicFactor>
+      <roughnessFactor>0.75</roughnessFactor>
+      <emissiveFactor>0 0 0</emissiveFactor>
+      <normalScale>1</normalScale>
+      <occlusionStrength>1</occlusionStrength>
+      <alphaMode>OPAQUE</alphaMode>
+      <alphaCutoff>0.5</alphaCutoff>
+      <doubleSided>false</doubleSided>
+    </Surface>
+    <BaseColourMap><Resource><target>2D</target><filename>albedo.png</filename><colourSpace>SRGB</colourSpace></Resource></BaseColourMap>
+    <MetallicRoughnessMap><Resource><target>2D</target><filename>orm.png</filename><colourSpace>LINEAR</colourSpace></Resource></MetallicRoughnessMap>
+    <NormalMap><Resource><target>2D</target><filename>normal.png</filename><colourSpace>LINEAR</colourSpace></Resource></NormalMap>
+    <OcclusionMap><Resource><target>2D</target><filename>orm.png</filename><colourSpace>LINEAR</colourSpace></Resource></OcclusionMap>
+    <EmissiveMap><Resource><target>2D</target><filename>emissive.png</filename><colourSpace>SRGB</colourSpace></Resource></EmissiveMap>
+  </PbrMaterial>
+</Materials>
 ```
 
 The supported sampler names are exactly:
@@ -129,7 +79,7 @@ The supported sampler names are exactly:
 
 ## 4. Create a material programmatically
 
-First declare/load texture resources by the names that the material will reference. A `ProgrammaticTextureStream` can create a texture resource from an image loader; configure its `TextureColourSpace`, target, filtering, and wrapping before declaration. The material stream then references those resource names with `setTexture`.
+First declare/load texture resources by the names that the material will reference. A `ProgrammaticTextureStream` can create a texture resource from an image loader; configure its `TextureColourSpace`, target, filtering, and wrapping before declaration. The PBR stream references them through semantic map setters rather than arbitrary sampler names.
 
 ```cpp
 mpp::PbrMaterialSpecification::PbrSurface surface;
@@ -158,7 +108,7 @@ auto material = resourceMgr->declareResource(
     "Statue.PbrMaterial", mpp::ResourceStreamPtr(stream)).first;
 ```
 
-Use `setTextureChild(sampler, resourceName)` only when the named texture resource is to be a child of that material. Use `setDefaultTexture(sampler)` to request a neutral default texture. The material must be loaded/acquired through the normal resource lifecycle before rendering.
+Omit a semantic map to receive the engine-owned neutral fallback for that slot. Arbitrary generic texture/uniform setters are intentionally private; custom inputs use the explicit extension methods. The material must be loaded/acquired through the normal resource lifecycle before rendering.
 
 IBL is normally pipeline-owned rather than repeated in every programmatic material. Create a `PbrEnvironment`, set it on `RenderPipelineOptions::environment` when creating the `PbrForward` pipeline, and provide the three resources below:
 
@@ -242,6 +192,12 @@ cd demo-suite\resources\res\statue
 ```
 
 Build MassivePolyPusher, ModelConvert, and DemoSuite in the same Debug/Release x64 configuration first. Place the matching MassivePolyPusher DLL beside `DemoSuite.exe`. Then follow [PBR DemoSuite Validation](PBR_VALIDATION.md).
+
+## BasicMaterial migration
+
+Legacy/simple/custom-program materials are now authored as `<BasicMaterial>` and use `BasicMaterial`, `BasicMaterialSpecification`, `BasicMaterialStream`, or `ProgrammaticBasicMaterialStream` in C++. Their generic `Program`, `Uniforms`, and `Textures` behavior is unchanged. BasicMaterial never infers PBR from sampler names or uniforms; use `<PbrMaterial>` when the metallic-roughness contract is intended. BasicMaterial remains valid in PBR pipelines, where any canonical PBR samplers it explicitly declares receive neutral fallback resources.
+
+Change standalone and ModelSpec roots from `<Material>` to `<BasicMaterial>`, rebuild converters and parsers together, then re-export `.mppmodel` assets. Do not rename files to select type—the XML tag is authoritative.
 
 ## Compatibility and asset versions
 

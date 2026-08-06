@@ -1,6 +1,6 @@
 # BasicMaterial / PbrMaterial Separation Plan
 
-**Status:** Phases 1–4 complete. Documentation consolidation and broader automated validation remain.
+**Status:** Phases 1–5 complete.
 
 ## 1. Objective
 
@@ -346,10 +346,12 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Strict PbrMaterial creation validates converted programs, so a genuinely non-conforming legacy PBR program fails with named missing-interface diagnostics.
    - [x] GPU-tested both the new typed RSE2 statue and the old RSER PBR statue compatibility path.
 
-5. **Documentation and validation**
-   - Rewrite PBR material authoring/setup documentation for typed resources.
-   - Document BasicMaterial migration and complete PBR extension contract.
-   - Add unit/resource/serialization tests and DemoSuite GPU validation.
+5. **Documentation and validation** — **Complete**
+   - [x] Rewrote PBR material authoring/setup examples around typed `<PbrMaterial>`, `<Surface>`, semantic maps, pipeline-owned environments, and semantic programmatic APIs.
+   - [x] Documented BasicMaterial migration, tag-based standalone dispatch, RSE2/RSER behavior, and the complete PBR extension/per-instance contract.
+   - [x] Added startup resource tests for Basic/PBR XML dispatch, cross-root rejection, parser factor ranges, generic Basic data, independent typed RSE2 binary round trips, quality preservation, explicit type tags, and legacy-tag exclusion.
+   - [x] Added synthetic RSER Basic/PBR migration tests with recovered PBR factors and warning-producing compatibility conversion.
+   - [x] Integrated material tests into DemoSuite startup beside the real-context render-graph GPU suite; the typed custom statue continues to validate custom PBR reflection, extensions, binding, model serialization, and rendering end-to-end.
 
 ## 12. Acceptance criteria
 
