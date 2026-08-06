@@ -11,7 +11,7 @@
 
 #include "Scene.h"
 #include "Test3dTriangleBatchDataProvider.h"
-#include "ImGuiDataProvider.h"
+#include "mpp/app/ImGuiDataProvider.h"
 
 
 class ModelScene : public ::Scene

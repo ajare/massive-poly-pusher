@@ -5,11 +5,11 @@
 
 #include <sdl/SDL.h>
 
-#include "ImGuiBackendData.h"
-#include "InputManager.h"
+#include "mpp/app/ImGuiBackendData.h"
+#include "mpp/app/InputManager.h"
 
 
-void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd);
+void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd, bool enableDocking = false);
 
 void imGuiShutdown(ImGuiBackendData* bd);
 

@@ -8,7 +8,7 @@
 #include "ProgramOptions.h"
 #include "World.h"
 #include "RenderOptions.h"
-#include "InputManager.h"
+#include "mpp/app/InputManager.h"
 
 class Scene : public mpp::ResourceWrangler
 {

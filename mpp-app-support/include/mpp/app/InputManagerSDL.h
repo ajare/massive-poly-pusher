@@ -1,6 +1,8 @@
+#pragma once
+
 #include <map>
 #include <string>
-#include "InputManager.h"
+#include "mpp/app/InputManager.h"
 
 class InputManagerSDL : public InputManager
 {
