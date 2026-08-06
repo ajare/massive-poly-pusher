@@ -8,7 +8,7 @@
 #include "utils/FileSystem.h"
 #include "utils/StringUtils.h"
 
-#include <mpp/MaterialStream.h>
+#include <mpp/BasicMaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
 
 #include "Helper.h"

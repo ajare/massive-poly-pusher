@@ -33,7 +33,7 @@
 #include "mpp/Model.h"
 #include "mpp/ModelStream.h"
 #include "mpp/ProgrammaticModelStream.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticRenderTextureStream.h"
@@ -793,6 +793,17 @@ namespace mpp
 		addPbrFallbackTexture("__mpp_tex_pbr_black__", 0, 0, 0, TextureColourSpace::Srgb);
 		addPbrFallbackTexture("__mpp_tex_pbr_normal__", 128, 128, 255, TextureColourSpace::Linear);
 		addPbrFallbackTexture("__mpp_tex_pbr_metallic_roughness__", 0, 255, 255, TextureColourSpace::Linear);
+		auto addPbrIblFallback = [this, resourceMgr](string const& name, TextureTarget target, uint8_t red, uint8_t green, uint8_t blue)
+		{
+			auto stream = new ProgrammaticTextureStream(resourceMgr);
+			stream->setTarget(target);
+			stream->setColourSpace(TextureColourSpace::Linear);
+			stream->setData([red, green, blue](string const&) { TextureData data; data.width = data.height = 1; data.bitsPerPixel = 24; data.dataType = GL_UNSIGNED_BYTE; data.pixelFormat = GL_RGB; data.data = new uint8_t[3]{ red, green, blue }; return data; });
+			auto texture = resourceMgr->declareResource(name, ResourceStreamPtr(stream)).first;
+			addCoreResource(texture, true);
+		};
+		addPbrIblFallback("__mpp_tex_pbr_ibl_cube__", TextureTarget::CubeMap, 0, 0, 0);
+		addPbrIblFallback("__mpp_tex_pbr_brdf_lut__", TextureTarget::Texture2D, 255, 255, 255);
 
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(resourceMgr);
@@ -834,7 +845,7 @@ namespace mpp
 		addCoreResource(mDefaultProgram2d, false);
 
 		// Default material
-		auto defaultMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+		auto defaultMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 		
 		defaultMatStream->setProgram(mDefaultProgram2d->getName());
 		defaultMatStream->setTexture("TEX1", "__mpp_tex_none__");
@@ -857,7 +868,7 @@ namespace mpp
 
 		// Internal 2d material
 		{
-			auto internalMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+			auto internalMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 
 			internalMatStream->setProgram(mInternalProgram2d->getName());
 			internalMatStream->setTexture("TEX1", "__mpp_tex_none__");
@@ -867,7 +878,7 @@ namespace mpp
 
 		// Internal font
 		bool textAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
-		ProgrammaticMaterialStream* textMatStream = new ProgrammaticMaterialStream(mResourceMgr);
+		ProgrammaticBasicMaterialStream* textMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
 		textMatStream->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
@@ -875,7 +886,7 @@ namespace mpp
 		auto res = resourceMgr->declareResource("__mpp_mat_text_pt__", mpp::ResourceStreamPtr(textMatStream)).first;
 		addCoreResource(res, true);
 
-		ProgrammaticMaterialStream* textMatStreamColoured = new ProgrammaticMaterialStream(mResourceMgr);
+		ProgrammaticBasicMaterialStream* textMatStreamColoured = new ProgrammaticBasicMaterialStream(mResourceMgr);
 		textMatStreamColoured->setProgram(textAsPoints ? "__mpp_p2d_points_text_coloured__" : "__mpp_p2d_tris_text_coloured__");
 		textMatStreamColoured->setUniform("COLOUR", glm::vec4(1, 1, 1, 1));
 		textMatStreamColoured->setTexture("TEX1", "__mpp_tex_internalfont__");
@@ -2377,7 +2388,7 @@ namespace mpp
 				}
 
 				auto material = static_cast<Material*>(mesh->getMaterial().get());
-				if (material->isPbr() && material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend)
+				if (material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent())
 				{
 					continue; // Conventional blended materials do not cast in S2.
 				}

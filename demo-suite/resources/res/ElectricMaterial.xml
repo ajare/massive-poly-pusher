@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<Material>
+<BasicMaterial>
 	<Program>
 		<Resource>
 			<positionType>3D</positionType>
@@ -63,4 +63,4 @@
 			<value>0.5</value>
 		</Uniform>
 	</Uniforms>
-</Material>
+</BasicMaterial>
