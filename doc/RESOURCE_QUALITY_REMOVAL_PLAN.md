@@ -1,6 +1,6 @@
 # Resource Quality Settings Removal Plan
 
-**Status:** Approved; implementation in progress.
+**Status:** Implemented and validated.
 
 ## Goal
 
@@ -16,7 +16,7 @@ Remove embedded quality settings from the resource system so every `ResourceStre
 - Legacy data containing multiple quality definitions fails clearly rather than silently selecting one.
 - Texture mip/LOD, PBR roughness, shader specialization, MSAA, and application presets are unrelated and remain.
 
-## Phase 1: Core resource API
+## Phase 1: Core resource API — Complete
 
 - Remove `mQualitySetting`, `mQualityNames`, `createQualitySetting()`, and `getQualityNames()` from `ResourceStream`.
 - Change `ResourceStream::load(uint32_t)` to `load()`.
@@ -24,7 +24,7 @@ Remove embedded quality settings from the resource system so every `ResourceStre
 - Remove the quality argument from `ResourceManager::declareResource()`.
 - Update all call sites and program caching.
 
-## Phase 2: Flatten concrete streams
+## Phase 2: Flatten concrete streams — Complete
 
 Replace each `QualitySetting` vector with one direct definition in:
 
@@ -38,7 +38,7 @@ Replace each `QualitySetting` vector with one direct definition in:
 
 Remove quality arguments from getters and constructors.
 
-## Phase 3: Programmatic APIs
+## Phase 3: Programmatic APIs — Complete
 
 Remove material-quality parameters from all programmatic setters for:
 
@@ -50,7 +50,7 @@ Remove material-quality parameters from all programmatic setters for:
 
 Constructors initialize the one direct definition instead of creating quality zero.
 
-## Phase 4: File parsers and XML
+## Phase 4: File parsers and XML — Complete
 
 - Replace `parseQualitySetting()` helpers with single-definition parsing.
 - Remove loops over `<Quality>`.
@@ -58,7 +58,7 @@ Constructors initialize the one direct definition instead of creating quality ze
 - Remove obsolete quality hooks from `FileStream`.
 - Split or simplify DemoSuite/test XML containing quality data.
 
-## Phase 5: Binary serialization and migration
+## Phase 5: Binary serialization and migration — Complete
 
 - Emit `RSE3` magic.
 - Remove quality count/name tables and per-quality loops from new writes.
@@ -67,13 +67,13 @@ Constructors initialize the one direct definition instead of creating quality ze
 - Fail legacy multi-quality streams.
 - Never emit quality metadata from new serializers.
 
-## Phase 6: Model pipeline and assets
+## Phase 6: Model pipeline and assets — Complete
 
 - Update MPP model stream handling for single definitions.
 - Rebuild matching MPP, parser, mesh-specification-parser, converter, and DemoSuite binaries.
 - Re-export typed DemoSuite `.mppmodel` assets as RSE3.
 
-## Phase 7: Tests and documentation
+## Phase 7: Tests and documentation — Complete
 
 - Replace quality round-trip tests with single-definition round trips.
 - Test XML `<Quality>` rejection.

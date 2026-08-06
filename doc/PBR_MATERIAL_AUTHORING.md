@@ -209,7 +209,7 @@ Change standalone and ModelSpec roots from `<Material>` to `<BasicMaterial>`, re
 
 Standalone material XML is dispatched by its root tag through `FileMaterialStream::fromFile()`: use `<BasicMaterial>` or `<PbrMaterial>`. Filenames do not determine type. Legacy `<Material>` XML remains read-only compatibility input and emits a deprecation warning.
 
-New converted models use versioned `RSE2` resource streams and explicit `BasicMaterial` / `PbrMaterial` tags. The loader still accepts `RSER` v1 assets: legacy basic streams become BasicMaterial, while PBR-tagged streams recover their surface factors and are validated as PbrMaterial. Successful conversion warns that the asset should be re-exported; a program missing the canonical PBR interface fails rather than silently downgrading.
+New converted models use single-definition versioned `RSE3` resource streams and explicit `BasicMaterial` / `PbrMaterial` tags. The loader still accepts single-definition `RSE2` and `RSER` v1 assets: legacy basic streams become BasicMaterial, while PBR-tagged streams recover their surface factors and are validated as PbrMaterial. Successful conversion warns that the asset should be re-exported; a program missing the canonical PBR interface fails rather than silently downgrading.
 
 ## 11. Current limitations
 

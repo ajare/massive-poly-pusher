@@ -159,7 +159,7 @@ Use those two files as a starting point. `statue_pbr.frag` implements Cook-Torra
 
 ## 7. Specialization contract
 
-The selected material quality derives an immutable fragment feature mask from semantic map presence, zero/nonzero factors, alpha mode, and double-sided state. Built-in variants omit disabled inputs/code. Material-owned custom sources receive `PBR_SPEC_*` definitions and must expose the exact active reflected interface; an already-compiled referenced Program is validation-only. Material factors describe maximum capabilities, while instances may only reduce enabled contributions.
+The material definition derives an immutable fragment feature mask from semantic map presence, zero/nonzero factors, alpha mode, and double-sided state. Built-in variants omit disabled inputs/code. Material-owned custom sources receive `PBR_SPEC_*` definitions and must expose the exact active reflected interface; an already-compiled referenced Program is validation-only. Material factors describe maximum capabilities, while instances may only reduce enabled contributions.
 
 See [PBR Fragment Shader Specialization](PBR_SHADER_SPECIALIZATION.md) for the normative feature/interface table, define list, custom source example, caching rules, public introspection API, instance restrictions, legacy behavior, diagnostics, and validation procedure.
 
