@@ -1,0 +1,5 @@
+Dear ImGui docking branch snapshot
+Commit: 83f668625ad45364de71d385aeb6a5dd04bee02e
+Version: 1.93.0 WIP
+Fetched: 2026-08-05
+Upstream: https://github.com/ocornut/imgui/tree/docking

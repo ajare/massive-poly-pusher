@@ -84,22 +84,22 @@
     <ClInclude Include="..\..\include\Vector2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\imgui\imconfig.h">
+    <ClInclude Include="..\..\..\ext\imgui\include\imgui\imconfig.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\imgui\imgui.h">
+    <ClInclude Include="..\..\..\ext\imgui\include\imgui\imgui.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\imgui\imgui_internal.h">
+    <ClInclude Include="..\..\..\ext\imgui\include\imgui\imgui_internal.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\imgui\imstb_rectpack.h">
+    <ClInclude Include="..\..\..\ext\imgui\include\imgui\imstb_rectpack.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\imgui\imstb_textedit.h">
+    <ClInclude Include="..\..\..\ext\imgui\include\imgui\imstb_textedit.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\imgui\imstb_truetype.h">
+    <ClInclude Include="..\..\..\ext\imgui\include\imgui\imstb_truetype.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\ImGuiDataProvider.h">
@@ -152,19 +152,19 @@
     <ClCompile Include="..\..\src\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui.cpp">
+    <ClCompile Include="..\..\..\ext\imgui\src\imgui.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui_demo.cpp">
+    <ClCompile Include="..\..\..\ext\imgui\src\imgui_demo.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui_draw.cpp">
+    <ClCompile Include="..\..\..\ext\imgui\src\imgui_draw.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui_tables.cpp">
+    <ClCompile Include="..\..\..\ext\imgui\src\imgui_tables.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui_widgets.cpp">
+    <ClCompile Include="..\..\..\ext\imgui\src\imgui_widgets.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp">
