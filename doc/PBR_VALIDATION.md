@@ -10,7 +10,7 @@ This is the manual regression procedure for the currently implemented PBR milest
 
 ## Automated startup checks
 
-DemoSuite startup runs context-free specialization derivation/source tests and real-context built-in specialization tests before `runMaterialResourceTests()` and the render-graph GPU suite. It compiles minimal, full mask/double-sided, and blend variants; checks active reflection, same-mask cache reuse across different nonzero values, different-mask separation, exact referenced-program failures, and one-way instance boundaries. It also loads and renders the define-driven custom statue.
+DemoSuite startup runs context-free specialization derivation/source tests and real-context built-in specialization tests before `runMaterialResourceTests()` and the render-graph GPU suite. It compiles minimal, full mask/double-sided, and blend variants; checks active reflection, same-mask cache reuse across different nonzero values, different-mask separation, missing/unexpected referenced-program failures, wrong uniform-type and sampler-target source-owned custom-program failures, and one-way instance boundaries. It also loads and renders the define-driven custom statue.
 
 `runMaterialResourceTests()` then fails startup on incorrect Basic/PBR XML root dispatch, cross-root parser acceptance, invalid PBR factor ranges, loss of material type or quality data in RSE2 binary round trips, legacy tag emission, or failed RSER Basic/PBR conversion. The active statue custom program also exercises typed PBR XML, `PBR_EXT_LIGHTING_SCALE`, typed model serialization, reflection validation, resource binding, and real-context rendering. Successful startup logs both material-resource and render-graph GPU suite pass messages.
 
