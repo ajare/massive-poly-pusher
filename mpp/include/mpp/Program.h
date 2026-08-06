@@ -157,6 +157,10 @@ namespace mpp
 
 		std::vector<VariableInfo> const& getVertexAttributes() const;
 
+		// Validates that fragment locations [0, requiredCount) are active. Extra
+		// outputs are allowed so one MRT-capable shader can use single-target fallback.
+		bool validateFragmentOutputLocations(size_t requiredCount, std::string& diagnostic) const;
+
 		void bind();
 	};
 

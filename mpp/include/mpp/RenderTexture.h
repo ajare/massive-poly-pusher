@@ -25,6 +25,7 @@ namespace mpp
 		GLuint mDepthBuffer;
 
 		GLuint mDepthTexture;
+		uint32_t mSamples{ 1 };
 
 	private:
 
@@ -56,11 +57,25 @@ namespace mpp
 
 		bool hasStencilBuffer() const;
 
+		bool isMultisampled() const;
+
+		uint32_t getSamples() const;
+
+		uint32_t getAttachmentTextureTarget() const;
+
+		void resolveTo(RenderTexture* destination, bool colour, bool depth);
+
 		bool resize(size_t width, size_t height) override;
 
 		uint32_t getDepthTextureId() const;
 
 		void bindDepth(uint32_t unit);
+
+		// Regenerates declared colour/depth mip chains after level-zero writes.
+		void generateMipMaps();
+
+		void applyMipView(uint32_t mipLevel);
+		void restoreMipView();
 
 		uint32_t getColourAttachmentId(size_t attachment) const;
 

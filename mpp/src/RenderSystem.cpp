@@ -452,6 +452,18 @@ namespace mpp
 
 		mCaps.maxTextureSize = maxTextureSize;
 		mCaps.maxRectTextureSize = maxRectTextureSize;
+
+		// Framebuffer/MRT limits.  These are required before a render graph may
+		// turn a declared list of colour outputs into glDrawBuffers calls.
+		GLint maxColourAttachments = 1;
+		GLint maxDrawBuffers = 1;
+		GLint maxSamples = 1;
+		GL_CHECK(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxColourAttachments));
+		GL_CHECK(glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers));
+		GL_CHECK(glGetIntegerv(GL_MAX_SAMPLES, &maxSamples));
+		mCaps.maxColourAttachments = (uint32_t)maxColourAttachments;
+		mCaps.maxDrawBuffers = (uint32_t)maxDrawBuffers;
+		mCaps.maxSamples = (uint32_t)maxSamples;
 		
 		// Get depth range
 		GLfloat depthRange[2] = { 0.0f, 0.0f };
@@ -505,6 +517,9 @@ namespace mpp
 		infoMessage(STR_FORMAT("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
 		infoMessage(STR_FORMAT("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
 		infoMessage(STR_FORMAT("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
+		infoMessage(STR_FORMAT("Max colour attachments: {}", mCaps.maxColourAttachments));
+		infoMessage(STR_FORMAT("Max draw buffers: {}", mCaps.maxDrawBuffers));
+		infoMessage(STR_FORMAT("Max framebuffer samples: {}", mCaps.maxSamples));
 		infoMessage(STR_FORMAT("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
 		infoMessage(STR_FORMAT("Max anisotropy: {}", mCaps.maxAnisotropy));
 		infoMessage(STR_FORMAT("Max recommended elements: {}", mCaps.maxRecommendedElements));
@@ -1074,6 +1089,14 @@ namespace mpp
 	 */
 	void RenderSystem::setUsedProgram(ResourcePtr program)
 	{
+		if (mExpectedGraphColourOutputs > 0)
+		{
+			string diagnostic;
+			if (!static_cast<Program*>(program.get())->validateFragmentOutputLocations(mExpectedGraphColourOutputs, diagnostic))
+			{
+				THROW_MPP(diagnostic, __LINE__, __FILE__, __func__);
+			}
+		}
 		if (program == mActiveProgram)
 		{
 			return;
@@ -1233,6 +1256,16 @@ namespace mpp
 		mScreen->activate();
 	}
 
+	void RenderSystem::setExpectedGraphColourOutputs(size_t count)
+	{
+		mExpectedGraphColourOutputs = count;
+	}
+
+	RenderTargetPtr RenderSystem::getScreenRenderTarget() const
+	{
+		return mScreen;
+	}
+
 	/*
 	 * Create a new render texture.
 	 *
@@ -1257,6 +1290,7 @@ namespace mpp
 		rtStream->setDepthAttachment(options.depthAttachment);
 		rtStream->setDepthParams(options.depthParams);
 		rtStream->setNumAttachments(options.numAttachments);
+		rtStream->setSamples(options.samples);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
 		rt->load();
@@ -2491,6 +2525,36 @@ namespace mpp
 		// Disable blend
 		GL_CHECK(glDisable(GL_BLEND));
 
+		mRenderInfo.batchCount++;
+		mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderGraphFullscreen(ResourcePtr program, vector<pair<string, Texture*>> const& samplers, UniformCollection const& parameters)
+	{
+		flushVertexBuffers();
+		if (!program || program->getType() != "Program")
+		{
+			THROW_MPP("Graph fullscreen pass requires a Program resource.", __LINE__, __FILE__, __func__);
+		}
+		setUsedProgram(program);
+		auto p = static_cast<Program*>(program.get());
+		auto uniformCopy = parameters;
+		uniformCopy.bindUniforms(program);
+		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		for (uint32_t unit = 0; unit < samplers.size(); ++unit)
+		{
+			if (!samplers[unit].second) THROW_MPP("Graph fullscreen pass has an unresolved sampler target.", __LINE__, __FILE__, __func__);
+			GL_CHECK(glUniform1i(p->getUniformId(samplers[unit].first), (GLint)unit));
+			samplers[unit].second->bind(unit, 0);
+		}
+		GL_CHECK(glEnable(GL_BLEND));
+		GL_CHECK(glBlendFunc(GL_ONE, GL_ZERO));
+		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
+		quadMesh->bind(true);
+		quadMesh->render(1);
+		quadMesh->bind(false);
+		GL_CHECK(glDisable(GL_BLEND));
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;
 	}

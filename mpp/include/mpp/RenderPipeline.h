@@ -14,6 +14,7 @@
 #include "mpp/RenderPass.h"
 #include "mpp/PostEffect.h"
 #include "mpp/Scene.h"
+#include "mpp/RenderGraphPassFactoryRegistry.h"
 
 namespace mpp
 {
@@ -32,7 +33,12 @@ namespace mpp
 	enum class RenderPipelineMode
 	{
 		LegacyForward,
-		PbrForward
+		PbrForward,
+		// Explicit opt-in graph paths. Default/PbrForward retain validated manual
+		// target/presentation sequences until graph output is independently proven.
+		GraphPbrForward,
+		GraphLegacyForward,
+		XmlGraphPbrForward
 	};
 
 	enum class PbrToneMapOperator
@@ -46,6 +52,9 @@ namespace mpp
 	struct _MPPAPI BloomOptions
 	{
 		bool enabled{ false };
+		// GraphPbrForward may use an authored emissive mask in scene colour[1].
+		// It falls back to threshold extract when MRT is unavailable.
+		bool useMrtEmissiveMask{ false };
 		float threshold{ 1.0f };
 		float intensity{ 0.15f };
 		uint32_t blurPasses{ 2 };
@@ -85,13 +94,27 @@ namespace mpp
 		ShadowFilterMode filterMode{ ShadowFilterMode::Pcf3x3 };
 	};
 
+	struct _MPPAPI GraphPassDebugOptions
+	{
+		bool shadow{ true };
+		bool scene{ true };
+		bool bloom{ true };
+		bool presentation{ true };
+	};
+
 	struct _MPPAPI RenderPipelineOptions
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
 		float exposure{ 1.0f };
 		PbrToneMapOperator toneMapOperator{ PbrToneMapOperator::Aces };
 		PbrEnvironmentPtr environment;
+		// Optional immutable XML graph topology for XmlGraphPbrForward.
+		ResourcePtr graphTemplate;
+		// Optional emissive-mask MRT variant. XmlGraphPbrForward selects it only
+		// when requested and all hardware/material output requirements validate.
+		ResourcePtr graphTemplateMrt;
 		BloomOptions bloom;
+		GraphPassDebugOptions graphPasses;
 		// Empty means this pipeline is not a shadow-domain participant.
 		std::string shadowDomain;
 	};
@@ -113,7 +136,12 @@ namespace mpp
 		RenderTargetPtr mBloomPongTarget;
 		RenderTargetPtr mBloomCompositeTarget;
 
+		std::unique_ptr<class RenderGraphTargets> mGraphTargets;
+		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
+		RenderGraphPassFactoryRegistry mGraphPassFactories;
+
 		void ensureBloomTargets(size_t width, size_t height);
+		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);
 
 	public:
 
@@ -130,6 +158,8 @@ namespace mpp
 		void setToneMapOperator(PbrToneMapOperator toneMapOperator);
 
 		void setBloomOptions(BloomOptions const& bloomOptions);
+
+		void setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses);
 
 		void setPbrEnvironment(PbrEnvironmentPtr environment);
 

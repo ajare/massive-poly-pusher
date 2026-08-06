@@ -45,6 +45,7 @@ private:
 	std::shared_ptr<mpp::UniformCollection> mPbrStatueUniforms;
 	mpp::PbrEnvironmentPtr mPbrEnvironment;
 	mpp::BloomOptions mBloomOptions;
+	mpp::GraphPassDebugOptions mGraphPassDebugOptions;
 	mpp::ShadowOptions mShadowOptions;
 
 	glm::vec3 mLightPosition;

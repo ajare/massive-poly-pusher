@@ -187,4 +187,8 @@ void main()
     // framebuffer alpha. Only Blend materials expose the authored alpha.
     float outputAlpha = @Uniform(PBR_ALPHA_MODE) == 2 ? baseColour.a : 1.0;
     @Out(vec4 COLOUR) = vec4(ambient + direct + emissive, outputAlpha);
+    // Location 1 is ignored by the single-target manual PBR path. GraphPBR
+    // attaches it as an HDR bloom mask, so authored emissive is isolated from
+    // otherwise bright direct/albedo lighting.
+    @Out(vec4 BLOOM_MASK) = vec4(emissive, 1.0);
 }

@@ -90,6 +90,11 @@ namespace mpp
 		return mNumAttachments;
 	}
 
+	uint32_t RenderTextureStream::getSamples() const
+	{
+		return mSamples;
+	}
+
 	uint32_t RenderTextureStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = (uint32_t)mQualitySettings.size();
