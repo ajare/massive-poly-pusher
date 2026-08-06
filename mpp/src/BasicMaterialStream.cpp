@@ -7,7 +7,6 @@ namespace mpp
 	BasicMaterialStream::BasicMaterialStream(ResourceManager* resourceMgr)
 		: ResourceStream(resourceMgr, "BasicMaterial")
 	{
-		createQualitySetting("default");
 	}
 
 	string const& BasicMaterialStream::getName() const { return mName; }
