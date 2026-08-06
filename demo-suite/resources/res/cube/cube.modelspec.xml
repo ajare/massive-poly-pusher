@@ -33,9 +33,8 @@
 	-->
 	<Materials>
 		<!-- Material name should match those defined in the .mtl file. -->
-		<Material>
+		<BasicMaterial>
 			<name>cube_material</name>
-			<Resource>
 				<Program>
 					<Resource>
 						<positionType>3D</positionType>
@@ -99,8 +98,7 @@
 						<value>0.5</value>
 					</Uniform>
 				</Uniforms>
-			</Resource>
-		</Material>
+		</BasicMaterial>
 	</Materials>
 
 </ModelSpecification>
