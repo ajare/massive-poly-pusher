@@ -44,6 +44,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ResourceStreamSerializer.h>
 #include <mpp/RenderGraphGpuTests.h>
 #include <mpp/PbrMaterialTests.h>
+#include <mpp/DiagnosticTests.h>
 
 #include <mpp/resource-parsers/FileTextureStream.h>
 #include <mpp/resource-parsers/FileProgramStream.h>
@@ -1141,6 +1142,13 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto graphDefaultOptions = defaultOptions;
 	graphDefaultOptions.mode = mpp::RenderPipelineMode::GraphLegacyForward;
 	renderSystem->getOrCreateRenderPipeline("GraphDefault", graphDefaultOptions);
+
+	std::string diagnosticTestFailure;
+	if (!mpp::runDiagnosticTests(&diagnosticTestFailure))
+	{
+		throw std::runtime_error("Structured diagnostic tests failed: " + diagnosticTestFailure);
+	}
+	renderSystem->infoMessage("Structured diagnostic contract tests passed.");
 
 	std::string specializationTestFailure;
 	if (!mpp::runPbrMaterialSpecializationTests(&specializationTestFailure))
