@@ -312,7 +312,9 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Removed PBR fields, PBR detection, and PBR fallback behavior from `BasicMaterial`.
    - [x] Renamed the standalone DemoSuite basic material XML root to `<BasicMaterial>`.
    - [x] Built MassivePolyPusher, MppResourceParsers, and DemoSuite successfully.
-   - [ ] The old generic ModelSpec wrapper remains until Phase 4 supplies typed ModelSpec data. The existing untyped binary `Material` wire tag is mechanically decoded as `BasicMaterial` so current models remain loadable; Phase 4 replaces this stopgap with the documented warning-producing typed compatibility converter.
+   - [x] New ModelSpec entries may use direct `<BasicMaterial>` and `<PbrMaterial>` tags; the parser creates the matching concrete stream.
+   - [x] ResourceStreamSerializer now writes/reads an explicit `PbrMaterial` stream tag and PBR surface data, so typed PBR ModelSpecs survive `.mppmodel` conversion.
+   - [ ] The old generic ModelSpec wrapper and untyped binary `Material` wire tag remain compatibility input until Phase 4 supplies the documented warning-producing converter.
 
 2. **PBR resource and built-in program** — In progress
    - [x] Added independent `PbrMaterial`, specification, stream, programmatic stream, file parser, and `ResourceManager` factory foundations.

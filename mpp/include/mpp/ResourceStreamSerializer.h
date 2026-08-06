@@ -33,6 +33,7 @@ namespace mpp
 		void writeParser(program::Parser const& parser, std::ofstream& fp);
 
 		void writeBasicMaterialStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
+		void writePbrMaterialStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 
 		void writeProgramStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 
@@ -62,6 +63,7 @@ namespace mpp
 		std::shared_ptr<program::Parser> readParser(std::ifstream& fp);
 
 		void readBasicMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
+		void readPbrMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
 
 		void readProgramStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
 
