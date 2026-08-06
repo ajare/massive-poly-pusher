@@ -38,7 +38,9 @@ For example, this sequence is valid:
 Scene@0 --ScenePass writes--> Scene@1 --BloomPass samples--> Bloom@1
 ```
 
-A pass may write the latest version of an image, including an imported image. It may not write a stale version. A pass may not sample the exact version it produces; that is read/write feedback and compilation fails.
+A pass may write the latest version of an image, including an imported image. It may not write a stale version. Every write creates a new logical version; the graph does **not** insert an implicit copy from the prior version into the new version. A pass may not sample the exact version it produces; that is read/write feedback and compilation fails.
+
+This matters for attachment `load=load`: it preserves the contents of the physical attachment selected for the new output version, not automatically the prior logical image version. Internal versions are independently allocated (and may or may not be safely aliased), so `load=load` is not a defined way to carry an internal graph image forward. To use an earlier internal result, declare it as a sampled input and render an explicit copy/composite into a new output. `load=load` is appropriate when successive passes intentionally write the same imported backing target, such as an externally owned screen target.
 
 ## 2. Image declarations
 
@@ -220,9 +222,41 @@ Depth output:
 | `store` | `GraphStoreOp` | `store` or `dontCare`; C++ default is `store`. XML values other than `store` currently become `dontCare`. |
 | `clear` | `glm::vec4` / `float` | Required only to specify a non-default clear. Colour requires four floats; depth requires one float. Defaults: colour `0 0 0 0`, depth `1`. Used only with `load=clear`. |
 
-`load` and `store` are per-pass attachment operations, not persistent image properties. For `load`, `load` preserves the previous attachment contents, `clear` clears only that attachment before pass work, and `dontCare` permits the previous contents to be discarded because the pass will overwrite what it needs. For `store`, `store` retains the pass result for later graph use, while `dontCare` permits the executor to invalidate/discard it where supported. `store=dontCare` also skips an MSAA resolve. There is no `stop` operation; the valid store values are only `store` and `dontCare`.
+### 3.5 Attachment load/store in the pipeline
 
-A pass that completely writes a temporary result normally uses `load=dontCare`, `store=store`; a scene pass commonly uses `load=clear`, `store=store`; and an unsampled depth buffer can use `load=clear`, `store=dontCare`.
+`load` and `store` are per-pass operations on an output attachment. They are not persistent image properties, and `store` is not spelled `stop`—the only store values are `store` and `dontCare`.
+
+For each compiled pass, the executor performs this sequence:
+
+1. Select the physical write targets for the pass's new colour/depth image versions and bind a pass framebuffer view.
+2. Set the viewport to the output mip dimensions.
+3. Apply `load=clear` operations to their individual colour/depth attachments.
+4. Invoke the callback, scene-pass factory, or declarative fullscreen program.
+5. Invalidate any `store=dontCare` attachments where the OpenGL capability is available.
+6. Resolve every MSAA output whose store operation is `store` into its graph-visible single-sample target.
+7. Restore renderer target/state. A stored target can then be read by a later dependent pass.
+
+The operation values have these pipeline meanings:
+
+| Operation | Meaning | Correct use |
+| --- | --- | --- |
+| `load=load` | Preserve the existing contents of the physical output attachment before drawing. | Additive/overlay work on intentionally shared imported backing storage. Do not use it to preserve an earlier internal graph version: no implicit version-to-version copy exists. |
+| `load=clear` | Clear only this attachment before pass work, using `clear` or its default. | Start a scene target at a known background/depth value. |
+| `load=dontCare` | Existing attachment contents are undefined/irrelevant to this pass. The pass must write every pixel/sample it needs. | Fullscreen extraction, blur, or other full-target overwrite. |
+| `store=store` | Retain the new output after the pass. For MSAA this also performs the resolve needed by ordinary downstream `sampler2D` reads. | Any result sampled, presented, read back, or otherwise used later. |
+| `store=dontCare` | The result is dead after this pass and may be invalidated/discarded. For MSAA no resolve is performed. | Temporary depth or colour output with no later consumer. |
+
+Do not sample an output after declaring it `store=dontCare`: the compiler can still see the dependency, but the contents are deliberately not guaranteed, and an MSAA image will not have been resolved. Likewise, `load=dontCare` does not itself clear memory; it is an author promise that old contents are not read.
+
+Typical sequences are:
+
+```text
+Scene:          clear colour/depth -> draw geometry -> store HDR colour
+Bloom extract:  dontCare old target -> fullscreen overwrite -> store extract
+Temp depth:     clear depth -> depth-test geometry -> dontCare result
+```
+
+In XML these are respectively `clear/store`, `dontCare/store`, and `clear/dontCare`. `clear` values are used only with `load=clear`.
 
 Multiple colour outputs are MRT attachments in declaration order: output zero is `GL_COLOR_ATTACHMENT0`, output one is `GL_COLOR_ATTACHMENT1`, and so forth. The number of outputs must not exceed both `Caps::maxColourAttachments` and `Caps::maxDrawBuffers`. All MRT attachments must have identical effective dimensions (after `mipLevel`) and identical sample counts. A depth output, if present, must have those same effective dimensions and sample count. Only one depth output is allowed.
 
