@@ -220,7 +220,9 @@ Depth output:
 | `store` | `GraphStoreOp` | `store` or `dontCare`; C++ default is `store`. XML values other than `store` currently become `dontCare`. |
 | `clear` | `glm::vec4` / `float` | Required only to specify a non-default clear. Colour requires four floats; depth requires one float. Defaults: colour `0 0 0 0`, depth `1`. Used only with `load=clear`. |
 
-`load=load` preserves the attachment contents, `clear` clears only that attachment before pass work, and `dontCare` permits the previous contents to be discarded. `store=dontCare` lets the executor invalidate the attachment where supported and prevents MSAA resolve.
+`load` and `store` are per-pass attachment operations, not persistent image properties. For `load`, `load` preserves the previous attachment contents, `clear` clears only that attachment before pass work, and `dontCare` permits the previous contents to be discarded because the pass will overwrite what it needs. For `store`, `store` retains the pass result for later graph use, while `dontCare` permits the executor to invalidate/discard it where supported. `store=dontCare` also skips an MSAA resolve. There is no `stop` operation; the valid store values are only `store` and `dontCare`.
+
+A pass that completely writes a temporary result normally uses `load=dontCare`, `store=store`; a scene pass commonly uses `load=clear`, `store=store`; and an unsampled depth buffer can use `load=clear`, `store=dontCare`.
 
 Multiple colour outputs are MRT attachments in declaration order: output zero is `GL_COLOR_ATTACHMENT0`, output one is `GL_COLOR_ATTACHMENT1`, and so forth. The number of outputs must not exceed both `Caps::maxColourAttachments` and `Caps::maxDrawBuffers`. All MRT attachments must have identical effective dimensions (after `mipLevel`) and identical sample counts. A depth output, if present, must have those same effective dimensions and sample count. Only one depth output is allowed.
 
