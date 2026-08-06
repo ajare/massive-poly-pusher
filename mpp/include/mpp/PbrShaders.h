@@ -20,21 +20,61 @@ void main()
 )MPP";
 	inline char const* BuiltInPbrFragmentShader = R"MPP(@@Version
 
-@@Uniform(vec4 PBR_BASE_COLOUR_FACTOR);
-@@Uniform(float PBR_METALLIC_FACTOR);
-@@Uniform(float PBR_ROUGHNESS_FACTOR);
-@@Uniform(vec3 PBR_EMISSIVE_FACTOR);
-@@Uniform(float PBR_NORMAL_SCALE);
-@@Uniform(float PBR_OCCLUSION_STRENGTH);
-@@Uniform(int PBR_ALPHA_MODE);
-@@Uniform(float PBR_ALPHA_CUTOFF);
-@@Uniform(int PBR_DOUBLE_SIDED);
+// Raw/legacy use keeps the historical complete contract. New materials receive
+// an explicit define block after @@Version before parser/build.
+#ifndef PBR_SPEC_LEGACY_FULL_CONTRACT
+#define PBR_SPEC_LEGACY_FULL_CONTRACT 1
+#define PBR_SPEC_BASE_COLOUR_MAP 1
+#define PBR_SPEC_METALLIC 1
+#define PBR_SPEC_ROUGHNESS 1
+#define PBR_SPEC_METALLIC_ROUGHNESS_MAP 1
+#define PBR_SPEC_NORMAL_MAP 1
+#define PBR_SPEC_OCCLUSION 1
+#define PBR_SPEC_EMISSIVE 1
+#define PBR_SPEC_ALPHA_MASK 0
+#define PBR_SPEC_ALPHA_BLEND 0
+#define PBR_SPEC_DOUBLE_SIDED 0
+#endif
 
+@@Uniform(vec4 PBR_BASE_COLOUR_FACTOR);
+#if PBR_SPEC_METALLIC || PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(float PBR_METALLIC_FACTOR);
+#endif
+#if PBR_SPEC_ROUGHNESS || PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(float PBR_ROUGHNESS_FACTOR);
+#endif
+#if PBR_SPEC_EMISSIVE || PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(vec3 PBR_EMISSIVE_FACTOR);
+#endif
+#if PBR_SPEC_NORMAL_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(float PBR_NORMAL_SCALE);
+#endif
+#if PBR_SPEC_OCCLUSION || PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(float PBR_OCCLUSION_STRENGTH);
+#endif
+#if PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(int PBR_ALPHA_MODE);
+@@Uniform(int PBR_DOUBLE_SIDED);
+#endif
+#if PBR_SPEC_ALPHA_MASK || PBR_SPEC_LEGACY_FULL_CONTRACT
+@@Uniform(float PBR_ALPHA_CUTOFF);
+#endif
+
+#if PBR_SPEC_BASE_COLOUR_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_BASE_COLOUR_MAP);
+#endif
+#if PBR_SPEC_METALLIC_ROUGHNESS_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_METALLIC_ROUGHNESS_MAP);
+#endif
+#if PBR_SPEC_NORMAL_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_NORMAL_MAP);
+#endif
+#if PBR_SPEC_OCCLUSION || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_OCCLUSION_MAP);
+#endif
+#if PBR_SPEC_EMISSIVE || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_EMISSIVE_MAP);
+#endif
 @@Texture(samplerCube PBR_IRRADIANCE_MAP);
 @@Texture(samplerCube PBR_PREFILTERED_SPECULAR_MAP);
 @@Texture(sampler2D PBR_BRDF_LUT);
@@ -133,30 +173,68 @@ float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDir
 
 void main()
 {
-    vec4 baseSample = texture(@Texture(PBR_BASE_COLOUR_MAP), @In(TEXCOORDS));
-    vec4 baseColour = baseSample * @Uniform(PBR_BASE_COLOUR_FACTOR);
-    if (@Uniform(PBR_ALPHA_MODE) == 1 && baseColour.a < @Uniform(PBR_ALPHA_CUTOFF))
-    {
-        discard;
-    }
+#if PBR_SPEC_BASE_COLOUR_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
+    vec4 baseColour = texture(@Texture(PBR_BASE_COLOUR_MAP), @In(TEXCOORDS)) * @Uniform(PBR_BASE_COLOUR_FACTOR);
+#else
+    vec4 baseColour = @Uniform(PBR_BASE_COLOUR_FACTOR);
+#endif
+#if PBR_SPEC_LEGACY_FULL_CONTRACT
+    if (@Uniform(PBR_ALPHA_MODE) == 1 && baseColour.a < @Uniform(PBR_ALPHA_CUTOFF)) discard;
+#elif PBR_SPEC_ALPHA_MASK
+    if (baseColour.a < @Uniform(PBR_ALPHA_CUTOFF)) discard;
+#endif
 
     vec3 normal = normalize(@In(NORMAL));
+#if PBR_SPEC_NORMAL_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
     vec4 tangentInput = @In(TANGENT);
     vec3 tangent = normalize(tangentInput.xyz - normal * dot(normal, tangentInput.xyz));
     vec3 bitangent = normalize(cross(normal, tangent)) * tangentInput.w;
     vec3 normalSample = texture(@Texture(PBR_NORMAL_MAP), @In(TEXCOORDS)).xyz * 2.0 - 1.0;
     normalSample.xy *= @Uniform(PBR_NORMAL_SCALE);
     normal = normalize(mat3(tangent, bitangent, normal) * normalSample);
-    if (@Uniform(PBR_DOUBLE_SIDED) != 0 && !gl_FrontFacing)
-    {
-        normal = -normal;
-    }
+#endif
+#if PBR_SPEC_LEGACY_FULL_CONTRACT
+    if (@Uniform(PBR_DOUBLE_SIDED) != 0 && !gl_FrontFacing) normal = -normal;
+#elif PBR_SPEC_DOUBLE_SIDED
+    if (!gl_FrontFacing) normal = -normal;
+#endif
 
+#if PBR_SPEC_METALLIC_ROUGHNESS_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
     vec3 metallicRoughness = texture(@Texture(PBR_METALLIC_ROUGHNESS_MAP), @In(TEXCOORDS)).rgb;
+#endif
+#if PBR_SPEC_LEGACY_FULL_CONTRACT
     float metallic = clamp(metallicRoughness.b * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
     float roughness = clamp(metallicRoughness.g * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
+#elif PBR_SPEC_METALLIC
+#if PBR_SPEC_METALLIC_ROUGHNESS_MAP
+    float metallic = clamp(metallicRoughness.b * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
+#else
+    float metallic = clamp(@Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
+#endif
+#else
+    const float metallic = 0.0;
+#endif
+#if !PBR_SPEC_LEGACY_FULL_CONTRACT
+#if PBR_SPEC_ROUGHNESS
+#if PBR_SPEC_METALLIC_ROUGHNESS_MAP
+    float roughness = clamp(metallicRoughness.g * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
+#else
+    float roughness = clamp(@Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
+#endif
+#else
+    const float roughness = 0.04;
+#endif
+#endif
+#if PBR_SPEC_OCCLUSION || PBR_SPEC_LEGACY_FULL_CONTRACT
     float occlusion = mix(1.0, texture(@Texture(PBR_OCCLUSION_MAP), @In(TEXCOORDS)).r, @Uniform(PBR_OCCLUSION_STRENGTH));
+#else
+    const float occlusion = 1.0;
+#endif
+#if PBR_SPEC_EMISSIVE || PBR_SPEC_LEGACY_FULL_CONTRACT
     vec3 emissive = texture(@Texture(PBR_EMISSIVE_MAP), @In(TEXCOORDS)).rgb * @Uniform(PBR_EMISSIVE_FACTOR);
+#else
+    const vec3 emissive = vec3(0.0);
+#endif
 
     vec3 viewDirection = normalize(@ViewPos - @In(WORLD_POSITION));
     vec3 f0 = mix(vec3(0.04), baseColour.rgb, metallic);
@@ -205,7 +283,13 @@ void main()
 
     // Opaque and masked materials must not inherit an undefined/blended
     // framebuffer alpha. Only Blend materials expose the authored alpha.
+#if PBR_SPEC_LEGACY_FULL_CONTRACT
     float outputAlpha = @Uniform(PBR_ALPHA_MODE) == 2 ? baseColour.a : 1.0;
+#elif PBR_SPEC_ALPHA_BLEND
+    float outputAlpha = baseColour.a;
+#else
+    const float outputAlpha = 1.0;
+#endif
     @Out(vec4 COLOUR) = vec4(ambient + direct + emissive, outputAlpha);
     // Location 1 is ignored by the single-target manual PBR path. GraphPBR
     // attaches it as an HDR bloom mask, so authored emissive is isolated from

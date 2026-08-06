@@ -44,6 +44,8 @@ namespace mpp
 
 		PbrMaterialSpecification::PbrSurface const& getPbrSurface() const;
 
+		bool usesLegacyFullContract() const;
+
 		std::vector<PbrMaterialSpecification::TextureOptions> const& getTextures() const;
 
 		uint32_t createQualitySetting(std::string const& name);

@@ -41,6 +41,7 @@ namespace mpp
 	private:
 
 		std::string mVertexSource, mGeometrySource, mFragmentSource;
+		std::string mFragmentPreamble;
 
 	protected:
 
@@ -65,6 +66,8 @@ namespace mpp
 		std::string const& getGeometrySource() const;
 
 		std::string const& getFragmentSource() const;
+
+		void setFragmentPreamble(std::string const& preamble);
 		
 		std::string getConcatenatedSource();
 
