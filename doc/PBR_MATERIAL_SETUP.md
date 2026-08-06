@@ -157,13 +157,19 @@ The program must use a PBR vertex and fragment shader that declare the sampler a
 
 Use those two files as a starting point. `statue_pbr.frag` implements Cook-Torrance direct lighting (GGX, Smith, Schlick Fresnel), normal mapping, AO, emissive, alpha mask, double-sided normals, and split-sum IBL.
 
-## 7. Extension contract
+## 7. Specialization contract
 
-Custom PBR programs may add uniforms and 2D/cube samplers under the `PBR_EXT_` namespace. Extensions are strictly additive: the full canonical metallic-roughness interface remains mandatory. Material creation verifies namespace, declaration completeness, reflected uniform type/shape, sampler target, and absence of undeclared active extension inputs. There are no extension fallbacks.
+The selected material quality derives an immutable fragment feature mask from semantic map presence, zero/nonzero factors, alpha mode, and double-sided state. Built-in variants omit disabled inputs/code. Material-owned custom sources receive `PBR_SPEC_*` definitions and must expose the exact active reflected interface; an already-compiled referenced Program is validation-only. Material factors describe maximum capabilities, while instances may only reduce enabled contributions.
 
-Use `<Extensions>` in typed `<PbrMaterial>` XML and `ProgrammaticPbrMaterialStream::setExtensionUniform()` / `setExtensionTexture()` in C++. Canonical factor and declared extension uniforms may be overridden per instance; textures remain material-owned. See [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md#5-custom-pbr-extensions) for complete XML, API examples, supported value types, and restrictions.
+See [PBR Fragment Shader Specialization](PBR_SHADER_SPECIALIZATION.md) for the normative feature/interface table, define list, custom source example, caching rules, public introspection API, instance restrictions, legacy behavior, diagnostics, and validation procedure.
 
-## 8. Export the model
+## 8. Extension contract
+
+Custom PBR programs may add uniforms and 2D/cube samplers under the `PBR_EXT_` namespace. Extensions are strictly additive: the exact specialization-selected canonical metallic-roughness interface remains mandatory. Material creation verifies namespace, declaration completeness, reflected uniform type/shape, sampler target, and absence of undeclared active extension inputs. There are no extension fallbacks.
+
+Use `<Extensions>` in typed `<PbrMaterial>` XML and `ProgrammaticPbrMaterialStream::setExtensionUniform()` / `setExtensionTexture()` in C++. Canonical factor and declared extension uniforms may be overridden per instance; textures remain material-owned. See [PBR Material Authoring Workflow](PBR_MATERIAL_AUTHORING.md#6-custom-pbr-extensions) for complete XML, API examples, supported value types, and restrictions.
+
+## 9. Export the model
 
 After changing the OBJ, model specification, shaders embedded by the model, or child texture definitions, regenerate the `.mppmodel` using matching binaries:
 

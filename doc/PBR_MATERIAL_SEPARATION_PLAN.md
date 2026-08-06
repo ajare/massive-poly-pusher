@@ -2,6 +2,8 @@
 
 **Status:** Phases 1–5 complete.
 
+**Follow-up:** The later [PBR Shader Specialization](PBR_SHADER_SPECIALIZATION.md) design supersedes this plan's full canonical custom-program interface with an exact feature-dependent reflected interface. Legacy RSER assets temporarily retain the full contract.
+
 ## 1. Objective
 
 Replace the current hybrid concrete `Material` resource with two explicit concrete resource types:
@@ -335,7 +337,7 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Implemented BasicMaterial canonical-slot neutral binding behavior in PBR pipelines.
    - [x] Enforced legacy/PBR pipeline eligibility, alpha classification, canonical interface types, and fragment output location 0.
    - [x] Documented extension XML, programmatic APIs, types, ownership, fallback behavior, and current matrix limitation.
-   - [x] Added an active `PBR_EXT_EMISSIVE_SCALE` to the DemoSuite statue custom program/material, re-exported the typed model, and validated extension XML, reflection, serialization, binding, and real-context startup GPU tests end-to-end.
+   - [x] Added an active `PBR_EXT_LIGHTING_SCALE` to the DemoSuite statue custom program/material, re-exported the typed model, and validated extension XML, reflection, serialization, binding, and real-context startup GPU tests end-to-end.
 
 4. **Loaders, ModelSpec, serializer, and migration** — **Complete**
    - [x] Added `FileMaterialStream::fromFile()` tag dispatch to concrete Basic/PBR file streams; filenames do not select material type.
