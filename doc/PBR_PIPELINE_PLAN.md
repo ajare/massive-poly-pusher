@@ -215,7 +215,7 @@ renderSystem->renderScene(scene, camera, {}, "PBR");
 
 These are intentionally outside the initial forward-PBR milestone set:
 
-- General render graph with declared pass inputs/outputs, load/store operations, and MRT.
+- [Render graph with declared pass inputs/outputs, load/store operations, and MRT](RENDER_GRAPH_PLAN.md).
 - Bloom, screen-space effects, and a completed `PostEffect` implementation.
 - GPU panorama conversion and IBL prefilter generation.
 - Deferred, tiled, clustered, or Forward+ light management.
