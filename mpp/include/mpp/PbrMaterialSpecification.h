@@ -87,6 +87,8 @@ namespace mpp
 	public:
 
 		ProgramOptions program;
+		// Runtime-only compatibility marker. It is deliberately not serialized.
+		bool legacyFullContract{ false };
 		UniformCollection uniforms;
 		PbrSurface pbr;
 		std::vector<TextureOptions> textures;

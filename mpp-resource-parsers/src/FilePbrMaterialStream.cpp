@@ -6,6 +6,8 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
+#include "mpp/PbrMaterialFeatures.h"
+#include "mpp/ProgramStream.h"
 
 #include "mpp/resource-parsers/FilePbrMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
@@ -144,8 +146,20 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
+			auto specializeChildProgram = [&](utils::StructuredData const& setting)
+			{
+				auto child = getChildren().find("Program");
+				if (child == getChildren().end()) return;
+				auto program = dynamic_cast<ProgramStream*>(child->second.get());
+				if (!program) return;
+				auto parsed = parseQualitySetting(setting, getResourceMgr(), getFilepath());
+				if (!parsed.second.spec.legacyFullContract)
+					program->setFragmentPreamble(makePbrSpecializationDefines(derivePbrMaterialFeatures(parsed.second.spec.pbr, parsed.second.spec.textures)));
+			};
+
 			// Default quality setting
 			parseForChildResourceStreams(data, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
+			specializeChildProgram(data);
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -156,6 +170,7 @@ namespace mpp
 				{
 					// Additional quality setting
 					parseForChildResourceStreams(entry.second, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
+					specializeChildProgram(entry.second);
 				}
 			}
 		}

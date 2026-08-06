@@ -38,6 +38,8 @@
     <ClInclude Include="..\..\include\mpp\BasicMaterial.h" />
     <ClInclude Include="..\..\include\mpp\GpuDebugScope.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterial.h" />
+    <ClInclude Include="..\..\include\mpp\PbrMaterialFeatures.h" />
+    <ClInclude Include="..\..\include\mpp\PbrMaterialTests.h" />
     <ClInclude Include="..\..\include\mpp\PbrShaders.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterialSpecification.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterialStream.h" />
@@ -142,6 +144,8 @@
     <ClCompile Include="..\..\src\Logger.cpp" />
     <ClCompile Include="..\..\src\BasicMaterial.cpp" />
     <ClCompile Include="..\..\src\PbrMaterial.cpp" />
+    <ClCompile Include="..\..\src\PbrMaterialFeatures.cpp" />
+    <ClCompile Include="..\..\src\PbrMaterialTests.cpp" />
     <ClCompile Include="..\..\src\PbrMaterialStream.cpp" />
     <ClCompile Include="..\..\src\ProgrammaticPbrMaterialStream.cpp" />
     <ClCompile Include="..\..\src\BasicMaterialStream.cpp" />
