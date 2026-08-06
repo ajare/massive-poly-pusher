@@ -346,6 +346,7 @@ namespace mpp
 			{
 				GraphImageLifetime lifetime;
 				lifetime.image = handle;
+				lifetime.debugName = image.name;
 				lifetime.desc = image.desc;
 				lifetime.size.x = image.desc.absoluteSize.x ? image.desc.absoluteSize.x : max(1u, (uint32_t)(viewport.x * image.desc.relativeSize.x));
 				lifetime.size.y = image.desc.absoluteSize.y ? image.desc.absoluteSize.y : max(1u, (uint32_t)(viewport.y * image.desc.relativeSize.y));

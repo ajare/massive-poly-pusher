@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
@@ -24,7 +25,7 @@ namespace mpp
 
 	public:
 
-		explicit RenderPass(RenderSystem* renderSystem, bool pbrForward = false);
+		explicit RenderPass(RenderSystem* renderSystem, bool pbrForward = false, std::string const& debugName = "SceneTarget");
 
 		virtual ~RenderPass();
 

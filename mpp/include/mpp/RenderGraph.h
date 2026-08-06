@@ -139,6 +139,7 @@ namespace mpp
 	struct _MPPAPI GraphImageLifetime
 	{
 		GraphImageHandle image;
+		std::string debugName;
 		GraphImageDesc desc;
 		glm::uvec2 size{ 0 };
 		uint32_t firstPass{ UINT32_MAX };

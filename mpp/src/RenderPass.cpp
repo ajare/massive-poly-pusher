@@ -9,7 +9,7 @@ using namespace std;
 namespace mpp
 {
 
-	RenderPass::RenderPass(RenderSystem* renderSystem, bool pbrForward)
+	RenderPass::RenderPass(RenderSystem* renderSystem, bool pbrForward, string const& debugName)
 		: mRenderSystem(renderSystem)
 		, mPbrForward(pbrForward)
 	{
@@ -26,7 +26,7 @@ namespace mpp
 		}
 
 		mTarget = renderSystem->createRenderTexture(
-			"SceneTarget",
+			debugName,
 			renderSystem->getWindowWidth(),
 			renderSystem->getWindowHeight(),
 			options);

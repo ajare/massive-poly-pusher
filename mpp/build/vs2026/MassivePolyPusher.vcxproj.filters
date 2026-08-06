@@ -48,6 +48,9 @@
     <ClInclude Include="..\..\include\mpp\BasicMaterial.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\GpuDebugScope.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\mpp\BasicMaterialStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
