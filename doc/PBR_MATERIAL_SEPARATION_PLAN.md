@@ -318,7 +318,8 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Added independent `PbrMaterial`, specification, stream, programmatic stream, file parser, and `ResourceManager` factory foundations.
    - [x] Restored explicit PBR surface state, PBR neutral-map binding behavior, alpha classification, and semantic programmatic map convenience setters to the PBR-only resource path.
    - [x] Added strict core surface range validation at PbrMaterial creation: alpha/metallic/roughness/occlusion/cutoff ranges, non-negative normal scale, and non-negative base/emissive RGB.
-   - [ ] Add the engine-owned built-in PBR shader/program cache, strict core reflection validation, semantic XML map schema, and pipeline migration. These are required before this phase is complete.
+   - [x] Added engine-owned built-in metallic-roughness vertex/fragment shader sources. PbrMaterial selects them whenever program shader sources are omitted; the existing default-program cache supplies reuse by mesh specification.
+   - [ ] Add strict core reflection validation, semantic XML map schema, and pipeline migration. These are required before this phase is complete.
    - Add PBR spec/stream/resource/parser/programmatic types.
    - Add engine-owned cached PBR shader/program creation by mesh specification.
    - Add core semantic maps, neutral resources, ranges, reflection validation, and alpha classification.

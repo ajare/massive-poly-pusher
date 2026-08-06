@@ -37,6 +37,7 @@
     <ClInclude Include="..\..\include\mpp\Material.h" />
     <ClInclude Include="..\..\include\mpp\BasicMaterial.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterial.h" />
+    <ClInclude Include="..\..\include\mpp\PbrShaders.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterialSpecification.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\ProgrammaticPbrMaterialStream.h" />
