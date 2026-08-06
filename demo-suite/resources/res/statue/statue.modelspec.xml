@@ -37,9 +37,8 @@
 	-->
 	<Materials>
 		<!-- Material name should match those defined in the .mtl file. -->
-		<Material>
+		<PbrMaterial>
 			<name>statue_material</name>
-			<Resource>
 				<Program>
 					<Resource>
 						<positionType>3D</positionType>
@@ -56,7 +55,7 @@
 
 				<!-- Metallic-roughness PBR material parameters. Texture slots will be
 				     supplied by the PBR shader/material in later milestones. -->
-				<Pbr>
+				<Surface>
 					<baseColourFactor>1.0 1.0 1.0 1.0</baseColourFactor>
 					<metallicFactor>0.0</metallicFactor>
 					<roughnessFactor>0.75</roughnessFactor>
@@ -66,7 +65,7 @@
 					<alphaMode>OPAQUE</alphaMode>
 					<alphaCutoff>0.5</alphaCutoff>
 					<doubleSided>false</doubleSided>
-				</Pbr>
+				</Surface>
 
 				<Textures>
 					<Texture>
@@ -135,8 +134,7 @@
 						<value>0.5</value>
 					</Uniform>
 				</Uniforms>
-			</Resource>
-		</Material>
+		</PbrMaterial>
 	</Materials>
 
 </ModelSpecification>

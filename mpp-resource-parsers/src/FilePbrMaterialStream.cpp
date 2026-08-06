@@ -459,12 +459,12 @@ namespace mpp
 		{
 			auto const& data = getStructuredData();
 
-			// Parse data.  Root element should be 'Material'
+			// Parse data. Root element identifies the concrete PBR resource.
 			auto rootName = data.getName();
 
-			if (rootName != "Material" && rootName != "Resource")
+			if (rootName != "PbrMaterial" && rootName != "Resource")
 			{
-				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'Material' nor 'Resource'.";
+				string errMsg = "Error loading " + getFilepath() + ". Root element is neither 'PbrMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
