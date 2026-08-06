@@ -71,6 +71,11 @@ namespace mpp
 		return mFragmentSource;
 	}
 
+	void ProgramStream::setFragmentPreamble(string const& preamble)
+	{
+		mFragmentPreamble = preamble;
+	}
+
 	/*
 	 * Get all source concatenated 
 	 *
@@ -93,6 +98,18 @@ namespace mpp
 	void ProgramStream::loadImpl()
 	{
 		auto parser = mQualitySettings[mQualitySetting].parser;
+		if (!mFragmentPreamble.empty())
+		{
+			auto source = parser->getInputFragmentSource();
+			if (source.find(mFragmentPreamble) == string::npos)
+			{
+				auto marker = source.find("@@Version");
+				if (marker == string::npos) THROW_MPP("Fragment shader preamble requires an @@Version directive.", __LINE__, __FILE__, __func__);
+				auto insertion = source.find('\n', marker);
+				source.insert(insertion == string::npos ? source.size() : insertion + 1, mFragmentPreamble);
+				parser->setFragmentSource(source);
+			}
+		}
 
 		parser->build(mQualitySettings[mQualitySetting].attribs);
 

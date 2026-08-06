@@ -57,7 +57,7 @@
 				     supplied by the PBR shader/material in later milestones. -->
 				<Surface>
 					<baseColourFactor>1.0 1.0 1.0 1.0</baseColourFactor>
-					<metallicFactor>0.0</metallicFactor>
+					<metallicFactor>1.0</metallicFactor>
 					<roughnessFactor>0.75</roughnessFactor>
 					<emissiveFactor>0.0 0.0 0.0</emissiveFactor>
 					<normalScale>1.0</normalScale>
@@ -67,7 +67,7 @@
 					<doubleSided>false</doubleSided>
 				</Surface>
 				<Extensions>
-					<Uniform><name>PBR_EXT_EMISSIVE_SCALE</name><type>float</type><value>1.0</value></Uniform>
+					<Uniform><name>PBR_EXT_LIGHTING_SCALE</name><type>float</type><value>1.0</value></Uniform>
 				</Extensions>
 
 				<BaseColourMap><Resource>

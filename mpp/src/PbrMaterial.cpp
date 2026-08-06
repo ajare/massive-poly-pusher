@@ -11,6 +11,7 @@
 #include "mpp/ResourceManager.h"
 #include "mpp/String.h"
 #include "mpp/MppException.h"
+#include "mpp/GLErrorCheck.h"
 
 using namespace std;
 
@@ -47,6 +48,28 @@ namespace mpp
 		}
 
 		auto resourceMgr = getResourceManager();
+
+		// Validate and specialize from selected material-quality data before
+		// choosing or compiling a program.
+		mUniforms = mStr->getUniforms();
+		mPbrSurface = mStr->getPbrSurface();
+		mPbrSurface.enabled = true;
+		auto requireRange = [&](char const* field, float value, float minimum, float maximum)
+		{
+			if (value < minimum || value > maximum)
+				THROW_MPP("PbrMaterial '" + getName() + "' has " + field + " outside its supported range.", __LINE__, __FILE__, __func__);
+		};
+		requireRange("baseColourFactor alpha", mPbrSurface.baseColourFactor.a, 0.0f, 1.0f);
+		requireRange("metallicFactor", mPbrSurface.metallicFactor, 0.0f, 1.0f);
+		requireRange("roughnessFactor", mPbrSurface.roughnessFactor, 0.0f, 1.0f);
+		requireRange("normalScale", mPbrSurface.normalScale, 0.0f, FLT_MAX);
+		requireRange("occlusionStrength", mPbrSurface.occlusionStrength, 0.0f, 1.0f);
+		requireRange("alphaCutoff", mPbrSurface.alphaCutoff, 0.0f, 1.0f);
+		if (mPbrSurface.baseColourFactor.r < 0.0f || mPbrSurface.baseColourFactor.g < 0.0f || mPbrSurface.baseColourFactor.b < 0.0f ||
+			mPbrSurface.emissiveFactor.r < 0.0f || mPbrSurface.emissiveFactor.g < 0.0f || mPbrSurface.emissiveFactor.b < 0.0f)
+			THROW_MPP("PbrMaterial '" + getName() + "' has negative colour or emissive factors.", __LINE__, __FILE__, __func__);
+		mFeatures = derivePbrMaterialFeatures(mPbrSurface, mStr->getTextures(), mStr->usesLegacyFullContract());
+		mFeatureSummary = describePbrMaterialFeatures(mFeatures);
 
 		// Create program and build information about it.  Program is either a named resource, or a MeshSpecification with
 		// optional shader strings.
@@ -134,6 +157,8 @@ namespace mpp
 			// An omitted program selects the engine-owned metallic-roughness shader.
 			if (progOpts.vertexShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) vertexShaderSrc = BuiltInPbrVertexShader;
 			if (progOpts.fragmentShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) fragmentShaderSrc = BuiltInPbrFragmentShader;
+			if (!hasPbrFeature(mFeatures, PbrMaterialFeature::LegacyFullContract))
+				fragmentShaderSrc = injectPbrSpecializationDefines(fragmentShaderSrc, mFeatures);
 
 			// Get or create program, either with built-in PBR shaders or loaded strings in ProgOpts.
 			if (progOpts.is2d)
@@ -148,36 +173,28 @@ namespace mpp
 
 		acquireDependentResource(mProgram);
 		mProgram->load();
-
-		// Set uniforms
-		mUniforms = mStr->getUniforms();
-		mPbrSurface = mStr->getPbrSurface();
-		// A PbrMaterial is explicit; legacy PBR_ENABLED inference belongs only to
-		// the later compatibility converter, never to BasicMaterial.
-		mPbrSurface.enabled = true;
-		auto requireRange = [&](char const* field, float value, float minimum, float maximum)
-		{
-			if (value < minimum || value > maximum)
-				THROW_MPP("PbrMaterial '" + getName() + "' has " + field + " outside its supported range.", __LINE__, __FILE__, __func__);
-		};
-		requireRange("baseColourFactor alpha", mPbrSurface.baseColourFactor.a, 0.0f, 1.0f);
-		requireRange("metallicFactor", mPbrSurface.metallicFactor, 0.0f, 1.0f);
-		requireRange("roughnessFactor", mPbrSurface.roughnessFactor, 0.0f, 1.0f);
-		requireRange("normalScale", mPbrSurface.normalScale, 0.0f, FLT_MAX);
-		requireRange("occlusionStrength", mPbrSurface.occlusionStrength, 0.0f, 1.0f);
-		requireRange("alphaCutoff", mPbrSurface.alphaCutoff, 0.0f, 1.0f);
-		if (mPbrSurface.baseColourFactor.r < 0.0f || mPbrSurface.baseColourFactor.g < 0.0f || mPbrSurface.baseColourFactor.b < 0.0f ||
-			mPbrSurface.emissiveFactor.r < 0.0f || mPbrSurface.emissiveFactor.g < 0.0f || mPbrSurface.emissiveFactor.b < 0.0f)
-			THROW_MPP("PbrMaterial '" + getName() + "' has negative colour or emissive factors.", __LINE__, __FILE__, __func__);
+		string const programLabel = "PBR [" + mFeatureSummary + "]: " + mProgram->getName();
+		GL_CHECK(glObjectLabel(GL_PROGRAM, mProgram->getId(), -1, programLabel.c_str()));
 
 		// The built-in and every custom PBR program share this stable material
 		// contract. Optional maps use neutral textures, not optional interfaces.
 		Program* program = static_cast<Program*>(mProgram.get());
-		vector<string> const requiredUniforms = {
-			"PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR",
-			"PBR_EMISSIVE_FACTOR", "PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH",
-			"PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED"
-		};
+		bool const legacyFullContract = hasPbrFeature(mFeatures, PbrMaterialFeature::LegacyFullContract);
+		vector<string> requiredUniforms{ "PBR_BASE_COLOUR_FACTOR" };
+		if (legacyFullContract)
+		{
+			requiredUniforms.insert(requiredUniforms.end(), { "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
+				"PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH", "PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED" });
+		}
+		else
+		{
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::Metallic)) requiredUniforms.push_back("PBR_METALLIC_FACTOR");
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::Roughness)) requiredUniforms.push_back("PBR_ROUGHNESS_FACTOR");
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::Emissive)) requiredUniforms.push_back("PBR_EMISSIVE_FACTOR");
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::NormalMap)) requiredUniforms.push_back("PBR_NORMAL_SCALE");
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::Occlusion)) requiredUniforms.push_back("PBR_OCCLUSION_STRENGTH");
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::AlphaMask)) requiredUniforms.push_back("PBR_ALPHA_CUTOFF");
+		}
 		for (auto const& uniform : requiredUniforms)
 		{
 			if (program->getUniformId(uniform) < 0)
@@ -189,11 +206,19 @@ namespace mpp
 			if (program->getUniformGlType(uniform) != expectedType)
 				THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + uniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
 		}
-		vector<string> const requiredSamplers = {
-			"PBR_BASE_COLOUR_MAP", "PBR_METALLIC_ROUGHNESS_MAP", "PBR_NORMAL_MAP",
-			"PBR_OCCLUSION_MAP", "PBR_EMISSIVE_MAP", "PBR_IRRADIANCE_MAP",
-			"PBR_PREFILTERED_SPECULAR_MAP", "PBR_BRDF_LUT"
-		};
+		set<string> const allCoreUniforms = { "PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
+			"PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH", "PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED" };
+		set<string> const allowedCoreUniforms(requiredUniforms.begin(), requiredUniforms.end());
+		if (!legacyFullContract) for (auto const& name : program->getUniformNames())
+			if (allCoreUniforms.contains(name) && !allowedCoreUniforms.contains(name))
+				THROW_MPP("PbrMaterial '" + getName() + "' program exposes specialized-out uniform '" + name + "' for [" + mFeatureSummary + "].", __LINE__, __FILE__, __func__);
+
+		vector<string> requiredSamplers{ "PBR_IRRADIANCE_MAP", "PBR_PREFILTERED_SPECULAR_MAP", "PBR_BRDF_LUT" };
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::BaseColourMap)) requiredSamplers.push_back("PBR_BASE_COLOUR_MAP");
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::MetallicRoughnessMap)) requiredSamplers.push_back("PBR_METALLIC_ROUGHNESS_MAP");
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::NormalMap)) requiredSamplers.push_back("PBR_NORMAL_MAP");
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Occlusion)) requiredSamplers.push_back("PBR_OCCLUSION_MAP");
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Emissive)) requiredSamplers.push_back("PBR_EMISSIVE_MAP");
 		for (auto const& sampler : requiredSamplers)
 		{
 			bool found = false;
@@ -205,40 +230,33 @@ namespace mpp
 			if (program->getSamplerGlType(sampler) != expectedType)
 				THROW_MPP("PbrMaterial '" + getName() + "' sampler '" + sampler + "' has the wrong sampler type.", __LINE__, __FILE__, __func__);
 		}
+		set<string> const allCoreSamplers = { "PBR_BASE_COLOUR_MAP", "PBR_METALLIC_ROUGHNESS_MAP", "PBR_NORMAL_MAP", "PBR_OCCLUSION_MAP",
+			"PBR_EMISSIVE_MAP", "PBR_IRRADIANCE_MAP", "PBR_PREFILTERED_SPECULAR_MAP", "PBR_BRDF_LUT" };
+		set<string> const allowedCoreSamplers(requiredSamplers.begin(), requiredSamplers.end());
+		if (!legacyFullContract) for (int index = 0; index < program->getNumSamplers(); ++index)
+		{
+			auto const& name = program->getSamplerName(index);
+			if (allCoreSamplers.contains(name) && !allowedCoreSamplers.contains(name))
+				THROW_MPP("PbrMaterial '" + getName() + "' program exposes specialized-out sampler '" + name + "' for [" + mFeatureSummary + "].", __LINE__, __FILE__, __func__);
+		}
+
 		string fragmentOutputDiagnostic;
 		if (!program->validateFragmentOutputLocations(1, fragmentOutputDiagnostic))
 			THROW_MPP("PbrMaterial '" + getName() + "' program must write fragment location 0: " + fragmentOutputDiagnostic, __LINE__, __FILE__, __func__);
-		// MPP model files retain backwards-compatible material streams. PBR
-		// metadata is mirrored into PBR_* uniforms by FilePbrMaterialStream, so
-		// recover the material state needed by the renderer after deserialization.
-		auto const& serializedUniforms = mUniforms.getUniformData();
-		if (!mPbrSurface.enabled && serializedUniforms.find("PBR_ENABLED") != serializedUniforms.end())
-		{
-			mPbrSurface.enabled = true;
-		}
-		auto alphaModeIt = serializedUniforms.find("PBR_ALPHA_MODE");
-		if (alphaModeIt != serializedUniforms.end() && alphaModeIt->second.size >= sizeof(int32_t))
-		{
-			int32_t alphaMode;
-			memcpy(&alphaMode, alphaModeIt->second.data, sizeof(alphaMode));
-			if (alphaMode >= (int32_t)PbrMaterialSpecification::PbrAlphaMode::Opaque &&
-				alphaMode <= (int32_t)PbrMaterialSpecification::PbrAlphaMode::Blend)
-			{
-				mPbrSurface.alphaMode = (PbrMaterialSpecification::PbrAlphaMode)alphaMode;
-			}
-		}
-		if (mPbrSurface.enabled)
-		{
-			mUniforms.setUniform("PBR_BASE_COLOUR_FACTOR", mPbrSurface.baseColourFactor);
-			mUniforms.setUniform("PBR_METALLIC_FACTOR", mPbrSurface.metallicFactor);
-			mUniforms.setUniform("PBR_ROUGHNESS_FACTOR", mPbrSurface.roughnessFactor);
-			mUniforms.setUniform("PBR_EMISSIVE_FACTOR", mPbrSurface.emissiveFactor);
-			mUniforms.setUniform("PBR_NORMAL_SCALE", mPbrSurface.normalScale);
-			mUniforms.setUniform("PBR_OCCLUSION_STRENGTH", mPbrSurface.occlusionStrength);
-			mUniforms.setUniform("PBR_ALPHA_MODE", (int32_t)mPbrSurface.alphaMode);
-			mUniforms.setUniform("PBR_ALPHA_CUTOFF", mPbrSurface.alphaCutoff);
-			mUniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(mPbrSurface.doubleSided ? 1 : 0));
-		}
+		// Rebuild canonical runtime values from the exact selected interface.
+		// File streams mirror all factors for serialization, but specialized-out
+		// values must not remain legal instance overrides.
+		for (auto const& name : allCoreUniforms) mUniforms.mUniformData.erase(name);
+		mUniforms.mUniformData.erase("PBR_ENABLED");
+		mUniforms.setUniform("PBR_BASE_COLOUR_FACTOR", mPbrSurface.baseColourFactor);
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Metallic)) mUniforms.setUniform("PBR_METALLIC_FACTOR", mPbrSurface.metallicFactor);
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Roughness)) mUniforms.setUniform("PBR_ROUGHNESS_FACTOR", mPbrSurface.roughnessFactor);
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Emissive)) mUniforms.setUniform("PBR_EMISSIVE_FACTOR", mPbrSurface.emissiveFactor);
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::NormalMap)) mUniforms.setUniform("PBR_NORMAL_SCALE", mPbrSurface.normalScale);
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Occlusion)) mUniforms.setUniform("PBR_OCCLUSION_STRENGTH", mPbrSurface.occlusionStrength);
+		if (legacyFullContract) mUniforms.setUniform("PBR_ALPHA_MODE", (int32_t)mPbrSurface.alphaMode);
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::AlphaMask)) mUniforms.setUniform("PBR_ALPHA_CUTOFF", mPbrSurface.alphaCutoff);
+		if (legacyFullContract) mUniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(mPbrSurface.doubleSided ? 1 : 0));
 
 		set<string> const coreUniforms(requiredUniforms.begin(), requiredUniforms.end());
 		for (auto const& [name, value] : mUniforms.getUniformData())
@@ -263,10 +281,9 @@ namespace mpp
 		// Set textures
 		auto const& materialTextures = mStr->getTextures();
 
-		set<string> const coreSamplers(requiredSamplers.begin(), requiredSamplers.end());
 		for (auto const& texture : materialTextures)
 		{
-			if (coreSamplers.contains(texture.sampler) || texture.sampler == "SHADOW_MAP") continue;
+			if (allCoreSamplers.contains(texture.sampler) || texture.sampler == "SHADOW_MAP") continue;
 			if (texture.sampler.rfind("PBR_EXT_", 0) != 0)
 				THROW_MPP("PbrMaterial '" + getName() + "' custom sampler '" + texture.sampler + "' must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
 			bool found = false;
@@ -404,9 +421,19 @@ namespace mpp
 		return mProgram;
 	}
 
-		PbrMaterialSpecification::PbrSurface const& PbrMaterial::getSurface() const
+	PbrMaterialSpecification::PbrSurface const& PbrMaterial::getSurface() const
 	{
 		return mPbrSurface;
+	}
+
+	PbrMaterialFeatures PbrMaterial::getFeatures() const
+	{
+		return mFeatures;
+	}
+
+	string const& PbrMaterial::getFeatureSummary() const
+	{
+		return mFeatureSummary;
 	}
 
 	void PbrMaterial::validateInstanceUniforms(UniformCollection const& uniforms) const

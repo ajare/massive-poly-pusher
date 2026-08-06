@@ -96,6 +96,7 @@ namespace mpp::resource_parsers
 			auto restoredPbrBase = serializer.deserialize(pbrBin);
 			auto restoredPbr = dynamic_cast<PbrMaterialStream*>(restoredPbrBase.get());
 			if (!restoredPbr || restoredPbrBase->getType() != "PbrMaterial") return fail("PbrMaterial binary round trip changed its concrete type");
+			if (restoredPbr->usesLegacyFullContract()) return fail("new PbrMaterial binary round trip acquired legacy full-contract state");
 			restoredPbr->load(restoredPbr->getQualityNames().at("High"));
 			if (restoredPbr->getPbrSurface().metallicFactor != 0.9f || restoredPbr->getPbrSurface().roughnessFactor != 0.1f) return fail("PBR quality surface did not survive binary round trip");
 
@@ -111,6 +112,7 @@ namespace mpp::resource_parsers
 			auto converted = serializer.deserialize(legacyPbrBin);
 			auto convertedPbr = dynamic_cast<PbrMaterialStream*>(converted.get());
 			if (!convertedPbr || convertedPbr->getPbrSurface().metallicFactor != 0.65f || convertedPbr->getPbrSurface().roughnessFactor != 0.35f) return fail("legacy PBR Material surface conversion failed");
+			if (!convertedPbr->usesLegacyFullContract()) return fail("legacy PBR Material did not retain its temporary full-contract marker");
 		}
 		catch (std::exception const& exception) { return fail(exception.what()); }
 		std::filesystem::remove(basicXml); std::filesystem::remove(pbrXml); std::filesystem::remove(invalidPbrXml);
