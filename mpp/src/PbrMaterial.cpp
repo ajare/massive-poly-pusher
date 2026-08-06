@@ -1,3 +1,4 @@
+#include <cfloat>
 #include <cstring>
 
 #include "utils/FileSystem.h"
@@ -145,6 +146,23 @@ namespace mpp
 		// Set uniforms
 		mUniforms = mStr->getUniforms();
 		mPbrSurface = mStr->getPbrSurface();
+		// A PbrMaterial is explicit; legacy PBR_ENABLED inference belongs only to
+		// the later compatibility converter, never to BasicMaterial.
+		mPbrSurface.enabled = true;
+		auto requireRange = [&](char const* field, float value, float minimum, float maximum)
+		{
+			if (value < minimum || value > maximum)
+				THROW_MPP("PbrMaterial '" + getName() + "' has " + field + " outside its supported range.", __LINE__, __FILE__, __func__);
+		};
+		requireRange("baseColourFactor alpha", mPbrSurface.baseColourFactor.a, 0.0f, 1.0f);
+		requireRange("metallicFactor", mPbrSurface.metallicFactor, 0.0f, 1.0f);
+		requireRange("roughnessFactor", mPbrSurface.roughnessFactor, 0.0f, 1.0f);
+		requireRange("normalScale", mPbrSurface.normalScale, 0.0f, FLT_MAX);
+		requireRange("occlusionStrength", mPbrSurface.occlusionStrength, 0.0f, 1.0f);
+		requireRange("alphaCutoff", mPbrSurface.alphaCutoff, 0.0f, 1.0f);
+		if (mPbrSurface.baseColourFactor.r < 0.0f || mPbrSurface.baseColourFactor.g < 0.0f || mPbrSurface.baseColourFactor.b < 0.0f ||
+			mPbrSurface.emissiveFactor.r < 0.0f || mPbrSurface.emissiveFactor.g < 0.0f || mPbrSurface.emissiveFactor.b < 0.0f)
+			THROW_MPP("PbrMaterial '" + getName() + "' has negative colour or emissive factors.", __LINE__, __FILE__, __func__);
 		// MPP model files retain backwards-compatible material streams. PBR
 		// metadata is mirrored into PBR_* uniforms by FilePbrMaterialStream, so
 		// recover the material state needed by the renderer after deserialization.
