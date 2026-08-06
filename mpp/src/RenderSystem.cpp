@@ -793,6 +793,17 @@ namespace mpp
 		addPbrFallbackTexture("__mpp_tex_pbr_black__", 0, 0, 0, TextureColourSpace::Srgb);
 		addPbrFallbackTexture("__mpp_tex_pbr_normal__", 128, 128, 255, TextureColourSpace::Linear);
 		addPbrFallbackTexture("__mpp_tex_pbr_metallic_roughness__", 0, 255, 255, TextureColourSpace::Linear);
+		auto addPbrIblFallback = [this, resourceMgr](string const& name, TextureTarget target, uint8_t red, uint8_t green, uint8_t blue)
+		{
+			auto stream = new ProgrammaticTextureStream(resourceMgr);
+			stream->setTarget(target);
+			stream->setColourSpace(TextureColourSpace::Linear);
+			stream->setData([red, green, blue](string const&) { TextureData data; data.width = data.height = 1; data.bitsPerPixel = 24; data.dataType = GL_UNSIGNED_BYTE; data.pixelFormat = GL_RGB; data.data = new uint8_t[3]{ red, green, blue }; return data; });
+			auto texture = resourceMgr->declareResource(name, ResourceStreamPtr(stream)).first;
+			addCoreResource(texture, true);
+		};
+		addPbrIblFallback("__mpp_tex_pbr_ibl_cube__", TextureTarget::CubeMap, 0, 0, 0);
+		addPbrIblFallback("__mpp_tex_pbr_brdf_lut__", TextureTarget::Texture2D, 255, 255, 255);
 
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(resourceMgr);
