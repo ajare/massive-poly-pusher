@@ -19,6 +19,7 @@ namespace mpp
 		// Framebuffer limits used by graph/MRT validation and execution.
 		uint32_t maxColourAttachments;
 		uint32_t maxDrawBuffers;
+		uint32_t maxSamples;
 
 		float depthRange[2];
 

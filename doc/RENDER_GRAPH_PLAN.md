@@ -63,7 +63,7 @@ struct GraphImageDesc
 
 A handle version increments when a pass writes an image. This makes an accidental same-version read/write visible to validation. Imported/external images (screen, a caller-owned environment map, or a persistent history target) are explicitly marked non-transient.
 
-The implementation uses 2D single-sample images. Generated mip chains, explicit mip attachment levels, and temporary single-mip sampler views are supported. Cube maps, arrays, multisample resolve, 3D textures, and simultaneous views of multiple mips from one texture remain extensions.
+The implementation uses 2D images. Generated mip chains, explicit mip attachment levels, temporary single-mip sampler views, multisample colour/depth targets, and automatic single-sample resolves are supported. Cube maps, arrays, 3D textures, and simultaneous views of multiple mips from one texture remain extensions.
 
 ### Pass declaration
 
@@ -302,7 +302,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 ### RG2 — OpenGL target allocator and execution context
 
-- [x] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. `RenderGraphTargets` allocates planned non-imported image versions (including depth-only targets), aliases compatible non-overlapping lifetimes within a plan, and supports imported backing targets. Cross-frame pooling, generated colour/depth mip chains, explicit mip attachments, and sampler mip views are implemented; MSAA remains future work.
+- [x] Add pooled graph attachment allocation/reuse backed by `RenderTexture` extensions. `RenderGraphTargets` allocates planned non-imported image versions (including depth-only targets), aliases compatible non-overlapping lifetimes within a plan, and supports imported backing targets. Cross-frame pooling, generated colour/depth mip chains, explicit mip attachments/views, and MSAA render/resolve pairs are implemented.
 - [x] Bind graph framebuffers, configure draw/read buffers, clear declared attachments, and expose read-only image views to execution callbacks. `RenderGraphExecutor` creates pass framebuffer views, calls `glDrawBuffers`, clears `Clear` outputs, and provides `RenderGraphExecutionContext::getImage()`.
 - [x] Add one colour plus optional depth attachment execution first; retain existing `RenderTexture` ownership APIs as compatibility wrappers. Executor supports a single target, depth-only pass, colour+depth pass, and MRT through temporary framebuffer views.
 - [~] Add resize invalidation and GL object-lifetime tests. `RenderGraphTargets` retains a cross-frame compatible target pool, allocating only when a new plan has no compatible target; calling `clear()` releases that pool. A changed viewport produces incompatible dimensions and therefore fresh targets. Automated GPU/lifetime tests are outstanding.

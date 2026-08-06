@@ -45,5 +45,7 @@ namespace mpp
 		void setDepthParams(RenderTextureDepthParams const& params);
 
 		void setNumAttachments(size_t numAttachments);
+
+		void setSamples(uint32_t samples);
 	};
 }
