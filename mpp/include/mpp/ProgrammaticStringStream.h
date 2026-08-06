@@ -12,8 +12,8 @@ namespace mpp
 
 		explicit ProgrammaticStringStream(ResourceManager* resourceMgr);
 
-		void setString(std::string const& data, uint32_t quality = 0);
+		void setString(std::string const& data);
 
-		void setFile(std::string const& filepath, uint32_t quality = 0);
+		void setFile(std::string const& filepath);
 	};
 }

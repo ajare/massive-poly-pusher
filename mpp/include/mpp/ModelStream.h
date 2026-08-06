@@ -36,17 +36,10 @@ namespace mpp
 		};
 
 	private:
-
-		struct QualitySetting
-		{
-			std::vector<mesh::MeshDefinition*> meshDefinitions;
-		};
-
 		bool mCalculateBounds;
 
 	protected:
-
-		std::vector<QualitySetting> mQualitySettings;
+		std::vector<mesh::MeshDefinition*> mMeshDefinitions;
 
 	private:
 
@@ -96,13 +89,11 @@ namespace mpp
 
 		bool getCalculateBounds() const;
 
-		size_t getNumMeshDefinitions(uint32_t quality = 0) const;
+		size_t getNumMeshDefinitions() const;
 
-		mesh::MeshDefinition* getMeshDefinition(size_t index, uint32_t quality = 0);
+		mesh::MeshDefinition* getMeshDefinition(size_t index);
 
 		virtual std::string markUpMaterialName(std::string const& name, std::string const& material);
-
-		uint32_t createQualitySetting(std::string const& name);
 
 	};
 }

@@ -35,12 +35,6 @@ namespace mpp
 
 		Resource* mwResource;
 
-	protected:
-
-		uint32_t mQualitySetting;
-
-		std::map<std::string, uint32_t> mQualityNames;
-
 	private:
 
 		virtual void createChildResourceStreamsImpl() {};
@@ -69,7 +63,7 @@ namespace mpp
 
 		std::string const& getType() const;
 
-		void load(uint32_t qualitySetting);
+		void load();
 
 		void unload();
 
@@ -86,10 +80,6 @@ namespace mpp
 		void loadChildResources(std::string const& parentName);
 
 		void unloadChildResources(std::string const& parentName);
-
-		virtual uint32_t createQualitySetting(std::string const& name) = 0;
-
-		std::map<std::string, uint32_t> const& getQualityNames() const;
 
 		virtual void setFileBasePaths(std::string const& basepath)
 		{

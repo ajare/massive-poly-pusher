@@ -30,7 +30,7 @@ namespace mpp
 
 			uint32_t parseWrapping(std::string const& value);
 
-			void parseQualitySetting(utils::StructuredData const& data);
+			void parseDefinition(utils::StructuredData const& data);
 
 		public:
 

@@ -40,7 +40,7 @@ namespace mpp
 
 			FileTextureStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
 		
-			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
+			static std::pair<std::string, Definition> parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 		};
 
 	}

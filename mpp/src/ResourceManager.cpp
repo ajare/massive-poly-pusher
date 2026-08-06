@@ -354,7 +354,7 @@ namespace mpp
 		}
 	}
 
-	pair<ResourcePtr, bool> ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream, uint32_t quality)
+	pair<ResourcePtr, bool> ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream)
 	{
 		// Check name doen't exist
 		if (mResources.find(name) != mResources.end())
@@ -366,7 +366,7 @@ namespace mpp
 
 		if (loadStream)
 		{
-			resourceStream->load(quality);
+			resourceStream->load();
 		}
 
 		string type = resourceStream->getType();
@@ -375,7 +375,7 @@ namespace mpp
 		if (type == "Program")
 		{
 			// Must load to get source
-			resourceStream->load(quality);
+			resourceStream->load();
 
 			auto programStream = dynamic_cast<ProgramStream*>(resourceStream.get());
 			auto sourceCode = programStream->getConcatenatedSource();

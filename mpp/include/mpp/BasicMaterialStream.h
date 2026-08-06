@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "mpp/ResourceStream.h"
 #include "mpp/UniformCollection.h"
@@ -14,9 +14,8 @@ namespace mpp
 		friend class ResourceStreamSerializer;
 
 	protected:
-		struct QualitySetting { BasicMaterialSpecification spec; };
 		std::string mName;
-		std::vector<QualitySetting> mQualitySettings;
+		BasicMaterialSpecification mSpecification;
 
 	public:
 		explicit BasicMaterialStream(ResourceManager* resourceMgr);
@@ -25,6 +24,5 @@ namespace mpp
 		mesh::MeshSpecification const& getMeshSpecification();
 		UniformCollection const& getUniforms() const;
 		std::vector<BasicMaterialSpecification::TextureOptions> const& getTextures() const;
-		uint32_t createQualitySetting(std::string const& name) override;
 	};
 }

@@ -18,7 +18,7 @@ namespace mpp
 		{
 			void loadImpl();
 
-			void parseQualitySetting(utils::StructuredData const& data);
+			void parseDefinition(utils::StructuredData const& data);
 
 		public:
 

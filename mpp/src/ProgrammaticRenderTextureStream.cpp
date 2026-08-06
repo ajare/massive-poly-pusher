@@ -17,36 +17,35 @@ namespace mpp
 	ProgrammaticRenderTextureStream::ProgrammaticRenderTextureStream(ResourceManager* resourceMgr)
 		: RenderTextureStream(resourceMgr)
 	{
-		createQualitySetting("");
 	}
 
-	void ProgrammaticRenderTextureStream::setWidth(size_t width, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setWidth(size_t width)
 	{
-		auto& qs = mQualitySettings[quality];
+		auto& qs = mDefinition;
 
 		qs.width = width;
 	}
 
-	void ProgrammaticRenderTextureStream::setHeight(size_t height, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setHeight(size_t height)
 	{
-		auto& qs = mQualitySettings[quality];
+		auto& qs = mDefinition;
 
 		qs.height = height;
 	}
 
-	void ProgrammaticRenderTextureStream::setDepth(size_t depth, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setDepth(size_t depth)
 	{
-		auto& qs = mQualitySettings[quality];
+		auto& qs = mDefinition;
 
 		qs.depth = depth;
 	}
 
-	void ProgrammaticRenderTextureStream::setParams(TextureParams const& params, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setParams(TextureParams const& params)
 	{
-		mQualitySettings[quality].params = params;
+		mDefinition.params = params;
 	}
 
-	void ProgrammaticRenderTextureStream::setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels)
 	{
 		if (type == TextureInternalType::Float && normalized)
 		{
@@ -294,13 +293,13 @@ namespace mpp
 			THROW_MPP("Unknown texture internal format.", __LINE__, __FILE__, __func__);
 		}
 
-		auto& qs = mQualitySettings[quality];
+		auto& qs = mDefinition;
 		qs.internalFormat = internalFormat;
 	}
 
-	void ProgrammaticRenderTextureStream::setTarget(TextureTarget target, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setTarget(TextureTarget target)
 	{
-		auto& qs = mQualitySettings[quality];
+		auto& qs = mDefinition;
 
 		switch (target)
 		{
@@ -325,35 +324,35 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticRenderTextureStream::setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter)
 	{
 		switch (minFilter)
 		{
 		case TextureParams::MinFilter::Nearest:
-			mQualitySettings[quality].params.minFilter = GL_NEAREST;
+			mDefinition.params.minFilter = GL_NEAREST;
 			break;
 
 		case TextureParams::MinFilter::Linear:
-			mQualitySettings[quality].params.minFilter = GL_LINEAR;
+			mDefinition.params.minFilter = GL_LINEAR;
 			break;
 
 		case TextureParams::MinFilter::NearestMipmapNearest:
-			mQualitySettings[quality].params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
+			mDefinition.params.minFilter = GL_NEAREST_MIPMAP_NEAREST;
 			enableMipMaps(true);
 			break;
 
 		case TextureParams::MinFilter::LinearMipmapNearest:
-			mQualitySettings[quality].params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
+			mDefinition.params.minFilter = GL_LINEAR_MIPMAP_NEAREST;
 			enableMipMaps(true);
 			break;
 
 		case TextureParams::MinFilter::NearestMipmapLinear:
-			mQualitySettings[quality].params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
+			mDefinition.params.minFilter = GL_NEAREST_MIPMAP_LINEAR;
 			enableMipMaps(true);
 			break;
 
 		case TextureParams::MinFilter::LinearMipmapLinear:
-			mQualitySettings[quality].params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+			mDefinition.params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
 			enableMipMaps(true);
 			break;
 
@@ -364,11 +363,11 @@ namespace mpp
 		switch (magFilter)
 		{
 		case TextureParams::MagFilter::Nearest:
-			mQualitySettings[quality].params.magFilter = GL_NEAREST;
+			mDefinition.params.magFilter = GL_NEAREST;
 			break;
 
 		case TextureParams::MagFilter::Linear:
-			mQualitySettings[quality].params.magFilter = GL_LINEAR;
+			mDefinition.params.magFilter = GL_LINEAR;
 			break;
 
 		default:
@@ -376,24 +375,24 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticRenderTextureStream::setWrapping(TextureParams::Wrapping wrapping, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setWrapping(TextureParams::Wrapping wrapping)
 	{
 		switch (wrapping)
 		{
 		case TextureParams::Wrapping::Repeat:
-			mQualitySettings[quality].params.wrap = GL_REPEAT;
+			mDefinition.params.wrap = GL_REPEAT;
 			break;
 
 		case TextureParams::Wrapping::MirroredRepeat:
-			mQualitySettings[quality].params.wrap = GL_MIRRORED_REPEAT;
+			mDefinition.params.wrap = GL_MIRRORED_REPEAT;
 			break;
 
 		case TextureParams::Wrapping::ClampToEdge:
-			mQualitySettings[quality].params.wrap = GL_CLAMP_TO_EDGE;
+			mDefinition.params.wrap = GL_CLAMP_TO_EDGE;
 			break;
 
 		case TextureParams::Wrapping::ClampToBorder:
-			mQualitySettings[quality].params.wrap = GL_CLAMP_TO_BORDER;
+			mDefinition.params.wrap = GL_CLAMP_TO_BORDER;
 			break;
 
 		default:
@@ -401,34 +400,34 @@ namespace mpp
 		}
 	}
 
-	void ProgrammaticRenderTextureStream::enableMipMaps(bool enable, uint32_t quality)
+	void ProgrammaticRenderTextureStream::enableMipMaps(bool enable)
 	{
-		mQualitySettings[quality].params.useMipmaps = enable;
+		mDefinition.params.useMipmaps = enable;
 	}
 
-	void ProgrammaticRenderTextureStream::setLodBaseLevel(int32_t level, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setLodBaseLevel(int32_t level)
 	{
-		mQualitySettings[quality].params.lodBaseLevel = level;
+		mDefinition.params.lodBaseLevel = level;
 	}
 
-	void ProgrammaticRenderTextureStream::setLodMaxLevel(int32_t level, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setLodMaxLevel(int32_t level)
 	{
-		mQualitySettings[quality].params.lodMaxLevel = level;
+		mDefinition.params.lodMaxLevel = level;
 	}
 
-	void ProgrammaticRenderTextureStream::setLodBias(float bias, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setLodBias(float bias)
 	{
-		mQualitySettings[quality].params.lodBias = bias;
+		mDefinition.params.lodBias = bias;
 	}
 
-	void ProgrammaticRenderTextureStream::setMaxAnisotropy(float maxAnisotropy, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setMaxAnisotropy(float maxAnisotropy)
 	{
-		mQualitySettings[quality].params.maxAnisotropy = maxAnisotropy;
+		mDefinition.params.maxAnisotropy = maxAnisotropy;
 	}
 
-	void ProgrammaticRenderTextureStream::setSampler(string const& sampler, uint32_t quality)
+	void ProgrammaticRenderTextureStream::setSampler(string const& sampler)
 	{
-		mQualitySettings[quality].sampler = sampler;
+		mDefinition.sampler = sampler;
 	}
 
 	void ProgrammaticRenderTextureStream::setDepthBuffer(bool use)

@@ -82,7 +82,7 @@ namespace mpp
 
 		void destroyAllUnreferencedResources();
 
-		std::pair<ResourcePtr, bool> declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true, uint32_t quality = 0);
+		std::pair<ResourcePtr, bool> declareResource(std::string const& name, ResourceStreamPtr resourceStream, bool loadStream = true);
 
 		ResourcePtr acquireResource(ResourceWrangler* wrangler, std::string const& name);
 

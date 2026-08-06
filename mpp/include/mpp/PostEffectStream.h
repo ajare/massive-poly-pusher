@@ -98,19 +98,9 @@ namespace mpp
 
 	private:
 
-		struct QualitySetting
-		{
-		};
-
-	private:
-
 		std::vector<Input> mInputs;
 
 		Output mOutput;
-
-	protected:
-
-		std::vector<QualitySetting> mQualitySettings;
 
 	private:
 
@@ -121,8 +111,6 @@ namespace mpp
 		explicit PostEffectStream(ResourceManager* resourceMgr);
 
 		virtual ~PostEffectStream() = default;
-
-		uint32_t createQualitySetting(std::string const& name);
 
 	};
 }

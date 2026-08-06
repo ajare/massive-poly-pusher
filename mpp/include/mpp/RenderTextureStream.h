@@ -40,7 +40,7 @@ namespace mpp
 
 	class _MPPAPI RenderTextureStream : public ResourceStream
 	{
-		struct QualitySetting
+		struct Definition
 		{
 			uint32_t internalFormat{ 0 };
 			uint32_t target{ 0 };
@@ -53,7 +53,7 @@ namespace mpp
 
 	protected:
 
-		std::vector<QualitySetting> mQualitySettings;
+		Definition mDefinition;
 
 		RenderTextureDepthAttachment mDepthAttachment;
 		RenderTextureDepthParams mDepthParams;
@@ -99,6 +99,5 @@ namespace mpp
 
 		uint32_t getSamples() const;
 
-		uint32_t createQualitySetting(std::string const& name);
 	};
 }

@@ -21,11 +21,4 @@ namespace mpp
 	{
 		return mGraph;
 	}
-
-	uint32_t RenderGraphStream::createQualitySetting(std::string const& name)
-	{
-		auto id = (uint32_t)mQualityNames.size();
-		mQualityNames[name] = id;
-		return id;
-	}
 }

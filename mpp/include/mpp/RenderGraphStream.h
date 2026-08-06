@@ -21,6 +21,5 @@ namespace mpp
 		explicit RenderGraphStream(ResourceManager* resourceMgr);
 		void setGraph(std::shared_ptr<RenderGraph> graph);
 		std::shared_ptr<RenderGraph> const& getGraph() const;
-		uint32_t createQualitySetting(std::string const& name) override;
 	};
 }

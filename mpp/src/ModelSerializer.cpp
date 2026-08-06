@@ -335,9 +335,7 @@ namespace mpp
 		ResourceStreamSerializer ser(mResourceMgr);
 		auto rs = ser.deserialize(fp);
 
-		// Extract MeshSpecification. .. we can have multiple, one per
-		// quality setting: how to do this?
-		
+
 		// Set any children as having been created, so they're not
 		// created again (overwritten) when we try to create/load the resource
 		rs->_markChildrenCreated();

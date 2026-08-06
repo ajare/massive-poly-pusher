@@ -8,6 +8,6 @@ namespace mpp { class ResourceManager; }
 
 namespace mpp::resource_parsers
 {
-	// XML dispatch, typed binary round-trip, quality and legacy migration tests.
+	// XML dispatch, single-definition binary round-trip and legacy migration tests.
 	_MPPRESOURCEPARSERSAPI bool runMaterialResourceTests(ResourceManager* resourceMgr, std::string* failure = nullptr);
 }

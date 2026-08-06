@@ -284,8 +284,9 @@ namespace mpp
 				!checkVertexAttributeMapping(material, meshDef))
 			{
 				THROW_MPP(
-					STR_FORMAT("Vertex attribute mismatch between material '{}' and mesh '{}' of model '{}'.",
-						material->getName(), meshDef->getName(), getName()),
+					STR_FORMAT("Vertex attribute mismatch between material '{}' ({} attributes) and mesh '{}' ({} attributes) of model '{}'.",
+						material->getName(), static_cast<Program*>(static_cast<Material*>(material.get())->getProgram().get())->getVertexAttributes().size(),
+						meshDef->getName(), [&]() { size_t count = 0; for (size_t layout = 0; layout < meshDef->getNumVertexBufferDefinitions(); ++layout) count += meshDef->getVertexBufferDefinition(layout)->getNumAttributes(); return count; }(), getName()),
 					__LINE__, __FILE__, __func__);
 			}
 

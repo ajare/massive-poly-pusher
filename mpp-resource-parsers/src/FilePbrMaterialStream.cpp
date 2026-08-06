@@ -152,27 +152,14 @@ namespace mpp
 				if (child == getChildren().end()) return;
 				auto program = dynamic_cast<ProgramStream*>(child->second.get());
 				if (!program) return;
-				auto parsed = parseQualitySetting(setting, getResourceMgr(), getFilepath());
-				if (!parsed.second.spec.legacyFullContract)
-					program->setFragmentPreamble(makePbrSpecializationDefines(derivePbrMaterialFeatures(parsed.second.spec.pbr, parsed.second.spec.textures)));
+				auto parsed = parseDefinition(setting, getResourceMgr(), getFilepath());
+				if (!parsed.second.legacyFullContract)
+					program->setFragmentPreamble(makePbrSpecializationDefines(derivePbrMaterialFeatures(parsed.second.pbr, parsed.second.textures)));
 			};
 
-			// Default quality setting
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each material variant into a separate resource.", __LINE__, __FILE__, __func__);
 			parseForChildResourceStreams(data, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
 			specializeChildProgram(data);
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					// Additional quality setting
-					parseForChildResourceStreams(entry.second, getFilepath(), mUseSpecifiedMeshSpec, &mMeshSpec);
-					specializeChildProgram(entry.second);
-				}
-			}
 		}
 
 		void FilePbrMaterialStream::parseUniformVectorType(string const& name, string const& type, size_t count, string const& value, UniformCollection &uniforms, string const& filepath)
@@ -328,10 +315,10 @@ namespace mpp
 			}
 		}
 
-		pair<string, FilePbrMaterialStream::QualitySetting> FilePbrMaterialStream::parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		pair<string, PbrMaterialSpecification> FilePbrMaterialStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
-			QualitySetting qs;
+			PbrMaterialSpecification qs;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -348,18 +335,18 @@ namespace mpp
 					auto const& programEntry = entry.second;
 					if (programEntry.hasEntry("Resource"))
 					{
-						qs.spec.program.resourceExists = true;
-						qs.spec.program.isChild = true;
-						qs.spec.program.existingResource = "Program";
+						qs.program.resourceExists = true;
+						qs.program.isChild = true;
+						qs.program.existingResource = "Program";
 					}
 					else if (programEntry.hasEntry("Ref"))
 					{
 						auto refName = programEntry.getEntry("Resource").getValue();
 
 						// Set program options
-						qs.spec.program.resourceExists = true;
-						qs.spec.program.isChild = false;
-						qs.spec.program.existingResource = refName;
+						qs.program.resourceExists = true;
+						qs.program.isChild = false;
+						qs.program.existingResource = refName;
 					}
 					else
 					{
@@ -369,7 +356,7 @@ namespace mpp
 				}
 				else if (entry.first == "Pbr" || entry.first == "Surface")
 				{
-					auto& pbr = qs.spec.pbr;
+					auto& pbr = qs.pbr;
 					pbr.enabled = true;
 					for (auto pit = entry.second.begin(); pit != entry.second.end(); ++pit)
 					{
@@ -416,16 +403,16 @@ namespace mpp
 					requireRange("occlusionStrength", pbr.occlusionStrength, 0.0f, 1.0f);
 					requireRange("alphaCutoff", pbr.alphaCutoff, 0.0f, 1.0f);
 
-					qs.spec.uniforms.setUniform("PBR_ENABLED", (int32_t)1);
-					qs.spec.uniforms.setUniform("PBR_BASE_COLOUR_FACTOR", pbr.baseColourFactor);
-					qs.spec.uniforms.setUniform("PBR_METALLIC_FACTOR", pbr.metallicFactor);
-					qs.spec.uniforms.setUniform("PBR_ROUGHNESS_FACTOR", pbr.roughnessFactor);
-					qs.spec.uniforms.setUniform("PBR_EMISSIVE_FACTOR", pbr.emissiveFactor);
-					qs.spec.uniforms.setUniform("PBR_NORMAL_SCALE", pbr.normalScale);
-					qs.spec.uniforms.setUniform("PBR_OCCLUSION_STRENGTH", pbr.occlusionStrength);
-					qs.spec.uniforms.setUniform("PBR_ALPHA_MODE", (int32_t)pbr.alphaMode);
-					qs.spec.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
-					qs.spec.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
+					qs.uniforms.setUniform("PBR_ENABLED", (int32_t)1);
+					qs.uniforms.setUniform("PBR_BASE_COLOUR_FACTOR", pbr.baseColourFactor);
+					qs.uniforms.setUniform("PBR_METALLIC_FACTOR", pbr.metallicFactor);
+					qs.uniforms.setUniform("PBR_ROUGHNESS_FACTOR", pbr.roughnessFactor);
+					qs.uniforms.setUniform("PBR_EMISSIVE_FACTOR", pbr.emissiveFactor);
+					qs.uniforms.setUniform("PBR_NORMAL_SCALE", pbr.normalScale);
+					qs.uniforms.setUniform("PBR_OCCLUSION_STRENGTH", pbr.occlusionStrength);
+					qs.uniforms.setUniform("PBR_ALPHA_MODE", (int32_t)pbr.alphaMode);
+					qs.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
+					qs.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
 				}
 				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
 				{
@@ -439,7 +426,7 @@ namespace mpp
 					if (entry.second.hasEntry("Resource")) { textureOptions.isChild = true; textureOptions.existingResource = "Textures/" + textureOptions.sampler; }
 					else if (entry.second.hasEntry("Ref")) { textureOptions.isChild = false; textureOptions.existingResource = entry.second.getEntry("Ref").getValue(); }
 					else THROW_MPP_RESOURCE_PARSERS("PbrMaterial semantic map requires Resource or Ref.", __LINE__, __FILE__, __func__);
-					qs.spec.textures.push_back(textureOptions);
+					qs.textures.push_back(textureOptions);
 				}
 				else if (entry.first == "Textures")
 				{
@@ -471,7 +458,7 @@ namespace mpp
 								textureOptions.existingResource = textureEntry.getEntry("Ref").getValue();
 							}
 
-							qs.spec.textures.push_back(textureOptions);
+							qs.textures.push_back(textureOptions);
 						}
 					}
 				}
@@ -483,7 +470,7 @@ namespace mpp
 						{
 							auto const& name = extension.second.getEntry("name").getValue();
 							if (name.rfind("PBR_EXT_", 0) != 0) THROW_MPP_RESOURCE_PARSERS("PBR extension uniform must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
-							parseUniform(extension.second, qs.spec.uniforms, filepath);
+							parseUniform(extension.second, qs.uniforms, filepath);
 						}
 						else if (extension.first == "Texture")
 						{
@@ -503,7 +490,7 @@ namespace mpp
 								if (extension.second.hasEntry("target")) { auto target = utils::StringUtils::toUpper(extension.second.getEntry("target").getValue()); texture.target = target == "CUBE" || target == "CUBEMAP" ? TextureTarget::CubeMap : TextureTarget::Texture2D; }
 							}
 							else THROW_MPP_RESOURCE_PARSERS("PBR extension sampler requires Resource or Ref.", __LINE__, __FILE__, __func__);
-							qs.spec.textures.push_back(texture);
+							qs.textures.push_back(texture);
 						}
 					}
 				}
@@ -517,7 +504,7 @@ namespace mpp
 						if (entry.first == "Uniform")
 						{
 							// Parse uniform
-							parseUniform(entry.second, qs.spec.uniforms, filepath);
+							parseUniform(entry.second, qs.uniforms, filepath);
 						}
 					}
 				}
@@ -539,22 +526,11 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			// Default quality setting
-			auto qs = parseQualitySetting(data, getResourceMgr(), getFilepath());
-			mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					// Additional quality setting
-					auto qs = parseQualitySetting(entry.second, getResourceMgr(), getFilepath());
-					mQualitySettings[createQualitySetting(qs.first)] = qs.second;
-				}
-			}
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each material variant into a separate resource.", __LINE__, __FILE__, __func__);
+			auto definition = parseDefinition(data, getResourceMgr(), getFilepath());
+			mName = definition.first;
+			mSpecification = definition.second;
+			if (mUseSpecifiedMeshSpec) mSpecification.program.spec = mMeshSpec;
 		}
 	}
 }

@@ -1154,7 +1154,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	{
 		throw std::runtime_error("Material resource tests failed: " + materialTestFailure);
 	}
-	renderSystem->infoMessage("Material XML dispatch/binary round-trip/quality/legacy migration tests passed.");
+	renderSystem->infoMessage("Material XML dispatch/single-definition binary/legacy migration tests passed.");
 
 	std::string graphGpuTestFailure;
 	if (!mpp::runRenderGraphGpuTests(renderSystem, &graphGpuTestFailure))

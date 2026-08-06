@@ -27,13 +27,4 @@ namespace mpp
 		mOutput.type = ImageType::Colour;
 		mOutput.format = "RGB";
 	}
-
-	uint32_t PostEffectStream::createQualitySetting(string const& name)
-	{
-		auto qualityId = (uint32_t)mQualitySettings.size();
-		mQualityNames[name] = qualityId;
-
-		mQualitySettings.push_back(QualitySetting());
-		return qualityId;
-	}
 }

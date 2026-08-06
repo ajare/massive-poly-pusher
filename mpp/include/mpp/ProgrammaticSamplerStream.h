@@ -10,16 +10,16 @@ namespace mpp
 
 		explicit ProgrammaticSamplerStream(ResourceManager* resourceMgr);
 
-		void setFiltering(SamplerParams::MinFilter minFilter, SamplerParams::MagFilter magFilter, uint32_t quality = 0);
+		void setFiltering(SamplerParams::MinFilter minFilter, SamplerParams::MagFilter magFilter);
 
-		void setWrapping(SamplerParams::Wrapping wrapping, uint32_t quality = 0);
+		void setWrapping(SamplerParams::Wrapping wrapping);
 
-		void setLodMinLevel(float level, uint32_t quality = 0);
+		void setLodMinLevel(float level);
 
-		void setLodMaxLevel(float level, uint32_t quality = 0);
+		void setLodMaxLevel(float level);
 
-		void setLodBias(float bias, uint32_t quality = 0);
+		void setLodBias(float bias);
 
-		void setMaxAnisotropy(float maxAnisotropy, uint32_t quality = 0);
+		void setMaxAnisotropy(float maxAnisotropy);
 	};
 }

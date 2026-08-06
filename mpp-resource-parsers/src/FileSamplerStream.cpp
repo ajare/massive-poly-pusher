@@ -92,52 +92,43 @@ namespace mpp
 			}
 		}
 
-		void FileSamplerStream::parseQualitySetting(utils::StructuredData const& data)
+		void FileSamplerStream::parseDefinition(utils::StructuredData const& data)
 		{
-			string name;
-			QualitySetting qs;
 
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
 				auto const& entry = *it;
 				string value = utils::StringUtils::toUpper(entry.second.getValue());
 
-				if (entry.first == "name")
+				if (entry.first == "minFilter")
 				{
-					name = entry.second.getValue();
-				}
-				else if (entry.first == "minFilter")
-				{
-					qs.params.minFilter = parseMinFilter(value);
+					mParams.minFilter = parseMinFilter(value);
 				}
 				else if (entry.first == "magFilter")
 				{
-					qs.params.magFilter = parseMagFilter(value);
+					mParams.magFilter = parseMagFilter(value);
 				}
 				else if (entry.first == "lodMinLevel")
 				{
-					qs.params.lodMinLevel = utils::StringUtils::parseFloat(value);
+					mParams.lodMinLevel = utils::StringUtils::parseFloat(value);
 				}
 				else if (entry.first == "lodMaxLevel")
 				{
-					qs.params.lodMaxLevel = utils::StringUtils::parseFloat(value);
+					mParams.lodMaxLevel = utils::StringUtils::parseFloat(value);
 				}
 				else if (entry.first == "lodBias")
 				{
-					qs.params.lodBias = utils::StringUtils::parseFloat(value);
+					mParams.lodBias = utils::StringUtils::parseFloat(value);
 				}
 				else if (entry.first == "wrap")
 				{
-					qs.params.wrap = parseWrapping(value);
+					mParams.wrap = parseWrapping(value);
 				}
 				else if (entry.first == "maxAnisotropy")
 				{
-					qs.params.maxAnisotropy = utils::StringUtils::parseFloat(value);
+					mParams.maxAnisotropy = utils::StringUtils::parseFloat(value);
 				}
 			}
-
-			auto newSettingId = createQualitySetting(name);
-			mQualitySettings[newSettingId] = qs;
 		}
 
 		void FileSamplerStream::loadImpl()
@@ -153,18 +144,8 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			parseQualitySetting(data);
-
-			for (auto it = data.begin(); it != data.end(); ++it)
-			{
-				auto const& entry = *it;
-				string value = utils::StringUtils::toUpper(entry.second.getValue());
-
-				if (entry.first == "Quality")
-				{
-					parseQualitySetting(entry.second);
-				}
-			}
+			if (data.hasEntry("Quality")) THROW_MPP_RESOURCE_PARSERS("Embedded <Quality> is no longer supported; split each sampler variant into a separate resource.", __LINE__, __FILE__, __func__);
+			parseDefinition(data);
 
 			SamplerStream::loadImpl();
 		}

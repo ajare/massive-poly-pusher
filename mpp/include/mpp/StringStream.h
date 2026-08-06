@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <string>
 
 #include "mpp/ResourceStream.h"
 
@@ -11,28 +11,12 @@ namespace mpp
 		friend class ResourceStreamSerializer;
 
 	protected:
-
-		struct QualitySetting
-		{
-			std::string data, file;
-			bool isFile;
-
-			QualitySetting()
-				: isFile(false)
-			{
-			}
-		};
-
-	protected:
-
-		std::vector<QualitySetting> mQualitySettings;
+		std::string mData;
+		std::string mFile;
+		bool mIsFile{ false };
 
 	public:
-
 		explicit StringStream(ResourceManager* resourceMgr);
-
-		uint32_t createQualitySetting(std::string const& name);
-
 		std::string const& getString() const;
 	};
 }

@@ -87,7 +87,7 @@ namespace mpp
 
 	mesh::MeshSpecification const& ProgramStream::getMeshSpecification() const
 	{
-		auto parser = mQualitySettings[mQualitySetting].parser;
+		auto parser = mParser;
 		return parser->getMeshSpecification();
 	}
 
@@ -97,7 +97,7 @@ namespace mpp
 	 */
 	void ProgramStream::loadImpl()
 	{
-		auto parser = mQualitySettings[mQualitySetting].parser;
+		auto parser = mParser;
 		if (!mFragmentPreamble.empty())
 		{
 			auto source = parser->getInputFragmentSource();
@@ -111,7 +111,7 @@ namespace mpp
 			}
 		}
 
-		parser->build(mQualitySettings[mQualitySetting].attribs);
+		parser->build(mAttribs);
 
 		setVertexSource(parser->getGeneratedVertexSource());
 		setFragmentSource(parser->getGeneratedFragmentSource());
@@ -119,28 +119,19 @@ namespace mpp
 
 	vector<program::Attribute> ProgramStream::getInAttributes() const
 	{
-		auto parser = mQualitySettings[mQualitySetting].parser;
+		auto parser = mParser;
 		return parser->getInAttributes();
 	}
 
 	vector<string> ProgramStream::getUniforms() const
 	{
-		auto parser = mQualitySettings[mQualitySetting].parser;
+		auto parser = mParser;
 		return parser->getUniforms();
 	}
 
 	vector<string> ProgramStream::getTextures() const
 	{
-		auto parser = mQualitySettings[mQualitySetting].parser;
+		auto parser = mParser;
 		return parser->getTextures();
-	}
-
-	uint32_t ProgramStream::createQualitySetting(string const& name)
-	{
-		auto qualityId = (uint32_t)mQualitySettings.size();
-		mQualityNames[name] = qualityId;
-
-		mQualitySettings.push_back(QualitySetting());
-		return qualityId;
 	}
 }
