@@ -10,7 +10,9 @@ This is the manual regression procedure for the currently implemented PBR milest
 
 ## Automated startup checks
 
-DemoSuite startup runs `runMaterialResourceTests()` before the render-graph GPU suite. It fails startup on incorrect Basic/PBR XML root dispatch, cross-root parser acceptance, invalid PBR factor ranges, loss of material type or quality data in RSE2 binary round trips, legacy tag emission, or failed RSER Basic/PBR conversion. The active statue custom program also exercises typed PBR XML, `PBR_EXT_EMISSIVE_SCALE`, typed model serialization, reflection validation, resource binding, and real-context rendering. Successful startup logs both material-resource and render-graph GPU suite pass messages.
+DemoSuite startup runs context-free specialization derivation/source tests and real-context built-in specialization tests before `runMaterialResourceTests()` and the render-graph GPU suite. It compiles minimal, full mask/double-sided, and blend variants; checks active reflection, same-mask cache reuse across different nonzero values, different-mask separation, exact referenced-program failures, and one-way instance boundaries. It also loads and renders the define-driven custom statue.
+
+`runMaterialResourceTests()` then fails startup on incorrect Basic/PBR XML root dispatch, cross-root parser acceptance, invalid PBR factor ranges, loss of material type or quality data in RSE2 binary round trips, legacy tag emission, or failed RSER Basic/PBR conversion. The active statue custom program also exercises typed PBR XML, `PBR_EXT_LIGHTING_SCALE`, typed model serialization, reflection validation, resource binding, and real-context rendering. Successful startup logs both material-resource and render-graph GPU suite pass messages.
 
 ## PBR control checks
 
@@ -35,7 +37,7 @@ Reference images are intentionally not committed until captured from a target gr
 
 ## RenderDoc event labels
 
-Captures expose a nested GPU event hierarchy for each pipeline. Look for `RenderPipeline: <name> [<mode>]`, then shadow/scene/bloom/tone-map/presentation or named `RenderGraph Pass <id>: <name> [<type>]` groups. Graph passes contain `Load/Clear Attachments`, `Execute`, and `Store/Resolve Attachments`; geometry draws are grouped as opaque/masked or transparent. Framebuffers, graph images, shaders, programs, textures, buffers, and pipeline scene targets carry semantic object labels where OpenGL supports KHR_debug (with EXT_debug_marker group fallback).
+PBR program object labels use `PBR [<feature summary>]: <program name>`, allowing a capture to identify the selected specialization and inspect its reduced active interface. Captures also expose a nested GPU event hierarchy for each pipeline. Look for `RenderPipeline: <name> [<mode>]`, then shadow/scene/bloom/tone-map/presentation or named `RenderGraph Pass <id>: <name> [<type>]` groups. Graph passes contain `Load/Clear Attachments`, `Execute`, and `Store/Resolve Attachments`; geometry draws are grouped as opaque/masked or transparent. Framebuffers, graph images, shaders, programs, textures, buffers, and pipeline scene targets carry semantic object labels where OpenGL supports KHR_debug (with EXT_debug_marker group fallback).
 
 ## Pipeline regression check
 

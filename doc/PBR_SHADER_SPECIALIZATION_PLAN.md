@@ -1,6 +1,6 @@
 # PBR Shader Specialization Plan
 
-**Status:** Approved; implementation in progress.
+**Status:** Implemented and validated.
 
 ## 1. Goal
 
@@ -146,23 +146,23 @@ Program-parser sampler metadata must represent active linked samplers so preproc
 
 ## 11. Implementation phases
 
-1. **Feature foundation**
-   - Add public feature mask, derivation, readable summaries, and tests.
-   - Add non-serialized legacy compatibility marker.
-2. **Source specialization**
-   - Generate/inject stable defines.
-   - Convert built-in fragment declarations and calculations.
-   - Ensure active linked sampler metadata drives bindings.
-3. **Material integration and exact validation**
-   - Reorder creation around selected surface data and mask derivation.
-   - Select/cache specialized built-in and source-owned custom variants.
-   - Enforce the exact feature interface and one-way instance overrides.
-   - Preserve referenced-program and legacy behavior.
-4. **DemoSuite and GPU validation**
-   - Migrate the custom statue shader/material and re-export the model.
-   - Add reflection/cache/custom-contract/instance/GPU cases.
-   - Validate manual, hardcoded graph, and XML graph paths.
-5. **Comprehensive documentation**
-   - Update PBR setup and authoring guides with specialization semantics, interface table, define contract, custom-program ownership, instance restrictions, cache behavior, migration guidance, diagnostics, RenderDoc inspection, and worked minimal/full/custom examples.
-   - Update validation procedures and implementation/status documents.
-   - Document the temporary legacy compatibility path and removal criteria.
+1. **Feature foundation** — **Complete**
+   - [x] Added public feature mask, deterministic derivation, readable summaries, source defines, and context-free tests.
+   - [x] Added a non-serialized legacy compatibility marker and binary migration assertions.
+2. **Source specialization** — **Complete**
+   - [x] Generate/inject stable defines into built-in and material-owned custom fragment sources.
+   - [x] Converted built-in fragment declarations and calculations to static feature branches.
+   - [x] Active linked sampler metadata now drives bindings after preprocessing/linking.
+3. **Material integration and exact validation** — **Complete**
+   - [x] Material creation validates selected data, derives the mask, then selects/compiles a variant.
+   - [x] Existing source/mesh cache reuses equal variants and separates different masks.
+   - [x] Exact enabled/missing and disabled/unexpected interfaces plus one-way instance overrides are enforced.
+   - [x] Referenced programs remain validation-only; legacy programs retain temporary full-contract behavior.
+4. **DemoSuite and GPU validation** — **Complete**
+   - [x] Migrated the custom statue shader/material, retained an active extension example, and re-exported the RSE2 model.
+   - [x] Added minimal/full/mask/blend/double-sided compilation, reflection, cache, custom-contract, and instance-boundary startup cases.
+   - [x] Validated custom rendering and existing manual/graph/XML graph material, shadow, bloom, and render-graph startup suites.
+5. **Comprehensive documentation** — **Complete**
+   - [x] Added the normative specialization guide with semantics, interface table, define contract, source ownership, instance restrictions, caching, migration, diagnostics, RenderDoc, and examples.
+   - [x] Updated PBR setup, authoring, and validation guides.
+   - [x] Documented temporary legacy compatibility and adoption/removal guidance.
