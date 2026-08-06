@@ -50,11 +50,6 @@ copy /Y "%Root%\..\mpp-helper\build\%Solution%\bin\%Platform%\%Configuration%\*.
 copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
 copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%
 
-@rem XML graph templates are loaded directly by FileRenderGraphStream.
-if not exist %TargetBinDir%\res mkdir %TargetBinDir%\res
-copy /Y "%Root%\resources\res\PbrPipeline.rendergraph.xml" %TargetBinDir%\res
-copy /Y "%Root%\resources\res\PbrPipelineMrt.rendergraph.xml" %TargetBinDir%\res
-
 goto exit_success
 
 @rem ERRORS
