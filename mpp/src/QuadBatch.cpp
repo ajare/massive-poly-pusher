@@ -2,7 +2,7 @@
 
 #include "mpp/QuadBatch.h"
 #include "mpp/DefaultShaders.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ResourceManager.h"
 
 using namespace std;

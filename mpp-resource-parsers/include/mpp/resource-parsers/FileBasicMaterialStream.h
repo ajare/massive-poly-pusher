@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-#include "mpp/MaterialStream.h"
+#include "mpp/BasicMaterialStream.h"
 #include "mpp/ResourceManager.h"
 
 #include "Config.h"
@@ -14,7 +14,7 @@ namespace mpp
 	namespace resource_parsers
 	{
 
-		class _MPPRESOURCEPARSERSAPI FileMaterialStream : public mpp::MaterialStream, public FileStream
+		class _MPPRESOURCEPARSERSAPI FileBasicMaterialStream : public mpp::BasicMaterialStream, public FileStream
 		{
 			bool mUseSpecifiedMeshSpec;
 
@@ -40,13 +40,13 @@ namespace mpp
 
 		public:
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
+			FileBasicMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
+			FileBasicMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
+			FileBasicMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			FileMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
+			FileBasicMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
 			static std::pair<std::string, QualitySetting> parseQualitySetting(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 		};

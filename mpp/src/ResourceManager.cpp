@@ -15,7 +15,8 @@
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/BasicMaterial.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/MppException.h"
 
@@ -64,9 +65,9 @@ namespace mpp
 		{
 			return ResourcePtr(new RenderTexture(name, this->mwRenderSystem, this, rStream));
 		};
-		mResourceFactories["Material"] = [this](string const& name, ResourceStreamPtr rStream)
+		mResourceFactories["BasicMaterial"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
-			return ResourcePtr(new Material(name, this->mwRenderSystem, this, rStream));
+			return ResourcePtr(new BasicMaterial(name, this->mwRenderSystem, this, rStream));
 		};
 		mResourceFactories["Model"] = [this](string const& name, ResourceStreamPtr rStream)
 		{

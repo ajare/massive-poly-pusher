@@ -1,6 +1,5 @@
 #pragma once
 
-#include "mpp/MaterialSpecification.h"
 #include "mpp/UniformCollection.h"
 
 #include "mpp/resource-parsers/FileStream.h"

@@ -33,7 +33,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/CylinderModelStream.h>
 #include <mpp/BoxModelStream.h>
 #include <mpp/ProgrammaticModelStream.h>
-#include <mpp/ProgrammaticMaterialStream.h>
+#include <mpp/ProgrammaticBasicMaterialStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/ProgrammaticSamplerStream.h>
@@ -42,7 +42,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 
 #include <mpp/resource-parsers/FileTextureStream.h>
 #include <mpp/resource-parsers/FileProgramStream.h>
-#include <mpp/resource-parsers/FileMaterialStream.h>
+#include <mpp/resource-parsers/FileBasicMaterialStream.h>
 #include <mpp/resource-parsers/FileStringStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 
@@ -262,28 +262,28 @@ void ModelScene::createBatchMaterials(mpp::mesh::MeshSpecification const& spec2d
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	auto materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(true);
 	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "__mpp_tex_none__");
 
 	addResource(resourceMgr->declareResource("Default.Material", ResourceStreamPtr(materialStream)).first, true);
 
-	materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(true);
 	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "Test.Texture");
 
 	addResource(resourceMgr->declareResource("Batch.2D.Material", ResourceStreamPtr(materialStream)).first, true);
 
-	materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(true);
 	materialStream->setMeshSpecification(spec2d);
 	materialStream->setTexture("TEX1", "Bullets.Texture");
 
 	addResource(resourceMgr->declareResource("Bullets.Material", ResourceStreamPtr(materialStream)).first, true);
 
-	materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(spec3d);
 	materialStream->setTexture("TEX1", "Test.Texture");
@@ -314,7 +314,7 @@ void ModelScene::createGridMaterial(mpp::mesh::MeshSpecification const& meshSpec
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	auto materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(meshSpec);
 	// A flat legacy-lit receiver for the generic shadow demonstration.
@@ -347,7 +347,7 @@ void ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSp
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new resource_parsers::FileMaterialStream(resourceMgr, options.resourceLocation + "ElectricMaterial.xml");
+	auto materialStream = new resource_parsers::FileBasicMaterialStream(resourceMgr, options.resourceLocation + "ElectricMaterial.xml");
 	addResource(resourceMgr->declareResource("Sphere.Material", ResourceStreamPtr(materialStream)).first, true);
 }
 
@@ -374,7 +374,7 @@ void ModelScene::createCylinderMaterial(mpp::mesh::MeshSpecification const& mesh
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	auto materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(meshSpec);
 	materialStream->setTexture("TEX1", "Marble.Texture");
@@ -405,7 +405,7 @@ void ModelScene::createBoxMaterial(mpp::mesh::MeshSpecification const& meshSpec,
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	auto materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(meshSpec);
 	materialStream->setTexture("TEX1", "Test.Texture");
@@ -436,7 +436,7 @@ void ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpe
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = new ProgrammaticMaterialStream(resourceMgr);
+	auto materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	materialStream->setProgram2d(false);
 	materialStream->setMeshSpecification(meshSpec);
 	materialStream->setTexture("TEX1", "Doughnut.Texture");
@@ -911,7 +911,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// A separate, unlit material makes the light marker visible without
 	// receiving the generic shadow sampler.
-	auto lightMarkerMaterialStream = new ProgrammaticMaterialStream(resourceMgr);
+	auto lightMarkerMaterialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	lightMarkerMaterialStream->setProgram2d(false);
 	lightMarkerMaterialStream->setMeshSpecification(boxMeshSpec);
 	lightMarkerMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "LightMarker.frag");
@@ -943,37 +943,8 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mStatue->acquire(this);
 	mStatue->load();
 
-	// Bind two 2D textures and a cube map to the statue through the PBR preview
-	// path. This is intentionally a temporary material until PBR material
-	// resources are introduced in Milestone 3.
-
-	mesh::MeshSpecification pbrPreviewSpec(mesh::Primitive::Type::Triangles);
-	pbrPreviewSpec.setIndexedVertices(true);
-	auto pbrPreviewLayout = pbrPreviewSpec.createVertexBufferAttributeLayout(false);
-	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
-	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
-	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::HalfFloat, false);
-	pbrPreviewLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::UnsignedByte, true);
-
-	auto pbrPreviewMaterialStream = new ProgrammaticMaterialStream(resourceMgr);
-	pbrPreviewMaterialStream->setProgram2d(false);
-	pbrPreviewMaterialStream->setMeshSpecification(pbrPreviewSpec);
-	pbrPreviewMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "PbrPreview.frag");
-	// PBR factors are authored in statue.modelspec.xml and are embedded in the
-	// regenerated statue.mppmodel. Do not override them in DemoSuite.
-
-	mpp::MaterialSpecification::PbrSurface pbrPreviewSurface;
-	pbrPreviewSurface.enabled = true;
-	pbrPreviewSurface.metallicFactor = 0.0f;
-	pbrPreviewSurface.roughnessFactor = 0.75f;
-	pbrPreviewMaterialStream->setPbrSurface(pbrPreviewSurface);
-
-	pbrPreviewMaterialStream->setTexture("TEX1", "Marble.Texture");
-	pbrPreviewMaterialStream->setTexture("TEX2", "Test.Texture");
-	pbrPreviewMaterialStream->setTexture("ENVIRONMENT", "PBR.Preview.Environment");
-	mPbrPreviewMaterial = resourceMgr->declareResource("PBR.Preview.Material", ResourceStreamPtr(pbrPreviewMaterialStream)).first;
-	mPbrPreviewMaterial->acquire(this);
-	mPbrPreviewMaterial->load();
+	// The old preview material mixed PBR data into the generic material path.
+	// Phase 2 replaces it with a dedicated PbrMaterial resource.
 
 	mModels.push_back(mppScene->add3dModel(mStatue));
 	mPbrStatueUniforms = make_shared<UniformCollection>();
@@ -1075,7 +1046,7 @@ void ModelScene::teardownImpl()
 	mBox->release(this);
 	mTorus->release(this);
 	mStatue->release(this);
-	mPbrPreviewMaterial->release(this);
+	if (mPbrPreviewMaterial) mPbrPreviewMaterial->release(this);
 }
 
 mpp::CameraPtr ModelScene::createCamera(ProgramOptions const& options) const

@@ -6,11 +6,11 @@
 
 #include "utils/StringUtils.h"
 
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ResourceStreamSerializer.h"
 
 #include "mpp/resource-parsers/MeshSpecificationParser.h"
-#include "mpp/resource-parsers/FileMaterialStream.h"
+#include "mpp/resource-parsers/FileBasicMaterialStream.h"
 
 #include "mpp/mesh-specification-parser/ModelspecStream.h"
 
@@ -61,7 +61,7 @@ namespace mpp
 							auto name = mentry.second.getEntry("name").getValue();
 
 							// Get resource
-							auto mstream = make_shared<resource_parsers::FileMaterialStream>(nullptr, getFilepath(), mentry.second.getEntry("Resource"), mMeshSpec, false);
+							auto mstream = make_shared<resource_parsers::FileBasicMaterialStream>(nullptr, getFilepath(), mentry.second.getEntry("Resource"), mMeshSpec, false);
 							mstream->load(0);
 							
 							// Serialize the materialstream

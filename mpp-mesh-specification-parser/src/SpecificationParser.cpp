@@ -2,8 +2,6 @@
 
 #include "utils/StringUtils.h"
 
-#include "mpp/resource-parsers/FileMaterialStream.h"
-
 #include "mpp/mesh-specification-parser/SpecificationParser.h"
 
 namespace mpp
@@ -51,7 +49,7 @@ namespace mpp
 
 				mesh::MaterialInformation mi(name);
 
-				//resource_parsers::FileMaterialStream(nullptr, "");
+				// Material stream parsing is performed by ModelspecStream.
 
 				/*
 				// Parse program
