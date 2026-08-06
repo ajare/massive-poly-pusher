@@ -323,7 +323,7 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Added engine-owned built-in metallic-roughness vertex/fragment shader sources. PbrMaterial selects them whenever program shader sources are omitted; the existing default-program cache supplies reuse by mesh specification.
    - [x] Added strict core reflection validation for all canonical factor uniforms, five surface samplers, three IBL samplers, and fragment output location 0. Failures name the material and missing interface member.
    - [x] Added semantic PBR XML support: `<Surface>` plus `<BaseColourMap>`, `<MetallicRoughnessMap>`, `<NormalMap>`, `<OcclusionMap>`, and `<EmissiveMap>`, each with `Resource` or `Ref`. Generic `<Pbr>`/`<Textures>` remains compatibility input only.
-   - [~] Pipeline migration is in progress. Neutral engine-owned cube/BRDF IBL resources now bind when the environment is absent or incomplete, with one warning per pipeline. Typed asset migration and BasicMaterial canonical-sampler fallback remain.
+   - [~] Pipeline migration is in progress. Neutral engine-owned cube/BRDF IBL resources now bind when the environment is absent or incomplete, with one warning per pipeline. BasicMaterial programs that explicitly declare canonical PBR samplers receive neutral surface/IBL resources; ordinary basic shaders remain unchanged. Typed asset migration remains.
    - Add PBR spec/stream/resource/parser/programmatic types.
    - Add engine-owned cached PBR shader/program creation by mesh specification.
    - Add core semantic maps, neutral resources, ranges, reflection validation, and alpha classification.
