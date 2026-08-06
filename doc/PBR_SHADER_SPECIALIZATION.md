@@ -1,6 +1,6 @@
 # PBR Fragment Shader Specialization
 
-MassivePolyPusher compiles PBR fragment programs on demand from the selected material quality. Features that cannot contribute are removed from the built-in shader, and custom shaders are validated against the same exact material contract.
+MassivePolyPusher compiles PBR fragment programs on demand from the material definition. Features that cannot contribute are removed from the built-in shader, and custom shaders are validated against the same exact material contract.
 
 ## Material contract versus instance values
 
@@ -8,7 +8,7 @@ Material-level semantic values define the **maximum compiled feature set**. A ze
 
 For a feature that should start at zero but later vary per instance, author a nonzero material value and apply zero as the initial instance override. DemoSuite does this for metallic: the statue material enables metallic with a material factor of one while its initial instance factor is zero.
 
-Texture presence, alpha mode, and double-sided state are material-owned. Changing them requires another material resource/quality and therefore another deterministic variant.
+Texture presence, alpha mode, and double-sided state are material-owned. Changing them requires another material resource and therefore another deterministic variant.
 
 ## Derived features
 
@@ -146,7 +146,7 @@ The built-in shader keeps fragment output location 1 and writes zero emissive wh
 
 ## Legacy assets
 
-Converted RSER PBR streams receive a runtime-only `LegacyFullContract` marker. They retain the historical complete interface, receive no specialization benefit, and emit a deprecation warning. The marker is not serialized by new RSE2 output.
+Converted RSER PBR streams receive a runtime-only `LegacyFullContract` marker. They retain the historical complete interface, receive no specialization benefit, and emit a deprecation warning. The marker is not serialized by new RSE3 output.
 
 Invalid legacy programs still fail. To adopt specialization, update the typed source material/custom shader and re-export it with matching converter/parser/engine binaries. A binary deserialize/rewrite cannot automatically make a full custom shader obey a feature-dependent source contract.
 

@@ -343,7 +343,7 @@ The compiler must reject using encoded display colour as an HDR bloom input unle
 
 - [~] Add graph resources as immutable topology templates. `RenderGraphStream` and `RenderGraphTemplate` now support programmatic graph resources through ResourceManager; XML parser output still needs a file stream adapter and executable binding contract.
 - [ ] Replace the stub `PostEffect` execution model with graph-pass declaration/execution APIs.
-- [ ] Extend `PostEffectStream`/serialization for input semantics, output descriptor, uniforms, shader resource, stage, and quality settings; allow a `PostEffect` to reference an XML `RenderGraph` subgraph template.
+- [ ] Extend `PostEffectStream`/serialization for input semantics, output descriptor, uniforms, shader resource, and stage; allow a `PostEffect` to reference an XML `RenderGraph` subgraph template.
 - [ ] Support application-registered XML scene-pass factories and reject unregistered scene callback names with named diagnostics.
 - [ ] Add transient lifetime aliasing after correctness tests; add optional framebuffer invalidation/discard optimization.
 - [ ] Add pass timing, attachment previews, graph JSON/dot dump, and RenderDoc labels.

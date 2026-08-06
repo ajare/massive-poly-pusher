@@ -59,7 +59,7 @@ Renderer, `MeshInstance`, `Model`, `RenderPass`, `RenderSystem`, and sorting cod
 - arbitrary program resource or embedded program definition;
 - arbitrary declared uniforms;
 - arbitrary named texture/sampler bindings;
-- existing child-resource behavior and quality settings.
+- existing child-resource behavior. Embedded resource quality settings were subsequently removed; variants are separate named resources.
 
 Its dedicated data/API types are renamed from the legacy generic names:
 
@@ -288,7 +288,7 @@ New ModelSpec files use direct typed material entries rather than generic `<Mate
 New serializer output must:
 
 - write only `BasicMaterial` / `PbrMaterial` tags and streams;
-- preserve quality settings, child resources, program references, semantic maps, and extensions;
+- preserve child resources, program references, semantic maps, and extensions;
 - serialize PBR core data directly, not through `PBR_*` mirrored uniform payloads; and
 - never emit legacy `Material` type data.
 
@@ -342,16 +342,16 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
 4. **Loaders, ModelSpec, serializer, and migration** — **Complete**
    - [x] Added `FileMaterialStream::fromFile()` tag dispatch to concrete Basic/PBR file streams; filenames do not select material type.
    - [x] Added typed ModelSpec material parsing.
-   - [x] Added versioned `RSE2` stream serialization with explicit material tags and re-exported the DemoSuite PBR asset.
+   - [x] Added versioned `RSE2` stream serialization with explicit material tags and re-exported the DemoSuite PBR asset. The later single-definition migration superseded new output with `RSE3`.
    - [x] Retained `RSER` v1 reading and isolated legacy `Material` conversion with deprecation warnings.
    - [x] Legacy basic streams convert to BasicMaterial; PBR-tagged streams recover their PBR surface and convert to PbrMaterial. Inactive legacy Phong uniforms are discarded rather than becoming extensions.
    - [x] Strict PbrMaterial creation validates converted programs, so a genuinely non-conforming legacy PBR program fails with named missing-interface diagnostics.
-   - [x] GPU-tested both the new typed RSE2 statue and the old RSER PBR statue compatibility path.
+   - [x] GPU-tested typed output and the old RSER PBR compatibility path.
 
 5. **Documentation and validation** — **Complete**
    - [x] Rewrote PBR material authoring/setup examples around typed `<PbrMaterial>`, `<Surface>`, semantic maps, pipeline-owned environments, and semantic programmatic APIs.
-   - [x] Documented BasicMaterial migration, tag-based standalone dispatch, RSE2/RSER behavior, and the complete PBR extension/per-instance contract.
-   - [x] Added startup resource tests for Basic/PBR XML dispatch, cross-root rejection, parser factor ranges, generic Basic data, independent typed RSE2 binary round trips, quality preservation, explicit type tags, and legacy-tag exclusion.
+   - [x] Documented BasicMaterial migration, tag-based standalone dispatch, versioned/legacy stream behavior, and the complete PBR extension/per-instance contract.
+   - [x] Added startup resource tests for Basic/PBR XML dispatch, cross-root rejection, parser factor ranges, generic Basic data, independent typed binary round trips, explicit type tags, and legacy-tag exclusion.
    - [x] Added synthetic RSER Basic/PBR migration tests with recovered PBR factors and warning-producing compatibility conversion.
    - [x] Integrated material tests into DemoSuite startup beside the real-context render-graph GPU suite; the typed custom statue continues to validate custom PBR reflection, extensions, binding, model serialization, and rendering end-to-end.
 
@@ -364,7 +364,7 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
 - PBR factor ranges, map target/colour spaces, core reflection, extension namespace, extension types, and extension completeness are validated.
 - Built-in PBR program selection and conforming referenced/embedded custom programs succeed.
 - Non-conforming custom PBR programs report each missing contract member.
-- PBR quality variants independently validate while preserving the workflow/vertex contract.
+- Separate named PBR material variants independently validate while preserving the workflow/vertex contract.
 - Basic materials retain generic program/uniform/texture behavior with no PBR inference.
 
 ### Serialization and migration tests

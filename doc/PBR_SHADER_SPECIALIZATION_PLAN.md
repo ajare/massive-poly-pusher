@@ -8,7 +8,7 @@ Compile and cache built-in PBR fragment-program variants that omit material feat
 
 ## 2. Principles
 
-- Specialization is derived once from the selected material quality during resource creation.
+- Specialization is derived once from the material definition during resource creation.
 - Material values define the maximum compiled feature contract.
 - Instance overrides may reduce enabled contributions, including setting an enabled factor to zero, but cannot enable a feature specialized out by the material.
 - Texture presence is material-owned and immutable per created material.
@@ -128,7 +128,7 @@ Program-parser sampler metadata must represent active linked samplers so preproc
 - Keep the metallic feature enabled at material level so the instance slider can range from zero upward; apply the initial zero as an instance override.
 - Convert the custom statue shader to the shared specialization contract.
 - Keep a meaningful active `PBR_EXT_*` example.
-- Re-export the typed RSE2 statue model with matching binaries.
+- Re-export the typed RSE3 statue model with matching binaries.
 - Include feature summaries in RenderDoc/debug labels.
 
 ## 10. Validation
@@ -159,7 +159,7 @@ Program-parser sampler metadata must represent active linked samplers so preproc
    - [x] Exact enabled/missing and disabled/unexpected interfaces plus one-way instance overrides are enforced.
    - [x] Referenced programs remain validation-only; legacy programs retain temporary full-contract behavior.
 4. **DemoSuite and GPU validation** — **Complete**
-   - [x] Migrated the custom statue shader/material, retained an active extension example, and re-exported the RSE2 model.
+   - [x] Migrated the custom statue shader/material, retained an active extension example, and re-exported the RSE3 model.
    - [x] Added minimal/full/mask/blend/double-sided compilation, reflection, cache, custom-contract, and instance-boundary startup cases.
    - [x] Validated custom rendering and existing manual/graph/XML graph material, shadow, bloom, and render-graph startup suites.
 5. **Comprehensive documentation** — **Complete**
