@@ -7,13 +7,13 @@
 #include "mpp/ResourceStream.h"
 #include "mpp/FileDataStream.h"
 #include "mpp/UniformCollection.h"
-#include "mpp/MaterialSpecification.h"
+#include "mpp/PbrMaterialSpecification.h"
 
 #include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
 {
-	class _MPPAPI MaterialStream : public ResourceStream
+	class _MPPAPI PbrMaterialStream : public ResourceStream
 	{
 		friend class ResourceStreamSerializer;
 
@@ -21,30 +21,30 @@ namespace mpp
 
 		struct QualitySetting
 		{
-			MaterialSpecification spec;
+			PbrMaterialSpecification spec;
 		};
 
 	protected:
 
 		std::string mName;
- 
+
 		std::vector<QualitySetting> mQualitySettings;
 
 	public:
 
-		explicit MaterialStream(ResourceManager* resourceMgr);
+		explicit PbrMaterialStream(ResourceManager* resourceMgr);
 
 		std::string const& getName() const;
 
-		MaterialSpecification::ProgramOptions const& getProgramOptions() const;
+		PbrMaterialSpecification::ProgramOptions const& getProgramOptions() const;
 
 		mesh::MeshSpecification const& getMeshSpecification();
 
 		UniformCollection const& getUniforms() const;
 
-		MaterialSpecification::PbrSurface const& getPbrSurface() const;
+		PbrMaterialSpecification::PbrSurface const& getPbrSurface() const;
 
-		std::vector<MaterialSpecification::TextureOptions> const& getTextures() const;
+		std::vector<PbrMaterialSpecification::TextureOptions> const& getTextures() const;
 
 		uint32_t createQualitySetting(std::string const& name);
 	};

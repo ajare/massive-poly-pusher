@@ -1,4 +1,24 @@
-@@Version
+#pragma once
+
+namespace mpp
+{
+	inline char const* BuiltInPbrVertexShader = R"MPP(@@Version
+
+void main()
+{
+    vec3 worldPosition = @Vec3(@MMatrix * @Vec4(@In(POSITION)));
+    vec3 worldNormal = normalize(@NormalMatrix * @Vec3(@In(NORMAL)));
+    vec3 worldTangent = normalize(@NormalMatrix * @Vec3(@In(TANGENT)));
+
+    @Out(vec3 WORLD_POSITION) = worldPosition;
+    @Out(vec3 NORMAL) = worldNormal;
+    @Out(vec4 TANGENT) = vec4(worldTangent, @In(TANGENT).w);
+    @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
+
+    gl_Position = @MCPMatrix * @Vec4(@In(POSITION));
+}
+)MPP";
+	inline char const* BuiltInPbrFragmentShader = R"MPP(@@Version
 
 @@Uniform(vec4 PBR_BASE_COLOUR_FACTOR);
 @@Uniform(float PBR_METALLIC_FACTOR);
@@ -9,7 +29,6 @@
 @@Uniform(int PBR_ALPHA_MODE);
 @@Uniform(float PBR_ALPHA_CUTOFF);
 @@Uniform(int PBR_DOUBLE_SIDED);
-@@Uniform(float PBR_EXT_EMISSIVE_SCALE);
 
 @@Texture(sampler2D PBR_BASE_COLOUR_MAP);
 @@Texture(sampler2D PBR_METALLIC_ROUGHNESS_MAP);
@@ -137,7 +156,7 @@ void main()
     float metallic = clamp(metallicRoughness.b * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
     float roughness = clamp(metallicRoughness.g * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
     float occlusion = mix(1.0, texture(@Texture(PBR_OCCLUSION_MAP), @In(TEXCOORDS)).r, @Uniform(PBR_OCCLUSION_STRENGTH));
-    vec3 emissive = texture(@Texture(PBR_EMISSIVE_MAP), @In(TEXCOORDS)).rgb * @Uniform(PBR_EMISSIVE_FACTOR) * @Uniform(PBR_EXT_EMISSIVE_SCALE);
+    vec3 emissive = texture(@Texture(PBR_EMISSIVE_MAP), @In(TEXCOORDS)).rgb * @Uniform(PBR_EMISSIVE_FACTOR);
 
     vec3 viewDirection = normalize(@ViewPos - @In(WORLD_POSITION));
     vec3 f0 = mix(vec3(0.04), baseColour.rgb, metallic);
@@ -192,4 +211,6 @@ void main()
     // attaches it as an HDR bloom mask, so authored emissive is isolated from
     // otherwise bright direct/albedo lighting.
     @Out(vec4 BLOOM_MASK) = vec4(emissive, 1.0);
+}
+)MPP";
 }

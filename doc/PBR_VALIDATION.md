@@ -8,6 +8,10 @@ This is the manual regression procedure for the currently implemented PBR milest
 2. Ensure the matching `MassivePolyPusher[d].dll` is beside `DemoSuite.exe`.
 3. Launch DemoSuite. The initial **Render Pipeline** is `PBR` and the statue is visible by default.
 
+## Automated startup checks
+
+DemoSuite startup runs `runMaterialResourceTests()` before the render-graph GPU suite. It fails startup on incorrect Basic/PBR XML root dispatch, cross-root parser acceptance, invalid PBR factor ranges, loss of material type or quality data in RSE2 binary round trips, legacy tag emission, or failed RSER Basic/PBR conversion. The active statue custom program also exercises typed PBR XML, `PBR_EXT_EMISSIVE_SCALE`, typed model serialization, reflection validation, resource binding, and real-context rendering. Successful startup logs both material-resource and render-graph GPU suite pass messages.
+
 ## PBR control checks
 
 Perform these checks with **Render Pipeline** set to `PBR`:

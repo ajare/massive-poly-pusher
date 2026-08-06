@@ -1,12 +1,15 @@
 #include "mpp/program/ShaderStage.h"
 
 #include "mpp/ResourceStreamSerializer.h"
-#include "mpp/MaterialStream.h"
+#include "mpp/ResourceManager.h"
+#include "mpp/BasicMaterialStream.h"
 #include "mpp/ProgramStream.h"
 #include "mpp/SamplerStream.h"
 #include "mpp/StringStream.h"
 #include "mpp/TextureStream.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
+#include "mpp/PbrMaterialStream.h"
+#include "mpp/ProgrammaticPbrMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticSamplerStream.h"
 #include "mpp/ProgrammaticStringStream.h"
@@ -45,8 +48,9 @@ namespace mpp
 
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		// Write magic number
-		char const* magic{ "RSER" };
+		// Versioned stream magic. RSER remains the compatibility v1 reader;
+		// RSE2 is the first format with explicit BasicMaterial/PbrMaterial tags.
+		char const* magic{ "RSE2" };
 		fp.write(magic, 4);
 
 		// Recursively write streams and their children
@@ -71,9 +75,11 @@ namespace mpp
 		char magic[4];
 		fp.read(magic, 4);
 
-		if (magic[0] != 'R' && magic[1] != 'S' && magic[2] != 'E' && magic[3] != 'R')
+		bool const v1 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == 'R';
+		bool const v2 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '2';
+		if (!v1 && !v2)
 		{
-			THROW_MPP_IO("Could not open stream for reading.  Not a valid format.", __LINE__, __FILE__, __func__);
+			THROW_MPP_IO("Could not open stream for reading. Not a valid or supported format.", __LINE__, __FILE__, __func__);
 		}
 
 		return readStream(fp);
@@ -174,9 +180,9 @@ namespace mpp
 		writeMeshSpecification(parser.getMeshSpecification(), fp);
 	}
 
-	void ResourceStreamSerializer::writeMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
+	void ResourceStreamSerializer::writeBasicMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		auto stream = dynamic_cast<MaterialStream*>(resourceStream.get());
+		auto stream = dynamic_cast<BasicMaterialStream*>(resourceStream.get());
 
 		// Write number of quality settings
 		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
@@ -204,6 +210,69 @@ namespace mpp
 
 			// Uniforms
 			writeUniformCollection(setting.spec.uniforms, fp);
+
+			// Textures
+			writeValue((uint32_t)setting.spec.textures.size(), fp);
+			for (auto const& texture: setting.spec.textures)
+			{
+				writeValue(texture.resourceExists, fp);
+				writeValue(texture.existingResource, fp);
+				writeValue(texture.isChild, fp);
+				writeValue(texture.sampler, fp);
+				writeValue(texture.source, fp);
+				writeValue((uint32_t)texture.target, fp);
+
+				// TextureParams
+				writeValue(texture.params.minFilter, fp);
+				writeValue(texture.params.magFilter, fp);
+				writeValue(texture.params.wrap, fp);
+				writeValue(texture.params.useMipmaps, fp);
+				writeValue(texture.params.lodBaseLevel, fp);
+				writeValue(texture.params.lodMaxLevel, fp);
+				writeValue(texture.params.lodBias, fp);
+				writeValue(texture.params.maxAnisotropy, fp);
+			}
+		}
+	}
+
+	void ResourceStreamSerializer::writePbrMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
+	{
+		auto stream = dynamic_cast<PbrMaterialStream*>(resourceStream.get());
+
+		// Write number of quality settings
+		writeValue((uint32_t)stream->mQualitySettings.size(), fp);
+
+		// Write quality settings
+		for (auto const& setting: stream->mQualitySettings)
+		{
+			// Program options
+			writeValue(setting.spec.program.resourceExists, fp);
+			writeValue(setting.spec.program.existingResource, fp);
+			writeValue(setting.spec.program.isChild, fp);
+			writeValue(setting.spec.program.is2d, fp);
+
+			writeMeshSpecification(setting.spec.program.spec, fp);
+
+			// Shaders
+			writeValue((uint32_t)setting.spec.program.vertexShader.type, fp);
+			writeValue(setting.spec.program.vertexShader.data, fp);
+
+			writeValue((uint32_t)setting.spec.program.geometryShader.type, fp);
+			writeValue(setting.spec.program.geometryShader.data, fp);
+
+			writeValue((uint32_t)setting.spec.program.fragmentShader.type, fp);
+			writeValue(setting.spec.program.fragmentShader.data, fp);
+
+			// Uniforms
+			writeUniformCollection(setting.spec.uniforms, fp);
+
+			// PBR surface
+			writeValue(setting.spec.pbr.enabled, fp);
+			writeValue(setting.spec.pbr.baseColourFactor.x, fp); writeValue(setting.spec.pbr.baseColourFactor.y, fp); writeValue(setting.spec.pbr.baseColourFactor.z, fp); writeValue(setting.spec.pbr.baseColourFactor.w, fp);
+			writeValue(setting.spec.pbr.metallicFactor, fp); writeValue(setting.spec.pbr.roughnessFactor, fp);
+			writeValue(setting.spec.pbr.emissiveFactor.x, fp); writeValue(setting.spec.pbr.emissiveFactor.y, fp); writeValue(setting.spec.pbr.emissiveFactor.z, fp);
+			writeValue(setting.spec.pbr.normalScale, fp); writeValue(setting.spec.pbr.occlusionStrength, fp);
+			writeValue((uint32_t)setting.spec.pbr.alphaMode, fp); writeValue(setting.spec.pbr.alphaCutoff, fp); writeValue(setting.spec.pbr.doubleSided, fp);
 
 			// Textures
 			writeValue((uint32_t)setting.spec.textures.size(), fp);
@@ -358,9 +427,13 @@ namespace mpp
 		}
 
 		// Write type-specific data
-		if (streamType == "Material")
+		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			writeMaterialStream(resourceStream, fp);
+			writeBasicMaterialStream(resourceStream, fp);
+		}
+		else if (streamType == "PbrMaterial")
+		{
+			writePbrMaterialStream(resourceStream, fp);
 		}
 		else if (streamType == "Program")
 		{
@@ -561,9 +634,9 @@ namespace mpp
 		return parser;
 	}
 
-	void ResourceStreamSerializer::readMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	void ResourceStreamSerializer::readBasicMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
 	{
-		auto pStream = static_cast<ProgrammaticMaterialStream*>(resourceStream.get());
+		auto pStream = static_cast<ProgrammaticBasicMaterialStream*>(resourceStream.get());
 		pStream->mQualitySettings.clear();
 
 		// Read number of quality settings
@@ -588,13 +661,13 @@ namespace mpp
 			qs.spec.program.spec = meshSpec;
 
 			// Shaders
-			qs.spec.program.vertexShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.vertexShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
 			qs.spec.program.vertexShader.data = readString(fp);
 
-			qs.spec.program.geometryShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.geometryShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
 			qs.spec.program.geometryShader.data = readString(fp);
 
-			qs.spec.program.fragmentShader.type = static_cast<MaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.fragmentShader.type = static_cast<BasicMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
 			qs.spec.program.fragmentShader.data = readString(fp);
 
 			// Uniforms
@@ -604,7 +677,83 @@ namespace mpp
 			uint32_t numTextures = readUInt(fp);
 			for (uint32_t j = 0; j < numTextures; ++j)
 			{
-				MaterialSpecification::TextureOptions textureOptions;
+				BasicMaterialSpecification::TextureOptions textureOptions;
+
+				textureOptions.resourceExists = readBool(fp);
+				textureOptions.existingResource = readString(fp);
+				textureOptions.isChild = readBool(fp);
+				textureOptions.sampler = readString(fp);
+				textureOptions.source = readString(fp);
+				textureOptions.target = static_cast<TextureTarget>(readUInt(fp));
+
+				// TextureParams
+				textureOptions.params.minFilter = readUInt(fp);
+				textureOptions.params.magFilter = readUInt(fp);
+				textureOptions.params.wrap = readUInt(fp);
+				textureOptions.params.useMipmaps = readBool(fp);
+				textureOptions.params.lodBaseLevel = readInt(fp);
+				textureOptions.params.lodMaxLevel = readInt(fp);
+				textureOptions.params.lodBias = readFloat(fp);
+				textureOptions.params.maxAnisotropy = readFloat(fp);
+
+				qs.spec.textures.push_back(textureOptions);
+			}
+		}
+	}
+
+	void ResourceStreamSerializer::readPbrMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp, map<uint32_t, string> const& qualityNames)
+	{
+		auto pStream = static_cast<ProgrammaticPbrMaterialStream*>(resourceStream.get());
+		pStream->mQualitySettings.clear();
+
+		// Read number of quality settings
+		uint32_t numSettings = readUInt(fp);
+
+		// Read quality settings
+		for (uint32_t i = 0; i < numSettings; ++i)
+		{
+			string name = qualityNames.at((uint32_t)i);
+			auto quality = pStream->createQualitySetting(name);
+
+			// Program options
+			auto& qs = pStream->mQualitySettings[quality];
+
+			qs.spec.program.resourceExists = readBool(fp);
+			qs.spec.program.existingResource = readString(fp);
+			qs.spec.program.isChild = readBool(fp);
+			qs.spec.program.is2d = readBool(fp);
+
+			// MeshSpecification
+			auto meshSpec = readMeshSpecification(fp);
+			qs.spec.program.spec = meshSpec;
+
+			// Shaders
+			qs.spec.program.vertexShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.vertexShader.data = readString(fp);
+
+			qs.spec.program.geometryShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.geometryShader.data = readString(fp);
+
+			qs.spec.program.fragmentShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp));
+			qs.spec.program.fragmentShader.data = readString(fp);
+
+			// Uniforms
+			qs.spec.uniforms = readUniformCollection(fp);
+
+			// PBR surface
+			qs.spec.pbr.enabled = readBool(fp);
+			qs.spec.pbr.baseColourFactor = { readFloat(fp), readFloat(fp), readFloat(fp), readFloat(fp) };
+			qs.spec.pbr.metallicFactor = readFloat(fp); qs.spec.pbr.roughnessFactor = readFloat(fp);
+			qs.spec.pbr.emissiveFactor = { readFloat(fp), readFloat(fp), readFloat(fp) };
+			qs.spec.pbr.normalScale = readFloat(fp); qs.spec.pbr.occlusionStrength = readFloat(fp);
+			qs.spec.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(readUInt(fp));
+			qs.spec.pbr.alphaCutoff = readFloat(fp); qs.spec.pbr.doubleSided = readBool(fp);
+
+			// Textures
+			uint32_t numTextures = readUInt(fp);
+			for (uint32_t j = 0; j < numTextures; ++j)
+			{
+				PbrMaterialSpecification::TextureOptions textureOptions;
 
 				textureOptions.resourceExists = readBool(fp);
 				textureOptions.existingResource = readString(fp);
@@ -763,14 +912,80 @@ namespace mpp
 		}
 	}
 
+	ResourceStreamPtr ResourceStreamSerializer::convertLegacyMaterial(ResourceStreamPtr const& stream)
+	{
+		auto basic = static_cast<ProgrammaticBasicMaterialStream*>(stream.get());
+		bool pbrTagged = false;
+		for (auto const& setting : basic->mQualitySettings)
+			if (setting.spec.uniforms.getUniformData().contains("PBR_ENABLED")) { pbrTagged = true; break; }
+		if (!pbrTagged)
+		{
+			if (mResourceMgr) mResourceMgr->warnMessage("Loading deprecated Material stream as BasicMaterial; re-export this asset.");
+			return stream;
+		}
+
+		auto converted = make_shared<ProgrammaticPbrMaterialStream>(mResourceMgr);
+		converted->mQualitySettings.clear();
+		converted->mQualityNames = basic->mQualityNames;
+		for (auto const& [name, child] : basic->getChildren()) converted->addChild(name, child);
+		for (auto const& source : basic->mQualitySettings)
+		{
+			PbrMaterialStream::QualitySetting target;
+			target.spec.program.resourceExists = source.spec.program.resourceExists;
+			target.spec.program.existingResource = source.spec.program.existingResource;
+			target.spec.program.isChild = source.spec.program.isChild;
+			target.spec.program.is2d = source.spec.program.is2d;
+			target.spec.program.spec = source.spec.program.spec;
+			target.spec.program.vertexShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.spec.program.vertexShader.type);
+			target.spec.program.vertexShader.data = source.spec.program.vertexShader.data;
+			target.spec.program.geometryShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.spec.program.geometryShader.type);
+			target.spec.program.geometryShader.data = source.spec.program.geometryShader.data;
+			target.spec.program.fragmentShader.type = static_cast<PbrMaterialSpecification::ProgramOptions::Shader::Type>(source.spec.program.fragmentShader.type);
+			target.spec.program.fragmentShader.data = source.spec.program.fragmentShader.data;
+			target.spec.uniforms = source.spec.uniforms;
+			// Legacy files often carried inactive Phong uniforms beside PBR data.
+			// They are not part of the PBR contract and must not become extensions.
+			for (auto it = target.spec.uniforms.mUniformData.begin(); it != target.spec.uniforms.mUniformData.end(); )
+				if (it->first.rfind("PBR_", 0) != 0) it = target.spec.uniforms.mUniformData.erase(it); else ++it;
+			target.spec.pbr.enabled = true;
+			auto const& values = source.spec.uniforms.getUniformData();
+			auto copy = [&](char const* field, void* destination, size_t size) { auto found = values.find(field); if (found != values.end() && found->second.size >= size) memcpy(destination, found->second.data, size); };
+			copy("PBR_BASE_COLOUR_FACTOR", &target.spec.pbr.baseColourFactor, sizeof(target.spec.pbr.baseColourFactor));
+			copy("PBR_METALLIC_FACTOR", &target.spec.pbr.metallicFactor, sizeof(float));
+			copy("PBR_ROUGHNESS_FACTOR", &target.spec.pbr.roughnessFactor, sizeof(float));
+			copy("PBR_EMISSIVE_FACTOR", &target.spec.pbr.emissiveFactor, sizeof(target.spec.pbr.emissiveFactor));
+			copy("PBR_NORMAL_SCALE", &target.spec.pbr.normalScale, sizeof(float));
+			copy("PBR_OCCLUSION_STRENGTH", &target.spec.pbr.occlusionStrength, sizeof(float));
+			copy("PBR_ALPHA_CUTOFF", &target.spec.pbr.alphaCutoff, sizeof(float));
+			int32_t alphaMode = 0, doubleSided = 0;
+			copy("PBR_ALPHA_MODE", &alphaMode, sizeof(alphaMode)); copy("PBR_DOUBLE_SIDED", &doubleSided, sizeof(doubleSided));
+			target.spec.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(alphaMode);
+			target.spec.pbr.doubleSided = doubleSided != 0;
+			for (auto const& texture : source.spec.textures)
+			{
+				PbrMaterialSpecification::TextureOptions result;
+				result.resourceExists = texture.resourceExists; result.sampler = texture.sampler; result.existingResource = texture.existingResource;
+				result.isChild = texture.isChild; result.source = texture.source; result.target = texture.target; result.params = texture.params;
+				target.spec.textures.push_back(result);
+			}
+			converted->mQualitySettings.push_back(target);
+		}
+		if (mResourceMgr) mResourceMgr->warnMessage("Converted deprecated PBR-tagged Material stream to PbrMaterial; re-export this asset.");
+		return converted;
+	}
+
 	ResourceStreamPtr ResourceStreamSerializer::readStream(ifstream& fp)
 	{
 		auto streamType = readString(fp);
 		ResourceStreamPtr resourceStream;
 
-		if (streamType == "Material")
+		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			resourceStream.reset(new ProgrammaticMaterialStream(mResourceMgr));
+			resourceStream.reset(new ProgrammaticBasicMaterialStream(mResourceMgr));
+		}
+		else if (streamType == "PbrMaterial")
+		{
+			resourceStream.reset(new ProgrammaticPbrMaterialStream(mResourceMgr));
 		}
 		else if (streamType == "Program")
 		{
@@ -821,9 +1036,13 @@ namespace mpp
 		}
 
 		// Read type-specific data
-		if (streamType == "Material")
+		if (streamType == "BasicMaterial" || streamType == "Material")
 		{
-			readMaterialStream(resourceStream, fp, settingNames);
+			readBasicMaterialStream(resourceStream, fp, settingNames);
+		}
+		else if (streamType == "PbrMaterial")
+		{
+			readPbrMaterialStream(resourceStream, fp, settingNames);
 		}
 		else if (streamType == "Program")
 		{
@@ -847,6 +1066,6 @@ namespace mpp
 			THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 		}
 
-		return resourceStream;
+		return streamType == "Material" ? convertLegacyMaterial(resourceStream) : resourceStream;
 	}
 }

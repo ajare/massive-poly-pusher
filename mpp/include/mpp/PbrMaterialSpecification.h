@@ -18,7 +18,7 @@
 namespace mpp
 {
 
-	struct MaterialSpecification
+	struct PbrMaterialSpecification
 	{
 		struct ProgramOptions
 		{

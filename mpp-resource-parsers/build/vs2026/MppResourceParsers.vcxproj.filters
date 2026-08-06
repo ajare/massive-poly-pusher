@@ -33,10 +33,16 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\MaterialResourceTests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileSamplerStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileProgramStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileBasicMaterialStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileMaterialStream.h">
@@ -76,6 +82,9 @@
     <ClCompile Include="..\..\src\FileProgramStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\FileBasicMaterialStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\FileMaterialStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -86,6 +95,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\MeshSpecificationParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\MaterialResourceTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

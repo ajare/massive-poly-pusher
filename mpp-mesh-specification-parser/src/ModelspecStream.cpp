@@ -6,11 +6,12 @@
 
 #include "utils/StringUtils.h"
 
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ResourceStreamSerializer.h"
 
 #include "mpp/resource-parsers/MeshSpecificationParser.h"
-#include "mpp/resource-parsers/FileMaterialStream.h"
+#include "mpp/resource-parsers/FileBasicMaterialStream.h"
+#include "mpp/resource-parsers/FilePbrMaterialStream.h"
 
 #include "mpp/mesh-specification-parser/ModelspecStream.h"
 
@@ -55,13 +56,19 @@ namespace mpp
 					for (auto mit = materials.begin(); mit != materials.end(); ++mit)
 					{
 						auto const& mentry = *mit;
-						if (mentry.first == "Material")
+						if (mentry.first == "Material" || mentry.first == "BasicMaterial" || mentry.first == "PbrMaterial")
 						{
-							// Get name
+							// Legacy Material is BasicMaterial compatibility input. New ModelSpecs
+							// select the concrete stream directly with their element tag.
 							auto name = mentry.second.getEntry("name").getValue();
-
-							// Get resource
-							auto mstream = make_shared<resource_parsers::FileMaterialStream>(nullptr, getFilepath(), mentry.second.getEntry("Resource"), mMeshSpec, false);
+							ResourceStreamPtr mstream;
+							if (mentry.first == "PbrMaterial")
+								mstream = make_shared<resource_parsers::FilePbrMaterialStream>(nullptr, getFilepath(), mentry.second, mMeshSpec, false);
+							else
+							{
+								auto const& data = mentry.first == "Material" ? mentry.second.getEntry("Resource") : mentry.second;
+								mstream = make_shared<resource_parsers::FileBasicMaterialStream>(nullptr, getFilepath(), data, mMeshSpec, false);
+							}
 							mstream->load(0);
 							
 							// Serialize the materialstream

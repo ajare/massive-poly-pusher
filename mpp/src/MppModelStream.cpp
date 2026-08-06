@@ -2,7 +2,8 @@
 
 #include "mpp/Config.h"
 #include "mpp/MppModelStream.h"
-#include "mpp/ProgrammaticMaterialStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
+#include "mpp/PbrMaterialStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticStringStream.h"
 #include "mpp/ModelSerializer.h"
@@ -74,7 +75,10 @@ namespace mpp
 			dataStreamDef->material = ser.getMaterial(i);
 
 			auto matResource = getChildren().at(dataStreamDef->material);
-			dataStreamDef->specification = static_cast<MaterialStream*>(matResource.get())->getMeshSpecification();
+			auto basicStream = dynamic_cast<BasicMaterialStream*>(matResource.get());
+			auto pbrStream = dynamic_cast<PbrMaterialStream*>(matResource.get());
+			if (!basicStream && !pbrStream) THROW_MPP("Model material stream is neither BasicMaterial nor PbrMaterial.", __LINE__, __FILE__, __func__);
+			dataStreamDef->specification = basicStream ? basicStream->getMeshSpecification() : pbrStream->getMeshSpecification();
 
 			dataStreamDef->indexWidth = ser.getIndexWidth(i);
 			dataStreamDef->indexData = ser.getIndexData(i);

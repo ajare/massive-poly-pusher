@@ -1,6 +1,7 @@
 #include "mpp/RenderPass.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Material.h"
+#include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
 
 using namespace std;
@@ -62,23 +63,21 @@ namespace mpp
 
 			instance->setParams(model->getParams());
 
-			// renderModelBatched historically marks every model as blended. Preserve
-			// that legacy behaviour for non-PBR materials in Default, but always
-			// restore the authored alpha semantics for a PBR material. Otherwise an
-			// OPAQUE PBR model shown through Default has depth writes disabled and its
-			// back-facing triangles can draw over its front-facing triangles.
+			// Preserve the legacy Default blend behaviour for BasicMaterial. PBR
+			// alpha semantics are supplied by the future PbrMaterial implementation
+			// through Material's common render classification.
 			for (auto meshInstance : instance->getMeshInstances())
 			{
 				auto material = static_cast<Material*>(meshInstance->getMaterial().get());
-				if (!mPbrForward && !material->isPbr())
+				if (!mPbrForward && material->getShadingModel() == Material::ShadingModel::Pbr)
 				{
-					continue;
+					THROW_MPP("PbrMaterial requires a PBR forward pipeline.", __LINE__, __FILE__, __func__);
 				}
-
-				// Render opaque and masked PBR materials with depth writes. Blend
-				// materials are drawn later by the transparent sort.
-				bool transparent = material->isPbr() &&
-					material->getPbrSurface().alphaMode == MaterialSpecification::PbrAlphaMode::Blend;
+				if (!mPbrForward)
+				{
+					continue; // Preserve legacy BasicMaterial blend behaviour in Default.
+				}
+				bool const transparent = material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent();
 				meshInstance->blend(transparent);
 				meshInstance->sortTransparent(transparent);
 			}

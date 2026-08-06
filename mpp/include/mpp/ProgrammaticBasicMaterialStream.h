@@ -7,13 +7,13 @@
 #include <glm/vec4.hpp>
 #pragma warning(pop)
 
-#include "mpp/MaterialStream.h"
+#include "mpp/BasicMaterialStream.h"
 #include "mpp/mesh/Vertex.h"
 #include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
 {
-	class _MPPAPI ProgrammaticMaterialStream : public MaterialStream
+	class _MPPAPI ProgrammaticBasicMaterialStream : public BasicMaterialStream
 	{
 
 		void loadImpl() {}
@@ -22,11 +22,11 @@ namespace mpp
 
 	public:
 
-		explicit ProgrammaticMaterialStream(ResourceManager* resourceMgr);
+		explicit ProgrammaticBasicMaterialStream(ResourceManager* resourceMgr);
 
-		void setSpecification(MaterialSpecification const& matSpec, uint32_t quality = 0);
+		void setSpecification(BasicMaterialSpecification const& matSpec, uint32_t quality = 0);
 
-		void setProgram(MaterialSpecification::ProgramOptions progOptions, uint32_t quality = 0);
+		void setProgram(BasicMaterialSpecification::ProgramOptions progOptions, uint32_t quality = 0);
 
 		void setProgram(std::string const& program, uint32_t quality = 0);
 
@@ -52,7 +52,6 @@ namespace mpp
 
 		void setDefaultTexture(std::string const& sampler, uint32_t quality = 0);
 
-		void setPbrSurface(MaterialSpecification::PbrSurface const& surface, uint32_t quality = 0);
 
 		void setUniforms(UniformCollection const& uniforms, uint32_t quality = 0);
 

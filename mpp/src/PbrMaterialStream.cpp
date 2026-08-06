@@ -1,4 +1,4 @@
-#include "mpp/MaterialStream.h"
+#include "mpp/PbrMaterialStream.h"
 #include "mpp/ProgramStream.h"
 #include "mpp/ResourceManager.h"
 
@@ -11,16 +11,16 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	MaterialStream::MaterialStream(ResourceManager* resourceMgr)
-		: ResourceStream(resourceMgr, "Material")
+	PbrMaterialStream::PbrMaterialStream(ResourceManager* resourceMgr)
+		: ResourceStream(resourceMgr, "PbrMaterial")
 	{
 	}
-	
+
 	/*
 	 * Get name
 	 *
 	 */
-	string const& MaterialStream::getName() const
+	string const& PbrMaterialStream::getName() const
 	{
 		return mName;
 	}
@@ -29,12 +29,12 @@ namespace mpp
 	 * Get program.
 	 *
 	 */
-	MaterialSpecification::ProgramOptions const& MaterialStream::getProgramOptions() const
+	PbrMaterialSpecification::ProgramOptions const& PbrMaterialStream::getProgramOptions() const
 	{
 		return mQualitySettings[mQualitySetting].spec.program;
 	}
 
-	mesh::MeshSpecification const& MaterialStream::getMeshSpecification()
+	mesh::MeshSpecification const& PbrMaterialStream::getMeshSpecification()
 	{
 		auto const& qs = mQualitySettings[mQualitySetting];
 
@@ -53,12 +53,12 @@ namespace mpp
 	 * Get program uniforms.
 	 *
 	 */
-	UniformCollection const& MaterialStream::getUniforms() const
+	UniformCollection const& PbrMaterialStream::getUniforms() const
 	{
 		return mQualitySettings[mQualitySetting].spec.uniforms;
 	}
 
-	MaterialSpecification::PbrSurface const& MaterialStream::getPbrSurface() const
+	PbrMaterialSpecification::PbrSurface const& PbrMaterialStream::getPbrSurface() const
 	{
 		return mQualitySettings[mQualitySetting].spec.pbr;
 	}
@@ -67,12 +67,12 @@ namespace mpp
 	 * Get textures.
 	 *
 	 */
-	std::vector<MaterialSpecification::TextureOptions> const& MaterialStream::getTextures() const
+	std::vector<PbrMaterialSpecification::TextureOptions> const& PbrMaterialStream::getTextures() const
 	{
 		return mQualitySettings[mQualitySetting].spec.textures;
 	}
 
-	uint32_t MaterialStream::createQualitySetting(string const& name)
+	uint32_t PbrMaterialStream::createQualitySetting(string const& name)
 	{
 		auto qualityId = (uint32_t)mQualitySettings.size();
 		mQualityNames[name] = qualityId;

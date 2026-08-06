@@ -473,6 +473,7 @@ namespace mpp
 				uniformNameBuffer[lengthWritten] = 0;
 
 				string uniformName = uniformNameBuffer;
+				mUniformTypes[uniformName] = uniformType;
 
 				// Is this ViewPos, MMatrix, MCPMatrix, NormalMatrix, standard uniform or a texture?
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
@@ -544,6 +545,7 @@ namespace mpp
 	{
 		mTextures.clear();
 		mVertexAttributes.clear();
+		mUniformTypes.clear();
 
 		GLuint id = getId();
 		if (id != 0)
@@ -585,6 +587,36 @@ namespace mpp
 		{
 			return mUniformIds.at(markedUpUniform);
 		}
+	}
+
+	uint32_t Program::getUniformGlType(string const& name) const
+	{
+		auto const marked = MPP_PROGRAM_MARKUP_UNIFORM(name);
+		auto found = mUniformTypes.find(marked);
+		if (found != mUniformTypes.end()) return found->second;
+		found = mUniformTypes.find(marked + "[0]");
+		return found == mUniformTypes.end() ? 0u : found->second;
+	}
+
+	uint32_t Program::getSamplerGlType(string const& name) const
+	{
+		auto found = mUniformTypes.find(MPP_PROGRAM_MARKUP_TEXTURE(name));
+		return found == mUniformTypes.end() ? 0u : found->second;
+	}
+
+	vector<string> Program::getUniformNames() const
+	{
+		vector<string> result;
+		string const prefix = MPP_PROGRAM_UNIFORM_PREFIX;
+		for (auto const& [name, id] : mUniformIds)
+		{
+			MPP_UNUSED(id);
+			if (name.rfind(prefix, 0) != 0 || name.size() <= prefix.size()) continue;
+			auto end = name.find("_[");
+			if (end == string::npos && name.back() == '_') end = name.size() - 1;
+			if (end != string::npos) result.push_back(name.substr(prefix.size(), end - prefix.size()));
+		}
+		return result;
 	}
 
 	int Program::getViewPosId() const

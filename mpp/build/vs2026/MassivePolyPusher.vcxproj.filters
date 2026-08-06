@@ -45,7 +45,10 @@
     <ClInclude Include="..\..\include\mpp\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\MaterialStream.h">
+    <ClInclude Include="..\..\include\mpp\BasicMaterial.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mpp\BasicMaterialStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\Mesh.h">
@@ -111,7 +114,7 @@
     <ClInclude Include="..\..\include\mpp\ProgrammaticModelStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\ProgrammaticMaterialStream.h">
+    <ClInclude Include="..\..\include\mpp\ProgrammaticBasicMaterialStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\UniformCollection.h">
@@ -264,7 +267,7 @@
     <ClInclude Include="..\..\include\mpp\ModelSerializer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mpp\MaterialSpecification.h">
+    <ClInclude Include="..\..\include\mpp\BasicMaterialSpecification.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\TextureStreamBase.h">
@@ -323,10 +326,10 @@
     <ClCompile Include="..\..\src\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\Material.cpp">
+    <ClCompile Include="..\..\src\BasicMaterial.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\MaterialStream.cpp">
+    <ClCompile Include="..\..\src\BasicMaterialStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\Mesh.cpp">
@@ -386,7 +389,7 @@
     <ClCompile Include="..\..\src\ProgrammaticModelStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\ProgrammaticMaterialStream.cpp">
+    <ClCompile Include="..\..\src\ProgrammaticBasicMaterialStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\UniformCollection.cpp">

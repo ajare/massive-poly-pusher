@@ -37,9 +37,8 @@
 	-->
 	<Materials>
 		<!-- Material name should match those defined in the .mtl file. -->
-		<Material>
+		<PbrMaterial>
 			<name>statue_material</name>
-			<Resource>
 				<Program>
 					<Resource>
 						<positionType>3D</positionType>
@@ -56,7 +55,7 @@
 
 				<!-- Metallic-roughness PBR material parameters. Texture slots will be
 				     supplied by the PBR shader/material in later milestones. -->
-				<Pbr>
+				<Surface>
 					<baseColourFactor>1.0 1.0 1.0 1.0</baseColourFactor>
 					<metallicFactor>0.0</metallicFactor>
 					<roughnessFactor>0.75</roughnessFactor>
@@ -66,77 +65,28 @@
 					<alphaMode>OPAQUE</alphaMode>
 					<alphaCutoff>0.5</alphaCutoff>
 					<doubleSided>false</doubleSided>
-				</Pbr>
+				</Surface>
+				<Extensions>
+					<Uniform><name>PBR_EXT_EMISSIVE_SCALE</name><type>float</type><value>1.0</value></Uniform>
+				</Extensions>
 
-				<Textures>
-					<Texture>
-						<Variable>PBR_BASE_COLOUR_MAP</Variable>
-						<Resource>
-							<target>2D</target>
-							<filename>stone-1024__Jpg_albedo.png</filename>
-							<colourSpace>SRGB</colourSpace>
-							<minFilter>LINEAR</minFilter>
-							<magFilter>LINEAR</magFilter>
-						</Resource>
-					</Texture>
-					<Texture>
-						<Variable>PBR_METALLIC_ROUGHNESS_MAP</Variable>
-						<Resource>
-							<target>2D</target>
-							<filename>stone-1024__Jpg_ORM.png</filename>
-							<colourSpace>LINEAR</colourSpace>
-							<minFilter>LINEAR</minFilter>
-							<magFilter>LINEAR</magFilter>
-						</Resource>
-					</Texture>
-					<Texture>
-						<Variable>PBR_NORMAL_MAP</Variable>
-						<Resource>
-							<target>2D</target>
-							<filename>stone-1024__Jpg_normal.png</filename>
-							<colourSpace>LINEAR</colourSpace>
-							<minFilter>LINEAR</minFilter>
-							<magFilter>LINEAR</magFilter>
-						</Resource>
-					</Texture>
-					<Texture>
-						<Variable>PBR_OCCLUSION_MAP</Variable>
-						<Resource>
-							<target>2D</target>
-							<filename>stone-1024__Jpg_ao.png</filename>
-							<colourSpace>LINEAR</colourSpace>
-							<minFilter>LINEAR</minFilter>
-							<magFilter>LINEAR</magFilter>
-						</Resource>
-					</Texture>
-					<Texture>
-						<Variable>PBR_IRRADIANCE_MAP</Variable>
-						<Ref>PBR.Preview.Environment</Ref>
-					</Texture>
-					<Texture>
-						<Variable>PBR_PREFILTERED_SPECULAR_MAP</Variable>
-						<Ref>PBR.Preview.Environment</Ref>
-					</Texture>
-					<Texture>
-						<Variable>PBR_BRDF_LUT</Variable>
-						<Ref>PBR.Preview.BrdfLut</Ref>
-					</Texture>
-				</Textures>
-
-				<Uniforms>
-					<Uniform>
-						<name>SPEC_EXPONENT</name>
-						<type>float</type>
-						<value>16</value>
-					</Uniform>
-					<Uniform>
-						<name>SPEC_STRENGTH</name>
-						<type>float</type>
-						<value>0.5</value>
-					</Uniform>
-				</Uniforms>
-			</Resource>
-		</Material>
+				<BaseColourMap><Resource>
+					<target>2D</target><filename>stone-1024__Jpg_albedo.png</filename><colourSpace>SRGB</colourSpace>
+					<minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter>
+				</Resource></BaseColourMap>
+				<MetallicRoughnessMap><Resource>
+					<target>2D</target><filename>stone-1024__Jpg_ORM.png</filename><colourSpace>LINEAR</colourSpace>
+					<minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter>
+				</Resource></MetallicRoughnessMap>
+				<NormalMap><Resource>
+					<target>2D</target><filename>stone-1024__Jpg_normal.png</filename><colourSpace>LINEAR</colourSpace>
+					<minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter>
+				</Resource></NormalMap>
+				<OcclusionMap><Resource>
+					<target>2D</target><filename>stone-1024__Jpg_ao.png</filename><colourSpace>LINEAR</colourSpace>
+					<minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter>
+				</Resource></OcclusionMap>
+		</PbrMaterial>
 	</Materials>
 
 </ModelSpecification>

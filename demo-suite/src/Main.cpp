@@ -13,7 +13,7 @@
 #include <mpp/Program.h>
 #include <mpp/TextureStream.h>
 #include <mpp/Texture.h>
-#include <mpp/MaterialStream.h>
+#include <mpp/BasicMaterialStream.h>
 #include <mpp/Material.h>
 #include <mpp/Model.h>
 #include <mpp/ProgrammaticModelStream.h>
@@ -21,7 +21,7 @@
 #include <mpp/CylinderModelStream.h>
 #include <mpp/SphereModelStream.h>
 #include <mpp/GridModelStream.h>
-#include <mpp/ProgrammaticMaterialStream.h>
+#include <mpp/ProgrammaticBasicMaterialStream.h>
 #include <mpp/MppModelStream.h>
 #include <mpp/StaticLogger.h>
 
