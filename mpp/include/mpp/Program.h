@@ -90,6 +90,7 @@ namespace mpp
 		uint32_t mVertexShaderId, mFragmentShaderId;
 
 		std::map<std::string, int> mUniformIds;
+		std::map<std::string, uint32_t> mUniformTypes;
 
 		int mViewPosId, mMMatrixId, mMcpMatrixId, mNormalMatrixId, mHalfWindowSizeId, mPointSizeId;
 
@@ -134,6 +135,9 @@ namespace mpp
 		mesh::MeshSpecification const& getMeshSpecification() const;
 
 		int getUniformId(std::string const& name, int index = -1) const;
+		std::vector<std::string> getUniformNames() const;
+		uint32_t getUniformGlType(std::string const& name) const;
+		uint32_t getSamplerGlType(std::string const& name) const;
 
 		int getViewPosId() const;
 

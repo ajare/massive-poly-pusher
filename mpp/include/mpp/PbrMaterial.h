@@ -31,5 +31,6 @@ namespace mpp
 		ShadingModel getShadingModel() const override { return ShadingModel::Pbr; }
 		bool isTransparent() const override { return mPbrSurface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend; }
 		PbrMaterialSpecification::PbrSurface const& getSurface() const;
+		void validateInstanceUniforms(UniformCollection const& uniforms) const override;
 	};
 }

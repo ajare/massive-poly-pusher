@@ -9,6 +9,7 @@
 @@Uniform(int PBR_ALPHA_MODE);
 @@Uniform(float PBR_ALPHA_CUTOFF);
 @@Uniform(int PBR_DOUBLE_SIDED);
+@@Uniform(float PBR_EXT_EMISSIVE_SCALE);
 
 @@Texture(sampler2D PBR_BASE_COLOUR_MAP);
 @@Texture(sampler2D PBR_METALLIC_ROUGHNESS_MAP);
@@ -136,7 +137,7 @@ void main()
     float metallic = clamp(metallicRoughness.b * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
     float roughness = clamp(metallicRoughness.g * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
     float occlusion = mix(1.0, texture(@Texture(PBR_OCCLUSION_MAP), @In(TEXCOORDS)).r, @Uniform(PBR_OCCLUSION_STRENGTH));
-    vec3 emissive = texture(@Texture(PBR_EMISSIVE_MAP), @In(TEXCOORDS)).rgb * @Uniform(PBR_EMISSIVE_FACTOR);
+    vec3 emissive = texture(@Texture(PBR_EMISSIVE_MAP), @In(TEXCOORDS)).rgb * @Uniform(PBR_EMISSIVE_FACTOR) * @Uniform(PBR_EXT_EMISSIVE_SCALE);
 
     vec3 viewDirection = normalize(@ViewPos - @In(WORLD_POSITION));
     vec3 f0 = mix(vec3(0.04), baseColour.rgb, metallic);

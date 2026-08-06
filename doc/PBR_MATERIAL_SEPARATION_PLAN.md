@@ -1,6 +1,6 @@
 # BasicMaterial / PbrMaterial Separation Plan
 
-**Status:** Phases 1 and 2 complete. Phase 3 extensions/runtime contracts and later migration hardening remain.
+**Status:** Phases 1–3 complete. Loader/compatibility hardening and broader automated validation remain.
 
 ## 1. Objective
 
@@ -328,11 +328,14 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Fixed the BasicMaterial file-stream quality-setting regression that selected an empty descriptor and generated invalid vertex shaders.
    - [x] Validated DemoSuite startup with the typed PBR asset and the real-context framebuffer/readback/resize/MRT/MSAA/mip/alias/lifetime GPU suite.
 
-3. **Extensions and runtime contracts**
-   - Add `PBR_EXT_*` XML/programmatic representation and reflection validation.
-   - Add validated PBR per-instance uniform overrides.
-   - Implement BasicMaterial canonical-slot neutral binding behavior in PBR pipelines.
-   - Enforce pipeline eligibility, alpha behavior, and output validation.
+3. **Extensions and runtime contracts** — **Complete**
+   - [x] Added `PBR_EXT_*` XML/programmatic uniform and 2D/cube texture representation.
+   - [x] Enforced extension namespace, declaration completeness, reflected uniform scalar/vector type and shape, and sampler target validation.
+   - [x] Added validated PBR per-instance canonical/extension uniform overrides; texture maps remain material-owned.
+   - [x] Implemented BasicMaterial canonical-slot neutral binding behavior in PBR pipelines.
+   - [x] Enforced legacy/PBR pipeline eligibility, alpha classification, canonical interface types, and fragment output location 0.
+   - [x] Documented extension XML, programmatic APIs, types, ownership, fallback behavior, and current matrix limitation.
+   - [x] Added an active `PBR_EXT_EMISSIVE_SCALE` to the DemoSuite statue custom program/material, re-exported the typed model, and validated extension XML, reflection, serialization, binding, and real-context startup GPU tests end-to-end.
 
 4. **Loaders, ModelSpec, serializer, and migration**
    - Add tag-dispatching standalone file entry point and concrete typed file streams.

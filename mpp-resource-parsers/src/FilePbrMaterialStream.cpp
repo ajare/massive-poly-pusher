@@ -89,6 +89,17 @@ namespace mpp
 						addChild("Textures/" + sampler, ResourceStreamPtr(ftStream));
 					}
 				}
+				else if (entry.first == "Extensions")
+				{
+					for (auto const& extension : entry.second)
+					{
+						if (extension.first != "Texture" || !extension.second.hasEntry("Resource")) continue;
+						auto const& name = extension.second.hasEntry("name") ? extension.second.getEntry("name").getValue() : extension.second.getEntry("Variable").getValue();
+						if (name.rfind("PBR_EXT_", 0) != 0) THROW_MPP_RESOURCE_PARSERS("PBR extension sampler must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
+						auto stream = new FileTextureStream(getResourceMgr(), filepath, extension.second.getEntry("Resource"), mRelativisePaths);
+						addChild("Extensions/" + name, ResourceStreamPtr(stream));
+					}
+				}
 				else if (entry.first == "Textures")
 				{
 					int textureId = 0;
@@ -433,6 +444,38 @@ namespace mpp
 							}
 
 							qs.spec.textures.push_back(textureOptions);
+						}
+					}
+				}
+				else if (entry.first == "Extensions")
+				{
+					for (auto const& extension : entry.second)
+					{
+						if (extension.first == "Uniform")
+						{
+							auto const& name = extension.second.getEntry("name").getValue();
+							if (name.rfind("PBR_EXT_", 0) != 0) THROW_MPP_RESOURCE_PARSERS("PBR extension uniform must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
+							parseUniform(extension.second, qs.spec.uniforms, filepath);
+						}
+						else if (extension.first == "Texture")
+						{
+							PbrMaterialSpecification::TextureOptions texture;
+							texture.resourceExists = true;
+							texture.sampler = extension.second.hasEntry("name") ? extension.second.getEntry("name").getValue() : extension.second.getEntry("Variable").getValue();
+							if (texture.sampler.rfind("PBR_EXT_", 0) != 0) THROW_MPP_RESOURCE_PARSERS("PBR extension sampler must use the PBR_EXT_ namespace.", __LINE__, __FILE__, __func__);
+							if (extension.second.hasEntry("Resource"))
+							{
+								texture.isChild = true; texture.existingResource = "Extensions/" + texture.sampler;
+								auto const& resource = extension.second.getEntry("Resource");
+								if (resource.hasEntry("target")) { auto target = utils::StringUtils::toUpper(resource.getEntry("target").getValue()); texture.target = target == "CUBE" || target == "CUBEMAP" ? TextureTarget::CubeMap : TextureTarget::Texture2D; }
+							}
+							else if (extension.second.hasEntry("Ref"))
+							{
+								texture.existingResource = extension.second.getEntry("Ref").getValue();
+								if (extension.second.hasEntry("target")) { auto target = utils::StringUtils::toUpper(extension.second.getEntry("target").getValue()); texture.target = target == "CUBE" || target == "CUBEMAP" ? TextureTarget::CubeMap : TextureTarget::Texture2D; }
+							}
+							else THROW_MPP_RESOURCE_PARSERS("PBR extension sampler requires Resource or Ref.", __LINE__, __FILE__, __func__);
+							qs.spec.textures.push_back(texture);
 						}
 					}
 				}
