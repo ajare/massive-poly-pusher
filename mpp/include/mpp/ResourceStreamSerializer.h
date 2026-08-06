@@ -74,6 +74,7 @@ namespace mpp
 		void readTextureStream(ResourceStreamPtr resourceStream, std::ifstream& fp, std::map<uint32_t, std::string> const& qualityNames);
 
 		ResourceStreamPtr readStream(std::ifstream& fp);
+		ResourceStreamPtr convertLegacyMaterial(ResourceStreamPtr const& stream);
 
 	private:
 

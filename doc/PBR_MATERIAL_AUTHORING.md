@@ -243,6 +243,12 @@ cd demo-suite\resources\res\statue
 
 Build MassivePolyPusher, ModelConvert, and DemoSuite in the same Debug/Release x64 configuration first. Place the matching MassivePolyPusher DLL beside `DemoSuite.exe`. Then follow [PBR DemoSuite Validation](PBR_VALIDATION.md).
 
+## Compatibility and asset versions
+
+Standalone material XML is dispatched by its root tag through `FileMaterialStream::fromFile()`: use `<BasicMaterial>` or `<PbrMaterial>`. Filenames do not determine type. Legacy `<Material>` XML remains read-only compatibility input and emits a deprecation warning.
+
+New converted models use versioned `RSE2` resource streams and explicit `BasicMaterial` / `PbrMaterial` tags. The loader still accepts `RSER` v1 assets: legacy basic streams become BasicMaterial, while PBR-tagged streams recover their surface factors and are validated as PbrMaterial. Successful conversion warns that the asset should be re-exported; a program missing the canonical PBR interface fails rather than silently downgrading.
+
 ## Current limitations
 
 - HDR panorama decoding and GPU IBL preprocessing are not implemented. HDR IBL maps must be created offline.

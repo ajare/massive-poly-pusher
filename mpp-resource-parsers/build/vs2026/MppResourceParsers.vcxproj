@@ -112,6 +112,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\mpp\resource-parsers\Config.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileBasicMaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FilePbrMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileRenderGraphStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileProgramStream.h" />
@@ -132,6 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\FileBasicMaterialStream.cpp" />
+    <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FilePbrMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FileRenderGraphStream.cpp" />
     <ClCompile Include="..\..\src\FileProgramStream.cpp" />

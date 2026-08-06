@@ -111,7 +111,7 @@ namespace mpp
 			// Parse data.  Root element should be 'Material'
 			auto rootName = data.getName();
 
-			if (rootName != "BasicMaterial" && rootName != "Resource")
+			if (rootName != "BasicMaterial" && rootName != "Material" && rootName != "Resource")
 			{
 				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'BasicMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
@@ -385,7 +385,7 @@ namespace mpp
 			// Parse data. Root element must identify the concrete basic resource.
 			auto rootName = data.getName();
 
-			if (rootName != "BasicMaterial" && rootName != "Resource")
+			if (rootName != "BasicMaterial" && rootName != "Material" && rootName != "Resource")
 			{
 				string errMsg = "Error loading " + getFilepath() + ". Root element is neither 'BasicMaterial' nor 'Resource'.";
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
