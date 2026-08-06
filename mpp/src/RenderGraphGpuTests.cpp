@@ -145,6 +145,28 @@ namespace mpp
 			invalidMipGraph.writeColour(invalidMipPass, invalidMip);
 			if (invalidMipGraph.buildAllocationPlan({ 8, 8 }).valid) return fail("oversized mip chain was accepted");
 
+			if (renderSystem->getCaps().maxSamples >= 2)
+			{
+				GraphImageDesc msaaColour = colour;
+				msaaColour.samples = std::min<uint32_t>(4, renderSystem->getCaps().maxSamples);
+				GraphImageDesc msaaDepth;
+				msaaDepth.format = GraphImageFormat::Depth24;
+				msaaDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
+				msaaDepth.samples = msaaColour.samples;
+				RenderGraph msaa;
+				auto msaaImage = msaa.createImage("GpuTestMsaaColour", msaaColour);
+				auto msaaDepthImage = msaa.createImage("GpuTestMsaaDepth", msaaDepth);
+				auto msaaPass = msaa.addPass("GpuTestMsaaWrite", GraphPassType::Scene);
+				msaaImage = msaa.writeColour(msaaPass, msaaImage, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0.5f, 0, 1));
+				msaaDepthImage = msaa.writeDepth(msaaPass, msaaDepthImage, GraphLoadOp::Clear, GraphStoreOp::Store, 0.5f);
+				RenderGraphTargets msaaTargets(renderSystem);
+				msaaTargets.allocate(msaa.buildAllocationPlan({ 40, 24 }));
+				RenderGraphExecutor msaaExecutor(renderSystem);
+				msaaExecutor.setPassCallback(msaaPass, [](RenderGraphExecutionContext const&) {});
+				msaaExecutor.execute(msaa, msaaTargets, renderSystem->getCaps());
+				if (!nearColour(readFirstPixel(msaaTargets.get(msaaImage)), { 255, 128, 0, 255 })) return fail("MSAA colour resolve readback failed");
+			}
+
 			if (renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2)
 			{
 				RenderGraph mrt;

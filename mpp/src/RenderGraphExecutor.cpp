@@ -63,7 +63,7 @@ namespace mpp
 						THROW_MPP("Render graph pass attachment dimensions do not match.", __LINE__, __FILE__, __func__);
 					}
 					GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + index);
-					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture->getColourAttachmentId(0), (GLint)colourMips[index]));
+					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, texture->getAttachmentTextureTarget(), texture->getColourAttachmentId(0), (GLint)colourMips[index]));
 					mDrawBuffers.push_back(attachment);
 				}
 				if (depth)
@@ -74,7 +74,7 @@ namespace mpp
 					{
 						THROW_MPP("Render graph depth attachment dimensions do not match colour attachments.", __LINE__, __FILE__, __func__);
 					}
-					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture->getDepthTextureId(), (GLint)depthMip));
+					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, texture->getAttachmentTextureTarget(), texture->getDepthTextureId(), (GLint)depthMip));
 				}
 				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 				{
@@ -239,7 +239,7 @@ namespace mpp
 			vector<uint32_t> colourMips;
 			for (auto const& output : pass.colourOutputs)
 			{
-				auto target = targets.get(output.image);
+				auto target = targets.getWriteTarget(output.image);
 				if (!target) THROW_MPP("Render graph colour output has no allocated or imported target.", __LINE__, __FILE__, __func__);
 				colours.push_back(target);
 				colourMips.push_back(output.mipLevel);
@@ -248,7 +248,7 @@ namespace mpp
 			uint32_t depthMip = 0;
 			if (!pass.depthOutputs.empty())
 			{
-				depth = targets.get(pass.depthOutputs.front().image);
+				depth = targets.getWriteTarget(pass.depthOutputs.front().image);
 				depthMip = pass.depthOutputs.front().mipLevel;
 				if (!depth) THROW_MPP("Render graph depth output has no allocated or imported target.", __LINE__, __FILE__, __func__);
 			}
@@ -326,6 +326,8 @@ namespace mpp
 					mRenderSystem->renderGraphFullscreen(mExecutingTemplate->getProgram(passHandle), samplers, context.getParameters());
 				}
 				discardDontCareOutputs(pass);
+				for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, false);
+				for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, true);
 				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);

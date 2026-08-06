@@ -457,10 +457,13 @@ namespace mpp
 		// turn a declared list of colour outputs into glDrawBuffers calls.
 		GLint maxColourAttachments = 1;
 		GLint maxDrawBuffers = 1;
+		GLint maxSamples = 1;
 		GL_CHECK(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &maxColourAttachments));
 		GL_CHECK(glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers));
+		GL_CHECK(glGetIntegerv(GL_MAX_SAMPLES, &maxSamples));
 		mCaps.maxColourAttachments = (uint32_t)maxColourAttachments;
 		mCaps.maxDrawBuffers = (uint32_t)maxDrawBuffers;
+		mCaps.maxSamples = (uint32_t)maxSamples;
 		
 		// Get depth range
 		GLfloat depthRange[2] = { 0.0f, 0.0f };
@@ -516,6 +519,7 @@ namespace mpp
 		infoMessage(STR_FORMAT("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
 		infoMessage(STR_FORMAT("Max colour attachments: {}", mCaps.maxColourAttachments));
 		infoMessage(STR_FORMAT("Max draw buffers: {}", mCaps.maxDrawBuffers));
+		infoMessage(STR_FORMAT("Max framebuffer samples: {}", mCaps.maxSamples));
 		infoMessage(STR_FORMAT("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
 		infoMessage(STR_FORMAT("Max anisotropy: {}", mCaps.maxAnisotropy));
 		infoMessage(STR_FORMAT("Max recommended elements: {}", mCaps.maxRecommendedElements));
@@ -1286,6 +1290,7 @@ namespace mpp
 		rtStream->setDepthAttachment(options.depthAttachment);
 		rtStream->setDepthParams(options.depthParams);
 		rtStream->setNumAttachments(options.numAttachments);
+		rtStream->setSamples(options.samples);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
 		rt->load();

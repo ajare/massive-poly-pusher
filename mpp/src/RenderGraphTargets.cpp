@@ -8,6 +8,7 @@
 #include "mpp/MppException.h"
 #include "mpp/RenderGraphImportRegistry.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/RenderTexture.h"
 #include "mpp/RenderTextureStream.h"
 
 using namespace std;
@@ -29,12 +30,13 @@ namespace mpp
 
 		RenderTextureOptions makeOptions(GraphImageDesc const& desc)
 		{
-			if (desc.samples != 1)
+			if (desc.samples > 1 && desc.mipLevels > 1)
 			{
-				THROW_MPP("Render graph target allocation currently supports only one sample.", __LINE__, __FILE__, __func__);
+				THROW_MPP("Multisample graph targets cannot also have mip chains.", __LINE__, __FILE__, __func__);
 			}
 
 			RenderTextureOptions options;
+			options.samples = desc.samples;
 			options.params = desc.params;
 			options.params.colourSpace = desc.colourSpace;
 			options.params.useMipmaps = desc.mipLevels > 1;
@@ -96,6 +98,7 @@ namespace mpp
 			THROW_MPP("Cannot allocate an invalid render graph allocation plan.", __LINE__, __FILE__, __func__);
 		}
 		mTargets.clear();
+		mWriteTargets.clear();
 		struct Assignment
 		{
 			uint32_t firstPass;
@@ -139,9 +142,16 @@ namespace mpp
 			}
 			if (poolIndex == SIZE_MAX)
 			{
-				auto const options = makeOptions(lifetime->desc);
 				string const name = "RenderGraph_Image" + to_string(lifetime->image.id) + "_v" + to_string(lifetime->image.version);
-				mPool.push_back({ *lifetime, mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, options) });
+				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeOptions(lifetime->desc));
+				RenderTargetPtr resolvedTarget = writeTarget;
+				if (lifetime->desc.samples > 1)
+				{
+					auto resolvedDesc = lifetime->desc;
+					resolvedDesc.samples = 1;
+					resolvedTarget = mRenderSystem->createRenderTexture(name + "_Resolved", lifetime->size.x, lifetime->size.y, makeOptions(resolvedDesc));
+				}
+				mPool.push_back({ *lifetime, resolvedTarget, writeTarget });
 				assignments.emplace_back();
 				poolIndex = mPool.size() - 1;
 			}
@@ -152,6 +162,7 @@ namespace mpp
 			}
 			assignments[poolIndex].push_back({ lifetime->firstPass, lifetime->lastPass, lifetime->desc.transient });
 			mTargets.emplace(makeKey(lifetime->image), mPool[poolIndex].target);
+			mWriteTargets.emplace(makeKey(lifetime->image), mPool[poolIndex].writeTarget);
 		}
 	}
 
@@ -185,6 +196,7 @@ namespace mpp
 	void RenderGraphTargets::clear()
 	{
 		mTargets.clear();
+		mWriteTargets.clear();
 		mImportedTargets.clear();
 		mPool.clear();
 	}
@@ -195,5 +207,19 @@ namespace mpp
 		if (found != mTargets.end()) return found->second;
 		auto const imported = mImportedTargets.find(image.id);
 		return imported == mImportedTargets.end() ? nullptr : imported->second;
+	}
+
+	RenderTargetPtr RenderGraphTargets::getWriteTarget(GraphImageHandle image) const
+	{
+		auto const found = mWriteTargets.find(makeKey(image));
+		return found == mWriteTargets.end() ? get(image) : found->second;
+	}
+
+	void RenderGraphTargets::resolve(GraphImageHandle image, bool depth) const
+	{
+		auto source = dynamic_cast<RenderTexture*>(getWriteTarget(image).get());
+		auto destination = dynamic_cast<RenderTexture*>(get(image).get());
+		if (source && destination && source != destination && source->isMultisampled())
+			source->resolveTo(destination, !depth, depth);
 	}
 }

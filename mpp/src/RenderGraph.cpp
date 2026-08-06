@@ -425,6 +425,13 @@ namespace mpp
 	RenderGraphCompileResult RenderGraph::compile(Caps const& caps) const
 	{
 		auto result = compile();
+		for (auto const& image : mImages)
+		{
+			if (image.desc.samples > caps.maxSamples)
+				result.diagnostics.push_back("Image '" + image.name + "' requests " + to_string(image.desc.samples) + " samples, exceeding the renderer capability.");
+			if (image.desc.samples > 1 && image.desc.mipLevels > 1)
+				result.diagnostics.push_back("Image '" + image.name + "' cannot combine multisampling and mip levels.");
+		}
 		for (auto const& pass : mPasses)
 		{
 			if (pass.colourOutputs.size() > caps.maxColourAttachments || pass.colourOutputs.size() > caps.maxDrawBuffers)

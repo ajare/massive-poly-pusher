@@ -20,10 +20,12 @@ namespace mpp
 		{
 			GraphImageLifetime lifetime;
 			RenderTargetPtr target;
+			RenderTargetPtr writeTarget;
 		};
 
 		RenderSystem* mRenderSystem;
 		std::map<uint64_t, RenderTargetPtr> mTargets;
+		std::map<uint64_t, RenderTargetPtr> mWriteTargets;
 		std::map<uint32_t, RenderTargetPtr> mImportedTargets;
 		std::vector<PoolEntry> mPool;
 
@@ -40,5 +42,7 @@ namespace mpp
 		void bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports);
 		void clear();
 		RenderTargetPtr get(GraphImageHandle image) const;
+		RenderTargetPtr getWriteTarget(GraphImageHandle image) const;
+		void resolve(GraphImageHandle image, bool depth) const;
 	};
 }
