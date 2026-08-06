@@ -168,6 +168,15 @@ namespace mpp
 					// The normal no-texture fallback keeps non-shadow pipelines valid.
 					textureName = "__mpp_tex_none__";
 				}
+				// A BasicMaterial stays generic, but a custom basic shader may opt into
+				// individual canonical PBR inputs. Supply neutral resources so it can
+				// execute in a PBR pipeline without becoming a PbrMaterial.
+				else if (samplerName == "PBR_BASE_COLOUR_MAP" || samplerName == "PBR_OCCLUSION_MAP") textureName = "__mpp_tex_pbr_white__";
+				else if (samplerName == "PBR_METALLIC_ROUGHNESS_MAP") textureName = "__mpp_tex_pbr_metallic_roughness__";
+				else if (samplerName == "PBR_NORMAL_MAP") textureName = "__mpp_tex_pbr_normal__";
+				else if (samplerName == "PBR_EMISSIVE_MAP") textureName = "__mpp_tex_pbr_black__";
+				else if (samplerName == "PBR_IRRADIANCE_MAP" || samplerName == "PBR_PREFILTERED_SPECULAR_MAP") textureName = "__mpp_tex_pbr_ibl_cube__";
+				else if (samplerName == "PBR_BRDF_LUT") textureName = "__mpp_tex_pbr_brdf_lut__";
 				if (textureName.empty())
 				{
 					string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
