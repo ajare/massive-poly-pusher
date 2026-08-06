@@ -330,6 +330,7 @@ namespace mpp
 		float getAspectRatio() const;
 
 		Caps const& getCaps() const;
+		ResourceManager* getResourceManager() const { return mResourceMgr; }
 
 		void initialise();
 

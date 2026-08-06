@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "mpp/RenderPipeline.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
@@ -433,11 +434,15 @@ namespace mpp
 		if (mOptions.mode == RenderPipelineMode::PbrForward || graphPbr)
 		{
 			mRenderSystem->setActivePbrEnvironment(mOptions.environment);
-			if (mOptions.environment)
+			auto const cubeFallback = mRenderSystem->getResourceManager()->getResource("__mpp_tex_pbr_ibl_cube__");
+			auto const brdfFallback = mRenderSystem->getResourceManager()->getResource("__mpp_tex_pbr_brdf_lut__");
+			pipelineSamplerOverrides["PBR_IRRADIANCE_MAP"] = mOptions.environment && mOptions.environment->irradianceMap ? mOptions.environment->irradianceMap : cubeFallback;
+			pipelineSamplerOverrides["PBR_PREFILTERED_SPECULAR_MAP"] = mOptions.environment && mOptions.environment->prefilteredSpecularMap ? mOptions.environment->prefilteredSpecularMap : cubeFallback;
+			pipelineSamplerOverrides["PBR_BRDF_LUT"] = mOptions.environment && mOptions.environment->brdfIntegrationLut ? mOptions.environment->brdfIntegrationLut : brdfFallback;
+			if ((!mOptions.environment || !mOptions.environment->irradianceMap || !mOptions.environment->prefilteredSpecularMap || !mOptions.environment->brdfIntegrationLut) && !mWarnedMissingPbrEnvironment)
 			{
-				pipelineSamplerOverrides["PBR_IRRADIANCE_MAP"] = mOptions.environment->irradianceMap;
-				pipelineSamplerOverrides["PBR_PREFILTERED_SPECULAR_MAP"] = mOptions.environment->prefilteredSpecularMap;
-				pipelineSamplerOverrides["PBR_BRDF_LUT"] = mOptions.environment->brdfIntegrationLut;
+				mRenderSystem->warnMessage("PBR pipeline '" + mName + "' has no complete environment; neutral IBL fallbacks are active.");
+				mWarnedMissingPbrEnvironment = true;
 			}
 		}
 		mRenderSystem->setActivePipelineSamplerOverrides(pipelineSamplerOverrides);
