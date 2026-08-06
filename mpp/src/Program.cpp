@@ -5,6 +5,7 @@
 #endif
 
 #include <cassert>
+#include <algorithm>
 #include <numeric>
 #include <regex>
 #include <list>
@@ -527,6 +528,13 @@ namespace mpp
 					}
 				}
 			}
+
+			// Parser metadata includes declarations in GLSL preprocessor-disabled
+			// branches. Bind and expose only samplers that survived linking.
+			mTextures.erase(remove_if(mTextures.begin(), mTextures.end(), [](TextureInfo const& texture)
+			{
+				return texture.uniformId < 0;
+			}), mTextures.end());
 		}
 		catch (exception&)
 		{

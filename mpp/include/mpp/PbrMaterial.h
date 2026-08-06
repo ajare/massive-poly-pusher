@@ -3,6 +3,7 @@
 #include <vector>
 #include "mpp/Material.h"
 #include "mpp/PbrMaterialSpecification.h"
+#include "mpp/PbrMaterialFeatures.h"
 #include "mpp/UniformCollection.h"
 
 namespace mpp
@@ -12,6 +13,8 @@ namespace mpp
 		ResourcePtr mProgram;
 		UniformCollection mUniforms;
 		PbrMaterialSpecification::PbrSurface mPbrSurface;
+		PbrMaterialFeatures mFeatures{ 0 };
+		std::string mFeatureSummary{ "Uninitialised" };
 		std::vector<ResourcePtr> mTextures;
 
 	protected:
@@ -31,6 +34,8 @@ namespace mpp
 		ShadingModel getShadingModel() const override { return ShadingModel::Pbr; }
 		bool isTransparent() const override { return mPbrSurface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend; }
 		PbrMaterialSpecification::PbrSurface const& getSurface() const;
+		PbrMaterialFeatures getFeatures() const;
+		std::string const& getFeatureSummary() const;
 		void validateInstanceUniforms(UniformCollection const& uniforms) const override;
 	};
 }

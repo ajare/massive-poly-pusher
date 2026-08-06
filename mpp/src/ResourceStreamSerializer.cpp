@@ -931,6 +931,7 @@ namespace mpp
 		for (auto const& source : basic->mQualitySettings)
 		{
 			PbrMaterialStream::QualitySetting target;
+			target.spec.legacyFullContract = true;
 			target.spec.program.resourceExists = source.spec.program.resourceExists;
 			target.spec.program.existingResource = source.spec.program.existingResource;
 			target.spec.program.isChild = source.spec.program.isChild;

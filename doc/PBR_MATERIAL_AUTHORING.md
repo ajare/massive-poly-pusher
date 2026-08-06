@@ -127,9 +127,15 @@ renderSystem->getOrCreateRenderPipeline("PBR", options);
 
 During a PBR scene flush, this active environment overrides material bindings for the irradiance, prefiltered-specular, and BRDF-LUT sampler names. ModelSpec `Ref` bindings remain useful as declared fallback/resource dependencies.
 
-## 5. Custom PBR extensions
+## 5. Shader specialization and custom programs
 
-A custom PBR program must retain the complete canonical PBR interface. Project-specific material inputs are additive and must use the reserved `PBR_EXT_` prefix. Core `PBR_*` factors/maps and pipeline-owned IBL slots cannot be replaced or redeclared as extensions.
+Material-level zero weights and absent semantic maps select an on-demand built-in fragment specialization. Material values define the maximum compiled feature contract; instances may reduce enabled factors to zero but cannot enable specialized-out features. Alpha mode and double-sided state are static. If an instance must start at zero and later enable a contribution, author that material factor nonzero and set the initial zero on the instance.
+
+Material-owned custom fragment sources receive `PBR_SPEC_*` definitions and must reflect exactly the enabled canonical inputs. Referenced existing `Program` resources are not recompiled and must already match. See [PBR Fragment Shader Specialization](PBR_SHADER_SPECIALIZATION.md) for the complete feature table, defines, caching behavior, examples, diagnostics, legacy policy, and instance restrictions.
+
+## 6. Custom PBR extensions
+
+A custom PBR program must retain the exact canonical interface selected by its material specialization. Project-specific material inputs are additive and must use the reserved `PBR_EXT_` prefix. Core `PBR_*` factors/maps and pipeline-owned IBL slots cannot be replaced or redeclared as extensions.
 
 Declare extension values in the typed material:
 
@@ -169,7 +175,7 @@ Programmatic authoring uses `setExtensionUniform()` and `setExtensionTexture()` 
 
 Per-instance overrides may replace canonical factor uniforms and declared extension uniforms, but not texture maps. `MeshInstance::setUniformCollection()` validates each override against the material declaration and resolved program before rendering; unknown or type-mismatched values fail immediately.
 
-## 6. Generate HDR IBL assets
+## 7. Generate HDR IBL assets
 
 Start with a linear, high-dynamic-range equirectangular panorama (`.hdr` or `.exr`). It must represent scene radiance; do not apply sRGB conversion or tone mapping. Use an IBL preprocessor such as cmftStudio, Filament `cmgen`, Blender, or an equivalent offline tool.
 
@@ -182,7 +188,7 @@ Generate all outputs from the **same** source panorama:
 
 The irradiance, prefiltered specular, and BRDF LUT are linear floating-point inputs. The shader samples the irradiance map using the normal and samples the prefiltered map using the reflection vector and roughness-selected mip. The background map should visually match the lighting maps but does not contribute lighting by itself.
 
-## 7. Export and validate ModelSpec assets
+## 8. Export and validate ModelSpec assets
 
 After changing the OBJ, ModelSpec, shader file, or any child texture definition, regenerate the model:
 
@@ -193,19 +199,19 @@ cd demo-suite\resources\res\statue
 
 Build MassivePolyPusher, ModelConvert, and DemoSuite in the same Debug/Release x64 configuration first. Place the matching MassivePolyPusher DLL beside `DemoSuite.exe`. Then follow [PBR DemoSuite Validation](PBR_VALIDATION.md).
 
-## BasicMaterial migration
+## 9. BasicMaterial migration
 
 Legacy/simple/custom-program materials are now authored as `<BasicMaterial>` and use `BasicMaterial`, `BasicMaterialSpecification`, `BasicMaterialStream`, or `ProgrammaticBasicMaterialStream` in C++. Their generic `Program`, `Uniforms`, and `Textures` behavior is unchanged. BasicMaterial never infers PBR from sampler names or uniforms; use `<PbrMaterial>` when the metallic-roughness contract is intended. BasicMaterial remains valid in PBR pipelines, where any canonical PBR samplers it explicitly declares receive neutral fallback resources.
 
 Change standalone and ModelSpec roots from `<Material>` to `<BasicMaterial>`, rebuild converters and parsers together, then re-export `.mppmodel` assets. Do not rename files to select type—the XML tag is authoritative.
 
-## Compatibility and asset versions
+## 10. Compatibility and asset versions
 
 Standalone material XML is dispatched by its root tag through `FileMaterialStream::fromFile()`: use `<BasicMaterial>` or `<PbrMaterial>`. Filenames do not determine type. Legacy `<Material>` XML remains read-only compatibility input and emits a deprecation warning.
 
 New converted models use versioned `RSE2` resource streams and explicit `BasicMaterial` / `PbrMaterial` tags. The loader still accepts `RSER` v1 assets: legacy basic streams become BasicMaterial, while PBR-tagged streams recover their surface factors and are validated as PbrMaterial. Successful conversion warns that the asset should be re-exported; a program missing the canonical PBR interface fails rather than silently downgrading.
 
-## Current limitations
+## 11. Current limitations
 
 - HDR panorama decoding and GPU IBL preprocessing are not implemented. HDR IBL maps must be created offline.
 - There is no built-in asset importer for six HDR cubemap faces plus authored prefiltered mip levels. `Texture::uploadCubeFace()` uploads base-level faces; generated OpenGL mipmaps are not a substitute for GGX-prefiltered mips. A KTX2/DDS or six-face/mip importer, and mip-face upload support, are still required for physically correct imported IBL.

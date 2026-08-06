@@ -63,6 +63,11 @@ namespace mpp
 		return mQualitySettings[mQualitySetting].spec.pbr;
 	}
 
+	bool PbrMaterialStream::usesLegacyFullContract() const
+	{
+		return mQualitySettings[mQualitySetting].spec.legacyFullContract;
+	}
+
 	/*
 	 * Get textures.
 	 *

@@ -2,6 +2,7 @@
 #include "mpp/Program.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/ProgrammaticPbrMaterialStream.h"
+#include "mpp/PbrMaterialFeatures.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/MppException.h"
@@ -26,6 +27,8 @@ namespace mpp
 		if (qs.spec.program.resourceExists && qs.spec.program.isChild)
 		{
 			auto programStream = new ProgrammaticProgramStream(getResourceMgr());
+			if (!qs.spec.legacyFullContract)
+				programStream->setFragmentPreamble(makePbrSpecializationDefines(derivePbrMaterialFeatures(qs.spec.pbr, qs.spec.textures)));
 
 			auto parser = make_shared<program::Parser>();
 
