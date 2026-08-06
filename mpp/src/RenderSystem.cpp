@@ -43,6 +43,7 @@
 #include "mpp/MeshSortFlags.h"
 #include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/GpuDebugScope.h"
 
 using namespace std;
 
@@ -147,7 +148,14 @@ namespace mpp
 
 		string msg(message);
 		
-		// Ignore info messages
+		// Tooling event markers and groups are capture annotations, not errors.
+		// RenderDoc still receives them; suppress them from the engine error log.
+		if (type == GL_DEBUG_TYPE_MARKER || type == GL_DEBUG_TYPE_PUSH_GROUP || type == GL_DEBUG_TYPE_POP_GROUP)
+		{
+			return;
+		}
+
+		// Ignore verbose driver information.
 		if (msg.find("Buffer detailed info") != string::npos)
 		{
 			return;
@@ -3472,9 +3480,18 @@ namespace mpp
 		vector<uint64_t> currentTextureKeys;
 
 		Material* currentMaterial{ nullptr };
+		unique_ptr<GpuDebugScope> geometryScope;
+		int currentGeometryClass = -1;
 		for (auto const& renderCommand: renderCommands)
 		{
 			auto [key, cmd, meshInstance] = renderCommand;
+			int const geometryClass = meshInstance->sortTransparent() ? 1 : 0;
+			if (geometryClass != currentGeometryClass)
+			{
+				geometryScope.reset();
+				geometryScope = make_unique<GpuDebugScope>(geometryClass ? "Draw: Transparent Geometry" : "Draw: Opaque + Masked Geometry");
+				currentGeometryClass = geometryClass;
+			}
 			auto mesh = meshInstance->mwMesh;
 			auto instanceCount = meshInstance->mInstanceCount;
 			auto numPrimitives = mesh->getNumPrimitives();

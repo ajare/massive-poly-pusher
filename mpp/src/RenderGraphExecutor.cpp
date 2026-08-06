@@ -8,6 +8,7 @@
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/Caps.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/GpuDebugScope.h"
 #include "mpp/MppException.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTexture.h"
@@ -18,6 +19,17 @@ namespace mpp
 {
 	namespace
 	{
+		char const* graphPassTypeName(GraphPassType type)
+		{
+			switch (type)
+			{
+			case GraphPassType::Scene: return "Scene";
+			case GraphPassType::Fullscreen: return "Fullscreen";
+			case GraphPassType::Present: return "Present";
+			default: return "Unknown";
+			}
+		}
+
 		class GraphFramebufferTarget final : public RenderTarget
 		{
 			GLuint mFramebuffer{ 0 };
@@ -210,6 +222,7 @@ namespace mpp
 		for (auto const passHandle : compiled.passOrder)
 		{
 			auto const pass = graph.getPassInfo(passHandle);
+			GpuDebugScope passScope("RenderGraph Pass " + to_string(passHandle.id) + ": " + pass.name + " [" + graphPassTypeName(pass.type) + "]");
 			auto const explicitCallback = mCallbacks.find(passHandle.id);
 			RenderGraphPassCallback callback = explicitCallback == mCallbacks.end() ? RenderGraphPassCallback() : explicitCallback->second;
 			RenderGraphScenePass* scenePass = nullptr;
@@ -315,19 +328,28 @@ namespace mpp
 			{
 				for (auto const& view : mipViews) view.first->applyMipView(view.second);
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
-				clearPassOutputs(pass);
-				if (callback) callback(context);
-				else if (scenePass) scenePass->execute(context);
-				else
 				{
-					vector<pair<string, Texture*>> samplers;
-					for (auto const& binding : pass.samplerBindings)
-						samplers.push_back({ binding.sampler, dynamic_cast<Texture*>(context.getImage(binding.image).get()) });
-					mRenderSystem->renderGraphFullscreen(mExecutingTemplate->getProgram(passHandle), samplers, context.getParameters());
+					GpuDebugScope loadScope("Load/Clear Attachments");
+					clearPassOutputs(pass);
 				}
-				discardDontCareOutputs(pass);
-				for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, false);
-				for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, true);
+				{
+					GpuDebugScope executeScope("Execute: " + pass.name);
+					if (callback) callback(context);
+					else if (scenePass) scenePass->execute(context);
+					else
+					{
+						vector<pair<string, Texture*>> samplers;
+						for (auto const& binding : pass.samplerBindings)
+							samplers.push_back({ binding.sampler, dynamic_cast<Texture*>(context.getImage(binding.image).get()) });
+						mRenderSystem->renderGraphFullscreen(mExecutingTemplate->getProgram(passHandle), samplers, context.getParameters());
+					}
+				}
+				{
+					GpuDebugScope storeScope("Store/Resolve Attachments");
+					discardDontCareOutputs(pass);
+					for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, false);
+					for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, true);
+				}
 				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);

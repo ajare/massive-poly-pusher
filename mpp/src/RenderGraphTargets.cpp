@@ -142,7 +142,7 @@ namespace mpp
 			}
 			if (poolIndex == SIZE_MAX)
 			{
-				string const name = "RenderGraph_Image" + to_string(lifetime->image.id) + "_v" + to_string(lifetime->image.version);
+				string const name = "RenderGraph." + (lifetime->debugName.empty() ? "Image" + to_string(lifetime->image.id) : lifetime->debugName) + ".v" + to_string(lifetime->image.version);
 				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeOptions(lifetime->desc));
 				RenderTargetPtr resolvedTarget = writeTarget;
 				if (lifetime->desc.samples > 1)

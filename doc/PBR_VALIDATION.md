@@ -33,6 +33,10 @@ Use the controls to record at least one reference image for each tone-map operat
 
 Reference images are intentionally not committed until captured from a target graphics configuration.
 
+## RenderDoc event labels
+
+Captures expose a nested GPU event hierarchy for each pipeline. Look for `RenderPipeline: <name> [<mode>]`, then shadow/scene/bloom/tone-map/presentation or named `RenderGraph Pass <id>: <name> [<type>]` groups. Graph passes contain `Load/Clear Attachments`, `Execute`, and `Store/Resolve Attachments`; geometry draws are grouped as opaque/masked or transparent. Framebuffers, graph images, shaders, programs, textures, buffers, and pipeline scene targets carry semantic object labels where OpenGL supports KHR_debug (with EXT_debug_marker group fallback).
+
 ## Pipeline regression check
 
 1. Select `Default` in **Render Pipeline** and confirm the application continues rendering without errors.

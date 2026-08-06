@@ -8,6 +8,7 @@
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/RenderGraphImportRegistry.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/GpuDebugScope.h"
 #include "mpp/MppException.h"
 #include "mpp/Material.h"
 #include "mpp/Program.h"
@@ -18,6 +19,19 @@ namespace mpp
 {
 	namespace
 	{
+		char const* pipelineModeName(RenderPipelineMode mode)
+		{
+			switch (mode)
+			{
+			case RenderPipelineMode::LegacyForward: return "LegacyForward";
+			case RenderPipelineMode::PbrForward: return "PbrForward";
+			case RenderPipelineMode::GraphPbrForward: return "GraphPbrForward";
+			case RenderPipelineMode::XmlGraphPbrForward: return "XmlGraphPbrForward";
+			case RenderPipelineMode::GraphLegacyForward: return "GraphLegacyForward";
+			default: return "Unknown";
+			}
+		}
+
 		bool sceneProgramsSupportOutputs(vector<SceneModel3dPtr> const& models, size_t requiredCount)
 		{
 			for (auto const& sceneModel : models)
@@ -43,7 +57,8 @@ namespace mpp
 	{
 		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
 		// their RGBA8 target and existing presentation behaviour.
-		mPasses.push_back(make_shared<RenderPass>(renderSystem, mOptions.mode == RenderPipelineMode::PbrForward || mOptions.mode == RenderPipelineMode::GraphPbrForward || mOptions.mode == RenderPipelineMode::XmlGraphPbrForward));
+		bool const pbr = mOptions.mode == RenderPipelineMode::PbrForward || mOptions.mode == RenderPipelineMode::GraphPbrForward || mOptions.mode == RenderPipelineMode::XmlGraphPbrForward;
+		mPasses.push_back(make_shared<RenderPass>(renderSystem, pbr, mName + (pbr ? ".SceneHDR" : ".SceneLDR")));
 	}
 
 	RenderPipeline::~RenderPipeline()
@@ -160,6 +175,7 @@ namespace mpp
 
 	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
 	{
+		GpuDebugScope graphScope("Pipeline " + mName + ": RenderGraph");
 		if (!mGraphTargets)
 		{
 			mGraphTargets = make_unique<RenderGraphTargets>(mRenderSystem);
@@ -402,6 +418,7 @@ namespace mpp
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)
 	{
+		GpuDebugScope pipelineScope("RenderPipeline: " + mName + " [" + pipelineModeName(mOptions.mode) + "]");
 		// Set viewport
 		auto const& viewport = scene->getViewport();
 		mRenderSystem->setViewport(viewport.x, viewport.y, (size_t)viewport.width, (size_t)viewport.height);
@@ -426,6 +443,7 @@ namespace mpp
 		bool const graphForward = graphPbr || graphLegacy;
 		if (!graphForward && !mOptions.shadowDomain.empty())
 		{
+			GpuDebugScope shadowScope("Pass: ShadowDomain [" + mOptions.shadowDomain + "]");
 			mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
 		}
 		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
@@ -452,8 +470,10 @@ namespace mpp
 		}
 		else
 		{
-			for (auto const& pass : mPasses)
+			for (size_t passIndex = 0; passIndex < mPasses.size(); ++passIndex)
 			{
+				auto const& pass = mPasses[passIndex];
+				GpuDebugScope sceneScope("Pass: Scene " + to_string(passIndex) + (mOptions.mode == RenderPipelineMode::PbrForward ? " [HDR PBR]" : " [LDR Legacy]"));
 				// Start pass
 				pass->bindRenderTarget();
 
@@ -507,21 +527,34 @@ namespace mpp
 			ensureBloomTargets(sceneTexture->getWidth(), sceneTexture->getHeight());
 			if (mOptions.bloom.enabled)
 			{
-				mRenderSystem->setRenderTarget(mBloomExtractTarget);
-				mRenderSystem->renderBloomExtract(sceneTexture, mOptions.bloom.threshold);
+				GpuDebugScope bloomScope(string("Post: Bloom [") + (mOptions.mode == RenderPipelineMode::PbrForward ? "HDR" : "LDR") + "]");
+				{
+					GpuDebugScope extractScope("Bloom: Extract");
+					mRenderSystem->setRenderTarget(mBloomExtractTarget);
+					mRenderSystem->renderBloomExtract(sceneTexture, mOptions.bloom.threshold);
+				}
 
 				Texture* blurredTexture = static_cast<RenderTexture*>(mBloomExtractTarget.get());
 				for (uint32_t pass = 0; pass < mOptions.bloom.blurPasses; ++pass)
 				{
-					mRenderSystem->setRenderTarget(mBloomPingTarget);
-					mRenderSystem->renderBloomBlur(blurredTexture, glm::vec2(1.0f, 0.0f));
-					mRenderSystem->setRenderTarget(mBloomPongTarget);
-					mRenderSystem->renderBloomBlur(static_cast<RenderTexture*>(mBloomPingTarget.get()), glm::vec2(0.0f, 1.0f));
+					{
+						GpuDebugScope blurScope("Bloom: Blur Horizontal " + to_string(pass));
+						mRenderSystem->setRenderTarget(mBloomPingTarget);
+						mRenderSystem->renderBloomBlur(blurredTexture, glm::vec2(1.0f, 0.0f));
+					}
+					{
+						GpuDebugScope blurScope("Bloom: Blur Vertical " + to_string(pass));
+						mRenderSystem->setRenderTarget(mBloomPongTarget);
+						mRenderSystem->renderBloomBlur(static_cast<RenderTexture*>(mBloomPingTarget.get()), glm::vec2(0.0f, 1.0f));
+					}
 					blurredTexture = static_cast<RenderTexture*>(mBloomPongTarget.get());
 				}
 
-				mRenderSystem->setRenderTarget(mBloomCompositeTarget);
-				mRenderSystem->renderBloomCombine(sceneTexture, blurredTexture, mOptions.bloom.intensity);
+				{
+					GpuDebugScope compositeScope("Bloom: Composite");
+					mRenderSystem->setRenderTarget(mBloomCompositeTarget);
+					mRenderSystem->renderBloomCombine(sceneTexture, blurredTexture, mOptions.bloom.intensity);
+				}
 				presentationTexture = static_cast<RenderTexture*>(mBloomCompositeTarget.get());
 			}
 
@@ -532,10 +565,12 @@ namespace mpp
 
 			if (mOptions.mode == RenderPipelineMode::PbrForward)
 			{
+				GpuDebugScope presentationScope("Post: Tone Map + Presentation [" + string(mOptions.toneMapOperator == PbrToneMapOperator::Aces ? "ACES" : "Reinhard") + "]");
 				mRenderSystem->renderToneMappedFullscreenQuad(presentationTexture, mOptions.exposure, mOptions.toneMapOperator == PbrToneMapOperator::Aces);
 			}
 			else
 			{
+				GpuDebugScope presentationScope("Post: Presentation [LDR]");
 				mRenderSystem->renderFullscreenQuad(presentationTexture, mpp::BlendMode::One, mpp::BlendMode::Zero);
 			}
 		}
@@ -548,6 +583,7 @@ namespace mpp
 		// 2d models
 		if (scene->show2dModels())
 		{
+			GpuDebugScope overlayScope("Pass: 2D Overlay");
 			auto orderedModels = scene->get2dModelsInView();
 
 			// Sort models.
