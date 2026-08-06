@@ -76,6 +76,19 @@ namespace mpp
 						}
 					}
 				}
+				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
+				{
+					static map<string, string> const samplers = {
+						{ "BaseColourMap", "PBR_BASE_COLOUR_MAP" }, { "MetallicRoughnessMap", "PBR_METALLIC_ROUGHNESS_MAP" },
+						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" }
+					};
+					if (entry.second.hasEntry("Resource"))
+					{
+						auto const& sampler = samplers.at(entry.first);
+						auto ftStream = new FileTextureStream(getResourceMgr(), filepath, entry.second.getEntry("Resource"), mRelativisePaths);
+						addChild("Textures/" + sampler, ResourceStreamPtr(ftStream));
+					}
+				}
 				else if (entry.first == "Textures")
 				{
 					int textureId = 0;
@@ -325,7 +338,7 @@ namespace mpp
 						THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 					}
 				}
-				else if (entry.first == "Pbr")
+				else if (entry.first == "Pbr" || entry.first == "Surface")
 				{
 					auto& pbr = qs.spec.pbr;
 					pbr.enabled = true;
@@ -374,6 +387,20 @@ namespace mpp
 					qs.spec.uniforms.setUniform("PBR_ALPHA_MODE", (int32_t)pbr.alphaMode);
 					qs.spec.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
 					qs.spec.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
+				}
+				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
+				{
+					static map<string, string> const samplers = {
+						{ "BaseColourMap", "PBR_BASE_COLOUR_MAP" }, { "MetallicRoughnessMap", "PBR_METALLIC_ROUGHNESS_MAP" },
+						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" }
+					};
+					PbrMaterialSpecification::TextureOptions textureOptions;
+					textureOptions.resourceExists = true;
+					textureOptions.sampler = samplers.at(entry.first);
+					if (entry.second.hasEntry("Resource")) { textureOptions.isChild = true; textureOptions.existingResource = "Textures/" + textureOptions.sampler; }
+					else if (entry.second.hasEntry("Ref")) { textureOptions.isChild = false; textureOptions.existingResource = entry.second.getEntry("Ref").getValue(); }
+					else THROW_MPP_RESOURCE_PARSERS("PbrMaterial semantic map requires Resource or Ref.", __LINE__, __FILE__, __func__);
+					qs.spec.textures.push_back(textureOptions);
 				}
 				else if (entry.first == "Textures")
 				{
