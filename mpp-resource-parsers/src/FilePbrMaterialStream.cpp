@@ -1,3 +1,6 @@
+#include <cmath>
+#include <limits>
+
 #include "utils/FileSystem.h"
 
 #include "mpp/DefaultShaders.h"
@@ -385,9 +388,19 @@ namespace mpp
 						}
 					}
 
-					// Preserve PBR values through the legacy material stream format.
-					// Unknown uniforms are harmless to legacy shaders and therefore keep
-					// old Release builds able to load regenerated models.
+					auto requireRange = [&](char const* field, float value, float minimum, float maximum)
+					{
+						if (!std::isfinite(value) || value < minimum || value > maximum)
+							THROW_MPP_RESOURCE_PARSERS(STR_FORMAT("Pbr {} must be in [{}, {}].", field, minimum, maximum), __LINE__, __FILE__, __func__);
+					};
+					for (int component = 0; component < 4; ++component) requireRange("baseColourFactor", pbr.baseColourFactor[component], 0.0f, 1.0f);
+					requireRange("metallicFactor", pbr.metallicFactor, 0.0f, 1.0f);
+					requireRange("roughnessFactor", pbr.roughnessFactor, 0.0f, 1.0f);
+					for (int component = 0; component < 3; ++component) requireRange("emissiveFactor", pbr.emissiveFactor[component], 0.0f, std::numeric_limits<float>::max());
+					requireRange("normalScale", pbr.normalScale, 0.0f, std::numeric_limits<float>::max());
+					requireRange("occlusionStrength", pbr.occlusionStrength, 0.0f, 1.0f);
+					requireRange("alphaCutoff", pbr.alphaCutoff, 0.0f, 1.0f);
+
 					qs.spec.uniforms.setUniform("PBR_ENABLED", (int32_t)1);
 					qs.spec.uniforms.setUniform("PBR_BASE_COLOUR_FACTOR", pbr.baseColourFactor);
 					qs.spec.uniforms.setUniform("PBR_METALLIC_FACTOR", pbr.metallicFactor);

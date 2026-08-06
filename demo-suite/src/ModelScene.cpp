@@ -43,6 +43,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/FileTextureStream.h>
 #include <mpp/resource-parsers/FileProgramStream.h>
 #include <mpp/resource-parsers/FileMaterialStream.h>
+#include <mpp/resource-parsers/MaterialResourceTests.h>
 #include <mpp/resource-parsers/FileStringStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 
@@ -1021,6 +1022,13 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto graphDefaultOptions = defaultOptions;
 	graphDefaultOptions.mode = mpp::RenderPipelineMode::GraphLegacyForward;
 	renderSystem->getOrCreateRenderPipeline("GraphDefault", graphDefaultOptions);
+
+	std::string materialTestFailure;
+	if (!mpp::resource_parsers::runMaterialResourceTests(resourceMgr, &materialTestFailure))
+	{
+		throw std::runtime_error("Material resource tests failed: " + materialTestFailure);
+	}
+	renderSystem->infoMessage("Material XML dispatch/binary round-trip/quality/legacy migration tests passed.");
 
 	std::string graphGpuTestFailure;
 	if (!mpp::runRenderGraphGpuTests(renderSystem, &graphGpuTestFailure))

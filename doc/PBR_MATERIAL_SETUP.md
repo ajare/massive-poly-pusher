@@ -80,10 +80,12 @@ The PBR vertex program must consume `TANGENT` so vertex attribute locations rema
 
 ## 4. Author the PBR surface
 
-Place a `Pbr` block inside the material `Resource` in the model specification. All factors have defaults, but writing them explicitly makes the asset self-documenting.
+Place a `Surface` block inside a typed `PbrMaterial` in the model specification. All factors have defaults, but writing them explicitly makes the asset self-documenting.
 
 ```xml
-<Pbr>
+<PbrMaterial>
+  <name>Example.Pbr</name>
+  <Surface>
     <baseColourFactor>1.0 1.0 1.0 1.0</baseColourFactor>
     <metallicFactor>0.0</metallicFactor>
     <roughnessFactor>0.75</roughnessFactor>
@@ -93,14 +95,15 @@ Place a `Pbr` block inside the material `Resource` in the model specification. A
     <alphaMode>OPAQUE</alphaMode>
     <alphaCutoff>0.5</alphaCutoff>
     <doubleSided>false</doubleSided>
-</Pbr>
+  </Surface>
+</PbrMaterial>
 ```
 
 Supported alpha modes are `OPAQUE`, `MASK`, and `BLEND`. `MASK` discards fragments below `alphaCutoff`; `doubleSided` flips the shading normal for back faces. For an opaque material use an alpha factor of `1.0`.
 
 ## 5. Bind material textures
 
-Textures are named by shader sampler, not by positional slot. Add each binding under `Textures`. A child `Resource` loads a file relative to the model specification. A `Ref` uses a resource declared by the application.
+Surface textures use fixed semantic elements inside `PbrMaterial`. A child `Resource` loads a file relative to the model specification. A `Ref` uses a resource declared by the application.
 
 ### Surface slots
 
@@ -115,34 +118,15 @@ Textures are named by shader sampler, not by positional slot. Add each binding u
 Example:
 
 ```xml
-<Textures>
-    <Texture>
-        <Variable>PBR_BASE_COLOUR_MAP</Variable>
-        <Resource>
-            <target>2D</target>
-            <filename>albedo.png</filename>
-            <colourSpace>SRGB</colourSpace>
-            <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
-            <magFilter>LINEAR</magFilter>
-        </Resource>
-    </Texture>
-    <Texture>
-        <Variable>PBR_METALLIC_ROUGHNESS_MAP</Variable>
-        <Resource>
-            <target>2D</target>
-            <filename>metallic_roughness.png</filename>
-            <colourSpace>LINEAR</colourSpace>
-        </Resource>
-    </Texture>
-    <Texture>
-        <Variable>PBR_NORMAL_MAP</Variable>
-        <Resource>
-            <target>2D</target>
-            <filename>normal.png</filename>
-            <colourSpace>LINEAR</colourSpace>
-        </Resource>
-    </Texture>
-</Textures>
+<BaseColourMap><Resource>
+  <target>2D</target><filename>albedo.png</filename><colourSpace>SRGB</colourSpace>
+</Resource></BaseColourMap>
+<MetallicRoughnessMap><Resource>
+  <target>2D</target><filename>metallic_roughness.png</filename><colourSpace>LINEAR</colourSpace>
+</Resource></MetallicRoughnessMap>
+<NormalMap><Resource>
+  <target>2D</target><filename>normal.png</filename><colourSpace>LINEAR</colourSpace>
+</Resource></NormalMap>
 ```
 
 The `baseColourFactor`, `metallicFactor`, `roughnessFactor`, `emissiveFactor`, `normalScale`, and `occlusionStrength` values multiply or scale the corresponding inputs. Therefore a factor-only material is valid: omit every surface map and rely on the neutral fallback maps.
@@ -155,24 +139,7 @@ The `baseColourFactor`, `metallicFactor`, `roughnessFactor`, `emissiveFactor`, `
 | `PBR_PREFILTERED_SPECULAR_MAP` | cube map with roughness mips | specular IBL |
 | `PBR_BRDF_LUT` | 2D | split-sum BRDF integration |
 
-Bind application resources with `Ref`:
-
-```xml
-<Texture>
-    <Variable>PBR_IRRADIANCE_MAP</Variable>
-    <Ref>MyEnvironment.Irradiance</Ref>
-</Texture>
-<Texture>
-    <Variable>PBR_PREFILTERED_SPECULAR_MAP</Variable>
-    <Ref>MyEnvironment.Prefiltered</Ref>
-</Texture>
-<Texture>
-    <Variable>PBR_BRDF_LUT</Variable>
-    <Ref>MyEnvironment.BrdfLut</Ref>
-</Texture>
-```
-
-Use linear data for all three environment inputs. The current renderer accepts precomputed resources; it does not yet convert an HDR panorama into irradiance, prefiltered-specular, and BRDF assets.
+Environment resources are pipeline-owned through `PbrEnvironment`, not material texture declarations. Set its irradiance, prefiltered-specular, and BRDF-LUT resources on `RenderPipelineOptions::environment`. Missing environments use neutral engine fallbacks and issue one warning. Use linear data for all three inputs. The renderer accepts precomputed resources; it does not yet convert an HDR panorama into these assets.
 
 ## 6. Select PBR shaders
 
