@@ -314,7 +314,10 @@ All repository materials, ModelSpecs, converted models, tests, and DemoSuite ass
    - [x] Built MassivePolyPusher, MppResourceParsers, and DemoSuite successfully.
    - [ ] The old generic ModelSpec wrapper remains until Phase 4 supplies typed ModelSpec data. The existing untyped binary `Material` wire tag is mechanically decoded as `BasicMaterial` so current models remain loadable; Phase 4 replaces this stopgap with the documented warning-producing typed compatibility converter.
 
-2. **PBR resource and built-in program** — Planned
+2. **PBR resource and built-in program** — In progress
+   - [x] Added independent `PbrMaterial`, specification, stream, programmatic stream, file parser, and `ResourceManager` factory foundations.
+   - [x] Restored explicit PBR surface state, PBR neutral-map binding behavior, alpha classification, and semantic programmatic map convenience setters to the PBR-only resource path.
+   - [ ] Add the engine-owned built-in PBR shader/program cache, strict core reflection/range validation, semantic XML map schema, and pipeline migration. These are required before this phase is complete.
    - Add PBR spec/stream/resource/parser/programmatic types.
    - Add engine-owned cached PBR shader/program creation by mesh specification.
    - Add core semantic maps, neutral resources, ranges, reflection validation, and alpha classification.
