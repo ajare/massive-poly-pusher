@@ -1,6 +1,7 @@
 #include "mpp/RenderPass.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Material.h"
+#include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
 
 using namespace std;
@@ -68,9 +69,13 @@ namespace mpp
 			for (auto meshInstance : instance->getMeshInstances())
 			{
 				auto material = static_cast<Material*>(meshInstance->getMaterial().get());
-				if (!mPbrForward && material->getShadingModel() == Material::ShadingModel::Basic)
+				if (!mPbrForward && material->getShadingModel() == Material::ShadingModel::Pbr)
 				{
-					continue;
+					THROW_MPP("PbrMaterial requires a PBR forward pipeline.", __LINE__, __FILE__, __func__);
+				}
+				if (!mPbrForward)
+				{
+					continue; // Preserve legacy BasicMaterial blend behaviour in Default.
 				}
 				bool const transparent = material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent();
 				meshInstance->blend(transparent);
