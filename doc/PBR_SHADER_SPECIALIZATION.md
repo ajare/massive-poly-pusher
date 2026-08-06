@@ -160,4 +160,4 @@ When investigating a variant:
 4. Confirm materials with equal masks and mesh layouts share the same program object.
 5. Treat a missing/unexpected-interface error as an authoring error; the engine intentionally does not fall back.
 
-DemoSuite startup compiles minimal, full mask/double-sided, and blend built-in variants; verifies reflection and cache reuse across different nonzero values; validates enabled-to-zero and disabled-feature instance behavior; checks missing/unexpected referenced custom contracts; loads the specialized custom statue; and then runs existing material and render-graph GPU suites.
+DemoSuite startup compiles minimal, full mask/double-sided, and blend built-in variants; verifies reflection and cache reuse across different nonzero values; validates enabled-to-zero and disabled-feature instance behavior; checks missing/unexpected referenced custom contracts plus wrong uniform-type and sampler-target source-owned custom contracts; loads the specialized custom statue; and then runs existing material and render-graph GPU suites.

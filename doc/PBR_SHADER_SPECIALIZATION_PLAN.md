@@ -166,3 +166,8 @@ Program-parser sampler metadata must represent active linked samplers so preproc
    - [x] Added the normative specialization guide with semantics, interface table, define contract, source ownership, instance restrictions, caching, migration, diagnostics, RenderDoc, and examples.
    - [x] Updated PBR setup, authoring, and validation guides.
    - [x] Documented temporary legacy compatibility and adoption/removal guidance.
+6. **Validation hardening** — **Complete**
+   - [x] Added real-context source-owned custom shader failures for an enabled canonical uniform with the wrong reflected GLSL type.
+   - [x] Added real-context source-owned custom shader failures for an enabled canonical sampler with the wrong reflected texture target.
+   - [x] Kept missing-enabled and unexpected-specialized-out referenced-program checks, completing all four exact custom-contract failure classes from the acceptance suite.
+   - [x] Re-ran specialized statue startup, material migration tests, and the render-graph GPU suite.

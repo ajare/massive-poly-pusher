@@ -35,7 +35,9 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticBasicMaterialStream.h>
 #include <mpp/ProgrammaticPbrMaterialStream.h>
+#include <mpp/ProgrammaticStringStream.h>
 #include <mpp/PbrMaterial.h>
+#include <mpp/PbrShaders.h>
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/ProgrammaticSamplerStream.h>
@@ -1026,7 +1028,40 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	};
 	expectContractFailure("PBR.Specialization.MissingContract", fullSurface, true, minimalPbr->getProgram()->getName(), "missing required uniform");
 	expectContractFailure("PBR.Specialization.UnexpectedContract", minimalSurface, false, fullPbr->getProgram()->getName(), "specialized-out uniform");
-	renderSystem->infoMessage("Built-in PBR minimal/full reflection, cache, custom-contract, and instance-boundary tests passed.");
+	auto replaceAll = [](std::string source, std::string const& from, std::string const& to)
+	{
+		for (size_t offset = 0; (offset = source.find(from, offset)) != std::string::npos; offset += to.size()) source.replace(offset, from.size(), to);
+		return source;
+	};
+	auto expectSourceContractFailure = [&](std::string const& name, std::string const& fragmentSource, std::string const& expected)
+	{
+		auto sourceStream = new mpp::ProgrammaticStringStream(resourceMgr);
+		sourceStream->setString(fragmentSource);
+		auto sourceResource = resourceMgr->declareResource(name + ".Source", mpp::ResourceStreamPtr(sourceStream)).first;
+		addResource(sourceResource, true);
+		auto stream = new mpp::ProgrammaticPbrMaterialStream(resourceMgr);
+		stream->setMeshSpecification(statueProgram->getMeshSpecification());
+		stream->setProgramFragmentShaderResource(name + ".Source");
+		stream->setSurface(fullSurface);
+		stream->setBaseColourMap("__mpp_tex_pbr_white__");
+		stream->setMetallicRoughnessMap("__mpp_tex_pbr_metallic_roughness__");
+		stream->setNormalMap("__mpp_tex_pbr_normal__");
+		stream->setOcclusionMap("__mpp_tex_pbr_white__");
+		stream->setEmissiveMap("__mpp_tex_pbr_white__");
+		auto resource = resourceMgr->declareResource(name, mpp::ResourceStreamPtr(stream)).first;
+		try { resource->load(); }
+		catch (std::exception const& exception) { if (std::string(exception.what()).find(expected) != std::string::npos) return; throw; }
+		throw std::runtime_error("Expected PBR source contract failure was accepted: " + name);
+	};
+	std::string wrongUniformType = mpp::BuiltInPbrFragmentShader;
+	wrongUniformType = replaceAll(wrongUniformType, "@@Uniform(float PBR_METALLIC_FACTOR);", "@@Uniform(int PBR_METALLIC_FACTOR);");
+	wrongUniformType = replaceAll(wrongUniformType, "@Uniform(PBR_METALLIC_FACTOR)", "float(@Uniform(PBR_METALLIC_FACTOR))");
+	expectSourceContractFailure("PBR.Specialization.WrongUniformType", wrongUniformType, "wrong GLSL type");
+	std::string wrongSamplerTarget = mpp::BuiltInPbrFragmentShader;
+	wrongSamplerTarget = replaceAll(wrongSamplerTarget, "@@Texture(sampler2D PBR_NORMAL_MAP);", "@@Texture(samplerCube PBR_NORMAL_MAP);");
+	wrongSamplerTarget = replaceAll(wrongSamplerTarget, "texture(@Texture(PBR_NORMAL_MAP), @In(TEXCOORDS))", "texture(@Texture(PBR_NORMAL_MAP), vec3(@In(TEXCOORDS), 1.0))");
+	expectSourceContractFailure("PBR.Specialization.WrongSamplerTarget", wrongSamplerTarget, "wrong sampler type");
+	renderSystem->infoMessage("Built-in PBR reflection/cache, exact custom contracts, and instance-boundary tests passed.");
 
 	// The old preview material mixed PBR data into the generic material path.
 	// Phase 2 replaces it with a dedicated PbrMaterial resource.
