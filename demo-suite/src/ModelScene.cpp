@@ -1186,6 +1186,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		throw std::runtime_error("Standalone RenderGraph migration failed.");
 	auto pipelineDocument = mpp::resource_parsers::PbrPipelineParser::fromFile(options.resourceLocation + "FullPbrPipeline.xml");
 	if (pipelineDocument.validate().hasErrors()) throw std::runtime_error("Native PbrPipeline document validation failed.");
+	auto localizedPipeline=pipelineDocument;if(!localizedPipeline.makeLocalCopy("DemoPreview::LinearClamp","Preview.CopiedLinearClamp")||localizedPipeline.localResources.size()!=pipelineDocument.localResources.size()+1||localizedPipeline.localResources.back().definition.getEntry("name").getValue()!="Preview.CopiedLinearClamp")throw std::runtime_error("PbrPipeline Make Local Copy failed.");
 	auto pipelineRoundTrip = std::filesystem::temp_directory_path() / "mpp-pipeline-roundtrip.xml";
 	mpp::resource_parsers::PbrPipelineSerializer::toFile(pipelineDocument, pipelineRoundTrip.string());
 	auto roundTrippedPipeline = mpp::resource_parsers::PbrPipelineParser::fromFile(pipelineRoundTrip.string());

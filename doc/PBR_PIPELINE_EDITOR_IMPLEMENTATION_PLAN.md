@@ -261,7 +261,9 @@ The first implementation does not include:
   - [x] Parse and serialize ordered library paths.
   - [~] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
     - [x] Resolve strict versioned `ResourceLibrary` XML relative to its pipeline, preserve ordered references, qualify resources as `Library::Resource`, diagnose duplicate qualified names, enforce read-only state, and instantiate external child streams.
-    - [ ] Implement editor `Make Local Copy`, reference rewriting, and complete library resource schemas/fixtures.
+    - [~] Implement editor `Make Local Copy`, reference rewriting, and complete library resource schemas/fixtures.
+      - [x] Clone read-only external payloads into uniquely named local resources, rewrite direct pipeline references, expose external/local hierarchy entries, and provide the inspector command.
+      - [ ] Complete nested resource-reference rewriting and full per-kind library fixtures.
 - [x] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
 - [~] Complete document validation.
   - [x] Basic version/name/graph/order/library-list/binding validation, relative-path resolution, missing-file diagnostics, and absolute-path portability warnings.
@@ -324,7 +326,9 @@ The first implementation does not include:
 - [~] Add pipeline/scene hierarchy selection and structural commands.
   - [x] Display and select ordered passes; display preview-scene models.
   - [x] Toggle saved pass enable state.
-  - [ ] Select all pipeline/scene resource categories and perform add/remove/duplicate operations.
+  - [~] Select all pipeline/scene resource categories and perform add/remove/duplicate operations.
+    - [x] Select local resources and qualified read-only external resources; clone external resources locally.
+    - [ ] Add/remove/duplicate all pass, image, import, resource, model, light, and binding categories.
 - [~] Add metadata-generated pass inspector.
   - [x] Show pass identity, factory, input/output counts, enabled state, and reflected scalar/vector parameters.
   - [ ] Generate required/optional slots, ranges, enums, UI hints, format constraints, fallbacks, material slots, and program controls from metadata.
