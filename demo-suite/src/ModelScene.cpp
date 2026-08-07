@@ -1198,6 +1198,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	pipelineResource->load();
 	pipelineResource->create();
 	if (pipelineResource->getType() != "PbrPipeline") throw std::runtime_error("PbrPipeline resource stream created the wrong resource type.");
+	auto localSampler=resourceMgr->getResource("PBR.EditorPipelineTest/Preview.LocalSampler");if(!localSampler)throw std::runtime_error("PbrPipeline local sampler child was not instantiated.");if(localSampler->getType()!="Sampler")throw std::runtime_error("PbrPipeline local sampler child has type '"+localSampler->getType()+"'.");if(!localSampler->isLoaded())throw std::runtime_error("PbrPipeline local sampler child was not loaded.");
 	renderSystem->infoMessage("Native PbrPipeline XML/resource parse/serialize/semantic validation passed.");
 	auto sceneDocument = mpp::resource_parsers::SceneParser::fromFile(options.resourceLocation + pipelineDocument.previewScene);
 	if (sceneDocument.validate().hasErrors()) throw std::runtime_error("Native Scene document validation failed.");

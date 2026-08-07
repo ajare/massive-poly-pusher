@@ -23,7 +23,7 @@ namespace mpp
 	 *
 	 */
 	Sampler::Sampler(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
-		: Resource(name, "Texture", renderSystem, resourceMgr, resourceStream)
+		: Resource(name, "Sampler", renderSystem, resourceMgr, resourceStream)
 	{
 	}
 

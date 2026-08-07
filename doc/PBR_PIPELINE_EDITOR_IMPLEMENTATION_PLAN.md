@@ -248,7 +248,9 @@ The first implementation does not include:
 - [~] Complete the version-1 schema and lossless canonical serializer.
   - [~] Document-local PBR materials, programs, textures, and samplers.
     - [x] Ordered typed local-resource DTOs and lossless concrete-resource XML payload parsing/serialization for all four resource kinds, with name/kind validation and round-trip coverage.
-    - [ ] Complete concrete-schema semantic validation, editor DTO controls, and runtime stream instantiation.
+    - [~] Complete concrete-schema semantic validation, editor DTO controls, and runtime stream instantiation.
+      - [x] Instantiate local PBR material/program/texture/sampler definitions through their existing concrete file streams as pipeline child resources; cover a loaded local sampler at startup.
+      - [ ] Run complete concrete-schema validation without GPU creation and expose typed editor controls.
   - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
   - [x] Preview instance-override model/binding targets and typed scalar/vector values with strict parsing, canonical serialization, semantic validation, and round-trip coverage.
   - [~] Explicit extension-payload preservation and strict unknown-core-field rejection.
@@ -269,7 +271,9 @@ The first implementation does not include:
 - [~] Complete runtime instantiation.
   - [x] Resource template/stream creation.
   - [x] Editor-side valid graph generation swap that retains the previous pipeline when validation fails.
-  - [ ] Resolve document-local/external resources, programs, imports, environments, material bindings, and overrides.
+  - [~] Resolve document-local/external resources, programs, imports, environments, material bindings, and overrides.
+    - [x] Resolve document-local typed definitions into pipeline-owned child resources with deterministic qualified runtime names.
+    - [ ] Resolve external libraries, graph imports, environments, material bindings, and overrides into a complete runtime workspace.
   - [ ] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
 
 **Exit:** not met. Valid complete documents must round-trip without data loss, invalid fixtures must diagnose precisely, legacy RenderGraph imports must preserve topology, and complete runtime generations must swap transactionally.
