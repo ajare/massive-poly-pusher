@@ -39,6 +39,8 @@ namespace mpp
 		Depth32fStencil8
 	};
 
+	_MPPAPI char const* graphImageFormatName(GraphImageFormat format);
+
 	enum class GraphImageUsage : uint32_t
 	{
 		None = 0,

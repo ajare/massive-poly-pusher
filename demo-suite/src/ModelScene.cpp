@@ -1188,7 +1188,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mpp::resource_parsers::PbrPipelineSerializer::toFile(pipelineDocument, pipelineRoundTrip.string());
 	auto roundTrippedPipeline = mpp::resource_parsers::PbrPipelineParser::fromFile(pipelineRoundTrip.string());
 	std::filesystem::remove(pipelineRoundTrip);
-	if (roundTrippedPipeline.name != pipelineDocument.name || !roundTrippedPipeline.graph || roundTrippedPipeline.graph->getPassCount() != pipelineDocument.graph->getPassCount())
+	if (roundTrippedPipeline.name != pipelineDocument.name || roundTrippedPipeline.imports.size() != pipelineDocument.imports.size() || !roundTrippedPipeline.graph || roundTrippedPipeline.graph->getPassCount() != pipelineDocument.graph->getPassCount())
 		throw std::runtime_error("Native PbrPipeline XML round trip failed.");
 	auto pipelineResource = resourceMgr->declareResource("PBR.EditorPipelineTest", std::make_shared<mpp::resource_parsers::FilePbrPipelineStream>(resourceMgr, options.resourceLocation + "FullPbrPipeline.xml")).first;
 	pipelineResource->load();
@@ -1201,7 +1201,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mpp::resource_parsers::SceneSerializer::toFile(sceneDocument, sceneRoundTrip.string());
 	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());
 	std::filesystem::remove(sceneRoundTrip);
-	if (roundTrippedScene.models.size() != sceneDocument.models.size() || roundTrippedScene.lights.size() != sceneDocument.lights.size()) throw std::runtime_error("Native Scene XML round trip failed.");
+	if (roundTrippedScene.models.size() != sceneDocument.models.size() || roundTrippedScene.lights.size() != sceneDocument.lights.size() || roundTrippedScene.models.front().source != sceneDocument.models.front().source || roundTrippedScene.lights.back().type != sceneDocument.lights.back().type) throw std::runtime_error("Native Scene XML round trip failed.");
 	renderSystem->infoMessage("Native Scene XML parse/serialize/semantic validation passed.");
 
 	std::string graphGpuTestFailure;

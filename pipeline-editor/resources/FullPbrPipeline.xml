@@ -3,6 +3,10 @@
   <name>DemoSuite Full PBR</name>
   <PreviewScene><file>DefaultPbrPreview.scene.xml</file></PreviewScene>
   <ResourceLibraries><Library><file>DefaultResources.xml</file></Library></ResourceLibraries>
+  <Imports>
+    <Import><id>shadowDepth</id><semantic>shadowDepth</semantic><format>DEPTH24</format><usage>depthAttachment,sampled</usage><required>true</required></Import>
+    <Import><id>screen</id><semantic>presentation</semantic><format>RGBA8</format><usage>colourAttachment,presentation</usage><required>true</required></Import>
+  </Imports>
   <Environment><binding>Preview.Environment</binding><irradiance>PBR.Preview.Environment</irradiance><prefilteredSpecular>PBR.Preview.Environment</prefilteredSpecular><brdfLut>PBR.Preview.BrdfLut</brdfLut><background>PBR.Preview.Environment</background></Environment>
   <PreviewBindings><Material><binding>Preview.Main</binding><resource>Statue/PbrStatueMaterial</resource></Material></PreviewBindings>
 <RenderGraph>
