@@ -30,7 +30,7 @@
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
 - [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
-- [~] Phase 6 shell is operational with native dialogs, recent workspace, recovery autosave/restore, template creation, CLI validation, deployment, and initial default docking; lifecycle prompts, configurable options, and layout-reset behavior remain.
+- [~] Phase 6 shell is operational with native dialogs, pipeline/scene save lifecycle, dirty prompts, recent workspace, recovery autosave/restore, template creation, pipeline-plus-scene CLI validation, deployment, and resettable docking; configurable options and remaining lifecycle polish remain.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [ ] Phase 7 is in progress with hierarchy/diagnostic/allocation/pass-enable/uniform controls; comprehensive resource inspectors and structural commands remain.
 - [ ] Phase 8 is in progress: XML graphs execute in the editor and rebuild transactionally, but offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
@@ -292,7 +292,7 @@ The first implementation does not include:
 - [x] Enable ImGui docking only in PipelineEditor and create an initial left hierarchy/lower tabs/right viewport layout.
 - [x] Add menu bar, toolbar, status bar, hierarchy, inspector, diagnostics, allocations, and viewport windows.
 - [x] Add native Windows Open/Save dialogs, one open workspace, recent-file reopening, recovery autosave, and recovery offer.
-- [x] Add pipeline-path startup, `--validate`, and `--warnings-as-errors` CLI modes.
+- [x] Add pipeline-path startup and deterministic pipeline-plus-referenced-scene `--validate` / `--warnings-as-errors` CLI modes with emitted diagnostics.
 - [ ] Add real configurable program options/preferences instead of hard-coded window and recovery values.
 - [~] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
   - [x] Pipeline New/Open/Exit discard prompts and atomic pipeline Save.
@@ -301,7 +301,7 @@ The first implementation does not include:
 - [x] Add `Window -> Reset Layout` and preserve saved-layout restoration unless reset is requested.
 - [ ] Add Release deployment/startup/CLI smoke validation.
 
-**Exit:** partially met. The application starts, opens/saves pipelines, and validates from CLI, but the complete document lifecycle and resettable/restored layout contract remain.
+**Exit:** partially met. The application starts, opens/saves pipeline and scene documents, validates both from CLI, and supports resettable/restored docking; configurable preferences and remaining lifecycle polish remain.
 
 ### Phase 7: Editor controllers and inspectors — In Progress
 
