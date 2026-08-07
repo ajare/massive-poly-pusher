@@ -48,7 +48,7 @@ namespace mpp
 	}
 	void SceneRuntime::clear()
 	{
-		clearResources(mScene,mResourceNames);mDiagnostics.clear();mModelTriangles.clear();mModelInstances.clear();mLights.clear();mEnvironmentBinding.clear();mUniqueTriangles=0;
+		mModelInstances.clear();clearResources(mScene,mResourceNames);mDiagnostics.clear();mModelTriangles.clear();mLights.clear();mEnvironmentBinding.clear();mUniqueTriangles=0;
 	}
 
 	bool SceneRuntime::rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings,std::map<std::string,UniformCollection> const& instanceOverrides,std::string const& expectedEnvironmentBinding)

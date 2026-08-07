@@ -48,6 +48,11 @@ public:
 		mTextureIdMap.erase((uint32_t)(uintptr_t)textureId);
 	}
 
+	void clearRegisteredTextures()
+	{
+		mTextureIdMap.clear();
+	}
+
 	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
 	{
 		bMin = glm::vec3(-1, -1, -1);

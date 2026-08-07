@@ -16,6 +16,7 @@ class WindowSDL : public Window
 public:
 
 	explicit WindowSDL(std::string title = "MassivePolyPusher");
+	~WindowSDL();
 
 	SDL_Window* getWindow();
 

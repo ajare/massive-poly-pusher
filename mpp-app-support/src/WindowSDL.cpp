@@ -7,8 +7,14 @@ using namespace std;
 
 WindowSDL::WindowSDL(string title) :
 	mWindow(nullptr)
+	, mContextGL(nullptr)
 	, mTitle(std::move(title))
 {
+}
+
+WindowSDL::~WindowSDL()
+{
+	destroy();
 }
 
 SDL_Window* WindowSDL::getWindow()
@@ -69,8 +75,8 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 
 void WindowSDL::destroy()
 {
-	SDL_GL_DeleteContext(mContextGL);
-	SDL_DestroyWindow(mWindow);
+	if (mContextGL) { SDL_GL_DeleteContext(mContextGL); mContextGL = nullptr; }
+	if (mWindow) { SDL_DestroyWindow(mWindow); mWindow = nullptr; }
 }
 	
 void WindowSDL::setFullscreen(bool fullscreen)
