@@ -33,7 +33,7 @@
 - [x] Phase 6 complete: standalone shell, native New/Open/Save As/Save All lifecycle, independent dirty prompts, atomic error-preserving saves, invalid-document confirmation, recent workspaces, pipeline/scene recovery, external-file conflict handling, configurable preferences, CLI validation, deployment, and resettable docking.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [x] Phase 7 complete: command-backed structural authoring, drag reorder, dependency ordering, metadata-generated controls, complete image/import/attachment/raster/resource/scene inspectors, reference cleanup, typed uniform arrays/matrices, instance overrides, and continuous-edit coalescing.
-- [~] Phase 8 now presents offscreen graph output with resolved materials, environments, lights, overrides, and directional shadows; supports orbit/pan/zoom/framing and camera saves; inspects produced image versions; and reports pass CPU/triangle statistics. Visualization resolves and GPU timings remain.
+- [x] Phase 8 complete: offscreen transactional preview, scene/camera interaction, produced-value and mip inspection, diagnostic resolves, colour/channel/alpha/depth/HDR visualization, exact scene/submission statistics, and asynchronous per-pass GPU timings.
 
 ## 1. Goal
 
@@ -364,36 +364,26 @@ The first implementation does not include:
 
 **Exit:** met. All authored hierarchy categories and core properties are reachable through command-backed controls; invalid structural edits remain diagnosable and undoable, while stable graph values and references survive valid moves and retargeting.
 
-### Phase 8: Live preview and viewport diagnostics — In Progress
+### Phase 8: Live preview and viewport diagnostics — Complete
 
-- [~] Execute loaded XML graphs in PipelineEditor.
-  - [x] Create graph resources and graph-backed preview pipeline generations.
-  - [x] Keep the current generation when validation blocks an explicit rebuild.
-  - [~] Resolve the complete Phase 4 pipeline document and populate the Phase 5 scene.
-    - [x] Populate the viewport through transactional `SceneRuntime`, authored camera settings, all preview primitives, and diagnosed neutral materials.
-    - [ ] Resolve complete pipeline materials/environment/overrides and successful `.mppmodel` assets.
-- [x] Add host-overridable graph imports, offscreen presentation render target, dynamic ImGui texture registration, dock-content resize handling, scene viewport/camera aspect updates, and vertically corrected viewport display.
-- [ ] Add continuously validated, debounced asynchronous build generations and stale-result rejection.
-- [~] Add last-known-valid behavior.
-  - [x] Explicit Apply/Rebuild only switches after basic document validation.
-  - [x] Stale-preview banner, compile/resource failure rollback, obsolete generation cleanup, and current/stale status reporting.
-- [x] Add viewport-hover orbit, pan, wheel zoom, hierarchy-selection framing, authored-view reset, and undoable `Save Current View` scene-camera authoring.
-- [~] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
-  - [x] Expose allocated graph image targets, select stable produced-value versions, dynamically register intermediate textures, and switch the viewport between presentation and selected images.
-  - [ ] Mip selection, non-sampleable/MSAA diagnostic resolves, and colour/channel/alpha/depth/HDR visualization shaders.
-- [~] Add preview statistics.
-  - [x] Rolling FPS, global triangle status, allocation bytes, lifetimes, and alias groups.
-  - [~] Submitted-triangle pass breakdown, unique scene triangles, CPU/GPU pass timings, viewport size, and status/tooltips.
-    - [x] Status displays known unique primitive triangles and reports excluded visible `.mppmodel` sources in a tooltip.
-    - [~] Submitted pass breakdown, loaded-model unique triangles, CPU/GPU pass timings, and viewport size.
-      - [x] Live dock-content viewport sizing drives graph presentation allocation and camera aspect.
-      - [~] Submitted pass breakdown, loaded-model unique triangles, and CPU/GPU pass timings.
-        - [x] Dedicated Statistics tab with live viewport dimensions, rolling frame time/FPS, per-pass CPU time, submitted triangles/fullscreen quads, and graph totals.
-        - [~] GPU pass timings and loaded-model unique triangle metadata.
-          - [x] Status uses exact runtime unique triangles, including loaded `.mppmodel` meshes and excluding placeholders.
-          - [ ] GPU pass timings.
+- [x] Execute complete loaded XML workspaces transactionally in PipelineEditor.
+  - [x] Resolve graph resources, imports, concrete pipeline materials, environment, overrides, successful `.mppmodel` assets, and diagnosed scene placeholders.
+  - [x] Keep the previous complete graph/pipeline/scene generation when validation or candidate rebuilding fails.
+- [x] Present graph output in the docked viewport.
+  - [x] Use a host-owned offscreen presentation import, dynamic ImGui texture registration, dock-content resize handling, camera aspect updates, and vertically corrected display.
+  - [x] Support orbit, pan, zoom, model framing, authored-view reset, and undoable `Save Current View`.
+- [x] Inspect intermediate graph images.
+  - [x] Select stable produced-value versions and mip levels against the active last-known-valid generation.
+  - [x] Resolve inspected images into a display-safe colour target, including MSAA and attachment-only graph images.
+  - [x] Add colour, individual RGB channel, alpha, luminance, linear-depth range, HDR tone-map, and HDR heat-map visualization.
+- [x] Report live preview statistics.
+  - [x] Show rolling frame time/FPS, viewport dimensions, allocations, lifetimes, aliases, exact loaded-model/primitive unique triangles, excluded placeholders, and submitted triangles/fullscreen quads.
+  - [x] Record CPU pass durations and non-blocking timestamp-query GPU durations with pending/unavailable state and graph totals.
+  - [x] Add active-context regression coverage for colour/mip and depth visualization plus asynchronous GPU timing collection.
 
-**Exit:** not met. Graph execution exists, but the docked viewport still lacks offscreen presentation, scene content, camera interaction, and intermediate inspection.
+Continuously validated background rebuilds, debounce, cancellation, and stale-job rejection are owned by Phase 9 so all parsing/decoding jobs and render-thread GPU marshalling share one generation protocol.
+
+**Exit:** met. The docked viewport renders complete transactional workspaces, retains the last valid generation, supports camera interaction and intermediate image visualization, and reports CPU/GPU and geometry statistics without synchronously stalling the render loop.
 
 ### Phase 9: Background work and hot reload
 
