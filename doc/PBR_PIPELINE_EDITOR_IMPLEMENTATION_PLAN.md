@@ -303,7 +303,7 @@ The first implementation does not include:
   - [x] Scene Save/Save As/Save All and independent scene dirty prompts.
 - [ ] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
 - [x] Add `Window -> Reset Layout` and preserve saved-layout restoration unless reset is requested.
-- [ ] Add Release deployment/startup/CLI smoke validation.
+- [x] Add Release deployment and CLI smoke validation; enforce the parser-to-runtime project dependency required by clean Release builds.
 
 **Exit:** partially met. The application starts, opens/saves pipeline and scene documents, validates both from CLI, and supports resettable/restored docking; configurable preferences and remaining lifecycle polish remain.
 
