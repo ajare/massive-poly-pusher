@@ -253,6 +253,7 @@ namespace mpp
 		GraphImageHandle findValue(std::string const& valueId) const;
 
 		size_t getImageCount() const;
+		size_t getImageVersionCount(uint32_t imageId) const;
 		size_t getPassCount() const;
 		GraphPassInfo getPassInfo(GraphPassHandle pass) const;
 

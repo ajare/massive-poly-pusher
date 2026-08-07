@@ -298,6 +298,11 @@ namespace mpp
 		return mImages.size();
 	}
 
+	size_t RenderGraph::getImageVersionCount(uint32_t imageId) const
+	{
+		if(imageId>=mImages.size())THROW_MPP("Invalid render graph image ID.",__LINE__,__FILE__,__func__);return mImages[imageId].producers.size();
+	}
+
 	size_t RenderGraph::getPassCount() const
 	{
 		return mPasses.size();

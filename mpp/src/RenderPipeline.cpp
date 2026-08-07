@@ -155,6 +155,11 @@ namespace mpp
 		}
 	}
 
+	RenderTargetPtr RenderPipeline::getGraphImageRenderTarget(GraphImageHandle image) const
+	{
+		return mGraphTargets?mGraphTargets->get(image):nullptr;
+	}
+
 	void RenderPipeline::resize(size_t width, size_t height)
 	{
 		for (auto const& pass : mPasses)

@@ -384,7 +384,9 @@ The first implementation does not include:
   - [x] Explicit Apply/Rebuild only switches after basic document validation.
   - [x] Stale-preview banner, compile/resource failure rollback, obsolete generation cleanup, and current/stale status reporting.
 - [x] Add viewport-hover orbit, pan, wheel zoom, hierarchy-selection framing, authored-view reset, and undoable `Save Current View` scene-camera authoring.
-- [ ] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
+- [~] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
+  - [x] Expose allocated graph image targets, select stable produced-value versions, dynamically register intermediate textures, and switch the viewport between presentation and selected images.
+  - [ ] Mip selection, non-sampleable/MSAA diagnostic resolves, and colour/channel/alpha/depth/HDR visualization shaders.
 - [~] Add preview statistics.
   - [x] Rolling FPS, global triangle status, allocation bytes, lifetimes, and alias groups.
   - [~] Submitted-triangle pass breakdown, unique scene triangles, CPU/GPU pass timings, viewport size, and status/tooltips.
