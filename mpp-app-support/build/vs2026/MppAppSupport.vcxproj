@@ -10,6 +10,7 @@
     <ClInclude Include="..\..\include\mpp\app\DocumentFoundationTests.h" />
     <ClInclude Include="..\..\include\mpp\app\DocumentId.h" />
     <ClInclude Include="..\..\include\mpp\app\DocumentSnapshot.h" />
+    <ClInclude Include="..\..\include\mpp\app\FileDialog.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiBackendData.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiPlatform.h" />
@@ -26,6 +27,7 @@
     <ClCompile Include="..\..\src\DocumentFile.cpp" />
     <ClCompile Include="..\..\src\DocumentFoundationTests.cpp" />
     <ClCompile Include="..\..\src\DocumentId.cpp" />
+    <ClCompile Include="..\..\src\FileDialog.cpp" />
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp" />
     <ClCompile Include="..\..\src\InputManager.cpp" />
     <ClCompile Include="..\..\src\InputManagerSDL.cpp" />
