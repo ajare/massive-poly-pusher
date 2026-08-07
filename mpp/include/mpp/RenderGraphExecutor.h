@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <functional>
 #include <map>
 #include <memory>
@@ -18,6 +19,9 @@ namespace mpp
 		GraphPassHandle pass;
 		std::string name;
 		double cpuMilliseconds{ 0.0 };
+		double gpuMilliseconds{ 0.0 };
+		bool gpuTimingAvailable{ false };
+		bool gpuTimingSupported{ false };
 		uint64_t primitivesSubmitted{ 0 };
 		uint64_t trianglesSubmitted{ 0 };
 		uint64_t fullscreenQuads{ 0 };
@@ -54,6 +58,13 @@ namespace mpp
 		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
 		std::map<uint32_t, UniformCollection> mParameterOverrides;
 		std::vector<GraphPassExecutionStats> mLastExecutionStats;
+		struct GpuTimingQuery { GraphPassHandle pass; std::string name; uint32_t begin{ 0 }, end{ 0 }; };
+		struct GpuTimingResult { std::string name; double milliseconds{ 0.0 }; };
+		std::deque<std::vector<GpuTimingQuery>> mPendingGpuTimings;
+		std::map<uint32_t, GpuTimingResult> mGpuTimings;
+		bool mGpuTimingSupported{ false };
+		void collectGpuTimings();
+		void clearGpuTimings();
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);

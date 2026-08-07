@@ -79,6 +79,28 @@ namespace mpp
 			Tile
 		};
 
+		enum class TextureDiagnosticMode
+		{
+			Colour,
+			Red,
+			Green,
+			Blue,
+			Alpha,
+			Luminance,
+			Depth,
+			HdrToneMap,
+			HdrHeatMap
+		};
+
+		struct TextureDiagnosticOptions
+		{
+			TextureDiagnosticMode mode{ TextureDiagnosticMode::Colour };
+			uint32_t mipLevel{ 0 };
+			float exposure{ 1.0f };
+			float depthNear{ 0.1f };
+			float depthFar{ 100.0f };
+		};
+
 	private:
 
 		struct SortedRenderCommand
@@ -169,7 +191,7 @@ namespace mpp
 		ResourcePtr mInternalFontTexture;
 
 		// Fullscreen effects
-		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram;
+		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
 		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram;
 
 		// Text rendering
@@ -527,6 +549,9 @@ namespace mpp
 		void renderGraphFullscreen(ResourcePtr program, std::vector<std::pair<std::string, Texture*>> const& samplers, UniformCollection const& parameters);
 
 		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
+
+		// Resolves an inspectable colour/depth mip into a display-safe target.
+		void renderTextureDiagnostic(RenderTexture* source, RenderTargetPtr const& destination, TextureDiagnosticOptions const& options);
 
 		void renderBloomExtract(Texture* source, float threshold);
 

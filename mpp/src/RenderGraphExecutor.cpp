@@ -240,9 +240,51 @@ namespace mpp
 		{
 			THROW_MPP("Render graph executor requires a RenderSystem.", __LINE__, __FILE__, __func__);
 		}
+		mGpuTimingSupported = GLEW_VERSION_3_3 || GLEW_ARB_timer_query;
 	}
 
-	RenderGraphExecutor::~RenderGraphExecutor() = default;
+	RenderGraphExecutor::~RenderGraphExecutor()
+	{
+		clearGpuTimings();
+	}
+
+	void RenderGraphExecutor::clearGpuTimings()
+	{
+		for (auto const& frame : mPendingGpuTimings) for (auto const& query : frame)
+		{
+			GLuint ids[] = { query.begin, query.end };
+			glDeleteQueries(2, ids);
+		}
+		mPendingGpuTimings.clear();
+		mGpuTimings.clear();
+	}
+
+	void RenderGraphExecutor::collectGpuTimings()
+	{
+		while (!mPendingGpuTimings.empty())
+		{
+			auto const& frame = mPendingGpuTimings.front();
+			bool available = true;
+			for (auto const& query : frame)
+			{
+				GLint ready = GL_FALSE;
+				GL_CHECK(glGetQueryObjectiv(query.end, GL_QUERY_RESULT_AVAILABLE, &ready));
+				if (ready == GL_FALSE) { available = false; break; }
+			}
+			if (!available) break;
+			for (auto const& query : frame)
+			{
+				GLuint64 begin = 0, end = 0;
+				GL_CHECK(glGetQueryObjectui64v(query.begin, GL_QUERY_RESULT, &begin));
+				GL_CHECK(glGetQueryObjectui64v(query.end, GL_QUERY_RESULT, &end));
+				mGpuTimings[query.pass.id] = { query.name, end >= begin ? double(end - begin) / 1000000.0 : 0.0 };
+				GLuint ids[] = { query.begin, query.end };
+				GL_CHECK(glDeleteQueries(2, ids));
+			}
+			mPendingGpuTimings.pop_front();
+		}
+	}
+
 
 	void RenderGraphExecutor::setPassCallback(GraphPassHandle pass, function<void(RenderGraphExecutionContext const&)> callback)
 	{
@@ -290,6 +332,18 @@ namespace mpp
 			THROW_MPP(message.str(), __LINE__, __FILE__, __func__);
 		}
 		mLastExecutionStats.clear();
+		if (mGpuTimingSupported) collectGpuTimings();
+		vector<GpuTimingQuery> frameGpuQueries;
+		auto cleanupQueries = [&](void*)
+		{
+			for (auto const& query : frameGpuQueries)
+			{
+				GLuint ids[] = { query.begin, query.end };
+				glDeleteQueries(2, ids);
+			}
+		};
+		unique_ptr<void, decltype(cleanupQueries)> queryCleanup((void*)1, cleanupQueries);
+		bool const recordGpuTimings = mGpuTimingSupported && mPendingGpuTimings.size() < 8;
 		for (auto const passHandle : compiled.passOrder)
 		{
 			auto const pass = graph.getPassInfo(passHandle);
@@ -397,8 +451,19 @@ namespace mpp
 				mRenderSystem->popCameraMatrix();
 				mRenderSystem->popProjectionMatrix();
 			};
+			GpuTimingQuery gpuQuery;
+			bool gpuQueryStarted = false;
 			try
 			{
+				if (recordGpuTimings)
+				{
+					gpuQuery.pass = passHandle;
+					gpuQuery.name = pass.name;
+					GLuint ids[2]{};
+					GL_CHECK(glGenQueries(2, ids));
+					gpuQuery.begin = ids[0]; gpuQuery.end = ids[1]; gpuQueryStarted = true;
+					GL_CHECK(glQueryCounter(gpuQuery.begin, GL_TIMESTAMP));
+				}
 				for (auto const& view : mipViews) view.first->applyMipView(view.second);
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				{
@@ -428,11 +493,20 @@ namespace mpp
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
+				if (gpuQueryStarted)
+				{
+					GL_CHECK(glQueryCounter(gpuQuery.end, GL_TIMESTAMP));
+					frameGpuQueries.push_back(gpuQuery);
+					gpuQueryStarted = false;
+				}
 				auto const statsAfter = mRenderSystem->getCurrentRenderInfo();
 				GraphPassExecutionStats stats;
 				stats.pass = passHandle;
 				stats.name = pass.name;
 				stats.cpuMilliseconds = chrono::duration<double, milli>(chrono::steady_clock::now() - passStart).count();
+				stats.gpuTimingSupported = mGpuTimingSupported;
+				auto gpuTiming = mGpuTimings.find(passHandle.id);
+				if (gpuTiming != mGpuTimings.end() && gpuTiming->second.name == pass.name) { stats.gpuMilliseconds = gpuTiming->second.milliseconds; stats.gpuTimingAvailable = true; }
 				stats.primitivesSubmitted = static_cast<uint64_t>(max(0, statsAfter.primitivesRendered - statsBefore.primitivesRendered));
 				stats.trianglesSubmitted = static_cast<uint64_t>(max(0, statsAfter.trianglesRendered - statsBefore.trianglesRendered));
 				stats.fullscreenQuads = static_cast<uint64_t>(max(0, statsAfter.fullscreenQuads - statsBefore.fullscreenQuads));
@@ -440,6 +514,13 @@ namespace mpp
 			}
 			catch (...)
 			{
+				if (gpuQueryStarted)
+				{
+					glQueryCounter(gpuQuery.end, GL_TIMESTAMP);
+					GLuint ids[] = { gpuQuery.begin, gpuQuery.end };
+					glDeleteQueries(2, ids);
+					gpuQueryStarted = false;
+				}
 				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);
@@ -447,6 +528,8 @@ namespace mpp
 				throw;
 			}
 		}
+		if (!frameGpuQueries.empty()) mPendingGpuTimings.push_back(move(frameGpuQueries));
+		queryCleanup.release();
 	}
 
 	void RenderGraphExecutor::execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps)
