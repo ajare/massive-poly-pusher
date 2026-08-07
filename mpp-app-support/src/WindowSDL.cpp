@@ -34,17 +34,11 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-	// Create window
-	unsigned int windowFlags = SDL_WINDOW_OPENGL;
-
-	if (fullScreen)
-	{
-		mWindow = SDL_CreateWindow(mTitle.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
-	}
-	else
-	{
-		mWindow = SDL_CreateWindow(mTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
-	}
+	// A resizable OpenGL window exposes the native resize and maximise controls.
+	unsigned int windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+	if (fullScreen) windowFlags |= SDL_WINDOW_FULLSCREEN;
+	mWindow = SDL_CreateWindow(mTitle.c_str(), fullScreen ? SDL_WINDOWPOS_CENTERED : SDL_WINDOWPOS_UNDEFINED,
+		fullScreen ? SDL_WINDOWPOS_CENTERED : SDL_WINDOWPOS_UNDEFINED, width, height, windowFlags);
 
 	if (!mWindow)
 	{
@@ -179,24 +173,33 @@ bool WindowSDL::processEvents(InputManager* inputMgr)
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_WINDOWEVENT_ENTER:
-			ie.type = IET_WindowEnter;
-			inputMgr->addEvent(ie);
-			break;
-
-		case SDL_WINDOWEVENT_LEAVE:
-			ie.type = IET_WindowExit;
-			inputMgr->addEvent(ie);
-			break;
-
-		case SDL_WINDOWEVENT_FOCUS_GAINED:
-			ie.type = IET_FocusGained;
-			inputMgr->addEvent(ie);
-			break;
-
-		case SDL_WINDOWEVENT_FOCUS_LOST:
-			ie.type = IET_FocusLost;
-			inputMgr->addEvent(ie);
+			case SDL_WINDOWEVENT:
+			switch (evt.window.event)
+			{
+			case SDL_WINDOWEVENT_SIZE_CHANGED:
+				mWidth = evt.window.data1;
+				mHeight = evt.window.data2;
+				break;
+			case SDL_WINDOWEVENT_ENTER:
+				ie.type = IET_WindowEnter;
+				inputMgr->addEvent(ie);
+				break;
+			case SDL_WINDOWEVENT_LEAVE:
+				ie.type = IET_WindowExit;
+				inputMgr->addEvent(ie);
+				break;
+			case SDL_WINDOWEVENT_FOCUS_GAINED:
+				ie.type = IET_FocusGained;
+				inputMgr->addEvent(ie);
+				break;
+			case SDL_WINDOWEVENT_FOCUS_LOST:
+				ie.type = IET_FocusLost;
+				inputMgr->addEvent(ie);
+				break;
+			case SDL_WINDOWEVENT_CLOSE:
+				running = false;
+				break;
+			}
 			break;
 
 		case SDL_QUIT:
