@@ -33,6 +33,8 @@ namespace mpp
 		std::map<std::string, ResourceFactory> mResourceFactories;
 
 		std::map<std::string, ResourcePtr> mResources;
+		// Requested child names which reuse a cached resource with another owner name.
+		std::map<std::string, ResourcePtr> mResourceAliases;
 
 		std::map<std::string, ResourcePtr> mProgramCache;
 
@@ -87,6 +89,8 @@ namespace mpp
 		ResourcePtr acquireResource(ResourceWrangler* wrangler, std::string const& name);
 
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
+		std::vector<std::string> getResourceNamesWithPrefix(std::string const& prefix) const;
+		bool isResourceAlias(std::string const& name) const;
 
 		ResourcePtr getDefault2dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 
