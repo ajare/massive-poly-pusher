@@ -6,6 +6,7 @@
 #include <Windows.h>
 #include <sdl/SDL.h>
 #include "imgui/imgui.h"
+#include "imgui/imgui_internal.h"
 #include "mpp/BufferRenderer.h"
 #include "mpp/Camera.h"
 #include "mpp/Colour.h"
@@ -13,6 +14,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/Scene.h"
+#include "mpp/app/FileDialog.h"
 #include "mpp/app/ImGuiBackendData.h"
 #include "mpp/app/ImGuiDataProvider.h"
 #include "mpp/app/ImGuiPlatform.h"
@@ -20,6 +22,7 @@
 #include "mpp/app/TimerSDL.h"
 #include "mpp/app/WindowSDL.h"
 #include "mpp/resource-parsers/PbrPipelineParser.h"
+#include "mpp/resource-parsers/PbrPipelineSerializer.h"
 #include "mpp/resource-parsers/SceneParser.h"
 
 using namespace mpp;
@@ -40,12 +43,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 		std::shared_ptr<PbrPipelineDocument> openDocument;
 		std::shared_ptr<SceneDocument> openScene;
+		std::string currentPath;
 		if (__argc >= 2)
 		{
-			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineParser::fromFile(__argv[1]));
+			currentPath = __argv[1];
+			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineParser::fromFile(currentPath));
 			if (!openDocument->previewScene.empty())
 			{
-				auto scenePath = std::filesystem::path(__argv[1]).parent_path() / openDocument->previewScene;
+				auto scenePath = std::filesystem::path(currentPath).parent_path() / openDocument->previewScene;
 				openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile(scenePath.string()));
 			}
 		}
@@ -62,19 +67,38 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto scene = std::make_shared<Scene>(&renderSystem); scene->load(); scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));
 		auto camera = std::make_shared<Camera>(glm::vec3(0, 3, 8), 0.0f, 0.0f, 0.0f, 60.0f, 1440.0f / 900.0f);
 		renderSystem.getOrCreateRenderPipeline("EditorUI");
-		bool running = true; float fps = 0, fpsTime = 0; int frames = 0; int selectedPass = -1;
+		int selectedPass = -1;
+		auto loadWorkspace = [&](std::string const& path)
+		{
+			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineParser::fromFile(path));
+			openScene.reset(); currentPath = path; selectedPass = -1;
+			if (!openDocument->previewScene.empty()) openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile((std::filesystem::path(path).parent_path() / openDocument->previewScene).string()));
+		};
+		bool running = true, pipelineDirty = false; float fps = 0, fpsTime = 0, recoveryTimer = 0; int frames = 0;
 		while (running)
 		{
-			float dt = timer.getDeltaTime(); fpsTime += dt; ++frames; if (fpsTime >= 0.5f) { fps = frames / fpsTime; frames = 0; fpsTime = 0; }
+			float dt = timer.getDeltaTime(); fpsTime += dt; recoveryTimer += dt; ++frames; if (fpsTime >= 0.5f) { fps = frames / fpsTime; frames = 0; fpsTime = 0; }
+			if (pipelineDirty && openDocument && !currentPath.empty() && recoveryTimer >= 30.0f) { resource_parsers::PbrPipelineSerializer::toFile(*openDocument, currentPath + ".recovery"); recoveryTimer = 0; }
 			window.processEvents(&input); imGuiHandleInput(&input, &backend); input.update(); if (input.keyPressed(Key_Escape)) running = false;
 			imGuiNewFrame(window.getWindow(), &backend); ImGui::NewFrame();
-			ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { ImGui::MenuItem("New", "Ctrl+N"); ImGui::MenuItem("Open...", "Ctrl+O"); ImGui::MenuItem("Save", "Ctrl+S"); ImGui::Separator(); if (ImGui::MenuItem("Exit")) running=false; ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){ImGui::MenuItem("Undo","Ctrl+Z");ImGui::MenuItem("Redo","Ctrl+Y");ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
-			ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse); ImGui::Button("New"); ImGui::SameLine(); ImGui::Button("Open"); ImGui::SameLine(); ImGui::Button("Save All"); ImGui::SameLine(); ImGui::Button("Undo"); ImGui::SameLine(); ImGui::Button("Redo"); ImGui::SameLine(); ImGui::Button("Add Pass"); ImGui::SameLine(); ImGui::Button("Validate"); ImGui::SameLine(); ImGui::Button("Apply/Rebuild"); ImGui::End();
+			ImGuiID dockspace = ImGui::GetID("PipelineEditor.Dockspace");
+			ImGui::DockSpaceOverViewport(dockspace, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+			static bool layoutBuilt = false;
+			if (!layoutBuilt && (!ImGui::DockBuilderGetNode(dockspace) || !ImGui::DockBuilderGetNode(dockspace)->IsSplitNode()))
+			{
+				layoutBuilt = true; ImGui::DockBuilderRemoveNode(dockspace); ImGui::DockBuilderAddNode(dockspace, ImGuiDockNodeFlags_DockSpace); ImGui::DockBuilderSetNodeSize(dockspace, ImGui::GetMainViewport()->Size);
+				ImGuiID left, right; ImGui::DockBuilderSplitNode(dockspace, ImGuiDir_Left, 0.28f, &left, &right); ImGuiID leftLower, leftUpper; ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.48f, &leftLower, &leftUpper);
+				ImGui::DockBuilderDockWindow("Pipeline Hierarchy", leftUpper); ImGui::DockBuilderDockWindow("Inspector", leftLower); ImGui::DockBuilderDockWindow("Diagnostics", leftLower); ImGui::DockBuilderDockWindow("Allocations", leftLower); ImGui::DockBuilderDockWindow("Viewport", right); ImGui::DockBuilderDockWindow("Toolbar", right); ImGui::DockBuilderFinish(dockspace);
+			}
+			bool requestOpen=false, requestSave=false;
+			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { ImGui::MenuItem("New", "Ctrl+N"); if(ImGui::MenuItem("Open...", "Ctrl+O"))requestOpen=true; if(ImGui::MenuItem("Save", "Ctrl+S",false,openDocument!=nullptr))requestSave=true; ImGui::Separator(); if (ImGui::MenuItem("Exit")) running=false; ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){ImGui::MenuItem("Undo","Ctrl+Z");ImGui::MenuItem("Redo","Ctrl+Y");ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
+			ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse); ImGui::Button("New"); ImGui::SameLine(); if(ImGui::Button("Open"))requestOpen=true; ImGui::SameLine(); if(ImGui::Button("Save All")&&openDocument)requestSave=true; ImGui::SameLine(); ImGui::Button("Undo"); ImGui::SameLine(); ImGui::Button("Redo"); ImGui::SameLine(); ImGui::Button("Add Pass"); ImGui::SameLine(); ImGui::Button("Validate"); ImGui::SameLine(); ImGui::Button("Apply/Rebuild"); ImGui::End();
+			if(requestOpen){if(auto path=mpp::app::openXmlFileDialog(window.getWindow(),"Open PBR Pipeline")){loadWorkspace(*path);pipelineDirty=false;}}
+			if(requestSave&&openDocument){if(currentPath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save PBR Pipeline","pipeline.xml");if(path)currentPath=*path;}if(!currentPath.empty()){resource_parsers::PbrPipelineSerializer::toFile(*openDocument,currentPath);pipelineDirty=false;std::filesystem::remove(currentPath+".recovery");}}
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
 			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)) selectedPass=(int)pass; } ImGui::TreePop(); }
 			if (openScene && ImGui::TreeNodeEx("Preview Scene", ImGuiTreeNodeFlags_DefaultOpen)) { for(auto const& model:openScene->models) ImGui::BulletText("%s",model.id.c_str()); ImGui::TreePop(); } ImGui::End();
-			ImGui::Begin("Inspector"); if(openDocument&&openDocument->graph&&selectedPass>=0){auto info=openDocument->graph->getPassInfo({(uint32_t)selectedPass});ImGui::Text("Pass: %s",info.name.c_str());ImGui::Text("Factory: %s",info.callbackFactory.c_str());bool enabled=info.enabled;if(ImGui::Checkbox("Enabled",&enabled))openDocument->graph->setPassEnabled({(uint32_t)selectedPass},enabled);ImGui::Text("Inputs: %zu  Colour outputs: %zu  Depth outputs: %zu",info.sampledInputs.size(),info.colourOutputs.size(),info.depthOutputs.size());}else ImGui::TextUnformatted("Select a pipeline pass."); ImGui::End();
+			ImGui::Begin("Inspector"); if(openDocument&&openDocument->graph&&selectedPass>=0){auto info=openDocument->graph->getPassInfo({(uint32_t)selectedPass});ImGui::Text("Pass: %s",info.name.c_str());ImGui::Text("Factory: %s",info.callbackFactory.c_str());bool enabled=info.enabled;if(ImGui::Checkbox("Enabled",&enabled)){openDocument->graph->setPassEnabled({(uint32_t)selectedPass},enabled);pipelineDirty=true;}ImGui::Text("Inputs: %zu  Colour outputs: %zu  Depth outputs: %zu",info.sampledInputs.size(),info.colourOutputs.size(),info.depthOutputs.size());}else ImGui::TextUnformatted("Select a pipeline pass."); ImGui::End();
 			ImGui::Begin("Diagnostics"); if (openDocument) { auto diagnostics=openDocument->validate(); ImGui::Text("%zu error(s), %zu warning(s)",diagnostics.count(DiagnosticSeverity::Error),diagnostics.count(DiagnosticSeverity::Warning)); for(auto const&d:diagnostics.getDiagnostics()) ImGui::BulletText("[%s] %s",d.code.c_str(),d.message.c_str()); } else ImGui::TextColored(ImVec4(0.3f,1,0.4f,1),"No document loaded"); ImGui::End();
 			ImGui::Begin("Allocations"); if(openDocument&&openDocument->graph){auto plan=openDocument->graph->buildAllocationPlan({1280,720});if(plan.valid){ImGui::Text("Physical estimate: %.2f MiB",plan.estimatedPhysicalBytes/1048576.0);for(auto const& image:plan.allocatedImages)ImGui::BulletText("%s.v%u -> allocation %u, %.1f KiB, passes %u-%u",image.debugName.c_str(),image.image.version,image.physicalAllocation,image.estimatedBytes/1024.0,image.firstPass,image.lastPass);}else ImGui::TextUnformatted("Allocation unavailable while graph is invalid.");} ImGui::End();
 			ImGui::Begin("Viewport"); ImGui::TextUnformatted("PBR preview target will be presented here."); ImGui::End();
