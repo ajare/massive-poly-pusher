@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <utility>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/matrix_interpolation.hpp>
 
@@ -80,5 +82,20 @@ namespace mpp
 	shared_ptr<ModelRenderParams> SceneModel3d::getParams()
 	{
 		return mParams;
+	}
+
+	void SceneModel3d::setRenderLayers(vector<string> layers)
+	{
+		mRenderLayers = std::move(layers);
+	}
+
+	vector<string> const& SceneModel3d::getRenderLayers() const
+	{
+		return mRenderLayers;
+	}
+
+	bool SceneModel3d::isInRenderLayer(string const& layer) const
+	{
+		return find(mRenderLayers.begin(), mRenderLayers.end(), layer) != mRenderLayers.end();
 	}
 }

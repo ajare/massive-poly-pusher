@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 #include "mpp/Config.h"
 #include "mpp/Resource.h"
@@ -11,6 +12,7 @@
 #include "mpp/RenderTarget.h"
 #include "mpp/Colour.h"
 #include "mpp/ClipRectangle.h"
+#include "mpp/PbrLight.h"
 
 namespace mpp
 {
@@ -27,6 +29,10 @@ namespace mpp
 		ClipRectangle mViewport;
 
 		Colour mClearColour;
+
+		std::vector<PbrLight> mPbrLights;
+
+		bool mOwnsPbrLights{ false };
 
 	protected:
 
@@ -72,6 +78,8 @@ namespace mpp
 
 		virtual std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr camera);
 
+		virtual std::vector<SceneModel3dPtr> get3dModelsInLayers(CameraPtr camera, std::vector<std::string> const& layers);
+
 		virtual std::vector<std::pair<SceneModel2dPtr, int>> get2dModelsInView();
 
 		void show2dModels(bool show);
@@ -81,6 +89,12 @@ namespace mpp
 		void show3dModels(bool show);
 
 		bool show3dModels() const;
+
+		void setPbrLights(std::vector<PbrLight> lights);
+
+		std::vector<PbrLight> const& getPbrLights() const;
+
+		bool ownsPbrLights() const;
 
 		virtual void update(float frameTime);
 	};

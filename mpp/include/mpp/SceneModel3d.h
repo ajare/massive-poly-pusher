@@ -22,6 +22,8 @@ namespace mpp
 
 		std::shared_ptr<ModelRenderParams> mParams;
 
+		std::vector<std::string> mRenderLayers;
+
 #pragma warning(push)
 #pragma warning(disable: 4324)
 		alignas(16) glm::mat4 mTransform;
@@ -50,6 +52,12 @@ namespace mpp
 		glm::mat4 const& getTransform() const;
 
 		std::shared_ptr<ModelRenderParams> getParams();
+
+		void setRenderLayers(std::vector<std::string> layers);
+
+		std::vector<std::string> const& getRenderLayers() const;
+
+		bool isInRenderLayer(std::string const& layer) const;
 	};
 
 	typedef std::shared_ptr<SceneModel3d> SceneModel3dPtr;
