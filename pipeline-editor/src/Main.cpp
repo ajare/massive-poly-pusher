@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -98,11 +99,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			activePipeline = "EditorPreview." + suffix; renderSystem.getOrCreateRenderPipeline(activePipeline, previewOptions); return true;
 		};
 		rebuildPreview();
-		int selectedPass = -1, selectedModel = -1;
+		int selectedPass = -1, selectedModel = -1, selectedLocalResource = -1, selectedExternalResource = -1;
 		auto loadWorkspace = [&](std::string const& path)
 		{
 			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineDocumentLoader::fromFile(path));
-			openScene.reset(); scenePath.clear(); currentPath = openDocument->importedFromRenderGraph ? std::string() : path; recentPath = path; selectedPass = -1; selectedModel = -1; { std::ofstream recent("PipelineEditor.recent.txt", std::ios::trunc); recent << recentPath; }
+			openScene.reset(); scenePath.clear(); currentPath = openDocument->importedFromRenderGraph ? std::string() : path; recentPath = path; selectedPass = -1; selectedModel = -1; selectedLocalResource = -1; selectedExternalResource = -1; { std::ofstream recent("PipelineEditor.recent.txt", std::ios::trunc); recent << recentPath; }
 			if (!openDocument->previewScene.empty()) { scenePath=(std::filesystem::path(path).parent_path()/openDocument->previewScene).string(); openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile(scenePath)); }
 		};
 		bool running = true, pipelineDirty = recoveredDocument, sceneDirty = false, resetLayout = true; float fps = 0, fpsTime = 0, recoveryTimer = 0; int frames = 0;
@@ -129,12 +130,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if(requestSaveScene&&openScene){if(scenePath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save Preview Scene","preview.scene.xml");if(path)scenePath=*path;}if(!scenePath.empty()){resource_parsers::SceneSerializer::toFile(*openScene,scenePath);sceneDirty=false;}}
 			if(requestSave&&openDocument){if(currentPath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save PBR Pipeline","pipeline.xml");if(path)currentPath=*path;}if(!currentPath.empty()){resource_parsers::PbrPipelineSerializer::toFile(*openDocument,currentPath);pipelineDirty=false;std::filesystem::remove(currentPath+".recovery");}}
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
-			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)){selectedPass=(int)pass;selectedModel=-1;} } ImGui::TreePop(); }
+			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)){selectedPass=(int)pass;selectedModel=-1;selectedLocalResource=-1;selectedExternalResource=-1;} } ImGui::TreePop(); }
+			if(openDocument&&!openDocument->localResources.empty()&&ImGui::TreeNodeEx("Local Resources",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t index=0;index<openDocument->localResources.size();++index)if(ImGui::Selectable(openDocument->localResources[index].name.c_str(),selectedLocalResource==(int)index)){selectedLocalResource=(int)index;selectedExternalResource=-1;selectedPass=-1;selectedModel=-1;}ImGui::TreePop();}
+			if(openDocument&&!openDocument->externalResources.empty()&&ImGui::TreeNodeEx("External Libraries",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t index=0;index<openDocument->externalResources.size();++index){auto const& value=openDocument->externalResources[index];auto label=value.libraryName+"::"+value.resource.name;if(ImGui::Selectable(label.c_str(),selectedExternalResource==(int)index)){selectedExternalResource=(int)index;selectedLocalResource=-1;selectedPass=-1;selectedModel=-1;}}ImGui::TreePop();}
 			if (openScene && ImGui::TreeNodeEx("Preview Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
-				if(ImGui::Selectable("Camera",selectedModel==-2)){selectedModel=-2;selectedPass=-1;}
-				if(ImGui::Selectable("Environment",selectedModel==-3)){selectedModel=-3;selectedPass=-1;}
-				if(ImGui::TreeNodeEx("Models",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t model=0;model<openScene->models.size();++model)if(ImGui::Selectable(openScene->models[model].id.c_str(),selectedModel==(int)model)){selectedModel=(int)model;selectedPass=-1;}ImGui::TreePop();}
-				if(ImGui::TreeNodeEx("Lights",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t light=0;light<openScene->lights.size();++light)if(ImGui::Selectable(openScene->lights[light].id.c_str(),selectedModel==-100-(int)light)){selectedModel=-100-(int)light;selectedPass=-1;}ImGui::TreePop();}
+				if(ImGui::Selectable("Camera",selectedModel==-2)){selectedModel=-2;selectedPass=-1;selectedLocalResource=-1;selectedExternalResource=-1;}
+				if(ImGui::Selectable("Environment",selectedModel==-3)){selectedModel=-3;selectedPass=-1;selectedLocalResource=-1;selectedExternalResource=-1;}
+				if(ImGui::TreeNodeEx("Models",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t model=0;model<openScene->models.size();++model)if(ImGui::Selectable(openScene->models[model].id.c_str(),selectedModel==(int)model)){selectedModel=(int)model;selectedPass=-1;selectedLocalResource=-1;selectedExternalResource=-1;}ImGui::TreePop();}
+				if(ImGui::TreeNodeEx("Lights",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t light=0;light<openScene->lights.size();++light)if(ImGui::Selectable(openScene->lights[light].id.c_str(),selectedModel==-100-(int)light)){selectedModel=-100-(int)light;selectedPass=-1;selectedLocalResource=-1;selectedExternalResource=-1;}ImGui::TreePop();}
 				ImGui::TreePop(); } ImGui::End();
 			ImGui::Begin("Inspector");
 			if(openDocument&&openDocument->graph&&selectedPass>=0)
@@ -155,6 +158,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					}
 					if(changed){openDocument->graph->setPassParameters({(uint32_t)selectedPass},info.parameters);pipelineDirty=true;}
 				}
+			}
+			else if(openDocument&&selectedLocalResource>=0&&(size_t)selectedLocalResource<openDocument->localResources.size())
+			{
+				auto const& value=openDocument->localResources[(size_t)selectedLocalResource];ImGui::Text("Local resource: %s",value.name.c_str());ImGui::Text("Type: %s",value.definition.getName().c_str());ImGui::TextUnformatted("Editable pipeline-owned resource");
+			}
+			else if(openDocument&&selectedExternalResource>=0&&(size_t)selectedExternalResource<openDocument->externalResources.size())
+			{
+				auto const& value=openDocument->externalResources[(size_t)selectedExternalResource];auto qualified=value.libraryName+"::"+value.resource.name;ImGui::Text("External resource: %s",qualified.c_str());ImGui::Text("Library: %s",value.libraryPath.c_str());ImGui::TextDisabled("Read-only");if(ImGui::Button("Make Local Copy")){auto localName=value.resource.name+".Local";unsigned suffix=2;while(std::any_of(openDocument->localResources.begin(),openDocument->localResources.end(),[&](auto const& current){return current.name==localName;}))localName=value.resource.name+".Local"+std::to_string(suffix++);if(openDocument->makeLocalCopy(qualified,localName)){selectedLocalResource=(int)openDocument->localResources.size()-1;selectedExternalResource=-1;pipelineDirty=true;}}
 			}
 			else if(openScene&&selectedModel>=0)
 			{

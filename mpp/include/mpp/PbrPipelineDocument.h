@@ -85,6 +85,8 @@ namespace mpp
 		std::vector<PbrPreviewBinding> previewBindings;
 		std::vector<PbrPreviewOverride> previewOverrides;
 
+		// Clones a read-only qualified library resource into the document and rewrites direct pipeline references.
+		bool makeLocalCopy(std::string const& qualifiedName, std::string const& localName);
 		DiagnosticBag validate(RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 	};
 }
