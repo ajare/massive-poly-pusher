@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <set>
 
 #include "mpp/PbrPipelineDocument.h"
@@ -21,7 +22,10 @@ namespace mpp
 		}
 		set<string> libraries;
 		for (auto const& library : resourceLibraries)
+		{
 			if (library.empty() || !libraries.insert(library).second) diagnostics.error("MPP-PIPELINE-005", "Resource library paths must be non-empty and unique.", { sourcePath }, "resources");
+			else { auto path=std::filesystem::path(library);if(path.is_absolute())diagnostics.warning("MPP-PIPELINE-014","Absolute resource-library path is not portable.",{sourcePath},library);auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-PIPELINE-015","Resource library does not exist: "+resolved.string(),{sourcePath},library); }
+		}
 		set<string> importIds;
 		for(auto const& import:imports)
 		{
@@ -38,6 +42,7 @@ namespace mpp
 			else if (!bindings.insert(binding.binding).second) diagnostics.error("MPP-PIPELINE-007", "Duplicate preview material binding '" + binding.binding + "'.", { sourcePath }, binding.binding);
 		}
 		if (previewScene.empty()) diagnostics.warning("MPP-PIPELINE-008", "No preview scene is assigned.", { sourcePath }, "previewScene");
+		else {auto path=std::filesystem::path(previewScene);if(path.is_absolute())diagnostics.warning("MPP-PIPELINE-016","Absolute preview-scene path is not portable.",{sourcePath},"previewScene");auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-PIPELINE-017","Preview scene does not exist: "+resolved.string(),{sourcePath},"previewScene");}
 		if (environment.binding.empty()) diagnostics.warning("MPP-PIPELINE-009", "No logical PBR environment binding is assigned.", { sourcePath }, "environment");
 		return diagnostics;
 	}

@@ -258,9 +258,11 @@ The first implementation does not include:
   - [ ] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
 - [x] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
 - [~] Complete document validation.
-  - [x] Basic version/name/graph/order/library-list/binding validation.
+  - [x] Basic version/name/graph/order/library-list/binding validation, relative-path resolution, missing-file diagnostics, and absolute-path portability warnings.
   - [x] RenderGraph topology and available pass-metadata validation.
-  - [ ] Resource resolution, portability, reflection, active-GPU capability, typed-import, and fallback validation.
+  - [~] Resource resolution, portability, reflection, active-GPU capability, typed-import, and fallback validation.
+    - [x] Typed image-import contract/graph compatibility and pipeline/scene/resource-library file portability checks.
+    - [ ] Resource-library content resolution, shader reflection, active-GPU import capability, and runtime fallback availability.
   - [ ] Comprehensive invalid fixtures with stable diagnostic codes and source locations.
 - [~] Complete runtime instantiation.
   - [x] Resource template/stream creation.
