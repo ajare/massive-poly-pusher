@@ -127,6 +127,8 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineDocumentLoader.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineSerializer.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineRuntime.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineResourceValidator.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\SceneParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\SceneSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphSerializer.h" />
@@ -157,6 +159,8 @@
     <ClCompile Include="..\..\src\PbrPipelineDocumentLoader.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineParser.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineSerializer.cpp" />
+    <ClCompile Include="..\..\src\PbrPipelineRuntime.cpp" />
+    <ClCompile Include="..\..\src\PbrPipelineResourceValidator.cpp" />
     <ClCompile Include="..\..\src\SceneParser.cpp" />
     <ClCompile Include="..\..\src\SceneSerializer.cpp" />
     <ClCompile Include="..\..\src\RenderGraphSerializer.cpp" />

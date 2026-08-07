@@ -12,6 +12,7 @@
 #include "mpp/resource-parsers/FilePbrMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/FileTextureStream.h"
+#include "mpp/resource-parsers/MeshSpecificationParser.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 
 namespace mpp
@@ -353,6 +354,10 @@ namespace mpp
 						string errMsg = "Error loading " + filepath + ".  Neither 'Resource' nor 'Ref' specified for material program.";
 						THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 					}
+				}
+				else if(entry.first=="MeshSpecification")
+				{
+					MeshSpecificationParser parser(filepath);qs.program.spec=parser.parse(entry.second);
 				}
 				else if (entry.first == "Pbr" || entry.first == "Surface")
 				{

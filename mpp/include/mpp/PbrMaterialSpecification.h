@@ -42,7 +42,7 @@ namespace mpp
 				std::string data;
 			};
 
-			bool is2d;
+			bool is2d{ false };
 			mesh::MeshSpecification spec;
 			Shader vertexShader, geometryShader, fragmentShader;
 		};

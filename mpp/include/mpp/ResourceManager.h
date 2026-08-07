@@ -91,6 +91,7 @@ namespace mpp
 		ResourcePtr getResource(std::string const& name, bool nullIfNotFound = false);
 		std::vector<std::string> getResourceNamesWithPrefix(std::string const& prefix) const;
 		bool isResourceAlias(std::string const& name) const;
+		void deleteResourceTree(std::string const& rootName);
 
 		ResourcePtr getDefault2dProgram(mesh::MeshSpecification const& spec, uint32_t flags, bool load, std::string descriptor = "");
 

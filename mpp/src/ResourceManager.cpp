@@ -443,6 +443,11 @@ namespace mpp
 
 	bool ResourceManager::isResourceAlias(string const& name) const{return mResourceAliases.find(name)!=mResourceAliases.end();}
 
+	void ResourceManager::deleteResourceTree(string const& rootName)
+	{
+		vector<string> names=getResourceNamesWithPrefix(rootName+"/");if(getResource(rootName,true))names.push_back(rootName);sort(names.begin(),names.end());names.erase(unique(names.begin(),names.end()),names.end());sort(names.begin(),names.end(),[](auto const& left,auto const& right){return left.size()<right.size();});for(auto const& name:names)if(!isResourceAlias(name))if(auto resource=getResource(name,true))resource->destroy();for(auto const& name:names)if(getResource(name,true))deleteResource(name);
+	}
+
 	set<std::string> ResourceManager::getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const
 	{
 		set<string> attribs;
