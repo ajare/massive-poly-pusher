@@ -14,6 +14,7 @@
 #include "mpp/PostEffect.h"
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/PbrPipelineTemplate.h"
+#include "mpp/SceneTemplate.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/BasicMaterial.h"
@@ -94,6 +95,10 @@ namespace mpp
 		mResourceFactories["PbrPipeline"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new PbrPipelineTemplate(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["SceneTemplate"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new SceneTemplate(name, this->mwRenderSystem, this, rStream));
 		};
 	}
 

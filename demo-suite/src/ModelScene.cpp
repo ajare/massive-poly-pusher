@@ -60,6 +60,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/FilePbrPipelineStream.h>
 #include <mpp/resource-parsers/SceneParser.h>
 #include <mpp/resource-parsers/SceneSerializer.h>
+#include <mpp/resource-parsers/FileSceneStream.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/FpsCamera.h>
@@ -1202,7 +1203,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());
 	std::filesystem::remove(sceneRoundTrip);
 	if (roundTrippedScene.models.size() != sceneDocument.models.size() || roundTrippedScene.lights.size() != sceneDocument.lights.size() || roundTrippedScene.models.front().source != sceneDocument.models.front().source || roundTrippedScene.lights.back().type != sceneDocument.lights.back().type) throw std::runtime_error("Native Scene XML round trip failed.");
-	renderSystem->infoMessage("Native Scene XML parse/serialize/semantic validation passed.");
+	auto sceneTemplateResource = resourceMgr->declareResource("PBR.EditorSceneTest", std::make_shared<mpp::resource_parsers::FileSceneStream>(resourceMgr, options.resourceLocation + pipelineDocument.previewScene)).first;
+	sceneTemplateResource->load(); sceneTemplateResource->create();
+	if (sceneTemplateResource->getType() != "SceneTemplate") throw std::runtime_error("SceneTemplate stream created the wrong resource type.");
+	renderSystem->infoMessage("Native Scene XML/resource parse/serialize/semantic validation passed.");
 
 	std::string graphGpuTestFailure;
 	if (!mpp::runRenderGraphGpuTests(renderSystem, &graphGpuTestFailure))
