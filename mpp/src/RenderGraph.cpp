@@ -144,6 +144,11 @@ namespace mpp
 		mImages[image.id].importName = importName;
 	}
 
+	void RenderGraph::setImageDesc(GraphImageHandle image,GraphImageDesc const& desc)
+	{
+		if(!validImage(image)||desc.samples==0||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();
+	}
+
 	GraphImageInfo RenderGraph::getImageInfo(GraphImageHandle image) const
 	{
 		if (!validImage(image)) THROW_MPP("Invalid render graph image handle.", __LINE__, __FILE__, __func__);

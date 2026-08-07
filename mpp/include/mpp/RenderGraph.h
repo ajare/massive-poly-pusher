@@ -231,6 +231,7 @@ namespace mpp
 
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc);
 		void setImageImportName(GraphImageHandle image, std::string const& importName);
+		void setImageDesc(GraphImageHandle image, GraphImageDesc const& desc);
 		GraphImageInfo getImageInfo(GraphImageHandle image) const;
 		std::vector<GraphImageHandle> getImportedImages() const;
 		GraphPassHandle addPass(std::string const& name, GraphPassType type = GraphPassType::Scene);

@@ -338,7 +338,9 @@ The first implementation does not include:
 - [~] Add metadata-generated pass inspector.
   - [x] Show pass identity, factory, input/output counts, enabled state, and reflected scalar/vector parameters.
   - [ ] Generate required/optional slots, ranges, enums, UI hints, format constraints, fallbacks, material slots, and program controls from metadata.
-- [ ] Add image, typed import, attachment, subresource, and raster-state inspectors.
+- [~] Add image, typed import, attachment, subresource, and raster-state inspectors.
+  - [x] Select graph images and typed imports; inspect format/usage/import identity; command-edit image relative size/sample/mip/external/transient descriptors and import semantic/required/fallback state.
+  - [ ] Format/usage widgets, absolute sizing/filter/wrap controls, attachment/subresource controls, and raster-state inspectors.
 - [~] Add PBR material, texture/sampler, program/reflection, and typed uniform inspectors.
   - [x] Edit pass float/vector/int/bool values supported by the current `UniformCollection` UI.
   - [ ] PBR materials, maps, extensions, samplers, programs, reflection details, matrices, arrays, and instance overrides.
