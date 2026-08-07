@@ -34,6 +34,29 @@ namespace mpp
 		feedback.readSampled(feedbackPass, written);
 		if (feedback.compile().valid) return fail("same-pass image feedback was accepted");
 
+		valid.setValueId(scene, "Scene.AfterOpaque");
+		if (valid.getValueId(scene) != "Scene.AfterOpaque" || valid.findValue("Scene.AfterOpaque").version != scene.version)
+			return fail("stable graph value ID did not round-trip");
+
+		RenderGraph outOfOrder;
+		auto orderedImage = outOfOrder.createImage("Ordered", colour);
+		auto orderedOutput = outOfOrder.createImage("OrderedOutput", colour);
+		auto consumer = outOfOrder.addPass("Consumer", GraphPassType::Fullscreen);
+		auto producer = outOfOrder.addPass("Producer", GraphPassType::Scene);
+		orderedImage = outOfOrder.writeColour(producer, orderedImage);
+		outOfOrder.setValueId(orderedImage, "Ordered.Produced");
+		outOfOrder.readSampled(consumer, orderedImage);
+		outOfOrder.writeColour(consumer, orderedOutput);
+		if (outOfOrder.compile().valid) return fail("authored pass order ignored a later producer");
+		auto dependencyOrder = outOfOrder.buildDependencyOrder();
+		if (!dependencyOrder.valid || dependencyOrder.passOrder.size() != 2 ||
+			dependencyOrder.passOrder[0].id != producer.id || dependencyOrder.passOrder[1].id != consumer.id)
+			return fail("stable dependency auto-order is incorrect");
+
+		outOfOrder.setPassEnabled(producer, false);
+		if (outOfOrder.compile().valid) return fail("value produced by a disabled pass was accepted");
+		if (outOfOrder.getPassInfo(producer).enabled) return fail("disabled pass state was not retained");
+
 		return true;
 	}
 }

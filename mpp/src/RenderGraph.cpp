@@ -15,12 +15,48 @@ namespace mpp
 	{
 		bool isDepthFormat(GraphImageFormat format)
 		{
-			return format == GraphImageFormat::Depth24 || format == GraphImageFormat::Depth24Stencil8;
+			return format == GraphImageFormat::Depth16 || format == GraphImageFormat::Depth24 ||
+				format == GraphImageFormat::Depth32f || format == GraphImageFormat::Depth24Stencil8 ||
+				format == GraphImageFormat::Depth32fStencil8;
 		}
 
 		char const* formatName(GraphImageFormat format)
 		{
-			switch (format) { case GraphImageFormat::Rgba8: return "RGBA8"; case GraphImageFormat::Rgba16f: return "RGBA16F"; case GraphImageFormat::Rg16f: return "RG16F"; case GraphImageFormat::Depth24: return "DEPTH24"; default: return "DEPTH24_STENCIL8"; }
+			switch (format)
+			{
+			case GraphImageFormat::R8: return "R8"; case GraphImageFormat::Rg8: return "RG8"; case GraphImageFormat::Rgba8: return "RGBA8";
+			case GraphImageFormat::Srgb8Alpha8: return "SRGB8_ALPHA8"; case GraphImageFormat::R16f: return "R16F";
+			case GraphImageFormat::Rg16f: return "RG16F"; case GraphImageFormat::Rgba16f: return "RGBA16F";
+			case GraphImageFormat::R32f: return "R32F"; case GraphImageFormat::Rg32f: return "RG32F"; case GraphImageFormat::Rgba32f: return "RGBA32F";
+			case GraphImageFormat::R11g11b10f: return "R11G11B10F"; case GraphImageFormat::Rgb10a2: return "RGB10_A2";
+			case GraphImageFormat::Depth16: return "DEPTH16"; case GraphImageFormat::Depth24: return "DEPTH24"; case GraphImageFormat::Depth32f: return "DEPTH32F";
+			case GraphImageFormat::Depth24Stencil8: return "DEPTH24_STENCIL8"; case GraphImageFormat::Depth32fStencil8: return "DEPTH32F_STENCIL8";
+			}
+			return "UNKNOWN";
+		}
+
+		uint32_t formatBits(GraphImageFormat format)
+		{
+			switch (format)
+			{
+			case GraphImageFormat::R8: return 8; case GraphImageFormat::Rg8: return 16; case GraphImageFormat::Rgba8: return 32;
+			case GraphImageFormat::Srgb8Alpha8: return 32;
+			case GraphImageFormat::R16f: return 16; case GraphImageFormat::Rg16f: return 32; case GraphImageFormat::Rgba16f: return 64;
+			case GraphImageFormat::R32f: return 32; case GraphImageFormat::Rg32f: return 64; case GraphImageFormat::Rgba32f: return 128;
+			case GraphImageFormat::R11g11b10f: return 32; case GraphImageFormat::Rgb10a2: return 32;
+			case GraphImageFormat::Depth16: return 16; case GraphImageFormat::Depth24: return 24; case GraphImageFormat::Depth32f: return 32;
+			case GraphImageFormat::Depth24Stencil8: return 32; case GraphImageFormat::Depth32fStencil8: return 64;
+			}
+			return 0;
+		}
+
+		bool aliasCompatible(GraphImageLifetime const& left, GraphImageLifetime const& right)
+		{
+			return left.size == right.size && left.desc.format == right.desc.format &&
+				left.desc.samples == right.desc.samples && left.desc.mipLevels == right.desc.mipLevels &&
+				left.desc.colourSpace == right.desc.colourSpace &&
+				left.desc.params.minFilter == right.desc.params.minFilter && left.desc.params.magFilter == right.desc.params.magFilter &&
+				left.desc.params.wrap == right.desc.params.wrap;
 		}
 
 		char const* passTypeName(GraphPassType type)
@@ -37,11 +73,13 @@ namespace mpp
 		uint32_t latestVersion{ 0 };
 		// Producer pass per version. UINT32_MAX means imported/external version 0.
 		vector<uint32_t> producers{ UINT32_MAX };
+		vector<string> valueIds;
 	};
 
 	struct RenderGraph::Pass
 	{
 		string name;
+		bool enabled{ true };
 		GraphPassType type{ GraphPassType::Scene };
 		string callbackFactory;
 		string programResource;
@@ -50,6 +88,7 @@ namespace mpp
 		UniformCollection parameters;
 		vector<GraphColourOutput> colourOutputs;
 		vector<GraphDepthOutput> depthOutputs;
+		GraphRasterState rasterState;
 	};
 
 	RenderGraph::RenderGraph() = default;
@@ -83,7 +122,9 @@ namespace mpp
 		{
 			THROW_MPP("Duplicate render graph image name.", __LINE__, __FILE__, __func__);
 		}
-		mImages.push_back({ name, desc });
+		Image image{ name, desc };
+		image.valueIds.push_back(name + ".Import");
+		mImages.push_back(move(image));
 		return { (uint32_t)mImages.size() - 1, 0 };
 	}
 
@@ -117,8 +158,17 @@ namespace mpp
 		{
 			THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
 		}
-		mPasses.push_back({ name, type });
+		Pass pass;
+		pass.name = name;
+		pass.type = type;
+		mPasses.push_back(move(pass));
 		return { (uint32_t)mPasses.size() - 1 };
+	}
+
+	void RenderGraph::setPassEnabled(GraphPassHandle pass, bool enabled)
+	{
+		if (!validPass(pass)) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
+		mPasses[pass.id].enabled = enabled;
 	}
 
 	void RenderGraph::setPassProgramResource(GraphPassHandle pass, string const& resourceName)
@@ -137,6 +187,12 @@ namespace mpp
 			THROW_MPP("Render graph pass callback factory requires a valid pass and name.", __LINE__, __FILE__, __func__);
 		}
 		mPasses[pass.id].callbackFactory = factoryName;
+	}
+
+	void RenderGraph::setPassRasterState(GraphPassHandle pass, GraphRasterState const& state)
+	{
+		if (!validPass(pass)) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
+		mPasses[pass.id].rasterState = state;
 	}
 
 	void RenderGraph::readSampled(GraphPassHandle pass, GraphImageHandle image)
@@ -179,6 +235,7 @@ namespace mpp
 		auto& target = mImages[image.id];
 		GraphImageHandle output{ image.id, ++target.latestVersion };
 		target.producers.push_back(pass.id);
+		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
 		mPasses[pass.id].colourOutputs.push_back({ output, mipLevel, load, store, clear });
 		return output;
 	}
@@ -193,8 +250,35 @@ namespace mpp
 		auto& target = mImages[image.id];
 		GraphImageHandle output{ image.id, ++target.latestVersion };
 		target.producers.push_back(pass.id);
+		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
 		mPasses[pass.id].depthOutputs.push_back({ output, mipLevel, load, store, clear });
 		return output;
+	}
+
+	void RenderGraph::setValueId(GraphImageHandle image, string const& valueId)
+	{
+		if (!validImage(image) || valueId.empty()) THROW_MPP("Invalid render graph value ID.", __LINE__, __FILE__, __func__);
+		if (mImages[image.id].valueIds[image.version] == valueId) return;
+		for (auto const& candidate : mImages)
+			if (find(candidate.valueIds.begin(), candidate.valueIds.end(), valueId) != candidate.valueIds.end())
+				THROW_MPP("Duplicate render graph value ID.", __LINE__, __FILE__, __func__);
+		mImages[image.id].valueIds[image.version] = valueId;
+	}
+
+	string const& RenderGraph::getValueId(GraphImageHandle image) const
+	{
+		if (!validImage(image)) THROW_MPP("Invalid render graph image handle.", __LINE__, __FILE__, __func__);
+		return mImages[image.id].valueIds[image.version];
+	}
+
+	GraphImageHandle RenderGraph::findValue(string const& valueId) const
+	{
+		for (uint32_t image = 0; image < mImages.size(); ++image)
+		{
+			auto const found = find(mImages[image].valueIds.begin(), mImages[image].valueIds.end(), valueId);
+			if (found != mImages[image].valueIds.end()) return { image, static_cast<uint32_t>(found - mImages[image].valueIds.begin()) };
+		}
+		return {};
 	}
 
 	size_t RenderGraph::getImageCount() const
@@ -214,18 +298,16 @@ namespace mpp
 			THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		}
 		auto const& source = mPasses[pass.id];
-		return { source.name, source.type, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.parameters, source.colourOutputs, source.depthOutputs };
+		return { source.name, source.enabled, source.type, source.callbackFactory, source.programResource, source.sampledInputs, source.samplerBindings, source.parameters, source.colourOutputs, source.depthOutputs, source.rasterState };
 	}
 
 	RenderGraphCompileResult RenderGraph::compile() const
 	{
 		RenderGraphCompileResult result;
-		vector<set<uint32_t>> edges(mPasses.size());
-		vector<uint32_t> indegree(mPasses.size());
-
 		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
 		{
 			auto const& pass = mPasses[passId];
+			if (!pass.enabled) continue;
 			for (auto const& input : pass.sampledInputs)
 			{
 				if (!validImage(input))
@@ -245,7 +327,13 @@ namespace mpp
 				}
 				else if (producer != UINT32_MAX && producer != passId)
 				{
-					edges[producer].insert(passId);
+					if (!mPasses[producer].enabled)
+						result.diagnostics.push_back("Pass '" + pass.name + "' reads value '" + image.valueIds[input.version] + "' produced by disabled pass '" + mPasses[producer].name + "'.");
+					else
+					{
+						if (producer > passId)
+							result.diagnostics.push_back("Pass '" + pass.name + "' appears before producer '" + mPasses[producer].name + "' for value '" + image.valueIds[input.version] + "'.");
+					}
 				}
 				else if (producer == passId)
 				{
@@ -289,17 +377,55 @@ namespace mpp
 		}
 
 		if (!result.diagnostics.empty()) return result;
-		for (uint32_t source = 0; source < edges.size(); ++source)
-			for (uint32_t destination : edges[source]) ++indegree[destination];
-		queue<uint32_t> ready;
-		for (uint32_t i = 0; i < indegree.size(); ++i) if (indegree[i] == 0) ready.push(i);
+		for (uint32_t pass = 0; pass < mPasses.size(); ++pass)
+			if (mPasses[pass].enabled) result.passOrder.push_back({ pass });
+		result.valid = true;
+		return result;
+	}
+
+	RenderGraphCompileResult RenderGraph::buildDependencyOrder() const
+	{
+		RenderGraphCompileResult result;
+		vector<set<uint32_t>> edges(mPasses.size());
+		vector<uint32_t> indegree(mPasses.size());
+		size_t enabledCount = 0;
+		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
+		{
+			auto const& pass = mPasses[passId];
+			if (!pass.enabled) continue;
+			++enabledCount;
+			for (auto const& input : pass.sampledInputs)
+			{
+				if (!validImage(input))
+				{
+					result.diagnostics.push_back("Pass '" + pass.name + "' reads an invalid image handle.");
+					continue;
+				}
+				auto const producer = mImages[input.id].producers[input.version];
+				if (producer == UINT32_MAX)
+				{
+					if (!mImages[input.id].desc.external)
+						result.diagnostics.push_back("Pass '" + pass.name + "' reads unwritten non-external value '" + mImages[input.id].valueIds[input.version] + "'.");
+				}
+				else if (producer == passId)
+					result.diagnostics.push_back("Pass '" + pass.name + "' reads and writes the same image value.");
+				else if (!mPasses[producer].enabled)
+					result.diagnostics.push_back("Pass '" + pass.name + "' depends on disabled pass '" + mPasses[producer].name + "'.");
+				else if (edges[producer].insert(passId).second)
+					++indegree[passId];
+			}
+		}
+		if (!result.diagnostics.empty()) return result;
+		priority_queue<uint32_t, vector<uint32_t>, greater<uint32_t>> ready;
+		for (uint32_t pass = 0; pass < mPasses.size(); ++pass)
+			if (mPasses[pass].enabled && indegree[pass] == 0) ready.push(pass);
 		while (!ready.empty())
 		{
-			uint32_t pass = ready.front(); ready.pop();
+			auto const pass = ready.top(); ready.pop();
 			result.passOrder.push_back({ pass });
-			for (uint32_t next : edges[pass]) if (--indegree[next] == 0) ready.push(next);
+			for (auto const next : edges[pass]) if (--indegree[next] == 0) ready.push(next);
 		}
-		if (result.passOrder.size() != mPasses.size())
+		if (result.passOrder.size() != enabledCount)
 		{
 			result.diagnostics.push_back("Render graph contains a pass dependency cycle.");
 			result.passOrder.clear();
@@ -360,6 +486,10 @@ namespace mpp
 				}
 				lifetime.firstPass = passPosition;
 				lifetime.lastPass = passPosition;
+				uint64_t texels = 0;
+				for (uint32_t mip = 0; mip < image.desc.mipLevels; ++mip)
+					texels += static_cast<uint64_t>(max(1u, lifetime.size.x >> mip)) * max(1u, lifetime.size.y >> mip);
+				lifetime.estimatedBytes = (texels * formatBits(image.desc.format) * image.desc.samples + 7) / 8;
 				index = (uint32_t)plan.allocatedImages.size();
 				plan.allocatedImages.push_back(lifetime);
 			}
@@ -376,6 +506,38 @@ namespace mpp
 			for (auto const& input : pass.sampledInputs) markImage(input, position);
 			for (auto const& output : pass.colourOutputs) markImage(output.image, position);
 			for (auto const& output : pass.depthOutputs) markImage(output.image, position);
+		}
+		if (plan.diagnostics.empty())
+		{
+			vector<vector<uint32_t>> allocationMembers;
+			for (uint32_t imageIndex = 0; imageIndex < plan.allocatedImages.size(); ++imageIndex)
+			{
+				auto& lifetime = plan.allocatedImages[imageIndex];
+				uint32_t allocation = UINT32_MAX;
+				if (lifetime.desc.transient)
+				{
+					for (uint32_t candidate = 0; candidate < allocationMembers.size(); ++candidate)
+					{
+						auto const& representative = plan.allocatedImages[allocationMembers[candidate].front()];
+						if (!aliasCompatible(representative, lifetime)) continue;
+						bool overlaps = false;
+						for (auto member : allocationMembers[candidate])
+						{
+							auto const& previous = plan.allocatedImages[member];
+							if (!(previous.lastPass < lifetime.firstPass || lifetime.lastPass < previous.firstPass)) { overlaps = true; break; }
+						}
+						if (!overlaps) { allocation = candidate; break; }
+					}
+				}
+				if (allocation == UINT32_MAX)
+				{
+					allocation = static_cast<uint32_t>(allocationMembers.size());
+					allocationMembers.push_back({});
+					plan.estimatedPhysicalBytes += lifetime.estimatedBytes;
+				}
+				lifetime.physicalAllocation = allocation;
+				allocationMembers[allocation].push_back(imageIndex);
+			}
 		}
 		plan.valid = plan.diagnostics.empty();
 		if (!plan.valid)
@@ -405,7 +567,7 @@ namespace mpp
 		for (uint32_t id = 0; id < mPasses.size(); ++id)
 		{
 			auto const& pass = mPasses[id];
-			output << "  Pass[" << id << "] '" << pass.name << "': type=" << passTypeName(pass.type)
+			output << "  Pass[" << id << "] '" << pass.name << "': enabled=" << (pass.enabled ? "true" : "false") << ", type=" << passTypeName(pass.type)
 				<< ", sampled=" << pass.sampledInputs.size() << ", colour=" << pass.colourOutputs.size() << ", depth=" << pass.depthOutputs.size()
 				<< ", parameters=" << pass.parameters.getNumUniforms();
 			if (!pass.programResource.empty()) output << ", program='" << pass.programResource << "'";
@@ -414,11 +576,11 @@ namespace mpp
 			for (auto const& binding : pass.samplerBindings)
 				output << "    sampler '" << binding.sampler << "' = Image[" << binding.image.id << "]@" << binding.image.version << (binding.mipLevel == UINT32_MAX ? " full chain" : " mip " + to_string(binding.mipLevel)) << "\n";
 			for (auto const& input : pass.sampledInputs)
-				output << "    reads Image[" << input.id << "]@" << input.version << "\n";
+				output << "    reads '" << mImages[input.id].valueIds[input.version] << "' Image[" << input.id << "]@" << input.version << "\n";
 			for (auto const& target : pass.colourOutputs)
-				output << "    writes colour Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
+				output << "    writes colour '" << mImages[target.image.id].valueIds[target.image.version] << "' Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
 			for (auto const& target : pass.depthOutputs)
-				output << "    writes depth Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
+				output << "    writes depth '" << mImages[target.image.id].valueIds[target.image.version] << "' Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
 		}
 		return output.str();
 	}

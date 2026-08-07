@@ -12,7 +12,12 @@
 - [x] Added document ID, immutable snapshot/generation, command-stack/save-point, deterministic path, and atomic-write foundations with startup tests.
 - [x] Verified Debug and Release builds for MPP, MppAppSupport, and DemoSuite.
 - [x] Verified DemoSuite structured diagnostics, document foundations, material migration, and render-graph GPU startup tests.
-- [ ] Phase 2 is next: stable produced values, authored ordering, formats, raster state, allocation introspection, and execution statistics.
+- [x] Added stable produced-value IDs, authored-order validation, dependency auto-ordering, and saved pass enable state.
+- [x] Added the curated PBR graph format set and exact colour/depth render-target allocation.
+- [x] Added explicit practical raster state with complete OpenGL state restoration.
+- [x] Added allocation byte/alias-group introspection, triangle accounting, and per-pass execution statistics.
+- [x] Extended standalone RenderGraph XML round-trips with stable values and enabled state.
+- [ ] Phase 3 is next: pass authoring metadata, generic custom passes, and metadata-driven validation.
 
 ## 1. Goal
 
@@ -195,7 +200,7 @@ The first implementation does not include:
 
 **Exit:** unit tests prove diagnostic ordering, ID/reference updates, undo/redo, save-points, and atomic writes.
 
-### Phase 2: Render graph authoring model — Next
+### Phase 2: Render graph authoring model — Complete
 
 1. Add explicit produced-value IDs and stable input references.
 2. Preserve compatibility with existing runtime graph handles.
@@ -208,7 +213,7 @@ The first implementation does not include:
 
 **Exit:** CPU/GPU tests cover reordered values, disabled passes, formats, raster state, allocations, aliases, and statistics.
 
-### Phase 3: Pass authoring metadata
+### Phase 3: Pass authoring metadata — Next
 
 1. Extend `RenderGraphPassFactoryRegistry` with metadata registration/query APIs.
 2. Describe all MPP built-in PBR/shadow/bloom/presentation passes.

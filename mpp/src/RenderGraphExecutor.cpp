@@ -1,5 +1,8 @@
 #include <glew/glew.h>
 
+#include <algorithm>
+#include <array>
+#include <chrono>
 #include <sstream>
 
 #include "mpp/RenderGraphExecutor.h"
@@ -120,6 +123,68 @@ namespace mpp
 			}
 		}
 
+		GLenum compareOp(GraphCompareOp value)
+		{
+			switch (value) { case GraphCompareOp::Never: return GL_NEVER; case GraphCompareOp::Less: return GL_LESS; case GraphCompareOp::Equal: return GL_EQUAL; case GraphCompareOp::LessEqual: return GL_LEQUAL; case GraphCompareOp::Greater: return GL_GREATER; case GraphCompareOp::NotEqual: return GL_NOTEQUAL; case GraphCompareOp::GreaterEqual: return GL_GEQUAL; default: return GL_ALWAYS; }
+		}
+		GLenum blendOp(GraphBlendOp value)
+		{
+			switch (value) { case GraphBlendOp::Add: return GL_FUNC_ADD; case GraphBlendOp::Subtract: return GL_FUNC_SUBTRACT; case GraphBlendOp::ReverseSubtract: return GL_FUNC_REVERSE_SUBTRACT; case GraphBlendOp::Minimum: return GL_MIN; default: return GL_MAX; }
+		}
+		GLenum blendFactor(GraphBlendFactor value)
+		{
+			switch (value) { case GraphBlendFactor::Zero: return GL_ZERO; case GraphBlendFactor::One: return GL_ONE; case GraphBlendFactor::SourceColour: return GL_SRC_COLOR; case GraphBlendFactor::OneMinusSourceColour: return GL_ONE_MINUS_SRC_COLOR; case GraphBlendFactor::DestinationColour: return GL_DST_COLOR; case GraphBlendFactor::OneMinusDestinationColour: return GL_ONE_MINUS_DST_COLOR; case GraphBlendFactor::SourceAlpha: return GL_SRC_ALPHA; case GraphBlendFactor::OneMinusSourceAlpha: return GL_ONE_MINUS_SRC_ALPHA; case GraphBlendFactor::DestinationAlpha: return GL_DST_ALPHA; default: return GL_ONE_MINUS_DST_ALPHA; }
+		}
+
+		class GraphRasterStateScope
+		{
+			bool mActive{ false };
+			GLboolean mDepth{ GL_FALSE }, mCull{ GL_FALSE }, mBlend{ GL_FALSE }, mMultisample{ GL_FALSE }, mAlphaToCoverage{ GL_FALSE }, mScissor{ GL_FALSE }, mDepthMask{ GL_TRUE };
+			GLint mDepthFunc{ GL_LESS }, mCullMode{ GL_BACK }, mFrontFace{ GL_CCW }, mPolygonMode[2]{ GL_FILL, GL_FILL }, mBlendEquationRgb{ GL_FUNC_ADD }, mBlendEquationAlpha{ GL_FUNC_ADD };
+			GLint mSourceRgb{ GL_ONE }, mDestinationRgb{ GL_ZERO }, mSourceAlpha{ GL_ONE }, mDestinationAlpha{ GL_ZERO }, mScissorBox[4]{};
+			vector<array<GLboolean, 4>> mColourMasks;
+
+			static void enabled(GLenum capability, bool value) { if (value) GL_CHECK(glEnable(capability)); else GL_CHECK(glDisable(capability)); }
+
+		public:
+			GraphRasterStateScope(GraphRasterState const& state, size_t colourOutputs, size_t width, size_t height)
+			{
+				if (!state.explicitState) return;
+				mActive = true;
+				mDepth = glIsEnabled(GL_DEPTH_TEST); mCull = glIsEnabled(GL_CULL_FACE); mBlend = glIsEnabled(GL_BLEND);
+				mMultisample = glIsEnabled(GL_MULTISAMPLE); mAlphaToCoverage = glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE); mScissor = glIsEnabled(GL_SCISSOR_TEST);
+				GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &mDepthMask)); GL_CHECK(glGetIntegerv(GL_DEPTH_FUNC, &mDepthFunc));
+				GL_CHECK(glGetIntegerv(GL_CULL_FACE_MODE, &mCullMode)); GL_CHECK(glGetIntegerv(GL_FRONT_FACE, &mFrontFace)); GL_CHECK(glGetIntegerv(GL_POLYGON_MODE, mPolygonMode));
+				GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_RGB, &mBlendEquationRgb)); GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &mBlendEquationAlpha));
+				GL_CHECK(glGetIntegerv(GL_BLEND_SRC_RGB, &mSourceRgb)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_RGB, &mDestinationRgb)); GL_CHECK(glGetIntegerv(GL_BLEND_SRC_ALPHA, &mSourceAlpha)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_ALPHA, &mDestinationAlpha));
+				GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, mScissorBox));
+				mColourMasks.resize(max<size_t>(1, colourOutputs));
+				for (GLuint output = 0; output < mColourMasks.size(); ++output) GL_CHECK(glGetBooleani_v(GL_COLOR_WRITEMASK, output, mColourMasks[output].data()));
+
+				enabled(GL_DEPTH_TEST, state.depthTest); GL_CHECK(glDepthMask(state.depthWrite ? GL_TRUE : GL_FALSE)); GL_CHECK(glDepthFunc(compareOp(state.depthCompare)));
+				enabled(GL_CULL_FACE, state.cullMode != GraphCullMode::None); if (state.cullMode != GraphCullMode::None) GL_CHECK(glCullFace(state.cullMode == GraphCullMode::Front ? GL_FRONT : GL_BACK));
+				GL_CHECK(glFrontFace(state.frontFace == GraphFrontFace::Clockwise ? GL_CW : GL_CCW)); GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, state.fillMode == GraphFillMode::Line ? GL_LINE : GL_FILL));
+				enabled(GL_BLEND, state.blend); GL_CHECK(glBlendEquationSeparate(blendOp(state.colourBlendOp), blendOp(state.alphaBlendOp)));
+				GL_CHECK(glBlendFuncSeparate(blendFactor(state.sourceColourBlend), blendFactor(state.destinationColourBlend), blendFactor(state.sourceAlphaBlend), blendFactor(state.destinationAlphaBlend)));
+				enabled(GL_MULTISAMPLE, state.multisample); enabled(GL_SAMPLE_ALPHA_TO_COVERAGE, state.alphaToCoverage); enabled(GL_SCISSOR_TEST, state.scissor);
+				if (state.scissor) GL_CHECK(glScissor((GLint)state.scissorRectangle.x, (GLint)state.scissorRectangle.y, (GLsizei)(state.scissorRectangle.z ? state.scissorRectangle.z : width), (GLsizei)(state.scissorRectangle.w ? state.scissorRectangle.w : height)));
+				for (GLuint output = 0; output < mColourMasks.size(); ++output)
+				{
+					auto mask = output < state.colourWriteMasks.size() ? state.colourWriteMasks[output] : GraphColourWriteMask{};
+					GL_CHECK(glColorMaski(output, mask.red, mask.green, mask.blue, mask.alpha));
+				}
+			}
+			~GraphRasterStateScope()
+			{
+				if (!mActive) return;
+				enabled(GL_DEPTH_TEST, mDepth != GL_FALSE); GL_CHECK(glDepthMask(mDepthMask)); GL_CHECK(glDepthFunc(mDepthFunc));
+				enabled(GL_CULL_FACE, mCull != GL_FALSE); GL_CHECK(glCullFace(mCullMode)); GL_CHECK(glFrontFace(mFrontFace)); GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, mPolygonMode[0]));
+				enabled(GL_BLEND, mBlend != GL_FALSE); GL_CHECK(glBlendEquationSeparate(mBlendEquationRgb, mBlendEquationAlpha)); GL_CHECK(glBlendFuncSeparate(mSourceRgb, mDestinationRgb, mSourceAlpha, mDestinationAlpha));
+				enabled(GL_MULTISAMPLE, mMultisample != GL_FALSE); enabled(GL_SAMPLE_ALPHA_TO_COVERAGE, mAlphaToCoverage != GL_FALSE); enabled(GL_SCISSOR_TEST, mScissor != GL_FALSE); GL_CHECK(glScissor(mScissorBox[0], mScissorBox[1], mScissorBox[2], mScissorBox[3]));
+				for (GLuint output = 0; output < mColourMasks.size(); ++output) GL_CHECK(glColorMaski(output, mColourMasks[output][0], mColourMasks[output][1], mColourMasks[output][2], mColourMasks[output][3]));
+			}
+		};
+
 		void discardDontCareOutputs(GraphPassInfo const& pass)
 		{
 			if (!GLEW_VERSION_4_3 && !GLEW_ARB_invalidate_subdata) return;
@@ -209,6 +274,11 @@ namespace mpp
 		mScenePasses.clear();
 	}
 
+	vector<GraphPassExecutionStats> const& RenderGraphExecutor::getLastExecutionStats() const
+	{
+		return mLastExecutionStats;
+	}
+
 	void RenderGraphExecutor::execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps)
 	{
 		auto compiled = graph.compile(caps);
@@ -219,9 +289,12 @@ namespace mpp
 			for (auto const& diagnostic : compiled.diagnostics) message << "\n- " << diagnostic;
 			THROW_MPP(message.str(), __LINE__, __FILE__, __func__);
 		}
+		mLastExecutionStats.clear();
 		for (auto const passHandle : compiled.passOrder)
 		{
 			auto const pass = graph.getPassInfo(passHandle);
+			auto const statsBefore = mRenderSystem->getCurrentRenderInfo();
+			auto const passStart = chrono::steady_clock::now();
 			GpuDebugScope passScope("RenderGraph Pass " + to_string(passHandle.id) + ": " + pass.name + " [" + graphPassTypeName(pass.type) + "]");
 			auto const explicitCallback = mCallbacks.find(passHandle.id);
 			RenderGraphPassCallback callback = explicitCallback == mCallbacks.end() ? RenderGraphPassCallback() : explicitCallback->second;
@@ -334,6 +407,7 @@ namespace mpp
 				}
 				{
 					GpuDebugScope executeScope("Execute: " + pass.name);
+					GraphRasterStateScope rasterState(pass.rasterState, pass.colourOutputs.size(), passTarget->getWidth(), passTarget->getHeight());
 					if (callback) callback(context);
 					else if (scenePass) scenePass->execute(context);
 					else
@@ -354,6 +428,15 @@ namespace mpp
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
+				auto const statsAfter = mRenderSystem->getCurrentRenderInfo();
+				GraphPassExecutionStats stats;
+				stats.pass = passHandle;
+				stats.name = pass.name;
+				stats.cpuMilliseconds = chrono::duration<double, milli>(chrono::steady_clock::now() - passStart).count();
+				stats.primitivesSubmitted = static_cast<uint64_t>(max(0, statsAfter.primitivesRendered - statsBefore.primitivesRendered));
+				stats.trianglesSubmitted = static_cast<uint64_t>(max(0, statsAfter.trianglesRendered - statsBefore.trianglesRendered));
+				stats.fullscreenQuads = static_cast<uint64_t>(max(0, statsAfter.fullscreenQuads - statsBefore.fullscreenQuads));
+				mLastExecutionStats.push_back(move(stats));
 			}
 			catch (...)
 			{

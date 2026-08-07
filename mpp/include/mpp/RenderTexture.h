@@ -19,6 +19,7 @@ namespace mpp
 
 		RenderTextureDepthAttachment mDepthAttachment;
 		RenderTextureDepthParams mDepthParams;
+		RenderTextureDepthFormat mDepthFormat{ RenderTextureDepthFormat::Depth24 };
 
 		GLuint mFrameBuffer;
 

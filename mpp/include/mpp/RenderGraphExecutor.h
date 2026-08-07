@@ -12,6 +12,16 @@
 namespace mpp
 {
 	class RenderSystem;
+
+	struct _MPPAPI GraphPassExecutionStats
+	{
+		GraphPassHandle pass;
+		std::string name;
+		double cpuMilliseconds{ 0.0 };
+		uint64_t primitivesSubmitted{ 0 };
+		uint64_t trianglesSubmitted{ 0 };
+		uint64_t fullscreenQuads{ 0 };
+	};
 	class RenderGraphPassFactoryRegistry;
 	class RenderGraphScenePass;
 	class RenderGraphTemplate;
@@ -43,6 +53,7 @@ namespace mpp
 		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
 		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
 		std::map<uint32_t, UniformCollection> mParameterOverrides;
+		std::vector<GraphPassExecutionStats> mLastExecutionStats;
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);
@@ -55,6 +66,7 @@ namespace mpp
 		void setFrameContext(RenderGraphFrameContext const* frameContext);
 		void setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters);
 		void clearPassCallbacks();
+		std::vector<GraphPassExecutionStats> const& getLastExecutionStats() const;
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
 		void execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps);
 	};
