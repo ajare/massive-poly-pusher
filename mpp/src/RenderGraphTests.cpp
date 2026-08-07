@@ -56,6 +56,7 @@ namespace mpp
 		if (!dependencyOrder.valid || dependencyOrder.passOrder.size() != 2 ||
 			dependencyOrder.passOrder[0].id != producer.id || dependencyOrder.passOrder[1].id != consumer.id)
 			return fail("stable dependency auto-order is incorrect");
+		RenderGraph reordered(outOfOrder);reordered.reorderPasses(dependencyOrder.passOrder);if(!reordered.compile().valid||reordered.getPassInfo({0}).name!="Producer")return fail("explicit dependency pass reorder failed");
 
 		outOfOrder.setPassEnabled(producer, false);
 		if (outOfOrder.compile().valid) return fail("value produced by a disabled pass was accepted");

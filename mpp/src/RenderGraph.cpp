@@ -447,6 +447,11 @@ namespace mpp
 		return result;
 	}
 
+	void RenderGraph::reorderPasses(vector<GraphPassHandle> const& order)
+	{
+		if(order.size()!=mPasses.size())THROW_MPP("Render graph pass order must include every pass.",__LINE__,__FILE__,__func__);vector<uint32_t> oldToNew(mPasses.size(),UINT32_MAX);for(uint32_t next=0;next<order.size();++next){if(!validPass(order[next])||oldToNew[order[next].id]!=UINT32_MAX)THROW_MPP("Render graph pass order contains an invalid or duplicate pass.",__LINE__,__FILE__,__func__);oldToNew[order[next].id]=next;}vector<Pass> reordered;reordered.reserve(mPasses.size());for(auto handle:order)reordered.push_back(std::move(mPasses[handle.id]));mPasses=std::move(reordered);for(auto& image:mImages)for(auto& producer:image.producers)if(producer!=UINT32_MAX)producer=oldToNew[producer];
+	}
+
 	RenderGraphAllocationPlan RenderGraph::buildAllocationPlan(glm::uvec2 const& viewport) const
 	{
 		RenderGraphAllocationPlan plan;

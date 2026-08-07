@@ -260,6 +260,7 @@ namespace mpp
 		RenderGraphCompileResult compile(Caps const& caps) const;
 		// Dependency-derived stable order offered as an explicit editor action.
 		RenderGraphCompileResult buildDependencyOrder() const;
+		void reorderPasses(std::vector<GraphPassHandle> const& order);
 		RenderGraphAllocationPlan buildAllocationPlan(glm::uvec2 const& viewport) const;
 
 		// Context-free diagnostic dump for logs and tests. It reports declared
