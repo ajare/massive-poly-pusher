@@ -17,6 +17,10 @@ namespace mpp::app
 		virtual void execute() = 0;
 
 		virtual void undo() = 0;
+
+		// Updates this command's final state when both commands belong to one
+		// continuous editor gesture. The command stack owns session boundaries.
+		virtual bool merge(EditorCommand const&) { return false; }
 	};
 
 	class CommandStack
@@ -26,13 +30,16 @@ namespace mpp::app
 		size_t mSaveCursor{ 0 };
 		bool mSavePointReachable{ true };
 		size_t mLimit{ 256 };
+		bool mCoalescing{ false };
 
 		void trimToLimit();
 
 	public:
 		explicit CommandStack(size_t limit = 256);
 
-		void execute(std::unique_ptr<EditorCommand> command);
+		void execute(std::unique_ptr<EditorCommand> command, bool coalesce = false);
+
+		void endCoalescing();
 
 		bool canUndo() const;
 

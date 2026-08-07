@@ -31,6 +31,13 @@ namespace mpp::app
 			string const& name() const override { return mName; }
 			void execute() override { *mTarget = mAfter; }
 			void undo() override { *mTarget = mBefore; }
+			bool merge(EditorCommand const& other) override
+			{
+				auto value = dynamic_cast<SetIntCommand const*>(&other);
+				if (!value || value->mTarget != mTarget || value->mName != mName) return false;
+				mAfter = value->mAfter;
+				return true;
+			}
 		};
 	}
 
@@ -69,6 +76,11 @@ namespace mpp::app
 		commands.undo();
 		commands.execute(make_unique<SetIntCommand>("Branch", &number, 3));
 		if (commands.canRedo() || !commands.dirty()) return fail("command branch did not discard redo/save state correctly");
+		commands.clear(); number = 0;
+		commands.execute(make_unique<SetIntCommand>("Drag", &number, 1), true);
+		commands.execute(make_unique<SetIntCommand>("Drag", &number, 2), true);
+		commands.execute(make_unique<SetIntCommand>("Drag", &number, 3), true);
+		if (commands.size() != 1 || number != 3 || !commands.undo() || number != 0) return fail("continuous command coalescing failed");
 
 		auto root = filesystem::temp_directory_path() / "mpp-document-foundation-tests";
 		auto document = root / "documents" / "pipeline.xml";

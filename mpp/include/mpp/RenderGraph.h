@@ -220,6 +220,7 @@ namespace mpp
 
 		bool validImage(GraphImageHandle image) const;
 		bool validPass(GraphPassHandle pass) const;
+		void removeProducedValue(GraphImageHandle image);
 
 	public:
 		RenderGraph();
@@ -231,20 +232,38 @@ namespace mpp
 
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc);
 		void setImageImportName(GraphImageHandle image, std::string const& importName);
+		void clearImageImportName(GraphImageHandle image);
+		void setImageName(GraphImageHandle image, std::string const& name);
 		void setImageDesc(GraphImageHandle image, GraphImageDesc const& desc);
+		// Structural editor operations remove dependent references rather than
+		// manufacturing replacements. Metadata validation then reports required slots.
+		void removeImage(GraphImageHandle image);
 		GraphImageInfo getImageInfo(GraphImageHandle image) const;
 		std::vector<GraphImageHandle> getImportedImages() const;
 		GraphPassHandle addPass(std::string const& name, GraphPassType type = GraphPassType::Scene);
 		void setPassEnabled(GraphPassHandle pass, bool enabled);
+		void setPassName(GraphPassHandle pass, std::string const& name);
 		void setPassProgramResource(GraphPassHandle pass, std::string const& resourceName);
+		void clearPassProgramResource(GraphPassHandle pass);
 		void setPassCallbackFactory(GraphPassHandle pass, std::string const& factoryName);
 		void setPassRasterState(GraphPassHandle pass, GraphRasterState const& state);
+		void removePass(GraphPassHandle pass);
+		GraphPassHandle duplicatePass(GraphPassHandle pass, std::string const& name);
+		void movePass(GraphPassHandle pass, uint32_t destination);
 
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
 		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX);
 		void setPassParameters(GraphPassHandle pass, UniformCollection const& parameters);
 		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f), uint32_t mipLevel = 0);
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f, uint32_t mipLevel = 0);
+		void setColourOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel);
+		GraphImageHandle retargetColourOutput(GraphPassHandle pass, size_t output, GraphImageHandle image);
+		void removeColourOutput(GraphPassHandle pass, size_t output);
+		void setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel);
+		GraphImageHandle retargetDepthOutput(GraphPassHandle pass, size_t output, GraphImageHandle image);
+		void removeDepthOutput(GraphPassHandle pass, size_t output);
+		void setSamplerBinding(GraphPassHandle pass, size_t binding, std::string const& sampler, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX);
+		void removeSamplerBinding(GraphPassHandle pass, size_t binding);
 
 		// Stable authored IDs identify imported and produced image values independently
 		// of pass position. Unnamed values retain deterministic generated IDs.
