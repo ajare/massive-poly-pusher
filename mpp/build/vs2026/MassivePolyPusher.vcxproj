@@ -39,6 +39,7 @@
     <ClInclude Include="..\..\include\mpp\Material.h" />
     <ClInclude Include="..\..\include\mpp\BasicMaterial.h" />
     <ClInclude Include="..\..\include\mpp\GpuDebugScope.h" />
+    <ClInclude Include="..\..\include\mpp\PbrLight.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterial.h" />
     <ClInclude Include="..\..\include\mpp\PbrPipelineDocument.h" />
     <ClInclude Include="..\..\include\mpp\PbrPipelineStream.h" />

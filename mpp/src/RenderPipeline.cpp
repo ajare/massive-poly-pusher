@@ -452,6 +452,7 @@ namespace mpp
 		bool const graphPbr = mOptions.mode == RenderPipelineMode::GraphPbrForward || mOptions.mode == RenderPipelineMode::XmlGraphPbrForward;
 		bool const graphLegacy = mOptions.mode == RenderPipelineMode::GraphLegacyForward;
 		bool const graphForward = graphPbr || graphLegacy;
+		if ((mOptions.mode == RenderPipelineMode::PbrForward || graphPbr) && scene->ownsPbrLights()) mRenderSystem->setPbrLights(scene->getPbrLights());
 		if (!graphForward && !mOptions.shadowDomain.empty())
 		{
 			GpuDebugScope shadowScope("Pass: ShadowDomain [" + mOptions.shadowDomain + "]");

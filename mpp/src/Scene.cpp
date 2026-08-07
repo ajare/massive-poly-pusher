@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <utility>
 #include "mpp/RenderSystem.h"
 #include "mpp/Scene.h"
 #include "mpp/GLErrorCheck.h"
@@ -133,6 +135,17 @@ namespace mpp
 		return inView;
 	}
 
+	vector<SceneModel3dPtr> Scene::get3dModelsInLayers(CameraPtr camera, vector<string> const& layers)
+	{
+		auto models = get3dModelsInView(camera);
+		if (layers.empty()) return models;
+		models.erase(remove_if(models.begin(), models.end(), [&layers](SceneModel3dPtr const& model)
+		{
+			return none_of(layers.begin(), layers.end(), [&model](string const& layer) { return model->isInRenderLayer(layer); });
+		}), models.end());
+		return models;
+	}
+
 	vector<pair<SceneModel2dPtr, int>> Scene::get2dModelsInView()
 	{
 		vector<pair<SceneModel2dPtr, int>> inView;
@@ -198,6 +211,22 @@ namespace mpp
 	bool Scene::show3dModels() const
 	{
 		return mShowModels;
+	}
+
+	void Scene::setPbrLights(vector<PbrLight> lights)
+	{
+		mPbrLights = std::move(lights);
+		mOwnsPbrLights = true;
+	}
+
+	vector<PbrLight> const& Scene::getPbrLights() const
+	{
+		return mPbrLights;
+	}
+
+	bool Scene::ownsPbrLights() const
+	{
+		return mOwnsPbrLights;
 	}
 
 	void Scene::update(float frameTime)
