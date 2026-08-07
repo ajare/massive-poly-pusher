@@ -1,5 +1,6 @@
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -46,11 +47,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 		std::shared_ptr<PbrPipelineDocument> openDocument;
 		std::shared_ptr<SceneDocument> openScene;
-		std::string currentPath;
+		std::string currentPath, recentPath;
+		{ std::ifstream recent("PipelineEditor.recent.txt"); std::getline(recent, recentPath); }
 		bool recoveredDocument = false;
 		if (__argc >= 2)
 		{
-			currentPath = __argv[1];
+			currentPath = __argv[1]; recentPath = currentPath; { std::ofstream recent("PipelineEditor.recent.txt", std::ios::trunc); recent << recentPath; }
 			std::string loadPath = currentPath;
 			auto recoveryPath = std::filesystem::path(currentPath + ".recovery");
 			if (std::filesystem::exists(recoveryPath) && std::filesystem::last_write_time(recoveryPath) > std::filesystem::last_write_time(currentPath) && MessageBoxA(nullptr,"A newer recovery document exists. Recover it?","PipelineEditor Recovery",MB_YESNO|MB_ICONQUESTION)==IDYES) { loadPath=recoveryPath.string(); recoveredDocument=true; }
@@ -89,7 +91,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto loadWorkspace = [&](std::string const& path)
 		{
 			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineParser::fromFile(path));
-			openScene.reset(); currentPath = path; selectedPass = -1;
+			openScene.reset(); currentPath = path; recentPath = path; selectedPass = -1; { std::ofstream recent("PipelineEditor.recent.txt", std::ios::trunc); recent << recentPath; }
 			if (!openDocument->previewScene.empty()) openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile((std::filesystem::path(path).parent_path() / openDocument->previewScene).string()));
 		};
 		bool running = true, pipelineDirty = recoveredDocument; float fps = 0, fpsTime = 0, recoveryTimer = 0; int frames = 0;
@@ -109,7 +111,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DockBuilderDockWindow("Pipeline Hierarchy", leftUpper); ImGui::DockBuilderDockWindow("Inspector", leftLower); ImGui::DockBuilderDockWindow("Diagnostics", leftLower); ImGui::DockBuilderDockWindow("Allocations", leftLower); ImGui::DockBuilderDockWindow("Viewport", right); ImGui::DockBuilderDockWindow("Toolbar", right); ImGui::DockBuilderFinish(dockspace);
 			}
 			bool requestNew=false, requestOpen=false, requestSave=false;
-			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { if(ImGui::MenuItem("New", "Ctrl+N"))requestNew=true; if(ImGui::MenuItem("Open...", "Ctrl+O"))requestOpen=true; if(ImGui::MenuItem("Save", "Ctrl+S",false,openDocument!=nullptr))requestSave=true; ImGui::Separator(); if (ImGui::MenuItem("Exit")) running=false; ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){ImGui::MenuItem("Undo","Ctrl+Z");ImGui::MenuItem("Redo","Ctrl+Y");ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
+			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { if(ImGui::MenuItem("New", "Ctrl+N"))requestNew=true; if(ImGui::MenuItem("Open...", "Ctrl+O"))requestOpen=true; if(!recentPath.empty()&&ImGui::MenuItem("Open Recent")) { loadWorkspace(recentPath); rebuildPreview(); pipelineDirty=false; } if(ImGui::MenuItem("Save", "Ctrl+S",false,openDocument!=nullptr))requestSave=true; ImGui::Separator(); if (ImGui::MenuItem("Exit")) running=false; ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){ImGui::MenuItem("Undo","Ctrl+Z");ImGui::MenuItem("Redo","Ctrl+Y");ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
 			ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse); if(ImGui::Button("New"))requestNew=true; ImGui::SameLine(); if(ImGui::Button("Open"))requestOpen=true; ImGui::SameLine(); if(ImGui::Button("Save All")&&openDocument)requestSave=true; ImGui::SameLine(); ImGui::Button("Undo"); ImGui::SameLine(); ImGui::Button("Redo"); ImGui::SameLine(); ImGui::Button("Add Pass"); ImGui::SameLine(); ImGui::Button("Validate"); ImGui::SameLine(); if(ImGui::Button("Apply/Rebuild"))rebuildPreview(); ImGui::End();
 			if(requestNew){loadWorkspace("resources/FullPbrPipeline.xml");currentPath.clear();pipelineDirty=true;rebuildPreview();}
 			if(requestOpen){if(auto path=mpp::app::openXmlFileDialog(window.getWindow(),"Open PBR Pipeline")){loadWorkspace(*path);pipelineDirty=false;rebuildPreview();}}
