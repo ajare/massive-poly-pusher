@@ -32,8 +32,8 @@
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
 - [~] Phase 6 shell is operational with native dialogs, pipeline/scene save lifecycle, dirty prompts, recent workspace, recovery autosave/restore, template creation, pipeline-plus-scene CLI validation, deployment, and resettable docking; configurable options and remaining lifecycle polish remain.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
-- [~] Phase 7 includes pass/scene/resource hierarchy selection, external-resource localization, typed primitive/camera/light/model controls, diagnostics, allocations, pass enable, and uniform controls; command-backed structural editing and comprehensive resource inspectors remain.
-- [ ] Phase 8 is in progress: XML graphs execute in the editor and rebuild transactionally, but offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
+- [~] Phase 7 includes command-backed undo/redo and save points for current pipeline/scene properties, image/import/raster inspectors, explicit dependency auto-order, scene duplication/deletion, external-resource localization, and typed scene controls; comprehensive resource inspectors and remaining graph structural commands remain.
+- [~] Phase 8 executes XML graphs with transactional rollback, stale/current reporting, and deterministic obsolete-generation cleanup; offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
 
 ## 1. Goal
 
