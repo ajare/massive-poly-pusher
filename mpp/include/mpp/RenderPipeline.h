@@ -15,6 +15,7 @@
 #include "mpp/PostEffect.h"
 #include "mpp/Scene.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
+#include "mpp/RenderGraphExecutor.h"
 
 namespace mpp
 {
@@ -170,6 +171,7 @@ namespace mpp
 
 		RenderTargetPtr getOutputRenderTarget();
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
+		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;
 
 		void resize(size_t width, size_t height);
 
