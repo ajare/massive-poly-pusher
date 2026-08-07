@@ -18,7 +18,9 @@
 #include "mpp/Logger.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphStream.h"
+#include "mpp/RenderGraphTargets.h"
 #include "mpp/RenderPipeline.h"
+#include "mpp/RenderTexture.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/Scene.h"
 #include "mpp/app/CommandStack.h"
@@ -105,18 +107,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto font = resources.getResource("__ImGui_Font__", true);
 		auto provider = std::make_shared<ImGuiDataProvider>(std::vector<ResourcePtr>{ font });
 		BufferRenderer renderer(provider);
-		auto scene = std::make_shared<Scene>(&renderSystem); scene->load(); scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));
+		auto scene = std::make_shared<Scene>(&renderSystem); scene->load(); scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));uint32_t viewportWidth=960,viewportHeight=720;scene->setViewport(0,0,viewportWidth,viewportHeight);
 		auto camera = std::make_shared<Camera>(glm::vec3(0, 3, 8), 0.0f, 0.0f, 0.0f, 60.0f, float(windowWidth) / float(windowHeight));
 		renderSystem.getOrCreateRenderPipeline("EditorUI");
-		std::string activePipeline = "EditorUI", activeGraphResource, previewFailure; bool previewStale=false; uint32_t runtimeGeneration = 0;
+		std::string activePipeline = "EditorUI", activeGraphResource, previewFailure;RenderTargetPtr activePreviewTarget;ImTextureID activePreviewTexture=0;bool previewStale=false; uint32_t runtimeGeneration = 0;
 		auto rebuildPreview = [&]()
 		{
 			if (!openDocument || !openDocument->graph || openDocument->validate().hasErrors()){previewStale=!activeGraphResource.empty();previewFailure="Working document is invalid; retaining the last valid preview.";return false;}
 			auto suffix = std::to_string(++runtimeGeneration), candidatePipeline="EditorPreview."+suffix, candidateGraph="PipelineEditor.Graph."+suffix;bool graphDeclared=false,pipelineDeclared=false;
 			try
 			{
-				auto graphStream=std::make_shared<RenderGraphStream>(&resources);graphStream->setGraph(openDocument->graph);auto graphResource=resources.declareResource(candidateGraph,graphStream).first;graphDeclared=true;graphResource->load();graphResource->create();RenderPipelineOptions previewOptions;previewOptions.mode=RenderPipelineMode::XmlGraphPbrForward;previewOptions.graphTemplate=graphResource;renderSystem.getOrCreateRenderPipeline(candidatePipeline,previewOptions);pipelineDeclared=true;
-				auto obsoletePipeline=activePipeline,obsoleteGraph=activeGraphResource;activePipeline=candidatePipeline;activeGraphResource=candidateGraph;previewStale=false;previewFailure.clear();if(!obsoleteGraph.empty()){renderSystem.removeRenderPipeline(obsoletePipeline);resources.deleteResource(obsoleteGraph);}return true;
+				auto graphStream=std::make_shared<RenderGraphStream>(&resources);graphStream->setGraph(openDocument->graph);auto graphResource=resources.declareResource(candidateGraph,graphStream).first;graphDeclared=true;graphResource->load();graphResource->create();RenderPipelineOptions previewOptions;previewOptions.mode=RenderPipelineMode::XmlGraphPbrForward;previewOptions.graphTemplate=graphResource;RenderTargetPtr candidatePreviewTarget;
+				for(auto const& import:openDocument->imports){GraphImageDesc desc;desc.format=import.format;desc.usage=import.usage;desc.external=true;desc.transient=false;for(auto image:openDocument->graph->getImportedImages()){auto info=openDocument->graph->getImageInfo(image);if(info.importName==import.id||info.importName==import.semantic){desc=info.desc;break;}}auto width=desc.absoluteSize.x?desc.absoluteSize.x:std::max(1u,(uint32_t)(viewportWidth*desc.relativeSize.x));auto height=desc.absoluteSize.y?desc.absoluteSize.y:std::max(1u,(uint32_t)(viewportHeight*desc.relativeSize.y));auto target=renderSystem.createRenderTexture("PipelineEditor.Import."+import.id+"."+suffix,width,height,makeGraphRenderTextureOptions(desc));previewOptions.graphImports[import.id]=target;previewOptions.graphImports[import.semantic]=target;if(import.id=="screen"||import.semantic=="presentation")candidatePreviewTarget=target;}
+				renderSystem.getOrCreateRenderPipeline(candidatePipeline,previewOptions);pipelineDeclared=true;
+				auto obsoletePipeline=activePipeline,obsoleteGraph=activeGraphResource;auto obsoleteTexture=activePreviewTexture;activePipeline=candidatePipeline;activeGraphResource=candidateGraph;activePreviewTarget=candidatePreviewTarget;activePreviewTexture=0;if(auto texture=std::dynamic_pointer_cast<RenderTexture>(activePreviewTarget))activePreviewTexture=provider->registerTexture(texture);if(obsoleteTexture)provider->unregisterTexture(obsoleteTexture);previewStale=false;previewFailure.clear();if(!obsoleteGraph.empty()){renderSystem.removeRenderPipeline(obsoletePipeline);resources.deleteResource(obsoleteGraph);}return true;
 			}
 			catch(std::exception const& error)
 			{
@@ -241,12 +245,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			else ImGui::TextUnformatted("Select a pipeline pass or scene item."); ImGui::End();
 			ImGui::Begin("Diagnostics"); if (openDocument) { auto diagnostics=openDocument->validate(); if(openScene)diagnostics.append(openScene->validate()); ImGui::Text("%zu error(s), %zu warning(s)",diagnostics.count(DiagnosticSeverity::Error),diagnostics.count(DiagnosticSeverity::Warning)); for(auto const&d:diagnostics.getDiagnostics()) ImGui::BulletText("[%s] %s",d.code.c_str(),d.message.c_str()); } else ImGui::TextColored(ImVec4(0.3f,1,0.4f,1),"No document loaded"); ImGui::End();
 			ImGui::Begin("Allocations"); if(openDocument&&openDocument->graph){auto plan=openDocument->graph->buildAllocationPlan({1280,720});if(plan.valid){ImGui::Text("Physical estimate: %.2f MiB",plan.estimatedPhysicalBytes/1048576.0);for(auto const& image:plan.allocatedImages)ImGui::BulletText("%s.v%u -> allocation %u, %.1f KiB, passes %u-%u",image.debugName.c_str(),image.image.version,image.physicalAllocation,image.estimatedBytes/1024.0,image.firstPass,image.lastPass);}else ImGui::TextUnformatted("Allocation unavailable while graph is invalid.");} ImGui::End();
-			ImGui::Begin("Viewport");if(previewStale){ImGui::TextColored(ImVec4(1.0f,0.65f,0.15f,1.0f),"STALE PREVIEW");ImGui::TextWrapped("%s",previewFailure.c_str());}else if(!previewFailure.empty())ImGui::TextColored(ImVec4(1.0f,0.3f,0.3f,1.0f),"Preview rebuild failed: %s",previewFailure.c_str());ImGui::TextUnformatted("PBR preview target will be presented here."); ImGui::End();
+			ImGui::Begin("Viewport");if(previewStale){ImGui::TextColored(ImVec4(1.0f,0.65f,0.15f,1.0f),"STALE PREVIEW");ImGui::TextWrapped("%s",previewFailure.c_str());}else if(!previewFailure.empty())ImGui::TextColored(ImVec4(1.0f,0.3f,0.3f,1.0f),"Preview rebuild failed: %s",previewFailure.c_str());auto viewportSize=ImGui::GetContentRegionAvail();auto requestedWidth=(uint32_t)std::max(1.0f,viewportSize.x),requestedHeight=(uint32_t)std::max(1.0f,viewportSize.y);if(activePreviewTarget&&(requestedWidth!=viewportWidth||requestedHeight!=viewportHeight)){if(activePreviewTexture)provider->unregisterTexture(activePreviewTexture);activePreviewTarget->resize(requestedWidth,requestedHeight);viewportWidth=requestedWidth;viewportHeight=requestedHeight;scene->setViewport(0,0,viewportWidth,viewportHeight);camera->setAspectRatio(float(viewportWidth)/float(viewportHeight));if(auto texture=std::dynamic_pointer_cast<RenderTexture>(activePreviewTarget))activePreviewTexture=provider->registerTexture(texture);}if(activePreviewTexture)ImGui::Image(activePreviewTexture,ImVec2((float)viewportWidth,(float)viewportHeight),ImVec2(0,1),ImVec2(1,0));else ImGui::TextUnformatted("No presentation import is available."); ImGui::End();
 			ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - 24)); ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x,24)); ImGui::Begin("##Status",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings); ImGui::Text("%s%s | %.1f FPS | %d submitted triangles | %llu known unique | Preview: %s",openDocument?"Loaded":"Ready",(pipelineDirty||sceneDirty)?" *":"",fps,renderSystem.getCurrentRenderInfo().trianglesRendered,(unsigned long long)(openScene?openScene->getKnownTriangleCount():0),openDocument?(previewStale?"stale last-valid generation":"current generation"):"no document");if(openScene&&openScene->getUnknownTriangleModelCount()&&ImGui::IsItemHovered())ImGui::SetTooltip("%zu visible .mppmodel source(s) are not included until model metadata is loaded.",openScene->getUnknownTriangleModelCount()); ImGui::End();
 			ImGui::Render(); provider->setDrawData(ImGui::GetDrawData());
 			renderSystem.startStatsCollection(); renderSystem.renderScene(scene, camera, glm::vec2(0), activePipeline); renderer.render(&renderSystem); renderSystem.finishStatsCollection(); window.show();
 		}
-		if(!activeGraphResource.empty()){renderSystem.removeRenderPipeline(activePipeline);resources.deleteResource(activeGraphResource);}
+		if(activePreviewTexture)provider->unregisterTexture(activePreviewTexture);activePreviewTarget.reset();if(!activeGraphResource.empty()){renderSystem.removeRenderPipeline(activePipeline);resources.deleteResource(activeGraphResource);}
 		scene->unload(); imGuiShutdown(&backend); renderSystem.destroyCoreResources(); window.destroy(); SDL_Quit();
 		return 0;
 	}

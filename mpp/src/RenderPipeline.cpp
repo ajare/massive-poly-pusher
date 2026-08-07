@@ -200,8 +200,9 @@ namespace mpp
 			auto const& viewport = scene->getViewport();
 			mGraphTargets->allocate(graph->buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height)));
 			RenderGraphImportRegistry imports;
-			imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
-			if (!mOptions.shadowDomain.empty()) imports.registerImport("shadowDepth", mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
+			for(auto const& entry:mOptions.graphImports)imports.registerImport(entry.first,entry.second);
+			if(!imports.findImport("screen"))imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
+			if (!mOptions.shadowDomain.empty()&&!imports.findImport("shadowDepth")) imports.registerImport("shadowDepth", mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
 			mGraphTargets->bindImports(*graph, imports);
 			// XML supplies defaults; current pipeline controls override dynamic
 			// per-frame values without recompiling or mutating the template.

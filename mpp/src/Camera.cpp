@@ -5,6 +5,7 @@
 #pragma warning(pop)
 
 #include "mpp/Camera.h"
+#include "mpp/MppException.h"
 
 namespace mpp
 {
@@ -29,6 +30,12 @@ namespace mpp
 	void Camera::setFov(float fov)
 	{
 		mFov = fov;
+	}
+
+	void Camera::setAspectRatio(float aspectRatio)
+	{
+		if(aspectRatio<=0.0f)THROW_MPP("Camera aspect ratio must be positive.",__LINE__,__FILE__,__func__);
+		mAspectRatio=aspectRatio;
 	}
 
 	float Camera::getFov() const

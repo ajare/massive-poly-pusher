@@ -6,10 +6,12 @@
 #include "mpp/Config.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderTarget.h"
+#include "mpp/RenderTextureStream.h"
 
 namespace mpp
 {
 	class RenderSystem;
+	_MPPAPI RenderTextureOptions makeGraphRenderTextureOptions(GraphImageDesc const& desc);
 	class RenderGraphImportRegistry;
 
 	// Owns the first, deliberately non-aliased set of physical render targets

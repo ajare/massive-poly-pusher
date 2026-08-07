@@ -110,6 +110,8 @@ namespace mpp
 		PbrEnvironmentPtr environment;
 		// Optional immutable XML graph topology for XmlGraphPbrForward.
 		ResourcePtr graphTemplate;
+		// Host-owned graph imports override built-in screen/shadow registrations.
+		std::map<std::string, RenderTargetPtr> graphImports;
 		// Optional emissive-mask MRT variant. XmlGraphPbrForward selects it only
 		// when requested and all hardware/material output requirements validate.
 		ResourcePtr graphTemplateMrt;
