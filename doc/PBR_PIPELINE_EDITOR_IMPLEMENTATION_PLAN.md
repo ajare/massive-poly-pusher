@@ -253,9 +253,9 @@ The first implementation does not include:
       - [ ] Run complete concrete-schema validation without GPU creation and expose typed editor controls.
   - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
   - [x] Preview instance-override model/binding targets and typed scalar/vector values with strict parsing, canonical serialization, semantic validation, and round-trip coverage.
-  - [~] Explicit extension-payload preservation and strict unknown-core-field rejection.
+  - [x] Explicit extension-payload preservation and strict unknown-core-field rejection.
     - [x] Strict unknown-field/value rejection across the current PBR pipeline and scene core schemas, with startup regression checks.
-    - [ ] Namespaced extension-payload preservation.
+    - [x] Unique namespaced extension envelopes with arbitrary payload-tree preservation and canonical round-trip coverage.
   - [x] Atomic replacement through the PbrPipeline serializer path.
 - [~] Complete external resource-library support.
   - [x] Parse and serialize ordered library paths.

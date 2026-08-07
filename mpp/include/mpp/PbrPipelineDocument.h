@@ -55,6 +55,12 @@ namespace mpp
 		std::string fallback;
 	};
 
+	struct _MPPAPI PbrPipelineExtensionDocument
+	{
+		std::string nameSpace;
+		utils::StructuredData payload{ "Payload" };
+	};
+
 	struct _MPPAPI PbrPipelineEnvironmentDocument
 	{
 		std::string binding;
@@ -80,6 +86,7 @@ namespace mpp
 		// Resolved parser/runtime state; serialization emits only resourceLibraries.
 		std::vector<PbrPipelineExternalResourceDocument> externalResources;
 		std::vector<PbrPipelineImportDocument> imports;
+		std::vector<PbrPipelineExtensionDocument> extensions;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;
 		std::vector<PbrPreviewBinding> previewBindings;

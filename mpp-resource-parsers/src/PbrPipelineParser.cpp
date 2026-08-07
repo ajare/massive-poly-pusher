@@ -48,7 +48,7 @@ namespace mpp::resource_parsers
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
 		auto data = reader->readTree();
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
-		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Environment","PreviewBindings","PreviewOverrides","RenderGraph"},"PbrPipeline");
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Environment","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
@@ -79,6 +79,10 @@ namespace mpp::resource_parsers
 		if(data.hasEntry("PreviewOverrides"))for(auto const& entry:data.getEntry("PreviewOverrides"))
 		{
 			if(entry.first!="Override")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in PreviewOverrides.",__LINE__,__FILE__,__func__);auto const& value=entry.second;rejectUnknown(value,{"model","binding","Values"},"PreviewOverrides/Override");PbrPreviewOverride result;result.modelId=value.getEntry("model").getValue();result.binding=value.getEntry("binding").getValue();if(value.hasEntry("Values"))parseUniforms(value.getEntry("Values"),result.values);document.previewOverrides.push_back(result);
+		}
+		if(data.hasEntry("Extensions"))for(auto const& entry:data.getEntry("Extensions"))
+		{
+			if(entry.first!="Extension")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Extensions.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"namespace","Payload"},"Extensions/Extension");if(!entry.second.hasEntry("namespace")||!entry.second.hasEntry("Payload"))THROW_MPP_RESOURCE_PARSERS("Pipeline extension requires namespace and Payload.",__LINE__,__FILE__,__func__);PbrPipelineExtensionDocument extension;extension.nameSpace=entry.second.getEntry("namespace").getValue();extension.payload=entry.second.getEntry("Payload");document.extensions.push_back(extension);
 		}
 		if (!data.hasEntry("RenderGraph")) THROW_MPP_RESOURCE_PARSERS("PbrPipeline has no embedded RenderGraph: " + filepath, __LINE__, __FILE__, __func__);
 		document.graph = make_shared<RenderGraph>(RenderGraphParser::fromData(data.getEntry("RenderGraph"), filepath));
