@@ -63,6 +63,10 @@ namespace mpp::resource_parsers
 		{
 			auto overrides=root->createChild("PreviewOverrides");for(auto const& value:document.previewOverrides){auto node=overrides->createChild("Override");node->createChild("model")->setValue(value.modelId);node->createChild("binding")->setValue(value.binding);if(!value.values.getUniformData().empty())writeUniforms(value.values,node->createChild("Values"));}
 		}
+		if(!document.extensions.empty())
+		{
+			auto extensions=root->createChild("Extensions");for(auto const& value:document.extensions){auto node=extensions->createChild("Extension");node->createChild("namespace")->setValue(value.nameSpace);writeData(value.payload,node->createChild("Payload"));}
+		}
 		auto graph = root->createChild("RenderGraph");
 		RenderGraphSerializer::toNode(*document.graph, graph);
 		auto temporary = filepath + ".tmp";
