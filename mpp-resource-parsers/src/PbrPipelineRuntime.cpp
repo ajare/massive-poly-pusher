@@ -40,9 +40,32 @@ namespace mpp::resource_parsers
 		accept();mPreviousRootResource=std::move(mRootResource);mPreviousDocument=std::move(mDocument);mPreviousMaterialBindings=std::move(mMaterialBindings);mPreviousInstanceOverrides=std::move(mInstanceOverrides);mPreviousImports=std::move(mImports);mPreviousPresentationTarget=std::move(mPresentationTarget);mPreviousEnvironment=std::move(mEnvironment);mRootResource=candidateRoot;mDocument=std::move(document);mMaterialBindings=std::move(candidateBindings);mInstanceOverrides=std::move(candidateOverrides);mImports=std::move(candidateImports);mPresentationTarget=std::move(candidatePresentation);mEnvironment=std::move(candidateEnvironment);mDiagnostics=std::move(candidateDiagnostics);return true;
 	}
 
-	void PbrPipelineRuntime::accept(){if(!mPreviousRootResource.empty()&&mResourceManager->getResource(mPreviousRootResource,true))mResourceManager->deleteResourceTree(mPreviousRootResource);mPreviousRootResource.clear();mPreviousDocument.reset();mPreviousMaterialBindings.clear();mPreviousInstanceOverrides.clear();mPreviousImports.clear();mPreviousPresentationTarget.reset();mPreviousEnvironment.reset();}
-	void PbrPipelineRuntime::rollback(){if(!mPreviousDocument){if(!mRootResource.empty()&&mResourceManager->getResource(mRootResource,true))mResourceManager->deleteResourceTree(mRootResource);mRootResource.clear();mDocument.reset();mMaterialBindings.clear();mInstanceOverrides.clear();mImports.clear();mPresentationTarget.reset();mEnvironment.reset();return;}if(!mRootResource.empty()&&mResourceManager->getResource(mRootResource,true))mResourceManager->deleteResourceTree(mRootResource);mRootResource=std::move(mPreviousRootResource);mDocument=std::move(mPreviousDocument);mMaterialBindings=std::move(mPreviousMaterialBindings);mInstanceOverrides=std::move(mPreviousInstanceOverrides);mImports=std::move(mPreviousImports);mPresentationTarget=std::move(mPreviousPresentationTarget);mEnvironment=std::move(mPreviousEnvironment);}
-	void PbrPipelineRuntime::clear(){if(!mRootResource.empty()&&mResourceManager->getResource(mRootResource,true))mResourceManager->deleteResourceTree(mRootResource);mRootResource.clear();mDocument.reset();mMaterialBindings.clear();mInstanceOverrides.clear();mImports.clear();mPresentationTarget.reset();mEnvironment.reset();accept();mDiagnostics.clear();}
+	void PbrPipelineRuntime::retireRoot(std::string root)
+	{
+		if(root.empty())return;
+		try
+		{
+			if(auto rootResource=mResourceManager->getResource(root,true)){rootResource->destroy();mResourceManager->deleteResource(root);}
+			bool referenced=false;for(auto const& name:mResourceManager->getResourceNamesWithPrefix(root+"/"))if(!mResourceManager->isResourceAlias(name))if(auto resource=mResourceManager->getResource(name,true))if(resource->getRefCount()!=0||resource->getDependingObjectCount()!=0||resource->getDependentResourceCount()!=0){referenced=true;break;}
+			if(referenced){if(std::find(mRetiredRootResources.begin(),mRetiredRootResources.end(),root)==mRetiredRootResources.end())mRetiredRootResources.push_back(std::move(root));return;}
+			mResourceManager->deleteResourceTree(root);
+		}
+		catch(...){if(std::find(mRetiredRootResources.begin(),mRetiredRootResources.end(),root)==mRetiredRootResources.end())mRetiredRootResources.push_back(std::move(root));}
+	}
+	void PbrPipelineRuntime::cleanupRetiredRoots()
+	{
+		auto roots=std::move(mRetiredRootResources);mRetiredRootResources.clear();for(auto& root:roots)retireRoot(std::move(root));
+	}
+	void PbrPipelineRuntime::accept(){auto previousRoot=std::move(mPreviousRootResource);mPreviousDocument.reset();mPreviousMaterialBindings.clear();mPreviousInstanceOverrides.clear();mPreviousImports.clear();mPreviousPresentationTarget.reset();mPreviousEnvironment.reset();cleanupRetiredRoots();retireRoot(std::move(previousRoot));}
+	void PbrPipelineRuntime::rollback()
+	{
+		auto candidateRoot=std::move(mRootResource);mDocument.reset();mMaterialBindings.clear();mInstanceOverrides.clear();mImports.clear();mPresentationTarget.reset();mEnvironment.reset();retireRoot(std::move(candidateRoot));
+		if(mPreviousDocument){mRootResource=std::move(mPreviousRootResource);mDocument=std::move(mPreviousDocument);mMaterialBindings=std::move(mPreviousMaterialBindings);mInstanceOverrides=std::move(mPreviousInstanceOverrides);mImports=std::move(mPreviousImports);mPresentationTarget=std::move(mPreviousPresentationTarget);mEnvironment=std::move(mPreviousEnvironment);}else mPreviousRootResource.clear();cleanupRetiredRoots();
+	}
+	void PbrPipelineRuntime::clear()
+	{
+		auto currentRoot=std::move(mRootResource);mDocument.reset();mMaterialBindings.clear();mInstanceOverrides.clear();mImports.clear();mPresentationTarget.reset();mEnvironment.reset();retireRoot(std::move(currentRoot));accept();cleanupRetiredRoots();mDiagnostics.clear();
+	}
 	void PbrPipelineRuntime::resize(uint32_t width,uint32_t height){if(mPresentationTarget)mPresentationTarget->resize(width,height);}
 	std::shared_ptr<PbrPipelineDocument> const& PbrPipelineRuntime::getDocument()const{return mDocument;}
 	std::map<std::string,ResourcePtr> const& PbrPipelineRuntime::getMaterialBindings()const{return mMaterialBindings;}
