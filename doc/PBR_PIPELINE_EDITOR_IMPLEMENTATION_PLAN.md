@@ -34,6 +34,7 @@
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [x] Phase 7 complete: command-backed structural authoring, drag reorder, dependency ordering, metadata-generated controls, complete image/import/attachment/raster/resource/scene inspectors, reference cleanup, typed uniform arrays/matrices, instance overrides, and continuous-edit coalescing.
 - [x] Phase 8 complete: offscreen transactional preview, scene/camera interaction, produced-value and mip inspection, diagnostic resolves, colour/channel/alpha/depth/HDR visualization, exact scene/submission statistics, and asynchronous per-pass GPU timings.
+- [x] Phase 9 complete: cancellable generation-tagged background preparation, debounced live rebuilding, dependency-aware stable file watching, clean hot reload, dirty conflict protection, render-thread GPU installation, and queued/building progress.
 
 ## 1. Goal
 
@@ -385,15 +386,27 @@ Continuously validated background rebuilds, debounce, cancellation, and stale-jo
 
 **Exit:** met. The docked viewport renders complete transactional workspaces, retains the last valid generation, supports camera interaction and intermediate image visualization, and reports CPU/GPU and geometry statistics without synchronously stalling the render loop.
 
-### Phase 9: Background work and hot reload
+### Phase 9: Background work and hot reload — Complete
 
-1. Add cancellable background parsing, reads, decoding, and validation.
-2. Marshal all GPU work to the render thread.
-3. Add file watcher with own-save suppression and dependency tracking.
-4. Add clean auto-reload, dirty-document conflict banner, and last-valid shader/texture reload behavior.
-5. Add progress and queued/building state reporting.
+- [x] Add a reusable single-worker background queue with cooperative cancellation, immutable generation-tagged results, progress stages, exception transport, and latest-submission replacement.
+- [x] Debounce working-document changes and prepare cloned pipeline/scene generations off the UI thread.
+  - [x] Run platform-independent pipeline, graph, concrete-resource, scene, and binding validation in the worker.
+  - [x] Discover document, library, texture, shader, and model dependencies and pre-read/decode supported image assets.
+  - [x] Reject cancelled or stale generations before any runtime mutation.
+- [x] Marshal active-GPU validation, resource creation, graph/pipeline construction, scene construction, and transactional installation to the render thread.
+- [x] Add a content-aware background file watcher.
+  - [x] Track pipeline, scene, external library, local/external texture and shader payloads, and referenced model files.
+  - [x] Require a stable revision before reporting replacement and suppress acknowledged editor saves.
+- [x] Add hot reload behavior.
+  - [x] Automatically parse, validate, decode, build, and install clean workspaces after dependency changes.
+  - [x] Preserve the previous complete generation when parsing, validation, decoding, shader/resource creation, or GPU installation fails.
+  - [x] Route changes to the existing conflict banner whenever pipeline or scene edits are dirty, and retain explicit reload/overwrite/keep-local actions.
+  - [x] Refresh document snapshots and dependency baselines only after the complete hot-reload candidate installs.
+- [x] Show queued/running stage and fractional progress in the toolbar and status bar, with render-thread installation and stale-preview diagnostics.
+- [x] Add deterministic foundation coverage for cancellation, generation replacement, progress results, stable file observation, and own-save suppression.
+- [x] Defer shared cached resources whose previous generation remains referenced and retry cleanup after later generations release aliases.
 
-**Exit:** rapid edits/open/reload operations cannot install stale results or corrupt document state.
+**Exit:** met. Rapid edits cancel older preparation, only the current immutable result can reach render-thread installation, clean dependency changes reload transactionally, and dirty workspaces are never overwritten by hot reload.
 
 ### Phase 10: Templates, shared assets, docs, and final validation
 
