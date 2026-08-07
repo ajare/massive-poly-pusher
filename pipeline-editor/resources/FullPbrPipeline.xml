@@ -9,6 +9,7 @@
   </Imports>
   <Environment><binding>Preview.Environment</binding><irradiance>PBR.Preview.Environment</irradiance><prefilteredSpecular>PBR.Preview.Environment</prefilteredSpecular><brdfLut>PBR.Preview.BrdfLut</brdfLut><background>PBR.Preview.Environment</background></Environment>
   <PreviewBindings><Material><binding>Preview.Main</binding><resource>Statue/PbrStatueMaterial</resource></Material></PreviewBindings>
+  <PreviewOverrides><Override><model>Sphere.0.0</model><binding>Preview.Main</binding><Values><Float><name>roughnessFactor</name><value>0.35</value></Float><Vec4><name>baseColourFactor</name><value>1 0.8 0.6 1</value></Vec4></Values></Override></PreviewOverrides>
 <RenderGraph>
   <Images>
     <Image><name>ShadowDepth</name><format>DEPTH24</format><usage>depthAttachment,sampled</usage><import>shadowDepth</import><external>true</external><transient>false</transient></Image>

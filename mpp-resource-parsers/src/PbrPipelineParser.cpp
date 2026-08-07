@@ -29,6 +29,12 @@ namespace mpp::resource_parsers
 			return usage;
 		}
 		bool boolean(std::string value){utils::StringUtils::toUpper(value);if(value=="TRUE"||value=="1"||value=="YES")return true;if(value=="FALSE"||value=="0"||value=="NO")return false;THROW_MPP_RESOURCE_PARSERS("Invalid PbrPipeline boolean '"+value+"'.",__LINE__,__FILE__,__func__);}
+		void rejectUnknown(utils::StructuredData const&,std::set<std::string> const&,std::string const&);
+		void parseUniforms(utils::StructuredData const& data,UniformCollection& uniforms)
+		{
+			for(auto const& entry:data){auto const& value=entry.second;rejectUnknown(value,{"name","value"},"PreviewOverrides/Override/Values");auto name=value.getEntry("name").getValue();auto text=value.getEntry("value").getValue();std::istringstream input(text);
+				if(entry.first=="Float")uniforms.setUniform(name,utils::StringUtils::parseFloat(text));else if(entry.first=="Int")uniforms.setUniform(name,(int32_t)utils::StringUtils::parseInt(text));else if(entry.first=="Bool"){int32_t current=boolean(text)?1:0;uniforms.setUniform(name,program::GLSLType::Bool,1,1,reinterpret_cast<char const*>(&current));}else if(entry.first=="Vec2"){glm::vec2 current;if(!(input>>current.x>>current.y))THROW_MPP_RESOURCE_PARSERS("Invalid Vec2 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else if(entry.first=="Vec3"){glm::vec3 current;if(!(input>>current.x>>current.y>>current.z))THROW_MPP_RESOURCE_PARSERS("Invalid Vec3 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else if(entry.first=="Vec4"){glm::vec4 current;if(!(input>>current.x>>current.y>>current.z>>current.w))THROW_MPP_RESOURCE_PARSERS("Invalid Vec4 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else THROW_MPP_RESOURCE_PARSERS("Unknown preview override value type '"+entry.first+"'.",__LINE__,__FILE__,__func__);}
+		}
 		void rejectUnknown(utils::StructuredData const& data,std::set<std::string> const& allowed,std::string const& context){for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);}
 	}
 	PbrPipelineDocument PbrPipelineParser::fromFile(string const& filepath)
@@ -36,7 +42,7 @@ namespace mpp::resource_parsers
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
 		auto data = reader->readTree();
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
-		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","Imports","Environment","PreviewBindings","RenderGraph"},"PbrPipeline");
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","Imports","Environment","PreviewBindings","PreviewOverrides","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
@@ -59,6 +65,10 @@ namespace mpp::resource_parsers
 		}
 		if (data.hasEntry("PreviewBindings"))
 			for (auto const& entry : data.getEntry("PreviewBindings")) { if(entry.first!="Material")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in PreviewBindings.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"binding","resource"},"PreviewBindings/Material");document.previewBindings.push_back({ entry.second.getEntry("binding").getValue(), entry.second.getEntry("resource").getValue() }); }
+		if(data.hasEntry("PreviewOverrides"))for(auto const& entry:data.getEntry("PreviewOverrides"))
+		{
+			if(entry.first!="Override")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in PreviewOverrides.",__LINE__,__FILE__,__func__);auto const& value=entry.second;rejectUnknown(value,{"model","binding","Values"},"PreviewOverrides/Override");PbrPreviewOverride result;result.modelId=value.getEntry("model").getValue();result.binding=value.getEntry("binding").getValue();if(value.hasEntry("Values"))parseUniforms(value.getEntry("Values"),result.values);document.previewOverrides.push_back(result);
+		}
 		if (!data.hasEntry("RenderGraph")) THROW_MPP_RESOURCE_PARSERS("PbrPipeline has no embedded RenderGraph: " + filepath, __LINE__, __FILE__, __func__);
 		document.graph = make_shared<RenderGraph>(RenderGraphParser::fromData(data.getEntry("RenderGraph"), filepath));
 		return document;
