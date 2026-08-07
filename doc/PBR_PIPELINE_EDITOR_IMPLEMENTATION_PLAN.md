@@ -339,7 +339,8 @@ The first implementation does not include:
 - [~] Add scene model/primitive/absolute-transform/layer/light/camera/editor-setting inspectors.
   - [x] Model selection, absolute translation/rotation/scale, visibility, shadow-caster state, and logical material binding.
   - [x] Comma-separated layers, directional/point lights, camera, and environment binding.
-  - [ ] Primitive parameters and editor settings.
+  - [x] Typed box/sphere/cylinder/grid parameters with strict XML, semantic range validation, canonical round-trip, and source-specific inspector controls.
+  - [ ] Portable editor settings.
 - [ ] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
 - [ ] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
 
