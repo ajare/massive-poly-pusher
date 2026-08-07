@@ -40,4 +40,4 @@ Diagnostics have a stable code, severity, message, source path, and optional sub
 
 Strict parser failures do not produce partially trusted documents. The CLI wraps these as `MPP-PIPELINE-CLI-002`; the graphical editor reports the operation error and retains the previous workspace. Semantic errors are collected together and displayed by code.
 
-Invalid regression fixtures and their expected codes are catalogued in `pipeline-editor/resources/invalid/EXPECTED_DIAGNOSTICS.md`.
+Invalid regression fixtures and their expected codes are catalogued in `resources/pipeline-editor/invalid/EXPECTED_DIAGNOSTICS.md`.
