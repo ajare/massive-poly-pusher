@@ -160,6 +160,11 @@ namespace mpp
 		return mGraphTargets?mGraphTargets->get(image):nullptr;
 	}
 
+	vector<GraphPassExecutionStats> const& RenderPipeline::getLastGraphExecutionStats() const
+	{
+		static vector<GraphPassExecutionStats> const empty;return mGraphExecutor?mGraphExecutor->getLastExecutionStats():empty;
+	}
+
 	void RenderPipeline::resize(size_t width, size_t height)
 	{
 		for (auto const& pass : mPasses)

@@ -393,7 +393,9 @@ The first implementation does not include:
     - [x] Status displays known unique primitive triangles and reports excluded visible `.mppmodel` sources in a tooltip.
     - [~] Submitted pass breakdown, loaded-model unique triangles, CPU/GPU pass timings, and viewport size.
       - [x] Live dock-content viewport sizing drives graph presentation allocation and camera aspect.
-      - [ ] Submitted pass breakdown, loaded-model unique triangles, and CPU/GPU pass timings.
+      - [~] Submitted pass breakdown, loaded-model unique triangles, and CPU/GPU pass timings.
+        - [x] Dedicated Statistics tab with live viewport dimensions, rolling frame time/FPS, per-pass CPU time, submitted triangles/fullscreen quads, and graph totals.
+        - [ ] GPU pass timings and loaded-model unique triangle metadata.
 
 **Exit:** not met. Graph execution exists, but the docked viewport still lacks offscreen presentation, scene content, camera interaction, and intermediate inspection.
 
