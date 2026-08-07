@@ -12,6 +12,20 @@ First build the submodules:
 
 `msbuild ext\utils\build\vs2017\Utils.sln -target:UtilsTests:Rebuild -p:Platform=Win32 -p:Configuration=Release`
 
-Then the main project:
+Then the main project. The current editor/tool configuration is VS2026 x64:
 
-`msbuild build\vs2017\MassivePolyPusher.sln -target:MppMesh:Rebuild;MppProgram:Rebuild;MassivePolyPusher:Rebuild;MppMeshSpecificationParser:Rebuild;MppHelper:Rebuild;MppResourceParsers:Rebuild;ProgramBuilder:Rebuild;DemoSuite:Rebuild -p:Platform=Win32 -p:Configuration=Release`
+`msbuild build\vs2026\MassivePolyPusher.sln -target:Build -p:Platform=x64 -p:Configuration=Release`
+
+`PipelineEditor` is a separate executable under `pipeline-editor\build\vs2026\bin\x64\<Configuration>`. Its post-build deployment includes shared templates and assets under `resources\shared`.
+
+## PBR PipelineEditor
+
+Start with `resources/shared/pbr/templates/Minimal.pipeline.xml`, `Shadows.pipeline.xml`, `Full.pipeline.xml`, or `Empty.pipeline.xml`. The reusable default scene is `resources/shared/pbr/DefaultPbrPreview.scene.xml`.
+
+Documentation:
+
+- [PipelineEditor authoring guide](doc/PIPELINE_EDITOR_AUTHORING_GUIDE.md)
+- [PBR pipeline XML specification](doc/PBR_PIPELINE_XML_SPECIFICATION.md)
+- [Preview scene XML specification](doc/PBR_SCENE_XML_SPECIFICATION.md)
+- [Diagnostics catalogue](doc/PIPELINE_EDITOR_DIAGNOSTICS.md)
+- [CLI validation and smoke tests](doc/PIPELINE_EDITOR_CLI.md)

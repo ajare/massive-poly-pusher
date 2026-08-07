@@ -1,0 +1,63 @@
+# PipelineEditor Authoring Guide
+
+## Starting a workspace
+
+Build `PipelineEditor` for VS2026 x64 and run it from its output directory. Use **File > New** to create an untitled workspace from:
+
+- **Minimal PBR Pipeline** — HDR PBR scene and tone-map presentation.
+- **PBR Shadows Pipeline** — minimal pipeline plus directional shadow depth.
+- **Full PBR Pipeline** — shadows, HDR scene, bloom, and tone mapping.
+- **Empty Pipeline** — presentation import/image with no authored passes or scene.
+
+The first three use the shared default scene. A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
+
+## Layout and hierarchy
+
+PipelineEditor uses one docking window. The hierarchy selects passes, images, imports, resources, environment, bindings, overrides, models, lights, camera, and layers. The inspector edits the selected item. Diagnostics, allocations, statistics, and viewport remain visible as independent docks. **Window > Reset Layout** restores the default arrangement.
+
+Passes, local resources, and scene models support drag ordering. Invalid reorder and delete operations are intentionally allowed, diagnosed, and undoable. **Pipeline > Auto-order Pass Dependencies** is an explicit command; ordering is never silently changed.
+
+## Editing workflow
+
+1. Select a hierarchy item and edit its inspector.
+2. Read Diagnostics before rebuilding. Required imports, fallback classification, format support, stable values, reflection, layers, and bindings are validated continuously.
+3. Use **Apply/Rebuild** to request immediate preparation, or wait for the edit debounce.
+4. CPU parsing, validation, dependency reads, and image decoding run in a cancellable worker generation. GPU validation and installation run on the render thread.
+5. If a generation fails, the viewport remains on the last complete valid generation and displays **STALE PREVIEW**.
+6. Save the pipeline, scene, or both. Invalid working documents can be saved only after confirmation.
+
+Continuous inspector changes coalesce into undoable commands. Undo/redo selection is reset when topology changes to avoid stale identities.
+
+## Resources and bindings
+
+Author only concrete `PbrMaterial`, `Program`, `Texture`, and `Sampler` resources. External libraries are read-only and use `Library::Resource`; select an external child and choose **Make Local Copy** before editing it. Renaming or deleting local resources updates direct and nested references.
+
+Pipeline environments own IBL/background resources. Neutral fallbacks are explicit diagnostics, not hidden scene state. Logical preview bindings keep scenes independent from concrete resources. Instance overrides may reduce enabled material capabilities but cannot enable shader features that were specialized out.
+
+## Viewport controls
+
+- Left-drag empty viewport space: orbit.
+- Middle-drag: pan.
+- Mouse wheel: zoom.
+- **Reset View**: restore the authored camera.
+- **Frame Selection**: frame the selected model.
+- **Save Current View**: write camera position/target/clipping to the scene as an undoable edit.
+
+Enable **Inspect selected image** to display an authored graph image/value. Select value version and mip, then choose colour, R/G/B, alpha, luminance, linear depth, HDR tone-map, or HDR heat-map visualization. MSAA and attachment-only images use display-safe diagnostic resolves.
+
+Statistics report FPS, submitted triangles, scene inventory, pass CPU duration, and asynchronous GPU duration. GPU timing is shown as available, pending, or unsupported and never blocks the frame.
+
+## Files, recovery, and external changes
+
+Pipeline and scene dirty state is independent. Save All saves an untitled scene first so the pipeline can store its relative reference. Writes use atomic temporary replacement. Recovery copies are separate from explicit saves and are removed after successful save/discard handling.
+
+Dependency watching includes pipeline/scene XML, libraries, texture and shader payloads, and model files. Clean workspaces hot-reload transactionally. Dirty workspaces show the conflict banner and require **Reload**, **Overwrite**, or **Keep Local**; external libraries are never overwritten.
+
+## Related documentation
+
+- [PBR_PIPELINE_XML_SPECIFICATION.md](PBR_PIPELINE_XML_SPECIFICATION.md)
+- [PBR_SCENE_XML_SPECIFICATION.md](PBR_SCENE_XML_SPECIFICATION.md)
+- [PIPELINE_EDITOR_DIAGNOSTICS.md](PIPELINE_EDITOR_DIAGNOSTICS.md)
+- [PIPELINE_EDITOR_CLI.md](PIPELINE_EDITOR_CLI.md)
+- [PBR_MATERIAL_AUTHORING.md](PBR_MATERIAL_AUTHORING.md)
+- [RENDER_GRAPH_SPECIFICATION.md](RENDER_GRAPH_SPECIFICATION.md)

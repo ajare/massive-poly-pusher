@@ -35,6 +35,7 @@
 - [x] Phase 7 complete: command-backed structural authoring, drag reorder, dependency ordering, metadata-generated controls, complete image/import/attachment/raster/resource/scene inspectors, reference cleanup, typed uniform arrays/matrices, instance overrides, and continuous-edit coalescing.
 - [x] Phase 8 complete: offscreen transactional preview, scene/camera interaction, produced-value and mip inspection, diagnostic resolves, colour/channel/alpha/depth/HDR visualization, exact scene/submission statistics, and asynchronous per-pass GPU timings.
 - [x] Phase 9 complete: cancellable generation-tagged background preparation, debounced live rebuilding, dependency-aware stable file watching, clean hot reload, dirty conflict protection, render-thread GPU installation, and queued/building progress.
+- [x] Phase 10 complete: shared self-contained assets, four pipeline templates and default scene, XML/authoring/diagnostic/CLI documentation, expanded invalid fixtures, deterministic validation and GPU smoke automation, unified Debug/Release solution builds, and clean deployment regression coverage.
 
 ## 1. Goal
 
@@ -408,16 +409,22 @@ Continuously validated background rebuilds, debounce, cancellation, and stale-jo
 
 **Exit:** met. Rapid edits cancel older preparation, only the current immutable result can reach render-thread installation, clean dependency changes reload transactionally, and dirty workspaces are never overwritten by hot reload.
 
-### Phase 10: Templates, shared assets, docs, and final validation
+### Phase 10: Templates, shared assets, docs, and final validation — Complete
 
-1. Move selected assets into `resources/shared` and update deployments.
-2. Add default scene and Minimal, Shadows, Full, and Empty pipeline templates.
-3. Add pipeline/scene XML specifications, authoring guide, controls, diagnostics catalogue, and CLI documentation.
-4. Add invalid fixture suites and real-context integration startup tests.
-5. Build Debug/Release MPP, parsers, converters, DemoSuite, and PipelineEditor together.
-6. Run symbol/XML scans, clean output deployment tests, and DemoSuite regression startup.
+- [x] Move reusable preview scene, resource library, and image assets into `resources/shared/pbr` and remove per-application copies.
+- [x] Deploy deterministic self-contained resource trees for PipelineEditor and DemoSuite, removing stale output resources before each copy.
+- [x] Add the default preview scene and Minimal, Shadows, Full, and Empty native pipeline templates.
+- [x] Expose all four templates through **File > New** as untitled pipeline/scene copies that cannot overwrite shipped assets.
+- [x] Add native pipeline XML and scene XML specifications, authoring/controls guide, diagnostics catalogue, CLI reference, and README entry points.
+- [x] Expand strict parser, graph, resource, scene, version, and fallback invalid fixtures with an expected-diagnostic manifest.
+- [x] Add `MPP-PIPELINE-CLI-002` parser-failure reporting and deterministic CLI syntax/error exit behavior without graphical dialogs.
+- [x] Add `--smoke-test` for finite active-context startup/render/shutdown integration tests.
+- [x] Add `tools/ValidatePipelineEditorPhase10.ps1` for deployment, x64/removed-symbol, XML/legacy-schema, valid template, invalid fixture, and GPU startup checks.
+- [x] Add `RebuildAll2026.bat` and include MppAppSupport/PipelineEditor in the VS2026 solution so Debug and Release libraries, parsers, converters, DemoSuite, and PipelineEditor build together.
+- [x] Fix deterministic scene/runtime, internal-font, ImGui texture, SDL window/context, and render-system shutdown ordering exposed by finite smoke tests.
+- [x] Run Debug and Release solution builds, template CLI/GPU validation, clean deployment checks, and DemoSuite CPU/GPU regression startup.
 
-**Exit:** all acceptance criteria below pass from a clean checkout.
+**Exit:** met. The acceptance suite passes against cleanly regenerated Debug and Release deployment trees, all shipped templates validate and start with an active context, invalid fixtures return their stable diagnostics, and DemoSuite retains its compatibility behavior.
 
 ## 5. Commit strategy
 
