@@ -25,6 +25,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 
 #include <glm/gtx/rotate_vector.hpp>
 #include <filesystem>
+#include <fstream>
 
 #include <stdexcept>
 
@@ -1188,6 +1189,8 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto pipelineRoundTrip = std::filesystem::temp_directory_path() / "mpp-pipeline-roundtrip.xml";
 	mpp::resource_parsers::PbrPipelineSerializer::toFile(pipelineDocument, pipelineRoundTrip.string());
 	auto roundTrippedPipeline = mpp::resource_parsers::PbrPipelineParser::fromFile(pipelineRoundTrip.string());
+	{ std::ofstream invalid(pipelineRoundTrip,std::ios::trunc);invalid<<"<PbrPipeline><version>1</version><unknown>true</unknown></PbrPipeline>"; }
+	bool rejectedUnknown=false;try{mpp::resource_parsers::PbrPipelineParser::fromFile(pipelineRoundTrip.string());}catch(std::exception const&){rejectedUnknown=true;}if(!rejectedUnknown)throw std::runtime_error("PbrPipeline parser accepted an unknown field.");
 	std::filesystem::remove(pipelineRoundTrip);
 	if (roundTrippedPipeline.name != pipelineDocument.name || roundTrippedPipeline.imports.size() != pipelineDocument.imports.size() || !roundTrippedPipeline.graph || roundTrippedPipeline.graph->getPassCount() != pipelineDocument.graph->getPassCount())
 		throw std::runtime_error("Native PbrPipeline XML round trip failed.");
@@ -1201,6 +1204,8 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto sceneRoundTrip = std::filesystem::temp_directory_path() / "mpp-scene-roundtrip.xml";
 	mpp::resource_parsers::SceneSerializer::toFile(sceneDocument, sceneRoundTrip.string());
 	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());
+	{ std::ofstream invalid(sceneRoundTrip,std::ios::trunc);invalid<<"<Scene><version>1</version><unknown>true</unknown></Scene>"; }
+	bool rejectedUnknownScene=false;try{mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());}catch(std::exception const&){rejectedUnknownScene=true;}if(!rejectedUnknownScene)throw std::runtime_error("Scene parser accepted an unknown field.");
 	std::filesystem::remove(sceneRoundTrip);
 	if (roundTrippedScene.models.size() != sceneDocument.models.size() || roundTrippedScene.lights.size() != sceneDocument.lights.size() || roundTrippedScene.models.front().source != sceneDocument.models.front().source || roundTrippedScene.lights.back().type != sceneDocument.lights.back().type) throw std::runtime_error("Native Scene XML round trip failed.");
 	auto sceneTemplateResource = resourceMgr->declareResource("PBR.EditorSceneTest", std::make_shared<mpp::resource_parsers::FileSceneStream>(resourceMgr, options.resourceLocation + pipelineDocument.previewScene)).first;

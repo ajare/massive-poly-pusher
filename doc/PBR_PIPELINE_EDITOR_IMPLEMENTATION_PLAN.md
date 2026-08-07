@@ -249,7 +249,9 @@ The first implementation does not include:
   - [ ] Document-local PBR materials, programs, textures, and samplers.
   - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
   - [ ] Preview instance-override parsing and serialization; current output would drop this DTO data.
-  - [ ] Explicit extension-payload preservation and strict unknown-core-field rejection.
+  - [~] Explicit extension-payload preservation and strict unknown-core-field rejection.
+    - [x] Strict unknown-field/value rejection across the current PBR pipeline and scene core schemas, with startup regression checks.
+    - [ ] Namespaced extension-payload preservation.
   - [x] Atomic replacement through the PbrPipeline serializer path.
 - [~] Complete external resource-library support.
   - [x] Parse and serialize ordered library paths.
