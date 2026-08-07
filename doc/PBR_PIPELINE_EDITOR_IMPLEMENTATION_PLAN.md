@@ -25,7 +25,7 @@
 - [x] Added root-dispatched standalone RenderGraph migration with generated stable value IDs and editor Save-As behavior.
 - [x] Phase 4 complete: canonical full schema, typed local/external resources, recursive localization, parser and active-GPU validation, imports, environments, bindings, overrides, invalid fixtures, and reusable transactional `PbrPipelineRuntime` resolution/rollback/cleanup.
 - [x] Added the Scene document DTO/parser/serializer/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
-- [~] Phase 5 includes `SceneTemplate`/programmatic and file streams, typed primitive parameters, expanded validation, inspectors, and primitive triangle inventory; populated runtime-scene instantiation remains.
+- [x] Phase 5 complete: strict declared layers and shadow-light contracts, complete primitive/model instantiation, scene-owned PBR lights, resolved pipeline materials/environments/overrides, transactional rollback, exact inventories, and runtime inspection tests.
 - [x] Extracted shared SDL window/timer support and created a standalone docking-enabled PipelineEditor Debug application.
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
 - [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
@@ -33,7 +33,7 @@
 - [~] Phase 6 shell is operational with native dialogs, pipeline/scene save lifecycle, dirty prompts, recent workspace, recovery autosave/restore, template creation, pipeline-plus-scene CLI validation, deployment, and resettable docking; configurable options and remaining lifecycle polish remain.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [~] Phase 7 includes command-backed undo/redo and save points for current pipeline/scene properties, image/import/raster inspectors, explicit dependency auto-order, scene duplication/deletion, external-resource localization, and typed scene controls; comprehensive resource inspectors and remaining graph structural commands remain.
-- [~] Phase 8 now presents offscreen graph output, populates transactional runtime scenes, supports orbit/pan/zoom/framing and camera saves, inspects produced image versions, reports pass CPU/triangle statistics, and retains rollback/cleanup behavior; visualization resolves, GPU timings, and complete pipeline bindings remain.
+- [~] Phase 8 now presents offscreen graph output with resolved materials, environments, lights, overrides, and directional shadows; supports orbit/pan/zoom/framing and camera saves; inspects produced image versions; and reports pass CPU/triangle statistics. Visualization resolves and GPU timings remain.
 
 ## 1. Goal
 
@@ -288,33 +288,35 @@ The first implementation does not include:
 
 **Exit:** met. Complete local/external documents round-trip canonically, invalid fixtures diagnose with stable codes, standalone RenderGraph imports preserve topology and require Save As, and reusable complete runtime workspaces install or roll back transactionally.
 
-### Phase 5: Scene document and runtime resource — In Progress
+### Phase 5: Scene document and runtime resource — Complete
 
 - [x] Add Scene document DTOs for models/primitives, absolute transforms, layers, material bindings, PBR lights, one camera, and environment binding.
 - [x] Add version-1 file parser and deterministic serializer with atomic replacement.
 - [x] Add the shipped sphere-grid preview scene and parser/serializer round-trip startup validation.
-- [~] Add scene validation and inventory.
+- [x] Add scene validation and inventory.
   - [x] Version, name, model/light ID, required model file, camera range, and binding diagnostics.
-  - [~] Resource existence/type validation, layer validation, light-limit/shadow compatibility, portability, and triangle inventory.
+  - [x] Resource existence/type validation, layer validation, light-limit/shadow compatibility, portability, and triangle inventory.
     - [x] Model-file existence, absolute-path portability, empty-layer, light value/direction, and eight-light-limit validation.
-    - [~] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
+    - [x] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
       - [x] Exact visible primitive triangle inventory for authored box/sphere/cylinder/grid parameters, plus explicit unknown `.mppmodel` count.
-      - [~] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
+      - [x] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
         - [x] Runtime model stream/type loading, exact loaded/primitive per-model and visible unique triangle inventory, and diagnosed placeholders excluded from totals.
-        - [ ] Declared-layer references and shadow-light compatibility.
+        - [x] Validate unique declared layers, duplicate/undeclared model references, one directional shadow light, unsupported point shadows, finite transforms/light values, and non-zero scales.
 - [x] Add `SceneTemplate`, programmatic `SceneStream::setDocument()`, `FileSceneStream`, ResourceManager factory registration, and resource startup test.
-- [~] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
+- [x] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
   - [x] Transactional `SceneRuntime`, neutral specialized PBR material, all four primitive streams, successful `.mppmodel` loading, visibility/shadow flags, and absolute translation/Euler rotation/scale application.
-  - [ ] Declared render-layer propagation.
-- [~] Resolve logical material/environment bindings from the active pipeline workspace.
-  - [x] Runtime material-binding map API with diagnosed neutral PBR fallback; PipelineEditor currently uses fallback mappings.
-  - [ ] Build mappings from the complete active pipeline workspace and resolve the environment.
+  - [x] Propagate declared render layers to runtime model instances and expose layer-filtered scene queries.
+- [x] Resolve logical material/environment bindings from the active pipeline workspace.
+  - [x] Runtime material-binding map API with diagnosed neutral PBR fallback and concrete PBR type enforcement.
+  - [x] Build mappings from the complete active pipeline workspace, apply them to primitive and loaded models, and enforce the scene-to-pipeline environment binding.
 - [x] Add diagnosed missing/failed-model placeholder boxes excluded from authored triangle statistics.
-- [~] Add runtime tests covering every source type, transforms, layers, lights, bindings, missing assets, and cleanup.
+- [x] Convert up to eight authored directional/point lights into scene-owned PBR runtime lights, normalize directional vectors, apply them per PBR render, and preserve the legacy host-managed lighting path for scenes that do not opt in.
+- [x] Configure the preview's generic directional shadow domain from the single authored shadow light and bind its depth target to the graph's typed `shadowDepth` import.
+- [x] Add runtime tests covering every source type, transforms, layers, lights, bindings, missing assets, and cleanup.
   - [x] Startup runtime coverage for every primitive type, successful and missing `.mppmodel` sources, transactional replacement, placeholder diagnostics, cached-program alias reuse, and deterministic nested resource cleanup.
-  - [ ] Transform inspection, layers, lights, resolved bindings, and failure rollback fixtures.
+  - [x] Inspect transforms, layer propagation/filtering, normalized directional and point lights, resolved material/environment bindings, loaded-model types, and failed-candidate retention.
 
-**Exit:** partially met. Reusable transactional scene instantiation now populates primitives and missing-model placeholders, but complete pipeline binding/environment resolution, successful model fixtures, layers/lights, and cleanup coverage remain.
+**Exit:** met. Versioned scenes round-trip declared layers and shadow-light intent, complete runtime scenes apply pipeline resources and scene-owned PBR lighting, directional shadow imports are connected to the authored light, and invalid candidates preserve the prior scene generation.
 
 ### Phase 6: PipelineEditor shell — In Progress
 

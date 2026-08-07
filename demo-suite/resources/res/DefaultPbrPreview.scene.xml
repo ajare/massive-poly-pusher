@@ -3,6 +3,7 @@
   <name>Default PBR Preview</name>
   <environmentBinding>Preview.Environment</environmentBinding>
   <Camera><position>0 8 18</position><target>0 2 0</target><fov>55</fov><near>0.1</near><far>2000</far></Camera>
+  <Layers><Layer>Default</Layer><Layer>ShadowCasters</Layer><Layer>Ground</Layer><Layer>Showcase</Layer></Layers>
   <Models>
     <Model><id>Sphere.0.0</id><source>sphere</source><translation>-4.4 1.0 0</translation><scale>0.8 0.8 0.8</scale><materialBinding>Preview.Spheres</materialBinding><Layers><Layer>Default</Layer><Layer>ShadowCasters</Layer></Layers></Model>
     <Model><id>Sphere.0.1</id><source>sphere</source><translation>-2.2 1.0 0</translation><scale>0.8 0.8 0.8</scale><materialBinding>Preview.Spheres</materialBinding><Layers><Layer>Default</Layer><Layer>ShadowCasters</Layer></Layers></Model>
@@ -34,7 +35,7 @@
     <Model><id>Cylinder</id><source>cylinder</source><translation>7 1 0</translation><materialBinding>Preview.Main</materialBinding><Layers><Layer>Showcase</Layer></Layers></Model>
   </Models>
   <Lights>
-    <Light><id>Key</id><type>directional</type><colour>1 0.95 0.9</colour><intensity>4</intensity><direction>-0.4 -1 -0.3</direction></Light>
+    <Light><id>Key</id><type>directional</type><colour>1 0.95 0.9</colour><intensity>4</intensity><direction>-0.4 -1 -0.3</direction><castsShadows>true</castsShadows></Light>
     <Light><id>Fill</id><type>point</type><colour>0.4 0.6 1</colour><intensity>2</intensity><position>6 8 6</position><range>30</range></Light>
   </Lights>
 </Scene>
