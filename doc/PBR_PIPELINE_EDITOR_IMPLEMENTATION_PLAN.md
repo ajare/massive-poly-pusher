@@ -33,7 +33,7 @@
 - [~] Phase 6 shell is operational with native dialogs, pipeline/scene save lifecycle, dirty prompts, recent workspace, recovery autosave/restore, template creation, pipeline-plus-scene CLI validation, deployment, and resettable docking; configurable options and remaining lifecycle polish remain.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [~] Phase 7 includes command-backed undo/redo and save points for current pipeline/scene properties, image/import/raster inspectors, explicit dependency auto-order, scene duplication/deletion, external-resource localization, and typed scene controls; comprehensive resource inspectors and remaining graph structural commands remain.
-- [~] Phase 8 executes XML graphs with transactional rollback, stale/current reporting, and deterministic obsolete-generation cleanup; offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
+- [~] Phase 8 now presents offscreen graph output, populates transactional runtime scenes, supports orbit/pan/zoom/framing and camera saves, inspects produced image versions, reports pass CPU/triangle statistics, and retains rollback/cleanup behavior; visualization resolves, GPU timings, and complete pipeline bindings remain.
 
 ## 1. Goal
 
