@@ -334,7 +334,9 @@ The first implementation does not include:
   - [x] Toggle saved pass enable state.
   - [~] Select all pipeline/scene resource categories and perform add/remove/duplicate operations.
     - [x] Select local resources and qualified read-only external resources; clone external resources locally.
-    - [ ] Add/remove/duplicate all pass, image, import, resource, model, light, and binding categories.
+    - [~] Add/remove/duplicate all pass, image, import, resource, model, light, and binding categories.
+    - [x] Command-backed duplicate/delete for scene models and lights with deterministic collision-free copied IDs.
+    - [ ] Add operations and pass/image/import/resource/binding structural commands.
 - [~] Add metadata-generated pass inspector.
   - [x] Show pass identity, factory, input/output counts, enabled state, and reflected scalar/vector parameters.
   - [ ] Generate required/optional slots, ranges, enums, UI hints, format constraints, fallbacks, material slots, and program controls from metadata.
@@ -354,7 +356,9 @@ The first implementation does not include:
 - [~] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
   - [x] Add independent 256-entry pipeline/scene snapshot command stacks, deep-copyable graphs, functional menu/toolbar undo/redo, save points, and commands for pass state/parameters, external localization, and all current scene property edits.
   - [ ] Route remaining structural and future resource/image/import edits through commands; add command coalescing for continuous controls.
-- [ ] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
+- [~] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
+  - [x] Local-resource cloning and undoable scene model/light duplication/deletion.
+  - [ ] Drag/move, dependency auto-order UI, graph/resource duplication/deletion, and reference cleanup.
 
 **Exit:** not met. Only pass selection, enable state, and basic parameter editing are currently reachable; edits are not yet undoable.
 
