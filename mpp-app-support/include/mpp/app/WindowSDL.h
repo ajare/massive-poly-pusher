@@ -29,5 +29,5 @@ public:
 	
 	void show();
 
-	void processEvents(InputManager* inputMgr);
+	bool processEvents(InputManager* inputMgr);
 };

@@ -278,9 +278,7 @@ The first implementation does not include:
   - [~] Resource existence/type validation, layer validation, light-limit/shadow compatibility, portability, and triangle inventory.
     - [x] Model-file existence, absolute-path portability, empty-layer, light value/direction, and eight-light-limit validation.
     - [ ] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
-- [~] Add `SceneTemplate`, `SceneStream`, programmatic stream, and ResourceManager factory registration.
-  - [x] `SceneTemplate`, `SceneStream`, `FileSceneStream`, ResourceManager factory, and resource startup test.
-  - [ ] Dedicated programmatic scene stream convenience API.
+- [x] Add `SceneTemplate`, programmatic `SceneStream::setDocument()`, `FileSceneStream`, ResourceManager factory registration, and resource startup test.
 - [ ] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
 - [ ] Resolve logical material/environment bindings from the active pipeline workspace.
 - [ ] Add diagnosed missing-model placeholder boxes excluded from triangle statistics.
@@ -296,9 +294,11 @@ The first implementation does not include:
 - [x] Add native Windows Open/Save dialogs, one open workspace, recent-file reopening, recovery autosave, and recovery offer.
 - [x] Add pipeline-path startup, `--validate`, and `--warnings-as-errors` CLI modes.
 - [ ] Add real configurable program options/preferences instead of hard-coded window and recovery values.
-- [ ] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
+- [~] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
+  - [x] Pipeline New/Open/Exit discard prompts and atomic pipeline Save.
+  - [ ] Scene Save/Save As/Save All and independent scene dirty prompts.
 - [ ] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
-- [ ] Add `Window -> Reset Layout` and verify saved-layout restoration does not conflict with the initial dock builder.
+- [x] Add `Window -> Reset Layout` and preserve saved-layout restoration unless reset is requested.
 - [ ] Add Release deployment/startup/CLI smoke validation.
 
 **Exit:** partially met. The application starts, opens/saves pipelines, and validates from CLI, but the complete document lifecycle and resettable/restored layout contract remain.

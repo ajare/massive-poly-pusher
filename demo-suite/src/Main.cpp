@@ -273,7 +273,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 
 			// Process window messages
-			gWindow->processEvents(gInputMgr);
+			if (!gWindow->processEvents(gInputMgr)) running = false;
 
 			// Feed the raw SDL-derived events to ImGui before InputManager::update()
 			// consumes them. Without this, sliders and combo boxes are rendered but
