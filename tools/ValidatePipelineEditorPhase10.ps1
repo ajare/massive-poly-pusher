@@ -72,6 +72,8 @@ $legacy = Get-ChildItem (Join-Path $root 'resources/shared'),(Join-Path $root 'p
 if ($legacy) { throw "Legacy quality/multi-definition marker found: $($legacy.Path -join ', ')" }
 
 if (-not $SkipGpu) {
+    # No positional document must open the Full template as a valid untitled workspace.
+    Run-Editor @('--smoke-test') 0
     foreach ($template in @('Minimal','Shadows','Full','Empty')) {
         Run-Editor @('--smoke-test', "resources/shared/pbr/templates/$template.pipeline.xml") 0
     }
