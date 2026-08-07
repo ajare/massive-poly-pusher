@@ -1,0 +1,14 @@
+#pragma once
+#include <string>
+#include <vector>
+#include <glm/vec3.hpp>
+#include "mpp/Config.h"
+#include "mpp/Diagnostic.h"
+#include "mpp/RenderSystem.h"
+namespace mpp {
+enum class SceneModelSource { MppModel, Box, Sphere, Cylinder, Grid };
+struct _MPPAPI SceneModelDocument { std::string id; SceneModelSource source{SceneModelSource::Sphere}; std::string file; glm::vec3 translation{0}, rotationDegrees{0}, scale{1}; std::vector<std::string> layers; std::string materialBinding; bool visible{true}; bool shadowCaster{true}; };
+struct _MPPAPI SceneLightDocument { std::string id; PbrLightType type{PbrLightType::Directional}; glm::vec3 colour{1}; float intensity{1}; glm::vec3 position{0}; glm::vec3 direction{0,-1,0}; float range{0}; };
+struct _MPPAPI SceneCameraDocument { glm::vec3 position{0,2,8}; glm::vec3 target{0}; float fov{60}; float nearPlane{0.1f}; float farPlane{2000}; };
+class _MPPAPI SceneDocument { public: static constexpr uint32_t CurrentVersion=1; uint32_t version{1}; std::string sourcePath; std::string name; std::string environmentBinding; SceneCameraDocument camera; std::vector<SceneModelDocument> models; std::vector<SceneLightDocument> lights; DiagnosticBag validate() const; };
+}
