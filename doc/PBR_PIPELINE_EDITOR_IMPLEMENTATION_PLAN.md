@@ -30,7 +30,7 @@
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
 - [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
-- [~] Phase 6 shell is operational with native dialogs, pipeline/scene save lifecycle, dirty prompts, recent workspace, recovery autosave/restore, template creation, pipeline-plus-scene CLI validation, deployment, and resettable docking; configurable options and remaining lifecycle polish remain.
+- [x] Phase 6 complete: standalone shell, native New/Open/Save As/Save All lifecycle, independent dirty prompts, atomic error-preserving saves, invalid-document confirmation, recent workspaces, pipeline/scene recovery, external-file conflict handling, configurable preferences, CLI validation, deployment, and resettable docking.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [~] Phase 7 includes command-backed undo/redo and save points for current pipeline/scene properties, image/import/raster inspectors, explicit dependency auto-order, scene duplication/deletion, external-resource localization, and typed scene controls; comprehensive resource inspectors and remaining graph structural commands remain.
 - [~] Phase 8 now presents offscreen graph output with resolved materials, environments, lights, overrides, and directional shadows; supports orbit/pan/zoom/framing and camera saves; inspects produced image versions; and reports pass CPU/triangle statistics. Visualization resolves and GPU timings remain.
@@ -318,7 +318,7 @@ The first implementation does not include:
 
 **Exit:** met. Versioned scenes round-trip declared layers and shadow-light intent, complete runtime scenes apply pipeline resources and scene-owned PBR lighting, directional shadow imports are connected to the authored light, and invalid candidates preserve the prior scene generation.
 
-### Phase 6: PipelineEditor shell — In Progress
+### Phase 6: PipelineEditor shell — Complete
 
 - [x] Create the standalone VS2026 Debug application, shared platform integration, runtime deployment script, and shipped resources.
 - [x] Enable ImGui docking only in PipelineEditor and create an initial left hierarchy/lower tabs/right viewport layout.
@@ -326,16 +326,19 @@ The first implementation does not include:
 - [x] Add native Windows Open/Save dialogs, one open workspace, recent-file reopening, recovery autosave, and recovery offer.
 - [x] Add pipeline-path startup and deterministic pipeline-plus-referenced-scene `--validate` / `--warnings-as-errors` CLI modes with emitted diagnostics.
 - [x] Add persisted Preferences and command-line overrides for startup width/height and recovery interval instead of hard-coded values.
-- [~] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
-  - [x] Pipeline New/Open/Exit discard prompts and atomic pipeline Save.
-  - [x] Scene Save/Save As/Save All and independent scene dirty prompts.
-- [~] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
-  - [x] Persist and reorder up to eight recent pipelines, reopen them through the normal dirty-document prompt, and diagnose/remove missing entries.
-  - [ ] General load/save error UI, external-change conflicts, and recovery cleanup for all close/failure paths.
+- [x] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
+  - [x] Pipeline New/Open/Save As/Exit discard prompts, invalid-document confirmation, atomic pipeline Save, path rebasing, and save-point updates.
+  - [x] Scene Save/Save As/Save All, preview-reference updates, and independent scene dirty prompts.
+- [x] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
+  - [x] Persist, deduplicate, and reorder up to eight recent pipelines, reopen them transactionally through the normal dirty-document prompt, and diagnose/remove missing entries.
+  - [x] Preserve the active workspace on load/save failure and present actionable copyable error details.
+  - [x] Fingerprint pipeline, scene, and external-library files; report external changes and offer reload, writable-document overwrite, or keep-local handling while retaining read-only library ownership.
+  - [x] Autosave and restore pipeline and scene recovery copies independently; remove them after explicit save, rejection, invalid recovery, successful discard/replacement, and clean close while retaining them across failed operations and crashes.
+  - [x] Add document-foundation coverage for exact external-change fingerprints, newer-recovery detection, cleanup, and atomic replacement.
 - [x] Add `Window -> Reset Layout` and preserve saved-layout restoration unless reset is requested.
 - [x] Add Release deployment and CLI smoke validation; enforce the parser-to-runtime project dependency required by clean Release builds.
 
-**Exit:** partially met. The application starts, opens/saves pipeline and scene documents, validates both from CLI, and supports resettable/restored docking; configurable preferences and remaining lifecycle polish remain.
+**Exit:** met. The application starts and transactionally opens complete workspaces, supports independent pipeline/scene Save As and recovery lifecycles, preserves active edits across operational failures, resolves external-file conflicts explicitly, validates both documents from CLI, and restores or resets its docked shell.
 
 ### Phase 7: Editor controllers and inspectors — In Progress
 
