@@ -76,6 +76,23 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.presentation) context.getFrame().renderSystem->renderToneMappedFullscreenQuad(input(context, 0), parameter(context, "EXPOSURE", 1.0f), integerParameter(context, "TONE_MAP_OPERATOR", 1) != 0); }
 		};
 
+		std::vector<GraphImageFormat> colourFormats()
+		{
+			return { GraphImageFormat::R8, GraphImageFormat::Rg8, GraphImageFormat::Rgba8, GraphImageFormat::Srgb8Alpha8,
+				GraphImageFormat::R16f, GraphImageFormat::Rg16f, GraphImageFormat::Rgba16f, GraphImageFormat::R32f,
+				GraphImageFormat::Rg32f, GraphImageFormat::Rgba32f, GraphImageFormat::R11g11b10f, GraphImageFormat::Rgb10a2 };
+		}
+		std::vector<GraphImageFormat> depthFormats()
+		{
+			return { GraphImageFormat::Depth16, GraphImageFormat::Depth24, GraphImageFormat::Depth32f, GraphImageFormat::Depth24Stencil8, GraphImageFormat::Depth32fStencil8 };
+		}
+		GraphPassAuthoringMetadata metadata(std::string displayName, std::string category, GraphPassType type)
+		{
+			GraphPassAuthoringMetadata result;
+			result.displayName = std::move(displayName); result.category = std::move(category); result.type = type; result.supportsRasterState = true;
+			return result;
+		}
+
 		class ScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -93,13 +110,54 @@ namespace mpp
 
 	void registerBuiltInRenderGraphPasses(RenderGraphPassFactoryRegistry& registry)
 	{
-		registry.registerScenePassFactory("MPP.ShadowDepth", [] { return std::make_unique<ShadowDepthPass>(); });
-		registry.registerScenePassFactory("MPP.BloomExtract", [] { return std::make_unique<BloomExtractPass>(); });
-		registry.registerScenePassFactory("MPP.BloomBlurHorizontal", [] { return std::make_unique<BloomBlurPass>(true); });
-		registry.registerScenePassFactory("MPP.BloomBlurVertical", [] { return std::make_unique<BloomBlurPass>(false); });
-		registry.registerScenePassFactory("MPP.BloomComposite", [] { return std::make_unique<BloomCompositePass>(); });
-		registry.registerScenePassFactory("MPP.ToneMapPresent", [] { return std::make_unique<ToneMapPresentPass>(); });
-		registry.registerScenePassFactory("MPP.PbrScene", [] { return std::make_unique<ScenePass>(); });
-		registry.registerScenePassFactory("MPP.LegacyScene", [] { return std::make_unique<ScenePass>(); });
+		auto shadow = metadata("Shadow Depth", "Shadows", GraphPassType::Scene);
+		shadow.outputs.push_back({ "Depth", true, true, depthFormats() });
+		registry.registerScenePassFactory("MPP.ShadowDepth", [] { return std::make_unique<ShadowDepthPass>(); }, shadow);
+
+		auto extract = metadata("Bloom Extract", "Bloom", GraphPassType::Fullscreen);
+		extract.inputs.push_back({ "Scene HDR", "TEX1", true, colourFormats(), {} });
+		extract.outputs.push_back({ "Bloom", false, true, colourFormats() });
+		extract.parameters.push_back({ "THRESHOLD", program::GLSLType::Float, 1, 1, false, true, 0.0, 100.0, "exposure" });
+		registry.registerScenePassFactory("MPP.BloomExtract", [] { return std::make_unique<BloomExtractPass>(); }, extract);
+
+		auto blur = metadata("Bloom Blur Horizontal", "Bloom", GraphPassType::Fullscreen);
+		blur.inputs.push_back({ "Input", "TEX1", true, colourFormats(), {} }); blur.outputs.push_back({ "Output", false, true, colourFormats() });
+		registry.registerScenePassFactory("MPP.BloomBlurHorizontal", [] { return std::make_unique<BloomBlurPass>(true); }, blur);
+		blur.displayName = "Bloom Blur Vertical";
+		registry.registerScenePassFactory("MPP.BloomBlurVertical", [] { return std::make_unique<BloomBlurPass>(false); }, blur);
+
+		auto composite = metadata("Bloom Composite", "Bloom", GraphPassType::Fullscreen);
+		composite.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} }); composite.inputs.push_back({ "Bloom", "BLOOM", true, colourFormats(), {} });
+		composite.outputs.push_back({ "Composite", false, true, colourFormats() });
+		composite.parameters.push_back({ "INTENSITY", program::GLSLType::Float, 1, 1, false, true, 0.0, 10.0, "intensity" });
+		registry.registerScenePassFactory("MPP.BloomComposite", [] { return std::make_unique<BloomCompositePass>(); }, composite);
+
+		auto present = metadata("Tone Map Presentation", "Presentation", GraphPassType::Present);
+		present.inputs.push_back({ "HDR Input", "TEX1", true, colourFormats(), {} }); present.outputs.push_back({ "Presentation", false, true, colourFormats() });
+		present.parameters.push_back({ "EXPOSURE", program::GLSLType::Float, 1, 1, false, true, 0.0, 100.0, "exposure" });
+		present.parameters.push_back({ "TONE_MAP_OPERATOR", program::GLSLType::Int, 1, 1, false, true, 0.0, 1.0, "enum" });
+		registry.registerScenePassFactory("MPP.ToneMapPresent", [] { return std::make_unique<ToneMapPresentPass>(); }, present);
+
+		auto scene = metadata("PBR Scene", "Scene", GraphPassType::Scene);
+		scene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });
+		scene.outputs.push_back({ "HDR Colour", false, true, colourFormats() }); scene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() }); scene.outputs.push_back({ "Depth", true, true, depthFormats() });
+		scene.materialSlots.push_back("SceneMaterials");
+		registry.registerScenePassFactory("MPP.PbrScene", [] { return std::make_unique<ScenePass>(); }, scene);
+		scene.displayName = "Legacy Scene";
+		registry.registerScenePassFactory("MPP.LegacyScene", [] { return std::make_unique<ScenePass>(); }, scene);
+
+		auto customFullscreen = metadata("Custom Fullscreen", "Custom", GraphPassType::Fullscreen);
+		customFullscreen.acceptsProgram = true;
+		customFullscreen.allowAdditionalInputs = true;
+		customFullscreen.allowAdditionalOutputs = true;
+		customFullscreen.allowAdditionalParameters = true;
+		registry.registerMetadata("MPP.CustomFullscreen", customFullscreen);
+
+		auto customMaterialRaster = metadata("Custom Material Raster", "Custom", GraphPassType::Scene);
+		customMaterialRaster.allowAdditionalInputs = true;
+		customMaterialRaster.allowAdditionalOutputs = true;
+		customMaterialRaster.allowAdditionalParameters = true;
+		customMaterialRaster.materialSlots.push_back("SceneMaterials");
+		registry.registerScenePassFactory("MPP.CustomMaterialRaster", [] { return std::make_unique<ScenePass>(); }, customMaterialRaster);
 	}
 }

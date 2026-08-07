@@ -17,7 +17,10 @@
 - [x] Added explicit practical raster state with complete OpenGL state restoration.
 - [x] Added allocation byte/alias-group introspection, triangle accounting, and per-pass execution statistics.
 - [x] Extended standalone RenderGraph XML round-trips with stable values and enabled state.
-- [ ] Phase 3 is next: pass authoring metadata, generic custom passes, and metadata-driven validation.
+- [x] Added declarative pass metadata for inputs, outputs, parameters, material slots, program/raster capabilities, ranges, UI hints, and fallbacks.
+- [x] Registered metadata for built-in PBR, shadow, bloom, presentation, custom fullscreen, and custom material-raster passes.
+- [x] Added metadata-driven factory/type/count/format/program/raster/uniform contract diagnostics and CPU tests.
+- [ ] Phase 4 is next: the native versioned PbrPipeline document, parser, serializer, importer, validator, and runtime template.
 
 ## 1. Goal
 
@@ -213,7 +216,7 @@ The first implementation does not include:
 
 **Exit:** CPU/GPU tests cover reordered values, disabled passes, formats, raster state, allocations, aliases, and statistics.
 
-### Phase 3: Pass authoring metadata — Next
+### Phase 3: Pass authoring metadata — Complete
 
 1. Extend `RenderGraphPassFactoryRegistry` with metadata registration/query APIs.
 2. Describe all MPP built-in PBR/shadow/bloom/presentation passes.
@@ -223,7 +226,7 @@ The first implementation does not include:
 
 **Exit:** metadata and runtime validation use the same definitions; missing/unexpected/wrong-type cases are tested.
 
-### Phase 4: PBR pipeline document
+### Phase 4: PBR pipeline document — Next
 
 1. Add editable `PbrPipelineDocument` DTOs separate from GPU resources.
 2. Add version-1 parser/serializer with canonical output.
