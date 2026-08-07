@@ -23,7 +23,7 @@
 - [x] Added the versioned native PbrPipeline document DTO, embedded RenderGraph parser, semantic validator, sample full pipeline, and startup validation.
 - [x] Added deterministic nested RenderGraph/PbrPipeline serialization, PbrPipelineStream/FilePbrPipelineStream, PbrPipelineTemplate resource creation, and round-trip/resource startup tests.
 - [x] Added root-dispatched standalone RenderGraph migration with generated stable value IDs and editor Save-As behavior.
-- [~] Phase 4 now preserves and instantiates typed local resources, resolves qualified read-only resource libraries, clones external resources locally, round-trips typed preview overrides and namespaced extensions, and validates portable references; complete concrete validation and transactional workspace resolution remain.
+- [x] Phase 4 complete: canonical full schema, typed local/external resources, recursive localization, parser and active-GPU validation, imports, environments, bindings, overrides, invalid fixtures, and reusable transactional `PbrPipelineRuntime` resolution/rollback/cleanup.
 - [x] Added the Scene document DTO/parser/serializer/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
 - [~] Phase 5 includes `SceneTemplate`/programmatic and file streams, typed primitive parameters, expanded validation, inspectors, and primitive triangle inventory; populated runtime-scene instantiation remains.
 - [x] Extracted shared SDL window/timer support and created a standalone docking-enabled PipelineEditor Debug application.
@@ -239,54 +239,54 @@ The first implementation does not include:
 
 **Exit:** metadata and runtime validation use the same definitions; missing/unexpected/wrong-type cases are tested.
 
-### Phase 4: PBR pipeline document — In Progress
+### Phase 4: PBR pipeline document — Complete
 
 - [x] Add the core editable `PbrPipelineDocument` DTO separately from GPU resources.
 - [x] Add version-1 parsing and serialization for pipeline metadata, scene reference, resource-library paths, environment bindings, preview material bindings, and embedded RenderGraph topology.
 - [x] Add deterministic basic pipeline/graph round-trip and resource startup tests.
 - [x] Add `PbrPipelineStream`, `FilePbrPipelineStream`, `PbrPipelineTemplate`, and ResourceManager factory registration.
-- [~] Complete the version-1 schema and lossless canonical serializer.
-  - [~] Document-local PBR materials, programs, textures, and samplers.
+- [x] Complete the version-1 schema and lossless canonical serializer.
+  - [x] Document-local PBR materials, programs, textures, and samplers.
     - [x] Ordered typed local-resource DTOs and lossless concrete-resource XML payload parsing/serialization for all four resource kinds, with name/kind validation and round-trip coverage.
-    - [~] Complete concrete-schema semantic validation, editor DTO controls, and runtime stream instantiation.
-      - [x] Instantiate local PBR material/program/texture/sampler definitions through their existing concrete file streams as pipeline child resources; cover a loaded local sampler at startup.
-      - [ ] Run complete concrete-schema validation without GPU creation and expose typed editor controls.
+    - [x] Complete concrete-schema semantic validation, editor DTO controls, and runtime stream instantiation.
+      - [x] Instantiate local PBR material/program/texture/sampler definitions through their existing concrete file streams, including built-in PBR materials with authored mesh specifications.
+      - [x] Run parser-only concrete validation for CLI/continuous diagnostics and expose command-backed material, texture, and sampler controls plus active PBR reflection details.
   - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
   - [x] Preview instance-override model/binding targets and typed scalar/vector values with strict parsing, canonical serialization, semantic validation, and round-trip coverage.
   - [x] Explicit extension-payload preservation and strict unknown-core-field rejection.
     - [x] Strict unknown-field/value rejection across the current PBR pipeline and scene core schemas, with startup regression checks.
     - [x] Unique namespaced extension envelopes with arbitrary payload-tree preservation and canonical round-trip coverage.
   - [x] Atomic replacement through the PbrPipeline serializer path.
-- [~] Complete external resource-library support.
+- [x] Complete external resource-library support.
   - [x] Parse and serialize ordered library paths.
-  - [~] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
+  - [x] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
     - [x] Resolve strict versioned `ResourceLibrary` XML relative to its pipeline, preserve ordered references, qualify resources as `Library::Resource`, diagnose duplicate qualified names, enforce read-only state, and instantiate external child streams.
-    - [~] Implement editor `Make Local Copy`, reference rewriting, and complete library resource schemas/fixtures.
-      - [x] Clone read-only external payloads into uniquely named local resources, rewrite direct pipeline references, expose external/local hierarchy entries, and provide the inspector command.
-      - [ ] Complete nested resource-reference rewriting and full per-kind library fixtures.
+    - [x] Implement editor `Make Local Copy`, reference rewriting, and complete library resource schemas/fixtures.
+      - [x] Clone read-only external payloads into uniquely named local resources, recursively rewrite nested/direct references, expose external/local hierarchy entries, and provide the inspector command.
+      - [x] Ship strict versioned per-kind PBR material/program/texture/sampler library fixtures and reject duplicate library identities.
 - [x] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
-- [~] Complete document validation.
+- [x] Complete document validation.
   - [x] Basic version/name/graph/order/library-list/binding validation, relative-path resolution, missing-file diagnostics, and absolute-path portability warnings.
   - [x] RenderGraph topology and available pass-metadata validation.
-  - [~] Resource resolution, portability, reflection, active-GPU capability, typed-import, and fallback validation.
+  - [x] Resource resolution, portability, reflection, active-GPU capability, typed-import, and fallback validation.
     - [x] Typed image-import contract/graph compatibility and pipeline/scene/resource-library file portability checks.
-    - [~] Resource-library content resolution, shader reflection, active-GPU import capability, and runtime fallback availability.
-      - [x] Resolve typed resource-library contents and reject malformed roots, unknown resource kinds, missing names, and duplicate qualified resources.
-      - [ ] Shader reflection, active-GPU import capability, and runtime fallback availability.
-  - [ ] Comprehensive invalid fixtures with stable diagnostic codes and source locations.
-- [~] Complete runtime instantiation.
+    - [x] Resource-library content resolution, shader reflection, active-GPU import capability, and runtime fallback availability.
+      - [x] Resolve typed resource-library contents and reject malformed roots, versions, unknown resource kinds, missing names, and duplicate qualified resources.
+      - [x] Validate concrete shader/material reflection during candidate creation, graph formats against active caps, host import allocation on the active GPU, and all neutral environment fallbacks with diagnostics.
+  - [x] Add invalid unknown-core, missing-optional-fallback, and malformed-local-resource fixtures with stable codes and document/object locations.
+- [x] Complete runtime instantiation.
   - [x] Resource template/stream creation.
   - [x] Editor-side valid graph generation swap that retains the previous pipeline when validation fails.
-  - [~] Resolve document-local/external resources, programs, imports, environments, material bindings, and overrides.
+  - [x] Resolve document-local/external resources, programs, imports, environments, material bindings, and overrides.
     - [x] Resolve document-local typed definitions into pipeline-owned child resources with deterministic qualified runtime names.
-    - [~] Resolve external libraries, graph imports, environments, material bindings, and overrides into a complete runtime workspace.
+    - [x] Resolve external libraries, graph imports, environments, material bindings, and overrides into a complete runtime workspace.
       - [x] Resolve external read-only library resources as qualified pipeline child resources.
-      - [ ] Resolve graph imports, environments, material bindings, and overrides.
-  - [~] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
+      - [x] Allocate typed host imports, resolve complete or neutral-fallback environments, enforce PBR material types/reflection, and apply validated per-model overrides through `SceneRuntime`.
+  - [x] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
     - [x] Transactional editor graph/pipeline candidate installation, exception rollback, named pipeline removal, obsolete graph-resource deletion, shutdown cleanup, and removal regression coverage.
-    - [ ] Extract the transaction into a reusable complete pipeline-workspace runtime object.
+    - [x] Reusable `PbrPipelineRuntime` resolves complete candidate workspaces, supports explicit accept/rollback, retains the last valid generation, and deletes nested resources and cached aliases deterministically.
 
-**Exit:** not met. Valid complete documents must round-trip without data loss, invalid fixtures must diagnose precisely, legacy RenderGraph imports must preserve topology, and complete runtime generations must swap transactionally.
+**Exit:** met. Complete local/external documents round-trip canonically, invalid fixtures diagnose with stable codes, standalone RenderGraph imports preserve topology and require Save As, and reusable complete runtime workspaces install or roll back transactionally.
 
 ### Phase 5: Scene document and runtime resource — In Progress
 
