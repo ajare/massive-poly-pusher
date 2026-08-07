@@ -47,6 +47,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/RenderGraphGpuTests.h>
 #include <mpp/PbrMaterialTests.h>
 #include <mpp/DiagnosticTests.h>
+#include <mpp/SceneRuntime.h>
 #include <mpp/app/DocumentFoundationTests.h>
 
 #include <mpp/resource-parsers/FileTextureStream.h>
@@ -1206,6 +1207,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto sceneDocument = mpp::resource_parsers::SceneParser::fromFile(options.resourceLocation + pipelineDocument.previewScene);
 	if (sceneDocument.validate().hasErrors()) throw std::runtime_error("Native Scene document validation failed.");
 	if(!sceneDocument.getKnownTriangleCount()||sceneDocument.getUnknownTriangleModelCount())throw std::runtime_error("Native Scene primitive triangle inventory failed.");
+	{mpp::SceneRuntime runtime(renderSystem,resourceMgr);if(!runtime.rebuild(sceneDocument)||!runtime.getScene()){std::string message="Native Scene runtime primitive instantiation failed.";for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())message+=" "+diagnostic.code+": "+diagnostic.message;throw std::runtime_error(message);}auto missingScene=sceneDocument;mpp::SceneModelDocument missing;missing.id="Missing.Model.Placeholder";missing.source=mpp::SceneModelSource::MppModel;missing.file="does-not-exist.mppmodel";missing.materialBinding="Preview.Main";missingScene.models.push_back(missing);if(!runtime.rebuild(missingScene))throw std::runtime_error("Native Scene runtime missing-model placeholder failed.");bool placeholderDiagnosed=false;for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())if(diagnostic.code=="MPP-SCENE-RUNTIME-003")placeholderDiagnosed=true;if(!placeholderDiagnosed)throw std::runtime_error("Native Scene runtime placeholder was not diagnosed.");runtime.clear();}
 	auto sceneRoundTrip = std::filesystem::temp_directory_path() / "mpp-scene-roundtrip.xml";
 	mpp::resource_parsers::SceneSerializer::toFile(sceneDocument, sceneRoundTrip.string());
 	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());

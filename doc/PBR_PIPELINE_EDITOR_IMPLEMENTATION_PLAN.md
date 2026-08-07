@@ -301,12 +301,18 @@ The first implementation does not include:
       - [x] Exact visible primitive triangle inventory for authored box/sphere/cylinder/grid parameters, plus explicit unknown `.mppmodel` count.
       - [ ] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
 - [x] Add `SceneTemplate`, programmatic `SceneStream::setDocument()`, `FileSceneStream`, ResourceManager factory registration, and resource startup test.
-- [ ] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
-- [ ] Resolve logical material/environment bindings from the active pipeline workspace.
-- [ ] Add diagnosed missing-model placeholder boxes excluded from triangle statistics.
-- [ ] Add runtime tests covering every source type, transforms, layers, lights, bindings, missing assets, and cleanup.
+- [~] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
+  - [x] Transactional `SceneRuntime`, neutral specialized PBR material, all four primitive streams, `.mppmodel` loading path, visibility/shadow flags, and absolute translation/Euler rotation/scale application.
+  - [ ] Successful `.mppmodel` fixture coverage and declared render-layer propagation.
+- [~] Resolve logical material/environment bindings from the active pipeline workspace.
+  - [x] Runtime material-binding map API with diagnosed neutral PBR fallback; PipelineEditor currently uses fallback mappings.
+  - [ ] Build mappings from the complete active pipeline workspace and resolve the environment.
+- [x] Add diagnosed missing/failed-model placeholder boxes excluded from authored triangle statistics.
+- [~] Add runtime tests covering every source type, transforms, layers, lights, bindings, missing assets, and cleanup.
+  - [x] Startup runtime coverage for every primitive type, transactional replacement, missing `.mppmodel` placeholder diagnostics, and resource cleanup.
+  - [ ] Successful `.mppmodel`, transform inspection, layers, lights, resolved bindings, and failure rollback fixtures.
 
-**Exit:** not met. Scene round-trip is tested, but reusable runtime scene resources and instantiation are not implemented.
+**Exit:** partially met. Reusable transactional scene instantiation now populates primitives and missing-model placeholders, but complete pipeline binding/environment resolution, successful model fixtures, layers/lights, and cleanup coverage remain.
 
 ### Phase 6: PipelineEditor shell — In Progress
 
@@ -369,7 +375,9 @@ The first implementation does not include:
 - [~] Execute loaded XML graphs in PipelineEditor.
   - [x] Create graph resources and graph-backed preview pipeline generations.
   - [x] Keep the current generation when validation blocks an explicit rebuild.
-  - [ ] Resolve the complete Phase 4 pipeline document and populate the Phase 5 scene.
+  - [~] Resolve the complete Phase 4 pipeline document and populate the Phase 5 scene.
+    - [x] Populate the viewport through transactional `SceneRuntime`, authored camera settings, all preview primitives, and diagnosed neutral materials.
+    - [ ] Resolve complete pipeline materials/environment/overrides and successful `.mppmodel` assets.
 - [x] Add host-overridable graph imports, offscreen presentation render target, dynamic ImGui texture registration, dock-content resize handling, scene viewport/camera aspect updates, and vertically corrected viewport display.
 - [ ] Add continuously validated, debounced asynchronous build generations and stale-result rejection.
 - [~] Add last-known-valid behavior.
