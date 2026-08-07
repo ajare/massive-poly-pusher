@@ -383,7 +383,7 @@ The first implementation does not include:
 - [~] Add last-known-valid behavior.
   - [x] Explicit Apply/Rebuild only switches after basic document validation.
   - [x] Stale-preview banner, compile/resource failure rollback, obsolete generation cleanup, and current/stale status reporting.
-- [ ] Add orbit/pan/zoom/frame/reset input and `Save Current View as Scene Camera`.
+- [x] Add viewport-hover orbit, pan, wheel zoom, hierarchy-selection framing, authored-view reset, and undoable `Save Current View` scene-camera authoring.
 - [ ] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
 - [~] Add preview statistics.
   - [x] Rolling FPS, global triangle status, allocation bytes, lifetimes, and alias groups.
