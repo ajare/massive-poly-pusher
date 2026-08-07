@@ -3588,6 +3588,11 @@ namespace mpp
 		return it->second;
 	}
 
+	bool RenderSystem::removeRenderPipeline(string const& name)
+	{
+		return mPipelines.erase(name) != 0;
+	}
+
 	void RenderSystem::startStatsCollection()
 	{
 		mRenderInfo.clear();

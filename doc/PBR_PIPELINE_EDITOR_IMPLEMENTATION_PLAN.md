@@ -282,7 +282,9 @@ The first implementation does not include:
     - [~] Resolve external libraries, graph imports, environments, material bindings, and overrides into a complete runtime workspace.
       - [x] Resolve external read-only library resources as qualified pipeline child resources.
       - [ ] Resolve graph imports, environments, material bindings, and overrides.
-  - [ ] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
+  - [~] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
+    - [x] Transactional editor graph/pipeline candidate installation, exception rollback, named pipeline removal, obsolete graph-resource deletion, shutdown cleanup, and removal regression coverage.
+    - [ ] Extract the transaction into a reusable complete pipeline-workspace runtime object.
 
 **Exit:** not met. Valid complete documents must round-trip without data loss, invalid fixtures must diagnose precisely, legacy RenderGraph imports must preserve topology, and complete runtime generations must swap transactionally.
 
@@ -360,7 +362,7 @@ The first implementation does not include:
 - [ ] Add continuously validated, debounced asynchronous build generations and stale-result rejection.
 - [~] Add last-known-valid behavior.
   - [x] Explicit Apply/Rebuild only switches after basic document validation.
-  - [ ] Stale-preview banner, compile/resource failure rollback, generation cleanup, and current/stale status reporting.
+  - [x] Stale-preview banner, compile/resource failure rollback, obsolete generation cleanup, and current/stale status reporting.
 - [ ] Add orbit/pan/zoom/frame/reset input and `Save Current View as Scene Camera`.
 - [ ] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
 - [~] Add preview statistics.
