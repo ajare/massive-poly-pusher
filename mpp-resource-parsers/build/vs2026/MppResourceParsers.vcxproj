@@ -126,6 +126,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\SceneParser.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\SceneSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphResourceTests.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MppResourceParsersException.h" />
@@ -153,6 +154,7 @@
     <ClCompile Include="..\..\src\PbrPipelineParser.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineSerializer.cpp" />
     <ClCompile Include="..\..\src\SceneParser.cpp" />
+    <ClCompile Include="..\..\src\SceneSerializer.cpp" />
     <ClCompile Include="..\..\src\RenderGraphSerializer.cpp" />
     <ClCompile Include="..\..\src\RenderGraphResourceTests.cpp" />
     <ClCompile Include="..\..\src\Serializer.cpp" />
