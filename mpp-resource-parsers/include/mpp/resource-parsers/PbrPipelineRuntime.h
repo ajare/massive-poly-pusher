@@ -2,6 +2,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include "Config.h"
 #include "mpp/Diagnostic.h"
 #include "mpp/PbrPipelineDocument.h"
@@ -34,6 +35,9 @@ namespace mpp::resource_parsers
 		std::map<std::string,RenderTargetPtr> mPreviousImports;
 		RenderTargetPtr mPreviousPresentationTarget;
 		PbrEnvironmentPtr mPreviousEnvironment;
+		std::vector<std::string> mRetiredRootResources;
+		void retireRoot(std::string root);
+		void cleanupRetiredRoots();
 		ResourcePtr resolve(std::string const& reference,std::string const& root)const;
 	public:
 		PbrPipelineRuntime(RenderSystem* renderSystem,ResourceManager* resourceManager);
