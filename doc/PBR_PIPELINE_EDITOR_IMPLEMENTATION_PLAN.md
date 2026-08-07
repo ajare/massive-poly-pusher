@@ -299,18 +299,20 @@ The first implementation does not include:
     - [x] Model-file existence, absolute-path portability, empty-layer, light value/direction, and eight-light-limit validation.
     - [~] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
       - [x] Exact visible primitive triangle inventory for authored box/sphere/cylinder/grid parameters, plus explicit unknown `.mppmodel` count.
-      - [ ] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
+      - [~] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
+        - [x] Runtime model stream/type loading with diagnosed placeholder substitution.
+        - [ ] Loaded-model triangle metadata, declared-layer references, and shadow-light compatibility.
 - [x] Add `SceneTemplate`, programmatic `SceneStream::setDocument()`, `FileSceneStream`, ResourceManager factory registration, and resource startup test.
 - [~] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
-  - [x] Transactional `SceneRuntime`, neutral specialized PBR material, all four primitive streams, `.mppmodel` loading path, visibility/shadow flags, and absolute translation/Euler rotation/scale application.
-  - [ ] Successful `.mppmodel` fixture coverage and declared render-layer propagation.
+  - [x] Transactional `SceneRuntime`, neutral specialized PBR material, all four primitive streams, successful `.mppmodel` loading, visibility/shadow flags, and absolute translation/Euler rotation/scale application.
+  - [ ] Declared render-layer propagation.
 - [~] Resolve logical material/environment bindings from the active pipeline workspace.
   - [x] Runtime material-binding map API with diagnosed neutral PBR fallback; PipelineEditor currently uses fallback mappings.
   - [ ] Build mappings from the complete active pipeline workspace and resolve the environment.
 - [x] Add diagnosed missing/failed-model placeholder boxes excluded from authored triangle statistics.
 - [~] Add runtime tests covering every source type, transforms, layers, lights, bindings, missing assets, and cleanup.
-  - [x] Startup runtime coverage for every primitive type, transactional replacement, missing `.mppmodel` placeholder diagnostics, and resource cleanup.
-  - [ ] Successful `.mppmodel`, transform inspection, layers, lights, resolved bindings, and failure rollback fixtures.
+  - [x] Startup runtime coverage for every primitive type, successful and missing `.mppmodel` sources, transactional replacement, placeholder diagnostics, cached-program alias reuse, and deterministic nested resource cleanup.
+  - [ ] Transform inspection, layers, lights, resolved bindings, and failure rollback fixtures.
 
 **Exit:** partially met. Reusable transactional scene instantiation now populates primitives and missing-model placeholders, but complete pipeline binding/environment resolution, successful model fixtures, layers/lights, and cleanup coverage remain.
 

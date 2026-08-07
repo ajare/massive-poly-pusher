@@ -1,4 +1,5 @@
 #include <glew/glew.h>
+#include <algorithm>
 #include <filesystem>
 #include <glm/gtc/constants.hpp>
 #include "mpp/BoxModelStream.h"
@@ -31,7 +32,7 @@ namespace mpp
 
 	void SceneRuntime::clearResources(ScenePtr& scene,std::vector<std::string>& names)
 	{
-		if(scene){scene->unload();scene.reset();}for(auto it=names.rbegin();it!=names.rend();++it){auto resource=mResourceManager->getResource(*it,true);if(resource){try{mResourceManager->deleteResource(*it);}catch(...){resource->destroy();}}}names.clear();
+		if(scene){scene->unload();scene.reset();}std::vector<std::string> all=names;for(auto const& root:names){auto children=mResourceManager->getResourceNamesWithPrefix(root+"/");all.insert(all.end(),children.begin(),children.end());}std::sort(all.begin(),all.end());all.erase(std::unique(all.begin(),all.end()),all.end());std::sort(all.begin(),all.end(),[](auto const& left,auto const& right){return left.size()<right.size();});for(auto const& name:all)if(!mResourceManager->isResourceAlias(name))if(auto resource=mResourceManager->getResource(name,true))resource->destroy();for(auto const& name:all)if(mResourceManager->getResource(name,true)){try{mResourceManager->deleteResource(name);}catch(...){}}names.clear();
 	}
 	void SceneRuntime::clear(){clearResources(mScene,mResourceNames);mDiagnostics.clear();}
 

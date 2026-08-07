@@ -222,8 +222,8 @@ namespace mpp
 		if (!isCreated())
 		{
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Create " + getType () + ": '" + getName() + "'");
-			createImpl();
-			mCreated = true;
+			try{createImpl();mCreated=true;}
+			catch(...){releaseDependentResources();if(mResourceStream)mResourceStream->destroyChildResources(getName());throw;}
 		}
 	}
 
@@ -242,6 +242,7 @@ namespace mpp
 		{
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Destroy " + getType() + ": '" + getName() + "'");
 			destroyImpl();
+			releaseDependentResources();
 
 			// Destroy child resources
 			if (mResourceStream)

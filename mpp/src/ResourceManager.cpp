@@ -226,6 +226,7 @@ namespace mpp
 	*/
 	void ResourceManager::deleteResource(string const& name)
 	{
+		auto alias=mResourceAliases.find(name);if(alias!=mResourceAliases.end()){mResourceAliases.erase(alias);return;}
 		auto resource = getResource(name);
 		if (!validateForRemoval(resource))
 		{
@@ -284,6 +285,7 @@ namespace mpp
 		auto const& name = resource->getName();
 
 		// If we have any other references, this will not yet delete the resource, but it will at least remove it from the system
+		for(auto it=mResourceAliases.begin();it!=mResourceAliases.end();)if(it->second==resource)it=mResourceAliases.erase(it);else ++it;
 		mResources.erase(name);
 
 		auto type = resource->getType();
@@ -367,7 +369,7 @@ namespace mpp
 	pair<ResourcePtr, bool> ResourceManager::declareResource(string const& name, ResourceStreamPtr resourceStream, bool loadStream)
 	{
 		// Check name doen't exist
-		if (mResources.find(name) != mResources.end())
+		if (mResources.find(name) != mResources.end() || mResourceAliases.find(name) != mResourceAliases.end())
 		{
 			THROW_MPP(
 				STR_FORMAT("Resource '{}' already exists.", name),
@@ -393,6 +395,7 @@ namespace mpp
 
 			if (createdProgram != mProgramCache.end())
 			{
+				mResourceAliases[name]=createdProgram->second;
 				return make_pair(createdProgram->second, false);
 			}
 		}
@@ -417,6 +420,7 @@ namespace mpp
 	 */
 	ResourcePtr ResourceManager::getResource(string const& name, bool nullIfNotFound)
 	{
+		auto alias=mResourceAliases.find(name);if(alias!=mResourceAliases.end())return alias->second;
 		if (mResources.find(name) == mResources.end())
 		{
 			if (nullIfNotFound)
@@ -431,6 +435,13 @@ namespace mpp
 
 		return mResources[name];
 	}
+
+	vector<string> ResourceManager::getResourceNamesWithPrefix(string const& prefix) const
+	{
+		vector<string> result;for(auto const& entry:mResources)if(entry.first.rfind(prefix,0)==0)result.push_back(entry.first);for(auto const& entry:mResourceAliases)if(entry.first.rfind(prefix,0)==0)result.push_back(entry.first);return result;
+	}
+
+	bool ResourceManager::isResourceAlias(string const& name) const{return mResourceAliases.find(name)!=mResourceAliases.end();}
 
 	set<std::string> ResourceManager::getProgramAttributes(mesh::MeshSpecification const& spec, uint32_t flags) const
 	{
