@@ -73,15 +73,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			for(auto const& value:diagnostics.getDiagnostics())fprintf(stderr,"%s: %s\n",value.code.c_str(),value.message.c_str());
 			return diagnostics.hasErrors(warningsAsErrors) ? 1 : 0;
 		}
+		int windowWidth=1440,windowHeight=900;float recoverySeconds=30.0f;{std::ifstream config("PipelineEditor.cfg");std::string key;while(std::getline(config,key,'=')){std::string value;if(!std::getline(config,value))break;if(key=="width")windowWidth=std::max(640,std::stoi(value));else if(key=="height")windowHeight=std::max(480,std::stoi(value));else if(key=="recoverySeconds")recoverySeconds=std::max(5.0f,std::stof(value));}}
+		std::string startupPath;for(int argument=1;argument<__argc;++argument){std::string value=__argv[argument];if(value=="--width"&&argument+1<__argc)windowWidth=std::max(640,std::stoi(__argv[++argument]));else if(value=="--height"&&argument+1<__argc)windowHeight=std::max(480,std::stoi(__argv[++argument]));else if(value=="--recovery-seconds"&&argument+1<__argc)recoverySeconds=std::max(5.0f,std::stof(__argv[++argument]));else if(!value.starts_with("--"))startupPath=value;}
 		std::shared_ptr<PbrPipelineDocument> openDocument;
 		std::shared_ptr<SceneDocument> openScene;
 		std::string currentPath, scenePath;
 		std::vector<std::string> recentPaths;{std::ifstream recent("PipelineEditor.recent.txt");std::string path;while(std::getline(recent,path))if(!path.empty())recentPaths.push_back(path);}
 		auto rememberRecent=[&](std::string const& path){recentPaths.erase(std::remove(recentPaths.begin(),recentPaths.end(),path),recentPaths.end());recentPaths.insert(recentPaths.begin(),path);if(recentPaths.size()>8)recentPaths.resize(8);std::ofstream recent("PipelineEditor.recent.txt",std::ios::trunc);for(auto const& value:recentPaths)recent<<value<<'\n';};
 		bool recoveredDocument = false;
-		if (__argc >= 2)
+		if (!startupPath.empty())
 		{
-			currentPath = __argv[1]; rememberRecent(currentPath);
+			currentPath = startupPath; rememberRecent(currentPath);
 			std::string loadPath = currentPath;
 			auto recoveryPath = std::filesystem::path(currentPath + ".recovery");
 			if (std::filesystem::exists(recoveryPath) && std::filesystem::last_write_time(recoveryPath) > std::filesystem::last_write_time(currentPath) && MessageBoxA(nullptr,"A newer recovery document exists. Recover it?","PipelineEditor Recovery",MB_YESNO|MB_ICONQUESTION)==IDYES) { loadPath=recoveryPath.string(); recoveredDocument=true; }
@@ -94,7 +96,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (openDocument->importedFromRenderGraph) currentPath.clear();
 		}
 		if (SDL_Init(SDL_INIT_VIDEO) < 0) throw std::runtime_error(SDL_GetError());
-		WindowSDL window("PBR Pipeline Editor"); window.create(1440, 900, false, true);
+		WindowSDL window("PBR Pipeline Editor"); window.create(windowWidth, windowHeight, false, true);
 		Logger logger; if (!logger.initialise("PipelineEditor.log", Logger::Level::Debug)) throw std::runtime_error("Could not create editor log.");
 		RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger);
 		ResourceManager resources(&renderSystem, &logger); renderSystem.createCoreResources(&resources);
@@ -104,7 +106,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto provider = std::make_shared<ImGuiDataProvider>(std::vector<ResourcePtr>{ font });
 		BufferRenderer renderer(provider);
 		auto scene = std::make_shared<Scene>(&renderSystem); scene->load(); scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));
-		auto camera = std::make_shared<Camera>(glm::vec3(0, 3, 8), 0.0f, 0.0f, 0.0f, 60.0f, 1440.0f / 900.0f);
+		auto camera = std::make_shared<Camera>(glm::vec3(0, 3, 8), 0.0f, 0.0f, 0.0f, 60.0f, float(windowWidth) / float(windowHeight));
 		renderSystem.getOrCreateRenderPipeline("EditorUI");
 		std::string activePipeline = "EditorUI", activeGraphResource, previewFailure; bool previewStale=false; uint32_t runtimeGeneration = 0;
 		auto rebuildPreview = [&]()
@@ -129,11 +131,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			openScene.reset(); scenePath.clear(); currentPath = openDocument->importedFromRenderGraph ? std::string() : path; rememberRecent(path); selectedPass = -1; selectedImage = -1; selectedImport = -1; selectedModel = -1; selectedLocalResource = -1; selectedExternalResource = -1;pipelineCommands.clear();sceneCommands.clear();
 			if (!openDocument->previewScene.empty()) { scenePath=(std::filesystem::path(path).parent_path()/openDocument->previewScene).string(); openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile(scenePath)); }
 		};
-		bool running = true, pipelineDirty = recoveredDocument, sceneDirty = false, resetLayout = true; float fps = 0, fpsTime = 0, recoveryTimer = 0; int frames = 0;
+		bool running = true, pipelineDirty = recoveredDocument, sceneDirty = false, resetLayout = true, showPreferences = false; float fps = 0, fpsTime = 0, recoveryTimer = 0; int frames = 0;
 		while (running)
 		{
 			float dt = timer.getDeltaTime(); fpsTime += dt; recoveryTimer += dt; ++frames; if (fpsTime >= 0.5f) { fps = frames / fpsTime; frames = 0; fpsTime = 0; }
-			if (pipelineDirty && openDocument && !currentPath.empty() && recoveryTimer >= 30.0f) { resource_parsers::PbrPipelineSerializer::toFile(*openDocument, currentPath + ".recovery"); recoveryTimer = 0; }
+			if (pipelineDirty && openDocument && !currentPath.empty() && recoveryTimer >= recoverySeconds) { resource_parsers::PbrPipelineSerializer::toFile(*openDocument, currentPath + ".recovery"); recoveryTimer = 0; }
 			bool closeRequested = !window.processEvents(&input); imGuiHandleInput(&input, &backend); input.update(); if (input.keyPressed(Key_Escape)) closeRequested = true;
 			if(closeRequested){if(!(pipelineDirty||sceneDirty)||MessageBoxA(nullptr,"Discard unsaved document changes?","PipelineEditor",MB_YESNO|MB_ICONWARNING)==IDYES)running=false;}
 			imGuiNewFrame(window.getWindow(), &backend); ImGui::NewFrame();
@@ -146,7 +148,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::DockBuilderDockWindow("Pipeline Hierarchy", leftUpper); ImGui::DockBuilderDockWindow("Inspector", leftLower); ImGui::DockBuilderDockWindow("Diagnostics", leftLower); ImGui::DockBuilderDockWindow("Allocations", leftLower); ImGui::DockBuilderDockWindow("Viewport", right); ImGui::DockBuilderDockWindow("Toolbar", right); ImGui::DockBuilderFinish(dockspace);
 			}
 			bool requestNew=false, requestOpen=false, requestSave=false, requestSaveScene=false, requestUndo=false, requestRedo=false;std::string requestedRecent;
-			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { if(ImGui::MenuItem("New", "Ctrl+N"))requestNew=true; if(ImGui::MenuItem("Open...", "Ctrl+O"))requestOpen=true; if(!recentPaths.empty()&&ImGui::BeginMenu("Open Recent")){for(auto const& path:recentPaths)if(ImGui::MenuItem(path.c_str()))requestedRecent=path;ImGui::EndMenu();} if(ImGui::MenuItem("Save", "Ctrl+S",false,openDocument!=nullptr))requestSave=true; if(ImGui::MenuItem("Save Scene",nullptr,false,openScene!=nullptr))requestSaveScene=true; ImGui::Separator(); if (ImGui::MenuItem("Exit")) { if(!(pipelineDirty||sceneDirty)||MessageBoxA(nullptr,"Discard unsaved document changes?","PipelineEditor",MB_YESNO|MB_ICONWARNING)==IDYES)running=false; } ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){auto& commands=lastEditScene?sceneCommands:pipelineCommands;if(ImGui::MenuItem("Undo","Ctrl+Z",false,commands.canUndo()))requestUndo=true;if(ImGui::MenuItem("Redo","Ctrl+Y",false,commands.canRedo()))requestRedo=true;ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} if(ImGui::BeginMenu("Window")){if(ImGui::MenuItem("Reset Layout"))resetLayout=true;ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
+			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { if(ImGui::MenuItem("New", "Ctrl+N"))requestNew=true; if(ImGui::MenuItem("Open...", "Ctrl+O"))requestOpen=true; if(!recentPaths.empty()&&ImGui::BeginMenu("Open Recent")){for(auto const& path:recentPaths)if(ImGui::MenuItem(path.c_str()))requestedRecent=path;ImGui::EndMenu();} if(ImGui::MenuItem("Save", "Ctrl+S",false,openDocument!=nullptr))requestSave=true; if(ImGui::MenuItem("Save Scene",nullptr,false,openScene!=nullptr))requestSaveScene=true; ImGui::Separator(); if (ImGui::MenuItem("Exit")) { if(!(pipelineDirty||sceneDirty)||MessageBoxA(nullptr,"Discard unsaved document changes?","PipelineEditor",MB_YESNO|MB_ICONWARNING)==IDYES)running=false; } ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){auto& commands=lastEditScene?sceneCommands:pipelineCommands;if(ImGui::MenuItem("Undo","Ctrl+Z",false,commands.canUndo()))requestUndo=true;if(ImGui::MenuItem("Redo","Ctrl+Y",false,commands.canRedo()))requestRedo=true;ImGui::Separator();if(ImGui::MenuItem("Preferences..."))showPreferences=true;ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} if(ImGui::BeginMenu("Window")){if(ImGui::MenuItem("Reset Layout"))resetLayout=true;ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
 			ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse); if(ImGui::Button("New"))requestNew=true; ImGui::SameLine(); if(ImGui::Button("Open"))requestOpen=true; ImGui::SameLine(); if(ImGui::Button("Save All")&&openDocument){requestSave=true;requestSaveScene=openScene!=nullptr;} ImGui::SameLine(); if(ImGui::Button("Undo"))requestUndo=true; ImGui::SameLine(); if(ImGui::Button("Redo"))requestRedo=true; ImGui::SameLine(); ImGui::Button("Add Pass"); ImGui::SameLine(); ImGui::Button("Validate"); ImGui::SameLine(); if(ImGui::Button("Apply/Rebuild"))rebuildPreview(); ImGui::End();
 			if(requestUndo){auto& commands=lastEditScene?sceneCommands:pipelineCommands;if(commands.undo()){if(lastEditScene)sceneDirty=scenePath.empty()||commands.dirty();else pipelineDirty=currentPath.empty()||commands.dirty();}}
 			if(requestRedo){auto& commands=lastEditScene?sceneCommands:pipelineCommands;if(commands.redo()){if(lastEditScene)sceneDirty=scenePath.empty()||commands.dirty();else pipelineDirty=currentPath.empty()||commands.dirty();}}
@@ -155,6 +157,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if(!requestedRecent.empty()&&(!(pipelineDirty||sceneDirty)||MessageBoxA(nullptr,"Discard unsaved document changes?","PipelineEditor",MB_YESNO|MB_ICONWARNING)==IDYES)){if(std::filesystem::exists(requestedRecent)){loadWorkspace(requestedRecent);pipelineDirty=false;sceneDirty=false;rebuildPreview();}else{recentPaths.erase(std::remove(recentPaths.begin(),recentPaths.end(),requestedRecent),recentPaths.end());std::ofstream recent("PipelineEditor.recent.txt",std::ios::trunc);for(auto const& value:recentPaths)recent<<value<<'\n';MessageBoxA(nullptr,"The recent pipeline no longer exists and was removed from the list.","PipelineEditor",MB_OK|MB_ICONWARNING);}}
 			if(requestSaveScene&&openScene){if(scenePath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save Preview Scene","preview.scene.xml");if(path)scenePath=*path;}if(!scenePath.empty()){resource_parsers::SceneSerializer::toFile(*openScene,scenePath);sceneCommands.markSavePoint();sceneDirty=false;}}
 			if(requestSave&&openDocument){if(currentPath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save PBR Pipeline","pipeline.xml");if(path)currentPath=*path;}if(!currentPath.empty()){resource_parsers::PbrPipelineSerializer::toFile(*openDocument,currentPath);rememberRecent(currentPath);pipelineCommands.markSavePoint();pipelineDirty=false;std::filesystem::remove(currentPath+".recovery");}}
+			if(showPreferences){ImGui::Begin("Preferences",&showPreferences);ImGui::InputInt("Startup width",&windowWidth);ImGui::InputInt("Startup height",&windowHeight);ImGui::InputFloat("Recovery interval (seconds)",&recoverySeconds);windowWidth=std::max(640,windowWidth);windowHeight=std::max(480,windowHeight);recoverySeconds=std::max(5.0f,recoverySeconds);if(ImGui::Button("Save Preferences")){std::ofstream config("PipelineEditor.cfg",std::ios::trunc);config<<"width="<<windowWidth<<'\n'<<"height="<<windowHeight<<'\n'<<"recoverySeconds="<<recoverySeconds<<'\n';}ImGui::TextDisabled("Window dimensions apply on next launch.");ImGui::End();}
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
 			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)){selectedPass=(int)pass;selectedImage=-1;selectedImport=-1;selectedModel=-1;selectedLocalResource=-1;selectedExternalResource=-1;} } ImGui::TreePop(); }
 			if(openDocument&&openDocument->graph&&ImGui::TreeNodeEx("Images",ImGuiTreeNodeFlags_DefaultOpen)){for(uint32_t image=0;image<openDocument->graph->getImageCount();++image){auto info=openDocument->graph->getImageInfo({image,0});if(ImGui::Selectable(info.name.c_str(),selectedImage==(int)image)){selectedImage=(int)image;selectedImport=-1;selectedPass=-1;selectedModel=-1;selectedLocalResource=-1;selectedExternalResource=-1;}}ImGui::TreePop();}
