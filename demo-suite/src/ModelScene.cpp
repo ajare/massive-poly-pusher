@@ -1204,6 +1204,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->infoMessage("Native PbrPipeline XML/resource parse/serialize/semantic validation passed.");
 	auto sceneDocument = mpp::resource_parsers::SceneParser::fromFile(options.resourceLocation + pipelineDocument.previewScene);
 	if (sceneDocument.validate().hasErrors()) throw std::runtime_error("Native Scene document validation failed.");
+	if(!sceneDocument.getKnownTriangleCount()||sceneDocument.getUnknownTriangleModelCount())throw std::runtime_error("Native Scene primitive triangle inventory failed.");
 	auto sceneRoundTrip = std::filesystem::temp_directory_path() / "mpp-scene-roundtrip.xml";
 	mpp::resource_parsers::SceneSerializer::toFile(sceneDocument, sceneRoundTrip.string());
 	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());
