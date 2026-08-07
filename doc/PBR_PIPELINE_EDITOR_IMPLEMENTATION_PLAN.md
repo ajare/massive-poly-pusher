@@ -21,9 +21,10 @@
 - [x] Registered metadata for built-in PBR, shadow, bloom, presentation, custom fullscreen, and custom material-raster passes.
 - [x] Added metadata-driven factory/type/count/format/program/raster/uniform contract diagnostics and CPU tests.
 - [x] Added the versioned native PbrPipeline document DTO, embedded RenderGraph parser, semantic validator, sample full pipeline, and startup validation.
-- [ ] Phase 4 remains in progress: deterministic serializer, legacy importer, document-local resource parsing, runtime template/stream, and transactional instantiation remain.
-- [x] Added the Scene document DTO/parser/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
-- [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation and serializers remain after Phase 4 completes.
+- [x] Added deterministic nested RenderGraph/PbrPipeline serialization, PbrPipelineStream/FilePbrPipelineStream, PbrPipelineTemplate resource creation, and round-trip/resource startup tests.
+- [ ] Phase 4 remains in progress: legacy importer, document-local resource parsing, and transactional live pipeline instantiation remain.
+- [x] Added the Scene document DTO/parser/serializer/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
+- [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation remains after Phase 4 completes.
 
 ## 1. Goal
 
