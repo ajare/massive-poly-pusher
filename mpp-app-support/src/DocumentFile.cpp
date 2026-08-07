@@ -38,6 +38,27 @@ namespace mpp::app
 		return error || relative.empty() ? absoluteTarget : relative.lexically_normal();
 	}
 
+	namespace
+	{
+		uint64_t hashFile(filesystem::path const& path)
+		{
+			ifstream input(path, ios::binary);
+			if (!input) return 0;
+			uint64_t hash = 1469598103934665603ull;
+			char buffer[8192];
+			while (input)
+			{
+				input.read(buffer, sizeof(buffer));
+				for (streamsize index = 0; index < input.gcount(); ++index)
+				{
+					hash ^= static_cast<unsigned char>(buffer[index]);
+					hash *= 1099511628211ull;
+				}
+			}
+			return hash;
+		}
+	}
+
 	void atomicWriteText(filesystem::path const& destination, string const& text)
 	{
 		if (destination.empty()) throw invalid_argument("Atomic write destination is empty.");
@@ -69,5 +90,54 @@ namespace mpp::app
 			filesystem::remove(temporary, ignored);
 			throw;
 		}
+	}
+
+	DocumentFileRevision captureDocumentFileRevision(filesystem::path const& path)
+	{
+		DocumentFileRevision result;
+		if (path.empty()) return result;
+		error_code error;
+		result.exists = filesystem::exists(path, error) && !error;
+		if (!result.exists) return result;
+		result.size = filesystem::file_size(path, error);
+		if (error) result.size = 0;
+		error.clear();
+		result.writeTime = filesystem::last_write_time(path, error);
+		if (error) result.writeTime = {};
+		result.contentHash = hashFile(path);
+		return result;
+	}
+
+	bool documentFileChanged(filesystem::path const& path, DocumentFileRevision const& baseline)
+	{
+		return captureDocumentFileRevision(path) != baseline;
+	}
+
+	filesystem::path documentRecoveryPath(filesystem::path const& document)
+	{
+		auto result = document;
+		result += ".recovery";
+		return result;
+	}
+
+	bool documentHasNewerRecovery(filesystem::path const& document)
+	{
+		if (document.empty()) return false;
+		error_code error;
+		auto recovery = documentRecoveryPath(document);
+		if (!filesystem::exists(recovery, error) || error) return false;
+		if (!filesystem::exists(document, error) || error) return true;
+		auto recoveryTime = filesystem::last_write_time(recovery, error);
+		if (error) return false;
+		auto documentTime = filesystem::last_write_time(document, error);
+		return !error && recoveryTime > documentTime;
+	}
+
+	bool removeDocumentRecovery(filesystem::path const& document) noexcept
+	{
+		if (document.empty()) return true;
+		error_code error;
+		filesystem::remove(documentRecoveryPath(document), error);
+		return !error;
 	}
 }

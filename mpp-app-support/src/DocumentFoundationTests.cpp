@@ -1,3 +1,4 @@
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -76,7 +77,20 @@ namespace mpp::app
 		if (resolveDocumentReference(document, relative) != normaliseDocumentPath(target))
 			return fail("document-relative path round trip failed");
 		atomicWriteText(document, "first");
+		auto firstRevision = captureDocumentFileRevision(document);
+		atomicWriteText(document, "other");
+		if (!documentFileChanged(document, firstRevision)) return fail("external document change detection failed");
 		atomicWriteText(document, "second");
+		auto recovery = documentRecoveryPath(document);
+		atomicWriteText(recovery, "recovered");
+		error_code recoveryTimeError;
+		filesystem::last_write_time(recovery, filesystem::last_write_time(document) + chrono::seconds(2), recoveryTimeError);
+		if (recoveryTimeError || !documentHasNewerRecovery(document) || !removeDocumentRecovery(document) || filesystem::exists(recovery))
+			return fail("document recovery lifecycle failed");
+		auto missingDocument = root / "documents" / "missing.xml";
+		atomicWriteText(documentRecoveryPath(missingDocument), "unsaved recovery");
+		if (!documentHasNewerRecovery(missingDocument) || !removeDocumentRecovery(missingDocument))
+			return fail("recovery without an explicit save was not detected");
 		ifstream input(document, ios::binary);
 		string contents((istreambuf_iterator<char>(input)), istreambuf_iterator<char>());
 		error_code ignored;
