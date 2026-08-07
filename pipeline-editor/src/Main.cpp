@@ -1,3 +1,4 @@
+#include <cstring>
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
@@ -103,7 +104,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
 			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)) selectedPass=(int)pass; } ImGui::TreePop(); }
 			if (openScene && ImGui::TreeNodeEx("Preview Scene", ImGuiTreeNodeFlags_DefaultOpen)) { for(auto const& model:openScene->models) ImGui::BulletText("%s",model.id.c_str()); ImGui::TreePop(); } ImGui::End();
-			ImGui::Begin("Inspector"); if(openDocument&&openDocument->graph&&selectedPass>=0){auto info=openDocument->graph->getPassInfo({(uint32_t)selectedPass});ImGui::Text("Pass: %s",info.name.c_str());ImGui::Text("Factory: %s",info.callbackFactory.c_str());bool enabled=info.enabled;if(ImGui::Checkbox("Enabled",&enabled)){openDocument->graph->setPassEnabled({(uint32_t)selectedPass},enabled);pipelineDirty=true;}ImGui::Text("Inputs: %zu  Colour outputs: %zu  Depth outputs: %zu",info.sampledInputs.size(),info.colourOutputs.size(),info.depthOutputs.size());}else ImGui::TextUnformatted("Select a pipeline pass."); ImGui::End();
+			ImGui::Begin("Inspector");
+			if(openDocument&&openDocument->graph&&selectedPass>=0)
+			{
+				auto info=openDocument->graph->getPassInfo({(uint32_t)selectedPass}); ImGui::Text("Pass: %s",info.name.c_str()); ImGui::Text("Factory: %s",info.callbackFactory.c_str());
+				bool enabled=info.enabled; if(ImGui::Checkbox("Enabled",&enabled)){openDocument->graph->setPassEnabled({(uint32_t)selectedPass},enabled);pipelineDirty=true;}
+				ImGui::Text("Inputs: %zu  Colour outputs: %zu  Depth outputs: %zu",info.sampledInputs.size(),info.colourOutputs.size(),info.depthOutputs.size());
+				if(ImGui::CollapsingHeader("Uniform Parameters",ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					bool changed=false;
+					for(auto const& entry:info.parameters.getUniformData())
+					{
+						auto const& value=entry.second;
+						if(value.count!=1) { ImGui::Text("%s [array %zu]",entry.first.c_str(),value.count); continue; }
+						if(value.type==program::GLSLType::Float && value.numElements>=1 && value.numElements<=4) { float values[4]{}; memcpy(values,value.data,value.numElements*sizeof(float)); bool edited=value.numElements==1?ImGui::InputFloat(entry.first.c_str(),values):value.numElements==2?ImGui::InputFloat2(entry.first.c_str(),values):value.numElements==3?ImGui::InputFloat3(entry.first.c_str(),values):ImGui::InputFloat4(entry.first.c_str(),values); if(edited){info.parameters.setUniform(entry.first,value.type,1,value.numElements,reinterpret_cast<char const*>(values));changed=true;} }
+						else if(value.type==program::GLSLType::Int || value.type==program::GLSLType::Bool) { int current=*reinterpret_cast<int const*>(value.data); if(ImGui::InputInt(entry.first.c_str(),&current)){info.parameters.setUniform(entry.first,value.type,1,1,reinterpret_cast<char const*>(&current));changed=true;} }
+						else ImGui::Text("%s (reflected type %d)",entry.first.c_str(),(int)value.type);
+					}
+					if(changed){openDocument->graph->setPassParameters({(uint32_t)selectedPass},info.parameters);pipelineDirty=true;}
+				}
+			}
+			else ImGui::TextUnformatted("Select a pipeline pass."); ImGui::End();
 			ImGui::Begin("Diagnostics"); if (openDocument) { auto diagnostics=openDocument->validate(); ImGui::Text("%zu error(s), %zu warning(s)",diagnostics.count(DiagnosticSeverity::Error),diagnostics.count(DiagnosticSeverity::Warning)); for(auto const&d:diagnostics.getDiagnostics()) ImGui::BulletText("[%s] %s",d.code.c_str(),d.message.c_str()); } else ImGui::TextColored(ImVec4(0.3f,1,0.4f,1),"No document loaded"); ImGui::End();
 			ImGui::Begin("Allocations"); if(openDocument&&openDocument->graph){auto plan=openDocument->graph->buildAllocationPlan({1280,720});if(plan.valid){ImGui::Text("Physical estimate: %.2f MiB",plan.estimatedPhysicalBytes/1048576.0);for(auto const& image:plan.allocatedImages)ImGui::BulletText("%s.v%u -> allocation %u, %.1f KiB, passes %u-%u",image.debugName.c_str(),image.image.version,image.physicalAllocation,image.estimatedBytes/1024.0,image.firstPass,image.lastPass);}else ImGui::TextUnformatted("Allocation unavailable while graph is invalid.");} ImGui::End();
 			ImGui::Begin("Viewport"); ImGui::TextUnformatted("PBR preview target will be presented here."); ImGui::End();
