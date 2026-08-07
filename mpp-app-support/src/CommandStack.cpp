@@ -26,9 +26,15 @@ namespace mpp::app
 		}
 	}
 
-	void CommandStack::execute(unique_ptr<EditorCommand> command)
+	void CommandStack::execute(unique_ptr<EditorCommand> command, bool coalesce)
 	{
 		if (!command) throw invalid_argument("CommandStack cannot execute a null command.");
+		if (coalesce && mCoalescing && mCursor == mCommands.size() && mCursor > 0 && mCommands.back()->merge(*command))
+		{
+			mCommands.back()->execute();
+			return;
+		}
+		mCoalescing = coalesce;
 		if (mCursor < mCommands.size())
 		{
 			if (mSavePointReachable && mSaveCursor > mCursor) mSavePointReachable = false;
@@ -39,6 +45,8 @@ namespace mpp::app
 		mCursor = mCommands.size();
 		trimToLimit();
 	}
+
+	void CommandStack::endCoalescing() { mCoalescing = false; }
 
 	bool CommandStack::canUndo() const { return mCursor > 0; }
 
@@ -56,6 +64,7 @@ namespace mpp::app
 
 	bool CommandStack::undo()
 	{
+		mCoalescing = false;
 		if (!canUndo()) return false;
 		mCommands[mCursor - 1]->undo();
 		--mCursor;
@@ -64,6 +73,7 @@ namespace mpp::app
 
 	bool CommandStack::redo()
 	{
+		mCoalescing = false;
 		if (!canRedo()) return false;
 		mCommands[mCursor]->execute();
 		++mCursor;
@@ -74,6 +84,7 @@ namespace mpp::app
 	{
 		mSaveCursor = mCursor;
 		mSavePointReachable = true;
+		mCoalescing = false;
 	}
 
 	bool CommandStack::dirty() const
@@ -87,6 +98,7 @@ namespace mpp::app
 		mCursor = 0;
 		mSaveCursor = 0;
 		mSavePointReachable = true;
+		mCoalescing = false;
 	}
 
 	size_t CommandStack::size() const { return mCommands.size(); }

@@ -144,9 +144,40 @@ namespace mpp
 		mImages[image.id].importName = importName;
 	}
 
+	void RenderGraph::clearImageImportName(GraphImageHandle image)
+	{
+		if (!validImage(image)) THROW_MPP("Invalid render graph image handle.", __LINE__, __FILE__, __func__);
+		mImages[image.id].importName.clear();
+	}
+
+	void RenderGraph::setImageName(GraphImageHandle image, string const& name)
+	{
+		if (!validImage(image) || name.empty() || any_of(mImages.begin(), mImages.end(), [&](Image const& value) { return value.name == name && &value != &mImages[image.id]; }))
+			THROW_MPP("Invalid or duplicate render graph image name.", __LINE__, __FILE__, __func__);
+		mImages[image.id].name = name;
+	}
+
 	void RenderGraph::setImageDesc(GraphImageHandle image,GraphImageDesc const& desc)
 	{
 		if(!validImage(image)||desc.samples==0||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();
+	}
+
+	void RenderGraph::removeImage(GraphImageHandle image)
+	{
+		if (!validImage(image) || image.version != 0) THROW_MPP("Invalid render graph image removal.", __LINE__, __FILE__, __func__);
+		for (auto& pass : mPasses)
+		{
+			pass.sampledInputs.erase(remove_if(pass.sampledInputs.begin(), pass.sampledInputs.end(), [&](auto value) { return value.id == image.id; }), pass.sampledInputs.end());
+			pass.samplerBindings.erase(remove_if(pass.samplerBindings.begin(), pass.samplerBindings.end(), [&](auto const& value) { return value.image.id == image.id; }), pass.samplerBindings.end());
+			pass.colourOutputs.erase(remove_if(pass.colourOutputs.begin(), pass.colourOutputs.end(), [&](auto const& value) { return value.image.id == image.id; }), pass.colourOutputs.end());
+			pass.depthOutputs.erase(remove_if(pass.depthOutputs.begin(), pass.depthOutputs.end(), [&](auto const& value) { return value.image.id == image.id; }), pass.depthOutputs.end());
+			auto remap = [&](auto& values) { for (auto& value : values) if (value.id > image.id) --value.id; };
+			remap(pass.sampledInputs);
+			for (auto& value : pass.samplerBindings) if (value.image.id > image.id) --value.image.id;
+			for (auto& value : pass.colourOutputs) if (value.image.id > image.id) --value.image.id;
+			for (auto& value : pass.depthOutputs) if (value.image.id > image.id) --value.image.id;
+		}
+		mImages.erase(mImages.begin() + image.id);
 	}
 
 	GraphImageInfo RenderGraph::getImageInfo(GraphImageHandle image) const
@@ -183,6 +214,13 @@ namespace mpp
 		mPasses[pass.id].enabled = enabled;
 	}
 
+	void RenderGraph::setPassName(GraphPassHandle pass, string const& name)
+	{
+		if (!validPass(pass) || name.empty() || any_of(mPasses.begin(), mPasses.end(), [&](Pass const& value) { return value.name == name && &value != &mPasses[pass.id]; }))
+			THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
+		mPasses[pass.id].name = name;
+	}
+
 	void RenderGraph::setPassProgramResource(GraphPassHandle pass, string const& resourceName)
 	{
 		if (!validPass(pass) || resourceName.empty())
@@ -190,6 +228,12 @@ namespace mpp
 			THROW_MPP("Render graph pass program resource requires a valid pass and name.", __LINE__, __FILE__, __func__);
 		}
 		mPasses[pass.id].programResource = resourceName;
+	}
+
+	void RenderGraph::clearPassProgramResource(GraphPassHandle pass)
+	{
+		if (!validPass(pass)) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
+		mPasses[pass.id].programResource.clear();
 	}
 
 	void RenderGraph::setPassCallbackFactory(GraphPassHandle pass, string const& factoryName)
@@ -205,6 +249,62 @@ namespace mpp
 	{
 		if (!validPass(pass)) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		mPasses[pass.id].rasterState = state;
+	}
+
+	void RenderGraph::removeProducedValue(GraphImageHandle image)
+	{
+		if (!validImage(image) || image.version == 0) return;
+		for (auto& pass : mPasses)
+		{
+			pass.sampledInputs.erase(remove_if(pass.sampledInputs.begin(), pass.sampledInputs.end(), [&](auto value) { return value.id == image.id && value.version == image.version; }), pass.sampledInputs.end());
+			pass.samplerBindings.erase(remove_if(pass.samplerBindings.begin(), pass.samplerBindings.end(), [&](auto const& value) { return value.image.id == image.id && value.image.version == image.version; }), pass.samplerBindings.end());
+			for (auto& value : pass.sampledInputs) if (value.id == image.id && value.version > image.version) --value.version;
+			for (auto& value : pass.samplerBindings) if (value.image.id == image.id && value.image.version > image.version) --value.image.version;
+			for (auto& value : pass.colourOutputs) if (value.image.id == image.id && value.image.version > image.version) --value.image.version;
+			for (auto& value : pass.depthOutputs) if (value.image.id == image.id && value.image.version > image.version) --value.image.version;
+		}
+		auto& target = mImages[image.id];
+		target.producers.erase(target.producers.begin() + image.version);
+		target.valueIds.erase(target.valueIds.begin() + image.version);
+		--target.latestVersion;
+	}
+
+	void RenderGraph::removePass(GraphPassHandle pass)
+	{
+		if (!validPass(pass)) THROW_MPP("Invalid render graph pass removal.", __LINE__, __FILE__, __func__);
+		vector<GraphImageHandle> outputs;
+		for (auto const& value : mPasses[pass.id].colourOutputs) outputs.push_back(value.image);
+		for (auto const& value : mPasses[pass.id].depthOutputs) outputs.push_back(value.image);
+		sort(outputs.begin(), outputs.end(), [](auto left, auto right) { return left.id == right.id ? left.version > right.version : left.id > right.id; });
+		for (auto value : outputs) removeProducedValue(value);
+		mPasses.erase(mPasses.begin() + pass.id);
+		for (auto& image : mImages) for (auto& producer : image.producers) if (producer != UINT32_MAX && producer > pass.id) --producer;
+	}
+
+	GraphPassHandle RenderGraph::duplicatePass(GraphPassHandle pass, string const& name)
+	{
+		if (!validPass(pass)) THROW_MPP("Invalid render graph pass duplication.", __LINE__, __FILE__, __func__);
+		auto source = mPasses[pass.id];
+		auto colour = source.colourOutputs;
+		auto depth = source.depthOutputs;
+		source.name = name;
+		source.colourOutputs.clear();
+		source.depthOutputs.clear();
+		if (name.empty() || any_of(mPasses.begin(), mPasses.end(), [&](Pass const& value) { return value.name == name; })) THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
+		mPasses.push_back(move(source));
+		GraphPassHandle result{ static_cast<uint32_t>(mPasses.size() - 1) };
+		for (auto const& value : colour) writeColour(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearColour, value.mipLevel);
+		for (auto const& value : depth) writeDepth(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearDepth, value.mipLevel);
+		return result;
+	}
+
+	void RenderGraph::movePass(GraphPassHandle pass, uint32_t destination)
+	{
+		if (!validPass(pass) || destination >= mPasses.size()) THROW_MPP("Invalid render graph pass move.", __LINE__, __FILE__, __func__);
+		vector<GraphPassHandle> order;
+		for (uint32_t index = 0; index < mPasses.size(); ++index) if (index != pass.id) order.push_back({ index });
+		order.insert(order.begin() + destination, pass);
+		reorderPasses(order);
 	}
 
 	void RenderGraph::readSampled(GraphPassHandle pass, GraphImageHandle image)
@@ -265,6 +365,81 @@ namespace mpp
 		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
 		mPasses[pass.id].depthOutputs.push_back({ output, mipLevel, load, store, clear });
 		return output;
+	}
+
+	void RenderGraph::setColourOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel)
+	{
+		if (!validPass(pass) || output >= mPasses[pass.id].colourOutputs.size()) THROW_MPP("Invalid render graph colour output edit.", __LINE__, __FILE__, __func__);
+		auto& value = mPasses[pass.id].colourOutputs[output];
+		if (mipLevel >= mImages[value.image.id].desc.mipLevels) THROW_MPP("Invalid render graph colour output mip.", __LINE__, __FILE__, __func__);
+		value.load = load; value.store = store; value.clearColour = clear; value.mipLevel = mipLevel;
+	}
+
+	GraphImageHandle RenderGraph::retargetColourOutput(GraphPassHandle pass, size_t output, GraphImageHandle image)
+	{
+		if (!validPass(pass) || output >= mPasses[pass.id].colourOutputs.size() || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment) || isDepthFormat(mImages[image.id].desc.format)) THROW_MPP("Invalid render graph colour output target.", __LINE__, __FILE__, __func__);
+		auto value = mPasses[pass.id].colourOutputs[output]; auto old = value.image;
+		if (old.id == image.id) return old;
+		auto stableId = getValueId(old); auto replacement = writeColour(pass, image, value.load, value.store, value.clearColour, value.mipLevel);
+		mPasses[pass.id].colourOutputs.pop_back(); mPasses[pass.id].colourOutputs[output].image = replacement;
+		for (auto& candidate : mPasses) { for (auto& input : candidate.sampledInputs) if (input.id == old.id && input.version == old.version) input = replacement; for (auto& binding : candidate.samplerBindings) if (binding.image.id == old.id && binding.image.version == old.version) binding.image = replacement; }
+		removeProducedValue(old); setValueId(replacement, stableId); return replacement;
+	}
+
+	void RenderGraph::removeColourOutput(GraphPassHandle pass, size_t output)
+	{
+		if (!validPass(pass) || output >= mPasses[pass.id].colourOutputs.size()) THROW_MPP("Invalid render graph colour output removal.", __LINE__, __FILE__, __func__);
+		auto image = mPasses[pass.id].colourOutputs[output].image;
+		mPasses[pass.id].colourOutputs.erase(mPasses[pass.id].colourOutputs.begin() + output);
+		removeProducedValue(image);
+	}
+
+	void RenderGraph::setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel)
+	{
+		if (!validPass(pass) || output >= mPasses[pass.id].depthOutputs.size()) THROW_MPP("Invalid render graph depth output edit.", __LINE__, __FILE__, __func__);
+		auto& value = mPasses[pass.id].depthOutputs[output];
+		if (mipLevel >= mImages[value.image.id].desc.mipLevels) THROW_MPP("Invalid render graph depth output mip.", __LINE__, __FILE__, __func__);
+		value.load = load; value.store = store; value.clearDepth = clear; value.mipLevel = mipLevel;
+	}
+
+	GraphImageHandle RenderGraph::retargetDepthOutput(GraphPassHandle pass, size_t output, GraphImageHandle image)
+	{
+		if (!validPass(pass) || output >= mPasses[pass.id].depthOutputs.size() || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment) || !isDepthFormat(mImages[image.id].desc.format)) THROW_MPP("Invalid render graph depth output target.", __LINE__, __FILE__, __func__);
+		auto value = mPasses[pass.id].depthOutputs[output]; auto old = value.image;
+		if (old.id == image.id) return old;
+		auto stableId = getValueId(old); auto replacement = writeDepth(pass, image, value.load, value.store, value.clearDepth, value.mipLevel);
+		mPasses[pass.id].depthOutputs.pop_back(); mPasses[pass.id].depthOutputs[output].image = replacement;
+		for (auto& candidate : mPasses) { for (auto& input : candidate.sampledInputs) if (input.id == old.id && input.version == old.version) input = replacement; for (auto& binding : candidate.samplerBindings) if (binding.image.id == old.id && binding.image.version == old.version) binding.image = replacement; }
+		removeProducedValue(old); setValueId(replacement, stableId); return replacement;
+	}
+
+	void RenderGraph::removeDepthOutput(GraphPassHandle pass, size_t output)
+	{
+		if (!validPass(pass) || output >= mPasses[pass.id].depthOutputs.size()) THROW_MPP("Invalid render graph depth output removal.", __LINE__, __FILE__, __func__);
+		auto image = mPasses[pass.id].depthOutputs[output].image;
+		mPasses[pass.id].depthOutputs.erase(mPasses[pass.id].depthOutputs.begin() + output);
+		removeProducedValue(image);
+	}
+
+	void RenderGraph::setSamplerBinding(GraphPassHandle pass, size_t binding, string const& sampler, GraphImageHandle image, uint32_t mipLevel)
+	{
+		if (!validPass(pass) || binding >= mPasses[pass.id].samplerBindings.size() || !validImage(image) || sampler.empty() || (mipLevel != UINT32_MAX && mipLevel >= mImages[image.id].desc.mipLevels))
+			THROW_MPP("Invalid render graph sampler binding edit.", __LINE__, __FILE__, __func__);
+		auto& source = mPasses[pass.id];
+		for (size_t index = 0; index < source.samplerBindings.size(); ++index) if (index != binding && source.samplerBindings[index].sampler == sampler) THROW_MPP("Duplicate render graph sampler binding.", __LINE__, __FILE__, __func__);
+		auto old = source.samplerBindings[binding].image;
+		auto sampled = find_if(source.sampledInputs.begin(), source.sampledInputs.end(), [&](auto value) { return value.id == old.id && value.version == old.version; });
+		if (sampled != source.sampledInputs.end()) *sampled = image; else source.sampledInputs.push_back(image);
+		source.samplerBindings[binding] = { sampler, image, mipLevel };
+	}
+
+	void RenderGraph::removeSamplerBinding(GraphPassHandle pass, size_t binding)
+	{
+		if (!validPass(pass) || binding >= mPasses[pass.id].samplerBindings.size()) THROW_MPP("Invalid render graph sampler binding removal.", __LINE__, __FILE__, __func__);
+		auto& source = mPasses[pass.id]; auto image = source.samplerBindings[binding].image;
+		source.samplerBindings.erase(source.samplerBindings.begin() + binding);
+		if (none_of(source.samplerBindings.begin(), source.samplerBindings.end(), [&](auto const& value) { return value.image.id == image.id && value.image.version == image.version; }))
+			source.sampledInputs.erase(remove_if(source.sampledInputs.begin(), source.sampledInputs.end(), [&](auto value) { return value.id == image.id && value.version == image.version; }), source.sampledInputs.end());
 	}
 
 	void RenderGraph::setValueId(GraphImageHandle image, string const& valueId)
