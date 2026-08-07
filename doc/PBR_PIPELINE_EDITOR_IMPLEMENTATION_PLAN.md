@@ -300,8 +300,8 @@ The first implementation does not include:
     - [~] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
       - [x] Exact visible primitive triangle inventory for authored box/sphere/cylinder/grid parameters, plus explicit unknown `.mppmodel` count.
       - [~] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
-        - [x] Runtime model stream/type loading with diagnosed placeholder substitution.
-        - [ ] Loaded-model triangle metadata, declared-layer references, and shadow-light compatibility.
+        - [x] Runtime model stream/type loading, exact loaded/primitive per-model and visible unique triangle inventory, and diagnosed placeholders excluded from totals.
+        - [ ] Declared-layer references and shadow-light compatibility.
 - [x] Add `SceneTemplate`, programmatic `SceneStream::setDocument()`, `FileSceneStream`, ResourceManager factory registration, and resource startup test.
 - [~] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
   - [x] Transactional `SceneRuntime`, neutral specialized PBR material, all four primitive streams, successful `.mppmodel` loading, visibility/shadow flags, and absolute translation/Euler rotation/scale application.
@@ -397,7 +397,9 @@ The first implementation does not include:
       - [x] Live dock-content viewport sizing drives graph presentation allocation and camera aspect.
       - [~] Submitted pass breakdown, loaded-model unique triangles, and CPU/GPU pass timings.
         - [x] Dedicated Statistics tab with live viewport dimensions, rolling frame time/FPS, per-pass CPU time, submitted triangles/fullscreen quads, and graph totals.
-        - [ ] GPU pass timings and loaded-model unique triangle metadata.
+        - [~] GPU pass timings and loaded-model unique triangle metadata.
+          - [x] Status uses exact runtime unique triangles, including loaded `.mppmodel` meshes and excluding placeholders.
+          - [ ] GPU pass timings.
 
 **Exit:** not met. Graph execution exists, but the docked viewport still lacks offscreen presentation, scene content, camera interaction, and intermediate inspection.
 
