@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -121,7 +122,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if(requestSave&&openDocument){if(currentPath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save PBR Pipeline","pipeline.xml");if(path)currentPath=*path;}if(!currentPath.empty()){resource_parsers::PbrPipelineSerializer::toFile(*openDocument,currentPath);pipelineDirty=false;std::filesystem::remove(currentPath+".recovery");}}
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
 			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)){selectedPass=(int)pass;selectedModel=-1;} } ImGui::TreePop(); }
-			if (openScene && ImGui::TreeNodeEx("Preview Scene", ImGuiTreeNodeFlags_DefaultOpen)) { for(size_t model=0;model<openScene->models.size();++model) if(ImGui::Selectable(openScene->models[model].id.c_str(),selectedModel==(int)model)){selectedModel=(int)model;selectedPass=-1;} ImGui::TreePop(); } ImGui::End();
+			if (openScene && ImGui::TreeNodeEx("Preview Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
+				if(ImGui::Selectable("Camera",selectedModel==-2)){selectedModel=-2;selectedPass=-1;}
+				if(ImGui::Selectable("Environment",selectedModel==-3)){selectedModel=-3;selectedPass=-1;}
+				if(ImGui::TreeNodeEx("Models",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t model=0;model<openScene->models.size();++model)if(ImGui::Selectable(openScene->models[model].id.c_str(),selectedModel==(int)model)){selectedModel=(int)model;selectedPass=-1;}ImGui::TreePop();}
+				if(ImGui::TreeNodeEx("Lights",ImGuiTreeNodeFlags_DefaultOpen)){for(size_t light=0;light<openScene->lights.size();++light)if(ImGui::Selectable(openScene->lights[light].id.c_str(),selectedModel==-100-(int)light)){selectedModel=-100-(int)light;selectedPass=-1;}ImGui::TreePop();}
+				ImGui::TreePop(); } ImGui::End();
 			ImGui::Begin("Inspector");
 			if(openDocument&&openDocument->graph&&selectedPass>=0)
 			{
@@ -148,9 +154,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				changed|=ImGui::InputFloat3("Translation",&model.translation.x); changed|=ImGui::InputFloat3("Rotation (degrees)",&model.rotationDegrees.x); changed|=ImGui::InputFloat3("Scale",&model.scale.x);
 				changed|=ImGui::Checkbox("Visible",&model.visible); changed|=ImGui::Checkbox("Shadow caster",&model.shadowCaster);
 				char binding[256]{}; strncpy_s(binding,model.materialBinding.c_str(),255); if(ImGui::InputText("Material binding",binding,sizeof(binding))){model.materialBinding=binding;changed=true;}
+				char layers[256]{}; std::string layerText; for(auto const& layer:model.layers){if(!layerText.empty())layerText+=",";layerText+=layer;} strncpy_s(layers,layerText.c_str(),255); if(ImGui::InputText("Layers (comma separated)",layers,sizeof(layers))){model.layers.clear();std::stringstream stream(layers);std::string layer;while(std::getline(stream,layer,','))if(!layer.empty())model.layers.push_back(layer);changed=true;}
 				if(changed)sceneDirty=true;
 			}
-			else ImGui::TextUnformatted("Select a pipeline pass or scene model."); ImGui::End();
+			else if(openScene&&selectedModel==-2)
+			{
+				auto& value=openScene->camera; ImGui::TextUnformatted("Camera"); bool changed=false; changed|=ImGui::InputFloat3("Position",&value.position.x);changed|=ImGui::InputFloat3("Target",&value.target.x);changed|=ImGui::InputFloat("Vertical FOV",&value.fov);changed|=ImGui::InputFloat("Near plane",&value.nearPlane);changed|=ImGui::InputFloat("Far plane",&value.farPlane);if(changed)sceneDirty=true;
+			}
+			else if(openScene&&selectedModel==-3)
+			{
+				char value[256]{};strncpy_s(value,openScene->environmentBinding.c_str(),255);if(ImGui::InputText("Environment binding",value,sizeof(value))){openScene->environmentBinding=value;sceneDirty=true;}
+			}
+			else if(openScene&&selectedModel<=-100)
+			{
+				auto index=(size_t)(-100-selectedModel);if(index<openScene->lights.size()){auto& value=openScene->lights[index];ImGui::Text("Light: %s",value.id.c_str());bool changed=false;int type=value.type==SceneLightType::Point?1:0;if(ImGui::Combo("Type",&type,"Directional\0Point\0")){value.type=type?SceneLightType::Point:SceneLightType::Directional;changed=true;}changed|=ImGui::InputFloat3("Position",&value.position.x);changed|=ImGui::InputFloat3("Direction",&value.direction.x);changed|=ImGui::ColorEdit3("Colour",&value.colour.x);changed|=ImGui::InputFloat("Intensity",&value.intensity);changed|=ImGui::InputFloat("Range",&value.range);if(changed)sceneDirty=true;}
+			}
+			else ImGui::TextUnformatted("Select a pipeline pass or scene item."); ImGui::End();
 			ImGui::Begin("Diagnostics"); if (openDocument) { auto diagnostics=openDocument->validate(); if(openScene)diagnostics.append(openScene->validate()); ImGui::Text("%zu error(s), %zu warning(s)",diagnostics.count(DiagnosticSeverity::Error),diagnostics.count(DiagnosticSeverity::Warning)); for(auto const&d:diagnostics.getDiagnostics()) ImGui::BulletText("[%s] %s",d.code.c_str(),d.message.c_str()); } else ImGui::TextColored(ImVec4(0.3f,1,0.4f,1),"No document loaded"); ImGui::End();
 			ImGui::Begin("Allocations"); if(openDocument&&openDocument->graph){auto plan=openDocument->graph->buildAllocationPlan({1280,720});if(plan.valid){ImGui::Text("Physical estimate: %.2f MiB",plan.estimatedPhysicalBytes/1048576.0);for(auto const& image:plan.allocatedImages)ImGui::BulletText("%s.v%u -> allocation %u, %.1f KiB, passes %u-%u",image.debugName.c_str(),image.image.version,image.physicalAllocation,image.estimatedBytes/1024.0,image.firstPass,image.lastPass);}else ImGui::TextUnformatted("Allocation unavailable while graph is invalid.");} ImGui::End();
 			ImGui::Begin("Viewport"); ImGui::TextUnformatted("PBR preview target will be presented here."); ImGui::End();

@@ -318,7 +318,8 @@ The first implementation does not include:
   - [ ] PBR materials, maps, extensions, samplers, programs, reflection details, matrices, arrays, and instance overrides.
 - [~] Add scene model/primitive/absolute-transform/layer/light/camera/editor-setting inspectors.
   - [x] Model selection, absolute translation/rotation/scale, visibility, shadow-caster state, and logical material binding.
-  - [ ] Primitive parameters, layers, lights, camera, environment binding, and editor settings.
+  - [x] Comma-separated layers, directional/point lights, camera, and environment binding.
+  - [ ] Primitive parameters and editor settings.
 - [ ] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
 - [ ] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
 
