@@ -30,9 +30,9 @@ Options:
 - `--width <pixels>`: startup width, minimum 640.
 - `--height <pixels>`: startup height, minimum 480.
 - `--recovery-seconds <seconds>`: recovery interval, minimum 5.
-- `--smoke-test`: render a loaded valid workspace for ten stable frames, cleanly shut down, and return. Intended for active-context integration tests.
+- `--smoke-test`: render a loaded valid workspace for 30 stable frames, cleanly shut down, and return. Intended for active-context integration tests.
 
-Settings not supplied on the command line are read from `PipelineEditor.cfg`. A positional pipeline opens as one workspace together with its referenced scene and libraries.
+Settings not supplied on the command line are read from `PipelineEditor.cfg`. A positional pipeline opens as one workspace together with its referenced scene and libraries. With no positional pipeline, the shipped Full template and default scene open as an untitled workspace; saving therefore requires a new destination and cannot overwrite the shipped template.
 
 ## Examples
 
