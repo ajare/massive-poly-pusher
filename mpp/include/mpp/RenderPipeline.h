@@ -169,6 +169,7 @@ namespace mpp
 		void setShadowDomain(std::string const& shadowDomain);
 
 		RenderTargetPtr getOutputRenderTarget();
+		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
 
 		void resize(size_t width, size_t height);
 
