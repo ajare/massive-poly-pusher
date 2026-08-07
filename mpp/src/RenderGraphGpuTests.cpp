@@ -102,6 +102,24 @@ namespace mpp
 				formatExecutor.execute(formatGraph, formatTargets, renderSystem->getCaps());
 				if (!formatTargets.get(image)) return fail("curated graph format allocation failed");
 			}
+			GraphImageDesc diagnosticDepthDesc;
+			diagnosticDepthDesc.format = GraphImageFormat::Depth32f;
+			diagnosticDepthDesc.usage = GraphImageUsage::DepthAttachment;
+			RenderGraph diagnosticDepthGraph;
+			auto diagnosticDepthImage = diagnosticDepthGraph.createImage("GpuDiagnosticDepth", diagnosticDepthDesc);
+			auto diagnosticDepthPass = diagnosticDepthGraph.addPass("GpuDiagnosticDepthPass", GraphPassType::Fullscreen);
+			diagnosticDepthImage = diagnosticDepthGraph.writeDepth(diagnosticDepthPass, diagnosticDepthImage, GraphLoadOp::Clear, GraphStoreOp::Store, 0.0f);
+			RenderGraphTargets diagnosticDepthTargets(renderSystem);
+			diagnosticDepthTargets.allocate(diagnosticDepthGraph.buildAllocationPlan({ 8, 8 }));
+			RenderGraphExecutor diagnosticDepthExecutor(renderSystem);
+			diagnosticDepthExecutor.setPassCallback(diagnosticDepthPass, [](RenderGraphExecutionContext const&) {});
+			diagnosticDepthExecutor.execute(diagnosticDepthGraph, diagnosticDepthTargets, renderSystem->getCaps());
+			RenderTextureOptions diagnosticDepthOutputOptions;
+			auto diagnosticDepthOutput = renderSystem->createRenderTexture("GpuDiagnosticDepthOutput", 8, 8, diagnosticDepthOutputOptions);
+			RenderSystem::TextureDiagnosticOptions diagnosticDepthInspect;
+			diagnosticDepthInspect.mode = RenderSystem::TextureDiagnosticMode::Depth;
+			renderSystem->renderTextureDiagnostic(static_cast<RenderTexture*>(diagnosticDepthTargets.get(diagnosticDepthImage).get()), diagnosticDepthOutput, diagnosticDepthInspect);
+			if (!nearColour(readFirstPixel(diagnosticDepthOutput), { 255, 255, 255, 255 })) return fail("depth diagnostic visualization failed");
 
 			RenderGraph aliasGraph;
 			auto aliasFirst = aliasGraph.createImage("GpuTestAliasFirst", colour);
@@ -171,6 +189,17 @@ namespace mpp
 			mipExecutor.execute(mipGraph, mipTargets, renderSystem->getCaps());
 			if (!observedMipView) return fail("explicit sampled mip view was not applied");
 			if (!nearColour(readFirstPixel(mipTargets.get(mipImage), 2), { 255, 0, 255, 255 })) return fail("generated mip level readback failed");
+			RenderTextureOptions diagnosticOptions;
+			auto diagnosticTarget = renderSystem->createRenderTexture("GpuTestDiagnostic", 8, 8, diagnosticOptions);
+			RenderSystem::TextureDiagnosticOptions inspectOptions;
+			inspectOptions.mode = RenderSystem::TextureDiagnosticMode::Green;
+			inspectOptions.mipLevel = 2;
+			renderSystem->renderTextureDiagnostic(static_cast<RenderTexture*>(mipTargets.get(mipImage).get()), diagnosticTarget, inspectOptions);
+			auto diagnosticPixel = readFirstPixel(diagnosticTarget);
+			if (!nearColour(diagnosticPixel, { 0, 0, 0, 255 })) return fail("graph image mip/channel diagnostic visualization failed (pixel=" + std::to_string(diagnosticPixel[0]) + "," + std::to_string(diagnosticPixel[1]) + "," + std::to_string(diagnosticPixel[2]) + "," + std::to_string(diagnosticPixel[3]) + ")");
+			GL_CHECK(glFinish());
+			mipExecutor.execute(mipGraph, mipTargets, renderSystem->getCaps());
+			if (mipExecutor.getLastExecutionStats().empty() || !mipExecutor.getLastExecutionStats().front().gpuTimingAvailable) return fail("asynchronous per-pass GPU timing was not collected");
 
 			RenderGraph explicitMipGraph;
 			auto explicitMip = explicitMipGraph.createImage("GpuTestExplicitMip", mipColour);

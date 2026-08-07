@@ -643,6 +643,22 @@ namespace mpp
 			addCoreResource(mToneMapProgram, true);
 		}
 
+		// Graph image diagnostic program for channel, depth, and HDR inspection.
+		{
+			mesh::MeshSpecification meshSpec;
+			auto layout = meshSpec.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+			layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			auto parser = make_shared<program::Parser>();
+			parser->setMeshSpecification(meshSpec);
+			parser->setVertexSource(VertexShaderFullscreenTemplate);
+			parser->setFragmentSource(FragmentShaderTextureDiagnosticTemplate);
+			auto stream = new ProgrammaticProgramStream(resourceMgr);
+			stream->setParser(parser);
+			mTextureDiagnosticProgram = resourceMgr->declareResource("__mpp_p2d_texture_diagnostic__", ResourceStreamPtr(stream)).first;
+			addCoreResource(mTextureDiagnosticProgram, true);
+		}
+
 		// Fullscreen bloom programs. Targets are owned by RenderPipeline, while
 		// these reusable programs perform extraction, separable blur, and combine.
 		auto createBloomProgram = [&](string const& name, string const& fragmentSource)
@@ -2578,6 +2594,39 @@ namespace mpp
 		GL_CHECK(glDisable(GL_BLEND));
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderTextureDiagnostic(RenderTexture* source, RenderTargetPtr const& destination, TextureDiagnosticOptions const& options)
+	{
+		if (!source || !destination || source->isMultisampled())
+		{
+			THROW_MPP("Texture diagnostics require a resolved texture source and destination.", __LINE__, __FILE__, __func__);
+		}
+		flushVertexBuffers();
+		GLint previousViewport[4]{}, previousScissor[4]{}; GLboolean depth = glIsEnabled(GL_DEPTH_TEST), cull = glIsEnabled(GL_CULL_FACE), blend = glIsEnabled(GL_BLEND), scissor = glIsEnabled(GL_SCISSOR_TEST); GLboolean depthMask = GL_TRUE;
+		GL_CHECK(glGetIntegerv(GL_VIEWPORT, previousViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, previousScissor)); GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
+		pushRenderTarget(destination);
+		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
+		setProjection2dOrthographic(); resetTransform(); setViewport(0, 0, destination->getWidth(), destination->getHeight());
+		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE)); GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND)); GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		try
+		{
+			source->applyMipView(options.mipLevel);
+			auto program = static_cast<Program*>(mTextureDiagnosticProgram.get()); setUsedProgram(mTextureDiagnosticProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), destination->getWidth() / 2.0f, destination->getHeight() / 2.0f));
+			GL_CHECK(glUniform1i(program->getUniformId("MODE"), (GLint)options.mode)); GL_CHECK(glUniform1f(program->getUniformId("EXPOSURE"), options.exposure)); GL_CHECK(glUniform1f(program->getUniformId("GAMMA"), mGamma));
+			GL_CHECK(glUniform1f(program->getUniformId("DEPTH_NEAR"), options.depthNear)); GL_CHECK(glUniform1f(program->getUniformId("DEPTH_FAR"), options.depthFar)); GL_CHECK(glUniform1i(program->getUniformId("SOURCE"), 0));
+			if (options.mode == TextureDiagnosticMode::Depth) source->bindDepth(0); else source->bind(0, 0);
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
+			source->restoreMipView();
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; mRenderInfo.batchCount++;
+		}
+		catch (...)
+		{
+			source->restoreMipView(); popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]); glScissor(previousScissor[0],previousScissor[1],previousScissor[2],previousScissor[3]); GL_CHECK(glDepthMask(depthMask)); if(depth)glEnable(GL_DEPTH_TEST);if(cull)glEnable(GL_CULL_FACE);if(blend)glEnable(GL_BLEND);if(scissor)glEnable(GL_SCISSOR_TEST); throw;
+		}
+		popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]); GL_CHECK(glScissor(previousScissor[0],previousScissor[1],previousScissor[2],previousScissor[3])); GL_CHECK(glDepthMask(depthMask)); if(depth)GL_CHECK(glEnable(GL_DEPTH_TEST));else GL_CHECK(glDisable(GL_DEPTH_TEST));if(cull)GL_CHECK(glEnable(GL_CULL_FACE));else GL_CHECK(glDisable(GL_CULL_FACE));if(blend)GL_CHECK(glEnable(GL_BLEND));else GL_CHECK(glDisable(GL_BLEND));if(scissor)GL_CHECK(glEnable(GL_SCISSOR_TEST));else GL_CHECK(glDisable(GL_SCISSOR_TEST));
 	}
 
 	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap)

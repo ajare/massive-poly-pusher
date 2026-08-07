@@ -188,6 +188,52 @@ void main()
 }
 )";
 
+// Diagnostic graph-image visualization used by PipelineEditor and GPU tools.
+const std::string FragmentShaderTextureDiagnosticTemplate =
+R"(
+@@Version
+
+@@Uniform(int MODE);
+@@Uniform(float EXPOSURE);
+@@Uniform(float GAMMA);
+@@Uniform(float DEPTH_NEAR);
+@@Uniform(float DEPTH_FAR);
+@@Texture(sampler2D SOURCE);
+
+vec3 aces(vec3 value)
+{
+    return clamp((value * (2.51 * value + 0.03)) / (value * (2.43 * value + 0.59) + 0.14), 0.0, 1.0);
+}
+
+vec3 heat(float value)
+{
+    value = clamp(value, 0.0, 1.0);
+    return clamp(vec3(1.5 - abs(4.0 * value - 3.0), 1.5 - abs(4.0 * value - 2.0), 1.5 - abs(4.0 * value - 1.0)), 0.0, 1.0);
+}
+
+void main()
+{
+    vec4 source = texture(@Texture(SOURCE), @In(TEXCOORDS));
+    vec3 result = source.rgb;
+    if (@Uniform(MODE) == 1) result = vec3(source.r);
+    else if (@Uniform(MODE) == 2) result = vec3(source.g);
+    else if (@Uniform(MODE) == 3) result = vec3(source.b);
+    else if (@Uniform(MODE) == 4) result = vec3(source.a);
+    else if (@Uniform(MODE) == 5) result = vec3(dot(source.rgb, vec3(0.2126, 0.7152, 0.0722)));
+    else if (@Uniform(MODE) == 6)
+    {
+        float z = source.r * 2.0 - 1.0;
+        float linearDepth = (2.0 * @Uniform(DEPTH_NEAR) * @Uniform(DEPTH_FAR)) /
+            max(@Uniform(DEPTH_FAR) + @Uniform(DEPTH_NEAR) - z * (@Uniform(DEPTH_FAR) - @Uniform(DEPTH_NEAR)), 0.000001);
+        result = vec3(1.0 - clamp((linearDepth - @Uniform(DEPTH_NEAR)) / max(@Uniform(DEPTH_FAR) - @Uniform(DEPTH_NEAR), 0.000001), 0.0, 1.0));
+    }
+    else if (@Uniform(MODE) == 7) result = aces(max(source.rgb, vec3(0.0)) * @Uniform(EXPOSURE));
+    else if (@Uniform(MODE) == 8) result = heat(log2(1.0 + max(dot(source.rgb, vec3(0.2126, 0.7152, 0.0722)) * @Uniform(EXPOSURE), 0.0)) / 8.0);
+    result = pow(max(result, vec3(0.0)), vec3(1.0 / max(@Uniform(GAMMA), 0.0001)));
+    @Out(vec4 COLOUR) = vec4(result, 1.0);
+}
+)";
+
 // Temporary HDR presentation shader used by the opt-in PBR pipeline. Surface
 // shading remains replaceable while the PBR material model is introduced.
 const std::string FragmentShaderToneMapTemplate =
