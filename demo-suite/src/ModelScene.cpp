@@ -1181,6 +1181,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	}
 	renderSystem->infoMessage("Material XML dispatch/single-definition binary/legacy migration tests passed.");
 
+	renderSystem->getOrCreateRenderPipeline("Pipeline.RemovalTest");if(!renderSystem->removeRenderPipeline("Pipeline.RemovalTest")||renderSystem->removeRenderPipeline("Pipeline.RemovalTest"))throw std::runtime_error("Render pipeline deterministic removal failed.");bool removedPipelineMissing=false;try{renderSystem->getRenderPipeline("Pipeline.RemovalTest");}catch(std::exception const&){removedPipelineMissing=true;}if(!removedPipelineMissing)throw std::runtime_error("Removed render pipeline remained addressable.");
 	auto importedGraphDocument = mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(options.resourceLocation + "PbrPipeline.rendergraph.xml");
 	if (!importedGraphDocument.importedFromRenderGraph || !importedGraphDocument.graph || importedGraphDocument.graph->getPassCount() == 0)
 		throw std::runtime_error("Standalone RenderGraph migration failed.");

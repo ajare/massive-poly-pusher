@@ -499,6 +499,9 @@ namespace mpp
 
 		RenderPipelinePtr getRenderPipeline(std::string const& name);
 
+		// Removes an obsolete named pipeline after callers have switched away from it.
+		bool removeRenderPipeline(std::string const& name);
+
 		RenderInfo const& getRenderInfo() const;
 
 		void startStatsCollection();
