@@ -296,7 +296,7 @@ The first implementation does not include:
 - [ ] Add real configurable program options/preferences instead of hard-coded window and recovery values.
 - [~] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
   - [x] Pipeline New/Open/Exit discard prompts and atomic pipeline Save.
-  - [ ] Scene Save/Save As/Save All and independent scene dirty prompts.
+  - [x] Scene Save/Save As/Save All and independent scene dirty prompts.
 - [ ] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
 - [x] Add `Window -> Reset Layout` and preserve saved-layout restoration unless reset is requested.
 - [ ] Add Release deployment/startup/CLI smoke validation.
@@ -316,7 +316,9 @@ The first implementation does not include:
 - [~] Add PBR material, texture/sampler, program/reflection, and typed uniform inspectors.
   - [x] Edit pass float/vector/int/bool values supported by the current `UniformCollection` UI.
   - [ ] PBR materials, maps, extensions, samplers, programs, reflection details, matrices, arrays, and instance overrides.
-- [ ] Add scene model/primitive/absolute-transform/layer/light/camera/editor-setting inspectors.
+- [~] Add scene model/primitive/absolute-transform/layer/light/camera/editor-setting inspectors.
+  - [x] Model selection, absolute translation/rotation/scale, visibility, shadow-caster state, and logical material binding.
+  - [ ] Primitive parameters, layers, lights, camera, environment binding, and editor settings.
 - [ ] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
 - [ ] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
 
