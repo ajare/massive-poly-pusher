@@ -4,15 +4,18 @@
   <PreviewScene><file>DefaultPbrPreview.scene.xml</file></PreviewScene>
   <ResourceLibraries><Library><file>PbrPreviewResources.xml</file></Library></ResourceLibraries>
   <LocalResources>
+    <PbrMaterial><name>Preview.LocalPbr</name><MeshSpecification><primitive>triangles</primitive><indexed>true</indexed><storage>static</storage><Buffer><Channel><data>position3</data><type>float32</type></Channel><Channel><data>normal3</data><type>float32</type></Channel><Channel><data>texcoord2</data><type>float32</type></Channel><Channel><data>colour4</data><type>float32</type><normalised>true</normalised></Channel><Channel><data>tangent4</data><type>float32</type></Channel></Buffer></MeshSpecification><Surface><baseColourFactor>0.72 0.76 0.82 1</baseColourFactor><metallicFactor>0</metallicFactor><roughnessFactor>0.65</roughnessFactor><emissiveFactor>0 0 0</emissiveFactor><normalScale>1</normalScale><occlusionStrength>1</occlusionStrength><alphaMode>OPAQUE</alphaMode><alphaCutoff>0.5</alphaCutoff><doubleSided>false</doubleSided></Surface></PbrMaterial>
+    <Texture><name>Preview.Environment</name><target>CUBEMAP</target><filename>arrow.png</filename><colourSpace>SRGB</colourSpace><mipmaps>true</mipmaps><minFilter>LINEAR_MIPMAP_LINEAR</minFilter><magFilter>LINEAR</magFilter><wrap>CLAMP_TO_EDGE</wrap></Texture>
+    <Texture><name>Preview.BrdfLut</name><target>2D</target><filename>arrow.png</filename><colourSpace>LINEAR</colourSpace><minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter><wrap>CLAMP_TO_EDGE</wrap></Texture>
     <Sampler><name>Preview.LocalSampler</name><minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter><wrap>CLAMP_TO_EDGE</wrap><maxAnisotropy>1</maxAnisotropy></Sampler>
   </LocalResources>
   <Imports>
     <Import><id>shadowDepth</id><semantic>shadowDepth</semantic><format>DEPTH24</format><usage>depthAttachment,sampled</usage><required>true</required></Import>
     <Import><id>screen</id><semantic>presentation</semantic><format>RGBA8</format><usage>colourAttachment,presentation</usage><required>true</required></Import>
   </Imports>
-  <Environment><binding>Preview.Environment</binding><irradiance>PBR.Preview.Environment</irradiance><prefilteredSpecular>PBR.Preview.Environment</prefilteredSpecular><brdfLut>PBR.Preview.BrdfLut</brdfLut><background>PBR.Preview.Environment</background></Environment>
-  <PreviewBindings><Material><binding>Preview.Main</binding><resource>Statue/PbrStatueMaterial</resource></Material></PreviewBindings>
-  <PreviewOverrides><Override><model>Sphere.0.0</model><binding>Preview.Main</binding><Values><Float><name>roughnessFactor</name><value>0.35</value></Float><Vec4><name>baseColourFactor</name><value>1 0.8 0.6 1</value></Vec4></Values></Override></PreviewOverrides>
+  <Environment><binding>Preview.Environment</binding><irradiance>Preview.Environment</irradiance><prefilteredSpecular>Preview.Environment</prefilteredSpecular><brdfLut>Preview.BrdfLut</brdfLut><background>Preview.Environment</background></Environment>
+  <PreviewBindings><Material><binding>Preview.Main</binding><resource>Preview.LocalPbr</resource></Material><Material><binding>Preview.Spheres</binding><resource>Preview.LocalPbr</resource></Material><Material><binding>Preview.Ground</binding><resource>Preview.LocalPbr</resource></Material></PreviewBindings>
+  <PreviewOverrides><Override><model>Sphere.0.0</model><binding>Preview.Main</binding><Values><Float><name>PBR_ROUGHNESS_FACTOR</name><value>0.35</value></Float><Vec4><name>PBR_BASE_COLOUR_FACTOR</name><value>1 0.8 0.6 1</value></Vec4></Values></Override></PreviewOverrides>
   <Extensions><Extension><namespace>urn:mpp:editor-metadata:1</namespace><Payload><EditorMetadata><category>Full PBR</category></EditorMetadata></Payload></Extension></Extensions>
 <RenderGraph>
   <Images>
