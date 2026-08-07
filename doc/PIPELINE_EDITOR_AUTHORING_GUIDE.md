@@ -37,7 +37,7 @@ Pipeline environments own IBL/background resources. Neutral fallbacks are explic
 ## Viewport controls
 
 - Left-drag empty viewport space: orbit.
-- Middle-drag: pan.
+- Right-drag: pan (middle-drag is also supported).
 - Mouse wheel: zoom.
 - **Reset View**: restore the authored camera.
 - **Frame Selection**: frame the selected model.
