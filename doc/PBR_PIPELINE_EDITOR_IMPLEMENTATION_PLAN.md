@@ -246,7 +246,9 @@ The first implementation does not include:
 - [x] Add deterministic basic pipeline/graph round-trip and resource startup tests.
 - [x] Add `PbrPipelineStream`, `FilePbrPipelineStream`, `PbrPipelineTemplate`, and ResourceManager factory registration.
 - [~] Complete the version-1 schema and lossless canonical serializer.
-  - [ ] Document-local PBR materials, programs, textures, and samplers.
+  - [~] Document-local PBR materials, programs, textures, and samplers.
+    - [x] Ordered typed local-resource DTOs and lossless concrete-resource XML payload parsing/serialization for all four resource kinds, with name/kind validation and round-trip coverage.
+    - [ ] Complete concrete-schema semantic validation, editor DTO controls, and runtime stream instantiation.
   - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
   - [x] Preview instance-override model/binding targets and typed scalar/vector values with strict parsing, canonical serialization, semantic validation, and round-trip coverage.
   - [~] Explicit extension-payload preservation and strict unknown-core-field rejection.

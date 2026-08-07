@@ -15,6 +15,7 @@ namespace mpp::resource_parsers
 	namespace
 	{
 		std::string usage(GraphImageUsage value){std::string result;auto add=[&](GraphImageUsage flag,char const*name){if(hasGraphImageUsage(value,flag)){if(!result.empty())result+=",";result+=name;}};add(GraphImageUsage::Sampled,"sampled");add(GraphImageUsage::ColourAttachment,"colourAttachment");add(GraphImageUsage::DepthAttachment,"depthAttachment");add(GraphImageUsage::Presentation,"presentation");return result;}
+		void writeData(utils::StructuredData const& data,utils::XmlWriteNode* parent){for(auto const& entry:data){auto child=parent->createChild(entry.first);if(entry.second.isValue())child->setValue(entry.second.getValue());else writeData(entry.second,child);}}
 		void writeUniforms(UniformCollection const& values,utils::XmlWriteNode* parent)
 		{
 			for(auto const& entry:values.getUniformData()){auto const& value=entry.second;if(value.count!=1)continue;std::string type;if(value.type==program::GLSLType::Int)type="Int";else if(value.type==program::GLSLType::Bool)type="Bool";else if(value.type==program::GLSLType::Float&&value.numElements>=1&&value.numElements<=4)type=value.numElements==1?"Float":value.numElements==2?"Vec2":value.numElements==3?"Vec3":"Vec4";else continue;auto node=parent->createChild(type);node->createChild("name")->setValue(entry.first);std::ostringstream text;if(value.type==program::GLSLType::Int||value.type==program::GLSLType::Bool){int32_t current;memcpy(&current,value.data,sizeof(current));if(value.type==program::GLSLType::Bool)text<<(current?"true":"false");else text<<current;}else{auto current=reinterpret_cast<float const*>(value.data);for(size_t i=0;i<value.numElements;++i){if(i)text<<' ';text<<current[i];}}node->createChild("value")->setValue(text.str());}
@@ -33,6 +34,10 @@ namespace mpp::resource_parsers
 		{
 			auto libraries = root->createChild("ResourceLibraries");
 			for (auto const& path : document.resourceLibraries) libraries->createChild("Library")->createChild("file")->setValue(path);
+		}
+		if(!document.localResources.empty())
+		{
+			auto resources=root->createChild("LocalResources");for(auto const& value:document.localResources){auto node=resources->createChild(value.definition.getName());writeData(value.definition,node);}
 		}
 		if(!document.imports.empty())
 		{

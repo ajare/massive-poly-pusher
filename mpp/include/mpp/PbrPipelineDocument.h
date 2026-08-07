@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "utils/StructuredData.h"
 #include "mpp/Config.h"
 #include "mpp/Diagnostic.h"
 #include "mpp/RenderGraph.h"
@@ -24,6 +25,16 @@ namespace mpp
 		std::string modelId;
 		std::string binding;
 		UniformCollection values;
+	};
+
+	enum class PbrPipelineResourceKind { PbrMaterial, Program, Texture, Sampler };
+
+	struct _MPPAPI PbrPipelineResourceDocument
+	{
+		std::string name;
+		PbrPipelineResourceKind kind{ PbrPipelineResourceKind::PbrMaterial };
+		// Existing concrete resource XML payload. Its root name matches kind.
+		utils::StructuredData definition{ "PbrMaterial" };
 	};
 
 	struct _MPPAPI PbrPipelineImportDocument
@@ -57,6 +68,7 @@ namespace mpp
 		bool importedFromRenderGraph{ false };
 		std::string previewScene;
 		std::vector<std::string> resourceLibraries;
+		std::vector<PbrPipelineResourceDocument> localResources;
 		std::vector<PbrPipelineImportDocument> imports;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;

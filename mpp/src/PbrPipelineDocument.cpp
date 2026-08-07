@@ -26,6 +26,12 @@ namespace mpp
 			if (library.empty() || !libraries.insert(library).second) diagnostics.error("MPP-PIPELINE-005", "Resource library paths must be non-empty and unique.", { sourcePath }, "resources");
 			else { auto path=std::filesystem::path(library);if(path.is_absolute())diagnostics.warning("MPP-PIPELINE-014","Absolute resource-library path is not portable.",{sourcePath},library);auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-PIPELINE-015","Resource library does not exist: "+resolved.string(),{sourcePath},library); }
 		}
+		set<string> localNames;
+		for(auto const& resource:localResources)
+		{
+			if(resource.name.empty()||!localNames.insert(resource.name).second)diagnostics.error("MPP-PIPELINE-022","Local resource names must be non-empty and unique.",{sourcePath},resource.name);auto expected=resource.kind==PbrPipelineResourceKind::PbrMaterial?"PbrMaterial":resource.kind==PbrPipelineResourceKind::Program?"Program":resource.kind==PbrPipelineResourceKind::Texture?"Texture":"Sampler";if(resource.definition.getName()!=expected)diagnostics.error("MPP-PIPELINE-023","Local resource '"+resource.name+"' payload type does not match its declared kind.",{sourcePath},resource.name);
+		}
+		auto resourceReferenceIsResolvable=[&](string const& name){return localNames.contains(name)||name.find('/')!=string::npos||name.find("::")!=string::npos;};
 		set<string> importIds;
 		for(auto const& import:imports)
 		{
@@ -40,6 +46,7 @@ namespace mpp
 		{
 			if (binding.binding.empty() || binding.materialResource.empty()) diagnostics.error("MPP-PIPELINE-006", "Preview material binding and resource are required.", { sourcePath }, binding.binding);
 			else if (!bindings.insert(binding.binding).second) diagnostics.error("MPP-PIPELINE-007", "Duplicate preview material binding '" + binding.binding + "'.", { sourcePath }, binding.binding);
+			else if(!resourceReferenceIsResolvable(binding.materialResource))diagnostics.error("MPP-PIPELINE-024","Preview binding resource '"+binding.materialResource+"' is neither document-local nor externally qualified.",{sourcePath},binding.binding);
 		}
 		set<string> overrideTargets;
 		for(auto const& value:previewOverrides)
