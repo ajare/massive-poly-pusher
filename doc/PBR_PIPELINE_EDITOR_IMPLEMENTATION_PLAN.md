@@ -25,6 +25,9 @@
 - [ ] Phase 4 remains in progress: legacy importer, document-local resource parsing, and transactional live pipeline instantiation remain.
 - [x] Added the Scene document DTO/parser/serializer/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
 - [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation remains after Phase 4 completes.
+- [x] Extracted shared SDL window/timer support and created a standalone docking-enabled PipelineEditor Debug application.
+- [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
+- [ ] Phase 6 remains in progress: document controllers, native dialogs, recovery, CLI validation, deployment automation, and default dock builder remain.
 
 ## 1. Goal
 
@@ -252,7 +255,7 @@ The first implementation does not include:
 
 **Exit:** scene round-trip/runtime tests cover all model sources, transforms, layers, lights, camera, bindings, and missing files.
 
-### Phase 6: PipelineEditor shell
+### Phase 6: PipelineEditor shell — In Progress
 
 1. Create executable/project, options, configuration, deployment, and shared platform integration.
 2. Create docking host and default layout.
