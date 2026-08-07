@@ -1,4 +1,6 @@
 #include <memory>
+#include <set>
+#include <sstream>
 
 #include "utils/XmlReader.h"
 #include "utils/StringUtils.h"
@@ -20,35 +22,43 @@ namespace mpp::resource_parsers
 			if(value=="R11G11B10F")return GraphImageFormat::R11g11b10f;if(value=="RGB10_A2")return GraphImageFormat::Rgb10a2;if(value=="DEPTH16")return GraphImageFormat::Depth16;if(value=="DEPTH24")return GraphImageFormat::Depth24;if(value=="DEPTH32F")return GraphImageFormat::Depth32f;if(value=="DEPTH24_STENCIL8")return GraphImageFormat::Depth24Stencil8;if(value=="DEPTH32F_STENCIL8")return GraphImageFormat::Depth32fStencil8;
 			THROW_MPP_RESOURCE_PARSERS("Unknown PbrPipeline import format '"+value+"'.",__LINE__,__FILE__,__func__);
 		}
-		GraphImageUsage importUsage(std::string value){utils::StringUtils::toUpper(value);GraphImageUsage usage=GraphImageUsage::None;if(value.find("SAMPLED")!=std::string::npos)usage=usage|GraphImageUsage::Sampled;if(value.find("COLOURATTACHMENT")!=std::string::npos)usage=usage|GraphImageUsage::ColourAttachment;if(value.find("DEPTHATTACHMENT")!=std::string::npos)usage=usage|GraphImageUsage::DepthAttachment;if(value.find("PRESENTATION")!=std::string::npos)usage=usage|GraphImageUsage::Presentation;return usage;}
-		bool boolean(std::string value){utils::StringUtils::toUpper(value);return value=="TRUE"||value=="1"||value=="YES";}
+		GraphImageUsage importUsage(std::string value)
+		{
+			GraphImageUsage usage=GraphImageUsage::None;std::stringstream stream(value);std::string token;
+			while(std::getline(stream,token,',')){utils::StringUtils::toUpper(token);if(token=="SAMPLED")usage=usage|GraphImageUsage::Sampled;else if(token=="COLOURATTACHMENT")usage=usage|GraphImageUsage::ColourAttachment;else if(token=="DEPTHATTACHMENT")usage=usage|GraphImageUsage::DepthAttachment;else if(token=="PRESENTATION")usage=usage|GraphImageUsage::Presentation;else THROW_MPP_RESOURCE_PARSERS("Unknown PbrPipeline import usage '"+token+"'.",__LINE__,__FILE__,__func__);}
+			return usage;
+		}
+		bool boolean(std::string value){utils::StringUtils::toUpper(value);if(value=="TRUE"||value=="1"||value=="YES")return true;if(value=="FALSE"||value=="0"||value=="NO")return false;THROW_MPP_RESOURCE_PARSERS("Invalid PbrPipeline boolean '"+value+"'.",__LINE__,__FILE__,__func__);}
+		void rejectUnknown(utils::StructuredData const& data,std::set<std::string> const& allowed,std::string const& context){for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);}
 	}
 	PbrPipelineDocument PbrPipelineParser::fromFile(string const& filepath)
 	{
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
 		auto data = reader->readTree();
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","Imports","Environment","PreviewBindings","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
 		document.name = data.hasEntry("name") ? data.getEntry("name").getValue() : "";
-		if (data.hasEntry("PreviewScene")) document.previewScene = data.getEntry("PreviewScene").getEntry("file").getValue();
+		if (data.hasEntry("PreviewScene")) { auto const& value=data.getEntry("PreviewScene");rejectUnknown(value,{"file"},"PreviewScene");document.previewScene = value.getEntry("file").getValue(); }
 		if (data.hasEntry("ResourceLibraries"))
-			for (auto const& entry : data.getEntry("ResourceLibraries")) if (entry.first == "Library") document.resourceLibraries.push_back(entry.second.getEntry("file").getValue());
-		if (data.hasEntry("Imports")) for(auto const& entry:data.getEntry("Imports")) if(entry.first=="Import")
+			for (auto const& entry : data.getEntry("ResourceLibraries")) { if(entry.first!="Library")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in ResourceLibraries.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"file"},"ResourceLibraries/Library");document.resourceLibraries.push_back(entry.second.getEntry("file").getValue()); }
+		if (data.hasEntry("Imports")) for(auto const& entry:data.getEntry("Imports"))
 		{
-			auto const& value=entry.second; PbrPipelineImportDocument import; import.id=value.getEntry("id").getValue(); import.semantic=value.getEntry("semantic").getValue(); import.format=importFormat(value.getEntry("format").getValue()); import.usage=importUsage(value.getEntry("usage").getValue()); if(value.hasEntry("required"))import.required=boolean(value.getEntry("required").getValue()); if(value.hasEntry("fallback"))import.fallback=value.getEntry("fallback").getValue(); document.imports.push_back(import);
+			if(entry.first!="Import")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Imports.",__LINE__,__FILE__,__func__);
+			auto const& value=entry.second;rejectUnknown(value,{"id","semantic","format","usage","required","fallback"},"Imports/Import"); PbrPipelineImportDocument import; import.id=value.getEntry("id").getValue(); import.semantic=value.getEntry("semantic").getValue(); import.format=importFormat(value.getEntry("format").getValue()); import.usage=importUsage(value.getEntry("usage").getValue()); if(value.hasEntry("required"))import.required=boolean(value.getEntry("required").getValue()); if(value.hasEntry("fallback"))import.fallback=value.getEntry("fallback").getValue(); document.imports.push_back(import);
 		}
 		if (data.hasEntry("Environment"))
 		{
 			auto const& environment = data.getEntry("Environment");
+			rejectUnknown(environment,{"binding","irradiance","prefilteredSpecular","brdfLut","background"},"Environment");
 			auto read = [&](char const* key) { return environment.hasEntry(key) ? environment.getEntry(key).getValue() : string(); };
 			document.environment.binding = read("binding"); document.environment.irradiance = read("irradiance");
 			document.environment.prefilteredSpecular = read("prefilteredSpecular"); document.environment.brdfLut = read("brdfLut"); document.environment.background = read("background");
 		}
 		if (data.hasEntry("PreviewBindings"))
-			for (auto const& entry : data.getEntry("PreviewBindings")) if (entry.first == "Material")
-				document.previewBindings.push_back({ entry.second.getEntry("binding").getValue(), entry.second.getEntry("resource").getValue() });
+			for (auto const& entry : data.getEntry("PreviewBindings")) { if(entry.first!="Material")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in PreviewBindings.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"binding","resource"},"PreviewBindings/Material");document.previewBindings.push_back({ entry.second.getEntry("binding").getValue(), entry.second.getEntry("resource").getValue() }); }
 		if (!data.hasEntry("RenderGraph")) THROW_MPP_RESOURCE_PARSERS("PbrPipeline has no embedded RenderGraph: " + filepath, __LINE__, __FILE__, __func__);
 		document.graph = make_shared<RenderGraph>(RenderGraphParser::fromData(data.getEntry("RenderGraph"), filepath));
 		return document;

@@ -1,9 +1,62 @@
 #include <memory>
+#include <set>
 #include <sstream>
 #include "utils/XmlReader.h"
 #include "utils/StringUtils.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 #include "mpp/resource-parsers/SceneParser.h"
+
 using namespace std;
-namespace mpp::resource_parsers { namespace { glm::vec3 vec3(string const&s){istringstream i(s);glm::vec3 v;i>>v.x>>v.y>>v.z;return v;} bool boolean(string s){utils::StringUtils::toUpper(s);return s=="TRUE"||s=="1"||s=="YES";} SceneModelSource source(string s){utils::StringUtils::toUpper(s);if(s=="MPPMODEL")return SceneModelSource::MppModel;if(s=="BOX")return SceneModelSource::Box;if(s=="CYLINDER")return SceneModelSource::Cylinder;if(s=="GRID")return SceneModelSource::Grid;return SceneModelSource::Sphere;} }
-SceneDocument SceneParser::fromFile(string const&filepath){unique_ptr<utils::XmlReader>r(utils::XmlReader::fromFile(filepath));auto data=r->readTree();if(data.getName()!="Scene")THROW_MPP_RESOURCE_PARSERS("Scene root must be Scene: "+filepath,__LINE__,__FILE__,__func__);SceneDocument d;d.sourcePath=filepath;d.version=data.hasEntry("version")?utils::StringUtils::parseUInt(data.getEntry("version").getValue()):1;d.name=data.hasEntry("name")?data.getEntry("name").getValue():"";if(data.hasEntry("environmentBinding"))d.environmentBinding=data.getEntry("environmentBinding").getValue();if(data.hasEntry("Camera")){auto const&c=data.getEntry("Camera");if(c.hasEntry("position"))d.camera.position=vec3(c.getEntry("position").getValue());if(c.hasEntry("target"))d.camera.target=vec3(c.getEntry("target").getValue());if(c.hasEntry("fov"))d.camera.fov=utils::StringUtils::parseFloat(c.getEntry("fov").getValue());if(c.hasEntry("near"))d.camera.nearPlane=utils::StringUtils::parseFloat(c.getEntry("near").getValue());if(c.hasEntry("far"))d.camera.farPlane=utils::StringUtils::parseFloat(c.getEntry("far").getValue());}if(data.hasEntry("Models"))for(auto const&e:data.getEntry("Models")){if(e.first!="Model")continue;auto const&m=e.second;SceneModelDocument x;x.id=m.getEntry("id").getValue();x.source=source(m.getEntry("source").getValue());if(m.hasEntry("file"))x.file=m.getEntry("file").getValue();if(m.hasEntry("translation"))x.translation=vec3(m.getEntry("translation").getValue());if(m.hasEntry("rotation"))x.rotationDegrees=vec3(m.getEntry("rotation").getValue());if(m.hasEntry("scale"))x.scale=vec3(m.getEntry("scale").getValue());if(m.hasEntry("materialBinding"))x.materialBinding=m.getEntry("materialBinding").getValue();if(m.hasEntry("visible"))x.visible=boolean(m.getEntry("visible").getValue());if(m.hasEntry("shadowCaster"))x.shadowCaster=boolean(m.getEntry("shadowCaster").getValue());if(m.hasEntry("Layers"))for(auto const&l:m.getEntry("Layers"))if(l.first=="Layer")x.layers.push_back(l.second.getValue());d.models.push_back(x);}if(data.hasEntry("Lights"))for(auto const&e:data.getEntry("Lights")){if(e.first!="Light")continue;auto const&l=e.second;SceneLightDocument x;x.id=l.getEntry("id").getValue();if(l.hasEntry("type")){auto t=l.getEntry("type").getValue();utils::StringUtils::toUpper(t);x.type=t=="POINT"?SceneLightType::Point:SceneLightType::Directional;}if(l.hasEntry("colour"))x.colour=vec3(l.getEntry("colour").getValue());if(l.hasEntry("intensity"))x.intensity=utils::StringUtils::parseFloat(l.getEntry("intensity").getValue());if(l.hasEntry("position"))x.position=vec3(l.getEntry("position").getValue());if(l.hasEntry("direction"))x.direction=vec3(l.getEntry("direction").getValue());if(l.hasEntry("range"))x.range=utils::StringUtils::parseFloat(l.getEntry("range").getValue());d.lights.push_back(x);}return d;}}
+
+namespace mpp::resource_parsers
+{
+	namespace
+	{
+		void rejectUnknown(utils::StructuredData const& data,set<string> const& allowed,string const& context)
+		{
+			for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);
+		}
+		glm::vec3 vec3(string const& value)
+		{
+			istringstream stream(value);glm::vec3 result;string extra;
+			if(!(stream>>result.x>>result.y>>result.z)||stream>>extra)THROW_MPP_RESOURCE_PARSERS("Invalid scene vec3 '"+value+"'.",__LINE__,__FILE__,__func__);
+			return result;
+		}
+		bool boolean(string value)
+		{
+			utils::StringUtils::toUpper(value);if(value=="TRUE"||value=="1"||value=="YES")return true;if(value=="FALSE"||value=="0"||value=="NO")return false;
+			THROW_MPP_RESOURCE_PARSERS("Invalid scene boolean '"+value+"'.",__LINE__,__FILE__,__func__);
+		}
+		SceneModelSource source(string value)
+		{
+			utils::StringUtils::toUpper(value);if(value=="MPPMODEL")return SceneModelSource::MppModel;if(value=="BOX")return SceneModelSource::Box;if(value=="SPHERE")return SceneModelSource::Sphere;if(value=="CYLINDER")return SceneModelSource::Cylinder;if(value=="GRID")return SceneModelSource::Grid;
+			THROW_MPP_RESOURCE_PARSERS("Unknown scene model source '"+value+"'.",__LINE__,__FILE__,__func__);
+		}
+	}
+
+	SceneDocument SceneParser::fromFile(string const& filepath)
+	{
+		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));auto data=reader->readTree();
+		if(data.getName()!="Scene")THROW_MPP_RESOURCE_PARSERS("Scene root must be Scene: "+filepath,__LINE__,__FILE__,__func__);
+		rejectUnknown(data,{"version","name","environmentBinding","Camera","Models","Lights"},"Scene");
+		SceneDocument document;document.sourcePath=filepath;document.version=data.hasEntry("version")?utils::StringUtils::parseUInt(data.getEntry("version").getValue()):1;document.name=data.hasEntry("name")?data.getEntry("name").getValue():"";
+		if(data.hasEntry("environmentBinding"))document.environmentBinding=data.getEntry("environmentBinding").getValue();
+		if(data.hasEntry("Camera"))
+		{
+			auto const& camera=data.getEntry("Camera");rejectUnknown(camera,{"position","target","fov","near","far"},"Camera");
+			if(camera.hasEntry("position"))document.camera.position=vec3(camera.getEntry("position").getValue());if(camera.hasEntry("target"))document.camera.target=vec3(camera.getEntry("target").getValue());if(camera.hasEntry("fov"))document.camera.fov=utils::StringUtils::parseFloat(camera.getEntry("fov").getValue());if(camera.hasEntry("near"))document.camera.nearPlane=utils::StringUtils::parseFloat(camera.getEntry("near").getValue());if(camera.hasEntry("far"))document.camera.farPlane=utils::StringUtils::parseFloat(camera.getEntry("far").getValue());
+		}
+		if(data.hasEntry("Models"))for(auto const& entry:data.getEntry("Models"))
+		{
+			if(entry.first!="Model")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Models.",__LINE__,__FILE__,__func__);auto const& model=entry.second;rejectUnknown(model,{"id","source","file","translation","rotation","scale","materialBinding","visible","shadowCaster","Layers"},"Models/Model");
+			SceneModelDocument value;value.id=model.getEntry("id").getValue();value.source=source(model.getEntry("source").getValue());if(model.hasEntry("file"))value.file=model.getEntry("file").getValue();if(model.hasEntry("translation"))value.translation=vec3(model.getEntry("translation").getValue());if(model.hasEntry("rotation"))value.rotationDegrees=vec3(model.getEntry("rotation").getValue());if(model.hasEntry("scale"))value.scale=vec3(model.getEntry("scale").getValue());if(model.hasEntry("materialBinding"))value.materialBinding=model.getEntry("materialBinding").getValue();if(model.hasEntry("visible"))value.visible=boolean(model.getEntry("visible").getValue());if(model.hasEntry("shadowCaster"))value.shadowCaster=boolean(model.getEntry("shadowCaster").getValue());
+			if(model.hasEntry("Layers"))for(auto const& layer:model.getEntry("Layers")){if(layer.first!="Layer")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+layer.first+"' in Layers.",__LINE__,__FILE__,__func__);value.layers.push_back(layer.second.getValue());}document.models.push_back(value);
+		}
+		if(data.hasEntry("Lights"))for(auto const& entry:data.getEntry("Lights"))
+		{
+			if(entry.first!="Light")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Lights.",__LINE__,__FILE__,__func__);auto const& light=entry.second;rejectUnknown(light,{"id","type","colour","intensity","position","direction","range"},"Lights/Light");SceneLightDocument value;value.id=light.getEntry("id").getValue();
+			if(light.hasEntry("type")){auto type=light.getEntry("type").getValue();utils::StringUtils::toUpper(type);if(type=="POINT")value.type=SceneLightType::Point;else if(type=="DIRECTIONAL")value.type=SceneLightType::Directional;else THROW_MPP_RESOURCE_PARSERS("Unknown scene light type '"+type+"'.",__LINE__,__FILE__,__func__);}if(light.hasEntry("colour"))value.colour=vec3(light.getEntry("colour").getValue());if(light.hasEntry("intensity"))value.intensity=utils::StringUtils::parseFloat(light.getEntry("intensity").getValue());if(light.hasEntry("position"))value.position=vec3(light.getEntry("position").getValue());if(light.hasEntry("direction"))value.direction=vec3(light.getEntry("direction").getValue());if(light.hasEntry("range"))value.range=utils::StringUtils::parseFloat(light.getEntry("range").getValue());document.lights.push_back(value);
+		}
+		return document;
+	}
+}
