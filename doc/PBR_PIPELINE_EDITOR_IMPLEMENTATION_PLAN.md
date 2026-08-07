@@ -317,7 +317,9 @@ The first implementation does not include:
 - [~] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
   - [x] Pipeline New/Open/Exit discard prompts and atomic pipeline Save.
   - [x] Scene Save/Save As/Save All and independent scene dirty prompts.
-- [ ] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
+- [~] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
+  - [x] Persist and reorder up to eight recent pipelines, reopen them through the normal dirty-document prompt, and diagnose/remove missing entries.
+  - [ ] General load/save error UI, external-change conflicts, and recovery cleanup for all close/failure paths.
 - [x] Add `Window -> Reset Layout` and preserve saved-layout restoration unless reset is requested.
 - [x] Add Release deployment and CLI smoke validation; enforce the parser-to-runtime project dependency required by clean Release builds.
 
