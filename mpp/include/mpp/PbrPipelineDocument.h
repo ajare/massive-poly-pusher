@@ -37,6 +37,14 @@ namespace mpp
 		utils::StructuredData definition{ "PbrMaterial" };
 	};
 
+	struct _MPPAPI PbrPipelineExternalResourceDocument
+	{
+		std::string libraryName;
+		std::string libraryPath;
+		PbrPipelineResourceDocument resource;
+		bool readOnly{ true };
+	};
+
 	struct _MPPAPI PbrPipelineImportDocument
 	{
 		std::string id;
@@ -69,6 +77,8 @@ namespace mpp
 		std::string previewScene;
 		std::vector<std::string> resourceLibraries;
 		std::vector<PbrPipelineResourceDocument> localResources;
+		// Resolved parser/runtime state; serialization emits only resourceLibraries.
+		std::vector<PbrPipelineExternalResourceDocument> externalResources;
 		std::vector<PbrPipelineImportDocument> imports;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;

@@ -12,18 +12,18 @@ namespace mpp::resource_parsers
 	void FilePbrPipelineStream::createChildResourceStreamsImpl()
 	{
 		if(!getDocument())setDocument(std::make_shared<PbrPipelineDocument>(PbrPipelineParser::fromFile(mFilepath)));
-		for(auto const& resource:getDocument()->localResources)
+		auto addResource=[&](PbrPipelineResourceDocument const& resource,std::string const& filepath,std::string const& runtimeName)
 		{
-			ResourceStreamPtr stream;
-			switch(resource.kind)
+			ResourceStreamPtr stream;switch(resource.kind)
 			{
-			case PbrPipelineResourceKind::PbrMaterial:stream=std::make_shared<FilePbrMaterialStream>(getResourceMgr(),mFilepath,resource.definition);break;
-			case PbrPipelineResourceKind::Program:stream=std::make_shared<FileProgramStream>(getResourceMgr(),mFilepath,resource.definition);break;
-			case PbrPipelineResourceKind::Texture:stream=std::make_shared<FileTextureStream>(getResourceMgr(),mFilepath,resource.definition);break;
-			case PbrPipelineResourceKind::Sampler:stream=std::make_shared<FileSamplerStream>(getResourceMgr(),mFilepath,resource.definition);break;
-			}
-			addChild(resource.name,stream);
-		}
+			case PbrPipelineResourceKind::PbrMaterial:stream=std::make_shared<FilePbrMaterialStream>(getResourceMgr(),filepath,resource.definition);break;
+			case PbrPipelineResourceKind::Program:stream=std::make_shared<FileProgramStream>(getResourceMgr(),filepath,resource.definition);break;
+			case PbrPipelineResourceKind::Texture:stream=std::make_shared<FileTextureStream>(getResourceMgr(),filepath,resource.definition);break;
+			case PbrPipelineResourceKind::Sampler:stream=std::make_shared<FileSamplerStream>(getResourceMgr(),filepath,resource.definition);break;
+			}addChild(runtimeName,stream);
+		};
+		for(auto const& resource:getDocument()->localResources)addResource(resource,mFilepath,resource.name);
+		for(auto const& external:getDocument()->externalResources)addResource(external.resource,external.libraryPath,external.libraryName+"::"+external.resource.name);
 	}
 
 	void FilePbrPipelineStream::loadImpl()
