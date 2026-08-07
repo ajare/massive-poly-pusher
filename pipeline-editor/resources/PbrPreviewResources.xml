@@ -1,4 +1,7 @@
 <ResourceLibrary>
   <version>1</version>
-  <name>PipelineEditor PBR Preview Resources</name>
+  <name>EditorPreview</name>
+  <Resources>
+    <Sampler><name>LinearClamp</name><minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter><wrap>CLAMP_TO_EDGE</wrap><maxAnisotropy>1</maxAnisotropy></Sampler>
+  </Resources>
 </ResourceLibrary>

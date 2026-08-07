@@ -259,21 +259,27 @@ The first implementation does not include:
   - [x] Atomic replacement through the PbrPipeline serializer path.
 - [~] Complete external resource-library support.
   - [x] Parse and serialize ordered library paths.
-  - [ ] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
+  - [~] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
+    - [x] Resolve strict versioned `ResourceLibrary` XML relative to its pipeline, preserve ordered references, qualify resources as `Library::Resource`, diagnose duplicate qualified names, enforce read-only state, and instantiate external child streams.
+    - [ ] Implement editor `Make Local Copy`, reference rewriting, and complete library resource schemas/fixtures.
 - [x] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
 - [~] Complete document validation.
   - [x] Basic version/name/graph/order/library-list/binding validation, relative-path resolution, missing-file diagnostics, and absolute-path portability warnings.
   - [x] RenderGraph topology and available pass-metadata validation.
   - [~] Resource resolution, portability, reflection, active-GPU capability, typed-import, and fallback validation.
     - [x] Typed image-import contract/graph compatibility and pipeline/scene/resource-library file portability checks.
-    - [ ] Resource-library content resolution, shader reflection, active-GPU import capability, and runtime fallback availability.
+    - [~] Resource-library content resolution, shader reflection, active-GPU import capability, and runtime fallback availability.
+      - [x] Resolve typed resource-library contents and reject malformed roots, unknown resource kinds, missing names, and duplicate qualified resources.
+      - [ ] Shader reflection, active-GPU import capability, and runtime fallback availability.
   - [ ] Comprehensive invalid fixtures with stable diagnostic codes and source locations.
 - [~] Complete runtime instantiation.
   - [x] Resource template/stream creation.
   - [x] Editor-side valid graph generation swap that retains the previous pipeline when validation fails.
   - [~] Resolve document-local/external resources, programs, imports, environments, material bindings, and overrides.
     - [x] Resolve document-local typed definitions into pipeline-owned child resources with deterministic qualified runtime names.
-    - [ ] Resolve external libraries, graph imports, environments, material bindings, and overrides into a complete runtime workspace.
+    - [~] Resolve external libraries, graph imports, environments, material bindings, and overrides into a complete runtime workspace.
+      - [x] Resolve external read-only library resources as qualified pipeline child resources.
+      - [ ] Resolve graph imports, environments, material bindings, and overrides.
   - [ ] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
 
 **Exit:** not met. Valid complete documents must round-trip without data loss, invalid fixtures must diagnose precisely, legacy RenderGraph imports must preserve topology, and complete runtime generations must swap transactionally.

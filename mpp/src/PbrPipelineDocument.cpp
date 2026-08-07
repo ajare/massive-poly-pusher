@@ -31,7 +31,9 @@ namespace mpp
 		{
 			if(resource.name.empty()||!localNames.insert(resource.name).second)diagnostics.error("MPP-PIPELINE-022","Local resource names must be non-empty and unique.",{sourcePath},resource.name);auto expected=resource.kind==PbrPipelineResourceKind::PbrMaterial?"PbrMaterial":resource.kind==PbrPipelineResourceKind::Program?"Program":resource.kind==PbrPipelineResourceKind::Texture?"Texture":"Sampler";if(resource.definition.getName()!=expected)diagnostics.error("MPP-PIPELINE-023","Local resource '"+resource.name+"' payload type does not match its declared kind.",{sourcePath},resource.name);
 		}
-		auto resourceReferenceIsResolvable=[&](string const& name){return localNames.contains(name)||name.find('/')!=string::npos||name.find("::")!=string::npos;};
+		set<string> externalNames;
+		for(auto const& external:externalResources){auto qualified=external.libraryName+"::"+external.resource.name;if(external.libraryName.empty()||external.resource.name.empty())diagnostics.error("MPP-PIPELINE-025","External resource library and resource names are required.",{external.libraryPath},qualified);else if(!externalNames.insert(qualified).second)diagnostics.error("MPP-PIPELINE-026","Duplicate qualified external resource '"+qualified+"'.",{external.libraryPath},qualified);if(!external.readOnly)diagnostics.error("MPP-PIPELINE-027","External library resources must be read-only.",{external.libraryPath},qualified);}
+		auto resourceReferenceIsResolvable=[&](string const& name){return localNames.contains(name)||externalNames.contains(name)||name.find('/')!=string::npos;};
 		set<string> importIds;
 		for(auto const& import:imports)
 		{
