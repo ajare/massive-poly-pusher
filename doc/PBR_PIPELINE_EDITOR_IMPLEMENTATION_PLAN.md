@@ -29,8 +29,10 @@
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
 - [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
-- [ ] Phase 6 remains in progress: native dialogs, recovery, recent files, and deterministic default dock builder remain.
-- [ ] Phase 7 is in progress with hierarchy/diagnostic/allocation/pass-enable controls; comprehensive generated inspectors and structural commands remain.
+- [x] Completed Phase 6 native dialogs, recent workspace, recovery autosave/restore, template creation, CLI validation, deployment, and deterministic default docking layout.
+- [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
+- [ ] Phase 7 is in progress with hierarchy/diagnostic/allocation/pass-enable/uniform controls; comprehensive resource inspectors and structural commands remain.
+- [ ] Phase 8 is in progress: XML graphs execute in the editor and rebuild transactionally, but offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
 
 ## 1. Goal
 
@@ -258,7 +260,7 @@ The first implementation does not include:
 
 **Exit:** scene round-trip/runtime tests cover all model sources, transforms, layers, lights, camera, bindings, and missing files.
 
-### Phase 6: PipelineEditor shell — In Progress
+### Phase 6: PipelineEditor shell — Complete
 
 1. Create executable/project, options, configuration, deployment, and shared platform integration.
 2. Create docking host and default layout.
@@ -279,7 +281,7 @@ The first implementation does not include:
 
 **Exit:** every supported authored field is reachable and undoable through the UI.
 
-### Phase 8: Live preview and viewport diagnostics
+### Phase 8: Live preview and viewport diagnostics — In Progress
 
 1. Add offscreen presentation import and ImGui texture display.
 2. Add debounced validation/build generation pipeline.
