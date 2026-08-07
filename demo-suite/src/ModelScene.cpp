@@ -53,6 +53,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/MaterialResourceTests.h>
 #include <mpp/resource-parsers/FileStringStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
+#include <mpp/resource-parsers/PbrPipelineParser.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/FpsCamera.h>
@@ -1171,6 +1172,10 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		throw std::runtime_error("Material resource tests failed: " + materialTestFailure);
 	}
 	renderSystem->infoMessage("Material XML dispatch/single-definition binary/legacy migration tests passed.");
+
+	auto pipelineDocument = mpp::resource_parsers::PbrPipelineParser::fromFile(options.resourceLocation + "FullPbrPipeline.xml");
+	if (pipelineDocument.validate().hasErrors()) throw std::runtime_error("Native PbrPipeline document validation failed.");
+	renderSystem->infoMessage("Native PbrPipeline XML parse and semantic validation passed.");
 
 	std::string graphGpuTestFailure;
 	if (!mpp::runRenderGraphGpuTests(renderSystem, &graphGpuTestFailure))
