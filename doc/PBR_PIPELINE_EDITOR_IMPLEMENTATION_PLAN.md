@@ -250,7 +250,7 @@ The first implementation does not include:
   - [ ] Typed import contracts and explicit fallback declarations.
   - [ ] Preview instance-override parsing and serialization; current output would drop this DTO data.
   - [ ] Explicit extension-payload preservation and strict unknown-core-field rejection.
-  - [ ] Atomic saving through the canonical serializer path.
+  - [x] Atomic replacement through the PbrPipeline serializer path.
 - [~] Complete external resource-library support.
   - [x] Parse and serialize ordered library paths.
   - [ ] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
@@ -271,7 +271,7 @@ The first implementation does not include:
 ### Phase 5: Scene document and runtime resource — In Progress
 
 - [x] Add Scene document DTOs for models/primitives, absolute transforms, layers, material bindings, PBR lights, one camera, and environment binding.
-- [x] Add version-1 file parser and deterministic serializer.
+- [x] Add version-1 file parser and deterministic serializer with atomic replacement.
 - [x] Add the shipped sphere-grid preview scene and parser/serializer round-trip startup validation.
 - [~] Add scene validation and inventory.
   - [x] Version, name, model/light ID, required model file, camera range, and binding diagnostics.

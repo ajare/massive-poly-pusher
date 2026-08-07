@@ -1,3 +1,8 @@
+#include <filesystem>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
 #include "utils/XmlWriter.h"
 #include "mpp/MppException.h"
 #include "mpp/resource-parsers/PbrPipelineSerializer.h"
@@ -37,6 +42,13 @@ namespace mpp::resource_parsers
 		}
 		auto graph = root->createChild("RenderGraph");
 		RenderGraphSerializer::toNode(*document.graph, graph);
-		writer.write(filepath);
+		auto temporary = filepath + ".tmp";
+		writer.write(temporary);
+#ifdef _WIN32
+		auto from = std::filesystem::path(temporary).wstring(), to = std::filesystem::path(filepath).wstring();
+		if (!MoveFileExW(from.c_str(), to.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { std::filesystem::remove(temporary); THROW_MPP("Could not replace PbrPipeline XML atomically.", __LINE__, __FILE__, __func__); }
+#else
+		std::filesystem::rename(temporary, filepath);
+#endif
 	}
 }
