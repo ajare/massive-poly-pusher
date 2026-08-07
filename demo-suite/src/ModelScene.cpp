@@ -24,6 +24,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 */
 
 #include <glm/gtx/rotate_vector.hpp>
+#include <filesystem>
 
 #include <stdexcept>
 
@@ -54,6 +55,8 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/FileStringStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 #include <mpp/resource-parsers/PbrPipelineParser.h>
+#include <mpp/resource-parsers/PbrPipelineSerializer.h>
+#include <mpp/resource-parsers/FilePbrPipelineStream.h>
 #include <mpp/resource-parsers/SceneParser.h>
 
 #include <mpp/helper/FreeCamera.h>
@@ -1176,7 +1179,17 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	auto pipelineDocument = mpp::resource_parsers::PbrPipelineParser::fromFile(options.resourceLocation + "FullPbrPipeline.xml");
 	if (pipelineDocument.validate().hasErrors()) throw std::runtime_error("Native PbrPipeline document validation failed.");
-	renderSystem->infoMessage("Native PbrPipeline XML parse and semantic validation passed.");
+	auto pipelineRoundTrip = std::filesystem::temp_directory_path() / "mpp-pipeline-roundtrip.xml";
+	mpp::resource_parsers::PbrPipelineSerializer::toFile(pipelineDocument, pipelineRoundTrip.string());
+	auto roundTrippedPipeline = mpp::resource_parsers::PbrPipelineParser::fromFile(pipelineRoundTrip.string());
+	std::filesystem::remove(pipelineRoundTrip);
+	if (roundTrippedPipeline.name != pipelineDocument.name || !roundTrippedPipeline.graph || roundTrippedPipeline.graph->getPassCount() != pipelineDocument.graph->getPassCount())
+		throw std::runtime_error("Native PbrPipeline XML round trip failed.");
+	auto pipelineResource = resourceMgr->declareResource("PBR.EditorPipelineTest", std::make_shared<mpp::resource_parsers::FilePbrPipelineStream>(resourceMgr, options.resourceLocation + "FullPbrPipeline.xml")).first;
+	pipelineResource->load();
+	pipelineResource->create();
+	if (pipelineResource->getType() != "PbrPipeline") throw std::runtime_error("PbrPipeline resource stream created the wrong resource type.");
+	renderSystem->infoMessage("Native PbrPipeline XML/resource parse/serialize/semantic validation passed.");
 	auto sceneDocument = mpp::resource_parsers::SceneParser::fromFile(options.resourceLocation + pipelineDocument.previewScene);
 	if (sceneDocument.validate().hasErrors()) throw std::runtime_error("Native Scene document validation failed.");
 	renderSystem->infoMessage("Native Scene XML parse and semantic validation passed.");

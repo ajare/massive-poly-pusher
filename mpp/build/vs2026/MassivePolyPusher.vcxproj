@@ -41,6 +41,8 @@
     <ClInclude Include="..\..\include\mpp\GpuDebugScope.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterial.h" />
     <ClInclude Include="..\..\include\mpp\PbrPipelineDocument.h" />
+    <ClInclude Include="..\..\include\mpp\PbrPipelineStream.h" />
+    <ClInclude Include="..\..\include\mpp\PbrPipelineTemplate.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterialFeatures.h" />
     <ClInclude Include="..\..\include\mpp\PbrMaterialTests.h" />
     <ClInclude Include="..\..\include\mpp\PbrShaders.h" />
@@ -151,6 +153,8 @@
     <ClCompile Include="..\..\src\BasicMaterial.cpp" />
     <ClCompile Include="..\..\src\PbrMaterial.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineDocument.cpp" />
+    <ClCompile Include="..\..\src\PbrPipelineStream.cpp" />
+    <ClCompile Include="..\..\src\PbrPipelineTemplate.cpp" />
     <ClCompile Include="..\..\src\PbrMaterialFeatures.cpp" />
     <ClCompile Include="..\..\src\PbrMaterialTests.cpp" />
     <ClCompile Include="..\..\src\PbrMaterialStream.cpp" />

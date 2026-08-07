@@ -114,6 +114,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileBasicMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FilePbrMaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FilePbrPipelineStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileRenderGraphStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileProgramStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileSamplerStream.h" />
@@ -123,6 +124,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineParser.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\SceneParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphResourceTests.h" />
@@ -138,6 +140,7 @@
     <ClCompile Include="..\..\src\FileBasicMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FilePbrMaterialStream.cpp" />
+    <ClCompile Include="..\..\src\FilePbrPipelineStream.cpp" />
     <ClCompile Include="..\..\src\FileRenderGraphStream.cpp" />
     <ClCompile Include="..\..\src\FileProgramStream.cpp" />
     <ClCompile Include="..\..\src\FileSamplerStream.cpp" />
@@ -148,6 +151,7 @@
     <ClCompile Include="..\..\src\MaterialResourceTests.cpp" />
     <ClCompile Include="..\..\src\RenderGraphParser.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineParser.cpp" />
+    <ClCompile Include="..\..\src\PbrPipelineSerializer.cpp" />
     <ClCompile Include="..\..\src\SceneParser.cpp" />
     <ClCompile Include="..\..\src\RenderGraphSerializer.cpp" />
     <ClCompile Include="..\..\src\RenderGraphResourceTests.cpp" />

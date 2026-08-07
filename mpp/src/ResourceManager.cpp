@@ -13,6 +13,7 @@
 #include "mpp/String.h"
 #include "mpp/PostEffect.h"
 #include "mpp/RenderGraphTemplate.h"
+#include "mpp/PbrPipelineTemplate.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/BasicMaterial.h"
@@ -89,6 +90,10 @@ namespace mpp
 		mResourceFactories["RenderGraph"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new RenderGraphTemplate(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["PbrPipeline"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new PbrPipelineTemplate(name, this->mwRenderSystem, this, rStream));
 		};
 	}
 
