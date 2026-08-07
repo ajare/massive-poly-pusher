@@ -275,7 +275,9 @@ The first implementation does not include:
 - [x] Add the shipped sphere-grid preview scene and parser/serializer round-trip startup validation.
 - [~] Add scene validation and inventory.
   - [x] Version, name, model/light ID, required model file, camera range, and binding diagnostics.
-  - [ ] Resource existence/type validation, layer-reference validation, light-limit/shadow compatibility, portability, and triangle inventory.
+  - [~] Resource existence/type validation, layer validation, light-limit/shadow compatibility, portability, and triangle inventory.
+    - [x] Model-file existence, absolute-path portability, empty-layer, light value/direction, and eight-light-limit validation.
+    - [ ] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
 - [~] Add `SceneTemplate`, `SceneStream`, programmatic stream, and ResourceManager factory registration.
   - [x] `SceneTemplate`, `SceneStream`, `FileSceneStream`, ResourceManager factory, and resource startup test.
   - [ ] Dedicated programmatic scene stream convenience API.
