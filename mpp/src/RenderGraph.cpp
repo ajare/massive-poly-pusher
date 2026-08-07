@@ -65,6 +65,11 @@ namespace mpp
 		}
 	}
 
+	char const* graphImageFormatName(GraphImageFormat format)
+	{
+		return formatName(format);
+	}
+
 	struct RenderGraph::Image
 	{
 		string name;

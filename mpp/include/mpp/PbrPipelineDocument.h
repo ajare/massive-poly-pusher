@@ -26,6 +26,16 @@ namespace mpp
 		UniformCollection values;
 	};
 
+	struct _MPPAPI PbrPipelineImportDocument
+	{
+		std::string id;
+		std::string semantic;
+		GraphImageFormat format{ GraphImageFormat::Rgba8 };
+		GraphImageUsage usage{ GraphImageUsage::None };
+		bool required{ true };
+		std::string fallback;
+	};
+
 	struct _MPPAPI PbrPipelineEnvironmentDocument
 	{
 		std::string binding;
@@ -47,6 +57,7 @@ namespace mpp
 		bool importedFromRenderGraph{ false };
 		std::string previewScene;
 		std::vector<std::string> resourceLibraries;
+		std::vector<PbrPipelineImportDocument> imports;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;
 		std::vector<PbrPreviewBinding> previewBindings;

@@ -247,7 +247,7 @@ The first implementation does not include:
 - [x] Add `PbrPipelineStream`, `FilePbrPipelineStream`, `PbrPipelineTemplate`, and ResourceManager factory registration.
 - [~] Complete the version-1 schema and lossless canonical serializer.
   - [ ] Document-local PBR materials, programs, textures, and samplers.
-  - [ ] Typed import contracts and explicit fallback declarations.
+  - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
   - [ ] Preview instance-override parsing and serialization; current output would drop this DTO data.
   - [ ] Explicit extension-payload preservation and strict unknown-core-field rejection.
   - [x] Atomic replacement through the PbrPipeline serializer path.

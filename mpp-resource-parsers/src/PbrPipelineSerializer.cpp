@@ -10,6 +10,7 @@
 
 namespace mpp::resource_parsers
 {
+	namespace { std::string usage(GraphImageUsage value){std::string result;auto add=[&](GraphImageUsage flag,char const*name){if(hasGraphImageUsage(value,flag)){if(!result.empty())result+=",";result+=name;}};add(GraphImageUsage::Sampled,"sampled");add(GraphImageUsage::ColourAttachment,"colourAttachment");add(GraphImageUsage::DepthAttachment,"depthAttachment");add(GraphImageUsage::Presentation,"presentation");return result;} }
 	void PbrPipelineSerializer::toFile(PbrPipelineDocument const& document, std::string const& filepath)
 	{
 		if (!document.graph) THROW_MPP("Cannot serialize PbrPipeline without a RenderGraph.", __LINE__, __FILE__, __func__);
@@ -23,6 +24,10 @@ namespace mpp::resource_parsers
 		{
 			auto libraries = root->createChild("ResourceLibraries");
 			for (auto const& path : document.resourceLibraries) libraries->createChild("Library")->createChild("file")->setValue(path);
+		}
+		if(!document.imports.empty())
+		{
+			auto imports=root->createChild("Imports"); for(auto const& value:document.imports){auto node=imports->createChild("Import");node->createChild("id")->setValue(value.id);node->createChild("semantic")->setValue(value.semantic);node->createChild("format")->setValue(std::string(graphImageFormatName(value.format)));node->createChild("usage")->setValue(usage(value.usage));node->createChild("required")->setValue(value.required);if(!value.fallback.empty())node->createChild("fallback")->setValue(value.fallback);}
 		}
 		auto environment = root->createChild("Environment");
 		environment->createChild("binding")->setValue(document.environment.binding);
