@@ -25,7 +25,7 @@
 #include "mpp/app/InputManagerSDL.h"
 #include "mpp/app/TimerSDL.h"
 #include "mpp/app/WindowSDL.h"
-#include "mpp/resource-parsers/PbrPipelineParser.h"
+#include "mpp/resource-parsers/PbrPipelineDocumentLoader.h"
 #include "mpp/resource-parsers/PbrPipelineSerializer.h"
 #include "mpp/resource-parsers/SceneParser.h"
 
@@ -41,7 +41,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			int pathIndex = 2;
 			if (std::string(__argv[2]) == "--warnings-as-errors") { warningsAsErrors = true; pathIndex = 3; }
 			if (__argc <= pathIndex) return 2;
-			auto document = resource_parsers::PbrPipelineParser::fromFile(__argv[pathIndex]);
+			auto document = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[pathIndex]);
 			auto diagnostics = document.validate();
 			return diagnostics.hasErrors(warningsAsErrors) ? 1 : 0;
 		}
@@ -56,12 +56,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			std::string loadPath = currentPath;
 			auto recoveryPath = std::filesystem::path(currentPath + ".recovery");
 			if (std::filesystem::exists(recoveryPath) && std::filesystem::last_write_time(recoveryPath) > std::filesystem::last_write_time(currentPath) && MessageBoxA(nullptr,"A newer recovery document exists. Recover it?","PipelineEditor Recovery",MB_YESNO|MB_ICONQUESTION)==IDYES) { loadPath=recoveryPath.string(); recoveredDocument=true; }
-			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineParser::fromFile(loadPath));
+			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineDocumentLoader::fromFile(loadPath));
 			if (!openDocument->previewScene.empty())
 			{
 				auto scenePath = std::filesystem::path(currentPath).parent_path() / openDocument->previewScene;
 				openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile(scenePath.string()));
 			}
+			if (openDocument->importedFromRenderGraph) currentPath.clear();
 		}
 		if (SDL_Init(SDL_INIT_VIDEO) < 0) throw std::runtime_error(SDL_GetError());
 		WindowSDL window("PBR Pipeline Editor"); window.create(1440, 900, false, true);
@@ -90,8 +91,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		int selectedPass = -1;
 		auto loadWorkspace = [&](std::string const& path)
 		{
-			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineParser::fromFile(path));
-			openScene.reset(); currentPath = path; recentPath = path; selectedPass = -1; { std::ofstream recent("PipelineEditor.recent.txt", std::ios::trunc); recent << recentPath; }
+			openDocument = std::make_shared<PbrPipelineDocument>(resource_parsers::PbrPipelineDocumentLoader::fromFile(path));
+			openScene.reset(); currentPath = openDocument->importedFromRenderGraph ? std::string() : path; recentPath = path; selectedPass = -1; { std::ofstream recent("PipelineEditor.recent.txt", std::ios::trunc); recent << recentPath; }
 			if (!openDocument->previewScene.empty()) openScene = std::make_shared<SceneDocument>(resource_parsers::SceneParser::fromFile((std::filesystem::path(path).parent_path() / openDocument->previewScene).string()));
 		};
 		bool running = true, pipelineDirty = recoveredDocument; float fps = 0, fpsTime = 0, recoveryTimer = 0; int frames = 0;

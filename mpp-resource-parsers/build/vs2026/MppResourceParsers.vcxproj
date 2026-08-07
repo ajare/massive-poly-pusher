@@ -123,6 +123,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphParser.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineDocumentLoader.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\PbrPipelineSerializer.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\SceneParser.h" />
@@ -151,6 +152,7 @@
     <ClCompile Include="..\..\src\MeshSpecificationParser.cpp" />
     <ClCompile Include="..\..\src\MaterialResourceTests.cpp" />
     <ClCompile Include="..\..\src\RenderGraphParser.cpp" />
+    <ClCompile Include="..\..\src\PbrPipelineDocumentLoader.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineParser.cpp" />
     <ClCompile Include="..\..\src\PbrPipelineSerializer.cpp" />
     <ClCompile Include="..\..\src\SceneParser.cpp" />
