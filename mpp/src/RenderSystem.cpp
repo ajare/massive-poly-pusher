@@ -1078,6 +1078,11 @@ namespace mpp
 
 	void RenderSystem::destroyCoreResources()
 	{
+		// Font is a non-resource wrangler and must release its texture before the
+		// core resource references are dropped. The destructor tolerates null.
+		delete mInternalFont;
+		mInternalFont = nullptr;
+
 		// Release
 		for (auto res : mCoreResources)
 		{
