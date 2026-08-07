@@ -21,6 +21,8 @@ namespace mpp
 		std::vector<std::string> mResourceNames;
 		uint64_t mGeneration{0};
 		DiagnosticBag mDiagnostics;
+		std::map<std::string,uint64_t> mModelTriangles;
+		uint64_t mUniqueTriangles{0};
 		void clearResources(ScenePtr& scene,std::vector<std::string>& names);
 	public:
 		SceneRuntime(RenderSystem* renderSystem,ResourceManager* resourceManager);
@@ -29,5 +31,7 @@ namespace mpp
 		void clear();
 		ScenePtr const& getScene()const;
 		DiagnosticBag const& getDiagnostics()const;
+		uint64_t getUniqueTriangleCount()const;
+		uint64_t getModelTriangleCount(std::string const& modelId)const;
 	};
 }
