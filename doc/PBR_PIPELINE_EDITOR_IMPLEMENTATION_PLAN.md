@@ -347,7 +347,9 @@ The first implementation does not include:
   - [x] Comma-separated layers, directional/point lights, camera, and environment binding.
   - [x] Typed box/sphere/cylinder/grid parameters with strict XML, semantic range validation, canonical round-trip, and source-specific inspector controls.
   - [ ] Portable editor settings.
-- [ ] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
+- [~] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
+  - [x] Add independent 256-entry pipeline/scene snapshot command stacks, deep-copyable graphs, functional menu/toolbar undo/redo, save points, and commands for pass state/parameters, external localization, and all current scene property edits.
+  - [ ] Route remaining structural and future resource/image/import edits through commands; add command coalescing for continuous controls.
 - [ ] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
 
 **Exit:** not met. Only pass selection, enable state, and basic parameter editing are currently reachable; edits are not yet undoable.

@@ -100,6 +100,8 @@ namespace mpp
 	RenderGraph::~RenderGraph() = default;
 	RenderGraph::RenderGraph(RenderGraph&&) noexcept = default;
 	RenderGraph& RenderGraph::operator =(RenderGraph&&) noexcept = default;
+	RenderGraph::RenderGraph(RenderGraph const&) = default;
+	RenderGraph& RenderGraph::operator =(RenderGraph const&) = default;
 
 	bool RenderGraph::validImage(GraphImageHandle image) const
 	{

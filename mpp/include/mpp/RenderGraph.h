@@ -226,8 +226,8 @@ namespace mpp
 		~RenderGraph();
 		RenderGraph(RenderGraph&&) noexcept;
 		RenderGraph& operator =(RenderGraph&&) noexcept;
-		RenderGraph(RenderGraph const&) = delete;
-		RenderGraph& operator =(RenderGraph const&) = delete;
+		RenderGraph(RenderGraph const&);
+		RenderGraph& operator =(RenderGraph const&);
 
 		GraphImageHandle createImage(std::string const& name, GraphImageDesc const& desc);
 		void setImageImportName(GraphImageHandle image, std::string const& importName);
