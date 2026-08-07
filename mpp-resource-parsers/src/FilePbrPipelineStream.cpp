@@ -8,6 +8,7 @@
 namespace mpp::resource_parsers
 {
 	FilePbrPipelineStream::FilePbrPipelineStream(ResourceManager* manager,std::string filepath):PbrPipelineStream(manager),mFilepath(std::move(filepath)){}
+	FilePbrPipelineStream::FilePbrPipelineStream(ResourceManager* manager,std::shared_ptr<PbrPipelineDocument> document,std::string sourcePath):PbrPipelineStream(manager),mFilepath(std::move(sourcePath)),mSuppliedDocument(std::move(document)){setDocument(mSuppliedDocument);}
 
 	void FilePbrPipelineStream::createChildResourceStreamsImpl()
 	{

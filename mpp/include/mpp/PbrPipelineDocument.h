@@ -13,6 +13,7 @@
 namespace mpp
 {
 	class RenderGraphPassFactoryRegistry;
+	struct Caps;
 
 	struct _MPPAPI PbrPreviewBinding
 	{
@@ -95,5 +96,6 @@ namespace mpp
 		// Clones a read-only qualified library resource into the document and rewrites direct pipeline references.
 		bool makeLocalCopy(std::string const& qualifiedName, std::string const& localName);
 		DiagnosticBag validate(RenderGraphPassFactoryRegistry const* registry = nullptr) const;
+		DiagnosticBag validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 	};
 }

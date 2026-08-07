@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <set>
 
+#include "mpp/Caps.h"
 #include "mpp/PbrPipelineDocument.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 
@@ -12,7 +13,7 @@ namespace mpp
 	bool PbrPipelineDocument::makeLocalCopy(string const& qualifiedName,string const& localName)
 	{
 		if(localName.empty())return false;for(auto const& resource:localResources)if(resource.name==localName)return false;auto found=std::find_if(externalResources.begin(),externalResources.end(),[&](auto const& value){return value.libraryName+"::"+value.resource.name==qualifiedName;});if(found==externalResources.end())return false;auto local=found->resource;local.name=localName;utils::StructuredData renamed(local.definition.getName());for(auto const& entry:local.definition){if(entry.first=="name")renamed.addEntry("name",localName);else renamed.addEntry(entry.first,entry.second);}local.definition=renamed;localResources.push_back(local);
-		auto rewrite=[&](string& value){if(value==qualifiedName)value=localName;};for(auto& binding:previewBindings)rewrite(binding.materialResource);rewrite(environment.irradiance);rewrite(environment.prefilteredSpecular);rewrite(environment.brdfLut);rewrite(environment.background);for(auto& import:imports)rewrite(import.fallback);if(graph)for(uint32_t id=0;id<graph->getPassCount();++id){auto info=graph->getPassInfo({id});if(info.programResource==qualifiedName)graph->setPassProgramResource({id},localName);}return true;
+		auto rewrite=[&](string& value){if(value==qualifiedName)value=localName;};auto rewriteData=[&](auto&& self,utils::StructuredData& data)->void{if(data.isValue()){auto value=data.getValue();rewrite(value);data.setValue(value);}else for(auto& entry:data)self(self,entry.second);};for(auto& resource:localResources)rewriteData(rewriteData,resource.definition);for(auto& binding:previewBindings)rewrite(binding.materialResource);rewrite(environment.irradiance);rewrite(environment.prefilteredSpecular);rewrite(environment.brdfLut);rewrite(environment.background);for(auto& import:imports)rewrite(import.fallback);if(graph)for(uint32_t id=0;id<graph->getPassCount();++id){auto info=graph->getPassInfo({id});if(info.programResource==qualifiedName)graph->setPassProgramResource({id},localName);}return true;
 	}
 
 	DiagnosticBag PbrPipelineDocument::validate(RenderGraphPassFactoryRegistry const* registry) const
@@ -68,5 +69,10 @@ namespace mpp
 		else {auto path=std::filesystem::path(previewScene);if(path.is_absolute())diagnostics.warning("MPP-PIPELINE-016","Absolute preview-scene path is not portable.",{sourcePath},"previewScene");auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-PIPELINE-017","Preview scene does not exist: "+resolved.string(),{sourcePath},"previewScene");}
 		if (environment.binding.empty()) diagnostics.warning("MPP-PIPELINE-009", "No logical PBR environment binding is assigned.", { sourcePath }, "environment");
 		return diagnostics;
+	}
+
+	DiagnosticBag PbrPipelineDocument::validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry) const
+	{
+		auto diagnostics=validate(registry);if(graph){auto compiled=graph->compile(caps);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
 	}
 }

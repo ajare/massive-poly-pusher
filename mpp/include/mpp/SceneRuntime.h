@@ -27,7 +27,7 @@ namespace mpp
 	public:
 		SceneRuntime(RenderSystem* renderSystem,ResourceManager* resourceManager);
 		~SceneRuntime();
-		bool rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings={});
+		bool rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings={},std::map<std::string,UniformCollection> const& instanceOverrides={});
 		void clear();
 		ScenePtr const& getScene()const;
 		DiagnosticBag const& getDiagnostics()const;
