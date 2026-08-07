@@ -119,6 +119,11 @@ namespace mpp
 			auto reader = utils::XmlReader::fromFile(filepath);
 			auto data = reader->readTree();
 			delete reader;
+			return fromData(data, filepath);
+		}
+
+		RenderGraph RenderGraphParser::fromData(utils::StructuredData const& data, string const& filepath)
+		{
 			if (data.getName() != "RenderGraph")
 			{
 				THROW_MPP_RESOURCE_PARSERS("Render graph root must be RenderGraph: " + filepath, __LINE__, __FILE__, __func__);

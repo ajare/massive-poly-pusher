@@ -6,6 +6,8 @@
 
 #include "Config.h"
 
+namespace utils { class StructuredData; }
+
 namespace mpp
 {
 	namespace resource_parsers
@@ -17,6 +19,7 @@ namespace mpp
 		{
 		public:
 			static RenderGraph fromFile(std::string const& filepath);
+			static RenderGraph fromData(utils::StructuredData const& data, std::string const& sourceName);
 		};
 	}
 }
