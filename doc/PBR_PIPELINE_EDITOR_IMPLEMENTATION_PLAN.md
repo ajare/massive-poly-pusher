@@ -27,7 +27,10 @@
 - [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation remains after Phase 4 completes.
 - [x] Extracted shared SDL window/timer support and created a standalone docking-enabled PipelineEditor Debug application.
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
-- [ ] Phase 6 remains in progress: document controllers, native dialogs, recovery, CLI validation, deployment automation, and default dock builder remain.
+- [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
+- [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
+- [ ] Phase 6 remains in progress: native dialogs, recovery, recent files, and deterministic default dock builder remain.
+- [ ] Phase 7 is in progress with hierarchy/diagnostic/allocation/pass-enable controls; comprehensive generated inspectors and structural commands remain.
 
 ## 1. Goal
 
@@ -265,7 +268,7 @@ The first implementation does not include:
 
 **Exit:** application starts, restores/reset layout, opens/saves documents, and reports startup/CLI failures correctly.
 
-### Phase 7: Editor controllers and inspectors
+### Phase 7: Editor controllers and inspectors — In Progress
 
 1. Add pipeline/scene hierarchy selection and structural commands.
 2. Add metadata-generated pass inspector.
