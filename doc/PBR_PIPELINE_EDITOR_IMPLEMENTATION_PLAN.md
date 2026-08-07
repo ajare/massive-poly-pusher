@@ -20,7 +20,10 @@
 - [x] Added declarative pass metadata for inputs, outputs, parameters, material slots, program/raster capabilities, ranges, UI hints, and fallbacks.
 - [x] Registered metadata for built-in PBR, shadow, bloom, presentation, custom fullscreen, and custom material-raster passes.
 - [x] Added metadata-driven factory/type/count/format/program/raster/uniform contract diagnostics and CPU tests.
-- [ ] Phase 4 is next: the native versioned PbrPipeline document, parser, serializer, importer, validator, and runtime template.
+- [x] Added the versioned native PbrPipeline document DTO, embedded RenderGraph parser, semantic validator, sample full pipeline, and startup validation.
+- [ ] Phase 4 remains in progress: deterministic serializer, legacy importer, document-local resource parsing, runtime template/stream, and transactional instantiation remain.
+- [x] Added the Scene document DTO/parser/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
+- [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation and serializers remain after Phase 4 completes.
 
 ## 1. Goal
 
@@ -226,7 +229,7 @@ The first implementation does not include:
 
 **Exit:** metadata and runtime validation use the same definitions; missing/unexpected/wrong-type cases are tested.
 
-### Phase 4: PBR pipeline document — Next
+### Phase 4: PBR pipeline document — In Progress
 
 1. Add editable `PbrPipelineDocument` DTOs separate from GPU resources.
 2. Add version-1 parser/serializer with canonical output.
@@ -237,7 +240,7 @@ The first implementation does not include:
 
 **Exit:** valid round-trips are deterministic; invalid fixtures diagnose precisely; existing RenderGraph imports preserve topology.
 
-### Phase 5: Scene document and runtime resource
+### Phase 5: Scene document and runtime resource — Parser Foundation Added
 
 1. Add `SceneTemplate`, model/primitive/light/camera/layer/editor-setting DTOs.
 2. Add `SceneStream`, programmatic stream, file parser, and serializer.
