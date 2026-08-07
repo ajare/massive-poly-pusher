@@ -13,7 +13,7 @@ The first three use the shared default scene and render scene colour/depth with 
 
 ## Layout and hierarchy
 
-PipelineEditor uses one docking window with a fixed toolbar directly below the menu bar. The hierarchy selects passes, images, imports, resources, environment, bindings, overrides, models, lights, camera, and layers. The inspector edits the selected item. The right dock contains only the viewport; diagnostics, allocations, and statistics share the lower-left dock. **Window > Reset Layout** restores the default arrangement.
+PipelineEditor uses one resizable, maximizable native window with a fixed toolbar directly below the menu bar. The hierarchy selects passes, images, imports, resources, environment, bindings, overrides, models, lights, camera, and layers. The inspector edits the selected item. The right dock contains only the viewport; diagnostics, allocations, and statistics share the lower-left dock. **Window > Reset Layout** restores the default arrangement.
 
 Passes, local resources, and scene models support drag ordering. Invalid reorder and delete operations are intentionally allowed, diagnosed, and undoable. **Pipeline > Auto-order Pass Dependencies** is an explicit command; ordering is never silently changed.
 
