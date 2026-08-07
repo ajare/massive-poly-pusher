@@ -1,7 +1,8 @@
 #pragma once
 
 #include <sdl/SDL.h>
-#include "Window.h"
+#include <string>
+#include "mpp/app/Window.h"
 
 class WindowSDL : public Window
 {
@@ -10,10 +11,11 @@ class WindowSDL : public Window
 	SDL_GLContext mContextGL;
 
 	bool mFullscreen;
+	std::string mTitle;
 
 public:
 
-	WindowSDL();
+	explicit WindowSDL(std::string title = "MassivePolyPusher");
 
 	SDL_Window* getWindow();
 

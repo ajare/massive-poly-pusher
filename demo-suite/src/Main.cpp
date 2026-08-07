@@ -40,8 +40,8 @@
 #include "ModelScene.h"
 
 // Platform
-#include "sdl/WindowSDL.h"
-#include "sdl/TimerSDL.h"
+#include "mpp/app/WindowSDL.h"
+#include "mpp/app/TimerSDL.h"
 #include "mpp/app/InputManagerSDL.h"
 
 #include "renderdoc/renderdoc_app.h"

@@ -1,11 +1,13 @@
 #include <string>
 #include <exception>
-#include "sdl/WindowSDL.h"
+#include <utility>
+#include "mpp/app/WindowSDL.h"
 
 using namespace std;
 
-WindowSDL::WindowSDL() :
+WindowSDL::WindowSDL(string title) :
 	mWindow(nullptr)
+	, mTitle(std::move(title))
 {
 }
 
@@ -31,11 +33,11 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 
 	if (fullScreen)
 	{
-		mWindow = SDL_CreateWindow("Demo Suite", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+		mWindow = SDL_CreateWindow(mTitle.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 	}
 	else
 	{
-		mWindow = SDL_CreateWindow("Demo Suite", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+		mWindow = SDL_CreateWindow(mTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
 	}
 
 	if (!mWindow)
@@ -166,7 +168,7 @@ void WindowSDL::processEvents(InputManager* inputMgr)
 
 		case SDL_TEXTINPUT:
 			ie.type = IET_TextInput;
-			strcpy(ie.s, evt.text.text);
+			strcpy_s(ie.s, evt.text.text);
 			inputMgr->addEvent(ie);
 			break;
 
