@@ -36,6 +36,7 @@ namespace mpp
 		Camera(glm::vec3 const& position, float yaw, float pitch, float roll, float fov, float aspectRatio);
 
 		void setFov(float fov);
+		void setAspectRatio(float aspectRatio);
 
 		float getFov() const;
 

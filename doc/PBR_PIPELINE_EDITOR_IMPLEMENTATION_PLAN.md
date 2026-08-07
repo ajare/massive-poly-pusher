@@ -370,7 +370,7 @@ The first implementation does not include:
   - [x] Create graph resources and graph-backed preview pipeline generations.
   - [x] Keep the current generation when validation blocks an explicit rebuild.
   - [ ] Resolve the complete Phase 4 pipeline document and populate the Phase 5 scene.
-- [ ] Add offscreen presentation import, viewport-sized render target, ImGui texture registration, and resize handling.
+- [x] Add host-overridable graph imports, offscreen presentation render target, dynamic ImGui texture registration, dock-content resize handling, scene viewport/camera aspect updates, and vertically corrected viewport display.
 - [ ] Add continuously validated, debounced asynchronous build generations and stale-result rejection.
 - [~] Add last-known-valid behavior.
   - [x] Explicit Apply/Rebuild only switches after basic document validation.
@@ -381,7 +381,9 @@ The first implementation does not include:
   - [x] Rolling FPS, global triangle status, allocation bytes, lifetimes, and alias groups.
   - [~] Submitted-triangle pass breakdown, unique scene triangles, CPU/GPU pass timings, viewport size, and status/tooltips.
     - [x] Status displays known unique primitive triangles and reports excluded visible `.mppmodel` sources in a tooltip.
-    - [ ] Submitted pass breakdown, loaded-model unique triangles, CPU/GPU pass timings, and viewport size.
+    - [~] Submitted pass breakdown, loaded-model unique triangles, CPU/GPU pass timings, and viewport size.
+      - [x] Live dock-content viewport sizing drives graph presentation allocation and camera aspect.
+      - [ ] Submitted pass breakdown, loaded-model unique triangles, and CPU/GPU pass timings.
 
 **Exit:** not met. Graph execution exists, but the docked viewport still lacks offscreen presentation, scene content, camera interaction, and intermediate inspection.
 

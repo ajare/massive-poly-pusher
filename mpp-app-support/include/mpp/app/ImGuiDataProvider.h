@@ -38,6 +38,16 @@ public:
 		}
 	}
 
+	ImTextureID registerTexture(mpp::ResourcePtr texture)
+	{
+		if(!texture)return 0;auto textureId=texture->getId();mTextureIdMap[textureId]=std::move(texture);return (ImTextureID)(uintptr_t)textureId;
+	}
+
+	void unregisterTexture(ImTextureID textureId)
+	{
+		mTextureIdMap.erase((uint32_t)(uintptr_t)textureId);
+	}
+
 	void getBounds(glm::vec3& bMin, glm::vec3& bMax) override
 	{
 		bMin = glm::vec3(-1, -1, -1);

@@ -66,6 +66,11 @@ namespace mpp
 		}
 	}
 
+	RenderTextureOptions makeGraphRenderTextureOptions(GraphImageDesc const& desc)
+	{
+		return makeOptions(desc);
+	}
+
 	RenderGraphTargets::RenderGraphTargets(RenderSystem* renderSystem)
 		: mRenderSystem(renderSystem)
 	{
@@ -132,13 +137,13 @@ namespace mpp
 			if (poolIndex == SIZE_MAX)
 			{
 				string const name = "RenderGraph." + (lifetime->debugName.empty() ? "Image" + to_string(lifetime->image.id) : lifetime->debugName) + ".v" + to_string(lifetime->image.version);
-				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeOptions(lifetime->desc));
+				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeGraphRenderTextureOptions(lifetime->desc));
 				RenderTargetPtr resolvedTarget = writeTarget;
 				if (lifetime->desc.samples > 1)
 				{
 					auto resolvedDesc = lifetime->desc;
 					resolvedDesc.samples = 1;
-					resolvedTarget = mRenderSystem->createRenderTexture(name + "_Resolved", lifetime->size.x, lifetime->size.y, makeOptions(resolvedDesc));
+					resolvedTarget = mRenderSystem->createRenderTexture(name + "_Resolved", lifetime->size.x, lifetime->size.y, makeGraphRenderTextureOptions(resolvedDesc));
 				}
 				mPool.push_back({ *lifetime, resolvedTarget, writeTarget });
 				assignments.emplace_back();
