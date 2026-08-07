@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -45,6 +46,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (__argc <= pathIndex) return 2;
 			auto document = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[pathIndex]);
 			auto diagnostics = document.validate();
+			if(!document.previewScene.empty())
+			{
+				auto sceneFile=std::filesystem::path(__argv[pathIndex]).parent_path()/document.previewScene;
+				if(std::filesystem::exists(sceneFile))diagnostics.append(resource_parsers::SceneParser::fromFile(sceneFile.string()).validate());
+				else diagnostics.error("MPP-PIPELINE-CLI-001","Preview scene does not exist: "+sceneFile.string(),{__argv[pathIndex]},"previewScene");
+			}
+			for(auto const& value:diagnostics.getDiagnostics())fprintf(stderr,"%s: %s\n",value.code.c_str(),value.message.c_str());
 			return diagnostics.hasErrors(warningsAsErrors) ? 1 : 0;
 		}
 		std::shared_ptr<PbrPipelineDocument> openDocument;
