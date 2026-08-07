@@ -120,6 +120,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileSamplerStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileStringStream.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileSceneStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileTextureStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\RenderGraphParser.h" />
@@ -148,6 +149,7 @@
     <ClCompile Include="..\..\src\FileSamplerStream.cpp" />
     <ClCompile Include="..\..\src\FileStream.cpp" />
     <ClCompile Include="..\..\src\FileStringStream.cpp" />
+    <ClCompile Include="..\..\src\FileSceneStream.cpp" />
     <ClCompile Include="..\..\src\FileTextureStream.cpp" />
     <ClCompile Include="..\..\src\MeshSpecificationParser.cpp" />
     <ClCompile Include="..\..\src\MaterialResourceTests.cpp" />

@@ -276,7 +276,9 @@ The first implementation does not include:
 - [~] Add scene validation and inventory.
   - [x] Version, name, model/light ID, required model file, camera range, and binding diagnostics.
   - [ ] Resource existence/type validation, layer-reference validation, light-limit/shadow compatibility, portability, and triangle inventory.
-- [ ] Add `SceneTemplate`, `SceneStream`, programmatic stream, and ResourceManager factory registration.
+- [~] Add `SceneTemplate`, `SceneStream`, programmatic stream, and ResourceManager factory registration.
+  - [x] `SceneTemplate`, `SceneStream`, `FileSceneStream`, ResourceManager factory, and resource startup test.
+  - [ ] Dedicated programmatic scene stream convenience API.
 - [ ] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
 - [ ] Resolve logical material/environment bindings from the active pipeline workspace.
 - [ ] Add diagnosed missing-model placeholder boxes excluded from triangle statistics.
