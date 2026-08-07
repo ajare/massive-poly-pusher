@@ -36,13 +36,14 @@ namespace mpp::resource_parsers
 				if(entry.first=="Float")uniforms.setUniform(name,utils::StringUtils::parseFloat(text));else if(entry.first=="Int")uniforms.setUniform(name,(int32_t)utils::StringUtils::parseInt(text));else if(entry.first=="Bool"){int32_t current=boolean(text)?1:0;uniforms.setUniform(name,program::GLSLType::Bool,1,1,reinterpret_cast<char const*>(&current));}else if(entry.first=="Vec2"){glm::vec2 current;if(!(input>>current.x>>current.y))THROW_MPP_RESOURCE_PARSERS("Invalid Vec2 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else if(entry.first=="Vec3"){glm::vec3 current;if(!(input>>current.x>>current.y>>current.z))THROW_MPP_RESOURCE_PARSERS("Invalid Vec3 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else if(entry.first=="Vec4"){glm::vec4 current;if(!(input>>current.x>>current.y>>current.z>>current.w))THROW_MPP_RESOURCE_PARSERS("Invalid Vec4 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else THROW_MPP_RESOURCE_PARSERS("Unknown preview override value type '"+entry.first+"'.",__LINE__,__FILE__,__func__);}
 		}
 		void rejectUnknown(utils::StructuredData const& data,std::set<std::string> const& allowed,std::string const& context){for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);}
+		PbrPipelineResourceKind resourceKind(std::string const& value){if(value=="PbrMaterial")return PbrPipelineResourceKind::PbrMaterial;if(value=="Program")return PbrPipelineResourceKind::Program;if(value=="Texture")return PbrPipelineResourceKind::Texture;if(value=="Sampler")return PbrPipelineResourceKind::Sampler;THROW_MPP_RESOURCE_PARSERS("Unknown local resource type '"+value+"'.",__LINE__,__FILE__,__func__);}
 	}
 	PbrPipelineDocument PbrPipelineParser::fromFile(string const& filepath)
 	{
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
 		auto data = reader->readTree();
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
-		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","Imports","Environment","PreviewBindings","PreviewOverrides","RenderGraph"},"PbrPipeline");
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Environment","PreviewBindings","PreviewOverrides","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
@@ -50,6 +51,10 @@ namespace mpp::resource_parsers
 		if (data.hasEntry("PreviewScene")) { auto const& value=data.getEntry("PreviewScene");rejectUnknown(value,{"file"},"PreviewScene");document.previewScene = value.getEntry("file").getValue(); }
 		if (data.hasEntry("ResourceLibraries"))
 			for (auto const& entry : data.getEntry("ResourceLibraries")) { if(entry.first!="Library")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in ResourceLibraries.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"file"},"ResourceLibraries/Library");document.resourceLibraries.push_back(entry.second.getEntry("file").getValue()); }
+		if(data.hasEntry("LocalResources"))for(auto const& entry:data.getEntry("LocalResources"))
+		{
+			PbrPipelineResourceDocument resource;resource.kind=resourceKind(entry.first);resource.definition=entry.second;if(!entry.second.hasEntry("name"))THROW_MPP_RESOURCE_PARSERS("Local resource '"+entry.first+"' requires a name.",__LINE__,__FILE__,__func__);resource.name=entry.second.getEntry("name").getValue();document.localResources.push_back(resource);
+		}
 		if (data.hasEntry("Imports")) for(auto const& entry:data.getEntry("Imports"))
 		{
 			if(entry.first!="Import")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Imports.",__LINE__,__FILE__,__func__);

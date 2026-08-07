@@ -3,6 +3,9 @@
   <name>DemoSuite Full PBR</name>
   <PreviewScene><file>DefaultPbrPreview.scene.xml</file></PreviewScene>
   <ResourceLibraries><Library><file>PbrPreviewResources.xml</file></Library></ResourceLibraries>
+  <LocalResources>
+    <Sampler><name>Preview.LocalSampler</name><minFilter>LINEAR</minFilter><magFilter>LINEAR</magFilter><wrap>CLAMP_TO_EDGE</wrap><maxAnisotropy>1</maxAnisotropy></Sampler>
+  </LocalResources>
   <Imports>
     <Import><id>shadowDepth</id><semantic>shadowDepth</semantic><format>DEPTH24</format><usage>depthAttachment,sampled</usage><required>true</required></Import>
     <Import><id>screen</id><semantic>presentation</semantic><format>RGBA8</format><usage>colourAttachment,presentation</usage><required>true</required></Import>
