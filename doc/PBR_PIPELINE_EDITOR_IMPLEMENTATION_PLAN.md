@@ -295,7 +295,9 @@ The first implementation does not include:
   - [x] Version, name, model/light ID, required model file, camera range, and binding diagnostics.
   - [~] Resource existence/type validation, layer validation, light-limit/shadow compatibility, portability, and triangle inventory.
     - [x] Model-file existence, absolute-path portability, empty-layer, light value/direction, and eight-light-limit validation.
-    - [ ] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
+    - [~] Loaded resource type, declared-layer references, shadow-light compatibility, and triangle inventory.
+      - [x] Exact visible primitive triangle inventory for authored box/sphere/cylinder/grid parameters, plus explicit unknown `.mppmodel` count.
+      - [ ] Loaded model resource type/triangle metadata, declared-layer references, and shadow-light compatibility.
 - [x] Add `SceneTemplate`, programmatic `SceneStream::setDocument()`, `FileSceneStream`, ResourceManager factory registration, and resource startup test.
 - [ ] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
 - [ ] Resolve logical material/environment bindings from the active pipeline workspace.
@@ -361,7 +363,9 @@ The first implementation does not include:
 - [ ] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
 - [~] Add preview statistics.
   - [x] Rolling FPS, global triangle status, allocation bytes, lifetimes, and alias groups.
-  - [ ] Submitted-triangle pass breakdown, unique scene triangles, CPU/GPU pass timings, viewport size, and status/tooltips.
+  - [~] Submitted-triangle pass breakdown, unique scene triangles, CPU/GPU pass timings, viewport size, and status/tooltips.
+    - [x] Status displays known unique primitive triangles and reports excluded visible `.mppmodel` sources in a tooltip.
+    - [ ] Submitted pass breakdown, loaded-model unique triangles, CPU/GPU pass timings, and viewport size.
 
 **Exit:** not met. Graph execution exists, but the docked viewport still lacks offscreen presentation, scene content, camera interaction, and intermediate inspection.
 
