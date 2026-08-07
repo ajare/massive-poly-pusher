@@ -8,6 +8,8 @@ if not exist "%OUT%" mkdir "%OUT%"
 copy /Y "%~dp0..\vendor\bin\%TOOLSET%\%PLATFORM%\%CONFIG%\*.dll" "%OUT%" >nul
 copy /Y "%~dp0..\ext\utils\build\%TOOLSET%\bin\%PLATFORM%\%CONFIG%\*.dll" "%OUT%" >nul
 for %%P in (mpp mpp-mesh mpp-program mpp-resource-parsers) do copy /Y "%~dp0..\%%P\build\%TOOLSET%\bin\%PLATFORM%\%CONFIG%\*.dll" "%OUT%" >nul
-if not exist "%OUT%\resources" mkdir "%OUT%\resources"
+if exist "%OUT%\resources" rmdir /S /Q "%OUT%\resources"
+mkdir "%OUT%\resources"
 xcopy /E /I /Y "%~dp0resources" "%OUT%\resources" >nul 2>nul
+xcopy /E /I /Y "%~dp0..\resources\shared" "%OUT%\resources\shared" >nul 2>nul
 endlocal

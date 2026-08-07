@@ -46,9 +46,13 @@ copy /Y "%Root%\..\mpp-resource-parsers\build\%Solution%\bin\%Platform%\%Configu
 @rem Copy mpp-helper
 copy /Y "%Root%\..\mpp-helper\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
-@rem Copy resources
+@rem Copy resources into a self-contained output tree
 copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
-copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%
+if exist "%Root%\resources\bin\%Configuration%\*.*" copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%
+if exist %TargetBinDir%\resources rmdir /S /Q %TargetBinDir%\resources
+mkdir %TargetBinDir%\resources
+xcopy /E /I /Y "%Root%\resources\res" %TargetBinDir%\resources >nul
+xcopy /E /I /Y "%Root%\..\resources\shared" %TargetBinDir%\resources\shared >nul
 
 goto exit_success
 
