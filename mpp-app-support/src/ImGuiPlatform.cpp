@@ -1,5 +1,7 @@
 #include <mpp/ProgrammaticTextureStream.h>
 
+#include <stdexcept>
+
 #include <sdl/SDL.h>
 
 #include "imgui/imgui.h"
@@ -45,7 +47,7 @@ static void platformSetImeData(ImGuiContext* context, ImGuiViewport* viewport, I
 	}
 }
 
-void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd, bool enableDocking)
+void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceMgr, ImGuiBackendData* bd, bool enableDocking, string const& mergedIconFontFilename)
 {
 	if (ImGui::GetCurrentContext() != nullptr)
 	{
@@ -94,6 +96,19 @@ void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceM
 	// TODO: Set optional io.ConfigFlags values, e.g. 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard' to enable keyboard controls.
 	// TODO: Fill optional fields of the io structure later.
 	// TODO: Load TTF/OTF fonts if you don't want to use the default font.
+
+	if (!mergedIconFontFilename.empty())
+	{
+		io.Fonts->AddFontDefault();
+		ImFontConfig iconConfig;
+		iconConfig.MergeMode = true;
+		iconConfig.PixelSnapH = true;
+		static ImWchar const iconRanges[] = { 0xe005, 0xf8ff, 0 };
+		if (!io.Fonts->AddFontFromFileTTF(mergedIconFontFilename.c_str(), 13.0f, &iconConfig, iconRanges))
+		{
+			throw std::runtime_error("Could not load merged ImGui icon font '" + mergedIconFontFilename + "'.");
+		}
+	}
 
 	// Build and load the texture atlas into a texture.
 	// This should be lazily created for when we re-enter the state!
