@@ -1,0 +1,12 @@
+<PbrPipeline>
+  <version>1</version>
+  <name>Invalid Referenced Scene</name>
+  <PreviewScene><file>InvalidCamera.scene.xml</file></PreviewScene>
+  <Imports>
+    <Import><id>screen</id><semantic>presentation</semantic><format>RGBA8</format><usage>colourAttachment,presentation</usage><required>true</required></Import>
+  </Imports>
+  <RenderGraph>
+    <Images><Image><name>Presentation</name><format>RGBA8</format><usage>colourAttachment,presentation</usage><import>screen</import><external>true</external><transient>false</transient></Image></Images>
+    <Passes></Passes>
+  </RenderGraph>
+</PbrPipeline>
