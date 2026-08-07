@@ -26,5 +26,6 @@ public:
 
 	virtual void show() = 0;
 
-	virtual void processEvents(InputManager* inputMgr) = 0;
+	// Returns false when the native window requests application shutdown.
+	virtual bool processEvents(InputManager* inputMgr) = 0;
 };

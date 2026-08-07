@@ -107,9 +107,10 @@ void WindowSDL::show()
 	SDL_GL_SwapWindow(mWindow);
 }
 
-void WindowSDL::processEvents(InputManager* inputMgr)
+bool WindowSDL::processEvents(InputManager* inputMgr)
 {
 	inputMgr->clearEvents();
+	bool running = true;
 
 	SDL_Event evt;
 	while (SDL_PollEvent(&evt))
@@ -193,8 +194,9 @@ void WindowSDL::processEvents(InputManager* inputMgr)
 			break;
 
 		case SDL_QUIT:
-			exit(0);
+			running = false;
 			break;
 		}
 	}
+	return running;
 }
