@@ -2,7 +2,7 @@
 
 **Status:** Implementation in progress.
 
-## Current progress (2026-08-05)
+## Current progress (2026-08-07)
 
 - [x] Created branch `pbr-pipeline-editor`.
 - [x] Saved the approved implementation plan (`28a1058`).
@@ -23,16 +23,16 @@
 - [x] Added the versioned native PbrPipeline document DTO, embedded RenderGraph parser, semantic validator, sample full pipeline, and startup validation.
 - [x] Added deterministic nested RenderGraph/PbrPipeline serialization, PbrPipelineStream/FilePbrPipelineStream, PbrPipelineTemplate resource creation, and round-trip/resource startup tests.
 - [x] Added root-dispatched standalone RenderGraph migration with generated stable value IDs and editor Save-As behavior.
-- [ ] Phase 4 remains in progress: document-local resource parsing, complete validation, and complete transactional runtime instantiation remain.
+- [~] Phase 4 now preserves and instantiates typed local resources, resolves qualified read-only resource libraries, clones external resources locally, round-trips typed preview overrides and namespaced extensions, and validates portable references; complete concrete validation and transactional workspace resolution remain.
 - [x] Added the Scene document DTO/parser/serializer/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
-- [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation remains after Phase 4 completes.
+- [~] Phase 5 includes `SceneTemplate`/programmatic and file streams, typed primitive parameters, expanded validation, inspectors, and primitive triangle inventory; populated runtime-scene instantiation remains.
 - [x] Extracted shared SDL window/timer support and created a standalone docking-enabled PipelineEditor Debug application.
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
 - [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
 - [~] Phase 6 shell is operational with native dialogs, pipeline/scene save lifecycle, dirty prompts, recent workspace, recovery autosave/restore, template creation, pipeline-plus-scene CLI validation, deployment, and resettable docking; configurable options and remaining lifecycle polish remain.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
-- [ ] Phase 7 is in progress with hierarchy/diagnostic/allocation/pass-enable/uniform controls; comprehensive resource inspectors and structural commands remain.
+- [~] Phase 7 includes pass/scene/resource hierarchy selection, external-resource localization, typed primitive/camera/light/model controls, diagnostics, allocations, pass enable, and uniform controls; command-backed structural editing and comprehensive resource inspectors remain.
 - [ ] Phase 8 is in progress: XML graphs execute in the editor and rebuild transactionally, but offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
 
 ## 1. Goal
