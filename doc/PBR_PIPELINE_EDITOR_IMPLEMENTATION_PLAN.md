@@ -29,7 +29,7 @@
 - [x] Added initial menu, toolbar command surface, hierarchy, inspector, diagnostics, viewport, and FPS/triangle status shell.
 - [x] Added command-line pipeline/scene loading, `--validate`, `--warnings-as-errors`, runtime deployment, and shipped editor templates.
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
-- [x] Completed Phase 6 native dialogs, recent workspace, recovery autosave/restore, template creation, CLI validation, deployment, and deterministic default docking layout.
+- [~] Phase 6 shell is operational with native dialogs, recent workspace, recovery autosave/restore, template creation, CLI validation, deployment, and initial default docking; lifecycle prompts, configurable options, and layout-reset behavior remain.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
 - [ ] Phase 7 is in progress with hierarchy/diagnostic/allocation/pass-enable/uniform controls; comprehensive resource inspectors and structural commands remain.
 - [ ] Phase 8 is in progress: XML graphs execute in the editor and rebuild transactionally, but offscreen viewport presentation, scene population, camera interaction, and intermediate inspection remain.
@@ -240,57 +240,101 @@ The first implementation does not include:
 
 ### Phase 4: PBR pipeline document — In Progress
 
-1. Add editable `PbrPipelineDocument` DTOs separate from GPU resources.
-2. Add version-1 parser/serializer with canonical output.
-3. Add document-local resources, external resource libraries, typed imports, graph, scene reference, logical bindings, and instance overrides.
-4. Add standalone RenderGraph importer resolving implicit writes to stable produced-value IDs.
-5. Add semantic, portability, reflection, capability, and fallback validators.
-6. Add runtime template/stream and transactional last-valid instantiation.
+- [x] Add the core editable `PbrPipelineDocument` DTO separately from GPU resources.
+- [x] Add version-1 parsing and serialization for pipeline metadata, scene reference, resource-library paths, environment bindings, preview material bindings, and embedded RenderGraph topology.
+- [x] Add deterministic basic pipeline/graph round-trip and resource startup tests.
+- [x] Add `PbrPipelineStream`, `FilePbrPipelineStream`, `PbrPipelineTemplate`, and ResourceManager factory registration.
+- [~] Complete the version-1 schema and lossless canonical serializer.
+  - [ ] Document-local PBR materials, programs, textures, and samplers.
+  - [ ] Typed import contracts and explicit fallback declarations.
+  - [ ] Preview instance-override parsing and serialization; current output would drop this DTO data.
+  - [ ] Explicit extension-payload preservation and strict unknown-core-field rejection.
+  - [ ] Atomic saving through the canonical serializer path.
+- [~] Complete external resource-library support.
+  - [x] Parse and serialize ordered library paths.
+  - [ ] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
+- [ ] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
+- [~] Complete document validation.
+  - [x] Basic version/name/graph/order/library-list/binding validation.
+  - [x] RenderGraph topology and available pass-metadata validation.
+  - [ ] Resource resolution, portability, reflection, active-GPU capability, typed-import, and fallback validation.
+  - [ ] Comprehensive invalid fixtures with stable diagnostic codes and source locations.
+- [~] Complete runtime instantiation.
+  - [x] Resource template/stream creation.
+  - [x] Editor-side valid graph generation swap that retains the previous pipeline when validation fails.
+  - [ ] Resolve document-local/external resources, programs, imports, environments, material bindings, and overrides.
+  - [ ] Reusable transactional runtime object with deterministic obsolete-generation cleanup.
 
-**Exit:** valid round-trips are deterministic; invalid fixtures diagnose precisely; existing RenderGraph imports preserve topology.
+**Exit:** not met. Valid complete documents must round-trip without data loss, invalid fixtures must diagnose precisely, legacy RenderGraph imports must preserve topology, and complete runtime generations must swap transactionally.
 
-### Phase 5: Scene document and runtime resource — Parser Foundation Added
+### Phase 5: Scene document and runtime resource — In Progress
 
-1. Add `SceneTemplate`, model/primitive/light/camera/layer/editor-setting DTOs.
-2. Add `SceneStream`, programmatic stream, file parser, and serializer.
-3. Add absolute-transform scene instantiation.
-4. Add logical material/environment resolution supplied by a pipeline workspace.
-5. Add missing-model placeholder behavior.
-6. Add scene validation and triangle inventory.
+- [x] Add Scene document DTOs for models/primitives, absolute transforms, layers, material bindings, PBR lights, one camera, and environment binding.
+- [x] Add version-1 file parser and deterministic serializer.
+- [x] Add the shipped sphere-grid preview scene and parser/serializer round-trip startup validation.
+- [~] Add scene validation and inventory.
+  - [x] Version, name, model/light ID, required model file, camera range, and binding diagnostics.
+  - [ ] Resource existence/type validation, layer-reference validation, light-limit/shadow compatibility, portability, and triangle inventory.
+- [ ] Add `SceneTemplate`, `SceneStream`, programmatic stream, and ResourceManager factory registration.
+- [ ] Instantiate `.mppmodel`, box, sphere, cylinder, and grid resources with absolute transforms.
+- [ ] Resolve logical material/environment bindings from the active pipeline workspace.
+- [ ] Add diagnosed missing-model placeholder boxes excluded from triangle statistics.
+- [ ] Add runtime tests covering every source type, transforms, layers, lights, bindings, missing assets, and cleanup.
 
-**Exit:** scene round-trip/runtime tests cover all model sources, transforms, layers, lights, camera, bindings, and missing files.
+**Exit:** not met. Scene round-trip is tested, but reusable runtime scene resources and instantiation are not implemented.
 
-### Phase 6: PipelineEditor shell — Complete
+### Phase 6: PipelineEditor shell — In Progress
 
-1. Create executable/project, options, configuration, deployment, and shared platform integration.
-2. Create docking host and default layout.
-3. Add menu bar, toolbar, status bar, hierarchy, inspector/diagnostic/allocation tabs, and viewport panel.
-4. Add native Open/Save dialogs, recent files, one-workspace lifecycle, dirty prompts, and recovery offer.
-5. Add CLI open/validate modes.
+- [x] Create the standalone VS2026 Debug application, shared platform integration, runtime deployment script, and shipped resources.
+- [x] Enable ImGui docking only in PipelineEditor and create an initial left hierarchy/lower tabs/right viewport layout.
+- [x] Add menu bar, toolbar, status bar, hierarchy, inspector, diagnostics, allocations, and viewport windows.
+- [x] Add native Windows Open/Save dialogs, one open workspace, recent-file reopening, recovery autosave, and recovery offer.
+- [x] Add pipeline-path startup, `--validate`, and `--warnings-as-errors` CLI modes.
+- [ ] Add real configurable program options/preferences instead of hard-coded window and recovery values.
+- [ ] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
+- [ ] Add multiple recent-file entries, conflict/error UI, and recovery cleanup for all close/failure paths.
+- [ ] Add `Window -> Reset Layout` and verify saved-layout restoration does not conflict with the initial dock builder.
+- [ ] Add Release deployment/startup/CLI smoke validation.
 
-**Exit:** application starts, restores/reset layout, opens/saves documents, and reports startup/CLI failures correctly.
+**Exit:** partially met. The application starts, opens/saves pipelines, and validates from CLI, but the complete document lifecycle and resettable/restored layout contract remain.
 
 ### Phase 7: Editor controllers and inspectors — In Progress
 
-1. Add pipeline/scene hierarchy selection and structural commands.
-2. Add metadata-generated pass inspector.
-3. Add image/import/attachment/raster-state inspectors.
-4. Add PBR material, texture/sampler, program/reflection, and typed uniform inspectors.
-5. Add scene model/primitive/transform/layer/light/camera inspectors.
-6. Add drag reorder, move commands, duplicate/delete/reference cleanup, auto-order, and local-resource cloning.
+- [~] Add pipeline/scene hierarchy selection and structural commands.
+  - [x] Display and select ordered passes; display preview-scene models.
+  - [x] Toggle saved pass enable state.
+  - [ ] Select all pipeline/scene resource categories and perform add/remove/duplicate operations.
+- [~] Add metadata-generated pass inspector.
+  - [x] Show pass identity, factory, input/output counts, enabled state, and reflected scalar/vector parameters.
+  - [ ] Generate required/optional slots, ranges, enums, UI hints, format constraints, fallbacks, material slots, and program controls from metadata.
+- [ ] Add image, typed import, attachment, subresource, and raster-state inspectors.
+- [~] Add PBR material, texture/sampler, program/reflection, and typed uniform inspectors.
+  - [x] Edit pass float/vector/int/bool values supported by the current `UniformCollection` UI.
+  - [ ] PBR materials, maps, extensions, samplers, programs, reflection details, matrices, arrays, and instance overrides.
+- [ ] Add scene model/primitive/absolute-transform/layer/light/camera/editor-setting inspectors.
+- [ ] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
+- [ ] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
 
-**Exit:** every supported authored field is reachable and undoable through the UI.
+**Exit:** not met. Only pass selection, enable state, and basic parameter editing are currently reachable; edits are not yet undoable.
 
 ### Phase 8: Live preview and viewport diagnostics — In Progress
 
-1. Add offscreen presentation import and ImGui texture display.
-2. Add debounced validation/build generation pipeline.
-3. Add last-known-valid swapping and stale-state banner.
-4. Add orbit/pan/zoom/frame/reset and committed-camera command.
-5. Add intermediate image/mip inspection and visualization shaders.
-6. Add pass/GPU/triangle statistics to status/tooltips.
+- [~] Execute loaded XML graphs in PipelineEditor.
+  - [x] Create graph resources and graph-backed preview pipeline generations.
+  - [x] Keep the current generation when validation blocks an explicit rebuild.
+  - [ ] Resolve the complete Phase 4 pipeline document and populate the Phase 5 scene.
+- [ ] Add offscreen presentation import, viewport-sized render target, ImGui texture registration, and resize handling.
+- [ ] Add continuously validated, debounced asynchronous build generations and stale-result rejection.
+- [~] Add last-known-valid behavior.
+  - [x] Explicit Apply/Rebuild only switches after basic document validation.
+  - [ ] Stale-preview banner, compile/resource failure rollback, generation cleanup, and current/stale status reporting.
+- [ ] Add orbit/pan/zoom/frame/reset input and `Save Current View as Scene Camera`.
+- [ ] Add intermediate image/mip selection, diagnostic resolve, and colour/channel/depth/HDR visualization.
+- [~] Add preview statistics.
+  - [x] Rolling FPS, global triangle status, allocation bytes, lifetimes, and alias groups.
+  - [ ] Submitted-triangle pass breakdown, unique scene triangles, CPU/GPU pass timings, viewport size, and status/tooltips.
 
-**Exit:** shipped full pipeline renders the shipped scene; invalid edits retain the previous preview; resizing and intermediate inspection are stable.
+**Exit:** not met. Graph execution exists, but the docked viewport still lacks offscreen presentation, scene content, camera interaction, and intermediate inspection.
 
 ### Phase 9: Background work and hot reload
 
