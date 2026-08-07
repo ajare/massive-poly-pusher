@@ -104,7 +104,9 @@ void imGuiSetup(mpp::RenderSystem* renderSystem, mpp::ResourceManager* resourceM
 		iconConfig.MergeMode = true;
 		iconConfig.PixelSnapH = true;
 		static ImWchar const iconRanges[] = { 0xe005, 0xf8ff, 0 };
-		if (!io.Fonts->AddFontFromFileTTF(mergedIconFontFilename.c_str(), 13.0f, &iconConfig, iconRanges))
+		// The docking snapshot's default font uses an implicit reference size;
+		// merged sources must also use an implicit size (0) rather than 13px.
+		if (!io.Fonts->AddFontFromFileTTF(mergedIconFontFilename.c_str(), 0.0f, &iconConfig, iconRanges))
 		{
 			throw std::runtime_error("Could not load merged ImGui icon font '" + mergedIconFontFilename + "'.");
 		}
