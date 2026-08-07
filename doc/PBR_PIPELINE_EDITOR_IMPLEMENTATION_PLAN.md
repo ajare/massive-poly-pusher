@@ -358,7 +358,9 @@ The first implementation does not include:
   - [ ] Route remaining structural and future resource/image/import edits through commands; add command coalescing for continuous controls.
 - [~] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
   - [x] Local-resource cloning and undoable scene model/light duplication/deletion.
-  - [ ] Drag/move, dependency auto-order UI, graph/resource duplication/deletion, and reference cleanup.
+  - [~] Drag/move, dependency auto-order UI, graph/resource duplication/deletion, and reference cleanup.
+    - [x] Explicit command-backed dependency auto-order UI, stable physical pass reorder with producer remapping, disabled-pass retention, and topology regression coverage.
+    - [ ] Drag/move, graph/resource duplication/deletion, and reference cleanup.
 
 **Exit:** not met. Only pass selection, enable state, and basic parameter editing are currently reachable; edits are not yet undoable.
 
