@@ -2,7 +2,7 @@
 
 ## Starting a workspace
 
-Build `PipelineEditor` for VS2026 x64 and run it from its output directory. Use **File > New** to create an untitled workspace from:
+Build `PipelineEditor` for VS2026 x64 and run it from its output directory. The `editor.ini` beside the executable resolves the repository-level `resources` directory, which remains outside the output tree. Use **File > New** to create an untitled workspace from:
 
 - **Minimal PBR Pipeline** — HDR PBR scene and tone-map presentation.
 - **PBR Shadows Pipeline** — minimal pipeline plus directional shadow depth.

@@ -8,9 +8,9 @@ submodule/FetchContent.
   Font Awesome 5 Free's icon metadata by the
   [IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders)
   project. MIT licensed.
-- `../../resources/fa-solid-900.ttf` — the Font Awesome 5 Free "solid" style
+- `../../../resources/pipeline-editor/fa-solid-900.ttf` — the Font Awesome 5 Free "solid" style
   webfont loaded by PipelineEditor (`FONT_ICON_FILE_NAME_FAS`).
-- `../../resources/fa-regular-400.ttf` and `fa-brands-400.ttf` — matching
+- `../../../resources/pipeline-editor/fa-regular-400.ttf` and `fa-brands-400.ttf` — matching
   upstream Free font files retained with the vendored snapshot; they are not
   loaded by the current toolbar.
   Font Awesome Free's fonts are licensed under the

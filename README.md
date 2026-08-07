@@ -16,11 +16,11 @@ Then the main project. The current editor/tool configuration is VS2026 x64:
 
 `msbuild build\vs2026\MassivePolyPusher.sln -target:Build -p:Platform=x64 -p:Configuration=Release`
 
-`PipelineEditor` is a separate executable under `pipeline-editor\build\vs2026\bin\x64\<Configuration>`. Its post-build deployment includes shared templates and assets under `resources\shared`.
+`PipelineEditor` is a separate executable under `pipeline-editor\build\vs2026\bin\x64\<Configuration>`. Its post-build deployment copies `editor.ini`, which references the repository-level `resources` directory beside the root `build` directory.
 
 ## PBR PipelineEditor
 
-Start with `resources/shared/pbr/templates/Minimal.pipeline.xml`, `Shadows.pipeline.xml`, `Full.pipeline.xml`, or `Empty.pipeline.xml`. The reusable default scene is `resources/shared/pbr/DefaultPbrPreview.scene.xml`.
+Start with `resources/shared/pbr/templates/Minimal.pipeline.xml`, `Shadows.pipeline.xml`, `Full.pipeline.xml`, or `Empty.pipeline.xml`. The reusable default scene is `resources/shared/pbr/DefaultPbrPreview.scene.xml`. PipelineEditor loads the repository-level `resources` tree through the deployed `editor.ini`; resources are not copied into its binary output directory.
 
 Documentation:
 

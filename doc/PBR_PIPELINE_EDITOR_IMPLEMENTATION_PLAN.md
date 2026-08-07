@@ -412,7 +412,7 @@ Continuously validated background rebuilds, debounce, cancellation, and stale-jo
 ### Phase 10: Templates, shared assets, docs, and final validation — Complete
 
 - [x] Move reusable preview scene, resource library, and image assets into `resources/shared/pbr` and remove per-application copies.
-- [x] Deploy deterministic self-contained resource trees for PipelineEditor and DemoSuite, removing stale output resources before each copy.
+- [x] Deploy deterministic resource handling: DemoSuite remains self-contained, while PipelineEditor loads the repository-level `resources` directory through `editor.ini` and removes stale output resource copies.
 - [x] Add the default preview scene and Minimal, Shadows, Full, and Empty native pipeline templates.
 - [x] Expose all four templates through **File > New** as untitled pipeline/scene copies that cannot overwrite shipped assets.
 - [x] Add native pipeline XML and scene XML specifications, authoring/controls guide, diagnostics catalogue, CLI reference, and README entry points.
@@ -424,7 +424,7 @@ Continuously validated background rebuilds, debounce, cancellation, and stale-jo
 - [x] Fix deterministic scene/runtime, internal-font, ImGui texture, SDL window/context, and render-system shutdown ordering exposed by finite smoke tests.
 - [x] Run Debug and Release solution builds, template CLI/GPU validation, clean deployment checks, and DemoSuite CPU/GPU regression startup.
 
-**Exit:** met. The acceptance suite passes against cleanly regenerated Debug and Release deployment trees, all shipped templates validate and start with an active context, invalid fixtures return their stable diagnostics, and DemoSuite retains its compatibility behavior.
+**Exit:** met. The acceptance suite passes against cleanly regenerated Debug and Release deployments, PipelineEditor resolves its external configured resource tree, all shipped templates validate and start with an active context, invalid fixtures return their stable diagnostics, and DemoSuite retains its compatibility behavior.
 
 ## 5. Commit strategy
 
