@@ -315,7 +315,7 @@ The first implementation does not include:
 - [x] Add menu bar, toolbar, status bar, hierarchy, inspector, diagnostics, allocations, and viewport windows.
 - [x] Add native Windows Open/Save dialogs, one open workspace, recent-file reopening, recovery autosave, and recovery offer.
 - [x] Add pipeline-path startup and deterministic pipeline-plus-referenced-scene `--validate` / `--warnings-as-errors` CLI modes with emitted diagnostics.
-- [ ] Add real configurable program options/preferences instead of hard-coded window and recovery values.
+- [x] Add persisted Preferences and command-line overrides for startup width/height and recovery interval instead of hard-coded values.
 - [~] Complete New/Open/Save Scene/Save All/Exit lifecycle and separate pipeline/scene dirty prompts.
   - [x] Pipeline New/Open/Exit discard prompts and atomic pipeline Save.
   - [x] Scene Save/Save As/Save All and independent scene dirty prompts.
