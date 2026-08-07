@@ -108,6 +108,7 @@
     <ClInclude Include="..\..\include\mpp\Scene.h" />
     <ClInclude Include="..\..\include\mpp\SceneDocument.h" />
     <ClInclude Include="..\..\include\mpp\SceneStream.h" />
+    <ClInclude Include="..\..\include\mpp\SceneRuntime.h" />
     <ClInclude Include="..\..\include\mpp\SceneTemplate.h" />
     <ClInclude Include="..\..\include\mpp\SceneModel2d.h" />
     <ClInclude Include="..\..\include\mpp\SceneFactory.h" />
@@ -210,6 +211,7 @@
     <ClCompile Include="..\..\src\Scene.cpp" />
     <ClCompile Include="..\..\src\SceneDocument.cpp" />
     <ClCompile Include="..\..\src\SceneStream.cpp" />
+    <ClCompile Include="..\..\src\SceneRuntime.cpp" />
     <ClCompile Include="..\..\src\SceneTemplate.cpp" />
     <ClCompile Include="..\..\src\SceneModel2d.cpp" />
     <ClCompile Include="..\..\src\SceneModel3d.cpp" />

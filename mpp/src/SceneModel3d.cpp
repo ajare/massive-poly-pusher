@@ -14,6 +14,7 @@ namespace mpp
 	{
 		mModel->acquire(this);
 		mParams = make_shared<ModelRenderParams>();
+		resetTransform();
 	}
 
 	SceneModel3d::~SceneModel3d()
@@ -26,7 +27,7 @@ namespace mpp
 
 	void SceneModel3d::resetTransform()
 	{
-		mTransform = glm::mat4();
+		mTransform = glm::mat4(1.0f);
 	}
 
 	void SceneModel3d::translate(glm::vec3 const& translate)
