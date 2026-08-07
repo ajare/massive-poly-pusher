@@ -8,7 +8,7 @@
 #include <mpp/TextureStream.h>
 #include <mpp/ResourceManager.h>
 
-#include "sdl/WindowSDL.h"
+#include "mpp/app/WindowSDL.h"
 
 typedef std::map<std::pair<int, int>, std::vector<SDL_DisplayMode>> DisplayModeSet;
 

@@ -1,5 +1,5 @@
 #include <sdl/SDL.h>
-#include "sdl/TimerSDL.h"
+#include "mpp/app/TimerSDL.h"
 
 TimerSDL::TimerSDL() :
 	mStartTime(0.0f),

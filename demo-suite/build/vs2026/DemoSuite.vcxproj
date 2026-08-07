@@ -24,13 +24,10 @@
     <ClInclude Include="..\..\include\ProgramOptions.h" />
     <ClInclude Include="..\..\include\RenderOptions.h" />
     <ClInclude Include="..\..\include\Scene.h" />
-    <ClInclude Include="..\..\include\sdl\TimerSDL.h" />
-    <ClInclude Include="..\..\include\sdl\WindowSDL.h" />
     <ClInclude Include="..\..\include\Test2dTriangleBatchDataProvider.h" />
     <ClInclude Include="..\..\include\TestLineBatchDataProvider.h" />
     <ClInclude Include="..\..\include\Test3dTriangleBatchDataProvider.h" />
     <ClInclude Include="..\..\include\TestQuadBatchDataProvider.h" />
-    <ClInclude Include="..\..\include\Timer.h" />
     <ClInclude Include="..\..\include\Vector2.h" />
     <ClInclude Include="..\..\include\World.h" />
   </ItemGroup>
@@ -47,10 +44,6 @@
     <ClCompile Include="..\..\src\ModelScene.cpp" />
     <ClCompile Include="..\..\src\ProgramOptions.cpp" />
     <ClCompile Include="..\..\src\Scene.cpp" />
-    <ClCompile Include="..\..\src\sdl\TimerSDL.cpp" />
-    <ClCompile Include="..\..\src\sdl\WindowSDL.cpp" />
-    <ClCompile Include="..\..\src\Timer.cpp" />
-    <ClCompile Include="..\..\src\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\mpp-app-support\build\vs2026\MppAppSupport.vcxproj">

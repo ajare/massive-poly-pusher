@@ -16,6 +16,10 @@
     <ClInclude Include="..\..\include\mpp\app\Input.h" />
     <ClInclude Include="..\..\include\mpp\app\InputManager.h" />
     <ClInclude Include="..\..\include\mpp\app\InputManagerSDL.h" />
+    <ClInclude Include="..\..\include\mpp\app\Timer.h" />
+    <ClInclude Include="..\..\include\mpp\app\TimerSDL.h" />
+    <ClInclude Include="..\..\include\mpp\app\Window.h" />
+    <ClInclude Include="..\..\include\mpp\app\WindowSDL.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\CommandStack.cpp" />
@@ -25,6 +29,10 @@
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp" />
     <ClCompile Include="..\..\src\InputManager.cpp" />
     <ClCompile Include="..\..\src\InputManagerSDL.cpp" />
+    <ClCompile Include="..\..\src\Timer.cpp" />
+    <ClCompile Include="..\..\src\TimerSDL.cpp" />
+    <ClCompile Include="..\..\src\Window.cpp" />
+    <ClCompile Include="..\..\src\WindowSDL.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A14775A9-B967-4538-BF7E-59D421B43163}</ProjectGuid>
