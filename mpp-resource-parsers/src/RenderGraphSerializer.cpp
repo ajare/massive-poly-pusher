@@ -52,10 +52,10 @@ namespace mpp::resource_parsers
 		std::string vec4(glm::vec4 const& value) { std::ostringstream out; out << value.x << ' ' << value.y << ' ' << value.z << ' ' << value.w; return out.str(); }
 	}
 
-	void RenderGraphSerializer::toFile(RenderGraph const& graph, std::string const& filepath)
+	void RenderGraphSerializer::toNode(RenderGraph const& graph, utils::XmlWriteNode* root)
 	{
-		utils::XmlWriter writer("RenderGraph");
-		auto images = writer.getRootNode()->createChild("Images");
+		if (!root) return;
+		auto images = root->createChild("Images");
 		for (uint32_t id = 0; id < graph.getImageCount(); ++id)
 		{
 			auto info = graph.getImageInfo({ id, 0 });
@@ -77,7 +77,7 @@ namespace mpp::resource_parsers
 			if (!info.importName.empty()) image->createChild("import")->setValue(info.importName);
 			image->createChild("value")->setValue(graph.getValueId({ id, 0 }));
 		}
-		auto passes = writer.getRootNode()->createChild("Passes");
+		auto passes = root->createChild("Passes");
 		for (uint32_t id = 0; id < graph.getPassCount(); ++id)
 		{
 			auto info = graph.getPassInfo({ id });
@@ -121,6 +121,12 @@ namespace mpp::resource_parsers
 			}
 			if (!info.depthOutputs.empty()) { auto const& output = info.depthOutputs.front(); auto node = pass->createChild("Depth"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(output.clearDepth); }
 		}
+	}
+
+	void RenderGraphSerializer::toFile(RenderGraph const& graph, std::string const& filepath)
+	{
+		utils::XmlWriter writer("RenderGraph");
+		toNode(graph, writer.getRootNode());
 		writer.write(filepath);
 	}
 }
