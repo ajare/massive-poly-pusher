@@ -32,7 +32,7 @@
 - [x] Added live document diagnostics, ordered pass/scene hierarchy, pass enable inspector, and allocation/lifetime/alias reporting.
 - [x] Phase 6 complete: standalone shell, native New/Open/Save As/Save All lifecycle, independent dirty prompts, atomic error-preserving saves, invalid-document confirmation, recent workspaces, pipeline/scene recovery, external-file conflict handling, configurable preferences, CLI validation, deployment, and resettable docking.
 - [x] Added reflected scalar/vector pass parameter editing and transactional Apply/Rebuild that preserves the previous preview for invalid documents.
-- [~] Phase 7 includes command-backed undo/redo and save points for current pipeline/scene properties, image/import/raster inspectors, explicit dependency auto-order, scene duplication/deletion, external-resource localization, and typed scene controls; comprehensive resource inspectors and remaining graph structural commands remain.
+- [x] Phase 7 complete: command-backed structural authoring, drag reorder, dependency ordering, metadata-generated controls, complete image/import/attachment/raster/resource/scene inspectors, reference cleanup, typed uniform arrays/matrices, instance overrides, and continuous-edit coalescing.
 - [~] Phase 8 now presents offscreen graph output with resolved materials, environments, lights, overrides, and directional shadows; supports orbit/pan/zoom/framing and camera saves; inspects produced image versions; and reports pass CPU/triangle statistics. Visualization resolves and GPU timings remain.
 
 ## 1. Goal
@@ -340,42 +340,29 @@ The first implementation does not include:
 
 **Exit:** met. The application starts and transactionally opens complete workspaces, supports independent pipeline/scene Save As and recovery lifecycles, preserves active edits across operational failures, resolves external-file conflicts explicitly, validates both documents from CLI, and restores or resets its docked shell.
 
-### Phase 7: Editor controllers and inspectors — In Progress
+### Phase 7: Editor controllers and inspectors — Complete
 
-- [~] Add pipeline/scene hierarchy selection and structural commands.
-  - [x] Display and select ordered passes; display preview-scene models.
-  - [x] Toggle saved pass enable state.
-  - [~] Select all pipeline/scene resource categories and perform add/remove/duplicate operations.
-    - [x] Select local resources and qualified read-only external resources; clone external resources locally.
-    - [~] Add/remove/duplicate all pass, image, import, resource, model, light, and binding categories.
-    - [x] Command-backed duplicate/delete for scene models and lights with deterministic collision-free copied IDs.
-    - [ ] Add operations and pass/image/import/resource/binding structural commands.
-- [~] Add metadata-generated pass inspector.
-  - [x] Show pass identity, factory, input/output counts, enabled state, and reflected scalar/vector parameters.
-  - [ ] Generate required/optional slots, ranges, enums, UI hints, format constraints, fallbacks, material slots, and program controls from metadata.
-- [~] Add image, typed import, attachment, subresource, and raster-state inspectors.
-  - [x] Select graph images and typed imports; inspect format/usage/import identity; command-edit image relative size/sample/mip/external/transient descriptors and import semantic/required/fallback state.
-  - [~] Format/usage widgets, absolute sizing/filter/wrap controls, attachment/subresource controls, and raster-state inspectors.
-    - [x] Attachment/mip inspection and command-backed practical raster controls for explicit state, fill/front/cull, depth comparison/write, blend enablement, multisampling, alpha-to-coverage, and scissor enablement.
-    - [ ] Format/usage widgets, absolute sizing/filter/wrap controls, editable attachment/subresources, blend factors/operations, write masks, and scissor rectangle.
-- [~] Add PBR material, texture/sampler, program/reflection, and typed uniform inspectors.
-  - [x] Edit pass float/vector/int/bool values supported by the current `UniformCollection` UI.
-  - [ ] PBR materials, maps, extensions, samplers, programs, reflection details, matrices, arrays, and instance overrides.
-- [~] Add scene model/primitive/absolute-transform/layer/light/camera/editor-setting inspectors.
-  - [x] Model selection, absolute translation/rotation/scale, visibility, shadow-caster state, and logical material binding.
-  - [x] Comma-separated layers, directional/point lights, camera, and environment binding.
-  - [x] Typed box/sphere/cylinder/grid parameters with strict XML, semantic range validation, canonical round-trip, and source-specific inspector controls.
-  - [ ] Portable editor settings.
-- [~] Wire the existing command-stack foundation into all edits and expose functional undo/redo/save points.
-  - [x] Add independent 256-entry pipeline/scene snapshot command stacks, deep-copyable graphs, functional menu/toolbar undo/redo, save points, and commands for pass state/parameters, external localization, and all current scene property edits.
-  - [ ] Route remaining structural and future resource/image/import edits through commands; add command coalescing for continuous controls.
-- [~] Add drag reorder, move commands, dependency auto-order, duplicate/delete/reference cleanup, and local-resource cloning.
-  - [x] Local-resource cloning and undoable scene model/light duplication/deletion.
-  - [~] Drag/move, dependency auto-order UI, graph/resource duplication/deletion, and reference cleanup.
-    - [x] Explicit command-backed dependency auto-order UI, stable physical pass reorder with producer remapping, disabled-pass retention, and topology regression coverage.
-    - [ ] Drag/move, graph/resource duplication/deletion, and reference cleanup.
+- [x] Add pipeline/scene hierarchy selection and structural commands.
+  - [x] Select passes, images, imports, local/read-only external resources, environments, bindings, overrides, models, lights, camera, and render layers.
+  - [x] Add/remove/duplicate pass, image, typed-import, local-resource, preview-binding, instance-override, model, and light items with collision-free generated identities.
+  - [x] Keep external resources read-only and clone them through `Make Local Copy`.
+- [x] Add metadata-generated pass inspection and authoring.
+  - [x] Select registered factories and expose required/optional input/output contracts, accepted formats, explicit fallbacks, ranges, enum hints, UI hints, material slots, and program-resource controls.
+  - [x] Add missing reflected parameters and edit scalar, vector, matrix, and array uniform values.
+- [x] Complete image, typed-import, attachment, subresource, and raster-state inspectors.
+  - [x] Edit curated formats, usages, absolute/relative sizing, samples, mips, colour space, filters, wrapping, LOD, anisotropy, external/import ownership, and transient state.
+  - [x] Add/remove/retarget colour and depth attachments while preserving stable value IDs and dependent sampler references; edit mip, load/store, and clear values.
+  - [x] Edit sampler bindings and complete practical raster state including blend operations/factors, per-target write masks, and scissor rectangles.
+- [x] Complete concrete-resource and scene inspectors.
+  - [x] Edit PBR factors, map resources, extension textures, texture/sampler state, program settings, active reflection details, logical bindings, pipeline environment, and typed instance overrides.
+  - [x] Edit scene IDs/sources, model files, primitives, absolute transforms, layers, visibility/shadows, lights, camera, environment, and persisted portable editor preferences.
+- [x] Route structural and property changes through independent pipeline/scene command stacks.
+  - [x] Add mergeable command sessions so continuous text, slider, vector, colour, and transform edits undo as one gesture without breaking save points.
+  - [x] Add drag-reorder commands for passes, local resources, and scene models plus explicit dependency auto-order.
+  - [x] Add graph pass/image/output and local-resource deletion cleanup, stable handle/version remapping, resource-reference cleanup, and local cloning.
+  - [x] Add topology and document-foundation regression coverage for structural mutation, stable attachment retargeting, and command coalescing.
 
-**Exit:** not met. Only pass selection, enable state, and basic parameter editing are currently reachable; edits are not yet undoable.
+**Exit:** met. All authored hierarchy categories and core properties are reachable through command-backed controls; invalid structural edits remain diagnosable and undoable, while stable graph values and references survive valid moves and retargeting.
 
 ### Phase 8: Live preview and viewport diagnostics — In Progress
 
