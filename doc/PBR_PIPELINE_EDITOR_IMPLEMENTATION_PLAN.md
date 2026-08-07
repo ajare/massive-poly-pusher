@@ -248,7 +248,7 @@ The first implementation does not include:
 - [~] Complete the version-1 schema and lossless canonical serializer.
   - [ ] Document-local PBR materials, programs, textures, and samplers.
   - [x] Typed image-import IDs, semantics, formats, usages, required/optional state, explicit fallback declarations, XML round-trip, and graph-descriptor validation.
-  - [ ] Preview instance-override parsing and serialization; current output would drop this DTO data.
+  - [x] Preview instance-override model/binding targets and typed scalar/vector values with strict parsing, canonical serialization, semantic validation, and round-trip coverage.
   - [~] Explicit extension-payload preservation and strict unknown-core-field rejection.
     - [x] Strict unknown-field/value rejection across the current PBR pipeline and scene core schemas, with startup regression checks.
     - [ ] Namespaced extension-payload preservation.
