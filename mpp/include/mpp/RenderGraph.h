@@ -20,11 +20,23 @@ namespace mpp
 
 	enum class GraphImageFormat
 	{
+		R8,
+		Rg8,
 		Rgba8,
-		Rgba16f,
+		Srgb8Alpha8,
+		R16f,
 		Rg16f,
+		Rgba16f,
+		R32f,
+		Rg32f,
+		Rgba32f,
+		R11g11b10f,
+		Rgb10a2,
+		Depth16,
 		Depth24,
-		Depth24Stencil8
+		Depth32f,
+		Depth24Stencil8,
+		Depth32fStencil8
 	};
 
 	enum class GraphImageUsage : uint32_t
@@ -83,6 +95,41 @@ namespace mpp
 	enum class GraphPassType { Scene, Fullscreen, Present };
 	enum class GraphLoadOp { Load, Clear, DontCare };
 	enum class GraphStoreOp { Store, DontCare };
+	enum class GraphFillMode { Fill, Line };
+	enum class GraphFrontFace { CounterClockwise, Clockwise };
+	enum class GraphCullMode { None, Front, Back };
+	enum class GraphCompareOp { Never, Less, Equal, LessEqual, Greater, NotEqual, GreaterEqual, Always };
+	enum class GraphBlendOp { Add, Subtract, ReverseSubtract, Minimum, Maximum };
+	enum class GraphBlendFactor { Zero, One, SourceColour, OneMinusSourceColour, DestinationColour, OneMinusDestinationColour, SourceAlpha, OneMinusSourceAlpha, DestinationAlpha, OneMinusDestinationAlpha };
+
+	struct _MPPAPI GraphColourWriteMask
+	{
+		bool red{ true }, green{ true }, blue{ true }, alpha{ true };
+	};
+
+	struct _MPPAPI GraphRasterState
+	{
+		// false preserves the callback/built-in historical state contract.
+		bool explicitState{ false };
+		GraphFillMode fillMode{ GraphFillMode::Fill };
+		GraphFrontFace frontFace{ GraphFrontFace::CounterClockwise };
+		GraphCullMode cullMode{ GraphCullMode::Back };
+		bool depthTest{ true };
+		bool depthWrite{ true };
+		GraphCompareOp depthCompare{ GraphCompareOp::Less };
+		bool blend{ false };
+		GraphBlendOp colourBlendOp{ GraphBlendOp::Add };
+		GraphBlendOp alphaBlendOp{ GraphBlendOp::Add };
+		GraphBlendFactor sourceColourBlend{ GraphBlendFactor::One };
+		GraphBlendFactor destinationColourBlend{ GraphBlendFactor::Zero };
+		GraphBlendFactor sourceAlphaBlend{ GraphBlendFactor::One };
+		GraphBlendFactor destinationAlphaBlend{ GraphBlendFactor::Zero };
+		std::vector<GraphColourWriteMask> colourWriteMasks;
+		bool multisample{ true };
+		bool alphaToCoverage{ false };
+		bool scissor{ false };
+		glm::uvec4 scissorRectangle{ 0 };
+	};
 
 	struct _MPPAPI GraphColourOutput
 	{
@@ -114,6 +161,7 @@ namespace mpp
 	struct _MPPAPI GraphPassInfo
 	{
 		std::string name;
+		bool enabled{ true };
 		GraphPassType type{ GraphPassType::Scene };
 		// XML stores this stable factory identifier, not executable code.
 		std::string callbackFactory;
@@ -125,6 +173,7 @@ namespace mpp
 		UniformCollection parameters;
 		std::vector<GraphColourOutput> colourOutputs;
 		std::vector<GraphDepthOutput> depthOutputs;
+		GraphRasterState rasterState;
 	};
 
 	struct _MPPAPI RenderGraphCompileResult	{
@@ -144,6 +193,8 @@ namespace mpp
 		glm::uvec2 size{ 0 };
 		uint32_t firstPass{ UINT32_MAX };
 		uint32_t lastPass{ UINT32_MAX };
+		uint64_t estimatedBytes{ 0 };
+		uint32_t physicalAllocation{ UINT32_MAX };
 	};
 
 	struct _MPPAPI RenderGraphAllocationPlan
@@ -151,6 +202,7 @@ namespace mpp
 		bool valid{ false };
 		std::vector<GraphImageLifetime> allocatedImages;
 		std::vector<GraphImageHandle> importedImages;
+		uint64_t estimatedPhysicalBytes{ 0 };
 		std::vector<std::string> diagnostics;
 	};
 
@@ -180,8 +232,10 @@ namespace mpp
 		GraphImageInfo getImageInfo(GraphImageHandle image) const;
 		std::vector<GraphImageHandle> getImportedImages() const;
 		GraphPassHandle addPass(std::string const& name, GraphPassType type = GraphPassType::Scene);
+		void setPassEnabled(GraphPassHandle pass, bool enabled);
 		void setPassProgramResource(GraphPassHandle pass, std::string const& resourceName);
 		void setPassCallbackFactory(GraphPassHandle pass, std::string const& factoryName);
+		void setPassRasterState(GraphPassHandle pass, GraphRasterState const& state);
 
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
 		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX);
@@ -189,12 +243,20 @@ namespace mpp
 		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f), uint32_t mipLevel = 0);
 		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f, uint32_t mipLevel = 0);
 
+		// Stable authored IDs identify imported and produced image values independently
+		// of pass position. Unnamed values retain deterministic generated IDs.
+		void setValueId(GraphImageHandle image, std::string const& valueId);
+		std::string const& getValueId(GraphImageHandle image) const;
+		GraphImageHandle findValue(std::string const& valueId) const;
+
 		size_t getImageCount() const;
 		size_t getPassCount() const;
 		GraphPassInfo getPassInfo(GraphPassHandle pass) const;
 
 		RenderGraphCompileResult compile() const;
 		RenderGraphCompileResult compile(Caps const& caps) const;
+		// Dependency-derived stable order offered as an explicit editor action.
+		RenderGraphCompileResult buildDependencyOrder() const;
 		RenderGraphAllocationPlan buildAllocationPlan(glm::uvec2 const& viewport) const;
 
 		// Context-free diagnostic dump for logs and tests. It reports declared

@@ -23,7 +23,7 @@ namespace mpp
 				return GL_RED;
 			case GL_RG8: case GL_RG16: case GL_RG16F: case GL_RG32F: case GL_RG8UI: case GL_RG16UI: case GL_RG32UI: case GL_RG8I: case GL_RG16I: case GL_RG32I:
 				return GL_RG;
-			case GL_RGB4: case GL_RGB5: case GL_RGB8: case GL_RGB10: case GL_RGB12: case GL_RGB16: case GL_RGB16F: case GL_RGB32F:
+			case GL_RGB4: case GL_RGB5: case GL_RGB8: case GL_RGB10: case GL_RGB12: case GL_RGB16: case GL_RGB16F: case GL_RGB32F: case GL_R11F_G11F_B10F:
 				return GL_RGB;
 			default:
 				return GL_RGBA;
@@ -38,9 +38,37 @@ namespace mpp
 				return GL_HALF_FLOAT;
 			case GL_R32F: case GL_RG32F: case GL_RGB32F: case GL_RGBA32F:
 				return GL_FLOAT;
+			case GL_R11F_G11F_B10F: return GL_UNSIGNED_INT_10F_11F_11F_REV;
+			case GL_RGB10_A2: return GL_UNSIGNED_INT_2_10_10_10_REV;
 			default:
 				return GL_UNSIGNED_BYTE;
 			}
+		}
+
+		uint32_t getDepthInternalFormat(RenderTextureDepthFormat format)
+		{
+			switch (format)
+			{
+			case RenderTextureDepthFormat::Depth16: return GL_DEPTH_COMPONENT16;
+			case RenderTextureDepthFormat::Depth24: return GL_DEPTH_COMPONENT24;
+			case RenderTextureDepthFormat::Depth32f: return GL_DEPTH_COMPONENT32F;
+			case RenderTextureDepthFormat::Depth24Stencil8: return GL_DEPTH24_STENCIL8;
+			case RenderTextureDepthFormat::Depth32fStencil8: return GL_DEPTH32F_STENCIL8;
+			}
+			return GL_DEPTH_COMPONENT24;
+		}
+
+		uint32_t getDepthDataType(RenderTextureDepthFormat format)
+		{
+			switch (format)
+			{
+			case RenderTextureDepthFormat::Depth16: return GL_UNSIGNED_SHORT;
+			case RenderTextureDepthFormat::Depth24: return GL_UNSIGNED_INT;
+			case RenderTextureDepthFormat::Depth32f: return GL_FLOAT;
+			case RenderTextureDepthFormat::Depth24Stencil8: return GL_UNSIGNED_INT_24_8;
+			case RenderTextureDepthFormat::Depth32fStencil8: return GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
+			}
+			return GL_UNSIGNED_INT;
 		}
 
 		size_t getFormatBitsPerPixel(uint32_t internalFormat)
@@ -58,6 +86,7 @@ namespace mpp
 			case GL_R8: return 8;
 			case GL_RG8: return 16;
 			case GL_RGB8: return 24;
+			case GL_R11F_G11F_B10F: case GL_RGB10_A2: case GL_SRGB8_ALPHA8: return 32;
 			default: return 32;
 			}
 		}
@@ -129,6 +158,7 @@ namespace mpp
 
 		mDepthAttachment = rtStr->getDepthAttachment();
 		mDepthParams = rtStr->getDepthParams();
+		mDepthFormat = rtStr->getDepthFormat();
 		mNumAttachments = rtStr->getNumAttachments();
 		mSamples = rtStr->getSamples();
 		if (mSamples == 0 || (mSamples > 1 && (mParams.useMipmaps || mDepthParams.params.useMipmaps)))
@@ -214,8 +244,9 @@ namespace mpp
 			label = "Renderbuffer: " + getName();
 			GL_CHECK(glObjectLabel(GL_RENDERBUFFER, mDepthBuffer, -1, label.c_str()));
 			const bool stencil = mDepthAttachment == RenderTextureDepthAttachment::DepthStencilRenderbuffer;
-			if (mSamples > 1) GL_CHECK(glRenderbufferStorageMultisample(GL_RENDERBUFFER, (GLsizei)mSamples, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height));
-			else GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height));
+			const auto depthInternalFormat = getDepthInternalFormat(mDepthFormat);
+			if (mSamples > 1) GL_CHECK(glRenderbufferStorageMultisample(GL_RENDERBUFFER, (GLsizei)mSamples, depthInternalFormat, (GLsizei)width, (GLsizei)height));
+			else GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, depthInternalFormat, (GLsizei)width, (GLsizei)height));
 			GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthBuffer));
 			break;
 		}
@@ -226,8 +257,9 @@ namespace mpp
 			GLenum depthTarget = mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 			GL_CHECK(glBindTexture(depthTarget, mDepthTexture));
 			const bool stencil = mDepthAttachment == RenderTextureDepthAttachment::DepthStencilTexture;
-			if (mSamples > 1) GL_CHECK(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, (GLsizei)mSamples, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height, GL_TRUE));
-			else GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, (GLsizei)width, (GLsizei)height, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, stencil ? GL_UNSIGNED_INT_24_8 : GL_UNSIGNED_INT, nullptr));
+			const auto depthInternalFormat = getDepthInternalFormat(mDepthFormat);
+			if (mSamples > 1) GL_CHECK(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, (GLsizei)mSamples, depthInternalFormat, (GLsizei)width, (GLsizei)height, GL_TRUE));
+			else GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, depthInternalFormat, (GLsizei)width, (GLsizei)height, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, getDepthDataType(mDepthFormat), nullptr));
 			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mDepthParams.params.minFilter));
 			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mDepthParams.params.magFilter));
 			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mDepthParams.params.wrap));

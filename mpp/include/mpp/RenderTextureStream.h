@@ -17,6 +17,15 @@ namespace mpp
 		DepthStencilTexture
 	};
 
+	enum class RenderTextureDepthFormat
+	{
+		Depth16,
+		Depth24,
+		Depth32f,
+		Depth24Stencil8,
+		Depth32fStencil8
+	};
+
 	// Depth textures need sampler state even when the render target has no
 	// colour attachment, as is the case for a shadow map.
 	struct _MPPAPI RenderTextureDepthParams
@@ -30,6 +39,9 @@ namespace mpp
 		size_t numAttachments{ 1 };
 		RenderTextureDepthAttachment depthAttachment{ RenderTextureDepthAttachment::None };
 		RenderTextureDepthParams depthParams;
+		RenderTextureDepthFormat depthFormat{ RenderTextureDepthFormat::Depth24 };
+		// Non-zero selects an exact packed/sRGB OpenGL internal format.
+		uint32_t colourInternalFormat{ 0 };
 		TextureInternalType colourType{ TextureInternalType::UnsignedInteger };
 		bool colourNormalised{ true };
 		size_t colourBitSize{ 8 };
@@ -57,6 +69,7 @@ namespace mpp
 
 		RenderTextureDepthAttachment mDepthAttachment;
 		RenderTextureDepthParams mDepthParams;
+		RenderTextureDepthFormat mDepthFormat{ RenderTextureDepthFormat::Depth24 };
 
 		size_t mNumAttachments;
 		uint32_t mSamples{ 1 };
@@ -94,6 +107,8 @@ namespace mpp
 		RenderTextureDepthAttachment getDepthAttachment() const;
 
 		RenderTextureDepthParams const& getDepthParams() const;
+
+		RenderTextureDepthFormat getDepthFormat() const;
 
 		size_t getNumAttachments() const;
 

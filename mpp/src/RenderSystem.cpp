@@ -1302,12 +1302,14 @@ namespace mpp
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
 
 		rtStream->setTarget(TextureTarget::Texture2D);
-		rtStream->setInternalFormat(options.colourType, options.colourNormalised, options.colourBitSize, options.colourChannels);
+		if (options.colourInternalFormat != 0) rtStream->setInternalFormat(options.colourInternalFormat);
+		else rtStream->setInternalFormat(options.colourType, options.colourNormalised, options.colourBitSize, options.colourChannels);
 		rtStream->setParams(options.params);
 		rtStream->setWidth(width);
 		rtStream->setHeight(height);
 		rtStream->setDepthAttachment(options.depthAttachment);
 		rtStream->setDepthParams(options.depthParams);
+		rtStream->setDepthFormat(options.depthFormat);
 		rtStream->setNumAttachments(options.numAttachments);
 		rtStream->setSamples(options.samples);
 
@@ -3086,6 +3088,7 @@ namespace mpp
 #else
 		lines.push_back(STR_FORMAT("Batches: {}", mRenderInfo.batchCount));
 		lines.push_back(STR_FORMAT("Primitives: {}", mRenderInfo.primitivesRendered));
+		lines.push_back(STR_FORMAT("Triangles: {}", mRenderInfo.trianglesRendered));
 #endif
 
 		lines.push_back(STR_FORMAT("Program switches: {}", mRenderInfo.programSwitches));
@@ -3501,6 +3504,8 @@ namespace mpp
 			auto count = cmd.count != ~0u ? cmd.count : numPrimitives;
 			mesh->render(instanceCount, cmd.offset, count);
 			mRenderInfo.primitivesRendered += (int)(count * instanceCount);
+			if (mesh->mPrimitiveType == mpp::mesh::Primitive::Type::Triangles)
+				mRenderInfo.trianglesRendered += (int)(count * instanceCount);
 			mRenderInfo.batchCount++;
 
 			teardownRenderMeshInstance(meshInstance);
@@ -3592,6 +3597,11 @@ namespace mpp
 	 * Finish rendering.  Must be called before swapping screen.
 	 *
 	 */
+	RenderInfo const& RenderSystem::getCurrentRenderInfo() const
+	{
+		return mRenderInfo;
+	}
+
 	RenderInfo const& RenderSystem::finishStatsCollection()
 	{
 #ifdef MPP_PROFILE_BUILD

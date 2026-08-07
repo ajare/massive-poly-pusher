@@ -44,34 +44,23 @@ namespace mpp
 			options.params.lodMaxLevel = (int32_t)desc.mipLevels - 1;
 			switch (desc.format)
 			{
-			case GraphImageFormat::Rgba8:
-				options.colourType = TextureInternalType::UnsignedInteger;
-				options.colourNormalised = true;
-				options.colourBitSize = 8;
-				options.colourChannels = 4;
-				break;
-			case GraphImageFormat::Rgba16f:
-				options.colourType = TextureInternalType::Float;
-				options.colourNormalised = false;
-				options.colourBitSize = 16;
-				options.colourChannels = 4;
-				break;
-			case GraphImageFormat::Rg16f:
-				options.colourType = TextureInternalType::Float;
-				options.colourNormalised = false;
-				options.colourBitSize = 16;
-				options.colourChannels = 2;
-				break;
-			case GraphImageFormat::Depth24:
-				options.numAttachments = 0;
-				options.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
-				options.depthParams.params = options.params;
-				break;
-			case GraphImageFormat::Depth24Stencil8:
-				options.numAttachments = 0;
-				options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture;
-				options.depthParams.params = options.params;
-				break;
+			case GraphImageFormat::R8: options.colourBitSize = 8; options.colourChannels = 1; break;
+			case GraphImageFormat::Rg8: options.colourBitSize = 8; options.colourChannels = 2; break;
+			case GraphImageFormat::Rgba8: options.colourBitSize = 8; options.colourChannels = 4; break;
+			case GraphImageFormat::Srgb8Alpha8: options.colourInternalFormat = GL_SRGB8_ALPHA8; break;
+			case GraphImageFormat::R16f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 16; options.colourChannels = 1; break;
+			case GraphImageFormat::Rg16f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 16; options.colourChannels = 2; break;
+			case GraphImageFormat::Rgba16f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 16; options.colourChannels = 4; break;
+			case GraphImageFormat::R32f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 32; options.colourChannels = 1; break;
+			case GraphImageFormat::Rg32f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 32; options.colourChannels = 2; break;
+			case GraphImageFormat::Rgba32f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 32; options.colourChannels = 4; break;
+			case GraphImageFormat::R11g11b10f: options.colourInternalFormat = GL_R11F_G11F_B10F; break;
+			case GraphImageFormat::Rgb10a2: options.colourInternalFormat = GL_RGB10_A2; break;
+			case GraphImageFormat::Depth16: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth16; options.depthParams.params = options.params; break;
+			case GraphImageFormat::Depth24: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth24; options.depthParams.params = options.params; break;
+			case GraphImageFormat::Depth32f: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth32f; options.depthParams.params = options.params; break;
+			case GraphImageFormat::Depth24Stencil8: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture; options.depthFormat = RenderTextureDepthFormat::Depth24Stencil8; options.depthParams.params = options.params; break;
+			case GraphImageFormat::Depth32fStencil8: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture; options.depthFormat = RenderTextureDepthFormat::Depth32fStencil8; options.depthParams.params = options.params; break;
 			}
 			return options;
 		}

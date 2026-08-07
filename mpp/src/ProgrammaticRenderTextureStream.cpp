@@ -19,6 +19,15 @@ namespace mpp
 	{
 	}
 
+	void ProgrammaticRenderTextureStream::setInternalFormat(uint32_t internalFormat)
+	{
+		if (internalFormat == 0) THROW_MPP("Invalid render texture internal format.", __LINE__, __FILE__, __func__);
+		mDefinition.internalFormat = internalFormat;
+		mDefinition.bitsPerPixel = 0;
+		mDefinition.pixelFormat = 0;
+		mDefinition.pixelDataType = 0;
+	}
+
 	void ProgrammaticRenderTextureStream::setWidth(size_t width)
 	{
 		auto& qs = mDefinition;
@@ -443,6 +452,11 @@ namespace mpp
 	void ProgrammaticRenderTextureStream::setDepthParams(RenderTextureDepthParams const& params)
 	{
 		mDepthParams = params;
+	}
+
+	void ProgrammaticRenderTextureStream::setDepthFormat(RenderTextureDepthFormat format)
+	{
+		mDepthFormat = format;
 	}
 
 	void ProgrammaticRenderTextureStream::setNumAttachments(size_t numAttachments)

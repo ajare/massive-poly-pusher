@@ -75,6 +75,34 @@ namespace mpp
 			if (!resizedTarget || resizedTarget->getWidth() != 37 || resizedTarget->getHeight() != 29) return fail("resized graph target dimensions are wrong");
 			resizedTarget.reset();
 
+			std::vector<GraphImageFormat> const supportedFormats{
+				GraphImageFormat::R8, GraphImageFormat::Rg8, GraphImageFormat::Rgba8, GraphImageFormat::Srgb8Alpha8,
+				GraphImageFormat::R16f, GraphImageFormat::Rg16f, GraphImageFormat::Rgba16f,
+				GraphImageFormat::R32f, GraphImageFormat::Rg32f, GraphImageFormat::Rgba32f,
+				GraphImageFormat::R11g11b10f, GraphImageFormat::Rgb10a2,
+				GraphImageFormat::Depth16, GraphImageFormat::Depth24, GraphImageFormat::Depth32f,
+				GraphImageFormat::Depth24Stencil8, GraphImageFormat::Depth32fStencil8
+			};
+			for (size_t formatIndex = 0; formatIndex < supportedFormats.size(); ++formatIndex)
+			{
+				auto const format = supportedFormats[formatIndex];
+				bool const depthFormat = format >= GraphImageFormat::Depth16;
+				GraphImageDesc formatDesc;
+				formatDesc.format = format;
+				formatDesc.usage = depthFormat ? GraphImageUsage::DepthAttachment : GraphImageUsage::ColourAttachment;
+				if (format == GraphImageFormat::Srgb8Alpha8) formatDesc.colourSpace = TextureColourSpace::Srgb;
+				RenderGraph formatGraph;
+				auto image = formatGraph.createImage("GpuFormat" + std::to_string(formatIndex), formatDesc);
+				auto pass = formatGraph.addPass("GpuFormatPass" + std::to_string(formatIndex), GraphPassType::Fullscreen);
+				image = depthFormat ? formatGraph.writeDepth(pass, image, GraphLoadOp::Clear) : formatGraph.writeColour(pass, image, GraphLoadOp::Clear);
+				RenderGraphTargets formatTargets(renderSystem);
+				formatTargets.allocate(formatGraph.buildAllocationPlan({ 8, 8 }));
+				RenderGraphExecutor formatExecutor(renderSystem);
+				formatExecutor.setPassCallback(pass, [](RenderGraphExecutionContext const&) {});
+				formatExecutor.execute(formatGraph, formatTargets, renderSystem->getCaps());
+				if (!formatTargets.get(image)) return fail("curated graph format allocation failed");
+			}
+
 			RenderGraph aliasGraph;
 			auto aliasFirst = aliasGraph.createImage("GpuTestAliasFirst", colour);
 			auto aliasMiddle = aliasGraph.createImage("GpuTestAliasMiddle", colour);
@@ -87,15 +115,32 @@ namespace mpp
 			auto aliasPass2 = aliasGraph.addPass("GpuTestAlias2", GraphPassType::Fullscreen);
 			aliasGraph.readSampled(aliasPass2, aliasMiddle);
 			aliasLast = aliasGraph.writeColour(aliasPass2, aliasLast, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 0, 1, 1));
+			auto aliasPlan = aliasGraph.buildAllocationPlan({ 24, 24 });
+			if (!aliasPlan.valid || aliasPlan.allocatedImages.size() != 3 || aliasPlan.estimatedPhysicalBytes == 0)
+				return fail("allocation introspection report is incomplete");
+			if (aliasPlan.allocatedImages[0].physicalAllocation != aliasPlan.allocatedImages[2].physicalAllocation ||
+				aliasPlan.allocatedImages[0].physicalAllocation == aliasPlan.allocatedImages[1].physicalAllocation)
+				return fail("allocation introspection alias groups are incorrect");
 			RenderGraphTargets aliasTargets(renderSystem);
-			aliasTargets.allocate(aliasGraph.buildAllocationPlan({ 24, 24 }));
+			aliasTargets.allocate(aliasPlan);
 			if (aliasTargets.get(aliasFirst) != aliasTargets.get(aliasLast)) return fail("non-overlapping transient lifetimes were not aliased");
 			if (aliasTargets.get(aliasFirst) == aliasTargets.get(aliasMiddle)) return fail("overlapping transient lifetimes were aliased");
+			GraphRasterState rasterState;
+			rasterState.explicitState = true;
+			rasterState.depthTest = false;
+			rasterState.cullMode = GraphCullMode::None;
+			rasterState.blend = true;
+			rasterState.sourceColourBlend = GraphBlendFactor::SourceAlpha;
+			rasterState.destinationColourBlend = GraphBlendFactor::OneMinusSourceAlpha;
+			aliasGraph.setPassRasterState(aliasPass0, rasterState);
+			bool observedRasterState = false;
 			RenderGraphExecutor aliasExecutor(renderSystem);
-			aliasExecutor.setPassCallback(aliasPass0, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasPass0, [&](RenderGraphExecutionContext const&) { observedRasterState = glIsEnabled(GL_BLEND) && !glIsEnabled(GL_DEPTH_TEST) && !glIsEnabled(GL_CULL_FACE); });
 			aliasExecutor.setPassCallback(aliasPass1, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.setPassCallback(aliasPass2, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
+			if (!observedRasterState) return fail("explicit graph raster state was not applied");
+			if (aliasExecutor.getLastExecutionStats().size() != 3) return fail("per-pass execution statistics were not recorded");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
 
 			GraphImageDesc mipColour = colour;

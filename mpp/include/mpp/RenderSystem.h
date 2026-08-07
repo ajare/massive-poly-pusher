@@ -505,6 +505,8 @@ namespace mpp
 
 		RenderInfo const& finishStatsCollection();
 
+		RenderInfo const& getCurrentRenderInfo() const;
+
 		void clearScreen(Colour const& colour);
 
 		void setGamma(float gamma);

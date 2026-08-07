@@ -20,11 +20,23 @@ namespace mpp
 			GraphImageFormat parseFormat(string value, string const& filepath)
 			{
 				utils::StringUtils::toUpper(value);
+				if (value == "R8") return GraphImageFormat::R8;
+				if (value == "RG8") return GraphImageFormat::Rg8;
 				if (value == "RGBA8") return GraphImageFormat::Rgba8;
-				if (value == "RGBA16F") return GraphImageFormat::Rgba16f;
+				if (value == "SRGB8_ALPHA8") return GraphImageFormat::Srgb8Alpha8;
+				if (value == "R16F") return GraphImageFormat::R16f;
 				if (value == "RG16F") return GraphImageFormat::Rg16f;
+				if (value == "RGBA16F") return GraphImageFormat::Rgba16f;
+				if (value == "R32F") return GraphImageFormat::R32f;
+				if (value == "RG32F") return GraphImageFormat::Rg32f;
+				if (value == "RGBA32F") return GraphImageFormat::Rgba32f;
+				if (value == "R11G11B10F") return GraphImageFormat::R11g11b10f;
+				if (value == "RGB10_A2") return GraphImageFormat::Rgb10a2;
+				if (value == "DEPTH16") return GraphImageFormat::Depth16;
 				if (value == "DEPTH24") return GraphImageFormat::Depth24;
+				if (value == "DEPTH32F") return GraphImageFormat::Depth32f;
 				if (value == "DEPTH24_STENCIL8") return GraphImageFormat::Depth24Stencil8;
+				if (value == "DEPTH32F_STENCIL8") return GraphImageFormat::Depth32fStencil8;
 				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph image format in " + filepath + ".", __LINE__, __FILE__, __func__);
 			}
 
@@ -144,6 +156,7 @@ namespace mpp
 				if (usage.find("PRESENTATION") != string::npos) desc.usage = desc.usage | GraphImageUsage::Presentation;
 				auto handle = graph.createImage(image.getEntry("name").getValue(), desc);
 				if (image.hasEntry("import")) graph.setImageImportName(handle, image.getEntry("import").getValue());
+				if (image.hasEntry("value")) graph.setValueId(handle, image.getEntry("value").getValue());
 				images[image.getEntry("name").getValue()] = handle;
 			}
 
@@ -153,6 +166,7 @@ namespace mpp
 				if (entry.first != "Pass") continue;
 				auto const& passData = entry.second;
 				auto pass = graph.addPass(passData.getEntry("name").getValue(), passData.hasEntry("type") ? parsePassType(passData.getEntry("type").getValue(), filepath) : GraphPassType::Scene);
+				if (passData.hasEntry("enabled")) graph.setPassEnabled(pass, parseBool(passData.getEntry("enabled").getValue()));
 				if (passData.hasEntry("factory")) graph.setPassCallbackFactory(pass, passData.getEntry("factory").getValue());
 				else if (passData.hasEntry("callback")) graph.setPassCallbackFactory(pass, passData.getEntry("callback").getValue());
 				if (passData.hasEntry("program")) graph.setPassProgramResource(pass, passData.getEntry("program").getValue());
@@ -177,10 +191,16 @@ namespace mpp
 					for (auto const& input : passData.getEntry("Inputs"))
 					{
 						if (input.first != "Sampled") continue;
-						auto it = images.find(input.second.getEntry("image").getValue());
-						if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown sampled graph image in " + filepath, __LINE__, __FILE__, __func__);
-						if (input.second.hasEntry("sampler")) graph.bindSampler(pass, input.second.getEntry("sampler").getValue(), it->second, input.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(input.second.getEntry("mipLevel").getValue()) : UINT32_MAX);
-						else graph.readSampled(pass, it->second);
+						GraphImageHandle sampled;
+						if (input.second.hasEntry("source")) sampled = graph.findValue(input.second.getEntry("source").getValue());
+						else
+						{
+							auto it = images.find(input.second.getEntry("image").getValue());
+							if (it != images.end()) sampled = it->second;
+						}
+						if (!sampled.isValid()) THROW_MPP_RESOURCE_PARSERS("Unknown sampled graph image value in " + filepath, __LINE__, __FILE__, __func__);
+						if (input.second.hasEntry("sampler")) graph.bindSampler(pass, input.second.getEntry("sampler").getValue(), sampled, input.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(input.second.getEntry("mipLevel").getValue()) : UINT32_MAX);
+						else graph.readSampled(pass, sampled);
 					}
 				}
 				if (passData.hasEntry("Colours"))
@@ -191,6 +211,7 @@ namespace mpp
 						auto it = images.find(output.second.getEntry("image").getValue());
 						if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown colour graph image in " + filepath, __LINE__, __FILE__, __func__);
 						auto next = graph.writeColour(pass, it->second, parseLoad(output.second.getEntry("load").getValue()), parseStore(output.second.getEntry("store").getValue()), output.second.hasEntry("clear") ? parseVec4(output.second.getEntry("clear").getValue()) : glm::vec4(0.0f), output.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.second.getEntry("mipLevel").getValue()) : 0);
+						if (output.second.hasEntry("value")) graph.setValueId(next, output.second.getEntry("value").getValue());
 						it->second = next;
 					}
 				}
@@ -200,6 +221,7 @@ namespace mpp
 					auto it = images.find(output.getEntry("image").getValue());
 					if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown depth graph image in " + filepath, __LINE__, __FILE__, __func__);
 					auto next = graph.writeDepth(pass, it->second, parseLoad(output.getEntry("load").getValue()), parseStore(output.getEntry("store").getValue()), output.hasEntry("clear") ? utils::StringUtils::parseFloat(output.getEntry("clear").getValue()) : 1.0f, output.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.getEntry("mipLevel").getValue()) : 0);
+					if (output.hasEntry("value")) graph.setValueId(next, output.getEntry("value").getValue());
 					it->second = next;
 				}
 			}

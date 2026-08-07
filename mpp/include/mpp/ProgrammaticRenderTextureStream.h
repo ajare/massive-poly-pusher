@@ -16,6 +16,9 @@ namespace mpp
 
 		void setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels);
 
+		// Exact OpenGL internal format for packed/sRGB render-graph formats.
+		void setInternalFormat(uint32_t internalFormat);
+
 		void setWidth(size_t width);
 
 		void setHeight(size_t height);
@@ -43,6 +46,8 @@ namespace mpp
 		void setDepthAttachment(RenderTextureDepthAttachment attachment);
 
 		void setDepthParams(RenderTextureDepthParams const& params);
+
+		void setDepthFormat(RenderTextureDepthFormat format);
 
 		void setNumAttachments(size_t numAttachments);
 
