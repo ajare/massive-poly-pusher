@@ -55,6 +55,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/FileStringStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 #include <mpp/resource-parsers/PbrPipelineParser.h>
+#include <mpp/resource-parsers/PbrPipelineDocumentLoader.h>
 #include <mpp/resource-parsers/PbrPipelineSerializer.h>
 #include <mpp/resource-parsers/FilePbrPipelineStream.h>
 #include <mpp/resource-parsers/SceneParser.h>
@@ -1178,6 +1179,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	}
 	renderSystem->infoMessage("Material XML dispatch/single-definition binary/legacy migration tests passed.");
 
+	auto importedGraphDocument = mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(options.resourceLocation + "PbrPipeline.rendergraph.xml");
+	if (!importedGraphDocument.importedFromRenderGraph || !importedGraphDocument.graph || importedGraphDocument.graph->getPassCount() == 0)
+		throw std::runtime_error("Standalone RenderGraph migration failed.");
 	auto pipelineDocument = mpp::resource_parsers::PbrPipelineParser::fromFile(options.resourceLocation + "FullPbrPipeline.xml");
 	if (pipelineDocument.validate().hasErrors()) throw std::runtime_error("Native PbrPipeline document validation failed.");
 	auto pipelineRoundTrip = std::filesystem::temp_directory_path() / "mpp-pipeline-roundtrip.xml";

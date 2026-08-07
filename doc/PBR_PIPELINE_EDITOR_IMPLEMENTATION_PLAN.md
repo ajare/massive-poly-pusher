@@ -22,7 +22,8 @@
 - [x] Added metadata-driven factory/type/count/format/program/raster/uniform contract diagnostics and CPU tests.
 - [x] Added the versioned native PbrPipeline document DTO, embedded RenderGraph parser, semantic validator, sample full pipeline, and startup validation.
 - [x] Added deterministic nested RenderGraph/PbrPipeline serialization, PbrPipelineStream/FilePbrPipelineStream, PbrPipelineTemplate resource creation, and round-trip/resource startup tests.
-- [ ] Phase 4 remains in progress: legacy importer, document-local resource parsing, and transactional live pipeline instantiation remain.
+- [x] Added root-dispatched standalone RenderGraph migration with generated stable value IDs and editor Save-As behavior.
+- [ ] Phase 4 remains in progress: document-local resource parsing, complete validation, and complete transactional runtime instantiation remain.
 - [x] Added the Scene document DTO/parser/serializer/validator and shipped XML preview scene with sphere grid, ground, primitives, camera, layers, and PBR lights.
 - [ ] Phase 5 runtime SceneTemplate/SceneStream instantiation remains after Phase 4 completes.
 - [x] Extracted shared SDL window/timer support and created a standalone docking-enabled PipelineEditor Debug application.
@@ -253,7 +254,7 @@ The first implementation does not include:
 - [~] Complete external resource-library support.
   - [x] Parse and serialize ordered library paths.
   - [ ] Resolve libraries, qualified names, duplicate names, and read-only/local-copy ownership.
-- [ ] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
+- [x] Add the standalone RenderGraph importer, resolve implicit versions to stable produced-value IDs, and require Save As.
 - [~] Complete document validation.
   - [x] Basic version/name/graph/order/library-list/binding validation.
   - [x] RenderGraph topology and available pass-metadata validation.

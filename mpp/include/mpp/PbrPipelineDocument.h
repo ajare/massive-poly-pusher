@@ -43,6 +43,8 @@ namespace mpp
 		uint32_t version{ CurrentVersion };
 		std::string name;
 		std::string sourcePath;
+		// Editor migration state; native serialization never emits this flag.
+		bool importedFromRenderGraph{ false };
 		std::string previewScene;
 		std::vector<std::string> resourceLibraries;
 		std::shared_ptr<RenderGraph> graph;
