@@ -141,6 +141,7 @@
         <name>SceneHdr</name>
         <format>RGBA16F</format>
         <usage>colourAttachment,sampled</usage>
+        <samples>4</samples>
         <colourSpace>LINEAR</colourSpace>
         <minFilter>LINEAR</minFilter>
         <magFilter>LINEAR</magFilter>
@@ -150,6 +151,7 @@
         <name>SceneDepth</name>
         <format>DEPTH24</format>
         <usage>depthAttachment</usage>
+        <samples>4</samples>
       </Image>
       <Image>
         <name>Presentation</name>

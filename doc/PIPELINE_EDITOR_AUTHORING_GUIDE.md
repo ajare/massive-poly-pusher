@@ -9,7 +9,7 @@ Build `PipelineEditor` for VS2026 x64 and run it from its output directory. Use 
 - **Full PBR Pipeline** — shadows, HDR scene, bloom, and tone mapping.
 - **Empty Pipeline** — presentation import/image with no authored passes or scene.
 
-The first three use the shared default scene. A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
+The first three use the shared default scene and render scene colour/depth with 4× MSAA before resolving into their single-sampled post-processing and presentation passes. A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
 
 ## Layout and hierarchy
 
