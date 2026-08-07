@@ -1,4 +1,6 @@
 #include "mpp/RenderGraph.h"
+#include "mpp/RenderGraphBuiltInPasses.h"
+#include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
 
 namespace mpp
@@ -56,6 +58,24 @@ namespace mpp
 		outOfOrder.setPassEnabled(producer, false);
 		if (outOfOrder.compile().valid) return fail("value produced by a disabled pass was accepted");
 		if (outOfOrder.getPassInfo(producer).enabled) return fail("disabled pass state was not retained");
+
+		RenderGraphPassFactoryRegistry registry;
+		registerBuiltInRenderGraphPasses(registry);
+		if (!registry.findMetadata("MPP.PbrScene") || !registry.findMetadata("MPP.CustomFullscreen"))
+			return fail("built-in pass authoring metadata was not registered");
+		RenderGraph metadataGraph;
+		auto metadataInput = metadataGraph.createImage("MetadataInput", colour);
+		auto metadataProducer = metadataGraph.addPass("MetadataProducer");
+		metadataInput = metadataGraph.writeColour(metadataProducer, metadataInput);
+		metadataGraph.setPassEnabled(metadataProducer, false);
+		auto metadataOutput = metadataGraph.createImage("MetadataOutput", colour);
+		auto metadataPass = metadataGraph.addPass("MetadataBloom", GraphPassType::Fullscreen);
+		metadataGraph.setPassCallbackFactory(metadataPass, "MPP.BloomExtract");
+		metadataGraph.bindSampler(metadataPass, "TEX1", metadataInput);
+		metadataGraph.writeColour(metadataPass, metadataOutput);
+		if (registry.validate(metadataGraph).hasErrors()) return fail("valid pass authoring metadata contract was rejected");
+		metadataGraph.setPassCallbackFactory(metadataPass, "Unknown.Factory");
+		if (!registry.validate(metadataGraph).hasErrors()) return fail("unknown pass factory metadata was accepted");
 
 		return true;
 	}
