@@ -13,6 +13,8 @@
 #include "mpp/Colour.h"
 #include "mpp/Logger.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/RenderGraphStream.h"
+#include "mpp/RenderPipeline.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/Scene.h"
 #include "mpp/app/FileDialog.h"
@@ -72,6 +74,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto scene = std::make_shared<Scene>(&renderSystem); scene->load(); scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));
 		auto camera = std::make_shared<Camera>(glm::vec3(0, 3, 8), 0.0f, 0.0f, 0.0f, 60.0f, 1440.0f / 900.0f);
 		renderSystem.getOrCreateRenderPipeline("EditorUI");
+		std::string activePipeline = "EditorUI";
+		if (openDocument && openDocument->graph)
+		{
+			auto graphStream = std::make_shared<RenderGraphStream>(&resources); graphStream->setGraph(openDocument->graph);
+			auto graphResource = resources.declareResource("PipelineEditor.ActiveGraph", graphStream).first; graphResource->load(); graphResource->create();
+			RenderPipelineOptions previewOptions; previewOptions.mode = RenderPipelineMode::XmlGraphPbrForward; previewOptions.graphTemplate = graphResource;
+			renderSystem.getOrCreateRenderPipeline("EditorPreview", previewOptions); activePipeline = "EditorPreview";
+		}
 		int selectedPass = -1;
 		auto loadWorkspace = [&](std::string const& path)
 		{
@@ -130,7 +140,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::Begin("Viewport"); ImGui::TextUnformatted("PBR preview target will be presented here."); ImGui::End();
 			ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - 24)); ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x,24)); ImGui::Begin("##Status",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings); ImGui::Text("%s | %.1f FPS | %d triangles | Preview: %s",openDocument?"Loaded":"Ready",fps,renderSystem.getCurrentRenderInfo().trianglesRendered,openDocument?"document loaded":"no document"); ImGui::End();
 			ImGui::Render(); provider->setDrawData(ImGui::GetDrawData());
-			renderSystem.startStatsCollection(); renderSystem.renderScene(scene, camera, glm::vec2(0), "EditorUI"); renderer.render(&renderSystem); renderSystem.finishStatsCollection(); window.show();
+			renderSystem.startStatsCollection(); renderSystem.renderScene(scene, camera, glm::vec2(0), activePipeline); renderer.render(&renderSystem); renderSystem.finishStatsCollection(); window.show();
 		}
 		scene->unload(); imGuiShutdown(&backend); renderSystem.destroyCoreResources(); window.destroy(); SDL_Quit();
 		return 0;
