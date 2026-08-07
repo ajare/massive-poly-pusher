@@ -58,6 +58,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/resource-parsers/PbrPipelineSerializer.h>
 #include <mpp/resource-parsers/FilePbrPipelineStream.h>
 #include <mpp/resource-parsers/SceneParser.h>
+#include <mpp/resource-parsers/SceneSerializer.h>
 
 #include <mpp/helper/FreeCamera.h>
 #include <mpp/helper/FpsCamera.h>
@@ -1192,7 +1193,12 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->infoMessage("Native PbrPipeline XML/resource parse/serialize/semantic validation passed.");
 	auto sceneDocument = mpp::resource_parsers::SceneParser::fromFile(options.resourceLocation + pipelineDocument.previewScene);
 	if (sceneDocument.validate().hasErrors()) throw std::runtime_error("Native Scene document validation failed.");
-	renderSystem->infoMessage("Native Scene XML parse and semantic validation passed.");
+	auto sceneRoundTrip = std::filesystem::temp_directory_path() / "mpp-scene-roundtrip.xml";
+	mpp::resource_parsers::SceneSerializer::toFile(sceneDocument, sceneRoundTrip.string());
+	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());
+	std::filesystem::remove(sceneRoundTrip);
+	if (roundTrippedScene.models.size() != sceneDocument.models.size() || roundTrippedScene.lights.size() != sceneDocument.lights.size()) throw std::runtime_error("Native Scene XML round trip failed.");
+	renderSystem->infoMessage("Native Scene XML parse/serialize/semantic validation passed.");
 
 	std::string graphGpuTestFailure;
 	if (!mpp::runRenderGraphGpuTests(renderSystem, &graphGpuTestFailure))
