@@ -74,14 +74,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto scene = std::make_shared<Scene>(&renderSystem); scene->load(); scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));
 		auto camera = std::make_shared<Camera>(glm::vec3(0, 3, 8), 0.0f, 0.0f, 0.0f, 60.0f, 1440.0f / 900.0f);
 		renderSystem.getOrCreateRenderPipeline("EditorUI");
-		std::string activePipeline = "EditorUI";
-		if (openDocument && openDocument->graph)
+		std::string activePipeline = "EditorUI"; uint32_t runtimeGeneration = 0;
+		auto rebuildPreview = [&]()
 		{
+			if (!openDocument || !openDocument->graph || openDocument->validate().hasErrors()) return false;
+			auto suffix = std::to_string(++runtimeGeneration);
 			auto graphStream = std::make_shared<RenderGraphStream>(&resources); graphStream->setGraph(openDocument->graph);
-			auto graphResource = resources.declareResource("PipelineEditor.ActiveGraph", graphStream).first; graphResource->load(); graphResource->create();
+			auto graphResource = resources.declareResource("PipelineEditor.Graph." + suffix, graphStream).first; graphResource->load(); graphResource->create();
 			RenderPipelineOptions previewOptions; previewOptions.mode = RenderPipelineMode::XmlGraphPbrForward; previewOptions.graphTemplate = graphResource;
-			renderSystem.getOrCreateRenderPipeline("EditorPreview", previewOptions); activePipeline = "EditorPreview";
-		}
+			activePipeline = "EditorPreview." + suffix; renderSystem.getOrCreateRenderPipeline(activePipeline, previewOptions); return true;
+		};
+		rebuildPreview();
 		int selectedPass = -1;
 		auto loadWorkspace = [&](std::string const& path)
 		{
@@ -107,9 +110,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			bool requestNew=false, requestOpen=false, requestSave=false;
 			if (ImGui::BeginMainMenuBar()) { if (ImGui::BeginMenu("File")) { if(ImGui::MenuItem("New", "Ctrl+N"))requestNew=true; if(ImGui::MenuItem("Open...", "Ctrl+O"))requestOpen=true; if(ImGui::MenuItem("Save", "Ctrl+S",false,openDocument!=nullptr))requestSave=true; ImGui::Separator(); if (ImGui::MenuItem("Exit")) running=false; ImGui::EndMenu(); } if(ImGui::BeginMenu("Edit")){ImGui::MenuItem("Undo","Ctrl+Z");ImGui::MenuItem("Redo","Ctrl+Y");ImGui::EndMenu();} if(ImGui::BeginMenu("Pipeline")){ImGui::MenuItem("Validate");ImGui::MenuItem("Apply/Rebuild");ImGui::EndMenu();} ImGui::EndMainMenuBar(); }
-			ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse); if(ImGui::Button("New"))requestNew=true; ImGui::SameLine(); if(ImGui::Button("Open"))requestOpen=true; ImGui::SameLine(); if(ImGui::Button("Save All")&&openDocument)requestSave=true; ImGui::SameLine(); ImGui::Button("Undo"); ImGui::SameLine(); ImGui::Button("Redo"); ImGui::SameLine(); ImGui::Button("Add Pass"); ImGui::SameLine(); ImGui::Button("Validate"); ImGui::SameLine(); ImGui::Button("Apply/Rebuild"); ImGui::End();
-			if(requestNew){loadWorkspace("resources/FullPbrPipeline.xml");currentPath.clear();pipelineDirty=true;}
-			if(requestOpen){if(auto path=mpp::app::openXmlFileDialog(window.getWindow(),"Open PBR Pipeline")){loadWorkspace(*path);pipelineDirty=false;}}
+			ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse); if(ImGui::Button("New"))requestNew=true; ImGui::SameLine(); if(ImGui::Button("Open"))requestOpen=true; ImGui::SameLine(); if(ImGui::Button("Save All")&&openDocument)requestSave=true; ImGui::SameLine(); ImGui::Button("Undo"); ImGui::SameLine(); ImGui::Button("Redo"); ImGui::SameLine(); ImGui::Button("Add Pass"); ImGui::SameLine(); ImGui::Button("Validate"); ImGui::SameLine(); if(ImGui::Button("Apply/Rebuild"))rebuildPreview(); ImGui::End();
+			if(requestNew){loadWorkspace("resources/FullPbrPipeline.xml");currentPath.clear();pipelineDirty=true;rebuildPreview();}
+			if(requestOpen){if(auto path=mpp::app::openXmlFileDialog(window.getWindow(),"Open PBR Pipeline")){loadWorkspace(*path);pipelineDirty=false;rebuildPreview();}}
 			if(requestSave&&openDocument){if(currentPath.empty()){auto path=mpp::app::saveXmlFileDialog(window.getWindow(),"Save PBR Pipeline","pipeline.xml");if(path)currentPath=*path;}if(!currentPath.empty()){resource_parsers::PbrPipelineSerializer::toFile(*openDocument,currentPath);pipelineDirty=false;std::filesystem::remove(currentPath+".recovery");}}
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
 			if (openDocument && openDocument->graph && ImGui::TreeNodeEx("Passes", ImGuiTreeNodeFlags_DefaultOpen)) { for (uint32_t pass=0; pass<openDocument->graph->getPassCount(); ++pass) { auto info=openDocument->graph->getPassInfo({pass}); if(ImGui::Selectable(info.name.c_str(),selectedPass==(int)pass)) selectedPass=(int)pass; } ImGui::TreePop(); }
