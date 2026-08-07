@@ -5,6 +5,7 @@
     <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\mpp\app\BackgroundWork.h" />
     <ClInclude Include="..\..\include\mpp\app\CommandStack.h" />
     <ClInclude Include="..\..\include\mpp\app\DocumentFile.h" />
     <ClInclude Include="..\..\include\mpp\app\DocumentFoundationTests.h" />
@@ -24,6 +25,7 @@
     <ClInclude Include="..\..\include\mpp\app\WindowSDL.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\BackgroundWork.cpp" />
     <ClCompile Include="..\..\src\CommandStack.cpp" />
     <ClCompile Include="..\..\src\DocumentFile.cpp" />
     <ClCompile Include="..\..\src\DocumentFoundationTests.cpp" />

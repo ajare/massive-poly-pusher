@@ -1,10 +1,13 @@
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <thread>
 #include <utility>
 
+#include "mpp/app/BackgroundWork.h"
 #include "mpp/app/CommandStack.h"
 #include "mpp/app/DocumentFile.h"
 #include "mpp/app/DocumentFoundationTests.h"
@@ -108,6 +111,50 @@ namespace mpp::app
 		error_code ignored;
 		filesystem::remove_all(root, ignored);
 		if (contents != "second") return fail("atomic document replacement failed");
+
+		BackgroundJobQueue jobs;
+		atomic_bool firstStarted{ false };
+		auto obsoleteGeneration = jobs.submit("Obsolete", [&](BackgroundCancellationToken const& cancellation, BackgroundJobQueue::ProgressCallback const&)
+		{
+			firstStarted = true;
+			while (!cancellation.cancelled()) this_thread::yield();
+			cancellation.throwIfCancelled();
+			return any();
+		});
+		for (int spin = 0; spin < 1000 && !firstStarted; ++spin) this_thread::sleep_for(chrono::milliseconds(1));
+		if (!firstStarted) return fail("background worker did not start");
+		auto currentGeneration = jobs.submit("Current", [](BackgroundCancellationToken const& cancellation, BackgroundJobQueue::ProgressCallback const& progress)
+		{
+			progress(0.5f, "Testing"); cancellation.throwIfCancelled(); return any(42);
+		});
+		BackgroundJobResult jobResult; bool receivedCurrent = false, receivedCancelled = false;
+		for (int spin = 0; spin < 2000 && !receivedCurrent; ++spin)
+		{
+			while (jobs.poll(jobResult))
+			{
+				if (jobResult.generation == obsoleteGeneration) receivedCancelled = jobResult.cancelled;
+				if (jobResult.generation == currentGeneration) receivedCurrent = !jobResult.cancelled && jobResult.error.empty() && any_cast<int>(jobResult.value) == 42;
+			}
+			this_thread::sleep_for(chrono::milliseconds(1));
+		}
+		if (!receivedCancelled || !receivedCurrent || jobs.currentGeneration() != currentGeneration)
+			return fail("background cancellation or stale-generation rejection failed");
+
+		auto watched = root / "watch" / "asset.txt";
+		atomicWriteText(watched, "one");
+		BackgroundFileWatcher watcher; watcher.setFiles({ watched });
+		atomicWriteText(watched, "two");
+		bool observedChange = false;
+		for (int spin = 0; spin < 20 && !observedChange; ++spin)
+		{
+			this_thread::sleep_for(chrono::milliseconds(100));
+			for (auto const& change : watcher.poll()) if (change.path == normaliseDocumentPath(watched)) observedChange = true;
+		}
+		if (!observedChange) return fail("background stable file watching failed");
+		watcher.acknowledge(watched); atomicWriteText(watched, "own save"); watcher.acknowledge(watched);
+		this_thread::sleep_for(chrono::milliseconds(600));
+		if (!watcher.poll().empty()) return fail("file watcher own-save suppression failed");
+		filesystem::remove_all(root, ignored);
 
 		return true;
 	}
