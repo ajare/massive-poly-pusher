@@ -86,6 +86,13 @@ vector<::Scene*> gScenes;
 World gWorld;
 RenderOptions gRenderOptions;
 
+void showFatalError(char const* text)
+{
+	fprintf(stderr,"DemoSuite fatal error: %s\n",text);
+	fflush(stderr);
+	if (!GetConsoleWindow()) MessageBoxA(nullptr,text,"DemoSuite Error",MB_OK|MB_ICONERROR);
+}
+
 void showCommandLineHelp(char const* text)
 {
 	if (!GetConsoleWindow())
@@ -517,17 +524,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 	catch (mpp::MppException const& e)
 	{
-		if(gLogger){gLogger->message(e.what());gLogger->message(" - thrown by " + e.getFunction());gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));gLogger->message(" - stack trace: " + e.getStackTrace());}else fprintf(stderr,"%s\n",e.what());
+		if(gLogger){gLogger->message(e.what());gLogger->message(" - thrown by " + e.getFunction());gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));gLogger->message(" - stack trace: " + e.getStackTrace());}
+		showFatalError(e.what());
 		exitCode = 1;
 	}
 	catch (mpp::mesh::MppMeshException const& e)
 	{
-		if(gLogger){gLogger->message(e.what());gLogger->message(" - thrown by " + e.getFunction());gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));}else fprintf(stderr,"%s\n",e.what());
+		if(gLogger){gLogger->message(e.what());gLogger->message(" - thrown by " + e.getFunction());gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));}
+		showFatalError(e.what());
 		exitCode = 1;
 	}
 	catch (exception const& e)
 	{
-		if(gLogger)gLogger->message(e.what());else fprintf(stderr,"%s\n",e.what());
+		if(gLogger)gLogger->message(e.what());
+		showFatalError(e.what());
 		exitCode = 1;
 	}
 

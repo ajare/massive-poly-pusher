@@ -12,6 +12,7 @@ Export the PipelineEditor’s current in-memory PBR workspace as a self-containe
 - Export is available as **File > Export Package...** only when a valid pipeline and preview scene are loaded.
 - DemoSuite loads a package through `--package <file>`, does not create built-in demo content in package mode, and exits with an error for invalid packages.
 - The `.mpppackage` container is a standard ZIP archive.
+- Named-output anti-aliasing overrides are serialized in the packaged pipeline. `inherit` values use the loading DemoSuite's defaults; explicit values are host-independent. See [ANTI_ALIASING_CONFIGURATION.md](ANTI_ALIASING_CONFIGURATION.md).
 
 ## Work items
 
