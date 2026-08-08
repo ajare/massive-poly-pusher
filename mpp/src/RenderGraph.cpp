@@ -53,7 +53,7 @@ namespace mpp
 		bool aliasCompatible(GraphImageLifetime const& left, GraphImageLifetime const& right)
 		{
 			return left.size == right.size && left.desc.format == right.desc.format &&
-				left.desc.samples == right.desc.samples && left.desc.mipLevels == right.desc.mipLevels &&
+				left.desc.mipLevels == right.desc.mipLevels &&
 				left.desc.colourSpace == right.desc.colourSpace &&
 				left.desc.params.minFilter == right.desc.params.minFilter && left.desc.params.magFilter == right.desc.params.magFilter &&
 				left.desc.params.wrap == right.desc.params.wrap;
@@ -118,7 +118,7 @@ namespace mpp
 		bool const depthFormat = isDepthFormat(desc.format);
 		bool const colourUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::ColourAttachment);
 		bool const depthUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::DepthAttachment);
-		if (name.empty() || desc.samples == 0 || desc.mipLevels == 0 ||
+		if (name.empty() || desc.mipLevels == 0 ||
 			(desc.absoluteSize.x == 0 && desc.relativeSize.x <= 0.0f) ||
 			(desc.absoluteSize.y == 0 && desc.relativeSize.y <= 0.0f) ||
 			(depthFormat && (!depthUsage || colourUsage)) || (!depthFormat && depthUsage))
@@ -159,7 +159,7 @@ namespace mpp
 
 	void RenderGraph::setImageDesc(GraphImageHandle image,GraphImageDesc const& desc)
 	{
-		if(!validImage(image)||desc.samples==0||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();
+		if(!validImage(image)||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();
 	}
 
 	void RenderGraph::removeImage(GraphImageHandle image)
@@ -545,9 +545,9 @@ namespace mpp
 				for (auto const& output : pass.colourOutputs)
 				{
 					auto const& desc = mImages[output.image.id].desc;
-					if (effectiveSize(desc, output.mipLevel) != effectiveSize(first, firstOutput.mipLevel) || desc.samples != first.samples)
+					if (effectiveSize(desc, output.mipLevel) != effectiveSize(first, firstOutput.mipLevel))
 					{
-						result.diagnostics.push_back("MRT pass '" + pass.name + "' has incompatible colour attachment mip dimensions or sample counts.");
+						result.diagnostics.push_back("MRT pass '" + pass.name + "' has incompatible colour attachment mip dimensions.");
 					}
 				}
 			}
@@ -561,9 +561,9 @@ namespace mpp
 				auto const& depthOutput = pass.depthOutputs.front();
 				auto const& colour = mImages[colourOutput.image.id].desc;
 				auto const& depth = mImages[depthOutput.image.id].desc;
-				if (effectiveSize(colour, colourOutput.mipLevel) != effectiveSize(depth, depthOutput.mipLevel) || colour.samples != depth.samples)
+				if (effectiveSize(colour, colourOutput.mipLevel) != effectiveSize(depth, depthOutput.mipLevel))
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions or sample counts.");
+					result.diagnostics.push_back("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions.");
 				}
 			}
 		}
@@ -686,7 +686,7 @@ namespace mpp
 				uint64_t texels = 0;
 				for (uint32_t mip = 0; mip < image.desc.mipLevels; ++mip)
 					texels += static_cast<uint64_t>(max(1u, lifetime.size.x >> mip)) * max(1u, lifetime.size.y >> mip);
-				lifetime.estimatedBytes = (texels * formatBits(image.desc.format) * image.desc.samples + 7) / 8;
+				lifetime.estimatedBytes = (texels * formatBits(image.desc.format) + 7) / 8;
 				index = (uint32_t)plan.allocatedImages.size();
 				plan.allocatedImages.push_back(lifetime);
 			}
@@ -754,8 +754,7 @@ namespace mpp
 			auto const& image = mImages[id];
 			output << "  Image[" << id << "] '" << image.name << "': format=" << formatName(image.desc.format)
 				<< ", versions=0.." << image.latestVersion << ", size=" << image.desc.absoluteSize.x << "x" << image.desc.absoluteSize.y
-				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y << ", samples=" << image.desc.samples
-				<< ", mips=" << image.desc.mipLevels << ", colourSpace=" << (image.desc.colourSpace == TextureColourSpace::Srgb ? "sRGB" : "linear")
+				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y << ", mips=" << image.desc.mipLevels << ", colourSpace=" << (image.desc.colourSpace == TextureColourSpace::Srgb ? "sRGB" : "linear")
 				<< ", filters=" << image.desc.params.minFilter << "/" << image.desc.params.magFilter << ", wrap=" << image.desc.params.wrap
 				<< ", transient=" << (image.desc.transient ? "true" : "false") << ", external=" << (image.desc.external ? "true" : "false");
 			if (!image.importName.empty()) output << ", import='" << image.importName << "'";
@@ -787,10 +786,6 @@ namespace mpp
 		auto result = compile();
 		for (auto const& image : mImages)
 		{
-			if (image.desc.samples > caps.maxSamples)
-				result.diagnostics.push_back("Image '" + image.name + "' requests " + to_string(image.desc.samples) + " samples, exceeding the renderer capability.");
-			if (image.desc.samples > 1 && image.desc.mipLevels > 1)
-				result.diagnostics.push_back("Image '" + image.name + "' cannot combine multisampling and mip levels.");
 		}
 		for (auto const& pass : mPasses)
 		{

@@ -144,7 +144,7 @@ namespace mpp
 				desc.relativeSize = image.hasEntry("scale") ? parseVec2(image.getEntry("scale").getValue()) : glm::vec2(1.0f);
 				if (image.hasEntry("width")) desc.absoluteSize.x = utils::StringUtils::parseUInt(image.getEntry("width").getValue());
 				if (image.hasEntry("height")) desc.absoluteSize.y = utils::StringUtils::parseUInt(image.getEntry("height").getValue());
-				if (image.hasEntry("samples")) desc.samples = utils::StringUtils::parseUInt(image.getEntry("samples").getValue());
+				if (image.hasEntry("samples")) THROW_MPP_RESOURCE_PARSERS("Legacy RenderGraph <samples> is no longer supported in " + filepath + "; migrate the pipeline to an explicit named output <AntiAliasing> block.", __LINE__, __FILE__, __func__);
 				if (image.hasEntry("mipLevels")) desc.mipLevels = utils::StringUtils::parseUInt(image.getEntry("mipLevels").getValue());
 				if (image.hasEntry("colourSpace")) desc.colourSpace = parseColourSpace(image.getEntry("colourSpace").getValue(), filepath);
 				if (image.hasEntry("minFilter")) desc.params.minFilter = parseMinFilter(image.getEntry("minFilter").getValue(), filepath);

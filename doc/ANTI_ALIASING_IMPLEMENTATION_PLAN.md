@@ -3,8 +3,9 @@
 ## Implementation status
 
 - **Phase 1 complete** on `feature/anti-aliasing-phase-1`: core anti-aliasing types, strict shared INI parsing, immutable `RenderSystemOptions`, startup capability validation/reporting, PipelineEditor `editor.ini` integration, and deployed DemoSuite `demosuite.ini` integration.
-- Phase 1 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance tests, non-default option propagation, and package export/load smoke testing.
-- Rendering remains unchanged and disabled by default; named outputs and rendering techniques begin in subsequent phases described below.
+- **Phase 2 complete**: shared programmatic/XML named-output descriptors, strict output validation and inheritance checks, XML round trips, legacy sample-authoring removal, migration diagnostics, and repository pipeline/document migration.
+- Phase 1/2 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output tests, non-default option propagation, legacy `<samples>` rejection, and package export/load smoke testing.
+- Rendering remains unchanged and disabled by default; physical output processing begins in phase 3.
 
 ## 1. Scope
 
@@ -223,13 +224,14 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Validate supported MSAA counts and startup SSAA dimensions.
    - [x] Add parser, invalid-input, defaults, and override-inheritance tests.
 
-2. **Named outputs and migration — NOT STARTED**
-   - Add programmatic and XML named-output descriptors.
-   - Add serialization and strict validation.
-   - Remove public/XML `<samples>` functionality.
-   - Migrate repository templates, packages, docs, and tests.
+2. **Named outputs and migration — COMPLETE**
+   - [x] Add shared programmatic and XML named-output descriptors.
+   - [x] Add serialization, round trips, inheritance resolution, and strict structural/effective validation.
+   - [x] Remove public `GraphImageDesc`/`RenderTextureOptions` sample controls and XML `<samples>` functionality.
+   - [x] Reject legacy `<samples>` with an actionable named-output migration error.
+   - [x] Migrate repository templates, invalid fixtures, runtime wiring, packages, docs, and tests.
 
-3. **Transactional output chain**
+3. **Transactional output chain — NOT STARTED**
    - Add internal physical image descriptors and screen/offscreen output processors.
    - Implement capability checks, resizing, generation replacement, and history ownership.
 

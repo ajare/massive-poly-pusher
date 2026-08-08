@@ -65,7 +65,6 @@ namespace mpp::resource_parsers
 			image->createChild("scale")->setValue(std::to_string(info.desc.relativeSize.x) + " " + std::to_string(info.desc.relativeSize.y));
 			if (info.desc.absoluteSize.x) image->createChild("width")->setValue(info.desc.absoluteSize.x);
 			if (info.desc.absoluteSize.y) image->createChild("height")->setValue(info.desc.absoluteSize.y);
-			image->createChild("samples")->setValue(info.desc.samples);
 			image->createChild("mipLevels")->setValue(info.desc.mipLevels);
 			image->createChild("usage")->setValue(usage(info.desc.usage));
 			image->createChild("colourSpace")->setValue(colourSpace(info.desc.colourSpace));

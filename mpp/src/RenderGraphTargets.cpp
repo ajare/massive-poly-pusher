@@ -20,7 +20,7 @@ namespace mpp
 		bool compatibleForAliasing(GraphImageLifetime const& left, GraphImageLifetime const& right)
 		{
 			return left.size == right.size && left.desc.format == right.desc.format &&
-				left.desc.samples == right.desc.samples && left.desc.mipLevels == right.desc.mipLevels &&
+				left.desc.mipLevels == right.desc.mipLevels &&
 				left.desc.colourSpace == right.desc.colourSpace &&
 				left.desc.params.minFilter == right.desc.params.minFilter && left.desc.params.magFilter == right.desc.params.magFilter &&
 				left.desc.params.wrap == right.desc.params.wrap && left.desc.params.useMipmaps == right.desc.params.useMipmaps &&
@@ -30,13 +30,7 @@ namespace mpp
 
 		RenderTextureOptions makeOptions(GraphImageDesc const& desc)
 		{
-			if (desc.samples > 1 && desc.mipLevels > 1)
-			{
-				THROW_MPP("Multisample graph targets cannot also have mip chains.", __LINE__, __FILE__, __func__);
-			}
-
 			RenderTextureOptions options;
-			options.samples = desc.samples;
 			options.params = desc.params;
 			options.params.colourSpace = desc.colourSpace;
 			options.params.useMipmaps = desc.mipLevels > 1;
@@ -138,14 +132,7 @@ namespace mpp
 			{
 				string const name = "RenderGraph." + (lifetime->debugName.empty() ? "Image" + to_string(lifetime->image.id) : lifetime->debugName) + ".v" + to_string(lifetime->image.version);
 				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeGraphRenderTextureOptions(lifetime->desc));
-				RenderTargetPtr resolvedTarget = writeTarget;
-				if (lifetime->desc.samples > 1)
-				{
-					auto resolvedDesc = lifetime->desc;
-					resolvedDesc.samples = 1;
-					resolvedTarget = mRenderSystem->createRenderTexture(name + "_Resolved", lifetime->size.x, lifetime->size.y, makeGraphRenderTextureOptions(resolvedDesc));
-				}
-				mPool.push_back({ *lifetime, resolvedTarget, writeTarget });
+				mPool.push_back({ *lifetime, writeTarget, writeTarget });
 				assignments.emplace_back();
 				poolIndex = mPool.size() - 1;
 			}

@@ -93,6 +93,9 @@
     <ClInclude Include="..\..\include\mpp\RenderSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\RenderPipelineOutput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\mpp\RenderTarget.h">
       <Filter>Header Files</Filter>
     </ClInclude>

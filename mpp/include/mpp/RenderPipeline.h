@@ -16,6 +16,7 @@
 #include "mpp/Scene.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphExecutor.h"
+#include "mpp/RenderPipelineOutput.h"
 
 namespace mpp
 {
@@ -113,6 +114,8 @@ namespace mpp
 		ResourcePtr graphTemplate;
 		// Host-owned graph imports override built-in screen/shadow registrations.
 		std::map<std::string, RenderTargetPtr> graphImports;
+		// Named logical outputs share the XML pipeline descriptor format.
+		std::vector<RenderPipelineOutput> outputs;
 		// Optional emissive-mask MRT variant. XmlGraphPbrForward selects it only
 		// when requested and all hardware/material output requirements validate.
 		ResourcePtr graphTemplateMrt;

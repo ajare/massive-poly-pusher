@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <string>
 #include <regex>
+#include <set>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -1427,7 +1428,6 @@ namespace mpp
 		rtStream->setDepthParams(options.depthParams);
 		rtStream->setDepthFormat(options.depthFormat);
 		rtStream->setNumAttachments(options.numAttachments);
-		rtStream->setSamples(options.samples);
 
 		auto rt = new RenderTexture(name, this, mResourceMgr, ResourceStreamPtr(rtStream));
 		rt->load();
@@ -3692,6 +3692,18 @@ namespace mpp
 			return it->second;
 		}
 
+		if(!options.outputs.empty())
+		{
+			std::set<std::string> names;std::optional<AntiAliasingDefaults> shared;
+			for(auto const& output:options.outputs)
+			{
+				if(output.name.empty()||output.image.empty()||!names.insert(output.name).second)THROW_MPP("RenderPipeline '"+name+"' output names/images must be non-empty and names must be unique.",__LINE__,__FILE__,__func__);
+				auto effective=resolveAntiAliasing(mOptions.antiAliasing,output.antiAliasing);
+				if(shared&&(effective.msaa!=shared->msaa||effective.ssaa!=shared->ssaa||effective.taa!=shared->taa))THROW_MPP("RenderPipeline '"+name+"' outputs must use identical effective MSAA, SSAA, and TAA settings.",__LINE__,__FILE__,__func__);if(!shared)shared=effective;
+				if(!mCaps.supportsMsaa(antiAliasingSampleCount(effective.msaa)))THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' requests unsupported "+antiAliasingSamplesName(effective.msaa)+" MSAA.",__LINE__,__FILE__,__func__);
+				auto scale=ssaaLinearScale(effective.ssaa);auto width=(uint64_t)std::ceil((double)mWindowWidth*scale),height=(uint64_t)std::ceil((double)mWindowHeight*scale);if(width>(uint64_t)mCaps.maxTextureSize||height>(uint64_t)mCaps.maxTextureSize)THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' SSAA dimensions exceed the GPU maximum texture size.",__LINE__,__FILE__,__func__);
+			}
+		}
 		auto pipeline = make_shared<RenderPipeline>(name, this, options);
 		mPipelines[name] = pipeline;
 		return pipeline;

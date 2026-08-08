@@ -46,7 +46,6 @@ namespace mpp
 		bool colourNormalised{ true };
 		size_t colourBitSize{ 8 };
 		size_t colourChannels{ 4 };
-		uint32_t samples{ 1 };
 		TextureParams params;
 	};
 
@@ -72,7 +71,6 @@ namespace mpp
 		RenderTextureDepthFormat mDepthFormat{ RenderTextureDepthFormat::Depth24 };
 
 		size_t mNumAttachments;
-		uint32_t mSamples{ 1 };
 
 	private:
 
@@ -112,7 +110,6 @@ namespace mpp
 
 		size_t getNumAttachments() const;
 
-		uint32_t getSamples() const;
 
 	};
 }

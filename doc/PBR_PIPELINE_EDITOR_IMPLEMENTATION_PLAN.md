@@ -98,7 +98,7 @@ Serialization is deterministic and atomic. Relative paths resolve from the conta
 - Explicit stable produced-value IDs; inputs do not use implicit latest-write lookup.
 - Pass enable state without implicit bypass rewiring.
 - Typed imports and explicit fallback contracts.
-- Images expose dimensions, relative sizing, mips, MSAA, usage, colour space, sampling, wrapping, transient/external state, attachments, and load/store operations.
+- Images expose dimensions, relative sizing, mips, usage, colour space, sampling, wrapping, transient/external state, attachments, and load/store operations; MSAA is configured on explicit named outputs.
 - Curated formats: R8, RG8, RGBA8, SRGB8_ALPHA8, R16F, RG16F, RGBA16F, R32F, RG32F, RGBA32F, R11G11B10F, RGB10_A2, DEPTH16, DEPTH24, DEPTH32F, DEPTH24_STENCIL8, DEPTH32F_STENCIL8.
 - Practical explicit raster state: viewport/scissor, fill mode, front face/culling, depth test/write/compare, blend equations/factors, per-target colour masks, multisampling, and alpha-to-coverage.
 - Single-source semantic settings: bloom, exposure, tone mapping, and shadows are represented by their authoritative pass/resource fields rather than duplicate top-level values.
@@ -153,7 +153,7 @@ Validation covers:
 - pass order, cycles, missing producers, invalid values, and disabled dependencies;
 - imports, required/optional fallback contracts, and host resolution;
 - pass metadata, shader reflection, material specialization, texture targets, and uniform types;
-- image formats, colour spaces, usages, dimensions, samples, mips, attachments, and active-GPU support;
+- image formats, colour spaces, usages, dimensions, mips, attachments, named-output anti-aliasing, and active-GPU support;
 - physical allocations, estimated bytes, lifetimes, aliases, and external allocations;
 - scene references, layers, camera, lights, logical bindings, and material overrides;
 - portability of resource and asset paths.
@@ -352,7 +352,7 @@ The first implementation does not include:
   - [x] Select registered factories and expose required/optional input/output contracts, accepted formats, explicit fallbacks, ranges, enum hints, UI hints, material slots, and program-resource controls.
   - [x] Add missing reflected parameters and edit scalar, vector, matrix, and array uniform values.
 - [x] Complete image, typed-import, attachment, subresource, and raster-state inspectors.
-  - [x] Edit curated formats, usages, absolute/relative sizing, samples, mips, colour space, filters, wrapping, LOD, anisotropy, external/import ownership, and transient state.
+  - [x] Edit curated formats, usages, absolute/relative sizing, mips, colour space, filters, wrapping, LOD, anisotropy, external/import ownership, and transient state. Image-level samples were subsequently removed in favor of named outputs.
   - [x] Add/remove/retarget colour and depth attachments while preserving stable value IDs and dependent sampler references; edit mip, load/store, and clear values.
   - [x] Edit sampler bindings and complete practical raster state including blend operations/factors, per-target write masks, and scissor rectangles.
 - [x] Complete concrete-resource and scene inspectors.

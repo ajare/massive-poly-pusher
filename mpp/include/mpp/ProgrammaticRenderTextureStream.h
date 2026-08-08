@@ -51,6 +51,5 @@ namespace mpp
 
 		void setNumAttachments(size_t numAttachments);
 
-		void setSamples(uint32_t samples);
 	};
 }

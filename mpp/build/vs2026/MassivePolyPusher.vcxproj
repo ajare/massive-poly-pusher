@@ -95,6 +95,7 @@
     <ClInclude Include="..\..\include\mpp\RenderInfo.h" />
     <ClInclude Include="..\..\include\mpp\RenderPass.h" />
     <ClInclude Include="..\..\include\mpp\RenderPipeline.h" />
+    <ClInclude Include="..\..\include\mpp\RenderPipelineOutput.h" />
     <ClInclude Include="..\..\include\mpp\RenderSystem.h" />
     <ClInclude Include="..\..\include\mpp\RenderTarget.h" />
     <ClInclude Include="..\..\include\mpp\RenderTexture.h" />
