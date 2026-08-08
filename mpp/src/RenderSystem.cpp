@@ -779,6 +779,8 @@ namespace mpp
 		addCoreResource(mSsaaLanczosProgram, true);
 		mTaaProgram = createBloomProgram("__mpp_p2d_taa__", FragmentShaderTaaTemplate);
 		addCoreResource(mTaaProgram, true);
+		mFxaaProgram = createBloomProgram("__mpp_p2d_fxaa__", FragmentShaderFxaaTemplate);
+		addCoreResource(mFxaaProgram, true);
 
 		// Internal text programs
 		{
@@ -2761,6 +2763,11 @@ namespace mpp
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderFxaa(RenderTexture* source,RenderTargetPtr const& destination)
+	{
+		if(!source||!destination)THROW_MPP("FXAA pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mFxaaProgram.get());setUsedProgram(mFxaaProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
 	}
 
 	void RenderSystem::renderTaa(RenderTexture* currentColour,RenderTexture* currentDepth,RenderTexture* historyColour,RenderTexture* historyDepth,RenderTargetPtr const& destination,glm::mat4 const& inverseCurrentViewProjection,glm::mat4 const& previousViewProjection)

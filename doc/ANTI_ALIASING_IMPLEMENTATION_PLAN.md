@@ -8,8 +8,9 @@
 - **Phase 4 complete**: renderer-private 2×/4×/8× multisample colour/depth attachment allocation, automatic single-sample resolves before graph reads/output processing, capability enforcement, mip-chain incompatibility diagnostics, and alpha-preserving resolve tests.
 - **Phase 5 complete**: total-sample √2/2/√8 raster sizing, supersampled viewport-relative graph allocation, unchanged absolute resource sizing, separable alpha-preserving Lanczos downsampling, and transactional screen/offscreen integration.
 - **Phase 6 complete**: shared eight-sample Halton camera jitter, resolved-depth world reprojection, depth rejection, 3×3 neighbourhood clamping, fixed temporal blending, per-output ping-pong colour/depth histories, explicit/conservative camera cuts, and all required reset paths.
-- Phase 1–6 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, MSAA resolves, all SSAA factors, deterministic TAA jitter/history/reprojection/reset tests, combined setting propagation, transactional failures, legacy migration, and package export/load smoke testing.
-- Anti-aliasing remains disabled by default. Fixed-preset FXAA begins in phase 7.
+- **Phase 7 complete**: fixed high-quality LDR FXAA with contrast thresholding, directional edge search, subpixel refinement, alpha preservation, per-output enablement, and final-chain integration after TAA/SSAA.
+- Phase 1–7 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, MSAA resolves, all SSAA factors, TAA jitter/history/reprojection/resets, FXAA edge/alpha tests, combined setting propagation, transactional failures, legacy migration, and package export/load smoke testing.
+- Anti-aliasing remains disabled by default. Phase 8 is final application/documentation hardening.
 
 ## 1. Scope
 
@@ -265,8 +266,12 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Reset on first use, resize/generation replacement, explicit camera cut, conservative teleport/projection discontinuity, setting change, or skipped output frame.
    - [x] Test deterministic jitter, accumulation/clamping, depth rejection, alpha, camera/resize/skip resets, non-graph rejection, and combined MSAA + TAA + SSAA rendering.
 
-7. **FXAA**
-   - Add the fixed high-quality LDR post-process.
+7. **FXAA — COMPLETE**
+   - [x] Add one fixed high-quality preset with local contrast thresholds, orientation detection, bidirectional edge search, and subpixel refinement.
+   - [x] Run at logical output resolution after TAA and Lanczos SSAA downsampling.
+   - [x] Preserve centre-sample alpha and retain the existing strict LDR-format requirement.
+   - [x] Keep FXAA independently selectable per named output while MSAA/SSAA/TAA remain shared.
+   - [x] Test staircase-edge softening, alpha preservation, HDR rejection, per-output variation, combined rendering, and package mode.
 
 8. **Application integration and documentation**
    - Expose errors in PipelineEditor and DemoSuite.
