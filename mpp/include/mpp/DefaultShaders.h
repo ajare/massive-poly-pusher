@@ -269,6 +269,47 @@ void main()
  * Pipeline-owned bloom shaders. Bloom is image-space and therefore works for
  * any material rendered into the pipeline scene target.
  */
+const std::string FragmentShaderTaaTemplate =
+R"(
+@@Version
+
+@@Uniform(mat4 INVERSE_CURRENT_VIEW_PROJECTION);
+@@Uniform(mat4 PREVIOUS_VIEW_PROJECTION);
+@@Texture(sampler2D CURRENT_COLOUR);
+@@Texture(sampler2D CURRENT_DEPTH);
+@@Texture(sampler2D HISTORY_COLOUR);
+@@Texture(sampler2D HISTORY_DEPTH);
+
+void main()
+{
+    ivec2 size = textureSize(@Texture(CURRENT_COLOUR), 0);
+    ivec2 pixel = clamp(ivec2(gl_FragCoord.xy), ivec2(0), size - ivec2(1));
+    vec2 uv = (vec2(pixel) + vec2(0.5)) / vec2(size);
+    vec4 current = texelFetch(@Texture(CURRENT_COLOUR), pixel, 0);
+    float depth = texelFetch(@Texture(CURRENT_DEPTH), pixel, 0).r;
+    vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 world = @Uniform(INVERSE_CURRENT_VIEW_PROJECTION) * clip;
+    world /= max(abs(world.w), 0.000001);
+    vec4 previousClip = @Uniform(PREVIOUS_VIEW_PROJECTION) * world;
+    vec2 previousUv = previousClip.xy / max(abs(previousClip.w), 0.000001) * 0.5 + 0.5;
+    float expectedPreviousDepth = previousClip.z / max(abs(previousClip.w), 0.000001) * 0.5 + 0.5;
+    bool valid = previousClip.w > 0.0 && all(greaterThanEqual(previousUv, vec2(0.0))) && all(lessThanEqual(previousUv, vec2(1.0)));
+    float storedPreviousDepth = texture(@Texture(HISTORY_DEPTH), previousUv).r;
+    valid = valid && abs(storedPreviousDepth - expectedPreviousDepth) <= 0.01;
+    vec4 neighbourhoodMin = current;
+    vec4 neighbourhoodMax = current;
+    for (int y = -1; y <= 1; ++y)
+    for (int x = -1; x <= 1; ++x)
+    {
+        vec4 sampleValue = texelFetch(@Texture(CURRENT_COLOUR), clamp(pixel + ivec2(x, y), ivec2(0), size - ivec2(1)), 0);
+        neighbourhoodMin = min(neighbourhoodMin, sampleValue);
+        neighbourhoodMax = max(neighbourhoodMax, sampleValue);
+    }
+    vec4 history = clamp(texture(@Texture(HISTORY_COLOUR), previousUv), neighbourhoodMin, neighbourhoodMax);
+    @Out(vec4 COLOUR) = valid ? mix(current, history, 0.9) : current;
+}
+)";
+
 const std::string FragmentShaderSsaaLanczosTemplate =
 R"(
 @@Version

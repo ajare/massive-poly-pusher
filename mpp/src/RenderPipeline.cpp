@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <glm/gtc/matrix_inverse.hpp>
 
 #include "mpp/RenderPipeline.h"
 #include "mpp/ResourceManager.h"
@@ -191,7 +192,8 @@ namespace mpp
 	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
 	{
 		GpuDebugScope graphScope("Pipeline " + mName + ": RenderGraph");
-		auto outputAntiAliasing=mOptions.outputs.empty()?AntiAliasingDefaults{}:resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,mOptions.outputs.front().antiAliasing);uint32_t physicalSamples=antiAliasingSampleCount(outputAntiAliasing.msaa);
+		auto outputAntiAliasing=mOptions.outputs.empty()?AntiAliasingDefaults{}:resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,mOptions.outputs.front().antiAliasing);uint32_t physicalSamples=antiAliasingSampleCount(outputAntiAliasing.msaa);std::optional<TaaFrameContext> taaFrame;struct JitterReset{Camera* camera{};~JitterReset(){if(camera)camera->setProjectionJitter({0,0});}}jitterReset;
+		if(outputAntiAliasing.taa){auto const& viewport=scene->getViewport();auto rasterWidth=ssaaDimension((uint32_t)viewport.width,outputAntiAliasing.ssaa),rasterHeight=ssaaDimension((uint32_t)viewport.height,outputAntiAliasing.ssaa);auto jitter=taaHaltonJitter(mTaaSequenceIndex++);camera->setProjectionJitter({2.0f*jitter.x/(float)rasterWidth,2.0f*jitter.y/(float)rasterHeight});jitterReset.camera=camera.get();auto direction=camera->getDirection();auto frameSerial=mRenderSystem->getFrameSerial();bool discontinuity=!mTaaCameraValid||camera->getCutRevision()!=mLastCameraCutRevision||(mLastTaaFrameSerial&&frameSerial!=mLastTaaFrameSerial+1)||glm::distance(camera->getPosition(),mLastCameraPosition)>std::max(1.0f,std::min(10.0f,camera->getFarClipDistance()*0.01f))||glm::dot(direction,mLastCameraDirection)<0.8f||std::abs(camera->getFov()-mLastCameraFov)>10.0f||std::abs(camera->getAspectRatio()-mLastCameraAspect)>0.001f||std::abs(camera->getNearClipDistance()-mLastCameraNear)>0.001f||std::abs(camera->getFarClipDistance()-mLastCameraFar)>0.01f;auto viewProjection=camera->getProjectionTransform()*camera->getViewTransform();taaFrame=TaaFrameContext{viewProjection,glm::inverse(viewProjection),frameSerial,discontinuity};mTaaCameraValid=true;mLastTaaFrameSerial=frameSerial;mLastCameraCutRevision=camera->getCutRevision();mLastCameraPosition=camera->getPosition();mLastCameraDirection=direction;mLastCameraFov=camera->getFov();mLastCameraAspect=camera->getAspectRatio();mLastCameraNear=camera->getNearClipDistance();mLastCameraFar=camera->getFarClipDistance();}
 		if (!mGraphTargets)
 		{
 			mGraphTargets = make_unique<RenderGraphTargets>(mRenderSystem);
@@ -220,14 +222,14 @@ namespace mpp
 			if(!imports.findImport("screen"))imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
 			if (!mOptions.shadowDomain.empty()&&!imports.findImport("shadowDepth")) imports.registerImport("shadowDepth", mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
 			mGraphTargets->bindImports(*graph, imports);
-			struct PreparedOutput{string name;GraphImageHandle image;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<PreparedOutput> preparedOutputs;
+			struct PreparedOutput{string name;GraphImageHandle image;GraphImageHandle depth;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<PreparedOutput> preparedOutputs;
 			if(mOutputProcessor)
 			{
 				map<string,RenderTargetPtr> destinations;
 				for(auto const& output:mOptions.outputs)
 				{
 					GraphImageHandle handle;GraphImageInfo info;for(uint32_t id=0;id<graph->getImageCount();++id){auto candidate=graph->getImageInfo({id,0});if(candidate.name==output.image){handle={id,0};info=candidate;break;}}if(!handle.isValid())THROW_MPP("Named output '"+output.name+"' references an unknown graph image.",__LINE__,__FILE__,__func__);for(uint32_t pass=0;pass<graph->getPassCount();++pass){auto const& passInfo=graph->getPassInfo({pass});for(auto const& attachment:passInfo.colourOutputs)if(attachment.image.id==handle.id&&attachment.image.version>handle.version)handle=attachment.image;}
-					auto destination=info.desc.external?imports.findImport(info.importName):mGraphTargets->get(handle);if(!destination)THROW_MPP("Named output '"+output.name+"' has no render target.",__LINE__,__FILE__,__func__);destinations.emplace(output.name,destination);preparedOutputs.push_back({output.name,handle,destination,{},info.desc.external});
+					GraphImageHandle depthHandle;if(!output.taaDepth.empty()){for(uint32_t id=0;id<graph->getImageCount();++id)if(graph->getImageInfo({id,0}).name==output.taaDepth){depthHandle={id,0};break;}for(uint32_t pass=0;pass<graph->getPassCount();++pass)for(auto const& attachment:graph->getPassInfo({pass}).depthOutputs)if(attachment.image.id==depthHandle.id&&attachment.image.version>depthHandle.version)depthHandle=attachment.image;}auto destination=info.desc.external?imports.findImport(info.importName):mGraphTargets->get(handle);if(!destination)THROW_MPP("Named output '"+output.name+"' has no render target.",__LINE__,__FILE__,__func__);destinations.emplace(output.name,destination);preparedOutputs.push_back({output.name,handle,depthHandle,destination,{},info.desc.external});
 				}
 				mOutputProcessor->rebuild(mOptions.outputs,*graph,destinations,mRenderSystem->getOptions().antiAliasing);
 				map<uint32_t,RenderTargetPtr> externalSources;for(auto& output:preparedOutputs)if(output.external){auto [found,inserted]=externalSources.emplace(output.image.id,mOutputProcessor->getInput(output.name));output.source=found->second;if(inserted)mGraphTargets->bindImported(output.image,output.source);}
@@ -260,7 +262,7 @@ namespace mpp
 			mGraphExecutor->setFrameContext(&frameContext);
 			mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
 			mGraphExecutor->setFrameContext(nullptr);
-			for(auto const& output:preparedOutputs)mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image));
+			for(auto const& output:preparedOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
 			return;
 		}
 
@@ -288,7 +290,7 @@ namespace mpp
 		}
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
-		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment;
+		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (outputAntiAliasing.taa ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
 
 		GraphImageHandle shadowDepth;
@@ -313,7 +315,7 @@ namespace mpp
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
 		if (useMrtEmissiveMask) bloomMask = graph.writeColour(scenePass, bloomMask, GraphLoadOp::Clear, GraphStoreOp::Store);
-		graph.writeDepth(scenePass, sceneDepth, GraphLoadOp::Clear, GraphStoreOp::DontCare);
+		sceneDepth=graph.writeDepth(scenePass,sceneDepth,GraphLoadOp::Clear,outputAntiAliasing.taa?GraphStoreOp::Store:GraphStoreOp::DontCare);
 
 		GraphImageHandle presentationTexture = sceneHdr;
 		enum class BloomGraphStep { Extract, Horizontal, Vertical, Composite };
@@ -370,10 +372,10 @@ namespace mpp
 		auto plan = graph.buildAllocationPlan(glm::uvec2(ssaaDimension((uint32_t)viewport.width,outputAntiAliasing.ssaa),ssaaDimension((uint32_t)viewport.height,outputAntiAliasing.ssaa)));
 		mGraphTargets->allocatePhysical(plan,physicalSamples);
 		mGraphTargets->bindImported(screen, mRenderSystem->getScreenRenderTarget());
-		struct DynamicPreparedOutput{string name;GraphImageHandle image;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<DynamicPreparedOutput> dynamicOutputs;
+		struct DynamicPreparedOutput{string name;GraphImageHandle image;GraphImageHandle depth;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<DynamicPreparedOutput> dynamicOutputs;
 		if(mOutputProcessor)
 		{
-			map<string,RenderTargetPtr> destinations;for(auto const& output:mOptions.outputs){GraphImageHandle handle;GraphImageInfo info;for(uint32_t id=0;id<graph.getImageCount();++id){auto candidate=graph.getImageInfo({id,0});if(candidate.name==output.image){handle={id,0};info=candidate;break;}}if(!handle.isValid())THROW_MPP("Named output '"+output.name+"' references an unknown generated graph image.",__LINE__,__FILE__,__func__);for(uint32_t pass=0;pass<graph.getPassCount();++pass){auto const& passInfo=graph.getPassInfo({pass});for(auto const& attachment:passInfo.colourOutputs)if(attachment.image.id==handle.id&&attachment.image.version>handle.version)handle=attachment.image;}auto destination=info.desc.external?mRenderSystem->getScreenRenderTarget():mGraphTargets->get(handle);destinations.emplace(output.name,destination);dynamicOutputs.push_back({output.name,handle,destination,{},info.desc.external});}mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);map<uint32_t,RenderTargetPtr> externalSources;for(auto& output:dynamicOutputs)if(output.external){auto [found,inserted]=externalSources.emplace(output.image.id,mOutputProcessor->getInput(output.name));output.source=found->second;if(inserted)mGraphTargets->bindImported(output.image,output.source);}
+			map<string,RenderTargetPtr> destinations;for(auto const& output:mOptions.outputs){GraphImageHandle handle;GraphImageInfo info;for(uint32_t id=0;id<graph.getImageCount();++id){auto candidate=graph.getImageInfo({id,0});if(candidate.name==output.image){handle={id,0};info=candidate;break;}}if(!handle.isValid())THROW_MPP("Named output '"+output.name+"' references an unknown generated graph image.",__LINE__,__FILE__,__func__);for(uint32_t pass=0;pass<graph.getPassCount();++pass){auto const& passInfo=graph.getPassInfo({pass});for(auto const& attachment:passInfo.colourOutputs)if(attachment.image.id==handle.id&&attachment.image.version>handle.version)handle=attachment.image;}auto destination=info.desc.external?mRenderSystem->getScreenRenderTarget():mGraphTargets->get(handle);destinations.emplace(output.name,destination);GraphImageHandle depthHandle;if(!output.taaDepth.empty()){for(uint32_t id=0;id<graph.getImageCount();++id)if(graph.getImageInfo({id,0}).name==output.taaDepth){depthHandle={id,0};break;}for(uint32_t pass=0;pass<graph.getPassCount();++pass)for(auto const& attachment:graph.getPassInfo({pass}).depthOutputs)if(attachment.image.id==depthHandle.id&&attachment.image.version>depthHandle.version)depthHandle=attachment.image;}dynamicOutputs.push_back({output.name,handle,depthHandle,destination,{},info.desc.external});}mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);map<uint32_t,RenderTargetPtr> externalSources;for(auto& output:dynamicOutputs)if(output.external){auto [found,inserted]=externalSources.emplace(output.image.id,mOutputProcessor->getInput(output.name));output.source=found->second;if(inserted)mGraphTargets->bindImported(output.image,output.source);}
 		}
 		if (shadowDepth.isValid()) mGraphTargets->bindImported(shadowDepth, mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
 
@@ -449,7 +451,7 @@ namespace mpp
 		mGraphExecutor->setFrameContext(&frameContext);
 		mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
 		mGraphExecutor->setFrameContext(nullptr);
-		for(auto const& output:dynamicOutputs)mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image));
+		for(auto const& output:dynamicOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
 	}
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)

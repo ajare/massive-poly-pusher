@@ -777,6 +777,8 @@ namespace mpp
 		addCoreResource(mBloomCombineProgram, true);
 		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
 		addCoreResource(mSsaaLanczosProgram, true);
+		mTaaProgram = createBloomProgram("__mpp_p2d_taa__", FragmentShaderTaaTemplate);
+		addCoreResource(mTaaProgram, true);
 
 		// Internal text programs
 		{
@@ -2761,6 +2763,11 @@ namespace mpp
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
 	}
 
+	void RenderSystem::renderTaa(RenderTexture* currentColour,RenderTexture* currentDepth,RenderTexture* historyColour,RenderTexture* historyDepth,RenderTargetPtr const& destination,glm::mat4 const& inverseCurrentViewProjection,glm::mat4 const& previousViewProjection)
+	{
+		if(!currentColour||!currentDepth||!historyColour||!historyDepth||!destination)THROW_MPP("TAA pass requires current colour/depth, history colour/depth, and a destination.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mTaaProgram.get());setUsedProgram(mTaaProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_CURRENT_VIEW_PROJECTION"),1,GL_FALSE,glm::value_ptr(inverseCurrentViewProjection)));GL_CHECK(glUniformMatrix4fv(program->getUniformId("PREVIOUS_VIEW_PROJECTION"),1,GL_FALSE,glm::value_ptr(previousViewProjection)));GL_CHECK(glUniform1i(program->getUniformId("CURRENT_COLOUR"),0));GL_CHECK(glUniform1i(program->getUniformId("CURRENT_DEPTH"),1));GL_CHECK(glUniform1i(program->getUniformId("HISTORY_COLOUR"),2));GL_CHECK(glUniform1i(program->getUniformId("HISTORY_DEPTH"),3));currentColour->bind(0);currentDepth->bindDepth(1);historyColour->bind(2);historyDepth->bindDepth(3);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches+=4;mRenderInfo.fullscreenQuads++;
+	}
+
 	void RenderSystem::renderSsaaLanczos(RenderTexture* source,RenderTargetPtr const& destination,glm::vec2 const& direction)
 	{
 		if(!source||!destination)THROW_MPP("SSAA Lanczos pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mSsaaLanczosProgram.get());setUsedProgram(mSsaaLanczosProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"),direction.x,direction.y));GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"),(float)destination->getWidth(),(float)destination->getHeight()));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
@@ -3711,7 +3718,7 @@ namespace mpp
 			for(auto const& output:options.outputs)
 			{
 				if(output.name.empty()||output.image.empty()||!names.insert(output.name).second)THROW_MPP("RenderPipeline '"+name+"' output names/images must be non-empty and names must be unique.",__LINE__,__FILE__,__func__);
-				auto effective=resolveAntiAliasing(mOptions.antiAliasing,output.antiAliasing);
+				auto effective=resolveAntiAliasing(mOptions.antiAliasing,output.antiAliasing);if(effective.taa&&options.mode!=RenderPipelineMode::GraphPbrForward&&options.mode!=RenderPipelineMode::GraphLegacyForward&&options.mode!=RenderPipelineMode::XmlGraphPbrForward)THROW_MPP("RenderPipeline '"+name+"' enables TAA on a non-render-graph pipeline path.",__LINE__,__FILE__,__func__);
 				if(shared&&(effective.msaa!=shared->msaa||effective.ssaa!=shared->ssaa||effective.taa!=shared->taa))THROW_MPP("RenderPipeline '"+name+"' outputs must use identical effective MSAA, SSAA, and TAA settings.",__LINE__,__FILE__,__func__);if(!shared)shared=effective;
 				if(!mCaps.supportsMsaa(antiAliasingSampleCount(effective.msaa)))THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' requests unsupported "+antiAliasingSamplesName(effective.msaa)+" MSAA.",__LINE__,__FILE__,__func__);
 				auto width=(uint64_t)ssaaDimension((uint32_t)mWindowWidth,effective.ssaa),height=(uint64_t)ssaaDimension((uint32_t)mWindowHeight,effective.ssaa);if(width>(uint64_t)mCaps.maxTextureSize||height>(uint64_t)mCaps.maxTextureSize)THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' SSAA dimensions exceed the GPU maximum texture size.",__LINE__,__FILE__,__func__);
@@ -3742,8 +3749,10 @@ namespace mpp
 
 	void RenderSystem::startStatsCollection()
 	{
-		mRenderInfo.clear();
+		++mFrameSerial;mRenderInfo.clear();
 	}
+
+	uint64_t RenderSystem::getFrameSerial() const{return mFrameSerial;}
 
 	/*
 	 * Finish rendering.  Must be called before swapping screen.

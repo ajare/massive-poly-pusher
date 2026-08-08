@@ -13,8 +13,11 @@
 
 namespace mpp
 {
+	class RenderOutputProcessor;
+
 	class _MPPAPI RenderTexture : public RenderTarget, public Texture
 	{
+		friend class RenderOutputProcessor;
 		RenderSystem* mRenderSystem{ nullptr };
 
 		RenderTextureDepthAttachment mDepthAttachment;
@@ -33,6 +36,7 @@ namespace mpp
 		void deactivate();
 
 		void activate();
+		void copyDepthTo(RenderTexture* destination);
 
 	protected:
 

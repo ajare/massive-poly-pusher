@@ -2,10 +2,12 @@
 
 #include "mpp/Config.h"
 
+#include <cstdint>
 #include <memory>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -24,6 +26,8 @@ namespace mpp
 		mutable float mYaw, mPitch, mRoll;
 
 		float mFov, mNear, mFar, mAspectRatio;
+		glm::vec2 mProjectionJitterNdc{ 0.0f };
+		uint64_t mRevision{ 0 }, mCutRevision{ 0 };
 
 		mutable bool mDirty;
 
@@ -39,6 +43,7 @@ namespace mpp
 		void setAspectRatio(float aspectRatio);
 
 		float getFov() const;
+		float getAspectRatio() const;
 
 		void setClipDistances(float _near, float _far);
 
@@ -53,6 +58,14 @@ namespace mpp
 		glm::vec3 const& getDirection() const;
 
 		glm::vec3 const& getUp() const;
+
+		// Renderer-driven transient NDC jitter; it is not a scene/document property.
+		void setProjectionJitter(glm::vec2 const& jitterNdc);
+		glm::vec2 const& getProjectionJitter() const;
+		// Call after an intentional discontinuous camera change to invalidate temporal history.
+		void markCut();
+		uint64_t getRevision() const;
+		uint64_t getCutRevision() const;
 
 		virtual glm::mat4 getViewTransform();
 
