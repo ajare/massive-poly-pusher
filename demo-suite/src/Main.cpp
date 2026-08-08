@@ -1,4 +1,9 @@
 #include <iostream>
+#include <filesystem>
+#include <fstream>
+#include <cstring>
+#include <Windows.h>
+#include <Shellapi.h>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -30,6 +35,8 @@
 #include <mpp/mesh/MppMeshException.h>
 
 #include "mpp/app/ImGuiPlatform.h"
+#include "mpp/app/ZipArchive.h"
+#include "mpp/app/PackageManifest.h"
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
@@ -38,6 +45,7 @@
 #include "Camera.h"
 #include "Scene.h"
 #include "ModelScene.h"
+#include "PackageScene.h"
 
 // Platform
 #include "mpp/app/WindowSDL.h"
@@ -68,6 +76,33 @@ ImGuiBackendData gImGuiBackendData;
 vector<::Scene*> gScenes;
 World gWorld;
 RenderOptions gRenderOptions;
+
+void showCommandLineHelp(char const* text)
+{
+	if (!GetConsoleWindow())
+	{
+		AttachConsole(ATTACH_PARENT_PROCESS);
+	}
+
+	HANDLE output = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
+	DWORD written = 0;
+	if (output != INVALID_HANDLE_VALUE && WriteFile(output, text, (DWORD)strlen(text), &written, nullptr))
+	{
+		CloseHandle(output);
+		return;
+	}
+
+	if (output != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(output);
+	}
+	MessageBoxA(nullptr, text, "DemoSuite command-line options", MB_OK | MB_ICONINFORMATION);
+}
+
+bool gPackageMode{false};
+bool gPackageSmokeTest{false};
+std::filesystem::path gPackageDirectory;
+bool gStartupComplete{false};
 
 //
 // Renderdoc integration for detailed diagnostics
@@ -121,10 +156,55 @@ void unhookRenderdoc()
 //
 // App initialisation
 //
-void startup()
+bool startup()
 {
-	gOptions = parseProgramOptions("DemoSuite.cfg");
+	bool showHelp = false;
+	int argumentCount = 0;
+	auto arguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
 
+	for (int index = 1; arguments && index < argumentCount; ++index)
+	{
+		if (wcscmp(arguments[index], L"--help") == 0 || wcscmp(arguments[index], L"-h") == 0)
+		{
+			showHelp = true;
+			continue;
+		}
+		if (wcscmp(arguments[index], L"--package-smoke-test") == 0)
+		{
+			gPackageSmokeTest = true;
+			continue;
+		}
+		if (wcscmp(arguments[index], L"--package") == 0)
+		{
+			if (++index >= argumentCount)
+			{
+				throw runtime_error("--package requires a .mpppackage path.");
+			}
+
+			gPackageMode = true;
+			gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
+			mpp::app::ZipArchive::extract(std::filesystem::path(arguments[index]), gPackageDirectory);
+			mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
+			continue;
+		}
+	}
+
+	if (arguments)
+	{
+		LocalFree(arguments);
+	}
+
+	if (showHelp)
+	{
+		showCommandLineHelp(
+			"DemoSuite options:\r\n"
+			"  --help, -h                              Show this help.\r\n"
+			"  --package <file.mpppackage>             Load only the packaged scene and pipeline.\r\n"
+			"  --package-smoke-test                    With --package, render 30 frames then exit.\r\n");
+		return false;
+	}
+
+	gOptions = parseProgramOptions("DemoSuite.cfg");
 	gLogger = new ::Logger();
 	if (!gLogger->initialise("DemoSuite.log"))
 		throw exception("Could not create logger!");
@@ -162,8 +242,8 @@ void startup()
 	gInputMgr = new InputManagerSDL();
 	gTimer = new TimerSDL();
 
-	// Set up scenes
-	gScenes.push_back(new ModelScene(gResourceManager));
+	// Package mode is deliberately exclusive: no built-in content is created.
+	gScenes.push_back(gPackageMode?static_cast<::Scene*>(new PackageScene(gResourceManager,gPackageDirectory)):static_cast<::Scene*>(new ModelScene(gResourceManager)));
 
 	for (auto scene: gScenes)
 	{
@@ -175,6 +255,8 @@ void startup()
 
 	// Set default render options
 	gRenderOptions.wireframe = false;
+	gStartupComplete = true;
+	return true;
 }
 
 //
@@ -212,6 +294,7 @@ void shutdown()
 	}
 
 	SDL_Quit();
+	if(!gPackageDirectory.empty())std::filesystem::remove_all(gPackageDirectory);
 
 #ifdef DEBUG
 	//unhookRenderdoc();
@@ -230,7 +313,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	try
 	{
-		startup();
+		if(!startup())return 0;
 
 		//
 		// Main loop
@@ -245,11 +328,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		float lightAngle = 0.0f, lightHeight = 750.0f;
 
-		// Turn off 2d batches to start
-		for (int i = 0; i < 6; ++i)
-		{
-			static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(i);
-		}
+		// Built-in model controls do not apply to package scenes.
+		if(!gPackageMode)for (int i = 0; i < 6; ++i)static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(i);
 
 		// Main loop
 		gTimer->reset();
@@ -288,40 +368,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 
 			gScenes[0]->handleInput(gInputMgr);
-
-			//auto camera = static_cast<mpp::helper::FpsCamera*>(gScenes[0]->getCamera().get());
-			//updateFreeCamera(*camera, gInputMgr, frameTime);
-
-			auto camera = static_cast<mpp::helper::FpsCamera*>(gScenes[0]->getCamera().get());
-			updateFpsCamera(*camera, gInputMgr, frameTime);
+			if(!gPackageMode){auto camera = static_cast<mpp::helper::FpsCamera*>(gScenes[0]->getCamera().get());updateFpsCamera(*camera, gInputMgr, frameTime);}
 
 			static int selected3dModel = 0;
-			if (gInputMgr->keyPressed(Key_Tab))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_Tab))
 			{
 				selected3dModel = (selected3dModel + 1) % 7;
 				static_cast<ModelScene*>(gScenes[0])->toggleModel(selected3dModel);
 			}
-			if (gInputMgr->keyPressed(Key_1))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_1))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(0);
 			}
-			if (gInputMgr->keyPressed(Key_2))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_2))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(1);
 			}
-			if (gInputMgr->keyPressed(Key_3))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_3))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(2);
 			}
-			if (gInputMgr->keyPressed(Key_4))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_4))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(3);
 			}
-			if (gInputMgr->keyPressed(Key_5))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_5))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(4);
 			}
-			if (gInputMgr->keyPressed(Key_6))
+			if (!gPackageMode && gInputMgr->keyPressed(Key_6))
 			{
 				static_cast<ModelScene*>(gScenes[0])->toggle2dBatches(5);
 			}
@@ -397,7 +472,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 			}
 
-			// Finish scene
+			// Present the completed package scene before drawing UI. Keeping text
+			// out of the fullscreen presentation copy prevents its nearest-filtered
+			// font atlas from being resampled by that pass.
+			if (gPackageMode)
+			{
+				static_cast<PackageScene*>(gScenes[0])->present(gRenderSystem);
+			}
+			gRenderSystem->renderToScreen();
+
+			// Finish the 3D statistics and render all 2D overlays directly to the
+			// backbuffer as the final operations of the frame.
 			auto ri = gRenderSystem->finishStatsCollection();
 
 			vector<string> lines;
@@ -409,33 +494,33 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			lines.push_back("Q/E: roll camera");
 			lines.push_back("Tab: toggle 3d model");
 			lines.push_back("[1-6]: toggle 2d batches");
+			if (gPackageMode)
+			{
+				lines.push_back("Package camera: Alt+left orbit, Shift+Alt+left pan, Ctrl+Alt+left dolly");
+			}
 
 			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 
 			gWindow->show();
+			if(gPackageSmokeTest&&gPackageMode&&frameCount>=30)running=false;
 		}
 	}
 	catch (mpp::MppException const& e)
 	{
-		gLogger->message(e.what());
-		gLogger->message(" - thrown by " + e.getFunction());
-		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
-		gLogger->message(" - stack trace: " + e.getStackTrace());
+		if(gLogger){gLogger->message(e.what());gLogger->message(" - thrown by " + e.getFunction());gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));gLogger->message(" - stack trace: " + e.getStackTrace());}else fprintf(stderr,"%s\n",e.what());
 		exitCode = 1;
 	}
 	catch (mpp::mesh::MppMeshException const& e)
 	{
-		gLogger->message(e.what());
-		gLogger->message(" - thrown by " + e.getFunction());
-		gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
+		if(gLogger){gLogger->message(e.what());gLogger->message(" - thrown by " + e.getFunction());gLogger->message(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));}else fprintf(stderr,"%s\n",e.what());
 		exitCode = 1;
 	}
 	catch (exception const& e)
 	{
-		gLogger->message(e.what());
+		if(gLogger)gLogger->message(e.what());else fprintf(stderr,"%s\n",e.what());
 		exitCode = 1;
 	}
 
-	shutdown();
+	if(gStartupComplete)shutdown();else if(!gPackageDirectory.empty())std::filesystem::remove_all(gPackageDirectory);
 	return exitCode;
 }

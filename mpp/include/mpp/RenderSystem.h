@@ -196,6 +196,7 @@ namespace mpp
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
+		bool mTextAsPoints{ false };
 
 		// Lookup for ease
 		std::vector<ResourcePtr> mCoreResources;

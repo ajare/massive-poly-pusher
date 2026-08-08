@@ -58,6 +58,62 @@ namespace mpp
 			glm::vec4 biasAndEnabled{ 0.0f };
 		};
 		static_assert(offsetof(ShadowFrameData, lightViewProjection) == 0);
+
+		struct ColouredGlyph
+		{
+			uint8_t character;
+			Colour colour;
+		};
+
+		int hexDigit(char value)
+		{
+			if (value >= '0' && value <= '9') return value - '0';
+			if (value >= 'A' && value <= 'F') return value - 'A' + 10;
+			if (value >= 'a' && value <= 'f') return value - 'a' + 10;
+			return -1;
+		}
+
+		vector<ColouredGlyph> parseColouredGlyphs(string const& text)
+		{
+			vector<ColouredGlyph> glyphs;
+			glyphs.reserve(text.size());
+			Colour colour = Colour::White;
+
+			for (size_t index = 0; index < text.size();)
+			{
+				bool validTag = index + 10 < text.size() && text[index] == '[' && text[index + 1] == '#' && text[index + 10] == ']';
+				uint8_t components[4]{};
+				if (validTag)
+				{
+					for (size_t component = 0; component < 4; ++component)
+					{
+						int high = hexDigit(text[index + 2 + component * 2]);
+						int low = hexDigit(text[index + 3 + component * 2]);
+						if (high < 0 || low < 0)
+						{
+							validTag = false;
+							break;
+						}
+						components[component] = static_cast<uint8_t>((high << 4) | low);
+					}
+				}
+
+				if (validTag)
+				{
+					colour = Colour(
+						components[0] / 255.0f,
+						components[1] / 255.0f,
+						components[2] / 255.0f,
+						components[3] / 255.0f);
+					index += 11;
+					continue;
+				}
+
+				glyphs.push_back({ static_cast<uint8_t>(text[index]), colour });
+				++index;
+			}
+			return glyphs;
+		}
 		static_assert(offsetof(ShadowFrameData, mapTexelSizeAndRadius) == 64);
 		static_assert(offsetof(ShadowFrameData, biasAndEnabled) == 80);
 		static_assert(sizeof(ShadowFrameData) == 96);
@@ -901,7 +957,8 @@ namespace mpp
 		}
 
 		// Internal font
-		bool textAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
+		mTextAsPoints = mCaps.pointSizeRange[1] >= 16.0f;
+		bool textAsPoints = mTextAsPoints;
 		ProgrammaticBasicMaterialStream* textMatStream = new ProgrammaticBasicMaterialStream(mResourceMgr);
 
 		textMatStream->setProgram(textAsPoints ? "__mpp_p2d_points_text__" : "__mpp_p2d_tris_text__");
@@ -1600,6 +1657,15 @@ namespace mpp
 		flushVertexBuffers();
 
 		GL_CHECK(glDisable(GL_DEPTH_TEST));
+		GL_CHECK(glDisable(GL_CULL_FACE));
+		GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+		GL_CHECK(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE));
+		if (mTextAsPoints)
+		{
+			GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
+			GL_CHECK(glEnable(GL_POINT_SPRITE));
+		}
 
 		mProjectionType = ProjectionType::Ortho2D;
 
@@ -1830,7 +1896,7 @@ namespace mpp
 		float xpos = (float)x + 8; // 8 to offset default kerning
 		float ypos = (float)y;
 
-		if (mCaps.pointSizeRange[1] >= 16)
+		if (mTextAsPoints)
 		{
 			auto glyphOffset = (uint32_t)(offset + numChars);
 			if (glyphOffset > MaxTextGlyphs)
@@ -1864,7 +1930,7 @@ namespace mpp
 		else
 		{
 			auto glyphOffset = (uint32_t)(offset + numChars * 6);
-			if (glyphOffset > MaxTextGlyphs)
+			if (glyphOffset > MaxTextGlyphs * 6)
 			{
 				return 0;
 			}
@@ -1923,106 +1989,60 @@ namespace mpp
 	 */
 	int RenderSystem::buildColouredTextVertexBuffer(VertexBuffer* buffer, string const& text, int& offset, int x, int y)
 	{
-		char const* textPtr = text.c_str();
-		int numChars = (int)strlen(textPtr);
-
 		int vertexStride = (int)buffer->getVertexStride() / sizeof(float);
-
 		vector<int8_t>& bufferData = buffer->getBufferData();
-
 		float xpos = (float)x + 8; // 8 to offset default kerning
 		float ypos = (float)y;
-
 		Colour colour = Colour::White;
 
-		if (mCaps.pointSizeRange[1] >= 16)
+		if (mTextAsPoints)
 		{
-			auto glyphOffset = (uint32_t)(offset + numChars);
+			auto glyphs = parseColouredGlyphs(text);
+			auto glyphOffset = (uint32_t)(offset + glyphs.size());
 			if (glyphOffset > MaxTextGlyphs)
 			{
 				return 0;
 			}
 
 			float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
-
-			int i = 0, numSpecial = 0;
-			while (i < numChars)
+			for (auto const& colouredGlyph : glyphs)
 			{
-				// Format for colour is [#RRGGBBAA]
-				// Colours are hex, and should be converted to uint8_t
-				// Then change text spec from float to uint8_t
-				// Pack the value into a uint32_t and reinterpret_cast to float
-				if (i < (numChars - 8) && textPtr[i] == '[' && 
-					textPtr[i + 1] == '#' && textPtr[i + 10] == ']')
-				{
-					uint8_t tcolour[4] = { 0, 0, 0, 0 };
-					for (int j = 0; j < 8; ++j)
-					{
-						if (textPtr[i + j + 2] >= '0' && textPtr[i + j + 2] <= '9')
-						{
-							tcolour[j / 2] += (textPtr[i + j + 2] - '0') << (4 * (1 - (j % 2)));
-						}
-						else if (textPtr[i + j + 2] >= 'A' && textPtr[i + j + 2] <= 'F')
-						{
-							tcolour[j / 2] += (10 + (textPtr[i + j + 2] - 'A')) << (4 * (1 - (j % 2)));
-						}
-						else if (textPtr[i + j + 2] >= 'a' && textPtr[i + j + 2] <= 'f')
-						{
-							tcolour[j / 2] += (10 + (textPtr[i + j + 2] - 'a')) << (4 * (1 - (j % 2)));
-						}
-						else
-						{
-							goto no_ctrl;
-						}
-					}
-
-					numSpecial += 11;
-					i += 11;
-					colour.red = tcolour[0] / 255.0f;
-					colour.green = tcolour[1] / 255.0f;
-					colour.blue = tcolour[2] / 255.0f;
-					colour.alpha = tcolour[3] / 255.0f;
-				}
-				
-			no_ctrl:;
-
-				Font::Glyph const& glyph = mInternalFont->getGlyph(textPtr[i]);
+				Font::Glyph const& glyph = mInternalFont->getGlyph(colouredGlyph.character);
+				auto const& glyphColour = colouredGlyph.colour;
 				xpos += glyph.kern / 2;
 
-				// Set data
 				bufferPtr[0] = xpos;
 				bufferPtr[1] = ypos + glyph.raise;
 				bufferPtr[2] = glyph.u0_;
 				bufferPtr[3] = glyph.v0_;
 				bufferPtr[4] = glyph.u1_;
 				bufferPtr[5] = glyph.v1_;
-				bufferPtr[6] = colour.red;
-				bufferPtr[7] = colour.green;
-				bufferPtr[8] = colour.blue;
-				bufferPtr[9] = colour.alpha;
-
+				bufferPtr[6] = glyphColour.red;
+				bufferPtr[7] = glyphColour.green;
+				bufferPtr[8] = glyphColour.blue;
+				bufferPtr[9] = glyphColour.alpha;
 				bufferPtr += vertexStride;
-
-				xpos += (glyph.width + glyph.kern / 2);
-				i++;
+				xpos += glyph.width + glyph.kern / 2;
 			}
 
-			offset += (numChars - numSpecial);
-			return (numChars - numSpecial);
+			offset += static_cast<int>(glyphs.size());
+			return static_cast<int>(glyphs.size());
 		}
 		else
 		{
-			auto glyphOffset = (uint32_t)(offset + numChars * 6);
-			if (glyphOffset > MaxTextGlyphs)
+			auto glyphs = parseColouredGlyphs(text);
+			auto glyphOffset = (uint32_t)(offset + glyphs.size() * 6);
+			if (glyphOffset > MaxTextGlyphs * 6)
 			{
 				return 0;
 			}
 
 			float* bufferPtr = (float*)&(bufferData[offset * vertexStride * sizeof(float)]);
 
-			for (int i = 0; i < numChars; ++i)
+			for (auto const& colouredGlyph : glyphs)
 			{
-				Font::Glyph const& glyph = mInternalFont->getGlyph(textPtr[i]);
+				Font::Glyph const& glyph = mInternalFont->getGlyph(colouredGlyph.character);
+				colour = colouredGlyph.colour;
 				xpos += glyph.kern / 2;
 
 				// Set data
@@ -2085,8 +2105,8 @@ namespace mpp
 				xpos += (glyph.width + glyph.kern / 2);
 			}
 
-			offset += numChars * 6;
-			return numChars * 2;
+			offset += static_cast<int>(glyphs.size() * 6);
+			return static_cast<int>(glyphs.size() * 2);
 		}
 	}
 
@@ -2789,6 +2809,10 @@ namespace mpp
 	 */
 	void RenderSystem::renderText(string const& text, int x, int y, Colour const& colour)
 	{
+		// Text is a screen-space overlay and must not inherit the projection or
+		// depth state left by the preceding 3D or render-graph pass.
+		setProjection2dOrthographic();
+
 		// Set text mesh for updating
 		Model* textModel = (Model*)mTextMesh.get();
 		Mesh* textMesh = textModel->getMesh(0);
@@ -2798,7 +2822,7 @@ namespace mpp
 		
 		int offset = 0;
 		int count = buildTextVertexBuffer(vertexBuffer, text, offset, x, y);
-		vertexBuffer->mapBufferData(count);
+		vertexBuffer->mapBufferData(offset);
 		
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 		mTextParams->setModelPrimitiveCount(count);
@@ -2812,6 +2836,8 @@ namespace mpp
 	 */
 	void RenderSystem::renderText(vector<string> const& text, int x, int y, Colour const& colour)
 	{
+		setProjection2dOrthographic();
+
 		// Set text mesh for updating
 		Model* textModel = (Model*)mTextMesh.get();
 		Mesh* textMesh = textModel->getMesh(0);
@@ -2824,7 +2850,7 @@ namespace mpp
 			count += buildTextVertexBuffer(vertexBuffer, text[i], offset, x, y - i * 16);
 		}
 
-		vertexBuffer->mapBufferData(count);
+		vertexBuffer->mapBufferData(offset);
 
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(colour.red, colour.green, colour.blue, colour.alpha));
 		mTextParams->setModelPrimitiveCount(count);
@@ -2838,6 +2864,8 @@ namespace mpp
 	 */
 	void RenderSystem::renderTextFormatted(string const& text, int x, int y)
 	{
+		setProjection2dOrthographic();
+
 		Model* textModel = (Model*)mColouredTextMesh.get();
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
@@ -2846,7 +2874,7 @@ namespace mpp
 
 		int offset = 0;
 		int count = buildColouredTextVertexBuffer(vertexBuffer, text, offset, x, y);
-		vertexBuffer->mapBufferData(count);
+		vertexBuffer->mapBufferData(offset);
 
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		mTextParams->setModelPrimitiveCount(count);
@@ -2856,6 +2884,8 @@ namespace mpp
 	
 	void RenderSystem::renderTextFormatted(vector<string> const& text, int x, int y)
 	{
+		setProjection2dOrthographic();
+
 		Model* textModel = (Model*)mColouredTextMesh.get();
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
@@ -2867,7 +2897,7 @@ namespace mpp
 			count += buildColouredTextVertexBuffer(vertexBuffer, text[i], offset, x, y - i * 16);
 		}
 
-		vertexBuffer->mapBufferData(count);
+		vertexBuffer->mapBufferData(offset);
 
 		mTextUniforms->updateUniform("COLOUR", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		mTextParams->setModelPrimitiveCount(count);

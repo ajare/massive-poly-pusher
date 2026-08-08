@@ -29,3 +29,17 @@ Documentation:
 - [Preview scene XML specification](doc/PBR_SCENE_XML_SPECIFICATION.md)
 - [Diagnostics catalogue](doc/PIPELINE_EDITOR_DIAGNOSTICS.md)
 - [CLI validation and smoke tests](doc/PIPELINE_EDITOR_CLI.md)
+
+## Pipeline packages
+
+PipelineEditor can export the current valid pipeline and preview scene, including unsaved edits, through **File > Export Package...**. The resulting self-contained `.mpppackage` is a standard ZIP archive containing `manifest.xml`, `pipeline.xml`, `scene.xml`, localized external resources, and referenced assets.
+
+Load a package without any built-in DemoSuite content:
+
+```text
+DemoSuite.exe --package path\to\workspace.mpppackage
+```
+
+Run `PipelineEditor.exe --help` or `DemoSuite.exe --help` to list their command-line options. DemoSuite validates and extracts the package to a temporary directory; an invalid package is reported as an error and does not fall back to the built-in scene. For automated runtime smoke testing, append `--package-smoke-test`; it renders 30 frames and exits.
+
+Blender-style camera controls are available in the PipelineEditor viewport and in DemoSuite package mode: middle-drag or **Alt+left-drag** orbits; Shift modifies either drag to pan; Ctrl modifies either drag to dolly. This Alt+left-drag fallback supports trackpads without a middle button or scroll wheel. A mouse wheel also dollies.

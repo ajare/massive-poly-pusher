@@ -115,7 +115,7 @@ bool WindowSDL::processEvents(InputManager* inputMgr)
 	SDL_Event evt;
 	while (SDL_PollEvent(&evt))
 	{
-		InputEvent ie;
+		InputEvent ie{};
 
 		switch (evt.type)
 		{
@@ -163,6 +163,8 @@ bool WindowSDL::processEvents(InputManager* inputMgr)
 			ie.type = IET_MouseMotion;
 			ie.x = (float)evt.motion.x;
 			ie.y = (float)evt.motion.y;
+			ie.dx = (float)evt.motion.xrel;
+			ie.dy = (float)evt.motion.yrel;
 			ie.code = evt.motion.which;
 			inputMgr->addEvent(ie);
 			break;
