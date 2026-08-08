@@ -43,7 +43,7 @@ Pipeline environments own IBL/background resources. Select **Bloom Settings** in
 - **Frame Selection**: frame the selected model.
 - **Save Current View**: write camera position/target/clipping to the scene as an undoable edit.
 
-Enable **Inspect selected image** to display an authored graph image/value. Select value version and mip, then choose colour, R/G/B, alpha, luminance, linear depth, HDR tone-map, or HDR heat-map visualization. Attachment-only images use display-safe diagnostic targets. Physical MSAA processing is owned by named pipeline outputs rather than graph-image fields.
+Enable **Inspect selected image** to display an authored graph image/value. Select value version and mip, then choose colour, R/G/B, alpha, luminance, linear depth, HDR tone-map, or HDR heat-map visualization. Attachment-only images use display-safe diagnostic targets. Physical MSAA processing is owned by named pipeline outputs rather than graph-image fields. SSAA similarly scales viewport-relative graph resources from the effective named-output setting, leaves absolute resources such as shadow maps unchanged, and Lanczos-downsamples into the logical preview output.
 
 Statistics report FPS, submitted triangles, scene inventory, pass CPU duration, and asynchronous GPU duration. GPU timing is shown as available, pending, or unsupported and never blocks the frame.
 

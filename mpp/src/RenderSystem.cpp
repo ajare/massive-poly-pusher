@@ -340,9 +340,8 @@ namespace mpp
 		{
 			THROW_MPP("Configured [mpp] MSAA setting '" + antiAliasingSamplesName(mOptions.antiAliasing.msaa) + "' is not supported by this GPU.", __LINE__, __FILE__, __func__);
 		}
-		auto ssaaScale = ssaaLinearScale(mOptions.antiAliasing.ssaa);
-		auto ssaaWidth = static_cast<uint64_t>(std::ceil(static_cast<double>(mWindowWidth) * ssaaScale));
-		auto ssaaHeight = static_cast<uint64_t>(std::ceil(static_cast<double>(mWindowHeight) * ssaaScale));
+		auto ssaaWidth = static_cast<uint64_t>(ssaaDimension((uint32_t)mWindowWidth,mOptions.antiAliasing.ssaa));
+		auto ssaaHeight = static_cast<uint64_t>(ssaaDimension((uint32_t)mWindowHeight,mOptions.antiAliasing.ssaa));
 		if (ssaaWidth > static_cast<uint64_t>(mCaps.maxTextureSize) || ssaaHeight > static_cast<uint64_t>(mCaps.maxTextureSize))
 		{
 			THROW_MPP("Configured [mpp] SSAA setting '" + antiAliasingSamplesName(mOptions.antiAliasing.ssaa) + "' requires " + std::to_string(ssaaWidth) + "x" + std::to_string(ssaaHeight) + ", exceeding the GPU maximum texture size of " + std::to_string(mCaps.maxTextureSize) + ".", __LINE__, __FILE__, __func__);
@@ -776,6 +775,8 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
+		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
+		addCoreResource(mSsaaLanczosProgram, true);
 
 		// Internal text programs
 		{
@@ -2760,6 +2761,11 @@ namespace mpp
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
 	}
 
+	void RenderSystem::renderSsaaLanczos(RenderTexture* source,RenderTargetPtr const& destination,glm::vec2 const& direction)
+	{
+		if(!source||!destination)THROW_MPP("SSAA Lanczos pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mSsaaLanczosProgram.get());setUsedProgram(mSsaaLanczosProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"),direction.x,direction.y));GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"),(float)destination->getWidth(),(float)destination->getHeight()));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
+	}
+
 	void RenderSystem::renderBloomCombine(Texture* scene, Texture* bloom, float intensity)
 	{
 		flushVertexBuffers();
@@ -3708,7 +3714,7 @@ namespace mpp
 				auto effective=resolveAntiAliasing(mOptions.antiAliasing,output.antiAliasing);
 				if(shared&&(effective.msaa!=shared->msaa||effective.ssaa!=shared->ssaa||effective.taa!=shared->taa))THROW_MPP("RenderPipeline '"+name+"' outputs must use identical effective MSAA, SSAA, and TAA settings.",__LINE__,__FILE__,__func__);if(!shared)shared=effective;
 				if(!mCaps.supportsMsaa(antiAliasingSampleCount(effective.msaa)))THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' requests unsupported "+antiAliasingSamplesName(effective.msaa)+" MSAA.",__LINE__,__FILE__,__func__);
-				auto scale=ssaaLinearScale(effective.ssaa);auto width=(uint64_t)std::ceil((double)mWindowWidth*scale),height=(uint64_t)std::ceil((double)mWindowHeight*scale);if(width>(uint64_t)mCaps.maxTextureSize||height>(uint64_t)mCaps.maxTextureSize)THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' SSAA dimensions exceed the GPU maximum texture size.",__LINE__,__FILE__,__func__);
+				auto width=(uint64_t)ssaaDimension((uint32_t)mWindowWidth,effective.ssaa),height=(uint64_t)ssaaDimension((uint32_t)mWindowHeight,effective.ssaa);if(width>(uint64_t)mCaps.maxTextureSize||height>(uint64_t)mCaps.maxTextureSize)THROW_MPP("RenderPipeline '"+name+"' output '"+output.name+"' SSAA dimensions exceed the GPU maximum texture size.",__LINE__,__FILE__,__func__);
 			}
 		}
 		auto pipeline = make_shared<RenderPipeline>(name, this, options);

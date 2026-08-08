@@ -6,8 +6,9 @@
 - **Phase 2 complete**: shared programmatic/XML named-output descriptors, strict output validation and inheritance checks, XML round trips, legacy sample-authoring removal, migration diagnostics, and repository pipeline/document migration.
 - **Phase 3 complete**: immutable renderer-owned physical output plans, unified screen/offscreen pass-through processors, transactional graph/output generations, output-chain history ownership, transactional render-texture resize, and retained-resource failure handling.
 - **Phase 4 complete**: renderer-private 2×/4×/8× multisample colour/depth attachment allocation, automatic single-sample resolves before graph reads/output processing, capability enforcement, mip-chain incompatibility diagnostics, and alpha-preserving resolve tests.
-- Phase 1–4 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, supported MSAA colour/depth allocation and resolve tests, non-default option propagation, transactional failure tests, legacy `<samples>` rejection, and package export/load smoke testing.
-- Anti-aliasing remains disabled by default. SSAA begins in phase 5.
+- **Phase 5 complete**: total-sample √2/2/√8 raster sizing, supersampled viewport-relative graph allocation, unchanged absolute resource sizing, separable alpha-preserving Lanczos downsampling, and transactional screen/offscreen integration.
+- Phase 1–5 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, supported MSAA colour/depth resolve tests, all SSAA dimension/filter factors, combined setting propagation, transactional failure tests, legacy `<samples>` rejection, and package export/load smoke testing.
+- Anti-aliasing remains disabled by default. Camera-jitter TAA begins in phase 6.
 
 ## 1. Scope
 
@@ -246,8 +247,12 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Enforce capabilities and reject multisampled attachment mip chains with migration guidance.
    - [x] Test supported 2×/4×/8× allocation, colour/depth resolve readback, alpha preservation, and normal pipeline presentation.
 
-5. **SSAA**
-   - Add supersampled viewport planning and alpha-preserving Lanczos downsampling.
+5. **SSAA — COMPLETE**
+   - [x] Resolve 2×/4×/8× total samples to deterministic ceil(√2×), 2×, and ceil(√8×) raster dimensions.
+   - [x] Scale viewport-relative graph allocations while leaving authored absolute resources unchanged.
+   - [x] Run the graph/output input at supersampled resolution and apply separable radius-three Lanczos downsampling at the logical output boundary.
+   - [x] Preserve alpha and support screen/offscreen outputs transactionally.
+   - [x] Test every factor's dimensions and colour/alpha readback, checkerboard filtering, PipelineEditor rendering, and package mode.
 
 6. **TAA**
    - Add jitter, depth reprojection, neighborhood clamping, histories, and reset rules.
