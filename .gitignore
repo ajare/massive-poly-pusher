@@ -10,3 +10,4 @@
 **/build/vs*/lib
 **/build/**/.vs
 **/__pycache__
+pipeline-editor/captures/

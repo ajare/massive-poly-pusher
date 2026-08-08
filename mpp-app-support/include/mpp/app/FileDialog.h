@@ -10,4 +10,6 @@ namespace mpp::app
 	std::optional<std::string> openXmlFileDialog(SDL_Window* owner, std::string const& title);
 	std::optional<std::string> saveXmlFileDialog(SDL_Window* owner, std::string const& title, std::string const& defaultName);
 	std::optional<std::string> savePackageFileDialog(SDL_Window* owner, std::string const& title, std::string const& defaultName);
+	std::optional<std::string> openExecutableFileDialog(SDL_Window* owner, std::string const& title);
+	std::optional<std::string> selectFolderDialog(SDL_Window* owner, std::string const& title);
 }
