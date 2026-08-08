@@ -9,7 +9,7 @@ Build `PipelineEditor` for VS2026 x64 and run it from its output directory. The 
 - **Full PBR Pipeline** — shadows, HDR scene, bloom, and tone mapping.
 - **Empty Pipeline** — presentation import/image with no authored passes or scene.
 
-The first three use the shared default scene and declare an explicit `Main` output with inherited anti-aliasing settings. Anti-aliasing defaults come from `[mpp]` in `editor.ini`; image-level `<samples>` authoring is no longer supported. Configuration values, output overrides, compatibility rules, and failure behavior are documented in [ANTI_ALIASING_CONFIGURATION.md](ANTI_ALIASING_CONFIGURATION.md). A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
+The first three use the shared default scene and declare an explicit `Main` output with inherited anti-aliasing settings. Anti-aliasing defaults come from `[mpp]` in `editor.ini`; image-level `<samples>` authoring is no longer supported. Select any image with `presentation` usage in **Pipeline Hierarchy > Images** to edit its named output's MSAA, SSAA, TAA, and FXAA overrides in the Inspector. Each combo supports inheritance and explicit settings and immediately regenerates the preview. MSAA, SSAA, and TAA changes are propagated to every named output because those techniques share pipeline rasterization; FXAA remains per-output. Configuration values, compatibility rules, and failure behavior are documented in [ANTI_ALIASING_CONFIGURATION.md](ANTI_ALIASING_CONFIGURATION.md). A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
 
 ## Layout and hierarchy
 
