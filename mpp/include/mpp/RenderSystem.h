@@ -295,6 +295,7 @@ namespace mpp
 		friend class Texture;
 		friend class Material;
 		friend class Model;
+		friend class RenderGraphTargets;
 
 		void useDefaultProgram();
 
@@ -327,6 +328,8 @@ namespace mpp
 		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
 
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
+
+		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
 
 	public:
 

@@ -79,7 +79,9 @@ namespace mpp
 		return ((uint64_t)image.id << 32) | image.version;
 	}
 
-	void RenderGraphTargets::allocate(RenderGraphAllocationPlan const& plan)
+	void RenderGraphTargets::allocate(RenderGraphAllocationPlan const& plan){allocatePhysical(plan,1);}
+
+	void RenderGraphTargets::allocatePhysical(RenderGraphAllocationPlan const& plan,uint32_t samples)
 	{
 		if (!plan.valid)
 		{
@@ -108,10 +110,11 @@ namespace mpp
 		};
 		for (auto const* lifetime : lifetimes)
 		{
+			bool rasterAttachment=hasGraphImageUsage(lifetime->desc.usage,GraphImageUsage::ColourAttachment)||hasGraphImageUsage(lifetime->desc.usage,GraphImageUsage::DepthAttachment);uint32_t physicalSamples=rasterAttachment?samples:1;if(physicalSamples>1&&lifetime->desc.mipLevels>1)THROW_MPP("Multisampled graph attachment '"+lifetime->debugName+"' cannot declare mip levels.",__LINE__,__FILE__,__func__);
 			size_t poolIndex = SIZE_MAX;
 			for (size_t index = 0; index < candidatePool.size(); ++index)
 			{
-				if (!compatibleForAliasing(candidatePool[index].lifetime, *lifetime)) continue;
+				if (candidatePool[index].samples!=physicalSamples||!compatibleForAliasing(candidatePool[index].lifetime, *lifetime)) continue;
 				auto const& used = assignments[index];
 				if (used.empty())
 				{
@@ -131,9 +134,9 @@ namespace mpp
 			}
 			if (poolIndex == SIZE_MAX)
 			{
-				string const name = "RenderGraph." + (lifetime->debugName.empty() ? "Image" + to_string(lifetime->image.id) : lifetime->debugName) + ".v" + to_string(lifetime->image.version);
-				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeGraphRenderTextureOptions(lifetime->desc));
-				candidatePool.push_back({ *lifetime, writeTarget, writeTarget });
+				string const name = "RenderGraph." + (lifetime->debugName.empty() ? "Image" + to_string(lifetime->image.id) : lifetime->debugName) + ".v" + to_string(lifetime->image.version);auto options=makeGraphRenderTextureOptions(lifetime->desc);
+				auto target=mRenderSystem->createRenderTexture(name+".Resolved",lifetime->size.x,lifetime->size.y,options);auto writeTarget=physicalSamples>1?mRenderSystem->createPhysicalRenderTexture(name+".MSAA"+to_string(physicalSamples),lifetime->size.x,lifetime->size.y,options,physicalSamples):target;
+				candidatePool.push_back({ *lifetime, target, writeTarget,physicalSamples });
 				assignments.emplace_back();
 				poolIndex = candidatePool.size() - 1;
 			}

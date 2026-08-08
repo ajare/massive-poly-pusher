@@ -31,7 +31,7 @@ namespace mpp
 			for(size_t index=0;index<left.size();++index)
 			{
 				auto const& a=left[index];auto const& b=right[index];
-				if(a.name!=b.name||a.image!=b.image||a.taaDepth!=b.taaDepth||a.logicalSize!=b.logicalSize||a.antiAliasing.msaa!=b.antiAliasing.msaa||a.antiAliasing.ssaa!=b.antiAliasing.ssaa||a.antiAliasing.taa!=b.antiAliasing.taa||a.antiAliasing.fxaa!=b.antiAliasing.fxaa||a.physicalImages.size()!=b.physicalImages.size())return false;
+				if(a.name!=b.name||a.image!=b.image||a.taaDepth!=b.taaDepth||a.logicalSize!=b.logicalSize||a.rasterSamples!=b.rasterSamples||a.antiAliasing.msaa!=b.antiAliasing.msaa||a.antiAliasing.ssaa!=b.antiAliasing.ssaa||a.antiAliasing.taa!=b.antiAliasing.taa||a.antiAliasing.fxaa!=b.antiAliasing.fxaa||a.physicalImages.size()!=b.physicalImages.size())return false;
 				for(size_t image=0;image<a.physicalImages.size();++image){auto const& x=a.physicalImages[image];auto const& y=b.physicalImages[image];if(x.role!=y.role||x.size!=y.size||x.format!=y.format||x.samples!=y.samples)return false;}
 			}
 			return true;
@@ -50,7 +50,7 @@ namespace mpp
 		{
 			auto destination=destinations.find(output.name);if(destination==destinations.end()||!destination->second)THROW_MPP("Named output '"+output.name+"' has no destination render target.",__LINE__,__FILE__,__func__);
 			auto colour=findImage(graph,output.image);auto effective=resolveAntiAliasing(defaults,output.antiAliasing);glm::uvec2 size((uint32_t)destination->second->getWidth(),(uint32_t)destination->second->getHeight());if(size.x==0||size.y==0)THROW_MPP("Named output '"+output.name+"' has zero-sized destination.",__LINE__,__FILE__,__func__);
-			RenderPipelineOutputPlan plan;plan.name=output.name;plan.image=output.image;plan.taaDepth=output.taaDepth;plan.antiAliasing=effective;plan.logicalSize=size;plan.physicalImages.push_back({PhysicalOutputImageRole::Input,size,colour.desc.format,1});
+			RenderPipelineOutputPlan plan;plan.name=output.name;plan.image=output.image;plan.taaDepth=output.taaDepth;plan.antiAliasing=effective;plan.logicalSize=size;plan.rasterSamples=antiAliasingSampleCount(effective.msaa);plan.physicalImages.push_back({PhysicalOutputImageRole::Input,size,colour.desc.format,1});
 			if(effective.msaa!=AntiAliasingSamples::Off||effective.ssaa!=AntiAliasingSamples::Off||effective.taa||effective.fxaa){plan.physicalImages.push_back({PhysicalOutputImageRole::Work,size,colour.desc.format,1});plan.physicalImages.push_back({PhysicalOutputImageRole::Work,size,colour.desc.format,1});}
 			if(effective.taa){plan.physicalImages.push_back({PhysicalOutputImageRole::TaaColourHistory,size,colour.desc.format,1});plan.physicalImages.push_back({PhysicalOutputImageRole::TaaColourHistory,size,colour.desc.format,1});auto depthFormat=output.taaDepth.empty()?GraphImageFormat::Depth24:findImage(graph,output.taaDepth).desc.format;plan.physicalImages.push_back({PhysicalOutputImageRole::TaaDepthHistory,size,depthFormat,1});}
 			plans.push_back(std::move(plan));

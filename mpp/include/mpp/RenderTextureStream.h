@@ -49,8 +49,13 @@ namespace mpp
 		TextureParams params;
 	};
 
+	class RenderSystem;
+	class RenderTexture;
+
 	class _MPPAPI RenderTextureStream : public ResourceStream
 	{
+		friend class RenderSystem;
+		friend class RenderTexture;
 		struct Definition
 		{
 			uint32_t internalFormat{ 0 };
@@ -74,6 +79,7 @@ namespace mpp
 
 	private:
 
+		uint32_t mPhysicalSamples{ 1 };
 		void loadImpl();
 
 	public:

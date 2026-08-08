@@ -191,6 +191,7 @@ namespace mpp
 	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
 	{
 		GpuDebugScope graphScope("Pipeline " + mName + ": RenderGraph");
+		uint32_t physicalSamples=mOptions.outputs.empty()?1:antiAliasingSampleCount(resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,mOptions.outputs.front().antiAliasing).msaa);
 		if (!mGraphTargets)
 		{
 			mGraphTargets = make_unique<RenderGraphTargets>(mRenderSystem);
@@ -213,7 +214,7 @@ namespace mpp
 			auto const& graph = templateResource->getGraph();
 			if (!graph) THROW_MPP("XmlGraphPbrForward graph template is empty.", __LINE__, __FILE__, __func__);
 			auto const& viewport = scene->getViewport();
-			mGraphTargets->allocate(graph->buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height)));
+			mGraphTargets->allocatePhysical(graph->buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height)),physicalSamples);
 			RenderGraphImportRegistry imports;
 			for(auto const& entry:mOptions.graphImports)imports.registerImport(entry.first,entry.second);
 			if(!imports.findImport("screen"))imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
@@ -367,7 +368,7 @@ namespace mpp
 
 		auto const& viewport = scene->getViewport();
 		auto plan = graph.buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height));
-		mGraphTargets->allocate(plan);
+		mGraphTargets->allocatePhysical(plan,physicalSamples);
 		mGraphTargets->bindImported(screen, mRenderSystem->getScreenRenderTarget());
 		struct DynamicPreparedOutput{string name;GraphImageHandle image;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<DynamicPreparedOutput> dynamicOutputs;
 		if(mOutputProcessor)

@@ -5,8 +5,9 @@
 - **Phase 1 complete** on `feature/anti-aliasing-phase-1`: core anti-aliasing types, strict shared INI parsing, immutable `RenderSystemOptions`, startup capability validation/reporting, PipelineEditor `editor.ini` integration, and deployed DemoSuite `demosuite.ini` integration.
 - **Phase 2 complete**: shared programmatic/XML named-output descriptors, strict output validation and inheritance checks, XML round trips, legacy sample-authoring removal, migration diagnostics, and repository pipeline/document migration.
 - **Phase 3 complete**: immutable renderer-owned physical output plans, unified screen/offscreen pass-through processors, transactional graph/output generations, output-chain history ownership, transactional render-texture resize, and retained-resource failure handling.
-- Phase 1–3 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, non-default option propagation, transactional failure tests, legacy `<samples>` rejection, and package export/load smoke testing.
-- Anti-aliasing algorithms remain disabled by default; phase 3's pass-through chain establishes their physical resource and presentation boundary. Physical MSAA begins in phase 4.
+- **Phase 4 complete**: renderer-private 2×/4×/8× multisample colour/depth attachment allocation, automatic single-sample resolves before graph reads/output processing, capability enforcement, mip-chain incompatibility diagnostics, and alpha-preserving resolve tests.
+- Phase 1–4 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, supported MSAA colour/depth allocation and resolve tests, non-default option propagation, transactional failure tests, legacy `<samples>` rejection, and package export/load smoke testing.
+- Anti-aliasing remains disabled by default. SSAA begins in phase 5.
 
 ## 1. Scope
 
@@ -239,9 +240,11 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Make graph allocation, output generation replacement, and render-texture resize transactional.
    - [x] Retain prior resources on candidate failure and surface non-modal PipelineEditor resize errors.
 
-4. **MSAA and resolve scheduling**
-   - Apply private physical sample counts to raster attachments.
-   - Resolve color/depth before sampled use and output processing.
+4. **MSAA and resolve scheduling — COMPLETE**
+   - [x] Apply renderer-private physical sample counts to compatible raster colour/depth attachments.
+   - [x] Allocate separate single-sample targets and resolve stored colour/depth writes before graph reads and output processing.
+   - [x] Enforce capabilities and reject multisampled attachment mip chains with migration guidance.
+   - [x] Test supported 2×/4×/8× allocation, colour/depth resolve readback, alpha preservation, and normal pipeline presentation.
 
 5. **SSAA**
    - Add supersampled viewport planning and alpha-preserving Lanczos downsampling.
