@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <thread>
 #include <utility>
@@ -13,6 +14,8 @@
 #include "mpp/app/DocumentFoundationTests.h"
 #include "mpp/app/DocumentId.h"
 #include "mpp/app/DocumentSnapshot.h"
+#include "mpp/app/PackageManifest.h"
+#include "mpp/app/ZipArchive.h"
 
 using namespace std;
 
@@ -108,9 +111,25 @@ namespace mpp::app
 			return fail("recovery without an explicit save was not detected");
 		ifstream input(document, ios::binary);
 		string contents((istreambuf_iterator<char>(input)), istreambuf_iterator<char>());
+		input.close();
 		error_code ignored;
 		filesystem::remove_all(root, ignored);
 		if (contents != "second") return fail("atomic document replacement failed");
+
+		// Package archives are ZIP-store files, but must preserve binary payloads and
+		// reject path traversal before an archive reaches a workspace loader.
+		auto zipSource = root / "zip-source.bin"; atomicWriteText(document, "second"); atomicWriteText(zipSource, "package payload");
+		auto archive = root / "workspace.mpppackage", extracted = root / "extracted", manifestFile=root / "manifest.xml";
+		writePackageManifest(manifestFile);auto manifest=readPackageManifest(manifestFile);if(manifest.pipeline!="pipeline.xml"||manifest.scene!="scene.xml")return fail("package manifest round trip failed");
+		ZipArchive::write(archive, { { "manifest.xml", document }, { "assets/payload.bin", zipSource } });
+		ZipArchive::extract(archive, extracted);
+		// Replacing an existing export must be atomic on Windows as well.
+		atomicWriteText(zipSource, "updated package payload"); ZipArchive::write(archive, { { "manifest.xml", document }, { "assets/payload.bin", zipSource } }); filesystem::remove_all(extracted, ignored); ZipArchive::extract(archive, extracted);
+		ifstream payload(extracted / "assets" / "payload.bin", ios::binary);
+		string payloadText((istreambuf_iterator<char>(payload)), istreambuf_iterator<char>());
+		if (payloadText != "updated package payload" || !filesystem::exists(extracted / "manifest.xml")) return fail("ZIP package round trip failed");
+		bool rejectedUnsafeZip=false;try{ZipArchive::write(root / "unsafe.mpppackage",{{"../outside.txt",zipSource}});}catch(runtime_error const&){rejectedUnsafeZip=true;}if(!rejectedUnsafeZip)return fail("ZIP package path traversal was accepted");
+		map<string,filesystem::path> excessiveEntries;for(unsigned index=0;index<4097;++index)excessiveEntries.emplace("assets/"+to_string(index),zipSource);bool rejectedExcessive=false;try{ZipArchive::write(root / "excessive.mpppackage",excessiveEntries);}catch(runtime_error const&){rejectedExcessive=true;}if(!rejectedExcessive)return fail("ZIP package entry limit was not enforced");
 
 		BackgroundJobQueue jobs;
 		atomic_bool firstStarted{ false };

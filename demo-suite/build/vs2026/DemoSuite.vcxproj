@@ -22,6 +22,7 @@
     <ClInclude Include="..\..\include\Logger.h" />
     <ClInclude Include="..\..\include\ModelScene.h" />
     <ClInclude Include="..\..\include\ProgramOptions.h" />
+    <ClInclude Include="..\..\include\PackageScene.h" />
     <ClInclude Include="..\..\include\RenderOptions.h" />
     <ClInclude Include="..\..\include\Scene.h" />
     <ClInclude Include="..\..\include\Test2dTriangleBatchDataProvider.h" />
@@ -43,6 +44,7 @@
     <ClCompile Include="..\..\src\Main.cpp" />
     <ClCompile Include="..\..\src\ModelScene.cpp" />
     <ClCompile Include="..\..\src\ProgramOptions.cpp" />
+    <ClCompile Include="..\..\src\PackageScene.cpp" />
     <ClCompile Include="..\..\src\Scene.cpp" />
   </ItemGroup>
   <ItemGroup>

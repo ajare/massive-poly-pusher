@@ -12,6 +12,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/MppException.h"
 
 namespace mpp
 {
@@ -36,11 +37,44 @@ namespace mpp
 				if (std::abs((int)pixel[i] - (int)expected[i]) > 1) return false;
 			return true;
 		}
+
+		std::vector<uint8_t> readPixels(RenderTargetPtr const& target)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get());
+			if (!texture) return {};
+			std::vector<uint8_t> pixels(texture->getWidth() * texture->getHeight() * 4);
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->getColourAttachmentId(0)));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data()));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+			return pixels;
+		}
+
+		bool containsVisiblePixel(RenderTargetPtr const& target)
+		{
+			auto pixels = readPixels(target);
+			for (size_t index = 0; index < pixels.size(); index += 4)
+			{
+				if (pixels[index] || pixels[index + 1] || pixels[index + 2]) return true;
+			}
+			return false;
+		}
+
+		uint8_t maximumRed(RenderTargetPtr const& target)
+		{
+			auto pixels = readPixels(target);
+			uint8_t maximum = 0;
+			for (size_t index = 0; index < pixels.size(); index += 4)
+			{
+				maximum = std::max(maximum, pixels[index]);
+			}
+			return maximum;
+		}
 	}
 	bool runRenderGraphGpuTests(RenderSystem* renderSystem, std::string* failure)
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
 		if (!renderSystem) return fail("RenderSystem is null");
+		std::string stage = "initial colour passes";
 		try
 		{
 			GraphImageDesc colour;
@@ -75,6 +109,7 @@ namespace mpp
 			if (!resizedTarget || resizedTarget->getWidth() != 37 || resizedTarget->getHeight() != 29) return fail("resized graph target dimensions are wrong");
 			resizedTarget.reset();
 
+			stage = "curated format allocation";
 			std::vector<GraphImageFormat> const supportedFormats{
 				GraphImageFormat::R8, GraphImageFormat::Rg8, GraphImageFormat::Rgba8, GraphImageFormat::Srgb8Alpha8,
 				GraphImageFormat::R16f, GraphImageFormat::Rg16f, GraphImageFormat::Rgba16f,
@@ -85,6 +120,7 @@ namespace mpp
 			};
 			for (size_t formatIndex = 0; formatIndex < supportedFormats.size(); ++formatIndex)
 			{
+				stage = "curated format allocation index " + std::to_string(formatIndex);
 				auto const format = supportedFormats[formatIndex];
 				bool const depthFormat = format >= GraphImageFormat::Depth16;
 				GraphImageDesc formatDesc;
@@ -102,6 +138,7 @@ namespace mpp
 				formatExecutor.execute(formatGraph, formatTargets, renderSystem->getCaps());
 				if (!formatTargets.get(image)) return fail("curated graph format allocation failed");
 			}
+			stage = "depth diagnostic";
 			GraphImageDesc diagnosticDepthDesc;
 			diagnosticDepthDesc.format = GraphImageFormat::Depth32f;
 			diagnosticDepthDesc.usage = GraphImageUsage::DepthAttachment;
@@ -121,6 +158,7 @@ namespace mpp
 			renderSystem->renderTextureDiagnostic(static_cast<RenderTexture*>(diagnosticDepthTargets.get(diagnosticDepthImage).get()), diagnosticDepthOutput, diagnosticDepthInspect);
 			if (!nearColour(readFirstPixel(diagnosticDepthOutput), { 255, 255, 255, 255 })) return fail("depth diagnostic visualization failed");
 
+			stage = "transient aliasing";
 			RenderGraph aliasGraph;
 			auto aliasFirst = aliasGraph.createImage("GpuTestAliasFirst", colour);
 			auto aliasMiddle = aliasGraph.createImage("GpuTestAliasMiddle", colour);
@@ -161,6 +199,7 @@ namespace mpp
 			if (aliasExecutor.getLastExecutionStats().size() != 3) return fail("per-pass execution statistics were not recorded");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
 
+			stage = "mip chain";
 			GraphImageDesc mipColour = colour;
 			mipColour.mipLevels = 3;
 			mipColour.params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
@@ -201,6 +240,7 @@ namespace mpp
 			mipExecutor.execute(mipGraph, mipTargets, renderSystem->getCaps());
 			if (mipExecutor.getLastExecutionStats().empty() || !mipExecutor.getLastExecutionStats().front().gpuTimingAvailable) return fail("asynchronous per-pass GPU timing was not collected");
 
+			stage = "explicit mip attachment";
 			RenderGraph explicitMipGraph;
 			auto explicitMip = explicitMipGraph.createImage("GpuTestExplicitMip", mipColour);
 			auto explicitMipPass = explicitMipGraph.addPass("GpuTestExplicitMipWrite", GraphPassType::Fullscreen);
@@ -219,6 +259,7 @@ namespace mpp
 			invalidMipGraph.writeColour(invalidMipPass, invalidMip);
 			if (invalidMipGraph.buildAllocationPlan({ 8, 8 }).valid) return fail("oversized mip chain was accepted");
 
+			stage = "MSAA resolve";
 			if (renderSystem->getCaps().maxSamples >= 2)
 			{
 				GraphImageDesc msaaColour = colour;
@@ -241,6 +282,7 @@ namespace mpp
 				if (!nearColour(readFirstPixel(msaaTargets.get(msaaImage)), { 255, 128, 0, 255 })) return fail("MSAA colour resolve readback failed");
 			}
 
+			stage = "MRT readback";
 			if (renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2)
 			{
 				RenderGraph mrt;
@@ -258,15 +300,53 @@ namespace mpp
 				if (!nearColour(readFirstPixel(mrtTargets.get(right)), { 255, 255, 0, 255 })) return fail("MRT location 1 readback failed");
 			}
 
+			stage = "screen-space text overlay";
+			RenderTextureOptions textTargetOptions;
+			auto textTarget = renderSystem->createRenderTexture(
+				"GpuTestTextOverlay",
+				renderSystem->getWindowWidth(),
+				renderSystem->getWindowHeight(),
+				textTargetOptions);
+			renderSystem->setRenderTarget(textTarget);
+			renderSystem->clearScreen(Colour::Black);
+			renderSystem->renderText("RenderGraph text overlay", 8, 0, Colour::White);
+			GL_CHECK(glFinish());
+			bool textVisible = containsVisiblePixel(textTarget);
+			if (!textVisible)
+			{
+				renderSystem->renderToScreen();
+				return fail("screen-space text overlay produced no visible pixels");
+			}
+
+			renderSystem->clearScreen(Colour::Black);
+			renderSystem->renderTextFormatted("[#FF0000FF]D", 8, 0);
+			GL_CHECK(glFinish());
+			uint8_t opaqueRed = maximumRed(textTarget);
+
+			renderSystem->clearScreen(Colour::Black);
+			renderSystem->renderTextFormatted("[#FF000080]D", 8, 0);
+			GL_CHECK(glFinish());
+			uint8_t translucentRed = maximumRed(textTarget);
+			renderSystem->renderToScreen();
+			if (opaqueRed < 32 || translucentRed < 8 || translucentRed >= opaqueRed * 3 / 4)
+			{
+				return fail("formatted text alpha was not applied to glyph coverage");
+			}
+
 			targets.clear();
 			if (!releasedTarget.expired()) return fail("cleared graph target remains referenced");
 			renderSystem->renderToScreen();
 			return true;
 		}
+		catch (MppException const& exception)
+		{
+			renderSystem->renderToScreen();
+			return fail(stage + ": " + exception.what() + " at " + exception.getFile() + ":" + std::to_string(exception.getLine()));
+		}
 		catch (std::exception const& exception)
 		{
 			renderSystem->renderToScreen();
-			return fail(exception.what());
+			return fail(stage + ": " + exception.what());
 		}
 	}
 }

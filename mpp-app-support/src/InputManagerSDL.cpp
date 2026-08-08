@@ -4,7 +4,9 @@
 #define DOUBLECLICKTIME 0.5
 
 InputManagerSDL::InputManagerSDL() :
-	mMouseMotion(0)
+	mMouseMotion(0),
+	mMouseDeltaX(0.0f),
+	mMouseDeltaY(0.0f)
 {
 	// Mouse buffer
 	for (int i = 0; i < MOUSE_HISTORY_SIZE; ++i)
@@ -314,6 +316,8 @@ void InputManagerSDL::update()
 {
 	// Clear mouse movement
 	mMouseMotion = 0;
+	mMouseDeltaX = 0.0f;
+	mMouseDeltaY = 0.0f;
 
 	// Clear mouse wheel
 	mCurMouseBuffer[Mouse_WheelDown] = 0;
@@ -378,14 +382,16 @@ void InputManagerSDL::update()
 			break;
 
 		case IET_MouseWheel:
-			if (mEvents[i].code > 0)
+			if (mEvents[i].y > 0.0f)
 				mCurMouseBuffer[Mouse_WheelUp] = 1;
-			else if (mEvents[i].code < 0)
+			else if (mEvents[i].y < 0.0f)
 				mCurMouseBuffer[Mouse_WheelDown] = 1;
 			break;
 
 		case IET_MouseMotion:
 			mMouseMotion = mEvents[i].code;
+			mMouseDeltaX += mEvents[i].dx;
+			mMouseDeltaY += mEvents[i].dy;
 			break;
 
 		default:
@@ -449,6 +455,12 @@ bool InputManagerSDL::wheelDown()
 void InputManagerSDL::getMousePosition(int* x, int* y)
 {
 	SDL_GetMouseState(x, y);
+}
+
+void InputManagerSDL::getMouseDelta(float* x, float* y)
+{
+	*x = mMouseDeltaX;
+	*y = mMouseDeltaY;
 }
 
 void InputManagerSDL::getMouseMotion(float* motion)

@@ -67,8 +67,10 @@ namespace mpp
 				: RenderTarget(colours.empty() ? max<size_t>(1, depth->getWidth() >> depthMip) : max<size_t>(1, colours.front()->getWidth() >> colourMips.front()), colours.empty() ? max<size_t>(1, depth->getHeight() >> depthMip) : max<size_t>(1, colours.front()->getHeight() >> colourMips.front()))
 			{
 				GL_CHECK(glGenFramebuffers(1, &mFramebuffer));
-				GL_CHECK(glObjectLabel(GL_FRAMEBUFFER, mFramebuffer, -1, ("RenderGraphPass: " + name).c_str()));
+				// glGenFramebuffers reserves a name; binding it creates the object.
+				// Labeling a never-bound name is GL_INVALID_VALUE on strict drivers.
 				GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFramebuffer));
+				GL_CHECK(glObjectLabel(GL_FRAMEBUFFER, mFramebuffer, -1, ("RenderGraphPass: " + name).c_str()));
 				for (size_t index = 0; index < colours.size(); ++index)
 				{
 					auto texture = requireRenderTexture(colours[index]);

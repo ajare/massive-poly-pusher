@@ -43,4 +43,6 @@ public:
 	virtual void getMousePosition(int* x, int* y) = 0;
 
 	virtual void getMouseMotion(float* motion) = 0;
+
+	virtual void getMouseDelta(float* x, float* y) = 0;
 };
