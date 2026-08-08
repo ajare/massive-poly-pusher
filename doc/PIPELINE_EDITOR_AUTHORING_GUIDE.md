@@ -32,7 +32,7 @@ Continuous inspector changes coalesce into undoable commands. Undo/redo selectio
 
 Author only concrete `PbrMaterial`, `Program`, `Texture`, and `Sampler` resources. Selecting a PBR material lists enabled material-aware scene passes that use it through the active scene bindings plus enabled material-independent passes that always run. Material passes are highlighted in amber and independent passes in blue in the Pipeline Hierarchy. External libraries are read-only and use `Library::Resource`; select an external child and choose **Make Local Copy** before editing it. Renaming or deleting local resources updates direct and nested references.
 
-Pipeline environments own IBL/background resources. Neutral fallbacks are explicit diagnostics, not hidden scene state. Logical preview bindings keep scenes independent from concrete resources. Instance overrides may reduce enabled material capabilities but cannot enable shader features that were specialized out.
+Pipeline environments own IBL/background resources. Select **Bloom Settings** in the hierarchy to enable or disable bloom and choose how many authored horizontal/vertical blur pairs execute; requesting more pairs than the graph contains is diagnosed. Neutral fallbacks are explicit diagnostics, not hidden scene state. Logical preview bindings keep scenes independent from concrete resources. Instance overrides may reduce enabled material capabilities but cannot enable shader features that were specialized out.
 
 ## Viewport controls
 

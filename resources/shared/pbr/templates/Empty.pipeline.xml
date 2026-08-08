@@ -1,6 +1,10 @@
 <PbrPipeline>
   <version>1</version>
   <name>Empty Pipeline</name>
+  <Bloom>
+    <enabled>false</enabled>
+    <blurPasses>0</blurPasses>
+  </Bloom>
   <Imports>
     <Import>
       <id>screen</id>

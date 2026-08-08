@@ -17,6 +17,7 @@ Paths are resolved relative to the pipeline file. Relative paths are portable; a
   <LocalResources>...</LocalResources>
   <Imports>...</Imports>
   <Environment>...</Environment>
+  <Bloom><enabled>true</enabled><blurPasses>4</blurPasses></Bloom>
   <PreviewBindings>...</PreviewBindings>
   <PreviewOverrides>...</PreviewOverrides>
   <Extensions>...</Extensions>
@@ -55,7 +56,9 @@ Formats: `R8`, `RG8`, `RGBA8`, `SRGB8_ALPHA8`, `R16F`, `RG16F`, `RGBA16F`, `R32F
 
 Usage is a comma-separated combination of `sampled`, `colourAttachment`, `depthAttachment`, and `presentation`. Required imports must be supplied by the host. Optional imports require an explicit `fallback` resource.
 
-## Environment and preview binding
+## Environment, bloom, and preview binding
+
+`Bloom` contains `enabled` and `blurPasses`. The count selects how many authored horizontal/vertical blur pairs execute; enabled bloom requires extract/composite passes and cannot request more pairs than the graph authors. Remaining authored blur pairs preserve the image chain without applying additional blur.
 
 `Environment` supports `binding`, `irradiance`, `prefilteredSpecular`, `brdfLut`, and `background`. These resources are pipeline-owned. Missing optional components use diagnosed neutral fallbacks.
 

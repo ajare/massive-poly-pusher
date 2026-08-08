@@ -71,6 +71,12 @@ namespace mpp
 		std::string background;
 	};
 
+	struct _MPPAPI PbrPipelineBloomDocument
+	{
+		bool enabled{ false };
+		uint32_t blurPasses{ 0 };
+	};
+
 	class _MPPAPI PbrPipelineDocument
 	{
 	public:
@@ -90,6 +96,7 @@ namespace mpp
 		std::vector<PbrPipelineExtensionDocument> extensions;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;
+		PbrPipelineBloomDocument bloom;
 		std::vector<PbrPreviewBinding> previewBindings;
 		std::vector<PbrPreviewOverride> previewOverrides;
 

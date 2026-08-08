@@ -45,6 +45,11 @@ namespace mpp
 		public:
 			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->bloom.enabled && context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomExtract(input(context, 0), parameter(context, "THRESHOLD", 1.0f)); }
 		};
+		uint32_t trailingPassIndex(std::string const& name)
+		{
+			auto first=name.find_last_not_of("0123456789");if(first==name.size()-1)return 0;try{return (uint32_t)std::stoul(name.substr(first+1));}catch(...){return 0;}
+		}
+
 		class BloomBlurPass final : public RenderGraphScenePass
 		{
 			bool mHorizontal;
@@ -54,7 +59,7 @@ namespace mpp
 			{
 				auto const& frame = context.getFrame();
 				auto const& name = context.getPass().name;
-				uint32_t iteration = !name.empty() && name.back() >= '0' && name.back() <= '9' ? (uint32_t)(name.back() - '0') : 0;
+				uint32_t iteration = trailingPassIndex(name);
 				bool enabled = frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom && iteration < frame.pipelineOptions->bloom.blurPasses;
 				if (enabled) frame.renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1));
 				else frame.renderSystem->renderFullscreenQuad(input(context, 0), BlendMode::One, BlendMode::Zero);

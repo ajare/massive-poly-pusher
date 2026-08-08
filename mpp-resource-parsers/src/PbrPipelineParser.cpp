@@ -48,7 +48,7 @@ namespace mpp::resource_parsers
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
 		auto data = reader->readTree();
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
-		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Environment","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"PbrPipeline");
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Environment","Bloom","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
@@ -73,6 +73,10 @@ namespace mpp::resource_parsers
 			auto read = [&](char const* key) { return environment.hasEntry(key) ? environment.getEntry(key).getValue() : string(); };
 			document.environment.binding = read("binding"); document.environment.irradiance = read("irradiance");
 			document.environment.prefilteredSpecular = read("prefilteredSpecular"); document.environment.brdfLut = read("brdfLut"); document.environment.background = read("background");
+		}
+		if (data.hasEntry("Bloom"))
+		{
+			auto const& bloom=data.getEntry("Bloom");rejectUnknown(bloom,{"enabled","blurPasses"},"Bloom");if(bloom.hasEntry("enabled"))document.bloom.enabled=boolean(bloom.getEntry("enabled").getValue());if(bloom.hasEntry("blurPasses"))document.bloom.blurPasses=utils::StringUtils::parseUInt(bloom.getEntry("blurPasses").getValue());
 		}
 		if (data.hasEntry("PreviewBindings"))
 			for (auto const& entry : data.getEntry("PreviewBindings")) { if(entry.first!="Material")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in PreviewBindings.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"binding","resource"},"PreviewBindings/Material");document.previewBindings.push_back({ entry.second.getEntry("binding").getValue(), entry.second.getEntry("resource").getValue() }); }

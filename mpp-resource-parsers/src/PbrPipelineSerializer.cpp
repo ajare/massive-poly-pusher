@@ -49,6 +49,7 @@ namespace mpp::resource_parsers
 		environment->createChild("prefilteredSpecular")->setValue(document.environment.prefilteredSpecular);
 		environment->createChild("brdfLut")->setValue(document.environment.brdfLut);
 		environment->createChild("background")->setValue(document.environment.background);
+		auto bloom=root->createChild("Bloom");bloom->createChild("enabled")->setValue(document.bloom.enabled);bloom->createChild("blurPasses")->setValue(document.bloom.blurPasses);
 		if (!document.previewBindings.empty())
 		{
 			auto bindings = root->createChild("PreviewBindings");
