@@ -475,16 +475,19 @@ namespace mpp
 		}
 
 		const bool loaded = isLoaded();
-		if (loaded)
+		if(!loaded){Texture::mWidth=RenderTarget::mWidth=width;Texture::mHeight=RenderTarget::mHeight=height;return true;}
+
+		// Allocate a complete candidate backing set without disturbing the active
+		// one. This keeps framebuffer users valid if allocation/completeness fails.
+		auto oldWidth=Texture::mWidth,oldHeight=Texture::mHeight;auto oldFrameBuffer=mFrameBuffer,oldDepthBuffer=mDepthBuffer,oldDepthTexture=mDepthTexture;auto oldTextures=std::move(mTextureIds);auto oldId=getId();
+		mFrameBuffer=0;mDepthBuffer=0;mDepthTexture=0;mTextureIds.clear();setId(0);Texture::mWidth=RenderTarget::mWidth=width;Texture::mHeight=RenderTarget::mHeight=height;
+		try{loadImpl();}
+		catch(...)
 		{
-			unloadImpl();
+			try{unloadImpl();}catch(...){}
+			mFrameBuffer=oldFrameBuffer;mDepthBuffer=oldDepthBuffer;mDepthTexture=oldDepthTexture;mTextureIds=std::move(oldTextures);setId(oldId);Texture::mWidth=RenderTarget::mWidth=oldWidth;Texture::mHeight=RenderTarget::mHeight=oldHeight;throw;
 		}
-		Texture::mWidth = RenderTarget::mWidth = width;
-		Texture::mHeight = RenderTarget::mHeight = height;
-		if (loaded)
-		{
-			loadImpl();
-		}
+		if(oldFrameBuffer)GL_CHECK(glDeleteFramebuffers(1,&oldFrameBuffer));if(oldDepthBuffer)GL_CHECK(glDeleteRenderbuffers(1,&oldDepthBuffer));if(oldDepthTexture)GL_CHECK(glDeleteTextures(1,&oldDepthTexture));for(auto texture:oldTextures)GL_CHECK(glDeleteTextures(1,&texture));
 		return true;
 	}
 

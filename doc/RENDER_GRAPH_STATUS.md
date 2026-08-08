@@ -16,6 +16,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 - [x] Context-free allocation planning through `RenderGraph::buildAllocationPlan(viewport)`, including per-version resolved size and first/last-use interval.
 - [x] Physical attachment allocation through `RenderGraphTargets`: RenderTexture mappings for RGBA8, RGBA16F, RG16F, depth24, and depth24-stencil8, with compatible non-overlapping plan intervals aliased to one target.
 - [x] Imported-target binding, resolving every version of an external logical image to its application-provided backing target.
+- [x] Transactional graph-target allocation and named-output generations, with shared screen/offscreen pass-through presentation, immutable physical plans, work/history ownership, and prior-generation retention on failure.
 - [x] Graphics-pass execution through `RenderGraphExecutor`: per-pass framebuffer views, MRT draw buffers, colour/depth clear load operations, callback execution, and RenderSystem target-stack restoration on exceptions.
 - [x] Nested XML topology parser (`RenderGraphParser`) for images, sampled reads, colour outputs, one depth output, load/store operations, and clear values.
 - [x] Debug builds of `MassivePolyPusher` and `MppResourceParsers` after the graph work.

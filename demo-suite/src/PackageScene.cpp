@@ -114,7 +114,8 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 		renderer->configureShadowDomain(renderOptions.shadowDomain, shadow);
 		renderOptions.graphImports["shadowDepth"] = renderer->getShadowDomainDepthTarget(renderOptions.shadowDomain);
 	}
-	renderer->getOrCreateRenderPipeline("Package", renderOptions);
+	auto packagePipeline=renderer->getOrCreateRenderPipeline("Package", renderOptions);
+	std::map<std::string,mpp::RenderTargetPtr> outputDestinations;for(auto const& output:pipeline->outputs)for(uint32_t image=0;image<pipeline->graph->getImageCount();++image){auto info=pipeline->graph->getImageInfo({image,0});if(info.name!=output.image||!info.desc.external)continue;auto destination=renderOptions.graphImports.find(info.importName);if(destination!=renderOptions.graphImports.end())outputDestinations.emplace(output.name,destination->second);break;}if(outputDestinations.size()==pipeline->outputs.size())packagePipeline->prepareOutputs(*pipeline->graph,outputDestinations);
 
 	mSceneRuntime = std::make_unique<mpp::SceneRuntime>(renderer, getResourceManager());
 	if (!mSceneRuntime->rebuild(

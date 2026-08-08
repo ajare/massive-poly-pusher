@@ -85,8 +85,9 @@ namespace mpp
 		{
 			THROW_MPP("Cannot allocate an invalid render graph allocation plan.", __LINE__, __FILE__, __func__);
 		}
-		mTargets.clear();
-		mWriteTargets.clear();
+		map<uint64_t,RenderTargetPtr> candidateTargets;
+		map<uint64_t,RenderTargetPtr> candidateWriteTargets;
+		auto candidatePool=mPool;
 		struct Assignment
 		{
 			uint32_t firstPass;
@@ -100,7 +101,7 @@ namespace mpp
 		{
 			return left->firstPass < right->firstPass;
 		});
-		vector<vector<Assignment>> assignments(mPool.size());
+		vector<vector<Assignment>> assignments(candidatePool.size());
 		auto intervalsOverlap = [](Assignment const& left, GraphImageLifetime const& right)
 		{
 			return !(left.lastPass < right.firstPass || right.lastPass < left.firstPass);
@@ -108,9 +109,9 @@ namespace mpp
 		for (auto const* lifetime : lifetimes)
 		{
 			size_t poolIndex = SIZE_MAX;
-			for (size_t index = 0; index < mPool.size(); ++index)
+			for (size_t index = 0; index < candidatePool.size(); ++index)
 			{
-				if (!compatibleForAliasing(mPool[index].lifetime, *lifetime)) continue;
+				if (!compatibleForAliasing(candidatePool[index].lifetime, *lifetime)) continue;
 				auto const& used = assignments[index];
 				if (used.empty())
 				{
@@ -132,9 +133,9 @@ namespace mpp
 			{
 				string const name = "RenderGraph." + (lifetime->debugName.empty() ? "Image" + to_string(lifetime->image.id) : lifetime->debugName) + ".v" + to_string(lifetime->image.version);
 				auto writeTarget = mRenderSystem->createRenderTexture(name, lifetime->size.x, lifetime->size.y, makeGraphRenderTextureOptions(lifetime->desc));
-				mPool.push_back({ *lifetime, writeTarget, writeTarget });
+				candidatePool.push_back({ *lifetime, writeTarget, writeTarget });
 				assignments.emplace_back();
-				poolIndex = mPool.size() - 1;
+				poolIndex = candidatePool.size() - 1;
 			}
 			for (auto const& previous : assignments[poolIndex])
 			{
@@ -142,9 +143,11 @@ namespace mpp
 					THROW_MPP("Render graph allocator attempted to alias overlapping image lifetimes.", __LINE__, __FILE__, __func__);
 			}
 			assignments[poolIndex].push_back({ lifetime->firstPass, lifetime->lastPass, lifetime->desc.transient });
-			mTargets.emplace(makeKey(lifetime->image), mPool[poolIndex].target);
-			mWriteTargets.emplace(makeKey(lifetime->image), mPool[poolIndex].writeTarget);
+			candidateTargets.emplace(makeKey(lifetime->image), candidatePool[poolIndex].target);
+			candidateWriteTargets.emplace(makeKey(lifetime->image), candidatePool[poolIndex].writeTarget);
 		}
+		vector<PoolEntry> activePool;for(size_t index=0;index<candidatePool.size();++index)if(!assignments[index].empty())activePool.push_back(std::move(candidatePool[index]));
+		mTargets.swap(candidateTargets);mWriteTargets.swap(candidateWriteTargets);mPool.swap(activePool);
 	}
 
 	void RenderGraphTargets::bindImported(GraphImageHandle image, RenderTargetPtr target)

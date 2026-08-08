@@ -1139,6 +1139,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->getOrCreateRenderPipeline("PBR", pbrOptions);
 	auto graphPbrOptions = pbrOptions;
 	graphPbrOptions.mode = mpp::RenderPipelineMode::GraphPbrForward;
+	graphPbrOptions.outputs.push_back({"Main","Presentation",{}, {}});
 	renderSystem->getOrCreateRenderPipeline("GraphPBR", graphPbrOptions);
 	auto xmlGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, options.resourceLocation + "PbrPipeline.rendergraph.xml");
 	auto xmlGraph = resourceMgr->declareResource("PBR.XmlGraph", mpp::ResourceStreamPtr(xmlGraphStream)).first;
@@ -1154,6 +1155,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->getOrCreateRenderPipeline("Default", defaultOptions);
 	auto graphDefaultOptions = defaultOptions;
 	graphDefaultOptions.mode = mpp::RenderPipelineMode::GraphLegacyForward;
+	graphDefaultOptions.outputs.push_back({"Main","Presentation",{}, {}});
 	renderSystem->getOrCreateRenderPipeline("GraphDefault", graphDefaultOptions);
 
 	std::string documentFoundationFailure;

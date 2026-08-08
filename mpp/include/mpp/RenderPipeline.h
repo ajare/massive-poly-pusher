@@ -17,6 +17,7 @@
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderPipelineOutput.h"
+#include "mpp/RenderOutputProcessor.h"
 
 namespace mpp
 {
@@ -143,6 +144,7 @@ namespace mpp
 		RenderTargetPtr mBloomCompositeTarget;
 
 		std::unique_ptr<class RenderGraphTargets> mGraphTargets;
+		std::unique_ptr<RenderOutputProcessor> mOutputProcessor;
 		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
 		RenderGraphPassFactoryRegistry mGraphPassFactories;
 		bool mWarnedMissingPbrEnvironment{ false };
@@ -175,6 +177,9 @@ namespace mpp
 		RenderTargetPtr getOutputRenderTarget();
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
 		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;
+		uint64_t getOutputGeneration() const;
+		std::vector<RenderPipelineOutputPlan> const& getOutputPlans() const;
+		void prepareOutputs(RenderGraph const& graph, std::map<std::string, RenderTargetPtr> const& destinations);
 
 		void resize(size_t width, size_t height);
 
