@@ -5,6 +5,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderGraph.h"
+#include "mpp/RenderGraphGpuTests.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTextureStream.h"
 
@@ -23,6 +24,7 @@ namespace mpp
 			GraphImageLifetime lifetime;
 			RenderTargetPtr target;
 			RenderTargetPtr writeTarget;
+			uint32_t samples{ 1 };
 		};
 
 		RenderSystem* mRenderSystem;
@@ -32,6 +34,9 @@ namespace mpp
 		std::vector<PoolEntry> mPool;
 
 		static uint64_t makeKey(GraphImageHandle image);
+		void allocatePhysical(RenderGraphAllocationPlan const& plan, uint32_t samples);
+		friend class RenderPipeline;
+		friend _MPPAPI bool runRenderGraphGpuTests(RenderSystem* renderSystem, std::string* failure);
 
 	public:
 		explicit RenderGraphTargets(RenderSystem* renderSystem);

@@ -108,6 +108,7 @@ namespace mpp
 
 		void clearPassOutputs(GraphPassInfo const& pass)
 		{
+			GLboolean depthMask=GL_TRUE,colourMask[4]{GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE};GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK,&depthMask));GL_CHECK(glGetBooleanv(GL_COLOR_WRITEMASK,colourMask));GL_CHECK(glDepthMask(GL_TRUE));GL_CHECK(glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE));
 			for (size_t index = 0; index < pass.colourOutputs.size(); ++index)
 			{
 				auto const& output = pass.colourOutputs[index];
@@ -123,6 +124,7 @@ namespace mpp
 					GL_CHECK(glClearBufferfv(GL_DEPTH, 0, &output.clearDepth));
 				}
 			}
+			GL_CHECK(glDepthMask(depthMask));GL_CHECK(glColorMask(colourMask[0],colourMask[1],colourMask[2],colourMask[3]));
 		}
 
 		GLenum compareOp(GraphCompareOp value)

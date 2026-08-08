@@ -1416,7 +1416,14 @@ namespace mpp
 
 	RenderTargetPtr RenderSystem::createRenderTexture(string const& name, size_t width, size_t height, RenderTextureOptions const& options)
 	{
+		return createPhysicalRenderTexture(name,width,height,options,1);
+	}
+
+	RenderTargetPtr RenderSystem::createPhysicalRenderTexture(string const& name,size_t width,size_t height,RenderTextureOptions const& options,uint32_t samples)
+	{
+		if(samples==0||!mCaps.supportsMsaa(samples))THROW_MPP("Unsupported physical render-texture sample count "+to_string(samples)+".",__LINE__,__FILE__,__func__);
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
+		rtStream->mPhysicalSamples=samples;
 
 		rtStream->setTarget(TextureTarget::Texture2D);
 		if (options.colourInternalFormat != 0) rtStream->setInternalFormat(options.colourInternalFormat);

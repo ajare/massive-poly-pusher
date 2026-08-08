@@ -36,6 +36,7 @@ namespace mpp
 		std::string taaDepth;
 		AntiAliasingDefaults antiAliasing;
 		glm::uvec2 logicalSize{ 0 };
+		uint32_t rasterSamples{ 1 };
 		std::vector<PhysicalOutputImageDesc> physicalImages;
 	};
 

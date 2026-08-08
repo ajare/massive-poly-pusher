@@ -23,7 +23,7 @@ namespace mpp
 		uint32_t maxDrawBuffers;
 		uint32_t maxSamples;
 		// Bit N is set when N-sample MSAA is supported for standard RGBA8
-		// render targets. Phase-one output validation uses the 2, 4 and 8 bits.
+		// render targets. Output validation/allocation uses the 2, 4 and 8 bits.
 		uint32_t supportedMsaaSampleMask;
 		bool supportsMsaa(uint32_t samples) const
 		{

@@ -32,6 +32,11 @@ namespace mpp
 			return { pixels[0], pixels[1], pixels[2], pixels[3] };
 		}
 
+		float readFirstDepth(RenderTargetPtr const& target)
+		{
+			auto texture=dynamic_cast<RenderTexture*>(target.get());if(!texture||!texture->getDepthTextureId())return -1.0f;std::vector<float> values(texture->getWidth()*texture->getHeight());GL_CHECK(glBindTexture(GL_TEXTURE_2D,texture->getDepthTextureId()));GL_CHECK(glGetTexImage(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,GL_FLOAT,values.data()));GL_CHECK(glBindTexture(GL_TEXTURE_2D,0));return values.empty()?-1.0f:values.front();
+		}
+
 		bool nearColour(std::array<uint8_t, 4> const& pixel, std::array<uint8_t, 4> const& expected)
 		{
 			for (size_t i = 0; i < 4; ++i)
@@ -85,7 +90,7 @@ namespace mpp
 			auto first = graph.createImage("GpuTestFirst", colour);
 			auto second = graph.createImage("GpuTestSecond", colour);
 			auto firstPass = graph.addPass("GpuTestClear", GraphPassType::Fullscreen);
-			first = graph.writeColour(firstPass, first, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0, 0, 1));
+			first = graph.writeColour(firstPass, first, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0, 0, 0.25f));
 			auto secondPass = graph.addPass("GpuTestChain", GraphPassType::Fullscreen);
 			graph.readSampled(secondPass, first);
 			second = graph.writeColour(secondPass, second, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 1, 0, 1));
@@ -101,7 +106,7 @@ namespace mpp
 			executor.setPassCallback(firstPass, [](RenderGraphExecutionContext const&) {});
 			executor.setPassCallback(secondPass, [](RenderGraphExecutionContext const&) {});
 			executor.execute(graph, targets, renderSystem->getCaps());
-			if (!nearColour(readFirstPixel(targets.get(first)), { 255, 0, 0, 255 })) return fail("first pass clear colour readback failed");
+			if (!nearColour(readFirstPixel(targets.get(first)), { 255, 0, 0, 64 })) return fail("first pass clear colour/alpha readback failed");
 			if (!nearColour(readFirstPixel(targets.get(second)), { 0, 255, 0, 255 })) return fail("second pass clear colour readback failed");
 
 			auto resized = graph.buildAllocationPlan({ 37, 29 });
@@ -110,6 +115,10 @@ namespace mpp
 			if (!resizedTarget || resizedTarget->getWidth() != 37 || resizedTarget->getHeight() != 29) return fail("resized graph target dimensions are wrong");
 			auto retainedTarget=resizedTarget;bool invalidPlanRejected=false;try{RenderGraphAllocationPlan invalidPlan;targets.allocate(invalidPlan);}catch(...){invalidPlanRejected=true;}if(!invalidPlanRejected||targets.get(first)!=retainedTarget)return fail("failed graph allocation did not retain the prior generation");
 			resizedTarget.reset();retainedTarget.reset();
+
+			stage="physical MSAA colour/depth allocation and resolve";
+			for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(plan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(first).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(first).get());if(!write||!resolved||write==resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA colour write/resolve targets are invalid");executor.execute(graph,targets,renderSystem->getCaps());if(!nearColour(readFirstPixel(targets.get(first)),{255,0,0,64}))return fail("MSAA colour/alpha resolve readback failed");}
+			GraphImageDesc depthDesc;depthDesc.format=GraphImageFormat::Depth24;depthDesc.usage=GraphImageUsage::DepthAttachment|GraphImageUsage::Sampled;RenderGraph depthGraph;auto depthImage=depthGraph.createImage("GpuTestMsaaDepth",depthDesc);auto depthPass=depthGraph.addPass("GpuTestMsaaDepthClear",GraphPassType::Fullscreen);depthImage=depthGraph.writeDepth(depthPass,depthImage,GraphLoadOp::Clear,GraphStoreOp::Store,0.25f);RenderGraphExecutor depthExecutor(renderSystem);depthExecutor.setPassCallback(depthPass,[](RenderGraphExecutionContext const&){});auto depthPlan=depthGraph.buildAllocationPlan({32,24});for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(depthPlan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(depthImage).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(depthImage).get());if(!write||!resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA depth write/resolve targets are invalid");depthExecutor.execute(depthGraph,targets,renderSystem->getCaps());auto value=readFirstDepth(targets.get(depthImage));if(value<0.24f||value>0.26f)return fail("MSAA depth resolve readback failed: "+std::to_string(value));}
 
 			stage = "curated format allocation";
 			std::vector<GraphImageFormat> const supportedFormats{
@@ -313,7 +322,7 @@ namespace mpp
 			}
 
 			stage = "transactional named-output processor";
-			RenderGraph outputGraph;GraphImageDesc outputDesc;outputDesc.format=GraphImageFormat::Rgba8;outputDesc.usage=GraphImageUsage::ColourAttachment|GraphImageUsage::Sampled;outputGraph.createImage("Presentation",outputDesc);RenderPipelineOutput output;output.name="Main";output.image="Presentation";output.antiAliasing.taa=true;output.antiAliasing.fxaa=true;RenderOutputProcessor processor(renderSystem,"GpuTestOutput");processor.rebuild({output},outputGraph,{{"Main",textTarget}},{});auto generation=processor.getGeneration();if(generation==0||processor.getPlans().size()!=1||processor.getPlans().front().physicalImages.size()!=6)return fail("named-output physical plan/history ownership is incomplete");processor.rebuild({output},outputGraph,{{"Main",textTarget}},{});if(processor.getGeneration()!=generation)return fail("unchanged output plan replaced its generation");auto oldInput=processor.getInput("Main");bool rejected=false;try{auto invalid=output;invalid.image="Missing";processor.rebuild({invalid},outputGraph,{{"Main",textTarget}},{});}catch(...){rejected=true;}if(!rejected||processor.getGeneration()!=generation||processor.getInput("Main")!=oldInput)return fail("failed output generation did not retain prior resources");renderSystem->setRenderTarget(oldInput);renderSystem->clearScreen(Colour::Red);processor.present("Main",textTarget);GL_CHECK(glFinish());if(!nearColour(readFirstPixel(textTarget),{255,0,0,255}))return fail("named-output pass-through presentation failed");
+			RenderGraph outputGraph;GraphImageDesc outputDesc;outputDesc.format=GraphImageFormat::Rgba8;outputDesc.usage=GraphImageUsage::ColourAttachment|GraphImageUsage::Sampled;outputGraph.createImage("Presentation",outputDesc);RenderPipelineOutput output;output.name="Main";output.image="Presentation";output.antiAliasing.msaa=AntiAliasingSamples::X4;output.antiAliasing.taa=true;output.antiAliasing.fxaa=true;RenderOutputProcessor processor(renderSystem,"GpuTestOutput");processor.rebuild({output},outputGraph,{{"Main",textTarget}},{});auto generation=processor.getGeneration();if(generation==0||processor.getPlans().size()!=1||processor.getPlans().front().rasterSamples!=4||processor.getPlans().front().physicalImages.size()!=6)return fail("named-output physical plan/history ownership is incomplete");processor.rebuild({output},outputGraph,{{"Main",textTarget}},{});if(processor.getGeneration()!=generation)return fail("unchanged output plan replaced its generation");auto oldInput=processor.getInput("Main");bool rejected=false;try{auto invalid=output;invalid.image="Missing";processor.rebuild({invalid},outputGraph,{{"Main",textTarget}},{});}catch(...){rejected=true;}if(!rejected||processor.getGeneration()!=generation||processor.getInput("Main")!=oldInput)return fail("failed output generation did not retain prior resources");renderSystem->setRenderTarget(oldInput);renderSystem->clearScreen(Colour::Red);processor.present("Main",textTarget);GL_CHECK(glFinish());if(!nearColour(readFirstPixel(textTarget),{255,0,0,255}))return fail("named-output pass-through presentation failed");
 
 			targets.clear();
 			if (!releasedTarget.expired()) return fail("cleared graph target remains referenced");
