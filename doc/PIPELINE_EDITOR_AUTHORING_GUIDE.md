@@ -30,7 +30,7 @@ Continuous inspector changes coalesce into undoable commands. Undo/redo selectio
 
 ## Resources and bindings
 
-Author only concrete `PbrMaterial`, `Program`, `Texture`, and `Sampler` resources. External libraries are read-only and use `Library::Resource`; select an external child and choose **Make Local Copy** before editing it. Renaming or deleting local resources updates direct and nested references.
+Author only concrete `PbrMaterial`, `Program`, `Texture`, and `Sampler` resources. Selecting a PBR material lists the material-aware scene passes that use it through the active scene bindings and highlights those passes in the Pipeline Hierarchy. External libraries are read-only and use `Library::Resource`; select an external child and choose **Make Local Copy** before editing it. Renaming or deleting local resources updates direct and nested references.
 
 Pipeline environments own IBL/background resources. Neutral fallbacks are explicit diagnostics, not hidden scene state. Logical preview bindings keep scenes independent from concrete resources. Instance overrides may reduce enabled material capabilities but cannot enable shader features that were specialized out.
 
