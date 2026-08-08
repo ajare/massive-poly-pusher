@@ -33,6 +33,13 @@ namespace mpp
 		return std::sqrt(static_cast<float>(antiAliasingSampleCount(value)));
 	}
 
+	inline uint32_t ssaaDimension(uint32_t logicalSize, AntiAliasingSamples value)
+	{
+		if(logicalSize==0)return 0;
+		double scale=1.0;switch(value){case AntiAliasingSamples::Off:break;case AntiAliasingSamples::X2:scale=1.4142135623730951;break;case AntiAliasingSamples::X4:scale=2.0;break;case AntiAliasingSamples::X8:scale=2.8284271247461903;break;default:throw std::invalid_argument("Unknown SSAA sample setting.");}
+		return static_cast<uint32_t>(std::ceil(static_cast<double>(logicalSize)*scale));
+	}
+
 	inline std::string antiAliasingSamplesName(AntiAliasingSamples value)
 	{
 		switch (value)

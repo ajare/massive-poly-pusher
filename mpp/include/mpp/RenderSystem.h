@@ -195,7 +195,7 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -296,6 +296,7 @@ namespace mpp
 		friend class Material;
 		friend class Model;
 		friend class RenderGraphTargets;
+		friend class RenderOutputProcessor;
 
 		void useDefaultProgram();
 
@@ -330,6 +331,7 @@ namespace mpp
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
 		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
+		void renderSsaaLanczos(RenderTexture* source, RenderTargetPtr const& destination, glm::vec2 const& direction);
 
 	public:
 

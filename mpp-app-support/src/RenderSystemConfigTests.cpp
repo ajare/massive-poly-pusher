@@ -31,8 +31,8 @@ namespace mpp::app
 					options.antiAliasing.ssaa != AntiAliasingSamples::X8 ||
 					!options.antiAliasing.taa || options.antiAliasing.fxaa)
 					throw std::runtime_error("Valid case-insensitive [mpp] settings were parsed incorrectly.");
-				if (std::abs(ssaaLinearScale(options.antiAliasing.ssaa) - std::sqrt(8.0f)) > 0.0001f)
-					throw std::runtime_error("SSAA 8x did not use total-sample scaling.");
+				if (std::abs(ssaaLinearScale(options.antiAliasing.ssaa) - std::sqrt(8.0f)) > 0.0001f || ssaaDimension(64,AntiAliasingSamples::X2)!=91 || ssaaDimension(64,AntiAliasingSamples::X4)!=128 || ssaaDimension(64,AntiAliasingSamples::X8)!=182)
+					throw std::runtime_error("SSAA total-sample dimension scaling/rounding is incorrect.");
 			}
 			{
 				AntiAliasingDefaults defaults{ AntiAliasingSamples::X4, AntiAliasingSamples::X2, true, true };

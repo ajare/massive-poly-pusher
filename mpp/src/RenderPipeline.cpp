@@ -191,7 +191,7 @@ namespace mpp
 	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
 	{
 		GpuDebugScope graphScope("Pipeline " + mName + ": RenderGraph");
-		uint32_t physicalSamples=mOptions.outputs.empty()?1:antiAliasingSampleCount(resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,mOptions.outputs.front().antiAliasing).msaa);
+		auto outputAntiAliasing=mOptions.outputs.empty()?AntiAliasingDefaults{}:resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,mOptions.outputs.front().antiAliasing);uint32_t physicalSamples=antiAliasingSampleCount(outputAntiAliasing.msaa);
 		if (!mGraphTargets)
 		{
 			mGraphTargets = make_unique<RenderGraphTargets>(mRenderSystem);
@@ -214,7 +214,7 @@ namespace mpp
 			auto const& graph = templateResource->getGraph();
 			if (!graph) THROW_MPP("XmlGraphPbrForward graph template is empty.", __LINE__, __FILE__, __func__);
 			auto const& viewport = scene->getViewport();
-			mGraphTargets->allocatePhysical(graph->buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height)),physicalSamples);
+			mGraphTargets->allocatePhysical(graph->buildAllocationPlan(glm::uvec2(ssaaDimension((uint32_t)viewport.width,outputAntiAliasing.ssaa),ssaaDimension((uint32_t)viewport.height,outputAntiAliasing.ssaa))),physicalSamples);
 			RenderGraphImportRegistry imports;
 			for(auto const& entry:mOptions.graphImports)imports.registerImport(entry.first,entry.second);
 			if(!imports.findImport("screen"))imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
@@ -367,7 +367,7 @@ namespace mpp
 		graph.writeColour(toneMapPass, screen, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
 		auto const& viewport = scene->getViewport();
-		auto plan = graph.buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height));
+		auto plan = graph.buildAllocationPlan(glm::uvec2(ssaaDimension((uint32_t)viewport.width,outputAntiAliasing.ssaa),ssaaDimension((uint32_t)viewport.height,outputAntiAliasing.ssaa)));
 		mGraphTargets->allocatePhysical(plan,physicalSamples);
 		mGraphTargets->bindImported(screen, mRenderSystem->getScreenRenderTarget());
 		struct DynamicPreparedOutput{string name;GraphImageHandle image;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<DynamicPreparedOutput> dynamicOutputs;

@@ -269,6 +269,52 @@ void main()
  * Pipeline-owned bloom shaders. Bloom is image-space and therefore works for
  * any material rendered into the pipeline scene target.
  */
+const std::string FragmentShaderSsaaLanczosTemplate =
+R"(
+@@Version
+
+@@Uniform(vec2 DIRECTION);
+@@Uniform(vec2 OUTPUT_SIZE);
+@@Texture(sampler2D TEX1);
+
+float sinc(float value)
+{
+    if (abs(value) < 0.00001) return 1.0;
+    float angle = 3.141592653589793 * value;
+    return sin(angle) / angle;
+}
+
+float lanczos(float value)
+{
+    value = abs(value);
+    return value < 3.0 ? sinc(value) * sinc(value / 3.0) : 0.0;
+}
+
+void main()
+{
+    ivec2 sourceSize = textureSize(@Texture(TEX1), 0);
+    vec2 scale = vec2(sourceSize) / @Uniform(OUTPUT_SIZE);
+    bool horizontal = @Uniform(DIRECTION).x > 0.5;
+    float axisScale = horizontal ? scale.x : scale.y;
+    float sourcePosition = (horizontal ? gl_FragCoord.x : gl_FragCoord.y) * axisScale - 0.5;
+    int centre = int(floor(sourcePosition));
+    int fixedCoordinate = int(floor(horizontal ? gl_FragCoord.y : gl_FragCoord.x));
+    float filterScale = max(axisScale, 1.0);
+    vec4 sum = vec4(0.0);
+    float total = 0.0;
+    for (int offset = -9; offset <= 9; ++offset)
+    {
+        int coordinate = centre + offset;
+        float weight = lanczos((sourcePosition - float(coordinate)) / filterScale);
+        if (weight == 0.0) continue;
+        ivec2 sampleCoordinate = horizontal ? ivec2(clamp(coordinate, 0, sourceSize.x - 1), clamp(fixedCoordinate, 0, sourceSize.y - 1)) : ivec2(clamp(fixedCoordinate, 0, sourceSize.x - 1), clamp(coordinate, 0, sourceSize.y - 1));
+        sum += texelFetch(@Texture(TEX1), sampleCoordinate, 0) * weight;
+        total += weight;
+    }
+    @Out(vec4 COLOUR) = sum / max(total, 0.000001);
+}
+)";
+
 const std::string FragmentShaderBloomExtractTemplate =
 R"(
 @@Version
