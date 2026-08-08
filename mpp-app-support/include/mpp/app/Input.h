@@ -149,4 +149,5 @@ struct InputEvent
 	int b;
 	char s[32];
 	float x, y, z;
+	float dx, dy;
 };

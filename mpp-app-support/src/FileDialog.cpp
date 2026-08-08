@@ -11,15 +11,15 @@ namespace mpp::app
 {
 	namespace
 	{
-		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save)
+		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save, bool package=false)
 		{
 			HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			IFileDialog* dialog = nullptr;
 			HRESULT result = CoCreateInstance(save ? CLSID_FileSaveDialog : CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
 			if (FAILED(result)) { if (SUCCEEDED(initialized)) CoUninitialize(); return {}; }
 			wstring wideTitle(title.begin(), title.end()); dialog->SetTitle(wideTitle.c_str());
-			COMDLG_FILTERSPEC filters[] = { { L"MassivePolyPusher XML", L"*.xml" }, { L"All files", L"*.*" } };
-			dialog->SetFileTypes(2, filters); dialog->SetDefaultExtension(L"xml");
+			COMDLG_FILTERSPEC filters[] = { { package?L"MassivePolyPusher Package":L"MassivePolyPusher XML", package?L"*.mpppackage":L"*.xml" }, { L"All files", L"*.*" } };
+			dialog->SetFileTypes(2, filters); dialog->SetDefaultExtension(package?L"mpppackage":L"xml");
 			if (save && !defaultName.empty()) { wstring name(defaultName.begin(), defaultName.end()); dialog->SetFileName(name.c_str()); }
 			SDL_SysWMinfo info{}; SDL_VERSION(&info.version); HWND window = SDL_GetWindowWMInfo(owner, &info) ? info.info.win.window : nullptr;
 			result = dialog->Show(window);
@@ -33,4 +33,5 @@ namespace mpp::app
 	}
 	optional<string> openXmlFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false); }
 	optional<string> saveXmlFileDialog(SDL_Window* owner, string const& title, string const& defaultName) { return show(owner, title, defaultName, true); }
+	optional<string> savePackageFileDialog(SDL_Window* owner, string const& title, string const& defaultName) { return show(owner, title, defaultName, true, true); }
 }
