@@ -65,7 +65,6 @@ namespace mpp
 		GraphImageFormat format{ GraphImageFormat::Rgba8 };
 		glm::uvec2 absoluteSize{ 0 };
 		glm::vec2 relativeSize{ 1.0f };
-		uint32_t samples{ 1 };
 		uint32_t mipLevels{ 1 };
 		GraphImageUsage usage{ GraphImageUsage::None };
 		TextureParams params;

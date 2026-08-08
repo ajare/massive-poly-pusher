@@ -88,6 +88,19 @@
       <required>true</required>
     </Import>
   </Imports>
+  <Outputs>
+    <Output>
+      <name>Main</name>
+      <image>Presentation</image>
+      <taaDepth>SceneDepth</taaDepth>
+      <AntiAliasing>
+        <msaa>inherit</msaa>
+        <ssaa>inherit</ssaa>
+        <taa>inherit</taa>
+        <fxaa>inherit</fxaa>
+      </AntiAliasing>
+    </Output>
+  </Outputs>
   <Environment>
     <binding>Preview.Environment</binding>
     <irradiance>Preview.Environment</irradiance>
@@ -145,7 +158,6 @@
         <name>SceneHdr</name>
         <format>RGBA16F</format>
         <usage>colourAttachment,sampled</usage>
-        <samples>4</samples>
         <colourSpace>LINEAR</colourSpace>
         <minFilter>LINEAR</minFilter>
         <magFilter>LINEAR</magFilter>
@@ -154,13 +166,12 @@
       <Image>
         <name>SceneDepth</name>
         <format>DEPTH24</format>
-        <usage>depthAttachment</usage>
-        <samples>4</samples>
+        <usage>depthAttachment,sampled</usage>
       </Image>
       <Image>
         <name>Presentation</name>
         <format>RGBA8</format>
-        <usage>colourAttachment,presentation</usage>
+        <usage>sampled,colourAttachment,presentation</usage>
         <import>screen</import>
         <external>true</external>
         <transient>false</transient>
@@ -182,7 +193,7 @@
         <Depth>
           <image>SceneDepth</image>
           <load>clear</load>
-          <store>dontCare</store>
+          <store>store</store>
           <clear>1</clear>
         </Depth>
       </Pass>

@@ -2,10 +2,11 @@
   <version>1</version>
   <name>Invalid Graph Reference</name>
   <Imports>
-    <Import><id>screen</id><semantic>presentation</semantic><format>RGBA8</format><usage>colourAttachment,presentation</usage><required>true</required></Import>
+    <Import><id>screen</id><semantic>presentation</semantic><format>RGBA8</format><usage>sampled,colourAttachment,presentation</usage><required>true</required></Import>
   </Imports>
+  <Outputs><Output><name>Main</name><image>Presentation</image><AntiAliasing><msaa>inherit</msaa><ssaa>inherit</ssaa><taa>inherit</taa><fxaa>inherit</fxaa></AntiAliasing></Output></Outputs>
   <RenderGraph>
-    <Images><Image><name>Presentation</name><format>RGBA8</format><usage>colourAttachment,presentation</usage><import>screen</import><external>true</external><transient>false</transient></Image></Images>
+    <Images><Image><name>Presentation</name><format>RGBA8</format><usage>sampled,colourAttachment,presentation</usage><import>screen</import><external>true</external><transient>false</transient></Image></Images>
     <Passes>
       <Pass><name>BrokenPresent</name><type>present</type><factory>MPP.ToneMapPresent</factory><Inputs><Sampled><sampler>TEX1</sampler><image>MissingImage</image></Sampled></Inputs><Colours><Output><image>Presentation</image><load>clear</load><store>store</store><clear>0 0 0 1</clear></Output></Colours></Pass>
     </Passes>

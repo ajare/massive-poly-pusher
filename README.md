@@ -18,7 +18,7 @@ Then the main project. The current editor/tool configuration is VS2026 x64:
 
 `PipelineEditor` is a separate executable under `pipeline-editor\build\vs2026\bin\x64\<Configuration>`. Its post-build deployment copies `editor.ini`, which references the repository-level `resources` directory beside the root `build` directory.
 
-PipelineEditor reads MassivePolyPusher defaults from the `[mpp]` section of `editor.ini`; DemoSuite reads the same section from `demosuite.ini` beside its executable. Supported phase-one settings are `msaa=off|2x|4x|8x`, `ssaa=off|2x|4x|8x`, and Boolean `taa`/`fxaa`. All default to off. Invalid keys, values, or GPU-incompatible startup dimensions/sample counts fail startup instead of silently falling back. These settings currently establish the typed configuration and validation foundation; rendering techniques are added in subsequent anti-aliasing phases.
+PipelineEditor reads MassivePolyPusher defaults from the `[mpp]` section of `editor.ini`; DemoSuite reads the same section from `demosuite.ini` beside its executable. Supported phase-one settings are `msaa=off|2x|4x|8x`, `ssaa=off|2x|4x|8x`, and Boolean `taa`/`fxaa`. All default to off. Invalid keys, values, or GPU-incompatible startup dimensions/sample counts fail startup instead of silently falling back. These settings establish typed global defaults. PBR pipelines now declare explicit named outputs with inheritable per-output anti-aliasing overrides; legacy render-graph `<samples>` fields are rejected with a migration diagnostic. Physical MSAA, SSAA, TAA, and FXAA rendering is added in subsequent anti-aliasing phases.
 
 ## PBR PipelineEditor
 

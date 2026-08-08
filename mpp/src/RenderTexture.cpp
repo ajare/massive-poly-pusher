@@ -160,7 +160,7 @@ namespace mpp
 		mDepthParams = rtStr->getDepthParams();
 		mDepthFormat = rtStr->getDepthFormat();
 		mNumAttachments = rtStr->getNumAttachments();
-		mSamples = rtStr->getSamples();
+		mSamples = 1;
 		if (mSamples == 0 || (mSamples > 1 && (mParams.useMipmaps || mDepthParams.params.useMipmaps)))
 		{
 			THROW_MPP("Multisample render textures require at least one sample and cannot use mipmaps.", __LINE__, __FILE__, __func__);

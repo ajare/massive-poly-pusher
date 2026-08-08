@@ -16,6 +16,7 @@ Paths are resolved relative to the pipeline file. Relative paths are portable; a
   <ResourceLibraries><Library><file>library.xml</file></Library></ResourceLibraries>
   <LocalResources>...</LocalResources>
   <Imports>...</Imports>
+  <Outputs>...</Outputs>
   <Environment>...</Environment>
   <Bloom><enabled>true</enabled><blurPasses>4</blurPasses></Bloom>
   <PreviewBindings>...</PreviewBindings>
@@ -25,7 +26,7 @@ Paths are resolved relative to the pipeline file. Relative paths are portable; a
 </PbrPipeline>
 ```
 
-`version`, `name`, and an embedded `RenderGraph` are required semantically. `PreviewScene` is optional. Saving emits canonical authored order.
+`version`, `name`, at least one explicit named output, and an embedded `RenderGraph` are required semantically. `PreviewScene` is optional. Saving emits canonical authored order.
 
 ## Resources
 
@@ -56,6 +57,24 @@ Formats: `R8`, `RG8`, `RGBA8`, `SRGB8_ALPHA8`, `R16F`, `RG16F`, `RGBA16F`, `R32F
 
 Usage is a comma-separated combination of `sampled`, `colourAttachment`, `depthAttachment`, and `presentation`. Required imports must be supplied by the host. Optional imports require an explicit `fallback` resource.
 
+## Named outputs and anti-aliasing
+
+```xml
+<Outputs>
+  <Output>
+    <name>Main</name>
+    <image>Presentation</image>
+    <taaDepth>SceneDepth</taaDepth>
+    <AntiAliasing>
+      <msaa>inherit</msaa><ssaa>inherit</ssaa>
+      <taa>inherit</taa><fxaa>inherit</fxaa>
+    </AntiAliasing>
+  </Output>
+</Outputs>
+```
+
+Output names are unique. `image` must name a sampled colour-attachment graph image. `taaDepth` is optional unless effective TAA lacks an external output target with its own depth texture; when present it must name a sampled depth-attachment image whose final write uses `store=store`. MSAA and SSAA accept `inherit`, `off`, `2x`, `4x`, or `8x`; TAA and FXAA accept `inherit`, `true`, or `false`. Omitting `AntiAliasing` inherits every global `[mpp]` default. All outputs in one pipeline must resolve to identical MSAA, SSAA, and TAA settings, while FXAA may vary. FXAA requires `RGBA8`, `SRGB8_ALPHA8`, or `RGB10_A2` output.
+
 ## Environment, bloom, and preview binding
 
 `Bloom` contains `enabled` and `blurPasses`. The count selects how many authored horizontal/vertical blur pairs execute; enabled bloom requires extract/composite passes and cannot request more pairs than the graph authors. Remaining authored blur pairs preserve the image chain without applying additional blur.
@@ -76,7 +95,7 @@ Usage is a comma-separated combination of `sampled`, `colourAttachment`, `depthA
 
 ## Render graph
 
-The embedded graph is an ordered hierarchy of `Images` and `Passes`. Images define format, dimensions or scaling, usage, samples, mip levels, colour space, sampling state, import/external/transient state, and stable produced values. Passes define factory/type, enabled state, sampled inputs, parameters, colour/depth attachments, load/store operations, clears, raster state, blend targets, write masks, and scissor.
+The embedded graph is an ordered hierarchy of `Images` and `Passes`. Images define format, dimensions or scaling, usage, mip levels, colour space, sampling state, import/external/transient state, and stable produced values. Legacy image `<samples>` fields are rejected; anti-aliasing is authored only on named pipeline outputs. Passes define factory/type, enabled state, sampled inputs, parameters, colour/depth attachments, load/store operations, clears, raster state, blend targets, write masks, and scissor.
 
 Dependencies reference stable authored values. Pass order is authoritative; invalid order is diagnosed and never silently changed. See [RENDER_GRAPH_SPECIFICATION.md](RENDER_GRAPH_SPECIFICATION.md) for the complete graph grammar and [RESOURCE_DEFINITIONS.md](RESOURCE_DEFINITIONS.md) for concrete resource streams.
 

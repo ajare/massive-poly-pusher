@@ -30,6 +30,14 @@ namespace mpp::resource_parsers
 			return usage;
 		}
 		bool boolean(std::string value){utils::StringUtils::toUpper(value);if(value=="TRUE"||value=="1"||value=="YES")return true;if(value=="FALSE"||value=="0"||value=="NO")return false;THROW_MPP_RESOURCE_PARSERS("Invalid PbrPipeline boolean '"+value+"'.",__LINE__,__FILE__,__func__);}
+		std::optional<AntiAliasingSamples> antiAliasingSamples(std::string value)
+		{
+			utils::StringUtils::toUpper(value);if(value=="INHERIT")return std::nullopt;if(value=="OFF")return AntiAliasingSamples::Off;if(value=="2X")return AntiAliasingSamples::X2;if(value=="4X")return AntiAliasingSamples::X4;if(value=="8X")return AntiAliasingSamples::X8;THROW_MPP_RESOURCE_PARSERS("Invalid output anti-aliasing sample value '"+value+"'; expected inherit, off, 2x, 4x, or 8x.",__LINE__,__FILE__,__func__);
+		}
+		std::optional<bool> antiAliasingBoolean(std::string value)
+		{
+			utils::StringUtils::toUpper(value);if(value=="INHERIT")return std::nullopt;return boolean(value);
+		}
 		void rejectUnknown(utils::StructuredData const&,std::set<std::string> const&,std::string const&);
 		void parseUniforms(utils::StructuredData const& data,UniformCollection& uniforms)
 		{
@@ -48,7 +56,7 @@ namespace mpp::resource_parsers
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
 		auto data = reader->readTree();
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
-		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Environment","Bloom","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"PbrPipeline");
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Outputs","Environment","Bloom","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
@@ -65,6 +73,11 @@ namespace mpp::resource_parsers
 		{
 			if(entry.first!="Import")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Imports.",__LINE__,__FILE__,__func__);
 			auto const& value=entry.second;rejectUnknown(value,{"id","semantic","format","usage","required","fallback"},"Imports/Import"); PbrPipelineImportDocument import; import.id=value.getEntry("id").getValue(); import.semantic=value.getEntry("semantic").getValue(); import.format=importFormat(value.getEntry("format").getValue()); import.usage=importUsage(value.getEntry("usage").getValue()); if(value.hasEntry("required"))import.required=boolean(value.getEntry("required").getValue()); if(value.hasEntry("fallback"))import.fallback=value.getEntry("fallback").getValue(); document.imports.push_back(import);
+		}
+		if(data.hasEntry("Outputs"))for(auto const& entry:data.getEntry("Outputs"))
+		{
+			if(entry.first!="Output")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Outputs.",__LINE__,__FILE__,__func__);
+			auto const& value=entry.second;rejectUnknown(value,{"name","image","taaDepth","AntiAliasing"},"Outputs/Output");RenderPipelineOutput output;output.name=value.getEntry("name").getValue();output.image=value.getEntry("image").getValue();if(value.hasEntry("taaDepth"))output.taaDepth=value.getEntry("taaDepth").getValue();if(value.hasEntry("AntiAliasing")){auto const& aa=value.getEntry("AntiAliasing");rejectUnknown(aa,{"msaa","ssaa","taa","fxaa"},"Outputs/Output/AntiAliasing");if(aa.hasEntry("msaa"))output.antiAliasing.msaa=antiAliasingSamples(aa.getEntry("msaa").getValue());if(aa.hasEntry("ssaa"))output.antiAliasing.ssaa=antiAliasingSamples(aa.getEntry("ssaa").getValue());if(aa.hasEntry("taa"))output.antiAliasing.taa=antiAliasingBoolean(aa.getEntry("taa").getValue());if(aa.hasEntry("fxaa"))output.antiAliasing.fxaa=antiAliasingBoolean(aa.getEntry("fxaa").getValue());}document.outputs.push_back(std::move(output));
 		}
 		if (data.hasEntry("Environment"))
 		{

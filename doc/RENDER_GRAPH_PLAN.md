@@ -1,5 +1,7 @@
 # Render Graph, Attachment, and MRT Design Plan
 
+> Historical plan note: image-level sample-count authoring described below was removed during anti-aliasing phase 2. Current pipelines use explicit named outputs; see `ANTI_ALIASING_IMPLEMENTATION_PLAN.md`.
+
 ## Goal
 
 Replace hand-wired render-target sequencing with an opt-in render graph that declares pass inputs, outputs, attachment load/store operations, target descriptors, and multiple-render-target (MRT) writes. The graph must support the existing PBR scene, shadow, bloom, tone-map, and UI flow without changing the legacy `Default` pipeline until that pipeline is explicitly migrated.

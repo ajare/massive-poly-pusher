@@ -9,7 +9,7 @@ Build `PipelineEditor` for VS2026 x64 and run it from its output directory. The 
 - **Full PBR Pipeline** — shadows, HDR scene, bloom, and tone mapping.
 - **Empty Pipeline** — presentation import/image with no authored passes or scene.
 
-The first three use the shared default scene and render scene colour/depth with 4× MSAA before resolving into their single-sampled post-processing and presentation passes. A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
+The first three use the shared default scene and declare an explicit `Main` output with inherited anti-aliasing settings. Anti-aliasing defaults come from `[mpp]` in `editor.ini`; image-level `<samples>` authoring is no longer supported. A new pipeline and scene are untitled copies: explicit Save As operations never overwrite shipped templates.
 
 ## Layout and hierarchy
 
@@ -43,7 +43,7 @@ Pipeline environments own IBL/background resources. Select **Bloom Settings** in
 - **Frame Selection**: frame the selected model.
 - **Save Current View**: write camera position/target/clipping to the scene as an undoable edit.
 
-Enable **Inspect selected image** to display an authored graph image/value. Select value version and mip, then choose colour, R/G/B, alpha, luminance, linear depth, HDR tone-map, or HDR heat-map visualization. MSAA and attachment-only images use display-safe diagnostic resolves.
+Enable **Inspect selected image** to display an authored graph image/value. Select value version and mip, then choose colour, R/G/B, alpha, luminance, linear depth, HDR tone-map, or HDR heat-map visualization. Attachment-only images use display-safe diagnostic targets. Physical MSAA processing is owned by named pipeline outputs rather than graph-image fields.
 
 Statistics report FPS, submitted triangles, scene inventory, pass CPU duration, and asynchronous GPU duration. GPU timing is shown as available, pending, or unsupported and never blocks the frame.
 

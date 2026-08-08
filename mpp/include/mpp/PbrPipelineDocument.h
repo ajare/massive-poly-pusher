@@ -9,6 +9,7 @@
 #include "mpp/Config.h"
 #include "mpp/Diagnostic.h"
 #include "mpp/RenderGraph.h"
+#include "mpp/RenderPipelineOutput.h"
 
 namespace mpp
 {
@@ -93,6 +94,7 @@ namespace mpp
 		// Resolved parser/runtime state; serialization emits only resourceLibraries.
 		std::vector<PbrPipelineExternalResourceDocument> externalResources;
 		std::vector<PbrPipelineImportDocument> imports;
+		std::vector<RenderPipelineOutput> outputs;
 		std::vector<PbrPipelineExtensionDocument> extensions;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;
@@ -104,5 +106,6 @@ namespace mpp
 		bool makeLocalCopy(std::string const& qualifiedName, std::string const& localName);
 		DiagnosticBag validate(RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		DiagnosticBag validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry = nullptr) const;
+		DiagnosticBag validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps = nullptr) const;
 	};
 }

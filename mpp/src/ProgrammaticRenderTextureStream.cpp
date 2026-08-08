@@ -463,9 +463,4 @@ namespace mpp
 	{
 		mNumAttachments = numAttachments;
 	}
-
-	void ProgrammaticRenderTextureStream::setSamples(uint32_t samples)
-	{
-		mSamples = samples;
-	}
 }

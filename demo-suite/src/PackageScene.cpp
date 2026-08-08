@@ -71,6 +71,7 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 		mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(pipelineFile.string()));
 	mDocument = mpp::resource_parsers::SceneParser::fromFile(sceneFile.string());
 	auto diagnostics = pipeline->validate(renderer->getCaps());
+	diagnostics.append(pipeline->validateOutputAntiAliasing(renderer->getOptions().antiAliasing,&renderer->getCaps()));
 	diagnostics.append(mDocument.validate());
 	if (diagnostics.hasErrors())
 	{
@@ -93,6 +94,7 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 	renderOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
 	renderOptions.graphTemplate = graph;
 	renderOptions.graphImports = mPipelineRuntime->getImports();
+	renderOptions.outputs = pipeline->outputs;
 	mPresentationTarget = mPipelineRuntime->getPresentationTarget();
 	if (!mPresentationTarget)
 	{

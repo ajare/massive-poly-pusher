@@ -1,5 +1,6 @@
 <PbrPipeline>
   <version>1</version><name>Invalid Missing Optional Fallback</name>
   <Imports><Import><id>optionalInput</id><semantic>optionalInput</semantic><format>RGBA8</format><usage>sampled</usage><required>false</required></Import></Imports>
-  <RenderGraph><Images><Image><name>Optional</name><format>RGBA8</format><usage>sampled</usage><import>optionalInput</import><external>true</external><transient>false</transient></Image></Images><Passes/></RenderGraph>
+  <Outputs><Output><name>Main</name><image>Optional</image><AntiAliasing><msaa>inherit</msaa><ssaa>inherit</ssaa><taa>inherit</taa><fxaa>inherit</fxaa></AntiAliasing></Output></Outputs>
+  <RenderGraph><Images><Image><name>Optional</name><format>RGBA8</format><usage>sampled,colourAttachment</usage><import>optionalInput</import><external>true</external><transient>false</transient></Image></Images><Passes/></RenderGraph>
 </PbrPipeline>

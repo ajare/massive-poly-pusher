@@ -94,9 +94,4 @@ namespace mpp
 	{
 		return mNumAttachments;
 	}
-
-	uint32_t RenderTextureStream::getSamples() const
-	{
-		return mSamples;
-	}
 }

@@ -15,6 +15,8 @@ namespace mpp::resource_parsers
 	namespace
 	{
 		std::string usage(GraphImageUsage value){std::string result;auto add=[&](GraphImageUsage flag,char const*name){if(hasGraphImageUsage(value,flag)){if(!result.empty())result+=",";result+=name;}};add(GraphImageUsage::Sampled,"sampled");add(GraphImageUsage::ColourAttachment,"colourAttachment");add(GraphImageUsage::DepthAttachment,"depthAttachment");add(GraphImageUsage::Presentation,"presentation");return result;}
+		std::string samples(std::optional<AntiAliasingSamples> const& value){return value?antiAliasingSamplesName(*value):"inherit";}
+		std::string boolean(std::optional<bool> const& value){return value?(*value?"true":"false"):"inherit";}
 		void writeData(utils::StructuredData const& data,utils::XmlWriteNode* parent){for(auto const& entry:data){auto child=parent->createChild(entry.first);if(entry.second.isValue())child->setValue(entry.second.getValue());else writeData(entry.second,child);}}
 		void writeUniforms(UniformCollection const& values,utils::XmlWriteNode* parent)
 		{
@@ -42,6 +44,10 @@ namespace mpp::resource_parsers
 		if(!document.imports.empty())
 		{
 			auto imports=root->createChild("Imports"); for(auto const& value:document.imports){auto node=imports->createChild("Import");node->createChild("id")->setValue(value.id);node->createChild("semantic")->setValue(value.semantic);node->createChild("format")->setValue(std::string(graphImageFormatName(value.format)));node->createChild("usage")->setValue(usage(value.usage));node->createChild("required")->setValue(value.required);if(!value.fallback.empty())node->createChild("fallback")->setValue(value.fallback);}
+		}
+		if(!document.outputs.empty())
+		{
+			auto outputs=root->createChild("Outputs");for(auto const& value:document.outputs){auto output=outputs->createChild("Output");output->createChild("name")->setValue(value.name);output->createChild("image")->setValue(value.image);if(!value.taaDepth.empty())output->createChild("taaDepth")->setValue(value.taaDepth);auto aa=output->createChild("AntiAliasing");aa->createChild("msaa")->setValue(samples(value.antiAliasing.msaa));aa->createChild("ssaa")->setValue(samples(value.antiAliasing.ssaa));aa->createChild("taa")->setValue(boolean(value.antiAliasing.taa));aa->createChild("fxaa")->setValue(boolean(value.antiAliasing.fxaa));}
 		}
 		auto environment = root->createChild("Environment");
 		environment->createChild("binding")->setValue(document.environment.binding);

@@ -28,6 +28,19 @@ namespace mpp
 			for (auto const& message : compiled.diagnostics) diagnostics.error("MPP-PIPELINE-004", message, { sourcePath }, "graph");
 			if (registry) diagnostics.append(registry->validate(*graph));
 			uint32_t horizontal=0,vertical=0,extract=0,composite=0;for(uint32_t pass=0;pass<graph->getPassCount();++pass){auto factory=graph->getPassInfo({pass}).callbackFactory;if(factory=="MPP.BloomBlurHorizontal")++horizontal;else if(factory=="MPP.BloomBlurVertical")++vertical;else if(factory=="MPP.BloomExtract")++extract;else if(factory=="MPP.BloomComposite")++composite;}auto available=std::min(horizontal,vertical);if(bloom.blurPasses>64)diagnostics.error("MPP-PIPELINE-030","Bloom blur-pass count cannot exceed 64.",{sourcePath},"bloom");if(bloom.enabled&&(extract==0||composite==0))diagnostics.error("MPP-PIPELINE-031","Enabled bloom requires extract and composite passes.",{sourcePath},"bloom");if(bloom.enabled&&bloom.blurPasses>available)diagnostics.error("MPP-PIPELINE-032","Bloom requests "+std::to_string(bloom.blurPasses)+" blur pass(es), but the graph authors only "+std::to_string(available)+" horizontal/vertical pair(s).",{sourcePath},"bloom");
+
+			if(outputs.empty())diagnostics.error("MPP-PIPELINE-033","PbrPipeline requires at least one explicit named output.",{sourcePath},"outputs");
+			set<string> outputNames;
+			auto findImage=[&](string const& requested)->std::optional<GraphImageInfo>{for(uint32_t image=0;image<graph->getImageCount();++image){auto info=graph->getImageInfo({image,0});if(info.name==requested)return info;}return std::nullopt;};
+			for(auto const& output:outputs)
+			{
+				if(output.name.empty()||!outputNames.insert(output.name).second)diagnostics.error("MPP-PIPELINE-034","Output names must be non-empty and unique.",{sourcePath},output.name);
+				if(output.image.empty()){diagnostics.error("MPP-PIPELINE-035","Output '"+output.name+"' requires an image.",{sourcePath},output.name);continue;}
+				auto image=findImage(output.image);if(!image){diagnostics.error("MPP-PIPELINE-036","Output '"+output.name+"' references unknown image '"+output.image+"'.",{sourcePath},output.name);continue;}
+				bool depth=image->desc.format>=GraphImageFormat::Depth16;if(depth||!hasGraphImageUsage(image->desc.usage,GraphImageUsage::ColourAttachment)||!hasGraphImageUsage(image->desc.usage,GraphImageUsage::Sampled))diagnostics.error("MPP-PIPELINE-037","Output '"+output.name+"' must reference a sampled colour-attachment image.",{sourcePath},output.name);
+				if(output.antiAliasing.fxaa.value_or(false)&&image->desc.format!=GraphImageFormat::Rgba8&&image->desc.format!=GraphImageFormat::Srgb8Alpha8&&image->desc.format!=GraphImageFormat::Rgb10a2)diagnostics.error("MPP-PIPELINE-039","FXAA output '"+output.name+"' requires RGBA8, SRGB8_ALPHA8, or RGB10_A2.",{sourcePath},output.name);
+				if(!output.taaDepth.empty()){auto depthImage=findImage(output.taaDepth);if(!depthImage||depthImage->desc.format<GraphImageFormat::Depth16||!hasGraphImageUsage(depthImage->desc.usage,GraphImageUsage::DepthAttachment)||!hasGraphImageUsage(depthImage->desc.usage,GraphImageUsage::Sampled))diagnostics.error("MPP-PIPELINE-040","TAA depth source '"+output.taaDepth+"' for output '"+output.name+"' must be a sampled depth-attachment image.",{sourcePath},output.name);else{uint32_t depthId=UINT32_MAX;for(uint32_t candidate=0;candidate<graph->getImageCount();++candidate)if(graph->getImageInfo({candidate,0}).name==output.taaDepth){depthId=candidate;break;}bool stored=false;for(uint32_t pass=0;pass<graph->getPassCount();++pass)for(auto const& attachment:graph->getPassInfo({pass}).depthOutputs)if(attachment.image.id==depthId)stored=attachment.store==GraphStoreOp::Store;if(!stored)diagnostics.error("MPP-PIPELINE-046","TAA depth source '"+output.taaDepth+"' must retain its final write with store=store.",{sourcePath},output.name);}}else if(output.antiAliasing.taa.value_or(false)&&!image->desc.external)diagnostics.error("MPP-PIPELINE-041","TAA output '"+output.name+"' requires taaDepth because its output image cannot provide an external target depth attachment.",{sourcePath},output.name);
+			}
 		}
 		set<string> libraries;
 		for (auto const& library : resourceLibraries)
@@ -75,5 +88,21 @@ namespace mpp
 	DiagnosticBag PbrPipelineDocument::validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry) const
 	{
 		auto diagnostics=validate(registry);if(graph){auto compiled=graph->compile(caps);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
+	}
+
+	DiagnosticBag PbrPipelineDocument::validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps) const
+	{
+		DiagnosticBag diagnostics;if(!graph)return diagnostics;std::optional<AntiAliasingDefaults> shared;
+		auto findImage=[&](string const& requested)->std::optional<GraphImageInfo>{for(uint32_t image=0;image<graph->getImageCount();++image){auto info=graph->getImageInfo({image,0});if(info.name==requested)return info;}return std::nullopt;};
+		for(auto const& output:outputs)
+		{
+			auto effective=resolveAntiAliasing(defaults,output.antiAliasing);
+			if(shared&&(effective.msaa!=shared->msaa||effective.ssaa!=shared->ssaa||effective.taa!=shared->taa))diagnostics.error("MPP-PIPELINE-042","Output '"+output.name+"' has effective MSAA, SSAA, or TAA settings that differ from another output in the pipeline.",{sourcePath},output.name);else if(!shared)shared=effective;
+			if(caps&&!caps->supportsMsaa(antiAliasingSampleCount(effective.msaa)))diagnostics.error("MPP-PIPELINE-043","Output '"+output.name+"' requests unsupported "+antiAliasingSamplesName(effective.msaa)+" MSAA.",{sourcePath},output.name);
+			auto image=findImage(output.image);if(!image)continue;
+			if(effective.fxaa&&image->desc.format!=GraphImageFormat::Rgba8&&image->desc.format!=GraphImageFormat::Srgb8Alpha8&&image->desc.format!=GraphImageFormat::Rgb10a2)diagnostics.error("MPP-PIPELINE-044","Effective FXAA output '"+output.name+"' requires RGBA8, SRGB8_ALPHA8, or RGB10_A2.",{sourcePath},output.name);
+			if(effective.taa&&output.taaDepth.empty()&&!image->desc.external)diagnostics.error("MPP-PIPELINE-045","Effective TAA output '"+output.name+"' requires taaDepth or an external output target with a depth texture.",{sourcePath},output.name);
+		}
+		return diagnostics;
 	}
 }

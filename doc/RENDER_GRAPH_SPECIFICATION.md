@@ -55,8 +55,7 @@ The following fields are represented by `GraphImageDesc`. XML uses child element
 | `usage` | bitmask `GraphImageUsage` | Comma-separated `sampled`, `colourAttachment`, `depthAttachment`, `presentation`. | Required in XML; C++ default `None` | Token spelling is case-insensitive in XML. |
 | `width`, `height` | `glm::uvec2 absoluteSize` | Positive unsigned integer dimensions. Specify both or neither. | `0`, `0` | If both are non-zero, allocation uses these pixels rather than `scale`. |
 | `scale` | `glm::vec2 relativeSize` | Each component must be `> 0`; normally `0 < value <= 1`. | `1 1` | Multiplied by the allocation viewport and truncated, with minimum one pixel. Values above one are accepted. |
-| `samples` | `uint32_t` | `1..Caps::maxSamples`. | `1` | `> 1` allocates an MSAA write target and a single-sample resolved target. |
-| `mipLevels` | `uint32_t` | `1..floor(log2(max(width,height))) + 1`. | `1` | Must not exceed dimensions after viewport/scale resolution. Must be `1` when `samples > 1`. |
+| `mipLevels` | `uint32_t` | `1..floor(log2(max(width,height))) + 1`. | `1` | Must not exceed dimensions after viewport/scale resolution. |
 | `colourSpace` | `TextureColourSpace` | `LINEAR` / `LINEAR_HDR`, or `SRGB` / `DISPLAY`. | `LINEAR` | A texture/storage interpretation setting; use linear HDR targets before tone mapping. |
 | `minFilter` | GL filter enum | `NEAREST`, `LINEAR`, `NEAREST_MIPMAP_NEAREST`, `LINEAR_MIPMAP_NEAREST`, `NEAREST_MIPMAP_LINEAR`, `LINEAR_MIPMAP_LINEAR`. | `TextureParams` default | Mipmap minification filters only make sense when `mipLevels > 1`. |
 | `magFilter` | GL filter enum | `NEAREST`, `LINEAR`. | `TextureParams` default | |
@@ -77,13 +76,13 @@ The following fields are represented by `GraphImageDesc`. XML uses child element
 `RenderGraph::createImage()` rejects:
 
 - empty or duplicate names;
-- zero `samples` or `mipLevels`;
+- zero `mipLevels`;
 - an axis with both zero absolute size and non-positive relative size;
 - a depth format without `depthAttachment` usage;
 - a depth format with `colourAttachment` usage; or
 - a non-depth format with `depthAttachment` usage.
 
-`compile(Caps)` additionally rejects an image whose samples exceed `Caps::maxSamples` and an image that combines MSAA (`samples > 1`) with multiple mip levels. Allocation rejects mip counts larger than the resolved dimensions permit.
+Allocation rejects mip counts larger than the resolved dimensions permit. Legacy XML `<samples>` fields are rejected with a migration error; anti-aliasing belongs to explicit pipeline outputs.
 
 Only two-dimensional render attachments are implemented. Each graph image presently has one colour attachment when it is a colour image.
 
@@ -95,22 +94,15 @@ The allocation plan resolves relative size, computes the inclusive first/last pa
 
 - Targets are reused across frames when descriptors are compatible.
 - A transient image version may alias another transient version only when their inclusive intervals do not overlap.
-- Compatible means matching resolved size, format, samples, mip count, colour space, filtering/wrapping properties, and relevant attachment role.
+- Compatible means matching resolved size, format, mip count, colour space, filtering/wrapping properties, and relevant attachment role.
 - Overlapping lifetimes are never aliased; the allocator throws if an overlap would be assigned to the same storage.
 - `external` image versions are listed as imports, not allocated.
 
 Do not retain a `RenderTargetPtr` obtained from a transient image beyond graph execution or assume that different transient image versions have distinct backing storage.
 
-### 2.4 MSAA and resolved images
+### 2.4 Anti-aliasing ownership
 
-For an internal image with `samples > 1`, `RenderGraphTargets` creates:
-
-1. a multisample **write target**, attached while a pass writes the image; and
-2. a matching single-sample **resolved target**, returned by `RenderGraphTargets::get()` and `RenderGraphExecutionContext::getImage()`.
-
-After a pass writes an MSAA output with `store=store`, the executor resolves it with a framebuffer blit. Colour and depth outputs are supported. `store=dontCare` skips the resolve. Consequently ordinary downstream `sampler2D` consumers always receive the resolved single-sample target, not `sampler2DMS` storage.
-
-MSAA targets cannot have mip chains. An imported multisample target has no graph-created resolved partner; import only a target compatible with how the pass uses it.
+Logical graph images do not author physical sample counts. A containing `PbrPipeline` names one or more outputs and assigns inheritable MSAA, SSAA, TAA, and FXAA settings to those outputs. The physical output compiler introduced in later anti-aliasing phases will own multisample storage and resolve scheduling; raw render graphs remain single-sample logical descriptions.
 
 ## 3. Pass declarations
 
@@ -233,8 +225,7 @@ For each compiled pass, the executor performs this sequence:
 3. Apply `load=clear` operations to their individual colour/depth attachments.
 4. Invoke the callback, scene-pass factory, or declarative fullscreen program.
 5. Invalidate any `store=dontCare` attachments where the OpenGL capability is available.
-6. Resolve every MSAA output whose store operation is `store` into its graph-visible single-sample target.
-7. Restore renderer target/state. A stored target can then be read by a later dependent pass.
+6. Restore renderer target/state. A stored target can then be read by a later dependent pass.
 
 The operation values have these pipeline meanings:
 
@@ -243,10 +234,10 @@ The operation values have these pipeline meanings:
 | `load=load` | Preserve the existing contents of the physical output attachment before drawing. | Additive/overlay work on intentionally shared imported backing storage. Do not use it to preserve an earlier internal graph version: no implicit version-to-version copy exists. |
 | `load=clear` | Clear only this attachment before pass work, using `clear` or its default. | Start a scene target at a known background/depth value. |
 | `load=dontCare` | Existing attachment contents are undefined/irrelevant to this pass. The pass must write every pixel/sample it needs. | Fullscreen extraction, blur, or other full-target overwrite. |
-| `store=store` | Retain the new output after the pass. For MSAA this also performs the resolve needed by ordinary downstream `sampler2D` reads. | Any result sampled, presented, read back, or otherwise used later. |
-| `store=dontCare` | The result is dead after this pass and may be invalidated/discarded. For MSAA no resolve is performed. | Temporary depth or colour output with no later consumer. |
+| `store=store` | Retain the new output after the pass. | Any result sampled, presented, read back, or otherwise used later. |
+| `store=dontCare` | The result is dead after this pass and may be invalidated/discarded. | Temporary depth or colour output with no later consumer. |
 
-Do not sample an output after declaring it `store=dontCare`: the compiler can still see the dependency, but the contents are deliberately not guaranteed, and an MSAA image will not have been resolved. Likewise, `load=dontCare` does not itself clear memory; it is an author promise that old contents are not read.
+Do not sample an output after declaring it `store=dontCare`: the compiler can still see the dependency, but the contents are deliberately not guaranteed. Likewise, `load=dontCare` does not itself clear memory; it is an author promise that old contents are not read.
 
 Typical sequences are:
 
@@ -258,7 +249,7 @@ Temp depth:     clear depth -> depth-test geometry -> dontCare result
 
 In XML these are respectively `clear/store`, `dontCare/store`, and `clear/dontCare`. `clear` values are used only with `load=clear`.
 
-Multiple colour outputs are MRT attachments in declaration order: output zero is `GL_COLOR_ATTACHMENT0`, output one is `GL_COLOR_ATTACHMENT1`, and so forth. The number of outputs must not exceed both `Caps::maxColourAttachments` and `Caps::maxDrawBuffers`. All MRT attachments must have identical effective dimensions (after `mipLevel`) and identical sample counts. A depth output, if present, must have those same effective dimensions and sample count. Only one depth output is allowed.
+Multiple colour outputs are MRT attachments in declaration order: output zero is `GL_COLOR_ATTACHMENT0`, output one is `GL_COLOR_ATTACHMENT1`, and so forth. The number of outputs must not exceed both `Caps::maxColourAttachments` and `Caps::maxDrawBuffers`. All MRT attachments must have identical effective dimensions after `mipLevel`. A depth output, if present, must have those same effective dimensions. Only one depth output is allowed.
 
 ## 4. Ordering and graph restrictions
 
@@ -271,9 +262,9 @@ The following rules define valid graph order:
 5. A pass cannot read the same version it writes. Use a separate image/version or another pass.
 6. Dependency cycles are invalid.
 7. The current executor supports graphics passes only, and each executed pass needs at least one colour or depth output.
-8. Output dimensions/sample counts obey the MRT/depth compatibility rules in section 3.4.
+8. Output dimensions obey the MRT/depth compatibility rules in section 3.4.
 9. A selected output/sampler mip must be within the image's declared mip range. Mip attachment dimensions must still match the other attachments in the pass.
-10. MSAA images must have exactly one mip level. Downstream reads use the resolved image only after a `store` output.
+10. Image sample counts are no longer authored directly. Pipeline-level MSAA is declared on named outputs and is applied by the physical output compiler.
 
 A pass with no sampled dependency may be reordered relative to another independent pass only as allowed by the stable topological sort. Do not rely on incidental order to synchronize callbacks; declare an image dependency instead.
 
@@ -288,7 +279,6 @@ This is a small HDR scene, fullscreen tone-map, and imported screen graph. Forma
       <name>SceneHdr</name>
       <format>RGBA16F</format>
       <scale>1 1</scale>
-      <samples>4</samples>
       <usage>colourAttachment,sampled</usage>
       <colourSpace>LINEAR</colourSpace>
       <minFilter>LINEAR</minFilter>
@@ -300,13 +290,12 @@ This is a small HDR scene, fullscreen tone-map, and imported screen graph. Forma
       <name>SceneDepth</name>
       <format>DEPTH24</format>
       <scale>1 1</scale>
-      <samples>4</samples>
       <usage>depthAttachment</usage>
     </Image>
     <Image>
       <name>Presentation</name>
       <format>RGBA8</format>
-      <usage>colourAttachment,presentation</usage>
+      <usage>sampled,colourAttachment,presentation</usage>
       <import>screen</import>
       <external>true</external>
       <transient>false</transient>
@@ -342,7 +331,7 @@ This is a small HDR scene, fullscreen tone-map, and imported screen graph. Forma
 </RenderGraph>
 ```
 
-The `SceneHdr` and `SceneDepth` write targets are four-sample targets. The executor resolves `SceneHdr` after `Scene` because it stores it; `ToneMap` samples the resolved normal 2D texture. `SceneDepth` does not resolve because its store operation is `dontCare`.
+Anti-aliasing is not encoded in `GraphImageDesc`. A containing `PbrPipeline` declares explicit named outputs and their inheritable `<AntiAliasing>` settings. Legacy `<samples>` image fields are rejected with a migration diagnostic.
 
 The production examples are `demo-suite/resources/res/PbrPipeline.rendergraph.xml` and `PbrPipelineMrt.rendergraph.xml`.
 
@@ -356,7 +345,6 @@ The same topology can be authored with `RenderGraphBuilder`. The builder is a co
 mpp::GraphImageDesc hdr;
 hdr.format = mpp::GraphImageFormat::Rgba16f;
 hdr.usage = mpp::GraphImageUsage::ColourAttachment | mpp::GraphImageUsage::Sampled;
-hdr.samples = 4;
 hdr.relativeSize = { 1.0f, 1.0f };
 hdr.params.minFilter = GL_LINEAR;
 hdr.params.magFilter = GL_LINEAR;
@@ -365,7 +353,6 @@ hdr.params.wrap = GL_CLAMP_TO_EDGE;
 mpp::GraphImageDesc depth;
 depth.format = mpp::GraphImageFormat::Depth24;
 depth.usage = mpp::GraphImageUsage::DepthAttachment;
-depth.samples = 4;
 
 mpp::GraphImageDesc screen;
 screen.format = mpp::GraphImageFormat::Rgba8;
@@ -431,7 +418,7 @@ targets.allocate(graph->buildAllocationPlan({ width, height }));
 targets.bindImports(*graph, imports);
 ```
 
-The imported target must exist before execution and be compatible with the image's intended attachment role, dimensions, and samples. Missing registrations produce a named error. All versions of an external logical image resolve to the same imported backing target.
+The imported target must exist before execution and be compatible with the image's intended attachment role and dimensions. Missing registrations produce a named error. All versions of an external logical image resolve to the same imported backing target.
 
 ### 7.3 XML graph resource
 
@@ -525,7 +512,7 @@ Reallocate after a viewport-size change. `RenderGraphTargets` retains compatible
 
 ## 9. Current feature gaps and limitations
 
-Implemented features include dependency sorting/cycle detection, image versions, external imports, transient aliasing, MRT, generated mip chains, explicit mip attachment writes, sampled single-mip views, MSAA colour/depth targets with resolves, XML serialization, typed parameters, program-resource validation, and callback/scene factories.
+Implemented features include dependency sorting/cycle detection, image versions, external imports, transient aliasing, MRT, generated mip chains, explicit mip attachment writes, sampled single-mip views, XML serialization, typed parameters, program-resource validation, callback/scene factories, and explicit named pipeline outputs.
 
 The following are not implemented or intentionally limited. The **use / value** column explains why each extension may be worth adding; it does not imply that ordinary graph pipelines require it.
 
@@ -533,16 +520,16 @@ The following are not implemented or intentionally limited. The **use / value** 
 | --- | --- | --- |
 | **Compute passes** | There is no compute pass type, dispatch dimensions, SSBO/image bindings, or memory barriers. | Compute shaders are useful for effects that are naturally image/buffer algorithms rather than rasterization: tiled light culling, Hi-Z generation, GPU particle simulation, histogram/exposure calculation, denoising, and general reductions. Explicit barriers would make GPU writes visible to later graph passes safely. |
 | **Texture-view objects** | A pass can bind only one explicit sampled mip of a physical texture. Different fixed mip levels of the same texture require a future texture-view implementation. | Texture views let one shader pass read a coarse mip and a fine mip of the same chain simultaneously, without mutating shared texture base/max-level state. This is useful for bloom pyramids, hierarchical depth algorithms, mip-based blur, and level-of-detail comparisons. |
-| **MSAA plus mip chains** | Multisample graph images cannot have generated mip chains or explicit mip attachments. | A complete MSAA-to-mip workflow could render anti-aliased geometry, resolve it, then generate/use a mip pyramid for bloom, depth hierarchy, or filtered sampling. It needs separate render/resolve/mip resources and explicit dependency rules. |
-| **Advanced MSAA policies** | Resolve is automatic on `store` and uses framebuffer blits. There is no declarative standalone resolve pass, per-attachment resolve destination, `sampler2DMS` graph input, or configurable depth resolve policy. | Explicit policy is useful when a shader needs individual MSAA samples (`sampler2DMS`), when only selected outputs should resolve, when resolve timing should be delayed, or when an application must choose a depth resolve rule for effects such as depth-based reconstruction. |
+| **Physical anti-aliasing compilation** | Named outputs and settings are authored, but phase 2 does not yet allocate multisample/supersample resources or schedule resolves. | Later phases compile logical images into physical MSAA/SSAA resources while keeping sample counts out of graph authoring. |
+| **Advanced MSAA policies** | There is no declarative standalone resolve pass, `sampler2DMS` graph input, or configurable depth resolve policy. | Explicit policy is useful when a shader needs individual MSAA samples or an application must choose a depth resolve rule for effects such as depth-based reconstruction. |
 | **Texture shapes** | Graph-managed attachments are 2D only: no cube, 2D array, 3D, layered attachment, or multisample-array images. | Cubemaps support environment/reflection and point-light shadow rendering; arrays/layers support cascaded shadows, stereo/multiview, texture atlases, and many lights; 3D textures support volume rendering and volumetric effects. |
 | **Attachment subresources** | Only mip level is selectable. Array layer, cubemap face, and attachment read-buffer selection are absent. | Layer/face selection is required to render one cascaded-shadow slice, one cubemap face, or one array layer at a time. Explicit read-buffer selection is useful for deterministic MRT readback/copy/resolve operations. |
 | **Additional pass types** | Graphics `scene`, `fullscreen`, and `present` are supported; there is no copy, compute, explicit resolve, or readback pass. | A copy pass makes format-preserving copies and history buffers declarative; explicit resolve gives MSAA timing control; readback supports picking, screenshots, and GPU-test assertions. These pass types also make dependencies visible instead of hiding work in callbacks. |
-| **External target validation** | Imports are name-checked, but arbitrary application targets are not fully introspected/validated for format, sample count, dimensions, and attachment role before use. | Full validation would fail early with an actionable message when, for example, an imported window/depth target has incompatible MSAA or dimensions, rather than relying on later framebuffer errors or incorrect rendering. |
+| **External target validation** | Imports are name-checked, but arbitrary application targets are not fully introspected/validated for format, dimensions, and attachment role before use. | Full validation would fail early with an actionable message when an imported target has incompatible dimensions or attachments, rather than relying on later framebuffer errors or incorrect rendering. |
 | **Output-less execution** | The graphics executor rejects a pass with no colour/depth output, even if a callback could otherwise have side effects. | Supporting output-less passes would allow timestamp/query work, buffer-only updates, resource transitions, profiling markers, and compute dispatches to participate explicitly in graph order. |
 | **XML schema validation** | Parsing is structural and has no XSD; some unknown `load`/`store` spelling falls back to `dontCare`. | An XSD or stricter parser would catch typos, missing mandatory fields, invalid enum values, and malformed values during asset validation/CI instead of silently accepting an unsafe default. |
 | **Parameter override scope** | Executor overrides replace the complete pass `UniformCollection`; they do not merge individual named values. | Per-parameter merge/update would let a pipeline change exposure, threshold, or a toggle at runtime while retaining authored defaults for all other uniforms. |
-| **Diagnostics and visual-regression automation** | There is no finished DemoSuite UI for allocation/fallback diagnostics and no automated screenshot comparison or archived RenderDoc regression system. | A diagnostics UI helps authors see pass order, imports, target formats/sizes, aliasing, MSAA resolves, and MRT fallback reasons. Image/RenderDoc regression captures catch visual or GPU-state regressions that topology/unit tests cannot detect. |
+| **Diagnostics and visual-regression automation** | There is no finished DemoSuite UI for allocation/fallback diagnostics and no automated screenshot comparison or archived RenderDoc regression system. | A diagnostics UI helps authors see pass order, imports, target formats/sizes, aliasing, output processing, and MRT fallback reasons. Image/RenderDoc regression captures catch visual or GPU-state regressions that topology/unit tests cannot detect. |
 | **Packaging/cache integration** | XML loading and serialization are implemented; binary graph packaging/cache integration through `ResourceStreamSerializer` is not. | Precompiled/cached graph assets could reduce XML parsing and startup work, validate a known topology at build time, and simplify shipping immutable pipeline resources. |
 
 ## 10. Authoring checklist
@@ -552,8 +539,8 @@ The following are not implemented or intentionally limited. The **use / value** 
 3. Mark only real consumers `sampled`; make depth sampled only when a later pass needs it.
 4. Use a non-transient imported presentation image for the screen.
 5. Carry the output handle returned by every write forward to later reads/writes.
-6. Give MRT and depth attachments matching effective dimensions and samples.
-7. Use `store=store` for every MSAA result needed by a later pass.
+6. Give MRT and depth attachments matching effective dimensions.
+7. Use `store=store` for every result needed by a later pass.
 8. Declare matching shader sampler names and register every XML factory name.
 9. Allocate targets, bind imports, then execute; redo allocation on resize.
 10. Call `compile(caps)` and log diagnostics before attempting execution.
