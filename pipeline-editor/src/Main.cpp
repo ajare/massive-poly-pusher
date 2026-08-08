@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -17,6 +18,7 @@
 #include <vector>
 #include <Windows.h>
 #include <sdl/SDL.h>
+#include <renderdoc/renderdoc_app.h>
 #include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 #include "imgui/imgui.h"
@@ -84,9 +86,243 @@ namespace
 		std::vector<wchar_t> filename(32768);auto length=GetModuleFileNameW(nullptr,filename.data(),(DWORD)filename.size());if(length==0||length==filename.size())throw std::runtime_error("Could not determine the PipelineEditor executable directory.");return std::filesystem::path(std::wstring(filename.data(),length)).parent_path();
 	}
 
-	std::filesystem::path loadEditorResourceLocation()
+	std::string trim(std::string value)
 	{
-		auto iniPath=editorExecutableDirectory()/"editor.ini";std::ifstream ini(iniPath);if(!ini)throw std::runtime_error("Could not open editor configuration '"+iniPath.string()+"'.");std::string section,resourceValue,line;auto trim=[](std::string value){auto first=value.find_first_not_of(" \t\r\n");if(first==std::string::npos)return std::string();auto last=value.find_last_not_of(" \t\r\n");return value.substr(first,last-first+1);};while(std::getline(ini,line)){line=trim(line);if(line.empty()||line[0]==';'||line[0]=='#')continue;if(line.front()=='['&&line.back()==']'){section=trim(line.substr(1,line.size()-2));continue;}auto separator=line.find('=');if(separator==std::string::npos)throw std::runtime_error("Invalid editor.ini entry: "+line);auto key=trim(line.substr(0,separator)),value=trim(line.substr(separator+1));if(section=="Editor"&&key=="resourcesLocation")resourceValue=value;}if(resourceValue.empty())throw std::runtime_error("editor.ini does not define [Editor] resourcesLocation.");auto location=std::filesystem::path(resourceValue);if(location.is_relative())location=iniPath.parent_path()/location;location=std::filesystem::weakly_canonical(location);if(!std::filesystem::is_directory(location))throw std::runtime_error("Configured editor resource directory does not exist: "+location.string());return location;
+		auto first = value.find_first_not_of(" \t\r\n");
+		if (first == std::string::npos) return {};
+		auto last = value.find_last_not_of(" \t\r\n");
+		return value.substr(first, last - first + 1);
+	}
+
+	struct EditorSettings
+	{
+		std::filesystem::path iniPath;
+		std::filesystem::path resourceLocation;
+		std::filesystem::path renderDocExecutable;
+		std::filesystem::path captureDirectory;
+	};
+
+	EditorSettings loadEditorSettings()
+	{
+		EditorSettings settings;
+		settings.iniPath = editorExecutableDirectory() / "editor.ini";
+		std::ifstream ini(settings.iniPath);
+		if (!ini) throw std::runtime_error("Could not open editor configuration '" + settings.iniPath.string() + "'.");
+
+		std::string section;
+		std::string resourceValue;
+		std::string renderDocValue;
+		std::string captureValue;
+		for (std::string line; std::getline(ini, line);)
+		{
+			line = trim(line);
+			if (line.empty() || line[0] == ';' || line[0] == '#') continue;
+			if (line.front() == '[' && line.back() == ']')
+			{
+				section = trim(line.substr(1, line.size() - 2));
+				continue;
+			}
+			auto separator = line.find('=');
+			if (separator == std::string::npos) throw std::runtime_error("Invalid editor.ini entry: " + line);
+			auto key = trim(line.substr(0, separator));
+			auto value = trim(line.substr(separator + 1));
+			if (section == "Editor" && key == "resourcesLocation") resourceValue = value;
+			if (section == "RenderDoc" && key == "executable") renderDocValue = value;
+			if (section == "RenderDoc" && key == "captureDirectory") captureValue = value;
+		}
+		if (resourceValue.empty()) throw std::runtime_error("editor.ini does not define [Editor] resourcesLocation.");
+
+		auto resolve = [&](std::string const& value)
+		{
+			if (value.empty()) return std::filesystem::path{};
+			auto path = std::filesystem::path(value);
+			if (path.is_relative()) path = settings.iniPath.parent_path() / path;
+			return std::filesystem::weakly_canonical(path);
+		};
+		settings.resourceLocation = resolve(resourceValue);
+		settings.renderDocExecutable = resolve(renderDocValue);
+		settings.captureDirectory = resolve(captureValue);
+		if (!std::filesystem::is_directory(settings.resourceLocation))
+		{
+			throw std::runtime_error("Configured editor resource directory does not exist: " + settings.resourceLocation.string());
+		}
+		return settings;
+	}
+
+	void saveRenderDocSettings(EditorSettings const& settings)
+	{
+		std::ifstream input(settings.iniPath);
+		if (!input) throw std::runtime_error("Could not read '" + settings.iniPath.string() + "'.");
+		std::vector<std::string> lines;
+		for (std::string line; std::getline(input, line);) lines.push_back(line);
+
+		auto setValue = [&](std::string const& requestedSection, std::string const& requestedKey, std::string const& value)
+		{
+			std::string section;
+			bool sectionFound = false;
+			size_t sectionEnd = lines.size();
+			for (size_t index = 0; index < lines.size(); ++index)
+			{
+				auto line = trim(lines[index]);
+				if (line.size() >= 2 && line.front() == '[' && line.back() == ']')
+				{
+					if (section == requestedSection && sectionEnd == lines.size()) sectionEnd = index;
+					section = trim(line.substr(1, line.size() - 2));
+					sectionFound |= section == requestedSection;
+					continue;
+				}
+				if (section != requestedSection) continue;
+				auto separator = line.find('=');
+				if (separator != std::string::npos && trim(line.substr(0, separator)) == requestedKey)
+				{
+					lines[index] = requestedKey + "=" + value;
+					return;
+				}
+			}
+			if (sectionFound)
+			{
+				lines.insert(lines.begin() + sectionEnd, requestedKey + "=" + value);
+				return;
+			}
+			if (!lines.empty() && !lines.back().empty()) lines.push_back({});
+			lines.push_back("[" + requestedSection + "]");
+			lines.push_back(requestedKey + "=" + value);
+		};
+
+		setValue("RenderDoc", "executable", settings.renderDocExecutable.string());
+		setValue("RenderDoc", "captureDirectory", settings.captureDirectory.string());
+		std::ostringstream output;
+		for (auto const& line : lines) output << line << '\n';
+		mpp::app::atomicWriteText(settings.iniPath, output.str());
+	}
+
+	class RenderDocCapture
+	{
+		HMODULE mModule{ nullptr };
+		RENDERDOC_API_1_1_1* mApi{ nullptr };
+		uint32_t mCaptureCountBefore{ 0 };
+		std::filesystem::path mRequestedCapture;
+
+	public:
+		void initialise(std::filesystem::path const& executable)
+		{
+			if (mApi) return;
+			auto library = executable.parent_path() / "renderdoc.dll";
+			if (!std::filesystem::is_regular_file(library))
+			{
+				throw std::runtime_error("RenderDoc library was not found beside qrenderdoc.exe: " + library.string());
+			}
+			mModule = LoadLibraryW(library.c_str());
+			if (!mModule) throw std::runtime_error("Could not load RenderDoc library: " + library.string());
+			auto getApi = reinterpret_cast<pRENDERDOC_GetAPI>(GetProcAddress(mModule, "RENDERDOC_GetAPI"));
+			if (!getApi || getApi(eRENDERDOC_API_Version_1_1_1, reinterpret_cast<void**>(&mApi)) != 1 || !mApi)
+			{
+				throw std::runtime_error("Could not acquire the RenderDoc 1.1.1 API.");
+			}
+
+			// PipelineEditor owns capture triggering. Disable RenderDoc's built-in
+			// keyboard hooks so loading renderdoc.dll cannot independently capture
+			// frames (including its default F12 capture shortcut).
+			mApi->SetCaptureKeys(nullptr, 0);
+			mApi->SetFocusToggleKeys(nullptr, 0);
+			mApi->MaskOverlayBits(0, 0);
+		}
+
+		void discardUnexpectedCapture() noexcept
+		{
+			if (!mApi || !mApi->IsFrameCapturing()) return;
+			try
+			{
+				auto capturesBefore = mApi->GetNumCaptures();
+				mApi->EndFrameCapture(nullptr, nullptr);
+				auto capturesAfter = mApi->GetNumCaptures();
+				if (capturesAfter <= capturesBefore) return;
+				uint32_t pathLength = 0;
+				if (!mApi->GetCapture(capturesAfter - 1, nullptr, &pathLength, nullptr) || pathLength == 0) return;
+				std::vector<char> path(pathLength + 1, 0);
+				if (!mApi->GetCapture(capturesAfter - 1, path.data(), &pathLength, nullptr)) return;
+				std::error_code ignored;
+				std::filesystem::remove(std::filesystem::path(path.data()), ignored);
+			}
+			catch (...) {}
+		}
+
+		void begin(std::filesystem::path const& captureDirectory)
+		{
+			std::error_code error;
+			std::filesystem::create_directories(captureDirectory, error);
+			if (error || !std::filesystem::is_directory(captureDirectory))
+			{
+				throw std::runtime_error("Could not create capture directory: " + captureDirectory.string());
+			}
+
+			auto now = std::chrono::system_clock::now();
+			auto time = std::chrono::system_clock::to_time_t(now);
+			std::tm local{};
+			localtime_s(&local, &time);
+			std::ostringstream name;
+			name << "PipelineEditor_" << std::put_time(&local, "%Y-%m-%d_%H-%M-%S");
+			mRequestedCapture = captureDirectory / (name.str() + ".rdc");
+			for (unsigned suffix = 2; std::filesystem::exists(mRequestedCapture); ++suffix)
+			{
+				mRequestedCapture = captureDirectory / (name.str() + "_" + std::to_string(suffix) + ".rdc");
+			}
+			auto pathTemplate = mRequestedCapture;
+			pathTemplate.replace_extension();
+			if (mApi->IsFrameCapturing())
+			{
+				throw std::runtime_error("RenderDoc was already capturing before PipelineEditor requested a frame.");
+			}
+			mCaptureCountBefore = mApi->GetNumCaptures();
+			mApi->SetLogFilePathTemplate(pathTemplate.string().c_str());
+			mApi->StartFrameCapture(nullptr, nullptr);
+			if (!mApi->IsFrameCapturing())
+			{
+				throw std::runtime_error("RenderDoc did not start a viewport capture.");
+			}
+		}
+
+		std::filesystem::path end()
+		{
+			if (!mApi->EndFrameCapture(nullptr, nullptr)) throw std::runtime_error("RenderDoc failed to complete the viewport capture.");
+			auto captureCount = mApi->GetNumCaptures();
+			if (captureCount <= mCaptureCountBefore) throw std::runtime_error("RenderDoc completed without reporting a capture file.");
+			uint32_t pathLength = 0;
+			if (!mApi->GetCapture(captureCount - 1, nullptr, &pathLength, nullptr) || pathLength == 0)
+			{
+				throw std::runtime_error("RenderDoc did not report the capture path.");
+			}
+			std::vector<char> path(pathLength + 1, 0);
+			if (!mApi->GetCapture(captureCount - 1, path.data(), &pathLength, nullptr))
+			{
+				throw std::runtime_error("RenderDoc did not return the capture path.");
+			}
+			std::filesystem::path generated(path.data());
+			if (generated != mRequestedCapture)
+			{
+				std::error_code error;
+				std::filesystem::rename(generated, mRequestedCapture, error);
+				if (error) throw std::runtime_error("Could not rename RenderDoc capture to '" + mRequestedCapture.string() + "': " + error.message());
+			}
+			return mRequestedCapture;
+		}
+	};
+
+	void launchRenderDoc(std::filesystem::path const& executable, std::filesystem::path const& capture)
+	{
+		std::wstring command = L"\"" + executable.wstring() + L"\" \"" + capture.wstring() + L"\"";
+		std::vector<wchar_t> writable(command.begin(), command.end());
+		writable.push_back(L'\0');
+		STARTUPINFOW startup{};
+		startup.cb = sizeof(startup);
+		PROCESS_INFORMATION process{};
+		auto workingDirectory = executable.parent_path().wstring();
+		if (!CreateProcessW(nullptr, writable.data(), nullptr, nullptr, FALSE, 0, nullptr, workingDirectory.c_str(), &startup, &process))
+		{
+			throw std::runtime_error("Could not launch RenderDoc for capture: " + capture.string());
+		}
+		CloseHandle(process.hThread);
+		CloseHandle(process.hProcess);
 	}
 
 	utils::StructuredData meshSpecification()
@@ -238,7 +474,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			catch(std::exception const& error){fprintf(stderr,"MPP-PIPELINE-CLI-002: %s\n",error.what());return 1;}
 		}
-		auto editorResourceLocation=loadEditorResourceLocation();auto editorResourcePath=[&](std::filesystem::path const& relative){return (editorResourceLocation/relative).lexically_normal().string();};auto minimalTemplatePath=editorResourcePath("shared/pbr/templates/Minimal.pipeline.xml"),shadowsTemplatePath=editorResourcePath("shared/pbr/templates/Shadows.pipeline.xml"),fullTemplatePath=editorResourcePath("shared/pbr/templates/Full.pipeline.xml"),emptyTemplatePath=editorResourcePath("shared/pbr/templates/Empty.pipeline.xml");
+		auto editorSettings=loadEditorSettings();
+		RenderDocCapture renderDocCapture;
+		if (std::filesystem::is_regular_file(editorSettings.renderDocExecutable))
+		{
+			try { renderDocCapture.initialise(editorSettings.renderDocExecutable); }
+			catch (...) { /* Report configuration/load errors only when capture is requested. */ }
+		}
+		if (!editorSettings.captureDirectory.empty())
+		{
+			std::error_code ignored;
+			std::filesystem::create_directories(editorSettings.captureDirectory, ignored);
+		}
+		auto editorResourceLocation=editorSettings.resourceLocation;auto editorResourcePath=[&](std::filesystem::path const& relative){return (editorResourceLocation/relative).lexically_normal().string();};auto minimalTemplatePath=editorResourcePath("shared/pbr/templates/Minimal.pipeline.xml"),shadowsTemplatePath=editorResourcePath("shared/pbr/templates/Shadows.pipeline.xml"),fullTemplatePath=editorResourcePath("shared/pbr/templates/Full.pipeline.xml"),emptyTemplatePath=editorResourcePath("shared/pbr/templates/Empty.pipeline.xml");
 		int windowWidth=1440,windowHeight=900;float recoverySeconds=30.0f;bool smokeTest=false;std::string configurationWarning;try{std::ifstream config("PipelineEditor.cfg");std::string key;while(std::getline(config,key,'=')){std::string value;if(!std::getline(config,value))break;if(key=="width")windowWidth=std::max(640,std::stoi(value));else if(key=="height")windowHeight=std::max(480,std::stoi(value));else if(key=="recoverySeconds")recoverySeconds=std::max(5.0f,std::stof(value));}}catch(std::exception const& error){configurationWarning="PipelineEditor.cfg contains invalid values; defaults were used where necessary.\n\n"+std::string(error.what());}
 		std::string startupPath;for(int argument=1;argument<__argc;++argument){std::string value=__argv[argument];if(value=="--smoke-test")smokeTest=true;else if(value=="--width"&&argument+1<__argc)windowWidth=std::max(640,std::stoi(__argv[++argument]));else if(value=="--height"&&argument+1<__argc)windowHeight=std::max(480,std::stoi(__argv[++argument]));else if(value=="--recovery-seconds"&&argument+1<__argc)recoverySeconds=std::max(5.0f,std::stof(__argv[++argument]));else if(!value.starts_with("--"))startupPath=value;}
 		bool startupFromDefaultTemplate=startupPath.empty();if(startupFromDefaultTemplate)startupPath=fullTemplatePath;
@@ -298,7 +546,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		int selectedPass=-1,selectedImage=-1,selectedImport=-1,selectedBinding=-1,selectedOverride=-1,selectedModel=-1,selectedLocalResource=-1,selectedExternalResource=-1;mpp::app::CommandStack pipelineCommands(256),sceneCommands(256);bool lastEditScene=false;
 		bool running=true,pipelineDirty=recoveredDocument||(startupFromDefaultTemplate&&openDocument),sceneDirty=recoveredScene||(startupFromDefaultTemplate&&openScene),resetLayout=true,showPreferences=false;float fps=0,fpsTime=0,recoveryTimer=0;int frames=0,smokeStableFrames=0;
 		std::string operationErrorTitle,operationErrorMessage;bool operationMessageIsSuccess=false,openOperationError=!startupError.empty();if(openOperationError){operationErrorTitle=startupPath.empty()?"Startup Warning":"Open Failed";operationErrorMessage=startupError;}else if(!recentPersistenceError.empty()){openOperationError=true;operationErrorTitle="Recent Files Warning";operationErrorMessage=recentPersistenceError;}
+		bool captureRequested = false;
+		bool captureAndOpen = false;
 		auto reportOperationError=[&](std::string title,std::string action,std::string const& path,std::exception const& error){operationMessageIsSuccess=false;operationErrorTitle=std::move(title);operationErrorMessage=std::move(action)+"\n\nPath: "+(path.empty()?std::string("(not selected)"):path)+"\n\n"+error.what()+"\n\nThe active workspace and unsaved edits were preserved.";openOperationError=true;};
+		auto ensureRenderDocSettings = [&]()
+		{
+			bool changed = false;
+			auto renderDocLibrary = editorSettings.renderDocExecutable.parent_path() / "renderdoc.dll";
+			if (!std::filesystem::is_regular_file(editorSettings.renderDocExecutable) || !std::filesystem::is_regular_file(renderDocLibrary))
+			{
+				auto selected = mpp::app::openExecutableFileDialog(window.getWindow(), "Locate qrenderdoc.exe");
+				if (!selected) return false;
+				editorSettings.renderDocExecutable = mpp::app::normaliseDocumentPath(*selected);
+				changed = true;
+			}
+			if (!std::filesystem::is_directory(editorSettings.captureDirectory))
+			{
+				auto selected = mpp::app::selectFolderDialog(window.getWindow(), "Select RenderDoc Capture Directory");
+				if (!selected) return false;
+				editorSettings.captureDirectory = mpp::app::normaliseDocumentPath(*selected);
+				changed = true;
+			}
+			if (changed) saveRenderDocSettings(editorSettings);
+			return true;
+		};
 		mpp::app::BackgroundJobQueue backgroundJobs;mpp::app::BackgroundFileWatcher fileWatcher;uint64_t observedEditSerial=0,scheduledEditSerial=0,activeBackgroundGeneration=0;auto lastPreviewEdit=std::chrono::steady_clock::now();bool gpuInstallationPending=false;
 		std::map<std::string,mpp::app::DocumentFileRevision> trackedFiles;std::vector<std::string> externalConflicts;
 		auto workspaceFilePaths=[&](){std::vector<std::filesystem::path> paths;if(openDocument)paths=workspaceDependencies(*openDocument,openScene.get(),currentPath,scenePath);return paths;};
@@ -368,12 +639,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			auto watchedChanges=fileWatcher.poll();if(!watchedChanges.empty()){std::vector<std::string> changed;for(auto const& value:watchedChanges)changed.push_back(value.path.string());if(pipelineDirty||sceneDirty){for(auto const& path:changed)if(std::find(externalConflicts.begin(),externalConflicts.end(),path)==externalConflicts.end())externalConflicts.push_back(path);}else queueHotReload(std::move(changed));}
 			bool closeRequested=!window.processEvents(&input);imGuiHandleInput(&input,&backend);input.update();if(input.keyPressed(Key_Escape))closeRequested=true;
+			auto captureWork = backgroundJobs.progress();
+			bool captureEnabled = !captureWork.queued && !captureWork.running && !gpuInstallationPending && !activeGraphResource.empty();
 			if(closeRequested&&confirmDiscardWorkspace()){cleanupWorkspaceRecovery();running=false;}
 			if(window.getWidth()>0&&window.getHeight()>0&&((size_t)window.getWidth()!=renderSystem.getWindowWidth()||(size_t)window.getHeight()!=renderSystem.getWindowHeight())){renderSystem.setDisplay(window.getWidth(),window.getHeight());windowWidth=window.getWidth();windowHeight=window.getHeight();}
 			imGuiNewFrame(window.getWindow(), &backend); ImGui::NewFrame();
+			if (captureEnabled && ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_F12, ImGuiInputFlags_RouteGlobal))
+			{
+				captureRequested = true;
+				captureAndOpen = true;
+			}
 			bool requestNew=false,requestOpen=false,requestSave=false,requestSaveAs=false,requestSaveScene=false,requestSaveSceneAs=false,requestSaveAll=false,requestExportPackage=false,requestUndo=false,requestRedo=false,requestDuplicate=false,requestDelete=false,requestAddPopup=false,requestAutoOrder=false,requestReloadConflicts=false,requestKeepConflicts=false,requestOverwriteConflicts=false,requestValidateFocus=false;int addKind=-1;std::string addFactory;std::string requestedRecent;std::string newTemplatePath=fullTemplatePath;
 			if(ImGui::BeginMainMenuBar()){if(ImGui::BeginMenu("File")){if(ImGui::BeginMenu("New")){if(ImGui::MenuItem("Minimal PBR Pipeline","Ctrl+N")){requestNew=true;newTemplatePath=minimalTemplatePath;}if(ImGui::MenuItem("PBR Shadows Pipeline")){requestNew=true;newTemplatePath=shadowsTemplatePath;}if(ImGui::MenuItem("Full PBR Pipeline")){requestNew=true;newTemplatePath=fullTemplatePath;}if(ImGui::MenuItem("Empty Pipeline")){requestNew=true;newTemplatePath=emptyTemplatePath;}ImGui::EndMenu();}if(ImGui::MenuItem("Open...","Ctrl+O"))requestOpen=true;if(!recentPaths.empty()&&ImGui::BeginMenu("Open Recent")){for(auto const& path:recentPaths)if(ImGui::MenuItem(path.c_str()))requestedRecent=path;ImGui::EndMenu();}ImGui::Separator();if(ImGui::MenuItem("Save","Ctrl+S",false,openDocument!=nullptr))requestSave=true;if(ImGui::MenuItem("Save As...","Ctrl+Shift+S",false,openDocument!=nullptr))requestSaveAs=true;if(ImGui::MenuItem("Save Scene",nullptr,false,openScene!=nullptr))requestSaveScene=true;if(ImGui::MenuItem("Save Scene As...",nullptr,false,openScene!=nullptr))requestSaveSceneAs=true;if(ImGui::MenuItem("Save All","Ctrl+Alt+S",false,openDocument!=nullptr))requestSaveAll=true;if(ImGui::MenuItem("Export Package...",nullptr,false,openDocument&&openScene&&openScene->environmentBinding==openDocument->environment.binding&&!openDocument->validate(renderSystem.getCaps()).hasErrors()&&!resource_parsers::validatePbrPipelineResourceDefinitions(*openDocument).hasErrors()&&!openScene->validate().hasErrors()))requestExportPackage=true;ImGui::Separator();if(ImGui::MenuItem("Exit")&&confirmDiscardWorkspace()){cleanupWorkspaceRecovery();running=false;}ImGui::EndMenu();}if(ImGui::BeginMenu("Edit")){auto& commands=lastEditScene?sceneCommands:pipelineCommands;if(ImGui::MenuItem("Undo","Ctrl+Z",false,commands.canUndo()))requestUndo=true;if(ImGui::MenuItem("Redo","Ctrl+Y",false,commands.canRedo()))requestRedo=true;ImGui::Separator();if(ImGui::MenuItem("Preferences..."))showPreferences=true;ImGui::EndMenu();}if(ImGui::BeginMenu("Add")){if(ImGui::MenuItem("Pass...",nullptr,false,openDocument&&openDocument->graph))requestAddPopup=true;if(ImGui::MenuItem("Image",nullptr,false,openDocument&&openDocument->graph))addKind=1;if(ImGui::MenuItem("Typed Import",nullptr,false,openDocument!=nullptr))addKind=2;ImGui::Separator();if(ImGui::MenuItem("PBR Material",nullptr,false,openDocument!=nullptr))addKind=3;if(ImGui::MenuItem("Program",nullptr,false,openDocument!=nullptr))addKind=4;if(ImGui::MenuItem("Texture",nullptr,false,openDocument!=nullptr))addKind=5;if(ImGui::MenuItem("Sampler",nullptr,false,openDocument!=nullptr))addKind=6;if(ImGui::MenuItem("Preview Binding",nullptr,false,openDocument!=nullptr))addKind=7;if(ImGui::MenuItem("Instance Override",nullptr,false,openDocument!=nullptr))addKind=8;ImGui::Separator();if(ImGui::MenuItem("Sphere Model",nullptr,false,openScene!=nullptr))addKind=9;if(ImGui::MenuItem("Directional Light",nullptr,false,openScene!=nullptr))addKind=10;ImGui::EndMenu();}if(ImGui::BeginMenu("Pipeline")){if(ImGui::MenuItem("Validate"))requestValidateFocus=true;if(ImGui::MenuItem("Apply/Rebuild"))queueWorkingPreview("Explicit preview rebuild");if(ImGui::MenuItem("Auto-order Pass Dependencies",nullptr,false,openDocument&&openDocument->graph))requestAutoOrder=true;ImGui::EndMenu();}if(ImGui::BeginMenu("Window")){if(ImGui::MenuItem("Reset Layout"))resetLayout=true;ImGui::EndMenu();}ImGui::EndMainMenuBar();}
-			auto toolbarHeight=ImGui::GetFrameHeight()+ImGui::GetStyle().WindowPadding.y*2.0f;if(ImGui::BeginViewportSideBar("##PipelineEditorToolbar",ImGui::GetMainViewport(),ImGuiDir_Up,toolbarHeight,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse|ImGuiWindowFlags_NoSavedSettings)){auto toolbarButton=[&](char const* label,char const* tooltip,bool enabled=true){if(!enabled)ImGui::BeginDisabled();bool pressed=ImGui::Button(label,ImVec2(ImGui::GetFrameHeight(),0));if(ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))ImGui::SetTooltip("%s",tooltip);if(!enabled)ImGui::EndDisabled();return pressed;};auto& activeCommands=lastEditScene?sceneCommands:pipelineCommands;if(toolbarButton(ICON_FA_FILE "##ToolbarNew","New workspace"))requestNew=true;ImGui::SameLine();if(toolbarButton(ICON_FA_FOLDER_OPEN "##ToolbarOpen","Open pipeline"))requestOpen=true;ImGui::SameLine();if(toolbarButton(ICON_FA_SAVE "##ToolbarSaveAll","Save all",openDocument!=nullptr))requestSaveAll=true;ImGui::SameLine();if(toolbarButton(ICON_FA_UNDO "##ToolbarUndo","Undo",activeCommands.canUndo()))requestUndo=true;ImGui::SameLine();if(toolbarButton(ICON_FA_REDO "##ToolbarRedo","Redo",activeCommands.canRedo()))requestRedo=true;ImGui::SameLine();if(toolbarButton(ICON_FA_PLUS "##ToolbarAdd","Add item",openDocument!=nullptr))requestAddPopup=true;ImGui::SameLine();if(toolbarButton(ICON_FA_CLONE "##ToolbarDuplicate","Duplicate selection",openDocument!=nullptr||openScene!=nullptr))requestDuplicate=true;ImGui::SameLine();if(toolbarButton(ICON_FA_TRASH "##ToolbarDelete","Delete selection",openDocument!=nullptr||openScene!=nullptr))requestDelete=true;ImGui::SameLine();if(toolbarButton(ICON_FA_CHECK_CIRCLE "##ToolbarValidate","Show diagnostics",openDocument!=nullptr))requestValidateFocus=true;ImGui::SameLine();if(toolbarButton(ICON_FA_SYNC_ALT "##ToolbarRebuild","Apply and rebuild preview",openDocument!=nullptr))queueWorkingPreview("Explicit preview rebuild");auto workProgress=backgroundJobs.progress();if(workProgress.queued||workProgress.running||gpuInstallationPending){ImGui::SameLine();ImGui::TextDisabled("%s: %s",workProgress.label.c_str(),gpuInstallationPending?"Installing GPU generation":workProgress.stage.c_str());ImGui::SameLine();ImGui::ProgressBar(gpuInstallationPending?1.0f:workProgress.fraction,ImVec2(150,0));}}ImGui::End();
+			auto toolbarHeight=ImGui::GetFrameHeight()+ImGui::GetStyle().WindowPadding.y*2.0f;if(ImGui::BeginViewportSideBar("##PipelineEditorToolbar",ImGui::GetMainViewport(),ImGuiDir_Up,toolbarHeight,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse|ImGuiWindowFlags_NoSavedSettings)){auto toolbarButton=[&](char const* label,char const* tooltip,bool enabled=true){if(!enabled)ImGui::BeginDisabled();bool pressed=ImGui::Button(label,ImVec2(ImGui::GetFrameHeight(),0));if(ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))ImGui::SetTooltip("%s",tooltip);if(!enabled)ImGui::EndDisabled();return pressed;};auto& activeCommands=lastEditScene?sceneCommands:pipelineCommands;if(toolbarButton(ICON_FA_FILE "##ToolbarNew","New workspace"))requestNew=true;ImGui::SameLine();if(toolbarButton(ICON_FA_FOLDER_OPEN "##ToolbarOpen","Open pipeline"))requestOpen=true;ImGui::SameLine();if(toolbarButton(ICON_FA_SAVE "##ToolbarSaveAll","Save all",openDocument!=nullptr))requestSaveAll=true;ImGui::SameLine();if(toolbarButton(ICON_FA_UNDO "##ToolbarUndo","Undo",activeCommands.canUndo()))requestUndo=true;ImGui::SameLine();if(toolbarButton(ICON_FA_REDO "##ToolbarRedo","Redo",activeCommands.canRedo()))requestRedo=true;ImGui::SameLine();if(toolbarButton(ICON_FA_PLUS "##ToolbarAdd","Add item",openDocument!=nullptr))requestAddPopup=true;ImGui::SameLine();if(toolbarButton(ICON_FA_CLONE "##ToolbarDuplicate","Duplicate selection",openDocument!=nullptr||openScene!=nullptr))requestDuplicate=true;ImGui::SameLine();if(toolbarButton(ICON_FA_TRASH "##ToolbarDelete","Delete selection",openDocument!=nullptr||openScene!=nullptr))requestDelete=true;ImGui::SameLine();if(toolbarButton(ICON_FA_CHECK_CIRCLE "##ToolbarValidate","Show diagnostics",openDocument!=nullptr))requestValidateFocus=true;ImGui::SameLine();if(toolbarButton(ICON_FA_SYNC_ALT "##ToolbarRebuild","Apply and rebuild preview",openDocument!=nullptr))queueWorkingPreview("Explicit preview rebuild");ImGui::SameLine();if(toolbarButton(ICON_FA_CAMERA "##ToolbarCapture","Capture viewport and open in RenderDoc (Ctrl+F12)",captureEnabled)){captureRequested=true;captureAndOpen=true;}ImGui::SameLine();if(!captureEnabled)ImGui::BeginDisabled();if(ImGui::ArrowButton("##ToolbarCaptureMenu",ImGuiDir_Down))ImGui::OpenPopup("RenderDoc Capture");if(!captureEnabled)ImGui::EndDisabled();if(ImGui::BeginPopup("RenderDoc Capture")){if(ImGui::MenuItem("Capture Viewport")){captureRequested=true;captureAndOpen=false;}if(ImGui::MenuItem("Capture Viewport and Open","Ctrl+F12")){captureRequested=true;captureAndOpen=true;}ImGui::EndPopup();}auto workProgress=backgroundJobs.progress();if(workProgress.queued||workProgress.running||gpuInstallationPending){ImGui::SameLine();ImGui::TextDisabled("%s: %s",workProgress.label.c_str(),gpuInstallationPending?"Installing GPU generation":workProgress.stage.c_str());ImGui::SameLine();ImGui::ProgressBar(gpuInstallationPending?1.0f:workProgress.fraction,ImVec2(150,0));}}ImGui::End();
 			ImGuiID dockspace=ImGui::GetID("PipelineEditor.Dockspace");ImGui::DockSpaceOverViewport(dockspace,ImGui::GetMainViewport(),ImGuiDockNodeFlags_PassthruCentralNode);if(resetLayout||!ImGui::DockBuilderGetNode(dockspace)||!ImGui::DockBuilderGetNode(dockspace)->IsSplitNode()){resetLayout=false;ImGui::DockBuilderRemoveNode(dockspace);ImGui::DockBuilderAddNode(dockspace,ImGuiDockNodeFlags_DockSpace);ImGui::DockBuilderSetNodeSize(dockspace,ImGui::GetMainViewport()->WorkSize);ImGuiID left,right;ImGui::DockBuilderSplitNode(dockspace,ImGuiDir_Left,0.28f,&left,&right);ImGuiID leftLower,leftUpper;ImGui::DockBuilderSplitNode(left,ImGuiDir_Down,0.48f,&leftLower,&leftUpper);ImGui::DockBuilderDockWindow("Pipeline Hierarchy",leftUpper);ImGui::DockBuilderDockWindow("Inspector",leftLower);ImGui::DockBuilderDockWindow("Diagnostics",leftLower);ImGui::DockBuilderDockWindow("Allocations",leftLower);ImGui::DockBuilderDockWindow("Statistics",leftLower);ImGui::DockBuilderDockWindow("Viewport",right);ImGui::DockBuilderFinish(dockspace);}
 			if(!externalConflicts.empty()){ImGui::Begin("External File Conflict");ImGui::TextColored(ImVec4(1.0f,0.65f,0.15f,1.0f),"Files changed outside PipelineEditor:");for(auto const& path:externalConflicts)ImGui::BulletText("%s",path.c_str());ImGui::TextWrapped("Reload discards editor changes. Keep Editor Version acknowledges disk changes and marks affected documents dirty. External libraries remain read-only.");if(ImGui::Button("Reload Workspace"))requestReloadConflicts=true;ImGui::SameLine();if(ImGui::Button("Overwrite Pipeline/Scene"))requestOverwriteConflicts=true;ImGui::SameLine();if(ImGui::Button("Keep Editor Version"))requestKeepConflicts=true;ImGui::End();}
 			if(openOperationError){ImGui::OpenPopup("Operation Result");openOperationError=false;}if(ImGui::BeginPopupModal("Operation Result",nullptr,ImGuiWindowFlags_AlwaysAutoResize)){ImGui::TextColored(operationMessageIsSuccess?ImVec4(0.3f,1,0.4f,1):ImVec4(1,0.35f,0.35f,1),"%s",operationErrorTitle.c_str());ImGui::Separator();ImGui::TextWrapped("%s",operationErrorMessage.c_str());if(ImGui::Button("Copy Details"))ImGui::SetClipboardText(operationErrorMessage.c_str());ImGui::SameLine();if(ImGui::Button("Close"))ImGui::CloseCurrentPopup();ImGui::EndPopup();}
@@ -419,7 +697,53 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if(requestOverwriteConflicts){bool writableConflict=false;auto pipelineFile=currentPath.empty()?std::string():mpp::app::normaliseDocumentPath(currentPath).string(),sceneFile=scenePath.empty()?std::string():mpp::app::normaliseDocumentPath(scenePath).string();if(std::find(externalConflicts.begin(),externalConflicts.end(),sceneFile)!=externalConflicts.end()){writableConflict=true;saveScene(false);}if(std::find(externalConflicts.begin(),externalConflicts.end(),pipelineFile)!=externalConflicts.end()){writableConflict=true;savePipeline(false);}if(!writableConflict){operationErrorTitle="Read-only Library Conflict";operationErrorMessage="Only external resource libraries changed. Reload the workspace, keep the editor version, or use Make Local Copy; PipelineEditor never overwrites external libraries.";openOperationError=true;}}
 			if(requestReloadConflicts&&openDocument&&confirmDiscardWorkspace()){bool wasUntitled=currentPath.empty();auto reloadPath=wasUntitled?openDocument->sourcePath:currentPath;if(!reloadPath.empty()&&loadWorkspace(reloadPath,false,!wasUntitled)){if(wasUntitled){currentPath.clear();pipelineDirty=true;refreshTrackedFiles();}queueWorkingPreview("Reloaded workspace preview");}}
 			if(requestKeepConflicts){bool pipelineAffected=false,sceneAffected=false;auto conflicts=externalConflicts;for(auto const& path:conflicts){if(!currentPath.empty()&&mpp::app::normaliseDocumentPath(currentPath).string()==path)pipelineAffected=true;else if(!scenePath.empty()&&mpp::app::normaliseDocumentPath(scenePath).string()==path)sceneAffected=true;else pipelineAffected=true;acknowledgeTrackedFile(path);}if(pipelineAffected)pipelineDirty=true;if(sceneAffected)sceneDirty=true;externalConflicts.clear();documentChangedSincePreview=true;}
-			if(showPreferences){ImGui::Begin("Preferences",&showPreferences);ImGui::InputInt("Startup width",&windowWidth);ImGui::InputInt("Startup height",&windowHeight);ImGui::InputFloat("Recovery interval (seconds)",&recoverySeconds);windowWidth=std::max(640,windowWidth);windowHeight=std::max(480,windowHeight);recoverySeconds=std::max(5.0f,recoverySeconds);if(ImGui::Button("Save Preferences")){std::ofstream config("PipelineEditor.cfg",std::ios::trunc);config<<"width="<<windowWidth<<'\n'<<"height="<<windowHeight<<'\n'<<"recoverySeconds="<<recoverySeconds<<'\n';if(!config){operationErrorTitle="Preferences Save Failed";operationErrorMessage="Could not write PipelineEditor.cfg. Existing preferences were not intentionally replaced.";openOperationError=true;}}ImGui::TextDisabled("Window dimensions apply on next launch.");ImGui::End();}
+			if(showPreferences)
+			{
+				ImGui::Begin("Preferences",&showPreferences);
+				ImGui::InputInt("Startup width",&windowWidth);
+				ImGui::InputInt("Startup height",&windowHeight);
+				ImGui::InputFloat("Recovery interval (seconds)",&recoverySeconds);
+				windowWidth=std::max(640,windowWidth);
+				windowHeight=std::max(480,windowHeight);
+				recoverySeconds=std::max(5.0f,recoverySeconds);
+
+				ImGui::SeparatorText("RenderDoc");
+				char renderDocPath[2048]{};
+				strncpy_s(renderDocPath, editorSettings.renderDocExecutable.string().c_str(), sizeof(renderDocPath) - 1);
+				if (ImGui::InputText("qrenderdoc.exe", renderDocPath, sizeof(renderDocPath))) editorSettings.renderDocExecutable = renderDocPath;
+				ImGui::SameLine();
+				if (ImGui::Button("Browse##RenderDocExecutable"))
+				{
+					if (auto selected = mpp::app::openExecutableFileDialog(window.getWindow(), "Locate qrenderdoc.exe")) editorSettings.renderDocExecutable = *selected;
+				}
+				char capturePath[2048]{};
+				strncpy_s(capturePath, editorSettings.captureDirectory.string().c_str(), sizeof(capturePath) - 1);
+				if (ImGui::InputText("Capture directory", capturePath, sizeof(capturePath))) editorSettings.captureDirectory = capturePath;
+				ImGui::SameLine();
+				if (ImGui::Button("Browse##RenderDocCaptures"))
+				{
+					if (auto selected = mpp::app::selectFolderDialog(window.getWindow(), "Select RenderDoc Capture Directory")) editorSettings.captureDirectory = *selected;
+				}
+
+				if(ImGui::Button("Save Preferences"))
+				{
+					try
+					{
+						std::ofstream config("PipelineEditor.cfg",std::ios::trunc);
+						config<<"width="<<windowWidth<<'\n'<<"height="<<windowHeight<<'\n'<<"recoverySeconds="<<recoverySeconds<<'\n';
+						if(!config) throw std::runtime_error("Could not write PipelineEditor.cfg.");
+						saveRenderDocSettings(editorSettings);
+					}
+					catch (std::exception const& error)
+					{
+						operationErrorTitle="Preferences Save Failed";
+						operationErrorMessage=error.what();
+						openOperationError=true;
+					}
+				}
+				ImGui::TextDisabled("Window dimensions apply on next launch.");
+				ImGui::End();
+			}
 			auto passEffectivelyEnabled=[&](GraphPassInfo const& info){if(!info.enabled)return false;auto const& factory=info.callbackFactory;if(factory=="MPP.BloomExtract"||factory=="MPP.BloomComposite")return openDocument&&openDocument->bloom.enabled;if(factory=="MPP.BloomBlurHorizontal"||factory=="MPP.BloomBlurVertical")return openDocument&&openDocument->bloom.enabled&&passNameIndex(info.name)<openDocument->bloom.blurPasses;return true;};
 			std::vector<uint32_t> selectedMaterialPasses,selectedIndependentPasses;std::string selectedMaterialReference;if(openDocument){if(selectedLocalResource>=0&&(size_t)selectedLocalResource<openDocument->localResources.size()&&openDocument->localResources[(size_t)selectedLocalResource].kind==PbrPipelineResourceKind::PbrMaterial)selectedMaterialReference=openDocument->localResources[(size_t)selectedLocalResource].name;else if(selectedExternalResource>=0&&(size_t)selectedExternalResource<openDocument->externalResources.size()&&openDocument->externalResources[(size_t)selectedExternalResource].resource.kind==PbrPipelineResourceKind::PbrMaterial){auto const& external=openDocument->externalResources[(size_t)selectedExternalResource];selectedMaterialReference=external.libraryName+"::"+external.resource.name;}if(!selectedMaterialReference.empty()&&openDocument->graph){std::set<std::string> materialBindings;for(auto const& binding:openDocument->previewBindings)if(binding.materialResource==selectedMaterialReference)materialBindings.insert(binding.binding);bool usedByScene=openScene&&std::any_of(openScene->models.begin(),openScene->models.end(),[&](auto const& model){return materialBindings.contains(model.materialBinding);});for(uint32_t pass=0;pass<openDocument->graph->getPassCount();++pass){auto info=openDocument->graph->getPassInfo({pass});if(!passEffectivelyEnabled(info))continue;auto metadata=authoringRegistry.findMetadata(info.callbackFactory);if(!metadata)continue;if(metadata->materialSlots.empty())selectedIndependentPasses.push_back(pass);else if(usedByScene)selectedMaterialPasses.push_back(pass);}}}auto showMaterialPassUsage=[&](){ImGui::SeparatorText("Enabled passes");ImGui::TextDisabled("Uses selected material");if(selectedMaterialPasses.empty())ImGui::BulletText("None");else for(auto pass:selectedMaterialPasses)ImGui::BulletText("%s",openDocument->graph->getPassInfo({pass}).name.c_str());ImGui::TextDisabled("Material-independent (always runs)");if(selectedIndependentPasses.empty())ImGui::BulletText("None");else for(auto pass:selectedIndependentPasses)ImGui::BulletText("%s",openDocument->graph->getPassInfo({pass}).name.c_str());};
 			ImGui::Begin("Pipeline Hierarchy"); ImGui::TextUnformatted(openDocument ? openDocument->name.c_str() : "Pipeline");
@@ -610,7 +934,60 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::End();
 			ImGui::SetNextWindowPos(ImVec2(0, ImGui::GetIO().DisplaySize.y - 24)); ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x,24)); ImGui::Begin("##Status",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings); auto statusWork=backgroundJobs.progress();ImGui::Text("%s%s | %.1f FPS | %d submitted triangles | %llu known unique | Preview: %s%s",openDocument?"Loaded":"Ready",(pipelineDirty||sceneDirty)?" *":"",fps,renderSystem.getCurrentRenderInfo().trianglesRendered,(unsigned long long)(sceneRuntime.getScene()?sceneRuntime.getUniqueTriangleCount():(openScene?openScene->getKnownTriangleCount():0)),openDocument?(previewStale?"stale last-valid generation":"current generation"):"no document",(statusWork.queued||statusWork.running)?(" | "+statusWork.stage).c_str():gpuInstallationPending?" | installing GPU generation":"");if(openScene&&openScene->getUnknownTriangleModelCount()&&ImGui::IsItemHovered())ImGui::SetTooltip("%zu visible .mppmodel source(s) are not included until model metadata is loaded.",openScene->getUnknownTriangleModelCount()); ImGui::End();
 			if(!ImGui::IsAnyItemActive()){pipelineCommands.endCoalescing();sceneCommands.endCoalescing();}ImGui::Render(); provider->setDrawData(ImGui::GetDrawData());
-			renderSystem.startStatsCollection(); renderSystem.renderScene(scene, camera, glm::vec2(0), activePipeline);if(inspectSelectedImage&&inspectedTarget&&activePreviewDocument&&activePreviewDocument->graph&&selectedImage>=0&&(uint32_t)selectedImage<activePreviewDocument->graph->getImageCount()){try{auto source=std::dynamic_pointer_cast<RenderTexture>(inspectedTarget);if(!source)throw std::runtime_error("The selected import is not texture-backed and cannot be inspected.");auto info=activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage,(uint32_t)inspectedVersion});bool depth=info.desc.format>=GraphImageFormat::Depth16;if(source->isMultisampled()){auto existing=std::dynamic_pointer_cast<RenderTexture>(diagnosticResolveTarget);if(!existing||existing->getWidth()!=source->getWidth()||existing->getHeight()!=source->getHeight()||diagnosticResolveDepth!=depth){RenderTextureOptions options;if(depth){options.numAttachments=0;options.depthAttachment=RenderTextureDepthAttachment::DepthTexture;options.depthFormat=RenderTextureDepthFormat::Depth32f;}else{options.colourType=TextureInternalType::Float;options.colourNormalised=false;options.colourBitSize=16;options.colourChannels=4;}diagnosticResolveTarget=renderSystem.createRenderTexture("PipelineEditor.ImageDiagnosticResolve",source->getWidth(),source->getHeight(),options);diagnosticResolveDepth=depth;existing=std::dynamic_pointer_cast<RenderTexture>(diagnosticResolveTarget);}source->resolveTo(existing.get(),!depth,depth);source=existing;}RenderSystem::TextureDiagnosticOptions options;options.mode=(RenderSystem::TextureDiagnosticMode)textureDiagnosticMode;options.mipLevel=(uint32_t)inspectedMip;options.exposure=diagnosticExposure;options.depthNear=diagnosticDepthNear;options.depthFar=diagnosticDepthFar;renderSystem.renderTextureDiagnostic(source.get(),diagnosticTarget,options);textureDiagnosticFailure.clear();}catch(std::exception const& error){textureDiagnosticFailure=error.what();}}renderer.render(&renderSystem); renderSystem.finishStatsCollection(); window.show();if(smokeTest){if(!activeGraphResource.empty()){if(++smokeStableFrames>=30)running=false;}else smokeStableFrames=0;}
+			renderSystem.startStatsCollection();
+			renderDocCapture.discardUnexpectedCapture();
+			bool captureThisFrame = false;
+			bool openCompletedCapture = false;
+			if (captureRequested)
+			{
+				captureRequested = false;
+				openCompletedCapture = captureAndOpen;
+				auto currentCaptureWork = backgroundJobs.progress();
+				bool captureStillEnabled = !currentCaptureWork.queued && !currentCaptureWork.running && !gpuInstallationPending;
+				try
+				{
+					if (captureStillEnabled && ensureRenderDocSettings())
+					{
+						renderDocCapture.initialise(editorSettings.renderDocExecutable);
+						renderDocCapture.begin(editorSettings.captureDirectory);
+						captureThisFrame = true;
+					}
+				}
+				catch (std::exception const& error)
+				{
+					reportOperationError("RenderDoc Capture Failed", "Could not start the viewport capture.", editorSettings.captureDirectory.string(), error);
+				}
+			}
+
+			try
+			{
+				renderSystem.renderScene(scene, camera, glm::vec2(0), activePipeline);
+			}
+			catch (...)
+			{
+				if (captureThisFrame) try { renderDocCapture.end(); } catch (...) {}
+				throw;
+			}
+
+			if (!captureThisFrame) renderDocCapture.discardUnexpectedCapture();
+			if (captureThisFrame)
+			{
+				try
+				{
+					auto capturePath = renderDocCapture.end();
+					if (openCompletedCapture) launchRenderDoc(editorSettings.renderDocExecutable, capturePath);
+					operationMessageIsSuccess = true;
+					operationErrorTitle = openCompletedCapture ? "Capture Opened in RenderDoc" : "Viewport Captured";
+					operationErrorMessage = "Created viewport-only capture:\n" + capturePath.string();
+					openOperationError = true;
+				}
+				catch (std::exception const& error)
+				{
+					reportOperationError("RenderDoc Capture Failed", "Could not complete the viewport capture.", editorSettings.captureDirectory.string(), error);
+				}
+			}
+
+			if(inspectSelectedImage&&inspectedTarget&&activePreviewDocument&&activePreviewDocument->graph&&selectedImage>=0&&(uint32_t)selectedImage<activePreviewDocument->graph->getImageCount()){try{auto source=std::dynamic_pointer_cast<RenderTexture>(inspectedTarget);if(!source)throw std::runtime_error("The selected import is not texture-backed and cannot be inspected.");auto info=activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage,(uint32_t)inspectedVersion});bool depth=info.desc.format>=GraphImageFormat::Depth16;if(source->isMultisampled()){auto existing=std::dynamic_pointer_cast<RenderTexture>(diagnosticResolveTarget);if(!existing||existing->getWidth()!=source->getWidth()||existing->getHeight()!=source->getHeight()||diagnosticResolveDepth!=depth){RenderTextureOptions options;if(depth){options.numAttachments=0;options.depthAttachment=RenderTextureDepthAttachment::DepthTexture;options.depthFormat=RenderTextureDepthFormat::Depth32f;}else{options.colourType=TextureInternalType::Float;options.colourNormalised=false;options.colourBitSize=16;options.colourChannels=4;}diagnosticResolveTarget=renderSystem.createRenderTexture("PipelineEditor.ImageDiagnosticResolve",source->getWidth(),source->getHeight(),options);diagnosticResolveDepth=depth;existing=std::dynamic_pointer_cast<RenderTexture>(diagnosticResolveTarget);}source->resolveTo(existing.get(),!depth,depth);source=existing;}RenderSystem::TextureDiagnosticOptions options;options.mode=(RenderSystem::TextureDiagnosticMode)textureDiagnosticMode;options.mipLevel=(uint32_t)inspectedMip;options.exposure=diagnosticExposure;options.depthNear=diagnosticDepthNear;options.depthFar=diagnosticDepthFar;renderSystem.renderTextureDiagnostic(source.get(),diagnosticTarget,options);textureDiagnosticFailure.clear();}catch(std::exception const& error){textureDiagnosticFailure=error.what();}}renderer.render(&renderSystem); renderSystem.finishStatsCollection(); window.show();if(smokeTest){if(!activeGraphResource.empty()){if(++smokeStableFrames>=30)running=false;}else smokeStableFrames=0;}
 		}
 		if(activePreviewTexture)provider->unregisterTexture(activePreviewTexture);if(diagnosticTexture)provider->unregisterTexture(diagnosticTexture);inspectedTarget.reset();diagnosticResolveTarget.reset();diagnosticTarget.reset();activePreviewDocument.reset();activePreviewTarget.reset();if(!activeGraphResource.empty()){renderSystem.removeRenderPipeline(activePipeline);resources.deleteResource(activeGraphResource);}
 		scene->unload();scene.reset();sceneRuntime.clear();pipelineRuntime.clear(); imGuiShutdown(&backend);provider->clearRegisteredTextures();font.reset();if(resources.getResource("__ImGui_Font__",true))resources.deleteResource("__ImGui_Font__");renderSystem.destroyCoreResources();
