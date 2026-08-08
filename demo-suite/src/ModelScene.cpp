@@ -1157,6 +1157,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	graphDefaultOptions.mode = mpp::RenderPipelineMode::GraphLegacyForward;
 	graphDefaultOptions.outputs.push_back({"Main","Presentation",{}, {}});
 	renderSystem->getOrCreateRenderPipeline("GraphDefault", graphDefaultOptions);
+	{mpp::RenderPipelineOptions invalidManual;invalidManual.outputs.push_back({"Main","Presentation",{},{{}, {}, true, {}}});bool rejected=false;try{renderSystem->getOrCreateRenderPipeline("InvalidManualTaa",invalidManual);}catch(...){rejected=true;}if(!rejected)throw std::runtime_error("Manual non-graph pipeline accepted TAA.");}
 
 	std::string documentFoundationFailure;
 	if (!mpp::app::runDocumentFoundationTests(&documentFoundationFailure))
@@ -1244,7 +1245,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	{
 		throw std::runtime_error("Render graph GPU tests failed: " + graphGpuTestFailure);
 	}
-	renderSystem->infoMessage("Render graph GPU format/raster/state/stats/framebuffer/resize/MRT/MSAA/SSAA-Lanczos/mip/alias/lifetime tests passed.");
+	renderSystem->infoMessage("Render graph GPU format/raster/state/stats/framebuffer/resize/MRT/MSAA/TAA/SSAA-Lanczos/mip/alias/lifetime tests passed.");
 }
 
 void ModelScene::teardownImGui()

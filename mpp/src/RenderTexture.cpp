@@ -463,6 +463,11 @@ namespace mpp
 		GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)previousDrawFramebuffer));
 	}
 
+	void RenderTexture::copyDepthTo(RenderTexture* destination)
+	{
+		if(!destination||!hasDepthBuffer()||!destination->hasDepthBuffer()||destination->mSamples!=1||destination->getWidth()!=getWidth()||destination->getHeight()!=getHeight())THROW_MPP("Invalid render texture depth-history copy.",__LINE__,__FILE__,__func__);GLint previousRead=0,previousDraw=0;GL_CHECK(glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&previousRead));GL_CHECK(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,&previousDraw));GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER,mFrameBuffer));GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER,destination->mFrameBuffer));GL_CHECK(glBlitFramebuffer(0,0,(GLint)getWidth(),(GLint)getHeight(),0,0,(GLint)getWidth(),(GLint)getHeight(),GL_DEPTH_BUFFER_BIT,GL_NEAREST));GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER,(GLuint)previousRead));GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER,(GLuint)previousDraw));
+	}
+
 	bool RenderTexture::resize(size_t width, size_t height)
 	{
 		if (width == 0 || height == 0)

@@ -29,13 +29,13 @@ namespace mpp
 
 	void Camera::setFov(float fov)
 	{
-		mFov = fov;
+		if(mFov!=fov){mFov=fov;++mRevision;}
 	}
 
 	void Camera::setAspectRatio(float aspectRatio)
 	{
 		if(aspectRatio<=0.0f)THROW_MPP("Camera aspect ratio must be positive.",__LINE__,__FILE__,__func__);
-		mAspectRatio=aspectRatio;
+		if(mAspectRatio!=aspectRatio){mAspectRatio=aspectRatio;++mRevision;}
 	}
 
 	float Camera::getFov() const
@@ -43,10 +43,11 @@ namespace mpp
 		return mFov;
 	}
 
+	float Camera::getAspectRatio() const{return mAspectRatio;}
+
 	void Camera::setClipDistances(float _near, float _far)
 	{
-		mNear = _near;
-		mFar = _far;
+		if(mNear!=_near||mFar!=_far){mNear=_near;mFar=_far;++mRevision;}
 	}
 
 	float Camera::getNearClipDistance() const
@@ -76,6 +77,7 @@ namespace mpp
 		mUp = normalize(up);
 		mYaw = mPitch = mRoll = 0.0f;
 		mDirty = false;
+		++mRevision;
 	}
 
 	vec3 const& Camera::getDirection() const
@@ -89,6 +91,12 @@ namespace mpp
 		updateAngles();
 		return mUp;
 	}
+
+	void Camera::setProjectionJitter(vec2 const& jitterNdc){mProjectionJitterNdc=jitterNdc;}
+	vec2 const& Camera::getProjectionJitter() const{return mProjectionJitterNdc;}
+	void Camera::markCut(){++mCutRevision;++mRevision;}
+	uint64_t Camera::getRevision() const{return mRevision;}
+	uint64_t Camera::getCutRevision() const{return mCutRevision;}
 
 	void Camera::updateAngles() const
 	{
@@ -126,6 +134,6 @@ namespace mpp
 
 	mat4 Camera::getProjectionTransform() const
 	{
-		return perspective(radians(mFov), mAspectRatio, mNear, mFar);
+		auto projection=perspective(radians(mFov),mAspectRatio,mNear,mFar);projection[2][0]+=mProjectionJitterNdc.x;projection[2][1]+=mProjectionJitterNdc.y;return projection;
 	}
 }

@@ -134,6 +134,7 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 	mOrbitYaw = std::atan2(offset.x, offset.z);
 	mOrbitPitch = std::asin(std::clamp(offset.y / mOrbitDistance, -1.0f, 1.0f));
 	updateOrbitCamera();
+	camera->markCut();
 	camera->setFov(mDocument.camera.fov);
 	camera->setClipDistances(mDocument.camera.nearPlane, mDocument.camera.farPlane);
 	mPipelineRuntime->accept();

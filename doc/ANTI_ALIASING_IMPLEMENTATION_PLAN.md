@@ -7,8 +7,9 @@
 - **Phase 3 complete**: immutable renderer-owned physical output plans, unified screen/offscreen pass-through processors, transactional graph/output generations, output-chain history ownership, transactional render-texture resize, and retained-resource failure handling.
 - **Phase 4 complete**: renderer-private 2×/4×/8× multisample colour/depth attachment allocation, automatic single-sample resolves before graph reads/output processing, capability enforcement, mip-chain incompatibility diagnostics, and alpha-preserving resolve tests.
 - **Phase 5 complete**: total-sample √2/2/√8 raster sizing, supersampled viewport-relative graph allocation, unchanged absolute resource sizing, separable alpha-preserving Lanczos downsampling, and transactional screen/offscreen integration.
-- Phase 1–5 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, supported MSAA colour/depth resolve tests, all SSAA dimension/filter factors, combined setting propagation, transactional failure tests, legacy `<samples>` rejection, and package export/load smoke testing.
-- Anti-aliasing remains disabled by default. Camera-jitter TAA begins in phase 6.
+- **Phase 6 complete**: shared eight-sample Halton camera jitter, resolved-depth world reprojection, depth rejection, 3×3 neighbourhood clamping, fixed temporal blending, per-output ping-pong colour/depth histories, explicit/conservative camera cuts, and all required reset paths.
+- Phase 1–6 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, MSAA resolves, all SSAA factors, deterministic TAA jitter/history/reprojection/reset tests, combined setting propagation, transactional failures, legacy migration, and package export/load smoke testing.
+- Anti-aliasing remains disabled by default. Fixed-preset FXAA begins in phase 7.
 
 ## 1. Scope
 
@@ -254,8 +255,15 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Preserve alpha and support screen/offscreen outputs transactionally.
    - [x] Test every factor's dimensions and colour/alpha readback, checkerboard filtering, PipelineEditor rendering, and package mode.
 
-6. **TAA**
-   - Add jitter, depth reprojection, neighborhood clamping, histories, and reset rules.
+6. **TAA — COMPLETE**
+   - [x] Add an eight-entry Halton(2,3) subpixel sequence shared by every output in a pipeline; convert pixel offsets to projection-space jitter using supersampled raster dimensions.
+   - [x] Keep jitter renderer-driven and transient on `Camera`, with public camera-cut revision support; never serialize per-frame jitter into scene documents.
+   - [x] Run TAA at supersampled resolution after MSAA colour/depth resolves and before Lanczos SSAA downsampling.
+   - [x] Reconstruct world position from current resolved depth and inverse jittered view-projection, then project through the previous jittered matrix without motion vectors.
+   - [x] Reject out-of-bounds/depth-inconsistent history, clamp accepted history to the current 3×3 neighbourhood, and blend 90% history / 10% current while preserving alpha.
+   - [x] Ping-pong two colour histories per named output and retain one previous-frame resolved depth texture in the transactional output generation.
+   - [x] Reset on first use, resize/generation replacement, explicit camera cut, conservative teleport/projection discontinuity, setting change, or skipped output frame.
+   - [x] Test deterministic jitter, accumulation/clamping, depth rejection, alpha, camera/resize/skip resets, non-graph rejection, and combined MSAA + TAA + SSAA rendering.
 
 7. **FXAA**
    - Add the fixed high-quality LDR post-process.

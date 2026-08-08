@@ -6,6 +6,7 @@
 
 #include "mpp/RenderOutputProcessor.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "mpp/MppException.h"
@@ -17,6 +18,11 @@ using namespace std;
 
 namespace mpp
 {
+	glm::vec2 taaHaltonJitter(uint32_t index)
+	{
+		auto halton=[](uint32_t value,uint32_t base){float result=0.0f,fraction=1.0f/(float)base;while(value){result+=fraction*(float)(value%base);value/=base;fraction/=(float)base;}return result;};uint32_t sample=index%8+1;return {halton(sample,2)-0.5f,halton(sample,3)-0.5f};
+	}
+
 	namespace
 	{
 		GraphImageInfo findImage(RenderGraph const& graph, string const& name)
@@ -52,7 +58,7 @@ namespace mpp
 			auto colour=findImage(graph,output.image);auto effective=resolveAntiAliasing(defaults,output.antiAliasing);glm::uvec2 size((uint32_t)destination->second->getWidth(),(uint32_t)destination->second->getHeight());if(size.x==0||size.y==0)THROW_MPP("Named output '"+output.name+"' has zero-sized destination.",__LINE__,__FILE__,__func__);
 			glm::uvec2 rasterSize(ssaaDimension(size.x,effective.ssaa),ssaaDimension(size.y,effective.ssaa));RenderPipelineOutputPlan plan;plan.name=output.name;plan.image=output.image;plan.taaDepth=output.taaDepth;plan.antiAliasing=effective;plan.logicalSize=size;plan.rasterSize=rasterSize;plan.rasterSamples=antiAliasingSampleCount(effective.msaa);plan.physicalImages.push_back({PhysicalOutputImageRole::Input,rasterSize,colour.desc.format,1});
 			if(effective.ssaa!=AntiAliasingSamples::Off){plan.physicalImages.push_back({PhysicalOutputImageRole::Work,{size.x,rasterSize.y},colour.desc.format,1});plan.physicalImages.push_back({PhysicalOutputImageRole::Work,size,colour.desc.format,1});}else if(effective.taa||effective.fxaa){plan.physicalImages.push_back({PhysicalOutputImageRole::Work,size,colour.desc.format,1});plan.physicalImages.push_back({PhysicalOutputImageRole::Work,size,colour.desc.format,1});}
-			if(effective.taa){plan.physicalImages.push_back({PhysicalOutputImageRole::TaaColourHistory,rasterSize,colour.desc.format,1});plan.physicalImages.push_back({PhysicalOutputImageRole::TaaColourHistory,rasterSize,colour.desc.format,1});auto depthFormat=output.taaDepth.empty()?GraphImageFormat::Depth24:findImage(graph,output.taaDepth).desc.format;plan.physicalImages.push_back({PhysicalOutputImageRole::TaaDepthHistory,rasterSize,depthFormat,1});}
+			if(effective.taa){plan.physicalImages.push_back({PhysicalOutputImageRole::TaaColourHistory,rasterSize,colour.desc.format,1});plan.physicalImages.push_back({PhysicalOutputImageRole::TaaColourHistory,rasterSize,colour.desc.format,1});auto depthInfo=output.taaDepth.empty()?GraphImageInfo{}:findImage(graph,output.taaDepth);auto depthFormat=output.taaDepth.empty()?GraphImageFormat::Depth24:depthInfo.desc.format;if(!output.taaDepth.empty()){glm::uvec2 depthSize(depthInfo.desc.absoluteSize.x?depthInfo.desc.absoluteSize.x:std::max(1u,(uint32_t)(rasterSize.x*depthInfo.desc.relativeSize.x)),depthInfo.desc.absoluteSize.y?depthInfo.desc.absoluteSize.y:std::max(1u,(uint32_t)(rasterSize.y*depthInfo.desc.relativeSize.y)));if(depthSize!=rasterSize)THROW_MPP("TAA depth source '"+output.taaDepth+"' dimensions do not match output '"+output.name+"'.",__LINE__,__FILE__,__func__);}plan.physicalImages.push_back({PhysicalOutputImageRole::TaaDepthHistory,rasterSize,depthFormat,1});}
 			plans.push_back(std::move(plan));
 		}
 		if(samePlans(plans,mPlans))return;
@@ -73,10 +79,17 @@ namespace mpp
 
 	void RenderOutputProcessor::clear(){mOutputs.clear();mPlans.clear();++mGeneration;}
 	RenderTargetPtr RenderOutputProcessor::getInput(string const& outputName) const{auto found=mOutputs.find(outputName);return found==mOutputs.end()?nullptr:found->second.input;}
-	void RenderOutputProcessor::present(string const& outputName,RenderTargetPtr const& destination,RenderTargetPtr const& source) const
+	void RenderOutputProcessor::present(string const& outputName,RenderTargetPtr const& destination,RenderTargetPtr const& source,RenderTargetPtr const& depthSource,TaaFrameContext const* taaFrame)
 	{
-		auto state=mOutputs.find(outputName);auto input=source?source:getInput(outputName);if(state==mOutputs.end()||!input||!destination)THROW_MPP("Cannot present an unconfigured named output.",__LINE__,__FILE__,__func__);if(input==destination)return;auto texture=dynamic_cast<RenderTexture*>(input.get());if(!texture)THROW_MPP("Named output input is not a render texture.",__LINE__,__FILE__,__func__);if(state->second.plan.antiAliasing.ssaa!=AntiAliasingSamples::Off){if(state->second.work.size()<2)THROW_MPP("SSAA output is missing Lanczos work targets.",__LINE__,__FILE__,__func__);mRenderSystem->renderSsaaLanczos(texture,state->second.work[0],glm::vec2(1,0));texture=dynamic_cast<RenderTexture*>(state->second.work[0].get());mRenderSystem->renderSsaaLanczos(texture,state->second.work[1],glm::vec2(0,1));texture=dynamic_cast<RenderTexture*>(state->second.work[1].get());}mRenderSystem->setProjection2dOrthographic();mRenderSystem->resetTransform();mRenderSystem->scaleTransform2d(glm::vec2((float)destination->getWidth()/mRenderSystem->getWindowWidth(),(float)destination->getHeight()/mRenderSystem->getWindowHeight()));mRenderSystem->setRenderTarget(destination);mRenderSystem->setViewport(0,0,destination->getWidth(),destination->getHeight());mRenderSystem->renderFullscreenQuad(texture,BlendMode::One,BlendMode::Zero);
+		auto found=mOutputs.find(outputName);auto input=source?source:getInput(outputName);if(found==mOutputs.end()||!input||!destination)THROW_MPP("Cannot present an unconfigured named output.",__LINE__,__FILE__,__func__);auto& state=found->second;if(input==destination&&!state.plan.antiAliasing.taa)return;auto texture=dynamic_cast<RenderTexture*>(input.get());if(!texture)THROW_MPP("Named output input is not a render texture.",__LINE__,__FILE__,__func__);
+		if(state.plan.antiAliasing.taa)
+		{
+			auto depth=dynamic_cast<RenderTexture*>(depthSource.get());auto depthHistory=dynamic_cast<RenderTexture*>(state.depthHistory.get());if(!taaFrame||!depth||!depthHistory||state.colourHistory.size()!=2||depth->getWidth()!=texture->getWidth()||depth->getHeight()!=texture->getHeight())THROW_MPP("TAA output is missing a matching resolved depth source or frame context.",__LINE__,__FILE__,__func__);bool valid=state.historyValid&&!taaFrame->resetHistory&&state.lastFrameSerial+1==taaFrame->frameSerial;if(!valid)++state.historyResetCount;uint32_t next=valid?1-state.historyIndex:0;auto nextHistory=dynamic_cast<RenderTexture*>(state.colourHistory[next].get());if(valid)mRenderSystem->renderTaa(texture,depth,dynamic_cast<RenderTexture*>(state.colourHistory[state.historyIndex].get()),depthHistory,state.colourHistory[next],taaFrame->inverseCurrentViewProjection,state.previousViewProjection);else{mRenderSystem->setProjection2dOrthographic();mRenderSystem->resetTransform();mRenderSystem->scaleTransform2d(glm::vec2((float)nextHistory->getWidth()/mRenderSystem->getWindowWidth(),(float)nextHistory->getHeight()/mRenderSystem->getWindowHeight()));mRenderSystem->setRenderTarget(state.colourHistory[next]);mRenderSystem->setViewport(0,0,nextHistory->getWidth(),nextHistory->getHeight());mRenderSystem->renderFullscreenQuad(texture,BlendMode::One,BlendMode::Zero);}depth->copyDepthTo(depthHistory);state.historyIndex=next;state.historyValid=true;state.lastFrameSerial=taaFrame->frameSerial;state.previousViewProjection=taaFrame->currentViewProjection;texture=nextHistory;
+		}
+		if(state.plan.antiAliasing.ssaa!=AntiAliasingSamples::Off){if(state.work.size()<2)THROW_MPP("SSAA output is missing Lanczos work targets.",__LINE__,__FILE__,__func__);mRenderSystem->renderSsaaLanczos(texture,state.work[0],glm::vec2(1,0));texture=dynamic_cast<RenderTexture*>(state.work[0].get());mRenderSystem->renderSsaaLanczos(texture,state.work[1],glm::vec2(0,1));texture=dynamic_cast<RenderTexture*>(state.work[1].get());}mRenderSystem->setProjection2dOrthographic();mRenderSystem->resetTransform();mRenderSystem->scaleTransform2d(glm::vec2((float)destination->getWidth()/mRenderSystem->getWindowWidth(),(float)destination->getHeight()/mRenderSystem->getWindowHeight()));mRenderSystem->setRenderTarget(destination);mRenderSystem->setViewport(0,0,destination->getWidth(),destination->getHeight());mRenderSystem->renderFullscreenQuad(texture,BlendMode::One,BlendMode::Zero);
 	}
 	uint64_t RenderOutputProcessor::getGeneration() const{return mGeneration;}
 	vector<RenderPipelineOutputPlan> const& RenderOutputProcessor::getPlans() const{return mPlans;}
+	bool RenderOutputProcessor::hasValidTaaHistory(string const& outputName) const{auto found=mOutputs.find(outputName);return found!=mOutputs.end()&&found->second.historyValid;}
+	uint64_t RenderOutputProcessor::getTaaHistoryResetCount(string const& outputName) const{auto found=mOutputs.find(outputName);return found==mOutputs.end()?0:found->second.historyResetCount;}
 }

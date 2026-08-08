@@ -148,6 +148,11 @@ namespace mpp
 		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
 		RenderGraphPassFactoryRegistry mGraphPassFactories;
 		bool mWarnedMissingPbrEnvironment{ false };
+		uint32_t mTaaSequenceIndex{ 0 };
+		bool mTaaCameraValid{ false };
+		uint64_t mLastTaaFrameSerial{ 0 }, mLastCameraCutRevision{ 0 };
+		glm::vec3 mLastCameraPosition{ 0.0f }, mLastCameraDirection{ 0.0f, 0.0f, -1.0f };
+		float mLastCameraFov{ 0.0f }, mLastCameraAspect{ 0.0f }, mLastCameraNear{ 0.0f }, mLastCameraFar{ 0.0f };
 
 		void ensureBloomTargets(size_t width, size_t height);
 		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);

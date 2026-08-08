@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 
 #include "mpp/AntiAliasing.h"
@@ -16,6 +17,16 @@
 namespace mpp
 {
 	class RenderSystem;
+
+	_MPPAPI glm::vec2 taaHaltonJitter(uint32_t index);
+
+	struct _MPPAPI TaaFrameContext
+	{
+		glm::mat4 currentViewProjection{ 1.0f };
+		glm::mat4 inverseCurrentViewProjection{ 1.0f };
+		uint64_t frameSerial{ 0 };
+		bool resetHistory{ false };
+	};
 
 	// Renderer-owned storage requirements. These descriptors are compiled from
 	// named outputs and are deliberately not part of graph/XML authoring.
@@ -52,6 +63,11 @@ namespace mpp
 			std::vector<RenderTargetPtr> work;
 			std::vector<RenderTargetPtr> colourHistory;
 			RenderTargetPtr depthHistory;
+			bool historyValid{ false };
+			uint32_t historyIndex{ 0 };
+			uint64_t lastFrameSerial{ 0 };
+			glm::mat4 previousViewProjection{ 1.0f };
+			uint64_t historyResetCount{ 0 };
 		};
 
 		RenderSystem* mRenderSystem;
@@ -68,8 +84,10 @@ namespace mpp
 		void clear();
 
 		RenderTargetPtr getInput(std::string const& outputName) const;
-		void present(std::string const& outputName, RenderTargetPtr const& destination, RenderTargetPtr const& source = {}) const;
+		void present(std::string const& outputName, RenderTargetPtr const& destination, RenderTargetPtr const& source = {}, RenderTargetPtr const& depthSource = {}, TaaFrameContext const* taaFrame = nullptr);
 		uint64_t getGeneration() const;
 		std::vector<RenderPipelineOutputPlan> const& getPlans() const;
+		bool hasValidTaaHistory(std::string const& outputName) const;
+		uint64_t getTaaHistoryResetCount(std::string const& outputName) const;
 	};
 }

@@ -143,6 +143,7 @@ namespace mpp
 		std::stack<ClipRectangle> mClipStack;
 
 		RenderTargetPtr mScreen;
+		uint64_t mFrameSerial{ 0 };
 
 		// Set only while a PBR pipeline is flushing its scene pass. Environment
 		// samplers then override per-material placeholder bindings.
@@ -195,7 +196,7 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -332,6 +333,7 @@ namespace mpp
 
 		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
 		void renderSsaaLanczos(RenderTexture* source, RenderTargetPtr const& destination, glm::vec2 const& direction);
+		void renderTaa(RenderTexture* currentColour, RenderTexture* currentDepth, RenderTexture* historyColour, RenderTexture* historyDepth, RenderTargetPtr const& destination, glm::mat4 const& inverseCurrentViewProjection, glm::mat4 const& previousViewProjection);
 
 	public:
 
@@ -522,6 +524,7 @@ namespace mpp
 		RenderInfo const& getRenderInfo() const;
 
 		void startStatsCollection();
+		uint64_t getFrameSerial() const;
 
 		RenderInfo const& finishStatsCollection();
 
