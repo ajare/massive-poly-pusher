@@ -6,7 +6,7 @@ Diagnostics have a stable code, severity, message, source path, and optional sub
 
 | Family | Meaning |
 |---|---|
-| `MPP-PIPELINE-001`–`029` | Pipeline version/name, resources, imports, environment, bindings, overrides, paths, uniqueness, and portability. |
+| `MPP-PIPELINE-001`–`032` | Pipeline version/name, resources, imports, environment, bloom, bindings, overrides, paths, uniqueness, and portability. |
 | `MPP-PIPELINE-RESOURCE-001` | A concrete local or external resource payload failed parser-level validation. |
 | `MPP-PIPELINE-RUNTIME-001`–`007` | Runtime resource resolution, required imports, fallback, environment, binding, and override failures. |
 | `MPP-PIPELINE-CLI-001` | Referenced preview scene is missing. |
@@ -22,6 +22,7 @@ Diagnostics have a stable code, severity, message, source path, and optional sub
 |---|---|
 | `MPP-PIPELINE-001` | Unsupported pipeline version. Migrate to version 1. |
 | `MPP-PIPELINE-011` | Optional import lacks an explicit fallback. Make it required or select a compatible fallback. |
+| `MPP-PIPELINE-030`–`032` | Bloom count is out of range or enabled bloom lacks enough authored extract/composite/blur passes. |
 | `MPP-PIPELINE-RESOURCE-001` | Concrete resource XML is invalid. Inspect the nested parser message and resource inspector. |
 | `MPP-PIPELINE-CLI-001` | `PreviewScene/file` does not resolve from the pipeline location. |
 | `MPP-PIPELINE-CLI-002` | Root/core XML, enum, or resource-library parsing failed. Unknown core fields are rejected. |

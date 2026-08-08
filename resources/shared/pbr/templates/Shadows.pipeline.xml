@@ -102,6 +102,10 @@
     <brdfLut>Preview.BrdfLut</brdfLut>
     <background>Preview.Environment</background>
   </Environment>
+  <Bloom>
+    <enabled>false</enabled>
+    <blurPasses>0</blurPasses>
+  </Bloom>
   <PreviewBindings>
     <Material>
       <binding>Preview.Main</binding>
