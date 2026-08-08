@@ -50,7 +50,7 @@ Options:
 - `--recovery-seconds <seconds>`: recovery interval, minimum 5.
 - `--smoke-test`: render a loaded valid workspace for 30 stable frames, cleanly shut down, and return. Intended for active-context integration tests.
 
-Settings not supplied on the command line are read from `PipelineEditor.cfg`. The required `editor.ini` beside the executable contains `[Editor] resourcesLocation`; relative locations are resolved from the INI file. A positional pipeline opens as one workspace together with its referenced scene and libraries. With no positional pipeline, the configured resource tree's Full template and default scene open as an untitled workspace; saving therefore requires a new destination and cannot overwrite the shipped template.
+Settings not supplied on the command line are read from `PipelineEditor.cfg`. The required `editor.ini` beside the executable contains `[Editor] resourcesLocation`; relative locations are resolved from the INI file. Its strict `[mpp]` section supplies global anti-aliasing defaults for validation, preview rendering, CLI validation, and package export; see [ANTI_ALIASING_CONFIGURATION.md](ANTI_ALIASING_CONFIGURATION.md). A positional pipeline opens as one workspace together with its referenced scene and libraries. With no positional pipeline, the configured resource tree's Full template and default scene open as an untitled workspace; saving therefore requires a new destination and cannot overwrite the shipped template.
 
 ## Examples
 

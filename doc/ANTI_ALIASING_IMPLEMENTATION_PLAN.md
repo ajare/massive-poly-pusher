@@ -9,8 +9,9 @@
 - **Phase 5 complete**: total-sample √2/2/√8 raster sizing, supersampled viewport-relative graph allocation, unchanged absolute resource sizing, separable alpha-preserving Lanczos downsampling, and transactional screen/offscreen integration.
 - **Phase 6 complete**: shared eight-sample Halton camera jitter, resolved-depth world reprojection, depth rejection, 3×3 neighbourhood clamping, fixed temporal blending, per-output ping-pong colour/depth histories, explicit/conservative camera cuts, and all required reset paths.
 - **Phase 7 complete**: fixed high-quality LDR FXAA with contrast thresholding, directional edge search, subpixel refinement, alpha preservation, per-output enablement, and final-chain integration after TAA/SSAA.
-- Phase 1–7 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, MSAA resolves, all SSAA factors, TAA jitter/history/reprojection/resets, FXAA edge/alpha tests, combined setting propagation, transactional failures, legacy migration, and package export/load smoke testing.
-- Anti-aliasing remains disabled by default. Phase 8 is final application/documentation hardening.
+- **Phase 8 complete**: precise PipelineEditor stale-preview diagnostics, DemoSuite console/dialog fatal-error reporting, and consolidated configuration, named-output, ordering, failure, CLI, and package documentation.
+- Phase 1–8 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, MSAA resolves, all SSAA factors, TAA jitter/history/reprojection/resets, FXAA edge/alpha tests, combined setting propagation, transactional failures, legacy migration, and package export/load smoke testing.
+- The anti-aliasing implementation is complete and remains disabled by default.
 
 ## 1. Scope
 
@@ -273,9 +274,11 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Keep FXAA independently selectable per named output while MSAA/SSAA/TAA remain shared.
    - [x] Test staircase-edge softening, alpha preservation, HDR rejection, per-output variation, combined rendering, and package mode.
 
-8. **Application integration and documentation**
-   - Expose errors in PipelineEditor and DemoSuite.
-   - Update authoring, CLI/package, and configuration documentation.
+8. **Application integration and documentation — COMPLETE**
+   - [x] Surface the first precise anti-aliasing diagnostic in PipelineEditor's retained stale-preview banner while retaining the complete Diagnostics-window report.
+   - [x] Report DemoSuite fatal configuration, package, allocation, and rendering errors to stderr/log and show a native dialog for GUI launches.
+   - [x] Document strict global configuration, named-output overrides, processing order, constraints, transactional failures, camera cuts, combinations, and migration.
+   - [x] Cross-link anti-aliasing behavior from the authoring guide, CLI guide, package plan, XML/graph specifications, and README.
 
 ## 7. Test plan
 

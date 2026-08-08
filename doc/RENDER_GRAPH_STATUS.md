@@ -39,6 +39,6 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 
 ## Current safe-use boundary
 
-The implemented graph is executable and has user-confirmed visual parity with the manual DemoSuite PBR/legacy references. Manual paths remain available as compatibility references. Named output authoring is validated; physical output anti-aliasing remains scheduled for the dedicated output-compiler phases. Compute passes and automated visual-regression coverage remain outside the validated boundary.
+The implemented graph is executable and has user-confirmed visual parity with the manual DemoSuite PBR/legacy references. Manual paths remain available as compatibility references. Named output authoring and the complete physical MSAA/SSAA/TAA/FXAA output chain are implemented and validated. Compute passes and automated visual-regression coverage remain outside the validated boundary.
 
 See `RENDER_GRAPH_SPECIFICATION.md` for the authoring/API/XML reference, `RENDER_GRAPH_PLAN.md` for design/migration detail, and `RENDER_GRAPH_IMPLEMENTATION_ISSUES.md` for blockers.
