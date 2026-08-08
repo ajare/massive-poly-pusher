@@ -20,6 +20,7 @@
     <ClInclude Include="..\..\include\mpp\BufferDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\BufferRenderer.h" />
     <ClInclude Include="..\..\include\mpp\Camera.h" />
+    <ClInclude Include="..\..\include\mpp\AntiAliasing.h" />
     <ClInclude Include="..\..\include\mpp\Caps.h" />
     <ClInclude Include="..\..\include\mpp\CircleBatch.h" />
     <ClInclude Include="..\..\include\mpp\ClipRectangle.h" />

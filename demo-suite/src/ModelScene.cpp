@@ -49,6 +49,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/DiagnosticTests.h>
 #include <mpp/SceneRuntime.h>
 #include <mpp/app/DocumentFoundationTests.h>
+#include <mpp/app/RenderSystemConfigTests.h>
 
 #include <mpp/resource-parsers/FileTextureStream.h>
 #include <mpp/resource-parsers/FileProgramStream.h>
@@ -1161,6 +1162,13 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 		throw std::runtime_error("Document foundation tests failed: " + documentFoundationFailure);
 	}
 	renderSystem->infoMessage("Document ID/snapshot/undo/path/atomic-save tests passed.");
+
+	std::string renderSystemConfigFailure;
+	if (!mpp::app::runRenderSystemConfigTests(&renderSystemConfigFailure))
+	{
+		throw std::runtime_error("RenderSystem configuration tests failed: " + renderSystemConfigFailure);
+	}
+	renderSystem->infoMessage("RenderSystem [mpp] anti-aliasing configuration tests passed.");
 
 	std::string diagnosticTestFailure;
 	if (!mpp::runDiagnosticTests(&diagnosticTestFailure))

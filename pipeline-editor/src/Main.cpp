@@ -48,6 +48,7 @@
 #include "mpp/app/ImGuiDataProvider.h"
 #include "mpp/app/ImGuiPlatform.h"
 #include "mpp/app/PackageManifest.h"
+#include "mpp/app/RenderSystemConfig.h"
 #include "mpp/app/InputManagerSDL.h"
 #include "mpp/app/TimerSDL.h"
 #include "mpp/app/WindowSDL.h"
@@ -475,6 +476,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			catch(std::exception const& error){fprintf(stderr,"MPP-PIPELINE-CLI-002: %s\n",error.what());return 1;}
 		}
 		auto editorSettings=loadEditorSettings();
+		auto renderSystemOptions=mpp::app::loadRenderSystemOptions(editorSettings.iniPath);
 		RenderDocCapture renderDocCapture;
 		if (std::filesystem::is_regular_file(editorSettings.renderDocExecutable))
 		{
@@ -513,7 +515,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		SdlLifetime sdlLifetime;
 		WindowSDL window("PBR Pipeline Editor"); window.create(windowWidth, windowHeight, false, true);
 		Logger logger; if (!logger.initialise("PipelineEditor.log", Logger::Level::Debug)) throw std::runtime_error("Could not create editor log.");
-		RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger);
+		RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger, renderSystemOptions);
 		ResourceManager resources(&renderSystem, &logger);resources.setImageLoadFunction(mpp::app::loadImageFile); renderSystem.createCoreResources(&resources);RenderGraphPassFactoryRegistry authoringRegistry;registerBuiltInRenderGraphPasses(authoringRegistry);
 		ImGuiBackendData backend{}; imGuiSetup(&renderSystem, &resources, &backend, true, editorResourcePath("pipeline-editor/fa-solid-900.ttf"));
 		InputManagerSDL input; TimerSDL timer; timer.reset();

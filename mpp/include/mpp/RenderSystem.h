@@ -13,6 +13,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/Caps.h"
+#include "mpp/AntiAliasing.h"
 #include "mpp/ResourceWrangler.h"
 #include "mpp/Pool.h"
 #include "mpp/Resource.h"
@@ -119,6 +120,8 @@ namespace mpp
 	private:
 
 		Logger* mLogger;
+
+		RenderSystemOptions mOptions;
 
 		size_t mWindowWidth, mWindowHeight;
 
@@ -327,7 +330,7 @@ namespace mpp
 
 	public:
 
-		RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger);
+		RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger, RenderSystemOptions options = {});
 
 		virtual ~RenderSystem();
 
@@ -338,6 +341,7 @@ namespace mpp
 		float getAspectRatio() const;
 
 		Caps const& getCaps() const;
+		RenderSystemOptions const& getOptions() const { return mOptions; }
 		ResourceManager* getResourceManager() const { return mResourceMgr; }
 
 		void initialise();

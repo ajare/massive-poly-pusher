@@ -46,6 +46,9 @@ copy /Y "%Root%\..\mpp-resource-parsers\build\%Solution%\bin\%Platform%\%Configu
 @rem Copy mpp-helper
 copy /Y "%Root%\..\mpp-helper\build\%Solution%\bin\%Platform%\%Configuration%\*.dll" %TargetBinDir%
 
+@rem Preserve user-editable MassivePolyPusher settings beside the executable
+if not exist "%Root%.\build\%Solution%\bin\%Platform%\%Configuration%\demosuite.ini" copy /Y "%Root%\demosuite.ini" "%Root%.\build\%Solution%\bin\%Platform%\%Configuration%\demosuite.ini"
+
 @rem Copy resources into a self-contained output tree
 copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
 if exist "%Root%\resources\bin\%Configuration%\*.*" copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%

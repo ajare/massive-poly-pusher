@@ -138,6 +138,9 @@
     <ClInclude Include="..\..\include\mpp\MppModelStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\AntiAliasing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\mpp\Caps.h">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -37,6 +37,7 @@
 #include "mpp/app/ImGuiPlatform.h"
 #include "mpp/app/ZipArchive.h"
 #include "mpp/app/PackageManifest.h"
+#include "mpp/app/RenderSystemConfig.h"
 #include "ProgramOptions.h"
 #include "Helper.h"
 #include "Logger.h"
@@ -72,6 +73,14 @@ ResourceManager* gResourceManager = nullptr;
 mpp::Logger* gMppLogger = nullptr;
 
 ImGuiBackendData gImGuiBackendData;
+
+std::filesystem::path executableDirectory()
+{
+	std::vector<wchar_t> path(32768);
+	auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+	if (length == 0 || length == path.size()) throw std::runtime_error("Could not determine the DemoSuite executable directory.");
+	return std::filesystem::path(std::wstring(path.data(), length)).parent_path();
+}
 
 vector<::Scene*> gScenes;
 World gWorld;
@@ -205,6 +214,7 @@ bool startup()
 	}
 
 	gOptions = parseProgramOptions("DemoSuite.cfg");
+	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableDirectory() / "demosuite.ini");
 	gLogger = new ::Logger();
 	if (!gLogger->initialise("DemoSuite.log"))
 		throw exception("Could not create logger!");
@@ -230,7 +240,7 @@ bool startup()
 
 	mpp::enable_static_log(MPP_RESOURCE_LOGFILE, true);
 
-	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight(), gMppLogger);
+	gRenderSystem = new RenderSystem(gWindow->getWidth(), gWindow->getHeight(), gMppLogger, renderSystemOptions);
 	
 	gResourceManager = new ResourceManager(gRenderSystem, gMppLogger);
 	gResourceManager->setImageLoadFunction(loadImage);

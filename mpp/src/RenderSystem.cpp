@@ -123,9 +123,10 @@ namespace mpp
 	 * Constructor.
 	 *
 	 */
-	RenderSystem::RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger)
+	RenderSystem::RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger, RenderSystemOptions options)
 		: ResourceWrangler("RenderSystem")
 		, mLogger(logger)
+		, mOptions(std::move(options))
 		, mWindowWidth(windowWidth)
 		, mWindowHeight(windowHeight)
 		, mViewportWidth(windowWidth)
@@ -333,6 +334,23 @@ namespace mpp
 		checkExtensions();
 		checkCaps();
 
+		auto requestedMsaa = antiAliasingSampleCount(mOptions.antiAliasing.msaa);
+		if (!mCaps.supportsMsaa(requestedMsaa))
+		{
+			THROW_MPP("Configured [mpp] MSAA setting '" + antiAliasingSamplesName(mOptions.antiAliasing.msaa) + "' is not supported by this GPU.", __LINE__, __FILE__, __func__);
+		}
+		auto ssaaScale = ssaaLinearScale(mOptions.antiAliasing.ssaa);
+		auto ssaaWidth = static_cast<uint64_t>(std::ceil(static_cast<double>(mWindowWidth) * ssaaScale));
+		auto ssaaHeight = static_cast<uint64_t>(std::ceil(static_cast<double>(mWindowHeight) * ssaaScale));
+		if (ssaaWidth > static_cast<uint64_t>(mCaps.maxTextureSize) || ssaaHeight > static_cast<uint64_t>(mCaps.maxTextureSize))
+		{
+			THROW_MPP("Configured [mpp] SSAA setting '" + antiAliasingSamplesName(mOptions.antiAliasing.ssaa) + "' requires " + std::to_string(ssaaWidth) + "x" + std::to_string(ssaaHeight) + ", exceeding the GPU maximum texture size of " + std::to_string(mCaps.maxTextureSize) + ".", __LINE__, __FILE__, __func__);
+		}
+		infoMessage("Configured anti-aliasing defaults: MSAA=" + antiAliasingSamplesName(mOptions.antiAliasing.msaa) +
+			", SSAA=" + antiAliasingSamplesName(mOptions.antiAliasing.ssaa) +
+			", TAA=" + std::string(mOptions.antiAliasing.taa ? "true" : "false") +
+			", FXAA=" + std::string(mOptions.antiAliasing.fxaa ? "true" : "false"));
+
 #ifdef MPP_PROFILE_BUILD
 		mProfiler = new Profiler();
 #endif
@@ -528,6 +546,25 @@ namespace mpp
 		mCaps.maxColourAttachments = (uint32_t)maxColourAttachments;
 		mCaps.maxDrawBuffers = (uint32_t)maxDrawBuffers;
 		mCaps.maxSamples = (uint32_t)maxSamples;
+		mCaps.supportedMsaaSampleMask = 0;
+		if (GLEW_VERSION_4_2 || GLEW_ARB_internalformat_query)
+		{
+			auto sampleMask = [](GLenum format)
+			{
+				GLint count = 0;
+				GL_CHECK(glGetInternalformativ(GL_RENDERBUFFER, format, GL_NUM_SAMPLE_COUNTS, 1, &count));
+				std::vector<GLint> samples(static_cast<size_t>(std::max(0, count)));
+				if (count > 0) GL_CHECK(glGetInternalformativ(GL_RENDERBUFFER, format, GL_SAMPLES, count, samples.data()));
+				uint32_t mask = 0;
+				for (auto sample : samples) if (sample == 2 || sample == 4 || sample == 8) mask |= 1u << sample;
+				return mask;
+			};
+			mCaps.supportedMsaaSampleMask = sampleMask(GL_RGBA8) & sampleMask(GL_DEPTH_COMPONENT24);
+		}
+		else
+		{
+			for (uint32_t sample : { 2u, 4u, 8u }) if (sample <= mCaps.maxSamples) mCaps.supportedMsaaSampleMask |= 1u << sample;
+		}
 		
 		// Get depth range
 		GLfloat depthRange[2] = { 0.0f, 0.0f };
@@ -584,6 +621,7 @@ namespace mpp
 		infoMessage(STR_FORMAT("Max colour attachments: {}", mCaps.maxColourAttachments));
 		infoMessage(STR_FORMAT("Max draw buffers: {}", mCaps.maxDrawBuffers));
 		infoMessage(STR_FORMAT("Max framebuffer samples: {}", mCaps.maxSamples));
+		infoMessage(STR_FORMAT("Supported anti-aliasing MSAA mask: 0x{:x}", mCaps.supportedMsaaSampleMask));
 		infoMessage(STR_FORMAT("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
 		infoMessage(STR_FORMAT("Max anisotropy: {}", mCaps.maxAnisotropy));
 		infoMessage(STR_FORMAT("Max recommended elements: {}", mCaps.maxRecommendedElements));
