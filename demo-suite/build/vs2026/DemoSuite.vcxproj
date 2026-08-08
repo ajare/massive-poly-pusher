@@ -71,6 +71,9 @@
       <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\demosuite.ini" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{22164CF8-1FD1-48B4-8AFC-451BA88DD86E}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

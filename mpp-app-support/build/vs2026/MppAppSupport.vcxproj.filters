@@ -13,6 +13,8 @@
     <ClInclude Include="..\..\include\mpp\app\DocumentSnapshot.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\ImGuiBackendData.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\PackageManifest.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="..\..\include\mpp\app\RenderSystemConfig.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="..\..\include\mpp\app\RenderSystemConfigTests.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\ImGuiDataProvider.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\ImGuiPlatform.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\Input.h"><Filter>Header Files</Filter></ClInclude>
@@ -28,6 +30,8 @@
     <ClCompile Include="..\..\src\DocumentId.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\PackageManifest.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\..\src\RenderSystemConfig.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\..\src\RenderSystemConfigTests.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\InputManager.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\InputManagerSDL.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\ZipArchive.cpp"><Filter>Source Files</Filter></ClCompile>

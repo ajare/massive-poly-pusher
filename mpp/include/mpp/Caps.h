@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace mpp
 {
 
@@ -20,6 +22,13 @@ namespace mpp
 		uint32_t maxColourAttachments;
 		uint32_t maxDrawBuffers;
 		uint32_t maxSamples;
+		// Bit N is set when N-sample MSAA is supported for standard RGBA8
+		// render targets. Phase-one output validation uses the 2, 4 and 8 bits.
+		uint32_t supportedMsaaSampleMask;
+		bool supportsMsaa(uint32_t samples) const
+		{
+			return samples == 1 || (samples < 32 && (supportedMsaaSampleMask & (1u << samples)) != 0);
+		}
 
 		float depthRange[2];
 

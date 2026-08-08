@@ -14,6 +14,8 @@
     <ClInclude Include="..\..\include\mpp\app\FileDialog.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiBackendData.h" />
     <ClInclude Include="..\..\include\mpp\app\PackageManifest.h" />
+    <ClInclude Include="..\..\include\mpp\app\RenderSystemConfig.h" />
+    <ClInclude Include="..\..\include\mpp\app\RenderSystemConfigTests.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiPlatform.h" />
     <ClInclude Include="..\..\include\mpp\app\ImageLoader.h" />
@@ -35,6 +37,8 @@
     <ClCompile Include="..\..\src\FileDialog.cpp" />
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp" />
     <ClCompile Include="..\..\src\PackageManifest.cpp" />
+    <ClCompile Include="..\..\src\RenderSystemConfig.cpp" />
+    <ClCompile Include="..\..\src\RenderSystemConfigTests.cpp" />
     <ClCompile Include="..\..\src\ImageLoader.cpp" />
     <ClCompile Include="..\..\src\InputManager.cpp" />
     <ClCompile Include="..\..\src\InputManagerSDL.cpp" />
