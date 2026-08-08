@@ -2,6 +2,14 @@
 
 Run commands from the deployed PipelineEditor output directory so runtime DLLs and `editor.ini` are available. `editor.ini` resolves the external repository-level `resources` directory; no resource tree is copied into the binary output.
 
+## Help
+
+```text
+PipelineEditor.exe --help
+```
+
+Lists validation, package-export, smoke-test, and graphical-startup options.
+
 ## Validation
 
 ```text
@@ -18,6 +26,16 @@ Exit status:
 - `2`: command syntax error.
 
 Diagnostics are written to stderr as `CODE: message`. Parse/loading exceptions use `MPP-PIPELINE-CLI-002`; no graphical error dialog is opened by validation mode.
+
+## Package export
+
+```text
+PipelineEditor.exe --export-package <pipeline.xml> <package.mpppackage>
+```
+
+Exports the source workspace as a self-contained package without opening the editor UI. This is intended for automation and integration testing; interactive **File > Export Package...** exports the current unsaved in-memory workspace.
+
+Exit status is `0` on success, `1` when the workspace or a dependency is invalid/missing, and `2` for invalid syntax.
 
 ## Graphical startup
 
@@ -40,6 +58,7 @@ Settings not supplied on the command line are read from `PipelineEditor.cfg`. Th
 PipelineEditor.exe --validate ..\..\..\..\..\..\resources\shared\pbr\templates\Full.pipeline.xml
 PipelineEditor.exe --validate --warnings-as-errors my.pipeline.xml
 PipelineEditor.exe --smoke-test ..\..\..\..\..\..\resources\shared\pbr\templates\Shadows.pipeline.xml
+PipelineEditor.exe --export-package ..\..\..\..\..\..\resources\shared\pbr\templates\Full.pipeline.xml full.mpppackage
 ```
 
 See [PIPELINE_EDITOR_DIAGNOSTICS.md](PIPELINE_EDITOR_DIAGNOSTICS.md) for code families and [PBR_PIPELINE_XML_SPECIFICATION.md](PBR_PIPELINE_XML_SPECIFICATION.md) for document rules.

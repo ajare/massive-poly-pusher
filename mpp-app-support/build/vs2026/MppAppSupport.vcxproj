@@ -13,6 +13,7 @@
     <ClInclude Include="..\..\include\mpp\app\DocumentSnapshot.h" />
     <ClInclude Include="..\..\include\mpp\app\FileDialog.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiBackendData.h" />
+    <ClInclude Include="..\..\include\mpp\app\PackageManifest.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiDataProvider.h" />
     <ClInclude Include="..\..\include\mpp\app\ImGuiPlatform.h" />
     <ClInclude Include="..\..\include\mpp\app\ImageLoader.h" />
@@ -23,6 +24,7 @@
     <ClInclude Include="..\..\include\mpp\app\TimerSDL.h" />
     <ClInclude Include="..\..\include\mpp\app\Window.h" />
     <ClInclude Include="..\..\include\mpp\app\WindowSDL.h" />
+    <ClInclude Include="..\..\include\mpp\app\ZipArchive.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\BackgroundWork.cpp" />
@@ -32,6 +34,7 @@
     <ClCompile Include="..\..\src\DocumentId.cpp" />
     <ClCompile Include="..\..\src\FileDialog.cpp" />
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp" />
+    <ClCompile Include="..\..\src\PackageManifest.cpp" />
     <ClCompile Include="..\..\src\ImageLoader.cpp" />
     <ClCompile Include="..\..\src\InputManager.cpp" />
     <ClCompile Include="..\..\src\InputManagerSDL.cpp" />
@@ -39,6 +42,7 @@
     <ClCompile Include="..\..\src\TimerSDL.cpp" />
     <ClCompile Include="..\..\src\Window.cpp" />
     <ClCompile Include="..\..\src\WindowSDL.cpp" />
+    <ClCompile Include="..\..\src\ZipArchive.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A14775A9-B967-4538-BF7E-59D421B43163}</ProjectGuid>

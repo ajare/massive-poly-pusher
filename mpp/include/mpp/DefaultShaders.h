@@ -330,7 +330,9 @@ void main()
 	vec2 centredPos = transVertex.xy - @HalfWindowSize;
 
 ## Points
-	centredPos += gl_PointSize / 2.0;
+	// gl_PointSize is undefined until assigned. Use the point-size input for
+	// positioning as well as assigning the built-in output below.
+	centredPos += @PointSize / 2.0;
 	@Out(vec4 TEXCOORDS) = @In(TEXCOORDS);
 ## Else
     @Out(vec2 TEXCOORDS) = @In(TEXCOORDS);
@@ -358,16 +360,17 @@ void main()
 {
 ## Points
 	vec2 uv = mix(@In(TEXCOORDS).xy, @In(TEXCOORDS).zw, vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y));
-	@Out(vec4 COLOUR) = texture(@Texture(TEX1), uv) * @Uniform(COLOUR);
+	float coverage = texture(@Texture(TEX1), uv).a;
 ## Else
-	@Out(vec4 COLOUR) = texture(@Texture(TEX1), @In(TEXCOORDS)) * @Uniform(COLOUR);
+	float coverage = texture(@Texture(TEX1), @In(TEXCOORDS)).a;
 ##
-
+	vec4 textColour = @Uniform(COLOUR);
 ## Colours
-	@Out(COLOUR) *= @In(COLOUR);
+	textColour *= @In(COLOUR);
 ##
-
-	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
+	@Out(vec4 COLOUR) = vec4(
+		pow(textColour.rgb, vec3(1.0 / @Uniform(GAMMA))),
+		textColour.a * coverage);
 }
 )";
 

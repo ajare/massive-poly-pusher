@@ -22,6 +22,8 @@ private:
 	int* mMouseDoubleClickTimer;
 
 	int mMouseMotion;
+	float mMouseDeltaX;
+	float mMouseDeltaY;
 	int mMouseHistory[MOUSE_HISTORY_SIZE];
 
 	// Text names for keys, for config screens, etc
@@ -68,5 +70,7 @@ public:
 	void getMousePosition(int* x, int* y);
 
 	void getMouseMotion(float* motion);
+
+	void getMouseDelta(float* x, float* y);
 
 };

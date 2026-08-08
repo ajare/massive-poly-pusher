@@ -12,11 +12,13 @@
     <ClInclude Include="..\..\include\mpp\app\DocumentId.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\DocumentSnapshot.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\ImGuiBackendData.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="..\..\include\mpp\app\PackageManifest.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\ImGuiDataProvider.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\ImGuiPlatform.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\Input.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\InputManager.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="..\..\include\mpp\app\InputManagerSDL.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="..\..\include\mpp\app\ZipArchive.h"><Filter>Header Files</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\BackgroundWork.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -25,7 +27,9 @@
     <ClCompile Include="..\..\src\DocumentFoundationTests.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\DocumentId.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\ImGuiPlatform.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\..\src\PackageManifest.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\InputManager.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="..\..\src\InputManagerSDL.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="..\..\src\ZipArchive.cpp"><Filter>Source Files</Filter></ClCompile>
   </ItemGroup>
 </Project>
