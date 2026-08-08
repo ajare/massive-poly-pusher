@@ -9,6 +9,7 @@
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphTargets.h"
+#include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/GLErrorCheck.h"
@@ -107,7 +108,8 @@ namespace mpp
 			targets.allocate(resized);
 			auto resizedTarget = targets.get(first);
 			if (!resizedTarget || resizedTarget->getWidth() != 37 || resizedTarget->getHeight() != 29) return fail("resized graph target dimensions are wrong");
-			resizedTarget.reset();
+			auto retainedTarget=resizedTarget;bool invalidPlanRejected=false;try{RenderGraphAllocationPlan invalidPlan;targets.allocate(invalidPlan);}catch(...){invalidPlanRejected=true;}if(!invalidPlanRejected||targets.get(first)!=retainedTarget)return fail("failed graph allocation did not retain the prior generation");
+			resizedTarget.reset();retainedTarget.reset();
 
 			stage = "curated format allocation";
 			std::vector<GraphImageFormat> const supportedFormats{
@@ -309,6 +311,9 @@ namespace mpp
 			{
 				return fail("formatted text alpha was not applied to glyph coverage");
 			}
+
+			stage = "transactional named-output processor";
+			RenderGraph outputGraph;GraphImageDesc outputDesc;outputDesc.format=GraphImageFormat::Rgba8;outputDesc.usage=GraphImageUsage::ColourAttachment|GraphImageUsage::Sampled;outputGraph.createImage("Presentation",outputDesc);RenderPipelineOutput output;output.name="Main";output.image="Presentation";output.antiAliasing.taa=true;output.antiAliasing.fxaa=true;RenderOutputProcessor processor(renderSystem,"GpuTestOutput");processor.rebuild({output},outputGraph,{{"Main",textTarget}},{});auto generation=processor.getGeneration();if(generation==0||processor.getPlans().size()!=1||processor.getPlans().front().physicalImages.size()!=6)return fail("named-output physical plan/history ownership is incomplete");processor.rebuild({output},outputGraph,{{"Main",textTarget}},{});if(processor.getGeneration()!=generation)return fail("unchanged output plan replaced its generation");auto oldInput=processor.getInput("Main");bool rejected=false;try{auto invalid=output;invalid.image="Missing";processor.rebuild({invalid},outputGraph,{{"Main",textTarget}},{});}catch(...){rejected=true;}if(!rejected||processor.getGeneration()!=generation||processor.getInput("Main")!=oldInput)return fail("failed output generation did not retain prior resources");renderSystem->setRenderTarget(oldInput);renderSystem->clearScreen(Colour::Red);processor.present("Main",textTarget);GL_CHECK(glFinish());if(!nearColour(readFirstPixel(textTarget),{255,0,0,255}))return fail("named-output pass-through presentation failed");
 
 			targets.clear();
 			if (!releasedTarget.expired()) return fail("cleared graph target remains referenced");

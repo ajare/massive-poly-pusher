@@ -4,8 +4,9 @@
 
 - **Phase 1 complete** on `feature/anti-aliasing-phase-1`: core anti-aliasing types, strict shared INI parsing, immutable `RenderSystemOptions`, startup capability validation/reporting, PipelineEditor `editor.ini` integration, and deployed DemoSuite `demosuite.ini` integration.
 - **Phase 2 complete**: shared programmatic/XML named-output descriptors, strict output validation and inheritance checks, XML round trips, legacy sample-authoring removal, migration diagnostics, and repository pipeline/document migration.
-- Phase 1/2 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output tests, non-default option propagation, legacy `<samples>` rejection, and package export/load smoke testing.
-- Rendering remains unchanged and disabled by default; physical output processing begins in phase 3.
+- **Phase 3 complete**: immutable renderer-owned physical output plans, unified screen/offscreen pass-through processors, transactional graph/output generations, output-chain history ownership, transactional render-texture resize, and retained-resource failure handling.
+- Phase 1–3 validation passed in Debug and Release: PipelineEditor smoke tests, DemoSuite parser/inheritance/output/GPU tests, non-default option propagation, transactional failure tests, legacy `<samples>` rejection, and package export/load smoke testing.
+- Anti-aliasing algorithms remain disabled by default; phase 3's pass-through chain establishes their physical resource and presentation boundary. Physical MSAA begins in phase 4.
 
 ## 1. Scope
 
@@ -231,9 +232,12 @@ Resize is transactional. If SSAA dimensions exceed capabilities or allocation fa
    - [x] Reject legacy `<samples>` with an actionable named-output migration error.
    - [x] Migrate repository templates, invalid fixtures, runtime wiring, packages, docs, and tests.
 
-3. **Transactional output chain — NOT STARTED**
-   - Add internal physical image descriptors and screen/offscreen output processors.
-   - Implement capability checks, resizing, generation replacement, and history ownership.
+3. **Transactional output chain — COMPLETE**
+   - [x] Add immutable renderer-owned physical image descriptors and plans.
+   - [x] Route XML and programmatic graph screen/offscreen outputs through a shared pass-through processor.
+   - [x] Allocate work and TAA history ownership from effective settings.
+   - [x] Make graph allocation, output generation replacement, and render-texture resize transactional.
+   - [x] Retain prior resources on candidate failure and surface non-modal PipelineEditor resize errors.
 
 4. **MSAA and resolve scheduling**
    - Apply private physical sample counts to raster attachments.

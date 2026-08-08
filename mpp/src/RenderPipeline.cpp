@@ -55,6 +55,7 @@ namespace mpp
 		, mRenderSystem(renderSystem)
 		, mOptions(options)
 	{
+		if(!mOptions.outputs.empty())mOutputProcessor=make_unique<RenderOutputProcessor>(renderSystem,mName);
 		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
 		// their RGBA8 target and existing presentation behaviour.
 		bool const pbr = mOptions.mode == RenderPipelineMode::PbrForward || mOptions.mode == RenderPipelineMode::GraphPbrForward || mOptions.mode == RenderPipelineMode::XmlGraphPbrForward;
@@ -165,6 +166,10 @@ namespace mpp
 		static vector<GraphPassExecutionStats> const empty;return mGraphExecutor?mGraphExecutor->getLastExecutionStats():empty;
 	}
 
+	uint64_t RenderPipeline::getOutputGeneration() const{return mOutputProcessor?mOutputProcessor->getGeneration():0;}
+	vector<RenderPipelineOutputPlan> const& RenderPipeline::getOutputPlans() const{static vector<RenderPipelineOutputPlan> const empty;return mOutputProcessor?mOutputProcessor->getPlans():empty;}
+	void RenderPipeline::prepareOutputs(RenderGraph const& graph,map<string,RenderTargetPtr> const& destinations){if(mOutputProcessor)mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);}
+
 	void RenderPipeline::resize(size_t width, size_t height)
 	{
 		for (auto const& pass : mPasses)
@@ -214,6 +219,18 @@ namespace mpp
 			if(!imports.findImport("screen"))imports.registerImport("screen", mRenderSystem->getScreenRenderTarget());
 			if (!mOptions.shadowDomain.empty()&&!imports.findImport("shadowDepth")) imports.registerImport("shadowDepth", mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
 			mGraphTargets->bindImports(*graph, imports);
+			struct PreparedOutput{string name;GraphImageHandle image;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<PreparedOutput> preparedOutputs;
+			if(mOutputProcessor)
+			{
+				map<string,RenderTargetPtr> destinations;
+				for(auto const& output:mOptions.outputs)
+				{
+					GraphImageHandle handle;GraphImageInfo info;for(uint32_t id=0;id<graph->getImageCount();++id){auto candidate=graph->getImageInfo({id,0});if(candidate.name==output.image){handle={id,0};info=candidate;break;}}if(!handle.isValid())THROW_MPP("Named output '"+output.name+"' references an unknown graph image.",__LINE__,__FILE__,__func__);for(uint32_t pass=0;pass<graph->getPassCount();++pass){auto const& passInfo=graph->getPassInfo({pass});for(auto const& attachment:passInfo.colourOutputs)if(attachment.image.id==handle.id&&attachment.image.version>handle.version)handle=attachment.image;}
+					auto destination=info.desc.external?imports.findImport(info.importName):mGraphTargets->get(handle);if(!destination)THROW_MPP("Named output '"+output.name+"' has no render target.",__LINE__,__FILE__,__func__);destinations.emplace(output.name,destination);preparedOutputs.push_back({output.name,handle,destination,{},info.desc.external});
+				}
+				mOutputProcessor->rebuild(mOptions.outputs,*graph,destinations,mRenderSystem->getOptions().antiAliasing);
+				map<uint32_t,RenderTargetPtr> externalSources;for(auto& output:preparedOutputs)if(output.external){auto [found,inserted]=externalSources.emplace(output.image.id,mOutputProcessor->getInput(output.name));output.source=found->second;if(inserted)mGraphTargets->bindImported(output.image,output.source);}
+			}
 			// XML supplies defaults; current pipeline controls override dynamic
 			// per-frame values without recompiling or mutating the template.
 			for (uint32_t id = 0; id < graph->getPassCount(); ++id)
@@ -242,6 +259,7 @@ namespace mpp
 			mGraphExecutor->setFrameContext(&frameContext);
 			mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
 			mGraphExecutor->setFrameContext(nullptr);
+			for(auto const& output:preparedOutputs)mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image));
 			return;
 		}
 
@@ -351,6 +369,11 @@ namespace mpp
 		auto plan = graph.buildAllocationPlan(glm::uvec2((uint32_t)viewport.width, (uint32_t)viewport.height));
 		mGraphTargets->allocate(plan);
 		mGraphTargets->bindImported(screen, mRenderSystem->getScreenRenderTarget());
+		struct DynamicPreparedOutput{string name;GraphImageHandle image;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<DynamicPreparedOutput> dynamicOutputs;
+		if(mOutputProcessor)
+		{
+			map<string,RenderTargetPtr> destinations;for(auto const& output:mOptions.outputs){GraphImageHandle handle;GraphImageInfo info;for(uint32_t id=0;id<graph.getImageCount();++id){auto candidate=graph.getImageInfo({id,0});if(candidate.name==output.image){handle={id,0};info=candidate;break;}}if(!handle.isValid())THROW_MPP("Named output '"+output.name+"' references an unknown generated graph image.",__LINE__,__FILE__,__func__);for(uint32_t pass=0;pass<graph.getPassCount();++pass){auto const& passInfo=graph.getPassInfo({pass});for(auto const& attachment:passInfo.colourOutputs)if(attachment.image.id==handle.id&&attachment.image.version>handle.version)handle=attachment.image;}auto destination=info.desc.external?mRenderSystem->getScreenRenderTarget():mGraphTargets->get(handle);destinations.emplace(output.name,destination);dynamicOutputs.push_back({output.name,handle,destination,{},info.desc.external});}mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);map<uint32_t,RenderTargetPtr> externalSources;for(auto& output:dynamicOutputs)if(output.external){auto [found,inserted]=externalSources.emplace(output.image.id,mOutputProcessor->getInput(output.name));output.source=found->second;if(inserted)mGraphTargets->bindImported(output.image,output.source);}
+		}
 		if (shadowDepth.isValid()) mGraphTargets->bindImported(shadowDepth, mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
 
 		mGraphExecutor->clearPassCallbacks();
@@ -425,6 +448,7 @@ namespace mpp
 		mGraphExecutor->setFrameContext(&frameContext);
 		mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
 		mGraphExecutor->setFrameContext(nullptr);
+		for(auto const& output:dynamicOutputs)mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image));
 	}
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)

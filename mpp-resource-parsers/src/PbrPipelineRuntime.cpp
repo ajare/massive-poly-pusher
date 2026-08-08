@@ -69,7 +69,7 @@ namespace mpp::resource_parsers
 	{
 		auto currentRoot=std::move(mRootResource);mDocument.reset();mMaterialBindings.clear();mInstanceOverrides.clear();mImports.clear();mPresentationTarget.reset();mEnvironment.reset();retireRoot(std::move(currentRoot));accept();cleanupRetiredRoots();mDiagnostics.clear();
 	}
-	void PbrPipelineRuntime::resize(uint32_t width,uint32_t height){if(mPresentationTarget)mPresentationTarget->resize(width,height);}
+	void PbrPipelineRuntime::resize(uint32_t width,uint32_t height){if(width==0||height==0)throw std::runtime_error("Pipeline output resize requires non-zero dimensions.");if(mDocument)for(auto const& output:mDocument->outputs){auto effective=resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,output.antiAliasing);auto scale=ssaaLinearScale(effective.ssaa);auto physicalWidth=(uint64_t)std::ceil((double)width*scale),physicalHeight=(uint64_t)std::ceil((double)height*scale);if(physicalWidth>(uint64_t)mRenderSystem->getCaps().maxTextureSize||physicalHeight>(uint64_t)mRenderSystem->getCaps().maxTextureSize)throw std::runtime_error("Output '"+output.name+"' resize would require "+std::to_string(physicalWidth)+"x"+std::to_string(physicalHeight)+", exceeding the GPU maximum texture size; prior resources were retained.");}if(mPresentationTarget&&!mPresentationTarget->resize(width,height))throw std::runtime_error("Pipeline output resize failed; prior resources were retained.");}
 	std::shared_ptr<PbrPipelineDocument> const& PbrPipelineRuntime::getDocument()const{return mDocument;}
 	std::map<std::string,ResourcePtr> const& PbrPipelineRuntime::getMaterialBindings()const{return mMaterialBindings;}
 	std::map<std::string,UniformCollection> const& PbrPipelineRuntime::getInstanceOverrides()const{return mInstanceOverrides;}
