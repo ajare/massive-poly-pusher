@@ -269,6 +269,82 @@ void main()
  * Pipeline-owned bloom shaders. Bloom is image-space and therefore works for
  * any material rendered into the pipeline scene target.
  */
+const std::string FragmentShaderFxaaTemplate =
+R"(
+@@Version
+
+@@Texture(sampler2D TEX1);
+
+float luma(vec3 colour)
+{
+    return dot(colour, vec3(0.299, 0.587, 0.114));
+}
+
+void main()
+{
+    vec2 texel = 1.0 / vec2(textureSize(@Texture(TEX1), 0));
+    vec2 uv = @In(TEXCOORDS);
+    vec4 centre = texture(@Texture(TEX1), uv);
+    float lumaM = luma(centre.rgb);
+    float lumaN = luma(texture(@Texture(TEX1), uv + vec2(0.0, -texel.y)).rgb);
+    float lumaS = luma(texture(@Texture(TEX1), uv + vec2(0.0, texel.y)).rgb);
+    float lumaW = luma(texture(@Texture(TEX1), uv + vec2(-texel.x, 0.0)).rgb);
+    float lumaE = luma(texture(@Texture(TEX1), uv + vec2(texel.x, 0.0)).rgb);
+    float minimumLuma = min(lumaM, min(min(lumaN, lumaS), min(lumaW, lumaE)));
+    float maximumLuma = max(lumaM, max(max(lumaN, lumaS), max(lumaW, lumaE)));
+    float range = maximumLuma - minimumLuma;
+    vec3 result = centre.rgb;
+    if (range >= max(0.0312, maximumLuma * 0.125))
+    {
+    float lumaNW = luma(texture(@Texture(TEX1), uv + vec2(-texel.x, -texel.y)).rgb);
+    float lumaNE = luma(texture(@Texture(TEX1), uv + vec2(texel.x, -texel.y)).rgb);
+    float lumaSW = luma(texture(@Texture(TEX1), uv + vec2(-texel.x, texel.y)).rgb);
+    float lumaSE = luma(texture(@Texture(TEX1), uv + vec2(texel.x, texel.y)).rgb);
+    float horizontal = abs(-2.0 * lumaW + lumaNW + lumaSW) + abs(-2.0 * lumaM + lumaN + lumaS) * 2.0 + abs(-2.0 * lumaE + lumaNE + lumaSE);
+    float vertical = abs(-2.0 * lumaN + lumaNW + lumaNE) + abs(-2.0 * lumaM + lumaW + lumaE) * 2.0 + abs(-2.0 * lumaS + lumaSW + lumaSE);
+    bool horizontalEdge = horizontal >= vertical;
+    float negativeLuma = horizontalEdge ? lumaN : lumaW;
+    float positiveLuma = horizontalEdge ? lumaS : lumaE;
+    float negativeGradient = abs(negativeLuma - lumaM);
+    float positiveGradient = abs(positiveLuma - lumaM);
+    bool negativeDirection = negativeGradient >= positiveGradient;
+    float gradient = max(negativeGradient, positiveGradient);
+    float localAverage = 0.5 * (lumaM + (negativeDirection ? negativeLuma : positiveLuma));
+    vec2 stepDirection = horizontalEdge ? vec2(texel.x, 0.0) : vec2(0.0, texel.y);
+    vec2 edgeOffset = horizontalEdge ? vec2(0.0, texel.y * (negativeDirection ? -0.5 : 0.5)) : vec2(texel.x * (negativeDirection ? -0.5 : 0.5), 0.0);
+    vec2 edgeUv = uv + edgeOffset;
+    vec2 negativeUv = edgeUv - stepDirection;
+    vec2 positiveUv = edgeUv + stepDirection;
+    float negativeDelta = luma(texture(@Texture(TEX1), negativeUv).rgb) - localAverage;
+    float positiveDelta = luma(texture(@Texture(TEX1), positiveUv).rgb) - localAverage;
+    bool negativeEnd = abs(negativeDelta) >= gradient * 0.25;
+    bool positiveEnd = abs(positiveDelta) >= gradient * 0.25;
+    for (int iteration = 0; iteration < 12 && (!negativeEnd || !positiveEnd); ++iteration)
+    {
+        float quality = iteration < 4 ? 1.0 : (iteration < 8 ? 2.0 : 4.0);
+        if (!negativeEnd) { negativeUv -= stepDirection * quality; negativeDelta = luma(texture(@Texture(TEX1), negativeUv).rgb) - localAverage; negativeEnd = abs(negativeDelta) >= gradient * 0.25; }
+        if (!positiveEnd) { positiveUv += stepDirection * quality; positiveDelta = luma(texture(@Texture(TEX1), positiveUv).rgb) - localAverage; positiveEnd = abs(positiveDelta) >= gradient * 0.25; }
+    }
+    float negativeDistance = horizontalEdge ? uv.x - negativeUv.x : uv.y - negativeUv.y;
+    float positiveDistance = horizontalEdge ? positiveUv.x - uv.x : positiveUv.y - uv.y;
+    bool useNegative = negativeDistance < positiveDistance;
+    float shortestDistance = min(negativeDistance, positiveDistance);
+    float edgeSpan = max(negativeDistance + positiveDistance, 0.000001);
+    float pixelOffset = -shortestDistance / edgeSpan + 0.5;
+    float selectedDelta = useNegative ? negativeDelta : positiveDelta;
+    if ((selectedDelta < 0.0) == (lumaM < localAverage)) pixelOffset = 0.0;
+    float averageLuma = (2.0 * (lumaN + lumaS + lumaW + lumaE) + lumaNW + lumaNE + lumaSW + lumaSE) / 12.0;
+    float subpixel = clamp(abs(averageLuma - lumaM) / max(range, 0.000001), 0.0, 1.0);
+    subpixel = subpixel * subpixel * (3.0 - 2.0 * subpixel);
+    subpixel = subpixel * subpixel * 0.75;
+    float finalOffset = max(pixelOffset, subpixel);
+    vec2 finalUv = uv + (horizontalEdge ? vec2(0.0, texel.y * finalOffset * (negativeDirection ? -1.0 : 1.0)) : vec2(texel.x * finalOffset * (negativeDirection ? -1.0 : 1.0), 0.0));
+    result = texture(@Texture(TEX1), finalUv).rgb;
+    }
+    @Out(vec4 COLOUR) = vec4(result, centre.a);
+}
+)";
+
 const std::string FragmentShaderTaaTemplate =
 R"(
 @@Version

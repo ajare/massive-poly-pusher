@@ -196,7 +196,7 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -334,6 +334,7 @@ namespace mpp
 		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
 		void renderSsaaLanczos(RenderTexture* source, RenderTargetPtr const& destination, glm::vec2 const& direction);
 		void renderTaa(RenderTexture* currentColour, RenderTexture* currentDepth, RenderTexture* historyColour, RenderTexture* historyDepth, RenderTargetPtr const& destination, glm::mat4 const& inverseCurrentViewProjection, glm::mat4 const& previousViewProjection);
+		void renderFxaa(RenderTexture* source, RenderTargetPtr const& destination);
 
 	public:
 
