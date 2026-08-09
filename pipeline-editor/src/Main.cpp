@@ -850,6 +850,16 @@ namespace
 				                                                                   : pipelineOwner,
 				                           payloads,
 				                           directoryPayloads);
+			if (!pipeline.environment.hdrEquirectangular.empty())
+			{
+				auto hdrSource = mpp::app::normaliseDocumentPath(pipelineOwner.parent_path() / pipeline.environment.hdrEquirectangular);
+				if (!std::filesystem::is_regular_file(hdrSource)) throw std::runtime_error("Package export is missing HDR IBL source '" + hdrSource.string() + "'.");
+				auto packageName = "hdr/" + hdrSource.filename().generic_string();
+				auto nameUsed = [&]() { if (directoryPayloads.contains(packageName)) return true; for (auto const& [source, name] : payloads) if (name == packageName) return true; return false; };
+				for (uint32_t suffix = 2; nameUsed(); ++suffix) packageName = "hdr/" + hdrSource.stem().generic_string() + "_" + std::to_string(suffix) + hdrSource.extension().generic_string();
+				payloads.emplace(hdrSource, packageName);
+				pipeline.environment.hdrEquirectangular = packageName;
+			}
 			auto sceneOwner =
 			    scenePath.empty() ? std::filesystem::path(sourceScene.sourcePath) : std::filesystem::path(scenePath);
 			for (auto& model : scene.models)
@@ -904,6 +914,7 @@ namespace
 		if (!scenePath.empty())
 			paths.insert(mpp::app::normaliseDocumentPath(scenePath));
 		auto pipelineOwner = pipelinePath.empty() ? pipeline.sourcePath : pipelinePath;
+		if (!pipeline.environment.hdrEquirectangular.empty() && !pipelineOwner.empty()) paths.insert(mpp::app::resolveDocumentReference(pipelineOwner, pipeline.environment.hdrEquirectangular));
 		for (auto const& library : pipeline.resourceLibraries)
 			if (!pipelineOwner.empty())
 				paths.insert(mpp::app::resolveDocumentReference(pipelineOwner, library));
