@@ -783,6 +783,8 @@ namespace mpp
 		addCoreResource(mFxaaProgram, true);
 		mEquirectangularToCubemapProgram = createBloomProgram("__mpp_ibl_equirectangular_to_cubemap__", FragmentShaderEquirectangularToCubemapTemplate);
 		addCoreResource(mEquirectangularToCubemapProgram, true);
+		mDiffuseIrradianceProgram = createBloomProgram("__mpp_ibl_diffuse_irradiance__", FragmentShaderDiffuseIrradianceTemplate);
+		addCoreResource(mDiffuseIrradianceProgram, true);
 
 		// Internal text programs
 		{

@@ -255,7 +255,9 @@ Added `FragmentShaderDiffuseIrradianceTemplate`: it shares the Phase 5 face conv
 
 **Acceptance:** The shader compiles and implements cosine-weighted diffuse irradiance, independent of scene camera state.
 
-### 6.3 Core-program lifecycle and validation
+### 6.3 Core-program lifecycle and validation — Complete
+
+Added renderer-owned `__mpp_ibl_diffuse_irradiance__` core program creation alongside the equirectangular converter. Phase 6.1 validation supplies the loaded floating-point cubemap/source checks before face work begins.
 
 1. Add/load/destroy a stable renderer-owned diffuse-convolution program with other core post-process programs.
 2. Add target/internal-format accessors/validation required for cubemap input, reusing Phase 5 error conventions.
