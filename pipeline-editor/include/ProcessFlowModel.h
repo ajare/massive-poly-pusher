@@ -49,6 +49,7 @@ namespace pipeline_editor
 		uint32_t resources{ 0 };
 		bool executionEdges{ true };
 		bool resourceEdges{ true };
+		bool stateNodes{ false };
 		bool visible(ProcessFlowResourceCategory category) const;
 	};
 
