@@ -3013,7 +3013,14 @@ namespace mpp
 		GL_CHECK(glGetIntegerv(GL_VIEWPORT, previousViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, previousScissor)); GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
 		pushRenderTarget(destination);
 		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
-		setProjection2dOrthographic(); resetTransform(); setViewport(0, 0, destination->getWidth(), destination->getHeight());
+		setProjection2dOrthographic();
+		resetTransform();
+		// The shared fullscreen quad is authored at window dimensions; diagnostics
+		// render into the editor viewport target, which is usually smaller.
+		scaleTransform2d(glm::vec2(
+			(float)destination->getWidth() / (float)getWindowWidth(),
+			(float)destination->getHeight() / (float)getWindowHeight()));
+		setViewport(0, 0, destination->getWidth(), destination->getHeight());
 		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE)); GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND)); GL_CHECK(glDisable(GL_SCISSOR_TEST));
 		try
 		{
