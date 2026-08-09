@@ -118,7 +118,14 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override
 			{
 				auto const& frame = context.getFrame();
-				if (frame.pipelineOptions->graphPasses.scene && frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
+				if (!frame.pipelineOptions->graphPasses.scene) return;
+				if (frame.pipelineOptions->debugEnvironmentCube && frame.pipelineOptions->environment)
+				{
+					auto const& environment = frame.pipelineOptions->environment;
+					auto resource = environment->environmentMap ? environment->environmentMap : environment->backgroundMap;
+					frame.renderSystem->renderEnvironmentDebugCube(dynamic_cast<Texture*>(resource.get()), frame.camera.get());
+				}
+				if (frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
 				{
 					frame.sceneRenderPass->render(frame.visibleModels, frame.camera);
 					frame.renderSystem->flushVertexBuffers();

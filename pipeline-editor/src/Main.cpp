@@ -1361,7 +1361,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		RenderTargetPtr activePreviewTarget, inspectedTarget;
 		ImTextureID activePreviewTexture = 0;
 		std::shared_ptr<PbrPipelineDocument> activePreviewDocument;
-		bool inspectSelectedImage = false;
+		bool inspectSelectedImage = false, debugEnvironmentCube = smokeTest;
 		int inspectedVersion = 0, inspectedMip = 0, textureDiagnosticMode = 0;
 		float diagnosticExposure = 1.0f, diagnosticDepthNear = 0.1f, diagnosticDepthFar = 100.0f, diagnosticDepthRangeScale = 99.9f;
 		uint64_t previewEditSerial = 0;
@@ -1439,6 +1439,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// (1.0), rather than subtracting BloomOptions' scene threshold of 1.0.
 				previewOptions.bloom.useMrtEmissiveMask = previewDocument->bloom.enabled;
 				previewOptions.bloom.threshold = 0.0f;
+				previewOptions.debugEnvironmentCube = debugEnvironmentCube;
 				if (previewScene)
 				{
 					if (auto direction = previewScene->getShadowLightDirection())
@@ -2523,6 +2524,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (ImGui::MenuItem(
 					        "Auto-order Pass Dependencies", nullptr, false, openDocument && openDocument->graph))
 						requestAutoOrder = true;
+					ImGui::EndMenu();
+				}
+				if (ImGui::BeginMenu("View"))
+				{
+					if (ImGui::MenuItem("Environment Cube", nullptr, &debugEnvironmentCube, openDocument != nullptr))
+						renderSystem.getRenderPipeline(activePipeline)->setDebugEnvironmentCube(debugEnvironmentCube);
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Draw the active environment cubemap around the preview scene");
 					ImGui::EndMenu();
 				}
 				if (ImGui::BeginMenu("Window"))
