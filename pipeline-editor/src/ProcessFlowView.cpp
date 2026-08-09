@@ -104,6 +104,8 @@ namespace pipeline_editor
 		if (ImGui::IsItemEdited()) mFiltersChanged = true;
 		ImGui::SameLine(); ImGui::Checkbox("Resource edges", &mFilters.resourceEdges);
 		if (ImGui::IsItemEdited()) mFiltersChanged = true;
+		ImGui::SameLine(); ImGui::Checkbox("GL state nodes", &mFilters.stateNodes);
+		if (ImGui::IsItemEdited()) mFiltersChanged = true;
 		ImGui::TextDisabled("Legend: grey execution | blue colour | red depth | purple history | orange output");
 		if (!model.emptyState.empty())
 		{

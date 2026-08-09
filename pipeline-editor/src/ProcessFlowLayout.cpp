@@ -49,12 +49,12 @@ namespace pipeline_editor
 			std::stable_sort(children.begin(), children.end(), [](auto left, auto right) { return left->sequence < right->sequence; });
 			float totalHeight = 0.0f;
 			for (auto* child : children) totalHeight += child->size.y;
-			totalHeight += 28.0f * (float)(children.size() - 1);
+			totalHeight += 48.0f * (float)(children.size() - 1);
 			float childY = parent->second->position.y + (parent->second->size.y - totalHeight) * 0.5f;
 			for (auto* child : children)
 			{
 				child->position = {parent->second->position.x - child->size.x - 72.0f, childY};
-				childY += child->size.y + 28.0f;
+				childY += child->size.y + 48.0f;
 			}
 		}
 		auto yForRank = [&](float rank)

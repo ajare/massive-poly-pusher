@@ -228,10 +228,12 @@ namespace pipeline_editor
 					std::vector<std::vector<RenderBatchSubmission const*>> materialGroups;
 					std::unordered_map<std::string, size_t> materialGroupIndices;
 					size_t scan = eventIndex;
-					while (scan < input.snapshot->physicalEvents.size() &&
-					       input.snapshot->physicalEvents[scan].kind == RenderFlowEventKind::BatchSubmission)
+					while (scan < input.snapshot->physicalEvents.size())
 					{
-						auto batch = batches.find(input.snapshot->physicalEvents[scan].sequence);
+						auto const& scanned = input.snapshot->physicalEvents[scan];
+						if (scanned.kind == RenderFlowEventKind::GlState && !input.filters.stateNodes) { ++scan; continue; }
+						if (scanned.kind != RenderFlowEventKind::BatchSubmission) break;
+						auto batch = batches.find(scanned.sequence);
 						if (batch == batches.end()) throw std::runtime_error("Flow event references a missing batch submission.");
 						auto [group, inserted] = materialGroupIndices.emplace(batch->second->materialName, materialGroups.size());
 						if (inserted) materialGroups.emplace_back();
@@ -290,6 +292,7 @@ namespace pipeline_editor
 				}
 				if (event.kind == RenderFlowEventKind::GlState)
 				{
+					if (!input.filters.stateNodes) continue;
 					ProcessFlowNode node;
 					node.semanticKey = "gl-state:" + std::to_string(event.sequence);
 					node.title = "GL State";
@@ -581,6 +584,13 @@ namespace pipeline_editor
 		RenderFlowEvent stateEvent; stateEvent.kind = RenderFlowEventKind::GlState; stateEvent.sequence = 3; stateEvent.pass = consumer;
 		stateEvent.stateChanges = {"Program: DifferentProgram", "Blend: src alpha / one minus src alpha"};
 		snapshot->physicalEvents.insert(snapshot->physicalEvents.begin() + 3, stateEvent);
+		auto collapsed = builder.build(input);
+		if (std::count_if(collapsed.nodes.begin(), collapsed.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::BatchGroup && node.submissionCount == 2; }) != 1 ||
+		    std::any_of(collapsed.nodes.begin(), collapsed.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::GlState; }))
+			throw std::runtime_error("Hidden GL state nodes did not preserve material batching.");
+		input.filters.stateNodes = true;
 		auto split = builder.build(input);
 		if (std::count_if(split.nodes.begin(), split.nodes.end(), [](auto const& node)
 		    { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != 3 ||
@@ -589,6 +599,7 @@ namespace pipeline_editor
 		             node.passId < 0 && node.details.find("DifferentProgram") != std::string::npos; }))
 			throw std::runtime_error("Process-flow GL state event did not split batch grouping.");
 		snapshot->physicalEvents = std::move(groupedEvents);
+		input.filters.stateNodes = false;
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
