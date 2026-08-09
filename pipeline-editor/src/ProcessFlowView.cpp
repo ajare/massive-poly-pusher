@@ -208,37 +208,12 @@ namespace pipeline_editor
 			draw->AddRectFilled({a.x, a.y}, {b.x, b.y}, IM_COL32(115, 130, 155, 24), 12.0f);
 			draw->AddRect({a.x, a.y}, {b.x, b.y}, IM_COL32(145, 160, 185, 50), 12.0f);
 		}
-		auto portPoint = [&](ProcessFlowNode const& node, std::string const& key, bool output, glm::vec2& result)
-		{
-			if (node.kind != ProcessFlowNodeKind::AuthoredPass) return false;
-			auto const& keys = output ? node.outputPortKeys : node.inputPortKeys;
-			auto found = std::find(keys.begin(), keys.end(), key);
-			if (found == keys.end()) return false;
-			float ioY = 8.0f + 36.0f * (float)node.renderDocLabels.size() + 42.0f;
-			if (output) ioY += 20.0f * (float)node.inputLabels.size() +
-			                     (!node.inputLabels.empty() && !node.outputLabels.empty() ? 4.0f : 0.0f);
-			float row = ioY + 20.0f * (float)(found - keys.begin()) + ImGui::GetFontSize() * 0.5f;
-			result = screen(node.position + glm::vec2(output ? node.size.x - 11.0f : 11.0f, row));
-			return true;
-		};
 		for (auto const& edge : model.edges)
 		{
 			auto sourceIt = nodeLookup.find(edge.source), destinationIt = nodeLookup.find(edge.destination);
 			if (sourceIt == nodeLookup.end() || destinationIt == nodeLookup.end()) continue;
 			auto source = sourceIt->second, destination = destinationIt->second;
 			auto colour = edgeColour(edge.kind); float width = hoveredNode == edge.source || hoveredNode == edge.destination ? 3.2f : 1.8f;
-			glm::vec2 portStart, portEnd;
-			if (!edge.sourcePortKey.empty() && portPoint(*source, edge.sourcePortKey, true, portStart) &&
-			    portPoint(*destination, edge.destinationPortKey, false, portEnd))
-			{
-				if (intersects({portStart.x, portStart.y}, {portEnd.x, portEnd.y}, canvasMinimum, canvasMaximum))
-				{
-					float bend = std::max(42.0f, std::abs(portEnd.x - portStart.x) * 0.32f);
-					draw->AddBezierCubic({portStart.x, portStart.y}, {portStart.x + bend, portStart.y},
-					                     {portEnd.x - bend, portEnd.y}, {portEnd.x, portEnd.y}, colour, width);
-				}
-				continue;
-			}
 			if (edge.kind == ProcessFlowEdgeKind::ChildExecution)
 			{
 				auto start = screen(source->position + glm::vec2(source->size.x * 0.5f, source->size.y));
