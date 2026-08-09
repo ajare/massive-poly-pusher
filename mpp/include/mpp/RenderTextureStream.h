@@ -36,6 +36,9 @@ namespace mpp
 
 	struct _MPPAPI RenderTextureOptions
 	{
+		// Texture2D remains the default; CubeMap is reserved for renderer-owned IBL targets.
+		TextureTarget target{ TextureTarget::Texture2D };
+		uint32_t mipLevels{ 1 };
 		size_t numAttachments{ 1 };
 		RenderTextureDepthAttachment depthAttachment{ RenderTextureDepthAttachment::None };
 		RenderTextureDepthParams depthParams;
@@ -61,6 +64,7 @@ namespace mpp
 			uint32_t internalFormat{ 0 };
 			uint32_t target{ 0 };
 			size_t width{ 0 }, height{ 0 }, depth{ 0 };
+			uint32_t mipLevels{ 1 };
 			size_t bitsPerPixel{ 0 };
 			uint32_t pixelFormat{ 0 }, pixelDataType{ 0 };
 			TextureParams params;
@@ -89,6 +93,8 @@ namespace mpp
 		uint32_t getInternalFormat() const;
 
 		uint32_t getTarget() const;
+
+		uint32_t getMipLevels() const;
 
 		size_t getWidth() const;
 

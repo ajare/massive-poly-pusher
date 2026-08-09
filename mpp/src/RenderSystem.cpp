@@ -1518,10 +1518,14 @@ namespace mpp
 	RenderTargetPtr RenderSystem::createPhysicalRenderTexture(string const& name,size_t width,size_t height,RenderTextureOptions const& options,uint32_t samples)
 	{
 		if(samples==0||!mCaps.supportsMsaa(samples))THROW_MPP("Unsupported physical render-texture sample count "+to_string(samples)+".",__LINE__,__FILE__,__func__);
+		if(!options.mipLevels)THROW_MPP("Render texture mip level count must be non-zero.",__LINE__,__FILE__,__func__);
+		if(options.target==TextureTarget::CubeMap){if(samples!=1)THROW_MPP("Cubemap render textures cannot be multisampled.",__LINE__,__FILE__,__func__);if(options.depthAttachment!=RenderTextureDepthAttachment::None)THROW_MPP("Cubemap render textures do not yet support depth attachments.",__LINE__,__FILE__,__func__);if(options.colourType!=TextureInternalType::Float&&options.colourInternalFormat==0)THROW_MPP("Cubemap render textures require a floating-point colour format.",__LINE__,__FILE__,__func__);}
+		else if(options.target!=TextureTarget::Texture2D)THROW_MPP("Render textures support only Texture2D and CubeMap targets.",__LINE__,__FILE__,__func__);
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
 		rtStream->mPhysicalSamples=samples;
 
-		rtStream->setTarget(TextureTarget::Texture2D);
+		rtStream->setTarget(options.target);
+		rtStream->setMipLevels(options.mipLevels);
 		if (options.colourInternalFormat != 0) rtStream->setInternalFormat(options.colourInternalFormat);
 		else rtStream->setInternalFormat(options.colourType, options.colourNormalised, options.colourBitSize, options.colourChannels);
 		rtStream->setParams(options.params);
