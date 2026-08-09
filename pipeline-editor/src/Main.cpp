@@ -1994,6 +1994,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				        preparePreview(pipeline, previewScene, pipelineFile, sceneFile, false, cancellation, progress));
 			    });
 		};
+		auto forceWorkingPreviewRebuild = [&]()
+		{
+			// Retire the active generation before preparing a replacement so stale
+			// PBR material and texture bindings cannot survive this recovery action.
+			if (!activePipeline.empty()) renderSystem.removeRenderPipeline(activePipeline);
+			activePipeline.clear(); activeGraphResource.clear(); activePreviewDocument.reset();
+			pipelineRuntime.clear();
+			queueWorkingPreview("Forced preview resource rebuild");
+		};
 		auto regenerateAntiAliasingOnly = [&]()
 		{
 			if (!openDocument || !activePreviewDocument || activeGraphResource.empty())
@@ -2483,8 +2492,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					if (ImGui::MenuItem("Validate"))
 						requestValidateFocus = true;
-					if (ImGui::MenuItem("Apply/Rebuild"))
-						queueWorkingPreview("Explicit preview rebuild");
+					if (ImGui::MenuItem("Force Rebuild"))
+						forceWorkingPreviewRebuild();
 					if (ImGui::MenuItem(
 					        "Auto-order Pass Dependencies", nullptr, false, openDocument && openDocument->graph))
 						requestAutoOrder = true;
@@ -2551,8 +2560,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					requestValidateFocus = true;
 				ImGui::SameLine();
 				if (toolbarButton(
-				        ICON_FA_SYNC_ALT "##ToolbarRebuild", "Apply and rebuild preview", openDocument != nullptr))
-					queueWorkingPreview("Explicit preview rebuild");
+				        ICON_FA_SYNC_ALT "##ToolbarRebuild", "Force rebuild preview resources", openDocument != nullptr))
+					forceWorkingPreviewRebuild();
 				ImGui::SameLine();
 				if (toolbarButton(ICON_FA_CAMERA "##ToolbarCapture",
 				                  "Capture viewport and open in RenderDoc (Ctrl+F12)",
