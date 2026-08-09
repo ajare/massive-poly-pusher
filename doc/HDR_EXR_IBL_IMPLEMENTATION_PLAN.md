@@ -61,16 +61,30 @@ Add an explicit PBR environment source representation:
 
 **Acceptance:** Equivalent pipelines reuse generated IBL resources; changed source/settings create a new generation.
 
-## Phase 4 — Equirectangular HDR to cubemap
+## Phase 4 — Cubemap render-target infrastructure
+
+The existing renderer supports 2D render targets but has no public/generated cubemap render-target path. This infrastructure is required before HDR conversion, irradiance convolution, or specular prefiltering can be implemented.
+
+1. Extend `RenderTexture`/`RenderTextureStream` options to create a floating-point cubemap texture with configurable face resolution and mip count.
+2. Add a face/mip framebuffer attachment API; validate face range `[0, 5]`, mip range, dimensions, and framebuffer completeness.
+3. Add `RenderSystem` push/set APIs for rendering to a selected cubemap face and mip without leaking framebuffer, viewport, scissor, or draw-buffer state.
+4. Ensure MSAA is rejected for generated IBL cubemaps unless an explicit resolve path exists.
+5. Add renderer-owned cubemap resource creation helpers suitable for `IblEnvironmentCache` results.
+6. Add GPU tests covering six face writes, mip attachment, floating-point formats, and state restoration.
+
+**Acceptance:** Renderer code can safely render a different known colour to every face of an HDR cubemap and sample each result through `samplerCube`.
+
+## Phase 5 — Equirectangular HDR to cubemap
 
 1. Add fullscreen/cubemap capture shader to convert longitude-latitude directions to equirectangular UVs.
-2. Render all six cubemap faces at source resolution.
-3. Use linear floating-point render targets and seam-safe cube sampling conventions.
-4. Add GPU readback/orientation tests with a directional HDR fixture.
+2. Define one documented right-handed face direction/up-vector convention and construct face view/projection matrices from it.
+3. Render all six cubemap faces at source resolution using the Phase 4 target API.
+4. Use linear floating-point render targets and seam-safe cube sampling conventions.
+5. Add GPU readback/orientation tests with a directional HDR fixture.
 
 **Acceptance:** Each cube face samples the correct panorama direction without seams or upside-down orientation.
 
-## Phase 5 — Diffuse irradiance convolution
+## Phase 6 — Diffuse irradiance convolution
 
 1. Add irradiance convolution shader/pass for the generated cubemap.
 2. Render six low-resolution faces.
@@ -79,7 +93,7 @@ Add an explicit PBR environment source representation:
 
 **Acceptance:** Generated irradiance cubemap is suitable for `PBR_IRRADIANCE_MAP`.
 
-## Phase 6 — Specular prefilter generation
+## Phase 7 — Specular prefilter generation
 
 1. Add GGX importance-sampled prefilter shader/pass.
 2. Generate complete mip chain, mapping roughness to mip level.
@@ -88,7 +102,7 @@ Add an explicit PBR environment source representation:
 
 **Acceptance:** Generated prefilter cubemap is suitable for `PBR_PREFILTERED_SPECULAR_MAP`.
 
-## Phase 7 — BRDF LUT ownership
+## Phase 8 — BRDF LUT ownership
 
 1. Reuse the existing renderer-owned BRDF LUT when compatible.
 2. Document its resolution/format and lifetime.
@@ -96,7 +110,7 @@ Add an explicit PBR environment source representation:
 
 **Acceptance:** HDR IBL pipelines need no authored BRDF LUT file.
 
-## Phase 8 — Runtime integration
+## Phase 9 — Runtime integration
 
 1. Update `PbrPipelineRuntime` to resolve HDR IBL source declarations through the cache.
 2. Bind generated irradiance, prefilter, and LUT into `PbrEnvironment`.
@@ -105,7 +119,7 @@ Add an explicit PBR environment source representation:
 
 **Acceptance:** PBR pipelines render HDR diffuse IBL and reflections from EXR without material changes.
 
-## Phase 9 — PipelineEditor authoring UI
+## Phase 10 — PipelineEditor authoring UI
 
 1. Add an **HDR IBL Environment** section under Pipeline Environment.
 2. Provide EXR file picker, resolution controls, source preview/status, regenerate, and clear actions.
@@ -114,7 +128,7 @@ Add an explicit PBR environment source representation:
 
 **Acceptance:** Users can select an EXR, rebuild the preview, and see IBL/reflections without hand-authoring cubemaps.
 
-## Phase 10 — Packaging, tests, and documentation
+## Phase 11 — Packaging, tests, and documentation
 
 1. Package the EXR source and preserve relative source paths on extraction.
 2. Add parser, cache, GPU conversion, irradiance, prefilter, runtime, package, and PipelineEditor smoke tests.
