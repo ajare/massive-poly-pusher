@@ -461,7 +461,9 @@ On a canonical path/settings cache miss, `PbrPipelineRuntime` now converts the l
 
 **Acceptance:** Cache miss produces a complete environment; cache hit performs no preprocessing renders.
 
-### 9.4 PBR environment binding and fallback
+### 9.4 PBR environment binding and fallback — In progress
+
+HDR cache results bind generated irradiance/prefilter/LUT directly to `PbrEnvironment`. Generation failures now emit `MPP-PIPELINE-RUNTIME-011` and retain neutral IBL resources; source-decode failure fallback and runtime tests remain.
 
 1. When HDR IBL is declared and generation succeeds, bind generated irradiance/prefilter/LUT into `PbrEnvironment`.
 2. Preserve explicit authored irradiance/prefilter/BRDF bindings as manual advanced mode when no HDR source is declared.
