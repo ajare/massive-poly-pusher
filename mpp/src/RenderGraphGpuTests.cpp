@@ -3,7 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <chrono>
 #include <memory>
+#include <filesystem>
+#include <fstream>
 #include <type_traits>
 #include <vector>
 
@@ -15,6 +18,7 @@
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/IblEnvironmentCache.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/ResourceManager.h"
@@ -89,6 +93,8 @@ namespace mpp
 		std::string stage = "cubemap render targets";
 		try
 		{
+			auto cachePath = std::filesystem::temp_directory_path() / "mpp_gpu_ibl_cache_test.exr"; { std::ofstream file(cachePath, std::ios::binary); file.put('\0'); }
+			IblEnvironmentCache cache; IblEnvironmentCacheKey cacheKey; cacheKey.source = cachePath; auto cacheResult = std::make_shared<IblEnvironmentResources>(); cache.store(cacheKey, cacheResult); if (cache.find(cacheKey) != cacheResult) return fail("IBL cache did not return stored source generation"); std::error_code cacheTimeError; auto cacheTime = std::filesystem::last_write_time(cachePath, cacheTimeError); std::filesystem::last_write_time(cachePath, cacheTime + std::chrono::seconds(2), cacheTimeError); if (cacheTimeError || cache.find(cacheKey)) return fail("IBL cache did not invalidate changed source timestamp"); cache.store(cacheKey, cacheResult); cache.invalidate(cachePath); if (cache.find(cacheKey)) return fail("IBL cache explicit invalidation failed"); std::filesystem::remove(cachePath, cacheTimeError);
 			bool rejectedInvalidIblFormat = false; try { renderSystem->createIblCubemap("GpuTestInvalidIblCubemap", 8, 1, GL_RGBA8); } catch (...) { rejectedInvalidIblFormat = true; } if (!rejectedInvalidIblFormat) return fail("IBL cubemap accepted an LDR format");
 			GLint savedViewport[4]{}, savedScissor[4]{}, savedDraw = 0, savedRead = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, savedViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, savedScissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &savedDraw)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &savedRead)); auto savedScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 			auto cubemap = renderSystem->createIblCubemap("GpuTestIblCubemap", 8, 2, GL_RGBA16F);
