@@ -1145,6 +1145,48 @@ for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 `RenderGraph::getPassInfoRef` returning a lightweight view, or a dedicated
 `RenderGraph::getLatestVersion(std::string const& imageName)` helper.
 
+### 7.4b The smoke test rejected a pipeline with no passes — **Bug, medium** — ✅ FIXED
+
+`pipeline-editor/src/Main.cpp:6521` asserted `snapshot->actualPassOrder.empty()` as a telemetry
+failure:
+
+```cpp
+if (!snapshot || snapshot->actualPassOrder.empty() ||
+    snapshot->actualPassOrder.size() != pipeline->getLastGraphExecutionOrder().size())
+    throw std::runtime_error("Process-flow phase-one snapshot was not published.");
+```
+
+`resources/shared/pbr/templates/Empty.pipeline.xml` declares `<Passes />` — it is the documented
+blank starting template — so `actualPassOrder` is legitimately empty and the assertion threw
+unconditionally. `snapshot->batches.empty()` at `:6527` and `smokeFlowModel.edges.empty()` at
+`:6621` had the same problem: they assume drawn geometry. The whole GPU section of
+`tools/ValidatePipelineEditorPhase10.ps1` therefore failed, which made `RebuildAll2026.bat` fail,
+which in turn masked any *real* regression the suite would have caught.
+
+The three conditions also conflated distinct failures under one message ("snapshot was not
+published"), so the cause was not diagnosable from the output.
+
+**Resolution**
+
+Expectations are now derived from what the document declares rather than assumed:
+
+- `expectedPasses` counts the graph's enabled passes and `actualPassOrder.size()` is asserted equal
+  to it. This is **stricter** than the old check: it verifies every enabled pass actually executed,
+  where before an empty order merely had to be non-empty. (If pass culling is ever added —
+  [§4.4](#44-there-is-no-dead-pass-culling--perf--extension-medium) — this assertion must be
+  updated deliberately.)
+- `expectsBatches` is true only when the graph has an enabled `Scene` pass *and* the preview scene
+  has models. Batch telemetry is required when it is true and required to be **absent** when it is
+  false, so both directions are asserted rather than one.
+- Process-flow edges are required only once the graph declares at least one pass.
+- The single "was not published" message is split into distinct messages for a missing snapshot, a
+  pass-count mismatch, missing batch telemetry, unexpected batch telemetry, and missing output
+  telemetry.
+
+Both new predicates are exercised in both directions by the existing template set: `Full` proves
+the non-zero/`expectsBatches == true` path and `Empty` proves the zero/`expectsBatches == false`
+path, so a miscomputation of either would fail the suite.
+
 ### 7.5 Missing-environment warning latches permanently — **Bug, trivial**
 
 `mpp/src/RenderPipeline.cpp:548-552` sets `mWarnedMissingPbrEnvironment = true` and never clears it.
