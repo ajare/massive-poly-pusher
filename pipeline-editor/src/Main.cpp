@@ -5111,7 +5111,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (definition.hasEntry("Surface"))
 					{
 						auto* surface = &definition.getEntry("Surface");
-						text(*surface, "baseColourFactor", "Base colour factor");
+						bool albedoMap = definition.hasEntry("BaseColourMap");
+						if (ImGui::Checkbox("Use albedo texture", &albedoMap))
+						{
+							if (albedoMap)
+							{
+								auto texture = makeLocalResource(PbrPipelineResourceKind::Texture, value.name + ".Albedo").definition;
+								texture.setEntryValue("colourSpace", "SRGB");
+								utils::StructuredData map("BaseColourMap"); map.addEntry("Resource", texture);
+								surface->setEntryValue("baseColourFactor", "1 1 1 1"); definition.addEntry("BaseColourMap", map); surface = &definition.getEntry("Surface");
+							}
+							else { utils::StructuredData withoutMap(definition.getName()); for (auto const& entry : definition) if (entry.first != "BaseColourMap") withoutMap.addEntry(entry.first, entry.second); definition = std::move(withoutMap); surface = &definition.getEntry("Surface"); }
+							changed = true;
+						}
+						if (albedoMap)
+						{
+							auto& resource = definition.getEntry("BaseColourMap").getEntry("Resource"); text(resource, "filename", "Albedo texture"); ImGui::SameLine();
+							if (ImGui::Button("Browse albedo texture")) if (auto selected = mpp::app::openImageFileDialog(window.getWindow(), "Select albedo image")) { resource.setEntryValue("filename", *selected); changed = true; }
+							ImGui::TextDisabled("Albedo textures are sampled as sRGB.");
+						}
+						else
+						{
+							glm::vec4 albedo(1.0f); if (surface->hasEntry("baseColourFactor")) { std::istringstream input(surface->getEntry("baseColourFactor").getValue()); input >> albedo.r >> albedo.g >> albedo.b >> albedo.a; }
+							if (ImGui::ColorEdit4("Albedo", &albedo.x, ImGuiColorEditFlags_Float)) { surface->setEntryValue("baseColourFactor", std::to_string(albedo.r)+" "+std::to_string(albedo.g)+" "+std::to_string(albedo.b)+" "+std::to_string(albedo.a)); changed = true; }
+						}
 						number(*surface, "metallicFactor", "Metallic", 1);
 						number(*surface, "roughnessFactor", "Roughness", 1);
 						bool emissiveMap = definition.hasEntry("EmissiveMap");
@@ -5173,7 +5196,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (ImGui::CollapsingHeader("PBR Maps and Extensions"))
 					{
 						char const* maps[] = {
-						    "BaseColourMap", "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap"};
+						    "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap"};
 						for (auto map : maps)
 						{
 							if (definition.hasEntry(map))
