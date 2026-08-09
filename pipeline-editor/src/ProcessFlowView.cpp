@@ -263,7 +263,7 @@ namespace pipeline_editor
 				draw->AddText(nullptr, labelFontSize, {a.x + 11 * z, a.y + (9 + 72 * (float)label) * z},
 				              IM_COL32(255, 190, 70, 255), summary.c_str());
 			}
-			if (mTransform.zoom >= 0.40f)
+			if (mTransform.zoom >= 0.25f)
 			{
 				float bodyY = 9.0f + 72.0f * (float)node.renderDocLabels.size();
 				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + bodyY * z}, IM_COL32_WHITE, node.title.c_str());
