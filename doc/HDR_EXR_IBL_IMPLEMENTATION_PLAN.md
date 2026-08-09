@@ -170,7 +170,9 @@ The fragment shader uses output pixel coordinates/face size rather than a scene 
 
 **Acceptance:** The shader source compiles as a parser program and exposes the required uniforms.
 
-### 5.2 Core-program lifecycle
+### 5.2 Core-program lifecycle — Complete
+
+Implemented with renderer-owned `__mpp_ibl_equirectangular_to_cubemap__` core resource creation alongside fullscreen post-process programs.
 
 1. Add a dedicated `ResourcePtr` member to `RenderSystem` for the conversion program.
 2. Create/load it with the existing renderer-owned fullscreen/bloom program factory during core-resource setup.
