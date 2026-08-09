@@ -1571,6 +1571,16 @@ namespace mpp
 			THROW_MPP("Equirectangular IBL source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
 	}
 
+	void RenderSystem::validateDiffuseIrradianceSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t sampleCount) const
+	{
+		if (!source || !source->isLoaded()) THROW_MPP("Diffuse irradiance source must be a loaded cubemap texture.", __LINE__, __FILE__, __func__);
+		if (generatedName.empty() || !faceSize || !sampleCount) THROW_MPP("Diffuse irradiance output name, face size, and sample count must be non-zero.", __LINE__, __FILE__, __func__);
+		if (source->getTextureTarget() != GL_TEXTURE_CUBE_MAP) THROW_MPP("Diffuse irradiance source must be a cubemap texture.", __LINE__, __FILE__, __func__);
+		auto format = source->getInternalFormat();
+		if (format != GL_RGB16F && format != GL_RGBA16F && format != GL_RGB32F && format != GL_RGBA32F)
+			THROW_MPP("Diffuse irradiance source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
+	}
+
 	void RenderSystem::renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel)
 	{
 		auto target = dynamic_cast<RenderTexture*>(destination.get());
