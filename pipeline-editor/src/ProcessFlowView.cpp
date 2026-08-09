@@ -200,10 +200,14 @@ namespace pipeline_editor
 			auto colour = edgeColour(edge.kind); float width = hoveredNode == edge.source || hoveredNode == edge.destination ? 3.2f : 1.8f;
 			if (edge.kind == ProcessFlowEdgeKind::PassSubmission)
 			{
-				auto start = screen(source->position + glm::vec2(source->size.x, source->size.y * 0.5f));
-				auto end = screen(destination->position + glm::vec2(0.0f, destination->size.y * 0.5f));
+				auto start = screen(source->position + glm::vec2(0.0f, source->size.y * 0.5f));
+				auto end = screen(destination->position + glm::vec2(destination->size.x, destination->size.y * 0.5f));
 				if (intersects({start.x, start.y}, {end.x, end.y}, canvasMinimum, canvasMaximum))
+				{
 					draw->AddLine({start.x, start.y}, {end.x, end.y}, colour, width);
+					draw->AddTriangleFilled({end.x, end.y}, {end.x + 8.0f, end.y - 5.0f},
+					                        {end.x + 8.0f, end.y + 5.0f}, colour);
+				}
 				continue;
 			}
 			auto start = screen(source->position + glm::vec2(source->size.x * 0.5f, source->size.y));
