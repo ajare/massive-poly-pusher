@@ -76,6 +76,7 @@ namespace pipeline_editor
 			{ node.expanded = mExpanded.contains(node.id); expansionRestored = true; }
 		if (expansionRestored) mLayout.apply(model);
 		if (!ImGui::Begin("Process Flow")) { ImGui::End(); return selection; }
+		mTransform.zoom = 1.0f;
 		if (ImGui::Button("Fit All")) mFitRequested = true;
 		ImGui::SameLine(); if (ImGui::Button("Refresh")) mRefreshRequested = true;
 		ImGui::SameLine();
@@ -158,12 +159,6 @@ namespace pipeline_editor
 		{
 			mTransform.pan.x += ImGui::GetIO().MouseDelta.x;
 			ImGui::SetScrollY(std::max(0.0f, ImGui::GetScrollY() - ImGui::GetIO().MouseDelta.y));
-		}
-		if (ImGui::IsItemHovered() && ImGui::GetIO().MouseWheel != 0.0f)
-		{
-			auto cursor = glm::vec2(ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y) - origin;
-			mTransform = ProcessFlowLayout::zoomAroundCursor(mTransform, cursor,
-			                                                    mTransform.zoom * std::pow(1.14f, ImGui::GetIO().MouseWheel));
 		}
 		auto screen = [&](glm::vec2 point) { return origin + mTransform.pan + point * mTransform.zoom; };
 		std::unordered_map<uint64_t, ProcessFlowNode*> nodeLookup;
@@ -253,8 +248,8 @@ namespace pipeline_editor
 			draw->AddRectFilled(a, b, fill, 7.0f);
 			draw->AddRect(a, b, border, 7.0f, 0, node.id == hoveredNode || selected ? 2.5f : 1.2f);
 			draw->PushClipRect({a.x + 3.0f, a.y + 3.0f}, {b.x - 3.0f, b.y - 3.0f}, true);
-			float z = mTransform.zoom;
-			float bodyFontSize = std::max(6.0f, ImGui::GetFontSize() * z * 1.10f);
+			float z = 1.0f;
+			float bodyFontSize = ImGui::GetFontSize();
 			float labelFontSize = bodyFontSize * 3.0f;
 			for (size_t label = 0; label < node.renderDocLabels.size(); ++label)
 			{
@@ -279,9 +274,8 @@ namespace pipeline_editor
 					if (!node.inputLabels.empty() && !node.outputLabels.empty()) ioY += 8.0f;
 					for (auto const& output : node.outputLabels)
 					{
-						float scale = bodyFontSize / ImGui::GetFontSize();
-						float width = ImGui::CalcTextSize(output.c_str()).x * scale;
-						draw->AddText(nullptr, bodyFontSize, {b.x - 11 * z - width, a.y + ioY * z}, IM_COL32(155, 245, 185, 255), output.c_str());
+						float width = ImGui::CalcTextSize(output.c_str()).x;
+						draw->AddText(nullptr, ImGui::GetFontSize(), {b.x - 11 * z - width, a.y + ioY * z}, IM_COL32(155, 245, 185, 255), output.c_str());
 						ioY += 24.0f;
 					}
 				}

@@ -125,14 +125,14 @@ namespace pipeline_editor
 		auto value = bounds(model); ProcessFlowTransform result;
 		if (!value.valid || viewport.x <= padding * 2 || viewport.y <= padding * 2) return result;
 		auto size = glm::max(value.maximum - value.minimum, glm::vec2(1.0f));
-		result.zoom = std::clamp(std::min((viewport.x - padding * 2) / size.x, (viewport.y - padding * 2) / size.y), 0.25f, 2.5f);
-		result.pan = (viewport - size * result.zoom) * 0.5f - value.minimum * result.zoom;
+		result.zoom = 1.0f;
+		result.pan = (viewport - size) * 0.5f - value.minimum;
 		return result;
 	}
 
 	ProcessFlowTransform ProcessFlowLayout::zoomAroundCursor(ProcessFlowTransform value, glm::vec2 cursor, float newZoom)
 	{
-		newZoom = std::clamp(newZoom, 0.25f, 2.5f);
+		newZoom = 1.0f;
 		auto canvasPoint = (cursor - value.pan) / value.zoom;
 		value.zoom = newZoom; value.pan = cursor - canvasPoint * value.zoom;
 		return value;
