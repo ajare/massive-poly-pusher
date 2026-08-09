@@ -224,12 +224,66 @@ Added a linear RGB32F programmatic panorama fixture and public conversion test t
 
 ## Phase 6 — Diffuse irradiance convolution
 
-1. Add irradiance convolution shader/pass for the generated cubemap.
-2. Render six low-resolution faces.
-3. Use deterministic sample count/sequence and configurable resolution.
-4. Validate neutral environments remain neutral and directional environments produce expected diffuse directionality.
+### 6.1 Runtime API and settings
 
-**Acceptance:** Generated irradiance cubemap is suitable for `PBR_IRRADIANCE_MAP`.
+1. Add a renderer-owned API:
+
+```cpp
+RenderTargetPtr RenderSystem::generateDiffuseIrradiance(
+    Texture* environmentCubemap,
+    std::string const& generatedName,
+    uint32_t faceSize,
+    uint32_t sampleCount = 1024);
+```
+
+2. Require a loaded floating-point `GL_TEXTURE_CUBE_MAP` source and non-zero name, face size, and sample count.
+3. Create a single-mip floating-point output using `createIblCubemap`.
+4. Keep cache lookup/publication outside this API; it synchronously returns an unpublished generated candidate.
+
+**Acceptance:** Invalid configuration fails before allocation or render-state changes.
+
+### 6.2 Convolution shader source
+
+1. Add renderer-owned `FragmentShaderDiffuseIrradianceTemplate` with `ENVIRONMENT`, `FACE`, `OUTPUT_SIZE`, and `SAMPLE_COUNT` uniforms.
+2. Reuse the Phase 5 face-direction convention.
+3. Build a stable tangent basis around each normal and integrate the hemisphere using a deterministic low-discrepancy/Hammersley sequence.
+4. Weight samples by `NdotL` and normalize by the accumulated weight; guard zero/NaN paths.
+
+**Acceptance:** The shader compiles and implements cosine-weighted diffuse irradiance, independent of scene camera state.
+
+### 6.3 Core-program lifecycle and validation
+
+1. Add/load/destroy a stable renderer-owned diffuse-convolution program with other core post-process programs.
+2. Add target/internal-format accessors/validation required for cubemap input, reusing Phase 5 error conventions.
+3. Reject source/output aliasing.
+
+**Acceptance:** No per-generation shader compilation and no invalid source proceeds to face rendering.
+
+### 6.4 Single-face convolution helper
+
+1. Add a private helper accepting source cubemap, output target, face, and sample count.
+2. Enter `CubemapFaceRenderScope`, set shader uniforms, bind source cube sampler, and draw fullscreen geometry.
+3. Preserve matrix, target, viewport, scissor, draw/read-buffer, and debug-scope behavior through existing scoped APIs.
+4. Record fullscreen render statistics.
+
+**Acceptance:** One output face is generated without GL/renderer state leakage.
+
+### 6.5 Public six-face generation API
+
+1. Implement `generateDiffuseIrradiance(...)` through validation, `createIblCubemap`, and six face-helper calls.
+2. Release the local candidate automatically on any failure; do not publish partial output.
+3. Use conservative/default irradiance resolution and deterministic sample count documented in the API.
+
+**Acceptance:** The API returns a six-face diffuse irradiance cubemap suitable for `PBR_IRRADIANCE_MAP`.
+
+### 6.6 GPU tests
+
+1. Build a neutral HDR environment fixture and verify generated irradiance remains neutral with values above 1.0.
+2. Build a directional/high-intensity fixture and verify expected diffuse directionality on corresponding output faces.
+3. Verify six faces are populated, invalid source/configuration leaves render state unchanged, and repeated runs are deterministic within float tolerance.
+4. Add a reduced-sample test configuration for fast test execution while retaining the production default separately.
+
+**Acceptance:** Generated irradiance is stable, neutral-environment preserving, directionally correct, and safe under failure.
 
 ## Phase 7 — Specular prefilter generation
 
