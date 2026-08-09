@@ -1363,7 +1363,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		std::shared_ptr<PbrPipelineDocument> activePreviewDocument;
 		bool inspectSelectedImage = false;
 		int inspectedVersion = 0, inspectedMip = 0, textureDiagnosticMode = 0;
-		float diagnosticExposure = 1.0f, diagnosticDepthNear = 0.1f, diagnosticDepthFar = 100.0f;
+		float diagnosticExposure = 1.0f, diagnosticDepthNear = 0.1f, diagnosticDepthFar = 100.0f, diagnosticDepthRangeScale = 99.9f;
 		uint64_t previewEditSerial = 0;
 		bool previewStale = false;
 		ChangeFlag documentChangedSincePreview{false, &previewEditSerial};
@@ -6049,15 +6049,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Depth;
 					ImGui::SetNextItemWidth(180);
+					if (ImGui::DragFloat("Depth value range scale", &diagnosticDepthRangeScale, std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f), 0.0000001f, 100000.0f, "%.7g", ImGuiSliderFlags_Logarithmic))
+						diagnosticDepthFar = diagnosticDepthNear + std::max(diagnosticDepthRangeScale, 0.0000001f);
+					ImGui::TextDisabled("Maps [near, near + scale] to black-to-white; reduce scale to reveal close depth values.");
+					ImGui::SetNextItemWidth(180);
 					ImGui::DragFloatRange2("Depth range",
 					                       &diagnosticDepthNear,
 					                       &diagnosticDepthFar,
-					                       0.1f,
-					                       0.0001f,
+					                       std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f),
+					                       0.0f,
 					                       100000.0f,
-					                       "Near %.3f",
-					                       "Far %.3f");
-					diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0001f, diagnosticDepthFar);
+					                       "Near %.7g",
+					                       "Far %.7g");
+					diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0000001f, diagnosticDepthFar);
+					diagnosticDepthRangeScale = diagnosticDepthFar - diagnosticDepthNear;
 				}
 				else
 				{
