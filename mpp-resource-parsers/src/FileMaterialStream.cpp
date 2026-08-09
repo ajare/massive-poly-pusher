@@ -1,7 +1,12 @@
+#include <cctype>
+
 #include "utils/XmlReader.h"
 
 #include "mpp/ResourceManager.h"
+#include <filesystem>
+
 #include "mpp/resource-parsers/FileBasicMaterialStream.h"
+#include "mpp/resource-parsers/FileGltfPbrMaterialStream.h"
 #include "mpp/resource-parsers/FileMaterialStream.h"
 #include "mpp/resource-parsers/FilePbrMaterialStream.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
@@ -10,6 +15,9 @@ namespace mpp::resource_parsers
 {
 	ResourceStreamPtr FileMaterialStream::fromFile(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths)
 	{
+		auto extension = std::filesystem::path(filepath).extension().string();
+		for (auto& character : extension) character = (char)std::tolower((unsigned char)character);
+		if (extension == ".gltf") return std::make_shared<FileGltfPbrMaterialStream>(resourceMgr, filepath, relativisePaths);
 		auto reader = utils::XmlReader::fromFile(filepath);
 		auto data = reader->readTree();
 		delete reader;

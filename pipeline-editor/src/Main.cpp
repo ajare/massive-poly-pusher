@@ -64,6 +64,7 @@
 #include "mpp/resource-parsers/PbrPipelineDocumentLoader.h"
 #include "mpp/resource-parsers/PbrPipelineSerializer.h"
 #include "mpp/resource-parsers/PbrPipelineRuntime.h"
+#include "mpp/resource-parsers/GltfPbrMaterialLoader.h"
 #include "mpp/resource-parsers/PbrPipelineResourceValidator.h"
 #include "mpp/resource-parsers/SceneParser.h"
 #include "mpp/resource-parsers/SceneSerializer.h"
@@ -2414,7 +2415,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			     requestExportPackage = false, requestUndo = false, requestRedo = false, requestDuplicate = false,
 			     requestDelete = false, requestAddPopup = false, requestAutoOrder = false,
 			     requestReloadConflicts = false, requestKeepConflicts = false, requestOverwriteConflicts = false,
-			     requestValidateFocus = false;
+			     requestValidateFocus = false, requestGltfImport = false;
 			int addKind = -1;
 			std::string addFactory;
 			std::string requestedRecent;
@@ -2475,6 +2476,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					}
 					if (ImGui::MenuItem("Open...", "Ctrl+O"))
 						requestOpen = true;
+					if (ImGui::MenuItem("Import glTF...", nullptr, false, openDocument != nullptr))
+						requestGltfImport = true;
 					if (!recentPaths.empty() && ImGui::BeginMenu("Open Recent"))
 					{
 						for (auto const& path : recentPaths)
@@ -3283,6 +3286,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					refreshTrackedFiles();
 					queueWorkingPreview("New workspace preview");
 				}
+			}
+			if (requestGltfImport)
+			{
+				if (auto selected = mpp::app::openGltfFileDialog(window.getWindow(), "Inspect glTF import"))
+					try
+					{
+						auto imported = resource_parsers::GltfPbrMaterialLoader::loadFirstMaterial(*selected);
+						operationErrorTitle = "glTF Import";
+						operationErrorMessage = "Found material 0: " + imported.materialName + ". Material selection/import is provided by the next phase.";
+						operationMessageIsSuccess = true; openOperationError = true;
+					}
+					catch (std::exception const& error) { operationErrorTitle = "glTF Import Failed"; operationErrorMessage = error.what(); operationMessageIsSuccess = false; openOperationError = true; }
 			}
 			if (requestOpen && confirmDiscardWorkspace())
 				if (auto path = mpp::app::openXmlFileDialog(window.getWindow(), "Open PBR Pipeline"))
