@@ -65,6 +65,17 @@ Pipeline and scene dirty state is independent. Save All saves an untitled scene 
 
 Dependency watching includes pipeline/scene XML, libraries, texture and shader payloads, and model files. Clean workspaces hot-reload transactionally. Dirty workspaces show the conflict banner and require **Reload**, **Overwrite**, or **Keep Local**; external libraries are never overwritten.
 
+## HDR EXR image-based lighting
+
+Select **Pipeline Environment** and use **HDR IBL Environment** to author image-based lighting from a linear OpenEXR equirectangular panorama.
+
+1. Use **Browse EXR** to select a `.exr`; PipelineEditor stores a pipeline-relative path when possible.
+2. Set environment, irradiance, and prefilter cubemap resolutions (defaults: 512, 32, 128). Higher values increase preprocessing time and memory.
+3. Use **Regenerate HDR IBL** after changing source/settings. It invalidates derived IBL cache entries and queues a replacement preview without prematurely retiring the active preview.
+4. Use **Clear HDR IBL** to return to manual environment bindings without deleting them.
+
+The EXR must decode as a linear floating-point RGB/RGBA 2D image. Runtime generates the environment, diffuse irradiance, GGX reflection cubemaps, and split-sum BRDF LUT. While HDR IBL is active, generated irradiance/prefilter maps take precedence and their manual fields are disabled. **BRDF LUT (advanced override)** remains available; leave it empty to use the renderer-generated LUT. The status line reports pending, cache hit, cache miss/generation, or failure; detailed errors are in Diagnostics. Include EXR sources when exporting packages.
+
 ## Related documentation
 
 - [PBR_PIPELINE_XML_SPECIFICATION.md](PBR_PIPELINE_XML_SPECIFICATION.md)
