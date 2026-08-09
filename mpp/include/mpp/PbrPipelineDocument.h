@@ -104,6 +104,9 @@ namespace mpp
 
 		// Clones a read-only qualified library resource into the document and rewrites direct pipeline references.
 		bool makeLocalCopy(std::string const& qualifiedName, std::string const& localName);
+		// Keeps the authored graph consistent with Bloom: the PBR emissive MRT and
+		// Bloom passes exist only while Bloom is enabled.
+		void setBloomEnabled(bool enabled);
 		DiagnosticBag validate(RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		DiagnosticBag validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		DiagnosticBag validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps = nullptr) const;
