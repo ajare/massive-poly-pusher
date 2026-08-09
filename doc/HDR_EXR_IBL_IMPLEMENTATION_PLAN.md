@@ -320,7 +320,9 @@ RenderTargetPtr RenderSystem::generatePrefilteredSpecular(
 
 **Acceptance:** Invalid prefilter requests fail before allocation/state mutation.
 
-### 7.2 GGX prefilter shader source
+### 7.2 GGX prefilter shader source — Complete
+
+Added `FragmentShaderPrefilteredSpecularTemplate`: deterministic Hammersley/GGX importance samples use the established face convention, PDF-derived cube LOD selection, roughness clamping, and zero-PDF/weight safeguards.
 
 1. Add a renderer-owned fragment shader with `ENVIRONMENT`, `FACE`, `OUTPUT_SIZE`, `ROUGHNESS`, `SOURCE_RESOLUTION`, and `SAMPLE_COUNT` uniforms.
 2. Reuse the established face-direction/tangent-basis convention.
