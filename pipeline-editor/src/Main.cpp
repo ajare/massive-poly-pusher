@@ -539,14 +539,28 @@ namespace
 		std::ifstream file(path, std::ios::binary); if (!file) throw std::runtime_error("Could not open glTF file: " + path.string());
 		std::string source((std::istreambuf_iterator<char>(file)), {}); auto root = GltfJsonParser(source).parse();
 		auto materials = root.get("materials"); if (!materials || materials->type != GltfJson::Type::Array || materials->array.empty()) throw std::runtime_error("The glTF file contains no materials.");
-		auto textures = root.get("textures"), images = root.get("images");
+		auto textures = root.get("textures"), images = root.get("images"), buffers = root.get("buffers"), views = root.get("bufferViews");
+		std::map<size_t, std::string> extractedImages;
+		auto decodeBase64 = [](std::string const& encoded)
+		{
+			static std::string const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+			std::vector<uint8_t> result; int value = 0, bits = -8;
+			for (char character : encoded) { if (character == '=') break; auto index = alphabet.find(character); if (index == std::string::npos) continue; value = (value << 6) + (int)index; bits += 6; if (bits >= 0) { result.push_back((uint8_t)((value >> bits) & 255)); bits -= 8; } }
+			return result;
+		};
 		auto textureUri = [&](GltfJson const* texture) -> std::string
 		{
 			if (!texture || texture->type != GltfJson::Type::Object) return {}; auto index = texture->get("index");
 			if (!index || index->type != GltfJson::Type::Number || !textures || !images || textures->type != GltfJson::Type::Array || images->type != GltfJson::Type::Array || index->number < 0 || (size_t)index->number >= textures->array.size()) return {};
 			auto sourceIndex = textures->array[(size_t)index->number].get("source"); if (!sourceIndex || sourceIndex->type != GltfJson::Type::Number || sourceIndex->number < 0 || (size_t)sourceIndex->number >= images->array.size()) return {};
-			auto uri = images->array[(size_t)sourceIndex->number].get("uri"); if (!uri || uri->type != GltfJson::Type::String || uri->string.starts_with("data:")) return {};
-			return (path.parent_path() / std::filesystem::path(uri->string)).lexically_normal().string();
+			auto imageIndex = (size_t)sourceIndex->number; auto const& image = images->array[imageIndex]; auto uri = image.get("uri");
+			if (uri && uri->type == GltfJson::Type::String && !uri->string.starts_with("data:")) return (path.parent_path() / std::filesystem::path(uri->string)).lexically_normal().string();
+			if (auto found = extractedImages.find(imageIndex); found != extractedImages.end()) return found->second;
+			std::string dataUri; if (uri && uri->type == GltfJson::Type::String) dataUri = uri->string;
+			std::vector<uint8_t> bytes; std::string mime = image.get("mimeType") && image.get("mimeType")->type == GltfJson::Type::String ? image.get("mimeType")->string : "image/png";
+			if (dataUri.starts_with("data:")) { auto comma = dataUri.find(','); if (comma == std::string::npos) return {}; auto header = dataUri.substr(0, comma); auto semicolon = header.find(';'); mime = header.substr(5, semicolon == std::string::npos ? std::string::npos : semicolon - 5); bytes = decodeBase64(dataUri.substr(comma + 1)); }
+			else { auto view = image.get("bufferView"); if (!view || view->type != GltfJson::Type::Number || !views || !buffers || (size_t)view->number >= views->array.size()) return {}; auto const& bufferView = views->array[(size_t)view->number]; auto buffer = bufferView.get("buffer"); if (!buffer || buffer->type != GltfJson::Type::Number || (size_t)buffer->number >= buffers->array.size()) return {}; auto bufferUri = buffers->array[(size_t)buffer->number].get("uri"); if (!bufferUri || bufferUri->type != GltfJson::Type::String || !bufferUri->string.starts_with("data:")) return {}; auto comma = bufferUri->string.find(','); if (comma == std::string::npos) return {}; auto source = decodeBase64(bufferUri->string.substr(comma + 1)); auto offset = bufferView.get("byteOffset") ? (size_t)bufferView.get("byteOffset")->number : 0; auto length = bufferView.get("byteLength") ? (size_t)bufferView.get("byteLength")->number : 0; if (offset + length > source.size()) return {}; bytes.assign(source.begin() + offset, source.begin() + offset + length); }
+			if (bytes.empty()) return {}; auto extension = mime == "image/jpeg" ? ".jpg" : mime == "image/ktx2" ? ".ktx2" : ".png"; auto folder = path.parent_path() / ".mpp-gltf-images"; std::filesystem::create_directories(folder); auto output = folder / (path.stem().string() + ".image" + std::to_string(imageIndex) + extension); std::ofstream extracted(output, std::ios::binary | std::ios::trunc); extracted.write((char const*)bytes.data(), (std::streamsize)bytes.size()); if (!extracted) return {}; return extractedImages.emplace(imageIndex, output.string()).first->second;
 		};
 		auto number = [](GltfJson const* value, float fallback) { return value && value->type == GltfJson::Type::Number ? (float)value->number : fallback; };
 		auto vector = [&](GltfJson const* value, std::initializer_list<float> defaults) { std::vector<float> result(defaults); if (value && value->type == GltfJson::Type::Array) for (size_t index = 0; index < result.size() && index < value->array.size(); ++index) result[index] = number(&value->array[index], result[index]); return result; };
