@@ -36,7 +36,8 @@ namespace mpp
 			enable(PbrMaterialFeature::MetallicRoughnessMap);
 		if (hasMap(textures, "PBR_NORMAL_MAP") && surface.normalScale > 0.0f) enable(PbrMaterialFeature::NormalMap);
 		if (hasMap(textures, "PBR_OCCLUSION_MAP") && surface.occlusionStrength > 0.0f) enable(PbrMaterialFeature::Occlusion);
-		if (hasMap(textures, "PBR_EMISSIVE_MAP") && (surface.emissiveFactor.r > 0.0f || surface.emissiveFactor.g > 0.0f || surface.emissiveFactor.b > 0.0f)) enable(PbrMaterialFeature::Emissive);
+		if (surface.emissiveFactor.r > 0.0f || surface.emissiveFactor.g > 0.0f || surface.emissiveFactor.b > 0.0f || hasMap(textures, "PBR_EMISSIVE_MAP")) enable(PbrMaterialFeature::Emissive);
+		if (hasMap(textures, "PBR_EMISSIVE_MAP")) enable(PbrMaterialFeature::EmissiveMap);
 		if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Mask) enable(PbrMaterialFeature::AlphaMask);
 		else if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend) enable(PbrMaterialFeature::AlphaBlend);
 		if (surface.doubleSided) enable(PbrMaterialFeature::DoubleSided);
@@ -46,11 +47,11 @@ namespace mpp
 	string describePbrMaterialFeatures(PbrMaterialFeatures features)
 	{
 		if (hasPbrFeature(features, PbrMaterialFeature::LegacyFullContract)) return "LegacyFullContract";
-		array<pair<PbrMaterialFeature, char const*>, 12> const names = {{
+		array<pair<PbrMaterialFeature, char const*>, 13> const names = {{
 			{ PbrMaterialFeature::BaseColourMap, "BaseColourMap" }, { PbrMaterialFeature::Metallic, "Metallic" },
 			{ PbrMaterialFeature::Roughness, "Roughness" }, { PbrMaterialFeature::MetallicRoughnessMap, "MetallicRoughnessMap" },
 			{ PbrMaterialFeature::MetallicMap, "MetallicMap" }, { PbrMaterialFeature::RoughnessMap, "RoughnessMap" }, { PbrMaterialFeature::NormalMap, "NormalMap" }, { PbrMaterialFeature::Occlusion, "Occlusion" },
-			{ PbrMaterialFeature::Emissive, "Emissive" }, { PbrMaterialFeature::AlphaMask, "AlphaMask" },
+			{ PbrMaterialFeature::Emissive, "Emissive" }, { PbrMaterialFeature::EmissiveMap, "EmissiveMap" }, { PbrMaterialFeature::AlphaMask, "AlphaMask" },
 			{ PbrMaterialFeature::AlphaBlend, "AlphaBlend" }, { PbrMaterialFeature::DoubleSided, "DoubleSided" }
 		}};
 		ostringstream result;
@@ -78,6 +79,7 @@ namespace mpp
 			<< "#define PBR_SPEC_NORMAL_MAP " << value(PbrMaterialFeature::NormalMap) << '\n'
 			<< "#define PBR_SPEC_OCCLUSION " << value(PbrMaterialFeature::Occlusion) << '\n'
 			<< "#define PBR_SPEC_EMISSIVE " << value(PbrMaterialFeature::Emissive) << '\n'
+			<< "#define PBR_SPEC_EMISSIVE_MAP " << value(PbrMaterialFeature::EmissiveMap) << '\n'
 			<< "#define PBR_SPEC_ALPHA_MASK " << value(PbrMaterialFeature::AlphaMask) << '\n'
 			<< "#define PBR_SPEC_ALPHA_BLEND " << value(PbrMaterialFeature::AlphaBlend) << '\n'
 			<< "#define PBR_SPEC_DOUBLE_SIDED " << value(PbrMaterialFeature::DoubleSided) << '\n';

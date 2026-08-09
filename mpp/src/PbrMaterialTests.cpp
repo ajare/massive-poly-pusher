@@ -48,6 +48,15 @@ namespace mpp
 		    !hasPbrFeature(scalar, PbrMaterialFeature::MetallicMap) || !hasPbrFeature(scalar, PbrMaterialFeature::RoughnessMap) ||
 		    makePbrSpecializationDefines(scalar).find("#define PBR_SPEC_METALLIC_MAP 1") == std::string::npos)
 			return fail("independent scalar-map feature derivation failed");
+		PbrMaterialSpecification::PbrSurface flatEmissive;
+		flatEmissive.emissiveFactor = {1.0f, 0.25f, 0.0f};
+		auto flat = derivePbrMaterialFeatures(flatEmissive, {});
+		if (!hasPbrFeature(flat, PbrMaterialFeature::Emissive) || hasPbrFeature(flat, PbrMaterialFeature::EmissiveMap))
+			return fail("flat emissive feature derivation failed");
+		PbrMaterialSpecification::TextureOptions emissive; emissive.resourceExists = true; emissive.sampler = "PBR_EMISSIVE_MAP";
+		auto image = derivePbrMaterialFeatures(flatEmissive, {emissive});
+		if (!hasPbrFeature(image, PbrMaterialFeature::EmissiveMap) || makePbrSpecializationDefines(image).find("#define PBR_SPEC_EMISSIVE_MAP 1") == std::string::npos)
+			return fail("emissive image-map feature derivation failed");
 		return true;
 	}
 }

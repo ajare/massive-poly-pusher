@@ -179,6 +179,15 @@
         <wrap>CLAMP_TO_EDGE</wrap>
       </Image>
       <Image>
+        <name>SceneEmissive</name>
+        <format>RGBA16F</format>
+        <usage>colourAttachment,sampled</usage>
+        <colourSpace>LINEAR</colourSpace>
+        <minFilter>LINEAR</minFilter>
+        <magFilter>LINEAR</magFilter>
+        <wrap>CLAMP_TO_EDGE</wrap>
+      </Image>
+      <Image>
         <name>SceneDepth</name>
         <format>DEPTH24</format>
         <usage>depthAttachment,sampled</usage>
@@ -308,6 +317,12 @@
             <store>store</store>
             <clear>0 0 0 1</clear>
           </Output>
+          <Output>
+            <image>SceneEmissive</image>
+            <load>clear</load>
+            <store>store</store>
+            <clear>0 0 0 1</clear>
+          </Output>
         </Colours>
         <Depth>
           <image>SceneDepth</image>
@@ -323,13 +338,13 @@
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
-            <image>SceneHdr</image>
+            <image>SceneEmissive</image>
           </Sampled>
         </Inputs>
         <Parameters>
           <Float>
             <name>THRESHOLD</name>
-            <value>0.7</value>
+            <value>0</value>
           </Float>
         </Parameters>
         <Colours>

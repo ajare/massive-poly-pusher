@@ -33,6 +33,7 @@ void main()
 #define PBR_SPEC_NORMAL_MAP 1
 #define PBR_SPEC_OCCLUSION 1
 #define PBR_SPEC_EMISSIVE 1
+#define PBR_SPEC_EMISSIVE_MAP 1
 #define PBR_SPEC_ALPHA_MASK 0
 #define PBR_SPEC_ALPHA_BLEND 0
 #define PBR_SPEC_DOUBLE_SIDED 0
@@ -86,7 +87,7 @@ void main()
 #if PBR_SPEC_OCCLUSION || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_OCCLUSION_MAP);
 #endif
-#if PBR_SPEC_EMISSIVE || PBR_SPEC_LEGACY_FULL_CONTRACT
+#if PBR_SPEC_EMISSIVE_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_EMISSIVE_MAP);
 #endif
 @@Texture(samplerCube PBR_IRRADIANCE_MAP);
@@ -249,7 +250,11 @@ void main()
     const float occlusion = 1.0;
 #endif
 #if PBR_SPEC_EMISSIVE || PBR_SPEC_LEGACY_FULL_CONTRACT
+#if PBR_SPEC_EMISSIVE_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
     vec3 emissive = texture(@Texture(PBR_EMISSIVE_MAP), @In(TEXCOORDS)).rgb * @Uniform(PBR_EMISSIVE_FACTOR);
+#else
+    vec3 emissive = @Uniform(PBR_EMISSIVE_FACTOR);
+#endif
 #else
     const vec3 emissive = vec3(0.0);
 #endif
