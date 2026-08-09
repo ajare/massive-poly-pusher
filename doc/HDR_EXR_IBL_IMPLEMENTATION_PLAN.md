@@ -439,7 +439,9 @@ GPU coverage verifies lazy once-per-renderer reuse, 512x512 dimensions, viewport
 
 **Acceptance:** Equivalent HDR environment requests can share generated `ResourcePtr` outputs safely.
 
-### 9.2 HDR source resource resolution
+### 9.2 HDR source resource resolution — Complete
+
+`PbrPipelineRuntime` now resolves `hdrEquirectangular` relative to the pipeline document, declares a generation-owned linear Texture2D using the configured image loader, loads it, and rejects non-floating-point/non-2D decode results with a source-specific candidate failure.
 
 1. Resolve `Environment.hdrEquirectangular` relative to the pipeline document path.
 2. Declare/load a generation-owned linear floating-point Texture2D using the configured image loader.
