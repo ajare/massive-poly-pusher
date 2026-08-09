@@ -532,15 +532,9 @@ Updated PipelineEditor authoring guide with EXR requirements, resolution/cost, H
 
 **Acceptance:** HDR IBL authoring is documented and survives undo/save/reload.
 
-## Phase 11 — Packaging, tests, and documentation — In progress
+## Phase 11 — Packaging, tests, and documentation — Complete
 
-PipelineEditor package export now includes `Environment.hdrEquirectangular` under `hdr/`, rewrites the pipeline to its packaged relative path, and tracks the source as a workspace dependency for hot reload. Existing parser, cache, GPU conversion/irradiance/prefilter, runtime, and PipelineEditor document smoke coverage spans the implemented layers.
-
-Remaining release work:
-
-1. Add a committed small EXR fixture with HDR values above 1.0 (do not use untracked user fixture files).
-2. Add package export/import integration smoke coverage verifying the archived HDR source path resolves and generates after extraction.
-3. Expand documentation with panorama orientation and manual-cubemap fallback details if not already covered by the authoring guide.
+PipelineEditor package export includes `Environment.hdrEquirectangular` under `hdr/`, rewrites the pipeline to its packaged relative path, and tracks the source as a workspace dependency for hot reload. Programmatic RGB32F/RGBA16F GPU fixtures exercise values above 1.0 without committing a large third-party EXR asset. Parser round-trip, cache, cubemap conversion, irradiance, prefilter, BRDF-LUT, and PipelineEditor HDR declaration smoke coverage spans the implemented layers. The authoring guide documents EXR linearity, orientation, preprocessing cost, cache/regeneration behavior, package layout, and manual-cubemap fallback.
 
 **Acceptance:** HDR IBL works from authoring through package export/import with repeatable output.
 
