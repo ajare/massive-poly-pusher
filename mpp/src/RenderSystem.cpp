@@ -787,6 +787,8 @@ namespace mpp
 		addCoreResource(mDiffuseIrradianceProgram, true);
 		mPrefilteredSpecularProgram = createBloomProgram("__mpp_ibl_prefiltered_specular__", FragmentShaderPrefilteredSpecularTemplate);
 		addCoreResource(mPrefilteredSpecularProgram, true);
+		mPbrBrdfIntegrationProgram = createBloomProgram("__mpp_ibl_brdf_integration__", FragmentShaderPbrBrdfIntegrationTemplate);
+		addCoreResource(mPbrBrdfIntegrationProgram, true);
 
 		// Internal text programs
 		{
@@ -1720,6 +1722,27 @@ namespace mpp
 		for (uint32_t face = 0; face < 6; ++face)
 			renderEquirectangularCubemapFace(hdrEquirectangular, candidate, face, 0);
 		return candidate;
+	}
+
+	ResourcePtr RenderSystem::getOrCreatePbrBrdfIntegrationLut()
+	{
+		if (mPbrBrdfIntegrationLut) return mPbrBrdfIntegrationLut;
+		RenderTextureOptions options; options.colourInternalFormat = GL_RG16F; options.params.minFilter = GL_LINEAR; options.params.magFilter = GL_LINEAR; options.params.useMipmaps = false;
+		auto candidate = createRenderTexture("__mpp_ibl_brdf_integration_lut__", 512, 512, options);
+		GLint viewport[4]{}, scissor[4]{}, drawBuffer = 0, readBuffer = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, viewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, scissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &readBuffer)); auto scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+		pushRenderTarget(candidate); pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setViewport(0, 0, 512, 512); setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			auto program = static_cast<Program*>(mPbrBrdfIntegrationProgram.get()); setUsedProgram(mPbrBrdfIntegrationProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix))); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), 1024)); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), 512.0f, 512.0f));
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false); mRenderInfo.programSwitches++; mRenderInfo.fullscreenQuads++;
+			popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); GL_CHECK(glScissor(scissor[0], scissor[1], scissor[2], scissor[3])); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST)); throw; }
+		setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); GL_CHECK(glScissor(scissor[0], scissor[1], scissor[2], scissor[3])); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		mPbrBrdfIntegrationLut = std::static_pointer_cast<Resource>(std::dynamic_pointer_cast<RenderTexture>(candidate));
+		return mPbrBrdfIntegrationLut;
 	}
 
 	RenderTargetPtr RenderSystem::createPhysicalRenderTexture(string const& name,size_t width,size_t height,RenderTextureOptions const& options,uint32_t samples)
