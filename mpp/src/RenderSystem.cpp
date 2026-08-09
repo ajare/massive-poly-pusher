@@ -1380,6 +1380,45 @@ namespace mpp
 		setRenderTarget(renderTarget);
 	}
 
+	RenderSystem::CubemapFaceRenderScope::CubemapFaceRenderScope(RenderSystem& system, RenderTargetPtr const& target, uint32_t face, uint32_t mipLevel)
+		: mSystem(&system), mTarget(dynamic_cast<RenderTexture*>(target.get()))
+	{
+		if (!mTarget || mTarget->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
+			THROW_MPP("Cubemap face rendering requires a cubemap RenderTexture.", __LINE__, __FILE__, __func__);
+		GL_CHECK(glGetIntegerv(GL_VIEWPORT, mViewport));
+		GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, mScissor));
+		GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &mDrawBuffer));
+		GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &mReadBuffer));
+		mScissorEnabled = glIsEnabled(GL_SCISSOR_TEST) == GL_TRUE;
+		mSystem->pushRenderTarget(target);
+		try
+		{
+			mTarget->attachColourFace(0, face, mipLevel);
+			auto dimension = std::max<size_t>(1, mTarget->getWidth() >> mipLevel);
+			mSystem->setViewport(0, 0, dimension, dimension);
+			GL_CHECK(glScissor(0, 0, (GLsizei)dimension, (GLsizei)dimension));
+		}
+		catch (...) { mSystem->popRenderTarget(); throw; }
+	}
+
+	void RenderSystem::CubemapFaceRenderScope::finish()
+	{
+		if (mFinished) return;
+		mTarget->restoreColourFaces();
+		mSystem->popRenderTarget();
+		mSystem->setViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]);
+		GL_CHECK(glScissor(mScissor[0], mScissor[1], mScissor[2], mScissor[3]));
+		GL_CHECK(glDrawBuffer((GLenum)mDrawBuffer));
+		GL_CHECK(glReadBuffer((GLenum)mReadBuffer));
+		if (mScissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		mFinished = true;
+	}
+
+	RenderSystem::CubemapFaceRenderScope::~CubemapFaceRenderScope()
+	{
+		try { finish(); } catch (...) {}
+	}
+
 	/*
 	 * Set screen as target.
 	 *
