@@ -30,7 +30,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** Other MPP code can include and link a stable core loader API.
 
-## Phase 2 — Read and validate file envelope
+## [x] Phase 2 — Read and validate file envelope (`544f891`)
 
 1. Open a `.gltf` file as bytes/text.
 2. Reject missing files and non-`.gltf` extensions with useful diagnostics.
@@ -40,7 +40,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** Valid JSON glTF files parse into an internal JSON document; malformed and unsupported inputs fail cleanly.
 
-## Phase 3 — Select first material and warn
+## [x] Phase 3 — Select first material and warn (`6e0f1c3`)
 
 1. Read the root `materials` array.
 2. Fail if it is missing or empty.
@@ -51,7 +51,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** A multi-material fixture returns only material zero and produces one warning.
 
-## Phase 4 — Produce minimal MPP PBR material definition
+## [x] Phase 4 — Produce minimal MPP PBR material definition (`6e0f1c3`)
 
 1. Create a `PbrMaterial` `StructuredData` root.
 2. Add standard mesh specification and a `Surface` block.
@@ -72,7 +72,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** The converted result validates through `FilePbrMaterialStream` without any texture maps.
 
-## Phase 5 — Resolve external image URI chain
+## [x] Phase 5 — Resolve external image URI chain (`6e0f1c3`, `2f1cbec`)
 
 1. Read `textures[index].source`.
 2. Read `images[source].uri`.
@@ -82,7 +82,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** An external image URI resolves to the original image file, never `shared/pbr/arrow.png`.
 
-## Phase 6 — Convert base-colour and metallic-roughness maps
+## [x] Phase 6 — Convert base-colour and metallic-roughness maps (`2f1cbec`)
 
 1. Convert `pbrMetallicRoughness.baseColorTexture` to `BaseColourMap` with `SRGB` colour space.
 2. Convert `metallicRoughnessTexture` to `MetallicRoughnessMap` with `LINEAR` colour space.
@@ -91,7 +91,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** A standard externally textured glTF material renders with base colour and ORM maps.
 
-## Phase 7 — Convert normal, occlusion, and emissive maps
+## [x] Phase 7 — Convert normal, occlusion, and emissive maps (`2f1cbec`)
 
 1. Convert `normalTexture` to `NormalMap` and its `scale` to `normalScale`.
 2. Convert `occlusionTexture` to `OcclusionMap` and `strength` to `occlusionStrength`.
