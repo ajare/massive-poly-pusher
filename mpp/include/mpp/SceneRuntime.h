@@ -35,9 +35,11 @@ namespace mpp
 		void clear();
 		ScenePtr const& getScene()const;
 		DiagnosticBag const& getDiagnostics()const;
+		uint64_t getGeneration()const;
 		uint64_t getUniqueTriangleCount()const;
 		uint64_t getModelTriangleCount(std::string const& modelId)const;
 		SceneModel3dPtr getModelInstance(std::string const& modelId)const;
+		std::string getModelId(SceneModel3d const* instance)const;
 		std::vector<PbrLight> const& getLights()const;
 		std::string const& getEnvironmentBinding()const;
 	};

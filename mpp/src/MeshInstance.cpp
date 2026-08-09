@@ -15,6 +15,7 @@ namespace mpp
 	MeshInstance::MeshInstance()
 		: ResourceWrangler("MeshInstance")
 		, mwMesh(nullptr)
+		, mSourceSceneObject(nullptr)
 		, mRender(true)
 		, mWireframe(false)
 		, mCullBackFaces(false)
@@ -35,6 +36,7 @@ namespace mpp
 		teardown();
 
 		mwMesh = mesh;
+		mSourceSceneObject = nullptr;
 		mRender = true;
 		mWireframe = false;
 		mCullBackFaces = false;
@@ -89,6 +91,7 @@ namespace mpp
 		release();
 
 		mwMesh = nullptr;
+		mSourceSceneObject = nullptr;
 		mRender = true;
 		mWireframe = false;
 		mCullBackFaces = false;

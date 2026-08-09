@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <glm/gtc/matrix_inverse.hpp>
 
 #include "mpp/RenderPipeline.h"
@@ -20,6 +21,8 @@ namespace mpp
 {
 	namespace
 	{
+		atomic<uint64_t> nextFlowGeneration{ 1 };
+
 		char const* pipelineModeName(RenderPipelineMode mode)
 		{
 			switch (mode)
@@ -56,6 +59,7 @@ namespace mpp
 		, mRenderSystem(renderSystem)
 		, mOptions(options)
 	{
+		mFlowGeneration = nextFlowGeneration.fetch_add(1, memory_order_relaxed);
 		if(!mOptions.outputs.empty())mOutputProcessor=make_unique<RenderOutputProcessor>(renderSystem,mName);
 		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
 		// their RGBA8 target and existing presentation behaviour.
@@ -167,6 +171,34 @@ namespace mpp
 		static vector<GraphPassExecutionStats> const empty;return mGraphExecutor?mGraphExecutor->getLastExecutionStats():empty;
 	}
 
+	vector<GraphPassHandle> const& RenderPipeline::getLastGraphExecutionOrder() const
+	{
+		static vector<GraphPassHandle> const empty;return mGraphExecutor?mGraphExecutor->getLastExecutionOrder():empty;
+	}
+
+	void RenderPipeline::setFlowTelemetryEnabled(bool enabled)
+	{
+		if(mFlowTelemetryEnabled==enabled)return;discardFlowSnapshot();mFlowTelemetryEnabled=enabled;mLastFlowSnapshot.reset();
+	}
+
+	bool RenderPipeline::isFlowTelemetryEnabled() const{return mFlowTelemetryEnabled;}
+	RenderPipelineFlowSnapshotPtr RenderPipeline::getLastFlowSnapshot() const{return mLastFlowSnapshot;}
+
+	void RenderPipeline::beginFlowSnapshot() noexcept
+	{
+		if(!mFlowTelemetryEnabled||!mGraphExecutor)return;try{mPendingFlowSnapshot=make_shared<RenderPipelineFlowSnapshot>();mPendingFlowSnapshot->frameSerial=mRenderSystem->getFrameSerial();mPendingFlowSnapshot->pipelineGeneration=mFlowGeneration;mRenderSystem->beginRenderFlowCapture(mPendingFlowSnapshot.get());}catch(...){mPendingFlowSnapshot.reset();}
+	}
+
+	void RenderPipeline::publishFlowSnapshot() noexcept
+	{
+		if(!mPendingFlowSnapshot)return;bool complete=mRenderSystem->endRenderFlowCapture();if(complete)try{mPendingFlowSnapshot->actualPassOrder=mGraphExecutor->getLastExecutionOrder();if(mOutputProcessor)mPendingFlowSnapshot->outputPlans=mOutputProcessor->getPlans();mLastFlowSnapshot=mPendingFlowSnapshot;}catch(...){}mPendingFlowSnapshot.reset();
+	}
+
+	void RenderPipeline::discardFlowSnapshot() noexcept
+	{
+		if(mPendingFlowSnapshot)mRenderSystem->endRenderFlowCapture();mPendingFlowSnapshot.reset();
+	}
+
 	uint64_t RenderPipeline::getOutputGeneration() const{return mOutputProcessor?mOutputProcessor->getGeneration():0;}
 	vector<RenderPipelineOutputPlan> const& RenderPipeline::getOutputPlans() const{static vector<RenderPipelineOutputPlan> const empty;return mOutputProcessor?mOutputProcessor->getPlans():empty;}
 	void RenderPipeline::prepareOutputs(RenderGraph const& graph,map<string,RenderTargetPtr> const& destinations){if(mOutputProcessor)mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);}
@@ -260,9 +292,15 @@ namespace mpp
 			}
 			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back() };
 			mGraphExecutor->setFrameContext(&frameContext);
-			mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
-			mGraphExecutor->setFrameContext(nullptr);
-			for(auto const& output:preparedOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
+			beginFlowSnapshot();
+			try
+			{
+				mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
+				mGraphExecutor->setFrameContext(nullptr);
+				for(auto const& output:preparedOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
+				publishFlowSnapshot();
+			}
+			catch(...){mGraphExecutor->setFrameContext(nullptr);discardFlowSnapshot();throw;}
 			return;
 		}
 
@@ -449,9 +487,15 @@ namespace mpp
 		frameContext.pipelineOptions = &mOptions;
 		frameContext.sceneRenderPass = mPasses.back();
 		mGraphExecutor->setFrameContext(&frameContext);
-		mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
-		mGraphExecutor->setFrameContext(nullptr);
-		for(auto const& output:dynamicOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
+		beginFlowSnapshot();
+		try
+		{
+			mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
+			mGraphExecutor->setFrameContext(nullptr);
+			for(auto const& output:dynamicOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
+			publishFlowSnapshot();
+		}
+		catch(...){mGraphExecutor->setFrameContext(nullptr);discardFlowSnapshot();throw;}
 	}
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)

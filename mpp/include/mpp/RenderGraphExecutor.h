@@ -58,6 +58,7 @@ namespace mpp
 		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
 		std::map<uint32_t, UniformCollection> mParameterOverrides;
 		std::vector<GraphPassExecutionStats> mLastExecutionStats;
+		std::vector<GraphPassHandle> mLastExecutionOrder;
 		struct GpuTimingQuery { GraphPassHandle pass; std::string name; uint32_t begin{ 0 }, end{ 0 }; };
 		struct GpuTimingResult { std::string name; double milliseconds{ 0.0 }; };
 		std::deque<std::vector<GpuTimingQuery>> mPendingGpuTimings;
@@ -78,6 +79,7 @@ namespace mpp
 		void setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters);
 		void clearPassCallbacks();
 		std::vector<GraphPassExecutionStats> const& getLastExecutionStats() const;
+		std::vector<GraphPassHandle> const& getLastExecutionOrder() const;
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
 		void execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps);
 	};
