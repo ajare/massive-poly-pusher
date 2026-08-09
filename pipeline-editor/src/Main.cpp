@@ -25,6 +25,9 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
 #include "fontawesome/IconsFontAwesome5.h"
+#include "ProcessFlowModel.h"
+#include "ProcessFlowLayout.h"
+#include "ProcessFlowView.h"
 #include "mpp/BufferRenderer.h"
 #include "mpp/Camera.h"
 #include "mpp/Colour.h"
@@ -62,6 +65,7 @@
 #include "mpp/resource-parsers/SceneSerializer.h"
 
 using namespace mpp;
+using namespace pipeline_editor;
 
 namespace
 {
@@ -1125,6 +1129,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			else if (!value.starts_with("--"))
 				startupPath = value;
 		}
+		if (smokeTest)
+		{
+			runProcessFlowModelTests();
+			runProcessFlowLayoutTests();
+		}
 		bool startupFromDefaultTemplate = startupPath.empty();
 		if (startupFromDefaultTemplate)
 			startupPath = fullTemplatePath;
@@ -1551,6 +1560,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		rebuildPreview();
 		int selectedPass = -1, selectedImage = -1, selectedImport = -1, selectedBinding = -1, selectedOverride = -1,
 		    selectedModel = -1, selectedLocalResource = -1, selectedExternalResource = -1;
+		ProcessFlowModelBuilder processFlowBuilder;
+		ProcessFlowLayout processFlowLayout;
+		ProcessFlowView processFlowView;
+		ProcessFlowModel processFlowModel;
+		RenderPipelineFlowSnapshotPtr sampledFlowSnapshot;
+		auto lastFlowPoll = std::chrono::steady_clock::time_point{};
+		auto flowSampleAcquired = std::chrono::steady_clock::time_point{};
+		uint64_t processFlowEditSerial = UINT64_MAX;
+		std::string processFlowPipeline;
 		mpp::app::CommandStack pipelineCommands(256), sceneCommands(256);
 		bool lastEditScene = false;
 		bool running = true, pipelineDirty = recoveredDocument || (startupFromDefaultTemplate && openDocument),
@@ -2637,6 +2655,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGuiID leftLower, leftUpper;
 				ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.48f, &leftLower, &leftUpper);
 				ImGui::DockBuilderDockWindow("Pipeline Hierarchy", leftUpper);
+				ImGui::DockBuilderDockWindow("Process Flow", leftUpper);
 				ImGui::DockBuilderDockWindow("Inspector", leftLower);
 				ImGui::DockBuilderDockWindow("Diagnostics", leftLower);
 				ImGui::DockBuilderDockWindow("Allocations", leftLower);
@@ -3687,6 +3706,108 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				ImGui::TreePop();
 			}
 			ImGui::End();
+
+			bool flowFiltersChanged = processFlowView.consumeFiltersChanged();
+			bool flowRefreshRequested = processFlowView.consumeRefreshRequested();
+			bool flowPipelineChanged = processFlowPipeline != activePipeline;
+			if (flowPipelineChanged)
+			{
+				processFlowPipeline = activePipeline;
+				sampledFlowSnapshot.reset();
+				flowSampleAcquired = {};
+			}
+			bool flowSampleDue = flowRefreshRequested || flowPipelineChanged ||
+			                     std::chrono::duration<double>(now - lastFlowPoll).count() >= 0.25;
+			bool flowSnapshotChanged = false;
+			if (flowSampleDue && !activeGraphResource.empty())
+			{
+				auto latest = renderSystem.getRenderPipeline(activePipeline)->getLastFlowSnapshot();
+				if (latest && (!sampledFlowSnapshot || latest->pipelineGeneration != sampledFlowSnapshot->pipelineGeneration ||
+				               latest->frameSerial > sampledFlowSnapshot->frameSerial))
+				{
+					sampledFlowSnapshot = std::move(latest);
+					flowSampleAcquired = now;
+					flowSnapshotChanged = true;
+				}
+				lastFlowPoll = now;
+			}
+			bool flowDocumentChanged = processFlowEditSerial != previewEditSerial;
+			if (flowFiltersChanged || flowRefreshRequested || flowPipelineChanged || flowSnapshotChanged ||
+			    flowDocumentChanged || processFlowModel.revision == 0)
+			{
+				processFlowEditSerial = previewEditSerial;
+				ProcessFlowBuildInput input;
+				auto flowDocument = documentChangedSincePreview ? openDocument : activePreviewDocument;
+				input.graph = !activeGraphResource.empty() && flowDocument && flowDocument->graph ? flowDocument->graph.get() : nullptr;
+				input.snapshot = documentChangedSincePreview ? RenderPipelineFlowSnapshotPtr{} : sampledFlowSnapshot;
+				input.filters = processFlowView.filters();
+				if (input.graph)
+				{
+					input.passBypassReasons.resize(input.graph->getPassCount());
+					for (uint32_t pass = 0; pass < input.graph->getPassCount(); ++pass)
+					{
+						auto info = input.graph->getPassInfo({pass});
+						if (!info.enabled) input.passBypassReasons[pass] = "Disabled by authored pass setting";
+						else if (!passEffectivelyEnabled(info))
+							input.passBypassReasons[pass] = info.callbackFactory.find("Blur") != std::string::npos
+							                                      ? "Bypassed beyond the effective bloom blur-pass count"
+							                                      : "Bypassed because bloom is disabled";
+					}
+				}
+				try
+				{
+					processFlowModel = processFlowBuilder.build(input);
+					processFlowLayout.apply(processFlowModel);
+				}
+				catch (std::exception const& error)
+				{
+					ProcessFlowModel failed; failed.revision = processFlowModel.revision + 1;
+					failed.diagnostics.push_back(error.what()); processFlowModel = std::move(failed);
+				}
+			}
+			double flowSampleAge = flowSampleAcquired == std::chrono::steady_clock::time_point{}
+			                           ? 0.0
+			                           : std::chrono::duration<double>(now - flowSampleAcquired).count();
+			auto flowSelection = processFlowView.draw(processFlowModel, flowSampleAge);
+			if (flowSelection.kind == ProcessFlowSelection::Kind::Pass)
+			{
+				selectedPass = flowSelection.index;
+				selectedImage = selectedImport = selectedBinding = selectedOverride = selectedModel =
+				    selectedLocalResource = selectedExternalResource = -1;
+			}
+			else if (flowSelection.kind == ProcessFlowSelection::Kind::Image)
+			{
+				selectedImage = flowSelection.index; selectedPass = selectedImport = selectedBinding = selectedOverride =
+				    selectedModel = selectedLocalResource = selectedExternalResource = -1;
+			}
+			else if (flowSelection.kind == ProcessFlowSelection::Kind::Material && openDocument)
+			{
+				bool found = false;
+				for (size_t index = 0; index < openDocument->localResources.size(); ++index)
+					if (openDocument->localResources[index].name == flowSelection.materialName)
+					{ selectedLocalResource = (int)index; selectedExternalResource = -1; found = true; break; }
+				if (!found)
+					for (size_t index = 0; index < openDocument->externalResources.size(); ++index)
+					{
+						auto const& resource = openDocument->externalResources[index];
+						if (resource.resource.name == flowSelection.materialName ||
+						    resource.libraryName + "::" + resource.resource.name == flowSelection.materialName)
+						{ selectedExternalResource = (int)index; selectedLocalResource = -1; found = true; break; }
+					}
+				if (found) selectedPass = selectedImage = selectedImport = selectedBinding = selectedOverride = selectedModel = -1;
+			}
+			else if (flowSelection.kind == ProcessFlowSelection::Kind::SceneObject && openScene)
+			{
+				for (size_t index = 0; index < openScene->models.size(); ++index)
+					if (sceneRuntime.getModelInstance(openScene->models[index].id).get() == flowSelection.sceneObject)
+					{
+						selectedModel = (int)index;
+						selectedPass = selectedImage = selectedImport = selectedBinding = selectedOverride =
+						    selectedLocalResource = selectedExternalResource = -1;
+						break;
+					}
+			}
+
 			ImGui::Begin("Inspector");
 			if (openDocument && openDocument->graph && selectedPass >= 0)
 			{
@@ -6088,6 +6209,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 							    msaa != (plan.antiAliasing.msaa != AntiAliasingSamples::Off))
 								throw std::runtime_error("Process-flow physical output stages differ from their plan.");
 						}
+						ProcessFlowBuildInput smokeFlowInput;
+						smokeFlowInput.graph = activePreviewDocument->graph.get();
+						smokeFlowInput.snapshot = snapshot;
+						smokeFlowInput.filters.resources =
+						    (uint32_t)ProcessFlowResourceCategory::AuthoredImages |
+						    (uint32_t)ProcessFlowResourceCategory::Imports |
+						    (uint32_t)ProcessFlowResourceCategory::NamedOutputs |
+						    (uint32_t)ProcessFlowResourceCategory::MsaaResources |
+						    (uint32_t)ProcessFlowResourceCategory::TaaHistories |
+						    (uint32_t)ProcessFlowResourceCategory::SsaaTargets |
+						    (uint32_t)ProcessFlowResourceCategory::FxaaTargets;
+						auto smokeFlowModel = processFlowBuilder.build(smokeFlowInput);
+						processFlowLayout.apply(smokeFlowModel);
+						if (!smokeFlowModel.diagnostics.empty() || smokeFlowModel.nodes.empty() || smokeFlowModel.edges.empty() ||
+						    std::count_if(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
+						                  { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != snapshot->batches.size() ||
+						    std::none_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
+						                 { return node.kind == ProcessFlowNodeKind::Presentation; }))
+							throw std::runtime_error("Process-flow editor model/layout smoke validation failed.");
 						running = false;
 					}
 				}
