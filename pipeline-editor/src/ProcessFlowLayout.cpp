@@ -45,11 +45,13 @@ namespace pipeline_editor
 			node->position = {-node->size.x * 0.5f, y};
 			auto children = node->kind == ProcessFlowNodeKind::AuthoredPass ? batchesByPass.find(node->passId) : batchesByPass.end();
 			if (children == batchesByPass.end()) { y += node->size.y + 72.0f; continue; }
+			float childWidth = 0.0f;
+			for (auto const* child : children->second) childWidth = std::max(childWidth, child->size.x);
 			float childY = node->position.y + (node->size.y - children->second.front()->size.y) * 0.5f;
 			float childBottom = childY;
 			for (auto* child : children->second)
 			{
-				child->position = {node->position.x - child->size.x - 72.0f, childY};
+				child->position = {node->position.x - childWidth - 72.0f + (childWidth - child->size.x) * 0.5f, childY};
 				childY += child->size.y + 48.0f;
 				childBottom = childY - 48.0f;
 			}
@@ -86,6 +88,17 @@ namespace pipeline_editor
 			auto& bottom = output ? outputBottom : resourceBottom;
 			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
 			node->position = {(output ? 3600.0f : -3000.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
+		}
+		if (!model.nodes.empty())
+		{
+			float minimum = model.nodes.front().position.x, maximum = minimum + model.nodes.front().size.x;
+			for (auto const& node : model.nodes)
+			{
+				minimum = std::min(minimum, node.position.x);
+				maximum = std::max(maximum, node.position.x + node.size.x);
+			}
+			float offset = -(minimum + maximum) * 0.5f;
+			for (auto& node : model.nodes) node.position.x += offset;
 		}
 	}
 
@@ -135,9 +148,9 @@ namespace pipeline_editor
 		    std::abs((model.nodes[4].position.y + model.nodes[4].size.y * 0.5f) -
 		             (model.nodes[0].position.y + model.nodes[0].size.y * 0.5f)) > 0.01f)
 			throw std::runtime_error("Process-flow batch child is not left-aligned with its parent pass.");
-		for (size_t index = 0; index < 4; ++index)
-			if (std::abs(model.nodes[index].position.x + model.nodes[index].size.x * 0.5f) > 0.01f)
-				throw std::runtime_error("Process-flow spine nodes are not horizontally centred.");
+		auto centredBounds = layout.bounds(model);
+		if (std::abs(centredBounds.minimum.x + centredBounds.maximum.x) > 0.01f)
+			throw std::runtime_error("Process-flow graph is not horizontally centred.");
 		for (size_t index = 1; index < 4; ++index)
 			if (model.nodes[index].position.y <= model.nodes[index - 1].position.y + model.nodes[index - 1].size.y)
 				throw std::runtime_error("Process-flow vertical layout is not strictly increasing/non-overlapping.");

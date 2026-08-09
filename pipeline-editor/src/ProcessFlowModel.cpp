@@ -213,6 +213,7 @@ namespace pipeline_editor
 		if (input.snapshot)
 		{
 			std::unordered_map<uint64_t, RenderBatchSubmission const*> batches;
+			std::unordered_map<uint32_t, uint64_t> lastPassChild;
 			for (auto const& batch : input.snapshot->batches) batches[batch.sequence] = &batch;
 			for (size_t eventIndex = 0; eventIndex < input.snapshot->physicalEvents.size(); ++eventIndex)
 			{
@@ -285,8 +286,12 @@ namespace pipeline_editor
 						node.mainSpine = false;
 						node.layoutRank = (float)first.sequence;
 						auto batchId = addNode(std::move(node));
-						if (input.filters.executionEdges && first.parentPass.id < passNodes.size())
-							addEdge(passNodes[first.parentPass.id], batchId, ProcessFlowEdgeKind::PassSubmission, {});
+						if (input.filters.executionEdges)
+						{
+							auto previous = lastPassChild.find(first.parentPass.id);
+							if (previous != lastPassChild.end()) addEdge(previous->second, batchId, ProcessFlowEdgeKind::ChildExecution, {});
+							lastPassChild[first.parentPass.id] = batchId;
+						}
 					}
 					continue;
 				}
@@ -310,8 +315,12 @@ namespace pipeline_editor
 					node.mainSpine = false;
 					node.layoutRank = (float)event.sequence;
 					auto stateId = addNode(std::move(node));
-					if (input.filters.executionEdges && event.pass.id < passNodes.size())
-						addEdge(passNodes[event.pass.id], stateId, ProcessFlowEdgeKind::PassSubmission, {});
+					if (input.filters.executionEdges)
+					{
+						auto previous = lastPassChild.find(event.pass.id);
+						if (previous != lastPassChild.end()) addEdge(previous->second, stateId, ProcessFlowEdgeKind::ChildExecution, {});
+						lastPassChild[event.pass.id] = stateId;
+					}
 					continue;
 				}
 				ProcessFlowNode node;
@@ -578,7 +587,7 @@ namespace pipeline_editor
 		if (std::count_if(model.nodes.begin(), model.nodes.end(), [](auto const& node)
 		    { return node.kind == ProcessFlowNodeKind::BatchGroup && node.submissionCount == 2 && !node.mainSpine; }) != 1 ||
 		    std::count_if(model.edges.begin(), model.edges.end(), [](auto const& edge)
-		    { return edge.kind == ProcessFlowEdgeKind::PassSubmission; }) != 2)
+		    { return edge.kind == ProcessFlowEdgeKind::ChildExecution; }) != 1)
 			throw std::runtime_error("Process-flow model did not group batches as pass-owned child steps.");
 		auto groupedEvents = snapshot->physicalEvents;
 		RenderFlowEvent stateEvent; stateEvent.kind = RenderFlowEventKind::GlState; stateEvent.sequence = 3; stateEvent.pass = consumer;

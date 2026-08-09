@@ -39,7 +39,7 @@ namespace pipeline_editor
 			switch (kind)
 			{
 			case ProcessFlowEdgeKind::Execution: return IM_COL32(205, 210, 220, 210);
-			case ProcessFlowEdgeKind::PassSubmission: return IM_COL32(225, 230, 235, 225);
+			case ProcessFlowEdgeKind::ChildExecution: return IM_COL32(225, 230, 235, 190);
 			case ProcessFlowEdgeKind::Colour: return IM_COL32(80, 190, 255, 210);
 			case ProcessFlowEdgeKind::Depth: return IM_COL32(245, 100, 100, 220);
 			case ProcessFlowEdgeKind::Shadow: return IM_COL32(155, 100, 230, 220);
@@ -195,22 +195,36 @@ namespace pipeline_editor
 			if (ImGui::GetIO().MousePos.x >= a.x && ImGui::GetIO().MousePos.x <= b.x &&
 			    ImGui::GetIO().MousePos.y >= a.y && ImGui::GetIO().MousePos.y <= b.y) hoveredNode = node.id;
 		}
+		for (auto const& pass : model.nodes)
+		{
+			if (pass.kind != ProcessFlowNodeKind::AuthoredPass || pass.passId < 0) continue;
+			bool hasChild = false;
+			glm::vec2 minimum = pass.position, maximum = pass.position + pass.size;
+			for (auto const& child : model.nodes)
+				if (child.parentPassId == pass.passId)
+				{
+					hasChild = true;
+					minimum = glm::min(minimum, child.position);
+					maximum = glm::max(maximum, child.position + child.size);
+				}
+			if (!hasChild) continue;
+			auto a = screen(minimum - glm::vec2(24.0f, 20.0f));
+			auto b = screen(maximum + glm::vec2(24.0f, 20.0f));
+			draw->AddRectFilled({a.x, a.y}, {b.x, b.y}, IM_COL32(115, 130, 155, 24), 12.0f);
+			draw->AddRect({a.x, a.y}, {b.x, b.y}, IM_COL32(145, 160, 185, 50), 12.0f);
+		}
 		for (auto const& edge : model.edges)
 		{
 			auto sourceIt = nodeLookup.find(edge.source), destinationIt = nodeLookup.find(edge.destination);
 			if (sourceIt == nodeLookup.end() || destinationIt == nodeLookup.end()) continue;
 			auto source = sourceIt->second, destination = destinationIt->second;
 			auto colour = edgeColour(edge.kind); float width = hoveredNode == edge.source || hoveredNode == edge.destination ? 3.2f : 1.8f;
-			if (edge.kind == ProcessFlowEdgeKind::PassSubmission)
+			if (edge.kind == ProcessFlowEdgeKind::ChildExecution)
 			{
-				auto start = screen(destination->position + glm::vec2(destination->size.x, destination->size.y * 0.5f));
-				auto end = screen(source->position + glm::vec2(0.0f, source->size.y * 0.5f));
+				auto start = screen(source->position + glm::vec2(source->size.x * 0.5f, source->size.y));
+				auto end = screen(destination->position + glm::vec2(destination->size.x * 0.5f, 0.0f));
 				if (intersects({start.x, start.y}, {end.x, end.y}, canvasMinimum, canvasMaximum))
-				{
 					draw->AddLine({start.x, start.y}, {end.x, end.y}, colour, width);
-					draw->AddTriangleFilled({end.x, end.y}, {end.x - 8.0f, end.y - 5.0f},
-					                        {end.x - 8.0f, end.y + 5.0f}, colour);
-				}
 				continue;
 			}
 			auto start = screen(source->position + glm::vec2(source->size.x * 0.5f, source->size.y));
