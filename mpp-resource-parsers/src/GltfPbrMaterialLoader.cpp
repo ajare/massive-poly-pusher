@@ -57,6 +57,31 @@ namespace mpp::resource_parsers
 		if (root.type != Json::Type::Object) throw std::runtime_error("glTF root must be a JSON object.");
 		auto asset = root.get("asset"); auto version = asset && asset->type == Json::Type::Object ? asset->get("version") : nullptr;
 		if (!version || version->type != Json::Type::String || version->string.empty() || version->string.front() != '2') throw std::runtime_error("glTF asset.version must identify glTF 2.x.");
-		throw std::runtime_error("glTF PBR material conversion is not implemented yet (phase 2 envelope validated): " + filepath.string());
+		auto materials = root.get("materials");
+		if (!materials || materials->type != Json::Type::Array || materials->array.empty()) throw std::runtime_error("glTF file contains no materials.");
+		auto const& material = materials->array.front();
+		if (material.type != Json::Type::Object) throw std::runtime_error("glTF material 0 must be an object.");
+		GltfPbrMaterialLoadResult result;
+		result.materialIndex = 0;
+		auto name = material.get("name"); result.materialName = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string();
+		if (materials->array.size() > 1) result.warnings.push_back("glTF defines " + std::to_string(materials->array.size()) + " materials; MPP loaded material 0 ('" + result.materialName + "') and ignored the remaining materials.");
+		result.definition = utils::StructuredData("PbrMaterial"); result.definition.addEntry("name", result.materialName);
+		utils::StructuredData surface("Surface");
+		auto scalar = [](Json const* value, float fallback) { return value && value->type == Json::Type::Number ? (float)value->number : fallback; };
+		auto vector = [&](Json const* value, std::initializer_list<float> defaults) { std::vector<float> result(defaults); if (value && value->type == Json::Type::Array) for (size_t i = 0; i < result.size() && i < value->array.size(); ++i) result[i] = scalar(&value->array[i], result[i]); return result; };
+		auto pbr = material.get("pbrMetallicRoughness");
+		auto base = pbr && pbr->type == Json::Type::Object ? vector(pbr->get("baseColorFactor"), {1, 1, 1, 1}) : std::vector<float>{1, 1, 1, 1};
+		surface.addEntry("baseColourFactor", std::to_string(base[0])+" "+std::to_string(base[1])+" "+std::to_string(base[2])+" "+std::to_string(base[3]));
+		surface.addEntry("metallicFactor", std::to_string(pbr && pbr->type == Json::Type::Object ? scalar(pbr->get("metallicFactor"), 1) : 1));
+		surface.addEntry("roughnessFactor", std::to_string(pbr && pbr->type == Json::Type::Object ? scalar(pbr->get("roughnessFactor"), 1) : 1));
+		auto emissive = vector(material.get("emissiveFactor"), {0, 0, 0}); surface.addEntry("emissiveFactor", std::to_string(emissive[0])+" "+std::to_string(emissive[1])+" "+std::to_string(emissive[2]));
+		surface.addEntry("normalScale", "1"); surface.addEntry("occlusionStrength", "1");
+		auto alpha = material.get("alphaMode"); surface.addEntry("alphaMode", alpha && alpha->type == Json::Type::String ? alpha->string : "OPAQUE");
+		surface.addEntry("alphaCutoff", std::to_string(scalar(material.get("alphaCutoff"), 0.5f)));
+		auto sided = material.get("doubleSided"); surface.addEntry("doubleSided", sided && sided->type == Json::Type::Boolean && sided->boolean ? "true" : "false");
+		result.definition.addEntry("Surface", surface);
+		auto images = root.get("images");
+		if (images && images->type == Json::Type::Array) for (auto const& image : images->array) if (image.type == Json::Type::Object) { auto uri = image.get("uri"); if (uri && uri->type == Json::Type::String && !uri->string.starts_with("data:")) result.generatedImages.push_back((filepath.parent_path() / std::filesystem::path(uri->string)).lexically_normal()); }
+		return result;
 	}
 }
