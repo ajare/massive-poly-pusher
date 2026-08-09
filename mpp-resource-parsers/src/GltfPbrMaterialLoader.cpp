@@ -68,6 +68,8 @@ namespace mpp::resource_parsers
 		result.materialIndex = (uint32_t)selected;
 		auto name = material.get("name"); result.materialName = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string() + ".Material" + std::to_string(selected);
 		result.definition = utils::StructuredData("PbrMaterial"); result.definition.addEntry("name", result.materialName);
+		utils::StructuredData mesh("MeshSpecification"); mesh.addEntry("primitive", "triangles"); mesh.addEntry("indexed", "true"); mesh.addEntry("storage", "static");
+		utils::StructuredData buffer("Buffer"); for (auto const* data : {"position3", "normal3", "texcoord2", "tangent4"}) { utils::StructuredData channel("Channel"); channel.addEntry("data", data); channel.addEntry("type", "float32"); buffer.addEntry("Channel", channel); } mesh.addEntry("Buffer", buffer); result.definition.addEntry("MeshSpecification", mesh);
 		utils::StructuredData surface("Surface");
 		auto scalar = [](Json const* value, float fallback) { return value && value->type == Json::Type::Number ? (float)value->number : fallback; };
 		auto vector = [&](Json const* value, std::initializer_list<float> defaults) { std::vector<float> result(defaults); if (value && value->type == Json::Type::Array) for (size_t i = 0; i < result.size() && i < value->array.size(); ++i) result[i] = scalar(&value->array[i], result[i]); return result; };
