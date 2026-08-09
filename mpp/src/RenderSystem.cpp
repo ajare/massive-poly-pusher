@@ -1617,6 +1617,17 @@ namespace mpp
 		return createRenderTexture(name, faceSize, faceSize, options);
 	}
 
+	RenderTargetPtr RenderSystem::convertEquirectangularToCubemap(Texture* hdrEquirectangular, string const& generatedName, uint32_t faceSize, uint32_t mipLevels)
+	{
+		validateEquirectangularConversionSource(hdrEquirectangular, generatedName, faceSize, mipLevels);
+		auto candidate = createIblCubemap(generatedName, faceSize, mipLevels);
+		// Only mip zero is populated here. Specular prefilter generation owns
+		// higher mip levels in Phase 7.
+		for (uint32_t face = 0; face < 6; ++face)
+			renderEquirectangularCubemapFace(hdrEquirectangular, candidate, face, 0);
+		return candidate;
+	}
+
 	RenderTargetPtr RenderSystem::createPhysicalRenderTexture(string const& name,size_t width,size_t height,RenderTextureOptions const& options,uint32_t samples)
 	{
 		if(samples==0||!mCaps.supportsMsaa(samples))THROW_MPP("Unsupported physical render-texture sample count "+to_string(samples)+".",__LINE__,__FILE__,__func__);
