@@ -11,7 +11,7 @@ namespace mpp::app
 {
 	namespace
 	{
-		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save, bool package=false, bool executable=false, bool folder=false)
+		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save, bool package=false, bool executable=false, bool image=false, bool folder=false)
 		{
 			HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			IFileDialog* dialog = nullptr;
@@ -27,11 +27,11 @@ namespace mpp::app
 			else
 			{
 				COMDLG_FILTERSPEC filters[] = {
-					{ executable ? L"Executable" : package ? L"MassivePolyPusher Package" : L"MassivePolyPusher XML", executable ? L"*.exe" : package ? L"*.mpppackage" : L"*.xml" },
+					{ executable ? L"Executable" : package ? L"MassivePolyPusher Package" : image ? L"Image files" : L"MassivePolyPusher XML", executable ? L"*.exe" : package ? L"*.mpppackage" : image ? L"*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.gif;*.dds;*.hdr" : L"*.xml" },
 					{ L"All files", L"*.*" }
 				};
 				dialog->SetFileTypes(2, filters);
-				dialog->SetDefaultExtension(executable ? L"exe" : package ? L"mpppackage" : L"xml");
+				dialog->SetDefaultExtension(executable ? L"exe" : package ? L"mpppackage" : image ? L"png" : L"xml");
 			}
 			if (save && !defaultName.empty()) { wstring name(defaultName.begin(), defaultName.end()); dialog->SetFileName(name.c_str()); }
 			SDL_SysWMinfo info{}; SDL_VERSION(&info.version); HWND window = SDL_GetWindowWMInfo(owner, &info) ? info.info.win.window : nullptr;
@@ -48,5 +48,6 @@ namespace mpp::app
 	optional<string> saveXmlFileDialog(SDL_Window* owner, string const& title, string const& defaultName) { return show(owner, title, defaultName, true); }
 	optional<string> savePackageFileDialog(SDL_Window* owner, string const& title, string const& defaultName) { return show(owner, title, defaultName, true, true); }
 	optional<string> openExecutableFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, true); }
-	optional<string> selectFolderDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, true); }
+	optional<string> openImageFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, true); }
+	optional<string> selectFolderDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, false, true); }
 }
