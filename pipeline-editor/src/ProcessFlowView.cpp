@@ -230,8 +230,9 @@ namespace pipeline_editor
 			if (!intersects(a, b, canvasMinimum, canvasMaximum)) continue;
 			auto fill = nodeColour(node);
 			bool selected = selectedNode(node);
-			auto border = node.id == hoveredNode ? IM_COL32(255, 240, 150, 255)
-			                                  : selected ? IM_COL32(80, 225, 255, 255) : IM_COL32(90, 95, 110, 255);
+			auto border = !node.enabled ? (node.id == hoveredNode ? IM_COL32(255, 115, 100, 255) : IM_COL32(215, 65, 55, 255))
+			                           : node.id == hoveredNode ? IM_COL32(255, 240, 150, 255)
+			                           : selected ? IM_COL32(80, 225, 255, 255) : IM_COL32(90, 95, 110, 255);
 			draw->AddRectFilled(a, b, fill, 7.0f);
 			draw->AddRect(a, b, border, 7.0f, 0, node.id == hoveredNode || selected ? 2.5f : 1.2f);
 			draw->PushClipRect({a.x + 3.0f, a.y + 3.0f}, {b.x - 3.0f, b.y - 3.0f}, true);

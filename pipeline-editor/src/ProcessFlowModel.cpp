@@ -293,16 +293,16 @@ namespace pipeline_editor
 				node.subtitle = renderFlowEventKindName(event.kind);
 				if (event.kind == RenderFlowEventKind::MsaaResolve)
 				{
-					if (event.enabled)
-					{
-						node.renderDocLabels.push_back("Store/Resolve Attachments");
-						node.renderDocLabelSummaries.push_back(event.depth ? "Resolve Depth" : "Resolve Colour");
-					}
+					node.renderDocLabels.push_back(event.enabled ? "Store/Resolve Attachments" : "MSAA resolve (bypassed)");
+					node.renderDocLabelSummaries.push_back(event.enabled
+					    ? (event.depth ? "Resolve Depth" : "Resolve Colour") : "MSAA (bypassed)");
 				}
-				else if (event.enabled && !event.outputName.empty())
+				else if (!event.outputName.empty() && (event.enabled || event.kind != RenderFlowEventKind::Presentation))
 				{
-					node.renderDocLabels.push_back(renderFlowOutputRenderDocLabel(event.outputName, event.kind));
-					node.renderDocLabelSummaries.push_back(outputStageSummary(event.outputName, event.kind));
+					auto summary = outputStageSummary(event.outputName, event.kind);
+					node.renderDocLabels.push_back(event.enabled ? renderFlowOutputRenderDocLabel(event.outputName, event.kind)
+					                                              : summary + " (bypassed)");
+					node.renderDocLabelSummaries.push_back(event.enabled ? std::move(summary) : summary + " (bypassed)");
 				}
 				node.kind = eventNodeKind(event.kind);
 				node.sequence = event.sequence;
@@ -327,6 +327,8 @@ namespace pipeline_editor
 					ProcessFlowNode node; node.semanticKey = "static-output:" + plan.name + ":" + key;
 					node.title = plan.name + " / " + title; node.subtitle = "Static output plan; waiting for live sample";
 					node.kind = kind; node.enabled = enabled; node.mainSpine = true;
+					node.renderDocLabels.push_back(plan.name + " / " + title);
+					node.renderDocLabelSummaries.push_back(plan.name + ": " + title + (enabled ? "" : " (bypassed)"));
 					node.bypassReason = enabled ? std::string() : reason; node.layoutRank = 10000.0f + (float)output * 10.0f + (float)spine.size();
 					auto id = addNode(std::move(node)); spine.push_back(id); return id;
 				};
@@ -585,7 +587,8 @@ namespace pipeline_editor
 		if (waiting.liveSample || std::none_of(waiting.nodes.begin(), waiting.nodes.end(), [](auto const& node)
 		    { return node.kind == ProcessFlowNodeKind::Presentation; }) ||
 		    std::none_of(waiting.nodes.begin(), waiting.nodes.end(), [](auto const& node)
-		    { return node.kind == ProcessFlowNodeKind::Taa && !node.enabled && node.mainSpine && !node.bypassReason.empty(); }))
+		    { return node.kind == ProcessFlowNodeKind::Taa && !node.enabled && node.mainSpine &&
+		             !node.renderDocLabelSummaries.empty() && !node.bypassReason.empty(); }))
 			throw std::runtime_error("Process-flow static waiting/output-stage test failed.");
 		input.filters.resources = (uint32_t)ProcessFlowResourceCategory::AuthoredImages;
 		auto resources = builder.build(input);
