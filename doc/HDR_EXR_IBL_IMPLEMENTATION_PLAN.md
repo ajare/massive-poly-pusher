@@ -201,7 +201,9 @@ Added the private `RenderSystem::renderEquirectangularCubemapFace` helper. It se
 
 **Acceptance:** One requested cubemap face/mip is populated without leaking renderer or GL state.
 
-### 5.5 Public six-face conversion API
+### 5.5 Public six-face conversion API — Complete
+
+Added `RenderSystem::convertEquirectangularToCubemap`. It validates source/configuration, creates a caller-named cache candidate, synchronously renders all six mip-zero faces, and returns only after complete conversion. Candidate ownership remains local until return, so failure cannot publish a partial cache resource.
 
 1. Implement `convertEquirectangularToCubemap(...)` using validation, `createIblCubemap`, and six calls to the single-face helper at mip zero.
 2. Do not generate/filter unwritten mips; return a complete mip-zero cubemap only.
