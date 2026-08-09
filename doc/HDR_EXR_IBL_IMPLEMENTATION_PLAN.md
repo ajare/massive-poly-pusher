@@ -523,9 +523,9 @@ Regenerate HDR IBL clears derived cache through forced preview rebuild while ret
 
 **Acceptance:** Authors can explicitly refresh derived IBL output and understand its preview status.
 
-### 10.5 Editor tests and guide — In progress
+### 10.5 Editor tests and guide — Complete
 
-Updated PipelineEditor authoring guide with EXR requirements, resolution/cost, HDR/manual precedence, generated LUT behavior, cache status, regeneration semantics, and package inclusion. Document/UI smoke coverage remains.
+Updated PipelineEditor authoring guide with EXR requirements, resolution/cost, HDR/manual precedence, generated LUT behavior, cache status, regeneration semantics, and package inclusion. Added HDR environment serializer/parser round-trip smoke coverage for source and all three resolutions.
 
 1. Add PipelineEditor document/UI smoke coverage for HDR declaration edit, clear, and serialization round trip.
 2. Update authoring guide with EXR requirements, resolutions/cost, manual override behavior, and regenerate semantics.
