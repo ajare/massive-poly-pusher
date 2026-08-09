@@ -227,14 +227,20 @@ namespace pipeline_editor
 				draw->AddText(nullptr, fontSize, {a.x + 10 * z, a.y + 8 * z}, IM_COL32_WHITE, node.title.c_str());
 				draw->AddText(nullptr, fontSize, {a.x + 10 * z, a.y + 29 * z}, IM_COL32(215, 220, 230, 255), node.subtitle.c_str());
 				if (node.orderWarning) draw->AddText(nullptr, fontSize, {b.x - 22 * z, a.y + 8 * z}, IM_COL32(255, 190, 55, 255), "!");
+				for (size_t label = 0; label < node.renderDocLabels.size(); ++label)
+					draw->AddText(nullptr, fontSize, {a.x + 10 * z, a.y + (49 + 20 * (float)label) * z},
+					              IM_COL32(245, 170, 70, 255), node.renderDocLabels[label].c_str());
 				if (!node.enabled) draw->AddText(nullptr, fontSize, {a.x + 10 * z, b.y - 20 * z}, IM_COL32(245, 180, 120, 255), "bypassed");
 				else if (!node.details.empty()) draw->AddText(nullptr, fontSize, {a.x + 10 * z, b.y - 20 * z}, IM_COL32(185, 195, 205, 255), node.details.c_str());
 				if (node.expanded && isBatchNode(node))
 					for (size_t index = 0; index < node.sceneObjectNames.size(); ++index)
-						draw->AddText(nullptr, fontSize, {a.x + 16 * z, a.y + (61 + (float)index * 22) * z},
+					{
+						float objectY = 61.0f + 20.0f * (float)node.renderDocLabels.size() + (float)index * 22.0f;
+						draw->AddText(nullptr, fontSize, {a.x + 16 * z, a.y + objectY * z},
 						              node.sceneObjectIndices[index] == highlight.sceneObject ? IM_COL32(90, 235, 255, 255)
 						                                                                       : IM_COL32(210, 230, 210, 255),
 						              node.sceneObjectNames[index].c_str());
+					}
 			}
 		}
 		draw->PopClipRect();
@@ -250,9 +256,10 @@ namespace pipeline_editor
 			else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				auto localY = (ImGui::GetIO().MousePos.y - (origin.y + mTransform.pan.y)) / mTransform.zoom - node->position.y;
-				if (node->expanded && localY >= 58.0f && !node->sceneObjectIndices.empty())
+				float objectStart = 58.0f + 20.0f * (float)node->renderDocLabels.size();
+				if (node->expanded && localY >= objectStart && !node->sceneObjectIndices.empty())
 				{
-					auto object = std::min((size_t)((localY - 58.0f) / 22.0f), node->sceneObjectIndices.size() - 1);
+					auto object = std::min((size_t)((localY - objectStart) / 22.0f), node->sceneObjectIndices.size() - 1);
 					selection.kind = ProcessFlowSelection::Kind::SceneObject;
 					selection.sceneObjectIndex = node->sceneObjectIndices[object];
 				}
@@ -266,6 +273,7 @@ namespace pipeline_editor
 			if (ImGui::IsItemHovered())
 			{
 				ImGui::BeginTooltip(); ImGui::TextUnformatted(node->title.c_str());
+				for (auto const& label : node->renderDocLabels) ImGui::Text("RenderDoc: %s", label.c_str());
 				if (!node->details.empty()) ImGui::TextUnformatted(node->details.c_str());
 				if (node->orderWarning) ImGui::Text("Authored position %d; executed position %d after dependency compilation.", node->authoredPosition + 1, node->actualPosition + 1);
 				if (!node->bypassReason.empty()) ImGui::TextWrapped("%s", node->bypassReason.c_str());

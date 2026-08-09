@@ -29,6 +29,11 @@ namespace mpp
 	};
 
 	_MPPAPI char const* renderFlowEventKindName(RenderFlowEventKind kind);
+	_MPPAPI std::string renderFlowPassRenderDocLabel(GraphPassHandle pass, std::string const& name,
+	                                                GraphPassType type);
+	_MPPAPI char const* renderFlowGeometryRenderDocLabel(bool transparent);
+	_MPPAPI std::string renderFlowOutputRenderDocLabel(std::string const& outputName,
+	                                                  RenderFlowEventKind kind);
 
 	// Exact renderer submission descriptor populated immediately before the
 	// corresponding mesh draw. Source identity is non-owning and generation-local.

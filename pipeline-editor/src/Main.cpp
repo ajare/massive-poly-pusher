@@ -6312,7 +6312,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						                 { return node.kind == ProcessFlowNodeKind::Presentation; }) ||
 						    std::any_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
 						                { return (node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup) &&
-						                         node.sceneObjectNames.empty(); }))
+						                         node.sceneObjectNames.empty(); }) ||
+						    std::any_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
+						                { return node.mainSpine && node.renderDocLabels.empty(); }))
 							throw std::runtime_error("Process-flow editor model/layout smoke validation failed.");
 						running = false;
 					}

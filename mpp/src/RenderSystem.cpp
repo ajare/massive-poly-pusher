@@ -3722,7 +3722,7 @@ namespace mpp
 			if (geometryClass != currentGeometryClass)
 			{
 				geometryScope.reset();
-				geometryScope = make_unique<GpuDebugScope>(geometryClass ? "Draw: Transparent Geometry" : "Draw: Opaque + Masked Geometry");
+				geometryScope = make_unique<GpuDebugScope>(renderFlowGeometryRenderDocLabel(geometryClass != 0));
 				currentGeometryClass = geometryClass;
 			}
 			auto mesh = meshInstance->mwMesh;

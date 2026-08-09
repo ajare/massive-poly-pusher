@@ -4,6 +4,20 @@
 
 namespace mpp
 {
+	namespace
+	{
+		char const* passTypeName(GraphPassType type)
+		{
+			switch (type)
+			{
+			case GraphPassType::Scene: return "Scene";
+			case GraphPassType::Fullscreen: return "Fullscreen";
+			case GraphPassType::Present: return "Present";
+			}
+			return "Unknown";
+		}
+	}
+
 	char const* renderFlowEventKindName(RenderFlowEventKind kind)
 	{
 		switch (kind)
@@ -19,5 +33,20 @@ namespace mpp
 		case RenderFlowEventKind::Presentation: return "presentation";
 		}
 		throw std::invalid_argument("Unknown render-flow event kind.");
+	}
+
+	std::string renderFlowPassRenderDocLabel(GraphPassHandle pass, std::string const& name, GraphPassType type)
+	{
+		return "RenderGraph Pass " + std::to_string(pass.id) + ": " + name + " [" + passTypeName(type) + "]";
+	}
+
+	char const* renderFlowGeometryRenderDocLabel(bool transparent)
+	{
+		return transparent ? "Draw: Transparent Geometry" : "Draw: Opaque + Masked Geometry";
+	}
+
+	std::string renderFlowOutputRenderDocLabel(std::string const& outputName, RenderFlowEventKind kind)
+	{
+		return "Output " + outputName + ": " + renderFlowEventKindName(kind);
 	}
 }

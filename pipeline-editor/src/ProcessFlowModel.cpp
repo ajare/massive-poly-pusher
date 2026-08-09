@@ -169,6 +169,7 @@ namespace pipeline_editor
 			node.semanticKey = "pass:" + std::to_string(pass);
 			node.title = info.name;
 			node.subtitle = info.callbackFactory.empty() ? "Authored pass" : info.callbackFactory;
+			node.renderDocLabels.push_back(renderFlowPassRenderDocLabel({pass}, info.name, info.type));
 			node.kind = ProcessFlowNodeKind::AuthoredPass;
 			node.passId = (int)pass;
 			node.authoredPosition = (int)pass;
@@ -186,6 +187,7 @@ namespace pipeline_editor
 				node.bypassReason = "Disabled by authored pass setting";
 			}
 			else if (!node.enabled) node.bypassReason = "Not present in the last successful compiled execution order";
+			if (!node.enabled) node.renderDocLabels.clear();
 			node.orderWarning = node.enabled && node.actualPosition != node.authoredPosition;
 			node.layoutRank = node.actualPosition >= 0 ? (float)node.actualPosition : (float)node.authoredPosition;
 			passNodes[pass] = addNode(std::move(node));
@@ -234,9 +236,11 @@ namespace pipeline_editor
 						node.passId = (int)first.parentPass.id;
 						node.materialName = first.materialName;
 						uint64_t primitives = 0, instances = 0; bool unresolvedSource = false;
+						bool opaqueLabel = false, transparentLabel = false;
 						for (auto const* batch : group)
 						{
 							primitives += batch->count; instances += batch->instanceCount;
+							if (batch->transparent) transparentLabel = true; else opaqueLabel = true;
 							if (!batch->sceneObject) continue;
 							auto object = input.sceneObjects.find(batch->sceneObject);
 							if (object == input.sceneObjects.end()) { unresolvedSource = true; continue; }
@@ -246,6 +250,8 @@ namespace pipeline_editor
 								node.sceneObjectNames.push_back(object->second.name);
 							}
 						}
+						if (opaqueLabel) node.renderDocLabels.push_back(renderFlowGeometryRenderDocLabel(false));
+						if (transparentLabel) node.renderDocLabels.push_back(renderFlowGeometryRenderDocLabel(true));
 						node.details = std::to_string(group.size()) + " submission(s), " + std::to_string(primitives) +
 						               " primitives, " + std::to_string(instances) + " instance(s)";
 						if (unresolvedSource) node.details += " | source unavailable for this scene generation";
@@ -259,6 +265,9 @@ namespace pipeline_editor
 				node.semanticKey = "event:" + std::to_string(event.sequence) + ":" + std::to_string((int)event.kind);
 				node.title = event.name.empty() ? renderFlowEventKindName(event.kind) : event.name;
 				node.subtitle = renderFlowEventKindName(event.kind);
+				if (event.kind == RenderFlowEventKind::MsaaResolve) node.renderDocLabels.push_back("Store/Resolve Attachments");
+				else if (event.enabled && !event.outputName.empty())
+					node.renderDocLabels.push_back(renderFlowOutputRenderDocLabel(event.outputName, event.kind));
 				node.kind = eventNodeKind(event.kind);
 				node.sequence = event.sequence;
 				node.passId = event.pass.isValid() ? (int)event.pass.id : -1;
