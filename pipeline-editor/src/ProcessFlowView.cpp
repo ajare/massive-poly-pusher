@@ -222,27 +222,29 @@ namespace pipeline_editor
 			draw->AddRectFilled(a, b, fill, 7.0f);
 			draw->AddRect(a, b, border, 7.0f, 0, node.id == hoveredNode || selected ? 2.5f : 1.2f);
 			draw->PushClipRect({a.x + 3.0f, a.y + 3.0f}, {b.x - 3.0f, b.y - 3.0f}, true);
-			float z = mTransform.zoom, fontSize = std::max(6.0f, ImGui::GetFontSize() * z * 1.10f);
+			float z = mTransform.zoom;
+			float bodyFontSize = std::max(6.0f, ImGui::GetFontSize() * z * 1.10f);
+			float labelFontSize = bodyFontSize * 3.0f;
 			for (size_t label = 0; label < node.renderDocLabels.size(); ++label)
 			{
 				auto const& summary = label < node.renderDocLabelSummaries.size()
 				                          ? node.renderDocLabelSummaries[label] : node.renderDocLabels[label];
-				draw->AddText(nullptr, fontSize, {a.x + 11 * z, a.y + (9 + 22 * (float)label) * z},
+				draw->AddText(nullptr, labelFontSize, {a.x + 11 * z, a.y + (9 + 72 * (float)label) * z},
 				              IM_COL32(255, 190, 70, 255), summary.c_str());
 			}
 			if (mTransform.zoom >= 0.40f)
 			{
-				float bodyY = 9.0f + 22.0f * (float)node.renderDocLabels.size();
-				draw->AddText(nullptr, fontSize, {a.x + 11 * z, a.y + bodyY * z}, IM_COL32_WHITE, node.title.c_str());
-				draw->AddText(nullptr, fontSize, {a.x + 11 * z, a.y + (bodyY + 23) * z}, IM_COL32(215, 220, 230, 255), node.subtitle.c_str());
-				if (node.orderWarning) draw->AddText(nullptr, fontSize, {b.x - 22 * z, a.y + bodyY * z}, IM_COL32(255, 190, 55, 255), "!");
-				if (!node.enabled) draw->AddText(nullptr, fontSize, {a.x + 11 * z, b.y - 22 * z}, IM_COL32(245, 180, 120, 255), "bypassed");
-				else if (!node.details.empty()) draw->AddText(nullptr, fontSize, {a.x + 11 * z, b.y - 22 * z}, IM_COL32(185, 195, 205, 255), node.details.c_str());
+				float bodyY = 9.0f + 72.0f * (float)node.renderDocLabels.size();
+				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + bodyY * z}, IM_COL32_WHITE, node.title.c_str());
+				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + (bodyY + 23) * z}, IM_COL32(215, 220, 230, 255), node.subtitle.c_str());
+				if (node.orderWarning) draw->AddText(nullptr, bodyFontSize, {b.x - 22 * z, a.y + bodyY * z}, IM_COL32(255, 190, 55, 255), "!");
+				if (!node.enabled) draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, b.y - 22 * z}, IM_COL32(245, 180, 120, 255), "bypassed");
+				else if (!node.details.empty()) draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, b.y - 22 * z}, IM_COL32(185, 195, 205, 255), node.details.c_str());
 				if (node.expanded && isBatchNode(node))
 					for (size_t index = 0; index < node.sceneObjectNames.size(); ++index)
 					{
-						float objectY = 67.0f + 22.0f * (float)node.renderDocLabels.size() + (float)index * 24.0f;
-						draw->AddText(nullptr, fontSize, {a.x + 17 * z, a.y + objectY * z},
+						float objectY = 67.0f + 72.0f * (float)node.renderDocLabels.size() + (float)index * 24.0f;
+						draw->AddText(nullptr, bodyFontSize, {a.x + 17 * z, a.y + objectY * z},
 						              node.sceneObjectIndices[index] == highlight.sceneObject ? IM_COL32(90, 235, 255, 255)
 						                                                                       : IM_COL32(210, 230, 210, 255),
 						              node.sceneObjectNames[index].c_str());
@@ -263,7 +265,7 @@ namespace pipeline_editor
 			else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				auto localY = (ImGui::GetIO().MousePos.y - (origin.y + mTransform.pan.y)) / mTransform.zoom - node->position.y;
-				float objectStart = 64.0f + 22.0f * (float)node->renderDocLabels.size();
+				float objectStart = 64.0f + 72.0f * (float)node->renderDocLabels.size();
 				if (node->expanded && localY >= objectStart && !node->sceneObjectIndices.empty())
 				{
 					auto object = std::min((size_t)((localY - objectStart) / 24.0f), node->sceneObjectIndices.size() - 1);

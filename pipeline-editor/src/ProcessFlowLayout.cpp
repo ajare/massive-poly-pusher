@@ -16,9 +16,9 @@ namespace pipeline_editor
 			bool batch = node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup;
 			size_t labelCharacters = node.title.size();
 			for (auto const& label : node.renderDocLabelSummaries) labelCharacters = std::max(labelCharacters, label.size());
-			node.size.x = std::clamp(24.0f + 7.4f * (float)labelCharacters,
-			                         batch ? 245.0f : 235.0f, 360.0f);
-			float labelHeight = 22.0f * (float)node.renderDocLabels.size();
+			node.size.x = 3.0f * std::clamp(24.0f + 7.4f * (float)labelCharacters,
+			                                batch ? 245.0f : 235.0f, 360.0f);
+			float labelHeight = 72.0f * (float)node.renderDocLabels.size();
 			node.size.y = batch && node.expanded
 			                  ? 90.0f + labelHeight + 24.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
 			                  : 86.0f + labelHeight;
@@ -52,7 +52,7 @@ namespace pipeline_editor
 		for (auto* node : disabled)
 		{
 			auto nodeY = std::max(yForRank(node->layoutRank), disabledBottom + 26.0f);
-			node->position = {280.0f, nodeY}; disabledBottom = nodeY + node->size.y;
+			node->position = {1140.0f, nodeY}; disabledBottom = nodeY + node->size.y;
 		}
 		std::stable_sort(resources.begin(), resources.end(), orderByRank);
 		float resourceBottom = -104.0f, outputBottom = -104.0f;
@@ -61,7 +61,7 @@ namespace pipeline_editor
 			bool output = node->resourceCategory == ProcessFlowResourceCategory::NamedOutputs;
 			auto& bottom = output ? outputBottom : resourceBottom;
 			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
-			node->position = {output ? 540.0f : -270.0f, nodeY}; bottom = nodeY + node->size.y;
+			node->position = {output ? 2280.0f : -1140.0f, nodeY}; bottom = nodeY + node->size.y;
 		}
 	}
 
