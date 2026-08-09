@@ -1687,6 +1687,20 @@ namespace mpp
 		return createRenderTexture(name, faceSize, faceSize, options);
 	}
 
+	RenderTargetPtr RenderSystem::generatePrefilteredSpecular(Texture* environmentCubemap, string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount)
+	{
+		validatePrefilteredSpecularSource(environmentCubemap, generatedName, faceSize, mipLevels, sampleCount);
+		auto candidate = createIblCubemap(generatedName, faceSize, mipLevels);
+		if (dynamic_cast<Texture*>(candidate.get()) == environmentCubemap) THROW_MPP("Specular prefilter source and output cannot alias.", __LINE__, __FILE__, __func__);
+		for (uint32_t mip = 0; mip < mipLevels; ++mip)
+		{
+			float roughness = (float)mip / (float)(mipLevels - 1);
+			for (uint32_t face = 0; face < 6; ++face)
+				renderPrefilteredSpecularFace(environmentCubemap, candidate, face, mip, roughness, sampleCount);
+		}
+		return candidate;
+	}
+
 	RenderTargetPtr RenderSystem::generateDiffuseIrradiance(Texture* environmentCubemap, string const& generatedName, uint32_t faceSize, uint32_t sampleCount)
 	{
 		validateDiffuseIrradianceSource(environmentCubemap, generatedName, faceSize, sampleCount);
