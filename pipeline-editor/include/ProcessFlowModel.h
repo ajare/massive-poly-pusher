@@ -63,9 +63,7 @@ namespace pipeline_editor
 		std::vector<std::string> renderDocLabels;
 		std::vector<std::string> renderDocLabelSummaries;
 		std::vector<std::string> inputLabels;
-		std::vector<std::string> inputPortKeys;
 		std::vector<std::string> outputLabels;
-		std::vector<std::string> outputPortKeys;
 		ProcessFlowNodeKind kind{ ProcessFlowNodeKind::AuthoredPass };
 		ProcessFlowResourceCategory resourceCategory{ ProcessFlowResourceCategory::None };
 		uint64_t sequence{ 0 };
@@ -96,8 +94,6 @@ namespace pipeline_editor
 		uint64_t destination{ 0 };
 		ProcessFlowEdgeKind kind{ ProcessFlowEdgeKind::Execution };
 		std::string label;
-		std::string sourcePortKey;
-		std::string destinationPortKey;
 	};
 
 	struct ProcessFlowModel

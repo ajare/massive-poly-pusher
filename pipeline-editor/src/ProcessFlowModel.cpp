@@ -163,15 +163,14 @@ namespace pipeline_editor
 			model.nodes.push_back(std::move(node));
 			return model.nodes.back().id;
 		};
-		auto addEdge = [&](uint64_t source, uint64_t destination, ProcessFlowEdgeKind kind, std::string label,
-		                   std::string sourcePortKey = {}, std::string destinationPortKey = {})
+		auto addEdge = [&](uint64_t source, uint64_t destination, ProcessFlowEdgeKind kind, std::string label)
 		{
 			if (!source || !destination || source == destination) return;
 			auto key = std::to_string(source) + ">" + std::to_string(destination) + ":" +
-			           std::to_string((int)kind) + ":" + label + ":" + sourcePortKey + ":" + destinationPortKey;
+			           std::to_string((int)kind) + ":" + label;
 			uint64_t id = stableId("edge:" + key);
 			if (!edgeIds.insert(id).second) return;
-			model.edges.push_back({id, source, destination, kind, std::move(label), std::move(sourcePortKey), std::move(destinationPortKey)});
+			model.edges.push_back({id, source, destination, kind, std::move(label)});
 		};
 
 		std::vector<GraphPassHandle> actual = input.snapshot ? input.snapshot->actualPassOrder : compiled.passOrder;
@@ -198,7 +197,6 @@ namespace pipeline_editor
 				auto image = imageLabel(binding.image);
 				node.inputLabels.push_back(binding.sampler + " <- " + image +
 				                          (binding.mipLevel == UINT32_MAX ? "" : " mip " + std::to_string(binding.mipLevel)));
-				node.inputPortKeys.push_back(imageKey(binding.image));
 				samplerImages.insert(image);
 			}
 			for (auto image : info.sampledInputs)
@@ -207,18 +205,15 @@ namespace pipeline_editor
 				if (!samplerImages.contains(label))
 				{
 					node.inputLabels.push_back("Sampled <- " + label);
-					node.inputPortKeys.push_back(imageKey(image));
 				}
 			}
 			for (auto const& output : info.colourOutputs)
 			{
 				node.outputLabels.push_back("Colour -> " + imageLabel(output.image));
-				node.outputPortKeys.push_back(imageKey(output.image));
 			}
 			for (auto const& output : info.depthOutputs)
 			{
 				node.outputLabels.push_back("Depth -> " + imageLabel(output.image));
-				node.outputPortKeys.push_back(imageKey(output.image));
 			}
 			node.kind = ProcessFlowNodeKind::AuthoredPass;
 			node.passId = (int)pass;
@@ -474,14 +469,10 @@ namespace pipeline_editor
 						node.layoutRank = model.findNode(consumer)->layoutRank - 0.25f;
 						resourceId = authoredResources[key] = addNode(std::move(node));
 					}
-					if (producer != producers.end())
-					{
-						addEdge(producer->second, resourceId, kind, label);
-						addEdge(producer->second, consumer, kind, label, key, key);
-					}
+					if (producer != producers.end()) addEdge(producer->second, resourceId, kind, label);
 					addEdge(resourceId, consumer, kind, label);
 				}
-				else if (producer != producers.end()) addEdge(producer->second, consumer, kind, label, key, key);
+				else if (producer != producers.end()) addEdge(producer->second, consumer, kind, label);
 			};
 			for (uint32_t pass = 0; pass < input.graph->getPassCount(); ++pass)
 			{
@@ -648,15 +639,10 @@ namespace pipeline_editor
 		snapshot->physicalEvents = std::move(groupedEvents);
 		input.filters.stateNodes = false;
 		if (std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
-		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.inputLabels.empty() &&
-		             node.inputLabels.size() == node.inputPortKeys.size(); }) ||
+		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.inputLabels.empty(); }) ||
 		    std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
-		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.outputLabels.empty() &&
-		             node.outputLabels.size() == node.outputPortKeys.size(); }))
+		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.outputLabels.empty(); }))
 			throw std::runtime_error("Process-flow pass I/O labels were not populated.");
-		if (std::none_of(model.edges.begin(), model.edges.end(), [](auto const& edge)
-		    { return !edge.sourcePortKey.empty() && edge.sourcePortKey == edge.destinationPortKey; }))
-			throw std::runtime_error("Process-flow pass I/O connection was not populated.");
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
