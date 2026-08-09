@@ -331,7 +331,9 @@ Added `FragmentShaderPrefilteredSpecularTemplate`: deterministic Hammersley/GGX 
 
 **Acceptance:** Shader source implements deterministic roughness-dependent GGX prefiltering without scene-camera dependency.
 
-### 7.3 Core-program lifecycle and validation
+### 7.3 Core-program lifecycle and validation — Complete
+
+Added stable renderer-owned `__mpp_ibl_prefiltered_specular__` program creation. Phase 7.1 validation rejects invalid floating-point cubemap/settings before rendering, and the face helper derives source resolution from `Texture::getWidth()`.
 
 1. Add/load/destroy a stable `__mpp_ibl_prefiltered_specular__` core program.
 2. Add validation for floating-point cubemap source, output settings, supported mip count, and source/output aliasing.
