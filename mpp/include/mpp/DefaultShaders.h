@@ -252,7 +252,7 @@ void main()
     vec3 up = abs(normal.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
     vec3 tangent = normalize(cross(up, normal));
     vec3 bitangent = cross(normal, tangent);
-    vec3 sum = vec3(0.0); float weight = 0.0;
+    vec3 sum = vec3(0.0);
     int samples = clamp(@Uniform(SAMPLE_COUNT), 1, 1024);
     for (int index = 0; index < 1024; ++index)
     {
@@ -263,11 +263,16 @@ void main()
         float sinTheta = sqrt(xi.x);
         vec3 local = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
         vec3 light = normalize(tangent * local.x + bitangent * local.y + normal * local.z);
-        float nDotL = max(dot(normal, light), 0.0);
-        sum += texture(@Texture(ENVIRONMENT), light).rgb * nDotL;
-        weight += nDotL;
+        // cosTheta above is sqrt(1-xi.x), so these directions already carry the
+        // pdf cos(theta)/pi. The cosine and the 1/pi both cancel out of the
+        // estimator, leaving E/pi -- which is exactly what the PBR shader wants
+        // for Lambert diffuse -- as the plain unweighted mean of the radiance.
+        // Re-applying the cosine here and normalising by its sum would integrate
+        // against a cos^2 lobe instead, concentrating ambient light too tightly
+        // around the normal. A constant environment hides the error entirely.
+        sum += texture(@Texture(ENVIRONMENT), light).rgb;
     }
-    @Out(vec4 COLOUR) = vec4(sum / max(weight, 0.00001), 1.0);
+    @Out(vec4 COLOUR) = vec4(sum / float(samples), 1.0);
 }
 )";
 
