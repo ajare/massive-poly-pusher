@@ -1748,15 +1748,25 @@ namespace mpp
 	ResourcePtr RenderSystem::getOrCreatePbrBrdfIntegrationLut()
 	{
 		if (mPbrBrdfIntegrationLut) return mPbrBrdfIntegrationLut;
-		RenderTextureOptions options; options.colourInternalFormat = GL_RG16F; options.params.minFilter = GL_LINEAR; options.params.magFilter = GL_LINEAR; options.params.useMipmaps = false;
+		// The shader looks this up as (nDotV, roughness). Both axes reach 1.0 -- a
+		// surface facing the camera is the commonest case of all -- so the default
+		// GL_REPEAT would make the bilinear tap at u=1 blend the head-on texel with
+		// the grazing-incidence texel at u=0, whose scale/bias are nothing alike.
+		RenderTextureOptions options; options.colourInternalFormat = GL_RG16F; options.params.minFilter = GL_LINEAR; options.params.magFilter = GL_LINEAR; options.params.wrap = GL_CLAMP_TO_EDGE; options.params.useMipmaps = false;
 		auto candidate = createRenderTexture("__mpp_ibl_brdf_integration_lut__", 512, 512, options);
 		GLint viewport[4]{}, scissor[4]{}, drawBuffer = 0, readBuffer = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, viewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, scissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &readBuffer)); auto scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 		pushRenderTarget(candidate); pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
 		try
 		{
-			setViewport(0, 0, 512, 512); setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			// The shared fullscreen quad is authored in window pixels and the fullscreen
+			// vertex shader divides by HALF_WINDOW_SIZE to reach NDC, so both the model
+			// scale and that uniform have to be retargeted at 512. Leaving the uniform
+			// unset divides by zero and the quad never rasterizes, which is what left
+			// this LUT entirely black. Every other offscreen pass does the same pair.
+			setViewport(0, 0, 512, 512); setProjection2dOrthographic(); resetTransform();
+			scaleTransform2d(glm::vec2(512.0f / (float)getWindowWidth(), 512.0f / (float)getWindowHeight())); flushVertexBuffers();
 			auto program = static_cast<Program*>(mPbrBrdfIntegrationProgram.get()); setUsedProgram(mPbrBrdfIntegrationProgram);
-			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix))); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), 1024)); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), 512.0f, 512.0f));
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix))); GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), 256.0f, 256.0f)); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), 1024)); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), 512.0f, 512.0f));
 			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false); mRenderInfo.programSwitches++; mRenderInfo.fullscreenQuads++;
 			popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget();
 		}
