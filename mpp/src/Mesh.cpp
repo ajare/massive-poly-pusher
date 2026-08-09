@@ -158,7 +158,7 @@ namespace mpp
 	 */
 	void Mesh::setIndexData(vector<uint8_t> const& indexData, size_t indexWidth)
 	{
-		auto numIndices = (uint32_t)indexData.size() / (indexWidth >> 8);
+		auto numIndices = (uint32_t)(indexData.size() / (indexWidth >> 8));
 		setIndexData((int8_t const*)&(indexData[0]), numIndices, indexWidth);
 	}
 
