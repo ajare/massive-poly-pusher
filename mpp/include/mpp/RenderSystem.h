@@ -208,6 +208,7 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
+		ResourcePtr mPbrBrdfIntegrationLut;
 		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram;
 
 		// Text rendering
@@ -438,6 +439,9 @@ namespace mpp
 		// Generates an unpublished GGX-prefiltered specular cubemap. Mip zero is
 		// roughness zero; final mip is roughness one.
 		RenderTargetPtr generatePrefilteredSpecular(Texture* environmentCubemap, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount = 1024);
+		// Returns the renderer-owned split-sum BRDF integration LUT. Creation is
+		// lazy and cached for this renderer/context.
+		ResourcePtr getOrCreatePbrBrdfIntegrationLut();
 
 		void flushVertexBuffers();
 

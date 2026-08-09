@@ -376,7 +376,9 @@ Reduced-sample GPU coverage verifies neutral HDR mip-chain initialization/energy
 
 The current `__mpp_tex_pbr_brdf_lut__` is a 1x1 white fallback, not a generated split-sum BRDF integration LUT. HDR IBL therefore needs a renderer-owned generated LUT.
 
-### 8.1 LUT contract and API
+### 8.1 LUT contract and API — Complete
+
+Declared `RenderSystem::getOrCreatePbrBrdfIntegrationLut()` and renderer-held shared ownership. The contract uses a lazily generated linear floating-point 512x512 LUT (RG16F preferred; RGBA16F fallback); the existing 1x1 white resource remains an error/non-IBL fallback.
 
 1. Define a renderer-owned linear floating-point 2D LUT contract (default 512x512 `RG16F`/`RGBA16F`) indexed by `NdotV` and roughness.
 2. Add `RenderSystem::getOrCreatePbrBrdfIntegrationLut()` returning a shared core resource; it creates once per renderer/context and returns the same resource thereafter.
