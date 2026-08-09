@@ -38,6 +38,16 @@ namespace mpp
 		auto injected = injectPbrSpecializationDefines("@@Version\nvoid main() {}", full);
 		if (injected.rfind("@@Version\n#define PBR_SPEC_", 0) != 0) return fail("specialization defines were not inserted after @@Version");
 		if (!hasPbrFeature(derivePbrMaterialFeatures(surface, textures, true), PbrMaterialFeature::LegacyFullContract)) return fail("legacy contract marker was lost");
+		PbrMaterialSpecification::PbrSurface scalarSurface;
+		scalarSurface.metallicFactor = 0.0f; scalarSurface.roughnessFactor = 0.0f;
+		std::vector<PbrMaterialSpecification::TextureOptions> scalarMaps;
+		PbrMaterialSpecification::TextureOptions metallic; metallic.resourceExists = true; metallic.sampler = "PBR_METALLIC_MAP"; metallic.channel = 2; scalarMaps.push_back(metallic);
+		PbrMaterialSpecification::TextureOptions roughness; roughness.resourceExists = true; roughness.sampler = "PBR_ROUGHNESS_MAP"; roughness.channel = 3; scalarMaps.push_back(roughness);
+		auto scalar = derivePbrMaterialFeatures(scalarSurface, scalarMaps);
+		if (!hasPbrFeature(scalar, PbrMaterialFeature::Metallic) || !hasPbrFeature(scalar, PbrMaterialFeature::Roughness) ||
+		    !hasPbrFeature(scalar, PbrMaterialFeature::MetallicMap) || !hasPbrFeature(scalar, PbrMaterialFeature::RoughnessMap) ||
+		    makePbrSpecializationDefines(scalar).find("#define PBR_SPEC_METALLIC_MAP 1") == std::string::npos)
+			return fail("independent scalar-map feature derivation failed");
 		return true;
 	}
 }

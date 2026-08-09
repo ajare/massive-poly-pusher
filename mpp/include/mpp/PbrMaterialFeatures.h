@@ -21,6 +21,8 @@ namespace mpp
 		AlphaMask = 1u << 7,
 		AlphaBlend = 1u << 8,
 		DoubleSided = 1u << 9,
+		MetallicMap = 1u << 10,
+		RoughnessMap = 1u << 11,
 		LegacyFullContract = 1u << 31
 	};
 

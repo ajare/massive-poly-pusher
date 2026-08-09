@@ -28,6 +28,8 @@ void main()
 #define PBR_SPEC_METALLIC 1
 #define PBR_SPEC_ROUGHNESS 1
 #define PBR_SPEC_METALLIC_ROUGHNESS_MAP 1
+#define PBR_SPEC_METALLIC_MAP 0
+#define PBR_SPEC_ROUGHNESS_MAP 0
 #define PBR_SPEC_NORMAL_MAP 1
 #define PBR_SPEC_OCCLUSION 1
 #define PBR_SPEC_EMISSIVE 1
@@ -45,6 +47,12 @@ void main()
 #endif
 #if PBR_SPEC_EMISSIVE || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Uniform(vec3 PBR_EMISSIVE_FACTOR);
+#endif
+#if PBR_SPEC_METALLIC_MAP
+@@Uniform(int PBR_METALLIC_CHANNEL);
+#endif
+#if PBR_SPEC_ROUGHNESS_MAP
+@@Uniform(int PBR_ROUGHNESS_CHANNEL);
 #endif
 #if PBR_SPEC_NORMAL_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Uniform(float PBR_NORMAL_SCALE);
@@ -65,6 +73,12 @@ void main()
 #endif
 #if PBR_SPEC_METALLIC_ROUGHNESS_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_METALLIC_ROUGHNESS_MAP);
+#endif
+#if PBR_SPEC_METALLIC_MAP
+@@Texture(sampler2D PBR_METALLIC_MAP);
+#endif
+#if PBR_SPEC_ROUGHNESS_MAP
+@@Texture(sampler2D PBR_ROUGHNESS_MAP);
 #endif
 #if PBR_SPEC_NORMAL_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_NORMAL_MAP);
@@ -206,7 +220,9 @@ void main()
     float metallic = clamp(metallicRoughness.b * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
     float roughness = clamp(metallicRoughness.g * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
 #elif PBR_SPEC_METALLIC
-#if PBR_SPEC_METALLIC_ROUGHNESS_MAP
+#if PBR_SPEC_METALLIC_MAP
+    float metallic = clamp(texture(@Texture(PBR_METALLIC_MAP), @In(TEXCOORDS))[clamp(@Uniform(PBR_METALLIC_CHANNEL), 0, 3)] * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
+#elif PBR_SPEC_METALLIC_ROUGHNESS_MAP
     float metallic = clamp(metallicRoughness.b * @Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
 #else
     float metallic = clamp(@Uniform(PBR_METALLIC_FACTOR), 0.0, 1.0);
@@ -216,7 +232,9 @@ void main()
 #endif
 #if !PBR_SPEC_LEGACY_FULL_CONTRACT
 #if PBR_SPEC_ROUGHNESS
-#if PBR_SPEC_METALLIC_ROUGHNESS_MAP
+#if PBR_SPEC_ROUGHNESS_MAP
+    float roughness = clamp(texture(@Texture(PBR_ROUGHNESS_MAP), @In(TEXCOORDS))[clamp(@Uniform(PBR_ROUGHNESS_CHANNEL), 0, 3)] * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
+#elif PBR_SPEC_METALLIC_ROUGHNESS_MAP
     float roughness = clamp(metallicRoughness.g * @Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);
 #else
     float roughness = clamp(@Uniform(PBR_ROUGHNESS_FACTOR), 0.04, 1.0);

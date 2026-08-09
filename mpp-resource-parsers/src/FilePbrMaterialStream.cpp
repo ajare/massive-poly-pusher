@@ -82,10 +82,11 @@ namespace mpp
 						}
 					}
 				}
-				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
+				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "MetallicMap" || entry.first == "RoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
 				{
 					static map<string, string> const samplers = {
 						{ "BaseColourMap", "PBR_BASE_COLOUR_MAP" }, { "MetallicRoughnessMap", "PBR_METALLIC_ROUGHNESS_MAP" },
+						{ "MetallicMap", "PBR_METALLIC_MAP" }, { "RoughnessMap", "PBR_ROUGHNESS_MAP" },
 						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" }
 					};
 					if (entry.second.hasEntry("Resource"))
@@ -419,10 +420,11 @@ namespace mpp
 					qs.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
 					qs.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
 				}
-				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
+				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "MetallicMap" || entry.first == "RoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
 				{
 					static map<string, string> const samplers = {
 						{ "BaseColourMap", "PBR_BASE_COLOUR_MAP" }, { "MetallicRoughnessMap", "PBR_METALLIC_ROUGHNESS_MAP" },
+						{ "MetallicMap", "PBR_METALLIC_MAP" }, { "RoughnessMap", "PBR_ROUGHNESS_MAP" },
 						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" }
 					};
 					PbrMaterialSpecification::TextureOptions textureOptions;
@@ -431,6 +433,13 @@ namespace mpp
 					if (entry.second.hasEntry("Resource")) { textureOptions.isChild = true; textureOptions.existingResource = "Textures/" + textureOptions.sampler; }
 					else if (entry.second.hasEntry("Ref")) { textureOptions.isChild = false; textureOptions.existingResource = entry.second.getEntry("Ref").getValue(); }
 					else THROW_MPP_RESOURCE_PARSERS("PbrMaterial semantic map requires Resource or Ref.", __LINE__, __FILE__, __func__);
+					if ((entry.first == "MetallicMap" || entry.first == "RoughnessMap") && entry.second.hasEntry("channel"))
+					{
+						auto channel = utils::StringUtils::toUpper(entry.second.getEntry("channel").getValue());
+						if (channel == "R") textureOptions.channel = 0; else if (channel == "G") textureOptions.channel = 1;
+						else if (channel == "B") textureOptions.channel = 2; else if (channel == "A") textureOptions.channel = 3;
+						else THROW_MPP_RESOURCE_PARSERS("Pbr scalar map channel must be R, G, B, or A.", __LINE__, __FILE__, __func__);
+					}
 					qs.textures.push_back(textureOptions);
 				}
 				else if (entry.first == "Textures")

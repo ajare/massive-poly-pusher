@@ -80,6 +80,8 @@ namespace mpp
 			// Info for creating new resource
 			std::string source;
 			TextureTarget target{ TextureTarget::Texture2D };
+			// Component selected by scalar PBR maps: 0=R, 1=G, 2=B, 3=A.
+			uint32_t channel{ 0 };
 
 			TextureParams params;
 		};
