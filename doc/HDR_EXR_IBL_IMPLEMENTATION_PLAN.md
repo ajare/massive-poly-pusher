@@ -417,7 +417,9 @@ Added `__mpp_ibl_brdf_integration__` core program and lazy `getOrCreatePbrBrdfIn
 
 **Acceptance:** HDR IBL pipelines require no authored BRDF LUT; explicit advanced override remains possible.
 
-### 8.5 GPU tests and documentation
+### 8.5 GPU tests and documentation — Complete
+
+GPU coverage verifies lazy once-per-renderer reuse, 512x512 dimensions, viewport restoration, and finite non-negative float RG LUT output. The renderer-owned LUT is a linear `RG16F` 512x512 split-sum GGX table generated with 1024 deterministic samples; it survives for renderer lifetime, while a valid explicit `Environment.brdfLut` Texture2D takes precedence.
 
 1. Verify LUT creation once-per-renderer, dimensions/float format, finite values, and state restoration.
 2. Validate expected endpoint behavior: low roughness/high `NdotV` remains finite; all texels stay in sensible non-negative ranges.
