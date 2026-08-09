@@ -503,7 +503,9 @@ Added an EXR-only native picker, pipeline-relative path conversion, and Clear HD
 
 **Acceptance:** Authors can select or clear an EXR source without hand-editing XML.
 
-### 10.3 HDR/manual mode presentation
+### 10.3 HDR/manual mode presentation — Complete
+
+When HDR IBL source is active, PipelineEditor disables authored irradiance/prefilter fields and explains generated-map precedence. The BRDF LUT remains visible as an advanced override; clearing HDR restores manual field editing unchanged.
 
 1. While HDR IBL is active, disable/manual-hide authored irradiance and prefiltered-specular fields, explaining that generated maps take precedence.
 2. Keep `brdfLut` visible as an advanced override with precedence explanation.
