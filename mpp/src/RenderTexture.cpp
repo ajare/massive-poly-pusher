@@ -519,6 +519,22 @@ namespace mpp
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
 	}
 
+	void RenderTexture::restoreColourFaces()
+	{
+		if (mTarget != GL_TEXTURE_CUBE_MAP) return;
+		GLint previous = 0;
+		GL_CHECK(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previous));
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
+		for (size_t attachment = 0; attachment < mTextureIds.size(); ++attachment)
+			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, (GLenum)(GL_COLOR_ATTACHMENT0 + attachment), GL_TEXTURE_CUBE_MAP_POSITIVE_X, mTextureIds[attachment], 0));
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
+			THROW_MPP("Could not restore cubemap level-zero framebuffer attachments.", __LINE__, __FILE__, __func__);
+		}
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
+	}
+
 	uint32_t RenderTexture::getMipLevels() const { return mMipLevels; }
 
 	uint32_t RenderTexture::getDepthTextureId() const
