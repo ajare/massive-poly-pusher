@@ -80,14 +80,19 @@ namespace mpp::resource_parsers
 		surface.addEntry("alphaCutoff", std::to_string(scalar(material.get("alphaCutoff"), 0.5f)));
 		auto sided = material.get("doubleSided"); surface.addEntry("doubleSided", sided && sided->type == Json::Type::Boolean && sided->boolean ? "true" : "false");
 		result.definition.addEntry("Surface", surface);
-		auto textures = root.get("textures"), images = root.get("images");
+		auto textures = root.get("textures"), images = root.get("images"), buffers = root.get("buffers"), views = root.get("bufferViews");
+		std::map<size_t, std::filesystem::path> extracted;
+		auto decode = [](std::string const& encoded) { static std::string const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; std::vector<uint8_t> bytes; int value = 0, bits = -8; for (char c : encoded) { if (c == '=') break; auto index = alphabet.find(c); if (index == std::string::npos) continue; value = value << 6 | (int)index; bits += 6; if (bits >= 0) { bytes.push_back((uint8_t)(value >> bits)); bits -= 8; } } return bytes; };
 		auto texturePath = [&](Json const* texture) -> std::filesystem::path
 		{
 			if (!texture || texture->type != Json::Type::Object || !textures || !images || textures->type != Json::Type::Array || images->type != Json::Type::Array) return {};
 			auto index = texture->get("index"); if (!index || index->type != Json::Type::Number || index->number < 0 || (size_t)index->number >= textures->array.size()) return {};
-			auto sourceIndex = textures->array[(size_t)index->number].get("source"); if (!sourceIndex || sourceIndex->type != Json::Type::Number || sourceIndex->number < 0 || (size_t)sourceIndex->number >= images->array.size()) return {};
-			auto uri = images->array[(size_t)sourceIndex->number].get("uri"); if (!uri || uri->type != Json::Type::String || uri->string.starts_with("data:")) return {};
-			return (filepath.parent_path() / std::filesystem::path(uri->string)).lexically_normal();
+			auto sourceIndex = textures->array[(size_t)index->number].get("source"); if (!sourceIndex || sourceIndex->type != Json::Type::Number || sourceIndex->number < 0 || (size_t)sourceIndex->number >= images->array.size()) return {}; auto imageIndex = (size_t)sourceIndex->number; auto const& image = images->array[imageIndex];
+			auto uri = image.get("uri"); if (uri && uri->type == Json::Type::String && !uri->string.starts_with("data:")) return (filepath.parent_path() / std::filesystem::path(uri->string)).lexically_normal(); if (auto found = extracted.find(imageIndex); found != extracted.end()) return found->second;
+			std::vector<uint8_t> bytes; std::string mime = image.get("mimeType") && image.get("mimeType")->type == Json::Type::String ? image.get("mimeType")->string : "image/png";
+			if (uri && uri->type == Json::Type::String && uri->string.starts_with("data:")) { auto comma = uri->string.find(','); if (comma == std::string::npos) return {}; bytes = decode(uri->string.substr(comma + 1)); }
+			else { auto view = image.get("bufferView"); if (!view || !views || !buffers || view->type != Json::Type::Number || (size_t)view->number >= views->array.size()) return {}; auto const& bufferView = views->array[(size_t)view->number]; auto buffer = bufferView.get("buffer"); if (!buffer || buffer->type != Json::Type::Number || (size_t)buffer->number >= buffers->array.size()) return {}; auto sourceUri = buffers->array[(size_t)buffer->number].get("uri"); if (!sourceUri || sourceUri->type != Json::Type::String || !sourceUri->string.starts_with("data:")) return {}; auto comma = sourceUri->string.find(','); auto source = comma == std::string::npos ? std::vector<uint8_t>{} : decode(sourceUri->string.substr(comma + 1)); auto offset = bufferView.get("byteOffset") ? (size_t)bufferView.get("byteOffset")->number : 0; auto length = bufferView.get("byteLength") ? (size_t)bufferView.get("byteLength")->number : 0; if (offset + length > source.size()) return {}; bytes.assign(source.begin() + offset, source.begin() + offset + length); }
+			if (bytes.empty()) return {}; auto directory = filepath.parent_path() / ".mpp-gltf-images"; std::filesystem::create_directories(directory); auto output = directory / (filepath.stem().string() + ".image" + std::to_string(imageIndex) + (mime == "image/jpeg" ? ".jpg" : ".png")); std::ofstream extractedFile(output, std::ios::binary); extractedFile.write((char const*)bytes.data(), bytes.size()); if (!extractedFile) return {}; extracted.emplace(imageIndex, output); return output;
 		};
 		auto addMap = [&](char const* name, Json const* texture, char const* colourSpace)
 		{
