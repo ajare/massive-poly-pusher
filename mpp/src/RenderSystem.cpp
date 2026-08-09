@@ -1559,6 +1559,25 @@ namespace mpp
 		return createPhysicalRenderTexture(name,width,height,options,1);
 	}
 
+	RenderTargetPtr RenderSystem::createIblCubemap(string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat)
+	{
+		if (name.empty() || !faceSize || !mipLevels) THROW_MPP("IBL cubemap name, face size, and mip level count must be non-zero.", __LINE__, __FILE__, __func__);
+		if (internalFormat != GL_RGB16F && internalFormat != GL_RGBA16F && internalFormat != GL_RGB32F && internalFormat != GL_RGBA32F)
+			THROW_MPP("IBL cubemap format must be RGB/RGBA 16F or 32F.", __LINE__, __FILE__, __func__);
+		RenderTextureOptions options;
+		options.target = TextureTarget::CubeMap;
+		options.mipLevels = mipLevels;
+		options.colourInternalFormat = internalFormat;
+		options.colourNormalised = false;
+		options.params.wrap = GL_CLAMP_TO_EDGE;
+		options.params.minFilter = mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
+		options.params.magFilter = GL_LINEAR;
+		options.params.useMipmaps = false;
+		options.params.lodBaseLevel = 0;
+		options.params.lodMaxLevel = (int32_t)mipLevels - 1;
+		return createRenderTexture(name, faceSize, faceSize, options);
+	}
+
 	RenderTargetPtr RenderSystem::createPhysicalRenderTexture(string const& name,size_t width,size_t height,RenderTextureOptions const& options,uint32_t samples)
 	{
 		if(samples==0||!mCaps.supportsMsaa(samples))THROW_MPP("Unsupported physical render-texture sample count "+to_string(samples)+".",__LINE__,__FILE__,__func__);

@@ -420,6 +420,10 @@ namespace mpp
 
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options);
 
+		// Creates a renderer-owned, colour-only floating-point cubemap suitable
+		// for cached environment, irradiance, or prefiltered-specular outputs.
+		RenderTargetPtr createIblCubemap(std::string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat = GL_RGB16F);
+
 		void flushVertexBuffers();
 
 		// Executor contract used to validate MRT shader output locations whenever

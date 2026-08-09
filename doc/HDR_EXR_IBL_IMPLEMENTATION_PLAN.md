@@ -97,7 +97,9 @@ Implemented in `f2618fd Add scoped cubemap face rendering` and this change. `Ren
 3. Prohibit nested target changes that could leave an IBL face attached after an exception; restoration must be RAII-based.
 4. Integrate GPU marker labels containing target, face, and mip for RenderDoc/Process Flow diagnostics.
 
-### 4.5 Cache-compatible creation helpers
+### 4.5 Cache-compatible creation helpers — Complete
+
+`RenderSystem::createIblCubemap()` creates named, colour-only, single-sample cubemap render targets with validated RGB/RGBA 16F/32F formats, clamp-to-edge sampling, and declared mip views. Cache generation code supplies generation-unique names and owns the returned resource.
 
 1. Add renderer-owned helpers that create named, colour-only floating-point cubemap render textures for environment, irradiance, and prefiltered-specular cache outputs.
 2. Names must be generation-unique; cache/resource references own the generated objects and pipeline replacement must not invalidate an in-flight/active generation.
