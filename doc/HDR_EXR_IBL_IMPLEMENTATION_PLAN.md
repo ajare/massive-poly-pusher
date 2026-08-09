@@ -65,14 +65,51 @@ Add an explicit PBR environment source representation:
 
 The existing renderer supports 2D render targets but has no public/generated cubemap render-target path. This infrastructure is required before HDR conversion, irradiance convolution, or specular prefiltering can be implemented.
 
-1. Extend `RenderTexture`/`RenderTextureStream` options to create a floating-point cubemap texture with configurable face resolution and mip count.
-2. Add a face/mip framebuffer attachment API; validate face range `[0, 5]`, mip range, dimensions, and framebuffer completeness.
-3. Add `RenderSystem` push/set APIs for rendering to a selected cubemap face and mip without leaking framebuffer, viewport, scissor, or draw-buffer state.
-4. Ensure MSAA is rejected for generated IBL cubemaps unless an explicit resolve path exists.
-5. Add renderer-owned cubemap resource creation helpers suitable for `IblEnvironmentCache` results.
-6. Add GPU tests covering six face writes, mip attachment, floating-point formats, and state restoration.
+### 4.1 Render-target data model
 
-**Acceptance:** Renderer code can safely render a different known colour to every face of an HDR cubemap and sample each result through `samplerCube`.
+1. Extend `RenderTextureOptions` and `RenderTextureStream::Definition` with an explicit attachment target (`Texture2D` or `TextureCube`), cubemap face size, and declared mip count/base/max level.
+2. Retain the current `Texture2D` defaults and serialized behavior unchanged.
+3. Reject unsupported target combinations early: cubemap depth attachments, array/3D targets, and multisampled cubemaps. The first IBL implementation needs colour-only, single-sampled cubemaps.
+4. Require a sized floating-point colour internal format for generated HDR IBL targets (`RGB16F`, `RGBA16F`, `RGB32F`, or `RGBA32F`); reject normalised/integer formats in the IBL creation helper.
+
+### 4.2 Allocation, resize, and destruction
+
+1. Refactor `RenderTexture::loadImpl()` so 2D allocation remains byte-for-byte behaviorally equivalent while cubemap allocation uses `GL_TEXTURE_CUBE_MAP` and allocates all six `GL_TEXTURE_CUBE_MAP_POSITIVE_X + face` images for every declared mip.
+2. Configure cubemap sampler state on `GL_TEXTURE_CUBE_MAP`, including `WRAP_S`, `WRAP_T`, and `WRAP_R`; use clamp-to-edge defaults for generated IBL resources.
+3. Make `resize()`, `unloadImpl()`, texture labels, attachment IDs, and `generateMipMaps()` target-aware.
+4. Do not use `GL_TEXTURE_2D_MULTISAMPLE` for cubemaps. Emit a diagnostic/exception before any GL allocation if samples are greater than one.
+
+### 4.3 Face/mip framebuffer attachment
+
+1. Add a `RenderTexture::attachColourFace(attachment, face, mipLevel)` API (or scoped equivalent).
+2. Validate colour attachment index, cube face `[0,5]`, and mip level against declared levels before issuing OpenGL calls.
+3. Attach with `glFramebufferTexture2D(..., GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, textureId, mipLevel)`.
+4. Revalidate framebuffer completeness after attachment changes and report target name, attachment, face, and mip in failures.
+5. Preserve/recover the level-zero face attachment expected by existing activation code when a scoped attachment operation ends.
+
+### 4.4 Render-system state and command contract
+
+1. Add a scoped `RenderSystem` cubemap-face render target operation that saves and restores framebuffer bindings, viewport, scissor enable/box, draw/read buffers, and active render target bookkeeping.
+2. Set viewport dimensions to `max(1, faceSize >> mipLevel)` while a face/mip is active.
+3. Prohibit nested target changes that could leave an IBL face attached after an exception; restoration must be RAII-based.
+4. Integrate GPU marker labels containing target, face, and mip for RenderDoc/Process Flow diagnostics.
+
+### 4.5 Cache-compatible creation helpers
+
+1. Add renderer-owned helpers that create named, colour-only floating-point cubemap render textures for environment, irradiance, and prefiltered-specular cache outputs.
+2. Names must be generation-unique; cache/resource references own the generated objects and pipeline replacement must not invalidate an in-flight/active generation.
+3. Expose read-only cubemap `Texture` resources suitable for existing PBR `samplerCube` bindings.
+
+### 4.6 Tests
+
+1. Unit-test validation for target, format, samples, face, mip, and dimension limits.
+2. GPU test: render six distinct solid colours to mip zero and sample/read back each cubemap face.
+3. GPU test: attach and render to at least one non-zero mip, verifying reduced viewport dimensions and retained mip-zero data.
+4. GPU test: verify `RGB16F`/`RGBA16F` cubemaps preserve values above 1.0.
+5. GPU test: verify framebuffer, viewport, scissor, draw/read-buffer state, and current target bookkeeping are restored after success and failure.
+6. Regression-test all existing 2D render-texture, MSAA resolve, mipmap, depth-only, and render-graph paths.
+
+**Acceptance:** Renderer code can safely render a different known colour to every face of an HDR cubemap and sample each result through `samplerCube`; all existing 2D render-target behavior remains unchanged.
 
 ## Phase 5 — Equirectangular HDR to cubemap
 
