@@ -13,8 +13,9 @@ namespace pipeline_editor
 		std::vector<ProcessFlowNode*> spine, disabled, resources;
 		for (auto& node : model.nodes)
 		{
-			node.size.x = node.kind == ProcessFlowNodeKind::BatchSubmission ? 230.0f : 220.0f;
-			node.size.y = node.kind == ProcessFlowNodeKind::BatchSubmission && node.expanded
+			bool batch = node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup;
+			node.size.x = batch ? 230.0f : 220.0f;
+			node.size.y = batch && node.expanded
 			                  ? 82.0f + 22.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
 			                  : 78.0f;
 			if (node.mainSpine) spine.push_back(&node);

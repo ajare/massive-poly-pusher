@@ -10,13 +10,19 @@ namespace pipeline_editor
 {
 	namespace
 	{
+		bool isBatchNode(ProcessFlowNode const& node)
+		{
+			return node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup;
+		}
+
 		ImU32 nodeColour(ProcessFlowNode const& node)
 		{
 			ImVec4 colour;
 			switch (node.kind)
 			{
 			case ProcessFlowNodeKind::AuthoredPass: colour = {0.16f, 0.38f, 0.62f, 1}; break;
-			case ProcessFlowNodeKind::BatchSubmission: colour = {0.23f, 0.48f, 0.31f, 1}; break;
+			case ProcessFlowNodeKind::BatchSubmission:
+			case ProcessFlowNodeKind::BatchGroup: colour = {0.23f, 0.48f, 0.31f, 1}; break;
 			case ProcessFlowNodeKind::MsaaResolve: colour = {0.50f, 0.30f, 0.63f, 1}; break;
 			case ProcessFlowNodeKind::Taa: colour = {0.50f, 0.25f, 0.52f, 1}; break;
 			case ProcessFlowNodeKind::Ssaa: colour = {0.43f, 0.29f, 0.60f, 1}; break;
@@ -64,7 +70,7 @@ namespace pipeline_editor
 		}
 		bool expansionRestored = false;
 		for (auto& node : model.nodes)
-			if (node.kind == ProcessFlowNodeKind::BatchSubmission && node.expanded != mExpanded.contains(node.id))
+			if (isBatchNode(node) && node.expanded != mExpanded.contains(node.id))
 			{ node.expanded = mExpanded.contains(node.id); expansionRestored = true; }
 		if (expansionRestored) mLayout.apply(model);
 		if (!ImGui::Begin("Process Flow")) { ImGui::End(); return selection; }
@@ -164,7 +170,7 @@ namespace pipeline_editor
 			if (node.kind == ProcessFlowNodeKind::AuthoredPass && node.passId == highlight.pass) return true;
 			if (node.kind == ProcessFlowNodeKind::Import && node.importIndex == highlight.import) return true;
 			if (node.kind != ProcessFlowNodeKind::Import && node.imageId >= 0 && node.imageId == highlight.image) return true;
-			if (node.kind != ProcessFlowNodeKind::BatchSubmission) return false;
+			if (!isBatchNode(node)) return false;
 			if (!highlight.materialName.empty())
 			{
 				auto separator = highlight.materialName.rfind("::");
@@ -223,7 +229,7 @@ namespace pipeline_editor
 				if (node.orderWarning) draw->AddText(nullptr, fontSize, {b.x - 22 * z, a.y + 8 * z}, IM_COL32(255, 190, 55, 255), "!");
 				if (!node.enabled) draw->AddText(nullptr, fontSize, {a.x + 10 * z, b.y - 20 * z}, IM_COL32(245, 180, 120, 255), "bypassed");
 				else if (!node.details.empty()) draw->AddText(nullptr, fontSize, {a.x + 10 * z, b.y - 20 * z}, IM_COL32(185, 195, 205, 255), node.details.c_str());
-				if (node.expanded && node.kind == ProcessFlowNodeKind::BatchSubmission)
+				if (node.expanded && isBatchNode(node))
 					for (size_t index = 0; index < node.sceneObjectNames.size(); ++index)
 						draw->AddText(nullptr, fontSize, {a.x + 16 * z, a.y + (61 + (float)index * 22) * z},
 						              node.sceneObjectIndices[index] == highlight.sceneObject ? IM_COL32(90, 235, 255, 255)
@@ -235,7 +241,7 @@ namespace pipeline_editor
 		if (hoveredNode)
 		{
 			auto* node = nodeLookup[hoveredNode];
-			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && node->kind == ProcessFlowNodeKind::BatchSubmission)
+			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && isBatchNode(*node))
 			{
 				node->expanded = !node->expanded;
 				if (node->expanded) mExpanded.insert(node->id); else mExpanded.erase(node->id);
@@ -250,7 +256,7 @@ namespace pipeline_editor
 					selection.kind = ProcessFlowSelection::Kind::SceneObject;
 					selection.sceneObjectIndex = node->sceneObjectIndices[object];
 				}
-				else if (node->kind == ProcessFlowNodeKind::BatchSubmission && !node->materialName.empty())
+				else if (isBatchNode(*node) && !node->materialName.empty())
 				{ selection.kind = ProcessFlowSelection::Kind::Material; selection.materialName = node->materialName; }
 				else if (node->passId >= 0) { selection.kind = ProcessFlowSelection::Kind::Pass; selection.index = node->passId; }
 				else if (node->kind == ProcessFlowNodeKind::Import && node->importIndex >= 0)

@@ -17,6 +17,7 @@ namespace pipeline_editor
 	{
 		AuthoredPass,
 		BatchSubmission,
+		BatchGroup,
 		MsaaResolve,
 		Taa,
 		Ssaa,
@@ -60,6 +61,7 @@ namespace pipeline_editor
 		ProcessFlowNodeKind kind{ ProcessFlowNodeKind::AuthoredPass };
 		ProcessFlowResourceCategory resourceCategory{ ProcessFlowResourceCategory::None };
 		uint64_t sequence{ 0 };
+		size_t submissionCount{ 0 };
 		int authoredPosition{ -1 };
 		int actualPosition{ -1 };
 		int passId{ -1 };
