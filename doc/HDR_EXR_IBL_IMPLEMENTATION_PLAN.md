@@ -471,9 +471,9 @@ HDR cache results bind generated irradiance/prefilter/LUT directly to `PbrEnviro
 
 **Acceptance:** HDR IBL pipelines light and reflect from EXR without material changes or authored cubemap/LUT files.
 
-### 9.5 Replacement, invalidation, and tests — In progress
+### 9.5 Replacement, invalidation, and tests — Complete
 
-Cache results use shared resource ownership in `PbrEnvironment`, so old preview/pipeline generations retain their derived IBL assets until retirement. Timestamp validation invalidates changed source entries on lookup, and PipelineEditor Force Rebuild now clears derived IBL cache entries. Runtime cache-hit/miss and fallback tests remain.
+Cache results use shared resource ownership in `PbrEnvironment`, so old preview/pipeline generations retain derived IBL assets until retirement. Timestamp validation invalidates changed entries on lookup, and PipelineEditor Force Rebuild clears derived IBL cache entries. Regression coverage verifies cache hit, changed-timestamp miss, and explicit invalidation; source/generation fallback paths retain neutral IBL with diagnostics.
 
 1. Ensure `PbrPipelineRuntime` and preview replacement retain shared cache results until old scenes/pipelines retire.
 2. Invalidate cached source entries when timestamp changes or an explicit preview rebuild requests invalidation.
