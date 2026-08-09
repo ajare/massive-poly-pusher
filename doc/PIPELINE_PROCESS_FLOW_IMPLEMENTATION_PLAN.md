@@ -2,9 +2,12 @@
 
 ## Implementation status
 
-- **Phases 1–3 complete**: immutable snapshots now contain authoritative pass order, exact submitted batches, one ordered pass/batch/physical event stream, and copied immutable physical output plans.
+- **Phases 1–6 complete**: immutable snapshots feed an editor-side process-flow model, deterministic automatic layout, and an interactive docked ImGui canvas.
 - Phase 2 propagates non-owning `SceneModel3d` identity through model/mesh instances, records every sorted `flushVertexBuffers()` submission without aggregation, and records direct shadow submissions under their active graph pass.
 - Phase 3 records actual MSAA colour/depth resolves at their execution points; enabled and disabled TAA, SSAA, FXAA, and presentation stages; bypass reasons; named-output identity; per-event physical inputs/outputs; and generation-safe output resource descriptors.
+- The model combines authored and actual pass order, exact batches, renderer stages, bypass diagnostics, typed dependencies, stable generation-local IDs, and independently filtered authored/physical resources.
+- The layout provides a left-to-right execution spine, non-overlapping disabled/resource rows, named-output branches, deterministic relayout, Fit All, and cursor-centred zoom.
+- The Process Flow tab is docked with Pipeline Hierarchy and provides resource filters, edge controls, live-sample status, refresh, pan/zoom, clipped drawing, hover details, selection targets, and expandable batch nodes.
 - Telemetry remains render-thread-only, opt-in, exception-isolated, and transactionally published only after a complete frame.
 - Debug and Release renderer/DemoSuite GPU validation and PipelineEditor snapshot smoke validation pass, including the combined MSAA + TAA + SSAA + FXAA path.
 
@@ -525,16 +528,20 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
    - [x] Copy immutable `RenderPipelineOutputPlan` descriptors into each completed snapshot and attach named format/size/sample descriptors to every enabled physical event.
    - [x] Validate default-disabled and combined MSAA + TAA + SSAA + FXAA stage combinations through renderer and PipelineEditor smoke coverage.
 
-4. **Editor model builder**
-   - Combine authored graph, compiled order, live snapshot, bypass rules, dependencies, and output plans.
-   - Add stable IDs, selection targets, filters, and diagnostics.
+4. **Editor model builder — COMPLETE**
+   - [x] Combine authored graph, compiled order, live snapshot, bypass rules, dependencies, and output plans.
+   - [x] Add stable generation-local IDs, selection targets, independent filters, typed resource edges, and diagnostics.
+   - [x] Preserve duplicate submissions and transform direct dependencies through optional resource nodes.
 
-5. **Automatic layout**
-   - Main execution spine, disabled row, resource rows, and named-output branches.
-   - Add deterministic geometry tests.
+5. **Automatic layout — COMPLETE**
+   - [x] Build the actual execution spine, disabled row, resource rows, and named-output branches.
+   - [x] Preserve view transforms across deterministic relayout and provide Fit All/cursor-centred zoom transforms.
+   - [x] Add deterministic ordering, non-overlap, Fit All, and zoom geometry tests.
 
-6. **ImGui Process Flow tab**
-   - Docking, toolbar, canvas, pan/zoom/Fit All, node/edge drawing, tooltips, and expansion.
+6. **ImGui Process Flow tab — COMPLETE**
+   - [x] Dock Process Flow alongside Pipeline Hierarchy without replacing the hierarchy.
+   - [x] Add local resource/edge controls, sample status, Refresh, legend, and Fit All.
+   - [x] Add clipped node/edge rendering, pan, zoom, hover emphasis/details, click targets, and batch expansion.
 
 7. **Selection and live sampling**
    - Inspector synchronization and 0.25-second updates.
