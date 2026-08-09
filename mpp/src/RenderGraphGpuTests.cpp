@@ -127,6 +127,11 @@ namespace mpp
 			if (std::abs(positiveXRight - negativeZLeft) > 0.15f) return fail("equirectangular cubemap seam is discontinuous");
 			GLint stateViewport[4]{}, stateAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, stateViewport)); bool rejectedInvalidSource = false; try { renderSystem->convertEquirectangularToCubemap(nullptr, "GpuTestInvalidPanorama", 8); } catch (...) { rejectedInvalidSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, stateAfter)); if (!rejectedInvalidSource || !std::equal(std::begin(stateViewport), std::end(stateViewport), std::begin(stateAfter))) return fail("invalid equirectangular source changed render state");
 
+			auto neutralEnvironment = renderSystem->createIblCubemap("GpuTestNeutralEnvironment", 4, 1, GL_RGBA16F); auto neutralTexture = dynamic_cast<RenderTexture*>(neutralEnvironment.get());
+			for (uint32_t face = 0; face < 6; ++face) { RenderSystem::CubemapFaceRenderScope scope(*renderSystem, neutralEnvironment, face, 0); GL_CHECK(glClearColor(2.0f, 2.0f, 2.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
+			auto irradiance = renderSystem->generateDiffuseIrradiance(neutralTexture, "GpuTestNeutralIrradiance", 4, 8); auto irradianceTexture = dynamic_cast<RenderTexture*>(irradiance.get()); if (!irradianceTexture) return fail("diffuse irradiance did not return a cubemap render texture");
+			for (uint32_t face = 0; face < 6; ++face) { std::vector<float> pixels(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (std::abs(pixels[0] - 2.0f) > 0.15f || std::abs(pixels[1] - 2.0f) > 0.15f || std::abs(pixels[2] - 2.0f) > 0.15f) return fail("neutral HDR environment did not preserve diffuse irradiance"); }
+
 			stage = "initial colour passes";
 			GraphImageDesc colour;
 			colour.format = GraphImageFormat::Rgba8;

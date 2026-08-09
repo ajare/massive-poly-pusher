@@ -286,7 +286,9 @@ Implemented `RenderSystem::generateDiffuseIrradiance`: it validates configuratio
 
 **Acceptance:** The API returns a six-face diffuse irradiance cubemap suitable for `PBR_IRRADIANCE_MAP`.
 
-### 6.6 GPU tests
+### 6.6 GPU tests — In progress
+
+Added a reduced-sample neutral RGBA16F cubemap test. It generates all six irradiance faces and verifies neutral HDR values above 1.0 are preserved. Directional, failure-state, and repeatability coverage remain.
 
 1. Build a neutral HDR environment fixture and verify generated irradiance remains neutral with values above 1.0.
 2. Build a directional/high-intensity fixture and verify expected diffuse directionality on corresponding output faces.
