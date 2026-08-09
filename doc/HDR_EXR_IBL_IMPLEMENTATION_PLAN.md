@@ -450,7 +450,9 @@ GPU coverage verifies lazy once-per-renderer reuse, 512x512 dimensions, viewport
 
 **Acceptance:** A valid relative EXR declaration provides a loaded floating-point source texture to generation code.
 
-### 9.3 Cache generation pipeline
+### 9.3 Cache generation pipeline — Complete
+
+On a canonical path/settings cache miss, `PbrPipelineRuntime` now converts the loaded EXR to an environment cube, derives diffuse irradiance and full-mip GGX prefilter cubes, obtains the renderer LUT, and stores all outputs atomically in one cache result. Timestamp-validated hits reuse that immutable shared result.
 
 1. On cache miss, call `convertEquirectangularToCubemap`, `generateDiffuseIrradiance`, and `generatePrefilteredSpecular` in order.
 2. Obtain the renderer-owned BRDF LUT and store all four generated resources in one cache result only after every stage succeeds.
