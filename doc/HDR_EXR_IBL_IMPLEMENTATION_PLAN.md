@@ -265,7 +265,9 @@ Added renderer-owned `__mpp_ibl_diffuse_irradiance__` core program creation alon
 
 **Acceptance:** No per-generation shader compilation and no invalid source proceeds to face rendering.
 
-### 6.4 Single-face convolution helper
+### 6.4 Single-face convolution helper — Complete
+
+Added private `RenderSystem::renderDiffuseIrradianceFace`. It rejects source/output aliasing, scopes face rendering, binds the cube source and convolution uniforms, submits the fullscreen mesh, records statistics, and restores matrix/target state on failure.
 
 1. Add a private helper accepting source cubemap, output target, face, and sample count.
 2. Enter `CubemapFaceRenderScope`, set shader uniforms, bind source cube sampler, and draw fullscreen geometry.
