@@ -208,7 +208,7 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;

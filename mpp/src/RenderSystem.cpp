@@ -785,6 +785,8 @@ namespace mpp
 		addCoreResource(mEquirectangularToCubemapProgram, true);
 		mDiffuseIrradianceProgram = createBloomProgram("__mpp_ibl_diffuse_irradiance__", FragmentShaderDiffuseIrradianceTemplate);
 		addCoreResource(mDiffuseIrradianceProgram, true);
+		mPrefilteredSpecularProgram = createBloomProgram("__mpp_ibl_prefiltered_specular__", FragmentShaderPrefilteredSpecularTemplate);
+		addCoreResource(mPrefilteredSpecularProgram, true);
 
 		// Internal text programs
 		{
