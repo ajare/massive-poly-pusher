@@ -22,6 +22,7 @@
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/GpuDebugScope.h"
+#include "mpp/IblEnvironmentCache.h"
 #include "mpp/ClipRectangle.h"
 #include "mpp/BlendMode.h"
 #include "mpp/RenderInfo.h"
@@ -132,6 +133,7 @@ namespace mpp
 		ResourceManager* mResourceMgr;
 
 		Caps mCaps;
+		IblEnvironmentCache mIblEnvironmentCache;
 
 		//
 		// Rendering
@@ -384,6 +386,7 @@ namespace mpp
 		Caps const& getCaps() const;
 		RenderSystemOptions const& getOptions() const { return mOptions; }
 		ResourceManager* getResourceManager() const { return mResourceMgr; }
+		IblEnvironmentCache& getIblEnvironmentCache() { return mIblEnvironmentCache; }
 
 		void initialise();
 

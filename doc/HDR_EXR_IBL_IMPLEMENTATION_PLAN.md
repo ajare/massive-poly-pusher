@@ -429,12 +429,49 @@ GPU coverage verifies lazy once-per-renderer reuse, 512x512 dimensions, viewport
 
 ## Phase 9 — Runtime integration
 
-1. Update `PbrPipelineRuntime` to resolve HDR IBL source declarations through the cache.
-2. Bind generated irradiance, prefilter, and LUT into `PbrEnvironment`.
-3. Keep neutral fallback behavior on failed generation, while surfacing diagnostics.
-4. Ensure pipeline replacement and forced preview rebuild release old generated environments only after active scene references retire.
+### 9.1 Cache ownership and keys — Complete
 
-**Acceptance:** PBR pipelines render HDR diffuse IBL and reflections from EXR without material changes.
+`RenderSystem` now owns `IblEnvironmentCache` and exposes it to runtime integration. The established key carries source path, timestamp validation, resolutions, and preprocessing version; Phase 9.3 builds canonical keys from document declarations.
+
+1. Add an `IblEnvironmentCache` owned by `RenderSystem` so generated resources survive pipeline runtime replacement but die with the renderer/context.
+2. Build canonical cache keys from resolved EXR path, source timestamp, HDR/environment/irradiance/prefilter resolutions, and preprocessing version.
+3. Expose lookup/store/invalidate operations only through renderer-owned runtime paths.
+
+**Acceptance:** Equivalent HDR environment requests can share generated `ResourcePtr` outputs safely.
+
+### 9.2 HDR source resource resolution
+
+1. Resolve `Environment.hdrEquirectangular` relative to the pipeline document path.
+2. Declare/load a generation-owned linear floating-point Texture2D using the configured image loader.
+3. Validate EXR decode/format before cache generation and report source-specific diagnostics.
+4. Keep source texture ownership with the pipeline generation until generated cache result owns/reuses its outputs.
+
+**Acceptance:** A valid relative EXR declaration provides a loaded floating-point source texture to generation code.
+
+### 9.3 Cache generation pipeline
+
+1. On cache miss, call `convertEquirectangularToCubemap`, `generateDiffuseIrradiance`, and `generatePrefilteredSpecular` in order.
+2. Obtain the renderer-owned BRDF LUT and store all four generated resources in one cache result only after every stage succeeds.
+3. Use generation-unique renderer resource names and clean candidates on failure.
+4. On cache hit, validate source timestamp and reuse the existing immutable generated result.
+
+**Acceptance:** Cache miss produces a complete environment; cache hit performs no preprocessing renders.
+
+### 9.4 PBR environment binding and fallback
+
+1. When HDR IBL is declared and generation succeeds, bind generated irradiance/prefilter/LUT into `PbrEnvironment`.
+2. Preserve explicit authored irradiance/prefilter/BRDF bindings as manual advanced mode when no HDR source is declared.
+3. On decode/generation failure, report diagnostics and retain neutral fallback resources so pipeline rendering continues.
+
+**Acceptance:** HDR IBL pipelines light and reflect from EXR without material changes or authored cubemap/LUT files.
+
+### 9.5 Replacement, invalidation, and tests
+
+1. Ensure `PbrPipelineRuntime` and preview replacement retain shared cache results until old scenes/pipelines retire.
+2. Invalidate cached source entries when timestamp changes or an explicit preview rebuild requests invalidation.
+3. Add runtime tests for cache hit/miss, timestamp invalidation, failure fallback, and generated PBR environment binding.
+
+**Acceptance:** Preview/pipeline rebuilds are safe, deterministic, and do not leak stale IBL resources.
 
 ## Phase 10 — PipelineEditor authoring UI
 
