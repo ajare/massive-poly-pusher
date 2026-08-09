@@ -78,7 +78,9 @@ Implemented in `72d1222 Add cubemap render texture data model`.
 
 Implemented in `559263a Allocate floating point cubemap render textures`. Cubemap faces and declared mip levels allocate, resize/recreate, and release through the existing render-texture lifetime; target-aware sampler/mipmap handling is in place.
 
-### 4.3 Face/mip framebuffer attachment — In progress
+### 4.3 Face/mip framebuffer attachment — Complete
+
+Implemented in `4a688ac Add cubemap face mip attachment API` and this change: `attachColourFace()` validates and attaches faces/mips, and `restoreColourFaces()` restores conventional +X/mip-zero framebuffer attachments after a face-render sequence.
 
 1. Add a `RenderTexture::attachColourFace(attachment, face, mipLevel)` API (or scoped equivalent).
 2. Validate colour attachment index, cube face `[0,5]`, and mip level against declared levels before issuing OpenGL calls.
