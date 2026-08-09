@@ -53,7 +53,7 @@ namespace pipeline_editor
 			float childY = parent->second->position.y + (parent->second->size.y - totalHeight) * 0.5f;
 			for (auto* child : children)
 			{
-				child->position = {parent->second->position.x + parent->second->size.x + 72.0f, childY};
+				child->position = {parent->second->position.x - child->size.x - 72.0f, childY};
 				childY += child->size.y + 28.0f;
 			}
 		}
@@ -83,7 +83,7 @@ namespace pipeline_editor
 			bool output = node->resourceCategory == ProcessFlowResourceCategory::NamedOutputs;
 			auto& bottom = output ? outputBottom : resourceBottom;
 			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
-			node->position = {(output ? 3600.0f : -1800.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
+			node->position = {(output ? 3600.0f : -3000.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
 		}
 	}
 
@@ -129,10 +129,10 @@ namespace pipeline_editor
 		ProcessFlowNode batch; batch.id = 8; batch.semanticKey = "batch"; batch.kind = ProcessFlowNodeKind::BatchSubmission; batch.passId = 0; batch.sequence = 1; model.nodes.push_back(batch);
 		ProcessFlowNode resource; resource.id = 9; resource.semanticKey = "resource"; resource.resourceCategory = ProcessFlowResourceCategory::AuthoredImages; resource.layoutRank = 1.5f; model.nodes.push_back(resource);
 		ProcessFlowLayout layout; layout.apply(model); auto first = model.nodes;
-		if (model.nodes[4].position.x <= model.nodes[0].position.x + model.nodes[0].size.x ||
+		if (model.nodes[4].position.x + model.nodes[4].size.x >= model.nodes[0].position.x ||
 		    std::abs((model.nodes[4].position.y + model.nodes[4].size.y * 0.5f) -
 		             (model.nodes[0].position.y + model.nodes[0].size.y * 0.5f)) > 0.01f)
-			throw std::runtime_error("Process-flow batch child is not right-aligned with its parent pass.");
+			throw std::runtime_error("Process-flow batch child is not left-aligned with its parent pass.");
 		for (size_t index = 0; index < 4; ++index)
 			if (std::abs(model.nodes[index].position.x + model.nodes[index].size.x * 0.5f) > 0.01f)
 				throw std::runtime_error("Process-flow spine nodes are not horizontally centred.");
