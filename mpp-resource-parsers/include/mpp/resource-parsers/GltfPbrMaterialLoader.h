@@ -1,28 +1,32 @@
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 
 #include "utils/StructuredData.h"
-
-#include "Config.h"
+#include "mpp/resource-parsers/Config.h"
 
 namespace mpp::resource_parsers
 {
-	// The result of converting the first material in a glTF document.
+	// Core conversion result. Later phases populate the definition, selected
+	// material metadata, generated image files, and non-fatal warnings.
 	struct _MPPRESOURCEPARSERSAPI GltfPbrMaterialLoadResult
 	{
-		utils::StructuredData materialDefinition{ "PbrMaterial" };
+		utils::StructuredData definition{"PbrMaterial"};
+		uint32_t materialIndex{0};
 		std::string materialName;
-		std::size_t materialIndex{ 0 };
+		std::vector<std::filesystem::path> generatedImages;
 		std::vector<std::string> warnings;
-		std::vector<std::string> generatedImagePaths;
 	};
 
 	class _MPPRESOURCEPARSERSAPI GltfPbrMaterialLoader
 	{
 	public:
-		static GltfPbrMaterialLoadResult loadFirstMaterial(std::string const& filepath);
+		// Loads the first glTF material. Parsing/conversion is introduced in
+		// subsequent phases; this stable API intentionally reports that status
+		// until then.
+		static GltfPbrMaterialLoadResult loadFirstMaterial(std::filesystem::path const& filepath);
 	};
 }
