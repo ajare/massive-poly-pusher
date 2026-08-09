@@ -336,7 +336,7 @@ namespace mpp
 
 		void addCoreResource(ResourcePtr resource, bool load);
 
-		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
+		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial, std::vector<std::string>* flowStateChanges);
 
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
@@ -417,6 +417,7 @@ namespace mpp
 		void abortRenderFlowPass() noexcept;
 		void failRenderFlowCapture() noexcept;
 		void recordRenderFlowBatch(RenderBatchSubmission submission) noexcept;
+		void recordRenderFlowStateChanges(std::vector<std::string> changes) noexcept;
 		void recordRenderFlowEvent(RenderFlowEventKind kind, std::string const& name,
 			GraphImageHandle image = {}, bool enabled = true, std::string const& bypassReason = {},
 			std::string const& outputName = {}, bool depth = false,

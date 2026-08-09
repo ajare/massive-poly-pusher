@@ -18,6 +18,7 @@ namespace pipeline_editor
 		AuthoredPass,
 		BatchSubmission,
 		BatchGroup,
+		GlState,
 		MsaaResolve,
 		Taa,
 		Ssaa,
@@ -67,6 +68,7 @@ namespace pipeline_editor
 		int authoredPosition{ -1 };
 		int actualPosition{ -1 };
 		int passId{ -1 };
+		int parentPassId{ -1 };
 		int imageId{ -1 };
 		int importIndex{ -1 };
 		std::string materialName;

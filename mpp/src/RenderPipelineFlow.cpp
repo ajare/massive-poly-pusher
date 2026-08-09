@@ -25,6 +25,7 @@ namespace mpp
 		case RenderFlowEventKind::PassBegin: return "pass begin";
 		case RenderFlowEventKind::PassEnd: return "pass end";
 		case RenderFlowEventKind::BatchSubmission: return "batch submission";
+		case RenderFlowEventKind::GlState: return "GL state";
 		case RenderFlowEventKind::MsaaResolve: return "MSAA resolve";
 		case RenderFlowEventKind::Taa: return "TAA";
 		case RenderFlowEventKind::SsaaHorizontal: return "SSAA horizontal";

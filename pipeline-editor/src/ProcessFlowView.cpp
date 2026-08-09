@@ -23,6 +23,7 @@ namespace pipeline_editor
 			case ProcessFlowNodeKind::AuthoredPass: colour = {0.16f, 0.38f, 0.62f, 1}; break;
 			case ProcessFlowNodeKind::BatchSubmission:
 			case ProcessFlowNodeKind::BatchGroup: colour = {0.23f, 0.48f, 0.31f, 1}; break;
+			case ProcessFlowNodeKind::GlState: colour = {0.46f, 0.36f, 0.18f, 1}; break;
 			case ProcessFlowNodeKind::MsaaResolve: colour = {0.50f, 0.30f, 0.63f, 1}; break;
 			case ProcessFlowNodeKind::Taa: colour = {0.50f, 0.25f, 0.52f, 1}; break;
 			case ProcessFlowNodeKind::Ssaa: colour = {0.43f, 0.29f, 0.60f, 1}; break;
@@ -296,7 +297,8 @@ namespace pipeline_editor
 			if (ImGui::IsItemHovered())
 			{
 				ImGui::BeginTooltip(); ImGui::TextUnformatted(node->title.c_str());
-				for (auto const& label : node->renderDocLabels) ImGui::Text("RenderDoc: %s", label.c_str());
+				if (node->kind != ProcessFlowNodeKind::GlState)
+					for (auto const& label : node->renderDocLabels) ImGui::Text("RenderDoc: %s", label.c_str());
 				if (!node->details.empty()) ImGui::TextUnformatted(node->details.c_str());
 				if (node->orderWarning) ImGui::Text("Authored position %d; executed position %d after dependency compilation.", node->authoredPosition + 1, node->actualPosition + 1);
 				if (!node->bypassReason.empty()) ImGui::TextWrapped("%s", node->bypassReason.c_str());
