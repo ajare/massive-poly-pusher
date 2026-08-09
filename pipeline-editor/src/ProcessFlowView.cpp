@@ -250,33 +250,33 @@ namespace pipeline_editor
 			draw->PushClipRect({a.x + 3.0f, a.y + 3.0f}, {b.x - 3.0f, b.y - 3.0f}, true);
 			float z = 1.0f;
 			float bodyFontSize = ImGui::GetFontSize();
-			float labelFontSize = bodyFontSize * 3.0f;
+			float labelFontSize = bodyFontSize * 1.5f;
 			for (size_t label = 0; label < node.renderDocLabels.size(); ++label)
 			{
 				auto const& summary = label < node.renderDocLabelSummaries.size()
 				                          ? node.renderDocLabelSummaries[label] : node.renderDocLabels[label];
-				draw->AddText(nullptr, labelFontSize, {a.x + 11 * z, a.y + (9 + 72 * (float)label) * z},
+				draw->AddText(nullptr, labelFontSize, {a.x + 11 * z, a.y + (8 + 36 * (float)label) * z},
 				              IM_COL32(255, 190, 70, 255), summary.c_str());
 			}
 			if (mTransform.zoom >= 0.25f)
 			{
-				float bodyY = 9.0f + 72.0f * (float)node.renderDocLabels.size();
+				float bodyY = 8.0f + 36.0f * (float)node.renderDocLabels.size();
 				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + bodyY * z}, IM_COL32_WHITE, node.title.c_str());
 				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + (bodyY + 23) * z}, IM_COL32(215, 220, 230, 255), node.subtitle.c_str());
 				if (node.kind == ProcessFlowNodeKind::AuthoredPass)
 				{
-					float ioY = bodyY + 48.0f;
+					float ioY = bodyY + 42.0f;
 					for (auto const& input : node.inputLabels)
 					{
 						draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + ioY * z}, IM_COL32(165, 220, 255, 255), input.c_str());
-						ioY += 24.0f;
+						ioY += 20.0f;
 					}
-					if (!node.inputLabels.empty() && !node.outputLabels.empty()) ioY += 8.0f;
+					if (!node.inputLabels.empty() && !node.outputLabels.empty()) ioY += 4.0f;
 					for (auto const& output : node.outputLabels)
 					{
 						float width = ImGui::CalcTextSize(output.c_str()).x;
 						draw->AddText(nullptr, ImGui::GetFontSize(), {b.x - 11 * z - width, a.y + ioY * z}, IM_COL32(155, 245, 185, 255), output.c_str());
-						ioY += 24.0f;
+						ioY += 20.0f;
 					}
 				}
 				if (node.orderWarning) draw->AddText(nullptr, bodyFontSize, {b.x - 22 * z, a.y + bodyY * z}, IM_COL32(255, 190, 55, 255), "!");
@@ -285,7 +285,7 @@ namespace pipeline_editor
 				if (node.expanded && isBatchNode(node))
 					for (size_t index = 0; index < node.sceneObjectNames.size(); ++index)
 					{
-						float objectY = 67.0f + 72.0f * (float)node.renderDocLabels.size() + (float)index * 24.0f;
+						float objectY = 63.0f + 36.0f * (float)node.renderDocLabels.size() + (float)index * 22.0f;
 						draw->AddText(nullptr, bodyFontSize, {a.x + 17 * z, a.y + objectY * z},
 						              node.sceneObjectIndices[index] == highlight.sceneObject ? IM_COL32(90, 235, 255, 255)
 						                                                                       : IM_COL32(210, 230, 210, 255),
@@ -307,10 +307,10 @@ namespace pipeline_editor
 			else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				auto localY = (ImGui::GetIO().MousePos.y - (origin.y + mTransform.pan.y)) / mTransform.zoom - node->position.y;
-				float objectStart = 64.0f + 72.0f * (float)node->renderDocLabels.size();
+				float objectStart = 60.0f + 36.0f * (float)node->renderDocLabels.size();
 				if (node->expanded && localY >= objectStart && !node->sceneObjectIndices.empty())
 				{
-					auto object = std::min((size_t)((localY - objectStart) / 24.0f), node->sceneObjectIndices.size() - 1);
+					auto object = std::min((size_t)((localY - objectStart) / 22.0f), node->sceneObjectIndices.size() - 1);
 					selection.kind = ProcessFlowSelection::Kind::SceneObject;
 					selection.sceneObjectIndex = node->sceneObjectIndices[object];
 				}

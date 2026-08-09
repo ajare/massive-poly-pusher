@@ -19,16 +19,16 @@ namespace pipeline_editor
 			for (auto const& label : node.renderDocLabelSummaries) labelCharacters = std::max(labelCharacters, label.size());
 			for (auto const& label : node.inputLabels) labelCharacters = std::max(labelCharacters, label.size());
 			for (auto const& label : node.outputLabels) labelCharacters = std::max(labelCharacters, label.size());
-			node.size.x = 3.0f * std::clamp(24.0f + 7.4f * (float)labelCharacters,
-			                                batch ? 245.0f : 235.0f, 360.0f);
-			float labelHeight = 72.0f * (float)node.renderDocLabels.size();
+			node.size.x = std::clamp(20.0f + 7.0f * (float)labelCharacters,
+			                         batch ? 300.0f : 280.0f, 480.0f);
+			float labelHeight = 36.0f * (float)node.renderDocLabels.size();
 			float passIoHeight = node.kind == ProcessFlowNodeKind::AuthoredPass
-			                         ? 24.0f * (float)(node.inputLabels.size() + node.outputLabels.size()) +
-			                               (!node.inputLabels.empty() && !node.outputLabels.empty() ? 8.0f : 0.0f)
+			                         ? 20.0f * (float)(node.inputLabels.size() + node.outputLabels.size()) +
+			                               (!node.inputLabels.empty() && !node.outputLabels.empty() ? 4.0f : 0.0f)
 			                         : 0.0f;
 			node.size.y = batch && node.expanded
-			                  ? 90.0f + labelHeight + 24.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
-			                  : 86.0f + labelHeight + passIoHeight;
+			                  ? 84.0f + labelHeight + 22.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
+			                  : 80.0f + labelHeight + passIoHeight;
 			if (node.mainSpine) spine.push_back(&node);
 			else if ((batch || node.kind == ProcessFlowNodeKind::GlState) && node.parentPassId >= 0) batches.push_back(&node);
 			else if (node.resourceCategory != ProcessFlowResourceCategory::None) resources.push_back(&node);
@@ -84,7 +84,7 @@ namespace pipeline_editor
 		for (auto* node : disabled)
 		{
 			auto nodeY = std::max(yForRank(node->layoutRank), disabledBottom + 26.0f);
-			node->position = {2400.0f - node->size.x * 0.5f, nodeY}; disabledBottom = nodeY + node->size.y;
+			node->position = {900.0f - node->size.x * 0.5f, nodeY}; disabledBottom = nodeY + node->size.y;
 		}
 		std::stable_sort(resources.begin(), resources.end(), orderByRank);
 		float resourceBottom = -104.0f, outputBottom = -104.0f;
@@ -93,7 +93,7 @@ namespace pipeline_editor
 			bool output = node->resourceCategory == ProcessFlowResourceCategory::NamedOutputs;
 			auto& bottom = output ? outputBottom : resourceBottom;
 			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
-			node->position = {(output ? 3600.0f : -3000.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
+			node->position = {(output ? 1600.0f : -900.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
 		}
 		if (!model.nodes.empty())
 		{
