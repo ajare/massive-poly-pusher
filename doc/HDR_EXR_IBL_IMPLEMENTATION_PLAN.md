@@ -493,7 +493,9 @@ Pipeline Environment now exposes undoable HDR equirectangular source and environ
 
 **Acceptance:** Authors can inspect and edit all serialized HDR IBL declaration fields.
 
-### 10.2 File selection and clear actions
+### 10.2 File selection and clear actions — Complete
+
+Added an EXR-only native picker, pipeline-relative path conversion, and Clear HDR IBL action that resets HDR source/settings while retaining manual advanced bindings.
 
 1. Add an EXR-specific native file picker that writes a pipeline-relative path when possible.
 2. Add Clear HDR IBL action that resets source/settings while preserving manual advanced bindings.
