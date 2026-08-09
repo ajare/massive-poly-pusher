@@ -9,12 +9,15 @@
 #include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticPbrMaterialStream.h"
 #include "mpp/ResourceStreamSerializer.h"
+#include "mpp/RenderGraph.h"
 #include "mpp/resource-parsers/FileBasicMaterialStream.h"
 #include "mpp/resource-parsers/FileMaterialStream.h"
 #include "mpp/resource-parsers/GltfPbrMaterialLoader.h"
 #include "mpp/resource-parsers/FilePbrMaterialStream.h"
 #include "mpp/resource-parsers/FileTextureStream.h"
 #include "mpp/resource-parsers/MaterialResourceTests.h"
+#include "mpp/resource-parsers/PbrPipelineParser.h"
+#include "mpp/resource-parsers/PbrPipelineSerializer.h"
 
 namespace mpp::resource_parsers
 {
@@ -81,8 +84,10 @@ namespace mpp::resource_parsers
 		auto const legacyBasicBin = root.string() + "_legacy_basic.bin";
 		auto const legacyPbrBin = root.string() + "_legacy_pbr.bin";
 		auto const legacyMultiBin = root.string() + "_legacy_multi.bin";
+		auto const hdrPipelineXml = root.string() + "_hdr_ibl.pipeline.xml";
 		try
 		{
+			PbrPipelineDocument hdrPipeline; hdrPipeline.sourcePath = hdrPipelineXml; hdrPipeline.graph = std::make_shared<RenderGraph>(); hdrPipeline.environment.binding = "HdrEnvironment"; hdrPipeline.environment.hdrEquirectangular = "environments/studio.exr"; hdrPipeline.environment.environmentResolution = 256; hdrPipeline.environment.irradianceResolution = 16; hdrPipeline.environment.prefilterResolution = 64; PbrPipelineSerializer::toFile(hdrPipeline, hdrPipelineXml); auto parsedHdrPipeline = PbrPipelineParser::fromFile(hdrPipelineXml); if (parsedHdrPipeline.environment.hdrEquirectangular != "environments/studio.exr" || parsedHdrPipeline.environment.environmentResolution != 256 || parsedHdrPipeline.environment.irradianceResolution != 16 || parsedHdrPipeline.environment.prefilterResolution != 64) return fail("HDR IBL pipeline environment did not survive serializer/parser round trip");
 			{ std::ofstream file(basicXml); file << "<BasicMaterial><name>Test.Basic</name></BasicMaterial>"; }
 			{ std::ofstream file(pbrXml); file << "<PbrMaterial><name>Test.Pbr</name><Surface><metallicFactor>0.25</metallicFactor><roughnessFactor>0.75</roughnessFactor></Surface></PbrMaterial>"; }
 			{ std::ofstream file(invalidPbrXml); file << "<PbrMaterial><name>Test.InvalidPbr</name><Surface><roughnessFactor>1.5</roughnessFactor></Surface></PbrMaterial>"; }
@@ -152,11 +157,12 @@ namespace mpp::resource_parsers
 			if (!convertedPbr || convertedPbr->getPbrSurface().metallicFactor != 0.65f || convertedPbr->getPbrSurface().roughnessFactor != 0.35f) return fail("legacy PBR Material surface conversion failed");
 			if (!convertedPbr->usesLegacyFullContract()) return fail("legacy PBR Material did not retain its temporary full-contract marker");
 			auto gltf = root / "mpp-material-test.gltf";
-			std::ofstream(gltf) << R"({"asset":{"version":"2.0"},"materials":[{"name":"First","pbrMetallicRoughness":{"baseColorFactor":[0.25,0.5,0.75,1]}},{"name":"Second"}]})";
+			std::ofstream(gltf) << R"({"asset":{"version":"2.0"},"materials":[{"name":"First","pbrMetallicRoughness":{"baseColorFactor":[0.25,0.5,0.75,1]}},{"name":"Second","emissiveTexture":{"index":0}}]})";
 			auto names = GltfPbrMaterialLoader::listMaterialNames(gltf);
 			if (names.size() != 2 || names[0] != "First" || names[1] != "Second") return fail("glTF material name listing failed");
 			auto selected = GltfPbrMaterialLoader::loadMaterialByName(gltf, "Second");
 			if (selected.materialIndex != 1 || selected.materialName != "Second") return fail("named glTF material loading failed");
+			if (selected.definition.getEntry("Surface").getEntry("emissiveFactor").getValue() != "1.000000 1.000000 1.000000") return fail("glTF emissive texture did not receive white map multiplier");
 			auto first = GltfPbrMaterialLoader::loadFirstMaterial(gltf);
 			if (first.materialName != "First" || first.warnings.empty()) return fail("first glTF material warning failed");
 			std::filesystem::remove(gltf);
@@ -164,7 +170,7 @@ namespace mpp::resource_parsers
 		catch (std::exception const& exception) { return fail(exception.what()); }
 		std::filesystem::remove(basicXml); std::filesystem::remove(pbrXml); std::filesystem::remove(invalidPbrXml); std::filesystem::remove(embeddedVariantsXml);
 		std::filesystem::remove(basicBin); std::filesystem::remove(pbrBin);
-		std::filesystem::remove(version2BasicBin); std::filesystem::remove(legacyBasicBin); std::filesystem::remove(legacyPbrBin); std::filesystem::remove(legacyMultiBin);
+		std::filesystem::remove(version2BasicBin); std::filesystem::remove(legacyBasicBin); std::filesystem::remove(legacyPbrBin); std::filesystem::remove(legacyMultiBin); std::filesystem::remove(hdrPipelineXml);
 		return true;
 	}
 }

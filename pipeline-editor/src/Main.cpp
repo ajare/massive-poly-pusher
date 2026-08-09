@@ -850,6 +850,16 @@ namespace
 				                                                                   : pipelineOwner,
 				                           payloads,
 				                           directoryPayloads);
+			if (!pipeline.environment.hdrEquirectangular.empty())
+			{
+				auto hdrSource = mpp::app::normaliseDocumentPath(pipelineOwner.parent_path() / pipeline.environment.hdrEquirectangular);
+				if (!std::filesystem::is_regular_file(hdrSource)) throw std::runtime_error("Package export is missing HDR IBL source '" + hdrSource.string() + "'.");
+				auto packageName = "hdr/" + hdrSource.filename().generic_string();
+				auto nameUsed = [&]() { if (directoryPayloads.contains(packageName)) return true; for (auto const& [source, name] : payloads) if (name == packageName) return true; return false; };
+				for (uint32_t suffix = 2; nameUsed(); ++suffix) packageName = "hdr/" + hdrSource.stem().generic_string() + "_" + std::to_string(suffix) + hdrSource.extension().generic_string();
+				payloads.emplace(hdrSource, packageName);
+				pipeline.environment.hdrEquirectangular = packageName;
+			}
 			auto sceneOwner =
 			    scenePath.empty() ? std::filesystem::path(sourceScene.sourcePath) : std::filesystem::path(scenePath);
 			for (auto& model : scene.models)
@@ -904,6 +914,7 @@ namespace
 		if (!scenePath.empty())
 			paths.insert(mpp::app::normaliseDocumentPath(scenePath));
 		auto pipelineOwner = pipelinePath.empty() ? pipeline.sourcePath : pipelinePath;
+		if (!pipeline.environment.hdrEquirectangular.empty() && !pipelineOwner.empty()) paths.insert(mpp::app::resolveDocumentReference(pipelineOwner, pipeline.environment.hdrEquirectangular));
 		for (auto const& library : pipeline.resourceLibraries)
 			if (!pipelineOwner.empty())
 				paths.insert(mpp::app::resolveDocumentReference(pipelineOwner, library));
@@ -1350,9 +1361,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		RenderTargetPtr activePreviewTarget, inspectedTarget;
 		ImTextureID activePreviewTexture = 0;
 		std::shared_ptr<PbrPipelineDocument> activePreviewDocument;
-		bool inspectSelectedImage = false;
+		bool inspectSelectedImage = false, debugEnvironmentCube = smokeTest;
 		int inspectedVersion = 0, inspectedMip = 0, textureDiagnosticMode = 0;
-		float diagnosticExposure = 1.0f, diagnosticDepthNear = 0.1f, diagnosticDepthFar = 100.0f;
+		float diagnosticExposure = 1.0f, diagnosticDepthNear = 0.1f, diagnosticDepthFar = 100.0f, diagnosticDepthRangeScale = 99.9f;
 		uint64_t previewEditSerial = 0;
 		bool previewStale = false;
 		ChangeFlag documentChangedSincePreview{false, &previewEditSerial};
@@ -1386,6 +1397,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			bool graphDeclared = false, pipelineDeclared = false, workspacePrepared = false, activated = false;
 			try
 			{
+				// PipelineEditor exposes graph images after the complete frame. Production
+				// transient aliasing may reuse an intermediate image's storage after its
+				// final consumer, making the Inspector show a later image instead. Retain
+				// distinct preview storage so SceneEmissive/BloomExtract and other authored
+				// intermediates remain inspectable after graph execution.
+				for (uint32_t image = 0; image < previewDocument->graph->getImageCount(); ++image)
+				{
+					auto handle = GraphImageHandle{image, 0};
+					auto desc = previewDocument->graph->getImageInfo(handle).desc;
+					if (!desc.external && desc.transient) { desc.transient = false; previewDocument->graph->setImageDesc(handle, desc); }
+				}
 				auto graphStream = std::make_shared<RenderGraphStream>(&resources);
 				graphStream->setGraph(previewDocument->graph);
 				auto graphResource = resources.declareResource(candidateGraph, graphStream).first;
@@ -1412,6 +1434,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				previewOptions.environment = pipelineRuntime.getEnvironment();
 				previewOptions.bloom.enabled = previewDocument->bloom.enabled;
 				previewOptions.bloom.blurPasses = previewDocument->bloom.blurPasses;
+				// The authored BloomExtract input is the isolated PBR emissive MRT,
+				// not scene luminance. Preserve all emissive values, including white
+				// (1.0), rather than subtracting BloomOptions' scene threshold of 1.0.
+				previewOptions.bloom.useMrtEmissiveMask = previewDocument->bloom.enabled;
+				previewOptions.bloom.threshold = 0.0f;
+				previewOptions.debugEnvironmentCube = debugEnvironmentCube;
 				if (previewScene)
 				{
 					if (auto direction = previewScene->getShadowLightDirection())
@@ -1996,9 +2024,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		};
 		auto forceWorkingPreviewRebuild = [&]()
 		{
-			// installPreview always creates a distinct generation. Keep the active
-			// generation renderable until that candidate succeeds; clearing it here
-			// leaves the frame loop with no pipeline during asynchronous validation.
+			// installPreview keeps the active generation renderable until its
+			// replacement succeeds. A forced action additionally invalidates derived
+			// HDR IBL outputs so changed EXR sources cannot remain cached.
+			renderSystem.getIblEnvironmentCache().clear();
 			queueWorkingPreview("Forced preview resource rebuild");
 		};
 		auto regenerateAntiAliasingOnly = [&]()
@@ -2497,6 +2526,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						requestAutoOrder = true;
 					ImGui::EndMenu();
 				}
+				if (ImGui::BeginMenu("View"))
+				{
+					if (ImGui::MenuItem("Environment Cube", nullptr, &debugEnvironmentCube, openDocument != nullptr))
+						renderSystem.getRenderPipeline(activePipeline)->setDebugEnvironmentCube(debugEnvironmentCube);
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Draw the active environment cubemap around the preview scene");
+					ImGui::EndMenu();
+				}
 				if (ImGui::BeginMenu("Window"))
 				{
 					if (ImGui::MenuItem("Reset Layout"))
@@ -2649,6 +2686,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					globalSampleCombo("SSAA##Toolbar", &AntiAliasingOverrides::ssaa, iniDefaults.ssaa);
 					globalBooleanCombo("TAA##Toolbar", &AntiAliasingOverrides::taa, iniDefaults.taa);
 					globalBooleanCombo("FXAA##Toolbar", &AntiAliasingOverrides::fxaa, iniDefaults.fxaa);
+					ImGui::SameLine();
+					auto bloomBefore = clonePipeline(openDocument);
+					bool toolbarBloomEnabled = openDocument->bloom.enabled;
+					if (ImGui::Checkbox("Bloom##Toolbar", &toolbarBloomEnabled))
+					{
+						openDocument->setBloomEnabled(toolbarBloomEnabled);
+						auto after = clonePipeline(openDocument);
+						pipelineCommands.execute(std::make_unique<PipelineSnapshotCommand>(
+						                             "Toggle Bloom", &openDocument, bloomBefore, after), true);
+						pipelineDirty = true;
+						documentChangedSincePreview = true;
+						lastEditScene = false;
+					}
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Enable or disable bloom in the preview pipeline");
 				}
 				auto workProgress = backgroundJobs.progress();
 				if (workProgress.queued || workProgress.running || gpuInstallationPending)
@@ -3980,6 +4032,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						}
 					ImGui::EndCombo();
 				}
+				if (info.type == GraphPassType::Scene && ImGui::CollapsingHeader("Scene Colour Attachments", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					bool emissiveAttachment = false;
+					for (size_t output = 0; output < info.colourOutputs.size(); ++output)
+					{
+						auto image = openDocument->graph->getImageInfo(info.colourOutputs[output].image);
+						ImGui::BulletText("Colour %zu: %s (mip %u)", output, image.name.c_str(), info.colourOutputs[output].mipLevel);
+						if (output == 1 && image.name == "SceneEmissive") emissiveAttachment = true;
+					}
+					if (openDocument->bloom.enabled)
+					{
+						if (emissiveAttachment) ImGui::TextDisabled("Bloom MRT: SceneEmissive is attached at colour output 1.");
+						else ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "Bloom needs SceneEmissive at colour output 1 to receive PBR emissive output.");
+					}
+				}
 				auto metadata = authoringRegistry.findMetadata(info.callbackFactory);
 				if (metadata)
 				{
@@ -5096,6 +5163,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				else if (value.kind == PbrPipelineResourceKind::Texture)
 				{
 					text(definition, "filename", "Image file");
+					ImGui::SameLine();
+					if (ImGui::Button("Browse image"))
+						if (auto selected = mpp::app::openImageFileDialog(window.getWindow(), "Select texture image"))
+						{
+							definition.setEntryValue("filename", *selected);
+							changed = true;
+						}
 					choice(definition, "target", "Target", {"1D", "2D", "3D", "CUBEMAP"});
 					text(definition, "internalFormat", "Internal format");
 					choice(definition, "colourSpace", "Colour space", {"LINEAR", "SRGB"});
@@ -5176,7 +5250,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 									resource.setEntryValue("filename", *selected);
 									changed = true;
 								}
-							ImGui::TextDisabled("Emissive images are sampled as RGB.");
+							ImGui::TextDisabled("Emissive images are sampled as sRGB RGB and multiplied by the factor below.");
+							glm::vec3 multiplier(1.0f);
+							if (surface->hasEntry("emissiveFactor")) { std::istringstream input(surface->getEntry("emissiveFactor").getValue()); input >> multiplier.r >> multiplier.g >> multiplier.b; }
+							if (ImGui::ColorEdit3("Emissive multiplier", &multiplier.x, ImGuiColorEditFlags_Float)) { surface->setEntryValue("emissiveFactor", std::to_string(multiplier.r) + " " + std::to_string(multiplier.g) + " " + std::to_string(multiplier.b)); changed = true; }
 						}
 						else
 						{
@@ -5361,9 +5438,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					}
 				};
 				field("Environment binding", value.binding);
+				ImGui::SeparatorText("HDR IBL Environment");
+				field("HDR equirectangular EXR", value.hdrEquirectangular);
+				ImGui::SameLine();
+				if (ImGui::Button("Browse EXR")) if (auto selected = mpp::app::openHdrExrFileDialog(window.getWindow(), "Select HDR IBL OpenEXR environment")) { std::error_code error; auto base = openDocument->sourcePath.empty() ? std::filesystem::current_path() : std::filesystem::path(openDocument->sourcePath).parent_path(); auto relative = std::filesystem::relative(*selected, base, error); value.hdrEquirectangular = error ? *selected : relative.generic_string(); changed = true; }
+				ImGui::SameLine();
+				if (ImGui::Button("Clear HDR IBL")) { value.hdrEquirectangular.clear(); value.environmentResolution = 512; value.irradianceResolution = 32; value.prefilterResolution = 128; changed = true; }
+				if (!value.hdrEquirectangular.empty()) { ImGui::SameLine(); if (ImGui::Button("Regenerate HDR IBL")) forceWorkingPreviewRebuild(); bool cached = false; std::error_code cacheError; auto hdrPath = std::filesystem::path(value.hdrEquirectangular); if (hdrPath.is_relative()) hdrPath = std::filesystem::path(openDocument->sourcePath).parent_path() / hdrPath; hdrPath = std::filesystem::absolute(hdrPath, cacheError).lexically_normal(); if (!cacheError) { IblEnvironmentCacheKey key; key.source = hdrPath; key.environmentResolution = value.environmentResolution; key.irradianceResolution = value.irradianceResolution; key.prefilterResolution = value.prefilterResolution; cached = renderSystem.getIblEnvironmentCache().find(key) != nullptr; } ImGui::TextDisabled("HDR IBL status: %s", !previewFailure.empty() ? "failed (see diagnostics)" : previewStale ? "pending rebuild" : cached ? "active preview; cache hit" : "active preview; cache miss/generating"); }
+				int environmentResolution = (int)value.environmentResolution, irradianceResolution = (int)value.irradianceResolution, prefilterResolution = (int)value.prefilterResolution;
+				if (ImGui::InputInt("Environment cubemap resolution", &environmentResolution)) { value.environmentResolution = (uint32_t)std::max(1, environmentResolution); changed = true; }
+				if (ImGui::InputInt("Irradiance cubemap resolution", &irradianceResolution)) { value.irradianceResolution = (uint32_t)std::max(1, irradianceResolution); changed = true; }
+				if (ImGui::InputInt("Prefilter cubemap resolution", &prefilterResolution)) { value.prefilterResolution = (uint32_t)std::max(1, prefilterResolution); changed = true; }
+				bool const hdrIblActive = !value.hdrEquirectangular.empty();
+				ImGui::TextDisabled("EXR source is linear HDR equirectangular; derived cubemaps are renderer-generated.");
+				if (hdrIblActive) { ImGui::TextDisabled("Generated HDR IBL maps take precedence over manual irradiance/prefilter maps."); ImGui::BeginDisabled(); }
 				field("Irradiance texture", value.irradiance);
 				field("Prefiltered specular", value.prefilteredSpecular);
-				field("BRDF LUT", value.brdfLut);
+				if (hdrIblActive) ImGui::EndDisabled();
+				field("BRDF LUT (advanced override)", value.brdfLut);
+				ImGui::TextDisabled("Leave BRDF LUT empty to use the renderer-generated integration LUT.");
 				field("Background texture", value.background);
 				if (changed)
 				{
@@ -5973,63 +6066,37 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				    ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Preview rebuild failed: %s", previewFailure.c_str());
 			ImGui::Checkbox("Inspect selected image", &inspectSelectedImage);
 			bool inspectedDepth = false;
+			bool inspectionControlsAvailable = false;
+			int inspectedVersions = 1, inspectedMipLevels = 1;
 			if (inspectSelectedImage && activePreviewDocument && activePreviewDocument->graph && selectedImage >= 0 &&
 			    (uint32_t)selectedImage < activePreviewDocument->graph->getImageCount())
 			{
-				auto versions = (int)activePreviewDocument->graph->getImageVersionCount((uint32_t)selectedImage);
-				inspectedVersion = std::clamp(inspectedVersion, 0, std::max(0, versions - 1));
-				auto imageInfo =
-				    activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage, (uint32_t)inspectedVersion});
+				inspectedVersions = (int)activePreviewDocument->graph->getImageVersionCount((uint32_t)selectedImage);
+				inspectedVersion = std::clamp(inspectedVersion, 0, std::max(0, inspectedVersions - 1));
+				auto imageInfo = activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage, (uint32_t)inspectedVersion});
 				inspectedDepth = imageInfo.desc.format >= GraphImageFormat::Depth16;
-				inspectedMip = std::clamp(inspectedMip, 0, std::max(0, (int)imageInfo.desc.mipLevels - 1));
-				ImGui::SameLine();
-				ImGui::SetNextItemWidth(120);
-				ImGui::SliderInt("Version", &inspectedVersion, 0, std::max(0, versions - 1));
-				ImGui::SameLine();
-				ImGui::SetNextItemWidth(120);
-				ImGui::SliderInt("Mip", &inspectedMip, 0, std::max(0, (int)imageInfo.desc.mipLevels - 1));
-				ImGui::TextDisabled(
-				    "%s%s",
-				    graphImageFormatName(imageInfo.desc.format),
-				    hasGraphImageUsage(imageInfo.desc.usage, GraphImageUsage::Sampled) ? "" : " / diagnostic resolve");
-				if (inspectedDepth)
-				{
-					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Depth;
-					ImGui::SetNextItemWidth(180);
-					ImGui::DragFloatRange2("Depth range",
-					                       &diagnosticDepthNear,
-					                       &diagnosticDepthFar,
-					                       0.1f,
-					                       0.0001f,
-					                       100000.0f,
-					                       "Near %.3f",
-					                       "Far %.3f");
-					diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0001f, diagnosticDepthFar);
-				}
-				else
-				{
-					if (textureDiagnosticMode == (int)RenderSystem::TextureDiagnosticMode::Depth)
-						textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Colour;
-					int modes[] = {0, 1, 2, 3, 4, 5, 7, 8}, selectedMode = 0;
-					for (int index = 0; index < 8; ++index)
-						if (modes[index] == textureDiagnosticMode)
-							selectedMode = index;
-					if (ImGui::Combo("Visualization",
-					                 &selectedMode,
-					                 "Colour\0Red\0Green\0Blue\0Alpha\0Luminance\0HDR tone map\0HDR heat map\0"))
-						textureDiagnosticMode = modes[selectedMode];
-					if (textureDiagnosticMode == 7 || textureDiagnosticMode == 8)
-					{
-						ImGui::SameLine();
-						ImGui::SetNextItemWidth(140);
-						ImGui::SliderFloat(
-						    "Exposure", &diagnosticExposure, 0.01f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-					}
-				}
-				if (!textureDiagnosticFailure.empty())
-					ImGui::TextColored(
-					    ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Inspection failed: %s", textureDiagnosticFailure.c_str());
+				inspectedMipLevels = (int)imageInfo.desc.mipLevels;
+				inspectedMip = std::clamp(inspectedMip, 0, std::max(0, inspectedMipLevels - 1));
+				inspectionControlsAvailable = true;
 			}
+			if (inspectionControlsAvailable && inspectedDepth)
+			{
+				textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Depth;
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(180);
+				if (ImGui::DragFloat("Depth value range scale", &diagnosticDepthRangeScale,
+				                     std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f),
+				                     0.0000001f, 100000.0f, "%.7g", ImGuiSliderFlags_Logarithmic))
+					diagnosticDepthFar = diagnosticDepthNear + std::max(diagnosticDepthRangeScale, 0.0000001f);
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(180);
+				ImGui::DragFloatRange2("Depth range", &diagnosticDepthNear, &diagnosticDepthFar,
+				                       std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f),
+				                       0.0f, 100000.0f, "Near %.7g", "Far %.7g");
+				diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0000001f, diagnosticDepthFar);
+				diagnosticDepthRangeScale = diagnosticDepthFar - diagnosticDepthNear;
+			}
+
 			if (ImGui::Button("Reset View") && openScene)
 			{
 				setOrbitView(openScene->camera.position, openScene->camera.target);
@@ -6059,6 +6126,57 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				    std::make_unique<SceneSnapshotCommand>("Save Current View", &openScene, before, after));
 				lastEditScene = true;
 				sceneDirty = scenePath.empty() || sceneCommands.dirty();
+			}
+			if (inspectionControlsAvailable)
+			{
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(120);
+				ImGui::SliderInt("Version", &inspectedVersion, 0, std::max(0, inspectedVersions - 1));
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(120);
+				ImGui::SliderInt("Mip", &inspectedMip, 0, std::max(0, inspectedMipLevels - 1));
+				ImGui::SameLine();
+				if (inspectedDepth)
+				{
+					ImGui::SetNextItemWidth(192);
+					ImGui::BeginDisabled();
+					int depthMode = 0;
+					ImGui::Combo("Visualisation", &depthMode, "Depth\0");
+					ImGui::EndDisabled();
+				}
+				else
+				{
+					int modes[] = {0, 1, 2, 3, 4, 5, 7, 8}, selectedMode = 0;
+					for (int index = 0; index < 8; ++index)
+						if (modes[index] == textureDiagnosticMode) selectedMode = index;
+					ImGui::SetNextItemWidth(192);
+					if (ImGui::Combo("Visualisation", &selectedMode,
+					                 "Colour\0Red\0Green\0Blue\0Alpha\0Luminance\0HDR tone map\0HDR heat map\0"))
+						textureDiagnosticMode = modes[selectedMode];
+					if (textureDiagnosticMode == 7 || textureDiagnosticMode == 8)
+					{
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(140);
+						ImGui::SliderFloat("Exposure", &diagnosticExposure, 0.01f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+					}
+				}
+			}
+			if (inspectionControlsAvailable)
+			{
+				auto imageInfo = activePreviewDocument->graph->getImageInfo(
+				    {(uint32_t)selectedImage, (uint32_t)inspectedVersion});
+				ImGui::TextDisabled(
+				    inspectedDepth ? "%s / maps [near, near + scale] to black-to-white" : "%s%s",
+				    graphImageFormatName(imageInfo.desc.format),
+				    hasGraphImageUsage(imageInfo.desc.usage, GraphImageUsage::Sampled) ? "" : " / diagnostic resolve");
+				if (!inspectedDepth && textureDiagnosticMode == (int)RenderSystem::TextureDiagnosticMode::Depth)
+					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Colour;
+				if (!textureDiagnosticFailure.empty())
+				{
+					ImGui::SameLine();
+					ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+					                   "Inspection failed: %s", textureDiagnosticFailure.c_str());
+				}
 			}
 			ImGui::TextDisabled("MMB / Alt+left: orbit | Shift: pan | Ctrl: dolly | Wheel: dolly");
 			auto viewportSize = ImGui::GetContentRegionAvail();

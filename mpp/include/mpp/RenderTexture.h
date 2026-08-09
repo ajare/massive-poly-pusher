@@ -30,6 +30,7 @@ namespace mpp
 
 		GLuint mDepthTexture;
 		uint32_t mSamples{ 1 };
+		uint32_t mMipLevels{ 1 };
 
 	private:
 
@@ -81,6 +82,13 @@ namespace mpp
 
 		void applyMipView(uint32_t mipLevel);
 		void restoreMipView();
+
+		// Selects the cubemap face and mip attached to a colour output. The
+		// caller owns render-state/attachment restoration (Phase 4.4).
+		void attachColourFace(size_t attachment, uint32_t face, uint32_t mipLevel);
+		// Restores every colour attachment to the conventional +X, mip-zero view.
+		void restoreColourFaces();
+		uint32_t getMipLevels() const;
 
 		uint32_t getColourAttachmentId(size_t attachment) const;
 

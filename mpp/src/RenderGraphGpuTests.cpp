@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <chrono>
 #include <memory>
+#include <filesystem>
+#include <fstream>
 #include <type_traits>
 #include <vector>
 
@@ -14,7 +18,10 @@
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/IblEnvironmentCache.h"
 #include "mpp/RenderTexture.h"
+#include "mpp/ProgrammaticTextureStream.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
 
@@ -83,9 +90,71 @@ namespace mpp
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
 		if (!renderSystem) return fail("RenderSystem is null");
-		std::string stage = "initial colour passes";
+		std::string stage = "cubemap render targets";
 		try
 		{
+			auto cachePath = std::filesystem::temp_directory_path() / "mpp_gpu_ibl_cache_test.exr"; { std::ofstream file(cachePath, std::ios::binary); file.put('\0'); }
+			IblEnvironmentCache cache; IblEnvironmentCacheKey cacheKey; cacheKey.source = cachePath; auto cacheResult = std::make_shared<IblEnvironmentResources>(); cache.store(cacheKey, cacheResult); if (cache.find(cacheKey) != cacheResult) return fail("IBL cache did not return stored source generation"); std::error_code cacheTimeError; auto cacheTime = std::filesystem::last_write_time(cachePath, cacheTimeError); std::filesystem::last_write_time(cachePath, cacheTime + std::chrono::seconds(2), cacheTimeError); if (cacheTimeError || cache.find(cacheKey)) return fail("IBL cache did not invalidate changed source timestamp"); cache.store(cacheKey, cacheResult); cache.invalidate(cachePath); if (cache.find(cacheKey)) return fail("IBL cache explicit invalidation failed"); std::filesystem::remove(cachePath, cacheTimeError);
+			bool rejectedInvalidIblFormat = false; try { renderSystem->createIblCubemap("GpuTestInvalidIblCubemap", 8, 1, GL_RGBA8); } catch (...) { rejectedInvalidIblFormat = true; } if (!rejectedInvalidIblFormat) return fail("IBL cubemap accepted an LDR format");
+			GLint savedViewport[4]{}, savedScissor[4]{}, savedDraw = 0, savedRead = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, savedViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, savedScissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &savedDraw)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &savedRead)); auto savedScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+			auto cubemap = renderSystem->createIblCubemap("GpuTestIblCubemap", 8, 2, GL_RGBA16F);
+			auto cubeTexture = dynamic_cast<RenderTexture*>(cubemap.get());
+			if (!cubeTexture || cubeTexture->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || cubeTexture->getMipLevels() != 2) return fail("IBL cubemap creation contract failed");
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				RenderSystem::CubemapFaceRenderScope scope(*renderSystem, cubemap, face, 0);
+				GL_CHECK(glClearColor((float)(face + 1), 0.0f, 0.0f, 1.0f));
+				GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+				scope.finish();
+			}
+			GLint restoredViewport[4]{}, restoredScissor[4]{}, restoredDraw = 0, restoredRead = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, restoredViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, restoredScissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &restoredDraw)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &restoredRead)); if (!std::equal(std::begin(savedViewport), std::end(savedViewport), std::begin(restoredViewport)) || !std::equal(std::begin(savedScissor), std::end(savedScissor), std::begin(restoredScissor)) || savedDraw != restoredDraw || savedRead != restoredRead || savedScissorEnabled != glIsEnabled(GL_SCISSOR_TEST)) return fail("cubemap face scope leaked render state");
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				std::vector<float> value(8 * 8 * 4);
+				GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTexture->getColourAttachmentId(0)));
+				GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, value.data()));
+				GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+				if (std::abs(value[0] - (float)(face + 1)) > 0.05f) return fail("cubemap face HDR readback failed");
+			}
+			{ RenderSystem::CubemapFaceRenderScope scope(*renderSystem, cubemap, 2, 1); GL_CHECK(glClearColor(3.0f, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
+			std::vector<float> mipValue(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + 2, 1, GL_RGBA, GL_FLOAT, mipValue.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (std::abs(mipValue[0] - 3.0f) > 0.05f) return fail("cubemap mip HDR readback failed");
+
+			// A linear HDR panorama with values above one verifies the public conversion path.
+			auto panoramaStream = new ProgrammaticTextureStream(renderSystem->getResourceManager());
+			panoramaStream->setTarget(TextureTarget::Texture2D); panoramaStream->setColourSpace(TextureColourSpace::Linear); panoramaStream->setInternalFormat(TextureInternalType::Float, false, 32, 3);
+			panoramaStream->setData([](std::string const&) { TextureData data; data.width = 8; data.height = 4; data.bitsPerPixel = 96; data.pixelFormat = GL_RGB; data.dataType = GL_FLOAT; data.data = new uint8_t[8 * 4 * 3 * sizeof(float)]; auto values = reinterpret_cast<float*>(data.data); for (size_t y = 0; y < 4; ++y) for (size_t x = 0; x < 8; ++x) { auto index = (y * 8 + x) * 3; values[index] = 1.25f + (float)x; values[index + 1] = (float)y; values[index + 2] = 0.5f; } return data; });
+			auto panoramaResource = renderSystem->getResourceManager()->declareResource("GpuTestHdrPanorama", ResourceStreamPtr(panoramaStream)).first; panoramaResource->load();
+			auto converted = renderSystem->convertEquirectangularToCubemap(dynamic_cast<Texture*>(panoramaResource.get()), "GpuTestConvertedPanorama", 8);
+			auto convertedTexture = dynamic_cast<RenderTexture*>(converted.get()); if (!convertedTexture) return fail("equirectangular conversion did not return a cubemap render texture");
+			std::array<float, 6> faceCentre{}; float positiveXRight = 0.0f, negativeZLeft = 0.0f;
+			for (uint32_t face = 0; face < 6; ++face) { std::vector<float> pixels(8 * 8 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, convertedTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (pixels[0] <= 1.0f) return fail("equirectangular conversion lost HDR values"); faceCentre[face] = pixels[(4 * 8 + 4) * 4]; if(face == 0) positiveXRight = pixels[(4 * 8 + 7) * 4]; if(face == 5) negativeZLeft = pixels[(4 * 8) * 4]; }
+			// The horizontal HDR gradient encodes longitude. At the face centres the
+			// documented convention orders -Z (longitude -pi/2), +X (0), +Z (+pi/2).
+			if (!(faceCentre[5] < faceCentre[0] && faceCentre[0] < faceCentre[4])) return fail("equirectangular cubemap face orientation is incorrect");
+			if (std::abs(positiveXRight - negativeZLeft) > 0.15f) return fail("equirectangular cubemap seam is discontinuous");
+			GLint stateViewport[4]{}, stateAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, stateViewport)); bool rejectedInvalidSource = false; try { renderSystem->convertEquirectangularToCubemap(nullptr, "GpuTestInvalidPanorama", 8); } catch (...) { rejectedInvalidSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, stateAfter)); if (!rejectedInvalidSource || !std::equal(std::begin(stateViewport), std::end(stateViewport), std::begin(stateAfter))) return fail("invalid equirectangular source changed render state");
+
+			auto neutralEnvironment = renderSystem->createIblCubemap("GpuTestNeutralEnvironment", 4, 1, GL_RGBA16F); auto neutralTexture = dynamic_cast<RenderTexture*>(neutralEnvironment.get());
+			for (uint32_t face = 0; face < 6; ++face) { RenderSystem::CubemapFaceRenderScope scope(*renderSystem, neutralEnvironment, face, 0); GL_CHECK(glClearColor(2.0f, 2.0f, 2.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
+			auto irradiance = renderSystem->generateDiffuseIrradiance(neutralTexture, "GpuTestNeutralIrradiance", 4, 8); auto irradianceTexture = dynamic_cast<RenderTexture*>(irradiance.get()); if (!irradianceTexture) return fail("diffuse irradiance did not return a cubemap render texture");
+			for (uint32_t face = 0; face < 6; ++face) { std::vector<float> pixels(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (std::abs(pixels[0] - 2.0f) > 0.15f || std::abs(pixels[1] - 2.0f) > 0.15f || std::abs(pixels[2] - 2.0f) > 0.15f) return fail("neutral HDR environment did not preserve diffuse irradiance"); }
+			auto directionalEnvironment = renderSystem->createIblCubemap("GpuTestDirectionalEnvironment", 4, 1, GL_RGBA16F); auto directionalTexture = dynamic_cast<RenderTexture*>(directionalEnvironment.get());
+			for (uint32_t face = 0; face < 6; ++face) { RenderSystem::CubemapFaceRenderScope scope(*renderSystem, directionalEnvironment, face, 0); GL_CHECK(glClearColor(face == 0 ? 8.0f : 0.0f, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
+			auto directionalIrradiance = renderSystem->generateDiffuseIrradiance(directionalTexture, "GpuTestDirectionalIrradiance", 4, 64); auto repeatedIrradiance = renderSystem->generateDiffuseIrradiance(directionalTexture, "GpuTestDirectionalIrradianceRepeat", 4, 64); auto directionalOutput = dynamic_cast<RenderTexture*>(directionalIrradiance.get()); auto repeatedOutput = dynamic_cast<RenderTexture*>(repeatedIrradiance.get()); std::array<float, 2> directionalCentre{};
+			for (uint32_t face = 0; face < 2; ++face) { std::vector<float> pixels(4 * 4 * 4), repeated(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, directionalOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, repeatedOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, repeated.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); directionalCentre[face] = pixels[(2 * 4 + 2) * 4]; if (std::abs(directionalCentre[face] - repeated[(2 * 4 + 2) * 4]) > 0.001f) return fail("diffuse irradiance generation is not deterministic"); }
+			if (!(directionalCentre[0] > directionalCentre[1])) return fail("directional diffuse irradiance is not oriented toward its source");
+			GLint irradianceViewport[4]{}, irradianceViewportAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, irradianceViewport)); bool rejectedIrradianceSource = false; try { renderSystem->generateDiffuseIrradiance(nullptr, "GpuTestInvalidIrradiance", 4, 8); } catch (...) { rejectedIrradianceSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, irradianceViewportAfter)); if (!rejectedIrradianceSource || !std::equal(std::begin(irradianceViewport), std::end(irradianceViewport), std::begin(irradianceViewportAfter))) return fail("invalid diffuse irradiance source changed render state");
+
+			auto prefiltered = renderSystem->generatePrefilteredSpecular(neutralTexture, "GpuTestNeutralPrefilter", 4, 3, 8); auto prefilteredTexture = dynamic_cast<RenderTexture*>(prefiltered.get()); if (!prefilteredTexture || prefilteredTexture->getMipLevels() != 3) return fail("specular prefilter did not create requested mip chain");
+			for (uint32_t mip = 0; mip < 3; ++mip) for (uint32_t face = 0; face < 6; ++face) { auto size = std::max<size_t>(1, 4 >> mip); std::vector<float> pixels(size * size * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, prefilteredTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mip, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (!std::isfinite(pixels[0]) || pixels[0] <= 1.0f) return fail("specular prefilter left a face/mip invalid or non-HDR"); }
+			auto directionalPrefilter = renderSystem->generatePrefilteredSpecular(directionalTexture, "GpuTestDirectionalPrefilter", 4, 3, 64); auto repeatedPrefilter = renderSystem->generatePrefilteredSpecular(directionalTexture, "GpuTestDirectionalPrefilterRepeat", 4, 3, 64); auto directionalPrefilterTexture = dynamic_cast<RenderTexture*>(directionalPrefilter.get()); auto repeatedPrefilterTexture = dynamic_cast<RenderTexture*>(repeatedPrefilter.get()); float sharpPeak = 0.0f, roughPeak = 0.0f, sharpRepeat = 0.0f;
+			for (uint32_t mip = 0; mip < 3; ++mip) { auto size = std::max<size_t>(1, 4 >> mip); std::vector<float> pixels(size * size * 4), repeated(size * size * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, directionalPrefilterTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X, mip, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, repeatedPrefilterTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X, mip, GL_RGBA, GL_FLOAT, repeated.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); float peak = 0.0f; for (size_t index = 0; index < pixels.size(); index += 4) peak = std::max(peak, pixels[index]); if (mip == 0) { sharpPeak = peak; sharpRepeat = repeated[0]; if (std::abs(pixels[0] - sharpRepeat) > 0.001f) return fail("specular prefilter generation is not deterministic"); } if (mip == 2) roughPeak = peak; }
+			if (!(sharpPeak > roughPeak)) return fail("specular prefilter roughness mip did not broaden directional reflection");
+			GLint prefilterViewport[4]{}, prefilterViewportAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, prefilterViewport)); bool rejectedPrefilterSource = false; try { renderSystem->generatePrefilteredSpecular(nullptr, "GpuTestInvalidPrefilter", 4, 3, 8); } catch (...) { rejectedPrefilterSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, prefilterViewportAfter)); if (!rejectedPrefilterSource || !std::equal(std::begin(prefilterViewport), std::end(prefilterViewport), std::begin(prefilterViewportAfter))) return fail("invalid specular prefilter source changed render state");
+
+			GLint lutViewport[4]{}, lutViewportAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, lutViewport)); auto brdfLut = renderSystem->getOrCreatePbrBrdfIntegrationLut(); auto repeatedBrdfLut = renderSystem->getOrCreatePbrBrdfIntegrationLut(); GL_CHECK(glGetIntegerv(GL_VIEWPORT, lutViewportAfter)); auto lutTexture = dynamic_cast<RenderTexture*>(brdfLut.get()); if (!lutTexture || brdfLut != repeatedBrdfLut || lutTexture->getWidth() != 512 || lutTexture->getHeight() != 512 || !std::equal(std::begin(lutViewport), std::end(lutViewport), std::begin(lutViewportAfter))) return fail("BRDF integration LUT cache or state contract failed"); std::vector<float> lutPixels(512 * 512 * 2); GL_CHECK(glBindTexture(GL_TEXTURE_2D, lutTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RG, GL_FLOAT, lutPixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0)); for (auto value : lutPixels) if (!std::isfinite(value) || value < 0.0f) return fail("BRDF integration LUT contains invalid values");
+
+			stage = "initial colour passes";
 			GraphImageDesc colour;
 			colour.format = GraphImageFormat::Rgba8;
 			colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;

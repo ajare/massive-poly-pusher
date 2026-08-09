@@ -101,6 +101,11 @@ namespace mpp
 		mOptions.graphPasses = graphPasses;
 	}
 
+	void RenderPipeline::setDebugEnvironmentCube(bool enabled)
+	{
+		mOptions.debugEnvironmentCube = enabled;
+	}
+
 	void RenderPipeline::ensureBloomTargets(size_t width, size_t height)
 	{
 		if (!mOptions.bloom.enabled)

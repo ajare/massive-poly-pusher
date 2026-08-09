@@ -14,6 +14,8 @@ namespace mpp
 
 		void setTarget(TextureTarget target);
 
+		void setMipLevels(uint32_t levels);
+
 		void setInternalFormat(TextureInternalType type, bool normalized, size_t bitSize, size_t channels);
 
 		// Exact OpenGL internal format for packed/sRGB render-graph formats.

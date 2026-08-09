@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <set>
 
@@ -41,8 +42,13 @@ namespace mpp
 					}
 					emissive = graph->writeColour({pass}, target, GraphLoadOp::Clear, GraphStoreOp::Store);
 				}
-				else if (enabled) emissive = info.colourOutputs[1].image;
-				else while (graph->getPassInfo({pass}).colourOutputs.size() > 1) graph->removeColourOutput({pass}, 1);
+				else if (info.colourOutputs.size() >= 2)
+				{
+					// Keep the authored emissive MRT attached while Bloom is disabled.
+					// Bloom enablement is a post-process routing choice; changing the
+					// scene framebuffer topology can alter otherwise identical PBR draws.
+					emissive = info.colourOutputs[1].image;
+				}
 			}
 			if (info.callbackFactory.starts_with("MPP.Bloom")) graph->setPassEnabled({pass}, enabled);
 		}
@@ -50,8 +56,16 @@ namespace mpp
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 		{
 			auto info = graph->getPassInfo({pass});
-			if (info.callbackFactory == "MPP.BloomExtract" && enabled && emissive.isValid() && !info.samplerBindings.empty())
-				graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, emissive, info.samplerBindings[0].mipLevel);
+			if (info.callbackFactory == "MPP.BloomExtract" && enabled && emissive.isValid())
+			{
+				// Removing SceneEmissive while Bloom is disabled removes every
+				// dependent sampler binding. Re-enable must restore TEX1, not merely
+				// update it when it happened to survive the topology change.
+				if (info.samplerBindings.empty())
+					graph->bindSampler({pass}, "TEX1", emissive);
+				else
+					graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, emissive, info.samplerBindings[0].mipLevel);
+			}
 			if (info.callbackFactory == "MPP.BloomComposite" && !info.colourOutputs.empty()) bloomCompositeOutputs.push_back(info.colourOutputs.front().image);
 		}
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
@@ -128,6 +142,7 @@ namespace mpp
 		}
 		if (previewScene.empty()) diagnostics.warning("MPP-PIPELINE-008", "No preview scene is assigned.", { sourcePath }, "previewScene");
 		else {auto path=std::filesystem::path(previewScene);if(path.is_absolute())diagnostics.warning("MPP-PIPELINE-016","Absolute preview-scene path is not portable.",{sourcePath},"previewScene");auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-PIPELINE-017","Preview scene does not exist: "+resolved.string(),{sourcePath},"previewScene");}
+		if(!environment.hdrEquirectangular.empty()){auto extension=std::filesystem::path(environment.hdrEquirectangular).extension().string();std::transform(extension.begin(),extension.end(),extension.begin(),[](unsigned char value){return(char)std::tolower(value);});if(extension!=".exr")diagnostics.error("MPP-PIPELINE-050","HDR IBL source must be an .exr image.",{sourcePath},"environment");if(!environment.environmentResolution||!environment.irradianceResolution||!environment.prefilterResolution)diagnostics.error("MPP-PIPELINE-051","HDR IBL resolutions must be non-zero.",{sourcePath},"environment");if(!environment.irradiance.empty()||!environment.prefilteredSpecular.empty())diagnostics.warning("MPP-PIPELINE-052","HDR IBL source takes precedence over explicit irradiance or prefiltered cubemaps; manual bindings are retained for fallback authoring.",{sourcePath},"environment");}
 		if (environment.binding.empty()) diagnostics.warning("MPP-PIPELINE-009", "No logical PBR environment binding is assigned.", { sourcePath }, "environment");
 		return diagnostics;
 	}

@@ -24,6 +24,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/Camera.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/Screen.h"
 #include "mpp/InternalFont.h"
@@ -775,12 +776,22 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
+		mEnvironmentDebugCubeProgram = createBloomProgram("__mpp_p2d_environment_debug_cube__", FragmentShaderEnvironmentDebugCubeTemplate);
+		addCoreResource(mEnvironmentDebugCubeProgram, true);
 		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
 		addCoreResource(mSsaaLanczosProgram, true);
 		mTaaProgram = createBloomProgram("__mpp_p2d_taa__", FragmentShaderTaaTemplate);
 		addCoreResource(mTaaProgram, true);
 		mFxaaProgram = createBloomProgram("__mpp_p2d_fxaa__", FragmentShaderFxaaTemplate);
 		addCoreResource(mFxaaProgram, true);
+		mEquirectangularToCubemapProgram = createBloomProgram("__mpp_ibl_equirectangular_to_cubemap__", FragmentShaderEquirectangularToCubemapTemplate);
+		addCoreResource(mEquirectangularToCubemapProgram, true);
+		mDiffuseIrradianceProgram = createBloomProgram("__mpp_ibl_diffuse_irradiance__", FragmentShaderDiffuseIrradianceTemplate);
+		addCoreResource(mDiffuseIrradianceProgram, true);
+		mPrefilteredSpecularProgram = createBloomProgram("__mpp_ibl_prefiltered_specular__", FragmentShaderPrefilteredSpecularTemplate);
+		addCoreResource(mPrefilteredSpecularProgram, true);
+		mPbrBrdfIntegrationProgram = createBloomProgram("__mpp_ibl_brdf_integration__", FragmentShaderPbrBrdfIntegrationTemplate);
+		addCoreResource(mPbrBrdfIntegrationProgram, true);
 
 		// Internal text programs
 		{
@@ -1380,6 +1391,50 @@ namespace mpp
 		setRenderTarget(renderTarget);
 	}
 
+	RenderSystem::CubemapFaceRenderScope::CubemapFaceRenderScope(RenderSystem& system, RenderTargetPtr const& target, uint32_t face, uint32_t mipLevel)
+		: mSystem(&system), mTarget(dynamic_cast<RenderTexture*>(target.get()))
+	{
+		if (!mTarget || mTarget->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
+			THROW_MPP("Cubemap face rendering requires a cubemap RenderTexture.", __LINE__, __FILE__, __func__);
+		if (mSystem->mCubemapFaceRenderActive) THROW_MPP("Nested cubemap face render scopes are not supported.", __LINE__, __FILE__, __func__);
+		mSystem->mCubemapFaceRenderActive = true;
+		mGpuScope = std::make_unique<GpuDebugScope>("Cubemap: " + mTarget->getName() + " face " + std::to_string(face) + " mip " + std::to_string(mipLevel));
+		GL_CHECK(glGetIntegerv(GL_VIEWPORT, mViewport));
+		GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, mScissor));
+		GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &mDrawBuffer));
+		GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &mReadBuffer));
+		mScissorEnabled = glIsEnabled(GL_SCISSOR_TEST) == GL_TRUE;
+		mSystem->pushRenderTarget(target);
+		try
+		{
+			mTarget->attachColourFace(0, face, mipLevel);
+			auto dimension = std::max<size_t>(1, mTarget->getWidth() >> mipLevel);
+			mSystem->setViewport(0, 0, dimension, dimension);
+			GL_CHECK(glScissor(0, 0, (GLsizei)dimension, (GLsizei)dimension));
+		}
+		catch (...) { mSystem->popRenderTarget(); mSystem->mCubemapFaceRenderActive = false; throw; }
+	}
+
+	void RenderSystem::CubemapFaceRenderScope::finish()
+	{
+		if (mFinished) return;
+		mTarget->restoreColourFaces();
+		mSystem->popRenderTarget();
+		mSystem->setViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]);
+		GL_CHECK(glScissor(mScissor[0], mScissor[1], mScissor[2], mScissor[3]));
+		GL_CHECK(glDrawBuffer((GLenum)mDrawBuffer));
+		GL_CHECK(glReadBuffer((GLenum)mReadBuffer));
+		if (mScissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		mGpuScope.reset();
+		mSystem->mCubemapFaceRenderActive = false;
+		mFinished = true;
+	}
+
+	RenderSystem::CubemapFaceRenderScope::~CubemapFaceRenderScope()
+	{
+		try { finish(); } catch (...) {}
+	}
+
 	/*
 	 * Set screen as target.
 	 *
@@ -1515,13 +1570,205 @@ namespace mpp
 		return createPhysicalRenderTexture(name,width,height,options,1);
 	}
 
+	void RenderSystem::validateEquirectangularConversionSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t mipLevels) const
+	{
+		if (!source || !source->isLoaded()) THROW_MPP("Equirectangular IBL source must be a loaded texture.", __LINE__, __FILE__, __func__);
+		if (generatedName.empty() || !faceSize || !mipLevels) THROW_MPP("Equirectangular IBL output name, face size, and mip count must be non-zero.", __LINE__, __FILE__, __func__);
+		if (source->getTextureTarget() != GL_TEXTURE_2D) THROW_MPP("Equirectangular IBL source must be a Texture2D.", __LINE__, __FILE__, __func__);
+		auto format = source->getInternalFormat();
+		if (format != GL_RGB16F && format != GL_RGBA16F && format != GL_RGB32F && format != GL_RGBA32F)
+			THROW_MPP("Equirectangular IBL source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
+	}
+
+	void RenderSystem::validatePrefilteredSpecularSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount) const
+	{
+		if (!source || !source->isLoaded()) THROW_MPP("Specular prefilter source must be a loaded cubemap texture.", __LINE__, __FILE__, __func__);
+		if (generatedName.empty() || !faceSize || mipLevels < 2 || !sampleCount) THROW_MPP("Specular prefilter output name, face size, mip count (at least two), and sample count must be valid.", __LINE__, __FILE__, __func__);
+		if (source->getTextureTarget() != GL_TEXTURE_CUBE_MAP) THROW_MPP("Specular prefilter source must be a cubemap texture.", __LINE__, __FILE__, __func__);
+		auto format = source->getInternalFormat();
+		if (format != GL_RGB16F && format != GL_RGBA16F && format != GL_RGB32F && format != GL_RGBA32F)
+			THROW_MPP("Specular prefilter source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
+	}
+
+	void RenderSystem::validateDiffuseIrradianceSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t sampleCount) const
+	{
+		if (!source || !source->isLoaded()) THROW_MPP("Diffuse irradiance source must be a loaded cubemap texture.", __LINE__, __FILE__, __func__);
+		if (generatedName.empty() || !faceSize || !sampleCount) THROW_MPP("Diffuse irradiance output name, face size, and sample count must be non-zero.", __LINE__, __FILE__, __func__);
+		if (source->getTextureTarget() != GL_TEXTURE_CUBE_MAP) THROW_MPP("Diffuse irradiance source must be a cubemap texture.", __LINE__, __FILE__, __func__);
+		auto format = source->getInternalFormat();
+		if (format != GL_RGB16F && format != GL_RGBA16F && format != GL_RGB32F && format != GL_RGBA32F)
+			THROW_MPP("Diffuse irradiance source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
+	}
+
+	void RenderSystem::renderPrefilteredSpecularFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel, float roughness, uint32_t sampleCount)
+	{
+		auto target = dynamic_cast<RenderTexture*>(destination.get());
+		if (!source || !target || source == target || target->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || mipLevel >= target->getMipLevels())
+			THROW_MPP("Specular prefilter requires distinct cubemap source, destination, and valid mip.", __LINE__, __FILE__, __func__);
+		CubemapFaceRenderScope scope(*this, destination, face, mipLevel);
+		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setProjection2dOrthographic(); resetTransform();
+			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel);
+			scaleTransform2d(glm::vec2(dimension / (float)getWindowWidth(), dimension / (float)getWindowHeight()));
+			flushVertexBuffers();
+			auto program = static_cast<Program*>(mPrefilteredSpecularProgram.get()); setUsedProgram(mPrefilteredSpecularProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), dimension * 0.5f, dimension * 0.5f));
+			GL_CHECK(glUniform1i(program->getUniformId("ENVIRONMENT"), 0)); GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face)); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), (GLint)sampleCount));
+			GL_CHECK(glUniform1f(program->getUniformId("ROUGHNESS"), glm::clamp(roughness, 0.0f, 1.0f))); GL_CHECK(glUniform1f(program->getUniformId("SOURCE_RESOLUTION"), (float)source->getWidth()));
+			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			source->bind(0); auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); throw; }
+	}
+
+	void RenderSystem::renderDiffuseIrradianceFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t sampleCount)
+	{
+		auto target = dynamic_cast<RenderTexture*>(destination.get());
+		if (!source || !target || source == target || target->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
+			THROW_MPP("Diffuse irradiance requires distinct cubemap source and destination.", __LINE__, __FILE__, __func__);
+		CubemapFaceRenderScope scope(*this, destination, face, 0);
+		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setProjection2dOrthographic(); resetTransform();
+			auto dimension = (float)target->getWidth();
+			scaleTransform2d(glm::vec2(dimension / (float)getWindowWidth(), dimension / (float)getWindowHeight()));
+			flushVertexBuffers();
+			auto program = static_cast<Program*>(mDiffuseIrradianceProgram.get());
+			setUsedProgram(mDiffuseIrradianceProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), dimension * 0.5f, dimension * 0.5f));
+			GL_CHECK(glUniform1i(program->getUniformId("ENVIRONMENT"), 0));
+			GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face));
+			GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), (GLint)sampleCount));
+			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			source->bind(0);
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+			popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); throw; }
+	}
+
+	void RenderSystem::renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel)
+	{
+		auto target = dynamic_cast<RenderTexture*>(destination.get());
+		if (!source || !target || target->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
+			THROW_MPP("Equirectangular conversion requires a source texture and cubemap destination.", __LINE__, __FILE__, __func__);
+		CubemapFaceRenderScope scope(*this, destination, face, mipLevel);
+		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setProjection2dOrthographic(); resetTransform();
+			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel);
+			scaleTransform2d(glm::vec2(dimension / (float)getWindowWidth(), dimension / (float)getWindowHeight()));
+			flushVertexBuffers();
+			auto program = static_cast<Program*>(mEquirectangularToCubemapProgram.get());
+			setUsedProgram(mEquirectangularToCubemapProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), dimension * 0.5f, dimension * 0.5f));
+			GL_CHECK(glUniform1i(program->getUniformId("EQUIRECTANGULAR"), 0));
+			GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face));
+			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			source->bind(0);
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+			mesh->bind(true); mesh->render(1); mesh->bind(false);
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+			popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); throw; }
+	}
+
+	RenderTargetPtr RenderSystem::createIblCubemap(string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat)
+	{
+		if (name.empty() || !faceSize || !mipLevels) THROW_MPP("IBL cubemap name, face size, and mip level count must be non-zero.", __LINE__, __FILE__, __func__);
+		if (internalFormat != GL_RGB16F && internalFormat != GL_RGBA16F && internalFormat != GL_RGB32F && internalFormat != GL_RGBA32F)
+			THROW_MPP("IBL cubemap format must be RGB/RGBA 16F or 32F.", __LINE__, __FILE__, __func__);
+		RenderTextureOptions options;
+		options.target = TextureTarget::CubeMap;
+		options.mipLevels = mipLevels;
+		options.colourInternalFormat = internalFormat;
+		options.colourNormalised = false;
+		options.params.wrap = GL_CLAMP_TO_EDGE;
+		options.params.minFilter = mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
+		options.params.magFilter = GL_LINEAR;
+		options.params.useMipmaps = false;
+		options.params.lodBaseLevel = 0;
+		options.params.lodMaxLevel = (int32_t)mipLevels - 1;
+		return createRenderTexture(name, faceSize, faceSize, options);
+	}
+
+	RenderTargetPtr RenderSystem::generatePrefilteredSpecular(Texture* environmentCubemap, string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount)
+	{
+		validatePrefilteredSpecularSource(environmentCubemap, generatedName, faceSize, mipLevels, sampleCount);
+		auto candidate = createIblCubemap(generatedName, faceSize, mipLevels);
+		if (dynamic_cast<Texture*>(candidate.get()) == environmentCubemap) THROW_MPP("Specular prefilter source and output cannot alias.", __LINE__, __FILE__, __func__);
+		for (uint32_t mip = 0; mip < mipLevels; ++mip)
+		{
+			float roughness = (float)mip / (float)(mipLevels - 1);
+			for (uint32_t face = 0; face < 6; ++face)
+				renderPrefilteredSpecularFace(environmentCubemap, candidate, face, mip, roughness, sampleCount);
+		}
+		return candidate;
+	}
+
+	RenderTargetPtr RenderSystem::generateDiffuseIrradiance(Texture* environmentCubemap, string const& generatedName, uint32_t faceSize, uint32_t sampleCount)
+	{
+		validateDiffuseIrradianceSource(environmentCubemap, generatedName, faceSize, sampleCount);
+		auto candidate = createIblCubemap(generatedName, faceSize, 1);
+		if (dynamic_cast<Texture*>(candidate.get()) == environmentCubemap) THROW_MPP("Diffuse irradiance source and output cannot alias.", __LINE__, __FILE__, __func__);
+		for (uint32_t face = 0; face < 6; ++face)
+			renderDiffuseIrradianceFace(environmentCubemap, candidate, face, sampleCount);
+		return candidate;
+	}
+
+	RenderTargetPtr RenderSystem::convertEquirectangularToCubemap(Texture* hdrEquirectangular, string const& generatedName, uint32_t faceSize, uint32_t mipLevels)
+	{
+		validateEquirectangularConversionSource(hdrEquirectangular, generatedName, faceSize, mipLevels);
+		auto candidate = createIblCubemap(generatedName, faceSize, mipLevels);
+		// Only mip zero is populated here. Specular prefilter generation owns
+		// higher mip levels in Phase 7.
+		for (uint32_t face = 0; face < 6; ++face)
+			renderEquirectangularCubemapFace(hdrEquirectangular, candidate, face, 0);
+		return candidate;
+	}
+
+	ResourcePtr RenderSystem::getOrCreatePbrBrdfIntegrationLut()
+	{
+		if (mPbrBrdfIntegrationLut) return mPbrBrdfIntegrationLut;
+		RenderTextureOptions options; options.colourInternalFormat = GL_RG16F; options.params.minFilter = GL_LINEAR; options.params.magFilter = GL_LINEAR; options.params.useMipmaps = false;
+		auto candidate = createRenderTexture("__mpp_ibl_brdf_integration_lut__", 512, 512, options);
+		GLint viewport[4]{}, scissor[4]{}, drawBuffer = 0, readBuffer = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, viewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, scissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &readBuffer)); auto scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+		pushRenderTarget(candidate); pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setViewport(0, 0, 512, 512); setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			auto program = static_cast<Program*>(mPbrBrdfIntegrationProgram.get()); setUsedProgram(mPbrBrdfIntegrationProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix))); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), 1024)); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), 512.0f, 512.0f));
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false); mRenderInfo.programSwitches++; mRenderInfo.fullscreenQuads++;
+			popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); GL_CHECK(glScissor(scissor[0], scissor[1], scissor[2], scissor[3])); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST)); throw; }
+		setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); GL_CHECK(glScissor(scissor[0], scissor[1], scissor[2], scissor[3])); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		mPbrBrdfIntegrationLut = std::static_pointer_cast<Resource>(std::dynamic_pointer_cast<RenderTexture>(candidate));
+		return mPbrBrdfIntegrationLut;
+	}
+
 	RenderTargetPtr RenderSystem::createPhysicalRenderTexture(string const& name,size_t width,size_t height,RenderTextureOptions const& options,uint32_t samples)
 	{
 		if(samples==0||!mCaps.supportsMsaa(samples))THROW_MPP("Unsupported physical render-texture sample count "+to_string(samples)+".",__LINE__,__FILE__,__func__);
+		if(!options.mipLevels)THROW_MPP("Render texture mip level count must be non-zero.",__LINE__,__FILE__,__func__);
+		if(options.target==TextureTarget::CubeMap){if(samples!=1)THROW_MPP("Cubemap render textures cannot be multisampled.",__LINE__,__FILE__,__func__);if(options.depthAttachment!=RenderTextureDepthAttachment::None)THROW_MPP("Cubemap render textures do not yet support depth attachments.",__LINE__,__FILE__,__func__);if(options.colourType!=TextureInternalType::Float&&options.colourInternalFormat==0)THROW_MPP("Cubemap render textures require a floating-point colour format.",__LINE__,__FILE__,__func__);}
+		else if(options.target!=TextureTarget::Texture2D)THROW_MPP("Render textures support only Texture2D and CubeMap targets.",__LINE__,__FILE__,__func__);
 		auto rtStream = new ProgrammaticRenderTextureStream(mResourceMgr);
 		rtStream->mPhysicalSamples=samples;
 
-		rtStream->setTarget(TextureTarget::Texture2D);
+		rtStream->setTarget(options.target);
+		rtStream->setMipLevels(options.mipLevels);
 		if (options.colourInternalFormat != 0) rtStream->setInternalFormat(options.colourInternalFormat);
 		else rtStream->setInternalFormat(options.colourType, options.colourNormalised, options.colourBitSize, options.colourChannels);
 		rtStream->setParams(options.params);
@@ -2659,7 +2906,8 @@ namespace mpp
 			mActivePbrEnvironment->irradianceMap,
 			mActivePbrEnvironment->prefilteredSpecularMap,
 			mActivePbrEnvironment->brdfIntegrationLut,
-			mActivePbrEnvironment->backgroundMap })
+			mActivePbrEnvironment->backgroundMap,
+			mActivePbrEnvironment->environmentMap })
 		{
 			if (resource)
 			{
@@ -2779,7 +3027,14 @@ namespace mpp
 		GL_CHECK(glGetIntegerv(GL_VIEWPORT, previousViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, previousScissor)); GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
 		pushRenderTarget(destination);
 		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
-		setProjection2dOrthographic(); resetTransform(); setViewport(0, 0, destination->getWidth(), destination->getHeight());
+		setProjection2dOrthographic();
+		resetTransform();
+		// The shared fullscreen quad is authored at window dimensions; diagnostics
+		// render into the editor viewport target, which is usually smaller.
+		scaleTransform2d(glm::vec2(
+			(float)destination->getWidth() / (float)getWindowWidth(),
+			(float)destination->getHeight() / (float)getWindowHeight()));
+		setViewport(0, 0, destination->getWidth(), destination->getHeight());
 		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE)); GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND)); GL_CHECK(glDisable(GL_SCISSOR_TEST));
 		try
 		{
@@ -2877,6 +3132,42 @@ namespace mpp
 		if(!source||!destination)THROW_MPP("SSAA Lanczos pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mSsaaLanczosProgram.get());setUsedProgram(mSsaaLanczosProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"),direction.x,direction.y));GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"),(float)destination->getWidth(),(float)destination->getHeight()));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
 	}
 
+	void RenderSystem::renderEnvironmentDebugCube(Texture* environment, Camera* camera)
+	{
+		if (!environment || !camera || environment->getTextureTarget() != GL_TEXTURE_CUBE_MAP)
+		{
+			return;
+		}
+		flushVertexBuffers();
+		auto inverseViewProjection = glm::inverse(camera->getProjectionTransform() * camera->getViewTransform());
+		auto cameraPosition = camera->getPosition();
+		GLboolean depth = glIsEnabled(GL_DEPTH_TEST), cull = glIsEnabled(GL_CULL_FACE), blend = glIsEnabled(GL_BLEND);
+		GLboolean depthMask = GL_TRUE;
+		GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
+		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
+		setProjection2dOrthographic(); resetTransform();
+		scaleTransform2d(glm::vec2((float)mRenderTarget->getWidth() / (float)getWindowWidth(),
+		                             (float)mRenderTarget->getHeight() / (float)getWindowHeight()));
+		auto program = static_cast<Program*>(mEnvironmentDebugCubeProgram.get());
+		setUsedProgram(mEnvironmentDebugCubeProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_VIEW_PROJECTION"), 1, GL_FALSE, glm::value_ptr(inverseViewProjection)));
+		GL_CHECK(glUniform3fv(program->getUniformId("CAMERA_POSITION"), 1, glm::value_ptr(cameraPosition)));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+			if (program->getSamplerName(unit) == "ENVIRONMENT") environment->bind((uint32_t)unit);
+		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE));
+		GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND));
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		GL_CHECK(glDepthMask(depthMask));
+		if (depth) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
+		if (cull) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
+		if (blend) GL_CHECK(glEnable(GL_BLEND)); else GL_CHECK(glDisable(GL_BLEND));
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; mRenderInfo.batchCount++;
+	}
+
 	void RenderSystem::renderBloomCombine(Texture* scene, Texture* bloom, float intensity)
 	{
 		flushVertexBuffers();
@@ -2885,7 +3176,15 @@ namespace mpp
 		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		GL_CHECK(glUniform1f(program->getUniformId("INTENSITY"), intensity));
-		scene->bind(0); bloom->bind(1);
+		// Bind against the Program sampler table. Parser texture slots are sorted
+		// by sampler name, and getUniformId() intentionally does not address
+		// @Texture declarations.
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+		{
+			auto const& sampler = program->getSamplerName(unit);
+			if (sampler == "SCENE") scene->bind((uint32_t)unit);
+			else if (sampler == "BLOOM") bloom->bind((uint32_t)unit);
+		}
 		GL_CHECK(glDisable(GL_BLEND));
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);

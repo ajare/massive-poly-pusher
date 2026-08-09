@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <string>
+
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
@@ -39,6 +42,15 @@ namespace mpp
 			auto const& bindings = context.getPass().samplerBindings;
 			return index < bindings.size() ? dynamic_cast<Texture*>(context.getImage(bindings[index].image).get()) : nullptr;
 		}
+		Texture* input(RenderGraphExecutionContext const& context, std::string const& sampler)
+		{
+			auto const& bindings = context.getPass().samplerBindings;
+			auto found = std::find_if(bindings.begin(), bindings.end(), [&](auto const& binding)
+			{
+				return binding.sampler == sampler;
+			});
+			return found != bindings.end() ? dynamic_cast<Texture*>(context.getImage(found->image).get()) : nullptr;
+		}
 
 		class BloomExtractPass final : public RenderGraphScenePass
 		{
@@ -71,8 +83,10 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override
 			{
 				auto const& frame = context.getFrame();
-				if (frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom) frame.renderSystem->renderBloomCombine(input(context, 0), input(context, 1), parameter(context, "INTENSITY", 0.15f));
-				else frame.renderSystem->renderFullscreenQuad(input(context, 0), BlendMode::One, BlendMode::Zero);
+				if (frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom)
+					frame.renderSystem->renderBloomCombine(input(context, "SCENE"), input(context, "BLOOM"), parameter(context, "INTENSITY", 0.15f));
+				else
+					frame.renderSystem->renderFullscreenQuad(input(context, "SCENE"), BlendMode::One, BlendMode::Zero);
 			}
 		};
 		class ToneMapPresentPass final : public RenderGraphScenePass
@@ -104,7 +118,14 @@ namespace mpp
 			void execute(RenderGraphExecutionContext const& context) override
 			{
 				auto const& frame = context.getFrame();
-				if (frame.pipelineOptions->graphPasses.scene && frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
+				if (!frame.pipelineOptions->graphPasses.scene) return;
+				if (frame.pipelineOptions->debugEnvironmentCube && frame.pipelineOptions->environment)
+				{
+					auto const& environment = frame.pipelineOptions->environment;
+					auto resource = environment->environmentMap ? environment->environmentMap : environment->backgroundMap;
+					frame.renderSystem->renderEnvironmentDebugCube(dynamic_cast<Texture*>(resource.get()), frame.camera.get());
+				}
+				if (frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
 				{
 					frame.sceneRenderPass->render(frame.visibleModels, frame.camera);
 					frame.renderSystem->flushVertexBuffers();

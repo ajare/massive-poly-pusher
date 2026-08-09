@@ -188,6 +188,200 @@ void main()
 }
 )";
 
+const std::string FragmentShaderEquirectangularToCubemapTemplate =
+R"(
+@@Version
+
+@@Uniform(int FACE);
+@@Uniform(vec2 OUTPUT_SIZE);
+@@Texture(sampler2D EQUIRECTANGULAR);
+
+void main()
+{
+    vec2 pixel = gl_FragCoord.xy / @Uniform(OUTPUT_SIZE);
+    float u = pixel.x * 2.0 - 1.0;
+    float v = pixel.y * 2.0 - 1.0;
+    vec3 direction;
+    if (@Uniform(FACE) == 0) direction = vec3( 1.0, -v, -u);
+    else if (@Uniform(FACE) == 1) direction = vec3(-1.0, -v,  u);
+    else if (@Uniform(FACE) == 2) direction = vec3( u,  1.0,  v);
+    else if (@Uniform(FACE) == 3) direction = vec3( u, -1.0, -v);
+    else if (@Uniform(FACE) == 4) direction = vec3( u, -v,  1.0);
+    else direction = vec3(-u, -v, -1.0);
+    direction = normalize(direction);
+    vec2 uv = vec2(atan(direction.z, direction.x) / (2.0 * 3.14159265359) + 0.5,
+                   0.5 - asin(clamp(direction.y, -1.0, 1.0)) / 3.14159265359);
+    @Out(vec4 COLOUR) = texture(@Texture(EQUIRECTANGULAR), uv);
+}
+)";
+
+const std::string FragmentShaderDiffuseIrradianceTemplate =
+R"(
+@@Version
+
+@@Uniform(int FACE);
+@@Uniform(vec2 OUTPUT_SIZE);
+@@Uniform(int SAMPLE_COUNT);
+@@Texture(samplerCube ENVIRONMENT);
+
+vec3 faceDirection(vec2 pixel)
+{
+    float u = pixel.x * 2.0 - 1.0;
+    float v = pixel.y * 2.0 - 1.0;
+    if (@Uniform(FACE) == 0) return normalize(vec3( 1.0, -v, -u));
+    if (@Uniform(FACE) == 1) return normalize(vec3(-1.0, -v,  u));
+    if (@Uniform(FACE) == 2) return normalize(vec3( u,  1.0,  v));
+    if (@Uniform(FACE) == 3) return normalize(vec3( u, -1.0, -v));
+    if (@Uniform(FACE) == 4) return normalize(vec3( u, -v,  1.0));
+    return normalize(vec3(-u, -v, -1.0));
+}
+
+float radicalInverse(uint value)
+{
+    value = (value << 16u) | (value >> 16u);
+    value = ((value & 0x55555555u) << 1u) | ((value & 0xAAAAAAAAu) >> 1u);
+    value = ((value & 0x33333333u) << 2u) | ((value & 0xCCCCCCCCu) >> 2u);
+    value = ((value & 0x0F0F0F0Fu) << 4u) | ((value & 0xF0F0F0F0u) >> 4u);
+    value = ((value & 0x00FF00FFu) << 8u) | ((value & 0xFF00FF00u) >> 8u);
+    return float(value) * 2.3283064365386963e-10;
+}
+
+void main()
+{
+    vec3 normal = faceDirection(gl_FragCoord.xy / @Uniform(OUTPUT_SIZE));
+    vec3 up = abs(normal.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+    vec3 sum = vec3(0.0); float weight = 0.0;
+    int samples = clamp(@Uniform(SAMPLE_COUNT), 1, 1024);
+    for (int index = 0; index < 1024; ++index)
+    {
+        if (index >= samples) break;
+        vec2 xi = vec2((float(index) + 0.5) / float(samples), radicalInverse(uint(index)));
+        float phi = 6.28318530718 * xi.y;
+        float cosTheta = sqrt(1.0 - xi.x);
+        float sinTheta = sqrt(xi.x);
+        vec3 local = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+        vec3 light = normalize(tangent * local.x + bitangent * local.y + normal * local.z);
+        float nDotL = max(dot(normal, light), 0.0);
+        sum += texture(@Texture(ENVIRONMENT), light).rgb * nDotL;
+        weight += nDotL;
+    }
+    @Out(vec4 COLOUR) = vec4(sum / max(weight, 0.00001), 1.0);
+}
+)";
+
+const std::string FragmentShaderPrefilteredSpecularTemplate =
+R"(
+@@Version
+
+@@Uniform(int FACE);
+@@Uniform(vec2 OUTPUT_SIZE);
+@@Uniform(float ROUGHNESS);
+@@Uniform(float SOURCE_RESOLUTION);
+@@Uniform(int SAMPLE_COUNT);
+@@Texture(samplerCube ENVIRONMENT);
+
+vec3 faceDirection(vec2 pixel)
+{
+    float u = pixel.x * 2.0 - 1.0; float v = pixel.y * 2.0 - 1.0;
+    if (@Uniform(FACE) == 0) return normalize(vec3( 1.0, -v, -u));
+    if (@Uniform(FACE) == 1) return normalize(vec3(-1.0, -v,  u));
+    if (@Uniform(FACE) == 2) return normalize(vec3( u,  1.0,  v));
+    if (@Uniform(FACE) == 3) return normalize(vec3( u, -1.0, -v));
+    if (@Uniform(FACE) == 4) return normalize(vec3( u, -v,  1.0));
+    return normalize(vec3(-u, -v, -1.0));
+}
+float radicalInverse(uint value)
+{
+    value=(value<<16u)|(value>>16u); value=((value&0x55555555u)<<1u)|((value&0xAAAAAAAAu)>>1u); value=((value&0x33333333u)<<2u)|((value&0xCCCCCCCCu)>>2u); value=((value&0x0F0F0F0Fu)<<4u)|((value&0xF0F0F0F0u)>>4u); value=((value&0x00FF00FFu)<<8u)|((value&0xFF00FF00u)>>8u); return float(value)*2.3283064365386963e-10;
+}
+vec3 importanceSampleGGX(vec2 xi, float roughness, vec3 normal)
+{
+    float a=roughness*roughness, a2=a*a; float phi=6.28318530718*xi.x;
+    float cosTheta=sqrt((1.0-xi.y)/max(1.0+(a2-1.0)*xi.y,0.00001)); float sinTheta=sqrt(max(1.0-cosTheta*cosTheta,0.0));
+    vec3 halfVector=vec3(cos(phi)*sinTheta,sin(phi)*sinTheta,cosTheta);
+    vec3 up=abs(normal.y)<0.999?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0); vec3 tangent=normalize(cross(up,normal)); vec3 bitangent=cross(normal,tangent);
+    return normalize(tangent*halfVector.x+bitangent*halfVector.y+normal*halfVector.z);
+}
+void main()
+{
+    vec3 normal = faceDirection(gl_FragCoord.xy / @Uniform(OUTPUT_SIZE));
+    vec3 view = normal; vec3 sum = vec3(0.0); float weight = 0.0;
+    float roughness = clamp(@Uniform(ROUGHNESS), 0.0, 1.0);
+    int samples = clamp(@Uniform(SAMPLE_COUNT), 1, 1024);
+    for (int index = 0; index < 1024; ++index)
+    {
+        if (index >= samples) break;
+        vec2 xi = vec2((float(index) + 0.5) / float(samples), radicalInverse(uint(index)));
+        vec3 halfVector = importanceSampleGGX(xi, roughness, normal);
+        vec3 light = normalize(2.0 * dot(view, halfVector) * halfVector - view);
+        float nDotL = max(dot(normal, light), 0.0);
+        if (nDotL > 0.0)
+        {
+            float nDotH = max(dot(normal, halfVector), 0.0);
+            float vDotH = max(dot(view, halfVector), 0.0);
+            float a = roughness * roughness, a2 = a * a;
+            float denominator = nDotH * nDotH * (a2 - 1.0) + 1.0;
+            float distribution = a2 / max(3.14159265359 * denominator * denominator, 0.00001);
+            float pdf = max(distribution * nDotH / max(4.0 * vDotH, 0.00001), 0.00001);
+            float texelSolidAngle = 4.0 * 3.14159265359 / (6.0 * @Uniform(SOURCE_RESOLUTION) * @Uniform(SOURCE_RESOLUTION));
+            float sampleSolidAngle = 1.0 / (float(samples) * pdf);
+            float lod = roughness <= 0.00001 ? 0.0 : max(0.0, 0.5 * log2(sampleSolidAngle / texelSolidAngle));
+            sum += textureLod(@Texture(ENVIRONMENT), light, lod).rgb * nDotL;
+            weight += nDotL;
+        }
+    }
+    @Out(vec4 COLOUR)=vec4(sum/max(weight,0.00001),1.0);
+}
+)";
+
+const std::string FragmentShaderPbrBrdfIntegrationTemplate =
+R"(
+@@Version
+
+@@Uniform(int SAMPLE_COUNT);
+@@Uniform(vec2 OUTPUT_SIZE);
+
+float radicalInverse(uint value)
+{
+    value=(value<<16u)|(value>>16u); value=((value&0x55555555u)<<1u)|((value&0xAAAAAAAAu)>>1u); value=((value&0x33333333u)<<2u)|((value&0xCCCCCCCCu)>>2u); value=((value&0x0F0F0F0Fu)<<4u)|((value&0xF0F0F0F0u)>>4u); value=((value&0x00FF00FFu)<<8u)|((value&0xFF00FF00u)>>8u); return float(value)*2.3283064365386963e-10;
+}
+vec3 importanceSampleGGX(vec2 xi,float roughness,vec3 normal)
+{
+    float a=roughness*roughness,a2=a*a,phi=6.28318530718*xi.x; float cosTheta=sqrt((1.0-xi.y)/max(1.0+(a2-1.0)*xi.y,0.00001)); float sinTheta=sqrt(max(1.0-cosTheta*cosTheta,0.0)); vec3 halfVector=vec3(cos(phi)*sinTheta,sin(phi)*sinTheta,cosTheta); vec3 tangent=vec3(1.0,0.0,0.0),bitangent=vec3(0.0,1.0,0.0); return normalize(tangent*halfVector.x+bitangent*halfVector.y+normal*halfVector.z);
+}
+float geometrySchlickGGX(float nDotV,float roughness)
+{
+    float a=roughness*roughness,k=a*a*0.5; return nDotV/max(nDotV*(1.0-k)+k,0.00001);
+}
+float geometrySmith(float nDotV,float nDotL,float roughness) { return geometrySchlickGGX(nDotV,roughness)*geometrySchlickGGX(nDotL,roughness); }
+void main()
+{
+    vec2 uv = gl_FragCoord.xy / @Uniform(OUTPUT_SIZE);
+    float nDotV = clamp(uv.x, 0.0001, 1.0);
+    float roughness = clamp(uv.y, 0.0, 1.0);
+    vec3 view = vec3(sqrt(max(1.0 - nDotV * nDotV, 0.0)), 0.0, nDotV);
+    vec3 normal = vec3(0.0, 0.0, 1.0); float a = 0.0, b = 0.0;
+    int samples = clamp(@Uniform(SAMPLE_COUNT), 1, 1024);
+    for (int index = 0; index < 1024; ++index)
+    {
+        if (index >= samples) break;
+        vec2 xi = vec2((float(index) + 0.5) / float(samples), radicalInverse(uint(index)));
+        vec3 halfVector = importanceSampleGGX(xi, roughness, normal);
+        vec3 light = normalize(2.0 * dot(view, halfVector) * halfVector - view);
+        float nDotL = max(light.z, 0.0), nDotH = max(halfVector.z, 0.0), vDotH = max(dot(view, halfVector), 0.0);
+        if (nDotL > 0.0)
+        {
+            float visibility = geometrySmith(nDotV, nDotL, roughness) * vDotH / max(nDotH * nDotV, 0.00001);
+            float fresnel = pow(1.0 - vDotH, 5.0);
+            a += (1.0 - fresnel) * visibility; b += fresnel * visibility;
+        }
+    }
+    @Out(vec4 COLOUR)=vec4(a/float(samples),b/float(samples),0.0,1.0);
+}
+)";
+
 // Diagnostic graph-image visualization used by PipelineEditor and GPU tools.
 const std::string FragmentShaderTextureDiagnosticTemplate =
 R"(
@@ -236,6 +430,24 @@ void main()
 
 // Temporary HDR presentation shader used by the opt-in PBR pipeline. Surface
 // shading remains replaceable while the PBR material model is introduced.
+const std::string FragmentShaderEnvironmentDebugCubeTemplate =
+R"(
+@@Version
+
+@@Uniform(mat4 INVERSE_VIEW_PROJECTION);
+@@Uniform(vec3 CAMERA_POSITION);
+@@Texture(samplerCube ENVIRONMENT);
+
+void main()
+{
+    vec2 ndc = @In(TEXCOORDS) * 2.0 - 1.0;
+    vec4 world = @Uniform(INVERSE_VIEW_PROJECTION) * vec4(ndc, 1.0, 1.0);
+    vec3 direction = normalize(world.xyz / world.w - @Uniform(CAMERA_POSITION));
+    @Out(vec4 COLOUR) = vec4(texture(@Texture(ENVIRONMENT), direction).rgb, 1.0);
+    @Out(vec4 BLOOM_MASK) = vec4(0.0);
+}
+)";
+
 const std::string FragmentShaderToneMapTemplate =
 R"(
 @@Version
