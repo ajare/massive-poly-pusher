@@ -96,6 +96,11 @@ namespace mpp
 			auto cachePath = std::filesystem::temp_directory_path() / "mpp_gpu_ibl_cache_test.exr"; { std::ofstream file(cachePath, std::ios::binary); file.put('\0'); }
 			IblEnvironmentCache cache; IblEnvironmentCacheKey cacheKey; cacheKey.source = cachePath; auto cacheResult = std::make_shared<IblEnvironmentResources>(); cache.store(cacheKey, cacheResult); if (cache.find(cacheKey) != cacheResult) return fail("IBL cache did not return stored source generation"); std::error_code cacheTimeError; auto cacheTime = std::filesystem::last_write_time(cachePath, cacheTimeError); std::filesystem::last_write_time(cachePath, cacheTime + std::chrono::seconds(2), cacheTimeError); if (cacheTimeError || cache.find(cacheKey)) return fail("IBL cache did not invalidate changed source timestamp"); cache.store(cacheKey, cacheResult); cache.invalidate(cachePath); if (cache.find(cacheKey)) return fail("IBL cache explicit invalidation failed"); std::filesystem::remove(cachePath, cacheTimeError);
 			bool rejectedInvalidIblFormat = false; try { renderSystem->createIblCubemap("GpuTestInvalidIblCubemap", 8, 1, GL_RGBA8); } catch (...) { rejectedInvalidIblFormat = true; } if (!rejectedInvalidIblFormat) return fail("IBL cubemap accepted an LDR format");
+			// Seamless cube filtering is global state that setDefaultState turns on
+			// once. This asserts it survived startup; it is re-checked after the IBL
+			// generation below, because those passes save and restore a pile of GL
+			// state and a restore that missed it would silently reintroduce the seams.
+			if (!glIsEnabled(GL_TEXTURE_CUBE_MAP_SEAMLESS)) return fail("seamless cubemap filtering is not enabled, so every cube edge will show a bilinear seam");
 			GLint savedViewport[4]{}, savedScissor[4]{}, savedDraw = 0, savedRead = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, savedViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, savedScissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &savedDraw)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &savedRead)); auto savedScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 			auto cubemap = renderSystem->createIblCubemap("GpuTestIblCubemap", 8, 2, GL_RGBA16F);
 			auto cubeTexture = dynamic_cast<RenderTexture*>(cubemap.get());
@@ -194,6 +199,7 @@ namespace mpp
 			// Measure how far apart the two columns really are before demanding the
 			// clamp, so the assertion carries its own justification.
 			float widestEdgeGap = 0.0f; for (uint32_t row = 0; row < 512; ++row) widestEdgeGap = std::max(widestEdgeGap, std::abs(lutPixels[row * 512 * 2] - lutPixels[(row * 512 + 511) * 2])); if (widestEdgeGap < 0.25f) return fail("BRDF integration LUT edge columns are unexpectedly similar (" + std::to_string(widestEdgeGap) + "), so the wrap-mode check proves nothing"); if (lutWrapS != GL_CLAMP_TO_EDGE || lutWrapT != GL_CLAMP_TO_EDGE) return fail("BRDF integration LUT is not clamped (wrap s/t " + std::to_string(lutWrapS) + "/" + std::to_string(lutWrapT) + "), so sampling at nDotV=1 wraps into the grazing-incidence column");
+			if (!glIsEnabled(GL_TEXTURE_CUBE_MAP_SEAMLESS)) return fail("IBL generation left seamless cubemap filtering disabled");
 
 			stage = "initial colour passes";
 			GraphImageDesc colour;
