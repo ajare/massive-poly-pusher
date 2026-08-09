@@ -1571,6 +1571,33 @@ namespace mpp
 			THROW_MPP("Equirectangular IBL source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
 	}
 
+	void RenderSystem::renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel)
+	{
+		auto target = dynamic_cast<RenderTexture*>(destination.get());
+		if (!source || !target || target->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
+			THROW_MPP("Equirectangular conversion requires a source texture and cubemap destination.", __LINE__, __FILE__, __func__);
+		CubemapFaceRenderScope scope(*this, destination, face, mipLevel);
+		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setProjection2dOrthographic(); resetTransform();
+			flushVertexBuffers();
+			auto program = static_cast<Program*>(mEquirectangularToCubemapProgram.get());
+			setUsedProgram(mEquirectangularToCubemapProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform1i(program->getUniformId("EQUIRECTANGULAR"), 0));
+			GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face));
+			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel);
+			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			source->bind(0);
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+			mesh->bind(true); mesh->render(1); mesh->bind(false);
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+			popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); throw; }
+	}
+
 	RenderTargetPtr RenderSystem::createIblCubemap(string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat)
 	{
 		if (name.empty() || !faceSize || !mipLevels) THROW_MPP("IBL cubemap name, face size, and mip level count must be non-zero.", __LINE__, __FILE__, __func__);
