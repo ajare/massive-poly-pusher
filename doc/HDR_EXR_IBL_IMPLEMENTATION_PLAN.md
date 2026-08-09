@@ -120,13 +120,56 @@ Added GPU coverage for six independent cubemap-face writes, non-zero mip attachm
 
 ## Phase 5 — Equirectangular HDR to cubemap
 
-1. Add fullscreen/cubemap capture shader to convert longitude-latitude directions to equirectangular UVs.
-2. Define one documented right-handed face direction/up-vector convention and construct face view/projection matrices from it.
-3. Render all six cubemap faces at source resolution using the Phase 4 target API.
-4. Use linear floating-point render targets and seam-safe cube sampling conventions.
-5. Add GPU readback/orientation tests with a directional HDR fixture.
+### Runtime API
 
-**Acceptance:** Each cube face samples the correct panorama direction without seams or upside-down orientation.
+Add a renderer-owned conversion entry point:
+
+```cpp
+RenderTargetPtr RenderSystem::convertEquirectangularToCubemap(
+    Texture* hdrEquirectangular,
+    std::string const& generatedName,
+    uint32_t faceSize,
+    uint32_t mipLevels = 1);
+```
+
+Contract:
+
+1. `hdrEquirectangular` is a loaded, non-null, linear `GL_TEXTURE_2D` texture with floating-point storage (`RGB16F`, `RGBA16F`, `RGB32F`, or `RGBA32F`). Reject all other targets/formats with a diagnostic; no colour-space conversion is performed.
+2. `generatedName` is supplied by the IBL cache and must be generation-unique. The returned `RenderTargetPtr` owns the generated cubemap; the cache retains it until invalidated while active pipelines retain shared references safely.
+3. `faceSize` and `mipLevels` are passed to `createIblCubemap`. The initial conversion only writes mip zero; later prefilter work writes additional mips.
+4. The operation is synchronous and must either return a fully populated cubemap or throw without publishing a partial result. It uses `CubemapFaceRenderScope` for every write and leaves render target/state unchanged.
+5. The renderer owns the conversion shader/program and fullscreen mesh. It emits one GPU debug scope per face through the existing scoped face render path.
+6. Phase 9 runtime integration, not this API, decides cache lookup, source-file loading, error fallback, and pipeline environment binding.
+
+### Face convention
+
+Use OpenGL cubemap face order `+X, -X, +Y, -Y, +Z, -Z`. For face-local coordinates `u = 2*x - 1` and `v = 2*y - 1` (where `y` increases upward in the render target), sample directions:
+
+```text
++X: ( 1, -v, -u)    -X: (-1, -v,  u)
++Y: ( u,  1,  v)    -Y: ( u, -1, -v)
++Z: ( u, -v,  1)    -Z: (-u, -v, -1)
+```
+
+Normalize the direction, then calculate equirectangular UV using:
+
+```text
+longitude = atan(direction.z, direction.x)
+latitude  = asin(clamp(direction.y, -1, 1))
+u = longitude / (2*pi) + 0.5
+v = 0.5 - latitude / pi
+```
+
+The fragment shader uses output pixel coordinates/face size rather than a scene camera, avoiding matrix-orientation ambiguity.
+
+### Implementation and tests
+
+1. Add the renderer-owned fullscreen conversion program with `EQUIRECTANGULAR`, `FACE`, and `OUTPUT_SIZE` uniforms.
+2. Implement the API above, rendering all six mip-zero faces through `CubemapFaceRenderScope`.
+3. Use linear floating-point cubemap targets and clamp-to-edge sampling; do not generate/filter unwritten mips.
+4. Add GPU readback tests using a directional HDR fixture, including seam/orientation checks and values above 1.0.
+
+**Acceptance:** The API returns a complete cubemap whose six faces sample the documented panorama directions without seams or upside-down orientation.
 
 ## Phase 6 — Diffuse irradiance convolution
 
