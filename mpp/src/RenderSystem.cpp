@@ -1573,6 +1573,16 @@ namespace mpp
 			THROW_MPP("Equirectangular IBL source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
 	}
 
+	void RenderSystem::validatePrefilteredSpecularSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount) const
+	{
+		if (!source || !source->isLoaded()) THROW_MPP("Specular prefilter source must be a loaded cubemap texture.", __LINE__, __FILE__, __func__);
+		if (generatedName.empty() || !faceSize || mipLevels < 2 || !sampleCount) THROW_MPP("Specular prefilter output name, face size, mip count (at least two), and sample count must be valid.", __LINE__, __FILE__, __func__);
+		if (source->getTextureTarget() != GL_TEXTURE_CUBE_MAP) THROW_MPP("Specular prefilter source must be a cubemap texture.", __LINE__, __FILE__, __func__);
+		auto format = source->getInternalFormat();
+		if (format != GL_RGB16F && format != GL_RGBA16F && format != GL_RGB32F && format != GL_RGBA32F)
+			THROW_MPP("Specular prefilter source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
+	}
+
 	void RenderSystem::validateDiffuseIrradianceSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t sampleCount) const
 	{
 		if (!source || !source->isLoaded()) THROW_MPP("Diffuse irradiance source must be a loaded cubemap texture.", __LINE__, __FILE__, __func__);
