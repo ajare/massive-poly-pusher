@@ -347,6 +347,19 @@ namespace mpp
 
 	public:
 
+		class _MPPAPI CubemapFaceRenderScope
+		{
+			RenderSystem* mSystem{}; RenderTexture* mTarget{};
+			int mViewport[4]{}; int mScissor[4]{}; int mDrawBuffer{}; int mReadBuffer{}; bool mScissorEnabled{};
+			bool mFinished{};
+		public:
+			CubemapFaceRenderScope(RenderSystem& system, RenderTargetPtr const& target, uint32_t face, uint32_t mipLevel);
+			CubemapFaceRenderScope(CubemapFaceRenderScope const&) = delete;
+			CubemapFaceRenderScope& operator=(CubemapFaceRenderScope const&) = delete;
+			~CubemapFaceRenderScope();
+			void finish();
+		};
+
 		RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger, RenderSystemOptions options = {});
 
 		virtual ~RenderSystem();
