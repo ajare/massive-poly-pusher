@@ -42,8 +42,13 @@ namespace mpp
 					}
 					emissive = graph->writeColour({pass}, target, GraphLoadOp::Clear, GraphStoreOp::Store);
 				}
-				else if (enabled) emissive = info.colourOutputs[1].image;
-				else while (graph->getPassInfo({pass}).colourOutputs.size() > 1) graph->removeColourOutput({pass}, 1);
+				else if (info.colourOutputs.size() >= 2)
+				{
+					// Keep the authored emissive MRT attached while Bloom is disabled.
+					// Bloom enablement is a post-process routing choice; changing the
+					// scene framebuffer topology can alter otherwise identical PBR draws.
+					emissive = info.colourOutputs[1].image;
+				}
 			}
 			if (info.callbackFactory.starts_with("MPP.Bloom")) graph->setPassEnabled({pass}, enabled);
 		}
