@@ -7,7 +7,7 @@
 - Phase 3 records actual MSAA colour/depth resolves at their execution points; enabled and disabled TAA, SSAA, FXAA, and presentation stages; bypass reasons; named-output identity; per-event physical inputs/outputs; and generation-safe output resource descriptors.
 - The model combines authored and actual pass order, exact batches, renderer stages, bypass diagnostics, typed dependencies, stable generation-local IDs, and independently filtered authored/physical resources.
 - The layout provides a top-to-bottom execution spine, non-overlapping disabled/resource columns, named-output branches, deterministic relayout, Fit All, cursor-centred zoom, and native vertical scrolling.
-- The Process Flow tab is docked with Pipeline Hierarchy and provides resource filters, edge controls, live-sample status, refresh, pan/zoom, clipped drawing, hover details, exact RenderDoc GPU-marker labels, selection targets, and expandable batch nodes.
+- The Process Flow tab is docked with Pipeline Hierarchy and provides resource filters, edge controls, live-sample status, refresh, pan/zoom, clipped drawing, hover details, in-node RenderDoc marker summaries with exact hover labels, selection targets, and expandable batch nodes.
 - Selection is synchronized in both directions for passes, images/imports, materials, and resolved scene objects; scene-generation changes invalidate pointer-derived UI data immediately.
 - Snapshot polling is gated to 0.25 seconds with immediate refresh for pipeline, scene, filter, and manual invalidations; unchanged samples preserve the model and view transform.
 - Empty, waiting, stale, invalid, malformed-snapshot, and large-graph states are explicit, and the authoring guide documents operation and the 500-node warning threshold.
@@ -546,7 +546,7 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
 6. **ImGui Process Flow tab — COMPLETE**
    - [x] Dock Process Flow alongside Pipeline Hierarchy without replacing the hierarchy.
    - [x] Add local resource/edge controls, sample status, Refresh, legend, and Fit All.
-   - [x] Add clipped node/edge rendering, pan, zoom, hover emphasis/details, exact RenderDoc marker labels, click targets, and batch expansion.
+   - [x] Add clipped node/edge rendering, pan, zoom, hover emphasis/details, in-node RenderDoc marker summaries and exact hover labels, click targets, and batch expansion.
 
 7. **Selection and live sampling — COMPLETE**
    - [x] Synchronize pass, image/import, material, and scene-object selections with the existing Inspector and highlight matching flow nodes for hierarchy-originated selections.

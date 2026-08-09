@@ -221,10 +221,15 @@ namespace pipeline_editor
 			                                  : selected ? IM_COL32(80, 225, 255, 255) : IM_COL32(90, 95, 110, 255);
 			draw->AddRectFilled(a, b, fill, 7.0f);
 			draw->AddRect(a, b, border, 7.0f, 0, node.id == hoveredNode || selected ? 2.5f : 1.2f);
+			draw->PushClipRect({a.x + 3.0f, a.y + 3.0f}, {b.x - 3.0f, b.y - 3.0f}, true);
 			float z = mTransform.zoom, fontSize = std::max(5.0f, ImGui::GetFontSize() * z);
 			for (size_t label = 0; label < node.renderDocLabels.size(); ++label)
+			{
+				auto const& summary = label < node.renderDocLabelSummaries.size()
+				                          ? node.renderDocLabelSummaries[label] : node.renderDocLabels[label];
 				draw->AddText(nullptr, fontSize, {a.x + 10 * z, a.y + (8 + 20 * (float)label) * z},
-				              IM_COL32(255, 190, 70, 255), node.renderDocLabels[label].c_str());
+				              IM_COL32(255, 190, 70, 255), summary.c_str());
+			}
 			if (mTransform.zoom >= 0.48f)
 			{
 				float bodyY = 8.0f + 20.0f * (float)node.renderDocLabels.size();
@@ -243,6 +248,7 @@ namespace pipeline_editor
 						              node.sceneObjectNames[index].c_str());
 					}
 			}
+			draw->PopClipRect();
 		}
 		draw->PopClipRect();
 		if (hoveredNode)
