@@ -80,8 +80,25 @@ namespace mpp::resource_parsers
 		surface.addEntry("alphaCutoff", std::to_string(scalar(material.get("alphaCutoff"), 0.5f)));
 		auto sided = material.get("doubleSided"); surface.addEntry("doubleSided", sided && sided->type == Json::Type::Boolean && sided->boolean ? "true" : "false");
 		result.definition.addEntry("Surface", surface);
-		auto images = root.get("images");
-		if (images && images->type == Json::Type::Array) for (auto const& image : images->array) if (image.type == Json::Type::Object) { auto uri = image.get("uri"); if (uri && uri->type == Json::Type::String && !uri->string.starts_with("data:")) result.generatedImages.push_back((filepath.parent_path() / std::filesystem::path(uri->string)).lexically_normal()); }
+		auto textures = root.get("textures"), images = root.get("images");
+		auto texturePath = [&](Json const* texture) -> std::filesystem::path
+		{
+			if (!texture || texture->type != Json::Type::Object || !textures || !images || textures->type != Json::Type::Array || images->type != Json::Type::Array) return {};
+			auto index = texture->get("index"); if (!index || index->type != Json::Type::Number || index->number < 0 || (size_t)index->number >= textures->array.size()) return {};
+			auto sourceIndex = textures->array[(size_t)index->number].get("source"); if (!sourceIndex || sourceIndex->type != Json::Type::Number || sourceIndex->number < 0 || (size_t)sourceIndex->number >= images->array.size()) return {};
+			auto uri = images->array[(size_t)sourceIndex->number].get("uri"); if (!uri || uri->type != Json::Type::String || uri->string.starts_with("data:")) return {};
+			return (filepath.parent_path() / std::filesystem::path(uri->string)).lexically_normal();
+		};
+		auto addMap = [&](char const* name, Json const* texture, char const* colourSpace)
+		{
+			auto imagePath = texturePath(texture); if (imagePath.empty()) { if (texture) result.warnings.push_back(std::string("glTF ") + name + " image is embedded or unresolved and was not imported yet."); return; }
+			utils::StructuredData image("Texture"); image.addEntry("name", result.materialName + "." + name); image.addEntry("target", "2D"); image.addEntry("filename", imagePath.string()); image.addEntry("colourSpace", colourSpace); image.addEntry("minFilter", "LINEAR"); image.addEntry("magFilter", "LINEAR"); image.addEntry("wrap", "REPEAT");
+			utils::StructuredData map(name); map.addEntry("Resource", image); result.definition.addEntry(name, map); result.generatedImages.push_back(imagePath);
+		};
+		if (pbr && pbr->type == Json::Type::Object) { addMap("BaseColourMap", pbr->get("baseColorTexture"), "SRGB"); addMap("MetallicRoughnessMap", pbr->get("metallicRoughnessTexture"), "LINEAR"); }
+		addMap("NormalMap", material.get("normalTexture"), "LINEAR"); if (auto normal = material.get("normalTexture")) result.definition.getEntry("Surface").setEntryValue("normalScale", std::to_string(scalar(normal->get("scale"), 1)));
+		addMap("OcclusionMap", material.get("occlusionTexture"), "LINEAR"); if (auto occlusion = material.get("occlusionTexture")) result.definition.getEntry("Surface").setEntryValue("occlusionStrength", std::to_string(scalar(occlusion->get("strength"), 1)));
+		addMap("EmissiveMap", material.get("emissiveTexture"), "SRGB");
 		return result;
 	}
 }
