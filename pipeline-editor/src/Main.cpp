@@ -499,90 +499,7 @@ namespace
 
 	PbrPipelineResourceDocument makeLocalResource(PbrPipelineResourceKind kind, std::string const& name);
 
-	struct GltfJson
-	{
-		enum class Type { Null, Boolean, Number, String, Array, Object };
-		Type type{Type::Null}; bool boolean{}; double number{}; std::string string;
-		std::vector<GltfJson> array; std::map<std::string, GltfJson> object;
-		GltfJson const* get(std::string const& key) const { auto found = object.find(key); return found == object.end() ? nullptr : &found->second; }
-	};
-
-	class GltfJsonParser
-	{
-		char const* mCurrent; char const* mEnd;
-		void whitespace() { while (mCurrent != mEnd && std::isspace((unsigned char)*mCurrent)) ++mCurrent; }
-		void require(char value) { whitespace(); if (mCurrent == mEnd || *mCurrent++ != value) throw std::runtime_error("Invalid glTF JSON."); }
-		std::string text()
-		{
-			require('\"'); std::string value;
-			while (mCurrent != mEnd && *mCurrent != '\"') { if (*mCurrent == '\\') { ++mCurrent; if (mCurrent == mEnd) throw std::runtime_error("Invalid glTF JSON escape."); char escaped = *mCurrent++; value += escaped == 'n' ? '\n' : escaped == 'r' ? '\r' : escaped == 't' ? '\t' : escaped; } else value += *mCurrent++; }
-			require('\"'); return value;
-		}
-		GltfJson value()
-		{
-			whitespace(); if (mCurrent == mEnd) throw std::runtime_error("Unexpected end of glTF JSON.");
-			if (*mCurrent == '{') { ++mCurrent; GltfJson result; result.type = GltfJson::Type::Object; whitespace(); while (mCurrent != mEnd && *mCurrent != '}') { auto key = text(); require(':'); result.object.emplace(std::move(key), value()); whitespace(); if (*mCurrent != '}') require(','); whitespace(); } require('}'); return result; }
-			if (*mCurrent == '[') { ++mCurrent; GltfJson result; result.type = GltfJson::Type::Array; whitespace(); while (mCurrent != mEnd && *mCurrent != ']') { result.array.push_back(value()); whitespace(); if (*mCurrent != ']') require(','); whitespace(); } require(']'); return result; }
-			if (*mCurrent == '\"') { GltfJson result; result.type = GltfJson::Type::String; result.string = text(); return result; }
-			if (mEnd - mCurrent >= 4 && std::string_view(mCurrent, 4) == "true") { mCurrent += 4; GltfJson result; result.type = GltfJson::Type::Boolean; result.boolean = true; return result; }
-			if (mEnd - mCurrent >= 5 && std::string_view(mCurrent, 5) == "false") { mCurrent += 5; GltfJson result; result.type = GltfJson::Type::Boolean; return result; }
-			if (mEnd - mCurrent >= 4 && std::string_view(mCurrent, 4) == "null") { mCurrent += 4; return {}; }
-			char* next = nullptr; GltfJson result; result.type = GltfJson::Type::Number; result.number = std::strtod(mCurrent, &next); if (next == mCurrent) throw std::runtime_error("Invalid glTF JSON number."); mCurrent = next; return result;
-		}
-	public:
-		explicit GltfJsonParser(std::string const& source) : mCurrent(source.data()), mEnd(source.data() + source.size()) {}
-		GltfJson parse() { auto result = value(); whitespace(); if (mCurrent != mEnd) throw std::runtime_error("Trailing glTF JSON data."); return result; }
-	};
-
-	std::vector<PbrPipelineResourceDocument> importGltfMaterials(std::filesystem::path const& path)
-	{
-		if (path.extension() != ".gltf") throw std::runtime_error("Only JSON .gltf material files are currently supported; .glb embeds JSON/binary chunks.");
-		std::ifstream file(path, std::ios::binary); if (!file) throw std::runtime_error("Could not open glTF file: " + path.string());
-		std::string source((std::istreambuf_iterator<char>(file)), {}); auto root = GltfJsonParser(source).parse();
-		auto materials = root.get("materials"); if (!materials || materials->type != GltfJson::Type::Array || materials->array.empty()) throw std::runtime_error("The glTF file contains no materials.");
-		auto textures = root.get("textures"), images = root.get("images"), buffers = root.get("buffers"), views = root.get("bufferViews");
-		std::map<size_t, std::string> extractedImages;
-		auto decodeBase64 = [](std::string const& encoded)
-		{
-			static std::string const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-			std::vector<uint8_t> result; int value = 0, bits = -8;
-			for (char character : encoded) { if (character == '=') break; auto index = alphabet.find(character); if (index == std::string::npos) continue; value = (value << 6) + (int)index; bits += 6; if (bits >= 0) { result.push_back((uint8_t)((value >> bits) & 255)); bits -= 8; } }
-			return result;
-		};
-		auto textureUri = [&](GltfJson const* texture) -> std::string
-		{
-			if (!texture || texture->type != GltfJson::Type::Object) return {}; auto index = texture->get("index");
-			if (!index || index->type != GltfJson::Type::Number || !textures || !images || textures->type != GltfJson::Type::Array || images->type != GltfJson::Type::Array || index->number < 0 || (size_t)index->number >= textures->array.size()) return {};
-			auto sourceIndex = textures->array[(size_t)index->number].get("source"); if (!sourceIndex || sourceIndex->type != GltfJson::Type::Number || sourceIndex->number < 0 || (size_t)sourceIndex->number >= images->array.size()) return {};
-			auto imageIndex = (size_t)sourceIndex->number; auto const& image = images->array[imageIndex]; auto uri = image.get("uri");
-			if (uri && uri->type == GltfJson::Type::String && !uri->string.starts_with("data:")) return (path.parent_path() / std::filesystem::path(uri->string)).lexically_normal().string();
-			if (auto found = extractedImages.find(imageIndex); found != extractedImages.end()) return found->second;
-			std::string dataUri; if (uri && uri->type == GltfJson::Type::String) dataUri = uri->string;
-			std::vector<uint8_t> bytes; std::string mime = image.get("mimeType") && image.get("mimeType")->type == GltfJson::Type::String ? image.get("mimeType")->string : "image/png";
-			if (dataUri.starts_with("data:")) { auto comma = dataUri.find(','); if (comma == std::string::npos) return {}; auto header = dataUri.substr(0, comma); auto semicolon = header.find(';'); mime = header.substr(5, semicolon == std::string::npos ? std::string::npos : semicolon - 5); bytes = decodeBase64(dataUri.substr(comma + 1)); }
-			else { auto view = image.get("bufferView"); if (!view || view->type != GltfJson::Type::Number || !views || !buffers || (size_t)view->number >= views->array.size()) return {}; auto const& bufferView = views->array[(size_t)view->number]; auto buffer = bufferView.get("buffer"); if (!buffer || buffer->type != GltfJson::Type::Number || (size_t)buffer->number >= buffers->array.size()) return {}; auto bufferUri = buffers->array[(size_t)buffer->number].get("uri"); if (!bufferUri || bufferUri->type != GltfJson::Type::String || !bufferUri->string.starts_with("data:")) return {}; auto comma = bufferUri->string.find(','); if (comma == std::string::npos) return {}; auto source = decodeBase64(bufferUri->string.substr(comma + 1)); auto offset = bufferView.get("byteOffset") ? (size_t)bufferView.get("byteOffset")->number : 0; auto length = bufferView.get("byteLength") ? (size_t)bufferView.get("byteLength")->number : 0; if (offset + length > source.size()) return {}; bytes.assign(source.begin() + offset, source.begin() + offset + length); }
-			if (bytes.empty()) return {}; auto extension = mime == "image/jpeg" ? ".jpg" : mime == "image/ktx2" ? ".ktx2" : ".png"; auto folder = path.parent_path() / ".mpp-gltf-images"; std::filesystem::create_directories(folder); auto output = folder / (path.stem().string() + ".image" + std::to_string(imageIndex) + extension); std::ofstream extracted(output, std::ios::binary | std::ios::trunc); extracted.write((char const*)bytes.data(), (std::streamsize)bytes.size()); if (!extracted) return {}; return extractedImages.emplace(imageIndex, output.string()).first->second;
-		};
-		auto number = [](GltfJson const* value, float fallback) { return value && value->type == GltfJson::Type::Number ? (float)value->number : fallback; };
-		auto vector = [&](GltfJson const* value, std::initializer_list<float> defaults) { std::vector<float> result(defaults); if (value && value->type == GltfJson::Type::Array) for (size_t index = 0; index < result.size() && index < value->array.size(); ++index) result[index] = number(&value->array[index], result[index]); return result; };
-		std::vector<PbrPipelineResourceDocument> result;
-		for (size_t index = 0; index < materials->array.size(); ++index)
-		{
-			auto const& material = materials->array[index]; if (material.type != GltfJson::Type::Object) continue;
-			auto nameValue = material.get("name"); auto name = nameValue && nameValue->type == GltfJson::Type::String && !nameValue->string.empty() ? nameValue->string : path.stem().string() + ".Material" + std::to_string(index + 1);
-			auto imported = makeLocalResource(PbrPipelineResourceKind::PbrMaterial, name); auto& surface = imported.definition.getEntry("Surface"); auto pbr = material.get("pbrMetallicRoughness");
-			if (pbr && pbr->type == GltfJson::Type::Object) { auto colour = vector(pbr->get("baseColorFactor"), {1, 1, 1, 1}); surface.setEntryValue("baseColourFactor", std::to_string(colour[0])+" "+std::to_string(colour[1])+" "+std::to_string(colour[2])+" "+std::to_string(colour[3])); surface.setEntryValue("metallicFactor", std::to_string(number(pbr->get("metallicFactor"), 1))); surface.setEntryValue("roughnessFactor", std::to_string(number(pbr->get("roughnessFactor"), 1))); }
-			auto emissive = vector(material.get("emissiveFactor"), {0, 0, 0}); surface.setEntryValue("emissiveFactor", std::to_string(emissive[0])+" "+std::to_string(emissive[1])+" "+std::to_string(emissive[2])); if (auto mode = material.get("alphaMode"); mode && mode->type == GltfJson::Type::String) surface.setEntryValue("alphaMode", mode->string); surface.setEntryValue("alphaCutoff", std::to_string(number(material.get("alphaCutoff"), 0.5f))); if (auto sided = material.get("doubleSided")) surface.setEntryValue("doubleSided", sided->boolean ? "true" : "false");
-			auto addMap = [&](char const* name, GltfJson const* texture, char const* colourSpace) { auto uri = textureUri(texture); if (uri.empty()) return; auto image = makeLocalResource(PbrPipelineResourceKind::Texture, imported.name + "." + name).definition; image.setEntryValue("filename", uri); image.setEntryValue("colourSpace", colourSpace); utils::StructuredData map(name); map.addEntry("Resource", image); imported.definition.addEntry(name, map); };
-			if (pbr && pbr->type == GltfJson::Type::Object) { addMap("BaseColourMap", pbr->get("baseColorTexture"), "SRGB"); addMap("MetallicRoughnessMap", pbr->get("metallicRoughnessTexture"), "LINEAR"); }
-			addMap("NormalMap", material.get("normalTexture"), "LINEAR"); if (auto normal = material.get("normalTexture")) surface.setEntryValue("normalScale", std::to_string(number(normal->get("scale"), 1)));
-			addMap("OcclusionMap", material.get("occlusionTexture"), "LINEAR"); if (auto occlusion = material.get("occlusionTexture")) surface.setEntryValue("occlusionStrength", std::to_string(number(occlusion->get("strength"), 1)));
-			addMap("EmissiveMap", material.get("emissiveTexture"), "SRGB");
-			result.push_back(std::move(imported));
-		}
-		return result;
-	}
-
+	/* GLTF_LOCAL_CONVERTER_REMOVED */
 	char const* localResourceKindName(PbrPipelineResourceKind kind)
 	{
 		switch (kind)
@@ -5681,8 +5598,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (auto selected = mpp::app::openGltfFileDialog(window.getWindow(), "Import glTF 2.0 material"))
 						try
 						{
-							auto imported = importGltfMaterials(*selected);
-							if (imported.empty()) throw std::runtime_error("The glTF file has no importable materials.");
+							auto loaded = resource_parsers::GltfPbrMaterialLoader::loadFirstMaterial(*selected);
+							PbrPipelineResourceDocument importedMaterial;
+							importedMaterial.name = loaded.materialName;
+							importedMaterial.kind = PbrPipelineResourceKind::PbrMaterial;
+							importedMaterial.definition = std::move(loaded.definition);
+							std::vector<PbrPipelineResourceDocument> imported;
+							imported.push_back(std::move(importedMaterial));
 							auto pipelineBefore = clonePipeline(openDocument);
 							std::string assignedBinding;
 							for (auto& material : imported)
