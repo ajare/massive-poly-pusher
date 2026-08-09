@@ -539,7 +539,7 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
    - [x] Preserve duplicate telemetry submissions, visually group same-material records per pass, and transform direct dependencies through optional resource nodes.
 
 5. **Automatic layout — COMPLETE**
-   - [x] Build the horizontally centred vertical execution spine with inline enabled/bypassed AA stages, disabled-authored-pass/resource columns, and named-output branches.
+   - [x] Build the horizontally centred vertical execution spine with inline enabled/bypassed AA stages, right-side pass-owned batch children joined by straight non-arrow connectors, disabled-authored-pass/resource columns, and named-output branches.
    - [x] Preserve view transforms across deterministic relayout and provide Fit All/cursor-centred zoom transforms.
    - [x] Add deterministic ordering, non-overlap, Fit All, and zoom geometry tests.
 

@@ -279,9 +279,11 @@ namespace pipeline_editor
 						node.details = std::to_string(group.size()) + " submission(s), " + std::to_string(primitives) +
 						               " primitives, " + std::to_string(instances) + " instance(s)";
 						if (unresolvedSource) node.details += " | source unavailable for this scene generation";
-						node.mainSpine = true;
+						node.mainSpine = false;
 						node.layoutRank = (float)first.sequence;
-						spine.push_back(addNode(std::move(node)));
+						auto batchId = addNode(std::move(node));
+						if (input.filters.executionEdges && first.parentPass.id < passNodes.size())
+							addEdge(passNodes[first.parentPass.id], batchId, ProcessFlowEdgeKind::PassSubmission, {});
 					}
 					continue;
 				}
@@ -545,8 +547,10 @@ namespace pipeline_editor
 		input.sceneObjects[first.sceneObject] = {4, "FlowObject"};
 		auto model = builder.build(input);
 		if (std::count_if(model.nodes.begin(), model.nodes.end(), [](auto const& node)
-		    { return node.kind == ProcessFlowNodeKind::BatchGroup && node.submissionCount == 2; }) != 1)
-			throw std::runtime_error("Process-flow model did not group same-material submissions.");
+		    { return node.kind == ProcessFlowNodeKind::BatchGroup && node.submissionCount == 2 && !node.mainSpine; }) != 1 ||
+		    std::count_if(model.edges.begin(), model.edges.end(), [](auto const& edge)
+		    { return edge.kind == ProcessFlowEdgeKind::PassSubmission; }) != 2)
+			throw std::runtime_error("Process-flow model did not group batches as pass-owned child steps.");
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)

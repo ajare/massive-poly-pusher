@@ -30,7 +30,7 @@ namespace pipeline_editor
 		PhysicalWorkTarget
 	};
 
-	enum class ProcessFlowEdgeKind { Execution, Colour, Depth, Shadow, History, Import, Output };
+	enum class ProcessFlowEdgeKind { Execution, PassSubmission, Colour, Depth, Shadow, History, Import, Output };
 	enum class ProcessFlowResourceCategory : uint32_t
 	{
 		None = 0,

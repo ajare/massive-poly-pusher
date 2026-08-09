@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <unordered_map>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
@@ -10,7 +11,7 @@ namespace pipeline_editor
 {
 	void ProcessFlowLayout::apply(ProcessFlowModel& model) const
 	{
-		std::vector<ProcessFlowNode*> spine, disabled, resources;
+		std::vector<ProcessFlowNode*> spine, batches, disabled, resources;
 		for (auto& node : model.nodes)
 		{
 			bool batch = node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup;
@@ -23,6 +24,7 @@ namespace pipeline_editor
 			                  ? 90.0f + labelHeight + 24.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
 			                  : 86.0f + labelHeight;
 			if (node.mainSpine) spine.push_back(&node);
+			else if (batch && node.passId >= 0) batches.push_back(&node);
 			else if (node.resourceCategory != ProcessFlowResourceCategory::None) resources.push_back(&node);
 			else disabled.push_back(&node);
 		}
@@ -35,6 +37,26 @@ namespace pipeline_editor
 		});
 		float y = 0.0f;
 		for (auto* node : spine) { node->position = {-node->size.x * 0.5f, y}; y += node->size.y + 72.0f; }
+		std::unordered_map<int, ProcessFlowNode*> passSpineNodes;
+		for (auto* node : spine)
+			if (node->kind == ProcessFlowNodeKind::AuthoredPass && node->passId >= 0) passSpineNodes[node->passId] = node;
+		std::unordered_map<int, std::vector<ProcessFlowNode*>> batchesByPass;
+		for (auto* node : batches) batchesByPass[node->passId].push_back(node);
+		for (auto& [passId, children] : batchesByPass)
+		{
+			auto parent = passSpineNodes.find(passId);
+			if (parent == passSpineNodes.end()) { disabled.insert(disabled.end(), children.begin(), children.end()); continue; }
+			std::stable_sort(children.begin(), children.end(), [](auto left, auto right) { return left->sequence < right->sequence; });
+			float totalHeight = 0.0f;
+			for (auto* child : children) totalHeight += child->size.y;
+			totalHeight += 28.0f * (float)(children.size() - 1);
+			float childY = parent->second->position.y + (parent->second->size.y - totalHeight) * 0.5f;
+			for (auto* child : children)
+			{
+				child->position = {parent->second->position.x + parent->second->size.x + 72.0f, childY};
+				childY += child->size.y + 28.0f;
+			}
+		}
 		auto yForRank = [&](float rank)
 		{
 			if (spine.empty()) return rank * 150.0f;
@@ -52,7 +74,7 @@ namespace pipeline_editor
 		for (auto* node : disabled)
 		{
 			auto nodeY = std::max(yForRank(node->layoutRank), disabledBottom + 26.0f);
-			node->position = {1140.0f - node->size.x * 0.5f, nodeY}; disabledBottom = nodeY + node->size.y;
+			node->position = {2400.0f - node->size.x * 0.5f, nodeY}; disabledBottom = nodeY + node->size.y;
 		}
 		std::stable_sort(resources.begin(), resources.end(), orderByRank);
 		float resourceBottom = -104.0f, outputBottom = -104.0f;
@@ -61,7 +83,7 @@ namespace pipeline_editor
 			bool output = node->resourceCategory == ProcessFlowResourceCategory::NamedOutputs;
 			auto& bottom = output ? outputBottom : resourceBottom;
 			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
-			node->position = {(output ? 2280.0f : -1140.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
+			node->position = {(output ? 3600.0f : -1800.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
 		}
 	}
 
@@ -103,8 +125,14 @@ namespace pipeline_editor
 			ProcessFlowNode node; node.id = index + 1; node.semanticKey = std::to_string(index); node.mainSpine = true; node.sequence = index + 1; node.layoutRank = (float)index;
 			model.nodes.push_back(node);
 		}
+		for (size_t index = 0; index < 4; ++index) model.nodes[index].passId = (int)index;
+		ProcessFlowNode batch; batch.id = 8; batch.semanticKey = "batch"; batch.kind = ProcessFlowNodeKind::BatchSubmission; batch.passId = 0; batch.sequence = 1; model.nodes.push_back(batch);
 		ProcessFlowNode resource; resource.id = 9; resource.semanticKey = "resource"; resource.resourceCategory = ProcessFlowResourceCategory::AuthoredImages; resource.layoutRank = 1.5f; model.nodes.push_back(resource);
 		ProcessFlowLayout layout; layout.apply(model); auto first = model.nodes;
+		if (model.nodes[4].position.x <= model.nodes[0].position.x + model.nodes[0].size.x ||
+		    std::abs((model.nodes[4].position.y + model.nodes[4].size.y * 0.5f) -
+		             (model.nodes[0].position.y + model.nodes[0].size.y * 0.5f)) > 0.01f)
+			throw std::runtime_error("Process-flow batch child is not right-aligned with its parent pass.");
 		for (size_t index = 0; index < 4; ++index)
 			if (std::abs(model.nodes[index].position.x + model.nodes[index].size.x * 0.5f) > 0.01f)
 				throw std::runtime_error("Process-flow spine nodes are not horizontally centred.");
