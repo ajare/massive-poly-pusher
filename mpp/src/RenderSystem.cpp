@@ -3119,11 +3119,15 @@ namespace mpp
 		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		GL_CHECK(glUniform1f(program->getUniformId("INTENSITY"), intensity));
-		// Parser texture slots are sorted by sampler name (BLOOM before SCENE),
-		// so do not rely on declaration order for this two-input operation.
-		GL_CHECK(glUniform1i(program->getUniformId("SCENE"), 0));
-		GL_CHECK(glUniform1i(program->getUniformId("BLOOM"), 1));
-		scene->bind(0); bloom->bind(1);
+		// Bind against the Program sampler table. Parser texture slots are sorted
+		// by sampler name, and getUniformId() intentionally does not address
+		// @Texture declarations.
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+		{
+			auto const& sampler = program->getSamplerName(unit);
+			if (sampler == "SCENE") scene->bind((uint32_t)unit);
+			else if (sampler == "BLOOM") bloom->bind((uint32_t)unit);
+		}
 		GL_CHECK(glDisable(GL_BLEND));
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
