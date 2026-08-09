@@ -22,17 +22,6 @@ namespace mpp
 {
 	namespace
 	{
-		char const* graphPassTypeName(GraphPassType type)
-		{
-			switch (type)
-			{
-			case GraphPassType::Scene: return "Scene";
-			case GraphPassType::Fullscreen: return "Fullscreen";
-			case GraphPassType::Present: return "Present";
-			default: return "Unknown";
-			}
-		}
-
 		class GraphFramebufferTarget final : public RenderTarget
 		{
 			GLuint mFramebuffer{ 0 };
@@ -358,7 +347,7 @@ namespace mpp
 			auto const pass = graph.getPassInfo(passHandle);
 			auto const statsBefore = mRenderSystem->getCurrentRenderInfo();
 			auto const passStart = chrono::steady_clock::now();
-			GpuDebugScope passScope("RenderGraph Pass " + to_string(passHandle.id) + ": " + pass.name + " [" + graphPassTypeName(pass.type) + "]");
+			GpuDebugScope passScope(renderFlowPassRenderDocLabel(passHandle, pass.name, pass.type));
 			auto const explicitCallback = mCallbacks.find(passHandle.id);
 			RenderGraphPassCallback callback = explicitCallback == mCallbacks.end() ? RenderGraphPassCallback() : explicitCallback->second;
 			RenderGraphScenePass* scenePass = nullptr;
