@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
@@ -46,7 +47,7 @@ namespace mpp::resource_parsers
 		};
 	}
 
-	GltfPbrMaterialLoadResult GltfPbrMaterialLoader::loadFirstMaterial(std::filesystem::path const& filepath)
+	GltfPbrMaterialLoadResult GltfPbrMaterialLoader::loadMaterialByName(std::filesystem::path const& filepath, std::string const& requestedName)
 	{
 		if (filepath.empty()) throw std::invalid_argument("glTF material loader requires a file path.");
 		auto extension = filepath.extension().string(); for (auto& character : extension) character = (char)std::tolower((unsigned char)character);
@@ -59,12 +60,13 @@ namespace mpp::resource_parsers
 		if (!version || version->type != Json::Type::String || version->string.empty() || version->string.front() != '2') throw std::runtime_error("glTF asset.version must identify glTF 2.x.");
 		auto materials = root.get("materials");
 		if (!materials || materials->type != Json::Type::Array || materials->array.empty()) throw std::runtime_error("glTF file contains no materials.");
-		auto const& material = materials->array.front();
-		if (material.type != Json::Type::Object) throw std::runtime_error("glTF material 0 must be an object.");
+		size_t selected = materials->array.size();
+		for (size_t index = 0; index < materials->array.size(); ++index) { auto name = materials->array[index].get("name"); auto candidate = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string() + ".Material" + std::to_string(index); if (candidate == requestedName) { selected = index; break; } }
+		if (selected == materials->array.size()) throw std::runtime_error("glTF material not found: " + requestedName);
+		auto const& material = materials->array[selected]; if (material.type != Json::Type::Object) throw std::runtime_error("Selected glTF material must be an object.");
 		GltfPbrMaterialLoadResult result;
-		result.materialIndex = 0;
-		auto name = material.get("name"); result.materialName = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string();
-		if (materials->array.size() > 1) result.warnings.push_back("glTF defines " + std::to_string(materials->array.size()) + " materials; MPP loaded material 0 ('" + result.materialName + "') and ignored the remaining materials.");
+		result.materialIndex = (uint32_t)selected;
+		auto name = material.get("name"); result.materialName = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string() + ".Material" + std::to_string(selected);
 		result.definition = utils::StructuredData("PbrMaterial"); result.definition.addEntry("name", result.materialName);
 		utils::StructuredData surface("Surface");
 		auto scalar = [](Json const* value, float fallback) { return value && value->type == Json::Type::Number ? (float)value->number : fallback; };
@@ -104,6 +106,24 @@ namespace mpp::resource_parsers
 		addMap("NormalMap", material.get("normalTexture"), "LINEAR"); if (auto normal = material.get("normalTexture")) result.definition.getEntry("Surface").setEntryValue("normalScale", std::to_string(scalar(normal->get("scale"), 1)));
 		addMap("OcclusionMap", material.get("occlusionTexture"), "LINEAR"); if (auto occlusion = material.get("occlusionTexture")) result.definition.getEntry("Surface").setEntryValue("occlusionStrength", std::to_string(scalar(occlusion->get("strength"), 1)));
 		addMap("EmissiveMap", material.get("emissiveTexture"), "SRGB");
+		return result;
+	}
+
+	std::vector<std::string> GltfPbrMaterialLoader::listMaterialNames(std::filesystem::path const& filepath)
+	{
+		if (filepath.extension() != ".gltf") throw std::runtime_error("glTF material listing requires a JSON .gltf file.");
+		std::ifstream file(filepath, std::ios::binary); if (!file) throw std::runtime_error("Could not open glTF file: " + filepath.string());
+		std::string source((std::istreambuf_iterator<char>(file)), {}); auto root = Parser(source).parse(); auto materials = root.get("materials");
+		if (!materials || materials->type != Json::Type::Array || materials->array.empty()) throw std::runtime_error("glTF file contains no materials.");
+		std::vector<std::string> names;
+		for (size_t index = 0; index < materials->array.size(); ++index) { auto name = materials->array[index].get("name"); auto candidate = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string() + ".Material" + std::to_string(index); while (std::find(names.begin(), names.end(), candidate) != names.end()) candidate += "." + std::to_string(index + 1); names.push_back(std::move(candidate)); }
+		return names;
+	}
+
+	GltfPbrMaterialLoadResult GltfPbrMaterialLoader::loadFirstMaterial(std::filesystem::path const& filepath)
+	{
+		auto names = listMaterialNames(filepath); auto result = loadMaterialByName(filepath, names.front());
+		if (names.size() > 1) result.warnings.push_back("glTF defines " + std::to_string(names.size()) + " materials; MPP loaded material 0 ('" + result.materialName + "') and ignored the remaining materials.");
 		return result;
 	}
 }

@@ -27,6 +27,8 @@ namespace mpp::resource_parsers
 		// Loads the first glTF material. Parsing/conversion is introduced in
 		// subsequent phases; this stable API intentionally reports that status
 		// until then.
+		static std::vector<std::string> listMaterialNames(std::filesystem::path const& filepath);
+		static GltfPbrMaterialLoadResult loadMaterialByName(std::filesystem::path const& filepath, std::string const& materialName);
 		static GltfPbrMaterialLoadResult loadFirstMaterial(std::filesystem::path const& filepath);
 	};
 }
