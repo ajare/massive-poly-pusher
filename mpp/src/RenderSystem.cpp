@@ -1583,6 +1583,31 @@ namespace mpp
 			THROW_MPP("Diffuse irradiance source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
 	}
 
+	void RenderSystem::renderDiffuseIrradianceFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t sampleCount)
+	{
+		auto target = dynamic_cast<RenderTexture*>(destination.get());
+		if (!source || !target || source == target || target->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
+			THROW_MPP("Diffuse irradiance requires distinct cubemap source and destination.", __LINE__, __FILE__, __func__);
+		CubemapFaceRenderScope scope(*this, destination, face, 0);
+		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			auto program = static_cast<Program*>(mDiffuseIrradianceProgram.get());
+			setUsedProgram(mDiffuseIrradianceProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform1i(program->getUniformId("ENVIRONMENT"), 0));
+			GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face));
+			GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), (GLint)sampleCount));
+			auto dimension = (float)target->getWidth(); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			source->bind(0);
+			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+			popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); throw; }
+	}
+
 	void RenderSystem::renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel)
 	{
 		auto target = dynamic_cast<RenderTexture*>(destination.get());
