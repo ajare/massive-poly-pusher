@@ -82,10 +82,10 @@ namespace mpp::resource_parsers
 		if (data.hasEntry("Environment"))
 		{
 			auto const& environment = data.getEntry("Environment");
-			rejectUnknown(environment,{"binding","irradiance","prefilteredSpecular","brdfLut","background"},"Environment");
+			rejectUnknown(environment,{"binding","irradiance","prefilteredSpecular","brdfLut","background","hdrEquirectangular","environmentResolution","irradianceResolution","prefilterResolution"},"Environment");
 			auto read = [&](char const* key) { return environment.hasEntry(key) ? environment.getEntry(key).getValue() : string(); };
 			document.environment.binding = read("binding"); document.environment.irradiance = read("irradiance");
-			document.environment.prefilteredSpecular = read("prefilteredSpecular"); document.environment.brdfLut = read("brdfLut"); document.environment.background = read("background");
+			document.environment.prefilteredSpecular = read("prefilteredSpecular"); document.environment.brdfLut = read("brdfLut"); document.environment.background = read("background"); document.environment.hdrEquirectangular = read("hdrEquirectangular"); if(environment.hasEntry("environmentResolution"))document.environment.environmentResolution=utils::StringUtils::parseUInt(environment.getEntry("environmentResolution").getValue()); if(environment.hasEntry("irradianceResolution"))document.environment.irradianceResolution=utils::StringUtils::parseUInt(environment.getEntry("irradianceResolution").getValue()); if(environment.hasEntry("prefilterResolution"))document.environment.prefilterResolution=utils::StringUtils::parseUInt(environment.getEntry("prefilterResolution").getValue());
 		}
 		if (data.hasEntry("Bloom"))
 		{

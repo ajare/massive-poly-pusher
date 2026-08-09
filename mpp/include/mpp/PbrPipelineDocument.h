@@ -70,6 +70,11 @@ namespace mpp
 		std::string prefilteredSpecular;
 		std::string brdfLut;
 		std::string background;
+		// Optional linear equirectangular HDR source for renderer-owned IBL generation.
+		std::string hdrEquirectangular;
+		uint32_t environmentResolution{512};
+		uint32_t irradianceResolution{32};
+		uint32_t prefilterResolution{128};
 	};
 
 	struct _MPPAPI PbrPipelineBloomDocument
