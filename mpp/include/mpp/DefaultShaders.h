@@ -312,6 +312,34 @@ void main()
 }
 )";
 
+const std::string FragmentShaderPbrBrdfIntegrationTemplate =
+R"(
+@@Version
+
+@@Uniform(int SAMPLE_COUNT);
+@@Uniform(vec2 OUTPUT_SIZE);
+
+float radicalInverse(uint value)
+{
+    value=(value<<16u)|(value>>16u); value=((value&0x55555555u)<<1u)|((value&0xAAAAAAAAu)>>1u); value=((value&0x33333333u)<<2u)|((value&0xCCCCCCCCu)>>2u); value=((value&0x0F0F0F0Fu)<<4u)|((value&0xF0F0F0F0u)>>4u); value=((value&0x00FF00FFu)<<8u)|((value&0xFF00FF00u)>>8u); return float(value)*2.3283064365386963e-10;
+}
+vec3 importanceSampleGGX(vec2 xi,float roughness,vec3 normal)
+{
+    float a=roughness*roughness,a2=a*a,phi=6.28318530718*xi.x; float cosTheta=sqrt((1.0-xi.y)/max(1.0+(a2-1.0)*xi.y,0.00001)); float sinTheta=sqrt(max(1.0-cosTheta*cosTheta,0.0)); vec3 halfVector=vec3(cos(phi)*sinTheta,sin(phi)*sinTheta,cosTheta); vec3 tangent=vec3(1.0,0.0,0.0),bitangent=vec3(0.0,1.0,0.0); return normalize(tangent*halfVector.x+bitangent*halfVector.y+normal*halfVector.z);
+}
+float geometrySchlickGGX(float nDotV,float roughness)
+{
+    float a=roughness*roughness,k=a*a*0.5; return nDotV/max(nDotV*(1.0-k)+k,0.00001);
+}
+float geometrySmith(float nDotV,float nDotL,float roughness) { return geometrySchlickGGX(nDotV,roughness)*geometrySchlickGGX(nDotL,roughness); }
+void main()
+{
+    vec2 uv=gl_FragCoord.xy/@Uniform(OUTPUT_SIZE); float nDotV=clamp(uv.x,0.0001,1.0),roughness=clamp(uv.y,0.0,1.0); vec3 view=vec3(sqrt(max(1.0-nDotV*nDotV,0.0)),0.0,nDotV),normal=vec3(0.0,0.0,1.0); float a=0.0,b=0.0; int samples=clamp(@Uniform(SAMPLE_COUNT),1,1024);
+    for(int index=0;index<1024;++index){if(index>=samples)break; vec2 xi=vec2((float(index)+0.5)/float(samples),radicalInverse(uint(index))); vec3 halfVector=importanceSampleGGX(xi,roughness,normal); vec3 light=normalize(2.0*dot(view,halfVector)*halfVector-view); float nDotL=max(light.z,0.0),nDotH=max(halfVector.z,0.0),vDotH=max(dot(view,halfVector),0.0); if(nDotL>0.0){float visibility=geometrySmith(nDotV,nDotL,roughness)*vDotH/max(nDotH*nDotV,0.00001); float fresnel=pow(1.0-vDotH,5.0); a+=(1.0-fresnel)*visibility; b+=fresnel*visibility;}}
+    @Out(vec4 COLOUR)=vec4(a/float(samples),b/float(samples),0.0,1.0);
+}
+)";
+
 // Diagnostic graph-image visualization used by PipelineEditor and GPU tools.
 const std::string FragmentShaderTextureDiagnosticTemplate =
 R"(

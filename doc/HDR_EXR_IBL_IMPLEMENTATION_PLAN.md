@@ -386,7 +386,9 @@ Declared `RenderSystem::getOrCreatePbrBrdfIntegrationLut()` and renderer-held sh
 
 **Acceptance:** IBL code can request a stable renderer-owned integration LUT without an authored texture resource.
 
-### 8.2 Integration shader and render target
+### 8.2 Integration shader and render target — Complete
+
+Added `FragmentShaderPbrBrdfIntegrationTemplate` with deterministic Hammersley split-sum GGX integration. Existing floating-point 2D `RenderTexture` support provides the renderer-owned `RG16F` LUT target; default generation settings are 512x512 and 1024 samples.
 
 1. Add a fullscreen split-sum GGX BRDF integration shader with `NdotV`/roughness output in RG channels.
 2. Add a floating-point 2D render-target creation path or equivalent renderer-owned target suitable for the LUT.
