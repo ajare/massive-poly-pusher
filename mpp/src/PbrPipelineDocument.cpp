@@ -51,8 +51,16 @@ namespace mpp
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 		{
 			auto info = graph->getPassInfo({pass});
-			if (info.callbackFactory == "MPP.BloomExtract" && enabled && emissive.isValid() && !info.samplerBindings.empty())
-				graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, emissive, info.samplerBindings[0].mipLevel);
+			if (info.callbackFactory == "MPP.BloomExtract" && enabled && emissive.isValid())
+			{
+				// Removing SceneEmissive while Bloom is disabled removes every
+				// dependent sampler binding. Re-enable must restore TEX1, not merely
+				// update it when it happened to survive the topology change.
+				if (info.samplerBindings.empty())
+					graph->bindSampler({pass}, "TEX1", emissive);
+				else
+					graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, emissive, info.samplerBindings[0].mipLevel);
+			}
 			if (info.callbackFactory == "MPP.BloomComposite" && !info.colourOutputs.empty()) bloomCompositeOutputs.push_back(info.colourOutputs.front().image);
 		}
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
