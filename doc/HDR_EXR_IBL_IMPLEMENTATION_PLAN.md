@@ -299,12 +299,66 @@ GPU coverage uses reduced-sample fixtures to verify neutral RGBA16F HDR preserva
 
 ## Phase 7 — Specular prefilter generation
 
-1. Add GGX importance-sampled prefilter shader/pass.
-2. Generate complete mip chain, mapping roughness to mip level.
-3. Use a documented fixed sample budget per mip/face.
-4. Validate roughness-dependent blur and no NaNs/black faces.
+### 7.1 Runtime API and settings
 
-**Acceptance:** Generated prefilter cubemap is suitable for `PBR_PREFILTERED_SPECULAR_MAP`.
+1. Add a renderer-owned API:
+
+```cpp
+RenderTargetPtr RenderSystem::generatePrefilteredSpecular(
+    Texture* environmentCubemap,
+    std::string const& generatedName,
+    uint32_t faceSize,
+    uint32_t mipLevels,
+    uint32_t sampleCount = 1024);
+```
+
+2. Require a loaded floating-point source cubemap, non-zero name/size/mip/sample values, and at least two mip levels for roughness variation.
+3. Output uses `createIblCubemap`; mip zero is roughness `0`, final mip is roughness `1`, and intermediate mips map linearly over `[0, 1]`.
+4. Cache lookup/publication remains outside this synchronous candidate-producing API.
+
+**Acceptance:** Invalid prefilter requests fail before allocation/state mutation.
+
+### 7.2 GGX prefilter shader source
+
+1. Add a renderer-owned fragment shader with `ENVIRONMENT`, `FACE`, `OUTPUT_SIZE`, `ROUGHNESS`, `SOURCE_RESOLUTION`, and `SAMPLE_COUNT` uniforms.
+2. Reuse the established face-direction/tangent-basis convention.
+3. Add deterministic Hammersley sampling, GGX normal-distribution importance sampling, Smith-compatible view/reflection geometry, and PDF-derived source LOD selection.
+4. Guard degenerate PDFs, zero weights, invalid roughness, and NaN output.
+
+**Acceptance:** Shader source implements deterministic roughness-dependent GGX prefiltering without scene-camera dependency.
+
+### 7.3 Core-program lifecycle and validation
+
+1. Add/load/destroy a stable `__mpp_ibl_prefiltered_specular__` core program.
+2. Add validation for floating-point cubemap source, output settings, supported mip count, and source/output aliasing.
+3. Derive/query source face resolution for shader LOD selection.
+
+**Acceptance:** No invalid request begins rendering and no program compiles per generation.
+
+### 7.4 Single face/mip prefilter helper
+
+1. Add private helper accepting source cubemap, output target, face, mip level, roughness, source resolution, and sample count.
+2. Enter `CubemapFaceRenderScope` at the requested mip, set all shader uniforms, bind cube source, and draw fullscreen geometry.
+3. Preserve scoped renderer/GL state and record fullscreen render statistics.
+
+**Acceptance:** An individual face/mip is populated safely and independently.
+
+### 7.5 Public all-mip generation API
+
+1. Implement `generatePrefilteredSpecular(...)` through validation, cubemap creation, and nested mip/face generation.
+2. Compute roughness as `mip / (mipLevels - 1)`; ensure mip zero remains a sharp environment reflection.
+3. Release candidate on error and never expose a partially generated cubemap to cache/runtime callers.
+
+**Acceptance:** Returns a complete floating-point prefiltered cubemap suitable for `PBR_PREFILTERED_SPECULAR_MAP`.
+
+### 7.6 GPU tests
+
+1. Use directional HDR cubemap fixtures to verify high-roughness mips blur more than mip zero while retaining values above 1.0.
+2. Verify all faces/mips are initialized, finite, and non-black for neutral environments.
+3. Verify deterministic repeat output, invalid request state preservation, and roughness-to-mip mapping.
+4. Use reduced face size/sample count in tests while keeping production defaults documented separately.
+
+**Acceptance:** Output has valid complete mip chains, monotonic roughness blur, stable HDR values, and safe failure behavior.
 
 ## Phase 8 — BRDF LUT ownership
 
