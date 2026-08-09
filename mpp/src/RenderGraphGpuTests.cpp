@@ -86,6 +86,8 @@ namespace mpp
 		std::string stage = "cubemap render targets";
 		try
 		{
+			bool rejectedInvalidIblFormat = false; try { renderSystem->createIblCubemap("GpuTestInvalidIblCubemap", 8, 1, GL_RGBA8); } catch (...) { rejectedInvalidIblFormat = true; } if (!rejectedInvalidIblFormat) return fail("IBL cubemap accepted an LDR format");
+			GLint savedViewport[4]{}, savedScissor[4]{}, savedDraw = 0, savedRead = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, savedViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, savedScissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &savedDraw)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &savedRead)); auto savedScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
 			auto cubemap = renderSystem->createIblCubemap("GpuTestIblCubemap", 8, 2, GL_RGBA16F);
 			auto cubeTexture = dynamic_cast<RenderTexture*>(cubemap.get());
 			if (!cubeTexture || cubeTexture->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || cubeTexture->getMipLevels() != 2) return fail("IBL cubemap creation contract failed");
@@ -96,6 +98,7 @@ namespace mpp
 				GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
 				scope.finish();
 			}
+			GLint restoredViewport[4]{}, restoredScissor[4]{}, restoredDraw = 0, restoredRead = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, restoredViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, restoredScissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &restoredDraw)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &restoredRead)); if (!std::equal(std::begin(savedViewport), std::end(savedViewport), std::begin(restoredViewport)) || !std::equal(std::begin(savedScissor), std::end(savedScissor), std::begin(restoredScissor)) || savedDraw != restoredDraw || savedRead != restoredRead || savedScissorEnabled != glIsEnabled(GL_SCISSOR_TEST)) return fail("cubemap face scope leaked render state");
 			for (uint32_t face = 0; face < 6; ++face)
 			{
 				std::vector<float> value(8 * 8 * 4);
