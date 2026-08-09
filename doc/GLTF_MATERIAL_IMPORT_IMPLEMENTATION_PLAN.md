@@ -100,7 +100,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** Imported material maps and factors match the glTF core material definition.
 
-## Phase 8 — Data-URI image extraction
+## [x] Phase 8 — Data-URI image extraction
 
 1. Decode `images[].uri` values beginning `data:`.
 2. Determine a safe extension from MIME type.
@@ -110,7 +110,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** A data-URI image creates a valid MPP texture source file.
 
-## Phase 9 — bufferView image extraction
+## [x] Phase 9 — bufferView image extraction
 
 1. Read `images[].bufferView`.
 2. Resolve its buffer, byte offset, and byte length.
@@ -120,7 +120,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** `sphere-test.gltf` embedded normal and ORM images extract and are assigned without arrow fallback.
 
-## Phase 10 — Add `FileGltfPbrMaterialStream`
+## [x] Phase 10 — Add `FileGltfPbrMaterialStream`
 
 1. Add a PBR material stream backed by `GltfPbrMaterialLoader`.
 2. Have it create child texture streams from the converted definition.
@@ -129,7 +129,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** A caller can create a `PbrMaterial` directly from a `.gltf` path.
 
-## Phase 11 — Dispatch glTF material files
+## [x] Phase 11 — Dispatch glTF material files
 
 1. Update `FileMaterialStream` to dispatch `.gltf` files to `FileGltfPbrMaterialStream`.
 2. Preserve XML material dispatch behavior.
@@ -137,7 +137,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** File-based MPP material loading works for both XML and glTF sources.
 
-## Phase 12 — Refactor PipelineEditor to use core conversion
+## [x] Phase 12 — Refactor PipelineEditor to use core conversion
 
 1. Remove PipelineEditor’s JSON parser, base64 decoder, extraction logic, and conversion function.
 2. Use `GltfPbrMaterialLoader` output for local-resource creation.
@@ -146,7 +146,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** Editor and non-editor paths create identical MPP PBR definitions.
 
-## Phase 13 — Add File menu entry
+## [x] Phase 13 — Add File menu entry
 
 1. Add **File → Import glTF…**.
 2. Open the glTF picker.
@@ -155,7 +155,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** The menu can open a glTF file and reach an import-preview state.
 
-## Phase 14 — Import selection modal
+## [x] Phase 14 — Import selection modal
 
 1. Add a modal dialog listing glTF categories and items.
 2. Enable material rows with checkboxes.
@@ -165,7 +165,7 @@ Move glTF 2.0 material conversion from PipelineEditor into `mpp-resource-parsers
 
 **Acceptance:** Users can choose any subset of glTF materials but cannot select unsupported objects.
 
-## Phase 15 — Commit selected editor imports
+## [x] Phase 15 — Commit selected editor imports
 
 1. Convert each selected material using the shared loader/converter.
 2. Add local PBR material resources and unique preview bindings.
