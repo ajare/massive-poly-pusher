@@ -276,7 +276,9 @@ Added private `RenderSystem::renderDiffuseIrradianceFace`. It rejects source/out
 
 **Acceptance:** One output face is generated without GL/renderer state leakage.
 
-### 6.5 Public six-face generation API
+### 6.5 Public six-face generation API — Complete
+
+Implemented `RenderSystem::generateDiffuseIrradiance`: it validates configuration before allocation, creates a single-mip candidate, rejects aliasing, synchronously convolves all six faces, and returns only a complete unpublished result.
 
 1. Implement `generateDiffuseIrradiance(...)` through validation, `createIblCubemap`, and six face-helper calls.
 2. Release the local candidate automatically on any failure; do not publish partial output.

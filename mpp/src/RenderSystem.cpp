@@ -1654,6 +1654,16 @@ namespace mpp
 		return createRenderTexture(name, faceSize, faceSize, options);
 	}
 
+	RenderTargetPtr RenderSystem::generateDiffuseIrradiance(Texture* environmentCubemap, string const& generatedName, uint32_t faceSize, uint32_t sampleCount)
+	{
+		validateDiffuseIrradianceSource(environmentCubemap, generatedName, faceSize, sampleCount);
+		auto candidate = createIblCubemap(generatedName, faceSize, 1);
+		if (dynamic_cast<Texture*>(candidate.get()) == environmentCubemap) THROW_MPP("Diffuse irradiance source and output cannot alias.", __LINE__, __FILE__, __func__);
+		for (uint32_t face = 0; face < 6; ++face)
+			renderDiffuseIrradianceFace(environmentCubemap, candidate, face, sampleCount);
+		return candidate;
+	}
+
 	RenderTargetPtr RenderSystem::convertEquirectangularToCubemap(Texture* hdrEquirectangular, string const& generatedName, uint32_t faceSize, uint32_t mipLevels)
 	{
 		validateEquirectangularConversionSource(hdrEquirectangular, generatedName, faceSize, mipLevels);
