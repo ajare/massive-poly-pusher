@@ -433,6 +433,13 @@ namespace mpp
 				mRenderSystem->pushModelMatrix();
 				mRenderSystem->setProjection2dOrthographic();
 				mRenderSystem->resetTransform();
+				// The shared fullscreen quad is authored at window dimensions. Graph
+				// targets commonly match an editor viewport instead, so scale the quad
+				// to this pass target. Without this, every post-process samples only a
+				// clipped UV subregion and ping-pong blur visibly drifts each pass.
+				mRenderSystem->scaleTransform2d(glm::vec2(
+					(float)passTarget->getWidth() / (float)mRenderSystem->getWindowWidth(),
+					(float)passTarget->getHeight() / (float)mRenderSystem->getWindowHeight()));
 				GL_CHECK(glDisable(GL_DEPTH_TEST));
 				GL_CHECK(glDepthMask(GL_FALSE));
 				GL_CHECK(glDisable(GL_CULL_FACE));

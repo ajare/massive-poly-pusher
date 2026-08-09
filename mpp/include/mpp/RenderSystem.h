@@ -5,6 +5,7 @@
 #include <deque>
 #include <queue>
 #include <stack>
+#include <memory>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -20,6 +21,8 @@
 #include "mpp/RenderPipeline.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTexture.h"
+#include "mpp/GpuDebugScope.h"
+#include "mpp/IblEnvironmentCache.h"
 #include "mpp/ClipRectangle.h"
 #include "mpp/BlendMode.h"
 #include "mpp/RenderInfo.h"
@@ -42,6 +45,7 @@
 namespace mpp
 {
 	class Program;
+	class Camera;
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
@@ -130,6 +134,7 @@ namespace mpp
 		ResourceManager* mResourceMgr;
 
 		Caps mCaps;
+		IblEnvironmentCache mIblEnvironmentCache;
 
 		//
 		// Rendering
@@ -139,6 +144,7 @@ namespace mpp
 		RenderTargetPtr mRenderTarget;
 
 		std::stack<RenderTargetPtr> mRenderTargetStack;
+		bool mCubemapFaceRenderActive{ false };
 
 		std::stack<ClipRectangle> mClipStack;
 
@@ -205,7 +211,8 @@ namespace mpp
 
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram;
+		ResourcePtr mPbrBrdfIntegrationLut;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -341,11 +348,31 @@ namespace mpp
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
 		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
+		void validateEquirectangularConversionSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels) const;
+		void renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel);
+		void validateDiffuseIrradianceSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t sampleCount) const;
+		void renderDiffuseIrradianceFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t sampleCount);
+		void validatePrefilteredSpecularSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount) const;
+		void renderPrefilteredSpecularFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel, float roughness, uint32_t sampleCount);
 		void renderSsaaLanczos(RenderTexture* source, RenderTargetPtr const& destination, glm::vec2 const& direction);
 		void renderTaa(RenderTexture* currentColour, RenderTexture* currentDepth, RenderTexture* historyColour, RenderTexture* historyDepth, RenderTargetPtr const& destination, glm::mat4 const& inverseCurrentViewProjection, glm::mat4 const& previousViewProjection);
 		void renderFxaa(RenderTexture* source, RenderTargetPtr const& destination);
 
 	public:
+
+		class _MPPAPI CubemapFaceRenderScope
+		{
+			RenderSystem* mSystem{}; RenderTexture* mTarget{};
+			std::unique_ptr<GpuDebugScope> mGpuScope;
+			int mViewport[4]{}; int mScissor[4]{}; int mDrawBuffer{}; int mReadBuffer{}; bool mScissorEnabled{};
+			bool mFinished{};
+		public:
+			CubemapFaceRenderScope(RenderSystem& system, RenderTargetPtr const& target, uint32_t face, uint32_t mipLevel);
+			CubemapFaceRenderScope(CubemapFaceRenderScope const&) = delete;
+			CubemapFaceRenderScope& operator=(CubemapFaceRenderScope const&) = delete;
+			~CubemapFaceRenderScope();
+			void finish();
+		};
 
 		RenderSystem(size_t windowWidth, size_t windowHeight, Logger* logger, RenderSystemOptions options = {});
 
@@ -360,6 +387,7 @@ namespace mpp
 		Caps const& getCaps() const;
 		RenderSystemOptions const& getOptions() const { return mOptions; }
 		ResourceManager* getResourceManager() const { return mResourceMgr; }
+		IblEnvironmentCache& getIblEnvironmentCache() { return mIblEnvironmentCache; }
 
 		void initialise();
 
@@ -402,6 +430,22 @@ namespace mpp
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, size_t numAttachments, bool depthBuffer);
 
 		RenderTargetPtr createRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options);
+
+		// Creates a renderer-owned, colour-only floating-point cubemap suitable
+		// for cached environment, irradiance, or prefiltered-specular outputs.
+		RenderTargetPtr createIblCubemap(std::string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat = GL_RGB16F);
+		// Converts a linear floating-point equirectangular Texture2D into a
+		// generated cubemap. Cache publication is deliberately caller-owned.
+		RenderTargetPtr convertEquirectangularToCubemap(Texture* hdrEquirectangular, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels = 1);
+		// Generates an unpublished single-mip diffuse irradiance cubemap. Cache
+		// lookup/publication remains the responsibility of pipeline runtime code.
+		RenderTargetPtr generateDiffuseIrradiance(Texture* environmentCubemap, std::string const& generatedName, uint32_t faceSize, uint32_t sampleCount = 1024);
+		// Generates an unpublished GGX-prefiltered specular cubemap. Mip zero is
+		// roughness zero; final mip is roughness one.
+		RenderTargetPtr generatePrefilteredSpecular(Texture* environmentCubemap, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount = 1024);
+		// Returns the renderer-owned split-sum BRDF integration LUT. Creation is
+		// lazy and cached for this renderer/context.
+		ResourcePtr getOrCreatePbrBrdfIntegrationLut();
 
 		void flushVertexBuffers();
 
@@ -596,6 +640,7 @@ namespace mpp
 		void renderBloomBlur(Texture* source, glm::vec2 const& direction);
 
 		void renderBloomCombine(Texture* scene, Texture* bloom, float intensity);
+		void renderEnvironmentDebugCube(Texture* environment, Camera* camera);
 
 		void renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture);
 

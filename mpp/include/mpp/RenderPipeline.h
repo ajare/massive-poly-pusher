@@ -30,6 +30,7 @@ namespace mpp
 		ResourcePtr prefilteredSpecularMap;
 		ResourcePtr brdfIntegrationLut;
 		ResourcePtr backgroundMap;
+		ResourcePtr environmentMap;
 	};
 
 	typedef std::shared_ptr<PbrEnvironment> PbrEnvironmentPtr;
@@ -123,6 +124,7 @@ namespace mpp
 		ResourcePtr graphTemplateMrt;
 		BloomOptions bloom;
 		GraphPassDebugOptions graphPasses;
+		bool debugEnvironmentCube{ false };
 		// Empty means this pipeline is not a shadow-domain participant.
 		std::string shadowDomain;
 	};
@@ -182,6 +184,7 @@ namespace mpp
 		void setBloomOptions(BloomOptions const& bloomOptions);
 
 		void setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses);
+		void setDebugEnvironmentCube(bool enabled);
 
 		void setPbrEnvironment(PbrEnvironmentPtr environment);
 

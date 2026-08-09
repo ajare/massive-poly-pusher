@@ -30,6 +30,11 @@ namespace mpp
 		return mDefinition.target;
 	}
 
+	uint32_t RenderTextureStream::getMipLevels() const
+	{
+		return mDefinition.mipLevels;
+	}
+
 	size_t RenderTextureStream::getWidth() const
 	{
 		return mDefinition.width;

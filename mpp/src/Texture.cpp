@@ -414,6 +414,9 @@ namespace mpp
 		return mNumAttachments;
 	}
 
+	uint32_t Texture::getTextureTarget() const { return mTarget; }
+	uint32_t Texture::getInternalFormat() const { return mInternalFormat; }
+
 	/*
 	 * Upload texture data.  This ignores the resource stream,
 	 * overwriting any existing data, and assumes the size of the data
