@@ -333,6 +333,12 @@ namespace mpp
 		}
 	}
 
+	void ProgrammaticRenderTextureStream::setMipLevels(uint32_t levels)
+	{
+		if (!levels) THROW_MPP("Render texture mip level count must be non-zero.", __LINE__, __FILE__, __func__);
+		mDefinition.mipLevels = levels;
+	}
+
 	void ProgrammaticRenderTextureStream::setFiltering(TextureParams::MinFilter minFilter, TextureParams::MagFilter magFilter)
 	{
 		switch (minFilter)
