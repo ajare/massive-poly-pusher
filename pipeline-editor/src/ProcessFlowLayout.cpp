@@ -16,12 +16,12 @@ namespace pipeline_editor
 			bool batch = node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup;
 			size_t labelCharacters = node.title.size();
 			for (auto const& label : node.renderDocLabelSummaries) labelCharacters = std::max(labelCharacters, label.size());
-			node.size.x = std::clamp(20.0f + 7.0f * (float)labelCharacters,
-			                         batch ? 230.0f : 220.0f, 360.0f);
-			float labelHeight = 20.0f * (float)node.renderDocLabels.size();
+			node.size.x = std::clamp(24.0f + 7.4f * (float)labelCharacters,
+			                         batch ? 245.0f : 235.0f, 360.0f);
+			float labelHeight = 22.0f * (float)node.renderDocLabels.size();
 			node.size.y = batch && node.expanded
-			                  ? 82.0f + labelHeight + 22.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
-			                  : 78.0f + labelHeight;
+			                  ? 90.0f + labelHeight + 24.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
+			                  : 86.0f + labelHeight;
 			if (node.mainSpine) spine.push_back(&node);
 			else if (node.resourceCategory != ProcessFlowResourceCategory::None) resources.push_back(&node);
 			else disabled.push_back(&node);
