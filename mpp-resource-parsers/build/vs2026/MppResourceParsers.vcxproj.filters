@@ -57,6 +57,9 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\GltfPbrMaterialLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\version\Version.rc">
@@ -98,6 +101,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\MaterialResourceTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\GltfPbrMaterialLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
