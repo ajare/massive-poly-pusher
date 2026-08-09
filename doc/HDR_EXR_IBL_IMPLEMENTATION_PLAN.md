@@ -341,7 +341,9 @@ Added stable renderer-owned `__mpp_ibl_prefiltered_specular__` program creation.
 
 **Acceptance:** No invalid request begins rendering and no program compiles per generation.
 
-### 7.4 Single face/mip prefilter helper
+### 7.4 Single face/mip prefilter helper — Complete
+
+Added private `RenderSystem::renderPrefilteredSpecularFace`. It validates source/destination/mip/aliasing, renders through `CubemapFaceRenderScope`, derives source resolution, sets all GGX uniforms, records fullscreen submission, and restores state on failure.
 
 1. Add private helper accepting source cubemap, output target, face, mip level, roughness, source resolution, and sample count.
 2. Enter `CubemapFaceRenderScope` at the requested mip, set all shader uniforms, bind cube source, and draw fullscreen geometry.
