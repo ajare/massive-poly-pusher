@@ -284,7 +284,7 @@ load-bearing by reverting the fix: *"BRDF integration LUT is not clamped (wrap s
 The broader `SamplerParams` default change was **not** made — it would alter every existing render
 texture in the engine, which is beyond this fix and wants its own decision.
 
-### 1.4 Seamless cubemap filtering is never enabled — **Bug, high**
+### 1.4 Seamless cubemap filtering is never enabled — **Bug, high** — ✅ FIXED
 
 `glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)` does not appear anywhere in the tree.
 
@@ -299,6 +299,28 @@ Enable it once during context setup in `RenderSystem` initialisation. It is core
 has no downside for the cubemaps this engine uses (all of them want seamless filtering). If a
 per-texture opt-out is ever needed, `ARB_seamless_cubemap_per_texture` provides
 `GL_TEXTURE_CUBE_MAP_SEAMLESS` as a texture parameter.
+
+#### 1.4 Resolution
+
+Enabled once in `RenderSystem::setDefaultState` (`RenderSystem.cpp:1290`), which runs a single time
+during initialisation, after `mCaps` is populated. Guarded on `glVersionMajor/Minor >= 3.2` with a
+warning on older contexts rather than an unconditional `glEnable`, so a downlevel context degrades
+to the old seamed behaviour instead of tripping `GL_CHECK`.
+
+**On the test.** The GPU suite asserts `glIsEnabled(GL_TEXTURE_CUBE_MAP_SEAMLESS)` twice: once at
+the start of the IBL block, and again after the environment/irradiance/prefilter/LUT passes have
+run. The second check is the interesting one — those passes save and restore a good deal of GL
+state, and a restore path that clobbered the flag would silently reintroduce the seams.
+
+This is deliberately a **state assertion, not a visual one**. What the flag changes is how the
+hardware fetches across a face boundary, which is OpenGL's contract rather than this engine's
+behaviour, and a pixel-level assertion on it would be measuring the driver. Verified load-bearing
+by stubbing out the `glEnable`: *"seamless cubemap filtering is not enabled, so every cube edge will
+show a bilinear seam"*.
+
+Note this interacts with §1.2b/§1.3: with the BRDF LUT black, IBL specular contributed nothing at
+all, so the seams this fixes were only visible in the ambient diffuse term. They are now visible in
+reflections too, which raises the practical value of this change.
 
 ### 1.5 The diffuse irradiance convolution double-counts the cosine term — **Bug, medium**
 

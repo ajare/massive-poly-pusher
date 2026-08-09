@@ -1289,6 +1289,18 @@ namespace mpp
 
 		GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
 
+		// Without this, a bilinear tap near a cube edge clamps inside its own face
+		// instead of reaching across, so every edge shows a seam. The IBL cubemaps
+		// are small enough -- 32x32 irradiance, a prefiltered chain ending at 1x1 --
+		// that a texel spans several degrees and the discontinuity is plainly
+		// visible. Every cubemap this engine samples wants seamless filtering, so
+		// enable it globally rather than per texture; core since GL 3.2.
+		if (mCaps.glVersionMajor > 3 || (mCaps.glVersionMajor == 3 && mCaps.glVersionMinor >= 2))
+			GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
+		else
+			warnMessage("OpenGL " + std::to_string(mCaps.glVersionMajor) + "." + std::to_string(mCaps.glVersionMinor) +
+				" predates seamless cubemap filtering; IBL cube edges will show seams.");
+
 		// Set matrices to identity
 		m3dCameraMatrix = glm::mat4();
 		m3dProjectionMatrix = glm::mat4();
