@@ -407,7 +407,9 @@ Added `__mpp_ibl_brdf_integration__` core program and lazy `getOrCreatePbrBrdfIn
 
 **Acceptance:** Repeated requests return one completed LUT and never trigger per-frame regeneration.
 
-### 8.4 Runtime environment binding
+### 8.4 Runtime environment binding — Complete
+
+`PbrPipelineRuntime` now requests the renderer-owned LUT when `Environment.brdfLut` is absent. A named explicit `Texture2D` remains the advanced override; incompatible overrides produce a diagnostic and fall back to the generated LUT.
 
 1. In HDR IBL runtime creation, bind the renderer-owned LUT unless `Environment.brdfLut` names an explicit valid override.
 2. Keep explicit `brdfLut` serialization/parser support as advanced/manual behavior.
