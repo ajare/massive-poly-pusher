@@ -105,7 +105,9 @@ Implemented in `f2618fd Add scoped cubemap face rendering` and this change. `Ren
 2. Names must be generation-unique; cache/resource references own the generated objects and pipeline replacement must not invalidate an in-flight/active generation.
 3. Expose read-only cubemap `Texture` resources suitable for existing PBR `samplerCube` bindings.
 
-### 4.6 Tests
+### 4.6 Tests — In progress
+
+Added GPU coverage for six independent cubemap-face writes, non-zero mip attachment, and RGBA16F values above 1.0. Validation and state-restoration regression coverage remains.
 
 1. Unit-test validation for target, format, samples, face, mip, and dimension limits.
 2. GPU test: render six distinct solid colours to mip zero and sample/read back each cubemap face.
