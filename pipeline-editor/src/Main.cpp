@@ -5056,23 +5056,70 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				{
 					if (definition.hasEntry("Surface"))
 					{
-						auto& surface = definition.getEntry("Surface");
-						text(surface, "baseColourFactor", "Base colour factor");
-						number(surface, "metallicFactor", "Metallic", 1);
-						number(surface, "roughnessFactor", "Roughness", 1);
-						text(surface, "emissiveFactor", "Emissive factor");
-						number(surface, "normalScale", "Normal scale", 1);
-						number(surface, "occlusionStrength", "Occlusion strength", 1);
-						text(surface, "alphaMode", "Alpha mode");
-						number(surface, "alphaCutoff", "Alpha cutoff", 0.5f);
-						text(surface, "doubleSided", "Double sided");
+						auto* surface = &definition.getEntry("Surface");
+						text(*surface, "baseColourFactor", "Base colour factor");
+						number(*surface, "metallicFactor", "Metallic", 1);
+						number(*surface, "roughnessFactor", "Roughness", 1);
+						bool emissiveMap = definition.hasEntry("EmissiveMap");
+						if (ImGui::Checkbox("Use emissive image", &emissiveMap))
+						{
+							if (emissiveMap)
+							{
+								auto texture = makeLocalResource(PbrPipelineResourceKind::Texture, value.name + ".EmissiveMap").definition;
+								utils::StructuredData map("EmissiveMap"); map.addEntry("Resource", texture);
+								surface->setEntryValue("emissiveFactor", "1 1 1");
+								definition.addEntry("EmissiveMap", map);
+								surface = &definition.getEntry("Surface");
+							}
+							else
+							{
+								utils::StructuredData withoutMap(definition.getName());
+								for (auto const& entry : definition)
+									if (entry.first != "EmissiveMap") withoutMap.addEntry(entry.first, entry.second);
+								definition = std::move(withoutMap);
+								surface = &definition.getEntry("Surface");
+							}
+							changed = true;
+						}
+						if (emissiveMap)
+						{
+							auto& resource = definition.getEntry("EmissiveMap").getEntry("Resource");
+							text(resource, "filename", "Emissive image");
+							ImGui::SameLine();
+							if (ImGui::Button("Browse emissive image"))
+								if (auto selected = mpp::app::openImageFileDialog(window.getWindow(), "Select emissive RGB image"))
+								{
+									resource.setEntryValue("filename", *selected);
+									changed = true;
+								}
+							ImGui::TextDisabled("Emissive images are sampled as RGB.");
+						}
+						else
+						{
+							glm::vec3 emissive(0.0f);
+							if (surface->hasEntry("emissiveFactor"))
+							{
+								std::istringstream input(surface->getEntry("emissiveFactor").getValue());
+								input >> emissive.r >> emissive.g >> emissive.b;
+							}
+							if (ImGui::ColorEdit3("Emissive colour", &emissive.x, ImGuiColorEditFlags_Float))
+							{
+								surface->setEntryValue("emissiveFactor", std::to_string(emissive.r) + " " + std::to_string(emissive.g) + " " + std::to_string(emissive.b));
+								changed = true;
+							}
+						}
+						number(*surface, "normalScale", "Normal scale", 1);
+						number(*surface, "occlusionStrength", "Occlusion strength", 1);
+						text(*surface, "alphaMode", "Alpha mode");
+						number(*surface, "alphaCutoff", "Alpha cutoff", 0.5f);
+						text(*surface, "doubleSided", "Double sided");
 					}
 					else
 						ImGui::TextDisabled("Add a Surface block through a template before editing factors.");
 					if (ImGui::CollapsingHeader("PBR Maps and Extensions"))
 					{
 						char const* maps[] = {
-						    "BaseColourMap", "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap", "EmissiveMap"};
+						    "BaseColourMap", "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap"};
 						for (auto map : maps)
 						{
 							if (definition.hasEntry(map))
