@@ -2589,6 +2589,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				        ICON_FA_SYNC_ALT "##ToolbarRebuild", "Force rebuild preview resources", openDocument != nullptr))
 					forceWorkingPreviewRebuild();
 				ImGui::SameLine();
+				if (!openDocument)
+					ImGui::BeginDisabled();
+				auto bloomBefore = openDocument ? clonePipeline(openDocument) : nullptr;
+				bool toolbarBloomEnabled = openDocument && openDocument->bloom.enabled;
+				if (ImGui::Checkbox("Bloom##Toolbar", &toolbarBloomEnabled))
+				{
+					openDocument->setBloomEnabled(toolbarBloomEnabled);
+					auto after = clonePipeline(openDocument);
+					pipelineCommands.execute(std::make_unique<PipelineSnapshotCommand>(
+					                             "Toggle Bloom", &openDocument, bloomBefore, after), true);
+					pipelineDirty = true;
+					documentChangedSincePreview = true;
+					lastEditScene = false;
+				}
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+					ImGui::SetTooltip("Enable or disable bloom in the preview pipeline");
+				if (!openDocument)
+					ImGui::EndDisabled();
+				ImGui::SameLine();
 				if (toolbarButton(ICON_FA_CAMERA "##ToolbarCapture",
 				                  "Capture viewport and open in RenderDoc (Ctrl+F12)",
 				                  captureEnabled))
