@@ -244,7 +244,9 @@ RenderTargetPtr RenderSystem::generateDiffuseIrradiance(
 
 **Acceptance:** Invalid configuration fails before allocation or render-state changes.
 
-### 6.2 Convolution shader source
+### 6.2 Convolution shader source — Complete
+
+Added `FragmentShaderDiffuseIrradianceTemplate`: it shares the Phase 5 face convention, constructs a robust tangent basis, uses a deterministic Hammersley sequence, applies cosine weighting, and protects normalization from zero accumulated weight.
 
 1. Add renderer-owned `FragmentShaderDiffuseIrradianceTemplate` with `ENVIRONMENT`, `FACE`, `OUTPUT_SIZE`, and `SAMPLE_COUNT` uniforms.
 2. Reuse the Phase 5 face-direction convention.
