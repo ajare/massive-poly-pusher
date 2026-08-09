@@ -1397,6 +1397,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			bool graphDeclared = false, pipelineDeclared = false, workspacePrepared = false, activated = false;
 			try
 			{
+				// PipelineEditor exposes graph images after the complete frame. Production
+				// transient aliasing may reuse an intermediate image's storage after its
+				// final consumer, making the Inspector show a later image instead. Retain
+				// distinct preview storage so SceneEmissive/BloomExtract and other authored
+				// intermediates remain inspectable after graph execution.
+				for (uint32_t image = 0; image < previewDocument->graph->getImageCount(); ++image)
+				{
+					auto handle = GraphImageHandle{image, 0};
+					auto desc = previewDocument->graph->getImageInfo(handle).desc;
+					if (!desc.external && desc.transient) { desc.transient = false; previewDocument->graph->setImageDesc(handle, desc); }
+				}
 				auto graphStream = std::make_shared<RenderGraphStream>(&resources);
 				graphStream->setGraph(previewDocument->graph);
 				auto graphResource = resources.declareResource(candidateGraph, graphStream).first;
