@@ -112,6 +112,106 @@ namespace mpp
 				if (found != values.end()) return found->second;
 				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph wrapping in " + filepath + ".", __LINE__, __FILE__, __func__);
 			}
+
+			// Raster-state enumerations reject unknown spellings rather than
+			// defaulting, so a typo in an authored pipeline is reported instead of
+			// silently changing how the pass rasterizes.
+			template<typename Value>
+			Value parseEnumeration(string value, map<string, Value> const& values, char const* field, string const& filepath)
+			{
+				utils::StringUtils::toUpper(value);
+				auto const found = values.find(value);
+				if (found != values.end()) return found->second;
+				THROW_MPP_RESOURCE_PARSERS("Unknown RenderGraph raster " + string(field) + " in " + filepath + ".", __LINE__, __FILE__, __func__);
+			}
+
+			GraphFillMode parseFillMode(string const& value, string const& filepath)
+			{
+				static map<string, GraphFillMode> const values = { { "FILL", GraphFillMode::Fill }, { "LINE", GraphFillMode::Line } };
+				return parseEnumeration(value, values, "fill mode", filepath);
+			}
+
+			GraphFrontFace parseFrontFace(string const& value, string const& filepath)
+			{
+				static map<string, GraphFrontFace> const values = { { "COUNTERCLOCKWISE", GraphFrontFace::CounterClockwise }, { "CCW", GraphFrontFace::CounterClockwise },
+					{ "CLOCKWISE", GraphFrontFace::Clockwise }, { "CW", GraphFrontFace::Clockwise } };
+				return parseEnumeration(value, values, "front face", filepath);
+			}
+
+			GraphCullMode parseCullMode(string const& value, string const& filepath)
+			{
+				static map<string, GraphCullMode> const values = { { "NONE", GraphCullMode::None }, { "FRONT", GraphCullMode::Front }, { "BACK", GraphCullMode::Back } };
+				return parseEnumeration(value, values, "cull mode", filepath);
+			}
+
+			GraphCompareOp parseCompareOp(string const& value, string const& filepath)
+			{
+				static map<string, GraphCompareOp> const values = { { "NEVER", GraphCompareOp::Never }, { "LESS", GraphCompareOp::Less },
+					{ "EQUAL", GraphCompareOp::Equal }, { "LESSEQUAL", GraphCompareOp::LessEqual }, { "GREATER", GraphCompareOp::Greater },
+					{ "NOTEQUAL", GraphCompareOp::NotEqual }, { "GREATEREQUAL", GraphCompareOp::GreaterEqual }, { "ALWAYS", GraphCompareOp::Always } };
+				return parseEnumeration(value, values, "depth comparison", filepath);
+			}
+
+			GraphBlendOp parseBlendOp(string const& value, string const& filepath)
+			{
+				static map<string, GraphBlendOp> const values = { { "ADD", GraphBlendOp::Add }, { "SUBTRACT", GraphBlendOp::Subtract },
+					{ "REVERSESUBTRACT", GraphBlendOp::ReverseSubtract }, { "MINIMUM", GraphBlendOp::Minimum }, { "MAXIMUM", GraphBlendOp::Maximum } };
+				return parseEnumeration(value, values, "blend operation", filepath);
+			}
+
+			GraphBlendFactor parseBlendFactor(string const& value, string const& filepath)
+			{
+				static map<string, GraphBlendFactor> const values = { { "ZERO", GraphBlendFactor::Zero }, { "ONE", GraphBlendFactor::One },
+					{ "SOURCECOLOUR", GraphBlendFactor::SourceColour }, { "ONEMINUSSOURCECOLOUR", GraphBlendFactor::OneMinusSourceColour },
+					{ "DESTINATIONCOLOUR", GraphBlendFactor::DestinationColour }, { "ONEMINUSDESTINATIONCOLOUR", GraphBlendFactor::OneMinusDestinationColour },
+					{ "SOURCEALPHA", GraphBlendFactor::SourceAlpha }, { "ONEMINUSSOURCEALPHA", GraphBlendFactor::OneMinusSourceAlpha },
+					{ "DESTINATIONALPHA", GraphBlendFactor::DestinationAlpha }, { "ONEMINUSDESTINATIONALPHA", GraphBlendFactor::OneMinusDestinationAlpha } };
+				return parseEnumeration(value, values, "blend factor", filepath);
+			}
+
+			glm::uvec4 parseUvec4(string const& value)
+			{
+				istringstream input(value); glm::uvec4 result{ 0 }; input >> result.x >> result.y >> result.z >> result.w; return result;
+			}
+
+			GraphColourWriteMask parseWriteMask(string const& value)
+			{
+				istringstream input(value); GraphColourWriteMask mask; string channel;
+				bool* const channels[] = { &mask.red, &mask.green, &mask.blue, &mask.alpha };
+				for (auto* target : channels) if (input >> channel) *target = parseBool(channel);
+				return mask;
+			}
+
+			GraphRasterState parseRasterState(utils::StructuredData const& data, string const& filepath)
+			{
+				GraphRasterState state;
+				auto flag = [&](char const* name, bool& target) { if (data.hasEntry(name)) target = parseBool(data.getEntry(name).getValue()); };
+				flag("explicit", state.explicitState);
+				if (data.hasEntry("fill")) state.fillMode = parseFillMode(data.getEntry("fill").getValue(), filepath);
+				if (data.hasEntry("frontFace")) state.frontFace = parseFrontFace(data.getEntry("frontFace").getValue(), filepath);
+				if (data.hasEntry("cull")) state.cullMode = parseCullMode(data.getEntry("cull").getValue(), filepath);
+				flag("depthTest", state.depthTest);
+				flag("depthWrite", state.depthWrite);
+				if (data.hasEntry("depthCompare")) state.depthCompare = parseCompareOp(data.getEntry("depthCompare").getValue(), filepath);
+				flag("blend", state.blend);
+				if (data.hasEntry("colourBlendOp")) state.colourBlendOp = parseBlendOp(data.getEntry("colourBlendOp").getValue(), filepath);
+				if (data.hasEntry("alphaBlendOp")) state.alphaBlendOp = parseBlendOp(data.getEntry("alphaBlendOp").getValue(), filepath);
+				if (data.hasEntry("sourceColourBlend")) state.sourceColourBlend = parseBlendFactor(data.getEntry("sourceColourBlend").getValue(), filepath);
+				if (data.hasEntry("destinationColourBlend")) state.destinationColourBlend = parseBlendFactor(data.getEntry("destinationColourBlend").getValue(), filepath);
+				if (data.hasEntry("sourceAlphaBlend")) state.sourceAlphaBlend = parseBlendFactor(data.getEntry("sourceAlphaBlend").getValue(), filepath);
+				if (data.hasEntry("destinationAlphaBlend")) state.destinationAlphaBlend = parseBlendFactor(data.getEntry("destinationAlphaBlend").getValue(), filepath);
+				flag("multisample", state.multisample);
+				flag("alphaToCoverage", state.alphaToCoverage);
+				flag("scissor", state.scissor);
+				if (data.hasEntry("scissorRectangle")) state.scissorRectangle = parseUvec4(data.getEntry("scissorRectangle").getValue());
+				if (data.hasEntry("ColourWriteMasks"))
+					for (auto const& mask : data.getEntry("ColourWriteMasks"))
+					{
+						if (mask.first != "Mask") continue;
+						state.colourWriteMasks.push_back(parseWriteMask(mask.second.getValue()));
+					}
+				return state;
+			}
 		}
 
 		RenderGraph RenderGraphParser::fromFile(string const& filepath)
@@ -229,6 +329,7 @@ namespace mpp
 					if (output.hasEntry("value")) graph.setValueId(next, output.getEntry("value").getValue());
 					it->second = next;
 				}
+				if (passData.hasEntry("Raster")) graph.setPassRasterState(pass, parseRasterState(passData.getEntry("Raster"), filepath));
 			}
 			return graph;
 		}

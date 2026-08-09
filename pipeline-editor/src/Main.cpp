@@ -37,6 +37,8 @@
 #include "mpp/Colour.h"
 #include "mpp/Logger.h"
 #include "mpp/PbrMaterial.h"
+#include "mpp/PbrMaterialTests.h"
+#include "mpp/RenderGraphTests.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphStream.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
@@ -66,6 +68,7 @@
 #include "mpp/resource-parsers/PbrPipelineRuntime.h"
 #include "mpp/resource-parsers/GltfPbrMaterialLoader.h"
 #include "mpp/resource-parsers/PbrPipelineResourceValidator.h"
+#include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/SceneParser.h"
 #include "mpp/resource-parsers/SceneSerializer.h"
 
@@ -1048,6 +1051,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			try
 			{
+				// The context-free suites need no GL context, so CLI validation is
+				// where they can actually run. Without this they are dead code and
+				// stop protecting the parse/serialize contract they were written for.
+				std::string suiteFailure;
+				if (!mpp::runRenderGraphTopologyTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-002: render graph topology tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
+				if (!resource_parsers::runRenderGraphResourceTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-003: render graph resource tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
+				if (!mpp::runPbrMaterialSpecializationTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-004: PBR material specialization tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
 				auto document = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[pathIndex]);
 				auto diagnostics = document.validate();
 				diagnostics.append(resource_parsers::validatePbrPipelineResourceDefinitions(document));

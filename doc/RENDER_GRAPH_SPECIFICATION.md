@@ -118,6 +118,7 @@ Logical graph images do not author physical sample counts. A containing `PbrPipe
 | `Parameters` | typed uniform entries | See section 3.3. | Optional. |
 | `Colours` | list of `Output` | Zero or more; constrained by caps. | Optional in declaration but the current executor requires at least one colour or depth output. |
 | `Depth` | one depth output | See section 3.4. | Optional; at most one is valid. |
+| `Raster` | `GraphRasterState` | See section 3.5. | Optional. Serialized only when the state differs from the default, so documents that never set it are unchanged. |
 
 Pass type controls executor state rather than the graph dependency model:
 
@@ -214,7 +215,62 @@ Depth output:
 | `store` | `GraphStoreOp` | `store` or `dontCare`; C++ default is `store`. XML values other than `store` currently become `dontCare`. |
 | `clear` | `glm::vec4` / `float` | Required only to specify a non-default clear. Colour requires four floats; depth requires one float. Defaults: colour `0 0 0 0`, depth `1`. Used only with `load=clear`. |
 
-### 3.5 Attachment load/store in the pipeline
+### 3.5 Raster state
+
+`Raster` overrides the fixed-function state for one pass. It is applied only when `explicit` is
+`true`; the executor saves and restores every field it touches, so a pass with `explicit=false`
+inherits the surrounding renderer state exactly as before.
+
+The block is serialized whenever any field differs from its default, not only when `explicit` is
+`true`. This preserves a configuration the author has temporarily switched off. Unknown enumeration
+spellings are rejected with a parse error rather than silently defaulting.
+
+```xml
+<Raster>
+  <explicit>true</explicit>
+  <fill>fill</fill>
+  <frontFace>counterClockwise</frontFace>
+  <cull>back</cull>
+  <depthTest>true</depthTest>
+  <depthWrite>true</depthWrite>
+  <depthCompare>less</depthCompare>
+  <blend>true</blend>
+  <colourBlendOp>add</colourBlendOp>
+  <alphaBlendOp>add</alphaBlendOp>
+  <sourceColourBlend>sourceAlpha</sourceColourBlend>
+  <destinationColourBlend>oneMinusSourceAlpha</destinationColourBlend>
+  <sourceAlphaBlend>one</sourceAlphaBlend>
+  <destinationAlphaBlend>oneMinusSourceAlpha</destinationAlphaBlend>
+  <multisample>true</multisample>
+  <alphaToCoverage>false</alphaToCoverage>
+  <scissor>false</scissor>
+  <scissorRectangle>0 0 0 0</scissorRectangle>
+  <ColourWriteMasks>
+    <Mask>true true true true</Mask>
+  </ColourWriteMasks>
+</Raster>
+```
+
+| Child | C++ field | Values | Default |
+| --- | --- | --- | --- |
+| `explicit` | `explicitState` | Boolean. When false the whole block is inert at execution time. | `false` |
+| `fill` | `fillMode` | `fill`, `line` | `fill` |
+| `frontFace` | `frontFace` | `counterClockwise` (`ccw`), `clockwise` (`cw`) | `counterClockwise` |
+| `cull` | `cullMode` | `none`, `front`, `back` | `back` |
+| `depthTest` / `depthWrite` | `depthTest` / `depthWrite` | Boolean. | `true` / `true` |
+| `depthCompare` | `depthCompare` | `never`, `less`, `equal`, `lessEqual`, `greater`, `notEqual`, `greaterEqual`, `always` | `less` |
+| `blend` | `blend` | Boolean. | `false` |
+| `colourBlendOp` / `alphaBlendOp` | `colourBlendOp` / `alphaBlendOp` | `add`, `subtract`, `reverseSubtract`, `minimum`, `maximum` | `add` |
+| `sourceColourBlend`, `destinationColourBlend`, `sourceAlphaBlend`, `destinationAlphaBlend` | matching fields | `zero`, `one`, `sourceColour`, `oneMinusSourceColour`, `destinationColour`, `oneMinusDestinationColour`, `sourceAlpha`, `oneMinusSourceAlpha`, `destinationAlpha`, `oneMinusDestinationAlpha` | `one`, `zero`, `one`, `zero` |
+| `multisample` | `multisample` | Boolean. | `true` |
+| `alphaToCoverage` | `alphaToCoverage` | Boolean. | `false` |
+| `scissor` | `scissor` | Boolean. | `false` |
+| `scissorRectangle` | `scissorRectangle` | Four unsigned integers `x y width height`. Zero width/height means the full pass target. | `0 0 0 0` |
+| `ColourWriteMasks/Mask` | `colourWriteMasks` | Four booleans `red green blue alpha`, one `Mask` per colour attachment in order. Missing entries default to all-enabled. | empty |
+
+Enumeration spellings are case-insensitive on read and written in the canonical camelCase form above.
+
+### 3.6 Attachment load/store in the pipeline
 
 `load` and `store` are per-pass operations on an output attachment. They are not persistent image properties, and `store` is not spelled `stop`—the only store values are `store` and `dontCare`.
 

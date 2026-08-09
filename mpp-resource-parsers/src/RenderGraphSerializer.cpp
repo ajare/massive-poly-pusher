@@ -50,6 +50,48 @@ namespace mpp::resource_parsers
 		std::string store(GraphStoreOp value) { return value == GraphStoreOp::Store ? "store" : "dontCare"; }
 		std::string imageName(RenderGraph const& graph, GraphImageHandle handle) { return graph.getImageInfo(handle).name; }
 		std::string vec4(glm::vec4 const& value) { std::ostringstream out; out << value.x << ' ' << value.y << ' ' << value.z << ' ' << value.w; return out.str(); }
+		std::string uvec4(glm::uvec4 const& value) { std::ostringstream out; out << value.x << ' ' << value.y << ' ' << value.z << ' ' << value.w; return out.str(); }
+		std::string fillMode(GraphFillMode value) { return value == GraphFillMode::Line ? "line" : "fill"; }
+		std::string frontFace(GraphFrontFace value) { return value == GraphFrontFace::Clockwise ? "clockwise" : "counterClockwise"; }
+		std::string cullMode(GraphCullMode value)
+		{
+			switch (value) { case GraphCullMode::None: return "none"; case GraphCullMode::Front: return "front"; default: return "back"; }
+		}
+		std::string compareOp(GraphCompareOp value)
+		{
+			switch (value)
+			{
+			case GraphCompareOp::Never: return "never"; case GraphCompareOp::Less: return "less";
+			case GraphCompareOp::Equal: return "equal"; case GraphCompareOp::LessEqual: return "lessEqual";
+			case GraphCompareOp::Greater: return "greater"; case GraphCompareOp::NotEqual: return "notEqual";
+			case GraphCompareOp::GreaterEqual: return "greaterEqual"; default: return "always";
+			}
+		}
+		std::string blendOp(GraphBlendOp value)
+		{
+			switch (value)
+			{
+			case GraphBlendOp::Add: return "add"; case GraphBlendOp::Subtract: return "subtract";
+			case GraphBlendOp::ReverseSubtract: return "reverseSubtract"; case GraphBlendOp::Minimum: return "minimum";
+			default: return "maximum";
+			}
+		}
+		std::string blendFactor(GraphBlendFactor value)
+		{
+			switch (value)
+			{
+			case GraphBlendFactor::Zero: return "zero"; case GraphBlendFactor::One: return "one";
+			case GraphBlendFactor::SourceColour: return "sourceColour"; case GraphBlendFactor::OneMinusSourceColour: return "oneMinusSourceColour";
+			case GraphBlendFactor::DestinationColour: return "destinationColour"; case GraphBlendFactor::OneMinusDestinationColour: return "oneMinusDestinationColour";
+			case GraphBlendFactor::SourceAlpha: return "sourceAlpha"; case GraphBlendFactor::OneMinusSourceAlpha: return "oneMinusSourceAlpha";
+			case GraphBlendFactor::DestinationAlpha: return "destinationAlpha"; default: return "oneMinusDestinationAlpha";
+			}
+		}
+		std::string writeMask(GraphColourWriteMask const& value)
+		{
+			auto flag = [](bool set) { return set ? "true" : "false"; };
+			return std::string(flag(value.red)) + ' ' + flag(value.green) + ' ' + flag(value.blue) + ' ' + flag(value.alpha);
+		}
 	}
 
 	void RenderGraphSerializer::toNode(RenderGraph const& graph, utils::XmlWriteNode* root)
@@ -119,6 +161,37 @@ namespace mpp::resource_parsers
 				for (auto const& output : info.colourOutputs) { auto node = colours->createChild("Output"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(vec4(output.clearColour)); }
 			}
 			if (!info.depthOutputs.empty()) { auto const& output = info.depthOutputs.front(); auto node = pass->createChild("Depth"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(output.clearDepth); }
+			// Emitted whenever the state is not the default, rather than only when
+			// explicitState is set, so a configuration the author has temporarily
+			// switched off is still preserved across a save/reload.
+			if (!(info.rasterState == GraphRasterState{}))
+			{
+				auto const& state = info.rasterState;
+				auto raster = pass->createChild("Raster");
+				raster->createChild("explicit")->setValue(state.explicitState);
+				raster->createChild("fill")->setValue(fillMode(state.fillMode));
+				raster->createChild("frontFace")->setValue(frontFace(state.frontFace));
+				raster->createChild("cull")->setValue(cullMode(state.cullMode));
+				raster->createChild("depthTest")->setValue(state.depthTest);
+				raster->createChild("depthWrite")->setValue(state.depthWrite);
+				raster->createChild("depthCompare")->setValue(compareOp(state.depthCompare));
+				raster->createChild("blend")->setValue(state.blend);
+				raster->createChild("colourBlendOp")->setValue(blendOp(state.colourBlendOp));
+				raster->createChild("alphaBlendOp")->setValue(blendOp(state.alphaBlendOp));
+				raster->createChild("sourceColourBlend")->setValue(blendFactor(state.sourceColourBlend));
+				raster->createChild("destinationColourBlend")->setValue(blendFactor(state.destinationColourBlend));
+				raster->createChild("sourceAlphaBlend")->setValue(blendFactor(state.sourceAlphaBlend));
+				raster->createChild("destinationAlphaBlend")->setValue(blendFactor(state.destinationAlphaBlend));
+				raster->createChild("multisample")->setValue(state.multisample);
+				raster->createChild("alphaToCoverage")->setValue(state.alphaToCoverage);
+				raster->createChild("scissor")->setValue(state.scissor);
+				raster->createChild("scissorRectangle")->setValue(uvec4(state.scissorRectangle));
+				if (!state.colourWriteMasks.empty())
+				{
+					auto masks = raster->createChild("ColourWriteMasks");
+					for (auto const& mask : state.colourWriteMasks) masks->createChild("Mask")->setValue(writeMask(mask));
+				}
+			}
 		}
 	}
 
