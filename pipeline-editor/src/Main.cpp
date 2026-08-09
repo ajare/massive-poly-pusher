@@ -1423,6 +1423,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				previewOptions.environment = pipelineRuntime.getEnvironment();
 				previewOptions.bloom.enabled = previewDocument->bloom.enabled;
 				previewOptions.bloom.blurPasses = previewDocument->bloom.blurPasses;
+				// The authored BloomExtract input is the isolated PBR emissive MRT,
+				// not scene luminance. Preserve all emissive values, including white
+				// (1.0), rather than subtracting BloomOptions' scene threshold of 1.0.
+				previewOptions.bloom.useMrtEmissiveMask = previewDocument->bloom.enabled;
+				previewOptions.bloom.threshold = 0.0f;
 				if (previewScene)
 				{
 					if (auto direction = previewScene->getShadowLightDirection())
