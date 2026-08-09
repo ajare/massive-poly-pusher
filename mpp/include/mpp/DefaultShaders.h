@@ -430,6 +430,24 @@ void main()
 
 // Temporary HDR presentation shader used by the opt-in PBR pipeline. Surface
 // shading remains replaceable while the PBR material model is introduced.
+const std::string FragmentShaderEnvironmentDebugCubeTemplate =
+R"(
+@@Version
+
+@@Uniform(mat4 INVERSE_VIEW_PROJECTION);
+@@Uniform(vec3 CAMERA_POSITION);
+@@Texture(samplerCube ENVIRONMENT);
+
+void main()
+{
+    vec2 ndc = @In(TEXCOORDS) * 2.0 - 1.0;
+    vec4 world = @Uniform(INVERSE_VIEW_PROJECTION) * vec4(ndc, 1.0, 1.0);
+    vec3 direction = normalize(world.xyz / world.w - @Uniform(CAMERA_POSITION));
+    @Out(vec4 COLOUR) = vec4(texture(@Texture(ENVIRONMENT), direction).rgb, 1.0);
+    @Out(vec4 BLOOM_MASK) = vec4(0.0);
+}
+)";
+
 const std::string FragmentShaderToneMapTemplate =
 R"(
 @@Version

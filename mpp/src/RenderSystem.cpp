@@ -24,6 +24,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/Camera.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/Screen.h"
 #include "mpp/InternalFont.h"
@@ -775,6 +776,8 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
+		mEnvironmentDebugCubeProgram = createBloomProgram("__mpp_p2d_environment_debug_cube__", FragmentShaderEnvironmentDebugCubeTemplate);
+		addCoreResource(mEnvironmentDebugCubeProgram, true);
 		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
 		addCoreResource(mSsaaLanczosProgram, true);
 		mTaaProgram = createBloomProgram("__mpp_p2d_taa__", FragmentShaderTaaTemplate);
@@ -2893,7 +2896,8 @@ namespace mpp
 			mActivePbrEnvironment->irradianceMap,
 			mActivePbrEnvironment->prefilteredSpecularMap,
 			mActivePbrEnvironment->brdfIntegrationLut,
-			mActivePbrEnvironment->backgroundMap })
+			mActivePbrEnvironment->backgroundMap,
+			mActivePbrEnvironment->environmentMap })
 		{
 			if (resource)
 			{
@@ -3116,6 +3120,42 @@ namespace mpp
 	void RenderSystem::renderSsaaLanczos(RenderTexture* source,RenderTargetPtr const& destination,glm::vec2 const& direction)
 	{
 		if(!source||!destination)THROW_MPP("SSAA Lanczos pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mSsaaLanczosProgram.get());setUsedProgram(mSsaaLanczosProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"),direction.x,direction.y));GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"),(float)destination->getWidth(),(float)destination->getHeight()));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderEnvironmentDebugCube(Texture* environment, Camera* camera)
+	{
+		if (!environment || !camera || environment->getTextureTarget() != GL_TEXTURE_CUBE_MAP)
+		{
+			return;
+		}
+		flushVertexBuffers();
+		auto inverseViewProjection = glm::inverse(camera->getProjectionTransform() * camera->getViewTransform());
+		auto cameraPosition = camera->getPosition();
+		GLboolean depth = glIsEnabled(GL_DEPTH_TEST), cull = glIsEnabled(GL_CULL_FACE), blend = glIsEnabled(GL_BLEND);
+		GLboolean depthMask = GL_TRUE;
+		GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
+		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
+		setProjection2dOrthographic(); resetTransform();
+		scaleTransform2d(glm::vec2((float)mRenderTarget->getWidth() / (float)getWindowWidth(),
+		                             (float)mRenderTarget->getHeight() / (float)getWindowHeight()));
+		auto program = static_cast<Program*>(mEnvironmentDebugCubeProgram.get());
+		setUsedProgram(mEnvironmentDebugCubeProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_VIEW_PROJECTION"), 1, GL_FALSE, glm::value_ptr(inverseViewProjection)));
+		GL_CHECK(glUniform3fv(program->getUniformId("CAMERA_POSITION"), 1, glm::value_ptr(cameraPosition)));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+			if (program->getSamplerName(unit) == "ENVIRONMENT") environment->bind((uint32_t)unit);
+		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE));
+		GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND));
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		GL_CHECK(glDepthMask(depthMask));
+		if (depth) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
+		if (cull) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
+		if (blend) GL_CHECK(glEnable(GL_BLEND)); else GL_CHECK(glDisable(GL_BLEND));
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; mRenderInfo.batchCount++;
 	}
 
 	void RenderSystem::renderBloomCombine(Texture* scene, Texture* bloom, float intensity)
