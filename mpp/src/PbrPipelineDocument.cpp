@@ -16,6 +16,53 @@ namespace mpp
 		auto rewrite=[&](string& value){if(value==qualifiedName)value=localName;};auto rewriteData=[&](auto&& self,utils::StructuredData& data)->void{if(data.isValue()){auto value=data.getValue();rewrite(value);data.setValue(value);}else for(auto& entry:data)self(self,entry.second);};for(auto& resource:localResources)rewriteData(rewriteData,resource.definition);for(auto& binding:previewBindings)rewrite(binding.materialResource);rewrite(environment.irradiance);rewrite(environment.prefilteredSpecular);rewrite(environment.brdfLut);rewrite(environment.background);for(auto& import:imports)rewrite(import.fallback);if(graph)for(uint32_t id=0;id<graph->getPassCount();++id){auto info=graph->getPassInfo({id});if(info.programResource==qualifiedName)graph->setPassProgramResource({id},localName);}return true;
 	}
 
+	void PbrPipelineDocument::setBloomEnabled(bool enabled)
+	{
+		bloom.enabled = enabled;
+		if (!graph) return;
+		GraphImageHandle sceneColour, emissive;
+		std::vector<GraphImageHandle> bloomCompositeOutputs;
+		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+		{
+			auto info = graph->getPassInfo({pass});
+			if (info.callbackFactory == "MPP.PbrScene" && !info.colourOutputs.empty())
+			{
+				sceneColour = info.colourOutputs.front().image;
+				if (enabled && info.colourOutputs.size() < 2)
+				{
+					GraphImageHandle target;
+					for (uint32_t image = 0; image < graph->getImageCount(); ++image)
+						if (graph->getImageInfo({image, 0}).name == "SceneEmissive") target = {image, (uint32_t)graph->getImageVersionCount(image) - 1};
+					if (!target.isValid())
+					{
+						GraphImageDesc desc; desc.format = GraphImageFormat::Rgba16f;
+						desc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+						target = graph->createImage("SceneEmissive", desc);
+					}
+					emissive = graph->writeColour({pass}, target, GraphLoadOp::Clear, GraphStoreOp::Store);
+				}
+				else if (enabled) emissive = info.colourOutputs[1].image;
+				else while (graph->getPassInfo({pass}).colourOutputs.size() > 1) graph->removeColourOutput({pass}, 1);
+			}
+			if (info.callbackFactory.starts_with("MPP.Bloom")) graph->setPassEnabled({pass}, enabled);
+		}
+		if (!sceneColour.isValid()) return;
+		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+		{
+			auto info = graph->getPassInfo({pass});
+			if (info.callbackFactory == "MPP.BloomExtract" && enabled && emissive.isValid() && !info.samplerBindings.empty())
+				graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, emissive, info.samplerBindings[0].mipLevel);
+			if (info.callbackFactory == "MPP.BloomComposite" && !info.colourOutputs.empty()) bloomCompositeOutputs.push_back(info.colourOutputs.front().image);
+		}
+		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+		{
+			auto info = graph->getPassInfo({pass});
+			if (info.callbackFactory != "MPP.ToneMapPresent" || info.samplerBindings.empty()) continue;
+			auto input = !enabled || bloomCompositeOutputs.empty() ? sceneColour : bloomCompositeOutputs.front();
+			graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, input, info.samplerBindings[0].mipLevel);
+		}
+	}
+
 	DiagnosticBag PbrPipelineDocument::validate(RenderGraphPassFactoryRegistry const* registry) const
 	{
 		DiagnosticBag diagnostics;

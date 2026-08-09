@@ -103,6 +103,7 @@ namespace mpp::resource_parsers
 		}
 		if (!data.hasEntry("RenderGraph")) THROW_MPP_RESOURCE_PARSERS("PbrPipeline has no embedded RenderGraph: " + filepath, __LINE__, __FILE__, __func__);
 		document.graph = make_shared<RenderGraph>(RenderGraphParser::fromData(data.getEntry("RenderGraph"), filepath));
+		document.setBloomEnabled(document.bloom.enabled);
 		return document;
 	}
 }

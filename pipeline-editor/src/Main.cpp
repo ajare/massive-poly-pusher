@@ -4104,49 +4104,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				            info.colourOutputs.size(),
 				            info.depthOutputs.size());
 				if (info.callbackFactory == "MPP.PbrScene")
-				{
-					bool writeEmissive = info.colourOutputs.size() > 1;
-					if (ImGui::Checkbox("Write emissive output (MRT)", &writeEmissive))
-					{
-						auto before = clonePipeline(openDocument);
-						if (writeEmissive)
-						{
-							GraphImageHandle emissiveImage;
-							for (uint32_t image = 0; image < openDocument->graph->getImageCount(); ++image)
-								if (openDocument->graph->getImageInfo({image, 0}).name == "SceneEmissive")
-									emissiveImage = {image, (uint32_t)openDocument->graph->getImageVersionCount(image) - 1};
-							if (!emissiveImage.isValid())
-							{
-								GraphImageDesc desc;
-								desc.format = GraphImageFormat::Rgba16f;
-								desc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
-								desc.params.minFilter = GL_LINEAR; desc.params.magFilter = GL_LINEAR; desc.params.wrap = GL_CLAMP_TO_EDGE;
-								emissiveImage = openDocument->graph->createImage("SceneEmissive", desc);
-							}
-							emissiveImage = openDocument->graph->writeColour({(uint32_t)selectedPass}, emissiveImage, GraphLoadOp::Clear, GraphStoreOp::Store);
-							for (uint32_t pass = 0; pass < openDocument->graph->getPassCount(); ++pass)
-							{
-								auto bloom = openDocument->graph->getPassInfo({pass});
-								if (bloom.callbackFactory == "MPP.BloomExtract" && !bloom.samplerBindings.empty())
-									openDocument->graph->setSamplerBinding({pass}, 0, bloom.samplerBindings[0].sampler, emissiveImage, bloom.samplerBindings[0].mipLevel);
-							}
-						}
-						else
-						{
-							openDocument->graph->removeColourOutput({(uint32_t)selectedPass}, 1);
-							for (uint32_t pass = 0; pass < openDocument->graph->getPassCount(); ++pass)
-							{
-								auto bloom = openDocument->graph->getPassInfo({pass});
-								if (bloom.callbackFactory == "MPP.BloomExtract" && !bloom.samplerBindings.empty())
-									openDocument->graph->setSamplerBinding({pass}, 0, bloom.samplerBindings[0].sampler, info.colourOutputs[0].image, bloom.samplerBindings[0].mipLevel);
-							}
-						}
-						auto after = clonePipeline(openDocument);
-						pipelineCommands.execute(std::make_unique<PipelineSnapshotCommand>("Toggle PBR Emissive Output", &openDocument, before, after));
-						pipelineDirty = true; documentChangedSincePreview = true;
-					}
-					ImGui::TextDisabled("Writes material emissive RGB to SceneEmissive and routes Bloom Extract to it.");
-				}
+					ImGui::TextDisabled(openDocument->bloom.enabled
+					    ? "Bloom enabled: emissive RGB is written to SceneEmissive."
+					    : "Bloom disabled: no emissive render target is attached.");
 				if (ImGui::CollapsingHeader("Raster State"))
 				{
 					auto raster = info.rasterState;
@@ -5288,7 +5248,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			else if (openDocument && selectedBinding == -3)
 			{
 				auto before = clonePipeline(openDocument);
-				bool changed = ImGui::Checkbox("Enable bloom", &openDocument->bloom.enabled);
+				bool bloomEnabled = openDocument->bloom.enabled;
+				bool changed = ImGui::Checkbox("Enable bloom", &bloomEnabled);
+				if (changed) openDocument->setBloomEnabled(bloomEnabled);
 				uint32_t horizontal = 0, vertical = 0;
 				if (openDocument->graph)
 					for (uint32_t pass = 0; pass < openDocument->graph->getPassCount(); ++pass)
