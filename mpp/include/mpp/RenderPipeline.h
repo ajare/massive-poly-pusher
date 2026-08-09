@@ -17,6 +17,7 @@
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderPipelineOutput.h"
+#include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderOutputProcessor.h"
 
 namespace mpp
@@ -153,9 +154,13 @@ namespace mpp
 		uint64_t mLastTaaFrameSerial{ 0 }, mLastCameraCutRevision{ 0 };
 		glm::vec3 mLastCameraPosition{ 0.0f }, mLastCameraDirection{ 0.0f, 0.0f, -1.0f };
 		float mLastCameraFov{ 0.0f }, mLastCameraAspect{ 0.0f }, mLastCameraNear{ 0.0f }, mLastCameraFar{ 0.0f };
+		bool mFlowTelemetryEnabled{ false };
+		uint64_t mFlowGeneration{ 0 };
+		RenderPipelineFlowSnapshotPtr mLastFlowSnapshot;
 
 		void ensureBloomTargets(size_t width, size_t height);
 		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);
+		void publishFlowSnapshot();
 
 	public:
 
@@ -182,6 +187,10 @@ namespace mpp
 		RenderTargetPtr getOutputRenderTarget();
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
 		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;
+		std::vector<GraphPassHandle> const& getLastGraphExecutionOrder() const;
+		void setFlowTelemetryEnabled(bool enabled);
+		bool isFlowTelemetryEnabled() const;
+		RenderPipelineFlowSnapshotPtr getLastFlowSnapshot() const;
 		uint64_t getOutputGeneration() const;
 		std::vector<RenderPipelineOutputPlan> const& getOutputPlans() const;
 		void prepareOutputs(RenderGraph const& graph, std::map<std::string, RenderTargetPtr> const& destinations);

@@ -1,5 +1,11 @@
 # PipelineEditor Pass Process-Flow View Implementation Plan
 
+## Implementation status
+
+- **Phase 1 complete**: public immutable flow snapshot contracts, opt-in `RenderPipeline` snapshot publication, stable runtime pipeline generations, authoritative last-successful compiled pass order retention in `RenderGraphExecutor`, PipelineEditor opt-in, and compiled-order/snapshot contract coverage.
+- Phase 1 snapshots intentionally contain pass order only. Batch submissions and physical events remain empty until phases 2 and 3.
+- Debug and Release renderer/DemoSuite GPU validation and PipelineEditor snapshot smoke validation pass, including the combined MSAA + TAA + SSAA + FXAA path.
+
 ## 1. Goal
 
 Add a **Process Flow** tab alongside **Pipeline Hierarchy** that visualizes the active pipeline as the process actually executed by the renderer. The view must combine:
@@ -495,10 +501,13 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
 
 ## 14. Implementation phases
 
-1. **Flow contracts and compiled order**
-   - Add immutable snapshot records and opt-in ownership.
-   - Expose last actual pass order.
-   - Add unit tests without batch instrumentation.
+1. **Flow contracts and compiled order — COMPLETE**
+   - [x] Add `RenderPipelineFlow` event, batch, and immutable shared snapshot contracts.
+   - [x] Add opt-in ownership/publication to `RenderPipeline`, disabled by default and cleared when disabled.
+   - [x] Assign a stable generation to each runtime pipeline and publish only after successful graph execution and output presentation.
+   - [x] Retain and expose the last successfully executed compiled pass order from `RenderGraphExecutor` and `RenderPipeline`.
+   - [x] Opt PipelineEditor preview generations into telemetry without adding UI ahead of phase 6.
+   - [x] Test const snapshot publication contracts, event naming, disabled-pass filtering in actual order, executor order retention, and PipelineEditor snapshot publication.
 
 2. **Exact batch telemetry**
    - Propagate source identity.
