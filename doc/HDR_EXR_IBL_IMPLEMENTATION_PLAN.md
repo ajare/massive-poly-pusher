@@ -513,7 +513,9 @@ When HDR IBL source is active, PipelineEditor disables authored irradiance/prefi
 
 **Acceptance:** UI prevents ambiguous HDR/manual cubemap authoring while retaining advanced escape hatches.
 
-### 10.4 Preview actions and status
+### 10.4 Preview actions and status — In progress
+
+Added Regenerate HDR IBL action, which clears derived cache through forced preview rebuild while retaining active preview until replacement succeeds. Environment UI reports pending, active/cache-reuse, or diagnostic failure status; per-source hit/miss timing remains deferred.
 
 1. Add Regenerate HDR IBL action that clears renderer cache and queues a preview rebuild without retiring the active preview prematurely.
 2. Show source path, cache state (unknown/hit/generating/failed), configured resolutions, and latest runtime diagnostic.
