@@ -213,7 +213,7 @@ Added `RenderSystem::convertEquirectangularToCubemap`. It validates source/confi
 
 ### 5.6 GPU orientation and HDR tests — In progress
 
-Added a linear RGB32F programmatic panorama fixture and public conversion smoke test that verifies all generated faces retain HDR values above 1.0. Directional orientation, seam, and invalid-source state tests remain.
+Added a linear RGB32F programmatic panorama fixture and public conversion smoke test that verifies all generated faces retain HDR values above 1.0. The fixture's longitude gradient now verifies the documented `-Z < +X < +Z` centre-face orientation. Seam and invalid-source state tests remain.
 
 1. Add a small directional floating-point equirectangular fixture with distinct colours for cardinal directions and values above 1.0.
 2. Convert it and read each cubemap face back, verifying the documented face convention.

@@ -119,7 +119,11 @@ namespace mpp
 			auto panoramaResource = renderSystem->getResourceManager()->declareResource("GpuTestHdrPanorama", ResourceStreamPtr(panoramaStream)).first; panoramaResource->load();
 			auto converted = renderSystem->convertEquirectangularToCubemap(dynamic_cast<Texture*>(panoramaResource.get()), "GpuTestConvertedPanorama", 8);
 			auto convertedTexture = dynamic_cast<RenderTexture*>(converted.get()); if (!convertedTexture) return fail("equirectangular conversion did not return a cubemap render texture");
-			for (uint32_t face = 0; face < 6; ++face) { std::vector<float> pixels(8 * 8 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, convertedTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (pixels[0] <= 1.0f) return fail("equirectangular conversion lost HDR values"); }
+			std::array<float, 6> faceCentre{};
+			for (uint32_t face = 0; face < 6; ++face) { std::vector<float> pixels(8 * 8 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, convertedTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (pixels[0] <= 1.0f) return fail("equirectangular conversion lost HDR values"); faceCentre[face] = pixels[(4 * 8 + 4) * 4]; }
+			// The horizontal HDR gradient encodes longitude. At the face centres the
+			// documented convention orders -Z (longitude -pi/2), +X (0), +Z (+pi/2).
+			if (!(faceCentre[5] < faceCentre[0] && faceCentre[0] < faceCentre[4])) return fail("equirectangular cubemap face orientation is incorrect");
 
 			stage = "initial colour passes";
 			GraphImageDesc colour;
