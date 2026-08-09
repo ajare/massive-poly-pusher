@@ -374,11 +374,48 @@ Reduced-sample GPU coverage verifies neutral HDR mip-chain initialization/energy
 
 ## Phase 8 — BRDF LUT ownership
 
-1. Reuse the existing renderer-owned BRDF LUT when compatible.
-2. Document its resolution/format and lifetime.
-3. Permit an explicit pipeline BRDF LUT only as an advanced override.
+The current `__mpp_tex_pbr_brdf_lut__` is a 1x1 white fallback, not a generated split-sum BRDF integration LUT. HDR IBL therefore needs a renderer-owned generated LUT.
 
-**Acceptance:** HDR IBL pipelines need no authored BRDF LUT file.
+### 8.1 LUT contract and API
+
+1. Define a renderer-owned linear floating-point 2D LUT contract (default 512x512 `RG16F`/`RGBA16F`) indexed by `NdotV` and roughness.
+2. Add `RenderSystem::getOrCreatePbrBrdfIntegrationLut()` returning a shared core resource; it creates once per renderer/context and returns the same resource thereafter.
+3. Keep `__mpp_tex_pbr_brdf_lut__` as a neutral fallback for non-IBL/error paths only.
+
+**Acceptance:** IBL code can request a stable renderer-owned integration LUT without an authored texture resource.
+
+### 8.2 Integration shader and render target
+
+1. Add a fullscreen split-sum GGX BRDF integration shader with `NdotV`/roughness output in RG channels.
+2. Add a floating-point 2D render-target creation path or equivalent renderer-owned target suitable for the LUT.
+3. Use deterministic Hammersley sampling and documented production/test sample counts.
+
+**Acceptance:** Renderer can generate a finite floating-point BRDF LUT without scene resources.
+
+### 8.3 Core lifecycle and generation
+
+1. Create/load the renderer-owned program during core initialization.
+2. Lazily generate the LUT on first request, preserving target/viewport/scissor/draw/read-buffer state.
+3. Retain shared ownership for renderer lifetime; release during normal core-resource teardown.
+4. Guard duplicate/re-entrant generation and surface diagnostics on failure.
+
+**Acceptance:** Repeated requests return one completed LUT and never trigger per-frame regeneration.
+
+### 8.4 Runtime environment binding
+
+1. In HDR IBL runtime creation, bind the renderer-owned LUT unless `Environment.brdfLut` names an explicit valid override.
+2. Keep explicit `brdfLut` serialization/parser support as advanced/manual behavior.
+3. Report diagnostics when an override is incompatible and use generated LUT fallback.
+
+**Acceptance:** HDR IBL pipelines require no authored BRDF LUT; explicit advanced override remains possible.
+
+### 8.5 GPU tests and documentation
+
+1. Verify LUT creation once-per-renderer, dimensions/float format, finite values, and state restoration.
+2. Validate expected endpoint behavior: low roughness/high `NdotV` remains finite; all texels stay in sensible non-negative ranges.
+3. Document LUT resolution, format, sample budget, cache/lifetime behavior, and override precedence.
+
+**Acceptance:** Generated LUT is deterministic, reusable, and documented for HDR IBL.
 
 ## Phase 9 — Runtime integration
 
