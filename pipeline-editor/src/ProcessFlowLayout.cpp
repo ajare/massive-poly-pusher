@@ -35,28 +35,30 @@ namespace pipeline_editor
 				return left->actualPosition < right->actualPosition;
 			return left->layoutRank < right->layoutRank;
 		});
-		float y = 0.0f;
-		for (auto* node : spine) { node->position = {-node->size.x * 0.5f, y}; y += node->size.y + 72.0f; }
-		std::unordered_map<int, ProcessFlowNode*> passSpineNodes;
-		for (auto* node : spine)
-			if (node->kind == ProcessFlowNodeKind::AuthoredPass && node->passId >= 0) passSpineNodes[node->passId] = node;
 		std::unordered_map<int, std::vector<ProcessFlowNode*>> batchesByPass;
 		for (auto* node : batches) batchesByPass[node->parentPassId].push_back(node);
 		for (auto& [passId, children] : batchesByPass)
-		{
-			auto parent = passSpineNodes.find(passId);
-			if (parent == passSpineNodes.end()) { disabled.insert(disabled.end(), children.begin(), children.end()); continue; }
 			std::stable_sort(children.begin(), children.end(), [](auto left, auto right) { return left->sequence < right->sequence; });
-			float totalHeight = 0.0f;
-			for (auto* child : children) totalHeight += child->size.y;
-			totalHeight += 48.0f * (float)(children.size() - 1);
-			float childY = parent->second->position.y + (parent->second->size.y - totalHeight) * 0.5f;
-			for (auto* child : children)
+		float y = 0.0f;
+		for (auto* node : spine)
+		{
+			node->position = {-node->size.x * 0.5f, y};
+			auto children = node->kind == ProcessFlowNodeKind::AuthoredPass ? batchesByPass.find(node->passId) : batchesByPass.end();
+			if (children == batchesByPass.end()) { y += node->size.y + 72.0f; continue; }
+			float childY = node->position.y + (node->size.y - children->second.front()->size.y) * 0.5f;
+			float childBottom = childY;
+			for (auto* child : children->second)
 			{
-				child->position = {parent->second->position.x - child->size.x - 72.0f, childY};
+				child->position = {node->position.x - child->size.x - 72.0f, childY};
 				childY += child->size.y + 48.0f;
+				childBottom = childY - 48.0f;
 			}
+			y = std::max(node->position.y + node->size.y, childBottom) + 72.0f;
 		}
+		for (auto const& [passId, children] : batchesByPass)
+			if (std::none_of(spine.begin(), spine.end(), [=](auto const* node)
+			    { return node->kind == ProcessFlowNodeKind::AuthoredPass && node->passId == passId; }))
+				disabled.insert(disabled.end(), children.begin(), children.end());
 		auto yForRank = [&](float rank)
 		{
 			if (spine.empty()) return rank * 150.0f;
