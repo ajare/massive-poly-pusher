@@ -180,10 +180,14 @@ namespace mpp
 		// contract. Optional maps use neutral textures, not optional interfaces.
 		Program* program = static_cast<Program*>(mProgram.get());
 		bool const legacyFullContract = hasPbrFeature(mFeatures, PbrMaterialFeature::LegacyFullContract);
-		// PBR_PREFILTERED_MAX_LOD is renderer-owned rather than material-owned: it
-		// is never authored, serialized, or overridable per instance, but every PBR
-		// program must expose it so the IBL fetch matches the bound cubemap's chain.
-		vector<string> requiredUniforms{ "PBR_BASE_COLOUR_FACTOR", "PBR_PREFILTERED_MAX_LOD" };
+		// Renderer-owned rather than material-owned: supplied from the bound
+		// prefiltered cubemap, never authored, serialized, or overridable per
+		// instance. It is deliberately *optional* in the contract. Shader source is
+		// baked into binary .mppmodel assets, so requiring it would invalidate every
+		// model built before it existed and turn a shading fix into an asset
+		// migration. A program without it is reported below instead.
+		static constexpr char const* prefilteredMaxLodUniform = "PBR_PREFILTERED_MAX_LOD";
+		vector<string> requiredUniforms{ "PBR_BASE_COLOUR_FACTOR" };
 		if (legacyFullContract)
 		{
 			requiredUniforms.insert(requiredUniforms.end(), { "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
@@ -211,10 +215,18 @@ namespace mpp
 			if (program->getUniformGlType(uniform) != expectedType)
 				THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + uniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
 		}
+		if (program->getUniformId(prefilteredMaxLodUniform) < 0)
+			getRenderSystem()->warnMessage("PbrMaterial '" + getName() + "' program does not declare '" + prefilteredMaxLodUniform +
+				"'. Its prefiltered specular fetch assumes a fixed mip count, so roughness will not map onto the bound cubemap's chain. "
+				"Add the uniform to the shader and rebuild any .mppmodel that embeds it.");
+		else if (program->getUniformGlType(prefilteredMaxLodUniform) != GL_FLOAT)
+			THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + prefilteredMaxLodUniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
 		set<string> const allCoreUniforms = { "PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
 			"PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH", "PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED", "PBR_METALLIC_CHANNEL", "PBR_ROUGHNESS_CHANNEL",
-			"PBR_PREFILTERED_MAX_LOD" };
-		set<string> const allowedCoreUniforms(requiredUniforms.begin(), requiredUniforms.end());
+			prefilteredMaxLodUniform };
+		set<string> allowedCoreUniforms(requiredUniforms.begin(), requiredUniforms.end());
+		// Renderer-owned, so always permitted even though it is never required.
+		allowedCoreUniforms.insert(prefilteredMaxLodUniform);
 		if (!legacyFullContract) for (auto const& name : program->getUniformNames())
 			if (allCoreUniforms.contains(name) && !allowedCoreUniforms.contains(name))
 				THROW_MPP("PbrMaterial '" + getName() + "' program exposes specialized-out uniform '" + name + "' for [" + mFeatureSummary + "].", __LINE__, __FILE__, __func__);

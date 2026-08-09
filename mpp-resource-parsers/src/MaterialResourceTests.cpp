@@ -74,6 +74,12 @@ namespace mpp::resource_parsers
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
 		auto const root = std::filesystem::temp_directory_path() / "mpp_material_resource_tests";
+		// `root` is a filename prefix for most artefacts but the glTF fixture below
+		// is written *inside* it. Without this the ofstream silently fails and the
+		// loader reports a missing file, which blocked the whole suite.
+		std::error_code rootError;
+		std::filesystem::create_directories(root, rootError);
+		if (rootError) return fail("could not create the material test directory: " + rootError.message());
 		auto const basicXml = root.string() + "_basic.xml";
 		auto const pbrXml = root.string() + "_pbr.xml";
 		auto const invalidPbrXml = root.string() + "_invalid_pbr.xml";
@@ -171,6 +177,7 @@ namespace mpp::resource_parsers
 		std::filesystem::remove(basicXml); std::filesystem::remove(pbrXml); std::filesystem::remove(invalidPbrXml); std::filesystem::remove(embeddedVariantsXml);
 		std::filesystem::remove(basicBin); std::filesystem::remove(pbrBin);
 		std::filesystem::remove(version2BasicBin); std::filesystem::remove(legacyBasicBin); std::filesystem::remove(legacyPbrBin); std::filesystem::remove(legacyMultiBin); std::filesystem::remove(hdrPipelineXml);
+		std::filesystem::remove(root, rootError);
 		return true;
 	}
 }
