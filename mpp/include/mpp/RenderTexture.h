@@ -78,7 +78,10 @@ namespace mpp
 		void bindDepth(uint32_t unit);
 
 		// Regenerates declared colour/depth mip chains after level-zero writes.
-		void generateMipMaps();
+		// `force` generates even when the target did not opt into automatic
+		// mipmaps. Cubemap IBL targets render one face at a time, so they must
+		// generate once after every face exists rather than on each target pop.
+		void generateMipMaps(bool force = false);
 
 		void applyMipView(uint32_t mipLevel);
 		void restoreMipView();

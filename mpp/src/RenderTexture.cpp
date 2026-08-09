@@ -389,9 +389,9 @@ namespace mpp
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
 
-	void RenderTexture::generateMipMaps()
+	void RenderTexture::generateMipMaps(bool force)
 	{
-		if (mParams.useMipmaps)
+		if (mParams.useMipmaps || force)
 		{
 			for (auto textureId : mTextureIds)
 			{

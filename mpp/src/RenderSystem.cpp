@@ -1580,9 +1580,14 @@ namespace mpp
 			THROW_MPP("Equirectangular IBL source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
 	}
 
-	void RenderSystem::validatePrefilteredSpecularSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount) const
+	void RenderSystem::validatePrefilteredSpecularSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount)
 	{
 		if (!source || !source->isLoaded()) THROW_MPP("Specular prefilter source must be a loaded cubemap texture.", __LINE__, __FILE__, __func__);
+		// Not fatal: the prefilter still runs, but every GGX sample resolves at
+		// full resolution and high-dynamic-range sources alias into fireflies.
+		if (source->getMipLevels() <= 1)
+			warnMessage("Specular prefilter source '" + source->getName() + "' has no mip chain; '" + generatedName +
+				"' will alias at high roughness. Generate the environment cubemap with a full chain.");
 		if (generatedName.empty() || !faceSize || mipLevels < 2 || !sampleCount) THROW_MPP("Specular prefilter output name, face size, mip count (at least two), and sample count must be valid.", __LINE__, __FILE__, __func__);
 		if (source->getTextureTarget() != GL_TEXTURE_CUBE_MAP) THROW_MPP("Specular prefilter source must be a cubemap texture.", __LINE__, __FILE__, __func__);
 		auto format = source->getInternalFormat();
@@ -1730,10 +1735,13 @@ namespace mpp
 	{
 		validateEquirectangularConversionSource(hdrEquirectangular, generatedName, faceSize, mipLevels);
 		auto candidate = createIblCubemap(generatedName, faceSize, mipLevels);
-		// Only mip zero is populated here. Specular prefilter generation owns
-		// higher mip levels in Phase 7.
 		for (uint32_t face = 0; face < 6; ++face)
 			renderEquirectangularCubemapFace(hdrEquirectangular, candidate, face, 0);
+		// The specular prefilter selects a source mip from each GGX sample's solid
+		// angle to avoid resolving a bright pixel per sample. That LOD silently
+		// clamps to zero unless the environment carries a real chain, so build it
+		// here, once every face exists rather than on each face's target pop.
+		if (mipLevels > 1) static_cast<RenderTexture*>(candidate.get())->generateMipMaps(true);
 		return candidate;
 	}
 

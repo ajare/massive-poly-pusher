@@ -102,19 +102,35 @@ Items 1 and 2 are implemented; items 3 and 4 remain open.
   uploads `mipLevels - 1`. It is resolved at the binding site rather than from the active
   `PbrEnvironment` precisely so the three cases cannot disagree. The upload is gated on the same
   program/material-change condition as `Material::setUniforms`, so it costs nothing per draw.
-- `PbrMaterial::createImpl` lists the uniform in `requiredUniforms` and `allCoreUniforms`. It is
-  renderer-owned: never authored, never serialized, and rejected as an instance override. A custom
-  PBR program that omits it now fails to create with an explicit diagnostic instead of silently
-  reverting to the old behaviour. **This is a deliberate contract change** — the in-repo
-  `demo-suite/resources/res/statue/statue_pbr.frag` was updated alongside it, and any out-of-tree
-  custom PBR fragment shader must add the declaration and use it in its specular fetch.
+- `PbrMaterial::createImpl` lists the uniform in `allCoreUniforms` and `allowedCoreUniforms` so it
+  is renderer-owned — never authored, never serialized, rejected as an instance override — but it
+  is **optional**, not required. A program that omits it is reported through `warnMessage` naming
+  the material.
+
+  > **Correction.** It was initially made *required*, and that broke DemoSuite. Shader source is
+  > baked into binary `.mppmodel` assets: `statue.mppmodel` embeds `statue_pbr.frag`, so editing
+  > the `.frag` on disk changes nothing until the model is rebuilt with `model-convert`. Requiring
+  > the uniform therefore turned a shading fix into an asset migration and made every pre-existing
+  > model fail to load. The first verification pass missed this because `PipelineEditor --validate`
+  > never loads `.mppmodel` materials — only DemoSuite does. **Any change to the required PBR
+  > uniform or sampler contract invalidates every existing binary model**; treat that as a hard
+  > constraint when extending the contract (see [§9.1](#91-new-material-features)).
+
+  `statue_pbr.frag` is still updated in source, but `statue.mppmodel` has not been regenerated, so
+  the statue currently loads with the warning and keeps the old fixed-mip behaviour until someone
+  runs `demo-suite/resources/res/statue/build_mppmodel.bat`.
 - `runPbrMaterialSpecializationTests` gained a context-free guard asserting the built-in shader
   declares the uniform and consumes it inside the prefiltered specular fetch.
 
 The 1×1 neutral fallback cubemap reports one level, so the multiplier collapses to zero and the
 fallback path is unchanged.
 
-### 1.2 The generated environment cubemap has no mip chain, defeating the prefilter's LOD trick — **Bug, high**
+### 1.2 The generated environment cubemap has no mip chain, defeating the prefilter's LOD trick — **Bug, high** — ✅ FIXED
+
+> **Resolved.** The environment cubemap is now built with a full chain and populated
+> once every face exists. See [§1.2 resolution](#12-resolution) below.
+
+
 
 `mpp/src/RenderSystem.cpp:1729` / `mpp/include/mpp/RenderSystem.h:439`
 
@@ -150,6 +166,22 @@ aliasing the LOD is designed to remove, especially at 64–1024 samples.
   `glGenerateMipmap` explicitly from `convertEquirectangularToCubemap`.
 - Add a GPU test in `RenderGraphGpuTests.cpp` asserting that mip *n* of the converted panorama is
   non-zero for a non-black source.
+
+#### 1.2 Resolution
+
+- `PbrPipelineRuntime` derives a full chain from `environmentResolution` and passes it, instead of
+  taking the `mipLevels = 1` default.
+- `convertEquirectangularToCubemap` populates the chain **after** all six faces are rendered.
+  Doing it per face would regenerate five times from incomplete data, so
+  `RenderTexture::generateMipMaps` gained a `force` parameter: IBL cubemaps deliberately keep
+  `params.useMipmaps = false` so that popping each face's render target does *not* auto-generate,
+  and the conversion generates once explicitly at the end.
+- `validatePrefilteredSpecularSource` now warns when its source has no chain, so a manually
+  authored single-mip cubemap reports rather than silently aliasing.
+- The GPU test asserts the chain is **populated, not merely allocated**: `glGenerateMipmap`'s
+  successive box filter makes the 1×1 level the mean of level zero, so it compares against the
+  source face's own mean rather than a hardcoded constant. Verified load-bearing by disabling the
+  generation and confirming the failure.
 
 ### 1.3 The BRDF integration LUT is sampled with `GL_REPEAT` wrapping — **Bug, high**
 
@@ -1555,4 +1587,28 @@ Concrete tests that would have caught the bugs above, roughly in order of value 
 9. **Equirectangular orientation test** — the conversion at `DefaultShaders.h:212-213` maps
    `y = +1` to `v = 0`, whose correctness depends on the row order the EXR loader produces. Render a
    panorama with a known marker at the zenith and assert it lands on the +Y face. This was not
-   verifiable by inspection and should be confirmed empirically.
+   verifiable by inspection and should be confirmed empirically. The longitude ordering *is* now
+   covered by the existing `RenderGraphGpuTests` face-centre assertion; the zenith/nadir axis is not.
+
+### 10.1 DemoSuite was not startable, so none of its suites ran
+
+Two pre-existing defects meant `DemoSuite.exe` aborted during startup, and with it the render-graph
+GPU tests — the only automated coverage of the renderer's actual GL behaviour. Both are now fixed.
+
+- **`runMaterialResourceTests` never created its own directory.** `root` is used as a filename
+  *prefix* for every other artefact (`root.string() + "_basic.xml"`) but as a *directory* for the
+  glTF fixture (`root / "mpp-material-test.gltf"`). The `ofstream` silently failed and the loader
+  reported a missing file. It only passed on a machine where that temp directory happened to
+  already exist.
+- **The equirectangular seam assertion was geometrically unsatisfiable.** It compared the +X face's
+  rightmost texel against the −Z face's leftmost. Those faces meet at longitude −45°, but their
+  outermost texel *centres* sit at `atan(1 − 1/8) = 41.2°` either side of it — a 7.6° gap — while
+  the 8-wide source encodes 45° per texel. Worse, the fixture used the default `GL_NEAREST`, so the
+  two samples quantised into different source texels and differed by a full step against a
+  tolerance of 0.15. The fixture now uses linear filtering (which is what a continuity check needs,
+  and what real panoramas use), the tolerance is derived from that 7.6° gap rather than being a
+  magic number, and the failure message reports the measured values so a genuine seam bug is
+  distinguishable from a sampling-geometry mismatch.
+
+Both were confirmed pre-existing by reverting the working tree to `86256df` and reproducing them.
+Neither is caused by the fixes in this document.

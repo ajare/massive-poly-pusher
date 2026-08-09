@@ -121,7 +121,12 @@ namespace mpp
 
 			// A linear HDR panorama with values above one verifies the public conversion path.
 			auto panoramaStream = new ProgrammaticTextureStream(renderSystem->getResourceManager());
+			// Linear filtering matters here: the seam check below compares the two
+			// faces' edge texels, whose centres sit a fraction of a source texel
+			// apart in longitude. Under the default GL_NEAREST they quantise to
+			// different source texels and can never agree.
 			panoramaStream->setTarget(TextureTarget::Texture2D); panoramaStream->setColourSpace(TextureColourSpace::Linear); panoramaStream->setInternalFormat(TextureInternalType::Float, false, 32, 3);
+			panoramaStream->setFiltering(TextureParams::MinFilter::Linear, TextureParams::MagFilter::Linear);
 			panoramaStream->setData([](std::string const&) { TextureData data; data.width = 8; data.height = 4; data.bitsPerPixel = 96; data.pixelFormat = GL_RGB; data.dataType = GL_FLOAT; data.data = new uint8_t[8 * 4 * 3 * sizeof(float)]; auto values = reinterpret_cast<float*>(data.data); for (size_t y = 0; y < 4; ++y) for (size_t x = 0; x < 8; ++x) { auto index = (y * 8 + x) * 3; values[index] = 1.25f + (float)x; values[index + 1] = (float)y; values[index + 2] = 0.5f; } return data; });
 			auto panoramaResource = renderSystem->getResourceManager()->declareResource("GpuTestHdrPanorama", ResourceStreamPtr(panoramaStream)).first; panoramaResource->load();
 			auto converted = renderSystem->convertEquirectangularToCubemap(dynamic_cast<Texture*>(panoramaResource.get()), "GpuTestConvertedPanorama", 8);
@@ -131,7 +136,33 @@ namespace mpp
 			// The horizontal HDR gradient encodes longitude. At the face centres the
 			// documented convention orders -Z (longitude -pi/2), +X (0), +Z (+pi/2).
 			if (!(faceCentre[5] < faceCentre[0] && faceCentre[0] < faceCentre[4])) return fail("equirectangular cubemap face orientation is incorrect");
-			if (std::abs(positiveXRight - negativeZLeft) > 0.15f) return fail("equirectangular cubemap seam is discontinuous");
+			// The +X and -Z faces meet at longitude -45 degrees, but their outermost
+			// texel centres sit at atan(1 - 1/8) = 41.2 degrees either side of it,
+			// a 7.6 degree gap. The source encodes longitude at 45 degrees per texel,
+			// so a continuous conversion differs by that gap, not by zero. Allow a
+			// quarter texel and report the measured values, since a real seam bug and
+			// a sampling-geometry mismatch are otherwise indistinguishable.
+			auto const seamGap = std::abs(positiveXRight - negativeZLeft);
+			if (seamGap > 0.25f) return fail("equirectangular cubemap seam is discontinuous: +X right " + std::to_string(positiveXRight) +
+				" vs -Z left " + std::to_string(negativeZLeft) + " (gap " + std::to_string(seamGap) + ")");
+			// A requested chain must be populated, not merely allocated: the specular
+			// prefilter's solid-angle LOD silently clamps to level zero otherwise.
+			// Successive box filtering makes the 1x1 level the mean of level zero, so
+			// compare against the source face rather than a hardcoded constant.
+			{
+				auto chained = renderSystem->convertEquirectangularToCubemap(dynamic_cast<Texture*>(panoramaResource.get()), "GpuTestChainedPanorama", 8, 4);
+				auto chainedTexture = dynamic_cast<RenderTexture*>(chained.get());
+				if (!chainedTexture || chainedTexture->getMipLevels() != 4) return fail("equirectangular conversion did not create the requested mip chain");
+				std::vector<float> base(8 * 8 * 4), smallest(4);
+				GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, chainedTexture->getColourAttachmentId(0)));
+				GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA, GL_FLOAT, base.data()));
+				GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 3, GL_RGBA, GL_FLOAT, smallest.data()));
+				GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+				float mean = 0.0f; for (size_t texel = 0; texel < 64; ++texel) mean += base[texel * 4];
+				mean /= 64.0f;
+				if (mean <= 1.0f) return fail("chained equirectangular conversion lost HDR values");
+				if (std::abs(smallest[0] - mean) > 0.05f) return fail("equirectangular conversion did not populate its mip chain");
+			}
 			GLint stateViewport[4]{}, stateAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, stateViewport)); bool rejectedInvalidSource = false; try { renderSystem->convertEquirectangularToCubemap(nullptr, "GpuTestInvalidPanorama", 8); } catch (...) { rejectedInvalidSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, stateAfter)); if (!rejectedInvalidSource || !std::equal(std::begin(stateViewport), std::end(stateViewport), std::begin(stateAfter))) return fail("invalid equirectangular source changed render state");
 
 			auto neutralEnvironment = renderSystem->createIblCubemap("GpuTestNeutralEnvironment", 4, 1, GL_RGBA16F); auto neutralTexture = dynamic_cast<RenderTexture*>(neutralEnvironment.get());
