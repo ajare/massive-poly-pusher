@@ -322,7 +322,7 @@ Note this interacts with §1.2b/§1.3: with the BRDF LUT black, IBL specular con
 all, so the seams this fixes were only visible in the ambient diffuse term. They are now visible in
 reflections too, which raises the practical value of this change.
 
-### 1.5 The diffuse irradiance convolution double-counts the cosine term — **Bug, medium**
+### 1.5 The diffuse irradiance convolution double-counts the cosine term — **Bug, medium** — ✅ FIXED
 
 `mpp/include/mpp/DefaultShaders.h:249-271`
 
@@ -364,6 +364,39 @@ should be left alone.
 Strengthen the GPU test at `mpp/src/RenderGraphGpuTests.cpp:143` (which currently only compares a
 directional source against itself) to assert against an analytically-known value — a single-face
 white/black cubemap has a closed-form irradiance.
+
+#### 1.5 Resolution
+
+Applied as written. The prefiltered specular pass was left alone, as noted above.
+
+**On the test.** The suggestion of a closed-form single-face irradiance was not taken directly: the
+projected solid angle of a square cube face reduces to `∫∫ du dv / (1+u²+v²)²`, which has no
+pleasant closed form and would have had to enter the test as an unexplainable magic constant.
+
+Instead the test carries an **independent numerical oracle** — a deterministic 256×256
+uniform-hemisphere quadrature of `E/π` over a single lit face, sharing no code and no sampling
+scheme with the shader. It integrates the same physical quantity by a different method, so it
+cannot inherit the shader's error. The environment is 16×16 per face so that the bilinear ramp
+along the lit face's border stays narrow against the oracle's hard-edged cone.
+
+Measured against a `+X = 8.0` environment at the `(2,2)` texel of a 4×4 output face:
+
+| | value | error vs oracle |
+|---|---|---|
+| Oracle (CPU quadrature) | 4.179 | — |
+| Corrected convolution | 4.152 | **0.6%** |
+| `cos²` form (the bug) | 5.086 | **21.7%** |
+
+The tolerance is set at 6% — an order of magnitude above the observed error, and a factor of three
+below the bug. Verified load-bearing by restoring the old estimator, which reports both numbers:
+*"got 5.085938, expected 4.178953"*.
+
+Note the existing constant-environment assertion was **kept**, not replaced. It is worth keeping
+precisely because it is insensitive to this class of error: it pins the absolute level, while the
+oracle pins the directional distribution.
+
+**Not affected:** `IblEnvironmentCache` is in-memory only (`IblEnvironmentCache.h:37`), so there are
+no persisted irradiance maps carrying the old convention.
 
 ### 1.6 The neutral BRDF LUT fallback is white — **Bug, low**
 

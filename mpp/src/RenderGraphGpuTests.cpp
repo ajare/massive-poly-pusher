@@ -179,6 +179,39 @@ namespace mpp
 			auto directionalIrradiance = renderSystem->generateDiffuseIrradiance(directionalTexture, "GpuTestDirectionalIrradiance", 4, 64); auto repeatedIrradiance = renderSystem->generateDiffuseIrradiance(directionalTexture, "GpuTestDirectionalIrradianceRepeat", 4, 64); auto directionalOutput = dynamic_cast<RenderTexture*>(directionalIrradiance.get()); auto repeatedOutput = dynamic_cast<RenderTexture*>(repeatedIrradiance.get()); std::array<float, 2> directionalCentre{};
 			for (uint32_t face = 0; face < 2; ++face) { std::vector<float> pixels(4 * 4 * 4), repeated(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, directionalOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, repeatedOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, repeated.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); directionalCentre[face] = pixels[(2 * 4 + 2) * 4]; if (std::abs(directionalCentre[face] - repeated[(2 * 4 + 2) * 4]) > 0.001f) return fail("diffuse irradiance generation is not deterministic"); }
 			if (!(directionalCentre[0] > directionalCentre[1])) return fail("directional diffuse irradiance is not oriented toward its source");
+			// A constant environment cannot tell a cosine-weighted average apart from
+			// the correct unweighted mean, which is why the checks above missed a
+			// convolution integrating against a cos^2 lobe. Pin it with an oracle that
+			// shares no code with the shader: a deterministic uniform-hemisphere
+			// quadrature of E/pi over a single lit cube face. The environment is 16x16
+			// per face so the bilinear ramp along the lit face's border stays narrow
+			// against the oracle's hard-edged cone.
+			{
+				auto oracleEnvironment = renderSystem->createIblCubemap("GpuTestOracleEnvironment", 16, 1, GL_RGBA16F); auto oracleSource = dynamic_cast<RenderTexture*>(oracleEnvironment.get());
+				for (uint32_t face = 0; face < 6; ++face) { RenderSystem::CubemapFaceRenderScope scope(*renderSystem, oracleEnvironment, face, 0); GL_CHECK(glClearColor(face == 0 ? 8.0f : 0.0f, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
+				auto oracleIrradiance = renderSystem->generateDiffuseIrradiance(oracleSource, "GpuTestOracleIrradiance", 4, 512); auto oracleOutput = dynamic_cast<RenderTexture*>(oracleIrradiance.get()); if (!oracleOutput) return fail("oracle diffuse irradiance did not return a cubemap render texture");
+				std::vector<float> oraclePixels(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, oracleOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA, GL_FLOAT, oraclePixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+				// Texel (2,2) of a 4x4 +X face: faceDirection maps pixel (2.5/4, 2.5/4)
+				// to u = v = 0.25 and the +X face to (1, -v, -u).
+				auto const oracleNormal = glm::normalize(glm::vec3(1.0f, -0.25f, -0.25f));
+				auto const up = std::abs(oracleNormal.y) < 0.999f ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+				auto const tangent = glm::normalize(glm::cross(up, oracleNormal)); auto const bitangent = glm::cross(oracleNormal, tangent);
+				uint32_t const cosSteps = 256, phiSteps = 256; double accumulated = 0.0;
+				for (uint32_t cosStep = 0; cosStep < cosSteps; ++cosStep) for (uint32_t phiStep = 0; phiStep < phiSteps; ++phiStep)
+				{
+					auto const cosTheta = ((float)cosStep + 0.5f) / (float)cosSteps, sinTheta = std::sqrt(std::max(0.0f, 1.0f - cosTheta * cosTheta));
+					auto const phi = 6.28318530718f * ((float)phiStep + 0.5f) / (float)phiSteps;
+					auto const direction = tangent * (sinTheta * std::cos(phi)) + bitangent * (sinTheta * std::sin(phi)) + oracleNormal * cosTheta;
+					// Uniform on the hemisphere, so pdf = 1/2pi and E/pi = 2*mean(L*cos).
+					if (direction.x > 0.0f && std::abs(direction.y) <= direction.x && std::abs(direction.z) <= direction.x) accumulated += 8.0 * cosTheta;
+				}
+				auto const reference = (float)(2.0 * accumulated / (double)(cosSteps * phiSteps));
+				// Measured: the corrected convolution lands within 0.7% of the oracle,
+				// the cos^2 form 21.7% above it. 6% leaves an order of magnitude of
+				// headroom for driver and quadrature differences either way while
+				// still failing the bug by a factor of three.
+				if (std::abs(oraclePixels[(2 * 4 + 2) * 4] - reference) > 0.06f * reference) return fail("diffuse irradiance does not match the reference convolution (got " + std::to_string(oraclePixels[(2 * 4 + 2) * 4]) + ", expected " + std::to_string(reference) + "); a cosine-weighted average would read ~" + std::to_string(1.22f * reference));
+			}
 			GLint irradianceViewport[4]{}, irradianceViewportAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, irradianceViewport)); bool rejectedIrradianceSource = false; try { renderSystem->generateDiffuseIrradiance(nullptr, "GpuTestInvalidIrradiance", 4, 8); } catch (...) { rejectedIrradianceSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, irradianceViewportAfter)); if (!rejectedIrradianceSource || !std::equal(std::begin(irradianceViewport), std::end(irradianceViewport), std::begin(irradianceViewportAfter))) return fail("invalid diffuse irradiance source changed render state");
 
 			auto prefiltered = renderSystem->generatePrefilteredSpecular(neutralTexture, "GpuTestNeutralPrefilter", 4, 3, 8); auto prefilteredTexture = dynamic_cast<RenderTexture*>(prefiltered.get()); if (!prefilteredTexture || prefilteredTexture->getMipLevels() != 3) return fail("specular prefilter did not create requested mip chain");
