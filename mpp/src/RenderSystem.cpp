@@ -1466,6 +1466,18 @@ namespace mpp
 		}
 	}
 
+	void RenderSystem::recordRenderFlowStateChanges(vector<string> changes) noexcept
+	{
+		if (!mFlowCapture || mFlowCaptureFailed || !mCurrentFlowPass.isValid() || changes.empty()) return;
+		try
+		{
+			RenderFlowEvent event; event.kind = RenderFlowEventKind::GlState; event.sequence = mFlowSequence++;
+			event.pass = mCurrentFlowPass; event.name = "GL State"; event.stateChanges = std::move(changes);
+			mFlowCapture->physicalEvents.push_back(std::move(event));
+		}
+		catch (...) { mFlowCaptureFailed = true; }
+	}
+
 	void RenderSystem::recordRenderFlowEvent(RenderFlowEventKind kind, string const& name, GraphImageHandle image,
 		bool enabled, string const& bypassReason, string const& outputName, bool depth,
 		vector<RenderFlowResourceDesc> inputs, vector<RenderFlowResourceDesc> outputs) noexcept
@@ -2547,6 +2559,10 @@ namespace mpp
 		GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
 		setUsedProgram(mShadowDepthProgram);
+		if (isRenderFlowCaptureActive())
+			recordRenderFlowStateChanges({"Render target: shadow depth", "Depth test: enabled", "Depth write: enabled",
+			                              "Blend: disabled", "Cull face: front", "Polygon offset: enabled",
+			                              "Program: " + shadowProgram->getName()});
 		for (auto const& sceneModel : models)
 		{
 			auto params = sceneModel->getParams();
@@ -3507,7 +3523,7 @@ namespace mpp
 #endif
 	}
 
-	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, vector<uint64_t>* currentTextureKeys, Material** currentMaterial)
+	void RenderSystem::setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, vector<uint64_t>* currentTextureKeys, Material** currentMaterial, vector<string>* flowStateChanges)
 	{
 		// Mask off program and see if it has changed from previous.
 		uint64_t thisProgramKey = sortKey;
@@ -3523,6 +3539,7 @@ namespace mpp
 
 			*currentProgramKey = thisProgramKey;
 			programChanged = true;
+			if (flowStateChanges) flowStateChanges->push_back("Program: " + static_cast<Program*>(program.get())->getName());
 			mRenderInfo.programSwitches++;
 		}
 
@@ -3561,6 +3578,7 @@ namespace mpp
 			{
 				static_cast<RenderTexture*>(mActiveShadowDepthTarget.get())->bindDepth((uint32_t)i);
 				(*currentTextureKeys)[i] = (uint64_t)(uintptr_t)mActiveShadowDepthTarget.get();
+				if (flowStateChanges) flowStateChanges->push_back("Texture unit " + std::to_string(i) + ": shadow depth");
 				mRenderInfo.textureSwitches++;
 				continue;
 			}
@@ -3575,6 +3593,7 @@ namespace mpp
 			{
 				texture->bind((uint32_t)i);
 				(*currentTextureKeys)[i] = textureKey;
+				if (flowStateChanges) flowStateChanges->push_back("Texture unit " + std::to_string(i) + ": " + texture->getName());
 				mRenderInfo.textureSwitches++;
 			}
 		}
@@ -3587,11 +3606,13 @@ namespace mpp
 
 		// Wireframe?
 		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance->mWireframe ? GL_LINE : GL_FILL));
+		if (flowStateChanges && meshInstance->mWireframe) flowStateChanges->push_back("Polygon mode: line");
 
 		if (meshInstance->mCullBackFaces)
 		{
 			GL_CHECK(glEnable(GL_CULL_FACE));
 			GL_CHECK(glCullFace(GL_BACK));
+			if (flowStateChanges) flowStateChanges->push_back("Cull face: back");
 		}
 
 		// Blend?
@@ -3600,6 +3621,7 @@ namespace mpp
 			GL_CHECK(glEnable(GL_BLEND));
 			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 			GL_CHECK(glDepthMask(GL_FALSE));
+			if (flowStateChanges) { flowStateChanges->push_back("Blend: src alpha / one minus src alpha"); flowStateChanges->push_back("Depth write: disabled"); }
 		}
 	}
 
@@ -3729,7 +3751,10 @@ namespace mpp
 			auto instanceCount = meshInstance->mInstanceCount;
 			auto numPrimitives = mesh->getNumPrimitives();
 
-			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTextureKeys, &currentMaterial);
+			vector<string> flowStateChanges;
+			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTextureKeys, &currentMaterial,
+			                        isRenderFlowCaptureActive() ? &flowStateChanges : nullptr);
+			if (!flowStateChanges.empty()) recordRenderFlowStateChanges(std::move(flowStateChanges));
 
 			auto count = cmd.count != ~0u ? cmd.count : numPrimitives;
 			if (mFlowCapture && !mFlowCaptureFailed && mCurrentFlowPass.isValid())

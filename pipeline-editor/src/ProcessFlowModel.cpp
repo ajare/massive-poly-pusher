@@ -137,7 +137,7 @@ namespace pipeline_editor
 			for (auto const& event : input.snapshot->physicalEvents)
 			{
 				if ((event.kind == RenderFlowEventKind::PassBegin || event.kind == RenderFlowEventKind::PassEnd ||
-				     event.kind == RenderFlowEventKind::BatchSubmission) && !validPass(event.pass))
+				     event.kind == RenderFlowEventKind::BatchSubmission || event.kind == RenderFlowEventKind::GlState) && !validPass(event.pass))
 					throw std::runtime_error("Flow snapshot contains an invalid event pass reference.");
 				if (event.image.isValid() && (event.image.id >= input.graph->getImageCount() ||
 				    event.image.version >= input.graph->getImageVersionCount(event.image.id)))
@@ -250,6 +250,7 @@ namespace pipeline_editor
 						node.sequence = first.sequence;
 						node.submissionCount = group.size();
 						node.passId = (int)first.parentPass.id;
+						node.parentPassId = (int)first.parentPass.id;
 						node.materialName = first.materialName;
 						uint64_t primitives = 0, instances = 0; bool unresolvedSource = false;
 						bool opaqueLabel = false, transparentLabel = false;
@@ -285,6 +286,29 @@ namespace pipeline_editor
 						if (input.filters.executionEdges && first.parentPass.id < passNodes.size())
 							addEdge(passNodes[first.parentPass.id], batchId, ProcessFlowEdgeKind::PassSubmission, {});
 					}
+					continue;
+				}
+				if (event.kind == RenderFlowEventKind::GlState)
+				{
+					ProcessFlowNode node;
+					node.semanticKey = "gl-state:" + std::to_string(event.sequence);
+					node.title = "GL State";
+					node.subtitle = std::to_string(event.stateChanges.size()) + " state change(s)";
+					node.renderDocLabels.push_back("GL State");
+					node.renderDocLabelSummaries.push_back("GL State");
+					for (size_t index = 0; index < event.stateChanges.size(); ++index)
+					{
+						if (index) node.details += "\n";
+						node.details += event.stateChanges[index];
+					}
+					node.kind = ProcessFlowNodeKind::GlState;
+					node.parentPassId = event.pass.isValid() ? (int)event.pass.id : -1;
+					node.sequence = event.sequence;
+					node.mainSpine = false;
+					node.layoutRank = (float)event.sequence;
+					auto stateId = addNode(std::move(node));
+					if (input.filters.executionEdges && event.pass.id < passNodes.size())
+						addEdge(passNodes[event.pass.id], stateId, ProcessFlowEdgeKind::PassSubmission, {});
 					continue;
 				}
 				ProcessFlowNode node;
@@ -428,7 +452,7 @@ namespace pipeline_editor
 				for (auto const& event : input.snapshot->physicalEvents)
 				{
 					if (event.kind == RenderFlowEventKind::PassBegin || event.kind == RenderFlowEventKind::PassEnd ||
-					    event.kind == RenderFlowEventKind::BatchSubmission) continue;
+					    event.kind == RenderFlowEventKind::BatchSubmission || event.kind == RenderFlowEventKind::GlState) continue;
 					auto stageId = stableId("event:" + std::to_string(event.sequence) + ":" + std::to_string((int)event.kind));
 					if (!model.findNode(stageId)) continue;
 					auto category = eventCategory(event.kind);
@@ -553,6 +577,18 @@ namespace pipeline_editor
 		    std::count_if(model.edges.begin(), model.edges.end(), [](auto const& edge)
 		    { return edge.kind == ProcessFlowEdgeKind::PassSubmission; }) != 2)
 			throw std::runtime_error("Process-flow model did not group batches as pass-owned child steps.");
+		auto groupedEvents = snapshot->physicalEvents;
+		RenderFlowEvent stateEvent; stateEvent.kind = RenderFlowEventKind::GlState; stateEvent.sequence = 3; stateEvent.pass = consumer;
+		stateEvent.stateChanges = {"Program: DifferentProgram", "Blend: src alpha / one minus src alpha"};
+		snapshot->physicalEvents.insert(snapshot->physicalEvents.begin() + 3, stateEvent);
+		auto split = builder.build(input);
+		if (std::count_if(split.nodes.begin(), split.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != 3 ||
+		    std::none_of(split.nodes.begin(), split.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::GlState && node.title == "GL State" &&
+		             node.passId < 0 && node.details.find("DifferentProgram") != std::string::npos; }))
+			throw std::runtime_error("Process-flow GL state event did not split batch grouping.");
+		snapshot->physicalEvents = std::move(groupedEvents);
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)

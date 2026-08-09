@@ -24,7 +24,7 @@ namespace pipeline_editor
 			                  ? 90.0f + labelHeight + 24.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
 			                  : 86.0f + labelHeight;
 			if (node.mainSpine) spine.push_back(&node);
-			else if (batch && node.passId >= 0) batches.push_back(&node);
+			else if ((batch || node.kind == ProcessFlowNodeKind::GlState) && node.parentPassId >= 0) batches.push_back(&node);
 			else if (node.resourceCategory != ProcessFlowResourceCategory::None) resources.push_back(&node);
 			else disabled.push_back(&node);
 		}
@@ -41,7 +41,7 @@ namespace pipeline_editor
 		for (auto* node : spine)
 			if (node->kind == ProcessFlowNodeKind::AuthoredPass && node->passId >= 0) passSpineNodes[node->passId] = node;
 		std::unordered_map<int, std::vector<ProcessFlowNode*>> batchesByPass;
-		for (auto* node : batches) batchesByPass[node->passId].push_back(node);
+		for (auto* node : batches) batchesByPass[node->parentPassId].push_back(node);
 		for (auto& [passId, children] : batchesByPass)
 		{
 			auto parent = passSpineNodes.find(passId);
@@ -126,7 +126,7 @@ namespace pipeline_editor
 			model.nodes.push_back(node);
 		}
 		for (size_t index = 0; index < 4; ++index) model.nodes[index].passId = (int)index;
-		ProcessFlowNode batch; batch.id = 8; batch.semanticKey = "batch"; batch.kind = ProcessFlowNodeKind::BatchSubmission; batch.passId = 0; batch.sequence = 1; model.nodes.push_back(batch);
+		ProcessFlowNode batch; batch.id = 8; batch.semanticKey = "batch"; batch.kind = ProcessFlowNodeKind::BatchSubmission; batch.passId = 0; batch.parentPassId = 0; batch.sequence = 1; model.nodes.push_back(batch);
 		ProcessFlowNode resource; resource.id = 9; resource.semanticKey = "resource"; resource.resourceCategory = ProcessFlowResourceCategory::AuthoredImages; resource.layoutRank = 1.5f; model.nodes.push_back(resource);
 		ProcessFlowLayout layout; layout.apply(model); auto first = model.nodes;
 		if (model.nodes[4].position.x + model.nodes[4].size.x >= model.nodes[0].position.x ||

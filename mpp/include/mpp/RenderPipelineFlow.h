@@ -20,6 +20,7 @@ namespace mpp
 		PassBegin,
 		PassEnd,
 		BatchSubmission,
+		GlState,
 		MsaaResolve,
 		Taa,
 		SsaaHorizontal,
@@ -75,6 +76,7 @@ namespace mpp
 		std::string bypassReason;
 		bool enabled{ true };
 		bool depth{ false };
+		std::vector<std::string> stateChanges;
 		std::vector<RenderFlowResourceDesc> inputs;
 		std::vector<RenderFlowResourceDesc> outputs;
 	};
