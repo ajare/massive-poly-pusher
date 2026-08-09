@@ -23,6 +23,7 @@ namespace mpp
 		DoubleSided = 1u << 9,
 		MetallicMap = 1u << 10,
 		RoughnessMap = 1u << 11,
+		EmissiveMap = 1u << 12,
 		LegacyFullContract = 1u << 31
 	};
 

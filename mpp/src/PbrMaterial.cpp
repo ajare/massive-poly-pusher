@@ -222,7 +222,7 @@ namespace mpp
 		if (hasPbrFeature(mFeatures, PbrMaterialFeature::RoughnessMap)) requiredSamplers.push_back("PBR_ROUGHNESS_MAP");
 		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::NormalMap)) requiredSamplers.push_back("PBR_NORMAL_MAP");
 		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Occlusion)) requiredSamplers.push_back("PBR_OCCLUSION_MAP");
-		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Emissive)) requiredSamplers.push_back("PBR_EMISSIVE_MAP");
+		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::EmissiveMap)) requiredSamplers.push_back("PBR_EMISSIVE_MAP");
 		for (auto const& sampler : requiredSamplers)
 		{
 			bool found = false;
