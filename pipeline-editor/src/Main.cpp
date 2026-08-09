@@ -6064,41 +6064,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			{
 				inspectedVersions = (int)activePreviewDocument->graph->getImageVersionCount((uint32_t)selectedImage);
 				inspectedVersion = std::clamp(inspectedVersion, 0, std::max(0, inspectedVersions - 1));
-				auto imageInfo =
-				    activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage, (uint32_t)inspectedVersion});
+				auto imageInfo = activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage, (uint32_t)inspectedVersion});
 				inspectedDepth = imageInfo.desc.format >= GraphImageFormat::Depth16;
 				inspectedMipLevels = (int)imageInfo.desc.mipLevels;
 				inspectedMip = std::clamp(inspectedMip, 0, std::max(0, inspectedMipLevels - 1));
 				inspectionControlsAvailable = true;
-				ImGui::TextDisabled(
-				    "%s%s",
-				    graphImageFormatName(imageInfo.desc.format),
-				    hasGraphImageUsage(imageInfo.desc.usage, GraphImageUsage::Sampled) ? "" : " / diagnostic resolve");
-				if (inspectedDepth)
-				{
-					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Depth;
-					ImGui::SetNextItemWidth(180);
-					if (ImGui::DragFloat("Depth value range scale", &diagnosticDepthRangeScale, std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f), 0.0000001f, 100000.0f, "%.7g", ImGuiSliderFlags_Logarithmic))
-						diagnosticDepthFar = diagnosticDepthNear + std::max(diagnosticDepthRangeScale, 0.0000001f);
-					ImGui::TextDisabled("Maps [near, near + scale] to black-to-white; reduce scale to reveal close depth values.");
-					ImGui::SetNextItemWidth(180);
-					ImGui::DragFloatRange2("Depth range",
-					                       &diagnosticDepthNear,
-					                       &diagnosticDepthFar,
-					                       std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f),
-					                       0.0f,
-					                       100000.0f,
-					                       "Near %.7g",
-					                       "Far %.7g");
-					diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0000001f, diagnosticDepthFar);
-					diagnosticDepthRangeScale = diagnosticDepthFar - diagnosticDepthNear;
-				}
-				else if (textureDiagnosticMode == (int)RenderSystem::TextureDiagnosticMode::Depth)
-					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Colour;
-				if (!textureDiagnosticFailure.empty())
-					ImGui::TextColored(
-					    ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Inspection failed: %s", textureDiagnosticFailure.c_str());
 			}
+			if (inspectionControlsAvailable && inspectedDepth)
+			{
+				textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Depth;
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(180);
+				if (ImGui::DragFloat("Depth value range scale", &diagnosticDepthRangeScale,
+				                     std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f),
+				                     0.0000001f, 100000.0f, "%.7g", ImGuiSliderFlags_Logarithmic))
+					diagnosticDepthFar = diagnosticDepthNear + std::max(diagnosticDepthRangeScale, 0.0000001f);
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(180);
+				ImGui::DragFloatRange2("Depth range", &diagnosticDepthNear, &diagnosticDepthFar,
+				                       std::max(diagnosticDepthRangeScale * 0.01f, 0.000001f),
+				                       0.0f, 100000.0f, "Near %.7g", "Far %.7g");
+				diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0000001f, diagnosticDepthFar);
+				diagnosticDepthRangeScale = diagnosticDepthFar - diagnosticDepthNear;
+			}
+
 			if (ImGui::Button("Reset View") && openScene)
 			{
 				setOrbitView(openScene->camera.position, openScene->camera.target);
@@ -6161,6 +6150,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						ImGui::SetNextItemWidth(140);
 						ImGui::SliderFloat("Exposure", &diagnosticExposure, 0.01f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 					}
+				}
+			}
+			if (inspectionControlsAvailable)
+			{
+				auto imageInfo = activePreviewDocument->graph->getImageInfo(
+				    {(uint32_t)selectedImage, (uint32_t)inspectedVersion});
+				ImGui::TextDisabled(
+				    inspectedDepth ? "%s / maps [near, near + scale] to black-to-white" : "%s%s",
+				    graphImageFormatName(imageInfo.desc.format),
+				    hasGraphImageUsage(imageInfo.desc.usage, GraphImageUsage::Sampled) ? "" : " / diagnostic resolve");
+				if (!inspectedDepth && textureDiagnosticMode == (int)RenderSystem::TextureDiagnosticMode::Depth)
+					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Colour;
+				if (!textureDiagnosticFailure.empty())
+				{
+					ImGui::SameLine();
+					ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+					                   "Inspection failed: %s", textureDiagnosticFailure.c_str());
 				}
 			}
 			ImGui::TextDisabled("MMB / Alt+left: orbit | Shift: pan | Ctrl: dolly | Wheel: dolly");
