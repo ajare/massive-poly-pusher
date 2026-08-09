@@ -1385,6 +1385,9 @@ namespace mpp
 	{
 		if (!mTarget || mTarget->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP)
 			THROW_MPP("Cubemap face rendering requires a cubemap RenderTexture.", __LINE__, __FILE__, __func__);
+		if (mSystem->mCubemapFaceRenderActive) THROW_MPP("Nested cubemap face render scopes are not supported.", __LINE__, __FILE__, __func__);
+		mSystem->mCubemapFaceRenderActive = true;
+		mGpuScope = std::make_unique<GpuDebugScope>("Cubemap: " + mTarget->getName() + " face " + std::to_string(face) + " mip " + std::to_string(mipLevel));
 		GL_CHECK(glGetIntegerv(GL_VIEWPORT, mViewport));
 		GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, mScissor));
 		GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &mDrawBuffer));
@@ -1398,7 +1401,7 @@ namespace mpp
 			mSystem->setViewport(0, 0, dimension, dimension);
 			GL_CHECK(glScissor(0, 0, (GLsizei)dimension, (GLsizei)dimension));
 		}
-		catch (...) { mSystem->popRenderTarget(); throw; }
+		catch (...) { mSystem->popRenderTarget(); mSystem->mCubemapFaceRenderActive = false; throw; }
 	}
 
 	void RenderSystem::CubemapFaceRenderScope::finish()
@@ -1411,6 +1414,8 @@ namespace mpp
 		GL_CHECK(glDrawBuffer((GLenum)mDrawBuffer));
 		GL_CHECK(glReadBuffer((GLenum)mReadBuffer));
 		if (mScissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		mGpuScope.reset();
+		mSystem->mCubemapFaceRenderActive = false;
 		mFinished = true;
 	}
 

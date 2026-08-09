@@ -88,9 +88,9 @@ Implemented in `4a688ac Add cubemap face mip attachment API` and this change: `a
 4. Revalidate framebuffer completeness after attachment changes and report target name, attachment, face, and mip in failures.
 5. Preserve/recover the level-zero face attachment expected by existing activation code when a scoped attachment operation ends.
 
-### 4.4 Render-system state and command contract — In progress
+### 4.4 Render-system state and command contract — Complete
 
-`RenderSystem::CubemapFaceRenderScope` now selects a face/mip, adjusts the viewport, and restores target, viewport, scissor, and default face attachments on completion or destruction. Draw/read-buffer preservation and GPU marker integration remain.
+Implemented in `f2618fd Add scoped cubemap face rendering` and this change. `RenderSystem::CubemapFaceRenderScope` selects a face/mip, adjusts the viewport, restores target/viewport/scissor/draw/read-buffer/default attachments, rejects nested face scopes, and emits target/face/mip GPU debug labels for RenderDoc tooling.
 
 1. Add a scoped `RenderSystem` cubemap-face render target operation that saves and restores framebuffer bindings, viewport, scissor enable/box, draw/read buffers, and active render target bookkeeping.
 2. Set viewport dimensions to `max(1, faceSize >> mipLevel)` while a face/mip is active.

@@ -5,6 +5,7 @@
 #include <deque>
 #include <queue>
 #include <stack>
+#include <memory>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -20,6 +21,7 @@
 #include "mpp/RenderPipeline.h"
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTexture.h"
+#include "mpp/GpuDebugScope.h"
 #include "mpp/ClipRectangle.h"
 #include "mpp/BlendMode.h"
 #include "mpp/RenderInfo.h"
@@ -139,6 +141,7 @@ namespace mpp
 		RenderTargetPtr mRenderTarget;
 
 		std::stack<RenderTargetPtr> mRenderTargetStack;
+		bool mCubemapFaceRenderActive{ false };
 
 		std::stack<ClipRectangle> mClipStack;
 
@@ -350,6 +353,7 @@ namespace mpp
 		class _MPPAPI CubemapFaceRenderScope
 		{
 			RenderSystem* mSystem{}; RenderTexture* mTarget{};
+			std::unique_ptr<GpuDebugScope> mGpuScope;
 			int mViewport[4]{}; int mScissor[4]{}; int mDrawBuffer{}; int mReadBuffer{}; bool mScissorEnabled{};
 			bool mFinished{};
 		public:
