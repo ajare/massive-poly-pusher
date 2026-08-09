@@ -83,9 +83,31 @@ namespace mpp
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
 		if (!renderSystem) return fail("RenderSystem is null");
-		std::string stage = "initial colour passes";
+		std::string stage = "cubemap render targets";
 		try
 		{
+			auto cubemap = renderSystem->createIblCubemap("GpuTestIblCubemap", 8, 2, GL_RGBA16F);
+			auto cubeTexture = dynamic_cast<RenderTexture*>(cubemap.get());
+			if (!cubeTexture || cubeTexture->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || cubeTexture->getMipLevels() != 2) return fail("IBL cubemap creation contract failed");
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				RenderSystem::CubemapFaceRenderScope scope(*renderSystem, cubemap, face, 0);
+				GL_CHECK(glClearColor((float)(face + 1), 0.0f, 0.0f, 1.0f));
+				GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+				scope.finish();
+			}
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				std::vector<float> value(8 * 8 * 4);
+				GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTexture->getColourAttachmentId(0)));
+				GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, value.data()));
+				GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+				if (std::abs(value[0] - (float)(face + 1)) > 0.05f) return fail("cubemap face HDR readback failed");
+			}
+			{ RenderSystem::CubemapFaceRenderScope scope(*renderSystem, cubemap, 2, 1); GL_CHECK(glClearColor(3.0f, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
+			std::vector<float> mipValue(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + 2, 1, GL_RGBA, GL_FLOAT, mipValue.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (std::abs(mipValue[0] - 3.0f) > 0.05f) return fail("cubemap mip HDR readback failed");
+
+			stage = "initial colour passes";
 			GraphImageDesc colour;
 			colour.format = GraphImageFormat::Rgba8;
 			colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
