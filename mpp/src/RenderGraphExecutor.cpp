@@ -325,6 +325,11 @@ namespace mpp
 		return mLastExecutionStats;
 	}
 
+	vector<GraphPassHandle> const& RenderGraphExecutor::getLastExecutionOrder() const
+	{
+		return mLastExecutionOrder;
+	}
+
 	void RenderGraphExecutor::execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps)
 	{
 		auto compiled = graph.compile(caps);
@@ -533,6 +538,7 @@ namespace mpp
 			}
 		}
 		if (!frameGpuQueries.empty()) mPendingGpuTimings.push_back(move(frameGpuQueries));
+		mLastExecutionOrder = compiled.passOrder;
 		queryCleanup.release();
 	}
 

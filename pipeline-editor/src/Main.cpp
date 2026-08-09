@@ -1412,6 +1412,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				auto candidatePreviewTarget = pipelineRuntime.getPresentationTarget();
 				auto candidatePipelineObject =
 				    renderSystem.getOrCreateRenderPipeline(candidatePipeline, previewOptions);
+				candidatePipelineObject->setFlowTelemetryEnabled(true);
 				pipelineDeclared = true;
 				std::map<std::string, RenderTargetPtr> outputDestinations;
 				for (auto const& output : previewDocument->outputs)
@@ -1990,6 +1991,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				auto options = renderSystem.getRenderPipeline(obsoletePipeline)->getOptions();
 				options.outputs = candidateDocument->outputs;
 				auto candidate = renderSystem.getOrCreateRenderPipeline(candidatePipeline, options);
+				candidate->setFlowTelemetryEnabled(true);
 				declared = true;
 				std::map<std::string, RenderTargetPtr> destinations;
 				for (auto const& output : candidateDocument->outputs)
@@ -6007,7 +6009,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (!activeGraphResource.empty())
 				{
 					if (++smokeStableFrames >= 30)
+					{
+						auto pipeline = renderSystem.getRenderPipeline(activePipeline);
+						auto snapshot = pipeline->getLastFlowSnapshot();
+						if (!snapshot || snapshot->actualPassOrder.empty() ||
+						    snapshot->actualPassOrder.size() != pipeline->getLastGraphExecutionOrder().size())
+							throw std::runtime_error("Process-flow phase-one snapshot was not published.");
+						for (size_t pass = 0; pass < snapshot->actualPassOrder.size(); ++pass)
+							if (snapshot->actualPassOrder[pass].id != pipeline->getLastGraphExecutionOrder()[pass].id)
+								throw std::runtime_error("Process-flow snapshot order differs from actual execution.");
 						running = false;
+					}
 				}
 				else
 					smokeStableFrames = 0;
