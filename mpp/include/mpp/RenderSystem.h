@@ -344,6 +344,7 @@ namespace mpp
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
 		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
+		void validateEquirectangularConversionSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels) const;
 		void renderSsaaLanczos(RenderTexture* source, RenderTargetPtr const& destination, glm::vec2 const& direction);
 		void renderTaa(RenderTexture* currentColour, RenderTexture* currentDepth, RenderTexture* historyColour, RenderTexture* historyDepth, RenderTargetPtr const& destination, glm::mat4 const& inverseCurrentViewProjection, glm::mat4 const& previousViewProjection);
 		void renderFxaa(RenderTexture* source, RenderTargetPtr const& destination);

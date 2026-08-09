@@ -180,7 +180,9 @@ Implemented with renderer-owned `__mpp_ibl_equirectangular_to_cubemap__` core re
 
 **Acceptance:** An initialized renderer owns a loaded conversion program without per-conversion shader compilation.
 
-### 5.3 Source texture validation
+### 5.3 Source texture validation — Complete
+
+Added read-only texture target/internal-format accessors and the renderer validation helper used by the forthcoming conversion API. It rejects null/unloaded, non-2D, non-floating-point/sRGB/integer sources and invalid output configuration before allocation.
 
 1. Add read-only `Texture` accessors needed to inspect texture target and internal format without binding side effects.
 2. Validate non-null, loaded `GL_TEXTURE_2D`, linear floating-point input and reject cubemaps, LDR, integer, and sRGB sources with explicit errors.

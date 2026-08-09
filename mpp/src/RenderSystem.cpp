@@ -1561,6 +1561,16 @@ namespace mpp
 		return createPhysicalRenderTexture(name,width,height,options,1);
 	}
 
+	void RenderSystem::validateEquirectangularConversionSource(Texture const* source, string const& generatedName, uint32_t faceSize, uint32_t mipLevels) const
+	{
+		if (!source || !source->isLoaded()) THROW_MPP("Equirectangular IBL source must be a loaded texture.", __LINE__, __FILE__, __func__);
+		if (generatedName.empty() || !faceSize || !mipLevels) THROW_MPP("Equirectangular IBL output name, face size, and mip count must be non-zero.", __LINE__, __FILE__, __func__);
+		if (source->getTextureTarget() != GL_TEXTURE_2D) THROW_MPP("Equirectangular IBL source must be a Texture2D.", __LINE__, __FILE__, __func__);
+		auto format = source->getInternalFormat();
+		if (format != GL_RGB16F && format != GL_RGBA16F && format != GL_RGB32F && format != GL_RGBA32F)
+			THROW_MPP("Equirectangular IBL source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
+	}
+
 	RenderTargetPtr RenderSystem::createIblCubemap(string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat)
 	{
 		if (name.empty() || !faceSize || !mipLevels) THROW_MPP("IBL cubemap name, face size, and mip level count must be non-zero.", __LINE__, __FILE__, __func__);
