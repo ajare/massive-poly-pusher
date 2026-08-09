@@ -78,7 +78,11 @@ namespace mpp::resource_parsers
 		surface.addEntry("baseColourFactor", std::to_string(base[0])+" "+std::to_string(base[1])+" "+std::to_string(base[2])+" "+std::to_string(base[3]));
 		surface.addEntry("metallicFactor", std::to_string(pbr && pbr->type == Json::Type::Object ? scalar(pbr->get("metallicFactor"), 1) : 1));
 		surface.addEntry("roughnessFactor", std::to_string(pbr && pbr->type == Json::Type::Object ? scalar(pbr->get("roughnessFactor"), 1) : 1));
-		auto emissive = vector(material.get("emissiveFactor"), {0, 0, 0}); surface.addEntry("emissiveFactor", std::to_string(emissive[0])+" "+std::to_string(emissive[1])+" "+std::to_string(emissive[2]));
+		// PipelineEditor map-mode semantics use a white multiplier. glTF assets
+		// commonly omit emissiveFactor when an emissiveTexture is authored; retain
+		// an explicit factor when present, otherwise let that texture contribute.
+		auto emissiveTexture = material.get("emissiveTexture");
+		auto emissive = emissiveTexture ? vector(material.get("emissiveFactor"), {1, 1, 1}) : vector(material.get("emissiveFactor"), {0, 0, 0}); surface.addEntry("emissiveFactor", std::to_string(emissive[0])+" "+std::to_string(emissive[1])+" "+std::to_string(emissive[2]));
 		surface.addEntry("normalScale", "1"); surface.addEntry("occlusionStrength", "1");
 		auto alpha = material.get("alphaMode"); surface.addEntry("alphaMode", alpha && alpha->type == Json::Type::String ? alpha->string : "OPAQUE");
 		surface.addEntry("alphaCutoff", std::to_string(scalar(material.get("alphaCutoff"), 0.5f)));

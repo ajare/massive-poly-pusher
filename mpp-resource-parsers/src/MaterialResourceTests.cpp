@@ -157,11 +157,12 @@ namespace mpp::resource_parsers
 			if (!convertedPbr || convertedPbr->getPbrSurface().metallicFactor != 0.65f || convertedPbr->getPbrSurface().roughnessFactor != 0.35f) return fail("legacy PBR Material surface conversion failed");
 			if (!convertedPbr->usesLegacyFullContract()) return fail("legacy PBR Material did not retain its temporary full-contract marker");
 			auto gltf = root / "mpp-material-test.gltf";
-			std::ofstream(gltf) << R"({"asset":{"version":"2.0"},"materials":[{"name":"First","pbrMetallicRoughness":{"baseColorFactor":[0.25,0.5,0.75,1]}},{"name":"Second"}]})";
+			std::ofstream(gltf) << R"({"asset":{"version":"2.0"},"materials":[{"name":"First","pbrMetallicRoughness":{"baseColorFactor":[0.25,0.5,0.75,1]}},{"name":"Second","emissiveTexture":{"index":0}}]})";
 			auto names = GltfPbrMaterialLoader::listMaterialNames(gltf);
 			if (names.size() != 2 || names[0] != "First" || names[1] != "Second") return fail("glTF material name listing failed");
 			auto selected = GltfPbrMaterialLoader::loadMaterialByName(gltf, "Second");
 			if (selected.materialIndex != 1 || selected.materialName != "Second") return fail("named glTF material loading failed");
+			if (selected.definition.getEntry("Surface").getEntry("emissiveFactor").getValue() != "1.000000 1.000000 1.000000") return fail("glTF emissive texture did not receive white map multiplier");
 			auto first = GltfPbrMaterialLoader::loadFirstMaterial(gltf);
 			if (first.materialName != "First" || first.warnings.empty()) return fail("first glTF material warning failed");
 			std::filesystem::remove(gltf);
