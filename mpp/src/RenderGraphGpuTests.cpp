@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 #include "mpp/RenderGraphGpuTests.h"
@@ -11,6 +12,7 @@
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphTargets.h"
 #include "mpp/RenderOutputProcessor.h"
+#include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/GLErrorCheck.h"
@@ -209,7 +211,14 @@ namespace mpp
 			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
 			if (!observedRasterState) return fail("explicit graph raster state was not applied");
 			if (aliasExecutor.getLastExecutionStats().size() != 3) return fail("per-pass execution statistics were not recorded");
+			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=3||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id)return fail("executor did not retain its last successful compiled pass order");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
+
+			stage = "compiled process-flow order";
+			static_assert(std::is_const_v<RenderPipelineFlowSnapshotPtr::element_type>);
+			if(std::string(renderFlowEventKindName(RenderFlowEventKind::BatchSubmission))!="batch submission"||std::string(renderFlowEventKindName(RenderFlowEventKind::Presentation))!="presentation"||std::string(renderFlowEventKindName(RenderFlowEventKind::GlState))!="GL state"||renderFlowPassRenderDocLabel({3},"Lighting",GraphPassType::Fullscreen)!="RenderGraph Pass 3: Lighting [Fullscreen]"||std::string(renderFlowGeometryRenderDocLabel(false))!="Draw: Opaque + Masked Geometry"||renderFlowOutputRenderDocLabel("Main",RenderFlowEventKind::Taa)!="Output Main: TAA")return fail("render-flow/RenderDoc naming contract failed");
+			RenderPipelineFlowSnapshot recorderSnapshot;renderSystem->beginRenderFlowCapture(&recorderSnapshot);GraphPassHandle recorderPass{7};renderSystem->beginRenderFlowPass(recorderPass,"RecorderPass");RenderBatchSubmission repeated;repeated.meshName="Repeated";repeated.materialName="Material";repeated.programName="Program";repeated.count=3;renderSystem->recordRenderFlowBatch(repeated);renderSystem->recordRenderFlowBatch(repeated);renderSystem->endRenderFlowPass(recorderPass,"RecorderPass");if(!renderSystem->endRenderFlowCapture()||recorderSnapshot.batches.size()!=2||recorderSnapshot.batches[0].sequence==recorderSnapshot.batches[1].sequence||recorderSnapshot.physicalEvents.size()!=4||recorderSnapshot.physicalEvents[0].kind!=RenderFlowEventKind::PassBegin||recorderSnapshot.physicalEvents[1].kind!=RenderFlowEventKind::BatchSubmission||recorderSnapshot.physicalEvents[2].kind!=RenderFlowEventKind::BatchSubmission||recorderSnapshot.physicalEvents[3].kind!=RenderFlowEventKind::PassEnd)return fail("exact duplicate batch recorder contract failed");renderSystem->recordRenderFlowEvent(RenderFlowEventKind::Presentation,"DisabledRecorder");if(recorderSnapshot.physicalEvents.size()!=4)return fail("disabled telemetry retained an event");RenderPipelineFlowSnapshot stateSnapshot;renderSystem->beginRenderFlowCapture(&stateSnapshot);renderSystem->beginRenderFlowPass(recorderPass,"StateRecorder");renderSystem->recordRenderFlowStateChanges({"Program: StateProgram","Cull face: back"});renderSystem->endRenderFlowPass(recorderPass,"StateRecorder");if(!renderSystem->endRenderFlowCapture()||stateSnapshot.physicalEvents.size()!=3||stateSnapshot.physicalEvents[1].kind!=RenderFlowEventKind::GlState||stateSnapshot.physicalEvents[1].stateChanges.size()!=2)return fail("GL state flow recorder contract failed");
+			RenderGraph orderGraph;auto orderFirstImage=orderGraph.createImage("GpuTestFlowFirst",colour);auto orderDisabledImage=orderGraph.createImage("GpuTestFlowDisabled",colour);auto orderLastImage=orderGraph.createImage("GpuTestFlowLast",colour);auto authoredFirst=orderGraph.addPass("GpuTestFlowFirst",GraphPassType::Fullscreen);auto authoredDisabled=orderGraph.addPass("GpuTestFlowDisabled",GraphPassType::Fullscreen);auto authoredLast=orderGraph.addPass("GpuTestFlowLast",GraphPassType::Fullscreen);orderFirstImage=orderGraph.writeColour(authoredFirst,orderFirstImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(1,0,0,1));orderDisabledImage=orderGraph.writeColour(authoredDisabled,orderDisabledImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(0,0,1,1));orderLastImage=orderGraph.writeColour(authoredLast,orderLastImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(0,1,0,1));orderGraph.setPassEnabled(authoredDisabled,false);auto orderPlan=orderGraph.buildAllocationPlan({8,8});if(!orderPlan.valid)return fail("process-flow order graph did not compile"+(orderPlan.diagnostics.empty()?std::string():": "+orderPlan.diagnostics.front()));RenderGraphTargets orderTargets(renderSystem);orderTargets.allocate(orderPlan);RenderGraphExecutor orderExecutor(renderSystem);orderExecutor.setPassCallback(authoredFirst,[](RenderGraphExecutionContext const&){});orderExecutor.setPassCallback(authoredLast,[](RenderGraphExecutionContext const&){});orderExecutor.execute(orderGraph,orderTargets,renderSystem->getCaps());auto const& actualOrder=orderExecutor.getLastExecutionOrder();if(actualOrder.size()!=2||actualOrder[0].id!=authoredFirst.id||actualOrder[1].id!=authoredLast.id)return fail("actual process-flow order did not match enabled compiled pass order");
 
 			stage = "mip chain";
 			GraphImageDesc mipColour = colour;

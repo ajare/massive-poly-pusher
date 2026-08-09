@@ -185,6 +185,15 @@ namespace mpp
 		ResourcePtr mActiveProgram;
 		size_t mExpectedGraphColourOutputs{ 0 };
 
+		// Render-thread-only, non-owning process-flow recorder state. A pipeline
+		// owns the mutable candidate until endRenderFlowCapture() succeeds.
+		RenderPipelineFlowSnapshot* mFlowCapture{ nullptr };
+		GraphPassHandle mCurrentFlowPass;
+		uint64_t mFlowSequence{ 0 };
+		bool mFlowCaptureFailed{ false };
+		size_t mFlowBatchHighWater{ 0 };
+		size_t mFlowEventHighWater{ 0 };
+
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
 		ResourcePtr mShadowDepthProgram;
@@ -327,7 +336,7 @@ namespace mpp
 
 		void addCoreResource(ResourcePtr resource, bool load);
 
-		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial);
+		void setupRenderMeshInstance(MeshInstance* meshInstance, VertexBufferRenderCommand const& renderCmd, uint64_t sortKey, uint64_t* currentProgramKey, std::vector<uint64_t>* currentTextureKeys, Material** currentMaterial, std::vector<std::string>* flowStateChanges);
 
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
@@ -399,6 +408,21 @@ namespace mpp
 		// Executor contract used to validate MRT shader output locations whenever
 		// a program is selected during a graph pass. Zero disables validation.
 		void setExpectedGraphColourOutputs(size_t count);
+
+		void beginRenderFlowCapture(RenderPipelineFlowSnapshot* snapshot) noexcept;
+		bool endRenderFlowCapture() noexcept;
+		bool isRenderFlowCaptureActive() const noexcept;
+		void beginRenderFlowPass(GraphPassHandle pass, std::string const& name) noexcept;
+		void endRenderFlowPass(GraphPassHandle pass, std::string const& name) noexcept;
+		void abortRenderFlowPass() noexcept;
+		void failRenderFlowCapture() noexcept;
+		void recordRenderFlowBatch(RenderBatchSubmission submission) noexcept;
+		void recordRenderFlowStateChanges(std::vector<std::string> changes) noexcept;
+		void recordRenderFlowEvent(RenderFlowEventKind kind, std::string const& name,
+			GraphImageHandle image = {}, bool enabled = true, std::string const& bypassReason = {},
+			std::string const& outputName = {}, bool depth = false,
+			std::vector<RenderFlowResourceDesc> inputs = {},
+			std::vector<RenderFlowResourceDesc> outputs = {}) noexcept;
 
 		// Clipping
 		void pushClipRectangle(ClipRectangle const& clipRect);

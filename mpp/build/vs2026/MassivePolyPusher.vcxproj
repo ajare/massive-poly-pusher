@@ -95,6 +95,7 @@
     <ClInclude Include="..\..\include\mpp\RenderInfo.h" />
     <ClInclude Include="..\..\include\mpp\RenderPass.h" />
     <ClInclude Include="..\..\include\mpp\RenderPipeline.h" />
+    <ClInclude Include="..\..\include\mpp\RenderPipelineFlow.h" />
     <ClInclude Include="..\..\include\mpp\RenderPipelineOutput.h" />
     <ClInclude Include="..\..\include\mpp\RenderOutputProcessor.h" />
     <ClInclude Include="..\..\include\mpp\RenderSystem.h" />
@@ -201,6 +202,7 @@
     <ClCompile Include="..\..\src\RenderGraphTargets.cpp" />
     <ClCompile Include="..\..\src\RenderOutputProcessor.cpp" />
     <ClCompile Include="..\..\src\RenderPass.cpp" />    <ClCompile Include="..\..\src\RenderPipeline.cpp" />
+    <ClCompile Include="..\..\src\RenderPipelineFlow.cpp" />
     <ClCompile Include="..\..\src\RenderSystem.cpp" />
     <ClCompile Include="..\..\src\RenderTarget.cpp" />
     <ClCompile Include="..\..\src\RenderTexture.cpp" />

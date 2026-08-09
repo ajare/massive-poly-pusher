@@ -19,6 +19,7 @@
 namespace mpp
 {
 	class RenderSystem;
+	class SceneModel3d;
 
 	class _MPPAPI ModelInstance
 	{
@@ -51,6 +52,8 @@ namespace mpp
 		MeshInstance* getMeshInstance(std::string const& name);
 
 		void setParams(std::shared_ptr<ModelRenderParams> params);
+
+		void setSourceSceneObject(SceneModel3d const* source);
 
 	};
 }
