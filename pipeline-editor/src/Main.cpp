@@ -1565,9 +1565,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ProcessFlowView processFlowView;
 		ProcessFlowModel processFlowModel;
 		RenderPipelineFlowSnapshotPtr sampledFlowSnapshot;
-		auto lastFlowPoll = std::chrono::steady_clock::time_point{};
+		ProcessFlowSampleGate processFlowSampleGate;
 		auto flowSampleAcquired = std::chrono::steady_clock::time_point{};
 		uint64_t processFlowEditSerial = UINT64_MAX;
+		uint64_t sampledFlowSceneGeneration = 0, processFlowSceneGeneration = UINT64_MAX;
 		std::string processFlowPipeline;
 		mpp::app::CommandStack pipelineCommands(256), sceneCommands(256);
 		bool lastEditScene = false;
@@ -3710,14 +3711,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			bool flowFiltersChanged = processFlowView.consumeFiltersChanged();
 			bool flowRefreshRequested = processFlowView.consumeRefreshRequested();
 			bool flowPipelineChanged = processFlowPipeline != activePipeline;
-			if (flowPipelineChanged)
+			uint64_t sceneGeneration = sceneRuntime.getGeneration();
+			bool flowSceneChanged = processFlowSceneGeneration != sceneGeneration;
+			if (flowPipelineChanged || flowSceneChanged)
 			{
 				processFlowPipeline = activePipeline;
+				processFlowSceneGeneration = sceneGeneration;
 				sampledFlowSnapshot.reset();
+				sampledFlowSceneGeneration = 0;
 				flowSampleAcquired = {};
 			}
-			bool flowSampleDue = flowRefreshRequested || flowPipelineChanged ||
-			                     std::chrono::duration<double>(now - lastFlowPoll).count() >= 0.25;
+			double flowNow = std::chrono::duration<double>(now.time_since_epoch()).count();
+			bool flowSampleDue = processFlowSampleGate.poll(
+			    flowNow, flowRefreshRequested || flowPipelineChanged || flowSceneChanged);
 			bool flowSnapshotChanged = false;
 			if (flowSampleDue && !activeGraphResource.empty())
 			{
@@ -3726,21 +3732,50 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				               latest->frameSerial > sampledFlowSnapshot->frameSerial))
 				{
 					sampledFlowSnapshot = std::move(latest);
+					sampledFlowSceneGeneration = sceneGeneration;
 					flowSampleAcquired = now;
 					flowSnapshotChanged = true;
 				}
-				lastFlowPoll = now;
 			}
 			bool flowDocumentChanged = processFlowEditSerial != previewEditSerial;
-			if (flowFiltersChanged || flowRefreshRequested || flowPipelineChanged || flowSnapshotChanged ||
-			    flowDocumentChanged || processFlowModel.revision == 0)
+			if (flowFiltersChanged || flowRefreshRequested || flowPipelineChanged || flowSceneChanged ||
+			    flowSnapshotChanged || flowDocumentChanged || processFlowModel.revision == 0)
 			{
 				processFlowEditSerial = previewEditSerial;
 				ProcessFlowBuildInput input;
-				auto flowDocument = documentChangedSincePreview ? openDocument : activePreviewDocument;
-				input.graph = !activeGraphResource.empty() && flowDocument && flowDocument->graph ? flowDocument->graph.get() : nullptr;
-				input.snapshot = documentChangedSincePreview ? RenderPipelineFlowSnapshotPtr{} : sampledFlowSnapshot;
+				bool workingGraphInvalid = false;
+				if (documentChangedSincePreview && openDocument && openDocument->graph)
+					workingGraphInvalid = !openDocument->graph->compile().valid;
+				auto flowDocument = workingGraphInvalid ? openDocument : activePreviewDocument;
+				input.graph = (workingGraphInvalid || !activeGraphResource.empty()) && flowDocument && flowDocument->graph
+				                  ? flowDocument->graph.get() : nullptr;
+				input.snapshot = !workingGraphInvalid && sampledFlowSceneGeneration == sceneGeneration
+				                     ? sampledFlowSnapshot : RenderPipelineFlowSnapshotPtr{};
+				if (!activeGraphResource.empty())
+					input.outputPlans = renderSystem.getRenderPipeline(activePipeline)->getOutputPlans();
+				input.sceneGeneration = sceneGeneration;
+				input.stale = !workingGraphInvalid && (previewStale || documentChangedSincePreview);
+				input.staleReason = "Showing process flow from the last valid generation while working changes are pending.";
 				input.filters = processFlowView.filters();
+				if (flowDocument)
+					for (size_t index = 0; index < flowDocument->imports.size(); ++index)
+					{
+						input.imports[flowDocument->imports[index].id] = (int)index;
+						if (!flowDocument->imports[index].semantic.empty())
+							input.imports[flowDocument->imports[index].semantic] = (int)index;
+					}
+				if (input.snapshot)
+					for (auto const& batch : input.snapshot->batches)
+						if (batch.sceneObject && !input.sceneObjects.contains(batch.sceneObject))
+						{
+							auto id = sceneRuntime.getModelId(batch.sceneObject);
+							if (id.empty()) continue;
+							int index = -1;
+							if (openScene)
+								for (size_t model = 0; model < openScene->models.size(); ++model)
+									if (openScene->models[model].id == id) { index = (int)model; break; }
+							input.sceneObjects.emplace(batch.sceneObject, ProcessFlowSceneObjectRef{index, id});
+						}
 				if (input.graph)
 				{
 					input.passBypassReasons.resize(input.graph->getPassCount());
@@ -3748,64 +3783,99 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					{
 						auto info = input.graph->getPassInfo({pass});
 						if (!info.enabled) input.passBypassReasons[pass] = "Disabled by authored pass setting";
-						else if (!passEffectivelyEnabled(info))
-							input.passBypassReasons[pass] = info.callbackFactory.find("Blur") != std::string::npos
+						else if (flowDocument &&
+						         ((info.callbackFactory == "MPP.BloomExtract" || info.callbackFactory == "MPP.BloomComposite") &&
+						          !flowDocument->bloom.enabled))
+							input.passBypassReasons[pass] = "Bypassed because bloom is disabled";
+						else if (flowDocument &&
+						         (info.callbackFactory == "MPP.BloomBlurHorizontal" || info.callbackFactory == "MPP.BloomBlurVertical") &&
+						         (!flowDocument->bloom.enabled || passNameIndex(info.name) >= flowDocument->bloom.blurPasses))
+							input.passBypassReasons[pass] = flowDocument->bloom.enabled
 							                                      ? "Bypassed beyond the effective bloom blur-pass count"
 							                                      : "Bypassed because bloom is disabled";
 					}
 				}
 				try
 				{
-					processFlowModel = processFlowBuilder.build(input);
-					processFlowLayout.apply(processFlowModel);
+					auto candidate = processFlowBuilder.build(input);
+					processFlowLayout.apply(candidate);
+					processFlowModel = std::move(candidate);
 				}
 				catch (std::exception const& error)
 				{
-					ProcessFlowModel failed; failed.revision = processFlowModel.revision + 1;
-					failed.diagnostics.push_back(error.what()); processFlowModel = std::move(failed);
+					uint64_t expectedGeneration = input.snapshot ? input.snapshot->pipelineGeneration : 0;
+					if (!processFlowModel.nodes.empty() && processFlowModel.pipelineGeneration == expectedGeneration)
+						processFlowModel.warningBanner = "Latest process-flow sample was rejected; retaining the previous valid model: " +
+						                                 std::string(error.what());
+					else
+					{
+						ProcessFlowModel failed; failed.revision = processFlowModel.revision + 1;
+						failed.diagnostics.push_back(error.what()); processFlowModel = std::move(failed);
+					}
 				}
 			}
 			double flowSampleAge = flowSampleAcquired == std::chrono::steady_clock::time_point{}
 			                           ? 0.0
 			                           : std::chrono::duration<double>(now - flowSampleAcquired).count();
-			auto flowSelection = processFlowView.draw(processFlowModel, flowSampleAge);
-			if (flowSelection.kind == ProcessFlowSelection::Kind::Pass)
+			ProcessFlowHighlight flowHighlight{selectedPass, selectedImage, selectedImport, selectedModel,
+			                                   selectedMaterialReference};
+			auto flowSelection = processFlowView.draw(processFlowModel, flowSampleAge, flowHighlight);
+			if (flowSelection.kind == ProcessFlowSelection::Kind::Pass && openDocument && openDocument->graph &&
+			    flowSelection.index >= 0 && (size_t)flowSelection.index < openDocument->graph->getPassCount())
 			{
 				selectedPass = flowSelection.index;
 				selectedImage = selectedImport = selectedBinding = selectedOverride = selectedModel =
 				    selectedLocalResource = selectedExternalResource = -1;
+				ImGui::SetWindowFocus("Inspector");
 			}
-			else if (flowSelection.kind == ProcessFlowSelection::Kind::Image)
+			else if (flowSelection.kind == ProcessFlowSelection::Kind::Import && openDocument &&
+			         flowSelection.index >= 0 && (size_t)flowSelection.index < openDocument->imports.size())
 			{
-				selectedImage = flowSelection.index; selectedPass = selectedImport = selectedBinding = selectedOverride =
-				    selectedModel = selectedLocalResource = selectedExternalResource = -1;
+				selectedImport = flowSelection.index;
+				selectedPass = selectedImage = selectedBinding = selectedOverride = selectedModel =
+				    selectedLocalResource = selectedExternalResource = -1;
+				ImGui::SetWindowFocus("Inspector");
+			}
+			else if (flowSelection.kind == ProcessFlowSelection::Kind::Image && openDocument && openDocument->graph &&
+			         flowSelection.index >= 0 && (size_t)flowSelection.index < openDocument->graph->getImageCount())
+			{
+				selectedImage = flowSelection.index;
+				if (openDocument && openDocument->graph && selectedImage >= 0)
+					inspectedVersion = (int)openDocument->graph->getImageVersionCount((uint32_t)selectedImage) - 1;
+				selectedPass = selectedImport = selectedBinding = selectedOverride = selectedModel =
+				    selectedLocalResource = selectedExternalResource = -1;
+				ImGui::SetWindowFocus("Inspector");
 			}
 			else if (flowSelection.kind == ProcessFlowSelection::Kind::Material && openDocument)
 			{
 				bool found = false;
 				for (size_t index = 0; index < openDocument->localResources.size(); ++index)
-					if (openDocument->localResources[index].name == flowSelection.materialName)
+					if (openDocument->localResources[index].name == flowSelection.materialName ||
+					    flowSelection.materialName.ends_with("/" + openDocument->localResources[index].name))
 					{ selectedLocalResource = (int)index; selectedExternalResource = -1; found = true; break; }
 				if (!found)
 					for (size_t index = 0; index < openDocument->externalResources.size(); ++index)
 					{
 						auto const& resource = openDocument->externalResources[index];
 						if (resource.resource.name == flowSelection.materialName ||
-						    resource.libraryName + "::" + resource.resource.name == flowSelection.materialName)
+						    resource.libraryName + "::" + resource.resource.name == flowSelection.materialName ||
+						    flowSelection.materialName.ends_with("/" + resource.resource.name))
 						{ selectedExternalResource = (int)index; selectedLocalResource = -1; found = true; break; }
 					}
-				if (found) selectedPass = selectedImage = selectedImport = selectedBinding = selectedOverride = selectedModel = -1;
+				if (found)
+				{
+					selectedPass = selectedImage = selectedImport = selectedBinding = selectedOverride = selectedModel = -1;
+					ImGui::SetWindowFocus("Inspector");
+				}
 			}
-			else if (flowSelection.kind == ProcessFlowSelection::Kind::SceneObject && openScene)
+			else if (flowSelection.kind == ProcessFlowSelection::Kind::SceneObject && openScene &&
+			         flowSelection.sceneObjectIndex >= 0 &&
+			         (size_t)flowSelection.sceneObjectIndex < openScene->models.size())
 			{
-				for (size_t index = 0; index < openScene->models.size(); ++index)
-					if (sceneRuntime.getModelInstance(openScene->models[index].id).get() == flowSelection.sceneObject)
-					{
-						selectedModel = (int)index;
-						selectedPass = selectedImage = selectedImport = selectedBinding = selectedOverride =
-						    selectedLocalResource = selectedExternalResource = -1;
-						break;
-					}
+				selectedModel = flowSelection.sceneObjectIndex;
+				selectedPass = selectedImage = selectedImport = selectedBinding = selectedOverride =
+				    selectedLocalResource = selectedExternalResource = -1;
+				ImGui::SetWindowFocus("Inspector");
 			}
 
 			ImGui::Begin("Inspector");
@@ -6212,6 +6282,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						ProcessFlowBuildInput smokeFlowInput;
 						smokeFlowInput.graph = activePreviewDocument->graph.get();
 						smokeFlowInput.snapshot = snapshot;
+						smokeFlowInput.sceneGeneration = sceneRuntime.getGeneration();
+						for (auto const& batch : snapshot->batches)
+						{
+							auto id = sceneRuntime.getModelId(batch.sceneObject);
+							int modelIndex = -1;
+							for (size_t model = 0; openScene && model < openScene->models.size(); ++model)
+								if (openScene->models[model].id == id) { modelIndex = (int)model; break; }
+							if (id.empty() || modelIndex < 0)
+								throw std::runtime_error("Process-flow scene identity could not be resolved in the active generation.");
+							smokeFlowInput.sceneObjects[batch.sceneObject] = {modelIndex, id};
+						}
 						smokeFlowInput.filters.resources =
 						    (uint32_t)ProcessFlowResourceCategory::AuthoredImages |
 						    (uint32_t)ProcessFlowResourceCategory::Imports |
@@ -6226,7 +6307,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						    std::count_if(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
 						                  { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != snapshot->batches.size() ||
 						    std::none_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
-						                 { return node.kind == ProcessFlowNodeKind::Presentation; }))
+						                 { return node.kind == ProcessFlowNodeKind::Presentation; }) ||
+						    std::any_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
+						                { return node.kind == ProcessFlowNodeKind::BatchSubmission && node.sceneObjectNames.empty(); }))
 							throw std::runtime_error("Process-flow editor model/layout smoke validation failed.");
 						running = false;
 					}

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <glm/vec2.hpp>
@@ -65,7 +66,8 @@ namespace pipeline_editor
 		int imageId{ -1 };
 		int importIndex{ -1 };
 		std::string materialName;
-		std::vector<void const*> sceneObjects;
+		std::vector<int> sceneObjectIndices;
+		std::vector<std::string> sceneObjectNames;
 		bool enabled{ true };
 		bool mainSpine{ false };
 		bool orderWarning{ false };
@@ -89,10 +91,14 @@ namespace pipeline_editor
 	{
 		uint64_t pipelineGeneration{ 0 };
 		uint64_t frameSerial{ 0 };
+		uint64_t sceneGeneration{ 0 };
 		uint64_t revision{ 0 };
 		std::vector<ProcessFlowNode> nodes;
 		std::vector<ProcessFlowEdge> edges;
 		std::vector<std::string> diagnostics;
+		std::string emptyState;
+		std::string warningBanner;
+		bool stale{ false };
 		bool liveSample{ false };
 		bool largeGraph{ false };
 
@@ -100,12 +106,35 @@ namespace pipeline_editor
 		ProcessFlowNode const* findNode(uint64_t id) const;
 	};
 
+	struct ProcessFlowSceneObjectRef
+	{
+		int index{ -1 };
+		std::string name;
+	};
+
 	struct ProcessFlowBuildInput
 	{
 		mpp::RenderGraph const* graph{ nullptr };
 		mpp::RenderPipelineFlowSnapshotPtr snapshot;
+		std::vector<mpp::RenderPipelineOutputPlan> outputPlans;
 		std::vector<std::string> passBypassReasons;
+		std::unordered_map<std::string, int> imports;
+		std::unordered_map<void const*, ProcessFlowSceneObjectRef> sceneObjects;
+		uint64_t sceneGeneration{ 0 };
+		bool stale{ false };
+		std::string staleReason;
 		ProcessFlowFilters filters;
+	};
+
+	class ProcessFlowSampleGate
+	{
+		double mLastPoll{ -1.0 };
+		double mInterval{ 0.25 };
+
+	public:
+		explicit ProcessFlowSampleGate(double intervalSeconds = 0.25) : mInterval(intervalSeconds) {}
+		bool poll(double timestampSeconds, bool force = false);
+		void reset() { mLastPoll = -1.0; }
 	};
 
 	class ProcessFlowModelBuilder
