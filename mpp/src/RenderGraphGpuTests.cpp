@@ -15,6 +15,8 @@
 #include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTexture.h"
+#include "mpp/ProgrammaticTextureStream.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
 
@@ -109,6 +111,15 @@ namespace mpp
 			}
 			{ RenderSystem::CubemapFaceRenderScope scope(*renderSystem, cubemap, 2, 1); GL_CHECK(glClearColor(3.0f, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT)); }
 			std::vector<float> mipValue(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, cubeTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + 2, 1, GL_RGBA, GL_FLOAT, mipValue.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (std::abs(mipValue[0] - 3.0f) > 0.05f) return fail("cubemap mip HDR readback failed");
+
+			// A linear HDR panorama with values above one verifies the public conversion path.
+			auto panoramaStream = new ProgrammaticTextureStream(renderSystem->getResourceManager());
+			panoramaStream->setTarget(TextureTarget::Texture2D); panoramaStream->setColourSpace(TextureColourSpace::Linear); panoramaStream->setInternalFormat(TextureInternalType::Float, false, 32, 3);
+			panoramaStream->setData([](std::string const&) { TextureData data; data.width = 8; data.height = 4; data.bitsPerPixel = 96; data.pixelFormat = GL_RGB; data.dataType = GL_FLOAT; data.data = new uint8_t[8 * 4 * 3 * sizeof(float)]; auto values = reinterpret_cast<float*>(data.data); for (size_t y = 0; y < 4; ++y) for (size_t x = 0; x < 8; ++x) { auto index = (y * 8 + x) * 3; values[index] = 1.25f + (float)x; values[index + 1] = (float)y; values[index + 2] = 0.5f; } return data; });
+			auto panoramaResource = renderSystem->getResourceManager()->declareResource("GpuTestHdrPanorama", ResourceStreamPtr(panoramaStream)).first; panoramaResource->load();
+			auto converted = renderSystem->convertEquirectangularToCubemap(dynamic_cast<Texture*>(panoramaResource.get()), "GpuTestConvertedPanorama", 8);
+			auto convertedTexture = dynamic_cast<RenderTexture*>(converted.get()); if (!convertedTexture) return fail("equirectangular conversion did not return a cubemap render texture");
+			for (uint32_t face = 0; face < 6; ++face) { std::vector<float> pixels(8 * 8 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, convertedTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (pixels[0] <= 1.0f) return fail("equirectangular conversion lost HDR values"); }
 
 			stage = "initial colour passes";
 			GraphImageDesc colour;
