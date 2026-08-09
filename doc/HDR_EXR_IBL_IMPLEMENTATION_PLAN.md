@@ -351,7 +351,9 @@ Added private `RenderSystem::renderPrefilteredSpecularFace`. It validates source
 
 **Acceptance:** An individual face/mip is populated safely and independently.
 
-### 7.5 Public all-mip generation API
+### 7.5 Public all-mip generation API — Complete
+
+Implemented `RenderSystem::generatePrefilteredSpecular`: it validates before allocation, creates a multi-mip candidate, rejects aliasing, and synchronously renders every face of every mip with `roughness = mip / (mipLevels - 1)`.
 
 1. Implement `generatePrefilteredSpecular(...)` through validation, cubemap creation, and nested mip/face generation.
 2. Compute roughness as `mip / (mipLevels - 1)`; ensure mip zero remains a sharp environment reflection.
