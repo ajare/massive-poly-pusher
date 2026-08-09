@@ -224,7 +224,9 @@ Added a linear RGB32F programmatic panorama fixture and public conversion test t
 
 ## Phase 6 — Diffuse irradiance convolution
 
-### 6.1 Runtime API and settings
+### 6.1 Runtime API and settings — Complete
+
+Declared the public `generateDiffuseIrradiance` contract and implemented its pre-allocation source/configuration validator. The six-face implementation follows in Phase 6.5.
 
 1. Add a renderer-owned API:
 
