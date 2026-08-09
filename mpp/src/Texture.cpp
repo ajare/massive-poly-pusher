@@ -4,6 +4,7 @@
 #include <Windows.h>
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <glew/glew.h>
 #include <gl/gl.h>
@@ -416,6 +417,21 @@ namespace mpp
 
 	uint32_t Texture::getTextureTarget() const { return mTarget; }
 	uint32_t Texture::getInternalFormat() const { return mInternalFormat; }
+
+	uint32_t Texture::getMipLevels() const
+	{
+		// Without mipmaps only level zero exists, whatever the LOD clamps say.
+		if (!mParams.useMipmaps) return 1;
+
+		// loadImpl generates a full chain, then clamps sampling to
+		// [lodBaseLevel, lodMaxLevel]. textureLod is relative to the base level,
+		// so the reachable count is the clamped range, not the allocated one.
+		uint32_t allocated = 1;
+		for (auto dimension = max(mWidth, mHeight); dimension > 1; dimension >>= 1) ++allocated;
+		auto const base = (uint32_t)max(0, mParams.lodBaseLevel);
+		auto const highest = mParams.lodMaxLevel < 0 ? base : min(allocated - 1, (uint32_t)mParams.lodMaxLevel);
+		return highest > base ? highest - base + 1 : 1;
+	}
 
 	/*
 	 * Upload texture data.  This ignores the resource stream,

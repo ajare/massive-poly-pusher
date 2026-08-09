@@ -3844,7 +3844,8 @@ namespace mpp
 
 		// Set uniforms if the program or material have changed.
 		auto material = static_cast<Material*>(renderCmd.material.get());
-		if (programChanged || material != *currentMaterial)
+		bool const uniformsChanged = programChanged || material != *currentMaterial;
+		if (uniformsChanged)
 		{
 			material->setUniforms();
 		}
@@ -3862,6 +3863,12 @@ namespace mpp
 		{
 			currentTextureKeys->resize(textureCount, 0);
 		}
+		auto materialProgram = static_cast<Program*>(material->getProgram().get());
+		// The prefiltered specular chain length is a property of whichever cubemap
+		// is finally bound below, which may be the material's own map, a pipeline
+		// override, or a neutral fallback. Resolve it alongside the binding rather
+		// than assuming a fixed mip count in the shader.
+		Texture const* prefilteredSpecular = nullptr;
 		for (size_t i = 0; i < textureCount; ++i)
 		{
 			ResourcePtr textureResource = i < renderCmd.textures.size() && renderCmd.textures[i]
@@ -3871,8 +3878,7 @@ namespace mpp
 			// Pipeline-owned samplers are authoritative for matching shader names.
 			// This generalizes PBR IBL binding and will also bind generic shadow
 			// maps without making them material-owned texture slots.
-			auto program = static_cast<Program*>(material->getProgram().get());
-			auto const& samplerName = program->getSamplerName((int)i);
+			auto const& samplerName = materialProgram->getSamplerName((int)i);
 			if (samplerName == "SHADOW_MAP" && mActiveShadowDepthTarget)
 			{
 				static_cast<RenderTexture*>(mActiveShadowDepthTarget.get())->bindDepth((uint32_t)i);
@@ -3887,6 +3893,7 @@ namespace mpp
 				textureResource = pipelineSampler->second;
 			}
 			auto texture = static_cast<Texture*>(textureResource.get());
+			if (uniformsChanged && samplerName == "PBR_PREFILTERED_SPECULAR_MAP") prefilteredSpecular = texture;
 			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;
 			if ((*currentTextureKeys)[i] != textureKey)
 			{
@@ -3894,6 +3901,18 @@ namespace mpp
 				(*currentTextureKeys)[i] = textureKey;
 				if (flowStateChanges) flowStateChanges->push_back("Texture unit " + std::to_string(i) + ": " + texture->getName());
 				mRenderInfo.textureSwitches++;
+			}
+		}
+		if (prefilteredSpecular)
+		{
+			// Uniform state belongs to the program object, so this only needs
+			// re-uploading when the program or material changes, exactly like the
+			// material's own uniforms above.
+			auto const location = materialProgram->getUniformId("PBR_PREFILTERED_MAX_LOD");
+			if (location >= 0)
+			{
+				auto const levels = std::max(1u, prefilteredSpecular->getMipLevels());
+				GL_CHECK(glUniform1f(location, (float)(levels - 1)));
 			}
 		}
 

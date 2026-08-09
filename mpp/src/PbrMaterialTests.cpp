@@ -1,5 +1,6 @@
 #include "mpp/PbrMaterialFeatures.h"
 #include "mpp/PbrMaterialTests.h"
+#include "mpp/PbrShaders.h"
 
 namespace mpp
 {
@@ -57,6 +58,20 @@ namespace mpp
 		auto image = derivePbrMaterialFeatures(flatEmissive, {emissive});
 		if (!hasPbrFeature(image, PbrMaterialFeature::EmissiveMap) || makePbrSpecializationDefines(image).find("#define PBR_SPEC_EMISSIVE_MAP 1") == std::string::npos)
 			return fail("emissive image-map feature derivation failed");
+
+		// The prefiltered specular chain length depends on the authored prefilter
+		// resolution, so the IBL fetch must scale roughness by the renderer-supplied
+		// PBR_PREFILTERED_MAX_LOD rather than by an assumed constant. A literal
+		// multiplier silently mismatches every chain that is not five levels deep.
+		std::string const fragment = BuiltInPbrFragmentShader;
+		if (fragment.find("@@Uniform(float PBR_PREFILTERED_MAX_LOD)") == std::string::npos)
+			return fail("built-in PBR shader does not declare PBR_PREFILTERED_MAX_LOD");
+		auto const specularFetch = fragment.find("textureLod(@Texture(PBR_PREFILTERED_SPECULAR_MAP)");
+		if (specularFetch == std::string::npos) return fail("built-in PBR shader has no prefiltered specular fetch");
+		auto const fetchEnd = fragment.find(';', specularFetch);
+		if (fetchEnd == std::string::npos ||
+		    fragment.find("@Uniform(PBR_PREFILTERED_MAX_LOD)", specularFetch) > fetchEnd)
+			return fail("prefiltered specular fetch does not scale roughness by PBR_PREFILTERED_MAX_LOD");
 		return true;
 	}
 }

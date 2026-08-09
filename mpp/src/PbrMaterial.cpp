@@ -180,7 +180,10 @@ namespace mpp
 		// contract. Optional maps use neutral textures, not optional interfaces.
 		Program* program = static_cast<Program*>(mProgram.get());
 		bool const legacyFullContract = hasPbrFeature(mFeatures, PbrMaterialFeature::LegacyFullContract);
-		vector<string> requiredUniforms{ "PBR_BASE_COLOUR_FACTOR" };
+		// PBR_PREFILTERED_MAX_LOD is renderer-owned rather than material-owned: it
+		// is never authored, serialized, or overridable per instance, but every PBR
+		// program must expose it so the IBL fetch matches the bound cubemap's chain.
+		vector<string> requiredUniforms{ "PBR_BASE_COLOUR_FACTOR", "PBR_PREFILTERED_MAX_LOD" };
 		if (legacyFullContract)
 		{
 			requiredUniforms.insert(requiredUniforms.end(), { "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
@@ -209,7 +212,8 @@ namespace mpp
 				THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + uniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
 		}
 		set<string> const allCoreUniforms = { "PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
-			"PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH", "PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED", "PBR_METALLIC_CHANNEL", "PBR_ROUGHNESS_CHANNEL" };
+			"PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH", "PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED", "PBR_METALLIC_CHANNEL", "PBR_ROUGHNESS_CHANNEL",
+			"PBR_PREFILTERED_MAX_LOD" };
 		set<string> const allowedCoreUniforms(requiredUniforms.begin(), requiredUniforms.end());
 		if (!legacyFullContract) for (auto const& name : program->getUniformNames())
 			if (allCoreUniforms.contains(name) && !allowedCoreUniforms.contains(name))
