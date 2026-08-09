@@ -361,7 +361,9 @@ Implemented `RenderSystem::generatePrefilteredSpecular`: it validates before all
 
 **Acceptance:** Returns a complete floating-point prefiltered cubemap suitable for `PBR_PREFILTERED_SPECULAR_MAP`.
 
-### 7.6 GPU tests
+### 7.6 GPU tests — In progress
+
+Added reduced-sample neutral-HDR GPU coverage that verifies the requested mip chain exists, every face/mip is finite and retains HDR energy, and invalid source rejection preserves viewport state. Directional blur/roughness and repeatability coverage remain.
 
 1. Use directional HDR cubemap fixtures to verify high-roughness mips blur more than mip zero while retaining values above 1.0.
 2. Verify all faces/mips are initialized, finite, and non-black for neutral environments.
