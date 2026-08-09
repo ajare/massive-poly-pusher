@@ -1609,12 +1609,16 @@ namespace mpp
 		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
 		try
 		{
-			setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			setProjection2dOrthographic(); resetTransform();
+			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel);
+			scaleTransform2d(glm::vec2(dimension / (float)getWindowWidth(), dimension / (float)getWindowHeight()));
+			flushVertexBuffers();
 			auto program = static_cast<Program*>(mPrefilteredSpecularProgram.get()); setUsedProgram(mPrefilteredSpecularProgram);
 			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), dimension * 0.5f, dimension * 0.5f));
 			GL_CHECK(glUniform1i(program->getUniformId("ENVIRONMENT"), 0)); GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face)); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), (GLint)sampleCount));
 			GL_CHECK(glUniform1f(program->getUniformId("ROUGHNESS"), glm::clamp(roughness, 0.0f, 1.0f))); GL_CHECK(glUniform1f(program->getUniformId("SOURCE_RESOLUTION"), (float)source->getWidth()));
-			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
 			source->bind(0); auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
 			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
 		}
@@ -1630,14 +1634,18 @@ namespace mpp
 		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
 		try
 		{
-			setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			setProjection2dOrthographic(); resetTransform();
+			auto dimension = (float)target->getWidth();
+			scaleTransform2d(glm::vec2(dimension / (float)getWindowWidth(), dimension / (float)getWindowHeight()));
+			flushVertexBuffers();
 			auto program = static_cast<Program*>(mDiffuseIrradianceProgram.get());
 			setUsedProgram(mDiffuseIrradianceProgram);
 			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), dimension * 0.5f, dimension * 0.5f));
 			GL_CHECK(glUniform1i(program->getUniformId("ENVIRONMENT"), 0));
 			GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face));
 			GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), (GLint)sampleCount));
-			auto dimension = (float)target->getWidth(); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
 			source->bind(0);
 			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
 			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
@@ -1656,13 +1664,15 @@ namespace mpp
 		try
 		{
 			setProjection2dOrthographic(); resetTransform();
+			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel);
+			scaleTransform2d(glm::vec2(dimension / (float)getWindowWidth(), dimension / (float)getWindowHeight()));
 			flushVertexBuffers();
 			auto program = static_cast<Program*>(mEquirectangularToCubemapProgram.get());
 			setUsedProgram(mEquirectangularToCubemapProgram);
 			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), dimension * 0.5f, dimension * 0.5f));
 			GL_CHECK(glUniform1i(program->getUniformId("EQUIRECTANGULAR"), 0));
 			GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face));
-			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel);
 			GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
 			source->bind(0);
 			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
