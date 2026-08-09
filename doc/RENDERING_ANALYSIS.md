@@ -1022,7 +1022,12 @@ release, emitting a deprecation diagnostic.
 
 ## 7. PipelineEditor and serialization
 
-### 7.1 Per-pass raster state is editable and executed but never serialized — **Bug, high (data loss)**
+### 7.1 Per-pass raster state is editable and executed but never serialized — **Bug, high (data loss)** — ✅ FIXED
+
+> **Resolved.** A `<Raster>` block is now written and parsed, and the round-trip is
+> covered by a test that actually runs. See [§7.1 resolution](#71-resolution) below.
+
+
 
 - **Editable**: `pipeline-editor/src/Main.cpp:4238-4356` exposes fill mode, front face, cull mode,
   depth test/write/compare, blend enable, separate colour/alpha blend ops and all six factors,
@@ -1060,6 +1065,32 @@ The undo stack shows the change, the preview reflects it, and reopening the file
 2. Emit it only when `explicitState` is true, so existing documents round-trip byte-identically.
 3. Add a round-trip test: build a graph with non-default raster state, serialize, parse, and assert
    `GraphPassInfo::rasterState` equality. `mpp/src/RenderGraphTests.cpp` is the natural home.
+
+#### 7.1 Resolution
+
+- `GraphRasterState` and `GraphColourWriteMask` gained defaulted `operator ==`, which both the
+  serializer and the tests need.
+- `RenderGraphSerializer` emits a `<Raster>` block, and `RenderGraphParser` reads it. Enumerations
+  round-trip as descriptive names (`reverseSubtract`, `oneMinusSourceAlpha`, `greaterEqual`);
+  unknown spellings **throw** rather than defaulting, matching how `parseFormat`/`parseWrap`
+  already behave, so a typo in an authored pipeline is reported instead of silently changing how a
+  pass rasterizes.
+- The block is emitted whenever the state differs from default, **not** only when `explicitState`
+  is set. Emitting on `explicitState` alone would still lose a configuration the author had
+  temporarily switched off. Documents that never touched raster state gain nothing, so every
+  existing template round-trips unchanged.
+
+**The test suites were dead code.** `runRenderGraphResourceTests` and `runRenderGraphTopologyTests`
+were exported but called from nowhere — `grep` found no invocation in the entire tree. That is why
+this gap survived: there was an XML round-trip test file that never executed. All three
+context-free suites (including `runPbrMaterialSpecializationTests`, which was only reachable by
+running DemoSuite's model scene interactively) are now run at the top of `PipelineEditor --validate`,
+so `ValidatePipelineEditorPhase10.ps1` exercises them on every invocation and they report as
+`MPP-PIPELINE-CLI-002/003/004`.
+
+The new coverage was verified to be load-bearing by disabling the serializer's `<Raster>` emission
+and confirming validation fails with "graph XML round trip lost raster state", rather than by
+assuming a passing test proves anything.
 
 ### 7.2 Sampler LOD/anisotropy image settings are editable but not persisted (and partly overwritten) — **Bug, medium**
 

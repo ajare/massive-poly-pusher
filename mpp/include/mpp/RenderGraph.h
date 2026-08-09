@@ -106,6 +106,7 @@ namespace mpp
 	struct _MPPAPI GraphColourWriteMask
 	{
 		bool red{ true }, green{ true }, blue{ true }, alpha{ true };
+		bool operator ==(GraphColourWriteMask const&) const = default;
 	};
 
 	struct _MPPAPI GraphRasterState
@@ -130,6 +131,9 @@ namespace mpp
 		bool alphaToCoverage{ false };
 		bool scissor{ false };
 		glm::uvec4 scissorRectangle{ 0 };
+		// Serialization emits this block only when it differs from the default, so
+		// documents that never touched raster state stay byte-identical.
+		bool operator ==(GraphRasterState const&) const = default;
 	};
 
 	struct _MPPAPI GraphColourOutput
