@@ -60,6 +60,10 @@ namespace mpp
 
 		size_t getNumAttachments() const;
 
+		// Read-only texture metadata for renderer validation paths.
+		uint32_t getTextureTarget() const;
+		uint32_t getInternalFormat() const;
+
 		size_t uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1);
 
 		size_t uploadData(int attachment, uint8_t const* data, uint32_t x, uint32_t y, size_t w, size_t h);
