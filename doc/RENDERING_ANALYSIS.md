@@ -183,7 +183,61 @@ aliasing the LOD is designed to remove, especially at 64–1024 samples.
   source face's own mean rather than a hardcoded constant. Verified load-bearing by disabling the
   generation and confirming the failure.
 
-### 1.3 The BRDF integration LUT is sampled with `GL_REPEAT` wrapping — **Bug, high**
+### 1.2b The BRDF integration LUT is never rasterized and is entirely black — **Bug, critical** — ✅ FIXED
+
+Found while building the test for §1.3, by reading the LUT back rather than trusting it: every
+texel of `__mpp_ibl_brdf_integration_lut__` was `(0, 0)`.
+
+The shared fullscreen quad (`RenderSystem.cpp:1161-1166`) is authored in **window pixel
+coordinates**, and `VertexShaderFullscreenTemplate` (`DefaultShaders.h:140-152`) converts to NDC by
+dividing by `HALF_WINDOW_SIZE`:
+
+```glsl
+vec2 centredPos = vec2(transVertex.x - @HalfWindowSize.x, transVertex.y - @HalfWindowSize.y);
+gl_Position = vec4(centredPos / @HalfWindowSize, 0, 1);
+```
+
+Every other offscreen pass therefore does two things together — scales the quad model matrix to the
+target size, and sets `HALF_WINDOW_SIZE` to half that size. Compare
+`renderEquirectangularCubemapFace` (`RenderSystem.cpp:1672-1678`), which does both.
+`getOrCreatePbrBrdfIntegrationLut` did **neither**. `HALF_WINDOW_SIZE` stayed at its default zero,
+so `gl_Position` was a division by zero, the quad never rasterized, and the render target kept its
+cleared contents.
+
+Consequence: `specular = prefiltered * (fresnel * brdf.x + brdf.y)` evaluated to **exactly zero**
+wherever this LUT was bound — the entire image-based specular term was missing, for every PBR
+material using a generated IBL environment. This is strictly more severe than §1.1 and §1.2, both
+of which only affected how roughness mapped onto a chain that was then multiplied by zero anyway.
+
+It survived because the only assertion on the LUT checked that every value was finite and
+non-negative, which all-zeros satisfies.
+
+#### 1.2b Resolution
+
+`RenderSystem.cpp` now applies the same scale/uniform pair as every other offscreen pass:
+
+```cpp
+scaleTransform2d(glm::vec2(512.0f / (float)getWindowWidth(), 512.0f / (float)getWindowHeight()));
+...
+GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), 256.0f, 256.0f));
+```
+
+The GPU test now pins the content analytically instead of merely sanity-checking it. At
+`roughness = 0` the GGX lobe collapses onto the normal and the scale term reduces in closed form to
+the Schlick complement `1 - (1 - nDotV)^5`, so the bottom row must run from ~0 at grazing incidence
+to ~1 head-on. An unrasterized quad fails this immediately.
+
+**Audit result:** every other caller of `mFullscreenQuad` in the tree was checked by pairing up
+`getModelCameraProjectionMatrixId` against `getHalfWindowSizeId` — prefiltered specular, diffuse
+irradiance, equirectangular conversion, bloom extract/blur/combine, TAA, FXAA, SSAA Lanczos, the
+diagnostic blit and the environment debug cube all set both. The only unpaired
+`getModelCameraProjectionMatrixId` left is the shadow depth program, which uses a 3D vertex shader
+with no `HALF_WINDOW_SIZE`. So the LUT was the sole offender.
+
+The pairing is nonetheless implicit and repeated at fourteen sites. A helper taking the target size
+and setting both would remove the whole class of bug — see §9.7.
+
+### 1.3 The BRDF integration LUT is sampled with `GL_REPEAT` wrapping — **Bug, high** — ✅ FIXED
 
 `mpp/src/SamplerParams.cpp:18` defaults `wrap` to `GL_REPEAT`, and
 `RenderSystem::getOrCreatePbrBrdfIntegrationLut` (`mpp/src/RenderSystem.cpp:1741`) never overrides it:
@@ -215,6 +269,20 @@ Consider also changing the `SamplerParams` default for **render textures** to `G
 `GL_REPEAT` is essentially never the right default for an offscreen buffer, and the graph
 descriptors already have to opt into clamping explicitly everywhere (see
 `RenderPipeline.cpp:322`, and every `<wrap>CLAMP_TO_EDGE</wrap>` in the pipeline templates).
+
+#### 1.3 Resolution
+
+`getOrCreatePbrBrdfIntegrationLut` now sets `options.params.wrap = GL_CLAMP_TO_EDGE`. All the IBL
+cubemaps were checked at the same time and already clamp via `createIblCubemap`
+(`RenderSystem.cpp:1701`), so the LUT was the only IBL texture left on the `GL_REPEAT` default.
+
+The GPU test queries `GL_TEXTURE_WRAP_S/T` back off the texture, but first measures how far apart
+the two edge columns actually are and fails if that gap is under 0.25 — otherwise a future change
+that flattened the LUT would leave the wrap assertion passing while asserting nothing. Verified
+load-bearing by reverting the fix: *"BRDF integration LUT is not clamped (wrap s/t 10497/10497)"*.
+
+The broader `SamplerParams` default change was **not** made — it would alter every existing render
+texture in the engine, which is beyond this fix and wants its own decision.
 
 ### 1.4 Seamless cubemap filtering is never enabled — **Bug, high**
 
