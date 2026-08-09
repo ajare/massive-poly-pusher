@@ -5195,7 +5195,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 									resource.setEntryValue("filename", *selected);
 									changed = true;
 								}
-							ImGui::TextDisabled("Emissive images are sampled as RGB.");
+							ImGui::TextDisabled("Emissive images are sampled as sRGB RGB and multiplied by the factor below.");
+							glm::vec3 multiplier(1.0f);
+							if (surface->hasEntry("emissiveFactor")) { std::istringstream input(surface->getEntry("emissiveFactor").getValue()); input >> multiplier.r >> multiplier.g >> multiplier.b; }
+							if (ImGui::ColorEdit3("Emissive multiplier", &multiplier.x, ImGuiColorEditFlags_Float)) { surface->setEntryValue("emissiveFactor", std::to_string(multiplier.r) + " " + std::to_string(multiplier.g) + " " + std::to_string(multiplier.b)); changed = true; }
 						}
 						else
 						{
