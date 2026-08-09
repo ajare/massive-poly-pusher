@@ -51,13 +51,13 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileRenderGraphStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\mpp\resource-parsers\GltfPbrMaterialLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileStringStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\mpp\resource-parsers\MeshSpecificationParser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\mpp\resource-parsers\GltfPbrMaterialLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -94,6 +94,9 @@
     <ClCompile Include="..\..\src\FileRenderGraphStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\GltfPbrMaterialLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\FileStringStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -101,9 +104,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\MaterialResourceTests.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\GltfPbrMaterialLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

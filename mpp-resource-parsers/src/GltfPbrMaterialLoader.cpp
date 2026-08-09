@@ -1,11 +1,13 @@
+#include <stdexcept>
+
 #include "mpp/resource-parsers/GltfPbrMaterialLoader.h"
-#include "mpp/resource-parsers/MppResourceParsersException.h"
 
 namespace mpp::resource_parsers
 {
-	GltfPbrMaterialLoadResult GltfPbrMaterialLoader::loadFirstMaterial(std::string const& filepath)
+	GltfPbrMaterialLoadResult GltfPbrMaterialLoader::loadFirstMaterial(std::filesystem::path const& filepath)
 	{
-		(void)filepath;
-		THROW_MPP_RESOURCE_PARSERS_NOTIMP("glTF PBR material loading", __LINE__, __FILE__, __func__);
+		if (filepath.empty())
+			throw std::invalid_argument("glTF material loader requires a file path.");
+		throw std::runtime_error("glTF PBR material loading is not implemented yet (phase 1 API only): " + filepath.string());
 	}
 }
