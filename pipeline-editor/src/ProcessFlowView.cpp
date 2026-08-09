@@ -52,9 +52,16 @@ namespace pipeline_editor
 		bool value = mFiltersChanged; mFiltersChanged = false; return value;
 	}
 
-	ProcessFlowSelection ProcessFlowView::draw(ProcessFlowModel& model, double sampleAgeSeconds)
+	ProcessFlowSelection ProcessFlowView::draw(ProcessFlowModel& model, double sampleAgeSeconds,
+	                                               ProcessFlowHighlight const& highlight)
 	{
 		ProcessFlowSelection selection;
+		if (mExpandedPipelineGeneration != model.pipelineGeneration || mExpandedSceneGeneration != model.sceneGeneration)
+		{
+			mExpanded.clear();
+			mExpandedPipelineGeneration = model.pipelineGeneration;
+			mExpandedSceneGeneration = model.sceneGeneration;
+		}
 		bool expansionRestored = false;
 		for (auto& node : model.nodes)
 			if (node.kind == ProcessFlowNodeKind::BatchSubmission && node.expanded != mExpanded.contains(node.id))
@@ -90,6 +97,12 @@ namespace pipeline_editor
 		ImGui::SameLine(); ImGui::Checkbox("Resource edges", &mFilters.resourceEdges);
 		if (ImGui::IsItemEdited()) mFiltersChanged = true;
 		ImGui::TextDisabled("Legend: grey execution | blue colour | red depth | purple history | orange output");
+		if (!model.emptyState.empty())
+		{
+			ImGui::Separator();
+			ImGui::TextDisabled("%s", model.emptyState.c_str());
+			ImGui::End(); return selection;
+		}
 		if (!model.diagnostics.empty())
 		{
 			ImGui::Separator();
@@ -97,6 +110,8 @@ namespace pipeline_editor
 			for (auto const& diagnostic : model.diagnostics) ImGui::BulletText("%s", diagnostic.c_str());
 			ImGui::End(); return selection;
 		}
+		if (!model.warningBanner.empty())
+			ImGui::TextColored(ImVec4(1.0f, 0.68f, 0.18f, 1.0f), "%s", model.warningBanner.c_str());
 		if (model.largeGraph)
 		{
 			ImGui::TextColored(ImVec4(1.0f, 0.68f, 0.18f, 1.0f), "Large graph: all %zu nodes retained; navigation may be slower.", model.nodes.size());
@@ -124,6 +139,23 @@ namespace pipeline_editor
 		std::unordered_map<uint64_t, ProcessFlowNode*> nodeLookup;
 		nodeLookup.reserve(model.nodes.size());
 		for (auto& node : model.nodes) nodeLookup[node.id] = &node;
+		auto selectedNode = [&](ProcessFlowNode const& node)
+		{
+			if (node.kind == ProcessFlowNodeKind::AuthoredPass && node.passId == highlight.pass) return true;
+			if (node.kind == ProcessFlowNodeKind::Import && node.importIndex == highlight.import) return true;
+			if (node.kind != ProcessFlowNodeKind::Import && node.imageId >= 0 && node.imageId == highlight.image) return true;
+			if (node.kind != ProcessFlowNodeKind::BatchSubmission) return false;
+			if (!highlight.materialName.empty())
+			{
+				auto separator = highlight.materialName.rfind("::");
+				auto leaf = separator == std::string::npos ? highlight.materialName : highlight.materialName.substr(separator + 2);
+				if (node.materialName == highlight.materialName || node.materialName.ends_with("/" + highlight.materialName) ||
+				    node.materialName.ends_with("/" + leaf)) return true;
+			}
+			return highlight.sceneObject >= 0 &&
+			       std::find(node.sceneObjectIndices.begin(), node.sceneObjectIndices.end(), highlight.sceneObject) !=
+			           node.sceneObjectIndices.end();
+		};
 		auto draw = ImGui::GetWindowDrawList(); draw->PushClipRect(canvasMinimum, canvasMaximum, true);
 		uint64_t hoveredNode = 0;
 		for (auto const& node : model.nodes)
@@ -154,8 +186,12 @@ namespace pipeline_editor
 			auto minimum = screen(node.position), maximum = screen(node.position + node.size);
 			ImVec2 a(minimum.x, minimum.y), b(maximum.x, maximum.y);
 			if (!intersects(a, b, canvasMinimum, canvasMaximum)) continue;
-			auto fill = nodeColour(node); auto border = node.id == hoveredNode ? IM_COL32(255, 240, 150, 255) : IM_COL32(90, 95, 110, 255);
-			draw->AddRectFilled(a, b, fill, 7.0f); draw->AddRect(a, b, border, 7.0f, 0, node.id == hoveredNode ? 2.5f : 1.2f);
+			auto fill = nodeColour(node);
+			bool selected = selectedNode(node);
+			auto border = node.id == hoveredNode ? IM_COL32(255, 240, 150, 255)
+			                                  : selected ? IM_COL32(80, 225, 255, 255) : IM_COL32(90, 95, 110, 255);
+			draw->AddRectFilled(a, b, fill, 7.0f);
+			draw->AddRect(a, b, border, 7.0f, 0, node.id == hoveredNode || selected ? 2.5f : 1.2f);
 			if (mTransform.zoom >= 0.48f)
 			{
 				float z = mTransform.zoom, fontSize = ImGui::GetFontSize() * z;
@@ -165,8 +201,11 @@ namespace pipeline_editor
 				if (!node.enabled) draw->AddText(nullptr, fontSize, {a.x + 10 * z, b.y - 20 * z}, IM_COL32(245, 180, 120, 255), "bypassed");
 				else if (!node.details.empty()) draw->AddText(nullptr, fontSize, {a.x + 10 * z, b.y - 20 * z}, IM_COL32(185, 195, 205, 255), node.details.c_str());
 				if (node.expanded && node.kind == ProcessFlowNodeKind::BatchSubmission)
-					for (size_t index = 0; index < node.sceneObjects.size(); ++index)
-						draw->AddText(nullptr, fontSize, {a.x + 16 * z, a.y + (61 + (float)index * 22) * z}, IM_COL32(210, 230, 210, 255), "scene object");
+					for (size_t index = 0; index < node.sceneObjectNames.size(); ++index)
+						draw->AddText(nullptr, fontSize, {a.x + 16 * z, a.y + (61 + (float)index * 22) * z},
+						              node.sceneObjectIndices[index] == highlight.sceneObject ? IM_COL32(90, 235, 255, 255)
+						                                                                       : IM_COL32(210, 230, 210, 255),
+						              node.sceneObjectNames[index].c_str());
 			}
 		}
 		draw->PopClipRect();
@@ -182,16 +221,18 @@ namespace pipeline_editor
 			else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			{
 				auto localY = (ImGui::GetIO().MousePos.y - (origin.y + mTransform.pan.y)) / mTransform.zoom - node->position.y;
-				if (node->expanded && localY >= 58.0f && !node->sceneObjects.empty())
+				if (node->expanded && localY >= 58.0f && !node->sceneObjectIndices.empty())
 				{
-					auto object = std::min((size_t)((localY - 58.0f) / 22.0f), node->sceneObjects.size() - 1);
-					selection.kind = ProcessFlowSelection::Kind::SceneObject; selection.sceneObject = node->sceneObjects[object];
+					auto object = std::min((size_t)((localY - 58.0f) / 22.0f), node->sceneObjectIndices.size() - 1);
+					selection.kind = ProcessFlowSelection::Kind::SceneObject;
+					selection.sceneObjectIndex = node->sceneObjectIndices[object];
 				}
 				else if (node->kind == ProcessFlowNodeKind::BatchSubmission && !node->materialName.empty())
 				{ selection.kind = ProcessFlowSelection::Kind::Material; selection.materialName = node->materialName; }
 				else if (node->passId >= 0) { selection.kind = ProcessFlowSelection::Kind::Pass; selection.index = node->passId; }
+				else if (node->kind == ProcessFlowNodeKind::Import && node->importIndex >= 0)
+				{ selection.kind = ProcessFlowSelection::Kind::Import; selection.index = node->importIndex; }
 				else if (node->imageId >= 0) { selection.kind = ProcessFlowSelection::Kind::Image; selection.index = node->imageId; }
-				else if (node->importIndex >= 0) { selection.kind = ProcessFlowSelection::Kind::Import; selection.index = node->importIndex; }
 			}
 			if (ImGui::IsItemHovered())
 			{

@@ -92,9 +92,11 @@ namespace mpp
 	}
 	ScenePtr const& SceneRuntime::getScene()const{return mScene;}
 	DiagnosticBag const& SceneRuntime::getDiagnostics()const{return mDiagnostics;}
+	uint64_t SceneRuntime::getGeneration()const{return mGeneration;}
 	uint64_t SceneRuntime::getUniqueTriangleCount()const{return mUniqueTriangles;}
 	uint64_t SceneRuntime::getModelTriangleCount(std::string const& modelId)const{auto found=mModelTriangles.find(modelId);return found==mModelTriangles.end()?0:found->second;}
 	SceneModel3dPtr SceneRuntime::getModelInstance(std::string const& modelId)const{auto found=mModelInstances.find(modelId);return found==mModelInstances.end()?SceneModel3dPtr{}:found->second;}
+	std::string SceneRuntime::getModelId(SceneModel3d const* instance)const{for(auto const& [id,value]:mModelInstances)if(value.get()==instance)return id;return {};}
 	std::vector<PbrLight> const& SceneRuntime::getLights()const{return mLights;}
 	std::string const& SceneRuntime::getEnvironmentBinding()const{return mEnvironmentBinding;}
 }

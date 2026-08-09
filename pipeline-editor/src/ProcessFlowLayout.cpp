@@ -17,7 +17,7 @@ namespace pipeline_editor
 		{
 			node.size.x = node.kind == ProcessFlowNodeKind::BatchSubmission ? 230.0f : 220.0f;
 			node.size.y = node.kind == ProcessFlowNodeKind::BatchSubmission && node.expanded
-			                  ? 82.0f + 22.0f * (float)std::max<size_t>(1, node.sceneObjects.size())
+			                  ? 82.0f + 22.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
 			                  : 78.0f;
 			if (node.mainSpine) spine.push_back(&node);
 			else if (node.resourceCategory != ProcessFlowResourceCategory::None) resources.push_back(&node);

@@ -191,6 +191,8 @@ namespace mpp
 		GraphPassHandle mCurrentFlowPass;
 		uint64_t mFlowSequence{ 0 };
 		bool mFlowCaptureFailed{ false };
+		size_t mFlowBatchHighWater{ 0 };
+		size_t mFlowEventHighWater{ 0 };
 
 		// Internal programs
 		ResourcePtr mInternalProgram2d;

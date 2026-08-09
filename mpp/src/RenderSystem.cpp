@@ -1408,11 +1408,13 @@ namespace mpp
 		mCurrentFlowPass = {};
 		mFlowSequence = 0;
 		mFlowCaptureFailed = false;
+		if(snapshot)try{snapshot->batches.reserve(mFlowBatchHighWater);snapshot->physicalEvents.reserve(mFlowEventHighWater);}catch(...){mFlowCaptureFailed=true;}
 	}
 
 	bool RenderSystem::endRenderFlowCapture() noexcept
 	{
 		bool const complete = mFlowCapture && !mFlowCaptureFailed;
+		if(complete){mFlowBatchHighWater=std::max(mFlowBatchHighWater,mFlowCapture->batches.size());mFlowEventHighWater=std::max(mFlowEventHighWater,mFlowCapture->physicalEvents.size());}
 		mFlowCapture = nullptr;
 		mCurrentFlowPass = {};
 		mFlowSequence = 0;

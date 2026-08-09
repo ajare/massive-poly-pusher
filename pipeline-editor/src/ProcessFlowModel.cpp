@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 
 using namespace mpp;
 
@@ -71,6 +72,13 @@ namespace pipeline_editor
 		}
 	}
 
+	bool ProcessFlowSampleGate::poll(double timestampSeconds, bool force)
+	{
+		if (!force && mLastPoll >= 0.0 && timestampSeconds - mLastPoll < mInterval) return false;
+		mLastPoll = timestampSeconds;
+		return true;
+	}
+
 	bool ProcessFlowFilters::visible(ProcessFlowResourceCategory category) const
 	{
 		return category != ProcessFlowResourceCategory::None &&
@@ -94,7 +102,7 @@ namespace pipeline_editor
 		model.revision = ++mRevision;
 		if (!input.graph)
 		{
-			model.diagnostics.push_back("No active pipeline generation.");
+			model.emptyState = "No active pipeline generation.";
 			return model;
 		}
 		auto compiled = input.graph->compile();
@@ -104,11 +112,34 @@ namespace pipeline_editor
 			if (model.diagnostics.empty()) model.diagnostics.push_back("Render-graph dependency compilation failed.");
 			return model;
 		}
+		if (input.snapshot)
+		{
+			auto validPass = [&](GraphPassHandle pass) { return pass.isValid() && pass.id < input.graph->getPassCount(); };
+			for (auto pass : input.snapshot->actualPassOrder)
+				if (!validPass(pass)) throw std::runtime_error("Flow snapshot contains an invalid compiled pass reference.");
+			for (auto const& batch : input.snapshot->batches)
+				if (!validPass(batch.parentPass)) throw std::runtime_error("Flow snapshot contains an invalid batch parent pass.");
+			for (auto const& event : input.snapshot->physicalEvents)
+			{
+				if ((event.kind == RenderFlowEventKind::PassBegin || event.kind == RenderFlowEventKind::PassEnd ||
+				     event.kind == RenderFlowEventKind::BatchSubmission) && !validPass(event.pass))
+					throw std::runtime_error("Flow snapshot contains an invalid event pass reference.");
+				if (event.image.isValid() && (event.image.id >= input.graph->getImageCount() ||
+				    event.image.version >= input.graph->getImageVersionCount(event.image.id)))
+					throw std::runtime_error("Flow snapshot contains an invalid image/version reference.");
+			}
+		}
 		model.pipelineGeneration = input.snapshot ? input.snapshot->pipelineGeneration : 0;
 		model.frameSerial = input.snapshot ? input.snapshot->frameSerial : 0;
+		model.sceneGeneration = input.sceneGeneration;
 		model.liveSample = !!input.snapshot;
+		model.stale = input.stale;
+		if (input.stale) model.warningBanner = input.staleReason.empty()
+		                                           ? "Showing process flow from the last valid pipeline generation."
+		                                           : input.staleReason;
 		auto stableId = [&](std::string const& key) { return hashText(key, hashText(std::to_string(model.pipelineGeneration))); };
 		std::unordered_map<uint64_t, size_t> nodeIndices;
+		std::unordered_set<uint64_t> edgeIds;
 		auto addNode = [&](ProcessFlowNode node) -> uint64_t
 		{
 			node.id = stableId(node.semanticKey);
@@ -123,7 +154,7 @@ namespace pipeline_editor
 			auto key = std::to_string(source) + ">" + std::to_string(destination) + ":" +
 			           std::to_string((int)kind) + ":" + label;
 			uint64_t id = stableId("edge:" + key);
-			if (std::any_of(model.edges.begin(), model.edges.end(), [&](auto const& edge) { return edge.id == id; })) return;
+			if (!edgeIds.insert(id).second) return;
 			model.edges.push_back({id, source, destination, kind, std::move(label)});
 		};
 
@@ -187,7 +218,16 @@ namespace pipeline_editor
 					node.sequence = batch.sequence;
 					node.passId = (int)batch.parentPass.id;
 					node.materialName = batch.materialName;
-					if (batch.sceneObject) node.sceneObjects.push_back(batch.sceneObject);
+					if (batch.sceneObject)
+					{
+						auto object = input.sceneObjects.find(batch.sceneObject);
+						if (object != input.sceneObjects.end())
+						{
+							node.sceneObjectIndices.push_back(object->second.index);
+							node.sceneObjectNames.push_back(object->second.name);
+						}
+						else node.details += " | source unavailable for this scene generation";
+					}
 					node.mainSpine = true;
 					node.layoutRank = (float)batch.sequence;
 					spine.push_back(addNode(std::move(node)));
@@ -209,7 +249,39 @@ namespace pipeline_editor
 			}
 		}
 		else
+		{
 			for (auto pass : actual) { model.findNode(passNodes[pass.id])->mainSpine = true; spine.push_back(passNodes[pass.id]); }
+			for (size_t output = 0; output < input.outputPlans.size(); ++output)
+			{
+				auto const& plan = input.outputPlans[output];
+				auto stage = [&](char const* key, char const* title, ProcessFlowNodeKind kind, bool enabled,
+				                 char const* reason = "Disabled by effective output setting")
+				{
+					ProcessFlowNode node; node.semanticKey = "static-output:" + plan.name + ":" + key;
+					node.title = plan.name + " / " + title; node.subtitle = "Static output plan; waiting for live sample";
+					node.kind = kind; node.enabled = enabled; node.mainSpine = enabled;
+					node.bypassReason = enabled ? std::string() : reason; node.layoutRank = 10000.0f + (float)output * 10.0f + (float)spine.size();
+					auto id = addNode(std::move(node)); if (enabled) spine.push_back(id); return id;
+				};
+				stage("msaa", "MSAA resolves", ProcessFlowNodeKind::MsaaResolve,
+				      plan.antiAliasing.msaa != AntiAliasingSamples::Off);
+				stage("taa", "TAA", ProcessFlowNodeKind::Taa, plan.antiAliasing.taa);
+				stage("ssaa-h", "SSAA Horizontal", ProcessFlowNodeKind::Ssaa,
+				      plan.antiAliasing.ssaa != AntiAliasingSamples::Off);
+				stage("ssaa-v", "SSAA Vertical", ProcessFlowNodeKind::Ssaa,
+				      plan.antiAliasing.ssaa != AntiAliasingSamples::Off);
+				stage("fxaa", "FXAA", ProcessFlowNodeKind::Fxaa, plan.antiAliasing.fxaa);
+				auto presentation = stage("presentation", "Presentation", ProcessFlowNodeKind::Presentation, true);
+				if (input.filters.visible(ProcessFlowResourceCategory::NamedOutputs))
+				{
+					ProcessFlowNode node; node.semanticKey = "output:" + plan.name; node.title = plan.name;
+					node.subtitle = std::to_string(plan.logicalSize.x) + " x " + std::to_string(plan.logicalSize.y) + " named output";
+					node.kind = ProcessFlowNodeKind::NamedOutput; node.resourceCategory = ProcessFlowResourceCategory::NamedOutputs;
+					node.layoutRank = 11000.0f + (float)output; auto outputId = addNode(std::move(node));
+					if (input.filters.resourceEdges) addEdge(presentation, outputId, ProcessFlowEdgeKind::Output, plan.name);
+				}
+			}
+		}
 		if (input.filters.executionEdges)
 			for (size_t index = 1; index < spine.size(); ++index)
 				addEdge(spine[index - 1], spine[index], ProcessFlowEdgeKind::Execution, {});
@@ -245,9 +317,21 @@ namespace pipeline_editor
 						node.semanticKey = (imported ? "import:" : "image:") + key;
 						node.title = imported && !info.importName.empty() ? info.importName : label;
 						node.subtitle = std::string(graphImageFormatName(info.desc.format)) + (imported ? " import" : " authored image");
+						node.details = info.desc.absoluteSize.x && info.desc.absoluteSize.y
+						                   ? std::to_string(info.desc.absoluteSize.x) + " x " + std::to_string(info.desc.absoluteSize.y)
+						                   : std::to_string((int)(info.desc.relativeSize.x * 100)) + "% x " +
+						                         std::to_string((int)(info.desc.relativeSize.y * 100)) + "%";
+						node.details += ", " + std::to_string(info.desc.mipLevels) + " mip(s), " +
+						                (info.desc.transient ? "transient" : "persistent") +
+						                (info.desc.external ? ", external" : "");
 						node.kind = imported ? ProcessFlowNodeKind::Import : ProcessFlowNodeKind::AuthoredImage;
 						node.resourceCategory = category;
 						node.imageId = (int)image.id;
+						if (imported)
+						{
+							auto import = input.imports.find(info.importName);
+							if (import != input.imports.end()) node.importIndex = import->second;
+						}
 						node.layoutRank = model.findNode(consumer)->layoutRank - 0.25f;
 						resourceId = authoredResources[key] = addNode(std::move(node));
 					}
@@ -372,6 +456,9 @@ namespace pipeline_editor
 
 	void runProcessFlowModelTests()
 	{
+		ProcessFlowSampleGate sampleGate;
+		if (!sampleGate.poll(1.0) || sampleGate.poll(1.1) || !sampleGate.poll(1.25) || !sampleGate.poll(1.26, true))
+			throw std::runtime_error("Process-flow sampling interval/forced refresh test failed.");
 		RenderGraph graph;
 		GraphImageDesc desc; desc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
 		auto image = graph.createImage("FlowColour", desc);
@@ -379,15 +466,56 @@ namespace pipeline_editor
 		auto consumer = graph.addPass("Consumer"); graph.readSampled(consumer, produced);
 		auto snapshot = std::make_shared<RenderPipelineFlowSnapshot>(); snapshot->pipelineGeneration = 9;
 		snapshot->actualPassOrder = {consumer, producer};
+		int sourceIdentity = 0;
 		RenderBatchSubmission first; first.sequence = 2; first.parentPass = consumer; first.meshName = "Duplicate";
+		first.sceneObject = reinterpret_cast<SceneModel3d const*>(&sourceIdentity);
 		auto second = first; second.sequence = 3; snapshot->batches = {first, second};
 		snapshot->physicalEvents = {{RenderFlowEventKind::PassBegin, 1, consumer}, {RenderFlowEventKind::BatchSubmission, 2, consumer}, {RenderFlowEventKind::BatchSubmission, 3, consumer}, {RenderFlowEventKind::PassEnd, 4, consumer}, {RenderFlowEventKind::PassBegin, 5, producer}, {RenderFlowEventKind::PassEnd, 6, producer}};
-		ProcessFlowModelBuilder builder; ProcessFlowBuildInput input{&graph, snapshot};
+		ProcessFlowModelBuilder builder;
+		if (builder.build({}).emptyState != "No active pipeline generation.")
+			throw std::runtime_error("Process-flow no-generation state test failed.");
+		ProcessFlowBuildInput input{&graph, snapshot};
+		input.sceneGeneration = 12;
+		input.sceneObjects[first.sceneObject] = {4, "FlowObject"};
 		auto model = builder.build(input);
 		if (std::count_if(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != 2)
 			throw std::runtime_error("Process-flow model aggregated duplicate submissions.");
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
+		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::BatchSubmission && node.sceneObjectNames == std::vector<std::string>{"FlowObject"} && node.sceneObjectIndices == std::vector<int>{4}; }))
+			throw std::runtime_error("Process-flow generation-safe scene-object resolution test failed.");
+		auto repeated = builder.build(input);
+		input.stale = true; input.staleReason = "Last valid generation";
+		auto stale = builder.build(input);
+		if (!stale.stale || stale.warningBanner != input.staleReason) throw std::runtime_error("Process-flow stale state test failed.");
+		input.stale = false; input.staleReason.clear();
+		for (auto const& node : model.nodes)
+		{
+			auto match = std::find_if(repeated.nodes.begin(), repeated.nodes.end(), [&](auto const& value) { return value.semanticKey == node.semanticKey; });
+			if (match == repeated.nodes.end() || match->id != node.id) throw std::runtime_error("Process-flow IDs changed within one generation.");
+		}
+		snapshot->pipelineGeneration = 10;
+		auto regenerated = builder.build(input);
+		if (regenerated.nodes.front().id == model.nodes.front().id) throw std::runtime_error("Process-flow IDs survived a pipeline generation change.");
+		snapshot->pipelineGeneration = 9;
+		auto validOrder = snapshot->actualPassOrder;
+		snapshot->actualPassOrder.push_back({9999});
+		try { (void)builder.build(input); throw std::runtime_error("Process-flow malformed snapshot was accepted."); }
+		catch (std::runtime_error const& error)
+		{
+			if (std::string(error.what()) == "Process-flow malformed snapshot was accepted.") throw;
+		}
+		snapshot->actualPassOrder = std::move(validOrder);
+		auto staticInput = input; staticInput.snapshot.reset();
+		RenderPipelineOutputPlan staticPlan; staticPlan.name = "Main"; staticPlan.logicalSize = {640, 360};
+		staticInput.outputPlans.push_back(staticPlan);
+		auto waiting = builder.build(staticInput);
+		if (waiting.liveSample || std::none_of(waiting.nodes.begin(), waiting.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::Presentation; }) ||
+		    std::none_of(waiting.nodes.begin(), waiting.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::Taa && !node.enabled && !node.bypassReason.empty(); }))
+			throw std::runtime_error("Process-flow static waiting/output-stage test failed.");
 		input.filters.resources = (uint32_t)ProcessFlowResourceCategory::AuthoredImages;
 		auto resources = builder.build(input);
 		if (std::none_of(resources.nodes.begin(), resources.nodes.end(), [](auto const& node) { return node.kind == ProcessFlowNodeKind::AuthoredImage; }))

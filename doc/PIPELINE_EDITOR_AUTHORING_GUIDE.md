@@ -17,6 +17,14 @@ PipelineEditor uses one resizable, maximizable native window with a fixed toolba
 
 Passes, local resources, and scene models support drag ordering. A scene model chooses its logical material binding from the pipeline bindings combo and chooses any number of declared render layers from the multi-select combo; undeclared existing assignments remain visible until removed. Invalid reorder and delete operations are intentionally allowed, diagnosed, and undoable. **Pipeline > Auto-order Pass Dependencies** is an explicit command; ordering is never silently changed.
 
+## Process Flow
+
+The **Process Flow** tab beside **Pipeline Hierarchy** is a read-only view of the last completely rendered pipeline frame. Its solid grey spine follows actual dependency-compiled execution order and contains every submitted batch separately, followed by renderer-owned resolve, TAA, SSAA, FXAA, and presentation work. Coloured labelled edges show colour, depth, shadow, history, import, and output dependencies. Disabled passes and output stages remain visible and show their bypass reason; an amber warning marks authored pass positions that differ from execution positions.
+
+Use middle-drag to pan, the mouse wheel to zoom around the cursor, and **Fit All** to frame visible nodes. **Refresh** requests an immediate sample; otherwise live snapshots are accepted at most every 0.25 seconds. Resource categories—authored images, imports, named outputs, MSAA resources, TAA histories, SSAA targets, and FXAA targets—are independently selectable and start hidden. Graphs above 500 visible nodes retain all work and display a non-fatal large-graph warning.
+
+Click a pass or authored resource to open its Inspector. A batch body selects its material; double-clicking expands its generation-safe scene-object list, whose entries select scene models. Material and model selections made elsewhere highlight matching batches. Pipeline or scene regeneration immediately invalidates sampled pointer identities. Pending valid edits show the last-valid flow as stale, invalid dependency state replaces the canvas with diagnostics, and telemetry/model failures never replace the last valid renderer generation.
+
 ## Editing workflow
 
 1. Select a hierarchy item and edit its inspector.
