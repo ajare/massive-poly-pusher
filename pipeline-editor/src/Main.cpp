@@ -6057,21 +6057,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				    ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Preview rebuild failed: %s", previewFailure.c_str());
 			ImGui::Checkbox("Inspect selected image", &inspectSelectedImage);
 			bool inspectedDepth = false;
+			bool inspectionControlsAvailable = false;
+			int inspectedVersions = 1, inspectedMipLevels = 1;
 			if (inspectSelectedImage && activePreviewDocument && activePreviewDocument->graph && selectedImage >= 0 &&
 			    (uint32_t)selectedImage < activePreviewDocument->graph->getImageCount())
 			{
-				auto versions = (int)activePreviewDocument->graph->getImageVersionCount((uint32_t)selectedImage);
-				inspectedVersion = std::clamp(inspectedVersion, 0, std::max(0, versions - 1));
+				inspectedVersions = (int)activePreviewDocument->graph->getImageVersionCount((uint32_t)selectedImage);
+				inspectedVersion = std::clamp(inspectedVersion, 0, std::max(0, inspectedVersions - 1));
 				auto imageInfo =
 				    activePreviewDocument->graph->getImageInfo({(uint32_t)selectedImage, (uint32_t)inspectedVersion});
 				inspectedDepth = imageInfo.desc.format >= GraphImageFormat::Depth16;
-				inspectedMip = std::clamp(inspectedMip, 0, std::max(0, (int)imageInfo.desc.mipLevels - 1));
-				ImGui::SameLine();
-				ImGui::SetNextItemWidth(120);
-				ImGui::SliderInt("Version", &inspectedVersion, 0, std::max(0, versions - 1));
-				ImGui::SameLine();
-				ImGui::SetNextItemWidth(120);
-				ImGui::SliderInt("Mip", &inspectedMip, 0, std::max(0, (int)imageInfo.desc.mipLevels - 1));
+				inspectedMipLevels = (int)imageInfo.desc.mipLevels;
+				inspectedMip = std::clamp(inspectedMip, 0, std::max(0, inspectedMipLevels - 1));
+				inspectionControlsAvailable = true;
 				ImGui::TextDisabled(
 				    "%s%s",
 				    graphImageFormatName(imageInfo.desc.format),
@@ -6095,26 +6093,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					diagnosticDepthFar = std::max(diagnosticDepthNear + 0.0000001f, diagnosticDepthFar);
 					diagnosticDepthRangeScale = diagnosticDepthFar - diagnosticDepthNear;
 				}
-				else
-				{
-					if (textureDiagnosticMode == (int)RenderSystem::TextureDiagnosticMode::Depth)
-						textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Colour;
-					int modes[] = {0, 1, 2, 3, 4, 5, 7, 8}, selectedMode = 0;
-					for (int index = 0; index < 8; ++index)
-						if (modes[index] == textureDiagnosticMode)
-							selectedMode = index;
-					if (ImGui::Combo("Visualization",
-					                 &selectedMode,
-					                 "Colour\0Red\0Green\0Blue\0Alpha\0Luminance\0HDR tone map\0HDR heat map\0"))
-						textureDiagnosticMode = modes[selectedMode];
-					if (textureDiagnosticMode == 7 || textureDiagnosticMode == 8)
-					{
-						ImGui::SameLine();
-						ImGui::SetNextItemWidth(140);
-						ImGui::SliderFloat(
-						    "Exposure", &diagnosticExposure, 0.01f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-					}
-				}
+				else if (textureDiagnosticMode == (int)RenderSystem::TextureDiagnosticMode::Depth)
+					textureDiagnosticMode = (int)RenderSystem::TextureDiagnosticMode::Colour;
 				if (!textureDiagnosticFailure.empty())
 					ImGui::TextColored(
 					    ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Inspection failed: %s", textureDiagnosticFailure.c_str());
@@ -6148,6 +6128,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				    std::make_unique<SceneSnapshotCommand>("Save Current View", &openScene, before, after));
 				lastEditScene = true;
 				sceneDirty = scenePath.empty() || sceneCommands.dirty();
+			}
+			if (inspectionControlsAvailable)
+			{
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(120);
+				ImGui::SliderInt("Version", &inspectedVersion, 0, std::max(0, inspectedVersions - 1));
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(120);
+				ImGui::SliderInt("Mip", &inspectedMip, 0, std::max(0, inspectedMipLevels - 1));
+				ImGui::SameLine();
+				if (inspectedDepth)
+				{
+					ImGui::SetNextItemWidth(192);
+					ImGui::BeginDisabled();
+					int depthMode = 0;
+					ImGui::Combo("Visualisation", &depthMode, "Depth\0");
+					ImGui::EndDisabled();
+				}
+				else
+				{
+					int modes[] = {0, 1, 2, 3, 4, 5, 7, 8}, selectedMode = 0;
+					for (int index = 0; index < 8; ++index)
+						if (modes[index] == textureDiagnosticMode) selectedMode = index;
+					ImGui::SetNextItemWidth(192);
+					if (ImGui::Combo("Visualisation", &selectedMode,
+					                 "Colour\0Red\0Green\0Blue\0Alpha\0Luminance\0HDR tone map\0HDR heat map\0"))
+						textureDiagnosticMode = modes[selectedMode];
+					if (textureDiagnosticMode == 7 || textureDiagnosticMode == 8)
+					{
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(140);
+						ImGui::SliderFloat("Exposure", &diagnosticExposure, 0.01f, 16.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+					}
+				}
 			}
 			ImGui::TextDisabled("MMB / Alt+left: orbit | Shift: pan | Ctrl: dolly | Wheel: dolly");
 			auto viewportSize = ImGui::GetContentRegionAvail();
