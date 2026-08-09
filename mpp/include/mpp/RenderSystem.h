@@ -185,6 +185,13 @@ namespace mpp
 		ResourcePtr mActiveProgram;
 		size_t mExpectedGraphColourOutputs{ 0 };
 
+		// Render-thread-only, non-owning process-flow recorder state. A pipeline
+		// owns the mutable candidate until endRenderFlowCapture() succeeds.
+		RenderPipelineFlowSnapshot* mFlowCapture{ nullptr };
+		GraphPassHandle mCurrentFlowPass;
+		uint64_t mFlowSequence{ 0 };
+		bool mFlowCaptureFailed{ false };
+
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
 		ResourcePtr mShadowDepthProgram;
@@ -399,6 +406,20 @@ namespace mpp
 		// Executor contract used to validate MRT shader output locations whenever
 		// a program is selected during a graph pass. Zero disables validation.
 		void setExpectedGraphColourOutputs(size_t count);
+
+		void beginRenderFlowCapture(RenderPipelineFlowSnapshot* snapshot) noexcept;
+		bool endRenderFlowCapture() noexcept;
+		bool isRenderFlowCaptureActive() const noexcept;
+		void beginRenderFlowPass(GraphPassHandle pass, std::string const& name) noexcept;
+		void endRenderFlowPass(GraphPassHandle pass, std::string const& name) noexcept;
+		void abortRenderFlowPass() noexcept;
+		void failRenderFlowCapture() noexcept;
+		void recordRenderFlowBatch(RenderBatchSubmission submission) noexcept;
+		void recordRenderFlowEvent(RenderFlowEventKind kind, std::string const& name,
+			GraphImageHandle image = {}, bool enabled = true, std::string const& bypassReason = {},
+			std::string const& outputName = {}, bool depth = false,
+			std::vector<RenderFlowResourceDesc> inputs = {},
+			std::vector<RenderFlowResourceDesc> outputs = {}) noexcept;
 
 		// Clipping
 		void pushClipRectangle(ClipRectangle const& clipRect);

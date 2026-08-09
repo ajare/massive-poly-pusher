@@ -1402,6 +1402,83 @@ namespace mpp
 		mExpectedGraphColourOutputs = count;
 	}
 
+	void RenderSystem::beginRenderFlowCapture(RenderPipelineFlowSnapshot* snapshot) noexcept
+	{
+		mFlowCapture = snapshot;
+		mCurrentFlowPass = {};
+		mFlowSequence = 0;
+		mFlowCaptureFailed = false;
+	}
+
+	bool RenderSystem::endRenderFlowCapture() noexcept
+	{
+		bool const complete = mFlowCapture && !mFlowCaptureFailed;
+		mFlowCapture = nullptr;
+		mCurrentFlowPass = {};
+		mFlowSequence = 0;
+		mFlowCaptureFailed = false;
+		return complete;
+	}
+
+	bool RenderSystem::isRenderFlowCaptureActive() const noexcept
+	{
+		return mFlowCapture && !mFlowCaptureFailed;
+	}
+
+	void RenderSystem::beginRenderFlowPass(GraphPassHandle pass, string const& name) noexcept
+	{
+		mCurrentFlowPass = pass;
+		recordRenderFlowEvent(RenderFlowEventKind::PassBegin, name);
+	}
+
+	void RenderSystem::endRenderFlowPass(GraphPassHandle pass, string const& name) noexcept
+	{
+		recordRenderFlowEvent(RenderFlowEventKind::PassEnd, name);
+		if (mCurrentFlowPass.id == pass.id) mCurrentFlowPass = {};
+	}
+
+	void RenderSystem::abortRenderFlowPass() noexcept
+	{
+		mCurrentFlowPass = {};
+	}
+
+	void RenderSystem::failRenderFlowCapture() noexcept
+	{
+		if(mFlowCapture)mFlowCaptureFailed=true;
+	}
+
+	void RenderSystem::recordRenderFlowBatch(RenderBatchSubmission submission) noexcept
+	{
+		if (!mFlowCapture || mFlowCaptureFailed || !mCurrentFlowPass.isValid()) return;
+		try
+		{
+			submission.sequence = mFlowSequence++;
+			submission.parentPass = mCurrentFlowPass;
+			RenderFlowEvent event;event.kind=RenderFlowEventKind::BatchSubmission;event.sequence=submission.sequence;event.pass=mCurrentFlowPass;event.name=submission.meshName;
+			mFlowCapture->batches.push_back(std::move(submission));
+			mFlowCapture->physicalEvents.push_back(std::move(event));
+		}
+		catch (...)
+		{
+			mFlowCaptureFailed = true;
+		}
+	}
+
+	void RenderSystem::recordRenderFlowEvent(RenderFlowEventKind kind, string const& name, GraphImageHandle image,
+		bool enabled, string const& bypassReason, string const& outputName, bool depth,
+		vector<RenderFlowResourceDesc> inputs, vector<RenderFlowResourceDesc> outputs) noexcept
+	{
+		if (!mFlowCapture || mFlowCaptureFailed) return;
+		try
+		{
+			RenderFlowEvent event;event.kind=kind;event.sequence=mFlowSequence++;event.pass=mCurrentFlowPass;event.image=image;event.name=name;event.outputName=outputName;event.bypassReason=bypassReason;event.enabled=enabled;event.depth=depth;event.inputs=std::move(inputs);event.outputs=std::move(outputs);mFlowCapture->physicalEvents.push_back(std::move(event));
+		}
+		catch (...)
+		{
+			mFlowCaptureFailed = true;
+		}
+	}
+
 	RenderTargetPtr RenderSystem::getScreenRenderTarget() const
 	{
 		return mScreen;
@@ -2501,11 +2578,13 @@ namespace mpp
 				{
 					for (auto const& command : renderParams->renderCommands)
 					{
+						if(isRenderFlowCaptureActive())try{RenderBatchSubmission submission;submission.sceneObject=sceneModel.get();submission.meshName=mesh->getName();submission.materialName=material->getName();submission.programName=shadowProgram->getName();submission.primitiveType=mesh->mPrimitiveType;submission.offset=command.offset;submission.count=command.count!=~0u?command.count:static_cast<uint32_t>(mesh->getNumPrimitives());submission.instanceCount=instanceCount;recordRenderFlowBatch(std::move(submission));}catch(...){mFlowCaptureFailed=true;}
 						mesh->render(instanceCount, command.offset, command.count);
 					}
 				}
 				else
 				{
+					if(isRenderFlowCaptureActive())try{RenderBatchSubmission submission;submission.sceneObject=sceneModel.get();submission.meshName=mesh->getName();submission.materialName=material->getName();submission.programName=shadowProgram->getName();submission.primitiveType=mesh->mPrimitiveType;submission.count=static_cast<uint32_t>(mesh->getNumPrimitives());submission.instanceCount=instanceCount;recordRenderFlowBatch(std::move(submission));}catch(...){mFlowCaptureFailed=true;}
 					mesh->render(instanceCount);
 				}
 				mesh->bind(false);
@@ -3651,6 +3730,24 @@ namespace mpp
 			setupRenderMeshInstance(meshInstance, cmd, key, &currentProgramKey, &currentTextureKeys, &currentMaterial);
 
 			auto count = cmd.count != ~0u ? cmd.count : numPrimitives;
+			if (mFlowCapture && !mFlowCaptureFailed && mCurrentFlowPass.isValid())
+			{
+				try
+				{
+					auto material = static_cast<Material*>(cmd.material.get());
+					auto program = static_cast<Program*>(material->getProgram().get());
+					RenderBatchSubmission submission;submission.sceneObject=meshInstance->mSourceSceneObject;submission.meshName=mesh->getName();submission.materialName=material->getName();submission.programName=program->getName();submission.primitiveType=mesh->mPrimitiveType;submission.offset=cmd.offset;submission.count=static_cast<uint32_t>(count);submission.instanceCount=instanceCount;submission.transparent=meshInstance->sortTransparent();submission.blend=meshInstance->mBlend;submission.cullBackFaces=meshInstance->mCullBackFaces;submission.wireframe=meshInstance->mWireframe;
+					for (int textureIndex=0;textureIndex<material->getNumTextures();++textureIndex)
+					{
+						auto const& samplerName=program->getSamplerName(textureIndex);if(samplerName=="SHADOW_MAP"&&mActiveShadowDepthTarget){submission.textureNames.push_back("__pipeline_shadow_depth__");continue;}auto pipelineTexture=mActivePipelineSamplerOverrides.find(samplerName);if(pipelineTexture!=mActivePipelineSamplerOverrides.end()&&pipelineTexture->second){submission.textureNames.push_back(pipelineTexture->second->getName());continue;}auto texture=textureIndex<(int)cmd.textures.size()&&cmd.textures[textureIndex]?cmd.textures[textureIndex]:material->getTexture(textureIndex);submission.textureNames.push_back(texture?texture->getName():string());
+					}
+					recordRenderFlowBatch(std::move(submission));
+				}
+				catch (...)
+				{
+					mFlowCaptureFailed = true;
+				}
+			}
 			mesh->render(instanceCount, cmd.offset, count);
 			mRenderInfo.primitivesRendered += (int)(count * instanceCount);
 			if (mesh->mPrimitiveType == mpp::mesh::Primitive::Type::Triangles)

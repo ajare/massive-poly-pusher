@@ -117,6 +117,11 @@ namespace mpp
 		return mMeshInstances[name];
 	}
 
+	void ModelInstance::setSourceSceneObject(SceneModel3d const* source)
+	{
+		for (auto meshInstance : mOrderedMeshInstances) meshInstance->mSourceSceneObject = source;
+	}
+
 	void ModelInstance::setParams(shared_ptr<ModelRenderParams> params)
 	{
 		// Set MeshInstances, etc

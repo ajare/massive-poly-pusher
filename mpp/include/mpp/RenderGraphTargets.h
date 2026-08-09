@@ -50,6 +50,6 @@ namespace mpp
 		void clear();
 		RenderTargetPtr get(GraphImageHandle image) const;
 		RenderTargetPtr getWriteTarget(GraphImageHandle image) const;
-		void resolve(GraphImageHandle image, bool depth) const;
+		bool resolve(GraphImageHandle image, bool depth) const;
 	};
 }

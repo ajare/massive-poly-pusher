@@ -15,13 +15,17 @@
 
 namespace mpp
 {
+	class SceneModel3d;
+
 	class _MPPAPI __declspec(align(16)) MeshInstance : public ResourceWrangler
 	{
 		friend class RenderSystem;
+		friend class ModelInstance;
 
 	private:
 
 		Mesh const* mwMesh;
+		SceneModel3d const* mSourceSceneObject;
 
 		bool mRender;
 

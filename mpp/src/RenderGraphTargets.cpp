@@ -202,11 +202,15 @@ namespace mpp
 		return found == mWriteTargets.end() ? get(image) : found->second;
 	}
 
-	void RenderGraphTargets::resolve(GraphImageHandle image, bool depth) const
+	bool RenderGraphTargets::resolve(GraphImageHandle image, bool depth) const
 	{
 		auto source = dynamic_cast<RenderTexture*>(getWriteTarget(image).get());
 		auto destination = dynamic_cast<RenderTexture*>(get(image).get());
 		if (source && destination && source != destination && source->isMultisampled())
+		{
 			source->resolveTo(destination, !depth, depth);
+			return true;
+		}
+		return false;
 	}
 }

@@ -462,6 +462,7 @@ namespace mpp
 			};
 			GpuTimingQuery gpuQuery;
 			bool gpuQueryStarted = false;
+			mRenderSystem->beginRenderFlowPass(passHandle, pass.name);
 			try
 			{
 				if (recordGpuTimings)
@@ -495,8 +496,8 @@ namespace mpp
 				{
 					GpuDebugScope storeScope("Store/Resolve Attachments");
 					discardDontCareOutputs(pass);
-					for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, false);
-					for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store) targets.resolve(output.image, true);
+					for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, false) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},false,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
+					for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, true) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},true,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
 				}
 				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();
@@ -520,6 +521,7 @@ namespace mpp
 				stats.trianglesSubmitted = static_cast<uint64_t>(max(0, statsAfter.trianglesRendered - statsBefore.trianglesRendered));
 				stats.fullscreenQuads = static_cast<uint64_t>(max(0, statsAfter.fullscreenQuads - statsBefore.fullscreenQuads));
 				mLastExecutionStats.push_back(move(stats));
+				mRenderSystem->endRenderFlowPass(passHandle, pass.name);
 			}
 			catch (...)
 			{
@@ -534,6 +536,7 @@ namespace mpp
 				restoreImagePassState();
 				mRenderSystem->setExpectedGraphColourOutputs(0);
 				mRenderSystem->popRenderTarget();
+				mRenderSystem->abortRenderFlowPass();
 				throw;
 			}
 		}

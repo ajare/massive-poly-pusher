@@ -157,10 +157,13 @@ namespace mpp
 		bool mFlowTelemetryEnabled{ false };
 		uint64_t mFlowGeneration{ 0 };
 		RenderPipelineFlowSnapshotPtr mLastFlowSnapshot;
+		std::shared_ptr<RenderPipelineFlowSnapshot> mPendingFlowSnapshot;
 
 		void ensureBloomTargets(size_t width, size_t height);
 		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);
-		void publishFlowSnapshot();
+		void beginFlowSnapshot() noexcept;
+		void publishFlowSnapshot() noexcept;
+		void discardFlowSnapshot() noexcept;
 
 	public:
 

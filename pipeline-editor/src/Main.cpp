@@ -6018,6 +6018,76 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						for (size_t pass = 0; pass < snapshot->actualPassOrder.size(); ++pass)
 							if (snapshot->actualPassOrder[pass].id != pipeline->getLastGraphExecutionOrder()[pass].id)
 								throw std::runtime_error("Process-flow snapshot order differs from actual execution.");
+						if (snapshot->batches.empty() || snapshot->outputPlans.empty())
+							throw std::runtime_error("Process-flow batch/output telemetry was not published.");
+						for (auto const& batch : snapshot->batches)
+							if (!batch.parentPass.isValid() || !batch.sceneObject || batch.meshName.empty() ||
+							    batch.materialName.empty() || batch.programName.empty() || batch.count == 0)
+								throw std::runtime_error("Process-flow batch descriptor is incomplete.");
+						GraphPassHandle executingPass;
+						size_t submittedBatch = 0;
+						for (size_t event = 0; event < snapshot->physicalEvents.size(); ++event)
+						{
+							auto const& flowEvent = snapshot->physicalEvents[event];
+							if (event && flowEvent.sequence <= snapshot->physicalEvents[event - 1].sequence)
+								throw std::runtime_error("Process-flow event sequence is not strictly ordered.");
+							for (auto const* resources : {&flowEvent.inputs, &flowEvent.outputs})
+								for (auto const& resource : *resources)
+									if (resource.name.empty() || resource.size.x == 0 || resource.size.y == 0 || resource.samples == 0)
+										throw std::runtime_error("Process-flow physical resource descriptor is invalid.");
+							if (flowEvent.enabled &&
+							    (flowEvent.kind == RenderFlowEventKind::MsaaResolve ||
+							     flowEvent.kind == RenderFlowEventKind::Taa ||
+							     flowEvent.kind == RenderFlowEventKind::SsaaHorizontal ||
+							     flowEvent.kind == RenderFlowEventKind::SsaaVertical ||
+							     flowEvent.kind == RenderFlowEventKind::Fxaa ||
+							     flowEvent.kind == RenderFlowEventKind::Presentation) &&
+							    (flowEvent.inputs.empty() || flowEvent.outputs.empty()))
+								throw std::runtime_error("Process-flow physical resource descriptor is incomplete.");
+							if (flowEvent.kind == RenderFlowEventKind::MsaaResolve && flowEvent.enabled &&
+							    (flowEvent.inputs.front().samples <= 1 || flowEvent.outputs.front().samples != 1))
+								throw std::runtime_error("Process-flow MSAA resource samples are invalid.");
+							if (flowEvent.kind == RenderFlowEventKind::PassBegin) executingPass = flowEvent.pass;
+							else if (flowEvent.kind == RenderFlowEventKind::BatchSubmission)
+							{
+								if (submittedBatch >= snapshot->batches.size() || !executingPass.isValid() ||
+								    flowEvent.sequence != snapshot->batches[submittedBatch].sequence ||
+								    flowEvent.pass.id != executingPass.id ||
+								    snapshot->batches[submittedBatch].parentPass.id != executingPass.id)
+									throw std::runtime_error("Process-flow batch order/parent association is invalid.");
+								++submittedBatch;
+							}
+							else if (flowEvent.kind == RenderFlowEventKind::PassEnd)
+							{
+								if (!executingPass.isValid() || flowEvent.pass.id != executingPass.id)
+									throw std::runtime_error("Process-flow pass boundaries are invalid.");
+								executingPass = {};
+							}
+						}
+						if (executingPass.isValid() || submittedBatch != snapshot->batches.size())
+							throw std::runtime_error("Process-flow event stream is incomplete.");
+						for (auto const& plan : snapshot->outputPlans)
+						{
+							bool presentation = false, taa = false, ssaaHorizontal = false,
+							     ssaaVertical = false, fxaa = false, msaa = false;
+							for (auto const& event : snapshot->physicalEvents)
+							{
+								if (event.kind == RenderFlowEventKind::MsaaResolve &&
+								    (event.outputName == plan.name || event.outputName.empty())) msaa |= event.enabled;
+								if (event.outputName != plan.name) continue;
+								presentation |= event.kind == RenderFlowEventKind::Presentation && event.enabled;
+								taa |= event.kind == RenderFlowEventKind::Taa && event.enabled;
+								ssaaHorizontal |= event.kind == RenderFlowEventKind::SsaaHorizontal && event.enabled;
+								ssaaVertical |= event.kind == RenderFlowEventKind::SsaaVertical && event.enabled;
+								fxaa |= event.kind == RenderFlowEventKind::Fxaa && event.enabled;
+							}
+							if (!presentation || taa != plan.antiAliasing.taa ||
+							    ssaaHorizontal != (plan.antiAliasing.ssaa != AntiAliasingSamples::Off) ||
+							    ssaaVertical != (plan.antiAliasing.ssaa != AntiAliasingSamples::Off) ||
+							    fxaa != plan.antiAliasing.fxaa ||
+							    msaa != (plan.antiAliasing.msaa != AntiAliasingSamples::Off))
+								throw std::runtime_error("Process-flow physical output stages differ from their plan.");
+						}
 						running = false;
 					}
 				}

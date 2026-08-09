@@ -8,6 +8,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderGraph.h"
+#include "mpp/RenderOutputProcessor.h"
 #include "mpp/mesh/Primitive.h"
 
 namespace mpp
@@ -29,9 +30,8 @@ namespace mpp
 
 	_MPPAPI char const* renderFlowEventKindName(RenderFlowEventKind kind);
 
-	// A renderer submission descriptor. Batch population begins in process-flow
-	// phase 2; defining the immutable snapshot contract here keeps later telemetry
-	// additions out of the PipelineEditor UI model.
+	// Exact renderer submission descriptor populated immediately before the
+	// corresponding mesh draw. Source identity is non-owning and generation-local.
 	struct _MPPAPI RenderBatchSubmission
 	{
 		uint64_t sequence{ 0 };
@@ -51,6 +51,14 @@ namespace mpp
 		bool wireframe{ false };
 	};
 
+	struct _MPPAPI RenderFlowResourceDesc
+	{
+		std::string name;
+		glm::uvec2 size{ 0 };
+		GraphImageFormat format{ GraphImageFormat::Rgba8 };
+		uint32_t samples{ 1 };
+	};
+
 	struct _MPPAPI RenderFlowEvent
 	{
 		RenderFlowEventKind kind{ RenderFlowEventKind::PassBegin };
@@ -58,6 +66,12 @@ namespace mpp
 		GraphPassHandle pass;
 		GraphImageHandle image;
 		std::string name;
+		std::string outputName;
+		std::string bypassReason;
+		bool enabled{ true };
+		bool depth{ false };
+		std::vector<RenderFlowResourceDesc> inputs;
+		std::vector<RenderFlowResourceDesc> outputs;
 	};
 
 	// RenderPipeline publishes snapshots through shared_ptr<const ...>. The
@@ -69,7 +83,10 @@ namespace mpp
 		uint64_t pipelineGeneration{ 0 };
 		std::vector<GraphPassHandle> actualPassOrder;
 		std::vector<RenderBatchSubmission> batches;
+		// Contains the complete ordered event stream: pass boundaries, batch
+		// submissions, resolves, output processing, and presentation.
 		std::vector<RenderFlowEvent> physicalEvents;
+		std::vector<RenderPipelineOutputPlan> outputPlans;
 	};
 
 	using RenderPipelineFlowSnapshotPtr = std::shared_ptr<RenderPipelineFlowSnapshot const>;
