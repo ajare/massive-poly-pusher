@@ -483,12 +483,46 @@ Cache results use shared resource ownership in `PbrEnvironment`, so old preview/
 
 ## Phase 10 — PipelineEditor authoring UI
 
-1. Add an **HDR IBL Environment** section under Pipeline Environment.
-2. Provide EXR file picker, resolution controls, source preview/status, regenerate, and clear actions.
-3. Disable/manual-hide conflicting explicit environment fields while HDR IBL is active.
-4. Show cache hit/miss, generation duration, and diagnostic details.
+### 10.1 HDR IBL controls — Complete
 
-**Acceptance:** Users can select an EXR, rebuild the preview, and see IBL/reflections without hand-authoring cubemaps.
+Pipeline Environment now exposes undoable HDR equirectangular source and environment/irradiance/prefilter cubemap resolution fields, clamped to non-zero values.
+
+1. Add an **HDR IBL Environment** subsection to Pipeline Environment.
+2. Bind editable source path plus environment/irradiance/prefilter resolution fields to `PbrPipelineEnvironmentDocument` through undoable snapshots.
+3. Clamp resolution controls to valid non-zero renderer-friendly values.
+
+**Acceptance:** Authors can inspect and edit all serialized HDR IBL declaration fields.
+
+### 10.2 File selection and clear actions
+
+1. Add an EXR-specific native file picker that writes a pipeline-relative path when possible.
+2. Add Clear HDR IBL action that resets source/settings while preserving manual advanced bindings.
+3. Validate/display only `.exr` selection errors before preview queueing.
+
+**Acceptance:** Authors can select or clear an EXR source without hand-editing XML.
+
+### 10.3 HDR/manual mode presentation
+
+1. While HDR IBL is active, disable/manual-hide authored irradiance and prefiltered-specular fields, explaining that generated maps take precedence.
+2. Keep `brdfLut` visible as an advanced override with precedence explanation.
+3. Restore manual fields unchanged after clearing HDR source.
+
+**Acceptance:** UI prevents ambiguous HDR/manual cubemap authoring while retaining advanced escape hatches.
+
+### 10.4 Preview actions and status
+
+1. Add Regenerate HDR IBL action that clears renderer cache and queues a preview rebuild without retiring the active preview prematurely.
+2. Show source path, cache state (unknown/hit/generating/failed), configured resolutions, and latest runtime diagnostic.
+3. Route errors to the existing diagnostics panel.
+
+**Acceptance:** Authors can explicitly refresh derived IBL output and understand its preview status.
+
+### 10.5 Editor tests and guide
+
+1. Add PipelineEditor document/UI smoke coverage for HDR declaration edit, clear, and serialization round trip.
+2. Update authoring guide with EXR requirements, resolutions/cost, manual override behavior, and regenerate semantics.
+
+**Acceptance:** HDR IBL authoring is documented and survives undo/save/reload.
 
 ## Phase 11 — Packaging, tests, and documentation
 
