@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -137,6 +138,10 @@ namespace mpp
 			for (uint32_t face = 0; face < 2; ++face) { std::vector<float> pixels(4 * 4 * 4), repeated(4 * 4 * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, directionalOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, repeatedOutput->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA, GL_FLOAT, repeated.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); directionalCentre[face] = pixels[(2 * 4 + 2) * 4]; if (std::abs(directionalCentre[face] - repeated[(2 * 4 + 2) * 4]) > 0.001f) return fail("diffuse irradiance generation is not deterministic"); }
 			if (!(directionalCentre[0] > directionalCentre[1])) return fail("directional diffuse irradiance is not oriented toward its source");
 			GLint irradianceViewport[4]{}, irradianceViewportAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, irradianceViewport)); bool rejectedIrradianceSource = false; try { renderSystem->generateDiffuseIrradiance(nullptr, "GpuTestInvalidIrradiance", 4, 8); } catch (...) { rejectedIrradianceSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, irradianceViewportAfter)); if (!rejectedIrradianceSource || !std::equal(std::begin(irradianceViewport), std::end(irradianceViewport), std::begin(irradianceViewportAfter))) return fail("invalid diffuse irradiance source changed render state");
+
+			auto prefiltered = renderSystem->generatePrefilteredSpecular(neutralTexture, "GpuTestNeutralPrefilter", 4, 3, 8); auto prefilteredTexture = dynamic_cast<RenderTexture*>(prefiltered.get()); if (!prefilteredTexture || prefilteredTexture->getMipLevels() != 3) return fail("specular prefilter did not create requested mip chain");
+			for (uint32_t mip = 0; mip < 3; ++mip) for (uint32_t face = 0; face < 6; ++face) { auto size = std::max<size_t>(1, 4 >> mip); std::vector<float> pixels(size * size * 4); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, prefilteredTexture->getColourAttachmentId(0))); GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mip, GL_RGBA, GL_FLOAT, pixels.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (!std::isfinite(pixels[0]) || pixels[0] <= 1.0f) return fail("specular prefilter left a face/mip invalid or non-HDR"); }
+			GLint prefilterViewport[4]{}, prefilterViewportAfter[4]{}; GL_CHECK(glGetIntegerv(GL_VIEWPORT, prefilterViewport)); bool rejectedPrefilterSource = false; try { renderSystem->generatePrefilteredSpecular(nullptr, "GpuTestInvalidPrefilter", 4, 3, 8); } catch (...) { rejectedPrefilterSource = true; } GL_CHECK(glGetIntegerv(GL_VIEWPORT, prefilterViewportAfter)); if (!rejectedPrefilterSource || !std::equal(std::begin(prefilterViewport), std::end(prefilterViewport), std::begin(prefilterViewportAfter))) return fail("invalid specular prefilter source changed render state");
 
 			stage = "initial colour passes";
 			GraphImageDesc colour;
