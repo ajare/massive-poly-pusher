@@ -65,14 +65,18 @@ Add an explicit PBR environment source representation:
 
 The existing renderer supports 2D render targets but has no public/generated cubemap render-target path. This infrastructure is required before HDR conversion, irradiance convolution, or specular prefiltering can be implemented.
 
-### 4.1 Render-target data model
+### 4.1 Render-target data model — Complete
+
+Implemented in `72d1222 Add cubemap render texture data model`.
+
+
 
 1. Extend `RenderTextureOptions` and `RenderTextureStream::Definition` with an explicit attachment target (`Texture2D` or `TextureCube`), cubemap face size, and declared mip count/base/max level.
 2. Retain the current `Texture2D` defaults and serialized behavior unchanged.
 3. Reject unsupported target combinations early: cubemap depth attachments, array/3D targets, and multisampled cubemaps. The first IBL implementation needs colour-only, single-sampled cubemaps.
 4. Require a sized floating-point colour internal format for generated HDR IBL targets (`RGB16F`, `RGBA16F`, `RGB32F`, or `RGBA32F`); reject normalised/integer formats in the IBL creation helper.
 
-### 4.2 Allocation, resize, and destruction
+### 4.2 Allocation, resize, and destruction — In progress
 
 1. Refactor `RenderTexture::loadImpl()` so 2D allocation remains byte-for-byte behaviorally equivalent while cubemap allocation uses `GL_TEXTURE_CUBE_MAP` and allocates all six `GL_TEXTURE_CUBE_MAP_POSITIVE_X + face` images for every declared mip.
 2. Configure cubemap sampler state on `GL_TEXTURE_CUBE_MAP`, including `WRAP_S`, `WRAP_T`, and `WRAP_R`; use clamp-to-edge defaults for generated IBL resources.

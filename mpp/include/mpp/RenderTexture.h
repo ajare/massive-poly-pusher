@@ -30,6 +30,7 @@ namespace mpp
 
 		GLuint mDepthTexture;
 		uint32_t mSamples{ 1 };
+		uint32_t mMipLevels{ 1 };
 
 	private:
 

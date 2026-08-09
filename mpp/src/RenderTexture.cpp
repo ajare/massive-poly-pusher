@@ -120,9 +120,9 @@ namespace mpp
 		mTarget = rtStr->getTarget();
 		mParams = rtStr->getParams();
 
-		if (mTarget != GL_TEXTURE_2D)
+		if (mTarget != GL_TEXTURE_2D && mTarget != GL_TEXTURE_CUBE_MAP)
 		{
-			THROW_MPP("Render textures currently support only Texture2D colour attachments.", __LINE__, __FILE__, __func__);
+			THROW_MPP("Render textures support only Texture2D and CubeMap colour attachments.", __LINE__, __FILE__, __func__);
 		}
 
 		Texture::mWidth = RenderTarget::mWidth = rtStr->getWidth();
@@ -161,6 +161,7 @@ namespace mpp
 		mDepthFormat = rtStr->getDepthFormat();
 		mNumAttachments = rtStr->getNumAttachments();
 		mSamples = rtStr->mPhysicalSamples;
+		mMipLevels = rtStr->getMipLevels();
 		if (mSamples == 0 || (mSamples > 1 && (mParams.useMipmaps || mDepthParams.params.useMipmaps)))
 		{
 			THROW_MPP("Multisample render textures require at least one sample and cannot use mipmaps.", __LINE__, __FILE__, __func__);
@@ -190,7 +191,7 @@ namespace mpp
 		{
 			GLuint texId{ 0 };
 			GL_CHECK(glGenTextures(1, &texId));
-			GLenum textureTarget = mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+			GLenum textureTarget = mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : (GLenum)mTarget;
 			GL_CHECK(glBindTexture(textureTarget, texId));
 
 			label = STR_FORMAT("Texture: {}_attachment_{}", getName(), i);
@@ -201,23 +202,26 @@ namespace mpp
 			}
 			else
 			{
-				GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, mInternalFormat, (GLsizei)width, (GLsizei)height, 0, mPixelFormat, mDataType, nullptr));
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mParams.wrap));
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, mParams.wrap));
-				GL_CHECK(glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+				if (mTarget == GL_TEXTURE_CUBE_MAP) for (uint32_t face = 0; face < 6; ++face) for (uint32_t mip = 0; mip < mMipLevels; ++mip) { auto dimension = (GLsizei)std::max<size_t>(1, width >> mip); GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mip, mInternalFormat, dimension, dimension, 0, mPixelFormat, mDataType, nullptr)); }
+				else GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, mInternalFormat, (GLsizei)width, (GLsizei)height, 0, mPixelFormat, mDataType, nullptr));
+				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_MAG_FILTER, mParams.magFilter));
+				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_MIN_FILTER, mParams.minFilter));
+				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_S, mParams.wrap));
+				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_T, mParams.wrap));
+				if(mTarget == GL_TEXTURE_CUBE_MAP) GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_R, mParams.wrap));
+				GL_CHECK(glTexParameterf(textureTarget, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+				if(mTarget == GL_TEXTURE_CUBE_MAP){GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_BASE_LEVEL, 0));GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_MAX_LEVEL, (GLint)mMipLevels - 1));}
 			}
 			if (mParams.useMipmaps)
 			{
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
-				GL_CHECK(glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
-				GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+				GL_CHECK(glTexParameterf(textureTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
+				GL_CHECK(glGenerateMipmap(textureTarget));
 			}
 
 			const GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + i);
-			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, textureTarget, texId, 0));
+			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, mTarget == GL_TEXTURE_CUBE_MAP ? GL_TEXTURE_CUBE_MAP_POSITIVE_X : textureTarget, texId, 0));
 			mTextureIds.push_back(texId);
 		}
 
@@ -309,6 +313,7 @@ namespace mpp
 
 		GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, 0));
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
@@ -354,9 +359,9 @@ namespace mpp
 	{
 		for (auto textureId : mTextureIds)
 		{
-			GL_CHECK(glBindTexture(GL_TEXTURE_2D, textureId));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, (GLint)mipLevel));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)mipLevel));
+			GL_CHECK(glBindTexture(mTarget, textureId));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, (GLint)mipLevel));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, (GLint)mipLevel));
 		}
 		if (mDepthTexture != 0)
 		{
@@ -371,9 +376,9 @@ namespace mpp
 	{
 		for (auto textureId : mTextureIds)
 		{
-			GL_CHECK(glBindTexture(GL_TEXTURE_2D, textureId));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
+			GL_CHECK(glBindTexture(mTarget, textureId));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, mParams.lodBaseLevel));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, mParams.lodMaxLevel));
 		}
 		if (mDepthTexture != 0)
 		{
@@ -390,8 +395,8 @@ namespace mpp
 		{
 			for (auto textureId : mTextureIds)
 			{
-				GL_CHECK(glBindTexture(GL_TEXTURE_2D, textureId));
-				GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+				GL_CHECK(glBindTexture(mTarget, textureId));
+				GL_CHECK(glGenerateMipmap(mTarget));
 			}
 		}
 		if (mDepthParams.params.useMipmaps && mDepthTexture != 0)
@@ -440,7 +445,7 @@ namespace mpp
 
 	uint32_t RenderTexture::getAttachmentTextureTarget() const
 	{
-		return mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+		return mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : mTarget;
 	}
 
 	void RenderTexture::resolveTo(RenderTexture* destination, bool colour, bool depth)
