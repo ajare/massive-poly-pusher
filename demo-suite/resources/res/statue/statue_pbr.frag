@@ -17,6 +17,8 @@
 #endif
 
 @@Uniform(vec4 PBR_BASE_COLOUR_FACTOR);
+// Renderer-owned: (mip levels - 1) of the bound PBR_PREFILTERED_SPECULAR_MAP.
+@@Uniform(float PBR_PREFILTERED_MAX_LOD);
 @@Uniform(float PBR_EXT_LIGHTING_SCALE);
 #if PBR_SPEC_METALLIC || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Uniform(float PBR_METALLIC_FACTOR);
@@ -257,7 +259,8 @@ void main()
     vec3 irradiance = texture(@Texture(PBR_IRRADIANCE_MAP), normal).rgb;
     vec3 diffuse = irradiance * baseColour.rgb;
     vec3 reflection = reflect(-viewDirection, normal);
-    vec3 prefiltered = textureLod(@Texture(PBR_PREFILTERED_SPECULAR_MAP), reflection, roughness * 4.0).rgb;
+    vec3 prefiltered = textureLod(@Texture(PBR_PREFILTERED_SPECULAR_MAP), reflection,
+        roughness * @Uniform(PBR_PREFILTERED_MAX_LOD)).rgb;
     vec2 brdf = texture(@Texture(PBR_BRDF_LUT), vec2(nDotV, roughness)).rg;
     vec3 specular = prefiltered * (fresnel * brdf.x + brdf.y);
     vec3 ambient = (kD * diffuse + specular) * occlusion + AMBIENT_AND_COUNT.rgb * baseColour.rgb;

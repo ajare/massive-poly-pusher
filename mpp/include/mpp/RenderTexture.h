@@ -88,7 +88,7 @@ namespace mpp
 		void attachColourFace(size_t attachment, uint32_t face, uint32_t mipLevel);
 		// Restores every colour attachment to the conventional +X, mip-zero view.
 		void restoreColourFaces();
-		uint32_t getMipLevels() const;
+		uint32_t getMipLevels() const override;
 
 		uint32_t getColourAttachmentId(size_t attachment) const;
 

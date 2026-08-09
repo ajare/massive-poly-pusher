@@ -64,6 +64,11 @@ namespace mpp
 		uint32_t getTextureTarget() const;
 		uint32_t getInternalFormat() const;
 
+		// Number of mip levels reachable through this texture's sampler state,
+		// relative to its base level. Always at least one. RenderTexture reports
+		// its explicitly allocated chain instead.
+		virtual uint32_t getMipLevels() const;
+
 		size_t uploadData(int attachment, uint8_t const* data, float u0, float v0, float u1, float v1);
 
 		size_t uploadData(int attachment, uint8_t const* data, uint32_t x, uint32_t y, size_t w, size_t h);
