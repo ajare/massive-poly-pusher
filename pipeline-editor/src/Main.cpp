@@ -1996,11 +1996,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		};
 		auto forceWorkingPreviewRebuild = [&]()
 		{
-			// Retire the active generation before preparing a replacement so stale
-			// PBR material and texture bindings cannot survive this recovery action.
-			if (!activePipeline.empty()) renderSystem.removeRenderPipeline(activePipeline);
-			activePipeline.clear(); activeGraphResource.clear(); activePreviewDocument.reset();
-			pipelineRuntime.clear();
+			// installPreview always creates a distinct generation. Keep the active
+			// generation renderable until that candidate succeeds; clearing it here
+			// leaves the frame loop with no pipeline during asynchronous validation.
 			queueWorkingPreview("Forced preview resource rebuild");
 		};
 		auto regenerateAntiAliasingOnly = [&]()
