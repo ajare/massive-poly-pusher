@@ -6,7 +6,7 @@
 - Phase 2 propagates non-owning `SceneModel3d` identity through model/mesh instances, records every sorted `flushVertexBuffers()` submission without aggregation, and records direct shadow submissions under their active graph pass.
 - Phase 3 records actual MSAA colour/depth resolves at their execution points; enabled and disabled TAA, SSAA, FXAA, and presentation stages; bypass reasons; named-output identity; per-event physical inputs/outputs; and generation-safe output resource descriptors.
 - The model combines authored and actual pass order, exact batches, renderer stages, bypass diagnostics, typed dependencies, stable generation-local IDs, and independently filtered authored/physical resources.
-- The layout provides a left-to-right execution spine, non-overlapping disabled/resource rows, named-output branches, deterministic relayout, Fit All, and cursor-centred zoom.
+- The layout provides a top-to-bottom execution spine, non-overlapping disabled/resource columns, named-output branches, deterministic relayout, Fit All, cursor-centred zoom, and native vertical scrolling.
 - The Process Flow tab is docked with Pipeline Hierarchy and provides resource filters, edge controls, live-sample status, refresh, pan/zoom, clipped drawing, hover details, selection targets, and expandable batch nodes.
 - Selection is synchronized in both directions for passes, images/imports, materials, and resolved scene objects; scene-generation changes invalidate pointer-derived UI data immediately.
 - Snapshot polling is gated to 0.25 seconds with immediate refresh for pipeline, scene, filter, and manual invalidations; unchanged samples preserve the model and view transform.
@@ -41,7 +41,7 @@ The first version is read-only but its data model, selection model, and canvas i
 - Enabled and disabled MSAA, TAA, SSAA, FXAA, and presentation stages are shown.
 - Resource nodes are optional and hidden by default. A local toolbar exposes category toggles.
 - Resource categories are independently selectable rather than represented by one all-or-nothing switch.
-- Layout is automatic, left-to-right, and recalculated when structure changes.
+- Layout is automatic, top-to-bottom, and recalculated when structure changes.
 - Relayout preserves pan and zoom. The user may pan, zoom, and press **Fit All**.
 - The view is a tab docked with **Pipeline Hierarchy**.
 - Pass selection synchronizes with the pass Inspector. Batch/material/object selection synchronizes with the existing material or scene-object Inspector selection.
@@ -270,7 +270,7 @@ For each executed authored pass:
 
 Do not report a difference merely because batch or physical nodes are inserted between passes.
 
-## 6. Automatic left-to-right layout
+## 6. Automatic top-to-bottom layout
 
 ### 6.1 Main execution spine
 
@@ -282,20 +282,20 @@ Build one ordered list:
 4. next executed pass;
 5. TAA, SSAA, FXAA, and named presentation stages in actual output order.
 
-Assign monotonically increasing x coordinates with configurable node and stage gaps. Keep the primary spine centred around y=0.
+Assign monotonically increasing y coordinates with configurable node and stage gaps. Keep the primary spine centred in its column.
 
 ### 6.2 Secondary nodes
 
-- Disabled passes occupy a nearby secondary row anchored between authored neighbours.
-- Optional resource nodes occupy rows above or below the spine based on dependency type.
-- Multiple named outputs branch vertically after the shared pipeline stages.
+- Disabled passes occupy a nearby secondary column anchored between authored neighbours.
+- Optional resource nodes occupy columns beside the spine based on dependency type.
+- Multiple named outputs branch into a separate output column after the shared pipeline stages.
 - Expanded batch object rows increase node height and trigger deterministic relayout.
 
 ### 6.3 Determinism and overlap
 
 The same model and visibility settings must produce identical positions. Layout tests must assert:
 
-- strictly increasing main-spine x positions;
+- strictly increasing main-spine y positions;
 - no overlapping visible node rectangles;
 - stable positions across repeated layout;
 - output branches do not overlap;
@@ -334,7 +334,8 @@ All resource categories start hidden each editor launch, as confirmed.
 
 Implement with ImGui draw lists; do not add a third-party node-editor dependency for the first version.
 
-- middle-button drag pans;
+- middle-button drag pans horizontally and scrolls vertically;
+- a native vertical scrollbar navigates long process flows;
 - mouse wheel zooms around cursor position;
 - clamp zoom to a usable range, proposed 0.25–2.5;
 - clip node and edge rendering to canvas bounds;
@@ -537,7 +538,7 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
    - [x] Preserve duplicate submissions and transform direct dependencies through optional resource nodes.
 
 5. **Automatic layout — COMPLETE**
-   - [x] Build the actual execution spine, disabled row, resource rows, and named-output branches.
+   - [x] Build the vertical execution spine, disabled/resource columns, and named-output branches.
    - [x] Preserve view transforms across deterministic relayout and provide Fit All/cursor-centred zoom transforms.
    - [x] Add deterministic ordering, non-overlap, Fit All, and zoom geometry tests.
 

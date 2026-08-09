@@ -118,22 +118,42 @@ namespace pipeline_editor
 		}
 		auto available = ImGui::GetContentRegionAvail();
 		available.x = std::max(available.x, 64.0f); available.y = std::max(available.y, 64.0f);
-		ImGui::InvisibleButton("ProcessFlowCanvas", available,
+		bool fitted = mFitRequested || mFittedRevision == 0;
+		if (fitted)
+		{
+			mTransform = mLayout.fitAll(model, {available.x, available.y});
+			auto graphBounds = mLayout.bounds(model);
+			if (graphBounds.valid && (graphBounds.maximum.y - graphBounds.minimum.y) * mTransform.zoom > available.y - 80.0f)
+				mTransform.pan.y = 40.0f - graphBounds.minimum.y * mTransform.zoom;
+			mFitRequested = false; mFittedRevision = model.revision;
+		}
+		ImGui::BeginChild("ProcessFlowScrollableCanvas", available, ImGuiChildFlags_Borders,
+		                  ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		if (fitted) ImGui::SetScrollY(0.0f);
+		auto innerAvailable = ImGui::GetContentRegionAvail();
+		auto graphBounds = mLayout.bounds(model);
+		float contentHeight = innerAvailable.y;
+		if (graphBounds.valid)
+			contentHeight = std::max(contentHeight,
+			                         mTransform.pan.y + graphBounds.maximum.y * mTransform.zoom + 48.0f);
+		ImGui::InvisibleButton("ProcessFlowCanvas", {std::max(innerAvailable.x, 64.0f), contentHeight},
 		                       ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle);
-		auto canvasMinimum = ImGui::GetItemRectMin(), canvasMaximum = ImGui::GetItemRectMax();
-		auto origin = glm::vec2(canvasMinimum.x, canvasMinimum.y);
+		auto itemMinimum = ImGui::GetItemRectMin();
+		auto childPosition = ImGui::GetWindowPos(), childSize = ImGui::GetWindowSize();
+		ImVec2 canvasMinimum(childPosition.x + 1.0f, childPosition.y + 1.0f),
+		       canvasMaximum(childPosition.x + childSize.x - ImGui::GetStyle().ScrollbarSize - 1.0f,
+		                     childPosition.y + childSize.y - 1.0f);
+		auto origin = glm::vec2(itemMinimum.x, itemMinimum.y);
 		if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
-			mTransform.pan += glm::vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y);
+		{
+			mTransform.pan.x += ImGui::GetIO().MouseDelta.x;
+			ImGui::SetScrollY(std::max(0.0f, ImGui::GetScrollY() - ImGui::GetIO().MouseDelta.y));
+		}
 		if (ImGui::IsItemHovered() && ImGui::GetIO().MouseWheel != 0.0f)
 		{
 			auto cursor = glm::vec2(ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y) - origin;
 			mTransform = ProcessFlowLayout::zoomAroundCursor(mTransform, cursor,
 			                                                    mTransform.zoom * std::pow(1.14f, ImGui::GetIO().MouseWheel));
-		}
-		if (mFitRequested || mFittedRevision == 0)
-		{
-			mTransform = mLayout.fitAll(model, {available.x, available.y});
-			mFitRequested = false; mFittedRevision = model.revision;
 		}
 		auto screen = [&](glm::vec2 point) { return origin + mTransform.pan + point * mTransform.zoom; };
 		std::unordered_map<uint64_t, ProcessFlowNode*> nodeLookup;
@@ -170,16 +190,19 @@ namespace pipeline_editor
 			auto sourceIt = nodeLookup.find(edge.source), destinationIt = nodeLookup.find(edge.destination);
 			if (sourceIt == nodeLookup.end() || destinationIt == nodeLookup.end()) continue;
 			auto source = sourceIt->second, destination = destinationIt->second;
-			auto start = screen(source->position + glm::vec2(source->size.x, source->size.y * 0.5f));
-			auto end = screen(destination->position + glm::vec2(0.0f, destination->size.y * 0.5f));
+			auto start = screen(source->position + glm::vec2(source->size.x * 0.5f, source->size.y));
+			auto end = screen(destination->position + glm::vec2(destination->size.x * 0.5f, 0.0f));
 			if (!intersects({start.x, start.y}, {end.x, end.y}, canvasMinimum, canvasMaximum)) continue;
 			auto colour = edgeColour(edge.kind); float width = hoveredNode == edge.source || hoveredNode == edge.destination ? 3.2f : 1.8f;
-			float bend = std::max(35.0f, std::abs(end.x - start.x) * 0.38f);
-			draw->AddBezierCubic({start.x, start.y}, {start.x + bend, start.y}, {end.x - bend, end.y}, {end.x, end.y}, colour, width);
-			ImVec2 tip(end.x, end.y), upper(end.x - 8, end.y - 5), lower(end.x - 8, end.y + 5);
-			draw->AddTriangleFilled(tip, upper, lower, colour);
+			float direction = end.y >= start.y ? 1.0f : -1.0f;
+			float bend = std::max(35.0f, std::abs(end.y - start.y) * 0.38f);
+			draw->AddBezierCubic({start.x, start.y}, {start.x, start.y + direction * bend},
+			                     {end.x, end.y - direction * bend}, {end.x, end.y}, colour, width);
+			ImVec2 tip(end.x, end.y), left(end.x - 5, end.y - direction * 8),
+			       right(end.x + 5, end.y - direction * 8);
+			draw->AddTriangleFilled(tip, left, right, colour);
 			if (!edge.label.empty() && mTransform.zoom > 0.55f)
-				draw->AddText({(start.x + end.x) * 0.5f, (start.y + end.y) * 0.5f - 13.0f}, colour, edge.label.c_str());
+				draw->AddText({(start.x + end.x) * 0.5f + 7.0f, (start.y + end.y) * 0.5f}, colour, edge.label.c_str());
 		}
 		for (auto& node : model.nodes)
 		{
@@ -243,6 +266,7 @@ namespace pipeline_editor
 				ImGui::EndTooltip();
 			}
 		}
+		ImGui::EndChild();
 		ImGui::End(); return selection;
 	}
 }

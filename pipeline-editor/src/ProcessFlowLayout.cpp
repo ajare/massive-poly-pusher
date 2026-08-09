@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include <tuple>
-
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
@@ -30,26 +28,36 @@ namespace pipeline_editor
 				return left->actualPosition < right->actualPosition;
 			return left->layoutRank < right->layoutRank;
 		});
-		float x = 0.0f;
-		for (auto* node : spine) { node->position = {x, 0.0f}; x += node->size.x + 72.0f; }
-		auto xForRank = [&](float rank)
+		float y = 0.0f;
+		for (auto* node : spine) { node->position = {0.0f, y}; y += node->size.y + 72.0f; }
+		auto yForRank = [&](float rank)
 		{
-			if (spine.empty()) return rank * 292.0f;
+			if (spine.empty()) return rank * 150.0f;
 			auto nearest = *std::min_element(spine.begin(), spine.end(), [&](auto left, auto right)
 			{ return std::abs(left->layoutRank - rank) < std::abs(right->layoutRank - rank); });
-			return nearest->position.x + (rank > nearest->layoutRank ? nearest->size.x * 0.55f : 0.0f);
+			return nearest->position.y + (rank > nearest->layoutRank ? nearest->size.y * 0.55f : 0.0f);
 		};
-		std::stable_sort(disabled.begin(), disabled.end(), [](auto left, auto right)
-		{ return std::tie(left->authoredPosition, left->semanticKey) < std::tie(right->authoredPosition, right->semanticKey); });
-		for (size_t index = 0; index < disabled.size(); ++index)
-			disabled[index]->position = {xForRank(disabled[index]->layoutRank), 170.0f + (float)index * 104.0f};
-		std::stable_sort(resources.begin(), resources.end(), [](auto left, auto right)
+		auto orderByRank = [](auto left, auto right)
 		{
 			if (left->layoutRank != right->layoutRank) return left->layoutRank < right->layoutRank;
 			return left->semanticKey < right->semanticKey;
-		});
-		for (size_t index = 0; index < resources.size(); ++index)
-			resources[index]->position = {xForRank(resources[index]->layoutRank), -150.0f - (float)index * 104.0f};
+		};
+		std::stable_sort(disabled.begin(), disabled.end(), orderByRank);
+		float disabledBottom = -104.0f;
+		for (auto* node : disabled)
+		{
+			auto nodeY = std::max(yForRank(node->layoutRank), disabledBottom + 26.0f);
+			node->position = {280.0f, nodeY}; disabledBottom = nodeY + node->size.y;
+		}
+		std::stable_sort(resources.begin(), resources.end(), orderByRank);
+		float resourceBottom = -104.0f, outputBottom = -104.0f;
+		for (auto* node : resources)
+		{
+			bool output = node->resourceCategory == ProcessFlowResourceCategory::NamedOutputs;
+			auto& bottom = output ? outputBottom : resourceBottom;
+			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
+			node->position = {output ? 540.0f : -270.0f, nodeY}; bottom = nodeY + node->size.y;
+		}
 	}
 
 	ProcessFlowBounds ProcessFlowLayout::bounds(ProcessFlowModel const& model) const
@@ -93,8 +101,8 @@ namespace pipeline_editor
 		ProcessFlowNode resource; resource.id = 9; resource.semanticKey = "resource"; resource.resourceCategory = ProcessFlowResourceCategory::AuthoredImages; resource.layoutRank = 1.5f; model.nodes.push_back(resource);
 		ProcessFlowLayout layout; layout.apply(model); auto first = model.nodes;
 		for (size_t index = 1; index < 4; ++index)
-			if (model.nodes[index].position.x <= model.nodes[index - 1].position.x + model.nodes[index - 1].size.x)
-				throw std::runtime_error("Process-flow main layout is not strictly increasing/non-overlapping.");
+			if (model.nodes[index].position.y <= model.nodes[index - 1].position.y + model.nodes[index - 1].size.y)
+				throw std::runtime_error("Process-flow vertical layout is not strictly increasing/non-overlapping.");
 		layout.apply(model);
 		for (size_t index = 0; index < model.nodes.size(); ++index)
 			if (model.nodes[index].position != first[index].position) throw std::runtime_error("Process-flow layout is not deterministic.");
