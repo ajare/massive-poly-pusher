@@ -306,8 +306,32 @@ vec3 importanceSampleGGX(vec2 xi, float roughness, vec3 normal)
 }
 void main()
 {
-    vec3 normal=faceDirection(gl_FragCoord.xy/@Uniform(OUTPUT_SIZE)); vec3 view=normal; vec3 sum=vec3(0.0); float weight=0.0; float roughness=clamp(@Uniform(ROUGHNESS),0.0,1.0); int samples=clamp(@Uniform(SAMPLE_COUNT),1,1024);
-    for(int index=0;index<1024;++index){if(index>=samples)break; vec2 xi=vec2((float(index)+0.5)/float(samples),radicalInverse(uint(index))); vec3 halfVector=importanceSampleGGX(xi,roughness,normal); vec3 light=normalize(2.0*dot(view,halfVector)*halfVector-view); float nDotL=max(dot(normal,light),0.0); if(nDotL>0.0){float nDotH=max(dot(normal,halfVector),0.0), vDotH=max(dot(view,halfVector),0.0); float a=roughness*roughness,a2=a*a,denominator=nDotH*nDotH*(a2-1.0)+1.0; float distribution=a2/max(3.14159265359*denominator*denominator,0.00001); float pdf=max(distribution*nDotH/max(4.0*vDotH,0.00001),0.00001); float texelSolidAngle=4.0*3.14159265359/(6.0*@Uniform(SOURCE_RESOLUTION)*@Uniform(SOURCE_RESOLUTION)); float sampleSolidAngle=1.0/(float(samples)*pdf); float lod=roughness<=0.00001?0.0:max(0.0,0.5*log2(sampleSolidAngle/texelSolidAngle)); sum+=textureLod(@Texture(ENVIRONMENT),light,lod).rgb*nDotL; weight+=nDotL;}}
+    vec3 normal = faceDirection(gl_FragCoord.xy / @Uniform(OUTPUT_SIZE));
+    vec3 view = normal; vec3 sum = vec3(0.0); float weight = 0.0;
+    float roughness = clamp(@Uniform(ROUGHNESS), 0.0, 1.0);
+    int samples = clamp(@Uniform(SAMPLE_COUNT), 1, 1024);
+    for (int index = 0; index < 1024; ++index)
+    {
+        if (index >= samples) break;
+        vec2 xi = vec2((float(index) + 0.5) / float(samples), radicalInverse(uint(index)));
+        vec3 halfVector = importanceSampleGGX(xi, roughness, normal);
+        vec3 light = normalize(2.0 * dot(view, halfVector) * halfVector - view);
+        float nDotL = max(dot(normal, light), 0.0);
+        if (nDotL > 0.0)
+        {
+            float nDotH = max(dot(normal, halfVector), 0.0);
+            float vDotH = max(dot(view, halfVector), 0.0);
+            float a = roughness * roughness, a2 = a * a;
+            float denominator = nDotH * nDotH * (a2 - 1.0) + 1.0;
+            float distribution = a2 / max(3.14159265359 * denominator * denominator, 0.00001);
+            float pdf = max(distribution * nDotH / max(4.0 * vDotH, 0.00001), 0.00001);
+            float texelSolidAngle = 4.0 * 3.14159265359 / (6.0 * @Uniform(SOURCE_RESOLUTION) * @Uniform(SOURCE_RESOLUTION));
+            float sampleSolidAngle = 1.0 / (float(samples) * pdf);
+            float lod = roughness <= 0.00001 ? 0.0 : max(0.0, 0.5 * log2(sampleSolidAngle / texelSolidAngle));
+            sum += textureLod(@Texture(ENVIRONMENT), light, lod).rgb * nDotL;
+            weight += nDotL;
+        }
+    }
     @Out(vec4 COLOUR)=vec4(sum/max(weight,0.00001),1.0);
 }
 )";
@@ -334,8 +358,26 @@ float geometrySchlickGGX(float nDotV,float roughness)
 float geometrySmith(float nDotV,float nDotL,float roughness) { return geometrySchlickGGX(nDotV,roughness)*geometrySchlickGGX(nDotL,roughness); }
 void main()
 {
-    vec2 uv=gl_FragCoord.xy/@Uniform(OUTPUT_SIZE); float nDotV=clamp(uv.x,0.0001,1.0),roughness=clamp(uv.y,0.0,1.0); vec3 view=vec3(sqrt(max(1.0-nDotV*nDotV,0.0)),0.0,nDotV),normal=vec3(0.0,0.0,1.0); float a=0.0,b=0.0; int samples=clamp(@Uniform(SAMPLE_COUNT),1,1024);
-    for(int index=0;index<1024;++index){if(index>=samples)break; vec2 xi=vec2((float(index)+0.5)/float(samples),radicalInverse(uint(index))); vec3 halfVector=importanceSampleGGX(xi,roughness,normal); vec3 light=normalize(2.0*dot(view,halfVector)*halfVector-view); float nDotL=max(light.z,0.0),nDotH=max(halfVector.z,0.0),vDotH=max(dot(view,halfVector),0.0); if(nDotL>0.0){float visibility=geometrySmith(nDotV,nDotL,roughness)*vDotH/max(nDotH*nDotV,0.00001); float fresnel=pow(1.0-vDotH,5.0); a+=(1.0-fresnel)*visibility; b+=fresnel*visibility;}}
+    vec2 uv = gl_FragCoord.xy / @Uniform(OUTPUT_SIZE);
+    float nDotV = clamp(uv.x, 0.0001, 1.0);
+    float roughness = clamp(uv.y, 0.0, 1.0);
+    vec3 view = vec3(sqrt(max(1.0 - nDotV * nDotV, 0.0)), 0.0, nDotV);
+    vec3 normal = vec3(0.0, 0.0, 1.0); float a = 0.0, b = 0.0;
+    int samples = clamp(@Uniform(SAMPLE_COUNT), 1, 1024);
+    for (int index = 0; index < 1024; ++index)
+    {
+        if (index >= samples) break;
+        vec2 xi = vec2((float(index) + 0.5) / float(samples), radicalInverse(uint(index)));
+        vec3 halfVector = importanceSampleGGX(xi, roughness, normal);
+        vec3 light = normalize(2.0 * dot(view, halfVector) * halfVector - view);
+        float nDotL = max(light.z, 0.0), nDotH = max(halfVector.z, 0.0), vDotH = max(dot(view, halfVector), 0.0);
+        if (nDotL > 0.0)
+        {
+            float visibility = geometrySmith(nDotV, nDotL, roughness) * vDotH / max(nDotH * nDotV, 0.00001);
+            float fresnel = pow(1.0 - vDotH, 5.0);
+            a += (1.0 - fresnel) * visibility; b += fresnel * visibility;
+        }
+    }
     @Out(vec4 COLOUR)=vec4(a/float(samples),b/float(samples),0.0,1.0);
 }
 )";

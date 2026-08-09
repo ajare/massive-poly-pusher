@@ -5108,6 +5108,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				else if (value.kind == PbrPipelineResourceKind::Texture)
 				{
 					text(definition, "filename", "Image file");
+					ImGui::SameLine();
+					if (ImGui::Button("Browse image"))
+						if (auto selected = mpp::app::openImageFileDialog(window.getWindow(), "Select texture image"))
+						{
+							definition.setEntryValue("filename", *selected);
+							changed = true;
+						}
 					choice(definition, "target", "Target", {"1D", "2D", "3D", "CUBEMAP"});
 					text(definition, "internalFormat", "Internal format");
 					choice(definition, "colourSpace", "Colour space", {"LINEAR", "SRGB"});
