@@ -44,7 +44,7 @@ A PBR pipeline declares one or more named outputs. Omitted settings inherit the 
 </Outputs>
 ```
 
-Output values accept `inherit` in addition to the corresponding global values. An explicit `off` or `false` overrides an enabled global default. In PipelineEditor, select a presentation image under **Pipeline Hierarchy > Images** and use the four Inspector combos to author these values; a change immediately regenerates the preview and participates in undo/redo. Outputs in one pipeline must resolve to identical MSAA, SSAA, and TAA settings because they share rasterization, dimensions, and jitter, so the editor propagates those three selections to all outputs. FXAA may vary per output.
+Output values accept `inherit` in addition to the corresponding global values. An explicit `off` or `false` overrides an enabled global default. In PipelineEditor, use the toolbar's **Global AA** combos to set all named presentation outputs together, or select a presentation image under **Pipeline Hierarchy > Images** and use the four Inspector combos; a change immediately regenerates the preview and participates in undo/redo. Outputs in one pipeline must resolve to identical MSAA, SSAA, and TAA settings because they share rasterization, dimensions, and jitter, so the editor propagates those three selections to all outputs. FXAA may vary per output.
 
 Legacy graph-image `<samples>` elements and public render-texture sample settings are rejected. Move multisampling to the named output's `<AntiAliasing>` block.
 
