@@ -271,6 +271,47 @@ void main()
 }
 )";
 
+const std::string FragmentShaderPrefilteredSpecularTemplate =
+R"(
+@@Version
+
+@@Uniform(int FACE);
+@@Uniform(vec2 OUTPUT_SIZE);
+@@Uniform(float ROUGHNESS);
+@@Uniform(float SOURCE_RESOLUTION);
+@@Uniform(int SAMPLE_COUNT);
+@@Texture(samplerCube ENVIRONMENT);
+
+vec3 faceDirection(vec2 pixel)
+{
+    float u = pixel.x * 2.0 - 1.0; float v = pixel.y * 2.0 - 1.0;
+    if (@Uniform(FACE) == 0) return normalize(vec3( 1.0, -v, -u));
+    if (@Uniform(FACE) == 1) return normalize(vec3(-1.0, -v,  u));
+    if (@Uniform(FACE) == 2) return normalize(vec3( u,  1.0,  v));
+    if (@Uniform(FACE) == 3) return normalize(vec3( u, -1.0, -v));
+    if (@Uniform(FACE) == 4) return normalize(vec3( u, -v,  1.0));
+    return normalize(vec3(-u, -v, -1.0));
+}
+float radicalInverse(uint value)
+{
+    value=(value<<16u)|(value>>16u); value=((value&0x55555555u)<<1u)|((value&0xAAAAAAAAu)>>1u); value=((value&0x33333333u)<<2u)|((value&0xCCCCCCCCu)>>2u); value=((value&0x0F0F0F0Fu)<<4u)|((value&0xF0F0F0F0u)>>4u); value=((value&0x00FF00FFu)<<8u)|((value&0xFF00FF00u)>>8u); return float(value)*2.3283064365386963e-10;
+}
+vec3 importanceSampleGGX(vec2 xi, float roughness, vec3 normal)
+{
+    float a=roughness*roughness, a2=a*a; float phi=6.28318530718*xi.x;
+    float cosTheta=sqrt((1.0-xi.y)/max(1.0+(a2-1.0)*xi.y,0.00001)); float sinTheta=sqrt(max(1.0-cosTheta*cosTheta,0.0));
+    vec3 halfVector=vec3(cos(phi)*sinTheta,sin(phi)*sinTheta,cosTheta);
+    vec3 up=abs(normal.y)<0.999?vec3(0.0,1.0,0.0):vec3(1.0,0.0,0.0); vec3 tangent=normalize(cross(up,normal)); vec3 bitangent=cross(normal,tangent);
+    return normalize(tangent*halfVector.x+bitangent*halfVector.y+normal*halfVector.z);
+}
+void main()
+{
+    vec3 normal=faceDirection(gl_FragCoord.xy/@Uniform(OUTPUT_SIZE)); vec3 view=normal; vec3 sum=vec3(0.0); float weight=0.0; float roughness=clamp(@Uniform(ROUGHNESS),0.0,1.0); int samples=clamp(@Uniform(SAMPLE_COUNT),1,1024);
+    for(int index=0;index<1024;++index){if(index>=samples)break; vec2 xi=vec2((float(index)+0.5)/float(samples),radicalInverse(uint(index))); vec3 halfVector=importanceSampleGGX(xi,roughness,normal); vec3 light=normalize(2.0*dot(view,halfVector)*halfVector-view); float nDotL=max(dot(normal,light),0.0); if(nDotL>0.0){float nDotH=max(dot(normal,halfVector),0.0), vDotH=max(dot(view,halfVector),0.0); float a=roughness*roughness,a2=a*a,denominator=nDotH*nDotH*(a2-1.0)+1.0; float distribution=a2/max(3.14159265359*denominator*denominator,0.00001); float pdf=max(distribution*nDotH/max(4.0*vDotH,0.00001),0.00001); float texelSolidAngle=4.0*3.14159265359/(6.0*@Uniform(SOURCE_RESOLUTION)*@Uniform(SOURCE_RESOLUTION)); float sampleSolidAngle=1.0/(float(samples)*pdf); float lod=roughness<=0.00001?0.0:max(0.0,0.5*log2(sampleSolidAngle/texelSolidAngle)); sum+=textureLod(@Texture(ENVIRONMENT),light,lod).rgb*nDotL; weight+=nDotL;}}
+    @Out(vec4 COLOUR)=vec4(sum/max(weight,0.00001),1.0);
+}
+)";
+
 // Diagnostic graph-image visualization used by PipelineEditor and GPU tools.
 const std::string FragmentShaderTextureDiagnosticTemplate =
 R"(
