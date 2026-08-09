@@ -126,7 +126,7 @@ namespace pipeline_editor
 		if (!value.valid || viewport.x <= padding * 2 || viewport.y <= padding * 2) return result;
 		auto size = glm::max(value.maximum - value.minimum, glm::vec2(1.0f));
 		result.zoom = 1.0f;
-		result.pan = (viewport - size) * 0.5f - value.minimum;
+		result.pan = {padding - value.minimum.x, (viewport.y - size.y) * 0.5f - value.minimum.y};
 		return result;
 	}
 
