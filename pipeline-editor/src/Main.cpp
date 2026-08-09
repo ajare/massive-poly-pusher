@@ -1996,9 +1996,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		};
 		auto forceWorkingPreviewRebuild = [&]()
 		{
-			// installPreview always creates a distinct generation. Keep the active
-			// generation renderable until that candidate succeeds; clearing it here
-			// leaves the frame loop with no pipeline during asynchronous validation.
+			// installPreview keeps the active generation renderable until its
+			// replacement succeeds. A forced action additionally invalidates derived
+			// HDR IBL outputs so changed EXR sources cannot remain cached.
+			renderSystem.getIblEnvironmentCache().clear();
 			queueWorkingPreview("Forced preview resource rebuild");
 		};
 		auto regenerateAntiAliasingOnly = [&]()
