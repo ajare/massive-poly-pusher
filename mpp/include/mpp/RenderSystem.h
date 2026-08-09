@@ -348,6 +348,7 @@ namespace mpp
 		void renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel);
 		void validateDiffuseIrradianceSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t sampleCount) const;
 		void renderDiffuseIrradianceFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t sampleCount);
+		void validatePrefilteredSpecularSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount) const;
 		void renderSsaaLanczos(RenderTexture* source, RenderTargetPtr const& destination, glm::vec2 const& direction);
 		void renderTaa(RenderTexture* currentColour, RenderTexture* currentDepth, RenderTexture* historyColour, RenderTexture* historyDepth, RenderTargetPtr const& destination, glm::mat4 const& inverseCurrentViewProjection, glm::mat4 const& previousViewProjection);
 		void renderFxaa(RenderTexture* source, RenderTargetPtr const& destination);
@@ -433,6 +434,9 @@ namespace mpp
 		// Generates an unpublished single-mip diffuse irradiance cubemap. Cache
 		// lookup/publication remains the responsibility of pipeline runtime code.
 		RenderTargetPtr generateDiffuseIrradiance(Texture* environmentCubemap, std::string const& generatedName, uint32_t faceSize, uint32_t sampleCount = 1024);
+		// Generates an unpublished GGX-prefiltered specular cubemap. Mip zero is
+		// roughness zero; final mip is roughness one.
+		RenderTargetPtr generatePrefilteredSpecular(Texture* environmentCubemap, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels, uint32_t sampleCount = 1024);
 
 		void flushVertexBuffers();
 

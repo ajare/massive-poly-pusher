@@ -299,7 +299,9 @@ GPU coverage uses reduced-sample fixtures to verify neutral RGBA16F HDR preserva
 
 ## Phase 7 — Specular prefilter generation
 
-### 7.1 Runtime API and settings
+### 7.1 Runtime API and settings — Complete
+
+Declared `generatePrefilteredSpecular` and added its pre-allocation validator for loaded floating-point cubemap sources, non-zero settings, and at least two roughness mips. The all-mip implementation follows in Phase 7.5.
 
 1. Add a renderer-owned API:
 
