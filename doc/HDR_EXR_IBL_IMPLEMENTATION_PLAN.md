@@ -162,14 +162,55 @@ v = 0.5 - latitude / pi
 
 The fragment shader uses output pixel coordinates/face size rather than a scene camera, avoiding matrix-orientation ambiguity.
 
-### Implementation and tests
+### 5.1 Conversion shader source — Complete
 
-1. Add the renderer-owned fullscreen conversion program with `EQUIRECTANGULAR`, `FACE`, and `OUTPUT_SIZE` uniforms.
-2. Implement the API above, rendering all six mip-zero faces through `CubemapFaceRenderScope`.
-3. Use linear floating-point cubemap targets and clamp-to-edge sampling; do not generate/filter unwritten mips.
-4. Add GPU readback tests using a directional HDR fixture, including seam/orientation checks and values above 1.0.
+1. Add a renderer-owned fullscreen fragment shader with `EQUIRECTANGULAR`, `FACE`, and `OUTPUT_SIZE` uniforms.
+2. Implement the documented face-direction and longitude/latitude equations in shader code.
+3. Keep the shader independent of scene camera matrices; pixel coordinate and output size define each face-local direction.
 
-**Acceptance:** The API returns a complete cubemap whose six faces sample the documented panorama directions without seams or upside-down orientation.
+**Acceptance:** The shader source compiles as a parser program and exposes the required uniforms.
+
+### 5.2 Core-program lifecycle
+
+1. Add a dedicated `ResourcePtr` member to `RenderSystem` for the conversion program.
+2. Create/load it with the existing renderer-owned fullscreen/bloom program factory during core-resource setup.
+3. Register it for normal core-resource destruction and give it a stable internal resource name.
+
+**Acceptance:** An initialized renderer owns a loaded conversion program without per-conversion shader compilation.
+
+### 5.3 Source texture validation
+
+1. Add read-only `Texture` accessors needed to inspect texture target and internal format without binding side effects.
+2. Validate non-null, loaded `GL_TEXTURE_2D`, linear floating-point input and reject cubemaps, LDR, integer, and sRGB sources with explicit errors.
+3. Validate `faceSize`, mip count, and generated cache resource name before allocating output.
+
+**Acceptance:** Invalid source/configuration fails before cubemap allocation or render-state mutation.
+
+### 5.4 Single-face conversion helper
+
+1. Add a private `RenderSystem` helper accepting source texture, output `RenderTexture`, face index, and mip level.
+2. Enter `CubemapFaceRenderScope`, bind the source to unit zero, set `EQUIRECTANGULAR`, `FACE`, and `OUTPUT_SIZE`, and submit the existing fullscreen quad.
+3. Keep render-info accounting consistent with existing fullscreen operations.
+4. Verify face attachment and scoped restoration on success and exceptions.
+
+**Acceptance:** One requested cubemap face/mip is populated without leaking renderer or GL state.
+
+### 5.5 Public six-face conversion API
+
+1. Implement `convertEquirectangularToCubemap(...)` using validation, `createIblCubemap`, and six calls to the single-face helper at mip zero.
+2. Do not generate/filter unwritten mips; return a complete mip-zero cubemap only.
+3. On failure, release the candidate resource and throw before it is inserted into any IBL cache.
+
+**Acceptance:** The API returns a complete six-face floating-point cubemap with no cache publication side effects.
+
+### 5.6 GPU orientation and HDR tests
+
+1. Add a small directional floating-point equirectangular fixture with distinct colours for cardinal directions and values above 1.0.
+2. Convert it and read each cubemap face back, verifying the documented face convention.
+3. Test longitudinal seam continuity near `u = 0/1` and verify no vertical inversion.
+4. Verify invalid sources fail without changing active framebuffer/viewport/scissor state.
+
+**Acceptance:** The API returns a complete cubemap whose faces sample the documented panorama directions without seams or upside-down orientation.
 
 ## Phase 6 — Diffuse irradiance convolution
 

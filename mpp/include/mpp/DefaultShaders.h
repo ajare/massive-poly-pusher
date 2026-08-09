@@ -188,6 +188,33 @@ void main()
 }
 )";
 
+const std::string FragmentShaderEquirectangularToCubemapTemplate =
+R"(
+@@Version
+
+@@Uniform(int FACE);
+@@Uniform(vec2 OUTPUT_SIZE);
+@@Texture(sampler2D EQUIRECTANGULAR);
+
+void main()
+{
+    vec2 pixel = gl_FragCoord.xy / @Uniform(OUTPUT_SIZE);
+    float u = pixel.x * 2.0 - 1.0;
+    float v = pixel.y * 2.0 - 1.0;
+    vec3 direction;
+    if (@Uniform(FACE) == 0) direction = vec3( 1.0, -v, -u);
+    else if (@Uniform(FACE) == 1) direction = vec3(-1.0, -v,  u);
+    else if (@Uniform(FACE) == 2) direction = vec3( u,  1.0,  v);
+    else if (@Uniform(FACE) == 3) direction = vec3( u, -1.0, -v);
+    else if (@Uniform(FACE) == 4) direction = vec3( u, -v,  1.0);
+    else direction = vec3(-u, -v, -1.0);
+    direction = normalize(direction);
+    vec2 uv = vec2(atan(direction.z, direction.x) / (2.0 * 3.14159265359) + 0.5,
+                   0.5 - asin(clamp(direction.y, -1.0, 1.0)) / 3.14159265359);
+    @Out(vec4 COLOUR) = texture(@Texture(EQUIRECTANGULAR), uv);
+}
+)";
+
 // Diagnostic graph-image visualization used by PipelineEditor and GPU tools.
 const std::string FragmentShaderTextureDiagnosticTemplate =
 R"(
