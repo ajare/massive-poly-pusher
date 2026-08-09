@@ -781,6 +781,8 @@ namespace mpp
 		addCoreResource(mTaaProgram, true);
 		mFxaaProgram = createBloomProgram("__mpp_p2d_fxaa__", FragmentShaderFxaaTemplate);
 		addCoreResource(mFxaaProgram, true);
+		mEquirectangularToCubemapProgram = createBloomProgram("__mpp_ibl_equirectangular_to_cubemap__", FragmentShaderEquirectangularToCubemapTemplate);
+		addCoreResource(mEquirectangularToCubemapProgram, true);
 
 		// Internal text programs
 		{
