@@ -5362,6 +5362,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					}
 				};
 				field("Environment binding", value.binding);
+				ImGui::SeparatorText("HDR IBL Environment");
+				field("HDR equirectangular EXR", value.hdrEquirectangular);
+				int environmentResolution = (int)value.environmentResolution, irradianceResolution = (int)value.irradianceResolution, prefilterResolution = (int)value.prefilterResolution;
+				if (ImGui::InputInt("Environment cubemap resolution", &environmentResolution)) { value.environmentResolution = (uint32_t)std::max(1, environmentResolution); changed = true; }
+				if (ImGui::InputInt("Irradiance cubemap resolution", &irradianceResolution)) { value.irradianceResolution = (uint32_t)std::max(1, irradianceResolution); changed = true; }
+				if (ImGui::InputInt("Prefilter cubemap resolution", &prefilterResolution)) { value.prefilterResolution = (uint32_t)std::max(1, prefilterResolution); changed = true; }
+				ImGui::TextDisabled("EXR source is linear HDR equirectangular; derived cubemaps are renderer-generated.");
 				field("Irradiance texture", value.irradiance);
 				field("Prefiltered specular", value.prefilteredSpecular);
 				field("BRDF LUT", value.brdfLut);
