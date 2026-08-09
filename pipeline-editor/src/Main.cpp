@@ -1590,6 +1590,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		std::string gpuFrameTimePipeline;
 		std::string operationErrorTitle, operationErrorMessage;
 		bool operationMessageIsSuccess = false, openOperationError = !startupError.empty();
+		std::string gltfImportPath;
+		std::vector<std::string> gltfImportMaterials;
+		std::vector<bool> gltfImportSelected;
+		bool openGltfImportDialog = false;
 		if (openOperationError)
 		{
 			operationErrorTitle = startupPath.empty() ? "Startup Warning" : "Open Failed";
@@ -3209,12 +3213,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (auto selected = mpp::app::openGltfFileDialog(window.getWindow(), "Inspect glTF import"))
 					try
 					{
-						auto imported = resource_parsers::GltfPbrMaterialLoader::loadFirstMaterial(*selected);
-						operationErrorTitle = "glTF Import";
-						operationErrorMessage = "Found material 0: " + imported.materialName + ". Material selection/import is provided by the next phase.";
-						operationMessageIsSuccess = true; openOperationError = true;
+						gltfImportPath = *selected;
+						gltfImportMaterials = resource_parsers::GltfPbrMaterialLoader::listMaterialNames(gltfImportPath);
+						gltfImportSelected.assign(gltfImportMaterials.size(), false);
+						openGltfImportDialog = true;
 					}
 					catch (std::exception const& error) { operationErrorTitle = "glTF Import Failed"; operationErrorMessage = error.what(); operationMessageIsSuccess = false; openOperationError = true; }
+			}
+			if (openGltfImportDialog) { ImGui::OpenPopup("Import glTF Items"); openGltfImportDialog = false; }
+			if (ImGui::BeginPopupModal("Import glTF Items", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+			{
+				ImGui::TextUnformatted(gltfImportPath.c_str());
+				ImGui::SeparatorText("Materials");
+				for (size_t item = 0; item < gltfImportMaterials.size(); ++item) { bool selected = gltfImportSelected[item]; if (ImGui::Checkbox(gltfImportMaterials[item].c_str(), &selected)) gltfImportSelected[item] = selected; }
+				ImGui::SeparatorText("Other glTF items");
+				ImGui::TextDisabled("Meshes, nodes, scenes, cameras, lights, skins, and animations — Not supported yet");
+				bool any = std::any_of(gltfImportSelected.begin(), gltfImportSelected.end(), [](bool selected) { return selected; });
+				if (ImGui::Button("Import", ImVec2(120, 0)) && any && openDocument)
+				{
+					try
+					{
+						auto before = clonePipeline(openDocument); std::string assigned;
+						for (size_t item = 0; item < gltfImportMaterials.size(); ++item) if (gltfImportSelected[item])
+						{
+							auto loaded = resource_parsers::GltfPbrMaterialLoader::loadMaterialByName(gltfImportPath, gltfImportMaterials[item]);
+							PbrPipelineResourceDocument material{loaded.materialName, PbrPipelineResourceKind::PbrMaterial, std::move(loaded.definition)};
+							auto base = material.name; unsigned suffix = 2; auto exists = [&](std::string const& name) { return std::any_of(openDocument->localResources.begin(), openDocument->localResources.end(), [&](auto const& value) { return value.name == name; }); };
+							while (exists(material.name)) material.name = base + "." + std::to_string(suffix++); material.definition.setEntryValue("name", material.name);
+							std::string binding = "Imported." + material.name; openDocument->localResources.push_back(std::move(material)); openDocument->previewBindings.push_back({binding, openDocument->localResources.back().name}); if (assigned.empty()) assigned = binding;
+						}
+						if (openScene && selectedModel >= 0 && (size_t)selectedModel < openScene->models.size() && !assigned.empty()) openScene->models[(size_t)selectedModel].materialBinding = assigned;
+						auto after = clonePipeline(openDocument); pipelineCommands.execute(std::make_unique<PipelineSnapshotCommand>("Import glTF Materials", &openDocument, before, after)); pipelineDirty = true; documentChangedSincePreview = true; ImGui::CloseCurrentPopup();
+					}
+					catch (std::exception const& error) { operationErrorTitle = "glTF Import Failed"; operationErrorMessage = error.what(); openOperationError = true; }
+				}
+				ImGui::SameLine(); if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+				ImGui::EndPopup();
 			}
 			if (requestOpen && confirmDiscardWorkspace())
 				if (auto path = mpp::app::openXmlFileDialog(window.getWindow(), "Open PBR Pipeline"))
