@@ -190,7 +190,9 @@ Added read-only texture target/internal-format accessors and the renderer valida
 
 **Acceptance:** Invalid source/configuration fails before cubemap allocation or render-state mutation.
 
-### 5.4 Single-face conversion helper
+### 5.4 Single-face conversion helper — Complete
+
+Added the private `RenderSystem::renderEquirectangularCubemapFace` helper. It selects the face/mip through the scoped target API, binds the HDR source, sets conversion uniforms, draws the renderer-owned fullscreen mesh, accounts for the submission, and restores matrix/target state on failure.
 
 1. Add a private `RenderSystem` helper accepting source texture, output `RenderTexture`, face index, and mip level.
 2. Enter `CubemapFaceRenderScope`, bind the source to unit zero, set `EQUIRECTANGULAR`, `FACE`, and `OUTPUT_SIZE`, and submit the existing fullscreen quad.
