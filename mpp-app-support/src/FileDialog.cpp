@@ -11,7 +11,7 @@ namespace mpp::app
 {
 	namespace
 	{
-		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save, bool package=false, bool executable=false, bool image=false, bool gltf=false, bool folder=false)
+		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save, bool package=false, bool executable=false, bool image=false, bool gltf=false, bool folder=false, bool hdrExr=false)
 		{
 			HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			IFileDialog* dialog = nullptr;
@@ -27,7 +27,7 @@ namespace mpp::app
 			else
 			{
 				COMDLG_FILTERSPEC filters[] = {
-					{ executable ? L"Executable" : package ? L"MassivePolyPusher Package" : image ? L"Image files" : gltf ? L"glTF 2.0" : L"MassivePolyPusher XML", executable ? L"*.exe" : package ? L"*.mpppackage" : image ? L"*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.gif;*.dds;*.hdr" : gltf ? L"*.gltf;*.glb" : L"*.xml" },
+					{ executable ? L"Executable" : package ? L"MassivePolyPusher Package" : hdrExr ? L"OpenEXR HDR environment" : image ? L"Image files" : gltf ? L"glTF 2.0" : L"MassivePolyPusher XML", executable ? L"*.exe" : package ? L"*.mpppackage" : hdrExr ? L"*.exr" : image ? L"*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.gif;*.dds;*.hdr" : gltf ? L"*.gltf;*.glb" : L"*.xml" },
 					{ L"All files", L"*.*" }
 				};
 				dialog->SetFileTypes(2, filters);
@@ -49,6 +49,7 @@ namespace mpp::app
 	optional<string> savePackageFileDialog(SDL_Window* owner, string const& title, string const& defaultName) { return show(owner, title, defaultName, true, true); }
 	optional<string> openExecutableFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, true); }
 	optional<string> openImageFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, true); }
+	optional<string> openHdrExrFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, false, false, false, true); }
 	optional<string> openGltfFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, false, true); }
 	optional<string> selectFolderDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false, false, false, false, false, true); }
 }
