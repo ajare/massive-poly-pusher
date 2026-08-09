@@ -6518,14 +6518,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					{
 						auto pipeline = renderSystem.getRenderPipeline(activePipeline);
 						auto snapshot = pipeline->getLastFlowSnapshot();
-						if (!snapshot || snapshot->actualPassOrder.empty() ||
-						    snapshot->actualPassOrder.size() != pipeline->getLastGraphExecutionOrder().size())
+						// A pipeline may legitimately author no passes; the Empty
+						// starting template does. Telemetry must still be published
+						// and internally coherent, but pass- and batch-derived
+						// invariants are vacuous for such a graph and asserting them
+						// would reject a valid pipeline. Derive the expectations from
+						// what the document actually declares instead.
+						auto const& smokeGraph = *activePreviewDocument->graph;
+						size_t expectedPasses = 0;
+						bool expectsBatches = false;
+						for (uint32_t pass = 0; pass < smokeGraph.getPassCount(); ++pass)
+						{
+							auto const info = smokeGraph.getPassInfo({pass});
+							if (!info.enabled) continue;
+							++expectedPasses;
+							if (info.type == GraphPassType::Scene) expectsBatches = true;
+						}
+						expectsBatches = expectsBatches && openScene && !openScene->models.empty();
+						if (!snapshot)
 							throw std::runtime_error("Process-flow phase-one snapshot was not published.");
+						// Every enabled pass must have executed, which is a stricter
+						// check than merely requiring a non-empty order.
+						if (snapshot->actualPassOrder.size() != expectedPasses ||
+						    snapshot->actualPassOrder.size() != pipeline->getLastGraphExecutionOrder().size())
+							throw std::runtime_error("Process-flow snapshot pass count differs from the enabled graph passes.");
 						for (size_t pass = 0; pass < snapshot->actualPassOrder.size(); ++pass)
 							if (snapshot->actualPassOrder[pass].id != pipeline->getLastGraphExecutionOrder()[pass].id)
 								throw std::runtime_error("Process-flow snapshot order differs from actual execution.");
-						if (snapshot->batches.empty() || snapshot->outputPlans.empty())
-							throw std::runtime_error("Process-flow batch/output telemetry was not published.");
+						if (expectsBatches && snapshot->batches.empty())
+							throw std::runtime_error("Process-flow batch telemetry was not published.");
+						if (!expectsBatches && !snapshot->batches.empty())
+							throw std::runtime_error("Process-flow reported batches for a pipeline that draws no geometry.");
+						if (snapshot->outputPlans.empty())
+							throw std::runtime_error("Process-flow output telemetry was not published.");
 						for (auto const& batch : snapshot->batches)
 							if (!batch.parentPass.isValid() || !batch.sceneObject || batch.meshName.empty() ||
 							    batch.materialName.empty() || batch.programName.empty() || batch.count == 0)
@@ -6618,7 +6643,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						    (uint32_t)ProcessFlowResourceCategory::FxaaTargets;
 						auto smokeFlowModel = processFlowBuilder.build(smokeFlowInput);
 						processFlowLayout.apply(smokeFlowModel);
-						if (!smokeFlowModel.diagnostics.empty() || smokeFlowModel.nodes.empty() || smokeFlowModel.edges.empty() ||
+						// A pass-less graph still produces import/output/presentation
+						// nodes, but nothing has to connect them, so edges are only
+						// required once the graph actually declares work.
+						if (!smokeFlowModel.diagnostics.empty() || smokeFlowModel.nodes.empty() ||
+						    (expectedPasses > 0 && smokeFlowModel.edges.empty()) ||
 						    std::accumulate(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), size_t{0}, [](size_t count, auto const& node)
 						                    { return count + ((node.kind == ProcessFlowNodeKind::BatchSubmission ||
 						                                       node.kind == ProcessFlowNodeKind::BatchGroup) ? node.submissionCount : 0); }) != snapshot->batches.size() ||
