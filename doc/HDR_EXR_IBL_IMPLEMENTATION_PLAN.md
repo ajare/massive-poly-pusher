@@ -396,7 +396,9 @@ Added `FragmentShaderPbrBrdfIntegrationTemplate` with deterministic Hammersley s
 
 **Acceptance:** Renderer can generate a finite floating-point BRDF LUT without scene resources.
 
-### 8.3 Core lifecycle and generation
+### 8.3 Core lifecycle and generation — Complete
+
+Added `__mpp_ibl_brdf_integration__` core program and lazy `getOrCreatePbrBrdfIntegrationLut()` generation. The LUT is generated once into a 512x512 `RG16F` target, cached by shared ownership for renderer lifetime, and restores render target/viewport/scissor/draw/read state on success or failure.
 
 1. Create/load the renderer-owned program during core initialization.
 2. Lazily generate the LUT on first request, preserving target/viewport/scissor/draw/read-buffer state.
