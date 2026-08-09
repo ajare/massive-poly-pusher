@@ -1595,6 +1595,27 @@ namespace mpp
 			THROW_MPP("Diffuse irradiance source must use a linear floating-point RGB/RGBA format.", __LINE__, __FILE__, __func__);
 	}
 
+	void RenderSystem::renderPrefilteredSpecularFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel, float roughness, uint32_t sampleCount)
+	{
+		auto target = dynamic_cast<RenderTexture*>(destination.get());
+		if (!source || !target || source == target || target->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || mipLevel >= target->getMipLevels())
+			THROW_MPP("Specular prefilter requires distinct cubemap source, destination, and valid mip.", __LINE__, __FILE__, __func__);
+		CubemapFaceRenderScope scope(*this, destination, face, mipLevel);
+		pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
+		try
+		{
+			setProjection2dOrthographic(); resetTransform(); flushVertexBuffers();
+			auto program = static_cast<Program*>(mPrefilteredSpecularProgram.get()); setUsedProgram(mPrefilteredSpecularProgram);
+			GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+			GL_CHECK(glUniform1i(program->getUniformId("ENVIRONMENT"), 0)); GL_CHECK(glUniform1i(program->getUniformId("FACE"), (GLint)face)); GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), (GLint)sampleCount));
+			GL_CHECK(glUniform1f(program->getUniformId("ROUGHNESS"), glm::clamp(roughness, 0.0f, 1.0f))); GL_CHECK(glUniform1f(program->getUniformId("SOURCE_RESOLUTION"), (float)source->getWidth()));
+			auto dimension = (float)std::max<size_t>(1, target->getWidth() >> mipLevel); GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"), dimension, dimension));
+			source->bind(0); auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false);
+			mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
+		}
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); throw; }
+	}
+
 	void RenderSystem::renderDiffuseIrradianceFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t sampleCount)
 	{
 		auto target = dynamic_cast<RenderTexture*>(destination.get());
