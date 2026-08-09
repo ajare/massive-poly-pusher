@@ -3992,6 +3992,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						}
 					ImGui::EndCombo();
 				}
+				if (info.type == GraphPassType::Scene && ImGui::CollapsingHeader("Scene Colour Attachments", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					bool emissiveAttachment = false;
+					for (size_t output = 0; output < info.colourOutputs.size(); ++output)
+					{
+						auto image = openDocument->graph->getImageInfo(info.colourOutputs[output].image);
+						ImGui::BulletText("Colour %zu: %s (mip %u)", output, image.name.c_str(), info.colourOutputs[output].mipLevel);
+						if (output == 1 && image.name == "SceneEmissive") emissiveAttachment = true;
+					}
+					if (openDocument->bloom.enabled)
+					{
+						if (emissiveAttachment) ImGui::TextDisabled("Bloom MRT: SceneEmissive is attached at colour output 1.");
+						else ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "Bloom needs SceneEmissive at colour output 1 to receive PBR emissive output.");
+					}
+				}
 				auto metadata = authoringRegistry.findMetadata(info.callbackFactory);
 				if (metadata)
 				{
