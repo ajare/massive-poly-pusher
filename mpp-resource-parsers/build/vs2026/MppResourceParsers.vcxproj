@@ -114,6 +114,7 @@
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileBasicMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FilePbrMaterialStream.h" />
+    <ClInclude Include="..\..\include\mpp\resource-parsers\FileGltfPbrMaterialStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\GltfPbrMaterialLoader.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FilePbrPipelineStream.h" />
     <ClInclude Include="..\..\include\mpp\resource-parsers\FileRenderGraphStream.h" />
@@ -146,6 +147,7 @@
     <ClCompile Include="..\..\src\FileBasicMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FileMaterialStream.cpp" />
     <ClCompile Include="..\..\src\FilePbrMaterialStream.cpp" />
+    <ClCompile Include="..\..\src\FileGltfPbrMaterialStream.cpp" />
     <ClCompile Include="..\..\src\GltfPbrMaterialLoader.cpp" />
     <ClCompile Include="..\..\src\FilePbrPipelineStream.cpp" />
     <ClCompile Include="..\..\src\FileRenderGraphStream.cpp" />
