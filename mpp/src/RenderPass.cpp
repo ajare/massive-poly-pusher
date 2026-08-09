@@ -61,6 +61,7 @@ namespace mpp
 				model->getTransform(),
 				camera);
 
+			instance->setSourceSceneObject(model.get());
 			instance->setParams(model->getParams());
 
 			// Preserve the legacy Default blend behaviour for BasicMaterial. PBR

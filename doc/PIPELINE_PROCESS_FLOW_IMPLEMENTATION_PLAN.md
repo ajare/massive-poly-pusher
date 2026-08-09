@@ -2,8 +2,10 @@
 
 ## Implementation status
 
-- **Phase 1 complete**: public immutable flow snapshot contracts, opt-in `RenderPipeline` snapshot publication, stable runtime pipeline generations, authoritative last-successful compiled pass order retention in `RenderGraphExecutor`, PipelineEditor opt-in, and compiled-order/snapshot contract coverage.
-- Phase 1 snapshots intentionally contain pass order only. Batch submissions and physical events remain empty until phases 2 and 3.
+- **Phases 1–3 complete**: immutable snapshots now contain authoritative pass order, exact submitted batches, one ordered pass/batch/physical event stream, and copied immutable physical output plans.
+- Phase 2 propagates non-owning `SceneModel3d` identity through model/mesh instances, records every sorted `flushVertexBuffers()` submission without aggregation, and records direct shadow submissions under their active graph pass.
+- Phase 3 records actual MSAA colour/depth resolves at their execution points; enabled and disabled TAA, SSAA, FXAA, and presentation stages; bypass reasons; named-output identity; per-event physical inputs/outputs; and generation-safe output resource descriptors.
+- Telemetry remains render-thread-only, opt-in, exception-isolated, and transactionally published only after a complete frame.
 - Debug and Release renderer/DemoSuite GPU validation and PipelineEditor snapshot smoke validation pass, including the combined MSAA + TAA + SSAA + FXAA path.
 
 ## 1. Goal
@@ -509,15 +511,19 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
    - [x] Opt PipelineEditor preview generations into telemetry without adding UI ahead of phase 6.
    - [x] Test const snapshot publication contracts, event naming, disabled-pass filtering in actual order, executor order retention, and PipelineEditor snapshot publication.
 
-2. **Exact batch telemetry**
-   - Propagate source identity.
-   - Record every sorted submission under the active pass.
-   - Add renderer tests for order, identity, and duplicate submissions.
+2. **Exact batch telemetry — COMPLETE**
+   - [x] Propagate non-owning source identity from `SceneModel3d` through `ModelInstance` and `MeshInstance`.
+   - [x] Record every sorted `flushVertexBuffers()` submission immediately before `Mesh::render()`, including effective material, program, textures, primitive range, instance count, transparency, blend, cull, and wireframe state.
+   - [x] Record direct shadow-map mesh submissions under the active shadow graph pass.
+   - [x] Keep repeated identical submissions separate and preserve one global event sequence with pass begin/end boundaries.
+   - [x] Add recorder and PipelineEditor smoke coverage for duplicate retention, strict ordering, source identity, complete descriptors, and parent-pass association.
 
-3. **Physical output events/resources**
-   - Record resolves and AA/presentation stages.
-   - Expose immutable physical descriptors.
-   - Validate all combinations and disabled nodes.
+3. **Physical output events/resources — COMPLETE**
+   - [x] Record actual colour/depth MSAA resolves where multisampled graph targets are resolved.
+   - [x] Record enabled TAA, SSAA horizontal/vertical, FXAA, and presentation work in actual call order.
+   - [x] Emit disabled/bypassed stage descriptors with exact reasons and named-output identity.
+   - [x] Copy immutable `RenderPipelineOutputPlan` descriptors into each completed snapshot and attach named format/size/sample descriptors to every enabled physical event.
+   - [x] Validate default-disabled and combined MSAA + TAA + SSAA + FXAA stage combinations through renderer and PipelineEditor smoke coverage.
 
 4. **Editor model builder**
    - Combine authored graph, compiled order, live snapshot, bypass rules, dependencies, and output plans.
