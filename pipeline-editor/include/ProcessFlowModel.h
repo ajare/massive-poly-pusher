@@ -62,6 +62,8 @@ namespace pipeline_editor
 		std::string details;
 		std::vector<std::string> renderDocLabels;
 		std::vector<std::string> renderDocLabelSummaries;
+		std::vector<std::string> inputLabels;
+		std::vector<std::string> outputLabels;
 		ProcessFlowNodeKind kind{ ProcessFlowNodeKind::AuthoredPass };
 		ProcessFlowResourceCategory resourceCategory{ ProcessFlowResourceCategory::None };
 		uint64_t sequence{ 0 };

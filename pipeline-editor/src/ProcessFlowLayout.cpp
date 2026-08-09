@@ -17,12 +17,18 @@ namespace pipeline_editor
 			bool batch = node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup;
 			size_t labelCharacters = node.title.size();
 			for (auto const& label : node.renderDocLabelSummaries) labelCharacters = std::max(labelCharacters, label.size());
+			for (auto const& label : node.inputLabels) labelCharacters = std::max(labelCharacters, label.size());
+			for (auto const& label : node.outputLabels) labelCharacters = std::max(labelCharacters, label.size());
 			node.size.x = 3.0f * std::clamp(24.0f + 7.4f * (float)labelCharacters,
 			                                batch ? 245.0f : 235.0f, 360.0f);
 			float labelHeight = 72.0f * (float)node.renderDocLabels.size();
+			float passIoHeight = node.kind == ProcessFlowNodeKind::AuthoredPass
+			                         ? 24.0f * (float)(node.inputLabels.size() + node.outputLabels.size()) +
+			                               (!node.inputLabels.empty() && !node.outputLabels.empty() ? 8.0f : 0.0f)
+			                         : 0.0f;
 			node.size.y = batch && node.expanded
 			                  ? 90.0f + labelHeight + 24.0f * (float)std::max<size_t>(1, node.sceneObjectNames.size())
-			                  : 86.0f + labelHeight;
+			                  : 86.0f + labelHeight + passIoHeight;
 			if (node.mainSpine) spine.push_back(&node);
 			else if ((batch || node.kind == ProcessFlowNodeKind::GlState) && node.parentPassId >= 0) batches.push_back(&node);
 			else if (node.resourceCategory != ProcessFlowResourceCategory::None) resources.push_back(&node);

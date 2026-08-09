@@ -268,6 +268,23 @@ namespace pipeline_editor
 				float bodyY = 9.0f + 72.0f * (float)node.renderDocLabels.size();
 				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + bodyY * z}, IM_COL32_WHITE, node.title.c_str());
 				draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + (bodyY + 23) * z}, IM_COL32(215, 220, 230, 255), node.subtitle.c_str());
+				if (node.kind == ProcessFlowNodeKind::AuthoredPass)
+				{
+					float ioY = bodyY + 48.0f;
+					for (auto const& input : node.inputLabels)
+					{
+						draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, a.y + ioY * z}, IM_COL32(165, 220, 255, 255), input.c_str());
+						ioY += 24.0f;
+					}
+					if (!node.inputLabels.empty() && !node.outputLabels.empty()) ioY += 8.0f;
+					for (auto const& output : node.outputLabels)
+					{
+						float scale = bodyFontSize / ImGui::GetFontSize();
+						float width = ImGui::CalcTextSize(output.c_str()).x * scale;
+						draw->AddText(nullptr, bodyFontSize, {b.x - 11 * z - width, a.y + ioY * z}, IM_COL32(155, 245, 185, 255), output.c_str());
+						ioY += 24.0f;
+					}
+				}
 				if (node.orderWarning) draw->AddText(nullptr, bodyFontSize, {b.x - 22 * z, a.y + bodyY * z}, IM_COL32(255, 190, 55, 255), "!");
 				if (!node.enabled) draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, b.y - 22 * z}, IM_COL32(245, 180, 120, 255), "bypassed");
 				else if (!node.details.empty()) draw->AddText(nullptr, bodyFontSize, {a.x + 11 * z, b.y - 22 * z}, IM_COL32(185, 195, 205, 255), node.details.c_str());

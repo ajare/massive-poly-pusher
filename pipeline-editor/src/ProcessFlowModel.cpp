@@ -186,6 +186,28 @@ namespace pipeline_editor
 			node.subtitle = info.callbackFactory.empty() ? "Authored pass" : info.callbackFactory;
 			node.renderDocLabels.push_back(renderFlowPassRenderDocLabel({pass}, info.name, info.type));
 			node.renderDocLabelSummaries.push_back("Pass " + std::to_string(pass) + ": " + info.name);
+			auto imageLabel = [&](GraphImageHandle image)
+			{
+				auto imageInfo = input.graph->getImageInfo(image);
+				return imageInfo.name + ".v" + std::to_string(image.version);
+			};
+			std::unordered_set<std::string> samplerImages;
+			for (auto const& binding : info.samplerBindings)
+			{
+				auto image = imageLabel(binding.image);
+				node.inputLabels.push_back(binding.sampler + " <- " + image +
+				                          (binding.mipLevel == UINT32_MAX ? "" : " mip " + std::to_string(binding.mipLevel)));
+				samplerImages.insert(image);
+			}
+			for (auto image : info.sampledInputs)
+			{
+				auto label = imageLabel(image);
+				if (!samplerImages.contains(label)) node.inputLabels.push_back("Sampled <- " + label);
+			}
+			for (auto const& output : info.colourOutputs)
+				node.outputLabels.push_back("Colour -> " + imageLabel(output.image));
+			for (auto const& output : info.depthOutputs)
+				node.outputLabels.push_back("Depth -> " + imageLabel(output.image));
 			node.kind = ProcessFlowNodeKind::AuthoredPass;
 			node.passId = (int)pass;
 			node.authoredPosition = (int)pass;
@@ -609,6 +631,11 @@ namespace pipeline_editor
 			throw std::runtime_error("Process-flow GL state event did not split batch grouping.");
 		snapshot->physicalEvents = std::move(groupedEvents);
 		input.filters.stateNodes = false;
+		if (std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.inputLabels.empty(); }) ||
+		    std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.outputLabels.empty(); }))
+			throw std::runtime_error("Process-flow pass I/O labels were not populated.");
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
