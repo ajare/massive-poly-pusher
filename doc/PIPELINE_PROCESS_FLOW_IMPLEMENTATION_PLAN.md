@@ -29,10 +29,10 @@ The first version is read-only but its data model, selection model, and canvas i
 
 ## 2. Confirmed product decisions
 
-- A node represents an authored pass, every actual batch submission, an output-processing stage, or an optionally displayed resource.
-- Batch nodes represent the renderer's exact submitted batch state: mesh, material, layer/object source, program, textures, render state, primitive range, and instance count.
-- Repeated submissions are **not aggregated**. Every submission gets a separate node in actual submission order.
-- A batch node starts collapsed and can expand to list its participating scene objects.
+- A node represents an authored pass, a same-material batch group within one pass, an output-processing stage, or an optionally displayed resource.
+- Batch-group nodes retain the renderer's exact submitted records: mesh, material, layer/object source, program, textures, render state, primitive range, and instance count.
+- Telemetry submissions are never discarded or renderer-aggregated; submissions under the same pass and effective material are pooled into one visual batch-group node ordered by that material's first submission.
+- A batch-group node starts collapsed and can expand to list its participating scene objects.
 - Only batches actually submitted in the sampled frame are shown. Culled and otherwise omitted objects are not synthesized.
 - The main order is the dependency-compiled order actually used by `RenderGraphExecutor`.
 - A pass whose actual position differs from its authored position displays a warning icon with a tooltip containing both positions.
@@ -154,7 +154,7 @@ To retain scene-object identity through batching:
 4. PipelineEditor resolves pointers back to scene-document IDs using `SceneRuntime`'s active model map.
 5. The recorder never extends object lifetime; generation changes discard stale samples before UI resolution.
 
-Record state after sort and immediately before submission so transparent ordering and actual renderer state are represented correctly. Every loop iteration becomes a separate node, even when adjacent records have identical signatures.
+Record state after sort and immediately before submission so transparent ordering and actual renderer state are represented correctly. Every loop iteration remains an exact telemetry record; the editor model may visually pool contiguous records with the same parent pass and effective material.
 
 ### 4.4 Physical output-stage instrumentation
 
@@ -199,6 +199,7 @@ enum class ProcessFlowNodeKind
 {
     AuthoredPass,
     BatchSubmission,
+    BatchGroup,
     MsaaResolve,
     Taa,
     Ssaa,
@@ -277,7 +278,7 @@ Do not report a difference merely because batch or physical nodes are inserted b
 Build one ordered list:
 
 1. executed pass node;
-2. all batch submissions recorded inside that pass, in exact sorted submission order;
+2. one node per effective material, ordered by that material's first exact submission and retaining all submission records/counts;
 3. inter-pass resolve events at their actual position;
 4. next executed pass;
 5. TAA, SSAA, FXAA, and named presentation stages in actual output order.
@@ -463,7 +464,7 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
 - Authored versus compiled pass-order comparison.
 - Warning emitted only when positions differ.
 - Disabled/bypassed pass reason resolution.
-- Exact batch submissions remain separate even with identical signatures.
+- Exact telemetry submissions remain retained, while same-material records within a pass form one batch-group node with the correct submission count.
 - Batch order equals renderer submission order, including transparent sorting.
 - Resource dependency classification by colour/depth/shadow/history/import/output.
 - Direct dependency edges transform correctly when resource nodes are toggled.
@@ -535,7 +536,7 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
 4. **Editor model builder — COMPLETE**
    - [x] Combine authored graph, compiled order, live snapshot, bypass rules, dependencies, and output plans.
    - [x] Add stable generation-local IDs, selection targets, independent filters, typed resource edges, and diagnostics.
-   - [x] Preserve duplicate submissions and transform direct dependencies through optional resource nodes.
+   - [x] Preserve duplicate telemetry submissions, visually group same-material records per pass, and transform direct dependencies through optional resource nodes.
 
 5. **Automatic layout — COMPLETE**
    - [x] Build the vertical execution spine, disabled/resource columns, and named-output branches.
@@ -560,4 +561,4 @@ Keep `Main.cpp` integration narrow: construct the view controller, pass current 
 
 ## 15. Completion criteria
 
-The work is complete when the Process Flow tab can display a live Full pipeline frame from authored pass start through every submitted batch and renderer-owned final output stage; its solid spine matches actual execution; dependency edges identify data flow; authored-order differences and bypass reasons are explicit; optional resource categories work; selection synchronizes with the existing Inspector; navigation and automatic layout remain usable; snapshots update at 0.25-second intervals; and all renderer/editor/package regression tests pass in Debug and Release.
+The work is complete when the Process Flow tab can display a live Full pipeline frame from authored pass start through every submitted batch represented by its material group and every renderer-owned final output stage; its solid spine preserves actual pass/stage order and material-group first-submission order; dependency edges identify data flow; authored-order differences and bypass reasons are explicit; optional resource categories work; selection synchronizes with the existing Inspector; navigation and automatic layout remain usable; snapshots update at 0.25-second intervals; and all renderer/editor/package regression tests pass in Debug and Release.

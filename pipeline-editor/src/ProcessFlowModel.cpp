@@ -196,8 +196,9 @@ namespace pipeline_editor
 		{
 			std::unordered_map<uint64_t, RenderBatchSubmission const*> batches;
 			for (auto const& batch : input.snapshot->batches) batches[batch.sequence] = &batch;
-			for (auto const& event : input.snapshot->physicalEvents)
+			for (size_t eventIndex = 0; eventIndex < input.snapshot->physicalEvents.size(); ++eventIndex)
 			{
+				auto const& event = input.snapshot->physicalEvents[eventIndex];
 				if (event.kind == RenderFlowEventKind::PassBegin)
 				{
 					if (event.pass.id < passNodes.size()) { auto id = passNodes[event.pass.id]; model.findNode(id)->mainSpine = true; model.findNode(id)->sequence = event.sequence; spine.push_back(id); }
@@ -206,31 +207,52 @@ namespace pipeline_editor
 				if (event.kind == RenderFlowEventKind::PassEnd) continue;
 				if (event.kind == RenderFlowEventKind::BatchSubmission)
 				{
-					auto found = batches.find(event.sequence);
-					if (found == batches.end()) throw std::runtime_error("Flow event references a missing batch submission.");
-					auto const& batch = *found->second;
-					ProcessFlowNode node;
-					node.semanticKey = "batch:" + std::to_string(batch.sequence);
-					node.title = batch.meshName.empty() ? "Submitted batch" : batch.meshName;
-					node.subtitle = batch.materialName.empty() ? batch.programName : batch.materialName;
-					node.details = std::to_string(batch.count) + " primitives, " + std::to_string(batch.instanceCount) + " instance(s)";
-					node.kind = ProcessFlowNodeKind::BatchSubmission;
-					node.sequence = batch.sequence;
-					node.passId = (int)batch.parentPass.id;
-					node.materialName = batch.materialName;
-					if (batch.sceneObject)
+					std::vector<std::vector<RenderBatchSubmission const*>> materialGroups;
+					std::unordered_map<std::string, size_t> materialGroupIndices;
+					size_t scan = eventIndex;
+					while (scan < input.snapshot->physicalEvents.size() &&
+					       input.snapshot->physicalEvents[scan].kind == RenderFlowEventKind::BatchSubmission)
 					{
-						auto object = input.sceneObjects.find(batch.sceneObject);
-						if (object != input.sceneObjects.end())
-						{
-							node.sceneObjectIndices.push_back(object->second.index);
-							node.sceneObjectNames.push_back(object->second.name);
-						}
-						else node.details += " | source unavailable for this scene generation";
+						auto batch = batches.find(input.snapshot->physicalEvents[scan].sequence);
+						if (batch == batches.end()) throw std::runtime_error("Flow event references a missing batch submission.");
+						auto [group, inserted] = materialGroupIndices.emplace(batch->second->materialName, materialGroups.size());
+						if (inserted) materialGroups.emplace_back();
+						materialGroups[group->second].push_back(batch->second); ++scan;
 					}
-					node.mainSpine = true;
-					node.layoutRank = (float)batch.sequence;
-					spine.push_back(addNode(std::move(node)));
+					eventIndex = scan - 1;
+					for (auto const& group : materialGroups)
+					{
+						auto const& first = *group.front();
+						ProcessFlowNode node;
+						node.semanticKey = "batch-group:" + std::to_string(first.sequence) + ":" + std::to_string(group.size());
+						node.title = group.size() > 1 ? "Material batch group" :
+						             (first.meshName.empty() ? "Submitted batch" : first.meshName);
+						node.subtitle = first.materialName.empty() ? first.programName : first.materialName;
+						node.kind = group.size() > 1 ? ProcessFlowNodeKind::BatchGroup : ProcessFlowNodeKind::BatchSubmission;
+						node.sequence = first.sequence;
+						node.submissionCount = group.size();
+						node.passId = (int)first.parentPass.id;
+						node.materialName = first.materialName;
+						uint64_t primitives = 0, instances = 0; bool unresolvedSource = false;
+						for (auto const* batch : group)
+						{
+							primitives += batch->count; instances += batch->instanceCount;
+							if (!batch->sceneObject) continue;
+							auto object = input.sceneObjects.find(batch->sceneObject);
+							if (object == input.sceneObjects.end()) { unresolvedSource = true; continue; }
+							if (std::find(node.sceneObjectNames.begin(), node.sceneObjectNames.end(), object->second.name) == node.sceneObjectNames.end())
+							{
+								node.sceneObjectIndices.push_back(object->second.index);
+								node.sceneObjectNames.push_back(object->second.name);
+							}
+						}
+						node.details = std::to_string(group.size()) + " submission(s), " + std::to_string(primitives) +
+						               " primitives, " + std::to_string(instances) + " instance(s)";
+						if (unresolvedSource) node.details += " | source unavailable for this scene generation";
+						node.mainSpine = true;
+						node.layoutRank = (float)first.sequence;
+						spine.push_back(addNode(std::move(node)));
+					}
 					continue;
 				}
 				ProcessFlowNode node;
@@ -467,10 +489,11 @@ namespace pipeline_editor
 		auto snapshot = std::make_shared<RenderPipelineFlowSnapshot>(); snapshot->pipelineGeneration = 9;
 		snapshot->actualPassOrder = {consumer, producer};
 		int sourceIdentity = 0;
-		RenderBatchSubmission first; first.sequence = 2; first.parentPass = consumer; first.meshName = "Duplicate";
+		RenderBatchSubmission first; first.sequence = 2; first.parentPass = consumer; first.meshName = "Duplicate"; first.materialName = "SameMaterial";
 		first.sceneObject = reinterpret_cast<SceneModel3d const*>(&sourceIdentity);
-		auto second = first; second.sequence = 3; snapshot->batches = {first, second};
-		snapshot->physicalEvents = {{RenderFlowEventKind::PassBegin, 1, consumer}, {RenderFlowEventKind::BatchSubmission, 2, consumer}, {RenderFlowEventKind::BatchSubmission, 3, consumer}, {RenderFlowEventKind::PassEnd, 4, consumer}, {RenderFlowEventKind::PassBegin, 5, producer}, {RenderFlowEventKind::PassEnd, 6, producer}};
+		auto second = first; second.sequence = 3; second.materialName = "OtherMaterial";
+		auto third = first; third.sequence = 4; snapshot->batches = {first, second, third};
+		snapshot->physicalEvents = {{RenderFlowEventKind::PassBegin, 1, consumer}, {RenderFlowEventKind::BatchSubmission, 2, consumer}, {RenderFlowEventKind::BatchSubmission, 3, consumer}, {RenderFlowEventKind::BatchSubmission, 4, consumer}, {RenderFlowEventKind::PassEnd, 5, consumer}, {RenderFlowEventKind::PassBegin, 6, producer}, {RenderFlowEventKind::PassEnd, 7, producer}};
 		ProcessFlowModelBuilder builder;
 		if (builder.build({}).emptyState != "No active pipeline generation.")
 			throw std::runtime_error("Process-flow no-generation state test failed.");
@@ -478,12 +501,13 @@ namespace pipeline_editor
 		input.sceneGeneration = 12;
 		input.sceneObjects[first.sceneObject] = {4, "FlowObject"};
 		auto model = builder.build(input);
-		if (std::count_if(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != 2)
-			throw std::runtime_error("Process-flow model aggregated duplicate submissions.");
+		if (std::count_if(model.nodes.begin(), model.nodes.end(), [](auto const& node)
+		    { return node.kind == ProcessFlowNodeKind::BatchGroup && node.submissionCount == 2; }) != 1)
+			throw std::runtime_error("Process-flow model did not group same-material submissions.");
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
-		    { return node.kind == ProcessFlowNodeKind::BatchSubmission && node.sceneObjectNames == std::vector<std::string>{"FlowObject"} && node.sceneObjectIndices == std::vector<int>{4}; }))
+		    { return node.kind == ProcessFlowNodeKind::BatchGroup && node.sceneObjectNames == std::vector<std::string>{"FlowObject"} && node.sceneObjectIndices == std::vector<int>{4}; }))
 			throw std::runtime_error("Process-flow generation-safe scene-object resolution test failed.");
 		auto repeated = builder.build(input);
 		input.stale = true; input.staleReason = "Last valid generation";

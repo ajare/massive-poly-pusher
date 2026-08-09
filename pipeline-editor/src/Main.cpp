@@ -12,6 +12,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -6304,12 +6305,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						auto smokeFlowModel = processFlowBuilder.build(smokeFlowInput);
 						processFlowLayout.apply(smokeFlowModel);
 						if (!smokeFlowModel.diagnostics.empty() || smokeFlowModel.nodes.empty() || smokeFlowModel.edges.empty() ||
-						    std::count_if(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
-						                  { return node.kind == ProcessFlowNodeKind::BatchSubmission; }) != snapshot->batches.size() ||
+						    std::accumulate(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), size_t{0}, [](size_t count, auto const& node)
+						                    { return count + ((node.kind == ProcessFlowNodeKind::BatchSubmission ||
+						                                       node.kind == ProcessFlowNodeKind::BatchGroup) ? node.submissionCount : 0); }) != snapshot->batches.size() ||
 						    std::none_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
 						                 { return node.kind == ProcessFlowNodeKind::Presentation; }) ||
 						    std::any_of(smokeFlowModel.nodes.begin(), smokeFlowModel.nodes.end(), [](auto const& node)
-						                { return node.kind == ProcessFlowNodeKind::BatchSubmission && node.sceneObjectNames.empty(); }))
+						                { return (node.kind == ProcessFlowNodeKind::BatchSubmission || node.kind == ProcessFlowNodeKind::BatchGroup) &&
+						                         node.sceneObjectNames.empty(); }))
 							throw std::runtime_error("Process-flow editor model/layout smoke validation failed.");
 						running = false;
 					}
