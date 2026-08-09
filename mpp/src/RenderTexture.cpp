@@ -501,6 +501,26 @@ namespace mpp
 		return true;
 	}
 
+	void RenderTexture::attachColourFace(size_t attachment, uint32_t face, uint32_t mipLevel)
+	{
+		if (mTarget != GL_TEXTURE_CUBE_MAP) THROW_MPP("Colour-face attachment requires a cubemap render texture.", __LINE__, __FILE__, __func__);
+		if (attachment >= mTextureIds.size()) THROW_MPP("Cubemap colour attachment index out of range.", __LINE__, __FILE__, __func__);
+		if (face >= 6) THROW_MPP("Cubemap face index must be in the range [0, 5].", __LINE__, __FILE__, __func__);
+		if (mipLevel >= mMipLevels) THROW_MPP("Cubemap mip level index out of range.", __LINE__, __FILE__, __func__);
+		GLint previous = 0;
+		GL_CHECK(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previous));
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
+		GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, (GLenum)(GL_COLOR_ATTACHMENT0 + attachment), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mTextureIds[attachment], mipLevel));
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
+			THROW_MPP("Cubemap face/mip framebuffer attachment is incomplete.", __LINE__, __FILE__, __func__);
+		}
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
+	}
+
+	uint32_t RenderTexture::getMipLevels() const { return mMipLevels; }
+
 	uint32_t RenderTexture::getDepthTextureId() const
 	{
 		return mDepthTexture;

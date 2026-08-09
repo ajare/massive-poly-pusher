@@ -69,21 +69,16 @@ The existing renderer supports 2D render targets but has no public/generated cub
 
 Implemented in `72d1222 Add cubemap render texture data model`.
 
-
-
 1. Extend `RenderTextureOptions` and `RenderTextureStream::Definition` with an explicit attachment target (`Texture2D` or `TextureCube`), cubemap face size, and declared mip count/base/max level.
 2. Retain the current `Texture2D` defaults and serialized behavior unchanged.
 3. Reject unsupported target combinations early: cubemap depth attachments, array/3D targets, and multisampled cubemaps. The first IBL implementation needs colour-only, single-sampled cubemaps.
 4. Require a sized floating-point colour internal format for generated HDR IBL targets (`RGB16F`, `RGBA16F`, `RGB32F`, or `RGBA32F`); reject normalised/integer formats in the IBL creation helper.
 
-### 4.2 Allocation, resize, and destruction — In progress
+### 4.2 Allocation, resize, and destruction — Complete
 
-1. Refactor `RenderTexture::loadImpl()` so 2D allocation remains byte-for-byte behaviorally equivalent while cubemap allocation uses `GL_TEXTURE_CUBE_MAP` and allocates all six `GL_TEXTURE_CUBE_MAP_POSITIVE_X + face` images for every declared mip.
-2. Configure cubemap sampler state on `GL_TEXTURE_CUBE_MAP`, including `WRAP_S`, `WRAP_T`, and `WRAP_R`; use clamp-to-edge defaults for generated IBL resources.
-3. Make `resize()`, `unloadImpl()`, texture labels, attachment IDs, and `generateMipMaps()` target-aware.
-4. Do not use `GL_TEXTURE_2D_MULTISAMPLE` for cubemaps. Emit a diagnostic/exception before any GL allocation if samples are greater than one.
+Implemented in `559263a Allocate floating point cubemap render textures`. Cubemap faces and declared mip levels allocate, resize/recreate, and release through the existing render-texture lifetime; target-aware sampler/mipmap handling is in place.
 
-### 4.3 Face/mip framebuffer attachment
+### 4.3 Face/mip framebuffer attachment — In progress
 
 1. Add a `RenderTexture::attachColourFace(attachment, face, mipLevel)` API (or scoped equivalent).
 2. Validate colour attachment index, cube face `[0,5]`, and mip level against declared levels before issuing OpenGL calls.
