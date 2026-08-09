@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <set>
 
@@ -128,6 +129,7 @@ namespace mpp
 		}
 		if (previewScene.empty()) diagnostics.warning("MPP-PIPELINE-008", "No preview scene is assigned.", { sourcePath }, "previewScene");
 		else {auto path=std::filesystem::path(previewScene);if(path.is_absolute())diagnostics.warning("MPP-PIPELINE-016","Absolute preview-scene path is not portable.",{sourcePath},"previewScene");auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-PIPELINE-017","Preview scene does not exist: "+resolved.string(),{sourcePath},"previewScene");}
+		if(!environment.hdrEquirectangular.empty()){auto extension=std::filesystem::path(environment.hdrEquirectangular).extension().string();std::transform(extension.begin(),extension.end(),extension.begin(),[](unsigned char value){return(char)std::tolower(value);});if(extension!=".exr")diagnostics.error("MPP-PIPELINE-050","HDR IBL source must be an .exr image.",{sourcePath},"environment");if(!environment.environmentResolution||!environment.irradianceResolution||!environment.prefilterResolution)diagnostics.error("MPP-PIPELINE-051","HDR IBL resolutions must be non-zero.",{sourcePath},"environment");if(!environment.irradiance.empty()||!environment.prefilteredSpecular.empty())diagnostics.error("MPP-PIPELINE-052","HDR IBL source cannot be combined with explicit irradiance or prefiltered cubemaps.",{sourcePath},"environment");}
 		if (environment.binding.empty()) diagnostics.warning("MPP-PIPELINE-009", "No logical PBR environment binding is assigned.", { sourcePath }, "environment");
 		return diagnostics;
 	}
