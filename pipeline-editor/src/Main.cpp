@@ -17,6 +17,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <Windows.h>
 #include <sdl/SDL.h>
@@ -5067,7 +5068,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (ImGui::CollapsingHeader("PBR Maps and Extensions"))
 					{
 						char const* maps[] = {
-						    "BaseColourMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap", "EmissiveMap"};
+						    "BaseColourMap", "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap", "EmissiveMap"};
 						for (auto map : maps)
 						{
 							if (definition.hasEntry(map))
@@ -5075,6 +5076,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 								auto& block = definition.getEntry(map);
 								ImGui::PushID(map);
 								ImGui::TextUnformatted(map);
+								if (std::string_view(map) == "MetallicMap" || std::string_view(map) == "RoughnessMap")
+								{
+									choice(block, "channel", "Channel", {"R", "G", "B", "A"});
+									ImGui::TextDisabled("Single-channel images use R; choose a component for RGB/RGBA images.");
+								}
+								if (std::string_view(map) == "EmissiveMap") ImGui::TextDisabled("Emissive maps are sampled as RGB.");
 								if (block.hasEntry("Resource"))
 								{
 									auto& resource = block.getEntry("Resource");
@@ -5096,6 +5103,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 									        .definition;
 									utils::StructuredData block(map);
 									block.addEntry("Resource", texture);
+									if (std::string_view(map) == "MetallicMap" || std::string_view(map) == "RoughnessMap") block.addEntry("channel", "R");
+									if (definition.hasEntry("Surface"))
+									{
+										auto& surface = definition.getEntry("Surface");
+										if (std::string_view(map) == "MetallicMap") surface.setEntryValue("metallicFactor", "1");
+										if (std::string_view(map) == "EmissiveMap") surface.setEntryValue("emissiveFactor", "1 1 1");
+									}
 									definition.addEntry(map, block);
 									changed = true;
 								}

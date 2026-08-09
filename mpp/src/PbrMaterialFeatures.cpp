@@ -27,8 +27,10 @@ namespace mpp
 		PbrMaterialFeatures features = 0;
 		auto enable = [&](PbrMaterialFeature feature) { features |= pbrFeature(feature); };
 		if (hasMap(textures, "PBR_BASE_COLOUR_MAP")) enable(PbrMaterialFeature::BaseColourMap);
-		if (surface.metallicFactor > 0.0f) enable(PbrMaterialFeature::Metallic);
-		if (surface.roughnessFactor > 0.0f) enable(PbrMaterialFeature::Roughness);
+		if (surface.metallicFactor > 0.0f || hasMap(textures, "PBR_METALLIC_MAP")) enable(PbrMaterialFeature::Metallic);
+		if (surface.roughnessFactor > 0.0f || hasMap(textures, "PBR_ROUGHNESS_MAP")) enable(PbrMaterialFeature::Roughness);
+		if (hasMap(textures, "PBR_METALLIC_MAP")) enable(PbrMaterialFeature::MetallicMap);
+		if (hasMap(textures, "PBR_ROUGHNESS_MAP")) enable(PbrMaterialFeature::RoughnessMap);
 		if (hasMap(textures, "PBR_METALLIC_ROUGHNESS_MAP") &&
 			(hasPbrFeature(features, PbrMaterialFeature::Metallic) || hasPbrFeature(features, PbrMaterialFeature::Roughness)))
 			enable(PbrMaterialFeature::MetallicRoughnessMap);
@@ -44,10 +46,10 @@ namespace mpp
 	string describePbrMaterialFeatures(PbrMaterialFeatures features)
 	{
 		if (hasPbrFeature(features, PbrMaterialFeature::LegacyFullContract)) return "LegacyFullContract";
-		array<pair<PbrMaterialFeature, char const*>, 10> const names = {{
+		array<pair<PbrMaterialFeature, char const*>, 12> const names = {{
 			{ PbrMaterialFeature::BaseColourMap, "BaseColourMap" }, { PbrMaterialFeature::Metallic, "Metallic" },
 			{ PbrMaterialFeature::Roughness, "Roughness" }, { PbrMaterialFeature::MetallicRoughnessMap, "MetallicRoughnessMap" },
-			{ PbrMaterialFeature::NormalMap, "NormalMap" }, { PbrMaterialFeature::Occlusion, "Occlusion" },
+			{ PbrMaterialFeature::MetallicMap, "MetallicMap" }, { PbrMaterialFeature::RoughnessMap, "RoughnessMap" }, { PbrMaterialFeature::NormalMap, "NormalMap" }, { PbrMaterialFeature::Occlusion, "Occlusion" },
 			{ PbrMaterialFeature::Emissive, "Emissive" }, { PbrMaterialFeature::AlphaMask, "AlphaMask" },
 			{ PbrMaterialFeature::AlphaBlend, "AlphaBlend" }, { PbrMaterialFeature::DoubleSided, "DoubleSided" }
 		}};
@@ -71,6 +73,8 @@ namespace mpp
 			<< "#define PBR_SPEC_METALLIC " << value(PbrMaterialFeature::Metallic) << '\n'
 			<< "#define PBR_SPEC_ROUGHNESS " << value(PbrMaterialFeature::Roughness) << '\n'
 			<< "#define PBR_SPEC_METALLIC_ROUGHNESS_MAP " << value(PbrMaterialFeature::MetallicRoughnessMap) << '\n'
+			<< "#define PBR_SPEC_METALLIC_MAP " << value(PbrMaterialFeature::MetallicMap) << '\n'
+			<< "#define PBR_SPEC_ROUGHNESS_MAP " << value(PbrMaterialFeature::RoughnessMap) << '\n'
 			<< "#define PBR_SPEC_NORMAL_MAP " << value(PbrMaterialFeature::NormalMap) << '\n'
 			<< "#define PBR_SPEC_OCCLUSION " << value(PbrMaterialFeature::Occlusion) << '\n'
 			<< "#define PBR_SPEC_EMISSIVE " << value(PbrMaterialFeature::Emissive) << '\n'
