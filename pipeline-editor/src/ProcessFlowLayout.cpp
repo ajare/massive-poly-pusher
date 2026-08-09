@@ -34,7 +34,7 @@ namespace pipeline_editor
 			return left->layoutRank < right->layoutRank;
 		});
 		float y = 0.0f;
-		for (auto* node : spine) { node->position = {0.0f, y}; y += node->size.y + 72.0f; }
+		for (auto* node : spine) { node->position = {-node->size.x * 0.5f, y}; y += node->size.y + 72.0f; }
 		auto yForRank = [&](float rank)
 		{
 			if (spine.empty()) return rank * 150.0f;
@@ -52,7 +52,7 @@ namespace pipeline_editor
 		for (auto* node : disabled)
 		{
 			auto nodeY = std::max(yForRank(node->layoutRank), disabledBottom + 26.0f);
-			node->position = {1140.0f, nodeY}; disabledBottom = nodeY + node->size.y;
+			node->position = {1140.0f - node->size.x * 0.5f, nodeY}; disabledBottom = nodeY + node->size.y;
 		}
 		std::stable_sort(resources.begin(), resources.end(), orderByRank);
 		float resourceBottom = -104.0f, outputBottom = -104.0f;
@@ -61,7 +61,7 @@ namespace pipeline_editor
 			bool output = node->resourceCategory == ProcessFlowResourceCategory::NamedOutputs;
 			auto& bottom = output ? outputBottom : resourceBottom;
 			auto nodeY = std::max(yForRank(node->layoutRank), bottom + 26.0f);
-			node->position = {output ? 2280.0f : -1140.0f, nodeY}; bottom = nodeY + node->size.y;
+			node->position = {(output ? 2280.0f : -1140.0f) - node->size.x * 0.5f, nodeY}; bottom = nodeY + node->size.y;
 		}
 	}
 
@@ -105,6 +105,9 @@ namespace pipeline_editor
 		}
 		ProcessFlowNode resource; resource.id = 9; resource.semanticKey = "resource"; resource.resourceCategory = ProcessFlowResourceCategory::AuthoredImages; resource.layoutRank = 1.5f; model.nodes.push_back(resource);
 		ProcessFlowLayout layout; layout.apply(model); auto first = model.nodes;
+		for (size_t index = 0; index < 4; ++index)
+			if (std::abs(model.nodes[index].position.x + model.nodes[index].size.x * 0.5f) > 0.01f)
+				throw std::runtime_error("Process-flow spine nodes are not horizontally centred.");
 		for (size_t index = 1; index < 4; ++index)
 			if (model.nodes[index].position.y <= model.nodes[index - 1].position.y + model.nodes[index - 1].size.y)
 				throw std::runtime_error("Process-flow vertical layout is not strictly increasing/non-overlapping.");

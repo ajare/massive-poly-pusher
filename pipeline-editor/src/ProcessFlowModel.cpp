@@ -307,10 +307,10 @@ namespace pipeline_editor
 				node.passId = event.pass.isValid() ? (int)event.pass.id : -1;
 				node.enabled = event.enabled;
 				node.bypassReason = event.bypassReason;
-				node.mainSpine = event.enabled;
+				node.mainSpine = true;
 				node.layoutRank = (float)event.sequence;
 				auto eventId = addNode(std::move(node));
-				if (event.enabled) spine.push_back(eventId);
+				spine.push_back(eventId);
 			}
 		}
 		else
@@ -324,9 +324,9 @@ namespace pipeline_editor
 				{
 					ProcessFlowNode node; node.semanticKey = "static-output:" + plan.name + ":" + key;
 					node.title = plan.name + " / " + title; node.subtitle = "Static output plan; waiting for live sample";
-					node.kind = kind; node.enabled = enabled; node.mainSpine = enabled;
+					node.kind = kind; node.enabled = enabled; node.mainSpine = true;
 					node.bypassReason = enabled ? std::string() : reason; node.layoutRank = 10000.0f + (float)output * 10.0f + (float)spine.size();
-					auto id = addNode(std::move(node)); if (enabled) spine.push_back(id); return id;
+					auto id = addNode(std::move(node)); spine.push_back(id); return id;
 				};
 				stage("msaa", "MSAA resolves", ProcessFlowNodeKind::MsaaResolve,
 				      plan.antiAliasing.msaa != AntiAliasingSamples::Off);
@@ -581,7 +581,7 @@ namespace pipeline_editor
 		if (waiting.liveSample || std::none_of(waiting.nodes.begin(), waiting.nodes.end(), [](auto const& node)
 		    { return node.kind == ProcessFlowNodeKind::Presentation; }) ||
 		    std::none_of(waiting.nodes.begin(), waiting.nodes.end(), [](auto const& node)
-		    { return node.kind == ProcessFlowNodeKind::Taa && !node.enabled && !node.bypassReason.empty(); }))
+		    { return node.kind == ProcessFlowNodeKind::Taa && !node.enabled && node.mainSpine && !node.bypassReason.empty(); }))
 			throw std::runtime_error("Process-flow static waiting/output-stage test failed.");
 		input.filters.resources = (uint32_t)ProcessFlowResourceCategory::AuthoredImages;
 		auto resources = builder.build(input);
