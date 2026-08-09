@@ -5640,6 +5640,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						}
 					ImGui::EndCombo();
 				}
+				if (openDocument && !model.materialBinding.empty())
+				{
+					auto binding = std::find_if(openDocument->previewBindings.begin(), openDocument->previewBindings.end(),
+					                            [&](auto const& value) { return value.binding == model.materialBinding; });
+					if (binding != openDocument->previewBindings.end())
+						ImGui::TextDisabled("PbrScene material: %s", binding->materialResource.c_str());
+				}
 				if (openDocument && ImGui::Button("Import glTF material..."))
 				{
 					if (auto selected = mpp::app::openGltfFileDialog(window.getWindow(), "Import glTF 2.0 material"))
