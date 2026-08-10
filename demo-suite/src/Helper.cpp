@@ -1,11 +1,19 @@
+#include <cstring>
 #include <format>
+#include <limits>
+#include <memory>
+#include <stdexcept>
 
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #	include <Windows.h>
 #endif
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/GL.h>
+
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 #include "utils/FileSystem.h"
 #include "utils/StringUtils.h"
@@ -21,168 +29,80 @@ extern mpp::ResourceManager* gResourceManager;
 
 using namespace std;
 
-void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message)
-{
-	string errMsg;
-	if (fif != FIF_UNKNOWN)
-		errMsg += string(FreeImage_GetFormatFromFIF(fif)) + "file: ";
-
-	errMsg += message;
-	gLogger->message(errMsg);
-}
-
-bool isBigEndian()
-{
-	union 
-	{
-		uint32_t i;
-		char c[4];
-	} bint{ 0x01020304 };
-
-	return bint.c[0] == 1;
-}
-
 mpp::TextureData loadImage(string const& filename)
 {
-	FIBITMAP* bitmap = FreeImage_Load(FreeImage_GetFIFFromFilename(filename.c_str()), filename.c_str());
-	if (bitmap)
+	stbi_set_flip_vertically_on_load_thread(0);
+
+	int width = 0;
+	int height = 0;
+	int channels = 0;
+	size_t componentSize = 0;
+	uint32_t glType = 0;
+	void* imageData = nullptr;
+
+	if (stbi_is_hdr(filename.c_str()))
 	{
-		auto imageType = FreeImage_GetImageType(bitmap);
-		size_t dataWidth = (size_t)FreeImage_GetWidth(bitmap);
-		size_t dataHeight = (size_t)FreeImage_GetHeight(bitmap);
-		size_t dataBPP = (size_t)FreeImage_GetBPP(bitmap);
-
-		// Calculate data size etc from type and bpp
-		size_t typeSize;
-		GLuint glType;
-		switch (imageType)
-		{
-		case FIT_BITMAP:
-			typeSize = sizeof(uint8_t);
-			glType = GL_UNSIGNED_BYTE;
-			break;
-
-		case FIT_UINT16:
-		case FIT_RGB16:
-		case FIT_RGBA16:
-			typeSize = sizeof(uint16_t);
-			glType = GL_UNSIGNED_SHORT;
-			break;
-
-		case FIT_INT16:
-			typeSize = sizeof(int16_t);
-			glType = GL_SHORT;
-			break;
-
-		case FIT_UINT32:
-			typeSize = sizeof(uint32_t);
-			glType = GL_UNSIGNED_INT;
-			break;
-
-		case FIT_INT32:
-			typeSize = sizeof(int32_t);
-			glType = GL_INT;
-			break;
-
-		case FIT_FLOAT:
-		case FIT_RGBF:
-		case FIT_RGBAF:
-			typeSize = sizeof(float);
-			glType = GL_FLOAT;
-			break;
-
-		case FIT_DOUBLE:
-			typeSize = sizeof(double);
-			glType = GL_DOUBLE;
-			break;
-
-		case FIT_UNKNOWN:
-		default:
-			string errMsg = "Couldn't open '" + filename + "'.  Unknown/unsupported image type.";
-			throw exception(errMsg.c_str());
-		}
-
-		size_t dataSpan = dataWidth * dataBPP / 8;
-		size_t dataSize = dataSpan * dataHeight * typeSize;
-		auto tempData = new uint8_t[dataSize];
-
-		// Flip vertically?
-		int y0, y1, inc;
-		
-		y0 = 0;
-		y1 = (int)dataHeight;
-		inc = 1;
-
-		uint8_t* ptr = (uint8_t*)FreeImage_GetBits(bitmap);
-		for (int y = y0; y != y1; y += inc)
-		{
-			memcpy(&tempData[y * dataSpan], ptr, dataSpan);
-			ptr += dataSpan;
-		}
-
-		FreeImage_Unload(bitmap);
-
-		// Calculate pixel format
-		size_t numChannels = dataBPP / (8 * typeSize);
-		
-		uint32_t pixelFormat;
-		switch (numChannels)
-		{
-		case 1:
-			pixelFormat = GL_RED;
-			break;
-
-		case 2:
-			pixelFormat = GL_RG;
-			break;
-
-		case 3:
-			pixelFormat = GL_BGR;
-			break;
-
-		case 4:
-			pixelFormat = GL_BGRA;
-			break;
-
-		default:
-			string errMsg = "Couldn't open '" + filename + "'.  Unknown/unsupported channel count.";
-			throw exception(errMsg.c_str());
-		}
-
-		if (isBigEndian())
-		{
-			switch (numChannels)
-			{
-			case 3:
-				pixelFormat = GL_RGB;
-				break;
-
-			case 4:
-				pixelFormat = GL_RGBA;
-				break;
-
-			default:
-				break;
-			}
-		}
-		
-		mpp::TextureData textureData
-		{
-			tempData,
-			dataWidth,
-			dataHeight,
-			dataBPP,
-			pixelFormat,
-			glType
-		};
-
-		return textureData;
+		componentSize = sizeof(float);
+		glType = GL_FLOAT;
+		imageData = stbi_loadf(filename.c_str(), &width, &height, &channels, 0);
+	}
+	else if (stbi_is_16_bit(filename.c_str()))
+	{
+		componentSize = sizeof(stbi_us);
+		glType = GL_UNSIGNED_SHORT;
+		imageData = stbi_load_16(filename.c_str(), &width, &height, &channels, 0);
 	}
 	else
 	{
-		string errMsg = "Couldn't open '" + filename + "'.";
-		throw exception(errMsg.c_str());
+		componentSize = sizeof(stbi_uc);
+		glType = GL_UNSIGNED_BYTE;
+		imageData = stbi_load(filename.c_str(), &width, &height, &channels, 0);
 	}
+
+	unique_ptr<void, void(*)(void*)> loadedImage(imageData, stbi_image_free);
+	if (!loadedImage)
+	{
+		auto const reason = stbi_failure_reason();
+		throw runtime_error("Couldn't open '" + filename + "': " +
+			(reason ? reason : "unknown STB image error"));
+	}
+
+	if (width <= 0 || height <= 0 || channels < 1 || channels > 4)
+	{
+		throw runtime_error("Couldn't open '" + filename + "': unsupported image dimensions or channel count.");
+	}
+
+	auto const dataWidth = static_cast<size_t>(width);
+	auto const dataHeight = static_cast<size_t>(height);
+	auto const numChannels = static_cast<size_t>(channels);
+	if (dataWidth > numeric_limits<size_t>::max() / dataHeight ||
+		dataWidth * dataHeight > numeric_limits<size_t>::max() / numChannels ||
+		dataWidth * dataHeight * numChannels > numeric_limits<size_t>::max() / componentSize)
+	{
+		throw overflow_error("Image data is too large: '" + filename + "'.");
+	}
+
+	auto const dataSize = dataWidth * dataHeight * numChannels * componentSize;
+	auto textureBytes = make_unique<uint8_t[]>(dataSize);
+	memcpy(textureBytes.get(), loadedImage.get(), dataSize);
+
+	uint32_t pixelFormat = 0;
+	switch (channels)
+	{
+	case 1: pixelFormat = GL_RED; break;
+	case 2: pixelFormat = GL_RG; break;
+	case 3: pixelFormat = GL_RGB; break;
+	case 4: pixelFormat = GL_RGBA; break;
+	}
+
+	return {
+		textureBytes.release(),
+		dataWidth,
+		dataHeight,
+		numChannels * componentSize * 8,
+		pixelFormat,
+		glType
+	};
 }
 
 void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resourceMgr)

@@ -3,8 +3,6 @@
 #include <string>
 #include <map>
 
-#include <freeimage/freeimage.h>
-
 #include <mpp/TextureStream.h>
 #include <mpp/ResourceManager.h>
 

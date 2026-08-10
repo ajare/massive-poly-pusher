@@ -4,7 +4,7 @@
 
 #include <memory>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/gl.h>
 
 #include "mpp/mesh/Vertex.h"

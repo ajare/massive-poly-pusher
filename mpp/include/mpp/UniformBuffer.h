@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/gl.h>
 
 namespace mpp

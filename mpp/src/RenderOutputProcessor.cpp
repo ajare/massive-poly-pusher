@@ -2,7 +2,7 @@
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
-#include <glew/glew.h>
+#include <GL/glew.h>
 
 #include "mpp/RenderOutputProcessor.h"
 
