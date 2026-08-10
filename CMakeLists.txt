@@ -24,6 +24,7 @@ set(SDL_SHARED ON CACHE BOOL "Build SDL as a shared library" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "Do not build the SDL static library" FORCE)
 set(SDL_TEST OFF CACHE BOOL "Do not build SDL tests" FORCE)
 add_subdirectory(ext/sdl EXCLUDE_FROM_ALL)
+set(MPP_SDL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/include")
 
 add_library(mpp_vendor_headers INTERFACE)
 target_include_directories(mpp_vendor_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
@@ -336,7 +337,9 @@ add_library(MppAppSupport STATIC
     mpp-app-support/src/Window.cpp
     mpp-app-support/src/WindowSDL.cpp
     mpp-app-support/src/ZipArchive.cpp)
-target_include_directories(MppAppSupport PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include")
+target_include_directories(MppAppSupport PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
+    "${MPP_SDL_INCLUDE_DIR}")
 target_link_libraries(MppAppSupport PUBLIC
     MassivePolyPusher MppMesh MppProgram Utils ImGui SDL2 FreeImage
     PRIVATE comdlg32 shell32 ole32)
@@ -366,7 +369,9 @@ add_executable(PipelineEditor WIN32
     pipeline-editor/src/ProcessFlowModel.cpp
     pipeline-editor/src/ProcessFlowLayout.cpp
     pipeline-editor/src/ProcessFlowView.cpp)
-target_include_directories(PipelineEditor PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
+target_include_directories(PipelineEditor PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include"
+    "${MPP_SDL_INCLUDE_DIR}")
 target_link_libraries(PipelineEditor PRIVATE
     MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
     Utils ImGui SDL2 SDL2main FreeImage OpenGL::GL GLEW)

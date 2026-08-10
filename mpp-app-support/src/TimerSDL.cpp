@@ -1,4 +1,4 @@
-#include <sdl/SDL.h>
+#include <SDL.h>
 #include "mpp/app/TimerSDL.h"
 
 TimerSDL::TimerSDL() :

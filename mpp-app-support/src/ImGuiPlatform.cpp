@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <sdl/SDL.h>
+#include <SDL.h>
 
 #include "imgui/imgui.h"
 
