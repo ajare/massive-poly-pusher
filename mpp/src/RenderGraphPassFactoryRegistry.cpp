@@ -135,6 +135,11 @@ namespace mpp
 				if (found->second.type != parameter.type || found->second.count != parameter.count || found->second.numElements != parameter.elements)
 					diagnostics.error("MPP-PASS-011", "Pass '" + pass.name + "' parameter '" + parameter.name + "' has the wrong reflected type or shape.", {}, pass.name);
 			}
+			if (!metadata->nameDerivedFallbackParameter.empty() && values.find(metadata->nameDerivedFallbackParameter) == values.end())
+			{
+				diagnostics.warning("MPP-PASS-013", "Pass '" + pass.name + "' does not declare '" + metadata->nameDerivedFallbackParameter +
+					"', so it is inferred from digits at the end of the pass name. Renaming the pass would silently change its behaviour; declare the parameter instead.", {}, pass.name);
+			}
 			for (auto const& value : values)
 				if (!metadata->allowAdditionalParameters && std::find_if(metadata->parameters.begin(), metadata->parameters.end(), [&](GraphPassParameterMetadata const& parameter) { return parameter.name == value.first; }) == metadata->parameters.end())
 					diagnostics.warning("MPP-PASS-012", "Pass '" + pass.name + "' has unrecognized parameter '" + value.first + "'.", {}, pass.name);

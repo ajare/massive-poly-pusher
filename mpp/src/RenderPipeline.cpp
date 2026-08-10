@@ -382,6 +382,10 @@ namespace mpp
 			{
 				auto ping = graph.createImage("BloomPing" + to_string(index), makeColour(GraphImageFormat::Rgba16f));
 				auto pingPass = graph.addPass("BloomBlurHorizontal" + to_string(index), GraphPassType::Fullscreen);
+				// Declare the blur level rather than leaving the pass to read it back
+				// off the digits in its own name.
+				UniformCollection blurIteration; blurIteration.setUniform("ITERATION", (int32_t)index);
+				graph.setPassParameters(pingPass, blurIteration);
 				graph.readSampled(pingPass, blurred);
 				ping = graph.writeColour(pingPass, ping);
 				bloomPasses.push_back(pingPass);
@@ -390,6 +394,7 @@ namespace mpp
 
 				auto pong = graph.createImage("BloomPong" + to_string(index), makeColour(GraphImageFormat::Rgba16f));
 				auto pongPass = graph.addPass("BloomBlurVertical" + to_string(index), GraphPassType::Fullscreen);
+				graph.setPassParameters(pongPass, blurIteration);
 				graph.readSampled(pongPass, ping);
 				blurred = graph.writeColour(pongPass, pong);
 				bloomPasses.push_back(pongPass);
