@@ -1,3 +1,4 @@
+#include <format>
 #include "utils/StringUtils.h"
 
 #include "mpp/RenderSystem.h"
@@ -313,12 +314,12 @@ namespace mpp
 		{
 			mRefCount++;
 
-			string msg = STR_FORMAT("Object '{}' acquired '{}' for {} references.", acquirer->getWranglerName(), getName(), mRefCount);
+			string msg = std::format("Object '{}' acquired '{}' for {} references.", acquirer->getWranglerName(), getName(), mRefCount);
 			static_log_message(MPP_RESOURCE_LOGFILE, msg);
 		}
 		else
 		{
-			string errMsg = STR_FORMAT("Object {} tried to acquire resource {} more than once.", acquirer->getWranglerName(), getName());
+			string errMsg = std::format("Object {} tried to acquire resource {} more than once.", acquirer->getWranglerName(), getName());
 			throw MppException(errMsg);
 		}
 	}
@@ -333,7 +334,7 @@ namespace mpp
 
 			mDependingResources.erase(it);
 
-			string msg = STR_FORMAT("Object '{}' released {} to {} references.", releaser->getWranglerName(), getName(), mRefCount);
+			string msg = std::format("Object '{}' released {} to {} references.", releaser->getWranglerName(), getName(), mRefCount);
 			static_log_message(MPP_RESOURCE_LOGFILE, msg);
 
 			if (mRefCount == 0)

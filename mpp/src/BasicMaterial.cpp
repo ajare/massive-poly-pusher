@@ -1,3 +1,4 @@
+#include <format>
 #include <cstring>
 
 #include "utils/FileSystem.h"
@@ -179,7 +180,7 @@ namespace mpp
 				else if (samplerName == "PBR_BRDF_LUT") textureName = "__mpp_tex_pbr_brdf_lut__";
 				if (textureName.empty())
 				{
-					string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
+					string errMsg = std::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
 						samplerName, program->getName(), getName());
 					THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 				}

@@ -1794,12 +1794,12 @@ set changes at most once per pipeline per frame (`RenderPipeline.cpp:554`).
 
 ```cpp
 string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(name);
-if (index >= 0) markedUpUniform += STR_FORMAT("[{}]", index);
+if (index >= 0) markedUpUniform += std::format("[{}]", index);
 if (mUniformIds.find(markedUpUniform) == mUniformIds.end()) return -1;
 else return mUniformIds.at(markedUpUniform);
 ```
 
-Three problems: a heap allocation per call, `fmt` formatting for indexed uniforms, and a
+Three problems: a heap allocation per call, formatting for indexed uniforms, and a
 double lookup (`find` then `at`). It is called from every fullscreen helper
 (`renderToneMappedFullscreenQuad`, `renderFxaa`, `renderTaa`, `renderSsaaLanczos`,
 `renderBloom*`, `renderGraphFullscreen`, all three IBL face renderers) — a dozen or more calls per

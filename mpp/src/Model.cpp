@@ -1,3 +1,4 @@
+#include <format>
 #include "mpp/Config.h"
 
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
@@ -181,7 +182,7 @@ namespace mpp
 			}
 			break;
 		default:
-			throw MppException(STR_FORMAT("Vertex attribute datatype not supported: {}", (uint32_t)attrib.dataType));
+			throw MppException(std::format("Vertex attribute datatype not supported: {}", (uint32_t)attrib.dataType));
 		}
 
 		return pos;
@@ -284,7 +285,7 @@ namespace mpp
 				!checkVertexAttributeMapping(material, meshDef))
 			{
 				THROW_MPP(
-					STR_FORMAT("Vertex attribute mismatch between material '{}' ({} attributes) and mesh '{}' ({} attributes) of model '{}'.",
+					std::format("Vertex attribute mismatch between material '{}' ({} attributes) and mesh '{}' ({} attributes) of model '{}'.",
 						material->getName(), static_cast<Program*>(static_cast<Material*>(material.get())->getProgram().get())->getVertexAttributes().size(),
 						meshDef->getName(), [&]() { size_t count = 0; for (size_t layout = 0; layout < meshDef->getNumVertexBufferDefinitions(); ++layout) count += meshDef->getVertexBufferDefinition(layout)->getNumAttributes(); return count; }(), getName()),
 					__LINE__, __FILE__, __func__);

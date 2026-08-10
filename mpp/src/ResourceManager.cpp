@@ -1,3 +1,4 @@
+#include <format>
 #include <algorithm>
 #include <cassert>
 
@@ -248,7 +249,7 @@ namespace mpp
 			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
 			if (msSortableTextureId == (uint32_t)(1 << maxBits))
 			{
-				string errMsg = STR_FORMAT("Cannot create resource '{}'.  Limit reached!", name);
+				string errMsg = std::format("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -262,7 +263,7 @@ namespace mpp
 			// Caching
 			if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
 			{
-				string errMsg = STR_FORMAT("Cannot create resource '{}'.  Limit reached!", name);
+				string errMsg = std::format("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -372,7 +373,7 @@ namespace mpp
 		if (mResources.find(name) != mResources.end() || mResourceAliases.find(name) != mResourceAliases.end())
 		{
 			THROW_MPP(
-				STR_FORMAT("Resource '{}' already exists.", name),
+				std::format("Resource '{}' already exists.", name),
 				__LINE__, __FILE__, __func__);
 		}
 
@@ -429,7 +430,7 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP(STR_FORMAT("Resource '{}' not found.", name), __LINE__, __FILE__, __func__);
+				THROW_MPP(std::format("Resource '{}' not found.", name), __LINE__, __FILE__, __func__);
 			}
 		}
 
@@ -632,7 +633,7 @@ namespace mpp
 
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
-		specName += STR_FORMAT("_{}__", ++mProgramIdCounter);
+		specName += std::format("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 
@@ -704,7 +705,7 @@ namespace mpp
 
 		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
 		// between attribute type).
-		specName += STR_FORMAT("_{}__", ++mProgramIdCounter);
+		specName += std::format("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
 

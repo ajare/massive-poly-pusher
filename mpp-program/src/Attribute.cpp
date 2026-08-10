@@ -1,3 +1,4 @@
+#include <format>
 #include "utils/StringUtils.h"
 
 #include "Attribute.h"
@@ -21,7 +22,7 @@ namespace mpp
 			case 1:
 				glslType = ""; break;
 			default:
-				glslType = STR_FORMAT("vec{}", componentSize);
+				glslType = std::format("vec{}", componentSize);
 			}
 
 			// Get type

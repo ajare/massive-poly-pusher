@@ -1,5 +1,6 @@
 #ifdef MPP_PROFILE_BUILD
 
+#include <format>
 #include <iostream>
 
 #include "mpp/Config.h"
@@ -75,13 +76,13 @@ namespace mpp
 			auto result = sNVPMManager.Api()->GetCounterIDByContext(sNVPMContext, counterName.c_str(), &counterID);
 			if (result != NVPM_OK)
 			{
-				THROW_MPP(STR_FORMAT("Profiler could not get '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
+				THROW_MPP(std::format("Profiler could not get '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
 			}
 			else
 			{
 				if (sNVPMManager.Api()->AddCounter(sNVPMContext, counterID) != NVPM_OK)
 				{
-					THROW_MPP(STR_FORMAT("Profiler could not enable '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
+					THROW_MPP(std::format("Profiler could not enable '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
 				}
 			}
 		}
@@ -125,7 +126,7 @@ namespace mpp
 			}
 			else
 			{
-				THROW_MPP(STR_FORMAT("Profiler could not get value of '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
+				THROW_MPP(std::format("Profiler could not get value of '{}' counter ID", counterName), __LINE__, __FILE__, __func__);
 			}
 		}
 
