@@ -2,7 +2,7 @@
 #	include <Windows.h>
 #endif
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/GL.h>
 
 #include "mpp/ProgrammaticRenderTextureStream.h"

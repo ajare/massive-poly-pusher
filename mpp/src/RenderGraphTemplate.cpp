@@ -1,4 +1,4 @@
-#include <glew/glew.h>
+#include <GL/glew.h>
 
 #include "mpp/MppException.h"
 #include "mpp/RenderGraphStream.h"

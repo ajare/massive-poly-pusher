@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 
 namespace mpp
 {

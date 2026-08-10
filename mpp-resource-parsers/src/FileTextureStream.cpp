@@ -4,7 +4,7 @@
 
 #include <filesystem>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/GL.h>
 
 #include "utils/FileSystem.h"

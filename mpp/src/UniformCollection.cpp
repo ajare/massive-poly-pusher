@@ -4,7 +4,7 @@
 
 #include <functional>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/gl.h>
 
 #pragma warning(push)

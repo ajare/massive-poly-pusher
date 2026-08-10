@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
 project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX RC)
 
 if(NOT WIN32)
@@ -26,28 +26,52 @@ set(SDL_TEST OFF CACHE BOOL "Do not build SDL tests" FORCE)
 add_subdirectory(ext/sdl EXCLUDE_FROM_ALL)
 set(MPP_SDL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/include")
 
+# GLEW keeps its CMake project under build/cmake. Its Git repository omits the
+# generated headers and glew.c, so bootstrap those files from the matching,
+# hash-pinned official source release while retaining the upstream submodule.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/glew/build/cmake/CMakeLists.txt")
+    message(FATAL_ERROR "GLEW submodule is missing; run: git submodule update --init --recursive")
+endif()
+set(MPP_GLEW_VERSION 2.3.1)
+set(MPP_GLEW_ARCHIVE "${CMAKE_BINARY_DIR}/_downloads/glew-${MPP_GLEW_VERSION}.tgz")
+set(MPP_GLEW_SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/glew-${MPP_GLEW_VERSION}")
+if(NOT EXISTS "${MPP_GLEW_ARCHIVE}")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_downloads")
+    file(DOWNLOAD
+        "https://github.com/nigels-com/glew/releases/download/glew-${MPP_GLEW_VERSION}/glew-${MPP_GLEW_VERSION}.tgz"
+        "${MPP_GLEW_ARCHIVE}"
+        EXPECTED_HASH SHA256=b64790f94b926acd7e8f84c5d6000a86cb43967bd1e688b03089079799c9e889
+        TLS_VERIFY ON
+        SHOW_PROGRESS)
+endif()
+if(NOT EXISTS "${MPP_GLEW_SOURCE_DIR}/src/glew.c")
+    file(REMOVE_RECURSE "${MPP_GLEW_SOURCE_DIR}")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
+    file(ARCHIVE_EXTRACT INPUT "${MPP_GLEW_ARCHIVE}" DESTINATION "${CMAKE_BINARY_DIR}/_deps")
+endif()
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build shared dependency libraries" FORCE)
+set(BUILD_UTILS OFF CACHE BOOL "Do not build GLEW utilities" FORCE)
+set(GLEW_CUSTOM_OUTPUT_DIRS ON CACHE BOOL "Use the parent output directories" FORCE)
+add_subdirectory("${MPP_GLEW_SOURCE_DIR}/build/cmake" "${CMAKE_BINARY_DIR}/ext/glew" EXCLUDE_FROM_ALL)
+target_include_directories(glew PUBLIC "$<BUILD_INTERFACE:${MPP_GLEW_SOURCE_DIR}/include>")
+add_library(GLEW::GLEW ALIAS glew)
+
+# Assimp is built from the source submodule. Keep its optional tools, tests,
+# samples, and install rules out of the application build.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/assimp/CMakeLists.txt")
+    message(FATAL_ERROR "Assimp submodule is missing; run: git submodule update --init --recursive")
+endif()
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "Do not build Assimp tools" FORCE)
+set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "Do not build Assimp samples" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "Do not build Assimp tests" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "Do not install Assimp" FORCE)
+set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "Do not install Assimp PDBs" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Do not promote dependency warnings to errors" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "Build Assimp's bundled zlib" FORCE)
+add_subdirectory(ext/assimp EXCLUDE_FROM_ALL)
+
 add_library(mpp_vendor_headers INTERFACE)
 target_include_directories(mpp_vendor_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
-
-function(mpp_import_vendor_library target release_lib debug_lib release_dll debug_dll)
-    add_library(${target} SHARED IMPORTED GLOBAL)
-    set_target_properties(${target} PROPERTIES
-        IMPORTED_CONFIGURATIONS "Debug;Release"
-        IMPORTED_IMPLIB_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/lib/vs2026/x64/Release/${release_lib}"
-        IMPORTED_IMPLIB_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vendor/lib/vs2026/x64/Debug/${debug_lib}"
-        IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/bin/vs2026/x64/Release/${release_dll}"
-        IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vendor/bin/vs2026/x64/Debug/${debug_dll}"
-        MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
-        MAP_IMPORTED_CONFIG_MINSIZEREL Release)
-endfunction()
-
-mpp_import_vendor_library(FreeImage FreeImage.lib FreeImage.lib FreeImage.dll FreeImage.dll)
-mpp_import_vendor_library(GLEW glew32.lib glew32.lib glew32.dll glew32.dll)
-mpp_import_vendor_library(Assimp assimp-vc143-mt.lib assimp-vc143-mtd.lib assimp-vc143-mt.dll assimp-vc143-mtd.dll)
-
-target_link_libraries(FreeImage INTERFACE mpp_vendor_headers)
-target_link_libraries(GLEW INTERFACE mpp_vendor_headers)
-target_link_libraries(Assimp INTERFACE mpp_vendor_headers)
 
 function(mpp_target_defaults target)
     target_compile_features(${target} PUBLIC cxx_std_20)
@@ -89,24 +113,15 @@ function(mpp_copy_runtime target)
     endforeach()
 endfunction()
 
-# The utils submodule has no CMake project, so mirror its VS2026 target here
-# without changing the submodule itself.
-add_library(Utils SHARED
-    ext/utils/src/FileSystem.cpp
-    ext/utils/src/Image.cpp
-    ext/utils/src/StringUtils.cpp
-    ext/utils/src/StructuredData.cpp
-    ext/utils/src/tinyxml2.cpp
-    ext/utils/src/XmlReader.cpp
-    ext/utils/src/XmlWriter.cpp)
-target_include_directories(Utils PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/include/utils"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/vendor/include")
-target_compile_definitions(Utils PRIVATE UTILS_DLL_EXPORT)
-target_link_libraries(Utils PRIVATE FreeImage)
-mpp_target_defaults(Utils)
-mpp_add_header_filters(Utils "${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/include")
+# Utils owns its build in the source submodule. The additional build-interface
+# include directory preserves this project's existing <utils/...> includes.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/CMakeLists.txt")
+    message(FATAL_ERROR "Utils submodule is missing; run: git submodule update --init --recursive")
+endif()
+add_subdirectory(ext/utils EXCLUDE_FROM_ALL)
+target_include_directories(Utils
+    BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include"
+    PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/include>")
 
 add_library(ImGui STATIC
     ext/imgui/src/imgui.cpp
@@ -256,8 +271,8 @@ target_compile_definitions(MassivePolyPusher PRIVATE
     MPP_DLL_EXPORT _ENABLE_EXTENDED_ALIGNED_STORAGE
     $<$<CONFIG:Debug>:MPP_DEBUG_BUILD>)
 target_link_libraries(MassivePolyPusher
-    PUBLIC MppMesh MppProgram Utils mpp_vendor_headers
-    PRIVATE OpenGL::GL GLEW)
+    PUBLIC MppMesh MppProgram Utils mpp_vendor_headers GLEW::GLEW
+    PRIVATE OpenGL::GL)
 mpp_target_defaults(MassivePolyPusher)
 mpp_add_header_filters(MassivePolyPusher "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
 
@@ -337,11 +352,14 @@ add_library(MppAppSupport STATIC
     mpp-app-support/src/Window.cpp
     mpp-app-support/src/WindowSDL.cpp
     mpp-app-support/src/ZipArchive.cpp)
-target_include_directories(MppAppSupport PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
-    "${MPP_SDL_INCLUDE_DIR}")
+target_include_directories(MppAppSupport
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
+        "${MPP_SDL_INCLUDE_DIR}"
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
 target_link_libraries(MppAppSupport PUBLIC
-    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL2 FreeImage
+    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL2
     PRIVATE comdlg32 shell32 ole32)
 mpp_target_defaults(MppAppSupport)
 mpp_add_header_filters(MppAppSupport "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include")
@@ -359,10 +377,10 @@ add_executable(ModelConvert
     model-convert/build/version/Version.rc)
 target_include_directories(ModelConvert PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
 target_link_libraries(ModelConvert PRIVATE
-    MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils Assimp)
+    MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils assimp::assimp)
 mpp_target_defaults(ModelConvert)
 mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
-mpp_copy_runtime(ModelConvert Assimp FreeImage GLEW SDL2 Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
+mpp_copy_runtime(ModelConvert assimp glew SDL2 Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 
 add_executable(PipelineEditor WIN32
     pipeline-editor/src/Main.cpp
@@ -374,10 +392,10 @@ target_include_directories(PipelineEditor PRIVATE
     "${MPP_SDL_INCLUDE_DIR}")
 target_link_libraries(PipelineEditor PRIVATE
     MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
-    Utils ImGui SDL2 SDL2main FreeImage OpenGL::GL GLEW)
+    Utils ImGui SDL2 SDL2main OpenGL::GL GLEW::GLEW)
 mpp_target_defaults(PipelineEditor)
 mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-mpp_copy_runtime(PipelineEditor SDL2 FreeImage GLEW Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+mpp_copy_runtime(PipelineEditor SDL2 glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
 add_custom_command(TARGET PipelineEditor POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
