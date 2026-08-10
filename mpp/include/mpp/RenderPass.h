@@ -15,6 +15,20 @@ namespace mpp
 {
 	class RenderSystem;
 
+	// How a mesh instance should be rasterized in the PBR forward pass. Kept as
+	// plain values so the precedence rules can be tested without a GL context --
+	// notably that a double-sided material overrides the model's culling flag.
+	struct PbrForwardMeshClassification
+	{
+		bool blend;
+		bool sortTransparent;
+		bool cullBackFaces;
+
+		bool operator ==(PbrForwardMeshClassification const&) const = default;
+	};
+
+	_MPPAPI PbrForwardMeshClassification classifyPbrForwardMesh(bool pbrShadingModel, bool transparent, bool doubleSided, bool modelCullBackFaces);
+
 	class _MPPAPI RenderPass
 	{
 		RenderSystem* mRenderSystem;
