@@ -50,15 +50,6 @@ namespace mpp
 			return 0;
 		}
 
-		bool aliasCompatible(GraphImageLifetime const& left, GraphImageLifetime const& right)
-		{
-			return left.size == right.size && left.desc.format == right.desc.format &&
-				left.desc.mipLevels == right.desc.mipLevels &&
-				left.desc.colourSpace == right.desc.colourSpace &&
-				left.desc.params.minFilter == right.desc.params.minFilter && left.desc.params.magFilter == right.desc.params.magFilter &&
-				left.desc.params.wrap == right.desc.params.wrap;
-		}
-
 		char const* passTypeName(GraphPassType type)
 		{
 			switch (type) { case GraphPassType::Scene: return "scene"; case GraphPassType::Fullscreen: return "fullscreen"; default: return "present"; }
@@ -68,6 +59,24 @@ namespace mpp
 	char const* graphImageFormatName(GraphImageFormat format)
 	{
 		return formatName(format);
+	}
+
+	bool graphImagesCanAlias(GraphImageLifetime const& left, GraphImageLifetime const& right)
+	{
+		// usage is compared even though it does not change the texture that gets
+		// created: sharing an allocation between images the graph declares
+		// differently is not something to allow by omission. In the shipped
+		// templates every non-external colour image is colourAttachment|sampled and
+		// every depth image is depthAttachment|sampled, so this costs no aliasing
+		// there -- and presentation images are external, hence never allocated here.
+		return left.size == right.size && left.desc.format == right.desc.format &&
+			left.desc.usage == right.desc.usage &&
+			left.desc.mipLevels == right.desc.mipLevels &&
+			left.desc.colourSpace == right.desc.colourSpace &&
+			left.desc.params.minFilter == right.desc.params.minFilter && left.desc.params.magFilter == right.desc.params.magFilter &&
+			left.desc.params.wrap == right.desc.params.wrap && left.desc.params.useMipmaps == right.desc.params.useMipmaps &&
+			left.desc.params.lodBaseLevel == right.desc.params.lodBaseLevel && left.desc.params.lodMaxLevel == right.desc.params.lodMaxLevel &&
+			left.desc.params.lodBias == right.desc.params.lodBias && left.desc.params.maxAnisotropy == right.desc.params.maxAnisotropy;
 	}
 
 	struct RenderGraph::Image
@@ -725,7 +734,7 @@ namespace mpp
 					{
 						if (!allocationGroups[candidate].aliasable) continue;
 						auto const& representative = plan.allocatedImages[allocationGroups[candidate].members.front()];
-						if (!aliasCompatible(representative, lifetime)) continue;
+						if (!graphImagesCanAlias(representative, lifetime)) continue;
 						bool overlaps = false;
 						for (auto member : allocationGroups[candidate].members)
 						{

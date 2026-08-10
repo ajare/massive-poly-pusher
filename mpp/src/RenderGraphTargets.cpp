@@ -17,17 +17,6 @@ namespace mpp
 {
 	namespace
 	{
-		bool compatibleForAliasing(GraphImageLifetime const& left, GraphImageLifetime const& right)
-		{
-			return left.size == right.size && left.desc.format == right.desc.format &&
-				left.desc.mipLevels == right.desc.mipLevels &&
-				left.desc.colourSpace == right.desc.colourSpace &&
-				left.desc.params.minFilter == right.desc.params.minFilter && left.desc.params.magFilter == right.desc.params.magFilter &&
-				left.desc.params.wrap == right.desc.params.wrap && left.desc.params.useMipmaps == right.desc.params.useMipmaps &&
-				left.desc.params.lodBaseLevel == right.desc.params.lodBaseLevel && left.desc.params.lodMaxLevel == right.desc.params.lodMaxLevel &&
-				left.desc.params.lodBias == right.desc.params.lodBias && left.desc.params.maxAnisotropy == right.desc.params.maxAnisotropy;
-		}
-
 		RenderTextureOptions makeOptions(GraphImageDesc const& desc)
 		{
 			RenderTextureOptions options;
@@ -114,7 +103,7 @@ namespace mpp
 			size_t poolIndex = SIZE_MAX;
 			for (size_t index = 0; index < candidatePool.size(); ++index)
 			{
-				if (candidatePool[index].samples!=physicalSamples||!compatibleForAliasing(candidatePool[index].lifetime, *lifetime)) continue;
+				if (candidatePool[index].samples!=physicalSamples||!graphImagesCanAlias(candidatePool[index].lifetime, *lifetime)) continue;
 				auto const& used = assignments[index];
 				if (used.empty())
 				{

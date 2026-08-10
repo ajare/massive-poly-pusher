@@ -202,6 +202,22 @@ namespace mpp
 		uint32_t physicalAllocation{ UINT32_MAX };
 	};
 
+	// Whether two graph images may share one physical allocation, ignoring their
+	// lifetimes -- callers add the interval and transience rules on top.
+	//
+	// This must be the ONE definition. RenderGraph::buildAllocationPlan reports a
+	// grouping that PipelineEditor displays, and RenderGraphTargets produces the
+	// real one; when the two predicates disagree the editor describes an
+	// allocation the renderer never makes. They previously drifted over six
+	// sampler fields. RenderGraphTargets additionally reuses a pooled texture
+	// across frames, which is the same question about the same texture object, so
+	// the strict field set is the correct one for both.
+	//
+	// Sample count is deliberately absent: it is derived from usage and the
+	// requested MSAA level rather than carried on the descriptor, so the allocator
+	// compares it separately.
+	_MPPAPI bool graphImagesCanAlias(GraphImageLifetime const& left, GraphImageLifetime const& right);
+
 	struct _MPPAPI RenderGraphAllocationPlan
 	{
 		bool valid{ false };

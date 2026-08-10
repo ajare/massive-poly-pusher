@@ -825,7 +825,7 @@ It validates whatever binary is already in `pipeline-editor/build/vs2026/bin/x64
 so it will happily report "passed" against a stale executable. Build the configuration you intend to
 validate first — the default is Release, which a Debug-only build cycle never refreshes.
 
-### 4.2 Aliasing compatibility is implemented twice, with different rules — **Bug, medium**
+### 4.2 Aliasing compatibility is implemented twice, with different rules — **Bug, medium** — ✅ FIXED
 
 Two independent predicates:
 
@@ -844,6 +844,40 @@ skipped, but it is not enforced.
 
 **Fix** — export a single `bool graphImagesCanAlias(GraphImageDesc const&, glm::uvec2, ...)` from
 `RenderGraph.h` and call it from both sites. Include `desc.usage` in the comparison.
+
+#### 4.2 Resolution
+
+`graphImagesCanAlias(GraphImageLifetime const&, GraphImageLifetime const&)` is now exported from
+`RenderGraph.h` and is the only definition; both `aliasCompatible` and `compatibleForAliasing` are
+gone. It takes lifetimes rather than the suggested `(GraphImageDesc, glm::uvec2, ...)` because both
+call sites already hold a `GraphImageLifetime` and `size` is a resolved field on it, so a parameter
+pack would only give the callers a chance to pass mismatched pieces.
+
+The strict field set won — it is `RenderGraphTargets`' old one. That is not arbitrary: the allocator
+also reuses a pooled texture **across** frames (`RenderGraphTargets.cpp:108`, the `used.empty()`
+branch), which is the same question asked about the same texture object, so every sampler field has
+to match there. Sample count stays at the call site: it is derived from usage and the requested MSAA
+level rather than carried on the descriptor.
+
+`desc.usage` is included as suggested. Checked before committing to it: in the shipped templates
+every non-external colour image is `colourAttachment,sampled` and every depth image is
+`depthAttachment,sampled`, and the only images with `presentation` usage are external — which are
+never allocated here at all. So it enforces the intent at no cost in aliasing.
+
+**On the tests.** Three, and each was verified by making it fail:
+
+1. Context-free, in `runRenderGraphTopologyTests` — the same three-pass graph planned three times:
+   identical descriptors alias, a `lodBias` difference does not, a `usage` difference does not.
+   Reverting the predicate to the old loose one gives *"graph images differing only in sampler LOD
+   bias were planned onto one allocation"*; dropping just the usage term gives the matching message.
+2. GPU suite — a pairwise assertion that the plan's `physicalAllocation` grouping and the targets
+   the allocator actually handed out agree for **every** pair. This is the invariant that matters,
+   since the plan is what PipelineEditor displays.
+3. The GPU alias fixture gained a fourth image differing only in `lodBias`. Without it (2) was
+   vacuous — all three original images shared one descriptor, so no predicate difference could ever
+   show up. With it, giving the plan and the allocator deliberately different predicates produces
+   *"planned allocation grouping disagrees with the allocated targets for 'GpuTestAliasMiddle' and
+   'GpuTestAliasVariant'"*.
 
 ### 4.3 `RenderGraph::compile(Caps const&)` contains a dead loop — **Bug, medium**
 
