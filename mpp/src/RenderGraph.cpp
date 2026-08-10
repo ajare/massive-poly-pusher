@@ -560,6 +560,24 @@ namespace mpp
 				glm::vec2 size = desc.absoluteSize.x && desc.absoluteSize.y ? glm::vec2(desc.absoluteSize) : desc.relativeSize;
 				return size / (float)(1u << mip);
 			};
+			// A transient image is allowed to share an allocation with another whose
+			// lifetime does not overlap, so at pass start it holds whatever the
+			// previous occupant left. clearPassOutputs honours Clear and lets both
+			// Load and DontCare through as "keep what is there", so Load on such an
+			// image reads contents that change with the aliasing decision.
+			auto checkTransientLoad = [&](GraphImageHandle const& handle, GraphLoadOp load, char const* attachment)
+			{
+				if (load != GraphLoadOp::Load) return;
+				auto const& image = mImages[handle.id];
+				if (image.desc.external || !image.desc.transient || handle.version == 0) return;
+				auto const producer = image.producers[handle.version - 1];
+				if (producer != UINT32_MAX && producer <= passId && mPasses[producer].enabled) return;
+				result.diagnostics.push_back("Pass '" + pass.name + "' loads " + attachment + " image '" + image.name +
+					"', which is transient with no earlier producer, so its contents depend on which image the allocator aliased it onto. Clear it, mark the image non-transient, or produce it in an earlier pass.");
+			};
+			for (auto const& output : pass.colourOutputs) checkTransientLoad(output.image, output.load, "colour");
+			for (auto const& output : pass.depthOutputs) checkTransientLoad(output.image, output.load, "depth");
+
 			if (pass.colourOutputs.size() > 1)
 			{
 				auto const& firstOutput = pass.colourOutputs.front();
