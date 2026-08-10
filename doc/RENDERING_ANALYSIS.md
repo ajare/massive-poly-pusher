@@ -1251,7 +1251,7 @@ distinguishable in the red channel, bound in **reverse** declaration order, plus
 undeclared name. Verified load-bearing by restoring positional binding, which reports
 *"got r=64 g=255, expected r=255 g=64"* — the two textures exactly swapped.
 
-### 5.7 `discardDontCareOutputs` uses attachment enums that can be invalid — **Bug, low**
+### 5.7 `discardDontCareOutputs` uses attachment enums that can be invalid — **Bug, low** — ✅ FIXED
 
 `RenderGraphExecutor.cpp:181-195`
 
@@ -1264,6 +1264,29 @@ undeclared name. Verified load-bearing by restoring positional binding, which re
 
 **Fix** — branch on whether the bound target is the default framebuffer, and select the
 depth/depth-stencil enum from `RenderTexture::hasStencilBuffer()`.
+
+#### 5.7 Resolution
+
+Both applied. The default-framebuffer test reads `GL_DRAW_FRAMEBUFFER_BINDING` rather than
+inspecting the target object, so it reflects exactly what `glInvalidateFramebuffer` is about to act
+on. `GL_COLOR` is emitted at most once however many colour outputs the pass declares, since the
+default framebuffer has one colour buffer. The depth enum now comes from `hasStencilBuffer()`,
+matching what `GraphFramebufferTarget` attached.
+
+`discardDontCareOutputs` gained the execution context so it can resolve the depth image's target.
+
+**Testing the two halves is not symmetric, and only one is covered.**
+
+The default-framebuffer half is a real GL error, so the GPU suite executes a pass that writes an
+imported `screen` image with `store="dontCare"` and lets `GL_CHECK` be the assertion. Verified
+load-bearing by forcing the FBO branch: *"GL_INVALID_ENUM at RenderGraphExecutor.cpp:211"*.
+
+The depth-stencil half is **not** directly testable. Naming an attachment that is not present is
+defined as a no-op rather than an error, so the old `GL_DEPTH_ATTACHMENT` on a packed
+depth-stencil FBO produced no diagnostic — it silently skipped the invalidation. Invalidation is a
+hint with no observable result either way, so there is nothing to assert. The change is correct by
+construction against `GraphFramebufferTarget`'s attachment choice, and that is the strongest claim
+available here.
 
 ### 5.8 `GraphLoadOp::DontCare` never invalidates at load time — **Perf, low**
 

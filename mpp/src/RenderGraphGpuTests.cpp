@@ -465,6 +465,30 @@ void main()
 				if (!rejectedUnknownSampler) return fail("a fullscreen pass binding an undeclared sampler was accepted");
 			}
 
+			stage = "dontCare store on the default framebuffer";
+			// The default framebuffer names its buffers GL_COLOR/GL_DEPTH, so the
+			// attachment enums used for an FBO are GL_INVALID_ENUM there. GL_CHECK
+			// inside the executor turns that into a throw, so reaching the end of this
+			// block is the assertion.
+			{
+				RenderGraph screenGraph;
+				GraphImageDesc screenDesc; screenDesc.format = GraphImageFormat::Rgba8;
+				screenDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Presentation;
+				screenDesc.external = true; screenDesc.transient = false;
+				auto screenImage = screenGraph.createImage("GpuTestScreen", screenDesc);
+				screenGraph.setImageImportName(screenImage, "screen");
+				auto screenPass = screenGraph.addPass("GpuTestScreenPass", GraphPassType::Fullscreen);
+				auto screenWritten = screenGraph.writeColour(screenPass, screenImage, GraphLoadOp::Clear, GraphStoreOp::DontCare, glm::vec4(0, 0, 0, 1));
+				auto screenPlan = screenGraph.buildAllocationPlan({ 16, 16 });
+				if (!screenPlan.valid) return fail("default-framebuffer graph did not compile");
+				RenderGraphTargets screenTargets(renderSystem);
+				screenTargets.allocate(screenPlan);
+				screenTargets.bindImported(screenWritten, renderSystem->getScreenRenderTarget());
+				RenderGraphExecutor screenExecutor(renderSystem);
+				screenExecutor.setPassCallback(screenGraph, screenPass, [](RenderGraphExecutionContext const&) {});
+				screenExecutor.execute(screenGraph, screenTargets, renderSystem->getCaps());
+			}
+
 			stage = "pass identity across topology edits";
 			// GraphPassHandle::id is a positional index, and removePass renumbers it.
 			// Executor state used to be keyed on that index, so after an edit a pass

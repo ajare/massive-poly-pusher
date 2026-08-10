@@ -178,18 +178,35 @@ namespace mpp
 			}
 		};
 
-		void discardDontCareOutputs(GraphPassInfo const& pass)
+		void discardDontCareOutputs(GraphPassInfo const& pass, RenderGraphExecutionContext const& context)
 		{
 			if (!GLEW_VERSION_4_3 && !GLEW_ARB_invalidate_subdata) return;
+			// The default framebuffer names its buffers GL_COLOR/GL_DEPTH/GL_STENCIL,
+			// not GL_COLOR_ATTACHMENT0 -- passing an attachment enum there is
+			// GL_INVALID_ENUM, which is what authoring store="dontCare" on a
+			// presentation output used to produce.
+			GLint boundFramebuffer = 0;
+			GL_CHECK(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &boundFramebuffer));
+			bool const defaultFramebuffer = boundFramebuffer == 0;
 			vector<GLenum> attachments;
 			for (size_t index = 0; index < pass.colourOutputs.size(); ++index)
 			{
-				if (pass.colourOutputs[index].store == GraphStoreOp::DontCare)
-					attachments.push_back((GLenum)(GL_COLOR_ATTACHMENT0 + index));
+				if (pass.colourOutputs[index].store != GraphStoreOp::DontCare) continue;
+				if (!defaultFramebuffer) { attachments.push_back((GLenum)(GL_COLOR_ATTACHMENT0 + index)); continue; }
+				// The default framebuffer has exactly one colour buffer however many
+				// outputs the pass declares, so name it once.
+				if (find(attachments.begin(), attachments.end(), (GLenum)GL_COLOR) == attachments.end()) attachments.push_back(GL_COLOR);
 			}
 			for (auto const& output : pass.depthOutputs)
 			{
-				if (output.store == GraphStoreOp::DontCare) attachments.push_back(GL_DEPTH_ATTACHMENT);
+				if (output.store != GraphStoreOp::DontCare) continue;
+				if (defaultFramebuffer) { attachments.push_back(GL_DEPTH); continue; }
+				// GraphFramebufferTarget attaches a packed depth-stencil format as
+				// GL_DEPTH_STENCIL_ATTACHMENT, so invalidating GL_DEPTH_ATTACHMENT
+				// would name something that is not attached and leave the stencil
+				// aspect stored regardless.
+				auto const* texture = dynamic_cast<RenderTexture const*>(context.getImage(output.image).get());
+				attachments.push_back(texture && texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT);
 			}
 			if (!attachments.empty()) GL_CHECK(glInvalidateFramebuffer(GL_FRAMEBUFFER, (GLsizei)attachments.size(), attachments.data()));
 		}
@@ -501,7 +518,7 @@ namespace mpp
 				}
 				{
 					GpuDebugScope storeScope("Store/Resolve Attachments");
-					discardDontCareOutputs(pass);
+					discardDontCareOutputs(pass, context);
 					for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, false) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},false,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
 					for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, true) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},true,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
 				}
