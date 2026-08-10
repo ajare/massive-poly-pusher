@@ -326,6 +326,11 @@ namespace mpp
 			auto aliasFirst = aliasGraph.createImage("GpuTestAliasFirst", colour);
 			auto aliasMiddle = aliasGraph.createImage("GpuTestAliasMiddle", colour);
 			auto aliasLast = aliasGraph.createImage("GpuTestAliasLast", colour);
+			// Identical to the others except for one sampler field, so the pairwise
+			// plan-versus-allocator check below has a case where a loose predicate on
+			// either side would actually disagree rather than being trivially met.
+			GraphImageDesc aliasVariantDesc = colour; aliasVariantDesc.params.lodBias = 1.5f;
+			auto aliasVariant = aliasGraph.createImage("GpuTestAliasVariant", aliasVariantDesc);
 			auto aliasPass0 = aliasGraph.addPass("GpuTestAlias0", GraphPassType::Fullscreen);
 			aliasFirst = aliasGraph.writeColour(aliasPass0, aliasFirst, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 0, 0, 1));
 			auto aliasPass1 = aliasGraph.addPass("GpuTestAlias1", GraphPassType::Fullscreen);
@@ -334,8 +339,11 @@ namespace mpp
 			auto aliasPass2 = aliasGraph.addPass("GpuTestAlias2", GraphPassType::Fullscreen);
 			aliasGraph.readSampled(aliasPass2, aliasMiddle);
 			aliasLast = aliasGraph.writeColour(aliasPass2, aliasLast, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 0, 1, 1));
+			auto aliasPass3 = aliasGraph.addPass("GpuTestAlias3", GraphPassType::Fullscreen);
+			aliasGraph.readSampled(aliasPass3, aliasLast);
+			aliasGraph.writeColour(aliasPass3, aliasVariant, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(1, 1, 0, 1));
 			auto aliasPlan = aliasGraph.buildAllocationPlan({ 24, 24 });
-			if (!aliasPlan.valid || aliasPlan.allocatedImages.size() != 3 || aliasPlan.estimatedPhysicalBytes == 0)
+			if (!aliasPlan.valid || aliasPlan.allocatedImages.size() != 4 || aliasPlan.estimatedPhysicalBytes == 0)
 				return fail("allocation introspection report is incomplete");
 			if (aliasPlan.allocatedImages[0].physicalAllocation != aliasPlan.allocatedImages[2].physicalAllocation ||
 				aliasPlan.allocatedImages[0].physicalAllocation == aliasPlan.allocatedImages[1].physicalAllocation)
@@ -344,6 +352,18 @@ namespace mpp
 			aliasTargets.allocate(aliasPlan);
 			if (aliasTargets.get(aliasFirst) != aliasTargets.get(aliasLast)) return fail("non-overlapping transient lifetimes were not aliased");
 			if (aliasTargets.get(aliasFirst) == aliasTargets.get(aliasMiddle)) return fail("overlapping transient lifetimes were aliased");
+			// The plan's grouping is what PipelineEditor reports; this is what the
+			// renderer actually did. They are produced by separate code and only agree
+			// because both now consult graphImagesCanAlias, so assert it directly over
+			// every pair rather than trusting the shared call.
+			for (size_t left = 0; left < aliasPlan.allocatedImages.size(); ++left)
+				for (size_t right = left + 1; right < aliasPlan.allocatedImages.size(); ++right)
+				{
+					auto const& leftImage = aliasPlan.allocatedImages[left]; auto const& rightImage = aliasPlan.allocatedImages[right];
+					bool const plannedTogether = leftImage.physicalAllocation == rightImage.physicalAllocation;
+					if (plannedTogether != (aliasTargets.get(leftImage.image) == aliasTargets.get(rightImage.image)))
+						return fail("planned allocation grouping disagrees with the allocated targets for '" + leftImage.debugName + "' and '" + rightImage.debugName + "'");
+				}
 			GraphRasterState rasterState;
 			rasterState.explicitState = true;
 			rasterState.depthTest = false;
@@ -357,10 +377,11 @@ namespace mpp
 			aliasExecutor.setPassCallback(aliasPass0, [&](RenderGraphExecutionContext const&) { observedRasterState = glIsEnabled(GL_BLEND) && !glIsEnabled(GL_DEPTH_TEST) && !glIsEnabled(GL_CULL_FACE); });
 			aliasExecutor.setPassCallback(aliasPass1, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.setPassCallback(aliasPass2, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasPass3, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
 			if (!observedRasterState) return fail("explicit graph raster state was not applied");
-			if (aliasExecutor.getLastExecutionStats().size() != 3) return fail("per-pass execution statistics were not recorded");
-			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=3||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id)return fail("executor did not retain its last successful compiled pass order");
+			if (aliasExecutor.getLastExecutionStats().size() != 4) return fail("per-pass execution statistics were not recorded");
+			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=4||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id||aliasOrder[3].id!=aliasPass3.id)return fail("executor did not retain its last successful compiled pass order");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
 
 			stage = "compiled process-flow order";

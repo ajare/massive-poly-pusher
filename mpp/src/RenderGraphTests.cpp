@@ -123,6 +123,43 @@ namespace mpp
 		if (aliasingPlan.estimatedPhysicalBytes != distinctBytes)
 			return fail("planned physical byte estimate does not match its own allocation groups");
 
+		// The plan and RenderGraphTargets used to carry separate compatibility
+		// predicates, and the plan's ignored six sampler fields plus usage. Both now
+		// call graphImagesCanAlias, so a descriptor difference the real allocator
+		// respects must stop the plan grouping too. Three ends of the same graph:
+		// identical descriptors alias, a sampler difference does not, a usage
+		// difference does not.
+		auto planEndImagesTogether = [&](GraphImageDesc const& tailDesc)
+		{
+			RenderGraph graph;
+			auto head = graph.createImage("Head", colour);
+			auto middle = graph.createImage("Middle", colour);
+			auto tail = graph.createImage("Tail", tailDesc);
+			auto step0 = graph.addPass("Step0", GraphPassType::Fullscreen);
+			head = graph.writeColour(step0, head);
+			auto step1 = graph.addPass("Step1", GraphPassType::Fullscreen);
+			graph.readSampled(step1, head); middle = graph.writeColour(step1, middle);
+			auto step2 = graph.addPass("Step2", GraphPassType::Fullscreen);
+			graph.readSampled(step2, middle); graph.writeColour(step2, tail);
+			auto plan = graph.buildAllocationPlan({ 32, 32 });
+			if (!plan.valid) return false;
+			uint32_t headAllocation = UINT32_MAX, tailAllocation = UINT32_MAX;
+			for (auto const& lifetime : plan.allocatedImages)
+			{
+				if (lifetime.image.id == head.id) headAllocation = lifetime.physicalAllocation;
+				if (lifetime.image.id == tail.id) tailAllocation = lifetime.physicalAllocation;
+			}
+			return headAllocation != UINT32_MAX && headAllocation == tailAllocation;
+		};
+		if (!planEndImagesTogether(colour))
+			return fail("identical disjoint graph images were not planned onto one allocation");
+		GraphImageDesc biased = colour; biased.params.lodBias = 1.5f;
+		if (planEndImagesTogether(biased))
+			return fail("graph images differing only in sampler LOD bias were planned onto one allocation");
+		GraphImageDesc unsampled = colour; unsampled.usage = GraphImageUsage::ColourAttachment;
+		if (planEndImagesTogether(unsampled))
+			return fail("graph images differing in declared usage were planned onto one allocation");
+
 		return true;
 	}
 }
