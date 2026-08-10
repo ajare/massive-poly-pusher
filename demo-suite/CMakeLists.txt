@@ -12,7 +12,9 @@ mpp_target_defaults(DemoSuite)
 mpp_add_header_filters(DemoSuite "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set_target_properties(DemoSuite PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:DemoSuite>")
-target_include_directories(DemoSuite PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(DemoSuite PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${MPP_SDL_INCLUDE_DIR}")
 target_link_libraries(DemoSuite PRIVATE
     MppAppSupport
     MppHelper

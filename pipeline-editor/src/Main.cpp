@@ -22,7 +22,7 @@
 #include <string_view>
 #include <vector>
 #include <Windows.h>
-#include <sdl/SDL.h>
+#include <SDL.h>
 #include <renderdoc/renderdoc_app.h>
 #include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>

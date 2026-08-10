@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sdl/SDL.h>
+#include <SDL.h>
 #include <string>
 #include "mpp/app/Window.h"
 

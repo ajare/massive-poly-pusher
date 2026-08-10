@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <ShObjIdl.h>
-#include <sdl/SDL.h>
-#include <sdl/SDL_syswm.h>
+#include <SDL.h>
+#include <SDL_syswm.h>
 
 #include "mpp/app/FileDialog.h"
 

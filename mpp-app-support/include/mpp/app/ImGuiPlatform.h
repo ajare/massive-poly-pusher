@@ -5,7 +5,7 @@
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 
-#include <sdl/SDL.h>
+#include <SDL.h>
 
 #include "mpp/app/ImGuiBackendData.h"
 #include "mpp/app/InputManager.h"
