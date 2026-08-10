@@ -1268,7 +1268,7 @@ when the extension is absent.
 
 ## 6. Named outputs and the anti-aliasing chain
 
-### 6.1 An offscreen named output silently skips the entire AA chain — **Bug, medium**
+### 6.1 An offscreen named output silently skips the entire AA chain — **Bug, medium** — ✅ FIXED (TAA/FXAA); SSAA is a design question
 
 `mpp/src/RenderOutputProcessor.cpp:85`
 
@@ -1298,6 +1298,50 @@ renderer-owned output chain"; offscreen outputs do not.
 as the graph's write target for that image, and let `present` copy through the chain into the
 graph-visible target. Alternatively, if the bypass is intentional, make it an authoring **error** in
 `validateOutputAntiAliasing` rather than a silent runtime no-op.
+
+#### 6.1 Resolution
+
+**TAA and FXAA now run for offscreen outputs.** The bypass condition was `input == destination &&
+!taa`, and for an offscreen output the input *is* the destination by construction, so the whole
+chain was dropped. It now skips only when the chain would genuinely do nothing:
+
+```cpp
+bool const chainDoesNothing = !taa && ssaa == Off && !fxaa;
+if (input == destination && chainDoesNothing) { ...; return; }
+```
+
+With any stage enabled the intermediate targets are distinct, so the final blit never reads and
+writes the same texture — which is the only thing the original condition was really protecting
+against.
+
+**SSAA is different, and neither of the two suggested fixes is right for it.** The suggested
+approach — bind the processor's `Input` as the graph's write target — works for external outputs
+because their destination is the screen, at *logical* size, while the graph renders at raster size.
+An offscreen output's destination is the graph's own image, which `RenderPipeline` already allocated
+at `ssaaDimension(viewport)` (`RenderPipeline.cpp:256`). It is *already* the supersampled image.
+There is nothing left to downsample from, and no logical-size target to put the result in.
+
+Making SSAA meaningful offscreen would require deciding what an offscreen output's declared size
+means — the raster size it is rendered at, or a logical size it should be resolved to. That is a
+design question, not a bug, and it is **left open**.
+
+What was fixed is the silence. `RenderOutputProcessor::rebuild` now forces `ssaa = Off` for a
+non-external output, so `rasterSize == logicalSize` and the work targets are sized against a
+destination the chain can actually reach; and `validateOutputAntiAliasing` reports
+**MPP-PIPELINE-050**. That is a *warning*, not an error, because MPP-PIPELINE-042 requires every
+output to share one effective SSAA setting — a pipeline mixing a screen output with an offscreen one
+legitimately inherits SSAA on both, and erroring would reject working configurations.
+
+**Fixture correction.** The existing named-output GPU test declared its image non-external while
+driving it exactly as an external output (graph renders into the processor's `Input`, presents into
+a separate destination). It now sets `external = true`, which is what it was always modelling.
+
+**On the tests.** A new "offscreen output anti-aliasing chain" case captures the render flow around
+`present` and asserts the FXAA and Presentation events actually executed, that the image survives
+the round trip, and that an SSAA request is planned away rather than sized against a raster-size
+destination. Verified load-bearing twice: restoring the old bypass gives *"an offscreen named output
+skipped its anti-aliasing chain"*, and removing the `rebuild` guard gives *"SSAA on an offscreen
+output was planned against a raster-size destination"*.
 
 ### 6.2 TAA is a depth-reprojection resolve with a fixed blend weight — **Non-standard, medium**
 
