@@ -1,7 +1,13 @@
 [submodule "ext/utils"]
 	path = ext/utils
-	url = https://wtmrsh@bitbucket.org/wtmrsh/utils.git
+	url = https://github.com/ajare/utils.git
 	ignore = dirty
 [submodule "ext/sdl"]
 	path = ext/sdl
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "ext/assimp"]
+	path = ext/assimp
+	url = https://github.com/assimp/assimp.git
+[submodule "ext/glew"]
+	path = ext/glew
+	url = https://github.com/nigels-com/glew.git

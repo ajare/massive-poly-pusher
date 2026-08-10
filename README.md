@@ -15,17 +15,11 @@ cmake -S . -B build\cmake -G "Visual Studio 18 2026" -A x64
 cmake --build build\cmake --config Release --parallel
 ```
 
-The CMake build includes all projects from `build/vs2026/MassivePolyPusher.sln`, builds SDL from `ext/sdl`, and places executables and runtime DLLs under `build/cmake/bin/<Configuration>`. DemoSuite reads content directly from the repository-level `resources/demo-suite` and `resources/shared` directories; resource assets are not copied into the CMake output directory.
+The CMake build includes all projects from `build/vs2026/MassivePolyPusher.sln`, builds SDL from `ext/sdl`, Assimp from `ext/assimp`, GLEW from `ext/glew`, and Utils from `ext/utils`, and places executables and runtime DLLs under `build/cmake/bin/<Configuration>`. Because the GLEW Git repository omits generated headers and `glew.c`, the first configure downloads the hash-verified official source archive matching the pinned submodule release. DemoSuite reads content directly from the repository-level `resources/demo-suite` and `resources/shared` directories; resource assets are not copied into the CMake output directory.
 
 ### Existing Visual Studio projects
 
-First build the submodules:
-
-`msbuild ext\utils\build\vs2017\Utils.sln -target:UtilsTests:Rebuild -p:Platform=Win32 -p:Configuration=Release`
-
-Then the main project. The current editor/tool configuration is VS2026 x64:
-
-`msbuild build\vs2026\MassivePolyPusher.sln -target:Build -p:Platform=x64 -p:Configuration=Release`
+The checked-in Visual Studio projects predate the source-built dependency integration. Use the CMake-generated VS2026 solution for builds that include the SDL, Assimp, GLEW, and Utils submodules.
 
 `PipelineEditor` is a separate executable under `pipeline-editor\build\vs2026\bin\x64\<Configuration>`. Its post-build deployment copies `editor.ini`, which references the repository-level `resources` directory beside the root `build` directory.
 

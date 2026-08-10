@@ -11,7 +11,7 @@
 #include <regex>
 #include <list>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/gl.h>
 
 #pragma warning(push)
