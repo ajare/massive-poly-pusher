@@ -48,6 +48,11 @@ namespace mpp
 
 	struct _MPPAPI GraphPassAuthoringMetadata
 	{
+		// Name of a parameter the pass will otherwise infer from its own pass name,
+		// which makes renaming the pass change its behaviour. Validation reports a
+		// deprecation warning while the parameter is absent. Empty for passes with
+		// no such fallback.
+		std::string nameDerivedFallbackParameter;
 		std::string displayName;
 		std::string category;
 		GraphPassType type{ GraphPassType::Scene };

@@ -359,6 +359,12 @@
         <name>BloomBlurHorizontal0</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurHorizontal</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>0</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -377,6 +383,12 @@
         <name>BloomBlurVertical0</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurVertical</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>0</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -395,6 +407,12 @@
         <name>BloomBlurHorizontal1</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurHorizontal</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>1</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -413,6 +431,12 @@
         <name>BloomBlurVertical1</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurVertical</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>1</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -431,6 +455,12 @@
         <name>BloomBlurHorizontal2</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurHorizontal</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>2</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -449,6 +479,12 @@
         <name>BloomBlurVertical2</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurVertical</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>2</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -467,6 +503,12 @@
         <name>BloomBlurHorizontal3</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurHorizontal</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>3</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
@@ -485,6 +527,12 @@
         <name>BloomBlurVertical3</name>
         <type>fullscreen</type>
         <factory>MPP.BloomBlurVertical</factory>
+        <Parameters>
+          <Int>
+            <name>ITERATION</name>
+            <value>3</value>
+          </Int>
+        </Parameters>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>

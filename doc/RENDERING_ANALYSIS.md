@@ -1406,7 +1406,7 @@ Two issues:
   per blur level. Fully solving it means a proper downsample/upsample pyramid — see
   [§9.2](#92-post-processing-passes).
 
-### 6.4 Bloom blur iteration count is derived from the pass *name* — **Bug, medium**
+### 6.4 Bloom blur iteration count is derived from the pass *name* — **Bug, medium** — ✅ FIXED
 
 `mpp/src/RenderGraphBuiltInPasses.cpp:60-76`
 
@@ -1434,6 +1434,41 @@ parameter to the `MPP.BloomBlurHorizontal`/`Vertical` metadata, read it via `int
 (the helper already exists at `RenderGraphBuiltInPasses.cpp:33`), and set it in the templates and
 in `RenderPipeline`'s generated graph. Keep `trailingPassIndex` as a migration fallback for one
 release, emitting a deprecation diagnostic.
+
+#### 6.4 Resolution
+
+Applied as written. `ITERATION` is a non-required int parameter on both blur factories, set in
+`Full.pipeline.xml`, `PbrPipeline.rendergraph.xml`, `PbrPipelineMrt.rendergraph.xml` and
+`RenderPipeline`'s generated graph. `trailingPassIndex` remains as the fallback, so graphs authored
+before this keep working.
+
+The deprecation diagnostic is **MPP-PASS-013**, raised when a pass whose factory declares a
+name-derived fallback omits the parameter. Rather than hardcoding the bloom factory names in the
+generic registry, `GraphPassAuthoringMetadata` gained
+`nameDerivedFallbackParameter`; the blur registration sets it to `"ITERATION"`. Any future pass with
+the same hazard gets the diagnostic by declaring the field.
+
+The selection itself was extracted to `bloomBlurIteration(UniformCollection const&, std::string
+const&)` in `RenderGraphBuiltInPasses.h`. It takes the resolved parameter collection rather than a
+`GraphPassInfo`, so executor parameter overrides are respected, and being free of GL it is testable
+in the context-free suite — which matters, because that suite cannot reach `BloomBlurPass::execute`.
+
+**On the tests.** Six assertions in `runRenderGraphTopologyTests`: the metadata declares the
+parameter and the fallback marker; `bloomBlurIteration` prefers the authored value over a name with
+no digits, still reads the digits when the parameter is absent, and yields zero when neither is
+available; a pass declaring `ITERATION` validates without MPP-PASS-013; one omitting it is
+reported. Verified load-bearing by disabling the warning and, separately, by making the selection
+ignore the authored value.
+
+**A test bug found while doing this.** The first version of the missing-parameter check read
+
+```cpp
+for (auto const& d : registry.validate(graph).getDiagnostics())   // WRONG
+```
+
+The temporary `DiagnosticBag` is destroyed before the loop body runs, so the range is dangling and
+the loop saw *nothing* — the assertion could never fail. It now binds the bag to a local first. Worth
+remembering: `getDiagnostics()` returns a reference into the bag, so the bag must outlive the loop.
 
 ---
 
