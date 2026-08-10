@@ -1727,11 +1727,28 @@ Both new predicates are exercised in both directions by the existing template se
 the non-zero/`expectsBatches == true` path and `Empty` proves the zero/`expectsBatches == false`
 path, so a miscomputation of either would fail the suite.
 
-### 7.5 Missing-environment warning latches permanently — **Bug, trivial**
+### 7.5 Missing-environment warning latches permanently — **Bug, trivial** — ✅ FIXED
 
 `mpp/src/RenderPipeline.cpp:548-552` sets `mWarnedMissingPbrEnvironment = true` and never clears it.
 `setPbrEnvironment` (`RenderPipeline.cpp:143`) should reset the flag so that re-breaking the
 environment in a live editing session re-reports.
+
+#### 7.5 Resolution
+
+`setPbrEnvironment` clears the flag, unconditionally. A pointer comparison would have been the
+obvious guard against re-warning on an idempotent set, but it would never fire: the only caller
+(`ModelScene.cpp:1468-1471`) mutates the `PbrEnvironment` in place and sets the *same* `shared_ptr`
+back, which is exactly the live-editing case this is meant to catch. The setter being called at all
+is the signal. It is edit-driven rather than per-frame, so re-arming cannot reintroduce log spam.
+
+**No automated test, and here is why.** The only observable is a log line: `RenderSystem::warnMessage`
+forwards straight to the logger and there is no capture hook, so a test cannot see whether the
+warning was emitted. Adding a log sink to `RenderSystem` would be a feature rather than part of this
+fix. The change is one line in a setter and was verified by inspection only — weaker evidence than
+every other item in this document, and recorded as such rather than glossed.
+
+DemoSuite does not exercise the path either: its environment is complete at startup, so the warning
+never fires there.
 
 ---
 

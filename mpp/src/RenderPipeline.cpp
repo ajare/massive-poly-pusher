@@ -143,6 +143,12 @@ namespace mpp
 	void RenderPipeline::setPbrEnvironment(PbrEnvironmentPtr environment)
 	{
 		mOptions.environment = std::move(environment);
+		// Re-arm the incomplete-environment warning. Callers routinely mutate the
+		// PbrEnvironment in place and set the same shared_ptr back, so comparing
+		// pointers would never re-arm it; the setter being called at all is the
+		// signal that the environment may have changed. This is edit-driven rather
+		// than per-frame, so re-arming cannot reintroduce per-frame log spam.
+		mWarnedMissingPbrEnvironment = false;
 	}
 
 	void RenderPipeline::setShadowDomain(string const& shadowDomain)
