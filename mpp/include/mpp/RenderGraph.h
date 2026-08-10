@@ -218,6 +218,12 @@ namespace mpp
 	// compares it separately.
 	_MPPAPI bool graphImagesCanAlias(GraphImageLifetime const& left, GraphImageLifetime const& right);
 
+	// What a descriptor's size actually becomes at a given viewport, and how many
+	// mip levels that size can carry. Shared so capability validation and the
+	// allocation plan cannot disagree about whether a descriptor is legal.
+	_MPPAPI glm::uvec2 resolveGraphImageSize(GraphImageDesc const& desc, glm::uvec2 const& viewport);
+	_MPPAPI uint32_t maxGraphImageMipLevels(glm::uvec2 const& size);
+
 	struct _MPPAPI RenderGraphAllocationPlan
 	{
 		bool valid{ false };
@@ -296,7 +302,12 @@ namespace mpp
 		GraphPassInfo getPassInfo(GraphPassHandle pass) const;
 
 		RenderGraphCompileResult compile() const;
+		// Device-limit validation. Images sized relative to the viewport cannot be
+		// checked without one, so this overload skips them; prefer the overload
+		// below anywhere a viewport is known -- the editor always knows its preview
+		// size, and an unchecked relative image throws at allocation instead.
 		RenderGraphCompileResult compile(Caps const& caps) const;
+		RenderGraphCompileResult compile(Caps const& caps, glm::uvec2 const& viewport) const;
 		// Dependency-derived stable order offered as an explicit editor action.
 		RenderGraphCompileResult buildDependencyOrder() const;
 		void reorderPasses(std::vector<GraphPassHandle> const& order);

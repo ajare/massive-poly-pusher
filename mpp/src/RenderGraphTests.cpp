@@ -1,3 +1,4 @@
+#include "mpp/Caps.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
@@ -159,6 +160,38 @@ namespace mpp
 		GraphImageDesc unsampled = colour; unsampled.usage = GraphImageUsage::ColourAttachment;
 		if (planEndImagesTogether(unsampled))
 			return fail("graph images differing in declared usage were planned onto one allocation");
+
+		// compile(Caps) used to contain an empty per-image loop, so no image was
+		// checked against device limits and PbrPipelineDocument::validate reported a
+		// pipeline as valid that then threw at allocatePhysical on the device.
+		Caps limitedCaps{}; limitedCaps.maxTextureSize = 256; limitedCaps.maxColourAttachments = 4; limitedCaps.maxDrawBuffers = 4;
+		auto compileWithImage = [&](GraphImageDesc const& desc, glm::uvec2 const& viewport)
+		{
+			RenderGraph graph;
+			auto image = graph.createImage("Limited", desc);
+			auto pass = graph.addPass("LimitedPass", GraphPassType::Fullscreen);
+			graph.writeColour(pass, image);
+			return viewport.x ? graph.compile(limitedCaps, viewport) : graph.compile(limitedCaps);
+		};
+		GraphImageDesc oversized = colour; oversized.absoluteSize = { 512, 512 }; oversized.relativeSize = { 0.0f, 0.0f };
+		if (compileWithImage(oversized, {}).valid)
+			return fail("an image larger than the maximum texture size compiled against caps");
+		GraphImageDesc sized = colour; sized.absoluteSize = { 64, 64 }; sized.relativeSize = { 0.0f, 0.0f };
+		if (!compileWithImage(sized, {}).valid)
+			return fail("an image within the maximum texture size was rejected");
+		GraphImageDesc overMipped = sized; overMipped.mipLevels = 12;
+		if (compileWithImage(overMipped, {}).valid)
+			return fail("an image declaring more mip levels than its size supports compiled against caps");
+		// The whole point of the viewport overload: a relative image is unresolvable
+		// without one, so the no-viewport call must accept it and the viewport call
+		// must catch it.
+		GraphImageDesc relative = colour; relative.absoluteSize = { 0, 0 }; relative.relativeSize = { 1.0f, 1.0f };
+		if (!compileWithImage(relative, {}).valid)
+			return fail("a viewport-relative image was rejected without a viewport to resolve it");
+		if (compileWithImage(relative, { 512, 512 }).valid)
+			return fail("a viewport-relative image exceeding the maximum texture size compiled against caps");
+		if (!compileWithImage(relative, { 128, 128 }).valid)
+			return fail("a viewport-relative image within the maximum texture size was rejected");
 
 		return true;
 	}

@@ -879,7 +879,7 @@ never allocated here at all. So it enforces the intent at no cost in aliasing.
    *"planned allocation grouping disagrees with the allocated targets for 'GpuTestAliasMiddle' and
    'GpuTestAliasVariant'"*.
 
-### 4.3 `RenderGraph::compile(Caps const&)` contains a dead loop — **Bug, medium**
+### 4.3 `RenderGraph::compile(Caps const&)` contains a dead loop — **Bug, medium** — ✅ FIXED (partly)
 
 `mpp/src/RenderGraph.cpp:784-797`
 
@@ -924,6 +924,46 @@ for (auto const& image : mImages)
 Relative-size images cannot be validated without a viewport; add a
 `compile(Caps const&, glm::uvec2 viewport)` overload for the editor, which always knows its preview
 size.
+
+#### 4.3 Resolution — size and mip levels only
+
+**Two of the four listed checks are implemented; two are not.** Read the "not done" list below
+before assuming a pipeline validated here will allocate.
+
+Done — the empty loop now checks, per non-external image:
+
+- resolved size against `caps.maxTextureSize`
+- `mipLevels` against what the resolved size supports
+
+The `compile(Caps const&, glm::uvec2 viewport)` overload was added as suggested, and
+`PbrPipelineDocument::validate` gained a matching overload. `PbrPipelineRuntime::configure` already
+had `viewportWidth`/`viewportHeight` in scope and now passes them, so a relative-sized image that
+exceeds the device limit is reported as `MPP-PIPELINE-029` instead of throwing later at
+`allocatePhysical`. The no-viewport overload still exists and skips relative images — it cannot do
+otherwise — so it is documented in the header as the weaker choice.
+
+**Not done, and deliberately:**
+
+- **Format renderability** (`GL_RGBA32F` as an attachment, `GL_RGB10_A2` blending, depth-stencil
+  availability). `Caps` carries no format capability data at all, so this needs new `glGetInternalformativ`
+  probing at startup and new `Caps` fields. That is a larger change than fixing the dead loop and
+  should be its own item.
+- **Per-format multisample sample counts.** Sample count is not on `GraphImageDesc` — it is chosen
+  by `allocatePhysical(plan, samples)` at allocation time — so `compile` has nothing to check.
+  `caps.supportedMsaaSampleMask` is already applied at the point where the count is known.
+
+The size/mip resolution itself was extracted to `resolveGraphImageSize` and `maxGraphImageMipLevels`
+in `RenderGraph.h`, and `buildAllocationPlan` now calls them too. This is the same consolidation as
+§4.2: validation that disagrees with allocation about what a descriptor resolves to would just move
+the failure rather than prevent it.
+
+**On the tests.** Seven cases in `runRenderGraphTopologyTests` against a `Caps` with
+`maxTextureSize = 256`: oversized absolute rejected, in-range absolute accepted, excess mip levels
+rejected, and — the point of the overload — a relative image accepted without a viewport, rejected
+at a 512 viewport, accepted at 128. Verified load-bearing twice: restoring the empty loop gives
+*"an image larger than the maximum texture size compiled against caps"*, and making the viewport
+overload ignore its viewport gives *"a viewport-relative image exceeding the maximum texture size
+compiled against caps"*.
 
 ### 4.4 There is no dead-pass culling — **Perf / Extension, medium**
 
