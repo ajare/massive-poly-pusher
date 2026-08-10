@@ -1,3 +1,5 @@
+#include <format>
+
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif
@@ -615,27 +617,27 @@ namespace mpp
 		mCaps.maxFragmentTextureUnits = (uint32_t)maxUniforms;
 
 		// Print caps
-		infoMessage(STR_FORMAT("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
-		infoMessage(STR_FORMAT("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
-		infoMessage(STR_FORMAT("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
-		infoMessage(STR_FORMAT("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
-		infoMessage(STR_FORMAT("Max colour attachments: {}", mCaps.maxColourAttachments));
-		infoMessage(STR_FORMAT("Max draw buffers: {}", mCaps.maxDrawBuffers));
-		infoMessage(STR_FORMAT("Max framebuffer samples: {}", mCaps.maxSamples));
-		infoMessage(STR_FORMAT("Supported anti-aliasing MSAA mask: 0x{:x}", mCaps.supportedMsaaSampleMask));
-		infoMessage(STR_FORMAT("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
-		infoMessage(STR_FORMAT("Max anisotropy: {}", mCaps.maxAnisotropy));
-		infoMessage(STR_FORMAT("Max recommended elements: {}", mCaps.maxRecommendedElements));
-		infoMessage(STR_FORMAT("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
-		infoMessage(STR_FORMAT("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
+		infoMessage(std::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
+		infoMessage(std::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
+		infoMessage(std::format("Supported square texture size: {}x{}", mCaps.maxTextureSize, mCaps.maxTextureSize));
+		infoMessage(std::format("Supported non-square texture size: {}x{}", mCaps.maxRectTextureSize, mCaps.maxRectTextureSize));
+		infoMessage(std::format("Max colour attachments: {}", mCaps.maxColourAttachments));
+		infoMessage(std::format("Max draw buffers: {}", mCaps.maxDrawBuffers));
+		infoMessage(std::format("Max framebuffer samples: {}", mCaps.maxSamples));
+		infoMessage(std::format("Supported anti-aliasing MSAA mask: 0x{:x}", mCaps.supportedMsaaSampleMask));
+		infoMessage(std::format("Depth range: {} to {}", mCaps.depthRange[0], mCaps.depthRange[1]));
+		infoMessage(std::format("Max anisotropy: {}", mCaps.maxAnisotropy));
+		infoMessage(std::format("Max recommended elements: {}", mCaps.maxRecommendedElements));
+		infoMessage(std::format("Max recommended vertices: {}", mCaps.maxRecommendedVertices));
+		infoMessage(std::format("Streaming geometry: {}", mCaps.streamingGeometry ? "yes" : "no"));
 
-		infoMessage(STR_FORMAT("Max vertex shader uniforms: {}", mCaps.maxVertexShaderUniforms));
-		infoMessage(STR_FORMAT("Max geometry shader uniforms: {}", mCaps.maxGeometryShaderUniforms));
-		infoMessage(STR_FORMAT("Max fragment shader uniforms: {}", mCaps.maxFragmentShaderUniforms));
+		infoMessage(std::format("Max vertex shader uniforms: {}", mCaps.maxVertexShaderUniforms));
+		infoMessage(std::format("Max geometry shader uniforms: {}", mCaps.maxGeometryShaderUniforms));
+		infoMessage(std::format("Max fragment shader uniforms: {}", mCaps.maxFragmentShaderUniforms));
 
-		infoMessage(STR_FORMAT("Max vertex texture units: {}", mCaps.maxVertexTextureUnits));
-		infoMessage(STR_FORMAT("Max geometry texture units: {}", mCaps.maxGeometryTextureUnits));
-		infoMessage(STR_FORMAT("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
+		infoMessage(std::format("Max vertex texture units: {}", mCaps.maxVertexTextureUnits));
+		infoMessage(std::format("Max geometry texture units: {}", mCaps.maxGeometryTextureUnits));
+		infoMessage(std::format("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
 	}
 
 	void RenderSystem::addCoreResource(ResourcePtr resource, bool load)
@@ -3641,7 +3643,7 @@ namespace mpp
 					break;
 				}
 
-				msg = STR_FORMAT("{}: {} {}", profile, result, unit);
+				msg = std::format("{}: {} {}", profile, result, unit);
 			}
 			else if (profile == "OGL memory allocated" ||
 				profile == "OGL memory allocated (textures)" ||
@@ -3667,30 +3669,30 @@ namespace mpp
 					break;
 				}
 
-				msg = STR_FORMAT("{}: {} {}", profile, result, unit);
+				msg = std::format("{}: {} {}", profile, result, unit);
 			}
 			else if (profile == "Total GPU memory" ||
 				profile == "Total available GPU memory" ||
 				profile == "Current available GPU memory")
 			{
-				msg = STR_FORMAT("{}: {} Kb", profile, result);
+				msg = std::format("{}: {} Kb", profile, result);
 			}
 			else
 			{
-				msg = STR_FORMAT("{}: {}", profile, result);
+				msg = std::format("{}: {}", profile, result);
 			}
 
 			lines.push_back(msg);
 		}
 #else
-		lines.push_back(STR_FORMAT("Batches: {}", mRenderInfo.batchCount));
-		lines.push_back(STR_FORMAT("Primitives: {}", mRenderInfo.primitivesRendered));
-		lines.push_back(STR_FORMAT("Triangles: {}", mRenderInfo.trianglesRendered));
+		lines.push_back(std::format("Batches: {}", mRenderInfo.batchCount));
+		lines.push_back(std::format("Primitives: {}", mRenderInfo.primitivesRendered));
+		lines.push_back(std::format("Triangles: {}", mRenderInfo.trianglesRendered));
 #endif
 
-		lines.push_back(STR_FORMAT("Program switches: {}", mRenderInfo.programSwitches));
-		lines.push_back(STR_FORMAT("Texture switches: {}", mRenderInfo.textureSwitches));
-		lines.push_back(STR_FORMAT("Screen quads: {}", mRenderInfo.fullscreenQuads));
+		lines.push_back(std::format("Program switches: {}", mRenderInfo.programSwitches));
+		lines.push_back(std::format("Texture switches: {}", mRenderInfo.textureSwitches));
+		lines.push_back(std::format("Screen quads: {}", mRenderInfo.fullscreenQuads));
 
 		copy(mDebugPostMessages.begin(), mDebugPostMessages.end(), back_inserter(lines));
 
@@ -3698,7 +3700,7 @@ namespace mpp
 		uint32_t numTotalResources, numDeclaredResources, numCreatedResources, numLoadedResources;
 		mResourceMgr->getResourceCounts(numTotalResources, numDeclaredResources, numCreatedResources, numLoadedResources);
 
-		lines.push_back(STR_FORMAT("Resources : {} ([#FF0000FF]{}[#FFFFFFFF] / [#FFFF00FF]{}[#FFFFFFFF] / [#00FF00FF]{}[#FFFFFFFF])", 
+		lines.push_back(std::format("Resources : {} ([#FF0000FF]{}[#FFFFFFFF] / [#FFFF00FF]{}[#FFFFFFFF] / [#00FF00FF]{}[#FFFFFFFF])",
 			numTotalResources, 
 			numDeclaredResources, 
 			numCreatedResources, 

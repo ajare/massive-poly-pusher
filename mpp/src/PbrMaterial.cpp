@@ -1,3 +1,4 @@
+#include <format>
 #include <cfloat>
 #include <cstring>
 #include <set>
@@ -385,7 +386,7 @@ namespace mpp
 
 				if (textureName.empty())
 				{
-					string errMsg = STR_FORMAT("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
+					string errMsg = std::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
 						samplerName, program->getName(), getName());
 					THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
 				}

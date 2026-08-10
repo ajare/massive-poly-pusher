@@ -1,3 +1,4 @@
+#include <format>
 #include "utils/FileSystem.h"
 
 #include "mpp/DefaultShaders.h"
@@ -126,7 +127,7 @@ namespace mpp
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = STR_FORMAT("Error loading {}.  '{}' specified for uniform '{}'  but {} values found.",
+				string errMsg = std::format("Error loading {}.  '{}' specified for uniform '{}'  but {} values found.",
 					filepath, type, name, values.size());
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
@@ -159,7 +160,7 @@ namespace mpp
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = STR_FORMAT("Error loading {}. '{}' specified for uniform {} but {} values found.", filepath, type, name, values.size());
+				string errMsg = std::format("Error loading {}. '{}' specified for uniform {} but {} values found.", filepath, type, name, values.size());
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 

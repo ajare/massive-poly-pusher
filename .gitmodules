@@ -2,3 +2,6 @@
 	path = ext/utils
 	url = https://wtmrsh@bitbucket.org/wtmrsh/utils.git
 	ignore = dirty
+[submodule "ext/sdl"]
+	path = ext/sdl
+	url = https://github.com/libsdl-org/SDL.git

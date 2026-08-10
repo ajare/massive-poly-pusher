@@ -76,7 +76,7 @@
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\mpp-mesh\build\vs2026\lib\$(Platform)\$(Configuration);..\..\..\ext\utils\build\vs2026\lib\$(Platform)\$(Configuration);..\..\..\vendor\lib\vs2026\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MppMeshd.lib;Utilsd.lib;fmtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MppMeshd.lib;Utilsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -102,7 +102,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <ImportLibrary>$(ProjectDir)lib\$(Platform)\$(Configuration)\$(TargetName).lib</ImportLibrary>
       <AdditionalLibraryDirectories>..\..\..\mpp-mesh\build\vs2026\lib\$(Platform)\$(Configuration);..\..\..\ext\utils\build\vs2026\lib\$(Platform)\$(Configuration);..\..\..\vendor\lib\vs2026\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MppMesh.lib;Utils.lib;fmt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MppMesh.lib;Utils.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>

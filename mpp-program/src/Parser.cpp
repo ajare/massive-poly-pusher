@@ -1,3 +1,4 @@
+#include <format>
 #include <set>
 #include <map>
 #include <list>
@@ -290,7 +291,7 @@ namespace mpp
 				else
 				{
 					addError(stageType, "unknown variable in cast: " + match.str(0));
-					string replacement = STR_FORMAT("vec{}({})", dim, fullVar);
+					string replacement = std::format("vec{}({})", dim, fullVar);
 					parsedSrc = parsedSrc.substr(0, match.position()) + replacement + parsedSrc.substr(match.position() + match.length());
 					continue;
 				}
@@ -300,7 +301,7 @@ namespace mpp
 				if (varSize == 0)
 				{
 					addError(stageType, "unknown variable in cast: " + match.str(0));
-					string replacement = STR_FORMAT("vec{}({})", dim, fullVar);
+					string replacement = std::format("vec{}({})", dim, fullVar);
 					parsedSrc = parsedSrc.substr(0, match.position()) + replacement + parsedSrc.substr(match.position() + match.length());
 					continue;
 				}
@@ -334,7 +335,7 @@ namespace mpp
 					fullVar = bareVar + "." + swizzle;
 				}
 
-				string replacement = STR_FORMAT("vec{}({}", dim, fullVar);
+				string replacement = std::format("vec{}({}", dim, fullVar);
 
 				GLSLTypeDecl varDeclType;
 				switch (varType)
@@ -416,7 +417,7 @@ namespace mpp
 
 				if (count > 1)
 				{
-					replacement += STR_FORMAT("[{}]", count);
+					replacement += std::format("[{}]", count);
 				}
 
 				if (!uniform.inBlock)
@@ -519,7 +520,7 @@ namespace mpp
 
 				if (count > 1)
 				{
-					replacement += STR_FORMAT("[{}]", count);
+					replacement += std::format("[{}]", count);
 				}
 
 				replacement = "uniform " + replacement;
@@ -1087,7 +1088,7 @@ namespace mpp
 					int location = 0;
 					for (auto const& attrib: stage.inAttribs)
 					{
-						string attribLine = STR_FORMAT("layout(location = {}) in {} {};", 
+						string attribLine = std::format("layout(location = {}) in {} {};",
 							location, 
 							attrib.type.name,
 							MPP_PROGRAM_IN_PREFIX + attrib.name);
@@ -1103,7 +1104,7 @@ namespace mpp
 					location = 0;
 					for (auto const& attrib: stage.outAttribs)
 					{
-						string attribLine = STR_FORMAT("layout(location = {}) out {} {};",
+						string attribLine = std::format("layout(location = {}) out {} {};",
 							location,
 							attrib.type.name,
 							MPP_PROGRAM_OUT_PREFIX + attrib.name);
@@ -1118,32 +1119,32 @@ namespace mpp
 					// Add built-in uniforms
 					if (vpUsed)
 					{
-						parsedLines.push_back(STR_FORMAT("uniform vec3 {};", MPP_PROGRAM_VIEWPOS_NAME));
+						parsedLines.push_back(std::format("uniform vec3 {};", MPP_PROGRAM_VIEWPOS_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (mUsed)
 					{
-						parsedLines.push_back(STR_FORMAT("uniform mat4 {};", MPP_PROGRAM_MMATRIX_NAME));
+						parsedLines.push_back(std::format("uniform mat4 {};", MPP_PROGRAM_MMATRIX_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (mcpUsed)
 					{
-						parsedLines.push_back(STR_FORMAT("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
+						parsedLines.push_back(std::format("uniform mat4 {};", MPP_PROGRAM_MCPMATRIX_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (normalUsed)
 					{
-						parsedLines.push_back(STR_FORMAT("uniform mat3 {};", MPP_PROGRAM_NORMALMATRIX_NAME));
+						parsedLines.push_back(std::format("uniform mat3 {};", MPP_PROGRAM_NORMALMATRIX_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (halfWindowSizeUsed)
 					{
-						parsedLines.push_back(STR_FORMAT("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
+						parsedLines.push_back(std::format("uniform vec2 {};", MPP_PROGRAM_HALFWINDOWSIZE_NAME));
 						parsedLines.push_back("\n");
 					}
 					if (pointSizeUsed)
 					{
-						parsedLines.push_back(STR_FORMAT("uniform float {};", MPP_PROGRAM_POINTSIZE_NAME));
+						parsedLines.push_back(std::format("uniform float {};", MPP_PROGRAM_POINTSIZE_NAME));
 						parsedLines.push_back("\n");
 					}
 				}

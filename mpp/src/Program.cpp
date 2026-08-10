@@ -1,3 +1,4 @@
+#include <format>
 #include "mpp/Config.h"
 
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
@@ -455,7 +456,7 @@ namespace mpp
 				default: typeName = "unknown type"; break;
 				}
 				
-				rs->debugMessage(STR_FORMAT("Vertex attribute {}: {} ({}[{}]).", location, varName, typeName, varSize));
+				rs->debugMessage(std::format("Vertex attribute {}: {} ({}[{}]).", location, varName, typeName, varSize));
 			}
 
 			// Get uniform information
@@ -480,32 +481,32 @@ namespace mpp
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
 				{
 					GL_CHECK(mViewPosId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(STR_FORMAT("- Uniform: ViewPosition id: {}", mViewPosId));
+					rs->debugMessage(std::format("- Uniform: ViewPosition id: {}", mViewPosId));
 				}
 				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
 				{
 					GL_CHECK(mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(STR_FORMAT("- Uniform: Model matrix id: {}", mMMatrixId));
+					rs->debugMessage(std::format("- Uniform: Model matrix id: {}", mMMatrixId));
 				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
 					GL_CHECK(mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(STR_FORMAT("- Uniform: ModelCameraProjection matrix id: {}", mMcpMatrixId));
+					rs->debugMessage(std::format("- Uniform: ModelCameraProjection matrix id: {}", mMcpMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
 					GL_CHECK(mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(STR_FORMAT("- Uniform normal matrix id: {}", mNormalMatrixId));
+					rs->debugMessage(std::format("- Uniform normal matrix id: {}", mNormalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
 					GL_CHECK(mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage(STR_FORMAT("- Uniform: half window size id: {}", mHalfWindowSizeId));
+					rs->debugMessage(std::format("- Uniform: half window size id: {}", mHalfWindowSizeId));
 				}
 				else if (uniformName == MPP_PROGRAM_POINTSIZE_NAME)
 				{
 					GL_CHECK(mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage(STR_FORMAT("- Uniform: point size id: {}", mPointSizeId));
+					rs->debugMessage(std::format("- Uniform: point size id: {}", mPointSizeId));
 				}
 				else
 				{
@@ -517,14 +518,14 @@ namespace mpp
 					if (it != mTextures.end())
 					{
 						GL_CHECK(it->uniformId = glGetUniformLocation(programId, uniformNameBuffer));
-						rs->debugMessage(STR_FORMAT("- Texture: '{}' id: {}", uniformName, it->uniformId));
+						rs->debugMessage(std::format("- Texture: '{}' id: {}", uniformName, it->uniformId));
 					}
 					else
 					{
 						int32_t uniformId;
 						GL_CHECK(uniformId = glGetUniformLocation(programId, uniformNameBuffer));
 						mUniformIds[uniformName] = uniformId;
-						rs->debugMessage(STR_FORMAT("- Texture: '{}' id: {}", uniformName, uniformId));
+						rs->debugMessage(std::format("- Texture: '{}' id: {}", uniformName, uniformId));
 					}
 				}
 			}
@@ -584,7 +585,7 @@ namespace mpp
 		string markedUpUniform = MPP_PROGRAM_MARKUP_UNIFORM(name);
 		if (index >= 0)
 		{
-			markedUpUniform += STR_FORMAT("[{}]", index);
+			markedUpUniform += std::format("[{}]", index);
 		}
 
 		if (mUniformIds.find(markedUpUniform) == mUniformIds.end())

@@ -1,3 +1,5 @@
+#include <format>
+
 #if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
 #	include <Windows.h>
 #endif
@@ -292,11 +294,11 @@ DisplayModeSet getVideoModes(int displayDevice)
 
 	for_each(sortedModes.begin(), sortedModes.end(), [](pair<pair<int, int>, vector<SDL_DisplayMode>> modes)
 	{
-		gLogger->message(STR_FORMAT("Display modes at {}x{}", modes.first.first, modes.first.second));
+		gLogger->message(std::format("Display modes at {}x{}", modes.first.first, modes.first.second));
 
 		for_each(modes.second.begin(), modes.second.end(), [](SDL_DisplayMode const& mode)
 		{
-			gLogger->message(STR_FORMAT("{}x{} @ {}Hz", mode.w, mode.h, mode.refresh_rate));
+			gLogger->message(std::format("{}x{} @ {}Hz", mode.w, mode.h, mode.refresh_rate));
 		});
 	});
 
