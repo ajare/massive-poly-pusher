@@ -735,7 +735,7 @@ quantisation removes it essentially for free.
 
 ## 4. Render graph: declaration and allocation
 
-### 4.1 `buildAllocationPlan` can alias a transient image onto a non-transient allocation — **Bug, high (latent)**
+### 4.1 `buildAllocationPlan` can alias a transient image onto a non-transient allocation — **Bug, high (latent)** — ✅ FIXED
 
 `mpp/src/RenderGraph.cpp:710-737`
 
@@ -783,6 +783,47 @@ bool const representativeTransient = std::all_of(allocationMembers[candidate].be
     [&](uint32_t member) { return plan.allocatedImages[member].desc.transient; });
 if (!representativeTransient) continue;
 ```
+
+#### 4.1 Resolution
+
+**Correction to the severity above:** this was filed as latent on the grounds that only rendering
+matters. It is not. `PipelineEditor` displays both affected fields directly — `Main.cpp:6016` prints
+`estimatedPhysicalBytes` as "Physical estimate: N MiB" and `Main.cpp:6021` prints
+`physicalAllocation` per image. Any pipeline mixing transient and non-transient images has been
+showing a wrong memory figure and wrong alias grouping in the editor's own UI.
+
+The suggested `all_of` was not used. Only a group's *first* member can be non-transient (every later
+member joined by passing the transient test), so scanning all members re-derives each time a fact
+that is fixed when the group is created. The groups now carry it:
+
+```cpp
+struct AllocationGroup { vector<uint32_t> members; bool aliasable; };
+...
+if (!allocationGroups[candidate].aliasable) continue;
+...
+allocationGroups.push_back({ {}, lifetime.desc.transient });
+```
+
+O(1) instead of O(members), and it states the rule rather than depending on an invariant a later
+edit could break.
+
+**On the test.** Added to `runRenderGraphTopologyTests` — context-free, so it needs no GL. A
+four-image graph: a non-transient `Keep` over passes 0–1, then three scratch images. `ScratchB`
+(2–3) is lifetime-disjoint from `Keep`, so *only* transience separates them. Three assertions: that
+those two do not share an allocation; that `ScratchA` (1–2) and `ScratchC` (3–3) still do, so the
+fix did not simply disable aliasing; and that `estimatedPhysicalBytes` equals the sum over the
+groups the plan itself reports, which ties the byte estimate to the grouping rather than to a
+hardcoded number.
+
+**Note on where this runs.** `runRenderGraphTopologyTests` is invoked by `PipelineEditor --validate`
+and **not** by DemoSuite. Verified load-bearing there specifically: *"MPP-PIPELINE-CLI-002: render
+graph topology tests failed: a transient graph image was planned on top of a non-transient
+allocation"*.
+
+**Harness caveat found while verifying:** `tools/ValidatePipelineEditorPhase10.ps1` does not build.
+It validates whatever binary is already in `pipeline-editor/build/vs2026/bin/x64/<Configuration>`,
+so it will happily report "passed" against a stale executable. Build the configuration you intend to
+validate first — the default is Release, which a Debug-only build cycle never refreshes.
 
 ### 4.2 Aliasing compatibility is implemented twice, with different rules — **Bug, medium**
 

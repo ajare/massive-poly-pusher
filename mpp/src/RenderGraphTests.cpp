@@ -82,6 +82,47 @@ namespace mpp
 		metadataGraph.setPassCallbackFactory(metadataPass, "Unknown.Factory");
 		if (!registry.validate(metadataGraph).hasErrors()) return fail("unknown pass factory metadata was accepted");
 
+		// A non-transient image holds contents that outlive the frame, so nothing may
+		// be planned on top of it. The plan used to test only the incoming image for
+		// transience and not the allocation it was joining, so a transient image with
+		// a compatible descriptor and a disjoint lifetime landed on one. The real
+		// allocator refuses this, so the damage was confined to the plan -- but
+		// PipelineEditor reports physicalAllocation and estimatedPhysicalBytes
+		// straight from it, and any future consumer inherits a corruption bug.
+		GraphImageDesc persistent = colour; persistent.transient = false;
+		RenderGraph aliasing;
+		auto keep = aliasing.createImage("Keep", persistent);
+		auto scratchA = aliasing.createImage("ScratchA", colour);
+		auto scratchB = aliasing.createImage("ScratchB", colour);
+		auto scratchC = aliasing.createImage("ScratchC", colour);
+		auto aliasStep0 = aliasing.addPass("Alias0", GraphPassType::Fullscreen);
+		keep = aliasing.writeColour(aliasStep0, keep);
+		auto aliasStep1 = aliasing.addPass("Alias1", GraphPassType::Fullscreen);
+		aliasing.readSampled(aliasStep1, keep); scratchA = aliasing.writeColour(aliasStep1, scratchA);
+		auto aliasStep2 = aliasing.addPass("Alias2", GraphPassType::Fullscreen);
+		aliasing.readSampled(aliasStep2, scratchA); scratchB = aliasing.writeColour(aliasStep2, scratchB);
+		auto aliasStep3 = aliasing.addPass("Alias3", GraphPassType::Fullscreen);
+		aliasing.readSampled(aliasStep3, scratchB); aliasing.writeColour(aliasStep3, scratchC);
+		auto aliasingPlan = aliasing.buildAllocationPlan({ 32, 32 });
+		if (!aliasingPlan.valid || aliasingPlan.allocatedImages.size() != 4) return fail("transient aliasing plan did not compile");
+		auto allocationOf = [&](GraphImageHandle const& image)
+		{
+			for (auto const& lifetime : aliasingPlan.allocatedImages) if (lifetime.image.id == image.id) return lifetime.physicalAllocation;
+			return UINT32_MAX;
+		};
+		// Keep lives over passes 0..1 and ScratchB over 2..3, so their lifetimes are
+		// disjoint and only transience keeps them apart.
+		if (allocationOf(keep) == allocationOf(scratchB))
+			return fail("a transient graph image was planned on top of a non-transient allocation");
+		// ScratchA (1..2) and ScratchC (3..3) are disjoint and both transient, so the
+		// fix must not have simply stopped aliasing altogether.
+		if (allocationOf(scratchA) != allocationOf(scratchC))
+			return fail("disjoint transient graph images were not aliased onto one allocation");
+		uint64_t distinctBytes = 0;
+		for (auto const& lifetime : aliasingPlan.allocatedImages) if (lifetime.image.id != scratchC.id) distinctBytes += lifetime.estimatedBytes;
+		if (aliasingPlan.estimatedPhysicalBytes != distinctBytes)
+			return fail("planned physical byte estimate does not match its own allocation groups");
+
 		return true;
 	}
 }
