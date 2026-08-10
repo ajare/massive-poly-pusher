@@ -27,7 +27,8 @@ function Run-Editor([string[]]$arguments, [int]$expected, [string]$code = '') {
 
 Require-File $editor
 $sdlRuntime = if ($Configuration -eq 'Debug') { 'SDL2d.dll' } else { 'SDL2.dll' }
-foreach ($runtime in @($sdlRuntime,'FreeImage.dll','glew32.dll')) { Require-File (Join-Path $bin $runtime) }
+$glewRuntime = if ($Configuration -eq 'Debug') { 'glew32d.dll' } else { 'glew32.dll' }
+foreach ($runtime in @($sdlRuntime,$glewRuntime)) { Require-File (Join-Path $bin $runtime) }
 Require-File $editorIni
 if (Test-Path -LiteralPath (Join-Path $bin 'resources')) { throw 'PipelineEditor output must not contain a copied resources directory.' }
 if ((Get-Content -LiteralPath $editorIni -Raw) -notmatch 'resourcesLocation\s*=') { throw 'Deployed editor.ini does not define resourcesLocation.' }

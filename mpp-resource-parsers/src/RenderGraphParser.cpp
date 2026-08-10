@@ -1,4 +1,4 @@
-#include <glew/glew.h>
+#include <GL/glew.h>
 
 #include <map>
 #include <sstream>

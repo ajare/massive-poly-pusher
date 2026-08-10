@@ -1,13 +1,92 @@
-#include <glew/glew.h>
-#include <freeimage/FreeImage.h>
+#include <GL/glew.h>
+
 #include <cstdint>
 #include <cstring>
+#include <limits>
+#include <memory>
 #include <stdexcept>
+
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #include "mpp/app/ImageLoader.h"
+
 namespace mpp::app
 {
 	TextureData loadImageFile(std::string const& filename)
 	{
-		auto format=FreeImage_GetFIFFromFilename(filename.c_str());FIBITMAP* bitmap=FreeImage_Load(format,filename.c_str());if(!bitmap)throw std::runtime_error("Could not load image '"+filename+"'.");if(FreeImage_GetImageType(bitmap)==FIT_BITMAP&&(FreeImage_GetColorType(bitmap)==FIC_PALETTE||FreeImage_GetBPP(bitmap)<24)){auto converted=FreeImage_ConvertTo32Bits(bitmap);FreeImage_Unload(bitmap);bitmap=converted;if(!bitmap)throw std::runtime_error("Could not convert indexed image '"+filename+"' to RGBA.");}auto type=FreeImage_GetImageType(bitmap);size_t typeSize=1;uint32_t dataType=GL_UNSIGNED_BYTE;switch(type){case FIT_BITMAP:break;case FIT_UINT16:case FIT_RGB16:case FIT_RGBA16:typeSize=2;dataType=GL_UNSIGNED_SHORT;break;case FIT_INT16:typeSize=2;dataType=GL_SHORT;break;case FIT_UINT32:typeSize=4;dataType=GL_UNSIGNED_INT;break;case FIT_INT32:typeSize=4;dataType=GL_INT;break;case FIT_FLOAT:case FIT_RGBF:case FIT_RGBAF:typeSize=4;dataType=GL_FLOAT;break;case FIT_DOUBLE:typeSize=8;dataType=GL_DOUBLE;break;default:FreeImage_Unload(bitmap);throw std::runtime_error("Unsupported image type in '"+filename+"'.");}size_t width=FreeImage_GetWidth(bitmap),height=FreeImage_GetHeight(bitmap),bits=FreeImage_GetBPP(bitmap),span=width*bits/8,total=span*height;auto pixels=new uint8_t[total];auto source=(uint8_t*)FreeImage_GetBits(bitmap);auto pitch=FreeImage_GetPitch(bitmap);for(size_t y=0;y<height;++y)memcpy(pixels+y*span,source+y*pitch,span);FreeImage_Unload(bitmap);size_t channels=bits/(8*typeSize);bool const floating=type==FIT_FLOAT||type==FIT_RGBF||type==FIT_RGBAF;uint32_t pixelFormat=channels==1?GL_RED:channels==2?GL_RG:channels==3?(floating?GL_RGB:GL_BGR):channels==4?(floating?GL_RGBA:GL_BGRA):0;if(!pixelFormat){delete[] pixels;throw std::runtime_error("Unsupported channel count in '"+filename+"'.");}return {pixels,width,height,bits,pixelFormat,dataType};
+		stbi_set_flip_vertically_on_load_thread(0);
+
+		int width = 0;
+		int height = 0;
+		int channels = 0;
+		size_t componentSize = 0;
+		uint32_t dataType = 0;
+		void* imageData = nullptr;
+
+		if (stbi_is_hdr(filename.c_str()))
+		{
+			componentSize = sizeof(float);
+			dataType = GL_FLOAT;
+			imageData = stbi_loadf(filename.c_str(), &width, &height, &channels, 0);
+		}
+		else if (stbi_is_16_bit(filename.c_str()))
+		{
+			componentSize = sizeof(stbi_us);
+			dataType = GL_UNSIGNED_SHORT;
+			imageData = stbi_load_16(filename.c_str(), &width, &height, &channels, 0);
+		}
+		else
+		{
+			componentSize = sizeof(stbi_uc);
+			dataType = GL_UNSIGNED_BYTE;
+			imageData = stbi_load(filename.c_str(), &width, &height, &channels, 0);
+		}
+
+		std::unique_ptr<void, void(*)(void*)> loadedImage(imageData, stbi_image_free);
+		if (!loadedImage)
+		{
+			auto const reason = stbi_failure_reason();
+			throw std::runtime_error("Could not load image '" + filename + "': " +
+				(reason ? reason : "unknown STB image error"));
+		}
+
+		if (width <= 0 || height <= 0 || channels < 1 || channels > 4)
+		{
+			throw std::runtime_error("Unsupported image dimensions or channel count in '" + filename + "'.");
+		}
+
+		auto const dataWidth = static_cast<size_t>(width);
+		auto const dataHeight = static_cast<size_t>(height);
+		auto const channelCount = static_cast<size_t>(channels);
+		if (dataWidth > std::numeric_limits<size_t>::max() / dataHeight ||
+			dataWidth * dataHeight > std::numeric_limits<size_t>::max() / channelCount ||
+			dataWidth * dataHeight * channelCount > std::numeric_limits<size_t>::max() / componentSize)
+		{
+			throw std::overflow_error("Image data is too large: '" + filename + "'.");
+		}
+
+		auto const dataSize = dataWidth * dataHeight * channelCount * componentSize;
+		auto pixels = std::make_unique<uint8_t[]>(dataSize);
+		std::memcpy(pixels.get(), loadedImage.get(), dataSize);
+
+		uint32_t pixelFormat = 0;
+		switch (channels)
+		{
+		case 1: pixelFormat = GL_RED; break;
+		case 2: pixelFormat = GL_RG; break;
+		case 3: pixelFormat = GL_RGB; break;
+		case 4: pixelFormat = GL_RGBA; break;
+		}
+
+		return {
+			pixels.release(),
+			dataWidth,
+			dataHeight,
+			channelCount * componentSize * 8,
+			pixelFormat,
+			dataType
+		};
 	}
 }

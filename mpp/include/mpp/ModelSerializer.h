@@ -8,7 +8,7 @@
 #include <array>
 #include <fstream>
 
-#include <glew/glew.h>
+#include <GL/glew.h>
 #include <gl/gl.h>
 
 #include "mpp/ResourceManager.h"
