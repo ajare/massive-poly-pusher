@@ -114,6 +114,10 @@ namespace mpp
 		void setBloomEnabled(bool enabled);
 		DiagnosticBag validate(RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		DiagnosticBag validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry = nullptr) const;
+		// Prefer this wherever a viewport is known: without one, graph images sized
+		// relative to the viewport cannot be resolved, so they escape device-limit
+		// validation here and throw during allocation instead.
+		DiagnosticBag validate(Caps const& caps,glm::uvec2 const& viewport,RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		DiagnosticBag validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps = nullptr) const;
 	};
 }

@@ -61,6 +61,19 @@ namespace mpp
 		return formatName(format);
 	}
 
+	glm::uvec2 resolveGraphImageSize(GraphImageDesc const& desc, glm::uvec2 const& viewport)
+	{
+		return { desc.absoluteSize.x ? desc.absoluteSize.x : max(1u, (uint32_t)(viewport.x * desc.relativeSize.x)),
+			desc.absoluteSize.y ? desc.absoluteSize.y : max(1u, (uint32_t)(viewport.y * desc.relativeSize.y)) };
+	}
+
+	uint32_t maxGraphImageMipLevels(glm::uvec2 const& size)
+	{
+		uint32_t levels = 1;
+		for (uint32_t dimension = max(size.x, size.y); dimension > 1; dimension >>= 1) ++levels;
+		return levels;
+	}
+
 	bool graphImagesCanAlias(GraphImageLifetime const& left, GraphImageLifetime const& right)
 	{
 		// usage is compared even though it does not change the texture that gets
@@ -680,10 +693,8 @@ namespace mpp
 				lifetime.image = handle;
 				lifetime.debugName = image.name;
 				lifetime.desc = image.desc;
-				lifetime.size.x = image.desc.absoluteSize.x ? image.desc.absoluteSize.x : max(1u, (uint32_t)(viewport.x * image.desc.relativeSize.x));
-				lifetime.size.y = image.desc.absoluteSize.y ? image.desc.absoluteSize.y : max(1u, (uint32_t)(viewport.y * image.desc.relativeSize.y));
-				uint32_t maxMipLevels = 1;
-				for (uint32_t dimension = max(lifetime.size.x, lifetime.size.y); dimension > 1; dimension >>= 1) ++maxMipLevels;
+				lifetime.size = resolveGraphImageSize(image.desc, viewport);
+				auto const maxMipLevels = maxGraphImageMipLevels(lifetime.size);
 				if (image.desc.mipLevels > maxMipLevels)
 				{
 					plan.diagnostics.push_back("Image '" + image.name + "' requests " + to_string(image.desc.mipLevels) +
@@ -801,9 +812,37 @@ namespace mpp
 
 	RenderGraphCompileResult RenderGraph::compile(Caps const& caps) const
 	{
+		return compile(caps, glm::uvec2(0));
+	}
+
+	RenderGraphCompileResult RenderGraph::compile(Caps const& caps, glm::uvec2 const& viewport) const
+	{
 		auto result = compile();
+		// A zero viewport means the caller has none to offer, so relative sizes stay
+		// unresolved and unchecked here -- buildAllocationPlan still catches them,
+		// just later and with a throw rather than a diagnostic.
+		bool const haveViewport = viewport.x != 0 && viewport.y != 0;
 		for (auto const& image : mImages)
 		{
+			// External images are supplied by the importer, not allocated from this
+			// descriptor, so their size is not ours to validate.
+			if (image.desc.external) continue;
+			bool const absolute = image.desc.absoluteSize.x != 0 && image.desc.absoluteSize.y != 0;
+			if (!absolute && !haveViewport) continue;
+			auto const size = resolveGraphImageSize(image.desc, viewport);
+			auto const maxSize = (uint32_t)max(0, caps.maxTextureSize);
+			if (maxSize && (size.x > maxSize || size.y > maxSize))
+			{
+				result.diagnostics.push_back("Image '" + image.name + "' resolves to " + to_string(size.x) + "x" + to_string(size.y) +
+					", exceeding the maximum texture size of " + to_string(maxSize) + ".");
+			}
+			auto const maxMipLevels = maxGraphImageMipLevels(size);
+			if (image.desc.mipLevels > maxMipLevels)
+			{
+				result.diagnostics.push_back("Image '" + image.name + "' requests " + to_string(image.desc.mipLevels) +
+					" mip levels but its resolved dimensions " + to_string(size.x) + "x" + to_string(size.y) +
+					" support at most " + to_string(maxMipLevels) + ".");
+			}
 		}
 		for (auto const& pass : mPasses)
 		{

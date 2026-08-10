@@ -149,7 +149,12 @@ namespace mpp
 
 	DiagnosticBag PbrPipelineDocument::validate(Caps const& caps,RenderGraphPassFactoryRegistry const* registry) const
 	{
-		auto diagnostics=validate(registry);if(graph){auto compiled=graph->compile(caps);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
+		return validate(caps,glm::uvec2(0),registry);
+	}
+
+	DiagnosticBag PbrPipelineDocument::validate(Caps const& caps,glm::uvec2 const& viewport,RenderGraphPassFactoryRegistry const* registry) const
+	{
+		auto diagnostics=validate(registry);if(graph){auto compiled=graph->compile(caps,viewport);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
 	}
 
 	DiagnosticBag PbrPipelineDocument::validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps) const
