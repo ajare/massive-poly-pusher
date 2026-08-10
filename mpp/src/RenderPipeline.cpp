@@ -281,18 +281,18 @@ namespace mpp
 				if (info.name == "BloomExtract")
 				{
 					overrides.setUniform("THRESHOLD", mOptions.bloom.threshold);
-					mGraphExecutor->setPassParameterOverrides(pass, overrides);
+					mGraphExecutor->setPassParameterOverrides(info.name, overrides);
 				}
 				else if (info.name == "BloomComposite")
 				{
 					overrides.setUniform("INTENSITY", mOptions.bloom.intensity);
-					mGraphExecutor->setPassParameterOverrides(pass, overrides);
+					mGraphExecutor->setPassParameterOverrides(info.name, overrides);
 				}
 				else if (info.name == "ToneMapPresentation")
 				{
 					overrides.setUniform("EXPOSURE", mOptions.exposure);
 					overrides.setUniform("TONE_MAP_OPERATOR", (int32_t)(mOptions.toneMapOperator == PbrToneMapOperator::Aces ? 1 : 0));
-					mGraphExecutor->setPassParameterOverrides(pass, overrides);
+					mGraphExecutor->setPassParameterOverrides(info.name, overrides);
 				}
 			}
 			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back() };
@@ -425,12 +425,12 @@ namespace mpp
 		mGraphExecutor->clearPassCallbacks();
 		if (shadowDepth.isValid())
 		{
-			mGraphExecutor->setPassCallback(shadowPass, [this, models](RenderGraphExecutionContext const&)
+			mGraphExecutor->setPassCallback(graph, shadowPass, [this, models](RenderGraphExecutionContext const&)
 			{
 				mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
 			});
 		}
-		mGraphExecutor->setPassCallback(scenePass, [this, scene, models, camera](RenderGraphExecutionContext const&)
+		mGraphExecutor->setPassCallback(graph, scenePass, [this, scene, models, camera](RenderGraphExecutionContext const&)
 		{
 			if (mOptions.graphPasses.scene && !models.empty() && scene->show3dModels() && mPasses.back())
 			{
@@ -445,7 +445,7 @@ namespace mpp
 			switch (bloomSteps[index])
 			{
 			case BloomGraphStep::Extract:
-				mGraphExecutor->setPassCallback(pass, [this, input](RenderGraphExecutionContext const& context)
+				mGraphExecutor->setPassCallback(graph, pass, [this, input](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderBloomExtract(static_cast<RenderTexture*>(context.getImage(input).get()), mOptions.bloom.threshold);
 				});
@@ -454,7 +454,7 @@ namespace mpp
 			case BloomGraphStep::Vertical:
 			{
 				bool const horizontal = bloomSteps[index] == BloomGraphStep::Horizontal;
-				mGraphExecutor->setPassCallback(pass, [this, input, horizontal](RenderGraphExecutionContext const& context)
+				mGraphExecutor->setPassCallback(graph, pass, [this, input, horizontal](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderBloomBlur(static_cast<RenderTexture*>(context.getImage(input).get()), horizontal ? glm::vec2(1.0f, 0.0f) : glm::vec2(0.0f, 1.0f));
 				});
@@ -463,7 +463,7 @@ namespace mpp
 			case BloomGraphStep::Composite:
 			{
 				auto sceneInput = sceneHdr;
-				mGraphExecutor->setPassCallback(pass, [this, sceneInput, input](RenderGraphExecutionContext const& context)
+				mGraphExecutor->setPassCallback(graph, pass, [this, sceneInput, input](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderBloomCombine(static_cast<RenderTexture*>(context.getImage(sceneInput).get()), static_cast<RenderTexture*>(context.getImage(input).get()), mOptions.bloom.intensity);
 				});
@@ -471,7 +471,7 @@ namespace mpp
 			}
 			}
 		}
-		mGraphExecutor->setPassCallback(toneMapPass, [this, presentationTexture, pbr](RenderGraphExecutionContext const& context)
+		mGraphExecutor->setPassCallback(graph, toneMapPass, [this, presentationTexture, pbr](RenderGraphExecutionContext const& context)
 		{
 			if (!mOptions.graphPasses.presentation) return;
 			auto texture = static_cast<RenderTexture*>(context.getImage(presentationTexture).get());

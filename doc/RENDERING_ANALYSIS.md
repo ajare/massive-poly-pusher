@@ -1105,7 +1105,7 @@ bool sceneProgramsSupportOutputs(vector<SceneModel3dPtr> const& models, size_t r
 `sceneProgramsSupportOutputs` becomes an integer comparison. Better still, cache the aggregate
 result on the pipeline keyed by a scene-content revision.
 
-### 5.5 Executor state is keyed by pass **index** — **Bug, medium**
+### 5.5 Executor state is keyed by pass **index** — **Bug, medium** — ✅ FIXED
 
 `RenderGraphExecutor` stores `mCallbacks`, `mScenePasses`, `mParameterOverrides`, and `mGpuTimings`
 in `std::map<uint32_t, ...>` keyed by `GraphPassHandle::id`, which is a **positional index** into
@@ -1122,6 +1122,35 @@ callbacks.
 (`RenderGraph::getValueId` has the same concept for images; passes need an equivalent
 `passId`/GUID). As an interim, call `clearPassCallbacks()` whenever the graph topology revision
 changes, and record the pass name alongside each `mScenePasses` entry with a mismatch assertion.
+
+#### 5.5 Resolution
+
+**No GUID was added, and no interim guard was needed** — the stable authored identifier already
+exists. `RenderGraph::addPass` and `setPassName` both reject a duplicate name
+(`RenderGraph.cpp:222`, `:241`), so a pass name is unique graph-wide, is what the XML author writes,
+and is untouched by `removePass`/`movePass`/`reorderPasses`, which only renumber. All four maps —
+`mCallbacks`, `mScenePasses`, `mParameterOverrides`, `mGpuTimings` — are now keyed by name.
+
+`mGpuTimings` lost its defensive `gpuTiming->second.name == pass.name` comparison: with a name key
+that check *is* the lookup.
+
+The registration API had to change, because `setPassCallback(GraphPassHandle, ...)` cannot resolve a
+name — the executor has no graph until `execute`. It now takes a name, with a
+`(RenderGraph const&, GraphPassHandle, ...)` overload that resolves it at the call site. Every
+in-tree caller uses the overload, so nothing reads more verbosely; the point is that a handle can no
+longer be stored as though it were an identity. Same for `setPassParameterOverrides`, where
+`RenderPipeline` already had the `GraphPassInfo` in hand and now just passes `info.name`.
+
+**Known limitation:** renaming a pass orphans its state, so a stateful scene pass restarts — for TAA
+that is one frame of history. Deleting a pass and creating a new one with the same name inherits the
+old state. A GUID would avoid both. Neither is a silent misapplication of one pass's state to a
+different pass, which is what this fixes, and both require deliberate authoring actions.
+
+**On the test.** GPU suite, "pass identity across topology edits": three passes each register a
+callback that asserts the pass it actually runs as, then pass 0 is removed so the rest renumber.
+Verified load-bearing by keying the executor on `pass.id` again, which reports *"the callback
+registered for 'GpuTestIdentity0' ran as 'GpuTestIdentity1'"* — precisely the misattribution this
+section describes.
 
 ### 5.6 `renderGraphFullscreen` silently ignores unknown sampler names — **Bug, medium**
 
