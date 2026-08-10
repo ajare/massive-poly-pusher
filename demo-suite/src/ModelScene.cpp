@@ -84,6 +84,14 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 using namespace std;
 using namespace mpp;
 
+namespace
+{
+	string demoResourcePath(ProgramOptions const& options, char const* path)
+	{
+		return options.resourceLocation + "demo-suite/res/" + path;
+	}
+}
+
 ModelScene::ModelScene(mpp::ResourceManager* resourceMgr)
 	: Scene("Default", resourceMgr)
 	, mLightPosition(0, 256, 256)
@@ -103,7 +111,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	// Create texture with sampler.
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "marble_texture4662.jpg", loadImage);
+	textureStream->setFile(demoResourcePath(options, "marble_texture4662.jpg"), loadImage);
 	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
@@ -112,20 +120,20 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	// Create texture programmatically.  This is a 16bit texture.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "clouds_16.png", loadImage);
+	textureStream->setFile(demoResourcePath(options, "clouds_16.png"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	addResource(resourceMgr->declareResource("Clouds.Texture", ResourceStreamPtr(textureStream)).first, false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "electbubbles.jpg", loadImage);
+	textureStream->setFile(demoResourcePath(options, "electbubbles.jpg"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
 	textureStream->enableMipMaps(true);
 	addResource(resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream)).first, false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "test.png", loadImage);
+	textureStream->setFile(demoResourcePath(options, "test.png"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
 	addResource(resourceMgr->declareResource("Test.Texture", ResourceStreamPtr(textureStream)).first, false);
 
@@ -189,25 +197,25 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "dragon.png", loadImage);
+	textureStream->setFile(demoResourcePath(options, "dragon.png"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
 	addResource(resourceMgr->declareResource("Dragon.Texture", ResourceStreamPtr(textureStream)).first, false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setAtlas(true);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "bullets.png", loadImage);
+	textureStream->setFile(demoResourcePath(options, "bullets.png"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
 	addResource(resourceMgr->declareResource("Bullets.Texture", ResourceStreamPtr(textureStream)).first, false);
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(options.resourceLocation + "atlas.png", loadImage);
+	textureStream->setFile(demoResourcePath(options, "atlas.png"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
 	addResource(resourceMgr->declareResource("Atlas.Texture", ResourceStreamPtr(textureStream)).first, false);
 
 	// Create texture from file definition.
-	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, options.resourceLocation + "Doughnut.xml");
+	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, demoResourcePath(options, "Doughnut.xml"));
 	addResource(resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(fileStream)).first, false);
 
 	// Create 1D texture from programmatic data.
@@ -367,7 +375,7 @@ void ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSp
 {
 	auto resourceMgr = getResourceManager();
 
-	auto materialStream = resource_parsers::FileMaterialStream::fromFile(resourceMgr, options.resourceLocation + "ElectricMaterial.xml");
+	auto materialStream = resource_parsers::FileMaterialStream::fromFile(resourceMgr, demoResourcePath(options, "ElectricMaterial.xml"));
 	addResource(resourceMgr->declareResource("Sphere.Material", materialStream).first, true);
 }
 
@@ -934,7 +942,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto lightMarkerMaterialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
 	lightMarkerMaterialStream->setProgram2d(false);
 	lightMarkerMaterialStream->setMeshSpecification(boxMeshSpec);
-	lightMarkerMaterialStream->setProgramFragmentShaderFile(options.resourceLocation + "LightMarker.frag");
+	lightMarkerMaterialStream->setProgramFragmentShaderFile(demoResourcePath(options, "LightMarker.frag"));
 	auto lightMarkerMaterial = resourceMgr->declareResource("Light.Marker.Material", ResourceStreamPtr(lightMarkerMaterialStream)).first;
 	addResource(lightMarkerMaterial, true);
 
@@ -958,7 +966,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 
 	// Load the PBR preview model. It remains visible by default and is rendered
 	// through the opt-in PBR pipeline below.
-	auto statueStream = new MppModelStream(resourceMgr, options.resourceLocation + "statue/statue.mppmodel");
+	auto statueStream = new MppModelStream(resourceMgr, demoResourcePath(options, "statue/statue.mppmodel"));
 	mStatue = resourceMgr->declareResource("Model.Statue", ResourceStreamPtr(statueStream)).first;
 	mStatue->acquire(this);
 	mStatue->load();
@@ -1141,9 +1149,9 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	graphPbrOptions.mode = mpp::RenderPipelineMode::GraphPbrForward;
 	graphPbrOptions.outputs.push_back({"Main","Presentation",{}, {}});
 	renderSystem->getOrCreateRenderPipeline("GraphPBR", graphPbrOptions);
-	auto xmlGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, options.resourceLocation + "PbrPipeline.rendergraph.xml");
+	auto xmlGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, demoResourcePath(options, "PbrPipeline.rendergraph.xml"));
 	auto xmlGraph = resourceMgr->declareResource("PBR.XmlGraph", mpp::ResourceStreamPtr(xmlGraphStream)).first;
-	auto xmlMrtGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, options.resourceLocation + "PbrPipelineMrt.rendergraph.xml");
+	auto xmlMrtGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, demoResourcePath(options, "PbrPipelineMrt.rendergraph.xml"));
 	auto xmlMrtGraph = resourceMgr->declareResource("PBR.XmlGraphMrt", mpp::ResourceStreamPtr(xmlMrtGraphStream)).first;
 	auto xmlPbrOptions = pbrOptions;
 	xmlPbrOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
@@ -1195,7 +1203,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	renderSystem->infoMessage("Material XML dispatch/single-definition binary/legacy migration tests passed.");
 
 	renderSystem->getOrCreateRenderPipeline("Pipeline.RemovalTest");if(!renderSystem->removeRenderPipeline("Pipeline.RemovalTest")||renderSystem->removeRenderPipeline("Pipeline.RemovalTest"))throw std::runtime_error("Render pipeline deterministic removal failed.");bool removedPipelineMissing=false;try{renderSystem->getRenderPipeline("Pipeline.RemovalTest");}catch(std::exception const&){removedPipelineMissing=true;}if(!removedPipelineMissing)throw std::runtime_error("Removed render pipeline remained addressable.");
-	auto importedGraphDocument = mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(options.resourceLocation + "PbrPipeline.rendergraph.xml");
+	auto importedGraphDocument = mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(demoResourcePath(options, "PbrPipeline.rendergraph.xml"));
 	if (!importedGraphDocument.importedFromRenderGraph || !importedGraphDocument.graph || importedGraphDocument.graph->getPassCount() == 0 || importedGraphDocument.outputs.size()!=1 || importedGraphDocument.outputs.front().name!="Main")
 		throw std::runtime_error("Standalone RenderGraph named-output migration failed.");
 	auto pipelineDocument = mpp::resource_parsers::PbrPipelineParser::fromFile(options.resourceLocation + "shared/pbr/templates/Full.pipeline.xml");
@@ -1229,7 +1237,7 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	auto sceneDocument = mpp::resource_parsers::SceneParser::fromFile((std::filesystem::path(pipelineDocument.sourcePath).parent_path() / pipelineDocument.previewScene).string());
 	if (sceneDocument.validate().hasErrors()) throw std::runtime_error("Native Scene document validation failed.");
 	if(!sceneDocument.getKnownTriangleCount()||sceneDocument.getUnknownTriangleModelCount())throw std::runtime_error("Native Scene primitive triangle inventory failed.");
-	{mpp::SceneRuntime runtime(renderSystem,resourceMgr);auto runtimeScene=sceneDocument;mpp::SceneModelDocument referenced;referenced.id="Referenced.Statue";referenced.source=mpp::SceneModelSource::MppModel;referenced.file="../../statue/statue.mppmodel";referenced.translation=glm::vec3(0,1,-3);referenced.layers={"Default"};referenced.materialBinding="Preview.Main";runtimeScene.models.push_back(referenced);auto resolvedMaterial=resourceMgr->getResource("PBR.EditorPipelineTest/Preview.LocalPbr");std::map<std::string,mpp::ResourcePtr> bindings{{"Preview.Main",resolvedMaterial}};if(!runtime.rebuild(runtimeScene,bindings,{},pipelineDocument.environment.binding)||!runtime.getScene()){std::string message="Native Scene runtime primitive instantiation failed.";for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())message+=" "+diagnostic.code+": "+diagnostic.message;throw std::runtime_error(message);}for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())if(diagnostic.code=="MPP-SCENE-RUNTIME-002")throw std::runtime_error("Native Scene referenced model failed: "+diagnostic.message);auto referencedInstance=runtime.getModelInstance("Referenced.Statue");if(!referencedInstance||referencedInstance->getRenderLayers()!=std::vector<std::string>{"Default"}||referencedInstance->getTransform()[3].x!=0||referencedInstance->getTransform()[3].y!=1||referencedInstance->getTransform()[3].z!=-3)throw std::runtime_error("Native Scene transform/layer propagation failed.");auto materialEntry=referencedInstance->getParams()->getMeshParams().find("");if(!resolvedMaterial||materialEntry==referencedInstance->getParams()->getMeshParams().end()||materialEntry->second.material!=resolvedMaterial)throw std::runtime_error("Native Scene logical material resolution failed.");if(runtime.getLights().size()!=sceneDocument.lights.size()||runtime.getLights().front().type!=mpp::PbrLightType::Directional||std::abs(glm::length(runtime.getLights().front().direction)-1.0f)>0.0001f||runtime.getEnvironmentBinding()!=pipelineDocument.environment.binding)throw std::runtime_error("Native Scene light/environment resolution failed.");if(runtime.getScene()->get3dModelsInLayers(nullptr,{"Showcase"}).size()!=2)throw std::runtime_error("Native Scene render-layer filtering failed.");if(!runtime.getModelTriangleCount("Referenced.Statue")||runtime.getUniqueTriangleCount()<=sceneDocument.getKnownTriangleCount())throw std::runtime_error("Native Scene loaded-model triangle inventory failed.");auto invalidScene=runtimeScene;invalidScene.models.back().id=invalidScene.models.front().id;auto retainedScene=runtime.getScene();if(runtime.rebuild(invalidScene,bindings,{},pipelineDocument.environment.binding)||runtime.getScene()!=retainedScene)throw std::runtime_error("Native Scene failed candidate did not retain the active generation.");auto blockerStream=std::make_shared<mpp::ProgrammaticStringStream>(resourceMgr);blockerStream->setString("candidate collision");auto blocker=resourceMgr->declareResource("SceneRuntime.2.Sphere.0.0",blockerStream).first;blocker->load();if(runtime.rebuild(runtimeScene,bindings,{},pipelineDocument.environment.binding)||runtime.getScene()!=retainedScene||!resourceMgr->getResource(blocker->getName(),true))throw std::runtime_error("Native Scene runtime-creation failure did not retain the active generation and foreign resource.");resourceMgr->deleteResource(blocker->getName());auto invalidLayer=runtimeScene;invalidLayer.models.front().layers.push_back("Undeclared");if(!invalidLayer.validate().hasErrors())throw std::runtime_error("Native Scene undeclared-layer validation failed.");auto invalidShadow=runtimeScene;invalidShadow.lights.front().type=mpp::SceneLightType::Point;if(!invalidShadow.validate().hasErrors())throw std::runtime_error("Native Scene shadow-light compatibility validation failed.");auto missingScene=runtimeScene;mpp::SceneModelDocument missing;missing.id="Missing.Model.Placeholder";missing.source=mpp::SceneModelSource::MppModel;missing.file="does-not-exist.mppmodel";missing.materialBinding="Preview.Main";missingScene.models.push_back(missing);if(!runtime.rebuild(missingScene,bindings,{},pipelineDocument.environment.binding))throw std::runtime_error("Native Scene runtime missing-model placeholder failed.");bool placeholderDiagnosed=false;for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())if(diagnostic.code=="MPP-SCENE-RUNTIME-003")placeholderDiagnosed=true;if(!placeholderDiagnosed||runtime.getModelTriangleCount("Missing.Model.Placeholder")!=0)throw std::runtime_error("Native Scene runtime placeholder was not diagnosed or was included in triangle inventory.");runtime.clear();}
+	{mpp::SceneRuntime runtime(renderSystem,resourceMgr);auto runtimeScene=sceneDocument;mpp::SceneModelDocument referenced;referenced.id="Referenced.Statue";referenced.source=mpp::SceneModelSource::MppModel;referenced.file="../../demo-suite/res/statue/statue.mppmodel";referenced.translation=glm::vec3(0,1,-3);referenced.layers={"Default"};referenced.materialBinding="Preview.Main";runtimeScene.models.push_back(referenced);auto resolvedMaterial=resourceMgr->getResource("PBR.EditorPipelineTest/Preview.LocalPbr");std::map<std::string,mpp::ResourcePtr> bindings{{"Preview.Main",resolvedMaterial}};if(!runtime.rebuild(runtimeScene,bindings,{},pipelineDocument.environment.binding)||!runtime.getScene()){std::string message="Native Scene runtime primitive instantiation failed.";for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())message+=" "+diagnostic.code+": "+diagnostic.message;throw std::runtime_error(message);}for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())if(diagnostic.code=="MPP-SCENE-RUNTIME-002")throw std::runtime_error("Native Scene referenced model failed: "+diagnostic.message);auto referencedInstance=runtime.getModelInstance("Referenced.Statue");if(!referencedInstance||referencedInstance->getRenderLayers()!=std::vector<std::string>{"Default"}||referencedInstance->getTransform()[3].x!=0||referencedInstance->getTransform()[3].y!=1||referencedInstance->getTransform()[3].z!=-3)throw std::runtime_error("Native Scene transform/layer propagation failed.");auto materialEntry=referencedInstance->getParams()->getMeshParams().find("");if(!resolvedMaterial||materialEntry==referencedInstance->getParams()->getMeshParams().end()||materialEntry->second.material!=resolvedMaterial)throw std::runtime_error("Native Scene logical material resolution failed.");if(runtime.getLights().size()!=sceneDocument.lights.size()||runtime.getLights().front().type!=mpp::PbrLightType::Directional||std::abs(glm::length(runtime.getLights().front().direction)-1.0f)>0.0001f||runtime.getEnvironmentBinding()!=pipelineDocument.environment.binding)throw std::runtime_error("Native Scene light/environment resolution failed.");if(runtime.getScene()->get3dModelsInLayers(nullptr,{"Showcase"}).size()!=2)throw std::runtime_error("Native Scene render-layer filtering failed.");if(!runtime.getModelTriangleCount("Referenced.Statue")||runtime.getUniqueTriangleCount()<=sceneDocument.getKnownTriangleCount())throw std::runtime_error("Native Scene loaded-model triangle inventory failed.");auto invalidScene=runtimeScene;invalidScene.models.back().id=invalidScene.models.front().id;auto retainedScene=runtime.getScene();if(runtime.rebuild(invalidScene,bindings,{},pipelineDocument.environment.binding)||runtime.getScene()!=retainedScene)throw std::runtime_error("Native Scene failed candidate did not retain the active generation.");auto blockerStream=std::make_shared<mpp::ProgrammaticStringStream>(resourceMgr);blockerStream->setString("candidate collision");auto blocker=resourceMgr->declareResource("SceneRuntime.2.Sphere.0.0",blockerStream).first;blocker->load();if(runtime.rebuild(runtimeScene,bindings,{},pipelineDocument.environment.binding)||runtime.getScene()!=retainedScene||!resourceMgr->getResource(blocker->getName(),true))throw std::runtime_error("Native Scene runtime-creation failure did not retain the active generation and foreign resource.");resourceMgr->deleteResource(blocker->getName());auto invalidLayer=runtimeScene;invalidLayer.models.front().layers.push_back("Undeclared");if(!invalidLayer.validate().hasErrors())throw std::runtime_error("Native Scene undeclared-layer validation failed.");auto invalidShadow=runtimeScene;invalidShadow.lights.front().type=mpp::SceneLightType::Point;if(!invalidShadow.validate().hasErrors())throw std::runtime_error("Native Scene shadow-light compatibility validation failed.");auto missingScene=runtimeScene;mpp::SceneModelDocument missing;missing.id="Missing.Model.Placeholder";missing.source=mpp::SceneModelSource::MppModel;missing.file="does-not-exist.mppmodel";missing.materialBinding="Preview.Main";missingScene.models.push_back(missing);if(!runtime.rebuild(missingScene,bindings,{},pipelineDocument.environment.binding))throw std::runtime_error("Native Scene runtime missing-model placeholder failed.");bool placeholderDiagnosed=false;for(auto const& diagnostic:runtime.getDiagnostics().getDiagnostics())if(diagnostic.code=="MPP-SCENE-RUNTIME-003")placeholderDiagnosed=true;if(!placeholderDiagnosed||runtime.getModelTriangleCount("Missing.Model.Placeholder")!=0)throw std::runtime_error("Native Scene runtime placeholder was not diagnosed or was included in triangle inventory.");runtime.clear();}
 	auto sceneRoundTrip = std::filesystem::temp_directory_path() / "mpp-scene-roundtrip.xml";
 	mpp::resource_parsers::SceneSerializer::toFile(sceneDocument, sceneRoundTrip.string());
 	auto roundTrippedScene = mpp::resource_parsers::SceneParser::fromFile(sceneRoundTrip.string());
