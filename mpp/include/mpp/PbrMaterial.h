@@ -33,6 +33,7 @@ namespace mpp
 		void setUniforms() override;
 		ShadingModel getShadingModel() const override { return ShadingModel::Pbr; }
 		bool isTransparent() const override { return mPbrSurface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend; }
+		bool isDoubleSided() const override { return mPbrSurface.doubleSided; }
 		PbrMaterialSpecification::PbrSurface const& getSurface() const;
 		PbrMaterialFeatures getFeatures() const;
 		std::string const& getFeatureSummary() const;

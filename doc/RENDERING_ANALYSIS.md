@@ -584,7 +584,7 @@ a much larger tuning space than necessary for `ShadowOptions::constantBias`/`nor
 for closed geometry, and keep the small shader-side normal-offset bias for open/thin geometry.
 Then re-tune the defaults in `ShadowOptions` and re-run `doc/SHADOW_VALIDATION.md`.
 
-### 2.6 `doubleSided` never affects rasterizer culling — **Bug, medium-high**
+### 2.6 `doubleSided` never affects rasterizer culling — **Bug, medium-high** — ✅ FIXED
 
 `PbrMaterialSpecification::PbrSurface::doubleSided` reaches the shader
 (`PbrShaders.h:212-215`, which flips the normal for back faces) and reaches the feature bitset
@@ -614,6 +614,44 @@ if (pbr && pbr->getSurface().doubleSided) meshInstance->cullBackFaces(false);
 
 Add a `PbrMaterialTests` case asserting the resulting `MeshInstance` state, and note in
 `doc/PBR_MATERIAL_AUTHORING.md` that material `doubleSided` now overrides the model-level flag.
+
+#### 2.6 Resolution
+
+Fixed in `RenderPass::render`, as suggested, but the decision was **extracted into a pure function**
+rather than written inline:
+
+```cpp
+PbrForwardMeshClassification classifyPbrForwardMesh(bool pbrShadingModel, bool transparent,
+                                                    bool doubleSided, bool modelCullBackFaces);
+```
+
+Two reasons. First, the suggested `dynamic_cast<PbrMaterial*>` runs per mesh per frame in the scene
+loop, which §8.6/§8.7 are already unhappy about; a `Material::isDoubleSided()` virtual (defaulted to
+`false`, overridden in `PbrMaterial`) costs nothing and keeps `RenderPass.cpp` free of the PBR
+header. Second, and mainly, the precedence rule is the part worth testing, and as plain values it
+tests without a GL context.
+
+`meshInstance->cullBackFaces()` is read back as the function's input because `setParams` has already
+applied the model flag by that point, so the override is expressed as data rather than as a mutation
+ordering that a later edit could silently reorder.
+
+**Precedence.** The material wins over the model flag rather than combining with it — a surface with
+no meaningful back face cannot be rasterized single-sided whatever the model asked for. This is now
+stated in `doc/PBR_MATERIAL_AUTHORING.md` §3, since it is a behaviour change for any asset that set
+both.
+
+**On the test.** Six cases in `runPbrMaterialSpecializationTests` (context-free, so it runs in
+DemoSuite *and* `PipelineEditor --validate`): the override itself, a single-sided material retaining
+the model flag, a double-sided material not *enabling* culling the model never asked for, a non-PBR
+material being left alone, and the two blend classifications that share the function — those last
+guard against the culling change perturbing alpha behaviour. Verified load-bearing by dropping the
+override term: *"a double-sided PBR material did not override the model's back-face culling flag"*.
+
+**Coverage limit, stated plainly:** this tests the decision, not the wiring. Deleting the
+`classifyPbrForwardMesh` call from `RenderPass::render` would not fail any test. Closing that would
+need a scene-level fixture with a real model and a flow-snapshot assertion on
+`RenderBatchSubmission::cullBackFaces`, which is worth doing if this area is touched again — see
+§10.
 
 ### 2.7 Blended PBR geometry uses non-separate alpha blending and per-object sorting — **Non-standard, low**
 

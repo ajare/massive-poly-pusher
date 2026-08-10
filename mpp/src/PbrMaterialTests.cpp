@@ -1,6 +1,7 @@
 #include "mpp/PbrMaterialFeatures.h"
 #include "mpp/PbrMaterialTests.h"
 #include "mpp/PbrShaders.h"
+#include "mpp/RenderPass.h"
 
 namespace mpp
 {
@@ -72,6 +73,26 @@ namespace mpp
 		if (fetchEnd == std::string::npos ||
 		    fragment.find("@Uniform(PBR_PREFILTERED_MAX_LOD)", specularFetch) > fetchEnd)
 			return fail("prefiltered specular fetch does not scale roughness by PBR_PREFILTERED_MAX_LOD");
+
+		// doubleSided reached the shader and the feature bitset but never the
+		// rasterizer, so back faces were culled before the normal-flipping branch
+		// could run. The material has to win over the model's culling flag here:
+		// a surface with no meaningful back face cannot be drawn single-sided.
+		if (classifyPbrForwardMesh(true, false, true, true).cullBackFaces)
+			return fail("a double-sided PBR material did not override the model's back-face culling flag");
+		if (classifyPbrForwardMesh(true, false, false, true).cullBackFaces != true)
+			return fail("a single-sided PBR material lost the model's back-face culling flag");
+		if (classifyPbrForwardMesh(true, false, true, false).cullBackFaces)
+			return fail("a double-sided PBR material enabled culling that the model had not asked for");
+		// Only PBR surfaces carry the concept, so a BasicMaterial must keep the
+		// model flag even if some future material type reports doubleSided.
+		if (!classifyPbrForwardMesh(false, false, true, true).cullBackFaces)
+			return fail("a non-PBR material had its culling flag overridden");
+		// The alpha semantics sharing this classification must not have moved.
+		if (classifyPbrForwardMesh(true, true, false, true) != PbrForwardMeshClassification{ true, true, true })
+			return fail("PBR blend classification changed");
+		if (classifyPbrForwardMesh(false, true, false, true) != PbrForwardMeshClassification{ false, false, true })
+			return fail("a non-PBR material was classified as blended");
 		return true;
 	}
 }

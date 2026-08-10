@@ -27,6 +27,10 @@ namespace mpp
 		virtual void setUniforms() = 0;
 		virtual ShadingModel getShadingModel() const = 0;
 		virtual bool isTransparent() const = 0;
+		// Whether the surface has no meaningful back face and must therefore be
+		// rasterized with culling off. Only PBR surfaces carry the concept, so this
+		// is defaulted rather than pure -- BasicMaterial keeps the model-level flag.
+		virtual bool isDoubleSided() const { return false; }
 		virtual void validateInstanceUniforms(UniformCollection const& uniforms) const = 0;
 	};
 }

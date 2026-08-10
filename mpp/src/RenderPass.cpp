@@ -51,6 +51,22 @@ namespace mpp
 		return mTarget->resize(width, height);
 	}
 
+	PbrForwardMeshClassification classifyPbrForwardMesh(bool pbrShadingModel, bool transparent, bool doubleSided, bool modelCullBackFaces)
+	{
+		// Blend and depth sorting are PBR alpha semantics, so they stay gated on the
+		// shading model; a BasicMaterial in this pass keeps its legacy behaviour.
+		bool const blended = pbrShadingModel && transparent;
+
+		// A double-sided material already reaches the shader, which flips the normal
+		// for back faces, but nothing ever disabled culling for it -- so those faces
+		// were discarded before the branch could run, and foliage, cloth and other
+		// thin shells rendered with holes. This deliberately overrides the model's
+		// flag rather than combining with it: the material describes the surface,
+		// and a surface with no meaningful back face cannot be rasterized
+		// single-sided whatever the model asked for.
+		return { blended, blended, modelCullBackFaces && !(pbrShadingModel && doubleSided) };
+	}
+
 	void RenderPass::render(vector<SceneModel3dPtr> const& models, CameraPtr camera)
 	{
 		// Render models in view
@@ -78,9 +94,16 @@ namespace mpp
 				{
 					continue; // Preserve legacy BasicMaterial blend behaviour in Default.
 				}
-				bool const transparent = material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent();
-				meshInstance->blend(transparent);
-				meshInstance->sortTransparent(transparent);
+				// setParams above has already applied the model's own culling flag,
+				// which is why it is fed in here and can then be overridden.
+				auto const classification = classifyPbrForwardMesh(
+					material->getShadingModel() == Material::ShadingModel::Pbr,
+					material->isTransparent(),
+					material->isDoubleSided(),
+					meshInstance->cullBackFaces());
+				meshInstance->blend(classification.blend);
+				meshInstance->sortTransparent(classification.sortTransparent);
+				meshInstance->cullBackFaces(classification.cullBackFaces);
 			}
 		}
 	}

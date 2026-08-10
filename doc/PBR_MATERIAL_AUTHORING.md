@@ -77,6 +77,8 @@ The supported sampler names are exactly:
 
 `OPAQUE` and `MASK` write opaque output alpha; `MASK` discards fragments below `alphaCutoff`. `BLEND` retains authored alpha and is rendered after PBR opaque/masked geometry with depth writes disabled.
 
+`doubleSided` shades back faces with a flipped normal **and disables back-face culling for that mesh**. It overrides the model-level `ModelRenderParams::Flag_CullBackFaces`: the material describes the surface, so a mesh whose material is double-sided is never rasterized single-sided, whatever the model asked for. Leave it `false` for closed solids — drawing their interiors is wasted fill.
+
 ## 4. Create a material programmatically
 
 First declare/load texture resources by the names that the material will reference. A `ProgrammaticTextureStream` can create a texture resource from an image loader; configure its `TextureColourSpace`, target, filtering, and wrapping before declaration. The PBR stream references them through semantic map setters rather than arbitrary sampler names.
