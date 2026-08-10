@@ -398,7 +398,7 @@ oracle pins the directional distribution.
 **Not affected:** `IblEnvironmentCache` is in-memory only (`IblEnvironmentCache.h:37`), so there are
 no persisted irradiance maps carrying the old convention.
 
-### 1.6 The neutral BRDF LUT fallback is white — **Bug, low**
+### 1.6 The neutral BRDF LUT fallback is white — **Bug, low** — ✅ FIXED
 
 `mpp/src/RenderSystem.cpp:939`
 
@@ -413,6 +413,20 @@ prefiltered cubemap while falling back on the LUT (for example a partially-autho
 plus a failed `getOrCreatePbrBrdfIntegrationLut`) will bloom out.
 
 **Fix** — make it `(255, 0, 0)` so the neutral value is `scale = 1, bias = 0`.
+
+#### 1.6 Resolution
+
+Applied as written. `(1, 0)` is the neutral pair because it passes the Fresnel term through
+untouched; black would be equally wrong in the other direction, deleting the specular term rather
+than inventing it.
+
+Still masked in the shipped configuration — the prefiltered fallback is black, so the product is
+zero either way — which is why this stays rated low. It matters for any configuration that supplies
+a real prefiltered cubemap while falling back on the LUT.
+
+**On the test.** The GPU suite reads the fallback texel back and asserts `.rg == (255, 0)`. Verified
+load-bearing by restoring white: *"the neutral BRDF LUT fallback is not (scale 1, bias 0) but
+(255, 255)"*.
 
 ### 1.7 Roughness/metallic specialization defaults are surprising — **Non-standard, documentation**
 

@@ -938,7 +938,15 @@ namespace mpp
 			addCoreResource(texture, true);
 		};
 		addPbrIblFallback("__mpp_tex_pbr_ibl_cube__", TextureTarget::CubeMap, 0, 0, 0);
-		addPbrIblFallback("__mpp_tex_pbr_brdf_lut__", TextureTarget::Texture2D, 255, 255, 255);
+		// The shader reads this as (scale, bias) in .rg:
+		//   specular = prefiltered * (fresnel * brdf.x + brdf.y)
+		// so a white texel means bias = 1 and adds a full unit of specular energy out
+		// of nowhere. (1, 0) is the neutral pair: it passes the Fresnel term through
+		// untouched. Black would be equally wrong in the other direction, killing the
+		// term entirely. This is currently masked by the prefiltered fallback being
+		// black, but anything that supplies a real prefiltered cubemap while falling
+		// back on the LUT would bloom out.
+		addPbrIblFallback("__mpp_tex_pbr_brdf_lut__", TextureTarget::Texture2D, 255, 0, 0);
 
 		// Internal font texture
 		auto ts = new ProgrammaticTextureStream(resourceMgr);

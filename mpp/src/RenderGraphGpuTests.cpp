@@ -24,6 +24,7 @@
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/Program.h"
+#include "mpp/Texture.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
@@ -236,6 +237,20 @@ namespace mpp
 			// clamp, so the assertion carries its own justification.
 			float widestEdgeGap = 0.0f; for (uint32_t row = 0; row < 512; ++row) widestEdgeGap = std::max(widestEdgeGap, std::abs(lutPixels[row * 512 * 2] - lutPixels[(row * 512 + 511) * 2])); if (widestEdgeGap < 0.25f) return fail("BRDF integration LUT edge columns are unexpectedly similar (" + std::to_string(widestEdgeGap) + "), so the wrap-mode check proves nothing"); if (lutWrapS != GL_CLAMP_TO_EDGE || lutWrapT != GL_CLAMP_TO_EDGE) return fail("BRDF integration LUT is not clamped (wrap s/t " + std::to_string(lutWrapS) + "/" + std::to_string(lutWrapT) + "), so sampling at nDotV=1 wraps into the grazing-incidence column");
 			if (!glIsEnabled(GL_TEXTURE_CUBE_MAP_SEAMLESS)) return fail("IBL generation left seamless cubemap filtering disabled");
+			// The neutral fallback stands in when no BRDF LUT is available. Its .rg is
+			// read as (scale, bias), so it has to be (1, 0): white would add a full
+			// unit of unconditional specular, black would delete the term.
+			{
+				auto fallback = renderSystem->getResourceManager()->getResource("__mpp_tex_pbr_brdf_lut__", true);
+				auto fallbackTexture = dynamic_cast<Texture*>(fallback.get());
+				if (!fallbackTexture) return fail("the neutral BRDF LUT fallback texture is missing");
+				fallbackTexture->bind(0);
+				std::array<uint8_t, 3> neutral{};
+				GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, neutral.data()));
+				GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+				if (neutral[0] != 255 || neutral[1] != 0)
+					return fail("the neutral BRDF LUT fallback is not (scale 1, bias 0) but (" + std::to_string(neutral[0]) + ", " + std::to_string(neutral[1]) + ")");
+			}
 
 			stage = "initial colour passes";
 			GraphImageDesc colour;
