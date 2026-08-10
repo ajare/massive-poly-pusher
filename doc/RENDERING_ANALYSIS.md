@@ -1006,7 +1006,7 @@ producer.
 `RenderGraphAllocationPlan` should use the pruned order too — lifetimes currently extend across
 dead passes, inflating `estimatedPhysicalBytes` and blocking aliasing.
 
-### 4.5 `GraphLoadOp::Load` on a transient image is not diagnosed — **Bug, low**
+### 4.5 `GraphLoadOp::Load` on a transient image is not diagnosed — **Bug, low** — ✅ FIXED
 
 An aliased transient image's contents at pass start are whatever the previous occupant left.
 `clearPassOutputs` (`RenderGraphExecutor.cpp:98`) honours `Clear`, and `Load`/`DontCare` both fall
@@ -1016,6 +1016,26 @@ varies with the aliasing decision — a genuinely non-deterministic result.
 **Fix** — in `RenderGraph::compile`, emit an error when a pass declares
 `GraphLoadOp::Load` for an output whose image is `transient` and which has no earlier producer in
 the pass order.
+
+#### 4.5 Resolution
+
+Applied as written, in `RenderGraph::compile`, for both colour and depth outputs. "Earlier producer"
+resolves to the producer of the *previous* version of the written image, since `writeColour` returns
+version N and the load reads N-1. The check passes when that producer exists, is enabled, and is at
+or before the writing pass; it fires otherwise.
+
+External images are skipped explicitly rather than relying on `transient`. `GraphImageDesc::transient`
+defaults to `true` and only some construction paths clear it for imports, so testing `external`
+directly avoids diagnosing an imported image whose contents the importer owns.
+
+Nothing in the tree trips it — no authored graph uses `<load>load</load>` at all — so this is
+purely a new guard rather than a behaviour change.
+
+**On the test.** Four cases in `runRenderGraphTopologyTests`: the unproduced transient load is
+rejected; the same load after an earlier producing pass is accepted; a load on a non-transient image
+is accepted; and `DontCare` on an unproduced transient image is accepted, that being the honest
+declaration for contents nobody should rely on. Verified load-bearing by short-circuiting the check:
+*"loading an unproduced transient image was accepted"*.
 
 ---
 

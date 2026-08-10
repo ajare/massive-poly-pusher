@@ -41,6 +41,37 @@ namespace mpp
 		feedback.readSampled(feedbackPass, written);
 		if (feedback.compile().valid) return fail("same-pass image feedback was accepted");
 
+		// Loading a transient image that nothing produced earlier reads whatever the
+		// allocator's aliasing left behind, so the result changes with an allocation
+		// decision rather than with the graph.
+		RenderGraph loadTransient;
+		auto scratch = loadTransient.createImage("Scratch", colour);
+		auto loader = loadTransient.addPass("Loader", GraphPassType::Fullscreen);
+		loadTransient.writeColour(loader, scratch, GraphLoadOp::Load);
+		if (loadTransient.compile().valid) return fail("loading an unproduced transient image was accepted");
+		// The same load is well defined once an earlier pass has produced it.
+		RenderGraph loadProduced;
+		auto produced = loadProduced.createImage("Produced", colour);
+		auto firstWriter = loadProduced.addPass("FirstWriter", GraphPassType::Fullscreen);
+		produced = loadProduced.writeColour(firstWriter, produced, GraphLoadOp::Clear);
+		auto secondWriter = loadProduced.addPass("SecondWriter", GraphPassType::Fullscreen);
+		loadProduced.writeColour(secondWriter, produced, GraphLoadOp::Load);
+		if (!loadProduced.compile().valid) return fail("loading a transient image produced by an earlier pass was rejected");
+		// And on a non-transient image, whose contents the allocator must preserve.
+		GraphImageDesc persistentColour = colour; persistentColour.transient = false;
+		RenderGraph loadPersistent;
+		auto kept = loadPersistent.createImage("Kept", persistentColour);
+		auto keptLoader = loadPersistent.addPass("KeptLoader", GraphPassType::Fullscreen);
+		loadPersistent.writeColour(keptLoader, kept, GraphLoadOp::Load);
+		if (!loadPersistent.compile().valid) return fail("loading a non-transient image was rejected");
+		// DontCare says the contents do not matter, which is exactly the honest
+		// declaration for an unproduced transient image.
+		RenderGraph dontCareTransient;
+		auto ignored = dontCareTransient.createImage("Ignored", colour);
+		auto ignoringPass = dontCareTransient.addPass("Ignoring", GraphPassType::Fullscreen);
+		dontCareTransient.writeColour(ignoringPass, ignored, GraphLoadOp::DontCare);
+		if (!dontCareTransient.compile().valid) return fail("a DontCare write to an unproduced transient image was rejected");
+
 		valid.setValueId(scene, "Scene.AfterOpaque");
 		if (valid.getValueId(scene) != "Scene.AfterOpaque" || valid.findValue("Scene.AfterOpaque").version != scene.version)
 			return fail("stable graph value ID did not round-trip");
