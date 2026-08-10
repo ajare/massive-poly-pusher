@@ -1,3 +1,4 @@
+#include <format>
 #include <cmath>
 #include <limits>
 
@@ -169,7 +170,7 @@ namespace mpp
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = STR_FORMAT("Error loading {}.  '{}' specified for uniform '{}'  but {} values found.",
+				string errMsg = std::format("Error loading {}.  '{}' specified for uniform '{}'  but {} values found.",
 					filepath, type, name, values.size());
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
@@ -202,7 +203,7 @@ namespace mpp
 			auto values = utils::StringUtils::split(value, " ,");
 			if (values.size() != count)
 			{
-				string errMsg = STR_FORMAT("Error loading {}. '{}' specified for uniform {} but {} values found.", filepath, type, name, values.size());
+				string errMsg = std::format("Error loading {}. '{}' specified for uniform {} but {} values found.", filepath, type, name, values.size());
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
@@ -399,7 +400,7 @@ namespace mpp
 					auto requireRange = [&](char const* field, float value, float minimum, float maximum)
 					{
 						if (!std::isfinite(value) || value < minimum || value > maximum)
-							THROW_MPP_RESOURCE_PARSERS(STR_FORMAT("Pbr {} must be in [{}, {}].", field, minimum, maximum), __LINE__, __FILE__, __func__);
+							THROW_MPP_RESOURCE_PARSERS(std::format("Pbr {} must be in [{}, {}].", field, minimum, maximum), __LINE__, __FILE__, __func__);
 					};
 					for (int component = 0; component < 4; ++component) requireRange("baseColourFactor", pbr.baseColourFactor[component], 0.0f, 1.0f);
 					requireRange("metallicFactor", pbr.metallicFactor, 0.0f, 1.0f);

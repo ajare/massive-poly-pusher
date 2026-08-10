@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include "utils/StringUtils.h"
 
 #include "mpp/Config.h"
@@ -88,12 +89,12 @@ namespace mpp
 
 		std::string toStringFloat(std::string const& start, std::string const& end, std::string const& sep) const
 		{
-			return STR_FORMAT("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, red, green, blue, alpha);
+			return std::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, red, green, blue, alpha);
 		}
 
 		std::string toStringUint8(std::string const& start, std::string const& end, std::string const& sep) const
 		{
-			return STR_FORMAT("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, (uint8_t)(red * 255.0f), (uint8_t)(green * 255.0f), (uint8_t)(blue * 255.0f), (uint8_t)(alpha * 255.0f));
+			return std::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, (uint8_t)(red * 255.0f), (uint8_t)(green * 255.0f), (uint8_t)(blue * 255.0f), (uint8_t)(alpha * 255.0f));
 		}
 
 		std::string toStringHex(std::string const& start, std::string const& end, std::string const& sep) const
@@ -116,7 +117,7 @@ namespace mpp
 			ah[0] = hexChars[a / 16];
 			ah[1] = hexChars[a % 16];
 
-			return STR_FORMAT("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, rh, gh, bh, ah);
+			return std::format("{0}{3}{1}{4}{1}{5}{1}{6}{2}", start, sep, end, rh, gh, bh, ah);
 		}
 
 		static Colour Black;

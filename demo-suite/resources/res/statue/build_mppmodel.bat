@@ -1,1 +1,0 @@
-..\..\..\..\model-convert\build\vs2017\bin\Win32\Release\ModelConvert.exe" statue.obj -s statue.modelspec.xml

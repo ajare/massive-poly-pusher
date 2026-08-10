@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<Sampler>
+	<minFilter>LINEAR</minFilter>
+	<magFilter>LINEAR</magFilter>
+	<wrap>REPEAT</wrap>
+</Sampler>
