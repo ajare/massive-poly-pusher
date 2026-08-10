@@ -54,15 +54,22 @@ namespace mpp
 		RenderGraphPassFactoryRegistry const* mFactoryRegistry{ nullptr };
 		RenderGraphTemplate const* mExecutingTemplate{ nullptr };
 		RenderGraphFrameContext const* mFrameContext{ nullptr };
-		std::map<uint32_t, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
-		std::map<uint32_t, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
-		std::map<uint32_t, UniformCollection> mParameterOverrides;
+		// Keyed by pass NAME, not by GraphPassHandle::id. The handle's id is a
+		// positional index into RenderGraph::mPasses, and removePass, movePass and
+		// reorderPasses all renumber it -- so an index key silently hands one pass's
+		// state to whichever pass later occupies that slot. A stateful scene pass
+		// inheriting another pass's TAA history is the worst version of this. Pass
+		// names are enforced unique graph-wide by addPass and setPassName, so they
+		// are the stable authored identifier this needs.
+		std::map<std::string, std::function<void(RenderGraphExecutionContext const&)>> mCallbacks;
+		std::map<std::string, std::unique_ptr<RenderGraphScenePass>> mScenePasses;
+		std::map<std::string, UniformCollection> mParameterOverrides;
 		std::vector<GraphPassExecutionStats> mLastExecutionStats;
 		std::vector<GraphPassHandle> mLastExecutionOrder;
 		struct GpuTimingQuery { GraphPassHandle pass; std::string name; uint32_t begin{ 0 }, end{ 0 }; };
 		struct GpuTimingResult { std::string name; double milliseconds{ 0.0 }; };
 		std::deque<std::vector<GpuTimingQuery>> mPendingGpuTimings;
-		std::map<uint32_t, GpuTimingResult> mGpuTimings;
+		std::map<std::string, GpuTimingResult> mGpuTimings;
 		bool mGpuTimingSupported{ false };
 		void collectGpuTimings();
 		void clearGpuTimings();
@@ -73,10 +80,15 @@ namespace mpp
 		RenderGraphExecutor(RenderGraphExecutor const&) = delete;
 		RenderGraphExecutor& operator =(RenderGraphExecutor const&) = delete;
 
-		void setPassCallback(GraphPassHandle pass, std::function<void(RenderGraphExecutionContext const&)> callback);
+		// Registration is by pass name. The graph-and-handle overloads resolve it for
+		// you and are the convenient form at call sites that already hold the graph;
+		// they exist so that no caller has to remember an index is not an identity.
+		void setPassCallback(std::string const& passName, std::function<void(RenderGraphExecutionContext const&)> callback);
+		void setPassCallback(RenderGraph const& graph, GraphPassHandle pass, std::function<void(RenderGraphExecutionContext const&)> callback);
 		void setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry);
 		void setFrameContext(RenderGraphFrameContext const* frameContext);
-		void setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters);
+		void setPassParameterOverrides(std::string const& passName, UniformCollection const& parameters);
+		void setPassParameterOverrides(RenderGraph const& graph, GraphPassHandle pass, UniformCollection const& parameters);
 		void clearPassCallbacks();
 		std::vector<GraphPassExecutionStats> const& getLastExecutionStats() const;
 		std::vector<GraphPassHandle> const& getLastExecutionOrder() const;

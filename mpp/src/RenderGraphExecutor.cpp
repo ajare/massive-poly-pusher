@@ -270,7 +270,7 @@ namespace mpp
 				GLuint64 begin = 0, end = 0;
 				GL_CHECK(glGetQueryObjectui64v(query.begin, GL_QUERY_RESULT, &begin));
 				GL_CHECK(glGetQueryObjectui64v(query.end, GL_QUERY_RESULT, &end));
-				mGpuTimings[query.pass.id] = { query.name, end >= begin ? double(end - begin) / 1000000.0 : 0.0 };
+				mGpuTimings[query.name] = { query.name, end >= begin ? double(end - begin) / 1000000.0 : 0.0 };
 				GLuint ids[] = { query.begin, query.end };
 				GL_CHECK(glDeleteQueries(2, ids));
 			}
@@ -279,13 +279,18 @@ namespace mpp
 	}
 
 
-	void RenderGraphExecutor::setPassCallback(GraphPassHandle pass, function<void(RenderGraphExecutionContext const&)> callback)
+	void RenderGraphExecutor::setPassCallback(string const& passName, function<void(RenderGraphExecutionContext const&)> callback)
 	{
-		if (!pass.isValid() || !callback)
+		if (passName.empty() || !callback)
 		{
-			THROW_MPP("Render graph pass callback requires a valid pass and function.", __LINE__, __FILE__, __func__);
+			THROW_MPP("Render graph pass callback requires a pass name and function.", __LINE__, __FILE__, __func__);
 		}
-		mCallbacks[pass.id] = move(callback);
+		mCallbacks[passName] = move(callback);
+	}
+
+	void RenderGraphExecutor::setPassCallback(RenderGraph const& graph, GraphPassHandle pass, function<void(RenderGraphExecutionContext const&)> callback)
+	{
+		setPassCallback(graph.getPassInfo(pass).name, move(callback));
 	}
 
 	void RenderGraphExecutor::setPassFactoryRegistry(RenderGraphPassFactoryRegistry const* registry)
@@ -298,10 +303,15 @@ namespace mpp
 		mFrameContext = frameContext;
 	}
 
-	void RenderGraphExecutor::setPassParameterOverrides(GraphPassHandle pass, UniformCollection const& parameters)
+	void RenderGraphExecutor::setPassParameterOverrides(string const& passName, UniformCollection const& parameters)
 	{
-		if (!pass.isValid()) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
-		mParameterOverrides[pass.id] = parameters;
+		if (passName.empty()) THROW_MPP("Render graph pass parameter overrides require a pass name.", __LINE__, __FILE__, __func__);
+		mParameterOverrides[passName] = parameters;
+	}
+
+	void RenderGraphExecutor::setPassParameterOverrides(RenderGraph const& graph, GraphPassHandle pass, UniformCollection const& parameters)
+	{
+		setPassParameterOverrides(graph.getPassInfo(pass).name, parameters);
 	}
 
 	void RenderGraphExecutor::clearPassCallbacks()	{
@@ -348,7 +358,7 @@ namespace mpp
 			auto const statsBefore = mRenderSystem->getCurrentRenderInfo();
 			auto const passStart = chrono::steady_clock::now();
 			GpuDebugScope passScope(renderFlowPassRenderDocLabel(passHandle, pass.name, pass.type));
-			auto const explicitCallback = mCallbacks.find(passHandle.id);
+			auto const explicitCallback = mCallbacks.find(pass.name);
 			RenderGraphPassCallback callback = explicitCallback == mCallbacks.end() ? RenderGraphPassCallback() : explicitCallback->second;
 			RenderGraphScenePass* scenePass = nullptr;
 			if (!callback && mFactoryRegistry && !pass.callbackFactory.empty())
@@ -356,16 +366,16 @@ namespace mpp
 				callback = mFactoryRegistry->findFactory(pass.callbackFactory);
 				if (!callback)
 				{
-					auto found = mScenePasses.find(passHandle.id);
+					auto found = mScenePasses.find(pass.name);
 					if (found == mScenePasses.end())
 					{
 						auto created = mFactoryRegistry->createScenePass(pass.callbackFactory);
-						if (created) found = mScenePasses.emplace(passHandle.id, std::move(created)).first;
+						if (created) found = mScenePasses.emplace(pass.name, std::move(created)).first;
 					}
 					if (found != mScenePasses.end()) scenePass = found->second.get();
 				}
 			}
-			auto override = mParameterOverrides.find(passHandle.id);
+			auto override = mParameterOverrides.find(pass.name);
 			RenderGraphExecutionContext context(&targets, override == mParameterOverrides.end() ? &pass.parameters : &override->second, mFrameContext, &pass);
 			bool const declarativeFullscreen = !callback && !scenePass && mExecutingTemplate && pass.type == GraphPassType::Fullscreen && !pass.programResource.empty();
 			if (!callback && !scenePass && !declarativeFullscreen)
@@ -511,8 +521,10 @@ namespace mpp
 				stats.name = pass.name;
 				stats.cpuMilliseconds = chrono::duration<double, milli>(chrono::steady_clock::now() - passStart).count();
 				stats.gpuTimingSupported = mGpuTimingSupported;
-				auto gpuTiming = mGpuTimings.find(passHandle.id);
-				if (gpuTiming != mGpuTimings.end() && gpuTiming->second.name == pass.name) { stats.gpuMilliseconds = gpuTiming->second.milliseconds; stats.gpuTimingAvailable = true; }
+				// Already name-keyed, so the defensive name comparison this carried
+				// alongside an index key has become the lookup itself.
+				auto gpuTiming = mGpuTimings.find(pass.name);
+				if (gpuTiming != mGpuTimings.end()) { stats.gpuMilliseconds = gpuTiming->second.milliseconds; stats.gpuTimingAvailable = true; }
 				stats.primitivesSubmitted = static_cast<uint64_t>(max(0, statsAfter.primitivesRendered - statsBefore.primitivesRendered));
 				stats.trianglesSubmitted = static_cast<uint64_t>(max(0, statsAfter.trianglesRendered - statsBefore.trianglesRendered));
 				stats.fullscreenQuads = static_cast<uint64_t>(max(0, statsAfter.fullscreenQuads - statsBefore.fullscreenQuads));

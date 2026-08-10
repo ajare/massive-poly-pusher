@@ -255,8 +255,8 @@ namespace mpp
 			std::weak_ptr<RenderTarget> releasedTarget = firstTarget;
 			firstTarget.reset();
 			RenderGraphExecutor executor(renderSystem);
-			executor.setPassCallback(firstPass, [](RenderGraphExecutionContext const&) {});
-			executor.setPassCallback(secondPass, [](RenderGraphExecutionContext const&) {});
+			executor.setPassCallback(graph, firstPass, [](RenderGraphExecutionContext const&) {});
+			executor.setPassCallback(graph, secondPass, [](RenderGraphExecutionContext const&) {});
 			executor.execute(graph, targets, renderSystem->getCaps());
 			if (!nearColour(readFirstPixel(targets.get(first)), { 255, 0, 0, 64 })) return fail("first pass clear colour/alpha readback failed");
 			if (!nearColour(readFirstPixel(targets.get(second)), { 0, 255, 0, 255 })) return fail("second pass clear colour readback failed");
@@ -270,7 +270,7 @@ namespace mpp
 
 			stage="physical MSAA colour/depth allocation and resolve";
 			for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(plan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(first).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(first).get());if(!write||!resolved||write==resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA colour write/resolve targets are invalid");executor.execute(graph,targets,renderSystem->getCaps());if(!nearColour(readFirstPixel(targets.get(first)),{255,0,0,64}))return fail("MSAA colour/alpha resolve readback failed");}
-			GraphImageDesc depthDesc;depthDesc.format=GraphImageFormat::Depth24;depthDesc.usage=GraphImageUsage::DepthAttachment|GraphImageUsage::Sampled;RenderGraph depthGraph;auto depthImage=depthGraph.createImage("GpuTestMsaaDepth",depthDesc);auto depthPass=depthGraph.addPass("GpuTestMsaaDepthClear",GraphPassType::Fullscreen);depthImage=depthGraph.writeDepth(depthPass,depthImage,GraphLoadOp::Clear,GraphStoreOp::Store,0.25f);RenderGraphExecutor depthExecutor(renderSystem);depthExecutor.setPassCallback(depthPass,[](RenderGraphExecutionContext const&){});auto depthPlan=depthGraph.buildAllocationPlan({32,24});for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(depthPlan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(depthImage).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(depthImage).get());if(!write||!resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA depth write/resolve targets are invalid");depthExecutor.execute(depthGraph,targets,renderSystem->getCaps());auto value=readFirstDepth(targets.get(depthImage));if(value<0.24f||value>0.26f)return fail("MSAA depth resolve readback failed: "+std::to_string(value));}
+			GraphImageDesc depthDesc;depthDesc.format=GraphImageFormat::Depth24;depthDesc.usage=GraphImageUsage::DepthAttachment|GraphImageUsage::Sampled;RenderGraph depthGraph;auto depthImage=depthGraph.createImage("GpuTestMsaaDepth",depthDesc);auto depthPass=depthGraph.addPass("GpuTestMsaaDepthClear",GraphPassType::Fullscreen);depthImage=depthGraph.writeDepth(depthPass,depthImage,GraphLoadOp::Clear,GraphStoreOp::Store,0.25f);RenderGraphExecutor depthExecutor(renderSystem);depthExecutor.setPassCallback(depthGraph, depthPass,[](RenderGraphExecutionContext const&){});auto depthPlan=depthGraph.buildAllocationPlan({32,24});for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(depthPlan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(depthImage).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(depthImage).get());if(!write||!resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA depth write/resolve targets are invalid");depthExecutor.execute(depthGraph,targets,renderSystem->getCaps());auto value=readFirstDepth(targets.get(depthImage));if(value<0.24f||value>0.26f)return fail("MSAA depth resolve readback failed: "+std::to_string(value));}
 
 			stage = "curated format allocation";
 			std::vector<GraphImageFormat> const supportedFormats{
@@ -297,7 +297,7 @@ namespace mpp
 				RenderGraphTargets formatTargets(renderSystem);
 				formatTargets.allocate(formatGraph.buildAllocationPlan({ 8, 8 }));
 				RenderGraphExecutor formatExecutor(renderSystem);
-				formatExecutor.setPassCallback(pass, [](RenderGraphExecutionContext const&) {});
+				formatExecutor.setPassCallback(formatGraph, pass, [](RenderGraphExecutionContext const&) {});
 				formatExecutor.execute(formatGraph, formatTargets, renderSystem->getCaps());
 				if (!formatTargets.get(image)) return fail("curated graph format allocation failed");
 			}
@@ -312,7 +312,7 @@ namespace mpp
 			RenderGraphTargets diagnosticDepthTargets(renderSystem);
 			diagnosticDepthTargets.allocate(diagnosticDepthGraph.buildAllocationPlan({ 8, 8 }));
 			RenderGraphExecutor diagnosticDepthExecutor(renderSystem);
-			diagnosticDepthExecutor.setPassCallback(diagnosticDepthPass, [](RenderGraphExecutionContext const&) {});
+			diagnosticDepthExecutor.setPassCallback(diagnosticDepthGraph, diagnosticDepthPass, [](RenderGraphExecutionContext const&) {});
 			diagnosticDepthExecutor.execute(diagnosticDepthGraph, diagnosticDepthTargets, renderSystem->getCaps());
 			RenderTextureOptions diagnosticDepthOutputOptions;
 			auto diagnosticDepthOutput = renderSystem->createRenderTexture("GpuDiagnosticDepthOutput", 8, 8, diagnosticDepthOutputOptions);
@@ -374,21 +374,54 @@ namespace mpp
 			aliasGraph.setPassRasterState(aliasPass0, rasterState);
 			bool observedRasterState = false;
 			RenderGraphExecutor aliasExecutor(renderSystem);
-			aliasExecutor.setPassCallback(aliasPass0, [&](RenderGraphExecutionContext const&) { observedRasterState = glIsEnabled(GL_BLEND) && !glIsEnabled(GL_DEPTH_TEST) && !glIsEnabled(GL_CULL_FACE); });
-			aliasExecutor.setPassCallback(aliasPass1, [](RenderGraphExecutionContext const&) {});
-			aliasExecutor.setPassCallback(aliasPass2, [](RenderGraphExecutionContext const&) {});
-			aliasExecutor.setPassCallback(aliasPass3, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasGraph, aliasPass0, [&](RenderGraphExecutionContext const&) { observedRasterState = glIsEnabled(GL_BLEND) && !glIsEnabled(GL_DEPTH_TEST) && !glIsEnabled(GL_CULL_FACE); });
+			aliasExecutor.setPassCallback(aliasGraph, aliasPass1, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasGraph, aliasPass2, [](RenderGraphExecutionContext const&) {});
+			aliasExecutor.setPassCallback(aliasGraph, aliasPass3, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
 			if (!observedRasterState) return fail("explicit graph raster state was not applied");
 			if (aliasExecutor.getLastExecutionStats().size() != 4) return fail("per-pass execution statistics were not recorded");
 			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=4||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id||aliasOrder[3].id!=aliasPass3.id)return fail("executor did not retain its last successful compiled pass order");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
 
+			stage = "pass identity across topology edits";
+			// GraphPassHandle::id is a positional index, and removePass renumbers it.
+			// Executor state used to be keyed on that index, so after an edit a pass
+			// silently inherited whichever entry now sat at its slot -- for a stateful
+			// scene pass that means running on another pass's history.
+			RenderGraph identityGraph;
+			RenderGraphExecutor identityExecutor(renderSystem);
+			std::string identityMismatch;
+			auto identityExpect = [&](std::string const& expected)
+			{
+				return [&identityMismatch, expected](RenderGraphExecutionContext const& context)
+				{
+					if (context.getPass().name != expected && identityMismatch.empty())
+						identityMismatch = "the callback registered for '" + expected + "' ran as '" + context.getPass().name + "'";
+				};
+			};
+			std::array<GraphPassHandle, 3> identityPasses{};
+			for (uint32_t index = 0; index < 3; ++index)
+			{
+				auto const name = "GpuTestIdentity" + std::to_string(index);
+				auto image = identityGraph.createImage(name + ".Image", colour);
+				identityPasses[index] = identityGraph.addPass(name, GraphPassType::Fullscreen);
+				identityGraph.writeColour(identityPasses[index], image, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 0, 0, 1));
+				identityExecutor.setPassCallback(identityGraph, identityPasses[index], identityExpect(name));
+			}
+			identityGraph.removePass(identityPasses[0]);
+			auto identityPlan = identityGraph.buildAllocationPlan({ 8, 8 });
+			if (!identityPlan.valid) return fail("pass identity graph did not compile");
+			RenderGraphTargets identityTargets(renderSystem);
+			identityTargets.allocate(identityPlan);
+			identityExecutor.execute(identityGraph, identityTargets, renderSystem->getCaps());
+			if (!identityMismatch.empty()) return fail("render graph executor state did not follow its pass across a topology edit: " + identityMismatch);
+
 			stage = "compiled process-flow order";
 			static_assert(std::is_const_v<RenderPipelineFlowSnapshotPtr::element_type>);
 			if(std::string(renderFlowEventKindName(RenderFlowEventKind::BatchSubmission))!="batch submission"||std::string(renderFlowEventKindName(RenderFlowEventKind::Presentation))!="presentation"||std::string(renderFlowEventKindName(RenderFlowEventKind::GlState))!="GL state"||renderFlowPassRenderDocLabel({3},"Lighting",GraphPassType::Fullscreen)!="RenderGraph Pass 3: Lighting [Fullscreen]"||std::string(renderFlowGeometryRenderDocLabel(false))!="Draw: Opaque + Masked Geometry"||renderFlowOutputRenderDocLabel("Main",RenderFlowEventKind::Taa)!="Output Main: TAA")return fail("render-flow/RenderDoc naming contract failed");
 			RenderPipelineFlowSnapshot recorderSnapshot;renderSystem->beginRenderFlowCapture(&recorderSnapshot);GraphPassHandle recorderPass{7};renderSystem->beginRenderFlowPass(recorderPass,"RecorderPass");RenderBatchSubmission repeated;repeated.meshName="Repeated";repeated.materialName="Material";repeated.programName="Program";repeated.count=3;renderSystem->recordRenderFlowBatch(repeated);renderSystem->recordRenderFlowBatch(repeated);renderSystem->endRenderFlowPass(recorderPass,"RecorderPass");if(!renderSystem->endRenderFlowCapture()||recorderSnapshot.batches.size()!=2||recorderSnapshot.batches[0].sequence==recorderSnapshot.batches[1].sequence||recorderSnapshot.physicalEvents.size()!=4||recorderSnapshot.physicalEvents[0].kind!=RenderFlowEventKind::PassBegin||recorderSnapshot.physicalEvents[1].kind!=RenderFlowEventKind::BatchSubmission||recorderSnapshot.physicalEvents[2].kind!=RenderFlowEventKind::BatchSubmission||recorderSnapshot.physicalEvents[3].kind!=RenderFlowEventKind::PassEnd)return fail("exact duplicate batch recorder contract failed");renderSystem->recordRenderFlowEvent(RenderFlowEventKind::Presentation,"DisabledRecorder");if(recorderSnapshot.physicalEvents.size()!=4)return fail("disabled telemetry retained an event");RenderPipelineFlowSnapshot stateSnapshot;renderSystem->beginRenderFlowCapture(&stateSnapshot);renderSystem->beginRenderFlowPass(recorderPass,"StateRecorder");renderSystem->recordRenderFlowStateChanges({"Program: StateProgram","Cull face: back"});renderSystem->endRenderFlowPass(recorderPass,"StateRecorder");if(!renderSystem->endRenderFlowCapture()||stateSnapshot.physicalEvents.size()!=3||stateSnapshot.physicalEvents[1].kind!=RenderFlowEventKind::GlState||stateSnapshot.physicalEvents[1].stateChanges.size()!=2)return fail("GL state flow recorder contract failed");
-			RenderGraph orderGraph;auto orderFirstImage=orderGraph.createImage("GpuTestFlowFirst",colour);auto orderDisabledImage=orderGraph.createImage("GpuTestFlowDisabled",colour);auto orderLastImage=orderGraph.createImage("GpuTestFlowLast",colour);auto authoredFirst=orderGraph.addPass("GpuTestFlowFirst",GraphPassType::Fullscreen);auto authoredDisabled=orderGraph.addPass("GpuTestFlowDisabled",GraphPassType::Fullscreen);auto authoredLast=orderGraph.addPass("GpuTestFlowLast",GraphPassType::Fullscreen);orderFirstImage=orderGraph.writeColour(authoredFirst,orderFirstImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(1,0,0,1));orderDisabledImage=orderGraph.writeColour(authoredDisabled,orderDisabledImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(0,0,1,1));orderLastImage=orderGraph.writeColour(authoredLast,orderLastImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(0,1,0,1));orderGraph.setPassEnabled(authoredDisabled,false);auto orderPlan=orderGraph.buildAllocationPlan({8,8});if(!orderPlan.valid)return fail("process-flow order graph did not compile"+(orderPlan.diagnostics.empty()?std::string():": "+orderPlan.diagnostics.front()));RenderGraphTargets orderTargets(renderSystem);orderTargets.allocate(orderPlan);RenderGraphExecutor orderExecutor(renderSystem);orderExecutor.setPassCallback(authoredFirst,[](RenderGraphExecutionContext const&){});orderExecutor.setPassCallback(authoredLast,[](RenderGraphExecutionContext const&){});orderExecutor.execute(orderGraph,orderTargets,renderSystem->getCaps());auto const& actualOrder=orderExecutor.getLastExecutionOrder();if(actualOrder.size()!=2||actualOrder[0].id!=authoredFirst.id||actualOrder[1].id!=authoredLast.id)return fail("actual process-flow order did not match enabled compiled pass order");
+			RenderGraph orderGraph;auto orderFirstImage=orderGraph.createImage("GpuTestFlowFirst",colour);auto orderDisabledImage=orderGraph.createImage("GpuTestFlowDisabled",colour);auto orderLastImage=orderGraph.createImage("GpuTestFlowLast",colour);auto authoredFirst=orderGraph.addPass("GpuTestFlowFirst",GraphPassType::Fullscreen);auto authoredDisabled=orderGraph.addPass("GpuTestFlowDisabled",GraphPassType::Fullscreen);auto authoredLast=orderGraph.addPass("GpuTestFlowLast",GraphPassType::Fullscreen);orderFirstImage=orderGraph.writeColour(authoredFirst,orderFirstImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(1,0,0,1));orderDisabledImage=orderGraph.writeColour(authoredDisabled,orderDisabledImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(0,0,1,1));orderLastImage=orderGraph.writeColour(authoredLast,orderLastImage,GraphLoadOp::Clear,GraphStoreOp::Store,glm::vec4(0,1,0,1));orderGraph.setPassEnabled(authoredDisabled,false);auto orderPlan=orderGraph.buildAllocationPlan({8,8});if(!orderPlan.valid)return fail("process-flow order graph did not compile"+(orderPlan.diagnostics.empty()?std::string():": "+orderPlan.diagnostics.front()));RenderGraphTargets orderTargets(renderSystem);orderTargets.allocate(orderPlan);RenderGraphExecutor orderExecutor(renderSystem);orderExecutor.setPassCallback(orderGraph, authoredFirst,[](RenderGraphExecutionContext const&){});orderExecutor.setPassCallback(orderGraph, authoredLast,[](RenderGraphExecutionContext const&){});orderExecutor.execute(orderGraph,orderTargets,renderSystem->getCaps());auto const& actualOrder=orderExecutor.getLastExecutionOrder();if(actualOrder.size()!=2||actualOrder[0].id!=authoredFirst.id||actualOrder[1].id!=authoredLast.id)return fail("actual process-flow order did not match enabled compiled pass order");
 
 			stage = "mip chain";
 			GraphImageDesc mipColour = colour;
@@ -405,9 +438,9 @@ namespace mpp
 			RenderGraphTargets mipTargets(renderSystem);
 			mipTargets.allocate(mipGraph.buildAllocationPlan({ 16, 8 }));
 			RenderGraphExecutor mipExecutor(renderSystem);
-			mipExecutor.setPassCallback(mipPass, [](RenderGraphExecutionContext const&) {});
+			mipExecutor.setPassCallback(mipGraph, mipPass, [](RenderGraphExecutionContext const&) {});
 			bool observedMipView = false;
-			mipExecutor.setPassCallback(mipViewPass, [&](RenderGraphExecutionContext const& context)
+			mipExecutor.setPassCallback(mipGraph, mipViewPass, [&](RenderGraphExecutionContext const& context)
 			{
 				auto texture = static_cast<RenderTexture*>(context.getImage(mipImage).get());
 				GLint base = -1, maximum = -1;
@@ -439,7 +472,7 @@ namespace mpp
 			RenderGraphTargets explicitMipTargets(renderSystem);
 			explicitMipTargets.allocate(explicitMipGraph.buildAllocationPlan({ 16, 8 }));
 			RenderGraphExecutor explicitMipExecutor(renderSystem);
-			explicitMipExecutor.setPassCallback(explicitMipPass, [](RenderGraphExecutionContext const&) {});
+			explicitMipExecutor.setPassCallback(explicitMipGraph, explicitMipPass, [](RenderGraphExecutionContext const&) {});
 			explicitMipExecutor.execute(explicitMipGraph, explicitMipTargets, renderSystem->getCaps());
 			if (!nearColour(readFirstPixel(explicitMipTargets.get(explicitMip), 2), { 0, 255, 255, 255 })) return fail("explicit mip attachment readback failed");
 
@@ -462,7 +495,7 @@ namespace mpp
 				RenderGraphTargets mrtTargets(renderSystem);
 				mrtTargets.allocate(mrt.buildAllocationPlan({ 32, 32 }));
 				RenderGraphExecutor mrtExecutor(renderSystem);
-				mrtExecutor.setPassCallback(pass, [](RenderGraphExecutionContext const&) {});
+				mrtExecutor.setPassCallback(mrt, pass, [](RenderGraphExecutionContext const&) {});
 				mrtExecutor.execute(mrt, mrtTargets, renderSystem->getCaps());
 				if (!nearColour(readFirstPixel(mrtTargets.get(left)), { 0, 0, 255, 255 })) return fail("MRT location 0 readback failed");
 				if (!nearColour(readFirstPixel(mrtTargets.get(right)), { 255, 255, 0, 255 })) return fail("MRT location 1 readback failed");
