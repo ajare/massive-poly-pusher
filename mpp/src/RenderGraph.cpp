@@ -706,19 +706,28 @@ namespace mpp
 		}
 		if (plan.diagnostics.empty())
 		{
-			vector<vector<uint32_t>> allocationMembers;
+			// An allocation is only reusable if everything already in it is transient.
+			// Testing the incoming image alone is not enough: a non-transient image
+			// takes an allocation of its own on first sight, and a later transient one
+			// with a compatible descriptor and a disjoint lifetime would then be
+			// planned on top of contents that have to survive the frame. Carrying the
+			// flag on the group states the rule directly, rather than leaning on the
+			// fact that only a group's first member can be non-transient.
+			struct AllocationGroup { vector<uint32_t> members; bool aliasable; };
+			vector<AllocationGroup> allocationGroups;
 			for (uint32_t imageIndex = 0; imageIndex < plan.allocatedImages.size(); ++imageIndex)
 			{
 				auto& lifetime = plan.allocatedImages[imageIndex];
 				uint32_t allocation = UINT32_MAX;
 				if (lifetime.desc.transient)
 				{
-					for (uint32_t candidate = 0; candidate < allocationMembers.size(); ++candidate)
+					for (uint32_t candidate = 0; candidate < allocationGroups.size(); ++candidate)
 					{
-						auto const& representative = plan.allocatedImages[allocationMembers[candidate].front()];
+						if (!allocationGroups[candidate].aliasable) continue;
+						auto const& representative = plan.allocatedImages[allocationGroups[candidate].members.front()];
 						if (!aliasCompatible(representative, lifetime)) continue;
 						bool overlaps = false;
-						for (auto member : allocationMembers[candidate])
+						for (auto member : allocationGroups[candidate].members)
 						{
 							auto const& previous = plan.allocatedImages[member];
 							if (!(previous.lastPass < lifetime.firstPass || lifetime.lastPass < previous.firstPass)) { overlaps = true; break; }
@@ -728,12 +737,12 @@ namespace mpp
 				}
 				if (allocation == UINT32_MAX)
 				{
-					allocation = static_cast<uint32_t>(allocationMembers.size());
-					allocationMembers.push_back({});
+					allocation = static_cast<uint32_t>(allocationGroups.size());
+					allocationGroups.push_back({ {}, lifetime.desc.transient });
 					plan.estimatedPhysicalBytes += lifetime.estimatedBytes;
 				}
 				lifetime.physicalAllocation = allocation;
-				allocationMembers[allocation].push_back(imageIndex);
+				allocationGroups[allocation].members.push_back(imageIndex);
 			}
 		}
 		plan.valid = plan.diagnostics.empty();
