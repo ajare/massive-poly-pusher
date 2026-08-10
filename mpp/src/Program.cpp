@@ -714,6 +714,13 @@ namespace mpp
 		return mTextures[index].samplerName;
 	}
 
+	int Program::getSamplerUnit(string const& name) const
+	{
+		for (size_t index = 0; index < mTextures.size(); ++index)
+			if (mTextures[index].samplerName == name) return (int)index;
+		return -1;
+	}
+
 	/*
 	 * Get vertex attributes.
 	 *

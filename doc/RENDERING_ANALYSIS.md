@@ -1152,7 +1152,7 @@ Verified load-bearing by keying the executor on `pass.id` again, which reports *
 registered for 'GpuTestIdentity0' ran as 'GpuTestIdentity1'"* — precisely the misattribution this
 section describes.
 
-### 5.6 `renderGraphFullscreen` silently ignores unknown sampler names — **Bug, medium**
+### 5.6 `renderGraphFullscreen` silently ignores unknown sampler names — **Bug, medium → high** — ✅ FIXED
 
 `mpp/src/RenderSystem.cpp:2989-3017`
 
@@ -1180,6 +1180,42 @@ if (location < 0)
 
 Better: validate declaratively in `RenderGraphPassFactoryRegistry::validate` so the editor reports
 it as a diagnostic before the pipeline runs.
+
+#### 5.6 Resolution — the diagnosis above was wrong, and understated it
+
+**Correction.** The analysis said an unknown sampler name "binds the texture to unit 1 and leaves
+the shader sampling unit 0". The symptom is right; the mechanism is not, and the real mechanism is
+worse.
+
+`getUniformId` marks its argument up as `_mpp_u_NAME_` and looks in `mUniformIds`. Samplers are
+marked up as `_mpp_t_NAME_` and live in a **separate** `mTextures` list (`Program.cpp:301`,
+`:512-521`). So `getUniformId(samplerName)` returned `-1` for **every** sampler, correct name or
+not, and `glUniform1i(-1, ...)` did nothing every single time. That line never had any effect.
+
+Texture units were therefore decided entirely by `Program::bind`, which assigns `mTextures[i]` to
+unit `i` (`Program.cpp:760-764`) — the shader's *declaration* order — while `renderGraphFullscreen`
+bound each texture to its position in the *pass's* binding list. The name was never consulted.
+
+So the bug is not confined to unknown names. **Any declarative fullscreen pass whose
+`<sampler>` elements are authored in a different order from the shader's `@@Texture` declarations
+sends every texture to the wrong sampler, silently.** That is a plain wrong-image render from
+correct-looking XML, which is why this is re-rated high.
+
+**Fix.** `Program::getSamplerUnit(name)` returns the unit the program actually samples that name
+from, and `renderGraphFullscreen` binds to it, throwing when the name is undeclared. The dead
+`glUniform1i` is gone — `Program::bind` already assigns sampler uniforms.
+
+**The declarative check already existed.** `RenderGraphTemplate::createImpl` (`:42-58`) already
+rejects a binding naming a sampler the program does not declare, and every reachable call to
+`renderGraphFullscreen` goes through a template. So the *unknown-name* half of this item was
+covered before the fix; the runtime throw is a backstop for the public API. The ordering half was
+covered nowhere. No change was made to `RenderGraphPassFactoryRegistry::validate`, which is
+context-free and cannot resolve a program's uniforms.
+
+**On the test.** GPU suite, "fullscreen sampler routing": a two-sampler program, two sources
+distinguishable in the red channel, bound in **reverse** declaration order, plus a case binding an
+undeclared name. Verified load-bearing by restoring positional binding, which reports
+*"got r=64 g=255, expected r=255 g=64"* — the two textures exactly swapped.
 
 ### 5.7 `discardDontCareOutputs` uses attachment enums that can be invalid — **Bug, low**
 

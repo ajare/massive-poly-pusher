@@ -3029,11 +3029,25 @@ namespace mpp
 		uniformCopy.bindUniforms(program);
 		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
-		for (uint32_t unit = 0; unit < samplers.size(); ++unit)
+		// Bind each texture to the unit the program itself samples that name from.
+		// The previous code bound to the binding's own position and tried to point
+		// the sampler at it with getUniformId, which cannot work: samplers are marked
+		// up as _mpp_t_NAME_ and live in mTextures, while getUniformId looks up
+		// _mpp_u_NAME_, so it returned -1 for every sampler and glUniform1i(-1, ...)
+		// did nothing. Units came from Program::bind instead, in declaration order,
+		// so a pass whose sampler bindings were authored in a different order from
+		// the shader's declarations sent each texture to the wrong sampler in
+		// silence. An undeclared name is now an error rather than the same silence.
+		for (auto const& [samplerName, texture] : samplers)
 		{
-			if (!samplers[unit].second) THROW_MPP("Graph fullscreen pass has an unresolved sampler target.", __LINE__, __FILE__, __func__);
-			GL_CHECK(glUniform1i(p->getUniformId(samplers[unit].first), (GLint)unit));
-			samplers[unit].second->bind(unit, 0);
+			if (!texture) THROW_MPP("Graph fullscreen pass has an unresolved sampler target.", __LINE__, __FILE__, __func__);
+			auto const unit = p->getSamplerUnit(samplerName);
+			if (unit < 0)
+			{
+				THROW_MPP("Graph fullscreen pass binds sampler '" + samplerName + "' which program '" + p->getName() +
+					"' does not declare.", __LINE__, __FILE__, __func__);
+			}
+			texture->bind((uint32_t)unit, 0);
 		}
 		GL_CHECK(glEnable(GL_BLEND));
 		GL_CHECK(glBlendFunc(GL_ONE, GL_ZERO));

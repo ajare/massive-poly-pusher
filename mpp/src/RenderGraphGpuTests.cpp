@@ -21,6 +21,9 @@
 #include "mpp/IblEnvironmentCache.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/ProgrammaticTextureStream.h"
+#include "mpp/ProgrammaticProgramStream.h"
+#include "mpp/DefaultShaders.h"
+#include "mpp/Program.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
@@ -383,6 +386,69 @@ namespace mpp
 			if (aliasExecutor.getLastExecutionStats().size() != 4) return fail("per-pass execution statistics were not recorded");
 			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=4||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id||aliasOrder[3].id!=aliasPass3.id)return fail("executor did not retain its last successful compiled pass order");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
+
+			stage = "fullscreen sampler routing";
+			// renderGraphFullscreen used to bind each texture to the binding's own
+			// position and point the sampler at it with getUniformId, which always
+			// returns -1 for a sampler. Units therefore came from Program::bind, in
+			// the shader's declaration order, so bindings authored in a different
+			// order landed on the wrong samplers without a word. Bind them reversed
+			// and check each texture arrives where its name says it should.
+			{
+				mesh::MeshSpecification samplerMeshSpec;
+				auto samplerLayout = samplerMeshSpec.createVertexBufferAttributeLayout(false);
+				samplerLayout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+				samplerLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+				auto samplerParser = std::make_shared<program::Parser>();
+				samplerParser->setMeshSpecification(samplerMeshSpec);
+				samplerParser->setVertexSource(VertexShaderFullscreenTemplate);
+				samplerParser->setFragmentSource(R"(
+@@Version
+
+@@Texture(sampler2D GPU_TEST_FIRST);
+@@Texture(sampler2D GPU_TEST_SECOND);
+
+void main()
+{
+    @Out(vec4 COLOUR) = vec4(texture(@Texture(GPU_TEST_FIRST), @In(TEXCOORDS)).r,
+        texture(@Texture(GPU_TEST_SECOND), @In(TEXCOORDS)).r, 0.0, 1.0);
+}
+)");
+				auto samplerStream = new ProgrammaticProgramStream(renderSystem->getResourceManager());
+				samplerStream->setParser(samplerParser);
+				auto samplerProgram = renderSystem->getResourceManager()->declareResource("GpuTestSamplerRouting.Program", ResourceStreamPtr(samplerStream)).first;
+				samplerProgram->create(); samplerProgram->load();
+				// Distinguishable in the red channel only, which is what the shader reads.
+				RenderTextureOptions sourceOptions; sourceOptions.params.minFilter = GL_NEAREST; sourceOptions.params.magFilter = GL_NEAREST; sourceOptions.params.wrap = GL_CLAMP_TO_EDGE;
+				auto firstSource = renderSystem->createRenderTexture("GpuTestSamplerFirst", 4, 4, sourceOptions);
+				auto secondSource = renderSystem->createRenderTexture("GpuTestSamplerSecond", 4, 4, sourceOptions);
+				auto routingTarget = renderSystem->createRenderTexture("GpuTestSamplerRouting", 4, 4, sourceOptions);
+				for (auto const& [source, red] : { std::pair<RenderTargetPtr, float>{ firstSource, 1.0f }, std::pair<RenderTargetPtr, float>{ secondSource, 0.25f } })
+				{
+					renderSystem->pushRenderTarget(source); renderSystem->setViewport(0, 0, 4, 4);
+					GL_CHECK(glClearColor(red, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+					renderSystem->popRenderTarget();
+				}
+				auto renderRouting = [&](std::vector<std::pair<std::string, Texture*>> const& bindings)
+				{
+					renderSystem->pushRenderTarget(routingTarget); renderSystem->setViewport(0, 0, 4, 4);
+					renderSystem->pushModelMatrix(); renderSystem->pushCameraMatrix(); renderSystem->pushProjectionMatrix();
+					renderSystem->setProjection2dOrthographic(); renderSystem->resetTransform();
+					renderSystem->scaleTransform2d(glm::vec2(4.0f / (float)renderSystem->getWindowWidth(), 4.0f / (float)renderSystem->getWindowHeight()));
+					try { renderSystem->renderGraphFullscreen(samplerProgram, bindings, UniformCollection()); }
+					catch (...) { renderSystem->popModelMatrix(); renderSystem->popCameraMatrix(); renderSystem->popProjectionMatrix(); renderSystem->popRenderTarget(); throw; }
+					renderSystem->popModelMatrix(); renderSystem->popCameraMatrix(); renderSystem->popProjectionMatrix(); renderSystem->popRenderTarget();
+				};
+				auto* firstTexture = dynamic_cast<Texture*>(firstSource.get());
+				auto* secondTexture = dynamic_cast<Texture*>(secondSource.get());
+				renderRouting({ { "GPU_TEST_SECOND", secondTexture }, { "GPU_TEST_FIRST", firstTexture } });
+				auto const routed = readFirstPixel(routingTarget);
+				if (!nearColour(routed, { 255, 64, 0, 255 }))
+					return fail("fullscreen sampler bindings were routed by declaration order rather than by name (got r=" + std::to_string(routed[0]) + " g=" + std::to_string(routed[1]) + ", expected r=255 g=64)");
+				bool rejectedUnknownSampler = false;
+				try { renderRouting({ { "GPU_TEST_MISSING", firstTexture } }); } catch (...) { rejectedUnknownSampler = true; }
+				if (!rejectedUnknownSampler) return fail("a fullscreen pass binding an undeclared sampler was accepted");
+			}
 
 			stage = "pass identity across topology edits";
 			// GraphPassHandle::id is a positional index, and removePass renumbers it.

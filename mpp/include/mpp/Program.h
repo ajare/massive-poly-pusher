@@ -159,6 +159,12 @@ namespace mpp
 
 		std::string const& getSamplerName(int index) const;
 
+		// The texture unit this program samples the named sampler from, or -1 if it
+		// declares no such sampler. bind() assigns each sampler the unit matching its
+		// position here, so anything binding a texture for a named sampler must use
+		// this rather than a unit of its own choosing.
+		int getSamplerUnit(std::string const& name) const;
+
 		std::vector<VariableInfo> const& getVertexAttributes() const;
 
 		// Validates that fragment locations [0, requiredCount) are active. Extra
