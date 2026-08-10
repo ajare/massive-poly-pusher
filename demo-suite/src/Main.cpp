@@ -1,3 +1,4 @@
+#include <format>
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -470,7 +471,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//
 			// Render
 			//
-			gRenderSystem->setDebugPreMessages({ STR_FORMAT("FPS: {}", fps) });
+			gRenderSystem->setDebugPreMessages({ std::format("FPS: {}", fps) });
 			gRenderSystem->showDebugPanel(true);
 			gRenderSystem->startStatsCollection();
 

@@ -1,3 +1,4 @@
+#include <format>
 #include <exception>
 
 #include "utils/StringUtils.h"
@@ -194,7 +195,7 @@ namespace mpp
 			GLenum textureTarget = mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : (GLenum)mTarget;
 			GL_CHECK(glBindTexture(textureTarget, texId));
 
-			label = STR_FORMAT("Texture: {}_attachment_{}", getName(), i);
+			label = std::format("Texture: {}_attachment_{}", getName(), i);
 			GL_CHECK(glObjectLabel(GL_TEXTURE, texId, -1, label.c_str()));
 			if (mSamples > 1)
 			{

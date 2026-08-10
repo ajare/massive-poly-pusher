@@ -1,3 +1,4 @@
+#include <format>
 #include <iostream>
 #include <cassert>
 #include <regex>
@@ -244,7 +245,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		dataStreamDef->name = inputMesh->mName.C_Str();
 		if (dataStreamDef->name == "")
 		{
-			dataStreamDef->name = STR_FORMAT("{}", j);
+			dataStreamDef->name = std::format("{}", j);
 		}
 
 		// Material
