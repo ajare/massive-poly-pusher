@@ -8,6 +8,17 @@ Run `git clone --recurse-submodules -j8 https://bitbucket.org/wtmrsh/massivepoly
 
 ## Building
 
+### CMake (VS2026 x64)
+
+```bat
+cmake -S . -B build\cmake -G "Visual Studio 18 2026" -A x64
+cmake --build build\cmake --config Release --parallel
+```
+
+The CMake build includes all projects from `build/vs2026/MassivePolyPusher.sln`, builds SDL from `ext/sdl`, and places executables and runtime DLLs under `build/cmake/bin/<Configuration>`. DemoSuite reads content directly from the repository-level `resources/demo-suite` and `resources/shared` directories; resource assets are not copied into the CMake output directory.
+
+### Existing Visual Studio projects
+
 First build the submodules:
 
 `msbuild ext\utils\build\vs2017\Utils.sln -target:UtilsTests:Rebuild -p:Platform=Win32 -p:Configuration=Release`

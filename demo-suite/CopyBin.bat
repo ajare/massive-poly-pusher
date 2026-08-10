@@ -50,11 +50,11 @@ copy /Y "%Root%\..\mpp-helper\build\%Solution%\bin\%Platform%\%Configuration%\*.
 if not exist "%Root%.\build\%Solution%\bin\%Platform%\%Configuration%\demosuite.ini" copy /Y "%Root%\demosuite.ini" "%Root%.\build\%Solution%\bin\%Platform%\%Configuration%\demosuite.ini"
 
 @rem Copy resources into a self-contained output tree
-copy /Y "%Root%\resources\bin\Common\*.*" %TargetBinDir%
-if exist "%Root%\resources\bin\%Configuration%\*.*" copy /Y "%Root%\resources\bin\%Configuration%\*.*" %TargetBinDir%
+copy /Y "%Root%\..\resources\demo-suite\bin\Common\*.*" %TargetBinDir%
+if exist "%Root%\..\resources\demo-suite\bin\%Configuration%\*.*" copy /Y "%Root%\..\resources\demo-suite\bin\%Configuration%\*.*" %TargetBinDir%
 if exist %TargetBinDir%\resources rmdir /S /Q %TargetBinDir%\resources
 mkdir %TargetBinDir%\resources
-xcopy /E /I /Y "%Root%\resources\res" %TargetBinDir%\resources >nul
+xcopy /E /I /Y "%Root%\..\resources\demo-suite\res" %TargetBinDir%\resources >nul
 xcopy /E /I /Y "%Root%\..\resources\shared" %TargetBinDir%\resources\shared >nul
 
 goto exit_success
