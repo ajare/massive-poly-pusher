@@ -14,20 +14,17 @@ find_package(OpenGL REQUIRED)
 # Assimp and GLEW still declare pre-3.5 policy compatibility.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum policy version for legacy dependencies")
 
-# SDL 3 is only needed by the Windows GUI applications at the moment.
-# Linux builds currently produce the reusable libraries and command-line tools.
-if(WIN32)
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/CMakeLists.txt")
-        message(FATAL_ERROR "SDL submodule is missing; run: git submodule update --init --recursive")
-    endif()
-    set(SDL_SHARED ON CACHE BOOL "Build SDL as a shared library" FORCE)
-    set(SDL_STATIC OFF CACHE BOOL "Do not build the SDL static library" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build the SDL3_test library" FORCE)
-    set(SDL_TESTS OFF CACHE BOOL "Do not build SDL tests" FORCE)
-    set(SDL_EXAMPLES OFF CACHE BOOL "Do not build SDL examples" FORCE)
-    set(SDL_INSTALL OFF CACHE BOOL "Do not install SDL" FORCE)
-    add_subdirectory(ext/sdl EXCLUDE_FROM_ALL)
+# SDL 3 provides the window and input platform layer on Windows and Linux.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/CMakeLists.txt")
+    message(FATAL_ERROR "SDL submodule is missing; run: git submodule update --init --recursive")
 endif()
+set(SDL_SHARED ON CACHE BOOL "Build SDL as a shared library" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "Do not build the SDL static library" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build the SDL3_test library" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "Do not build SDL tests" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "Do not build SDL examples" FORCE)
+set(SDL_INSTALL OFF CACHE BOOL "Do not install SDL" FORCE)
+add_subdirectory(ext/sdl EXCLUDE_FROM_ALL)
 
 # GLEW keeps its CMake project under build/cmake. Its Git repository omits the
 # generated headers and glew.c, so bootstrap those files from the matching,
@@ -337,8 +334,7 @@ target_link_libraries(MppHelper PUBLIC MassivePolyPusher MppMesh)
 mpp_target_defaults(MppHelper)
 mpp_add_header_filters(MppHelper "${CMAKE_CURRENT_SOURCE_DIR}/mpp-helper/include")
 
-if(WIN32)
-    add_library(MppAppSupport STATIC
+add_library(MppAppSupport STATIC
         mpp-app-support/src/BackgroundWork.cpp
         mpp-app-support/src/CommandStack.cpp
         mpp-app-support/src/DocumentFile.cpp
@@ -362,12 +358,13 @@ if(WIN32)
             "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
-    target_link_libraries(MppAppSupport PUBLIC
-        MassivePolyPusher MppMesh MppProgram Utils ImGui SDL3::SDL3
-        PRIVATE comdlg32 shell32 ole32)
-    mpp_target_defaults(MppAppSupport)
-    mpp_add_header_filters(MppAppSupport "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include")
+target_link_libraries(MppAppSupport PUBLIC
+    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL3::SDL3)
+if(WIN32)
+    target_link_libraries(MppAppSupport PRIVATE comdlg32 shell32 ole32)
 endif()
+mpp_target_defaults(MppAppSupport)
+mpp_add_header_filters(MppAppSupport "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include")
 
 add_executable(ProgramBuilder program-builder/src/Main.cpp)
 target_include_directories(ProgramBuilder PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/program-builder/include")
@@ -406,8 +403,8 @@ if(WIN32)
             "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
             "$<TARGET_FILE_DIR:PipelineEditor>/editor.ini"
         VERBATIM)
-
-    add_subdirectory(demo-suite)
 else()
-    message(STATUS "Skipping PipelineEditor and DemoSuite: these entry points still use Windows-only RenderDoc/WinMain integration")
+    message(STATUS "Skipping PipelineEditor: its RenderDoc/process integration is Windows-only")
 endif()
+
+add_subdirectory(demo-suite)

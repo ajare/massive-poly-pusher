@@ -1,5 +1,6 @@
+#include <cstring>
 #include <string>
-#include <exception>
+#include <stdexcept>
 #include <utility>
 #include "mpp/app/WindowSDL.h"
 
@@ -44,7 +45,7 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 	if (!mWindow)
 	{
 		string err = SDL_GetError();
-		throw exception(("Could not create SDL window: " + err).c_str());
+		throw runtime_error("Could not create SDL window: " + err);
 	}
 
 	// An SDL3 fullscreen window is borderless-desktop unless it is given an
@@ -63,7 +64,7 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 	mContextGL = SDL_GL_CreateContext(mWindow);
 	if (!SDL_GL_MakeCurrent(mWindow, mContextGL))
 	{
-		throw exception("Could not set the OpenGL context.");
+		throw runtime_error("Could not set the OpenGL context.");
 	}
 
 	// This window presents through OpenGL, so vsync is the GL swap interval.
@@ -172,7 +173,8 @@ bool WindowSDL::processEvents(InputManager* inputMgr)
 
 		case SDL_EVENT_TEXT_INPUT:
 			ie.type = IET_TextInput;
-			strcpy_s(ie.s, evt.text.text);
+			std::strncpy(ie.s, evt.text.text, sizeof(ie.s) - 1);
+			ie.s[sizeof(ie.s) - 1] = '\0';
 			inputMgr->addEvent(ie);
 			break;
 

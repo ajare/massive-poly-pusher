@@ -4,7 +4,7 @@
 #include <memory>
 #include <stdexcept>
 
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #	include <Windows.h>
 #endif
 
@@ -186,7 +186,7 @@ DisplayModeSet getVideoModes(int displayDevice)
 	if (!displays || displayDevice < 0 || displayDevice >= numDisplays)
 	{
 		SDL_free(displays);
-		throw exception("Could not find the requested display.");
+		throw runtime_error("Could not find the requested display.");
 	}
 
 	SDL_DisplayID displayId = displays[displayDevice];
@@ -197,7 +197,7 @@ DisplayModeSet getVideoModes(int displayDevice)
 	if (!modeList || numVideoModes == 0)
 	{
 		SDL_free(modeList);
-		throw exception("Could not find any video modes for the default display.");
+		throw runtime_error("Could not find any video modes for the default display.");
 	}
 
 	vector<SDL_DisplayMode> displayModes;
