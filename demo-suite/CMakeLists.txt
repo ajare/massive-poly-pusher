@@ -14,7 +14,6 @@ set_target_properties(DemoSuite PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:DemoSuite>")
 target_include_directories(DemoSuite PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${MPP_SDL_INCLUDE_DIR}"
     "${CMAKE_SOURCE_DIR}/vendor/include")
 target_link_libraries(DemoSuite PRIVATE
     MppAppSupport
@@ -25,14 +24,13 @@ target_link_libraries(DemoSuite PRIVATE
     MppProgram
     Utils
     ImGui
-    SDL2
-    SDL2main
+    SDL3::SDL3
     assimp::assimp
     OpenGL::GL
     GLEW::GLEW)
 
 mpp_copy_runtime(DemoSuite
-    SDL2
+    SDL3-shared
     glew
     assimp
     Utils

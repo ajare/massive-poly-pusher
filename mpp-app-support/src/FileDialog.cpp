@@ -1,7 +1,6 @@
 #include <Windows.h>
 #include <ShObjIdl.h>
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL3/SDL.h>
 
 #include "mpp/app/FileDialog.h"
 
@@ -34,7 +33,8 @@ namespace mpp::app
 				dialog->SetDefaultExtension(executable ? L"exe" : package ? L"mpppackage" : image ? L"png" : gltf ? L"gltf" : L"xml");
 			}
 			if (save && !defaultName.empty()) { wstring name(defaultName.begin(), defaultName.end()); dialog->SetFileName(name.c_str()); }
-			SDL_SysWMinfo info{}; SDL_VERSION(&info.version); HWND window = SDL_GetWindowWMInfo(owner, &info) ? info.info.win.window : nullptr;
+			// SDL3 replaced SDL_syswm.h with per-window properties.
+			HWND window = owner ? (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(owner), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr) : nullptr;
 			result = dialog->Show(window);
 			optional<string> selected;
 			if (SUCCEEDED(result))

@@ -179,21 +179,33 @@ void rationalApproximation(float value, int md, int &num, int &denom)
 
 DisplayModeSet getVideoModes(int displayDevice)
 {
-	int numVideoModes = SDL_GetNumDisplayModes(displayDevice);
-	if (numVideoModes == 0)
+	// SDL3 identifies displays by ID rather than index, so map the requested
+	// index onto the current display list.
+	int numDisplays = 0;
+	SDL_DisplayID* displays = SDL_GetDisplays(&numDisplays);
+	if (!displays || displayDevice < 0 || displayDevice >= numDisplays)
 	{
+		SDL_free(displays);
+		throw exception("Could not find the requested display.");
+	}
+
+	SDL_DisplayID displayId = displays[displayDevice];
+	SDL_free(displays);
+
+	int numVideoModes = 0;
+	SDL_DisplayMode** modeList = SDL_GetFullscreenDisplayModes(displayId, &numVideoModes);
+	if (!modeList || numVideoModes == 0)
+	{
+		SDL_free(modeList);
 		throw exception("Could not find any video modes for the default display.");
 	}
 
 	vector<SDL_DisplayMode> displayModes;
 	for (int i = 0; i < numVideoModes; ++i)
 	{
-		SDL_DisplayMode displayMode = { SDL_PIXELFORMAT_UNKNOWN, 0, 0, 0, 0 };
-		if (SDL_GetDisplayMode(displayDevice, i, &displayMode) == 0)
-		{
-			displayModes.push_back(displayMode);
-		}
+		displayModes.push_back(*modeList[i]);
 	}
+	SDL_free(modeList);
 
 	// Go through each mode, and work out its aspect ratio.
 	DisplayModeSet sortedModes;

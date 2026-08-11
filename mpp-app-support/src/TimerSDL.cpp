@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "mpp/app/TimerSDL.h"
 
 TimerSDL::TimerSDL() :
@@ -9,13 +9,14 @@ TimerSDL::TimerSDL() :
 
 void TimerSDL::reset()
 {
-	mStartTime = SDL_GetTicks() / 1000.0f;
+	// SDL3 returns 64-bit milliseconds.
+	mStartTime = (float)(SDL_GetTicks() / 1000.0);
 	mRunningTime = 0.0f;
 }
 
 float TimerSDL::getDeltaTime() const
 {
-	float newTime = SDL_GetTicks() / 1000.0f;
+	float newTime = (float)(SDL_GetTicks() / 1000.0);
 	float frameTime = newTime - mStartTime;
 
 	mStartTime = newTime;

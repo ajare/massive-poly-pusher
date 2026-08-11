@@ -15,16 +15,21 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 find_package(OpenGL REQUIRED)
 
-# SDL is built from the source submodule. SDL 2.0.14 predates CMake 3.5 policies.
+# Assimp and GLEW still declare pre-3.5 policy compatibility.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum policy version for legacy dependencies")
+
+# SDL 3 is built from the source submodule. Headers are included as <SDL3/SDL.h>,
+# so the SDL3::SDL3 usage requirements supply the include directory.
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/CMakeLists.txt")
     message(FATAL_ERROR "SDL submodule is missing; run: git submodule update --init --recursive")
 endif()
 set(SDL_SHARED ON CACHE BOOL "Build SDL as a shared library" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "Do not build the SDL static library" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Do not build SDL tests" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build the SDL3_test library" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "Do not build SDL tests" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "Do not build SDL examples" FORCE)
+set(SDL_INSTALL OFF CACHE BOOL "Do not install SDL" FORCE)
 add_subdirectory(ext/sdl EXCLUDE_FROM_ALL)
-set(MPP_SDL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/include")
 
 # GLEW keeps its CMake project under build/cmake. Its Git repository omits the
 # generated headers and glew.c, so bootstrap those files from the matching,
@@ -355,11 +360,10 @@ add_library(MppAppSupport STATIC
 target_include_directories(MppAppSupport
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
-        "${MPP_SDL_INCLUDE_DIR}"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
 target_link_libraries(MppAppSupport PUBLIC
-    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL2
+    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL3::SDL3
     PRIVATE comdlg32 shell32 ole32)
 mpp_target_defaults(MppAppSupport)
 mpp_add_header_filters(MppAppSupport "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include")
@@ -380,7 +384,7 @@ target_link_libraries(ModelConvert PRIVATE
     MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils assimp::assimp)
 mpp_target_defaults(ModelConvert)
 mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
-mpp_copy_runtime(ModelConvert assimp glew SDL2 Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
+mpp_copy_runtime(ModelConvert assimp glew SDL3-shared Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 
 add_executable(PipelineEditor WIN32
     pipeline-editor/src/Main.cpp
@@ -388,14 +392,13 @@ add_executable(PipelineEditor WIN32
     pipeline-editor/src/ProcessFlowLayout.cpp
     pipeline-editor/src/ProcessFlowView.cpp)
 target_include_directories(PipelineEditor PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include"
-    "${MPP_SDL_INCLUDE_DIR}")
+    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
 target_link_libraries(PipelineEditor PRIVATE
     MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
-    Utils ImGui SDL2 SDL2main OpenGL::GL GLEW::GLEW)
+    Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
 mpp_target_defaults(PipelineEditor)
 mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-mpp_copy_runtime(PipelineEditor SDL2 glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
 add_custom_command(TARGET PipelineEditor POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
