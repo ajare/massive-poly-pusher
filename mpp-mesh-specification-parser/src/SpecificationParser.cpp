@@ -1,4 +1,5 @@
 #include <format>
+#include <stdexcept>
 #include <stack>
 
 #include "utils/StringUtils.h"
@@ -63,7 +64,7 @@ namespace mpp
 				if (positionType != "2d" && positionType != "3d")
 				{
 					string errMsg = "Invalid position type: " + programNode->getAttribute("positionType");
-					throw exception(errMsg.c_str());
+					throw runtime_error(errMsg);
 				}
 
 				mi.setPositionType(positionType == "2d" ? mesh::MaterialInformation::PositionType::p2D : mesh::MaterialInformation::PositionType::p3D);
@@ -72,7 +73,7 @@ namespace mpp
 				if (!shaderNode)
 				{
 					string errMsg = "No shaders specified";
-					throw exception(errMsg.c_str());
+					throw runtime_error(errMsg);
 				}
 
 				do
@@ -98,7 +99,7 @@ namespace mpp
 					else
 					{
 						string errMsg = "Invalid shader stage: " + shaderNode->getAttribute("type");
-						throw exception(errMsg.c_str());
+						throw runtime_error(errMsg);
 					}
 
 					mi.addShader(shaderType, shaderName);
@@ -129,7 +130,7 @@ namespace mpp
 							else
 							{
 								string errMsg = "Either 'filename' or 'resource' must be specified for a texture";
-								throw exception(errMsg.c_str());
+								throw runtime_error(errMsg);
 							}
 
 							mi.addTexture(isResource, binding, resource);
@@ -154,7 +155,7 @@ namespace mpp
 										"Found {}-type uniform '{}' while parsing material.  Only int/uint/float types are supported.",
 										uniformType, uniformName);
 
-									throw exception(errMsg.c_str());
+									throw runtime_error(errMsg);
 								}
 
 								// Parse value: from [1, 5) components
@@ -168,7 +169,7 @@ namespace mpp
 										"Found {}-dimension uniform '{}' while parsing material '{}'.  Only 1-4 dimensional types are supported.",
 										componentCount, uniformName);
 
-									throw exception(errMsg.c_str());
+									throw runtime_error(errMsg);
 								}
 
 								if (uniformType == "int")
@@ -250,7 +251,7 @@ namespace mpp
 			else
 			{
 				string errMsg = "Invalid primitive: " + primitive;
-				throw exception(errMsg.c_str());
+				throw runtime_error(errMsg);
 			}
 
 			// Get storage type
@@ -267,7 +268,7 @@ namespace mpp
 			else
 			{
 				string errMsg = "Invalid storage type: " + storage;
-				throw exception(errMsg.c_str());
+				throw runtime_error(errMsg);
 			}
 
 			// Get split size
@@ -299,12 +300,12 @@ namespace mpp
 							if (mComponentTypes.find(data) == mComponentTypes.end())
 							{
 								string errMsg = "Invalid data: " + data;
-								throw exception(errMsg.c_str());
+								throw runtime_error(errMsg);
 							}
 							if (mDataTypes.find(type) == mDataTypes.end())
 							{
 								string errMsg = "Invalid type: " + type;
-								throw exception(errMsg.c_str());
+								throw runtime_error(errMsg);
 							}
 
 							string normalised;

@@ -16,7 +16,7 @@
 
 namespace mpp
 {
-	class _MPPAPI __declspec(align(16)) SceneModel3d : public ResourceWrangler
+	class _MPPAPI alignas(16) SceneModel3d : public ResourceWrangler
 	{
 		ResourcePtr mModel;
 

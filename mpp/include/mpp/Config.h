@@ -1,7 +1,10 @@
 #pragma once
 
 #include <stdint.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 
 //#include "mpp/backward.hpp"
 
@@ -62,6 +65,8 @@
 #endif
 
 // Disable warning on non-exported templates.
+#if defined(_MSC_VER)
 #pragma warning( disable: 4251 )
+#endif
 
 #define MPP_UNUSED(x) (void)(x)

@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <GL/glew.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTextureStream.h"

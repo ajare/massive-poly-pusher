@@ -1,8 +1,8 @@
-#if _MSC_VER < 1930
+#if defined(_MSC_VER) && _MSC_VER < 1930
 #  include <vld.h> // Memory tracking
 #endif
 
-#include <exception>
+#include <stdexcept>
 
 #include "utils/StringUtils.h"
 
@@ -37,7 +37,7 @@ namespace mpp
 			if (rootName != "ModelSpecification" && rootName != "Resource")
 			{
 				string errMsg = "Error loading " + getFilepath() + ".  Root element is neither 'ModelSpecification' nor 'Resource'.";
-				throw exception(errMsg.c_str());
+				throw runtime_error(errMsg);
 			}
 
 			for (auto it = data.begin(); it != data.end(); ++it)
@@ -77,7 +77,7 @@ namespace mpp
 							if (mMaterials.find(name) != mMaterials.end())
 							{
 								string errMsg = "Error loading " + getFilepath() + ".  Duplicate material named '" + name + "' specified.";
-								throw exception(errMsg.c_str());
+								throw runtime_error(errMsg);
 							}
 
 							mMaterials[name] = mstream;

@@ -9,7 +9,7 @@
 #endif
 
 #include <GL/glew.h>
-#include <gl/GL.h>
+#include <GL/gl.h>
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION

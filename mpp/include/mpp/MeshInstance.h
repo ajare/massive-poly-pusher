@@ -17,7 +17,7 @@ namespace mpp
 {
 	class SceneModel3d;
 
-	class _MPPAPI __declspec(align(16)) MeshInstance : public ResourceWrangler
+	class _MPPAPI alignas(16) MeshInstance : public ResourceWrangler
 	{
 		friend class RenderSystem;
 		friend class ModelInstance;
@@ -140,17 +140,6 @@ namespace mpp
 		void rotate(glm::vec3 const& axis, float angle);
 
 		void bindUniforms();
-
-		// Override new/delete to force alignment on 16-byte boundary.
-		void* operator new(size_t size)
-		{
-			return _aligned_malloc(size, 16);
-		}
-
-		void operator delete(void* p)
-		{
-			_aligned_free(p);
-		}
 	};
 }
 

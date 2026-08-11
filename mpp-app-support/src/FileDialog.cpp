@@ -1,5 +1,8 @@
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <ShObjIdl.h>
+#endif
 #include <SDL3/SDL.h>
 
 #include "mpp/app/FileDialog.h"
@@ -12,6 +15,10 @@ namespace mpp::app
 	{
 		optional<string> show(SDL_Window* owner, string const& title, string const& defaultName, bool save, bool package=false, bool executable=false, bool image=false, bool gltf=false, bool folder=false, bool hdrExr=false)
 		{
+#ifndef _WIN32
+			(void)owner; (void)title; (void)defaultName; (void)save; (void)package; (void)executable; (void)image; (void)gltf; (void)folder; (void)hdrExr;
+			return {};
+#else
 			HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 			IFileDialog* dialog = nullptr;
 			HRESULT result = CoCreateInstance(save ? CLSID_FileSaveDialog : CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
@@ -42,6 +49,7 @@ namespace mpp::app
 				IShellItem* item = nullptr; if (SUCCEEDED(dialog->GetResult(&item))) { PWSTR path = nullptr; if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) { int size = WideCharToMultiByte(CP_UTF8, 0, path, -1, nullptr, 0, nullptr, nullptr); string utf8(size, '\0'); WideCharToMultiByte(CP_UTF8, 0, path, -1, utf8.data(), size, nullptr, nullptr); utf8.pop_back(); selected = utf8; CoTaskMemFree(path); } item->Release(); }
 			}
 			dialog->Release(); if (SUCCEEDED(initialized)) CoUninitialize(); return selected;
+#endif
 		}
 	}
 	optional<string> openXmlFileDialog(SDL_Window* owner, string const& title) { return show(owner, title, {}, false); }

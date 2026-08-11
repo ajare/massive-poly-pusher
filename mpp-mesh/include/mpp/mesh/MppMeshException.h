@@ -1,13 +1,13 @@
 #pragma once
 
-#include <exception>
+#include <stdexcept>
 #include <string>
 
 namespace mpp
 {
 	namespace mesh
 	{
-		class MppMeshException : public std::exception
+		class MppMeshException : public std::runtime_error
 		{
 			int mLine{ 0 };
 
@@ -18,12 +18,12 @@ namespace mpp
 		public:
 
 			explicit MppMeshException(std::string const& msg)
-				: std::exception(msg.c_str())
+				: std::runtime_error(msg)
 			{
 			}
 
 			MppMeshException(std::string const& msg, int line, std::string const& file, std::string const& function)
-				: std::exception(msg.c_str())
+				: std::runtime_error(msg)
 				, mLine(line)
 				, mFile(file)
 				, mFunction(function)

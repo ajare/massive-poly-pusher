@@ -5,13 +5,13 @@ namespace mpp
 	using namespace std;
 
 	MppException::MppException(string const& msg, string const& trace)
-		: exception(msg.c_str())
+		: runtime_error(msg)
 		, mTrace(trace)
 	{
 	}
 
 	MppException::MppException(string const& msg, int line, string const& file, string const& function, string const& trace)
-		: exception(msg.c_str())
+		: runtime_error(msg)
 		, mLine(line)
 		, mFile(file)
 		, mFunction(function)

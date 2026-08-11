@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 namespace mpp
 {

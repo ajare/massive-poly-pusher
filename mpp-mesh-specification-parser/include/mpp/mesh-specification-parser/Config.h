@@ -59,4 +59,6 @@
 #endif
 
 // Disable warning on non-exported templates.
+#if defined(_MSC_VER)
 #pragma warning( disable: 4251 )
+#endif

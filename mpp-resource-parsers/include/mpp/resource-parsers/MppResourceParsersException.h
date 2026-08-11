@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <exception>
+#include <stdexcept>
 
 #include "Config.h"
 
@@ -10,7 +10,7 @@ namespace mpp
 	namespace resource_parsers
 	{
 
-		class MppResourceParsersException : public std::exception
+		class MppResourceParsersException : public std::runtime_error
 		{
 			int mLine{ 0 };
 
@@ -21,12 +21,12 @@ namespace mpp
 		public:
 
 			explicit MppResourceParsersException(std::string const& msg)
-				: std::exception(msg.c_str())
+				: std::runtime_error(msg)
 			{
 			}
 
 			MppResourceParsersException(std::string const& msg, int line, std::string const& file, std::string const& function)
-				: std::exception(msg.c_str())
+				: std::runtime_error(msg)
 				, mLine(line)
 				, mFile(file)
 				, mFunction(function)

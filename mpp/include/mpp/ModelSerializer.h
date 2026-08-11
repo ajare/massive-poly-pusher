@@ -9,7 +9,7 @@
 #include <fstream>
 
 #include <GL/glew.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #include "mpp/ResourceManager.h"
 #include "mpp/MppException.h"
