@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX RC)
+project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX)
 
 if(NOT WIN32)
     message(FATAL_ERROR "The current MassivePolyPusher sources and vendored libraries support Windows only")
@@ -15,16 +15,21 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 find_package(OpenGL REQUIRED)
 
-# SDL is built from the source submodule. SDL 2.0.14 predates CMake 3.5 policies.
+# Assimp and GLEW still declare pre-3.5 policy compatibility.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum policy version for legacy dependencies")
+
+# SDL 3 is built from the source submodule. Headers are included as <SDL3/SDL.h>,
+# so the SDL3::SDL3 usage requirements supply the include directory.
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/CMakeLists.txt")
     message(FATAL_ERROR "SDL submodule is missing; run: git submodule update --init --recursive")
 endif()
 set(SDL_SHARED ON CACHE BOOL "Build SDL as a shared library" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "Do not build the SDL static library" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Do not build SDL tests" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build the SDL3_test library" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "Do not build SDL tests" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "Do not build SDL examples" FORCE)
+set(SDL_INSTALL OFF CACHE BOOL "Do not install SDL" FORCE)
 add_subdirectory(ext/sdl EXCLUDE_FROM_ALL)
-set(MPP_SDL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/include")
 
 # GLEW keeps its CMake project under build/cmake. Its Git repository omits the
 # generated headers and glew.c, so bootstrap those files from the matching,
@@ -142,8 +147,7 @@ add_library(MppMesh SHARED
     mpp-mesh/src/Vertex.cpp
     mpp-mesh/src/VertexBufferAttributeLayout.cpp
     mpp-mesh/src/VertexBufferDefinition.cpp
-    mpp-mesh/src/VertexData.cpp
-    mpp-mesh/build/version/Version.rc)
+    mpp-mesh/src/VertexData.cpp)
 target_include_directories(MppMesh PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh/include")
 target_compile_definitions(MppMesh PRIVATE MPP_MESH_DLL_EXPORT)
 target_link_libraries(MppMesh PUBLIC mpp_vendor_headers)
@@ -154,8 +158,7 @@ add_library(MppProgram SHARED
     mpp-program/include/mpp/program/glslRegistry.cpp
     mpp-program/src/Attribute.cpp
     mpp-program/src/Parser.cpp
-    mpp-program/src/ShaderStage.cpp
-    mpp-program/build/version/Version.rc)
+    mpp-program/src/ShaderStage.cpp)
 target_include_directories(MppProgram
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include/mpp/program")
@@ -264,8 +267,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/TriangleBatch.cpp
     mpp/src/UniformBuffer.cpp
     mpp/src/UniformCollection.cpp
-    mpp/src/VertexBuffer.cpp
-    mpp/build/version/Version.rc)
+    mpp/src/VertexBuffer.cpp)
 target_include_directories(MassivePolyPusher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
 target_compile_definitions(MassivePolyPusher PRIVATE
     MPP_DLL_EXPORT _ENABLE_EXTENDED_ALIGNED_STORAGE
@@ -303,8 +305,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/RenderGraphSerializer.cpp
     mpp-resource-parsers/src/RenderGraphResourceTests.cpp
     mpp-resource-parsers/src/Serializer.cpp
-    mpp-resource-parsers/src/XmlSerializer.cpp
-    mpp-resource-parsers/build/version/Version.rc)
+    mpp-resource-parsers/src/XmlSerializer.cpp)
 target_include_directories(MppResourceParsers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resource-parsers/include")
 target_compile_definitions(MppResourceParsers PRIVATE MPP_RESOURCE_PARSERS_DLL_EXPORT)
 target_link_libraries(MppResourceParsers PUBLIC MassivePolyPusher MppProgram MppMesh Utils)
@@ -314,8 +315,7 @@ mpp_add_header_filters(MppResourceParsers "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resou
 add_library(MppMeshSpecificationParser SHARED
     mpp-mesh-specification-parser/src/ModelspecStream.cpp
     mpp-mesh-specification-parser/src/ProgramInformation.cpp
-    mpp-mesh-specification-parser/src/SpecificationParser.cpp
-    mpp-mesh-specification-parser/build/version/Version.rc)
+    mpp-mesh-specification-parser/src/SpecificationParser.cpp)
 target_include_directories(MppMeshSpecificationParser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh-specification-parser/include")
 target_compile_definitions(MppMeshSpecificationParser PRIVATE MPP_MESH_SPECIFICATION_PARSER_DLL_EXPORT)
 target_link_libraries(MppMeshSpecificationParser PUBLIC MassivePolyPusher MppMesh MppResourceParsers Utils)
@@ -325,8 +325,7 @@ mpp_add_header_filters(MppMeshSpecificationParser "${CMAKE_CURRENT_SOURCE_DIR}/m
 add_library(MppHelper SHARED
     mpp-helper/src/FpsCamera.cpp
     mpp-helper/src/FreeCamera.cpp
-    mpp-helper/src/OrthoCamera.cpp
-    mpp-helper/build/version/Version.rc)
+    mpp-helper/src/OrthoCamera.cpp)
 target_include_directories(MppHelper PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-helper/include")
 target_compile_definitions(MppHelper PRIVATE MPP_HELPER_DLL_EXPORT)
 target_link_libraries(MppHelper PUBLIC MassivePolyPusher MppMesh)
@@ -355,11 +354,10 @@ add_library(MppAppSupport STATIC
 target_include_directories(MppAppSupport
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
-        "${MPP_SDL_INCLUDE_DIR}"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
 target_link_libraries(MppAppSupport PUBLIC
-    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL2
+    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL3::SDL3
     PRIVATE comdlg32 shell32 ole32)
 mpp_target_defaults(MppAppSupport)
 mpp_add_header_filters(MppAppSupport "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include")
@@ -373,14 +371,13 @@ mpp_add_header_filters(ProgramBuilder "${CMAKE_CURRENT_SOURCE_DIR}/program-build
 
 add_executable(ModelConvert
     model-convert/src/AssImpModelLoader.cpp
-    model-convert/src/Main.cpp
-    model-convert/build/version/Version.rc)
+    model-convert/src/Main.cpp)
 target_include_directories(ModelConvert PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
 target_link_libraries(ModelConvert PRIVATE
     MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils assimp::assimp)
 mpp_target_defaults(ModelConvert)
 mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
-mpp_copy_runtime(ModelConvert assimp glew SDL2 Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
+mpp_copy_runtime(ModelConvert assimp glew SDL3-shared Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 
 add_executable(PipelineEditor WIN32
     pipeline-editor/src/Main.cpp
@@ -388,14 +385,13 @@ add_executable(PipelineEditor WIN32
     pipeline-editor/src/ProcessFlowLayout.cpp
     pipeline-editor/src/ProcessFlowView.cpp)
 target_include_directories(PipelineEditor PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include"
-    "${MPP_SDL_INCLUDE_DIR}")
+    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
 target_link_libraries(PipelineEditor PRIVATE
     MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
-    Utils ImGui SDL2 SDL2main OpenGL::GL GLEW::GLEW)
+    Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
 mpp_target_defaults(PipelineEditor)
 mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-mpp_copy_runtime(PipelineEditor SDL2 glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
 add_custom_command(TARGET PipelineEditor POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"

@@ -237,7 +237,7 @@ bool startup()
 	//hookRenderdoc();
 #endif
 
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
+	if (!SDL_Init(SDL_INIT_VIDEO))
 		throw exception("Could not initialise SDL video!");
 
 	// Get video modes, organised by aspect ratio.

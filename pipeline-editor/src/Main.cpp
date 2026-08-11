@@ -22,7 +22,7 @@
 #include <string_view>
 #include <vector>
 #include <Windows.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <renderdoc/renderdoc_app.h>
 #include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
@@ -1314,7 +1314,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				scenePath.clear();
 			}
 		}
-		if (SDL_Init(SDL_INIT_VIDEO) < 0)
+		if (!SDL_Init(SDL_INIT_VIDEO))
 			throw std::runtime_error(SDL_GetError());
 		SdlLifetime sdlLifetime;
 		WindowSDL window("PBR Pipeline Editor");
