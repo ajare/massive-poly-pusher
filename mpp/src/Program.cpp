@@ -1,7 +1,7 @@
 #include <format>
 #include "mpp/Config.h"
 
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #include <Windows.h>
 #endif
 
@@ -12,7 +12,7 @@
 #include <list>
 
 #include <GL/glew.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)

@@ -1,11 +1,11 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #	include <Windows.h>
 #endif
 
 #include <filesystem>
 
 #include <GL/glew.h>
-#include <gl/GL.h>
+#include <GL/gl.h>
 
 #include "utils/FileSystem.h"
 

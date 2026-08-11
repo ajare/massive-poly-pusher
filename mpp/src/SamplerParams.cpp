@@ -1,9 +1,9 @@
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #	include <Windows.h>
 #endif
 
 #include <GL/glew.h>
-#include <gl/GL.h>
+#include <GL/gl.h>
 
 #include "mpp/SamplerParams.h"
 

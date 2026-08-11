@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <stdexcept>
 
 #include <mpp/BufferDataProvider.h>
 #include <mpp/Resource.h>
@@ -140,7 +141,7 @@ public:
 
 				if (pcmd->UserCallback != nullptr)
 				{
-					throw std::exception("User callbacks not supported.");
+					throw std::runtime_error("User callbacks not supported.");
 				}
 				else
 				{

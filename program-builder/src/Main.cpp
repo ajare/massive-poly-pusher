@@ -1,7 +1,8 @@
-#if _MSC_VER < 1930
+#if defined(_MSC_VER) && _MSC_VER < 1930
 #  include <vld.h> // Memory tracking
 #endif
 
+#include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -71,15 +72,15 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 	if (pArgs.vertexSource == "")
 	{
-		throw exception("No vertex source (-v/--vertex) given.");
+		throw runtime_error("No vertex source (-v/--vertex) given.");
 	}
 	if (pArgs.fragmentSource == "")
 	{
-		throw exception("No fragment source (-f/--fragment) given.");
+		throw runtime_error("No fragment source (-f/--fragment) given.");
 	}
 	if (pArgs.meshSpec == "")
 	{
-		throw exception("No mesh specification (-m/--meshspec) given.");
+		throw runtime_error("No mesh specification (-m/--meshspec) given.");
 	}
 
 	return pArgs;
@@ -140,7 +141,7 @@ int main(int argc, char** argv)
 
 		if (!errors.empty())
 		{
-			throw exception("Errors were found during parsing.");
+			throw runtime_error("Errors were found during parsing.");
 		}
 	}
 	catch (mpp::program::MppProgramException const& e)

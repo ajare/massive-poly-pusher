@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <format>
 #include <iostream>
 #include <cassert>
@@ -228,7 +229,7 @@ void AssImpModelLoader::createMeshDataStreams()
 
 	if (!scene)
 	{
-		throw exception(("AssimpModelStream::loadImpl() could not load " + mFilename).c_str());
+		throw runtime_error(("AssimpModelStream::loadImpl() could not load " + mFilename).c_str());
 	}
 
 	for (uint32_t j = 0; j < scene->mNumMeshes; ++j)
@@ -282,7 +283,7 @@ void AssImpModelLoader::createMeshDataStreams()
 		bool hasTangents = requiresTangents && inputMesh->HasTangentsAndBitangents();
 		if (requiresTangents && !hasTangents)
 		{
-			throw exception("Model requires Tangent4 data, but Assimp could not generate a tangent frame.");
+			throw runtime_error("Model requires Tangent4 data, but Assimp could not generate a tangent frame.");
 		}
 		if (hasTangents)
 		{
@@ -603,7 +604,7 @@ int8_t* AssImpModelLoader::deinterlaceVertexBufferData(VertexBufferAttributeLayo
 				break;
 
 			default:
-				throw exception("ModelStream::loadImpl() cannot convert data to unsupported type!");
+				throw runtime_error("ModelStream::loadImpl() cannot convert data to unsupported type!");
 			}
 
 			// Padding

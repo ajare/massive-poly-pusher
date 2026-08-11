@@ -2,17 +2,19 @@
 
 #include "mpp/Config.h"
 
-#include <exception>
+#include <stdexcept>
 #include <string>
 
-#include <gl/GL.h>
+#include <GL/gl.h>
 
+#if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 4275)
+#endif
 
 namespace mpp
 {
-	class _MPPAPI MppException : public std::exception
+	class _MPPAPI MppException : public std::runtime_error
 	{
 		int mLine{ 0 };
 
@@ -74,7 +76,9 @@ namespace mpp
 
 }
 
+#if defined(_MSC_VER)
 #pragma warning(pop)
+#endif
 
 //		backward::StackTrace st; st.load_here(32); \
 //		backward::TraceResolver tr; tr.load_stacktrace(st); \

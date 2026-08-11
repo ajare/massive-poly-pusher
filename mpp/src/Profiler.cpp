@@ -5,12 +5,12 @@
 
 #include "mpp/Config.h"
 
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #include <Windows.h>
 #endif
 
 #include <GL/glew.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #include "mpp/Profiler.h"
 #include "mpp/RenderSystem.h"

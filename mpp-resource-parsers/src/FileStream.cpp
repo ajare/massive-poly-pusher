@@ -1,4 +1,5 @@
 #include <fstream>
+#include <stdexcept>
 
 #include "utils/FileSystem.h"
 
@@ -33,7 +34,7 @@ namespace mpp
 			if (it == mFactories.end())
 			{
 				string errMsg = "Can't find serializer of type '" + type + "'.";
-				throw exception(errMsg.c_str());
+				throw runtime_error(errMsg);
 			}
 
 			return shared_ptr<Serializer>(it->second());

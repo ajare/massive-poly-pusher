@@ -5,7 +5,7 @@
 #include <memory>
 
 #include <GL/glew.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #include "mpp/mesh/Vertex.h"
 #include "mpp/mesh/VertexBufferDefinition.h"

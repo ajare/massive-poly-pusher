@@ -2,7 +2,7 @@
 
 #include "mpp/Config.h"
 
-#include <gl/GL.h>
+#include <GL/gl.h>
 
 namespace mpp
 {

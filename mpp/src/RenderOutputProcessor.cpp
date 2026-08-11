@@ -1,5 +1,5 @@
 #include "mpp/Config.h"
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #include <Windows.h>
 #endif
 #include <GL/glew.h>

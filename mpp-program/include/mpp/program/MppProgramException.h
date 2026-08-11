@@ -1,8 +1,11 @@
 #pragma once
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <gl/GL.h>
-#include <exception>
+#endif
+#include <GL/gl.h>
+#include <stdexcept>
 #include <string>
 
 namespace mpp
@@ -10,7 +13,7 @@ namespace mpp
 	namespace program
 	{
 
-		class MppProgramException : public std::exception
+		class MppProgramException : public std::runtime_error
 		{
 			int mLine{ 0 };
 
@@ -21,12 +24,12 @@ namespace mpp
 		public:
 
 			explicit MppProgramException(std::string const& msg)
-				: std::exception(msg.c_str())
+				: std::runtime_error(msg)
 			{
 			}
 
 			MppProgramException(std::string const& msg, int line, std::string const& file, std::string const& function)
-				: std::exception(msg.c_str())
+				: std::runtime_error(msg)
 				, mLine(line)
 				, mFile(file)
 				, mFunction(function)

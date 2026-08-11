@@ -1,11 +1,11 @@
 #include <format>
 
-#if MPP_PLATFORM == MPP_PLATFORM_WINDOWS
+#if defined(_WIN32)
 #include <Windows.h>
 #endif
 
 #include <GL/glew.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #include <cassert>
 #include <algorithm>
@@ -202,7 +202,7 @@ namespace mpp
 	 * Callback for ARB_debug_output
 	 *
 	 */
-	void APIENTRY debugOutputCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+	void GLAPIENTRY debugOutputCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
 	                                  GLsizei length, const GLchar* message, GLvoid const* userParam)
 	{
 		RenderSystem* renderSystem = const_cast<RenderSystem*>((RenderSystem const*)(userParam));
@@ -430,8 +430,6 @@ namespace mpp
 			if (extensionName == "GL_ARB_debug_output")
 			{
 #ifdef MPP_DEBUG_BUILD
-				glDebugMessageCallbackARB = (PFNGLDEBUGMESSAGECALLBACKARBPROC)wglGetProcAddress("glDebugMessageCallbackARB");
-
 				GL_CHECK(glDebugMessageCallbackARB(&debugOutputCallback, this));
 #endif
 				infoMessage("GL_ARB_debug_output initialised.");

@@ -62,11 +62,12 @@ Materials specification
 
 */
 
-#if _MSC_VER < 1930
+#if defined(_MSC_VER) && _MSC_VER < 1930
 #  include <vld.h> // Memory tracking
 #endif
 
 
+#include <stdexcept>
 #include <iostream>
 #include <algorithm>
 #include <functional>
@@ -136,7 +137,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			if (pArgs.mode == "convert")
 			{
-				throw exception("Cannot convert and debug model at the same time.");
+				throw runtime_error("Cannot convert and debug model at the same time.");
 			}
 
 			pArgs.mode = "debug";
@@ -146,7 +147,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			if (i == (argc - 1))
 			{
-				throw exception("Read '-o' token but found no parameter after it.");
+				throw runtime_error("Read '-o' token but found no parameter after it.");
 			}
 			else
 			{
@@ -157,14 +158,14 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			if (pArgs.mode == "debug")
 			{
-				throw exception("Cannot convert and debug model at the same time.");
+				throw runtime_error("Cannot convert and debug model at the same time.");
 			}
 
 			pArgs.mode = "convert";
 
 			if (i == (argc - 1))
 			{
-				throw exception("Read '-s' token but found no parameter after it.");
+				throw runtime_error("Read '-s' token but found no parameter after it.");
 			}
 			else
 			{
@@ -175,7 +176,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 		{
 			if (i == (argc - 1))
 			{
-				throw exception("Read '-m' token but found no parameter after it.");
+				throw runtime_error("Read '-m' token but found no parameter after it.");
 			}
 			else
 			{
@@ -186,7 +187,7 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 	if (pArgs.mode == "convert" && pArgs.specFile == "")
 	{
-		throw exception("No specification file (-s) given.");
+		throw runtime_error("No specification file (-s) given.");
 	}
 
 	return pArgs;
@@ -243,7 +244,7 @@ void convert(string const& inFile, string const& outFile, string const& specFile
 			// authored material rather than emitting an unloadable model.
 			if (materials.size() != 1)
 			{
-				throw exception("Mesh material does not match a material in the model specification.");
+				throw runtime_error("Mesh material does not match a material in the model specification.");
 			}
 			materialName = materials.begin()->first;
 		}
@@ -295,7 +296,7 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			throw exception("Nothing to do!");
+			throw runtime_error("Nothing to do!");
 		}
 	}
 	catch (exception& e)

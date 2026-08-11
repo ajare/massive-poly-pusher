@@ -1,4 +1,4 @@
-#if _MSC_VER < 1930
+#if defined(_MSC_VER) && _MSC_VER < 1930
 #  include <vld.h> // Memory tracking
 #endif
 
