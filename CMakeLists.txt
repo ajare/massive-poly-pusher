@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX RC)
+project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX)
 
 if(NOT WIN32)
     message(FATAL_ERROR "The current MassivePolyPusher sources and vendored libraries support Windows only")
@@ -147,8 +147,7 @@ add_library(MppMesh SHARED
     mpp-mesh/src/Vertex.cpp
     mpp-mesh/src/VertexBufferAttributeLayout.cpp
     mpp-mesh/src/VertexBufferDefinition.cpp
-    mpp-mesh/src/VertexData.cpp
-    mpp-mesh/build/version/Version.rc)
+    mpp-mesh/src/VertexData.cpp)
 target_include_directories(MppMesh PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh/include")
 target_compile_definitions(MppMesh PRIVATE MPP_MESH_DLL_EXPORT)
 target_link_libraries(MppMesh PUBLIC mpp_vendor_headers)
@@ -159,8 +158,7 @@ add_library(MppProgram SHARED
     mpp-program/include/mpp/program/glslRegistry.cpp
     mpp-program/src/Attribute.cpp
     mpp-program/src/Parser.cpp
-    mpp-program/src/ShaderStage.cpp
-    mpp-program/build/version/Version.rc)
+    mpp-program/src/ShaderStage.cpp)
 target_include_directories(MppProgram
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include/mpp/program")
@@ -269,8 +267,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/TriangleBatch.cpp
     mpp/src/UniformBuffer.cpp
     mpp/src/UniformCollection.cpp
-    mpp/src/VertexBuffer.cpp
-    mpp/build/version/Version.rc)
+    mpp/src/VertexBuffer.cpp)
 target_include_directories(MassivePolyPusher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
 target_compile_definitions(MassivePolyPusher PRIVATE
     MPP_DLL_EXPORT _ENABLE_EXTENDED_ALIGNED_STORAGE
@@ -308,8 +305,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/RenderGraphSerializer.cpp
     mpp-resource-parsers/src/RenderGraphResourceTests.cpp
     mpp-resource-parsers/src/Serializer.cpp
-    mpp-resource-parsers/src/XmlSerializer.cpp
-    mpp-resource-parsers/build/version/Version.rc)
+    mpp-resource-parsers/src/XmlSerializer.cpp)
 target_include_directories(MppResourceParsers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resource-parsers/include")
 target_compile_definitions(MppResourceParsers PRIVATE MPP_RESOURCE_PARSERS_DLL_EXPORT)
 target_link_libraries(MppResourceParsers PUBLIC MassivePolyPusher MppProgram MppMesh Utils)
@@ -319,8 +315,7 @@ mpp_add_header_filters(MppResourceParsers "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resou
 add_library(MppMeshSpecificationParser SHARED
     mpp-mesh-specification-parser/src/ModelspecStream.cpp
     mpp-mesh-specification-parser/src/ProgramInformation.cpp
-    mpp-mesh-specification-parser/src/SpecificationParser.cpp
-    mpp-mesh-specification-parser/build/version/Version.rc)
+    mpp-mesh-specification-parser/src/SpecificationParser.cpp)
 target_include_directories(MppMeshSpecificationParser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh-specification-parser/include")
 target_compile_definitions(MppMeshSpecificationParser PRIVATE MPP_MESH_SPECIFICATION_PARSER_DLL_EXPORT)
 target_link_libraries(MppMeshSpecificationParser PUBLIC MassivePolyPusher MppMesh MppResourceParsers Utils)
@@ -330,8 +325,7 @@ mpp_add_header_filters(MppMeshSpecificationParser "${CMAKE_CURRENT_SOURCE_DIR}/m
 add_library(MppHelper SHARED
     mpp-helper/src/FpsCamera.cpp
     mpp-helper/src/FreeCamera.cpp
-    mpp-helper/src/OrthoCamera.cpp
-    mpp-helper/build/version/Version.rc)
+    mpp-helper/src/OrthoCamera.cpp)
 target_include_directories(MppHelper PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-helper/include")
 target_compile_definitions(MppHelper PRIVATE MPP_HELPER_DLL_EXPORT)
 target_link_libraries(MppHelper PUBLIC MassivePolyPusher MppMesh)
@@ -377,8 +371,7 @@ mpp_add_header_filters(ProgramBuilder "${CMAKE_CURRENT_SOURCE_DIR}/program-build
 
 add_executable(ModelConvert
     model-convert/src/AssImpModelLoader.cpp
-    model-convert/src/Main.cpp
-    model-convert/build/version/Version.rc)
+    model-convert/src/Main.cpp)
 target_include_directories(ModelConvert PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
 target_link_libraries(ModelConvert PRIVATE
     MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils assimp::assimp)
