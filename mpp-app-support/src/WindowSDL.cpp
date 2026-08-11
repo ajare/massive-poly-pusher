@@ -35,10 +35,11 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
 	// A resizable OpenGL window exposes the native resize and maximise controls.
-	unsigned int windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+	// SDL3 has no position arguments; an undefined position is the default and a
+	// fullscreen window ignores its position anyway.
+	SDL_WindowFlags windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
 	if (fullScreen) windowFlags |= SDL_WINDOW_FULLSCREEN;
-	mWindow = SDL_CreateWindow(mTitle.c_str(), fullScreen ? SDL_WINDOWPOS_CENTERED : SDL_WINDOWPOS_UNDEFINED,
-		fullScreen ? SDL_WINDOWPOS_CENTERED : SDL_WINDOWPOS_UNDEFINED, width, height, windowFlags);
+	mWindow = SDL_CreateWindow(mTitle.c_str(), width, height, windowFlags);
 
 	if (!mWindow)
 	{
@@ -46,43 +47,43 @@ void WindowSDL::create(int width, int height, bool fullScreen, bool vsync)
 		throw exception(("Could not create SDL window: " + err).c_str());
 	}
 
+	// An SDL3 fullscreen window is borderless-desktop unless it is given an
+	// explicit mode. Pin the closest mode to the requested size so fullscreen
+	// still changes video mode the way it did under SDL2.
+	SDL_DisplayMode fullscreenMode;
+	if (SDL_GetClosestFullscreenDisplayMode(SDL_GetDisplayForWindow(mWindow), width, height, 0.0f, false, &fullscreenMode))
+	{
+		SDL_SetWindowFullscreenMode(mWindow, &fullscreenMode);
+	}
+
 #ifdef _DEBUG
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
 	mContextGL = SDL_GL_CreateContext(mWindow);
-	if (SDL_GL_MakeCurrent(mWindow, mContextGL) != 0)
+	if (!SDL_GL_MakeCurrent(mWindow, mContextGL))
 	{
 		throw exception("Could not set the OpenGL context.");
 	}
 
-	// Create renderer
-	unsigned int rendererFlags = SDL_RENDERER_ACCELERATED;
+	// This window presents through OpenGL, so vsync is the GL swap interval.
+	SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
-	if (vsync)
-	{
-		rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
-	}
+	// SDL3 leaves text input disabled until it is asked for.
+	SDL_StartTextInput(mWindow);
 
-//	SDL_ShowCursor(SDL_DISABLE);
+//	SDL_HideCursor();
 }
 
 void WindowSDL::destroy()
 {
-	if (mContextGL) { SDL_GL_DeleteContext(mContextGL); mContextGL = nullptr; }
+	if (mContextGL) { SDL_GL_DestroyContext(mContextGL); mContextGL = nullptr; }
 	if (mWindow) { SDL_DestroyWindow(mWindow); mWindow = nullptr; }
 }
 	
 void WindowSDL::setFullscreen(bool fullscreen)
 {
-	if (fullscreen)
-	{
-		SDL_SetWindowFullscreen(mWindow, SDL_WINDOW_FULLSCREEN);
-	}
-	else
-	{
-		SDL_SetWindowFullscreen(mWindow, 0);
-	}
+	SDL_SetWindowFullscreen(mWindow, fullscreen);
 
 	mFullscreen = fullscreen;
 }
@@ -119,92 +120,93 @@ bool WindowSDL::processEvents(InputManager* inputMgr)
 
 		switch (evt.type)
 		{
-		case SDL_KEYDOWN:
+		case SDL_EVENT_KEY_DOWN:
 			ie.type = IET_KeyPressed;
 			// ImGui's native/legacy key index must be a scancode, not the
 			// SDLK_* value (arrow keys are far outside that index range).
-			ie.code = evt.key.keysym.scancode;
-			ie.key = evt.key.keysym.sym;
-			ie.mod = evt.key.keysym.mod;
+			ie.code = evt.key.scancode;
+			ie.key = evt.key.key;
+			ie.mod = evt.key.mod;
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_KEYUP:
+		case SDL_EVENT_KEY_UP:
 			ie.type = IET_KeyReleased;
-			ie.code = evt.key.keysym.scancode;
-			ie.key = evt.key.keysym.sym;
-			ie.mod = evt.key.keysym.mod;
+			ie.code = evt.key.scancode;
+			ie.key = evt.key.key;
+			ie.mod = evt.key.mod;
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_MOUSEBUTTONDOWN:
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			ie.type = IET_ButtonPressed;
 			ie.b = evt.button.button;
 			ie.code = evt.button.which;
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_MOUSEBUTTONUP:
+		case SDL_EVENT_MOUSE_BUTTON_UP:
 			ie.type = IET_ButtonReleased;
 			ie.b = evt.button.button;
 			ie.code = evt.button.which;
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_MOUSEWHEEL:
+		case SDL_EVENT_MOUSE_WHEEL:
 			ie.type = IET_MouseWheel;
-			ie.x = (float)-evt.wheel.x;
-			ie.y = (float)evt.wheel.y;
-			ie.code = evt.motion.which;
+			ie.x = -evt.wheel.x;
+			ie.y = evt.wheel.y;
+			ie.code = evt.wheel.which;
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_MOUSEMOTION:
+		case SDL_EVENT_MOUSE_MOTION:
 			ie.type = IET_MouseMotion;
-			ie.x = (float)evt.motion.x;
-			ie.y = (float)evt.motion.y;
-			ie.dx = (float)evt.motion.xrel;
-			ie.dy = (float)evt.motion.yrel;
+			ie.x = evt.motion.x;
+			ie.y = evt.motion.y;
+			ie.dx = evt.motion.xrel;
+			ie.dy = evt.motion.yrel;
 			ie.code = evt.motion.which;
 			inputMgr->addEvent(ie);
 			break;
 
-		case SDL_TEXTINPUT:
+		case SDL_EVENT_TEXT_INPUT:
 			ie.type = IET_TextInput;
 			strcpy_s(ie.s, evt.text.text);
 			inputMgr->addEvent(ie);
 			break;
 
-			case SDL_WINDOWEVENT:
-			switch (evt.window.event)
-			{
-			case SDL_WINDOWEVENT_SIZE_CHANGED:
-				mWidth = evt.window.data1;
-				mHeight = evt.window.data2;
-				break;
-			case SDL_WINDOWEVENT_ENTER:
-				ie.type = IET_WindowEnter;
-				inputMgr->addEvent(ie);
-				break;
-			case SDL_WINDOWEVENT_LEAVE:
-				ie.type = IET_WindowExit;
-				inputMgr->addEvent(ie);
-				break;
-			case SDL_WINDOWEVENT_FOCUS_GAINED:
-				ie.type = IET_FocusGained;
-				inputMgr->addEvent(ie);
-				break;
-			case SDL_WINDOWEVENT_FOCUS_LOST:
-				ie.type = IET_FocusLost;
-				inputMgr->addEvent(ie);
-				break;
-			case SDL_WINDOWEVENT_CLOSE:
-				running = false;
-				break;
-			}
+		// SDL3 promotes each window event to its own top-level event type.
+		case SDL_EVENT_WINDOW_RESIZED:
+			mWidth = evt.window.data1;
+			mHeight = evt.window.data2;
 			break;
 
-		case SDL_QUIT:
+		case SDL_EVENT_WINDOW_MOUSE_ENTER:
+			ie.type = IET_WindowEnter;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+			ie.type = IET_WindowExit;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_EVENT_WINDOW_FOCUS_GAINED:
+			ie.type = IET_FocusGained;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_EVENT_WINDOW_FOCUS_LOST:
+			ie.type = IET_FocusLost;
+			inputMgr->addEvent(ie);
+			break;
+
+		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+			running = false;
+			break;
+
+		case SDL_EVENT_QUIT:
 			running = false;
 			break;
 		}

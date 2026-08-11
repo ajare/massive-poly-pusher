@@ -26,7 +26,7 @@ function Run-Editor([string[]]$arguments, [int]$expected, [string]$code = '') {
 }
 
 Require-File $editor
-$sdlRuntime = if ($Configuration -eq 'Debug') { 'SDL2d.dll' } else { 'SDL2.dll' }
+$sdlRuntime = if ($Configuration -eq 'Debug') { 'SDL3d.dll' } else { 'SDL3.dll' }
 $glewRuntime = if ($Configuration -eq 'Debug') { 'glew32d.dll' } else { 'glew32.dll' }
 foreach ($runtime in @($sdlRuntime,$glewRuntime)) { Require-File (Join-Path $bin $runtime) }
 Require-File $editorIni

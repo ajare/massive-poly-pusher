@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "mpp/app/InputManagerSDL.h"
 
 #define DOUBLECLICKTIME 0.5
@@ -206,32 +206,32 @@ void InputManagerSDL::setupKeyTranslation()
 	mKeyTranslator[SDLK_EQUALS] = Key_Equals;
 	mKeyTranslator[SDLK_BACKSPACE] = Key_Backspace;
 	mKeyTranslator[SDLK_TAB] = Key_Tab;
-	mKeyTranslator[SDLK_a] = Key_A;
-	mKeyTranslator[SDLK_b] = Key_B;
-	mKeyTranslator[SDLK_c] = Key_C;
-	mKeyTranslator[SDLK_d] = Key_D;
-	mKeyTranslator[SDLK_e] = Key_E;
-	mKeyTranslator[SDLK_f] = Key_F;
-	mKeyTranslator[SDLK_g] = Key_G;
-	mKeyTranslator[SDLK_h] = Key_H;
-	mKeyTranslator[SDLK_i] = Key_I;
-	mKeyTranslator[SDLK_j] = Key_J;
-	mKeyTranslator[SDLK_k] = Key_K;
-	mKeyTranslator[SDLK_l] = Key_L;
-	mKeyTranslator[SDLK_m] = Key_M;
-	mKeyTranslator[SDLK_n] = Key_N;
-	mKeyTranslator[SDLK_o] = Key_O;
-	mKeyTranslator[SDLK_p] = Key_P;
-	mKeyTranslator[SDLK_q] = Key_Q;
-	mKeyTranslator[SDLK_r] = Key_R;
-	mKeyTranslator[SDLK_s] = Key_S;
-	mKeyTranslator[SDLK_t] = Key_T;
-	mKeyTranslator[SDLK_u] = Key_U;
-	mKeyTranslator[SDLK_v] = Key_V;
-	mKeyTranslator[SDLK_w] = Key_W;
-	mKeyTranslator[SDLK_x] = Key_X;
-	mKeyTranslator[SDLK_y] = Key_Y;
-	mKeyTranslator[SDLK_z] = Key_Z;
+	mKeyTranslator[SDLK_A] = Key_A;
+	mKeyTranslator[SDLK_B] = Key_B;
+	mKeyTranslator[SDLK_C] = Key_C;
+	mKeyTranslator[SDLK_D] = Key_D;
+	mKeyTranslator[SDLK_E] = Key_E;
+	mKeyTranslator[SDLK_F] = Key_F;
+	mKeyTranslator[SDLK_G] = Key_G;
+	mKeyTranslator[SDLK_H] = Key_H;
+	mKeyTranslator[SDLK_I] = Key_I;
+	mKeyTranslator[SDLK_J] = Key_J;
+	mKeyTranslator[SDLK_K] = Key_K;
+	mKeyTranslator[SDLK_L] = Key_L;
+	mKeyTranslator[SDLK_M] = Key_M;
+	mKeyTranslator[SDLK_N] = Key_N;
+	mKeyTranslator[SDLK_O] = Key_O;
+	mKeyTranslator[SDLK_P] = Key_P;
+	mKeyTranslator[SDLK_Q] = Key_Q;
+	mKeyTranslator[SDLK_R] = Key_R;
+	mKeyTranslator[SDLK_S] = Key_S;
+	mKeyTranslator[SDLK_T] = Key_T;
+	mKeyTranslator[SDLK_U] = Key_U;
+	mKeyTranslator[SDLK_V] = Key_V;
+	mKeyTranslator[SDLK_W] = Key_W;
+	mKeyTranslator[SDLK_X] = Key_X;
+	mKeyTranslator[SDLK_Y] = Key_Y;
+	mKeyTranslator[SDLK_Z] = Key_Z;
 
 	mKeyTranslator[SDLK_LEFTBRACKET] = Key_LeftBracket;
 	mKeyTranslator[SDLK_RIGHTBRACKET] = Key_RightBracket;
@@ -240,7 +240,7 @@ void InputManagerSDL::setupKeyTranslation()
 	mKeyTranslator[SDLK_RCTRL] = Key_RightControl;
 	mKeyTranslator[SDLK_SEMICOLON] = Key_Semicolon;
 	mKeyTranslator[SDLK_AT] = Key_Apostrophe;
-	mKeyTranslator[SDLK_BACKQUOTE] = Key_Tilde;
+	mKeyTranslator[SDLK_GRAVE] = Key_Tilde;
 	mKeyTranslator[SDLK_LSHIFT] = Key_LeftShift;
 	mKeyTranslator[SDLK_RSHIFT] = Key_RightShift;
 	mKeyTranslator[SDLK_BACKSLASH] = Key_Backslash;
@@ -454,7 +454,11 @@ bool InputManagerSDL::wheelDown()
 
 void InputManagerSDL::getMousePosition(int* x, int* y)
 {
-	SDL_GetMouseState(x, y);
+	// SDL3 reports the mouse position in floats.
+	float fx, fy;
+	SDL_GetMouseState(&fx, &fy);
+	*x = (int)fx;
+	*y = (int)fy;
 }
 
 void InputManagerSDL::getMouseDelta(float* x, float* y)
