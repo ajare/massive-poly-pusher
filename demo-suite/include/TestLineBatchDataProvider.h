@@ -106,8 +106,8 @@ public:
 					x + dx * i
 				},
 				{ 
-					y + sin(mTotalTime * 0.7f + DEGTORAD(360 * i * 1.8f / mNumLines)) * h2 * 0.9f,
-					y + cos(mTotalTime + DEGTORAD(360 * i / mNumLines)) * h2 * 0.9f 
+					static_cast<float>(y + std::sin(mTotalTime * 0.7f + DEGTORAD(360 * i * 1.8f / mNumLines)) * h2 * 0.9f),
+					static_cast<float>(y + std::cos(mTotalTime + DEGTORAD(360 * i / mNumLines)) * h2 * 0.9f)
 				},
 				{ 
 					r, g, b, 255 

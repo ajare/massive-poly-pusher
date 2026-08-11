@@ -1,4 +1,4 @@
-add_executable(DemoSuite WIN32
+add_executable(DemoSuite
     src/Camera.cpp
     src/Helper.cpp
     src/Logger.cpp
@@ -7,6 +7,10 @@ add_executable(DemoSuite WIN32
     src/ProgramOptions.cpp
     src/PackageScene.cpp
     src/Scene.cpp)
+
+if(WIN32)
+    set_target_properties(DemoSuite PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 mpp_target_defaults(DemoSuite)
 mpp_add_header_filters(DemoSuite "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -27,7 +31,8 @@ target_link_libraries(DemoSuite PRIVATE
     SDL3::SDL3
     assimp::assimp
     OpenGL::GL
-    GLEW::GLEW)
+    GLEW::GLEW
+    ${CMAKE_DL_LIBS})
 
 mpp_copy_runtime(DemoSuite
     SDL3-shared

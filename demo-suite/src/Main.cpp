@@ -3,8 +3,16 @@
 #include <filesystem>
 #include <fstream>
 #include <cstring>
+#include <stdexcept>
+#include <vector>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <Shellapi.h>
+#else
+#include <dlfcn.h>
+#endif
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -77,10 +85,19 @@ ImGuiBackendData gImGuiBackendData;
 
 std::filesystem::path executableDirectory()
 {
+#ifdef _WIN32
 	std::vector<wchar_t> path(32768);
 	auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
 	if (length == 0 || length == path.size()) throw std::runtime_error("Could not determine the DemoSuite executable directory.");
 	return std::filesystem::path(std::wstring(path.data(), length)).parent_path();
+#elif defined(__linux__)
+	std::error_code error;
+	auto path = std::filesystem::read_symlink("/proc/self/exe", error);
+	if (error || path.empty()) throw std::runtime_error("Could not determine the DemoSuite executable directory.");
+	return path.parent_path();
+#else
+	return std::filesystem::current_path();
+#endif
 }
 
 vector<::Scene*> gScenes;
@@ -91,16 +108,15 @@ void showFatalError(char const* text)
 {
 	fprintf(stderr,"DemoSuite fatal error: %s\n",text);
 	fflush(stderr);
+#ifdef _WIN32
 	if (!GetConsoleWindow()) MessageBoxA(nullptr,text,"DemoSuite Error",MB_OK|MB_ICONERROR);
+#endif
 }
 
 void showCommandLineHelp(char const* text)
 {
-	if (!GetConsoleWindow())
-	{
-		AttachConsole(ATTACH_PARENT_PROCESS);
-	}
-
+#ifdef _WIN32
+	if (!GetConsoleWindow()) AttachConsole(ATTACH_PARENT_PROCESS);
 	HANDLE output = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
 	DWORD written = 0;
 	if (output != INVALID_HANDLE_VALUE && WriteFile(output, text, (DWORD)strlen(text), &written, nullptr))
@@ -108,12 +124,12 @@ void showCommandLineHelp(char const* text)
 		CloseHandle(output);
 		return;
 	}
-
-	if (output != INVALID_HANDLE_VALUE)
-	{
-		CloseHandle(output);
-	}
+	if (output != INVALID_HANDLE_VALUE) CloseHandle(output);
 	MessageBoxA(nullptr, text, "DemoSuite command-line options", MB_OK | MB_ICONINFORMATION);
+#else
+	fputs(text, stdout);
+	fflush(stdout);
+#endif
 }
 
 bool gPackageMode{false};
@@ -124,27 +140,34 @@ bool gStartupComplete{false};
 //
 // Renderdoc integration for detailed diagnostics
 //
-HINSTANCE gRenderdocProc = 0;
+#ifdef _WIN32
+using RenderdocModule = HMODULE;
+#else
+using RenderdocModule = void*;
+#endif
+RenderdocModule gRenderdocProc = nullptr;
 RENDERDOC_API_1_1_1* gRenderdocApi = nullptr;
 
 typedef int(*renderDocEntryFunc)(RENDERDOC_Version, void**);
 
+void unhookRenderdoc();
+
 void hookRenderdoc()
 {
+#ifdef _WIN32
 	string filepath = "renderdoc.dll";
-	gRenderdocProc = LoadLibrary(wstring(filepath.begin(), filepath.end()).c_str());
-
-	if (!gRenderdocProc)
+	gRenderdocProc = LoadLibraryW(std::filesystem::path(filepath).c_str());
+	auto getApi = reinterpret_cast<renderDocEntryFunc>(gRenderdocProc ? GetProcAddress(gRenderdocProc, "RENDERDOC_GetAPI") : nullptr);
+#else
+	string filepath = "librenderdoc.so";
+	gRenderdocProc = dlopen(filepath.c_str(), RTLD_NOW | RTLD_LOCAL);
+	auto getApi = reinterpret_cast<renderDocEntryFunc>(gRenderdocProc ? dlsym(gRenderdocProc, "RENDERDOC_GetAPI") : nullptr);
+#endif
+	if (!gRenderdocProc) throw runtime_error("Could not load '" + filepath + "'.");
+	if (!getApi || getApi(eRENDERDOC_API_Version_1_1_1, (void**)&gRenderdocApi) != 1)
 	{
-		string errMsg = "Could not load '" + filepath + "'.";
-		throw exception(errMsg.c_str());
-	}
-
-	renderDocEntryFunc getApi = (renderDocEntryFunc)GetProcAddress(gRenderdocProc, "RENDERDOC_GetAPI");
-
-	if (getApi(eRENDERDOC_API_Version_1_1_1, (void**)&gRenderdocApi) != 1)
-	{
-		throw exception("Could not get Renderdoc API.");
+		unhookRenderdoc();
+		throw runtime_error("Could not get RenderDoc API.");
 	}
 
 	assert(gRenderdocApi->StartFrameCapture != nullptr && gRenderdocApi->EndFrameCapture != nullptr);
@@ -165,50 +188,55 @@ void hookRenderdoc()
 
 void unhookRenderdoc()
 {
-	FreeLibrary(gRenderdocProc);
-	gRenderdocProc = 0;
+	if (gRenderdocProc)
+	{
+#ifdef _WIN32
+		FreeLibrary(gRenderdocProc);
+#else
+		dlclose(gRenderdocProc);
+#endif
+	}
+	gRenderdocProc = nullptr;
 	gRenderdocApi = nullptr;
 }
 
 //
 // App initialisation
 //
-bool startup()
+bool startup(int argc, char** argv)
 {
 	bool showHelp = false;
+	vector<std::filesystem::path> arguments;
+#ifdef _WIN32
 	int argumentCount = 0;
-	auto arguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
+	auto wideArguments = CommandLineToArgvW(GetCommandLineW(), &argumentCount);
+	for (int index = 0; wideArguments && index < argumentCount; ++index) arguments.emplace_back(wideArguments[index]);
+	if (wideArguments) LocalFree(wideArguments);
+#else
+	for (int index = 0; index < argc; ++index) arguments.emplace_back(argv[index]);
+#endif
 
-	for (int index = 1; arguments && index < argumentCount; ++index)
+	for (size_t index = 1; index < arguments.size(); ++index)
 	{
-		if (wcscmp(arguments[index], L"--help") == 0 || wcscmp(arguments[index], L"-h") == 0)
+		if (arguments[index] == "--help" || arguments[index] == "-h")
 		{
 			showHelp = true;
 			continue;
 		}
-		if (wcscmp(arguments[index], L"--package-smoke-test") == 0)
+		if (arguments[index] == "--package-smoke-test")
 		{
 			gPackageSmokeTest = true;
 			continue;
 		}
-		if (wcscmp(arguments[index], L"--package") == 0)
+		if (arguments[index] == "--package")
 		{
-			if (++index >= argumentCount)
-			{
-				throw runtime_error("--package requires a .mpppackage path.");
-			}
-
+			if (++index >= arguments.size()) throw runtime_error("--package requires a .mpppackage path.");
 			gPackageMode = true;
 			gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
-			mpp::app::ZipArchive::extract(std::filesystem::path(arguments[index]), gPackageDirectory);
+			mpp::app::ZipArchive::extract(arguments[index], gPackageDirectory);
 			mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
 			continue;
 		}
-	}
-
-	if (arguments)
-	{
-		LocalFree(arguments);
 	}
 
 	if (showHelp)
@@ -225,7 +253,7 @@ bool startup()
 	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableDirectory() / "demosuite.ini");
 	gLogger = new ::Logger();
 	if (!gLogger->initialise("DemoSuite.log"))
-		throw exception("Could not create logger!");
+		throw runtime_error("Could not create logger!");
 
 	gMppLogger = new mpp::Logger();
 	if (!gMppLogger->initialise("mpp.log", mpp::Logger::Level::Debug))
@@ -237,8 +265,15 @@ bool startup()
 	//hookRenderdoc();
 #endif
 
+#if defined(__linux__)
+	// The vendored GLEW build uses GLX. On Wayland SDL would otherwise create
+	// an EGL context, which makes glewInit fail with "No GLX display".
+	if (!SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "x11", SDL_HINT_OVERRIDE))
+		throw runtime_error("Could not select SDL's X11 video driver for GLX.");
+#endif
 	if (!SDL_Init(SDL_INIT_VIDEO))
-		throw exception("Could not initialise SDL video!");
+		throw runtime_error("Could not initialise SDL video: " + string(SDL_GetError()));
+	gLogger->message("SDL video driver: " + string(SDL_GetCurrentVideoDriver()));
 
 	// Get video modes, organised by aspect ratio.
 	DisplayModeSet displayModes = getVideoModes(0);
@@ -325,13 +360,20 @@ void shutdown()
 //
 // Entry point
 //
+#ifdef _WIN32
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
+	int argc = 0;
+	char** argv = nullptr;
+#else
+int main(int argc, char** argv)
+{
+#endif
 	int exitCode{ 0 };
 
 	try
 	{
-		if(!startup())return 0;
+		if(!startup(argc, argv))return 0;
 
 		//
 		// Main loop
@@ -424,7 +466,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				gRenderOptions.wireframe = !gRenderOptions.wireframe;
 			}
 
-			if (gInputMgr->keyPressed(Key_F10))
+			if (gRenderdocApi && gInputMgr->keyPressed(Key_F10))
 			{
 				gRenderdocApi->TriggerCapture();
 			}
