@@ -1,3 +1,5 @@
+#include <GL/glew.h>
+
 #include <mpp/ProgrammaticTextureStream.h>
 
 #include <stdexcept>

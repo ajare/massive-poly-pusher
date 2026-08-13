@@ -8,6 +8,7 @@
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 #include "mpp/resource-parsers/PbrPipelineParser.h"
 #include "mpp/resource-parsers/RenderGraphParser.h"
+#include "StructuredDataAdapter.h"
 
 using namespace std;
 
@@ -38,23 +39,23 @@ namespace mpp::resource_parsers
 		{
 			utils::StringUtils::toUpper(value);if(value=="INHERIT")return std::nullopt;return boolean(value);
 		}
-		void rejectUnknown(utils::StructuredData const&,std::set<std::string> const&,std::string const&);
-		void parseUniforms(utils::StructuredData const& data,UniformCollection& uniforms)
+		void rejectUnknown(mpp::data::StructuredData const&,std::set<std::string> const&,std::string const&);
+		void parseUniforms(mpp::data::StructuredData const& data,UniformCollection& uniforms)
 		{
 			for(auto const& entry:data){auto const& value=entry.second;rejectUnknown(value,{"name","value"},"PreviewOverrides/Override/Values");auto name=value.getEntry("name").getValue();auto text=value.getEntry("value").getValue();std::istringstream input(text);
 				if(entry.first=="Float")uniforms.setUniform(name,utils::StringUtils::parseFloat(text));else if(entry.first=="Int")uniforms.setUniform(name,(int32_t)utils::StringUtils::parseInt(text));else if(entry.first=="Bool"){int32_t current=boolean(text)?1:0;uniforms.setUniform(name,program::GLSLType::Bool,1,1,reinterpret_cast<char const*>(&current));}else if(entry.first=="Vec2"){glm::vec2 current;if(!(input>>current.x>>current.y))THROW_MPP_RESOURCE_PARSERS("Invalid Vec2 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else if(entry.first=="Vec3"){glm::vec3 current;if(!(input>>current.x>>current.y>>current.z))THROW_MPP_RESOURCE_PARSERS("Invalid Vec3 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else if(entry.first=="Vec4"){glm::vec4 current;if(!(input>>current.x>>current.y>>current.z>>current.w))THROW_MPP_RESOURCE_PARSERS("Invalid Vec4 preview override.",__LINE__,__FILE__,__func__);uniforms.setUniform(name,current);}else THROW_MPP_RESOURCE_PARSERS("Unknown preview override value type '"+entry.first+"'.",__LINE__,__FILE__,__func__);}
 		}
-		void rejectUnknown(utils::StructuredData const& data,std::set<std::string> const& allowed,std::string const& context){for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);}
+		void rejectUnknown(mpp::data::StructuredData const& data,std::set<std::string> const& allowed,std::string const& context){for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);}
 		PbrPipelineResourceKind resourceKind(std::string const& value){if(value=="PbrMaterial")return PbrPipelineResourceKind::PbrMaterial;if(value=="Program")return PbrPipelineResourceKind::Program;if(value=="Texture")return PbrPipelineResourceKind::Texture;if(value=="Sampler")return PbrPipelineResourceKind::Sampler;THROW_MPP_RESOURCE_PARSERS("Unknown pipeline resource type '"+value+"'.",__LINE__,__FILE__,__func__);}
 		void resolveLibrary(PbrPipelineDocument& document,std::string const& path)
 		{
-			auto resolved=std::filesystem::path(path);if(!resolved.is_absolute())resolved=std::filesystem::path(document.sourcePath).parent_path()/resolved;if(!std::filesystem::exists(resolved))return;std::unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(resolved.string()));auto data=reader->readTree();if(data.getName()!="ResourceLibrary")THROW_MPP_RESOURCE_PARSERS("Resource library root must be ResourceLibrary: "+resolved.string(),__LINE__,__FILE__,__func__);rejectUnknown(data,{"version","name","Resources"},"ResourceLibrary");if(!data.hasEntry("version")||utils::StringUtils::parseUInt(data.getEntry("version").getValue())!=1)THROW_MPP_RESOURCE_PARSERS("Unsupported ResourceLibrary version: "+resolved.string(),__LINE__,__FILE__,__func__);if(!data.hasEntry("name"))THROW_MPP_RESOURCE_PARSERS("Resource library requires a name: "+resolved.string(),__LINE__,__FILE__,__func__);auto libraryName=data.getEntry("name").getValue();for(auto const& existing:document.externalResources)if(existing.libraryName==libraryName&&existing.libraryPath!=resolved.string())THROW_MPP_RESOURCE_PARSERS("Duplicate ResourceLibrary name '"+libraryName+"'.",__LINE__,__FILE__,__func__);if(data.hasEntry("Resources"))for(auto const& entry:data.getEntry("Resources")){PbrPipelineExternalResourceDocument external;external.libraryName=libraryName;external.libraryPath=resolved.string();external.resource.kind=resourceKind(entry.first);external.resource.definition=entry.second;if(!entry.second.hasEntry("name"))THROW_MPP_RESOURCE_PARSERS("External resource requires a name in "+resolved.string(),__LINE__,__FILE__,__func__);external.resource.name=entry.second.getEntry("name").getValue();document.externalResources.push_back(external);}
+			auto resolved=std::filesystem::path(path);if(!resolved.is_absolute())resolved=std::filesystem::path(document.sourcePath).parent_path()/resolved;if(!std::filesystem::exists(resolved))return;std::unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(resolved.string()));auto data=detail::importStructuredData(reader->readTree());if(data.getName()!="ResourceLibrary")THROW_MPP_RESOURCE_PARSERS("Resource library root must be ResourceLibrary: "+resolved.string(),__LINE__,__FILE__,__func__);rejectUnknown(data,{"version","name","Resources"},"ResourceLibrary");if(!data.hasEntry("version")||utils::StringUtils::parseUInt(data.getEntry("version").getValue())!=1)THROW_MPP_RESOURCE_PARSERS("Unsupported ResourceLibrary version: "+resolved.string(),__LINE__,__FILE__,__func__);if(!data.hasEntry("name"))THROW_MPP_RESOURCE_PARSERS("Resource library requires a name: "+resolved.string(),__LINE__,__FILE__,__func__);auto libraryName=data.getEntry("name").getValue();for(auto const& existing:document.externalResources)if(existing.libraryName==libraryName&&existing.libraryPath!=resolved.string())THROW_MPP_RESOURCE_PARSERS("Duplicate ResourceLibrary name '"+libraryName+"'.",__LINE__,__FILE__,__func__);if(data.hasEntry("Resources"))for(auto const& entry:data.getEntry("Resources")){PbrPipelineExternalResourceDocument external;external.libraryName=libraryName;external.libraryPath=resolved.string();external.resource.kind=resourceKind(entry.first);external.resource.definition=entry.second;if(!entry.second.hasEntry("name"))THROW_MPP_RESOURCE_PARSERS("External resource requires a name in "+resolved.string(),__LINE__,__FILE__,__func__);external.resource.name=entry.second.getEntry("name").getValue();document.externalResources.push_back(external);}
 		}
 	}
 	PbrPipelineDocument PbrPipelineParser::fromFile(string const& filepath)
 	{
 		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
-		auto data = reader->readTree();
+		auto data = detail::importStructuredData(reader->readTree());
 		if (data.getName() != "PbrPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be PbrPipeline: " + filepath, __LINE__, __FILE__, __func__);
 		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Outputs","Environment","Bloom","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"PbrPipeline");
 		PbrPipelineDocument document;

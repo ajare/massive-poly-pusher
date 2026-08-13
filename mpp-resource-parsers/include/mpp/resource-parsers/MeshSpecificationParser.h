@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-#include "utils/StructuredData.h"
+namespace mpp::data { class StructuredData; }
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -25,9 +25,9 @@ namespace mpp
 
 		private:
 
-			void parseMeshSpecificationBufferChannel(utils::StructuredData const& data, mesh::VertexBufferAttributeLayout* layout);
+			void parseMeshSpecificationBufferChannel(mpp::data::StructuredData const& data, mesh::VertexBufferAttributeLayout* layout);
 
-			void parseMeshSpecificationBuffer(utils::StructuredData const& data, mesh::MeshSpecification& meshSpec);
+			void parseMeshSpecificationBuffer(mpp::data::StructuredData const& data, mesh::MeshSpecification& meshSpec);
 
 			mesh::Vertex::Component parseMeshSpecificationBufferChannelComponent(std::string const& value);
 
@@ -41,7 +41,7 @@ namespace mpp
 
 			explicit MeshSpecificationParser(std::string const& filepath);
 
-			mesh::MeshSpecification parse(utils::StructuredData const& data);
+			mesh::MeshSpecification parse(mpp::data::StructuredData const& data);
 		};
 
 	}

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cassert>
 
+#include <GL/glew.h>
+
 #include "mpp/VertexBuffer.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/MppException.h"

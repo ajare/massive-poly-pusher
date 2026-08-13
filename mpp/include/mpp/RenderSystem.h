@@ -434,7 +434,8 @@ namespace mpp
 
 		// Creates a renderer-owned, colour-only floating-point cubemap suitable
 		// for cached environment, irradiance, or prefiltered-specular outputs.
-		RenderTargetPtr createIblCubemap(std::string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat = GL_RGB16F);
+		// 0x881B is the backend-neutral wire value for a 16-bit floating RGB image.
+		RenderTargetPtr createIblCubemap(std::string const& name, size_t faceSize, uint32_t mipLevels, uint32_t internalFormat = 0x881B);
 		// Converts a linear floating-point equirectangular Texture2D into a
 		// generated cubemap. Cache publication is deliberately caller-owned.
 		RenderTargetPtr convertEquirectangularToCubemap(Texture* hdrEquirectangular, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels = 1);

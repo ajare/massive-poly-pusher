@@ -67,10 +67,10 @@ namespace mpp::resource_parsers
 		GltfPbrMaterialLoadResult result;
 		result.materialIndex = (uint32_t)selected;
 		auto name = material.get("name"); result.materialName = name && name->type == Json::Type::String && !name->string.empty() ? name->string : filepath.stem().string() + ".Material" + std::to_string(selected);
-		result.definition = utils::StructuredData("PbrMaterial"); result.definition.addEntry("name", result.materialName);
-		utils::StructuredData mesh("MeshSpecification"); mesh.addEntry("primitive", "triangles"); mesh.addEntry("indexed", "true"); mesh.addEntry("storage", "static");
-		utils::StructuredData buffer("Buffer"); for (auto const* data : {"position3", "normal3", "texcoord2"}) { utils::StructuredData channel("Channel"); channel.addEntry("data", data); channel.addEntry("type", "float32"); buffer.addEntry("Channel", channel); } utils::StructuredData colour("Channel"); colour.addEntry("data", "colour4"); colour.addEntry("type", "float32"); colour.addEntry("normalised", "true"); buffer.addEntry("Channel", colour); { utils::StructuredData tangent("Channel"); tangent.addEntry("data", "tangent4"); tangent.addEntry("type", "float32"); buffer.addEntry("Channel", tangent); } mesh.addEntry("Buffer", buffer); result.definition.addEntry("MeshSpecification", mesh);
-		utils::StructuredData surface("Surface");
+		result.definition = mpp::data::StructuredData("PbrMaterial"); result.definition.addEntry("name", result.materialName);
+		mpp::data::StructuredData mesh("MeshSpecification"); mesh.addEntry("primitive", "triangles"); mesh.addEntry("indexed", "true"); mesh.addEntry("storage", "static");
+		mpp::data::StructuredData buffer("Buffer"); for (auto const* data : {"position3", "normal3", "texcoord2"}) { mpp::data::StructuredData channel("Channel"); channel.addEntry("data", data); channel.addEntry("type", "float32"); buffer.addEntry("Channel", channel); } mpp::data::StructuredData colour("Channel"); colour.addEntry("data", "colour4"); colour.addEntry("type", "float32"); colour.addEntry("normalised", "true"); buffer.addEntry("Channel", colour); { mpp::data::StructuredData tangent("Channel"); tangent.addEntry("data", "tangent4"); tangent.addEntry("type", "float32"); buffer.addEntry("Channel", tangent); } mesh.addEntry("Buffer", buffer); result.definition.addEntry("MeshSpecification", mesh);
+		mpp::data::StructuredData surface("Surface");
 		auto scalar = [](Json const* value, float fallback) { return value && value->type == Json::Type::Number ? (float)value->number : fallback; };
 		auto vector = [&](Json const* value, std::initializer_list<float> defaults) { std::vector<float> result(defaults); if (value && value->type == Json::Type::Array) for (size_t i = 0; i < result.size() && i < value->array.size(); ++i) result[i] = scalar(&value->array[i], result[i]); return result; };
 		auto pbr = material.get("pbrMetallicRoughness");
@@ -105,8 +105,8 @@ namespace mpp::resource_parsers
 		auto addMap = [&](char const* name, Json const* texture, char const* colourSpace)
 		{
 			auto imagePath = texturePath(texture); if (imagePath.empty()) { if (texture) result.warnings.push_back(std::string("glTF ") + name + " image is embedded or unresolved and was not imported yet."); return; }
-			utils::StructuredData image("Texture"); image.addEntry("name", result.materialName + "." + name); image.addEntry("target", "2D"); image.addEntry("filename", imagePath.string()); image.addEntry("colourSpace", colourSpace); image.addEntry("minFilter", "LINEAR"); image.addEntry("magFilter", "LINEAR"); image.addEntry("wrap", "REPEAT");
-			utils::StructuredData map(name); map.addEntry("Resource", image); result.definition.addEntry(name, map); result.generatedImages.push_back(imagePath);
+			mpp::data::StructuredData image("Texture"); image.addEntry("name", result.materialName + "." + name); image.addEntry("target", "2D"); image.addEntry("filename", imagePath.string()); image.addEntry("colourSpace", colourSpace); image.addEntry("minFilter", "LINEAR"); image.addEntry("magFilter", "LINEAR"); image.addEntry("wrap", "REPEAT");
+			mpp::data::StructuredData map(name); map.addEntry("Resource", image); result.definition.addEntry(name, map); result.generatedImages.push_back(imagePath);
 		};
 		if (pbr && pbr->type == Json::Type::Object) { addMap("BaseColourMap", pbr->get("baseColorTexture"), "SRGB"); addMap("MetallicRoughnessMap", pbr->get("metallicRoughnessTexture"), "LINEAR"); }
 		addMap("NormalMap", material.get("normalTexture"), "LINEAR"); if (auto normal = material.get("normalTexture")) result.definition.getEntry("Surface").setEntryValue("normalScale", std::to_string(scalar(normal->get("scale"), 1)));

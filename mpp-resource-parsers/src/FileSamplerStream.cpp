@@ -1,4 +1,6 @@
 #include <GL/glew.h>
+
+#include "utils/StringUtils.h"
 #include <GL/gl.h>
 
 #include "utils/FileSystem.h"
@@ -20,7 +22,7 @@ namespace mpp
 			setup();
 		}
 
-		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
+		FileSamplerStream::FileSamplerStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data)
 			: SamplerStream(resourceMgr)
 			, FileStream(filepath, data)
 		{
@@ -92,7 +94,7 @@ namespace mpp
 			}
 		}
 
-		void FileSamplerStream::parseDefinition(utils::StructuredData const& data)
+		void FileSamplerStream::parseDefinition(mpp::data::StructuredData const& data)
 		{
 
 			for (auto it = data.begin(); it != data.end(); ++it)

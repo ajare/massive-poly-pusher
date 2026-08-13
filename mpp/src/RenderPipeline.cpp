@@ -2,6 +2,8 @@
 #include <atomic>
 #include <glm/gtc/matrix_inverse.hpp>
 
+#include <GL/glew.h>
+
 #include "mpp/RenderPipeline.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/RenderSystem.h"

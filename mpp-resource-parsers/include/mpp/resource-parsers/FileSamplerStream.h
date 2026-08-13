@@ -30,13 +30,13 @@ namespace mpp
 
 			uint32_t parseWrapping(std::string const& value);
 
-			void parseDefinition(utils::StructuredData const& data);
+			void parseDefinition(mpp::data::StructuredData const& data);
 
 		public:
 
 			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath);
 
-			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
+			FileSamplerStream(ResourceManager* resourceMgr, std::string const& filepath, mpp::data::StructuredData const& data);
 		};
 
 	}

@@ -5,8 +5,6 @@
 
 #include <limits>
 
-#include "half/half.hpp"
-
 #include "Vertex.h"
 
 namespace mpp
@@ -62,12 +60,6 @@ namespace mpp
 		};
 
 		template<>
-		struct VertexDataType<half_float::half>
-		{
-			Vertex::DataType value = Vertex::DataType::HalfFloat;
-		};
-
-		template<>
 		struct VertexDataType<float>
 		{
 			Vertex::DataType value = Vertex::DataType::Float;
@@ -88,19 +80,9 @@ namespace mpp
 			static size_t size() { return 0; }
 		};
 
-		struct DataTypeHalfFloat
-		{
-			static Vertex::DataType vertexDataType() { return Vertex::DataType::HalfFloat; }
-			typedef half_float::half builtin_type;
-			
-			template<typename T> static half_float::half value(T v, bool normalise=false) { (void)(normalise); return (half_float::half)v; }
-			
-			static half_float::half min_normalised() { return (half_float::half)-1.0f; }
-			static half_float::half max_normalised() { return (half_float::half)1.0f; }
-			
-			template<typename T> static half_float::half* ptr(T* p) { return (half_float::half*)p; }
-			static size_t size() { return sizeof(half_float::half); }
-		};
+		// Half-precision conversion support is optional. Include
+		// VertexHalfTypeSpecification.h when this adapter is needed.
+		struct DataTypeHalfFloat;
 
 		struct DataTypeFloat
 		{
@@ -135,7 +117,7 @@ namespace mpp
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Byte; }
 			typedef int8_t builtin_type;
 
-			static int8_t value(half_float::half v, bool normalise) { return normalise ? (int8_t)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8_t)v; }
+			template<typename T> static int8_t value(T v, bool normalise) { return normalise ? (int8_t)(((double)v * 0.5 + 0.5) * 255.0) - 128 : (int8_t)v; }
 			static int8_t value(float v, bool normalise)            { return normalise ? (int8_t)((v * 0.5f + 0.5f) * 255.0f) - 128 : (int8_t)v; }
 			static int8_t value(double v, bool normalise)           { return normalise ? (int8_t)((v * 0.5 + 0.5) * 255.0) - 128    : (int8_t)v; }
 			static int8_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (int8_t)v; }
@@ -157,7 +139,7 @@ namespace mpp
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedByte; }
 			typedef uint8_t builtin_type;
 
-			static uint8_t value(half_float::half v, bool normalise) { return normalise ? (uint8_t)(v * 255.0f) : (uint8_t)v; }
+			template<typename T> static uint8_t value(T v, bool normalise) { return normalise ? (uint8_t)((double)v * 255.0) : (uint8_t)v; }
 			static uint8_t value(float v, bool normalise)            { return normalise ? (uint8_t)(v * 255.0f) : (uint8_t)v; }
 			static uint8_t value(double v, bool normalise)           { return normalise ? (uint8_t)(v * 255.0)  : (uint8_t)v; }
 			static uint8_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (uint8_t)v; }
@@ -179,7 +161,7 @@ namespace mpp
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Short; }
 			typedef int16_t builtin_type;
 
-			static int16_t value(half_float::half v, bool normalise) { return normalise ? (int16_t)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16_t)v; }
+			template<typename T> static int16_t value(T v, bool normalise) { return normalise ? (int16_t)(((double)v * 0.5 + 0.5) * 65535.0) - 32768 : (int16_t)v; }
 			static int16_t value(float v, bool normalise)            { return normalise ? (int16_t)((v * 0.5f + 0.5f) * 65535.0f) - 32768 : (int16_t)v; }
 			static int16_t value(double v, bool normalise)           { return normalise ? (int16_t)((v * 0.5 + 0.5) * 65535.0) - 32768    : (int16_t)v; }
 			static int16_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (int16_t)v; }
@@ -201,7 +183,7 @@ namespace mpp
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedShort; }
 			typedef uint16_t builtin_type;
 
-			static uint16_t value(half_float::half v, bool normalise) { return normalise ? (uint16_t)(v * 65535.0f) : (uint16_t)v; }
+			template<typename T> static uint16_t value(T v, bool normalise) { return normalise ? (uint16_t)((double)v * 65535.0) : (uint16_t)v; }
 			static uint16_t value(float v, bool normalise)            { return normalise ? (uint16_t)(v * 65535.0f) : (uint16_t)v; }
 			static uint16_t value(double v, bool normalise)           { return normalise ? (uint16_t)(v * 65535.0)  : (uint16_t)v; }
 			static uint16_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (uint16_t)v; }
@@ -223,7 +205,7 @@ namespace mpp
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::Int; }
 			typedef int32_t builtin_type;
 
-			static int32_t value(half_float::half v, bool normalise) { return normalise ? (int32_t)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32_t)v; }
+			template<typename T> static int32_t value(T v, bool normalise) { return normalise ? (int32_t)(((double)v * 0.5 + 0.5) * 4294967295.0) - 2147483648 : (int32_t)v; }
 			static int32_t value(float v, bool normalise)            { return normalise ? (int32_t)((v * 0.5f + 0.5f) * 4294967295.0f) - 2147483648 : (int32_t)v; }
 			static int32_t value(double v, bool normalise)           { return normalise ? (int32_t)((v * 0.5 + 0.5) * 4294967295.0) - 2147483648    : (int32_t)v; }
 			static int32_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (int32_t)v; }
@@ -245,7 +227,7 @@ namespace mpp
 			static Vertex::DataType vertexDataType() { return Vertex::DataType::UnsignedInt; }
 			typedef uint32_t builtin_type;
 
-			static uint32_t value(half_float::half v, bool normalise) { return normalise ? (uint32_t)(v * 4294967295.0f) : (uint32_t)v; }
+			template<typename T> static uint32_t value(T v, bool normalise) { return normalise ? (uint32_t)((double)v * 4294967295.0) : (uint32_t)v; }
 			static uint32_t value(float v, bool normalise)            { return normalise ? (uint32_t)(v * 4294967295.0f) : (uint32_t)v; }
 			static uint32_t value(double v, bool normalise)           { return normalise ? (uint32_t)(v * 4294967295.0)  : (uint32_t)v; }
 			static uint32_t value(int8_t v, bool normalise=false)       { (void)(normalise); return (uint32_t)v; }

@@ -38,19 +38,19 @@ namespace mpp
 
 			void loadImpl();
 
-			static Shader parseShader(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
+			static Shader parseShader(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 
 		public:
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, mpp::data::StructuredData const& data, bool relativisePaths = true);
 
 			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
+			FileProgramStream(ResourceManager* resourceMgr, std::string const& filepath, mpp::data::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			static std::pair<std::string, Definition> parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths = true);
+			static std::pair<std::string, Definition> parseDefinition(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths = true);
 		};
 
 	}

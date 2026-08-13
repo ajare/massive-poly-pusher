@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "utils/StructuredData.h"
+#include "mpp/data/StructuredData.h"
 #include "mpp/resource-parsers/Config.h"
 
 namespace mpp::resource_parsers
@@ -14,7 +14,7 @@ namespace mpp::resource_parsers
 	// material metadata, generated image files, and non-fatal warnings.
 	struct _MPPRESOURCEPARSERSAPI GltfPbrMaterialLoadResult
 	{
-		utils::StructuredData definition{"PbrMaterial"};
+		mpp::data::StructuredData definition{"PbrMaterial"};
 		uint32_t materialIndex{0};
 		std::string materialName;
 		std::vector<std::filesystem::path> generatedImages;

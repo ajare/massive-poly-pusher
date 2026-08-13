@@ -1,3 +1,5 @@
+#include <GL/glew.h>
+
 #include "mpp/MppException.h"
 
 namespace mpp
@@ -49,7 +51,7 @@ namespace mpp
 	{
 	}
 
-	string MppGlException::getErrorMessage(GLenum errorCode)
+	string MppGlException::getErrorMessage(uint32_t errorCode)
 	{
 		switch (errorCode)
 		{
@@ -76,19 +78,19 @@ namespace mpp
 		}
 	}
 
-	MppGlException::MppGlException(GLenum errorCode)
+	MppGlException::MppGlException(uint32_t errorCode)
 		: MppException(getErrorMessage(errorCode))
 		, mErrorCode(errorCode)
 	{
 	}
 
-	MppGlException::MppGlException(GLenum errorCode, int line, string const& file, string const& function)
+	MppGlException::MppGlException(uint32_t errorCode, int line, string const& file, string const& function)
 		: MppException(getErrorMessage(errorCode), line, file, function)
 		, mErrorCode(errorCode)
 	{
 	}
 
-	GLenum MppGlException::getErrorCode() const
+	uint32_t MppGlException::getErrorCode() const
 	{
 		return mErrorCode;
 	}

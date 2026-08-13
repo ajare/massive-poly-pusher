@@ -18,13 +18,13 @@ namespace mpp
 		{
 			void loadImpl();
 
-			void parseDefinition(utils::StructuredData const& data);
+			void parseDefinition(mpp::data::StructuredData const& data);
 
 		public:
 
 			FileStringStream(ResourceManager* resourceMgr, std::string const& filepath);
 
-			FileStringStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data);
+			FileStringStream(ResourceManager* resourceMgr, std::string const& filepath, mpp::data::StructuredData const& data);
 		};
 
 	}

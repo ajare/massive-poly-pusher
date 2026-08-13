@@ -3,7 +3,7 @@
 #include <string>
 #include <memory>
 
-#include "utils/StructuredData.h"
+#include "mpp/data/StructuredData.h"
 
 #include "Config.h"
 
@@ -16,7 +16,7 @@ namespace mpp
 		{
 		protected:
 
-			utils::StructuredData mData;
+			mpp::data::StructuredData mData;
 
 		public:
 
@@ -24,7 +24,7 @@ namespace mpp
 
 			virtual void loadFromFile(std::string const& filepath) = 0;
 
-			utils::StructuredData const& getData() const;
+			mpp::data::StructuredData const& getData() const;
 		};
 
 		typedef std::shared_ptr<Serializer> SerializerPtr;

@@ -2,6 +2,7 @@
 #include "utils/XmlReader.h"
 
 #include "mpp/resource-parsers/XmlSerializer.h"
+#include "StructuredDataAdapter.h"
 
 namespace mpp
 {
@@ -18,7 +19,7 @@ namespace mpp
 		{
 			// Open file and read in data
 			auto reader = utils::XmlReader::fromFile(filepath);
-			mData = reader->readTree();
+			mData = detail::importStructuredData(reader->readTree());
 
 			delete reader;
 		}

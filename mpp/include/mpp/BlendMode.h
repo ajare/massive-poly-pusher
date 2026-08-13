@@ -1,22 +1,24 @@
 #pragma once
 
-#include <GL/gl.h>
+#include <cstdint>
 
 namespace mpp
 {
 
-	enum class BlendMode
+	// Values intentionally match the rendering backend, but the public API does
+	// not require clients to include that backend's headers.
+	enum class BlendMode : std::uint32_t
 	{
-		Zero = GL_ZERO,
-		One = GL_ONE,
-		SrcColour = GL_SRC_COLOR,
-		OneMinusSrcColour = GL_ONE_MINUS_SRC_COLOR,
-		DstColour = GL_DST_COLOR,
-		OneMinusDstColour = GL_ONE_MINUS_DST_COLOR,
-		SrcAlpha = GL_SRC_ALPHA,
-		OneMinusSrcAlpha = GL_ONE_MINUS_SRC_ALPHA,
-		DstAlpha = GL_DST_ALPHA,
-		OneMinusDstAlpha = GL_ONE_MINUS_DST_ALPHA
+		Zero = 0,
+		One = 1,
+		SrcColour = 0x0300,
+		OneMinusSrcColour = 0x0301,
+		SrcAlpha = 0x0302,
+		OneMinusSrcAlpha = 0x0303,
+		DstAlpha = 0x0304,
+		OneMinusDstAlpha = 0x0305,
+		DstColour = 0x0306,
+		OneMinusDstColour = 0x0307
 	};
 
 }

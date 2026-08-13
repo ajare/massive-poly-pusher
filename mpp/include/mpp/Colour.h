@@ -1,7 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <format>
-#include "utils/StringUtils.h"
+#include <string>
 
 #include "mpp/Config.h"
 

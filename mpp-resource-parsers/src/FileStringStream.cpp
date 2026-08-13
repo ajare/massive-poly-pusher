@@ -16,13 +16,13 @@ namespace mpp
 		{
 		}
 
-		FileStringStream::FileStringStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data)
+		FileStringStream::FileStringStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data)
 			: StringStream(resourceMgr)
 			, FileStream(filepath, data)
 		{
 		}
 
-		void FileStringStream::parseDefinition(utils::StructuredData const& data)
+		void FileStringStream::parseDefinition(mpp::data::StructuredData const& data)
 		{
 			string value, file;
 

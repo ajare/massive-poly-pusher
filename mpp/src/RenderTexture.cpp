@@ -5,6 +5,8 @@
 
 #include "mpp/Config.h"
 #include "mpp/ResourceManager.h"
+#include <GL/glew.h>
+
 #include "mpp/RenderTexture.h"
 #include "mpp/RenderTextureStream.h"
 #include "mpp/MppException.h"

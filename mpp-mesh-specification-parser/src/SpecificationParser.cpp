@@ -3,6 +3,7 @@
 #include <stack>
 
 #include "utils/StringUtils.h"
+#include "utils/XmlReader.h"
 
 #include "mpp/mesh-specification-parser/SpecificationParser.h"
 

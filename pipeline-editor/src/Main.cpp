@@ -32,6 +32,7 @@
 #include "ProcessFlowModel.h"
 #include "ProcessFlowLayout.h"
 #include "ProcessFlowView.h"
+#include "mpp/data/StructuredData.h"
 #include "mpp/BufferRenderer.h"
 #include "mpp/Camera.h"
 #include "mpp/Colour.h"
@@ -460,16 +461,16 @@ namespace
 		CloseHandle(process.hProcess);
 	}
 
-	utils::StructuredData meshSpecification()
+	mpp::data::StructuredData meshSpecification()
 	{
-		utils::StructuredData mesh("MeshSpecification");
+		mpp::data::StructuredData mesh("MeshSpecification");
 		mesh.addEntry("primitive", "triangles");
 		mesh.addEntry("indexed", "true");
 		mesh.addEntry("storage", "static");
-		utils::StructuredData buffer("Buffer");
+		mpp::data::StructuredData buffer("Buffer");
 		auto channel = [&](char const* data, bool normalised = false)
 		{
-			utils::StructuredData value("Channel");
+			mpp::data::StructuredData value("Channel");
 			value.addEntry("data", data);
 			value.addEntry("type", "float32");
 			if (normalised)
@@ -525,10 +526,10 @@ namespace
 		value.kind = kind;
 		if (kind == PbrPipelineResourceKind::PbrMaterial)
 		{
-			value.definition = utils::StructuredData("PbrMaterial");
+			value.definition = mpp::data::StructuredData("PbrMaterial");
 			value.definition.addEntry("name", name);
 			value.definition.addEntry("MeshSpecification", meshSpecification());
-			utils::StructuredData surface("Surface");
+			mpp::data::StructuredData surface("Surface");
 			surface.addEntry("baseColourFactor", "1 1 1 1");
 			surface.addEntry("metallicFactor", "0");
 			surface.addEntry("roughnessFactor", "1");
@@ -542,7 +543,7 @@ namespace
 		}
 		else if (kind == PbrPipelineResourceKind::Program)
 		{
-			value.definition = utils::StructuredData("Program");
+			value.definition = mpp::data::StructuredData("Program");
 			value.definition.addEntry("name", name);
 			value.definition.addEntry("positionType", "3D");
 			value.definition.addEntry("textures", "0");
@@ -550,7 +551,7 @@ namespace
 		}
 		else if (kind == PbrPipelineResourceKind::Texture)
 		{
-			value.definition = utils::StructuredData("Texture");
+			value.definition = mpp::data::StructuredData("Texture");
 			value.definition.addEntry("name", name);
 			value.definition.addEntry("target", "2D");
 			value.definition.addEntry("filename", "shared/pbr/arrow.png");
@@ -561,7 +562,7 @@ namespace
 		}
 		else
 		{
-			value.definition = utils::StructuredData("Sampler");
+			value.definition = mpp::data::StructuredData("Sampler");
 			value.definition.addEntry("name", name);
 			value.definition.addEntry("minFilter", "LINEAR");
 			value.definition.addEntry("magFilter", "LINEAR");
@@ -584,7 +585,7 @@ namespace
 			if (value == oldName)
 				value = newName;
 		};
-		auto rewriteData = [&](auto&& self, utils::StructuredData& data) -> void
+		auto rewriteData = [&](auto&& self, mpp::data::StructuredData& data) -> void
 		{
 			if (data.isValue())
 			{
@@ -618,7 +619,7 @@ namespace
 			if (value == name)
 				value.clear();
 		};
-		auto clearData = [&](auto&& self, utils::StructuredData& data) -> void
+		auto clearData = [&](auto&& self, mpp::data::StructuredData& data) -> void
 		{
 			if (data.isValue())
 			{
@@ -684,7 +685,7 @@ namespace
 		std::string validationFailure;
 	};
 
-	void collectPayloadPaths(utils::StructuredData const& data,
+	void collectPayloadPaths(mpp::data::StructuredData const& data,
 	                         std::filesystem::path const& owner,
 	                         std::set<std::filesystem::path>& paths)
 	{
@@ -705,7 +706,7 @@ namespace
 		}
 	}
 
-	void rewritePackagePayloadPaths(utils::StructuredData& data,
+	void rewritePackagePayloadPaths(mpp::data::StructuredData& data,
 	                                std::filesystem::path const& owner,
 	                                std::map<std::filesystem::path, std::string>& payloads,
 	                                std::map<std::string, std::filesystem::path>& directoryPayloads,
@@ -812,7 +813,7 @@ namespace
 			renameResource(resource, local);
 			pipeline.localResources.push_back(std::move(resource));
 		}
-		auto rewriteReference = [&](auto&& self, utils::StructuredData& value) -> void
+		auto rewriteReference = [&](auto&& self, mpp::data::StructuredData& value) -> void
 		{
 			if (value.isValue())
 			{
@@ -5118,7 +5119,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					renameResourceReferences(*openDocument, old, value.name);
 					changed = true;
 				}
-				auto text = [&](utils::StructuredData& data, char const* key, char const* label)
+				auto text = [&](mpp::data::StructuredData& data, char const* key, char const* label)
 				{
 					char buffer[512]{};
 					if (data.hasEntry(key))
@@ -5129,7 +5130,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						changed = true;
 					}
 				};
-				auto number = [&](utils::StructuredData& data, char const* key, char const* label, float fallback)
+				auto number = [&](mpp::data::StructuredData& data, char const* key, char const* label, float fallback)
 				{
 					float current = fallback;
 					if (data.hasEntry(key))
@@ -5146,7 +5147,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						changed = true;
 					}
 				};
-				auto choice = [&](utils::StructuredData& data,
+				auto choice = [&](mpp::data::StructuredData& data,
 				                  char const* key,
 				                  char const* label,
 				                  std::vector<std::string> const& choices)
@@ -5221,10 +5222,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 							{
 								auto texture = makeLocalResource(PbrPipelineResourceKind::Texture, value.name + ".Albedo").definition;
 								texture.setEntryValue("colourSpace", "SRGB");
-								utils::StructuredData map("BaseColourMap"); map.addEntry("Resource", texture);
+								mpp::data::StructuredData map("BaseColourMap"); map.addEntry("Resource", texture);
 								surface->setEntryValue("baseColourFactor", "1 1 1 1"); definition.addEntry("BaseColourMap", map); surface = &definition.getEntry("Surface");
 							}
-							else { utils::StructuredData withoutMap(definition.getName()); for (auto const& entry : definition) if (entry.first != "BaseColourMap") withoutMap.addEntry(entry.first, entry.second); definition = std::move(withoutMap); surface = &definition.getEntry("Surface"); }
+							else { mpp::data::StructuredData withoutMap(definition.getName()); for (auto const& entry : definition) if (entry.first != "BaseColourMap") withoutMap.addEntry(entry.first, entry.second); definition = std::move(withoutMap); surface = &definition.getEntry("Surface"); }
 							changed = true;
 						}
 						if (albedoMap)
@@ -5246,14 +5247,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 							if (emissiveMap)
 							{
 								auto texture = makeLocalResource(PbrPipelineResourceKind::Texture, value.name + ".EmissiveMap").definition;
-								utils::StructuredData map("EmissiveMap"); map.addEntry("Resource", texture);
+								mpp::data::StructuredData map("EmissiveMap"); map.addEntry("Resource", texture);
 								surface->setEntryValue("emissiveFactor", "1 1 1");
 								definition.addEntry("EmissiveMap", map);
 								surface = &definition.getEntry("Surface");
 							}
 							else
 							{
-								utils::StructuredData withoutMap(definition.getName());
+								mpp::data::StructuredData withoutMap(definition.getName());
 								for (auto const& entry : definition)
 									if (entry.first != "EmissiveMap") withoutMap.addEntry(entry.first, entry.second);
 								definition = std::move(withoutMap);
@@ -5335,7 +5336,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 									auto texture =
 									    makeLocalResource(PbrPipelineResourceKind::Texture, value.name + "." + map)
 									        .definition;
-									utils::StructuredData block(map);
+									mpp::data::StructuredData block(map);
 									block.addEntry("Resource", texture);
 									if (std::string_view(map) == "MetallicMap" || std::string_view(map) == "RoughnessMap") block.addEntry("channel", "R");
 									if (definition.hasEntry("Surface"))
@@ -5358,7 +5359,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						}
 						else if (ImGui::Button("Add PBR extension texture"))
 						{
-							utils::StructuredData extensions("Extensions"), texture("Texture");
+							mpp::data::StructuredData extensions("Extensions"), texture("Texture");
 							texture.addEntry("name", "PBR_EXT_CUSTOM_MAP");
 							texture.addEntry(
 							    "Resource",
