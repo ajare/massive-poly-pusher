@@ -94,9 +94,35 @@ namespace mpp
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
 		if (!renderSystem) return fail("RenderSystem is null");
-		std::string stage = "cubemap render targets";
+		std::string stage = "reported GPU capabilities";
 		try
 		{
+			{
+				auto const& caps = renderSystem->getCaps();
+				GLint value = 0;
+				GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &value));
+				if (caps.maxVertexTextureUnits != static_cast<uint32_t>(value)) return fail("reported vertex texture-unit limit does not match OpenGL");
+				GL_CHECK(glGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS, &value));
+				if (caps.maxGeometryTextureUnits != static_cast<uint32_t>(value)) return fail("reported geometry texture-unit limit does not match OpenGL");
+				GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &value));
+				if (caps.maxFragmentTextureUnits != static_cast<uint32_t>(value)) return fail("reported fragment texture-unit limit does not match OpenGL");
+				GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &value));
+				if (caps.maxVertexAttributes != static_cast<uint32_t>(value)) return fail("reported vertex-attribute limit does not match OpenGL");
+				if (GLEW_VERSION_4_4 || GLEW_ARB_vertex_attrib_binding)
+				{
+					GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_ATTRIB_STRIDE, &value));
+					if (caps.maxVertexAttributeStride != static_cast<uint32_t>(value)) return fail("reported vertex stride limit does not match OpenGL");
+				}
+				if (GLEW_ARB_texture_filter_anisotropic || GLEW_EXT_texture_filter_anisotropic)
+				{
+					GLfloat anisotropy = 1.0f;
+					GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &anisotropy));
+					if (std::abs(caps.maxAnisotropy - anisotropy) > 0.001f) return fail("reported anisotropy limit does not match OpenGL");
+				}
+				else if (caps.maxAnisotropy != 1.0f) return fail("anisotropy is reported on unsupported hardware");
+			}
+
+			stage = "cubemap render targets";
 			auto cachePath = std::filesystem::temp_directory_path() / "mpp_gpu_ibl_cache_test.exr"; { std::ofstream file(cachePath, std::ios::binary); file.put('\0'); }
 			IblEnvironmentCache cache; IblEnvironmentCacheKey cacheKey; cacheKey.source = cachePath; auto cacheResult = std::make_shared<IblEnvironmentResources>(); cache.store(cacheKey, cacheResult); if (cache.find(cacheKey) != cacheResult) return fail("IBL cache did not return stored source generation"); std::error_code cacheTimeError; auto cacheTime = std::filesystem::last_write_time(cachePath, cacheTimeError); std::filesystem::last_write_time(cachePath, cacheTime + std::chrono::seconds(2), cacheTimeError); if (cacheTimeError || cache.find(cacheKey)) return fail("IBL cache did not invalidate changed source timestamp"); cache.store(cacheKey, cacheResult); cache.invalidate(cachePath); if (cache.find(cacheKey)) return fail("IBL cache explicit invalidation failed"); std::filesystem::remove(cachePath, cacheTimeError);
 			bool rejectedInvalidIblFormat = false; try { renderSystem->createIblCubemap("GpuTestInvalidIblCubemap", 8, 1, GL_RGBA8); } catch (...) { rejectedInvalidIblFormat = true; } if (!rejectedInvalidIblFormat) return fail("IBL cubemap accepted an LDR format");

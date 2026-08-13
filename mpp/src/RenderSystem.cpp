@@ -581,16 +581,21 @@ namespace mpp
 
 		mCaps.maxRecommendedElements = maxElements;
 		mCaps.maxRecommendedVertices = maxVertices;
+		mCaps.maxElements = maxElements;
 
 		// Streaming geometry
 		// ARB_buffer_storage && ARB_map_buffer_range
 		mCaps.streamingGeometry = GLEW_ARB_buffer_storage && GLEW_ARB_map_buffer_range;
 
-		// Filtering
-		float maxAnisotropy;
-		GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAnisotropy));
-
-		mCaps.maxAnisotropy = maxAnisotropy;
+		// Filtering. GL_TEXTURE_MAX_ANISOTROPY is not legal to query or set
+		// unless one of the anisotropic-filtering extensions is present.
+		mCaps.maxAnisotropy = 1.0f;
+		if (GLEW_ARB_texture_filter_anisotropic || GLEW_EXT_texture_filter_anisotropic)
+		{
+			GLfloat maxAnisotropy = 1.0f;
+			GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAnisotropy));
+			mCaps.maxAnisotropy = max(1.0f, maxAnisotropy);
+		}
 
 		// Uniform limits
 		int maxUniforms;
@@ -604,15 +609,30 @@ namespace mpp
 		mCaps.maxFragmentShaderUniforms = (uint32_t)maxUniforms;
 
 		// Texture limits
-		int maxTextureUnits;
+		GLint maxTextureUnits = 0;
 		GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &maxTextureUnits));
-		mCaps.maxVertexTextureUnits = (uint32_t)maxUniforms;
+		mCaps.maxVertexTextureUnits = (uint32_t)max(0, maxTextureUnits);
 
 		GL_CHECK(glGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS, &maxTextureUnits));
-		mCaps.maxGeometryTextureUnits = (uint32_t)maxUniforms;
+		mCaps.maxGeometryTextureUnits = (uint32_t)max(0, maxTextureUnits);
 
 		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits));
-		mCaps.maxFragmentTextureUnits = (uint32_t)maxUniforms;
+		mCaps.maxFragmentTextureUnits = (uint32_t)max(0, maxTextureUnits);
+
+		// Vertex input limits used to reject layouts before glVertexAttrib* emits
+		// a context-dependent error. The stride query was introduced with the
+		// separate vertex-attrib binding API; 2048 is its required minimum and the
+		// legacy glVertexAttribPointer limit on contexts without that query.
+		GLint maxVertexAttributes = 0;
+		GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes));
+		mCaps.maxVertexAttributes = (uint32_t)max(0, maxVertexAttributes);
+		mCaps.maxVertexAttributeStride = 2048;
+		if (GLEW_VERSION_4_4 || GLEW_ARB_vertex_attrib_binding)
+		{
+			GLint maxVertexAttributeStride = 0;
+			GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_ATTRIB_STRIDE, &maxVertexAttributeStride));
+			mCaps.maxVertexAttributeStride = (uint32_t)max(0, maxVertexAttributeStride);
+		}
 
 		// Print caps
 		infoMessage(std::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
@@ -636,6 +656,8 @@ namespace mpp
 		infoMessage(std::format("Max vertex texture units: {}", mCaps.maxVertexTextureUnits));
 		infoMessage(std::format("Max geometry texture units: {}", mCaps.maxGeometryTextureUnits));
 		infoMessage(std::format("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
+		infoMessage(std::format("Max vertex attributes: {}", mCaps.maxVertexAttributes));
+		infoMessage(std::format("Max vertex attribute stride: {} bytes", mCaps.maxVertexAttributeStride));
 	}
 
 	void RenderSystem::addCoreResource(ResourcePtr resource, bool load)
