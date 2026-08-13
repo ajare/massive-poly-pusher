@@ -48,9 +48,10 @@ namespace mpp
 
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		// RSE3 stores one definition per stream. RSER/RSE2 remain strict
-		// compatibility inputs only when they contain one legacy definition.
-		char const* magic{ "RSE3" };
+		// RSE4 adds each texture's colour space to RSE3's layout. RSE3 stores one definition per
+		// stream. RSER/RSE2 remain strict compatibility inputs only when they contain one legacy
+		// definition. All earlier versions still read; only RSE4 is written.
+		char const* magic{ "RSE4" };
 		fp.write(magic, 4);
 
 		// Recursively write streams and their children
@@ -78,12 +79,13 @@ namespace mpp
 		bool const v1 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == 'R';
 		bool const v2 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '2';
 		bool const v3 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '3';
-		if (!v1 && !v2 && !v3)
+		bool const v4 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '4';
+		if (!v1 && !v2 && !v3 && !v4)
 		{
 			THROW_MPP_IO("Could not open stream for reading. Not a valid or supported format.", __LINE__, __FILE__, __func__);
 		}
 
-		mReadVersion = v3 ? 3u : (v2 ? 2u : 1u);
+		mReadVersion = v4 ? 4u : (v3 ? 3u : (v2 ? 2u : 1u));
 		return readStream(fp);
 	}
 
@@ -200,6 +202,9 @@ namespace mpp
 			writeValue(texture.params.minFilter, fp); writeValue(texture.params.magFilter, fp); writeValue(texture.params.wrap, fp);
 			writeValue(texture.params.useMipmaps, fp); writeValue(texture.params.lodBaseLevel, fp); writeValue(texture.params.lodMaxLevel, fp);
 			writeValue(texture.params.lodBias, fp); writeValue(texture.params.maxAnisotropy, fp);
+			// RSE4: colour space. Without it an embedded sRGB base-colour or emissive map reloads
+			// as TextureParams' Linear default and shades incorrectly.
+			writeValue((uint32_t)texture.params.colourSpace, fp);
 		};
 		for (auto const& texture : spec.textures) writeTextureOptions(texture);
 	}
@@ -228,6 +233,9 @@ namespace mpp
 			writeValue(texture.params.minFilter, fp); writeValue(texture.params.magFilter, fp); writeValue(texture.params.wrap, fp);
 			writeValue(texture.params.useMipmaps, fp); writeValue(texture.params.lodBaseLevel, fp); writeValue(texture.params.lodMaxLevel, fp);
 			writeValue(texture.params.lodBias, fp); writeValue(texture.params.maxAnisotropy, fp);
+			// RSE4: colour space. Without it an embedded sRGB base-colour or emissive map reloads
+			// as TextureParams' Linear default and shades incorrectly.
+			writeValue((uint32_t)texture.params.colourSpace, fp);
 		};
 		for (auto const& texture : spec.textures) writeTextureOptions(texture);
 	}
@@ -263,6 +271,8 @@ namespace mpp
 		writeValue(definition.params.minFilter, fp); writeValue(definition.params.magFilter, fp); writeValue(definition.params.wrap, fp);
 		writeValue(definition.params.useMipmaps, fp); writeValue(definition.params.lodBaseLevel, fp); writeValue(definition.params.lodMaxLevel, fp);
 		writeValue(definition.params.lodBias, fp); writeValue(definition.params.maxAnisotropy, fp);
+		// RSE4: see the matching comment in the material texture-options writers.
+		writeValue((uint32_t)definition.params.colourSpace, fp);
 		writeValue(definition.sampler, fp); writeValue(definition.source, fp);
 	}
 
@@ -512,6 +522,8 @@ namespace mpp
 			texture.params.minFilter = readUInt(fp); texture.params.magFilter = readUInt(fp); texture.params.wrap = readUInt(fp);
 			texture.params.useMipmaps = readBool(fp); texture.params.lodBaseLevel = readInt(fp); texture.params.lodMaxLevel = readInt(fp);
 			texture.params.lodBias = readFloat(fp); texture.params.maxAnisotropy = readFloat(fp);
+			// RSE4 onwards. Older streams simply lack the field and keep TextureParams' default.
+			if (mReadVersion >= 4) texture.params.colourSpace = static_cast<TextureColourSpace>(readUInt(fp));
 			return texture;
 		};
 		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) spec.textures.push_back(readTextureOptions());
@@ -542,6 +554,8 @@ namespace mpp
 			texture.params.minFilter = readUInt(fp); texture.params.magFilter = readUInt(fp); texture.params.wrap = readUInt(fp);
 			texture.params.useMipmaps = readBool(fp); texture.params.lodBaseLevel = readInt(fp); texture.params.lodMaxLevel = readInt(fp);
 			texture.params.lodBias = readFloat(fp); texture.params.maxAnisotropy = readFloat(fp);
+			// RSE4 onwards. Older streams simply lack the field and keep TextureParams' default.
+			if (mReadVersion >= 4) texture.params.colourSpace = static_cast<TextureColourSpace>(readUInt(fp));
 			return texture;
 		};
 		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) spec.textures.push_back(readTextureOptions());
@@ -582,6 +596,8 @@ namespace mpp
 		definition.params.minFilter = readUInt(fp); definition.params.magFilter = readUInt(fp); definition.params.wrap = readUInt(fp);
 		definition.params.useMipmaps = readBool(fp); definition.params.lodBaseLevel = readInt(fp); definition.params.lodMaxLevel = readInt(fp);
 		definition.params.lodBias = readFloat(fp); definition.params.maxAnisotropy = readFloat(fp);
+		// RSE4 onwards. Older streams simply lack the field and keep TextureParams' default.
+		if (mReadVersion >= 4) definition.params.colourSpace = static_cast<TextureColourSpace>(readUInt(fp));
 		definition.sampler = readString(fp); definition.source = readString(fp);
 	}
 

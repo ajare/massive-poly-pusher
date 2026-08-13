@@ -49,6 +49,8 @@ Resource selection remains creation-time. Replacing a resource variant requires 
 
 ## Binary format
 
-New resource streams use `RSE3`, which stores one definition and no quality-name/count table. The compatibility reader accepts `RSE2`/`RSER` resources only when they contain exactly one definition. Multi-definition legacy data fails rather than selecting an arbitrary variant. Re-export source assets to adopt RSE3.
+New resource streams use `RSE4`. It matches `RSE3` except that every serialized texture — a `Texture` stream's own definition, and each `BasicMaterial`/`PbrMaterial` texture-options record — additionally stores its `TextureParams::colourSpace`. Without that field an embedded sRGB base-colour or emissive map reloaded as the `Linear` default and shaded incorrectly, since colour space could only ever be recovered from XML.
+
+`RSE3` stores one definition and no quality-name/count table. The compatibility reader accepts `RSE3`, and accepts `RSE2`/`RSER` resources only when they contain exactly one definition. Multi-definition legacy data fails rather than selecting an arbitrary variant. A pre-`RSE4` texture reads back with `TextureParams`' default colour space; re-export source assets to record their real one.
 
 Texture mip levels/LOD, PBR roughness, shader specialization, MSAA, and application graphics presets are unrelated to the removed resource-quality mechanism.
