@@ -181,13 +181,11 @@ Reflect active fragment output locations once after linking and store a bit mask
 
 The unused `ParticleSystem` API only allocated and leaked a CPU array; it had no GPU buffers, transform feedback, update/render path, or cleanup. The public `ParticleSystem` class, its implementation, and the now-orphaned `Particle` structure have been removed rather than preserving a nonfunctional API. A future particle feature should be designed around the render graph and an explicit compute or transform-feedback backend.
 
-#### Clip rectangle
+#### Clip rectangle — implemented
 
-`ClipRectangle::intersect()` always throws:
+**Status:** Completed on `fix/capability-reporting`.
 
-- `mpp/src/ClipRectangle.cpp:39-42`
-
-Implement normalized half-open rectangle intersection, define behavior for negative dimensions, and test disjoint/touching/contained/overflow-adjacent cases.
+`ClipRectangle::intersect()` now computes normalized half-open intersections. Negative dimensions are normalized, disjoint and edge-touching rectangles return an empty rectangle, endpoint arithmetic uses 64-bit intermediates, and unrepresentable dimensions saturate rather than overflowing into invalid negative scissor sizes. Regression coverage includes contained, partial, disjoint, touching, negative-dimension, and `INT_MAX`-adjacent cases.
 
 #### Generic post effects
 
@@ -285,7 +283,7 @@ The current validation documentation explicitly notes several of these asset gap
 2. ✅ Fix sort-ID table removal and cache erasure.
 3. ✅ Initialize/reset `Program` reflection state and make loading transactional.
 4. ✅ Replace the mesh layout key and add collision tests.
-5. Implement `ClipRectangle::intersect()`; the unused particle API has been removed.
+5. ✅ Implement `ClipRectangle::intersect()` and remove the unused particle API.
 
 ### Performance pass
 
