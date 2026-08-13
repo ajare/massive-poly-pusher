@@ -122,6 +122,71 @@ namespace mpp
 				else if (caps.maxAnisotropy != 1.0f) return fail("anisotropy is reported on unsupported hardware");
 			}
 
+			stage = "resource sort-ID stability";
+			{
+				auto* resources = renderSystem->getResourceManager();
+				auto declareTexture = [&](std::string const& name)
+				{
+					return resources->declareResource(name, std::make_shared<ProgrammaticTextureStream>(resources)).first;
+				};
+				auto textureA = declareTexture("GpuTestSort.TextureA");
+				auto textureB = declareTexture("GpuTestSort.TextureB");
+				auto textureC = declareTexture("GpuTestSort.TextureC");
+				auto textureAId = static_cast<Texture*>(textureA.get())->getSortId();
+				auto textureBId = static_cast<Texture*>(textureB.get())->getSortId();
+				auto textureCId = static_cast<Texture*>(textureC.get())->getSortId();
+				resources->deleteResource(textureB->getName());
+				bool removedTextureRejected = false, outOfRangeTextureRejected = false;
+				try { resources->getTextureBySortId(textureBId); } catch (...) { removedTextureRejected = true; }
+				try { resources->getTextureBySortId(UINT32_MAX); } catch (...) { outOfRangeTextureRejected = true; }
+				if (!removedTextureRejected || !outOfRangeTextureRejected || resources->getTextureBySortId(textureAId) != textureA || resources->getTextureBySortId(textureCId) != textureC)
+					return fail("removing a texture shifted or retained its sort-ID slot");
+				auto textureD = declareTexture("GpuTestSort.TextureD");
+				auto textureDId = static_cast<Texture*>(textureD.get())->getSortId();
+				if (textureDId <= textureCId || resources->getTextureBySortId(textureDId) != textureD)
+					return fail("a removed texture sort ID was unsafely reused");
+				resources->deleteResource(textureA->getName());
+				resources->deleteResource(textureC->getName());
+				resources->deleteResource(textureD->getName());
+
+				auto makeProgramStream = [&](std::string const& value)
+				{
+					mesh::MeshSpecification spec;
+					auto* layout = spec.createVertexBufferAttributeLayout(false);
+					layout->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+					layout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+					auto parser = std::make_shared<program::Parser>();
+					parser->setMeshSpecification(spec);
+					parser->setVertexSource(VertexShaderFullscreenTemplate);
+					parser->setFragmentSource("@@Version\nvoid main() { @Out(vec4 COLOUR) = vec4(" + value + ", 0.0, 0.0, 1.0); }");
+					auto stream = std::make_shared<ProgrammaticProgramStream>(resources);
+					stream->setParser(parser);
+					return stream;
+				};
+				auto programA = resources->declareResource("GpuTestSort.ProgramA", makeProgramStream("0.1")).first;
+				auto programB = resources->declareResource("GpuTestSort.ProgramB", makeProgramStream("0.2")).first;
+				auto programC = resources->declareResource("GpuTestSort.ProgramC", makeProgramStream("0.3")).first;
+				auto programAId = static_cast<Program*>(programA.get())->getSortId();
+				auto programBId = static_cast<Program*>(programB.get())->getSortId();
+				auto programCId = static_cast<Program*>(programC.get())->getSortId();
+				resources->deleteResource(programB->getName());
+				bool removedProgramRejected = false;
+				try { resources->getProgramBySortId(programBId); } catch (...) { removedProgramRejected = true; }
+				if (!removedProgramRejected || resources->getProgramBySortId(programAId) != programA || resources->getProgramBySortId(programCId) != programC)
+					return fail("removing a program shifted or retained its sort-ID slot");
+				auto alias = resources->declareResource("GpuTestSort.ProgramAlias", makeProgramStream("0.3"));
+				if (alias.second || alias.first != programC) return fail("identical program source did not use the program cache");
+				resources->deleteResource("GpuTestSort.ProgramAlias");
+				if (resources->getProgramBySortId(programCId) != programC) return fail("removing a program alias removed its cached owner");
+				resources->deleteResource(programA->getName());
+				resources->deleteResource(programC->getName());
+				auto replacement = resources->declareResource("GpuTestSort.ProgramReplacement", makeProgramStream("0.3")).first;
+				auto replacementId = static_cast<Program*>(replacement.get())->getSortId();
+				if (replacement == programC || replacementId <= programCId || resources->getProgramBySortId(replacementId) != replacement)
+					return fail("removed program cache entry or sort ID was reused unsafely");
+				resources->deleteResource(replacement->getName());
+			}
+
 			stage = "cubemap render targets";
 			auto cachePath = std::filesystem::temp_directory_path() / "mpp_gpu_ibl_cache_test.exr"; { std::ofstream file(cachePath, std::ios::binary); file.put('\0'); }
 			IblEnvironmentCache cache; IblEnvironmentCacheKey cacheKey; cacheKey.source = cachePath; auto cacheResult = std::make_shared<IblEnvironmentResources>(); cache.store(cacheKey, cacheResult); if (cache.find(cacheKey) != cacheResult) return fail("IBL cache did not return stored source generation"); std::error_code cacheTimeError; auto cacheTime = std::filesystem::last_write_time(cachePath, cacheTimeError); std::filesystem::last_write_time(cachePath, cacheTime + std::chrono::seconds(2), cacheTimeError); if (cacheTimeError || cache.find(cacheKey)) return fail("IBL cache did not invalidate changed source timestamp"); cache.store(cacheKey, cacheResult); cache.invalidate(cachePath); if (cache.find(cacheKey)) return fail("IBL cache explicit invalidation failed"); std::filesystem::remove(cachePath, cacheTimeError);
