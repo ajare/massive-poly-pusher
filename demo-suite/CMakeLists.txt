@@ -38,6 +38,7 @@ mpp_copy_runtime(DemoSuite
     SDL3-shared
     glew
     assimp
+    ${MPP_DRACO_RUNTIME}
     Utils
     MassivePolyPusher
     MppMesh
