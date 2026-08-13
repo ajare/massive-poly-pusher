@@ -40,9 +40,12 @@ namespace mpp
 
 		RenderSystem* mwRenderSystem;
 
-		static uint32_t msSortableTextureId;
+		// Sort IDs are local to the RenderSystem/ResourceManager which resolves
+		// them. Slots are never shifted or reused, so queued render keys remain
+		// stable when an unrelated resource is removed.
+		uint32_t mNextSortableTextureId{ 1 };
 
-		static uint32_t msSortableProgramId;
+		uint32_t mNextSortableProgramId{ 1 };
 
 		std::vector<ResourcePtr> mSortableTextures;
 

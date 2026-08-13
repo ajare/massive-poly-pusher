@@ -29,9 +29,6 @@ using namespace std;
 namespace mpp
 {
 
-	uint32_t ResourceManager::msSortableTextureId = 1;
-	uint32_t ResourceManager::msSortableProgramId = 1;
-
 	/*
 	 * Constructor.
 	 *
@@ -39,19 +36,10 @@ namespace mpp
 	ResourceManager::ResourceManager(RenderSystem* renderSystem, Logger* logger)
 		: ResourceWrangler("ResourceManager")
 		, mwRenderSystem(renderSystem)
+		, mSortableTextures(1) // Sort ID zero means "no resource".
+		, mSortablePrograms(1)
 		, mLogger(logger)
 	{
-		// Pad sortable vectors
-		for (uint32_t i = 0; i < msSortableTextureId; ++i)
-		{
-			mSortableTextures.push_back(ResourcePtr());
-		}
-
-		for (uint32_t i = 0; i < msSortableProgramId; ++i)
-		{
-			mSortablePrograms.push_back(ResourcePtr());
-		}
-
 		// Add factories
 		mResourceFactories["Program"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
@@ -247,7 +235,7 @@ namespace mpp
 		{
 			// Set sort id
 			uint64_t maxBits = min<uint64_t>(MPP_RENDER_SORT_TEXTURE0_BITS_SIZE, MPP_RENDER_SORT_TEXTURE1_BITS_SIZE);
-			if (msSortableTextureId == (uint32_t)(1 << maxBits))
+			if (mNextSortableTextureId >= (uint32_t)(1 << maxBits))
 			{
 				string errMsg = std::format("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
@@ -255,13 +243,13 @@ namespace mpp
 
 			Texture* t = static_cast<Texture*>(resource.get());
 
-			t->setSortId(msSortableTextureId++);
+			t->setSortId(mNextSortableTextureId++);
 			mSortableTextures.push_back(resource);
 		}
 		else if (type == "Program")
 		{
 			// Caching
-			if (msSortableProgramId == (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
+			if (mNextSortableProgramId >= (1 << MPP_RENDER_SORT_PROGRAM_BITS_SIZE))
 			{
 				string errMsg = std::format("Cannot create resource '{}'.  Limit reached!", name);
 				THROW_MPP(errMsg, __LINE__, __FILE__, __func__);
@@ -269,7 +257,7 @@ namespace mpp
 
 			Program* p = static_cast<Program*>(resource.get());
 
-			p->setSortId(msSortableProgramId++);
+			p->setSortId(mNextSortableProgramId++);
 			mSortablePrograms.push_back(resource);
 
 			// Add to cache
@@ -292,20 +280,27 @@ namespace mpp
 		auto type = resource->getType();
 		if (type == "Texture" || type == "RenderTexture")
 		{
-			mSortableTextures.erase(remove(mSortableTextures.begin(), mSortableTextures.end(), resource), mSortableTextures.end());
+			auto const sortId = static_cast<Texture*>(resource.get())->getSortId();
+			if (sortId < mSortableTextures.size() && mSortableTextures[sortId] == resource)
+			{
+				mSortableTextures[sortId].reset();
+			}
 		}
 		if (type == "Program")
 		{
-			mSortablePrograms.erase(remove(mSortablePrograms.begin(), mSortablePrograms.end(), resource), mSortablePrograms.end());
-
-			// Remove from program cache: this is a bit awkward
-			auto it = find_if(mProgramCache.begin(), mProgramCache.end(), [resource](auto const& kvp)
+			auto const sortId = static_cast<Program*>(resource.get())->getSortId();
+			if (sortId < mSortablePrograms.size() && mSortablePrograms[sortId] == resource)
 			{
-				auto const&[key, value] = kvp;
-				return value == resource;
-			});
+				mSortablePrograms[sortId].reset();
+			}
 
-			mProgramCache.erase(it);
+			// A cache entry may already have been replaced or removed. Erase only
+			// entries which still refer to this resource; erase(end()) is undefined.
+			for (auto it = mProgramCache.begin(); it != mProgramCache.end();)
+			{
+				if (it->second == resource) it = mProgramCache.erase(it);
+				else ++it;
+			}
 		}
 	}
 
@@ -780,6 +775,10 @@ namespace mpp
 	 */
 	ResourcePtr ResourceManager::getTextureBySortId(uint32_t id)
 	{
+		if (id == 0 || id >= mSortableTextures.size() || !mSortableTextures[id])
+		{
+			THROW_MPP(std::format("Texture sort ID {} is invalid or refers to a removed resource.", id), __LINE__, __FILE__, __func__);
+		}
 		return mSortableTextures[id];
 	}
 
@@ -789,6 +788,10 @@ namespace mpp
 	 */
 	ResourcePtr ResourceManager::getProgramBySortId(uint32_t id)
 	{
+		if (id == 0 || id >= mSortablePrograms.size() || !mSortablePrograms[id])
+		{
+			THROW_MPP(std::format("Program sort ID {} is invalid or refers to a removed resource.", id), __LINE__, __FILE__, __func__);
+		}
 		return mSortablePrograms[id];
 	}
 

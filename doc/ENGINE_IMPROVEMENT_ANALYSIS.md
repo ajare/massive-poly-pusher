@@ -27,25 +27,27 @@ Consequently `Caps::maxFragmentTextureUnits` could report thousands rather than 
 
 ---
 
-### 2. Preserve resource sort-ID stability — critical, low/medium effort
+### 2. Preserve resource sort-ID stability — implemented
 
-Resources receive permanent sort IDs, and render commands later resolve those IDs through vectors. Removal currently erases vector elements:
+**Status:** Completed on `fix/capability-reporting`.
+
+Resources receive permanent sort IDs, and render commands later resolve those IDs through vectors. Removal previously erased vector elements:
 
 - Assignment: `mpp/src/ResourceManager.cpp:250-273`
 - Erasure: `mpp/src/ResourceManager.cpp:290-300`
 - Unchecked lookup: `mpp/src/ResourceManager.cpp:781-793`
 - Draw-time use: `mpp/src/RenderSystem.cpp:3888`
 
-Erasing an element shifts every subsequent vector entry while their stored IDs remain unchanged. Existing render commands can consequently select the wrong texture/program or index beyond the vector.
+Erasing an element shifted every subsequent vector entry while their stored IDs remained unchanged. Existing render commands could consequently select the wrong texture/program or index beyond the vector.
 
-**Change**
+**Implemented changes**
 
-- Keep ID-indexed vectors sparse: replace removed slots with `nullptr`; never erase and shift.
-- Bounds-check every sort-ID lookup.
-- Prefer generation-tagged handles if IDs are reusable.
-- Move static counters into each manager/context or make ownership explicitly process-global and synchronized.
-
-There is a related cache hazard at `ResourceManager.cpp:302-308`: `erase(it)` is called without checking `it != end()`. Duplicate-source cache replacement can make that assumption false.
+- Keep ID-indexed vectors sparse and clear removed slots without shifting them.
+- Reject zero, out-of-range, and removed sort IDs with actionable exceptions.
+- Keep IDs monotonic and non-reusable for the manager lifetime.
+- Scope sort-ID counters to each `ResourceManager` instead of mutable process-global statics.
+- Remove program-cache entries with checked iterator-safe traversal instead of risking `erase(end())`.
+- Add GPU-context regression coverage for texture/program removal, stable later IDs, non-reuse, bounds checks, and cached program aliases.
 
 ---
 
@@ -284,7 +286,7 @@ The current validation documentation explicitly notes several of these asset gap
 ### Immediate hardening
 
 1. ✅ Fix texture-unit capability assignments and related capability validation.
-2. Fix sort-ID table removal and cache erasure.
+2. ✅ Fix sort-ID table removal and cache erasure.
 3. Initialize/reset `Program` reflection state.
 4. Replace the mesh layout key and add collision tests.
 5. Implement `ClipRectangle::intersect()` and remove the particle leak.
