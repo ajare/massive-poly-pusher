@@ -4,6 +4,7 @@
 #include <Windows.h>
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -84,7 +85,11 @@ namespace mpp
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MIN_LOD, mParams.lodMinLevel));
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_LOD, mParams.lodMaxLevel));
 		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
-		GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+		auto const maxAnisotropy = getRenderSystem()->getCaps().maxAnisotropy;
+		if (maxAnisotropy > 1.0f)
+		{
+			GL_CHECK(glSamplerParameterf(samplerId, GL_TEXTURE_MAX_ANISOTROPY, std::clamp(mParams.maxAnisotropy, 1.0f, maxAnisotropy)));
+		}
 
 		setId(samplerId);
 	}

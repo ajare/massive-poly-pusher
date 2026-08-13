@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <format>
 #include <exception>
 
@@ -212,7 +213,11 @@ namespace mpp
 				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_S, mParams.wrap));
 				GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_T, mParams.wrap));
 				if(mTarget == GL_TEXTURE_CUBE_MAP) GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_R, mParams.wrap));
-				GL_CHECK(glTexParameterf(textureTarget, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+				auto const maxAnisotropy = getRenderSystem()->getCaps().maxAnisotropy;
+				if (maxAnisotropy > 1.0f)
+				{
+					GL_CHECK(glTexParameterf(textureTarget, GL_TEXTURE_MAX_ANISOTROPY, clamp(mParams.maxAnisotropy, 1.0f, maxAnisotropy)));
+				}
 				if(mTarget == GL_TEXTURE_CUBE_MAP){GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_BASE_LEVEL, 0));GL_CHECK(glTexParameteri(textureTarget, GL_TEXTURE_MAX_LEVEL, (GLint)mMipLevels - 1));}
 			}
 			if (mParams.useMipmaps)

@@ -28,6 +28,15 @@ namespace mpp
 		, mStatic(staticData)
 		, mUseBufferDataMethod(true)
 	{
+		if (!mwRenderSystem)
+		{
+			THROW_MPP("VertexBuffer requires a RenderSystem.", __LINE__, __FILE__, __func__);
+		}
+		auto const maxStride = mwRenderSystem->getCaps().maxVertexAttributeStride;
+		if (maxStride != 0 && vertexStride > maxStride)
+		{
+			THROW_MPP("Vertex buffer stride " + to_string(vertexStride) + " exceeds the GPU maximum of " + to_string(maxStride) + " bytes.", __LINE__, __FILE__, __func__);
+		}
 		mData.reserve(vertexCount * vertexStride);
 		int8_t const* dataPtr = data.get();
 
@@ -54,6 +63,16 @@ namespace mpp
 	 */
 	void VertexBuffer::setAttribute(int id, Vertex::DataType dataType, size_t componentSize, int offset, bool normalise)
 	{
+		auto const maxAttributes = mwRenderSystem->getCaps().maxVertexAttributes;
+		if (id < 0 || (maxAttributes != 0 && static_cast<uint32_t>(id) >= maxAttributes))
+		{
+			THROW_MPP("Vertex attribute location " + to_string(id) + " exceeds the GPU-supported range.", __LINE__, __FILE__, __func__);
+		}
+		if (offset < 0)
+		{
+			THROW_MPP("Vertex attribute offset cannot be negative.", __LINE__, __FILE__, __func__);
+		}
+
 		Attribute attr;
 		
 		attr.id = id;
@@ -79,6 +98,10 @@ namespace mpp
 		attr.sizeInBytes = componentSize * Vertex::getDataTypeSize(dataType);
 		attr.offsetInBytes = (size_t)offset;
 		attr.normalise = normalise;
+		if (attr.offsetInBytes > mVertexStride || attr.sizeInBytes > mVertexStride - attr.offsetInBytes)
+		{
+			THROW_MPP("Vertex attribute extends beyond the vertex stride.", __LINE__, __FILE__, __func__);
+		}
 
 		mAttributes.push_back(attr);
 	}

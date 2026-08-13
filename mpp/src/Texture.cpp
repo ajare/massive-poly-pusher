@@ -348,7 +348,11 @@ namespace mpp
 				GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_LOD_BIAS, mParams.lodBias));
 			}
 
-			GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_ANISOTROPY, mParams.maxAnisotropy));
+			auto const maxAnisotropy = getRenderSystem()->getCaps().maxAnisotropy;
+			if (maxAnisotropy > 1.0f)
+			{
+				GL_CHECK(glTexParameterf(mTarget, GL_TEXTURE_MAX_ANISOTROPY, clamp(mParams.maxAnisotropy, 1.0f, maxAnisotropy)));
+			}
 		}
 
 		GL_CHECK(glBindTexture(mTarget, 0));
