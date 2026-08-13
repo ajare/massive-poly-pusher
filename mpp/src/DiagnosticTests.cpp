@@ -1,3 +1,6 @@
+#include <limits>
+
+#include "mpp/ClipRectangle.h"
 #include "mpp/Diagnostic.h"
 #include "mpp/DiagnosticTests.h"
 
@@ -12,6 +15,18 @@ namespace mpp
 			if (failure) *failure = message;
 			return false;
 		};
+		auto expectRectangle = [&](ClipRectangle const& actual, ClipRectangle const& expected, char const* message)
+		{
+			return actual.x == expected.x && actual.y == expected.y && actual.width == expected.width && actual.height == expected.height
+				? true : fail(message);
+		};
+		if (!expectRectangle(ClipRectangle(0, 0, 10, 10).intersect({ 2, 3, 4, 5 }), { 2, 3, 4, 5 }, "contained clip rectangle intersection is incorrect")) return false;
+		if (!expectRectangle(ClipRectangle(0, 0, 10, 10).intersect({ 5, -5, 10, 10 }), { 5, 0, 5, 5 }, "partial clip rectangle intersection is incorrect")) return false;
+		if (!expectRectangle(ClipRectangle(0, 0, 10, 10).intersect({ 20, 20, 5, 5 }), { 20, 20, 0, 0 }, "disjoint clip rectangles did not produce an empty rectangle")) return false;
+		if (!expectRectangle(ClipRectangle(0, 0, 10, 10).intersect({ 10, 2, 5, 5 }), { 10, 2, 0, 0 }, "edge-touching clip rectangles did not produce an empty rectangle")) return false;
+		if (!expectRectangle(ClipRectangle(10, 10, -8, -6).intersect({ 0, 0, 5, 5 }), { 2, 4, 3, 1 }, "negative clip rectangle dimensions were not normalized")) return false;
+		auto const maximum = numeric_limits<int>::max();
+		if (!expectRectangle(ClipRectangle(maximum - 5, 0, 10, 10).intersect({ maximum - 3, 2, 10, 4 }), { maximum - 3, 2, 8, 4 }, "clip rectangle endpoint arithmetic overflowed")) return false;
 
 		DiagnosticBag bag;
 		if (!bag.empty() || bag.hasErrors()) return fail("new diagnostic bag is not empty");
