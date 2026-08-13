@@ -69,7 +69,23 @@ set(ASSIMP_INSTALL OFF CACHE BOOL "Do not install Assimp" FORCE)
 set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "Do not install Assimp PDBs" FORCE)
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Do not promote dependency warnings to errors" FORCE)
 set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "Build Assimp's bundled zlib" FORCE)
+# Draco decompression for KHR_draco_mesh_compression glTF assets. Assimp leaves
+# this off by default, which makes Draco-compressed glTF files load without
+# geometry. The bundled Draco predates the warnings the project build enables,
+# so it is compiled with its own relaxed flags (see ext/assimp/CMakeLists.txt).
+set(ASSIMP_BUILD_DRACO ON CACHE BOOL "Build Draco for compressed glTF meshes" FORCE)
 add_subdirectory(ext/assimp EXCLUDE_FROM_ALL)
+
+# Draco follows the shared-library convention used by the rest of the
+# dependencies, so its runtime has to travel with the executables that link
+# Assimp. The target name differs by platform.
+if(TARGET draco)
+    set(MPP_DRACO_RUNTIME draco)
+elseif(TARGET draco_shared)
+    set(MPP_DRACO_RUNTIME draco_shared)
+else()
+    set(MPP_DRACO_RUNTIME "")
+endif()
 
 add_library(mpp_vendor_headers INTERFACE)
 target_include_directories(mpp_vendor_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
@@ -382,7 +398,7 @@ target_link_libraries(ModelConvert PRIVATE
     MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils assimp::assimp)
 mpp_target_defaults(ModelConvert)
 mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
-mpp_copy_runtime(ModelConvert assimp glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
+mpp_copy_runtime(ModelConvert assimp ${MPP_DRACO_RUNTIME} glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 
 if(WIN32)
     add_executable(PipelineEditor WIN32
