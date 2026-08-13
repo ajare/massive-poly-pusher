@@ -1,4 +1,6 @@
 #include <cassert>
+#include <iomanip>
+#include <sstream>
 
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -304,173 +306,78 @@ namespace mpp
 		 */
 		string MeshSpecification::getDescriptor(string const& prefix) const
 		{
-			// Generate name
-			auto specHash = getHashCode();
-			string specName = prefix;
-
-			switch (specHash & 3)
+			string descriptor = prefix;
+			switch (mPrimitiveType)
 			{
-			case 1:
-				specName += "points"; break;
-
-			case 2:
-				specName += "lines"; break;
-
-			case 3:
-				specName += "tris"; break;
-
-			default:
-				break;
+			case Primitive::Type::Points: descriptor += "points"; break;
+			case Primitive::Type::Lines: descriptor += "lines"; break;
+			case Primitive::Type::Triangles: descriptor += "tris"; break;
+			default: descriptor += "primitive"; break;
 			}
 
-			int pc = (specHash >> 2) & 7;
-			int nc = (specHash >> 5) & 7;
-			int tc = (specHash >> 8) & 7;
-			int cc = (specHash >> 11) & 7;
-
-			if (pc || nc || tc || cc)
+			// Keep a readable semantic summary for diagnostics, but append the hash
+			// of the complete canonical key so data types, ordering and layout details
+			// no longer collapse onto the same generated name.
+			for (auto const& layout : mVertexBufferAttributeLayouts)
 			{
-				specName += "_";
-			}
-
-			if (pc > 0)
-			{
-				specName += "p" + to_string(pc);
-			}
-			if (nc > 0)
-			{
-				specName += "n" + to_string(nc);
-			}
-			if (tc > 0)
-			{
-				specName += "t" + to_string(tc);
-			}
-			if (cc > 0)
-			{
-				specName += "c" + to_string(cc);
-			}
-
-			return specName;
-		}
-
-		/*
-		 * Gets a hash code.
-		 *
-		 */
-		uint32_t MeshSpecification::getHashCode() const
-		{
-			//TODO
-			// Need to include attrib type information into the hash, as otherwise
-			// vec2 and ivec2 are treated the same
-			// Need: primitive type
-			// For each attrib: component, datatype
-
-			auto primType = getPrimitiveType();
-			int primBits = (int)primType + 1;
-
-			int posBits = 0, normalBits = 0, texBits = 0, colBits = 0, userBits = 0;
-			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
-			{
-				auto const& layout = getVertexBufferAttributeLayout((uint32_t)i);
-				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
+				for (size_t index = 0; index < layout.getNumAttributes(); ++index)
 				{
-					auto const& attrib = layout.getAttribute(j);
-
-					switch (attrib.component)
-					{
-					case Vertex::Component::Position2:
-						posBits = 2;
-
-						break;
-					case Vertex::Component::Position3:
-						posBits = 3;
-						break;
-					case Vertex::Component::Position4:
-						posBits = 4;
-						break;
-					case Vertex::Component::Normal3:
-						normalBits = 3;
-						break;
-					case Vertex::Component::Normal4:
-						normalBits = 4;
-						break;
-					case Vertex::Component::TexCoord2:
-						texBits = 2;
-						break;
-					case Vertex::Component::TexCoord3:
-						texBits = 3;
-						break;
-					case Vertex::Component::TexCoord4:
-						texBits = 4;
-						break;
-					case Vertex::Component::Colour1:
-						colBits = 1;
-						break;
-					case Vertex::Component::Colour3:
-						colBits = 3;
-						break;
-					case Vertex::Component::Colour4:
-						colBits = 4;
-						break;
-					case Vertex::Component::UserDefined1:
-						userBits = 1;
-						break;
-					case Vertex::Component::UserDefined2:
-						userBits = 2;
-						break;
-					case Vertex::Component::UserDefined3:
-						userBits = 3;
-						break;
-					case Vertex::Component::UserDefined4:
-						userBits = 4;
-						break;
-					default:
-						break;
-					}
+					auto const& attribute = layout.getAttribute(index);
+					descriptor += "_" + Vertex::getComponentName(attribute.component);
 				}
 			}
+			ostringstream suffix;
+			suffix << '_' << hex << setw(8) << setfill('0') << getHashCode();
+			return descriptor + suffix.str();
+		}
 
-			// Hash
-			return
-				(primBits << 0) +
-				(posBits << 2) +
-				(normalBits << 5) +
-				(texBits << 8) +
-				(colBits << 11) +
-				(userBits << 14);
+		uint32_t MeshSpecification::getHashCode() const
+		{
+			// FNV-1a is deterministic across standard-library implementations. Cache
+			// identity uses the full canonical string below; this digest is intended
+			// for compact descriptors and hash containers, where equality must still
+			// resolve collisions.
+			uint32_t hash = 2166136261u;
+			for (unsigned char value : getHashString())
+			{
+				hash ^= value;
+				hash *= 16777619u;
+			}
+			return hash;
 		}
 
 		string MeshSpecification::getHashString() const
 		{
-			string hash;
+			// This is a canonical, unambiguous serialization of every field used by
+			// operator==. Delimiters separate numeric fields and identifiers are
+			// length-prefixed, so e.g. [1, 11] cannot collide with [11, 1].
+			ostringstream key;
+			key << "mpp-mesh-v2"
+				<< "|primitive=" << static_cast<uint32_t>(mPrimitiveType)
+				<< "|storage=" << static_cast<uint32_t>(mStorageType)
+				<< "|indexed=" << (mIndexedVertices ? 1 : 0)
+				<< "|layouts=" << mVertexBufferAttributeLayouts.size();
 
-			hash += to_string((uint32_t)mPrimitiveType);
-			hash += to_string((uint32_t)mStorageType);
-			hash += to_string((uint32_t)mIndexedVertices ? 1 : 0);
-
-			for (size_t i = 0; i < getNumVertexBufferAttributeLayouts(); ++i)
+			for (auto const& layout : mVertexBufferAttributeLayouts)
 			{
-				auto const& layout = getVertexBufferAttributeLayout((uint32_t)i);
-
-				hash += to_string((uint32_t)layout.getBaseId());
-				hash += to_string((uint32_t)(layout.isStatic() ? 1 : 0));
-				hash += to_string((uint32_t)layout.getNumAttributes());
-
-				for (size_t j = 0; j < layout.getNumAttributes(); ++j)
+				key << "|layout={base=" << layout.getBaseId()
+					<< ",static=" << (layout.isStatic() ? 1 : 0)
+					<< ",attributes=" << layout.getNumAttributes();
+				for (size_t index = 0; index < layout.getNumAttributes(); ++index)
 				{
-					auto const& attr = layout.getAttribute(j);
-
-					hash += to_string((uint32_t)attr.attributeId);
-					hash += to_string((uint32_t)attr.component);
-					hash += to_string((uint32_t)attr.dataType);
-					hash += to_string((uint32_t)(attr.normalised ? 1 : 0));
-					hash += to_string((uint32_t)attr.offsetInBytes);
-					hash += to_string((uint32_t)attr.paddingBytes);
-					hash += to_string((uint32_t)attr.padToBoundary);
+					auto const& attribute = layout.getAttribute(index);
+					key << "|attribute={id=" << attribute.attributeId
+						<< ",component=" << static_cast<uint32_t>(attribute.component)
+						<< ",type=" << static_cast<uint32_t>(attribute.dataType)
+						<< ",identifier=" << attribute.identifier.size() << ':' << attribute.identifier
+						<< ",normalised=" << (attribute.normalised ? 1 : 0)
+						<< ",offset=" << attribute.offsetInBytes
+						<< ",padding=" << attribute.paddingBytes
+						<< ",boundary=" << attribute.padToBoundary << '}';
 				}
+				key << '}';
 			}
-
-			return hash;
+			return key.str();
 		}
 	}
 }

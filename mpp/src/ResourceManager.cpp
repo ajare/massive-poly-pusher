@@ -626,8 +626,8 @@ namespace mpp
 			specName += "_" + descriptor;
 		}
 
-		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
-		// between attribute type).
+		// The descriptor includes a compact digest; retain a serial suffix so an
+		// unlikely digest collision can never become a resource-name collision.
 		specName += std::format("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;
@@ -698,8 +698,8 @@ namespace mpp
 			specName += "_" + descriptor;
 		}
 
-		// Append number of programs on, as this spec name will not be unique (eg, it does not differentiate
-		// between attribute type).
+		// The descriptor includes a compact digest; retain a serial suffix so an
+		// unlikely digest collision can never become a resource-name collision.
 		specName += std::format("_{}__", ++mProgramIdCounter);
 
 		auto res = declareResource(specName, ResourceStreamPtr(ps)).first;

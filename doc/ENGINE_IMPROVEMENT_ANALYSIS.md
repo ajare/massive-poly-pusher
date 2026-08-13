@@ -75,23 +75,25 @@ Program creation also owned several raw GL names during a multi-step operation. 
 
 ---
 
-### 4. Replace the lossy mesh “hash” used for program selection — high severity, medium effort
+### 4. Replace the lossy mesh “hash” used for program selection — implemented
 
-`MeshSpecification::getHashCode()` explicitly omits data types and most layout details:
+**Status:** Completed on `fix/capability-reporting`.
+
+`MeshSpecification::getHashCode()` previously omitted data types and most layout details:
 
 - `mpp-mesh/src/MeshSpecification.cpp:360-469`
 
-It collapses repeated semantics and treats layouts such as `vec2` and `ivec2` identically. `getDescriptor()` derives generated resource names from it at `MeshSpecification.cpp:305-349`, and those descriptors are used by program creation in `ResourceManager.cpp:604` and `:680`.
+It collapsed repeated semantics and treated layouts such as `vec2` and `ivec2` identically. `getDescriptor()` derived generated resource names from it, and those descriptors are used by program creation in `ResourceManager`.
 
-This can reuse or name a program for an incompatible vertex layout.
+This could reuse or name a program for an incompatible vertex layout.
 
-**Change**
+**Implemented changes**
 
-- Define a canonical layout key containing primitive/storage/indexed state and every ordered attribute field.
-- Hash that key with a normal hash-combine routine.
-- Use the canonical key, or a collision-checked digest, for caches.
-- Keep the current compact descriptor only as a human-readable suffix.
-- Add tests proving differing data types, normalization, offsets, layout grouping, and user attributes produce distinct keys.
+- Define a versioned, unambiguous canonical key containing primitive, storage, indexed state, ordered buffer layouts, and every attribute equality field.
+- Replace the packed semantic bits with deterministic FNV-1a over the canonical key.
+- Use the full canonical key—not its 32-bit digest—in the program cache key, with length-prefixed shader-stage sections.
+- Keep generated descriptors readable while appending the compact digest; retain a serial suffix so digest collisions cannot become resource-name collisions.
+- Add topology-test coverage for data type, normalization, padding/offset effects, identifiers, primitive/storage/indexed state, layout grouping, user attributes, stable copies, hashes, and descriptors.
 
 ---
 
@@ -291,7 +293,7 @@ The current validation documentation explicitly notes several of these asset gap
 1. ✅ Fix texture-unit capability assignments and related capability validation.
 2. ✅ Fix sort-ID table removal and cache erasure.
 3. ✅ Initialize/reset `Program` reflection state and make loading transactional.
-4. Replace the mesh layout key and add collision tests.
+4. ✅ Replace the mesh layout key and add collision tests.
 5. Implement `ClipRectangle::intersect()` and remove the particle leak.
 
 ### Performance pass
