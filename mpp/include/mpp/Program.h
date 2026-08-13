@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #pragma warning(pop)
 
+#include <cstdint>
 #include <map>
 #include <vector>
 
@@ -87,12 +88,17 @@ namespace mpp
 
 		std::string mVertexSource, mFragmentSource;
 
-		uint32_t mVertexShaderId, mFragmentShaderId;
-
 		std::map<std::string, int> mUniformIds;
 		std::map<std::string, uint32_t> mUniformTypes;
 
-		int mViewPosId, mMMatrixId, mMcpMatrixId, mNormalMatrixId, mHalfWindowSizeId, mPointSizeId;
+		int mViewPosId{ -1 };
+		int mMMatrixId{ -1 };
+		int mMcpMatrixId{ -1 };
+		int mNormalMatrixId{ -1 };
+		int mHalfWindowSizeId{ -1 };
+		int mPointSizeId{ -1 };
+		bool mFragmentOutputLocationsKnown{ false };
+		uint64_t mFragmentOutputLocationMask{ 0 };
 
 		std::vector<TextureInfo> mTextures;
 
@@ -111,6 +117,8 @@ namespace mpp
 		std::vector<std::string> splitSourceIntoLines(std::string const& src);
 
 		std::string stripComments(std::string const& src);
+
+		void resetReflectionState();
 
 	protected:
 
