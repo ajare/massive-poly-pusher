@@ -175,20 +175,11 @@ Reflect active fragment output locations once after linking and store a bit mask
 
 ### 8. Complete or quarantine unfinished public features — medium severity
 
-#### Particle system
+#### Particle system — removed
 
-`ParticleSystem::create()` only allocates an array and immediately loses it:
+**Status:** Completed on `fix/capability-reporting`.
 
-- `mpp/src/ParticleSystem.cpp:25-28`
-
-No GPU buffers, transform feedback objects, update path, draw path, destruction, or repeated-create protection exist, despite public members implying ping-pong transform feedback.
-
-Either:
-
-1. Implement transform-feedback ping-pong with RAII buffers, spawn/update/render counts, bounds checks, and cleanup; or
-2. Mark the API experimental and remove it from the normal public surface until usable.
-
-A compute-shader backend could later fit naturally into an extended render graph.
+The unused `ParticleSystem` API only allocated and leaked a CPU array; it had no GPU buffers, transform feedback, update/render path, or cleanup. The public `ParticleSystem` class, its implementation, and the now-orphaned `Particle` structure have been removed rather than preserving a nonfunctional API. A future particle feature should be designed around the render graph and an explicit compute or transform-feedback backend.
 
 #### Clip rectangle
 
@@ -294,7 +285,7 @@ The current validation documentation explicitly notes several of these asset gap
 2. ✅ Fix sort-ID table removal and cache erasure.
 3. ✅ Initialize/reset `Program` reflection state and make loading transactional.
 4. ✅ Replace the mesh layout key and add collision tests.
-5. Implement `ClipRectangle::intersect()` and remove the particle leak.
+5. Implement `ClipRectangle::intersect()`; the unused particle API has been removed.
 
 ### Performance pass
 
