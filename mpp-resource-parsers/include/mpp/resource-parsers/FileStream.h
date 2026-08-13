@@ -16,7 +16,7 @@ namespace mpp
 		{
 			std::string mFilepath;
 
-			mutable utils::StructuredData mData;
+			mutable mpp::data::StructuredData mData;
 
 			typedef std::function<Serializer*()> SerializerFactory;
 
@@ -32,11 +32,11 @@ namespace mpp
 
 			explicit FileStream(std::string const& filepath);
 
-			FileStream(std::string const& filepath, utils::StructuredData const& data);
+			FileStream(std::string const& filepath, mpp::data::StructuredData const& data);
 
 			std::string const& getFilepath() const;
 
-			utils::StructuredData const& getStructuredData() const;
+			mpp::data::StructuredData const& getStructuredData() const;
 		};
 
 	}

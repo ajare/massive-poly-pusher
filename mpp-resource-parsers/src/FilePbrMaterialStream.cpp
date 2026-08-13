@@ -10,6 +10,8 @@
 #include "mpp/PbrMaterialFeatures.h"
 #include "mpp/ProgramStream.h"
 
+#include "utils/StringUtils.h"
+
 #include "mpp/resource-parsers/FilePbrMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/FileTextureStream.h"
@@ -31,7 +33,7 @@ namespace mpp
 		{
 		}
 
-		FilePbrMaterialStream::FilePbrMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
+		FilePbrMaterialStream::FilePbrMaterialStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, bool relativisePaths)
 			: PbrMaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(false)
@@ -48,7 +50,7 @@ namespace mpp
 		{
 		}
 
-		FilePbrMaterialStream::FilePbrMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
+		FilePbrMaterialStream::FilePbrMaterialStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: PbrMaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(true)
@@ -57,7 +59,7 @@ namespace mpp
 		{
 		}
 
-		void FilePbrMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
+		void FilePbrMaterialStream::parseForChildResourceStreams(mpp::data::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
 		{
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -149,7 +151,7 @@ namespace mpp
 				THROW_MPP_RESOURCE_PARSERS(errMsg, __LINE__, __FILE__, __func__);
 			}
 
-			auto specializeChildProgram = [&](utils::StructuredData const& setting)
+			auto specializeChildProgram = [&](mpp::data::StructuredData const& setting)
 			{
 				auto child = getChildren().find("Program");
 				if (child == getChildren().end()) return;
@@ -217,7 +219,7 @@ namespace mpp
 			delete[] fvalues;
 		}
 
-		void FilePbrMaterialStream::parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
+		void FilePbrMaterialStream::parseUniform(mpp::data::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
 		{
 			string name, type, value;
 			for (auto it = data.begin(); it != data.end(); ++it)
@@ -318,7 +320,7 @@ namespace mpp
 			}
 		}
 
-		pair<string, PbrMaterialSpecification> FilePbrMaterialStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		pair<string, PbrMaterialSpecification> FilePbrMaterialStream::parseDefinition(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
 			PbrMaterialSpecification qs;

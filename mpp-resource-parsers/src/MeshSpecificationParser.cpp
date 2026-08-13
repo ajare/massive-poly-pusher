@@ -1,4 +1,5 @@
 #include "utils/StringUtils.h"
+#include "mpp/data/StructuredData.h"
 
 #include "mpp/resource-parsers/MeshSpecificationParser.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
@@ -81,7 +82,7 @@ namespace mpp
 			}
 		}
 
-		void MeshSpecificationParser::parseMeshSpecificationBufferChannel(utils::StructuredData const& data, mesh::VertexBufferAttributeLayout* layout)
+		void MeshSpecificationParser::parseMeshSpecificationBufferChannel(mpp::data::StructuredData const& data, mesh::VertexBufferAttributeLayout* layout)
 		{
 			mesh::Vertex::Component component{ mesh::Vertex::Component::Unused };
 			mesh::Vertex::DataType datatype{ mesh::Vertex::DataType::None };
@@ -121,7 +122,7 @@ namespace mpp
 			layout->createAttribute(component, datatype, normalised);
 		}
 
-		void MeshSpecificationParser::parseMeshSpecificationBuffer(utils::StructuredData const& data, mesh::MeshSpecification& meshSpec)
+		void MeshSpecificationParser::parseMeshSpecificationBuffer(mpp::data::StructuredData const& data, mesh::MeshSpecification& meshSpec)
 		{
 			auto buffer = meshSpec.createVertexBufferAttributeLayout(meshSpec.getStorageType() == mesh::VertexBufferStorageType::Static);
 
@@ -167,7 +168,7 @@ namespace mpp
 			}
 		}
 
-		mesh::MeshSpecification MeshSpecificationParser::parse(utils::StructuredData const& data)
+		mesh::MeshSpecification MeshSpecificationParser::parse(mpp::data::StructuredData const& data)
 		{
 			if (data.getName() != "MeshSpecification")
 			{

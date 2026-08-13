@@ -8,6 +8,7 @@
 
 #include "mpp/resource-parsers/RenderGraphParser.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
+#include "StructuredDataAdapter.h"
 
 using namespace std;
 
@@ -182,7 +183,7 @@ namespace mpp
 				return mask;
 			}
 
-			GraphRasterState parseRasterState(utils::StructuredData const& data, string const& filepath)
+			GraphRasterState parseRasterState(mpp::data::StructuredData const& data, string const& filepath)
 			{
 				GraphRasterState state;
 				auto flag = [&](char const* name, bool& target) { if (data.hasEntry(name)) target = parseBool(data.getEntry(name).getValue()); };
@@ -217,12 +218,12 @@ namespace mpp
 		RenderGraph RenderGraphParser::fromFile(string const& filepath)
 		{
 			auto reader = utils::XmlReader::fromFile(filepath);
-			auto data = reader->readTree();
+			auto data = detail::importStructuredData(reader->readTree());
 			delete reader;
 			return fromData(data, filepath);
 		}
 
-		RenderGraph RenderGraphParser::fromData(utils::StructuredData const& data, string const& filepath)
+		RenderGraph RenderGraphParser::fromData(mpp::data::StructuredData const& data, string const& filepath)
 		{
 			if (data.getName() != "RenderGraph")
 			{

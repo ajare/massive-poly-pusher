@@ -1,6 +1,8 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/String.h"
 
+#include "utils/StringUtils.h"
+
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/MeshSpecificationParser.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
@@ -21,7 +23,7 @@ namespace mpp
 			setup();
 		}
 
-		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, bool relativisePaths)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mMeshSpecRequired(true)
@@ -40,7 +42,7 @@ namespace mpp
 			setup();
 		}
 
-		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
+		FileProgramStream::FileProgramStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: ProgramStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mMeshSpecRequired(false)
@@ -83,7 +85,7 @@ namespace mpp
 			mDataTypes["UINT16"] = mpp::mesh::Vertex::DataType::UnsignedShort;
 		}
 
-		FileProgramStream::Shader FileProgramStream::parseShader(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		FileProgramStream::Shader FileProgramStream::parseShader(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			Shader shader;
 
@@ -120,7 +122,7 @@ namespace mpp
 			return shader;
 		}
 
-		pair<std::string, FileProgramStream::Definition> FileProgramStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths)
+		pair<std::string, FileProgramStream::Definition> FileProgramStream::parseDefinition(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool meshSpecRequired, mesh::MeshSpecification const* mainMeshSpec, bool relativisePaths)
 		{
 			string name;
 

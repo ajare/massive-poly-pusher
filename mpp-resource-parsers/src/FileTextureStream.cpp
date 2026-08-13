@@ -5,6 +5,8 @@
 #include <filesystem>
 
 #include <GL/glew.h>
+
+#include "utils/StringUtils.h"
 #include <GL/gl.h>
 
 #include "utils/FileSystem.h"
@@ -27,7 +29,7 @@ namespace mpp
 			setup();
 		}
 
-		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
+		FileTextureStream::FileTextureStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, bool relativisePaths)
 			: TextureStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mRelativisePaths(relativisePaths)
@@ -174,7 +176,7 @@ namespace mpp
 			}
 		}
 
-		pair<string, FileTextureStream::Definition> FileTextureStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
+		pair<string, FileTextureStream::Definition> FileTextureStream::parseDefinition(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath, bool relativisePaths)
 		{
 			string name;
 			Definition qs;

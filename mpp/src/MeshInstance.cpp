@@ -4,6 +4,8 @@
 #include <algorithm>
 #pragma warning(pop)
 
+#include <GL/glew.h>
+
 #include "mpp/MeshInstance.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"

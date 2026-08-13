@@ -1,11 +1,11 @@
 #pragma once
 
+#include <cstdint>
 #include <map>
+#include <string>
 
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/MaterialInformation.h>
-
-#include "utils/XmlReader.h"
 
 #include "mpp/mesh-specification-parser/Config.h"
 

@@ -16,7 +16,7 @@ namespace mpp
 		{
 		}
 
-		utils::StructuredData const& Serializer::getData() const
+		mpp::data::StructuredData const& Serializer::getData() const
 		{
 			return mData;
 		}

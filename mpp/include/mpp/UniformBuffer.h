@@ -2,11 +2,9 @@
 
 #include "mpp/Config.h"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
-
-#include <GL/glew.h>
-#include <GL/gl.h>
 
 namespace mpp
 {
@@ -14,7 +12,7 @@ namespace mpp
 
 	class _MPPAPI UniformBuffer
 	{
-		GLuint mUBO;
+		std::uint32_t mUBO;
 
 		RenderSystem* mwRenderSystem;
 

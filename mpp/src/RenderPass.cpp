@@ -1,3 +1,5 @@
+#include <GL/glew.h>
+
 #include "mpp/RenderPass.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Material.h"

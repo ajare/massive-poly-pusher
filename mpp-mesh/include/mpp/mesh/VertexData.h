@@ -2,11 +2,6 @@
 
 #include <vector>
 
-#undef min
-#undef max
-
-#include <half/half.hpp>
-
 #include "Config.h"
 #include "Vertex.h"
 #include "MeshSpecification.h"

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "utils/StructuredData.h"
+#include "mpp/data/StructuredData.h"
 #include "mpp/Config.h"
 #include "mpp/Diagnostic.h"
 #include "mpp/RenderGraph.h"
@@ -36,7 +36,7 @@ namespace mpp
 		std::string name;
 		PbrPipelineResourceKind kind{ PbrPipelineResourceKind::PbrMaterial };
 		// Existing concrete resource XML payload. Its root name matches kind.
-		utils::StructuredData definition{ "PbrMaterial" };
+		mpp::data::StructuredData definition{ "PbrMaterial" };
 	};
 
 	struct _MPPAPI PbrPipelineExternalResourceDocument
@@ -60,7 +60,7 @@ namespace mpp
 	struct _MPPAPI PbrPipelineExtensionDocument
 	{
 		std::string nameSpace;
-		utils::StructuredData payload{ "Payload" };
+		mpp::data::StructuredData payload{ "Payload" };
 	};
 
 	struct _MPPAPI PbrPipelineEnvironmentDocument

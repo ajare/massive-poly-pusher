@@ -121,6 +121,12 @@ function(mpp_add_header_filters target)
     endforeach()
 endfunction()
 
+add_custom_target(MppPublicHeaderAudit ALL
+    COMMAND "${CMAKE_COMMAND}"
+        -DMPP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/AuditPublicHeaders.cmake"
+    VERBATIM)
+
 function(mpp_copy_runtime target)
     foreach(runtime IN LISTS ARGN)
         add_custom_command(TARGET ${target} POST_BUILD
@@ -152,6 +158,14 @@ target_include_directories(ImGui PUBLIC
 mpp_target_defaults(ImGui)
 mpp_add_header_filters(ImGui "${CMAKE_CURRENT_SOURCE_DIR}/ext/imgui/include")
 
+add_library(MppData SHARED
+    mpp-data/src/StructuredData.cpp
+)
+target_include_directories(MppData PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-data/include")
+target_compile_definitions(MppData PRIVATE MPP_DATA_DLL_EXPORT)
+mpp_target_defaults(MppData)
+mpp_add_header_filters(MppData "${CMAKE_CURRENT_SOURCE_DIR}/mpp-data/include")
+
 add_library(MppMesh SHARED
     mpp-mesh/src/MaterialInformation.cpp
     mpp-mesh/src/MeshDefinition.cpp
@@ -163,7 +177,7 @@ add_library(MppMesh SHARED
 )
 target_include_directories(MppMesh PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh/include")
 target_compile_definitions(MppMesh PRIVATE MPP_MESH_DLL_EXPORT)
-target_link_libraries(MppMesh PUBLIC mpp_vendor_headers)
+target_link_libraries(MppMesh PRIVATE mpp_vendor_headers)
 mpp_target_defaults(MppMesh)
 mpp_add_header_filters(MppMesh "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh/include")
 
@@ -177,7 +191,9 @@ target_include_directories(MppProgram
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include/mpp/program")
 target_compile_definitions(MppProgram PRIVATE MPP_PROGRAM_DLL_EXPORT)
-target_link_libraries(MppProgram PUBLIC MppMesh Utils mpp_vendor_headers)
+target_link_libraries(MppProgram
+    PUBLIC MppMesh
+    PRIVATE Utils mpp_vendor_headers)
 mpp_target_defaults(MppProgram)
 mpp_add_header_filters(MppProgram "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include")
 
@@ -197,6 +213,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/FileDataStream.cpp
     mpp/src/Font.cpp
     mpp/src/GLErrorCheck.cpp
+    mpp/src/GpuDebugScope.cpp
     mpp/src/InternalFont.cpp
     mpp/src/IblEnvironmentCache.cpp
     mpp/src/LineBatch.cpp
@@ -288,8 +305,8 @@ target_compile_definitions(MassivePolyPusher PRIVATE
     MPP_DLL_EXPORT _ENABLE_EXTENDED_ALIGNED_STORAGE
     $<$<CONFIG:Debug>:MPP_DEBUG_BUILD>)
 target_link_libraries(MassivePolyPusher
-    PUBLIC MppMesh MppProgram Utils mpp_vendor_headers GLEW::GLEW
-    PRIVATE OpenGL::GL)
+    PUBLIC MppData MppMesh MppProgram mpp_vendor_headers
+    PRIVATE Utils OpenGL::GL GLEW::GLEW)
 mpp_target_defaults(MassivePolyPusher)
 mpp_add_header_filters(MassivePolyPusher "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
 
@@ -324,7 +341,9 @@ add_library(MppResourceParsers SHARED
 )
 target_include_directories(MppResourceParsers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resource-parsers/include")
 target_compile_definitions(MppResourceParsers PRIVATE MPP_RESOURCE_PARSERS_DLL_EXPORT)
-target_link_libraries(MppResourceParsers PUBLIC MassivePolyPusher MppProgram MppMesh Utils)
+target_link_libraries(MppResourceParsers
+    PUBLIC MppData MassivePolyPusher MppProgram MppMesh
+    PRIVATE Utils GLEW::GLEW)
 mpp_target_defaults(MppResourceParsers)
 mpp_add_header_filters(MppResourceParsers "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resource-parsers/include")
 
@@ -335,7 +354,9 @@ add_library(MppMeshSpecificationParser SHARED
 )
 target_include_directories(MppMeshSpecificationParser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh-specification-parser/include")
 target_compile_definitions(MppMeshSpecificationParser PRIVATE MPP_MESH_SPECIFICATION_PARSER_DLL_EXPORT)
-target_link_libraries(MppMeshSpecificationParser PUBLIC MassivePolyPusher MppMesh MppResourceParsers Utils)
+target_link_libraries(MppMeshSpecificationParser
+    PUBLIC MassivePolyPusher MppMesh MppResourceParsers
+    PRIVATE Utils)
 mpp_target_defaults(MppMeshSpecificationParser)
 mpp_add_header_filters(MppMeshSpecificationParser "${CMAKE_CURRENT_SOURCE_DIR}/mpp-mesh-specification-parser/include")
 
@@ -374,8 +395,9 @@ add_library(MppAppSupport STATIC
             "${CMAKE_CURRENT_SOURCE_DIR}/mpp-app-support/include"
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include")
-target_link_libraries(MppAppSupport PUBLIC
-    MassivePolyPusher MppMesh MppProgram Utils ImGui SDL3::SDL3)
+target_link_libraries(MppAppSupport
+    PUBLIC MassivePolyPusher MppMesh MppProgram Utils ImGui SDL3::SDL3
+    PRIVATE GLEW::GLEW)
 if(WIN32)
     target_link_libraries(MppAppSupport PRIVATE comdlg32 shell32 ole32)
 endif()
@@ -398,7 +420,7 @@ target_link_libraries(ModelConvert PRIVATE
     MppMesh MppMeshSpecificationParser MppResourceParsers MassivePolyPusher Utils assimp::assimp)
 mpp_target_defaults(ModelConvert)
 mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
-mpp_copy_runtime(ModelConvert assimp ${MPP_DRACO_RUNTIME} glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
+mpp_copy_runtime(ModelConvert assimp ${MPP_DRACO_RUNTIME} glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 
 if(WIN32)
     add_executable(PipelineEditor WIN32
@@ -413,7 +435,7 @@ if(WIN32)
         Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
     mpp_target_defaults(PipelineEditor)
     mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-    mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+    mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
     add_custom_command(TARGET PipelineEditor POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"

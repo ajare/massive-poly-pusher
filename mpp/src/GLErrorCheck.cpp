@@ -1,3 +1,5 @@
+#include <GL/glew.h>
+
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
 

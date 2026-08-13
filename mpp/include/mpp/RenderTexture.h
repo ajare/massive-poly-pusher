@@ -2,10 +2,8 @@
 
 #include "mpp/Config.h"
 
+#include <cstdint>
 #include <vector>
-
-#include <GL/glew.h>
-#include <GL/gl.h>
 
 #include "mpp/RenderTarget.h"
 #include "mpp/RenderTextureStream.h"
@@ -24,11 +22,11 @@ namespace mpp
 		RenderTextureDepthParams mDepthParams;
 		RenderTextureDepthFormat mDepthFormat{ RenderTextureDepthFormat::Depth24 };
 
-		GLuint mFrameBuffer;
+		std::uint32_t mFrameBuffer;
 
-		GLuint mDepthBuffer;
+		std::uint32_t mDepthBuffer;
 
-		GLuint mDepthTexture;
+		std::uint32_t mDepthTexture;
 		uint32_t mSamples{ 1 };
 		uint32_t mMipLevels{ 1 };
 

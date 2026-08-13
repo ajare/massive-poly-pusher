@@ -40,6 +40,7 @@ mpp_copy_runtime(DemoSuite
     assimp
     ${MPP_DRACO_RUNTIME}
     Utils
+    MppData
     MassivePolyPusher
     MppMesh
     MppProgram

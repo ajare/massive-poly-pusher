@@ -5,6 +5,8 @@
 
 #include "utils/FileSystem.h"
 
+#include <GL/glew.h>
+
 #include "mpp/PbrMaterial.h"
 #include "mpp/PbrMaterialStream.h"
 #include "mpp/PbrShaders.h"

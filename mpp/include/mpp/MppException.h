@@ -2,10 +2,9 @@
 
 #include "mpp/Config.h"
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
-
-#include <GL/gl.h>
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -50,19 +49,19 @@ namespace mpp
 
 	class _MPPAPI MppGlException : public MppException
 	{
-		GLenum mErrorCode;
+		std::uint32_t mErrorCode;
 
 	private:
 
-		std::string getErrorMessage(GLenum errorCode);
+		std::string getErrorMessage(std::uint32_t errorCode);
 
 	public:
 
-		explicit MppGlException(GLenum errorCode);
+		explicit MppGlException(std::uint32_t errorCode);
 
-		MppGlException(GLenum errorCode, int line, std::string const& file, std::string const& function);
+		MppGlException(std::uint32_t errorCode, int line, std::string const& file, std::string const& function);
 
-		GLenum getErrorCode() const;
+		std::uint32_t getErrorCode() const;
 	};
 
 	class _MPPAPI MppNotImplementedException : public MppException

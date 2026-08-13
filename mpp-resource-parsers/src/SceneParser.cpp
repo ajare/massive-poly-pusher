@@ -5,6 +5,7 @@
 #include "utils/StringUtils.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 #include "mpp/resource-parsers/SceneParser.h"
+#include "StructuredDataAdapter.h"
 
 using namespace std;
 
@@ -12,7 +13,7 @@ namespace mpp::resource_parsers
 {
 	namespace
 	{
-		void rejectUnknown(utils::StructuredData const& data,set<string> const& allowed,string const& context)
+		void rejectUnknown(mpp::data::StructuredData const& data,set<string> const& allowed,string const& context)
 		{
 			for(auto const& entry:data)if(!allowed.contains(entry.first))THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in "+context+".",__LINE__,__FILE__,__func__);
 		}
@@ -36,7 +37,7 @@ namespace mpp::resource_parsers
 
 	SceneDocument SceneParser::fromFile(string const& filepath)
 	{
-		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));auto data=reader->readTree();
+		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));auto data=detail::importStructuredData(reader->readTree());
 		if(data.getName()!="Scene")THROW_MPP_RESOURCE_PARSERS("Scene root must be Scene: "+filepath,__LINE__,__FILE__,__func__);
 		rejectUnknown(data,{"version","name","environmentBinding","Camera","Layers","Models","Lights"},"Scene");
 		SceneDocument document;document.sourcePath=filepath;document.version=data.hasEntry("version")?utils::StringUtils::parseUInt(data.getEntry("version").getValue()):1;document.name=data.hasEntry("name")?data.getEntry("name").getValue():"";

@@ -1,10 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
+#include <cstdint>
 
 //#include "mpp/backward.hpp"
 

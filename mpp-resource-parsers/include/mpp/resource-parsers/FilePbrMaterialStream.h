@@ -26,9 +26,9 @@ namespace mpp
 
 			void createChildResourceStreamsImpl();
 
-			void parseForChildResourceStreams(utils::StructuredData const& data, std::string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec);
+			void parseForChildResourceStreams(mpp::data::StructuredData const& data, std::string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec);
 
-			static void parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, std::string const& filepath);
+			static void parseUniform(mpp::data::StructuredData const& data, UniformCollection& uniforms, std::string const& filepath);
 
 			static void parseUniformVectorType(std::string const& name, std::string const& type, size_t count, std::string const& value, UniformCollection &uniforms, std::string const& filepath);
 
@@ -42,13 +42,13 @@ namespace mpp
 
 			FilePbrMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, bool relativisePaths = true);
 
-			FilePbrMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, bool relativisePaths = true);
+			FilePbrMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mpp::data::StructuredData const& data, bool relativisePaths = true);
 
 			FilePbrMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			FilePbrMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
+			FilePbrMaterialStream(ResourceManager* resourceMgr, std::string const& filepath, mpp::data::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths = true);
 
-			static std::pair<std::string, PbrMaterialSpecification> parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
+			static std::pair<std::string, PbrMaterialSpecification> parseDefinition(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, std::string const& filepath);
 		};
 
 	}

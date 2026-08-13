@@ -2,11 +2,9 @@
 
 #include "mpp/Config.h"
 
-#include <GL/gl.h>
-
 namespace mpp
 {
-	void CheckOpenGLError(char const* stmt, int line, char const* file, char const* function);
+	_MPPAPI void CheckOpenGLError(char const* stmt, int line, char const* file, char const* function);
 }
 
 #ifdef _DEBUG

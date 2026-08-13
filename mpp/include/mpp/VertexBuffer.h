@@ -2,10 +2,9 @@
 
 #include "mpp/Config.h"
 
+#include <cstdint>
 #include <memory>
-
-#include <GL/glew.h>
-#include <GL/gl.h>
+#include <vector>
 
 #include "mpp/mesh/Vertex.h"
 #include "mpp/mesh/VertexBufferDefinition.h"
@@ -21,14 +20,14 @@ namespace mpp
 		{
 			int id;
 			size_t componentSize, sizeInBytes;
-			GLenum dataType;
+			std::uint32_t dataType;
 			size_t offsetInBytes;
 			bool normalise;
 		};
 
 	private:
 
-		GLuint mVBO;
+		std::uint32_t mVBO;
 
 		RenderSystem* mwRenderSystem;
 

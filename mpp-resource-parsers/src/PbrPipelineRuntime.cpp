@@ -1,3 +1,5 @@
+#include <GL/glew.h>
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>

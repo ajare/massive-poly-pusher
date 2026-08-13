@@ -20,7 +20,7 @@ namespace mpp
 			mFactories[".xml"] = []() {return new XmlSerializer(); };
 		}
 
-		FileStream::FileStream(string const& filepath, utils::StructuredData const& data)
+		FileStream::FileStream(string const& filepath, mpp::data::StructuredData const& data)
 			: mFilepath(filepath)
 			, mData(data)
 		{
@@ -45,7 +45,7 @@ namespace mpp
 			return mFilepath;
 		}
 
-		utils::StructuredData const& FileStream::getStructuredData() const
+		mpp::data::StructuredData const& FileStream::getStructuredData() const
 		{
 			if (mData.getName() == "")
 			{

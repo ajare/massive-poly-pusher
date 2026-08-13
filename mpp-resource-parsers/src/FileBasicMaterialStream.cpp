@@ -5,6 +5,8 @@
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 
+#include "utils/StringUtils.h"
+
 #include "mpp/resource-parsers/FileBasicMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/FileTextureStream.h"
@@ -25,7 +27,7 @@ namespace mpp
 		{
 		}
 
-		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, bool relativisePaths)
+		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, bool relativisePaths)
 			: BasicMaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(false)
@@ -42,7 +44,7 @@ namespace mpp
 		{
 		}
 
-		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, utils::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
+		FileBasicMaterialStream::FileBasicMaterialStream(ResourceManager* resourceMgr, string const& filepath, mpp::data::StructuredData const& data, mesh::MeshSpecification const& meshSpec, bool relativisePaths)
 			: BasicMaterialStream(resourceMgr)
 			, FileStream(filepath, data)
 			, mUseSpecifiedMeshSpec(true)
@@ -51,7 +53,7 @@ namespace mpp
 		{
 		}
 
-		void FileBasicMaterialStream::parseForChildResourceStreams(utils::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
+		void FileBasicMaterialStream::parseForChildResourceStreams(mpp::data::StructuredData const& data, string const& filepath, bool useSpecifiedMesh, mesh::MeshSpecification const* meshSpec)
 		{
 			for (auto it = data.begin(); it != data.end(); ++it)
 			{
@@ -174,7 +176,7 @@ namespace mpp
 			delete[] fvalues;
 		}
 
-		void FileBasicMaterialStream::parseUniform(utils::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
+		void FileBasicMaterialStream::parseUniform(mpp::data::StructuredData const& data, UniformCollection& uniforms, string const& filepath)
 		{
 			string name, type, value;
 			for (auto it = data.begin(); it != data.end(); ++it)
@@ -275,7 +277,7 @@ namespace mpp
 			}
 		}
 
-		pair<string, BasicMaterialSpecification> FileBasicMaterialStream::parseDefinition(utils::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
+		pair<string, BasicMaterialSpecification> FileBasicMaterialStream::parseDefinition(mpp::data::StructuredData const& data, ResourceManager* resourceMgr, string const& filepath)
 		{
 			string name;
 			BasicMaterialSpecification qs;
