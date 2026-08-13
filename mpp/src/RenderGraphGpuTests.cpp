@@ -523,7 +523,23 @@ void main()
 				auto samplerStream = new ProgrammaticProgramStream(renderSystem->getResourceManager());
 				samplerStream->setParser(samplerParser);
 				auto samplerProgram = renderSystem->getResourceManager()->declareResource("GpuTestSamplerRouting.Program", ResourceStreamPtr(samplerStream)).first;
+				auto* reflectedSamplerProgram = static_cast<Program*>(samplerProgram.get());
+				if (reflectedSamplerProgram->getViewPosId() != -1 || reflectedSamplerProgram->getModelMatrixId() != -1 ||
+					reflectedSamplerProgram->getModelCameraProjectionMatrixId() != -1 || reflectedSamplerProgram->getNormalMatrixId() != -1 ||
+					reflectedSamplerProgram->getHalfWindowSizeId() != -1 || reflectedSamplerProgram->getPointSizeId() != -1)
+					return fail("unloaded program reflection locations were not initialized to -1");
 				samplerProgram->create(); samplerProgram->load();
+				std::string outputDiagnostic;
+				if (!reflectedSamplerProgram->validateFragmentOutputLocations(1, outputDiagnostic)) return fail("linked sampler program lost fragment output zero");
+				if ((GLEW_VERSION_4_3 || GLEW_ARB_program_interface_query) && reflectedSamplerProgram->validateFragmentOutputLocations(2, outputDiagnostic))
+					return fail("cached fragment-output reflection accepted a missing MRT output");
+				samplerProgram->unload();
+				if (samplerProgram->getId() != 0 || reflectedSamplerProgram->getNumSamplers() != 0 || !reflectedSamplerProgram->getUniformNames().empty() ||
+					reflectedSamplerProgram->getViewPosId() != -1 || reflectedSamplerProgram->getModelMatrixId() != -1 ||
+					reflectedSamplerProgram->getModelCameraProjectionMatrixId() != -1 || reflectedSamplerProgram->getNormalMatrixId() != -1 ||
+					reflectedSamplerProgram->getHalfWindowSizeId() != -1 || reflectedSamplerProgram->getPointSizeId() != -1)
+					return fail("program unload retained stale reflection state");
+				samplerProgram->load();
 				// Distinguishable in the red channel only, which is what the shader reads.
 				RenderTextureOptions sourceOptions; sourceOptions.params.minFilter = GL_NEAREST; sourceOptions.params.magFilter = GL_NEAREST; sourceOptions.params.wrap = GL_CLAMP_TO_EDGE;
 				auto firstSource = renderSystem->createRenderTexture("GpuTestSamplerFirst", 4, 4, sourceOptions);
@@ -554,6 +570,21 @@ void main()
 				bool rejectedUnknownSampler = false;
 				try { renderRouting({ { "GPU_TEST_MISSING", firstTexture } }); } catch (...) { rejectedUnknownSampler = true; }
 				if (!rejectedUnknownSampler) return fail("a fullscreen pass binding an undeclared sampler was accepted");
+
+				auto invalidParser = std::make_shared<program::Parser>();
+				invalidParser->setMeshSpecification(samplerMeshSpec);
+				invalidParser->setVertexSource(VertexShaderFullscreenTemplate);
+				invalidParser->setFragmentSource("@@Version\nvoid main() { this is invalid GLSL; }");
+				auto invalidStream = std::make_shared<ProgrammaticProgramStream>(renderSystem->getResourceManager());
+				invalidStream->setParser(invalidParser);
+				auto invalidProgramResource = renderSystem->getResourceManager()->declareResource("GpuTestTransactionalInvalid.Program", invalidStream).first;
+				auto* invalidProgram = static_cast<Program*>(invalidProgramResource.get());
+				bool invalidProgramRejected = false;
+				try { invalidProgramResource->load(); } catch (...) { invalidProgramRejected = true; }
+				if (!invalidProgramRejected || invalidProgramResource->getId() != 0 || invalidProgram->getLiveIdCount() != 0 ||
+					invalidProgram->getNumSamplers() != 0 || !invalidProgram->getUniformNames().empty() || invalidProgram->getViewPosId() != -1)
+					return fail("failed program load published a GL name or partial reflection state");
+				renderSystem->getResourceManager()->deleteResource(invalidProgramResource->getName());
 			}
 
 			stage = "dontCare store on the default framebuffer";

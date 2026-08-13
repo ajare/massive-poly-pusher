@@ -31,14 +31,28 @@ using namespace std;
 
 namespace mpp
 {
+	namespace
+	{
+		struct ShaderHandle
+		{
+			GLuint id{ 0 };
+			~ShaderHandle() { if (id != 0) glDeleteShader(id); }
+		};
+
+		struct ProgramHandle
+		{
+			GLuint id{ 0 };
+			~ProgramHandle() { if (id != 0) glDeleteProgram(id); }
+			GLuint release() { auto result = id; id = 0; return result; }
+		};
+	}
+
 	/*
 	 * Constructor.
 	 *
 	 */
 	Program::Program(string const& name, RenderSystem* renderSystem, ResourceManager* resourceMgr, ResourceStreamPtr resourceStream)
 		: Resource(name, "Program", renderSystem, resourceMgr, resourceStream)
-		, mVertexShaderId(0)
-		, mFragmentShaderId(0)
 		, mSortId(0)
 	{
 	}
@@ -70,18 +84,16 @@ namespace mpp
 		{
 			string msg = "Could not compile " + sourceType + " shader for program '" + getName() + "'.\n";
 			
-			GLint infoLogLength;
+			GLint infoLogLength = 0;
 			glGetShaderiv(*id, GL_INFO_LOG_LENGTH, &infoLogLength);
-			char* strInfoLog = new char[infoLogLength + 1];
-			
-			glGetShaderInfoLog(*id, infoLogLength, NULL, strInfoLog);
-			msg += strInfoLog;
+			vector<char> infoLog(static_cast<size_t>(max(1, infoLogLength)), '\0');
+			glGetShaderInfoLog(*id, infoLogLength, nullptr, infoLog.data());
+			msg += infoLog.data();
 
 			msg += "\n";
 			msg += "--------------------------------\n";
 			msg += source;
 			
-			delete[] strInfoLog;
 			glDeleteShader(*id); 
 			*id = 0;
 
@@ -116,6 +128,22 @@ namespace mpp
 	{
 		mVertexSource.clear();
 		mFragmentSource.clear();
+	}
+
+	void Program::resetReflectionState()
+	{
+		mTextures.clear();
+		mVertexAttributes.clear();
+		mUniformIds.clear();
+		mUniformTypes.clear();
+		mViewPosId = -1;
+		mMMatrixId = -1;
+		mMcpMatrixId = -1;
+		mNormalMatrixId = -1;
+		mHalfWindowSizeId = -1;
+		mPointSizeId = -1;
+		mFragmentOutputLocationsKnown = false;
+		mFragmentOutputLocationMask = 0;
 	}
 
 	mesh::MeshSpecification const& Program::getMeshSpecification() const
@@ -287,11 +315,24 @@ namespace mpp
 	void Program::loadImpl()
 	{
 		auto rs = getRenderSystem();
+		resetReflectionState();
 		try
 		{
 			ProgramStream* pStr = dynamic_cast<ProgramStream*>(getResourceStream().get());
+			if (!pStr)
+			{
+				THROW_MPP("Could not cast to type 'ProgramStream'.", __LINE__, __FILE__, __func__);
+			}
 
-			mMeshSpecification = pStr->getMeshSpecification();
+			auto meshSpecification = pStr->getMeshSpecification();
+			vector<TextureInfo> reflectedTextures;
+			vector<VariableInfo> reflectedVertexAttributes;
+			map<string, int> reflectedUniformIds;
+			map<string, uint32_t> reflectedUniformTypes;
+			int viewPosId = -1, modelMatrixId = -1, modelCameraProjectionMatrixId = -1;
+			int normalMatrixId = -1, halfWindowSizeId = -1, pointSizeId = -1;
+			bool fragmentOutputLocationsKnown = false;
+			uint64_t fragmentOutputLocationMask = 0;
 
 			// Set up textures
 			auto textures = pStr->getTextures();
@@ -302,7 +343,7 @@ namespace mpp
 				ti.markedUpName = MPP_PROGRAM_MARKUP_TEXTURE(texture);
 				ti.uniformId = -1;
 
-				mTextures.push_back(ti);
+				reflectedTextures.push_back(ti);
 			}
 
 			// Set up vertex attributes
@@ -315,48 +356,52 @@ namespace mpp
 				vi.name = inAttrib.name;
 				vi.type = inAttrib.type.name;
 				vi.numComponents = (int)(inAttrib.type.size[0] * inAttrib.type.size[1]);
-				vi.streamOffset = mVertexAttributes.empty() ? 0 :
-					mVertexAttributes.back().streamOffset + mVertexAttributes.back().numComponents;
+				vi.streamOffset = reflectedVertexAttributes.empty() ? 0 :
+					reflectedVertexAttributes.back().streamOffset + reflectedVertexAttributes.back().numComponents;
 					
-				mVertexAttributes.push_back(vi);
+				reflectedVertexAttributes.push_back(vi);
 			}
 
-			// Create vertex shader
-			GL_CHECK(mVertexShaderId = glCreateShader(GL_VERTEX_SHADER));
-			if (mVertexShaderId == 0)
+			// Keep every GL name local until linking and reflection have succeeded.
+			// The handles clean up automatically on every exception path.
+			ShaderHandle vertexShader;
+			GL_CHECK(vertexShader.id = glCreateShader(GL_VERTEX_SHADER));
+			if (vertexShader.id == 0)
 			{
 				THROW_MPP("Could not create vertex shader id.", __LINE__, __FILE__, __func__);
 			}
 
-			compileShader(&mVertexShaderId, mVertexSource, "vertex");
+			compileShader(&vertexShader.id, mVertexSource, "vertex");
 
 			// Set name for debugging
 			auto label = "Vertex shader: " + getName();
-			GL_CHECK(glObjectLabel(GL_SHADER, mVertexShaderId, -1, label.c_str()));
+			GL_CHECK(glObjectLabel(GL_SHADER, vertexShader.id, -1, label.c_str()));
 
-			// Create fragment shader
-			GL_CHECK(mFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER));
-			if (mFragmentShaderId == 0)
+			ShaderHandle fragmentShader;
+			GL_CHECK(fragmentShader.id = glCreateShader(GL_FRAGMENT_SHADER));
+			if (fragmentShader.id == 0)
 			{
 				THROW_MPP("Could not create fragment shader id.", __LINE__, __FILE__, __func__);
 			}
 
-			compileShader(&mFragmentShaderId, mFragmentSource, "fragment");
+			compileShader(&fragmentShader.id, mFragmentSource, "fragment");
 
 			// Set name for debugging
 			label = "Fragment shader: " + getName();
-			GL_CHECK(glObjectLabel(GL_SHADER, mFragmentShaderId, -1, label.c_str()));
+			GL_CHECK(glObjectLabel(GL_SHADER, fragmentShader.id, -1, label.c_str()));
 
-			// Create program
-			GLuint programId = glCreateProgram();
-			if (programId == 0)
+			ProgramHandle linkedProgram;
+			GL_CHECK(linkedProgram.id = glCreateProgram());
+			if (linkedProgram.id == 0)
 			{
 				THROW_MPP("Could not create program id.", __LINE__, __FILE__, __func__);
 			}
 
+			auto const programId = linkedProgram.id;
+
 			// Attach shaders
-			GL_CHECK(glAttachShader(programId, mVertexShaderId));
-			GL_CHECK(glAttachShader(programId, mFragmentShaderId));
+			GL_CHECK(glAttachShader(programId, vertexShader.id));
+			GL_CHECK(glAttachShader(programId, fragmentShader.id));
 
 			// Link shaders
 			GL_CHECK(glLinkProgram(programId));
@@ -365,15 +410,6 @@ namespace mpp
 			label = "Program: " + getName();
 			GL_CHECK(glObjectLabel(GL_PROGRAM, programId, -1, label.c_str()));
 
-			// Detach and destroy them to free memory
-			GL_CHECK(glDetachShader(programId, mVertexShaderId));
-			GL_CHECK(glDeleteShader(mVertexShaderId));
-			mVertexShaderId = 0;
-
-			GL_CHECK(glDetachShader(programId, mFragmentShaderId));
-			GL_CHECK(glDeleteShader(mFragmentShaderId));
-			mFragmentShaderId = 0;
-
 			GLint status;
 			GL_CHECK(glGetProgramiv(programId, GL_LINK_STATUS, &status));
 
@@ -381,21 +417,24 @@ namespace mpp
 			{
 				string msg = "Could not link program: ";
 
-				GLint infoLogLength;
+				GLint infoLogLength = 0;
 				GL_CHECK(glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &infoLogLength));
-				char* strInfoLog = new char[infoLogLength + 1];
+				vector<char> infoLog(static_cast<size_t>(max(1, infoLogLength)), '\0');
 
-				GL_CHECK(glGetProgramInfoLog(programId, infoLogLength, NULL, strInfoLog));
-				msg += strInfoLog;
-
-				delete[] strInfoLog;
-				GL_CHECK(glDeleteProgram(programId));
-				programId = 0;
+				GL_CHECK(glGetProgramInfoLog(programId, infoLogLength, nullptr, infoLog.data()));
+				msg += infoLog.data();
 
 				THROW_MPP(msg, __LINE__, __FILE__, __func__);
 			}
 
-			setId(programId);
+			// Shaders are no longer needed after a successful link. Detaching now
+			// lets their RAII handles delete them before reflection begins.
+			GL_CHECK(glDetachShader(programId, vertexShader.id));
+			GL_CHECK(glDetachShader(programId, fragmentShader.id));
+			GL_CHECK(glDeleteShader(vertexShader.id));
+			vertexShader.id = 0;
+			GL_CHECK(glDeleteShader(fragmentShader.id));
+			fragmentShader.id = 0;
 
 			// Get attribute information
 			int attribCount;
@@ -475,47 +514,47 @@ namespace mpp
 				uniformNameBuffer[lengthWritten] = 0;
 
 				string uniformName = uniformNameBuffer;
-				mUniformTypes[uniformName] = uniformType;
+				reflectedUniformTypes[uniformName] = uniformType;
 
 				// Is this ViewPos, MMatrix, MCPMatrix, NormalMatrix, standard uniform or a texture?
 				if (uniformName == MPP_PROGRAM_VIEWPOS_NAME)
 				{
-					GL_CHECK(mViewPosId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(std::format("- Uniform: ViewPosition id: {}", mViewPosId));
+					GL_CHECK(viewPosId = glGetUniformLocation(programId, uniformNameBuffer));
+					rs->debugMessage(std::format("- Uniform: ViewPosition id: {}", viewPosId));
 				}
 				if (uniformName == MPP_PROGRAM_MMATRIX_NAME)
 				{
-					GL_CHECK(mMMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(std::format("- Uniform: Model matrix id: {}", mMMatrixId));
+					GL_CHECK(modelMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
+					rs->debugMessage(std::format("- Uniform: Model matrix id: {}", modelMatrixId));
 				}
 				if (uniformName == MPP_PROGRAM_MCPMATRIX_NAME)
 				{
-					GL_CHECK(mMcpMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(std::format("- Uniform: ModelCameraProjection matrix id: {}", mMcpMatrixId));
+					GL_CHECK(modelCameraProjectionMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
+					rs->debugMessage(std::format("- Uniform: ModelCameraProjection matrix id: {}", modelCameraProjectionMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_NORMALMATRIX_NAME)
 				{
-					GL_CHECK(mNormalMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
-					rs->debugMessage(std::format("- Uniform normal matrix id: {}", mNormalMatrixId));
+					GL_CHECK(normalMatrixId = glGetUniformLocation(programId, uniformNameBuffer));
+					rs->debugMessage(std::format("- Uniform normal matrix id: {}", normalMatrixId));
 				}
 				else if (uniformName == MPP_PROGRAM_HALFWINDOWSIZE_NAME)
 				{
-					GL_CHECK(mHalfWindowSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage(std::format("- Uniform: half window size id: {}", mHalfWindowSizeId));
+					GL_CHECK(halfWindowSizeId = glGetUniformLocation(programId, uniformNameBuffer));
+					rs->debugMessage(std::format("- Uniform: half window size id: {}", halfWindowSizeId));
 				}
 				else if (uniformName == MPP_PROGRAM_POINTSIZE_NAME)
 				{
-					GL_CHECK(mPointSizeId = glGetUniformLocation(getId(), uniformNameBuffer));
-					rs->debugMessage(std::format("- Uniform: point size id: {}", mPointSizeId));
+					GL_CHECK(pointSizeId = glGetUniformLocation(programId, uniformNameBuffer));
+					rs->debugMessage(std::format("- Uniform: point size id: {}", pointSizeId));
 				}
 				else
 				{
-					auto it = find_if(mTextures.begin(), mTextures.end(), [uniformName](TextureInfo const& ti) -> bool
+					auto it = find_if(reflectedTextures.begin(), reflectedTextures.end(), [uniformName](TextureInfo const& ti) -> bool
 					{
 						return ti.markedUpName == uniformName;
 					});
 
-					if (it != mTextures.end())
+					if (it != reflectedTextures.end())
 					{
 						GL_CHECK(it->uniformId = glGetUniformLocation(programId, uniformNameBuffer));
 						rs->debugMessage(std::format("- Texture: '{}' id: {}", uniformName, it->uniformId));
@@ -524,7 +563,7 @@ namespace mpp
 					{
 						int32_t uniformId;
 						GL_CHECK(uniformId = glGetUniformLocation(programId, uniformNameBuffer));
-						mUniformIds[uniformName] = uniformId;
+						reflectedUniformIds[uniformName] = uniformId;
 						rs->debugMessage(std::format("- Texture: '{}' id: {}", uniformName, uniformId));
 					}
 				}
@@ -532,10 +571,44 @@ namespace mpp
 
 			// Parser metadata includes declarations in GLSL preprocessor-disabled
 			// branches. Bind and expose only samplers that survived linking.
-			mTextures.erase(remove_if(mTextures.begin(), mTextures.end(), [](TextureInfo const& texture)
+			reflectedTextures.erase(remove_if(reflectedTextures.begin(), reflectedTextures.end(), [](TextureInfo const& texture)
 			{
 				return texture.uniformId < 0;
-			}), mTextures.end());
+			}), reflectedTextures.end());
+
+			// Program-interface reflection is optional on older contexts. Cache the
+			// result once at link time so scene MRT validation never performs GL
+			// queries while walking visible materials.
+			if (GLEW_VERSION_4_3 || GLEW_ARB_program_interface_query)
+			{
+				fragmentOutputLocationsKnown = true;
+				GLint resourceCount = 0;
+				GL_CHECK(glGetProgramInterfaceiv(programId, GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &resourceCount));
+				GLenum const property = GL_LOCATION;
+				for (GLint resource = 0; resource < resourceCount; ++resource)
+				{
+					GLint location = -1;
+					GL_CHECK(glGetProgramResourceiv(programId, GL_PROGRAM_OUTPUT, resource, 1, &property, 1, nullptr, &location));
+					if (location >= 0 && location < 64) fragmentOutputLocationMask |= uint64_t{ 1 } << location;
+				}
+			}
+
+			// Publish CPU reflection and the GL name only after every operation has
+			// succeeded. Until this point all GL names are owned by local handles.
+			mMeshSpecification = move(meshSpecification);
+			mTextures = move(reflectedTextures);
+			mVertexAttributes = move(reflectedVertexAttributes);
+			mUniformIds = move(reflectedUniformIds);
+			mUniformTypes = move(reflectedUniformTypes);
+			mViewPosId = viewPosId;
+			mMMatrixId = modelMatrixId;
+			mMcpMatrixId = modelCameraProjectionMatrixId;
+			mNormalMatrixId = normalMatrixId;
+			mHalfWindowSizeId = halfWindowSizeId;
+			mPointSizeId = pointSizeId;
+			mFragmentOutputLocationsKnown = fragmentOutputLocationsKnown;
+			mFragmentOutputLocationMask = fragmentOutputLocationMask;
+			setId(linkedProgram.release());
 		}
 		catch (exception&)
 		{
@@ -552,25 +625,11 @@ namespace mpp
 	 */
 	void Program::unloadImpl()
 	{
-		mTextures.clear();
-		mVertexAttributes.clear();
-		mUniformTypes.clear();
+		resetReflectionState();
 
 		GLuint id = getId();
 		if (id != 0)
 		{
-			if (mVertexShaderId != 0)
-			{
-				GL_CHECK(glDeleteShader(mVertexShaderId));
-				mVertexShaderId = 0;
-			}
-
-			if (mFragmentShaderId != 0)
-			{
-				GL_CHECK(glDeleteShader(mFragmentShaderId));
-				mFragmentShaderId = 0;
-			}
-
 			GL_CHECK(glDeleteProgram(id));
 			setId(0);
 		}
@@ -729,20 +788,10 @@ namespace mpp
 	bool Program::validateFragmentOutputLocations(size_t requiredCount, string& diagnostic) const
 	{
 		diagnostic.clear();
-		if (requiredCount == 0 || (!GLEW_VERSION_4_3 && !GLEW_ARB_program_interface_query)) return true;
-		GLint resourceCount = 0;
-		GL_CHECK(glGetProgramInterfaceiv(getId(), GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &resourceCount));
-		vector<bool> locations(requiredCount, false);
-		GLenum const property = GL_LOCATION;
-		for (GLint resource = 0; resource < resourceCount; ++resource)
-		{
-			GLint location = -1;
-			GL_CHECK(glGetProgramResourceiv(getId(), GL_PROGRAM_OUTPUT, resource, 1, &property, 1, nullptr, &location));
-			if (location >= 0 && (size_t)location < requiredCount) locations[(size_t)location] = true;
-		}
+		if (requiredCount == 0 || !mFragmentOutputLocationsKnown) return true;
 		for (size_t location = 0; location < requiredCount; ++location)
 		{
-			if (!locations[location])
+			if (location >= 64 || (mFragmentOutputLocationMask & (uint64_t{ 1 } << location)) == 0)
 			{
 				diagnostic = "Program '" + getName() + "' has no active fragment output at required location " + to_string(location) + ".";
 				return false;

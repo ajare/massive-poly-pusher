@@ -51,24 +51,27 @@ Erasing an element shifted every subsequent vector entry while their stored IDs 
 
 ---
 
-### 3. Make `Program` reflection and loading transactional — high severity, low/medium effort
+### 3. Make `Program` reflection and loading transactional — implemented
 
-Several uniform-location members are not initialized by the constructor:
+**Status:** Completed on `fix/capability-reporting`.
+
+Several uniform-location members were not initialized by the constructor:
 
 - Declaration: `mpp/include/mpp/Program.h:85-88`
 - Constructor initializes only shader and sort IDs: `mpp/src/Program.cpp:30-35`
 
-If a standard uniform is optimized out, its getter can return an indeterminate value. In addition, `unloadImpl()` clears `mUniformTypes` but not `mUniformIds` at `Program.cpp:584-590`, leaving stale locations after reload.
+If a standard uniform was optimized out, its getter could return an indeterminate value. In addition, `unloadImpl()` cleared `mUniformTypes` but not `mUniformIds`, leaving stale locations after reload.
 
-Program creation also owns several raw GL names during a multi-step operation. A shader compile, link, reflection, or labeling exception can leave partially built state.
+Program creation also owned several raw GL names during a multi-step operation. A shader compile, link, reflection, or labeling exception could leave partially built state.
 
-**Change**
+**Implemented changes**
 
-- Initialize every location to `-1`.
-- Clear all reflection maps and reset locations before load and during unload.
-- Build shaders/program in local RAII GL handles and publish `setId()` only after successful linking/reflection.
-- Use `std::vector<char>` for info logs rather than manual arrays.
-- Cache fragment-output capability during reflection rather than querying it later.
+- Initialize every standard uniform location to `-1`.
+- Reset all reflection maps, sampler metadata, locations, and output metadata before load and during unload.
+- Build shaders and linked programs in local RAII handles; publish reflection state and the program ID only after every link/reflection operation succeeds.
+- Use `std::vector<char>` for shader and program info logs.
+- Reflect fragment output locations once after linking and validate MRT requirements from a cached mask.
+- Add GPU-context regression coverage for default locations, unload/reload state, cached output validation, and failed-load cleanup.
 
 ---
 
@@ -287,7 +290,7 @@ The current validation documentation explicitly notes several of these asset gap
 
 1. ✅ Fix texture-unit capability assignments and related capability validation.
 2. ✅ Fix sort-ID table removal and cache erasure.
-3. Initialize/reset `Program` reflection state.
+3. ✅ Initialize/reset `Program` reflection state and make loading transactional.
 4. Replace the mesh layout key and add collision tests.
 5. Implement `ClipRectangle::intersect()` and remove the particle leak.
 
