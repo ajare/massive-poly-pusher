@@ -125,6 +125,8 @@ namespace mpp
 				return "Normal4";
 			case Component::TexCoord3:
 				return "TexCoord3";
+			case Component::TexCoord4:
+				return "TexCoord4";
 			case Component::Colour1:
 				return "Colour1";
 			case Component::Colour3:

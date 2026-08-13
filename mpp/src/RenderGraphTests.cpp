@@ -3,12 +3,56 @@
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
+#include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
 {
 	bool runRenderGraphTopologyTests(std::string* failure)
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+
+		// Mesh layout identity feeds program caching. Every equality field must be
+		// represented by an unambiguous canonical key, while the compact hash and
+		// generated descriptor must distinguish common formerly-colliding layouts.
+		auto makeMeshSpecification = [](mesh::Vertex::DataType type, bool normalised = false, size_t boundary = 0, std::string identifier = "POSITION")
+		{
+			mesh::MeshSpecification specification;
+			auto* layout = specification.createVertexBufferAttributeLayout(false);
+			layout->createAttribute(mesh::Vertex::Component::Position2, identifier, type, normalised, boundary);
+			return specification;
+		};
+		auto floatLayout = makeMeshSpecification(mesh::Vertex::DataType::Float);
+		auto identicalFloatLayout = floatLayout;
+		auto integerLayout = makeMeshSpecification(mesh::Vertex::DataType::Int);
+		auto normalisedLayout = makeMeshSpecification(mesh::Vertex::DataType::Float, true);
+		auto paddedLayout = makeMeshSpecification(mesh::Vertex::DataType::Float, false, 16);
+		auto identifiedLayout = makeMeshSpecification(mesh::Vertex::DataType::Float, false, 0, "CUSTOM_POSITION");
+		auto offsetLayout = floatLayout; offsetLayout.getVertexBufferAttributeLayout(0).getAttribute(0).offsetInBytes = 4;
+		if (floatLayout != identicalFloatLayout || floatLayout.getHashString() != identicalFloatLayout.getHashString() || floatLayout.getHashCode() != identicalFloatLayout.getHashCode())
+			return fail("equal mesh layouts do not have stable canonical identities");
+		for (auto const* different : { &integerLayout, &normalisedLayout, &paddedLayout, &identifiedLayout, &offsetLayout })
+		{
+			if (floatLayout == *different || floatLayout.getHashString() == different->getHashString() || floatLayout.getHashCode() == different->getHashCode() || floatLayout.getDescriptor("mesh_") == different->getDescriptor("mesh_"))
+				return fail("mesh identity collapsed a differing attribute type, normalization, offset, padding, or identifier");
+		}
+		auto indexedLayout = floatLayout; indexedLayout.setIndexedVertices(true);
+		auto dynamicLayout = floatLayout; dynamicLayout.setStorageType(mesh::VertexBufferStorageType::Dynamic);
+		auto lineLayout = floatLayout; lineLayout.setPrimitiveType(mesh::Primitive::Type::Lines);
+		auto staticLayout = mesh::MeshSpecification();
+		staticLayout.createVertexBufferAttributeLayout(true)->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+		for (auto const* different : { &indexedLayout, &dynamicLayout, &lineLayout, &staticLayout })
+			if (floatLayout.getHashString() == different->getHashString()) return fail("mesh identity omitted primitive, storage, indexing, or buffer-static state");
+		mesh::MeshSpecification groupedLayout;
+		auto* groupedFirst = groupedLayout.createVertexBufferAttributeLayout(false);
+		groupedFirst->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+		groupedFirst->createAttribute(mesh::Vertex::Component::UserDefined2, "USER_A", mesh::Vertex::DataType::Float, false);
+		mesh::MeshSpecification splitLayout;
+		auto* splitFirst = splitLayout.createVertexBufferAttributeLayout(false);
+		splitFirst->createAttribute(mesh::Vertex::Component::Position2, mesh::Vertex::DataType::Float, false);
+		auto* splitSecond = splitLayout.createVertexBufferAttributeLayout(false);
+		splitSecond->createAttribute(mesh::Vertex::Component::UserDefined2, "USER_A", mesh::Vertex::DataType::Float, false);
+		if (groupedLayout.getHashString() == splitLayout.getHashString()) return fail("mesh identity omitted vertex-buffer layout grouping");
+
 		GraphImageDesc colour;
 		colour.format = GraphImageFormat::Rgba16f;
 		colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;

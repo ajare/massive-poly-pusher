@@ -42,7 +42,8 @@
 #define MPP_PROGRAM_MARKUP_UNIFORM(token)	(MPP_PROGRAM_UNIFORM_PREFIX + token + "_")
 #define MPP_PROGRAM_MARKUP_TEXTURE(token)	(MPP_PROGRAM_TEXTURE_PREFIX + token + "_")
 
-// These must start from above MeshSpecification's maximum hash value
+// Program-generation feature flags. These are independent of MeshSpecification's
+// canonical key and compact hash.
 #define MPP_PROGRAM_TAGS_TEXTURE 			(1 << 10)
 #define MPP_PROGRAM_TAGS_DIFFUSE			(1 << 11)
 #define MPP_PROGRAM_TAGS_ROTATION			(1 << 12)

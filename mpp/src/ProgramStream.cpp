@@ -82,7 +82,21 @@ namespace mpp
 	 */
 	string ProgramStream::getConcatenatedSource()
 	{
-		return getMeshSpecification().getHashString() + getVertexSource() + getFragmentSource();
+		// Length-prefix each section so boundaries cannot collide (for example, a
+		// suffix moved from one shader stage to the next). The mesh section is the
+		// full canonical layout key, not its compact 32-bit digest.
+		auto appendSection = [](string& key, char const* name, string const& value)
+		{
+			key += name;
+			key += '=' + to_string(value.size()) + ':';
+			key += value;
+		};
+		string key;
+		appendSection(key, "mesh", getMeshSpecification().getHashString());
+		appendSection(key, "vertex", getVertexSource());
+		appendSection(key, "geometry", getGeometrySource());
+		appendSection(key, "fragment", getFragmentSource());
+		return key;
 	}
 
 	mesh::MeshSpecification const& ProgramStream::getMeshSpecification() const
