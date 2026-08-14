@@ -110,9 +110,10 @@ namespace mpp
 			}
 		};
 
-		void clearPassOutputs(GraphPassInfo const& pass)
+		void clearPassOutputs(RenderSystem& renderSystem, GraphPassInfo const& pass)
 		{
-			GLboolean depthMask=GL_TRUE,colourMask[4]{GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE};GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK,&depthMask));GL_CHECK(glGetBooleanv(GL_COLOR_WRITEMASK,colourMask));GL_CHECK(glDepthMask(GL_TRUE));GL_CHECK(glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE));
+			auto const savedState = renderSystem.captureRasterState(pass.colourOutputs.size());
+			renderSystem.forceRenderWriteMasks(true, {});
 			for (size_t index = 0; index < pass.colourOutputs.size(); ++index)
 			{
 				auto const& output = pass.colourOutputs[index];
@@ -128,81 +129,38 @@ namespace mpp
 					GL_CHECK(glClearBufferfv(GL_DEPTH, 0, &output.clearDepth));
 				}
 			}
-			GL_CHECK(glDepthMask(depthMask));GL_CHECK(glColorMask(colourMask[0],colourMask[1],colourMask[2],colourMask[3]));
-		}
-
-		GLenum compareOp(GraphCompareOp value)
-		{
-			switch (value) { case GraphCompareOp::Never: return GL_NEVER; case GraphCompareOp::Less: return GL_LESS; case GraphCompareOp::Equal: return GL_EQUAL; case GraphCompareOp::LessEqual: return GL_LEQUAL; case GraphCompareOp::Greater: return GL_GREATER; case GraphCompareOp::NotEqual: return GL_NOTEQUAL; case GraphCompareOp::GreaterEqual: return GL_GEQUAL; default: return GL_ALWAYS; }
-		}
-		GLenum blendOp(GraphBlendOp value)
-		{
-			switch (value) { case GraphBlendOp::Add: return GL_FUNC_ADD; case GraphBlendOp::Subtract: return GL_FUNC_SUBTRACT; case GraphBlendOp::ReverseSubtract: return GL_FUNC_REVERSE_SUBTRACT; case GraphBlendOp::Minimum: return GL_MIN; default: return GL_MAX; }
-		}
-		GLenum blendFactor(GraphBlendFactor value)
-		{
-			switch (value) { case GraphBlendFactor::Zero: return GL_ZERO; case GraphBlendFactor::One: return GL_ONE; case GraphBlendFactor::SourceColour: return GL_SRC_COLOR; case GraphBlendFactor::OneMinusSourceColour: return GL_ONE_MINUS_SRC_COLOR; case GraphBlendFactor::DestinationColour: return GL_DST_COLOR; case GraphBlendFactor::OneMinusDestinationColour: return GL_ONE_MINUS_DST_COLOR; case GraphBlendFactor::SourceAlpha: return GL_SRC_ALPHA; case GraphBlendFactor::OneMinusSourceAlpha: return GL_ONE_MINUS_SRC_ALPHA; case GraphBlendFactor::DestinationAlpha: return GL_DST_ALPHA; default: return GL_ONE_MINUS_DST_ALPHA; }
+			renderSystem.applyRasterState(savedState, savedState.colourWriteMasks.size(), 0, 0);
 		}
 
 		class GraphRasterStateScope
 		{
-			bool mActive{ false };
-			GLboolean mDepth{ GL_FALSE }, mCull{ GL_FALSE }, mBlend{ GL_FALSE }, mMultisample{ GL_FALSE }, mAlphaToCoverage{ GL_FALSE }, mScissor{ GL_FALSE }, mDepthMask{ GL_TRUE };
-			GLint mDepthFunc{ GL_LESS }, mCullMode{ GL_BACK }, mFrontFace{ GL_CCW }, mPolygonMode[2]{ GL_FILL, GL_FILL }, mBlendEquationRgb{ GL_FUNC_ADD }, mBlendEquationAlpha{ GL_FUNC_ADD };
-			GLint mSourceRgb{ GL_ONE }, mDestinationRgb{ GL_ZERO }, mSourceAlpha{ GL_ONE }, mDestinationAlpha{ GL_ZERO }, mScissorBox[4]{};
-			vector<array<GLboolean, 4>> mColourMasks;
-
-			static void enabled(GLenum capability, bool value) { if (value) GL_CHECK(glEnable(capability)); else GL_CHECK(glDisable(capability)); }
+			RenderSystem* mRenderSystem{ nullptr };
+			GraphRasterState mSavedState;
+			size_t mColourOutputs{ 0 }, mWidth{ 0 }, mHeight{ 0 };
 
 		public:
-			GraphRasterStateScope(GraphRasterState const& state, size_t colourOutputs, size_t width, size_t height)
+			GraphRasterStateScope(RenderSystem* renderSystem, GraphRasterState const& state, size_t colourOutputs, size_t width, size_t height)
+				: mRenderSystem(state.explicitState ? renderSystem : nullptr), mColourOutputs(colourOutputs), mWidth(width), mHeight(height)
 			{
-				if (!state.explicitState) return;
-				mActive = true;
-				mDepth = glIsEnabled(GL_DEPTH_TEST); mCull = glIsEnabled(GL_CULL_FACE); mBlend = glIsEnabled(GL_BLEND);
-				mMultisample = glIsEnabled(GL_MULTISAMPLE); mAlphaToCoverage = glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE); mScissor = glIsEnabled(GL_SCISSOR_TEST);
-				GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &mDepthMask)); GL_CHECK(glGetIntegerv(GL_DEPTH_FUNC, &mDepthFunc));
-				GL_CHECK(glGetIntegerv(GL_CULL_FACE_MODE, &mCullMode)); GL_CHECK(glGetIntegerv(GL_FRONT_FACE, &mFrontFace)); GL_CHECK(glGetIntegerv(GL_POLYGON_MODE, mPolygonMode));
-				GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_RGB, &mBlendEquationRgb)); GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &mBlendEquationAlpha));
-				GL_CHECK(glGetIntegerv(GL_BLEND_SRC_RGB, &mSourceRgb)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_RGB, &mDestinationRgb)); GL_CHECK(glGetIntegerv(GL_BLEND_SRC_ALPHA, &mSourceAlpha)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_ALPHA, &mDestinationAlpha));
-				GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, mScissorBox));
-				mColourMasks.resize(max<size_t>(1, colourOutputs));
-				for (GLuint output = 0; output < mColourMasks.size(); ++output) GL_CHECK(glGetBooleani_v(GL_COLOR_WRITEMASK, output, mColourMasks[output].data()));
-
-				enabled(GL_DEPTH_TEST, state.depthTest); GL_CHECK(glDepthMask(state.depthWrite ? GL_TRUE : GL_FALSE)); GL_CHECK(glDepthFunc(compareOp(state.depthCompare)));
-				enabled(GL_CULL_FACE, state.cullMode != GraphCullMode::None); if (state.cullMode != GraphCullMode::None) GL_CHECK(glCullFace(state.cullMode == GraphCullMode::Front ? GL_FRONT : GL_BACK));
-				GL_CHECK(glFrontFace(state.frontFace == GraphFrontFace::Clockwise ? GL_CW : GL_CCW)); GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, state.fillMode == GraphFillMode::Line ? GL_LINE : GL_FILL));
-				enabled(GL_BLEND, state.blend); GL_CHECK(glBlendEquationSeparate(blendOp(state.colourBlendOp), blendOp(state.alphaBlendOp)));
-				GL_CHECK(glBlendFuncSeparate(blendFactor(state.sourceColourBlend), blendFactor(state.destinationColourBlend), blendFactor(state.sourceAlphaBlend), blendFactor(state.destinationAlphaBlend)));
-				enabled(GL_MULTISAMPLE, state.multisample); enabled(GL_SAMPLE_ALPHA_TO_COVERAGE, state.alphaToCoverage); enabled(GL_SCISSOR_TEST, state.scissor);
-				if (state.scissor) GL_CHECK(glScissor((GLint)state.scissorRectangle.x, (GLint)state.scissorRectangle.y, (GLsizei)(state.scissorRectangle.z ? state.scissorRectangle.z : width), (GLsizei)(state.scissorRectangle.w ? state.scissorRectangle.w : height)));
-				for (GLuint output = 0; output < mColourMasks.size(); ++output)
-				{
-					auto mask = output < state.colourWriteMasks.size() ? state.colourWriteMasks[output] : GraphColourWriteMask{};
-					GL_CHECK(glColorMaski(output, mask.red, mask.green, mask.blue, mask.alpha));
-				}
+				if (!mRenderSystem) return;
+				mSavedState = mRenderSystem->captureRasterState(colourOutputs);
+				mRenderSystem->applyRasterState(state, colourOutputs, width, height);
 			}
 			~GraphRasterStateScope()
 			{
-				if (!mActive) return;
-				enabled(GL_DEPTH_TEST, mDepth != GL_FALSE); GL_CHECK(glDepthMask(mDepthMask)); GL_CHECK(glDepthFunc(mDepthFunc));
-				enabled(GL_CULL_FACE, mCull != GL_FALSE); GL_CHECK(glCullFace(mCullMode)); GL_CHECK(glFrontFace(mFrontFace)); GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, mPolygonMode[0]));
-				enabled(GL_BLEND, mBlend != GL_FALSE); GL_CHECK(glBlendEquationSeparate(mBlendEquationRgb, mBlendEquationAlpha)); GL_CHECK(glBlendFuncSeparate(mSourceRgb, mDestinationRgb, mSourceAlpha, mDestinationAlpha));
-				enabled(GL_MULTISAMPLE, mMultisample != GL_FALSE); enabled(GL_SAMPLE_ALPHA_TO_COVERAGE, mAlphaToCoverage != GL_FALSE); enabled(GL_SCISSOR_TEST, mScissor != GL_FALSE); GL_CHECK(glScissor(mScissorBox[0], mScissorBox[1], mScissorBox[2], mScissorBox[3]));
-				for (GLuint output = 0; output < mColourMasks.size(); ++output) GL_CHECK(glColorMaski(output, mColourMasks[output][0], mColourMasks[output][1], mColourMasks[output][2], mColourMasks[output][3]));
+				if (!mRenderSystem) return;
+				mRenderSystem->applyRasterState(mSavedState, mColourOutputs, mWidth, mHeight);
+				mRenderSystem->debugVerifyRasterStateCache();
 			}
 		};
 
-		void discardDontCareOutputs(GraphPassInfo const& pass, RenderGraphExecutionContext const& context)
+		void discardDontCareOutputs(GraphPassInfo const& pass, RenderGraphExecutionContext const& context, bool defaultFramebuffer)
 		{
 			if (!GLEW_VERSION_4_3 && !GLEW_ARB_invalidate_subdata) return;
 			// The default framebuffer names its buffers GL_COLOR/GL_DEPTH/GL_STENCIL,
 			// not GL_COLOR_ATTACHMENT0 -- passing an attachment enum there is
 			// GL_INVALID_ENUM, which is what authoring store="dontCare" on a
 			// presentation output used to produce.
-			GLint boundFramebuffer = 0;
-			GL_CHECK(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &boundFramebuffer));
-			bool const defaultFramebuffer = boundFramebuffer == 0;
 			vector<GLenum> attachments;
 			for (size_t index = 0; index < pass.colourOutputs.size(); ++index)
 			{
@@ -550,16 +508,13 @@ namespace mpp
 			mRenderSystem->pushRenderTarget(passTarget);
 			mRenderSystem->setExpectedGraphColourOutputs(pass.colourOutputs.size());
 			bool const imagePass = pass.type == GraphPassType::Fullscreen || pass.type == GraphPassType::Present;
-			GLboolean depthEnabled = GL_FALSE, cullEnabled = GL_FALSE, scissorEnabled = GL_FALSE, depthWriteEnabled = GL_TRUE;
+			GraphRasterState imagePassSavedState;
 			if (imagePass)
 			{
 				// Fullscreen programs use the renderer's identity 2D transform. Graph
 				// execution enters from a 3D scene projection, so preserve it and
 				// install the same transform used by the manual post-effect path.
-				depthEnabled = glIsEnabled(GL_DEPTH_TEST);
-				cullEnabled = glIsEnabled(GL_CULL_FACE);
-				scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
-				GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteEnabled));
+				imagePassSavedState = mRenderSystem->captureRasterState(pass.colourOutputs.size());
 				mRenderSystem->pushProjectionMatrix();
 				mRenderSystem->pushCameraMatrix();
 				mRenderSystem->pushModelMatrix();
@@ -572,18 +527,17 @@ namespace mpp
 				mRenderSystem->scaleTransform2d(glm::vec2(
 					(float)passTarget->getWidth() / (float)mRenderSystem->getWindowWidth(),
 					(float)passTarget->getHeight() / (float)mRenderSystem->getWindowHeight()));
-				GL_CHECK(glDisable(GL_DEPTH_TEST));
-				GL_CHECK(glDepthMask(GL_FALSE));
-				GL_CHECK(glDisable(GL_CULL_FACE));
-				GL_CHECK(glDisable(GL_SCISSOR_TEST));
+				auto imageState = imagePassSavedState;
+				imageState.depthTest = false;
+				imageState.depthWrite = false;
+				imageState.cullMode = GraphCullMode::None;
+				imageState.scissor = false;
+				mRenderSystem->applyRasterState(imageState, pass.colourOutputs.size(), passTarget->getWidth(), passTarget->getHeight());
 			}
 			auto restoreImagePassState = [&]()
 			{
 				if (!imagePass) return;
-				if (depthEnabled) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
-				GL_CHECK(glDepthMask(depthWriteEnabled));
-				if (cullEnabled) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
-				if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+				mRenderSystem->applyRasterState(imagePassSavedState, pass.colourOutputs.size(), passTarget->getWidth(), passTarget->getHeight());
 				mRenderSystem->popModelMatrix();
 				mRenderSystem->popCameraMatrix();
 				mRenderSystem->popProjectionMatrix();
@@ -606,11 +560,11 @@ namespace mpp
 				mRenderSystem->setViewport(0, 0, passTarget->getWidth(), passTarget->getHeight());
 				{
 					GpuDebugScope loadScope("Load/Clear Attachments");
-					clearPassOutputs(pass);
+					clearPassOutputs(*mRenderSystem, pass);
 				}
 				{
 					GpuDebugScope executeScope("Execute: " + pass.name);
-					GraphRasterStateScope rasterState(pass.rasterState, pass.colourOutputs.size(), passTarget->getWidth(), passTarget->getHeight());
+					GraphRasterStateScope rasterState(mRenderSystem, pass.rasterState, pass.colourOutputs.size(), passTarget->getWidth(), passTarget->getHeight());
 					if (callback) callback(context);
 					else if (scenePass) scenePass->execute(context);
 					else
@@ -623,7 +577,7 @@ namespace mpp
 				}
 				{
 					GpuDebugScope storeScope("Store/Resolve Attachments");
-					discardDontCareOutputs(pass, context);
+					discardDontCareOutputs(pass, context, passTarget == mRenderSystem->getScreenRenderTarget());
 					for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, false) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},false,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
 					for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, true) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},true,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
 				}
