@@ -29,7 +29,7 @@ namespace mpp::resource_parsers
 		{
 			std::string result;
 			auto add = [&](GraphImageUsage flag, char const* name) { if (hasGraphImageUsage(value, flag)) { if (!result.empty()) result += ","; result += name; } };
-			add(GraphImageUsage::Sampled, "sampled"); add(GraphImageUsage::ColourAttachment, "colourAttachment"); add(GraphImageUsage::DepthAttachment, "depthAttachment"); add(GraphImageUsage::Presentation, "presentation");
+			add(GraphImageUsage::Sampled, "sampled"); add(GraphImageUsage::ColourAttachment, "colourAttachment"); add(GraphImageUsage::DepthAttachment, "depthAttachment"); add(GraphImageUsage::Presentation, "presentation"); add(GraphImageUsage::Exported, "exported");
 			return result;
 		}
 		std::string colourSpace(TextureColourSpace value) { return value == TextureColourSpace::Srgb ? "SRGB" : "LINEAR"; }

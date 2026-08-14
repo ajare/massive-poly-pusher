@@ -594,36 +594,36 @@ namespace mpp
 		{
 			auto const& pass = mPasses[passId];
 			if (!pass.enabled) continue;
+			auto error = [&](string message, GraphImageHandle image = GraphImageHandle{})
+			{
+				result.diagnostics.push_back(message);
+				result.messages.push_back({ GraphCompileMessageSeverity::Error, "RG-COMPILER-ERROR", std::move(message), { passId }, image });
+			};
 			for (auto const& input : pass.sampledInputs)
 			{
 				if (!validImage(input))
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' reads an invalid image handle.");
+					error("Pass '" + pass.name + "' reads an invalid image handle.");
 					continue;
 				}
 				auto const& image = mImages[input.id];
 				if (!hasGraphImageUsage(image.desc.usage, GraphImageUsage::Sampled))
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' samples image '" + image.name + "' without Sampled usage.");
+					error("Pass '" + pass.name + "' samples image '" + image.name + "' without Sampled usage.", input);
 				}
 				uint32_t producer = image.producers[input.version];
 				if (producer == UINT32_MAX && !image.desc.external)
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' reads unwritten non-external image '" + image.name + "'.");
+					error("Pass '" + pass.name + "' reads unwritten non-external image '" + image.name + "'.", input);
 				}
 				else if (producer != UINT32_MAX && producer != passId)
 				{
 					if (!mPasses[producer].enabled)
-						result.diagnostics.push_back("Pass '" + pass.name + "' reads value '" + image.valueIds[input.version] + "' produced by disabled pass '" + mPasses[producer].name + "'.");
-					else
-					{
-						if (producer > passId)
-							result.diagnostics.push_back("Pass '" + pass.name + "' appears before producer '" + mPasses[producer].name + "' for value '" + image.valueIds[input.version] + "'.");
-					}
+						error("Pass '" + pass.name + "' reads value '" + image.valueIds[input.version] + "' produced by disabled pass '" + mPasses[producer].name + "'.", input);
 				}
 				else if (producer == passId)
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' reads and writes the same image version.");
+					error("Pass '" + pass.name + "' reads and writes the same image version.", input);
 				}
 			}
 
@@ -643,9 +643,9 @@ namespace mpp
 				auto const& image = mImages[handle.id];
 				if (image.desc.external || !image.desc.transient || handle.version == 0) return;
 				auto const producer = image.producers[handle.version - 1];
-				if (producer != UINT32_MAX && producer <= passId && mPasses[producer].enabled) return;
-				result.diagnostics.push_back("Pass '" + pass.name + "' loads " + attachment + " image '" + image.name +
-					"', which is transient with no earlier producer, so its contents depend on which image the allocator aliased it onto. Clear it, mark the image non-transient, or produce it in an earlier pass.");
+				if (producer != UINT32_MAX && mPasses[producer].enabled) return;
+				error("Pass '" + pass.name + "' loads " + attachment + " image '" + image.name +
+					"', which is transient with no producer, so its contents depend on which image the allocator aliased it onto. Clear it, mark the image non-transient, or produce it in another pass.", handle);
 			};
 			for (auto const& output : pass.colourOutputs) checkTransientLoad(output.image, output.load, "colour");
 			for (auto const& output : pass.depthOutputs) checkTransientLoad(output.image, output.load, "depth");
@@ -659,13 +659,13 @@ namespace mpp
 					auto const& desc = mImages[output.image.id].desc;
 					if (effectiveSize(desc, output.mipLevel) != effectiveSize(first, firstOutput.mipLevel))
 					{
-						result.diagnostics.push_back("MRT pass '" + pass.name + "' has incompatible colour attachment mip dimensions.");
+						error("MRT pass '" + pass.name + "' has incompatible colour attachment mip dimensions.", output.image);
 					}
 				}
 			}
 			if (pass.depthOutputs.size() > 1)
 			{
-				result.diagnostics.push_back("Pass '" + pass.name + "' declares more than one depth output.");
+				error("Pass '" + pass.name + "' declares more than one depth output.");
 			}
 			if (!pass.colourOutputs.empty() && !pass.depthOutputs.empty())
 			{
@@ -675,7 +675,7 @@ namespace mpp
 				auto const& depth = mImages[depthOutput.image.id].desc;
 				if (effectiveSize(colour, colourOutput.mipLevel) != effectiveSize(depth, depthOutput.mipLevel))
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions.");
+					error("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions.", colourOutput.image);
 				}
 			}
 		}
@@ -685,8 +685,124 @@ namespace mpp
 			cache.topology = result;
 			return result;
 		}
+
+		auto dependencyOrder = buildDependencyOrder();
+		if (!dependencyOrder.valid)
+		{
+			result.diagnostics = std::move(dependencyOrder.diagnostics);
+			result.messages = std::move(dependencyOrder.messages);
+			cache.topology = result;
+			return result;
+		}
+		result.passOrder = std::move(dependencyOrder.passOrder);
+
+		vector<uint32_t> consumerCounts;
+		for (auto const& image : mImages) consumerCounts.insert(consumerCounts.end(), image.producers.size(), 0);
+		vector<size_t> imageOffsets(mImages.size());
+		size_t offset = 0;
+		for (size_t image = 0; image < mImages.size(); ++image) { imageOffsets[image] = offset; offset += mImages[image].producers.size(); }
+		auto countConsumer = [&](GraphImageHandle value)
+		{
+			if (validImage(value)) ++consumerCounts[imageOffsets[value.id] + value.version];
+		};
+		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
+		{
+			auto const& pass = mPasses[passId];
+			if (!pass.enabled)
+			{
+				result.messages.push_back({ GraphCompileMessageSeverity::Information, "RG-COMPILER-DISABLED-PASS",
+					"Pass '" + pass.name + "' is disabled and omitted from execution.", { passId }, {} });
+				continue;
+			}
+			for (auto input : pass.sampledInputs) countConsumer(input);
+			for (auto const& output : pass.colourOutputs) if (output.load == GraphLoadOp::Load && output.image.version) countConsumer({ output.image.id, output.image.version - 1 });
+			for (auto const& output : pass.depthOutputs) if (output.load == GraphLoadOp::Load && output.image.version) countConsumer({ output.image.id, output.image.version - 1 });
+		}
+		bool hasExplicitRoots = false;
+		vector<bool> livePasses(mPasses.size(), false);
+		vector<uint32_t> liveStack;
+		auto rootOutput = [&](GraphImageHandle value)
+		{
+			auto const& image = mImages[value.id];
+			// Usage belongs to the logical image, but only its latest SSA value is
+			// externally observable. Earlier writes stay live through real sampled/load
+			// dependencies instead of becoming roots merely because they share a name.
+			return value.version + 1 == image.producers.size() && (image.desc.external || hasGraphImageUsage(image.desc.usage, GraphImageUsage::Presentation) || hasGraphImageUsage(image.desc.usage, GraphImageUsage::Exported));
+		};
+		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
+		{
+			auto const& pass = mPasses[passId];
+			if (!pass.enabled) continue;
+			bool root = any_of(pass.colourOutputs.begin(), pass.colourOutputs.end(), [&](auto const& output) { return rootOutput(output.image); }) ||
+				any_of(pass.depthOutputs.begin(), pass.depthOutputs.end(), [&](auto const& output) { return rootOutput(output.image); });
+			if (root) { hasExplicitRoots = true; livePasses[passId] = true; liveStack.push_back(passId); }
+		}
+		if (hasExplicitRoots)
+		{
+			auto retainProducer = [&](GraphImageHandle value)
+			{
+				if (!validImage(value)) return;
+				auto const producer = mImages[value.id].producers[value.version];
+				if (producer != UINT32_MAX && mPasses[producer].enabled && !livePasses[producer]) { livePasses[producer] = true; liveStack.push_back(producer); }
+			};
+			while (!liveStack.empty())
+			{
+				auto const passId = liveStack.back(); liveStack.pop_back(); auto const& pass = mPasses[passId];
+				for (auto input : pass.sampledInputs) retainProducer(input);
+				for (auto const& output : pass.colourOutputs) if (output.load == GraphLoadOp::Load && output.image.version) retainProducer({ output.image.id, output.image.version - 1 });
+				for (auto const& output : pass.depthOutputs) if (output.load == GraphLoadOp::Load && output.image.version) retainProducer({ output.image.id, output.image.version - 1 });
+			}
+		}
+		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
+		{
+			auto const& pass = mPasses[passId];
+			if (!pass.enabled) continue;
+			auto inspectOutput = [&](GraphImageHandle value, GraphStoreOp store)
+			{
+				auto const& image = mImages[value.id];
+				if (consumerCounts[imageOffsets[value.id] + value.version] || rootOutput(value)) return;
+				result.unusedOutputs.push_back(value);
+				auto const severity = store == GraphStoreOp::Store ? GraphCompileMessageSeverity::Warning : GraphCompileMessageSeverity::Information;
+				result.messages.push_back({ severity, "RG-COMPILER-UNUSED-OUTPUT",
+					"Pass '" + pass.name + "' writes unused value '" + image.valueIds[value.version] + "'.", { passId }, value });
+			};
+			for (auto const& output : pass.colourOutputs) inspectOutput(output.image, output.store);
+			for (auto const& output : pass.depthOutputs) inspectOutput(output.image, output.store);
+			bool cullable = hasExplicitRoots ? !livePasses[passId] : (!pass.colourOutputs.empty() || !pass.depthOutputs.empty());
+			if (!hasExplicitRoots)
+			{
+				auto retainedOutput = [&](GraphImageHandle value, GraphStoreOp store)
+				{
+					return store == GraphStoreOp::Store || consumerCounts[imageOffsets[value.id] + value.version] || rootOutput(value);
+				};
+				for (auto const& output : pass.colourOutputs) cullable = cullable && !retainedOutput(output.image, output.store);
+				for (auto const& output : pass.depthOutputs) cullable = cullable && !retainedOutput(output.image, output.store);
+			}
+			if (cullable)
+			{
+				result.culledPasses.push_back({ passId });
+				result.messages.push_back({ GraphCompileMessageSeverity::Information, "RG-COMPILER-DEAD-PASS",
+					"Pass '" + pass.name + (hasExplicitRoots ? "' is culled because it does not contribute to an exported or presentation output." : "' is culled because all of its outputs are unused and discarded."), { passId }, {} });
+			}
+		}
+		if (!result.culledPasses.empty())
+			result.passOrder.erase(remove_if(result.passOrder.begin(), result.passOrder.end(), [&](GraphPassHandle pass)
+			{
+				return find_if(result.culledPasses.begin(), result.culledPasses.end(), [&](GraphPassHandle culled) { return culled.id == pass.id; }) != result.culledPasses.end();
+			}), result.passOrder.end());
+		vector<GraphPassHandle> authoredExecutionOrder;
 		for (uint32_t pass = 0; pass < mPasses.size(); ++pass)
-			if (mPasses[pass].enabled) result.passOrder.push_back({ pass });
+			if (mPasses[pass].enabled && none_of(result.culledPasses.begin(), result.culledPasses.end(), [&](GraphPassHandle culled) { return culled.id == pass; })) authoredExecutionOrder.push_back({ pass });
+		for (size_t position = 0; position < result.passOrder.size(); ++position)
+		{
+			auto const pass = result.passOrder[position];
+			if (authoredExecutionOrder[position].id != pass.id)
+			{
+				auto const authored = find_if(authoredExecutionOrder.begin(), authoredExecutionOrder.end(), [&](GraphPassHandle value) { return value.id == pass.id; });
+				result.messages.push_back({ GraphCompileMessageSeverity::Information, "RG-COMPILER-REORDERED-PASS",
+					"Pass '" + mPasses[pass.id].name + "' moves from enabled authored position " + to_string(authored - authoredExecutionOrder.begin()) + " to dependency position " + to_string(position) + ".", pass, {} });
+			}
+		}
 		result.valid = true;
 		cache.topology = result;
 		return result;
@@ -703,26 +819,35 @@ namespace mpp
 			auto const& pass = mPasses[passId];
 			if (!pass.enabled) continue;
 			++enabledCount;
-			for (auto const& input : pass.sampledInputs)
+			auto error = [&](string message, GraphImageHandle image = GraphImageHandle{})
+			{
+				result.diagnostics.push_back(message);
+				result.messages.push_back({ GraphCompileMessageSeverity::Error, "RG-COMPILER-DEPENDENCY", std::move(message), { passId }, image });
+			};
+			auto addDependency = [&](GraphImageHandle input, char const* operation, bool allowUnwritten)
 			{
 				if (!validImage(input))
 				{
-					result.diagnostics.push_back("Pass '" + pass.name + "' reads an invalid image handle.");
-					continue;
+					error("Pass '" + pass.name + "' " + operation + " an invalid image handle.");
+					return;
 				}
 				auto const producer = mImages[input.id].producers[input.version];
 				if (producer == UINT32_MAX)
 				{
+					if (allowUnwritten) return;
 					if (!mImages[input.id].desc.external)
-						result.diagnostics.push_back("Pass '" + pass.name + "' reads unwritten non-external value '" + mImages[input.id].valueIds[input.version] + "'.");
+						error("Pass '" + pass.name + "' " + operation + " unwritten non-external value '" + mImages[input.id].valueIds[input.version] + "'.", input);
 				}
 				else if (producer == passId)
-					result.diagnostics.push_back("Pass '" + pass.name + "' reads and writes the same image value.");
+					error("Pass '" + pass.name + "' reads and writes the same image value.", input);
 				else if (!mPasses[producer].enabled)
-					result.diagnostics.push_back("Pass '" + pass.name + "' depends on disabled pass '" + mPasses[producer].name + "'.");
+					error("Pass '" + pass.name + "' depends on disabled pass '" + mPasses[producer].name + "'.", input);
 				else if (edges[producer].insert(passId).second)
 					++indegree[passId];
-			}
+			};
+			for (auto const& input : pass.sampledInputs) addDependency(input, "reads", false);
+			for (auto const& output : pass.colourOutputs) if (output.load == GraphLoadOp::Load && output.image.version) addDependency({ output.image.id, output.image.version - 1 }, "loads", true);
+			for (auto const& output : pass.depthOutputs) if (output.load == GraphLoadOp::Load && output.image.version) addDependency({ output.image.id, output.image.version - 1 }, "loads", true);
 		}
 		if (!result.diagnostics.empty()) return result;
 		priority_queue<uint32_t, vector<uint32_t>, greater<uint32_t>> ready;
@@ -736,7 +861,9 @@ namespace mpp
 		}
 		if (result.passOrder.size() != enabledCount)
 		{
-			result.diagnostics.push_back("Render graph contains a pass dependency cycle.");
+			auto message = string("Render graph contains a pass dependency cycle.");
+			result.diagnostics.push_back(message);
+			result.messages.push_back({ GraphCompileMessageSeverity::Error, "RG-COMPILER-CYCLE", std::move(message), {}, {} });
 			result.passOrder.clear();
 			return result;
 		}
@@ -883,6 +1010,20 @@ namespace mpp
 		return cachePlan(plan);
 	}
 
+	RenderGraphCompiledPlan RenderGraph::buildCompiledPlan(Caps const& caps, glm::uvec2 const& viewport) const
+	{
+		RenderGraphCompiledPlan result;
+		result.compilation = compile(caps, viewport);
+		if (!result.compilation.valid)
+		{
+			result.allocation.diagnostics = result.compilation.diagnostics;
+			return result;
+		}
+		result.allocation = buildAllocationPlan(viewport);
+		result.valid = result.allocation.valid;
+		return result;
+	}
+
 	RenderGraphPlanCacheStats RenderGraph::getPlanCacheStats() const
 	{
 		return mPlanCacheStats;
@@ -941,6 +1082,7 @@ namespace mpp
 		}
 		++mPlanCacheStats.compileMisses;
 		auto result = compile();
+		auto const topologyDiagnosticCount = result.diagnostics.size();
 		// A zero viewport means the caller has none to offer, so relative sizes stay
 		// unresolved and unchecked here -- buildAllocationPlan still catches them,
 		// just later and with a throw rather than a diagnostic.
@@ -975,6 +1117,8 @@ namespace mpp
 					" colour outputs, exceeding the renderer MRT capability.");
 			}
 		}
+		for (size_t index = topologyDiagnosticCount; index < result.diagnostics.size(); ++index)
+			result.messages.push_back({ GraphCompileMessageSeverity::Error, "RG-COMPILER-CAPABILITY", result.diagnostics[index], {}, {} });
 		if (!result.diagnostics.empty())
 		{
 			result.valid = false;

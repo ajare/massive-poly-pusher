@@ -121,6 +121,7 @@ namespace pipeline_editor
 			return model;
 		}
 		auto compiled = input.graph->compile();
+		model.compilerMessages = compiled.messages;
 		if (!compiled.valid)
 		{
 			model.diagnostics = compiled.diagnostics;
@@ -174,8 +175,9 @@ namespace pipeline_editor
 		};
 
 		std::vector<GraphPassHandle> actual = input.snapshot ? input.snapshot->actualPassOrder : compiled.passOrder;
-		std::unordered_map<uint32_t, int> actualPositions;
+		std::unordered_map<uint32_t, int> actualPositions, compiledPositions;
 		for (size_t index = 0; index < actual.size(); ++index) actualPositions[actual[index].id] = (int)index;
+		for (size_t index = 0; index < compiled.passOrder.size(); ++index) compiledPositions[compiled.passOrder[index].id] = (int)index;
 		std::vector<uint64_t> passNodes(input.graph->getPassCount());
 		for (uint32_t pass = 0; pass < input.graph->getPassCount(); ++pass)
 		{
@@ -231,9 +233,22 @@ namespace pipeline_editor
 				node.enabled = false;
 				node.bypassReason = "Disabled by authored pass setting";
 			}
+			else if (std::any_of(compiled.culledPasses.begin(), compiled.culledPasses.end(), [&](GraphPassHandle value) { return value.id == pass; }))
+			{
+				node.enabled = false;
+				node.bypassReason = "Compiler culled: pass does not contribute to a retained output";
+			}
 			else if (!node.enabled) node.bypassReason = "Not present in the last successful compiled execution order";
+			for (auto const& message : compiled.messages)
+				if (message.pass.isValid() && message.pass.id == pass)
+					node.details += (node.details.empty() ? "" : "\n") + std::string("[") + message.code + "] " + message.message;
 			if (!node.enabled) { node.renderDocLabels.clear(); node.renderDocLabelSummaries.clear(); }
-			node.orderWarning = node.enabled && node.actualPosition != node.authoredPosition;
+			bool const compilerReordered = std::any_of(compiled.messages.begin(), compiled.messages.end(), [&](GraphCompileMessage const& message)
+			{
+				return message.code == "RG-COMPILER-REORDERED-PASS" && message.pass.isValid() && message.pass.id == pass;
+			});
+			auto const compiledPosition = compiledPositions.find(pass);
+			node.orderWarning = node.enabled && (compilerReordered || (input.snapshot && compiledPosition != compiledPositions.end() && node.actualPosition != compiledPosition->second));
 			node.layoutRank = node.actualPosition >= 0 ? (float)node.actualPosition : (float)node.authoredPosition;
 			passNodes[pass] = addNode(std::move(node));
 		}

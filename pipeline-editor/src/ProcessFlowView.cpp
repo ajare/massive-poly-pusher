@@ -123,6 +123,24 @@ namespace pipeline_editor
 		}
 		if (!model.warningBanner.empty())
 			ImGui::TextColored(ImVec4(1.0f, 0.68f, 0.18f, 1.0f), "%s", model.warningBanner.c_str());
+		if (!model.compilerMessages.empty())
+		{
+			size_t information = 0, warnings = 0, errors = 0;
+			for (auto const& message : model.compilerMessages)
+				if (message.severity == mpp::GraphCompileMessageSeverity::Error) ++errors;
+				else if (message.severity == mpp::GraphCompileMessageSeverity::Warning) ++warnings;
+				else ++information;
+			if (ImGui::TreeNode("CompilerInformation", "Compiler information (%zu error%s, %zu warning%s, %zu info)", errors, errors == 1 ? "" : "s", warnings, warnings == 1 ? "" : "s", information))
+			{
+				for (auto const& message : model.compilerMessages)
+				{
+					auto colour = message.severity == mpp::GraphCompileMessageSeverity::Error ? ImVec4(1.0f, 0.35f, 0.3f, 1.0f) :
+						message.severity == mpp::GraphCompileMessageSeverity::Warning ? ImVec4(1.0f, 0.68f, 0.18f, 1.0f) : ImVec4(0.45f, 0.75f, 1.0f, 1.0f);
+					ImGui::TextColored(colour, "[%s] %s", message.code.c_str(), message.message.c_str());
+				}
+				ImGui::TreePop();
+			}
+		}
 		if (model.largeGraph)
 		{
 			ImGui::TextColored(ImVec4(1.0f, 0.68f, 0.18f, 1.0f), "Large graph: all %zu nodes retained; navigation may be slower.", model.nodes.size());
