@@ -64,6 +64,9 @@
 #include "mpp/app/TimerSDL.h"
 #include "mpp/app/WindowSDL.h"
 #include "mpp/app/ZipArchive.h"
+#include "mpp/resource-parsers/LegacyPipelineConversion.h"
+#include "mpp/resource-parsers/LegacyPipelineResourceValidator.h"
+#include "mpp/resource-parsers/LegacyPipelineSerializer.h"
 #include "mpp/resource-parsers/PbrPipelineDocumentLoader.h"
 #include "mpp/resource-parsers/PbrPipelineSerializer.h"
 #include "mpp/resource-parsers/PbrPipelineRuntime.h"
@@ -921,6 +924,149 @@ namespace
 		std::filesystem::remove_all(temporary);
 	}
 
+	// Mirrors exportPipelinePackage, but first converts the source PBR
+	// pipeline (and its PbrMaterial resources) down to a LegacyPipeline
+	// document + BasicMaterial resources (see
+	// doc/LEGACY_PIPELINE_EXPORT_PLAN.md). The localization/asset-copy steps
+	// below are the same generic StructuredData-walking logic used for the
+	// Pbr export; only the document/resource types and the extra
+	// baked-texture ownership override differ.
+	void exportLegacyPipelinePackage(PbrPipelineDocument const& sourcePipeline,
+	                                 SceneDocument const& sourceScene,
+	                                 std::string const& pipelinePath,
+	                                 std::string const& scenePath,
+	                                 std::filesystem::path const& destination)
+	{
+		auto temporary = mpp::app::createUniqueTemporaryDirectory("MPP");
+		try
+		{
+			DiagnosticBag conversionDiagnostics;
+			auto pipeline =
+			    resource_parsers::convertPbrPipelineToLegacy(sourcePipeline, temporary.string(), conversionDiagnostics);
+			auto scene = sourceScene;
+			auto diagnostics = pipeline.validate();
+			diagnostics.append(resource_parsers::validateLegacyPipelineResourceDefinitions(pipeline));
+			diagnostics.append(scene.validate());
+			diagnostics.append(conversionDiagnostics);
+			if (!sourceScene.environmentBinding.empty())
+				diagnostics.warning("MPP-LEGACY-EXPORT-001",
+				                    "Preview scene's environment binding '" + sourceScene.environmentBinding +
+				                        "' has no legacy equivalent and will be ignored.",
+				                    {},
+				                    "environment");
+			if (diagnostics.hasErrors())
+				throw std::runtime_error("Legacy package export requires a valid pipeline and preview scene.\n" +
+				                         packageDiagnosticSummary(diagnostics));
+
+			// Materials that had no base-colour texture got a generated
+			// flat-colour PNG baked into `temporary` by the conversion above
+			// (see mpp::convertPbrMaterialToBasic); their <filename> is bare,
+			// so their payload-rewrite "owner" must point at `temporary`
+			// rather than the source pipeline's own directory.
+			std::set<std::string> bakedTextureMaterials;
+			for (auto const& diagnostic : conversionDiagnostics.getDiagnostics())
+				if (diagnostic.code == "MPP-LEGACY-MATERIAL-002")
+					bakedTextureMaterials.insert(diagnostic.objectId);
+
+			std::map<std::string, std::string> localized;
+			std::map<std::string, std::filesystem::path> localizedOwners;
+			std::set<std::string> names;
+			for (auto const& resource : pipeline.localResources)
+				names.insert(resource.name);
+			for (auto const& external : pipeline.externalResources)
+			{
+				auto resource = external.resource;
+				auto base = external.libraryName + "." + resource.name, local = base;
+				unsigned suffix = 2;
+				while (names.contains(local))
+					local = base + std::to_string(suffix++);
+				names.insert(local);
+				localized[external.libraryName + "::" + resource.name] = local;
+				localizedOwners[local] = external.libraryPath;
+				resource.name = local;
+				resource.definition.setEntryValue("name", local);
+				pipeline.localResources.push_back(std::move(resource));
+			}
+			auto rewriteReference = [&](auto&& self, mpp::data::StructuredData& value) -> void
+			{
+				if (value.isValue())
+				{
+					auto found = localized.find(value.getValue());
+					if (found != localized.end())
+						value.setValue(found->second);
+				}
+				else
+					for (auto& entry : value)
+						self(self, entry.second);
+			};
+			for (auto& resource : pipeline.localResources)
+				rewriteReference(rewriteReference, resource.definition);
+			auto replace = [&](std::string& value)
+			{
+				auto found = localized.find(value);
+				if (found != localized.end())
+					value = found->second;
+			};
+			for (auto& binding : pipeline.previewBindings)
+				replace(binding.materialResource);
+			pipeline.externalResources.clear();
+			pipeline.resourceLibraries.clear();
+
+			std::map<std::filesystem::path, std::string> payloads;
+			std::map<std::string, std::filesystem::path> directoryPayloads;
+			auto pipelineOwner = pipelinePath.empty() ? std::filesystem::path(sourcePipeline.sourcePath)
+			                                          : std::filesystem::path(pipelinePath);
+			auto bakedOwner = temporary / "pipeline.xml";
+			for (auto& resource : pipeline.localResources)
+				rewritePackagePayloadPaths(resource.definition,
+				                           bakedTextureMaterials.contains(resource.name) ? bakedOwner
+				                           : localizedOwners.contains(resource.name)     ? localizedOwners[resource.name]
+				                                                                          : pipelineOwner,
+				                           payloads,
+				                           directoryPayloads);
+			auto sceneOwner =
+			    scenePath.empty() ? std::filesystem::path(sourceScene.sourcePath) : std::filesystem::path(scenePath);
+			for (auto& model : scene.models)
+				if (model.source == SceneModelSource::MppModel && !model.file.empty())
+				{
+					auto path = mpp::app::normaliseDocumentPath(sceneOwner.parent_path() / model.file);
+					if (!std::filesystem::is_regular_file(path))
+						throw std::runtime_error("Package export is missing model '" + path.string() + "'.");
+					auto modelRoot = path.parent_path();
+					std::string packageRoot = "models/" + std::to_string(directoryPayloads.size() + 1);
+					for (auto const& entry : std::filesystem::recursive_directory_iterator(modelRoot))
+					{
+						if (!entry.is_regular_file())
+							continue;
+						auto relative = std::filesystem::relative(entry.path(), modelRoot);
+						directoryPayloads.emplace(packageRoot + "/" + relative.generic_string(),
+						                          mpp::app::normaliseDocumentPath(entry.path()));
+					}
+					model.file = packageRoot + "/" + path.filename().generic_string();
+				}
+			pipeline.previewScene = "scene.xml";
+			pipeline.sourcePath = (temporary / "pipeline.xml").string();
+			scene.sourcePath = (temporary / "scene.xml").string();
+			resource_parsers::LegacyPipelineSerializer::toFile(pipeline, pipeline.sourcePath);
+			resource_parsers::SceneSerializer::toFile(scene, scene.sourcePath);
+			mpp::app::writePackageManifest(temporary / "manifest.xml");
+			std::map<std::string, std::filesystem::path> files{{"manifest.xml", temporary / "manifest.xml"},
+			                                                   {"pipeline.xml", temporary / "pipeline.xml"},
+			                                                   {"scene.xml", temporary / "scene.xml"}};
+			for (auto const& [source, name] : payloads)
+				files.emplace(name, source);
+			for (auto const& [name, source] : directoryPayloads)
+				files.emplace(name, source);
+			mpp::app::ZipArchive::write(destination, files);
+		}
+		catch (...)
+		{
+			std::filesystem::remove_all(temporary);
+			throw;
+		}
+		std::filesystem::remove_all(temporary);
+	}
+
 	std::vector<std::filesystem::path> workspaceDependencies(PbrPipelineDocument const& pipeline,
 	                                                         SceneDocument const* scene,
 	                                                         std::string const& pipelinePath,
@@ -1020,7 +1166,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			fprintf(stdout,
 			        "PipelineEditor options:\n  --help, -h                                  Show this help.\n  "
 			        "--validate [--warnings-as-errors] <pipeline.xml> Validate a workspace.\n  --export-package "
-			        "<pipeline.xml> <package.mpppackage> Export a self-contained package.\n  --smoke-test "
+			        "<pipeline.xml> <package.mpppackage> Export a self-contained package.\n  --export-legacy-package "
+			        "<pipeline.xml> <package.mpppackage> Export a self-contained legacy package.\n  --smoke-test "
 			        "[pipeline.xml]                 Render 30 frames then exit.\n  --width <pixels> --height <pixels>  "
 			        "        Set editor window size.\n  --recovery-seconds <seconds>                Set recovery "
 			        "interval.\n  [pipeline.xml]                              Open a workspace.\n");
@@ -1048,6 +1195,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			catch (std::exception const& error)
 			{
 				fprintf(stderr, "MPP-PACKAGE-EXPORT-001: %s\n", error.what());
+				return 1;
+			}
+		}
+		if (__argc >= 2 && std::string(__argv[1]) == "--export-legacy-package")
+		{
+			if (__argc != 4)
+			{
+				fprintf(stderr, "usage: PipelineEditor --export-legacy-package <pipeline.xml> <package.mpppackage>\n");
+				return 2;
+			}
+			try
+			{
+				auto pipeline = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[2]);
+				if (pipeline.previewScene.empty())
+					throw std::runtime_error("Package export requires a preview scene.");
+				auto scenePath = mpp::app::resolveDocumentReference(__argv[2], pipeline.previewScene);
+				auto scene = resource_parsers::SceneParser::fromFile(scenePath.string());
+				exportLegacyPipelinePackage(
+				    pipeline, scene, __argv[2], scenePath.string(), mpp::app::normaliseDocumentPath(__argv[3]));
+				fprintf(stderr, "Legacy package exported: %s\n", __argv[3]);
+				return 0;
+			}
+			catch (std::exception const& error)
+			{
+				fprintf(stderr, "MPP-LEGACY-PACKAGE-EXPORT-001: %s\n", error.what());
 				return 1;
 			}
 		}
@@ -2423,7 +2595,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			bool requestNew = false, requestOpen = false, requestSave = false, requestSaveAs = false,
 			     requestSaveScene = false, requestSaveSceneAs = false, requestSaveAll = false,
-			     requestExportPackage = false, requestUndo = false, requestRedo = false, requestDuplicate = false,
+			     requestExportPackage = false, requestExportLegacyPackage = false, requestUndo = false, requestRedo = false, requestDuplicate = false,
 			     requestDelete = false, requestAddPopup = false, requestAutoOrder = false,
 			     requestReloadConflicts = false, requestKeepConflicts = false, requestOverwriteConflicts = false,
 			     requestValidateFocus = false, requestGltfImport = false;
@@ -2507,20 +2679,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						requestSaveSceneAs = true;
 					if (ImGui::MenuItem("Save All", "Ctrl+Alt+S", false, openDocument != nullptr))
 						requestSaveAll = true;
-					if (ImGui::MenuItem(
-					        "Export Package...",
-					        nullptr,
-					        false,
-					        openDocument && openScene &&
-					            openScene->environmentBinding == openDocument->environment.binding &&
-					            !openDocument->validate(renderSystem.getCaps()).hasErrors() &&
-					            !openDocument
-					                 ->validateOutputAntiAliasing(renderSystem.getOptions().antiAliasing,
-					                                              &renderSystem.getCaps())
-					                 .hasErrors() &&
-					            !resource_parsers::validatePbrPipelineResourceDefinitions(*openDocument).hasErrors() &&
-					            !openScene->validate().hasErrors()))
-						requestExportPackage = true;
+					{
+						// Both formats require a valid source PBR pipeline: the Legacy
+						// format is derived from it by conversion, so it can never be
+						// more permissive than the Pbr export it builds on.
+						bool exportEnabled = openDocument && openScene &&
+						    openScene->environmentBinding == openDocument->environment.binding &&
+						    !openDocument->validate(renderSystem.getCaps()).hasErrors() &&
+						    !openDocument
+						         ->validateOutputAntiAliasing(renderSystem.getOptions().antiAliasing,
+						                                      &renderSystem.getCaps())
+						         .hasErrors() &&
+						    !resource_parsers::validatePbrPipelineResourceDefinitions(*openDocument).hasErrors() &&
+						    !openScene->validate().hasErrors();
+						if (ImGui::BeginMenu("Export Package", exportEnabled))
+						{
+							if (ImGui::MenuItem("Pbr Package...")) requestExportPackage = true;
+							if (ImGui::MenuItem("Legacy Package...")) requestExportLegacyPackage = true;
+							ImGui::EndMenu();
+						}
+					}
 					ImGui::Separator();
 					if (ImGui::MenuItem("Exit") && confirmDiscardWorkspace())
 					{
@@ -3436,6 +3614,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					{
 						reportOperationError(
 						    "Package Export Failed", "Could not create a complete package.", *selected, error);
+					}
+				}
+			if (requestExportLegacyPackage && openDocument && openScene)
+				if (auto selected = mpp::app::savePackageFileDialog(
+				        window.getWindow(), "Export Legacy Package", "workspace.mpppackage"))
+				{
+					try
+					{
+						auto target = mpp::app::normaliseDocumentPath(*selected);
+						if (target.extension() != ".mpppackage")
+							target += ".mpppackage";
+						exportLegacyPipelinePackage(*openDocument, *openScene, currentPath, scenePath, target);
+						operationMessageIsSuccess = true;
+						operationErrorTitle = "Legacy Package Exported";
+						operationErrorMessage = "Created self-contained legacy package:\n" + target.string();
+						openOperationError = true;
+					}
+					catch (std::exception const& error)
+					{
+						reportOperationError(
+						    "Legacy Package Export Failed", "Could not create a complete legacy package.", *selected, error);
 					}
 				}
 			if (requestOverwriteConflicts)
