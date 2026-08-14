@@ -3655,7 +3655,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					auto info = openDocument->graph->getImageInfo({image, 0});
 					auto imageLabel = info.name + (hasGraphImageUsage(info.desc.usage, GraphImageUsage::Presentation)
 					                                   ? std::string("  [presentation]")
-					                                   : std::string());
+					                                   : hasGraphImageUsage(info.desc.usage, GraphImageUsage::Exported) ? std::string("  [exported]") : std::string());
 					if (ImGui::Selectable(imageLabel.c_str(), selectedImage == (int)image))
 					{
 						selectedImage = (int)image;
@@ -4922,6 +4922,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				usage("Depth attachment", GraphImageUsage::DepthAttachment);
 				ImGui::SameLine();
 				usage("Presentation", GraphImageUsage::Presentation);
+				ImGui::SameLine();
+				usage("Exported", GraphImageUsage::Exported);
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Keep the final value and every contributing pass live for host-side consumption.");
 				int absolute[2] = {(int)info.desc.absoluteSize.x, (int)info.desc.absoluteSize.y};
 				if (ImGui::InputInt2("Absolute size (0 = relative)", absolute))
 				{
@@ -5999,11 +6002,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				}
 				diagnostics.append(pipelineRuntime.getDiagnostics());
 				diagnostics.append(sceneRuntime.getDiagnostics());
-				ImGui::Text("%zu error(s), %zu warning(s)",
-				            diagnostics.count(DiagnosticSeverity::Error),
-				            diagnostics.count(DiagnosticSeverity::Warning));
+				auto compiler = openDocument->graph ? openDocument->graph->compile(renderSystem.getCaps(), {viewportWidth, viewportHeight}) : RenderGraphCompileResult{};
+				size_t compilerErrors = 0, compilerWarnings = 0, compilerInformation = 0;
+				for (auto const& message : compiler.messages)
+				{
+					if (message.severity == GraphCompileMessageSeverity::Error) ++compilerErrors;
+					else if (message.severity == GraphCompileMessageSeverity::Warning) ++compilerWarnings;
+					else ++compilerInformation;
+				}
+				ImGui::Text("%zu error(s), %zu warning(s), %zu compiler info",
+				            diagnostics.count(DiagnosticSeverity::Error) + compilerErrors,
+				            diagnostics.count(DiagnosticSeverity::Warning) + compilerWarnings,
+				            compilerInformation);
 				for (auto const& d : diagnostics.getDiagnostics())
 					ImGui::BulletText("[%s] %s", d.code.c_str(), d.message.c_str());
+				for (size_t index = 0; index < compiler.messages.size(); ++index)
+				{
+					auto const& message = compiler.messages[index];
+					auto colour = message.severity == GraphCompileMessageSeverity::Error ? ImVec4(1.0f, 0.35f, 0.3f, 1.0f) :
+						message.severity == GraphCompileMessageSeverity::Warning ? ImVec4(1.0f, 0.68f, 0.18f, 1.0f) : ImVec4(0.45f, 0.75f, 1.0f, 1.0f);
+					ImGui::PushStyleColor(ImGuiCol_Text, colour);
+					auto label = "[" + message.code + "] " + message.message + "##compiler" + std::to_string(index);
+					if (ImGui::Selectable(label.c_str()))
+					{
+						selectedPass = message.pass.isValid() ? (int)message.pass.id : -1;
+						selectedImage = message.image.isValid() ? (int)message.image.id : -1;
+						selectedImport = selectedBinding = selectedOverride = selectedModel = selectedLocalResource = selectedExternalResource = -1;
+					}
+					ImGui::PopStyleColor();
+				}
 			}
 			else
 				ImGui::TextColored(ImVec4(0.3f, 1, 0.4f, 1), "No document loaded");
@@ -6011,7 +6038,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ImGui::Begin("Allocations");
 			if (openDocument && openDocument->graph)
 			{
-				auto plan = openDocument->graph->buildAllocationPlan({viewportWidth, viewportHeight});
+				auto artifact = openDocument->graph->buildCompiledPlan(renderSystem.getCaps(), {viewportWidth, viewportHeight});
+				auto const& compiled = artifact.compilation;
+				auto const& plan = artifact.allocation;
+				size_t reordered = 0;
+				for (auto const& message : compiled.messages) if (message.code == "RG-COMPILER-REORDERED-PASS") ++reordered;
+				ImGui::Text("Compiler: %zu executed, %zu culled, %zu reordered, %zu unused output%s",
+				            compiled.passOrder.size(), compiled.culledPasses.size(), reordered, compiled.unusedOutputs.size(), compiled.unusedOutputs.size() == 1 ? "" : "s");
+				auto cacheStats = openDocument->graph->getPlanCacheStats();
+				ImGui::TextDisabled("Plan cache: compile %llu hit / %llu miss, allocation %llu hit / %llu miss, %llu invalidation%s",
+				                    (unsigned long long)cacheStats.compileHits, (unsigned long long)cacheStats.compileMisses,
+				                    (unsigned long long)cacheStats.allocationHits, (unsigned long long)cacheStats.allocationMisses,
+				                    (unsigned long long)cacheStats.invalidations, cacheStats.invalidations == 1 ? "" : "s");
 				if (plan.valid)
 				{
 					ImGui::Text("Physical estimate: %.2f MiB", plan.estimatedPhysicalBytes / 1048576.0);

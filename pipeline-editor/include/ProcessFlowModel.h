@@ -105,6 +105,7 @@ namespace pipeline_editor
 		std::vector<ProcessFlowNode> nodes;
 		std::vector<ProcessFlowEdge> edges;
 		std::vector<std::string> diagnostics;
+		std::vector<mpp::GraphCompileMessage> compilerMessages;
 		std::string emptyState;
 		std::string warningBanner;
 		bool stale{ false };

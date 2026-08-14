@@ -260,6 +260,7 @@ namespace mpp
 				if (usage.find("COLOURATTACHMENT") != string::npos) desc.usage = desc.usage | GraphImageUsage::ColourAttachment;
 				if (usage.find("DEPTHATTACHMENT") != string::npos) desc.usage = desc.usage | GraphImageUsage::DepthAttachment;
 				if (usage.find("PRESENTATION") != string::npos) desc.usage = desc.usage | GraphImageUsage::Presentation;
+				if (usage.find("EXPORTED") != string::npos) desc.usage = desc.usage | GraphImageUsage::Exported;
 				auto handle = graph.createImage(image.getEntry("name").getValue(), desc);
 				if (image.hasEntry("import")) graph.setImageImportName(handle, image.getEntry("import").getValue());
 				if (image.hasEntry("value")) graph.setValueId(handle, image.getEntry("value").getValue());

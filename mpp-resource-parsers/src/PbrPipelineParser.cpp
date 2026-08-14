@@ -104,6 +104,21 @@ namespace mpp::resource_parsers
 		}
 		if (!data.hasEntry("RenderGraph")) THROW_MPP_RESOURCE_PARSERS("PbrPipeline has no embedded RenderGraph: " + filepath, __LINE__, __FILE__, __func__);
 		document.graph = make_shared<RenderGraph>(RenderGraphParser::fromData(data.getEntry("RenderGraph"), filepath));
+		// Named outputs are consumed by the host-side output processor even when
+		// they are not swapchain images. Mark them as compiler roots so dead-pass
+		// elimination cannot discard their producers.
+		auto exportImage = [&](string const& name)
+		{
+			if (name.empty()) return;
+			for (uint32_t image = 0; image < document.graph->getImageCount(); ++image)
+			{
+				auto handle = GraphImageHandle{ image, 0 }; auto info = document.graph->getImageInfo(handle);
+				if (info.name != name) continue;
+				info.desc.usage = info.desc.usage | GraphImageUsage::Exported;
+				document.graph->setImageDesc(handle, info.desc); return;
+			}
+		};
+		for (auto const& output : document.outputs) { exportImage(output.image); exportImage(output.taaDepth); }
 		document.setBloomEnabled(document.bloom.enabled);
 		return document;
 	}

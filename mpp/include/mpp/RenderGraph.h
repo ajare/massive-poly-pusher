@@ -48,7 +48,10 @@ namespace mpp
 		Sampled = 1 << 0,
 		ColourAttachment = 1 << 1,
 		DepthAttachment = 1 << 2,
-		Presentation = 1 << 3
+		Presentation = 1 << 3,
+		// Keeps the final produced value live for host-side consumption even when
+		// it is not a swapchain/presentation image.
+		Exported = 1 << 4
 	};
 
 	inline GraphImageUsage operator |(GraphImageUsage left, GraphImageUsage right)
@@ -182,10 +185,27 @@ namespace mpp
 		GraphRasterState rasterState;
 	};
 
-	struct _MPPAPI RenderGraphCompileResult	{
+	enum class GraphCompileMessageSeverity { Information, Warning, Error };
+
+	struct _MPPAPI GraphCompileMessage
+	{
+		GraphCompileMessageSeverity severity{ GraphCompileMessageSeverity::Information };
+		std::string code;
+		std::string message;
+		GraphPassHandle pass;
+		GraphImageHandle image;
+	};
+
+	struct _MPPAPI RenderGraphCompileResult
+	{
 		bool valid{ false };
 		std::vector<GraphPassHandle> passOrder;
+		std::vector<GraphPassHandle> culledPasses;
+		std::vector<GraphImageHandle> unusedOutputs;
+		// Legacy error-only text retained for execution exceptions and callers that
+		// do not need structured compiler information.
 		std::vector<std::string> diagnostics;
+		std::vector<GraphCompileMessage> messages;
 	};
 
 	struct _MPPAPI RenderGraphPlanCacheStats
@@ -241,6 +261,15 @@ namespace mpp
 		std::vector<GraphImageHandle> importedImages;
 		uint64_t estimatedPhysicalBytes{ 0 };
 		std::vector<std::string> diagnostics;
+	};
+
+	// Immutable value artifact pairing one capability/viewport compilation with
+	// the physical allocation plan produced from the same graph generation.
+	struct _MPPAPI RenderGraphCompiledPlan
+	{
+		bool valid{ false };
+		RenderGraphCompileResult compilation;
+		RenderGraphAllocationPlan allocation;
 	};
 
 	// Declarative topology only. Allocation/execution is deliberately separate
@@ -327,6 +356,7 @@ namespace mpp
 		RenderGraphCompileResult buildDependencyOrder() const;
 		void reorderPasses(std::vector<GraphPassHandle> const& order);
 		RenderGraphAllocationPlan buildAllocationPlan(glm::uvec2 const& viewport) const;
+		RenderGraphCompiledPlan buildCompiledPlan(Caps const& caps, glm::uvec2 const& viewport) const;
 		RenderGraphPlanCacheStats getPlanCacheStats() const;
 
 		// Context-free diagnostic dump for logs and tests. It reports declared

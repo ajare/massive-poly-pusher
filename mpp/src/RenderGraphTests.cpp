@@ -90,6 +90,10 @@ namespace mpp
 		auto repeatedAllocation = valid.buildAllocationPlan({ 320, 180 });
 		if (!firstAllocation.valid || repeatedAllocation.allocatedImages.size() != firstAllocation.allocatedImages.size() || valid.getPlanCacheStats().allocationHits <= cacheAfterFirstAllocation.allocationHits)
 			return fail("unchanged graph allocation did not hit the viewport plan cache");
+		Caps artifactCaps; artifactCaps.maxTextureSize = 4096; artifactCaps.maxColourAttachments = 8; artifactCaps.maxDrawBuffers = 8;
+		auto compiledArtifact = valid.buildCompiledPlan(artifactCaps, { 320, 180 });
+		if (!compiledArtifact.valid || !compiledArtifact.compilation.valid || !compiledArtifact.allocation.valid || compiledArtifact.compilation.passOrder.size() != 2)
+			return fail("combined immutable compilation/allocation artifact is incomplete");
 		auto cacheBeforeEdit = valid.getPlanCacheStats();
 		auto editedDesc=valid.getImageInfo({0,0}).desc;editedDesc.mipLevels=2;valid.setImageDesc({0,0},editedDesc);if(valid.getImageInfo({0,0}).desc.mipLevels!=2)return fail("graph image descriptor edit was not retained");
 		if (!valid.compile().valid || valid.getPlanCacheStats().compileMisses <= cacheBeforeEdit.compileMisses || valid.getPlanCacheStats().invalidations <= cacheBeforeEdit.invalidations)
@@ -164,7 +168,13 @@ namespace mpp
 		outOfOrder.setValueId(orderedImage, "Ordered.Produced");
 		outOfOrder.readSampled(consumer, orderedImage);
 		outOfOrder.writeColour(consumer, orderedOutput);
-		if (outOfOrder.compile().valid) return fail("authored pass order ignored a later producer");
+		auto automaticallyOrdered = outOfOrder.compile();
+		if (!automaticallyOrdered.valid || automaticallyOrdered.passOrder.size() != 2 ||
+			automaticallyOrdered.passOrder[0].id != producer.id || automaticallyOrdered.passOrder[1].id != consumer.id)
+			return fail("normal compilation did not derive dependency order");
+		if (std::none_of(automaticallyOrdered.messages.begin(), automaticallyOrdered.messages.end(), [&](auto const& message)
+			{ return message.code == "RG-COMPILER-REORDERED-PASS" && message.pass.id == producer.id; }))
+			return fail("dependency reordering did not emit compiler information");
 		auto dependencyOrder = outOfOrder.buildDependencyOrder();
 		if (!dependencyOrder.valid || dependencyOrder.passOrder.size() != 2 ||
 			dependencyOrder.passOrder[0].id != producer.id || dependencyOrder.passOrder[1].id != consumer.id)
@@ -174,6 +184,59 @@ namespace mpp
 		outOfOrder.setPassEnabled(producer, false);
 		if (outOfOrder.compile().valid) return fail("value produced by a disabled pass was accepted");
 		if (outOfOrder.getPassInfo(producer).enabled) return fail("disabled pass state was not retained");
+
+		RenderGraph loadOrdered;
+		auto loadImage = loadOrdered.createImage("LoadOrdered", colour);
+		auto loadConsumer = loadOrdered.addPass("LoadConsumer");
+		auto loadProducer = loadOrdered.addPass("LoadProducer");
+		loadImage = loadOrdered.writeColour(loadProducer, loadImage, GraphLoadOp::Clear);
+		loadOrdered.writeColour(loadConsumer, loadImage, GraphLoadOp::Load);
+		auto loadOrder = loadOrdered.compile();
+		if (!loadOrder.valid || loadOrder.passOrder[0].id != loadProducer.id || loadOrder.passOrder[1].id != loadConsumer.id)
+			return fail("attachment load dependency was not automatically ordered");
+
+		RenderGraph compilerInformation;
+		auto discardedImage = compilerInformation.createImage("Discarded", colour);
+		auto discardedPass = compilerInformation.addPass("DiscardedPass");
+		compilerInformation.writeColour(discardedPass, discardedImage, GraphLoadOp::Clear, GraphStoreOp::DontCare);
+		auto retainedImage = compilerInformation.createImage("RetainedButUnused", colour);
+		auto retainedPass = compilerInformation.addPass("RetainedPass");
+		compilerInformation.writeColour(retainedPass, retainedImage, GraphLoadOp::Clear, GraphStoreOp::Store);
+		auto compilerResult = compilerInformation.compile();
+		if (!compilerResult.valid || compilerResult.passOrder.size() != 1 || compilerResult.passOrder.front().id != retainedPass.id ||
+			compilerResult.culledPasses.size() != 1 || compilerResult.culledPasses.front().id != discardedPass.id)
+			return fail("dead discard-only pass was not conservatively culled");
+		if (compilerResult.unusedOutputs.size() != 2 || std::none_of(compilerResult.messages.begin(), compilerResult.messages.end(), [](auto const& message)
+			{ return message.code == "RG-COMPILER-UNUSED-OUTPUT" && message.severity == GraphCompileMessageSeverity::Warning; }))
+			return fail("unused output compiler diagnostics are incomplete");
+
+		RenderGraph rootedGraph;
+		auto liveImage = rootedGraph.createImage("Live", colour);
+		auto deadImage = rootedGraph.createImage("Dead", colour);
+		auto liveProducer = rootedGraph.addPass("LiveProducer");
+		liveImage = rootedGraph.writeColour(liveProducer, liveImage);
+		auto deadProducer = rootedGraph.addPass("DeadProducer");
+		rootedGraph.writeColour(deadProducer, deadImage);
+		auto presentationDesc = colour; presentationDesc.external = true; presentationDesc.transient = false;
+		presentationDesc.usage = presentationDesc.usage | GraphImageUsage::Presentation;
+		auto presentation = rootedGraph.createImage("Presentation", presentationDesc);
+		auto presentationPass = rootedGraph.addPass("Presentation");
+		rootedGraph.readSampled(presentationPass, liveImage);
+		rootedGraph.writeColour(presentationPass, presentation);
+		auto rootedResult = rootedGraph.compile();
+		if (!rootedResult.valid || rootedResult.passOrder.size() != 2 || rootedResult.passOrder[0].id != liveProducer.id ||
+			rootedResult.passOrder[1].id != presentationPass.id || rootedResult.culledPasses.size() != 1 || rootedResult.culledPasses.front().id != deadProducer.id)
+			return fail("presentation-root dead-pass elimination did not retain exactly the contributing chain");
+		RenderGraph importedInputGraph;
+		auto importedDesc = colour; importedDesc.external = true; importedDesc.transient = false;
+		auto importedInput = importedInputGraph.createImage("ImportedInput", importedDesc);
+		auto importedOutput = importedInputGraph.createImage("ImportedOutput", colour);
+		auto importedPass = importedInputGraph.addPass("ImportedConsumer");
+		importedInputGraph.readSampled(importedPass, importedInput);
+		importedInputGraph.writeColour(importedPass, importedOutput);
+		auto importedResult = importedInputGraph.compile();
+		if (!importedResult.valid || importedResult.passOrder.size() != 1 || importedResult.passOrder.front().id != importedPass.id)
+			return fail("read-only external import incorrectly activated presentation-root culling");
 
 		RenderGraphPassFactoryRegistry registry;
 		registerBuiltInRenderGraphPasses(registry);

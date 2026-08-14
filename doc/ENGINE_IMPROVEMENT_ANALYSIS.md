@@ -259,9 +259,11 @@ This materially improves batches, debug geometry, and frequently updated UI mesh
 
 ---
 
-### 10. Extend render-graph compilation rather than adding more manual pipeline branches
+### 10. Extend render-graph compilation rather than adding more manual pipeline branches — implemented for graphics graphs
 
-The graph has a separate dependency-order implementation, but normal `compile()` validates authored order and returns that order:
+**Status:** Completed on `feat/render-graph-compiler-diagnostics`; barrier emission remains intentionally dormant until compute/image passes exist.
+
+The graph previously had a separate dependency-order implementation, while normal `compile()` validated authored order and returned that order:
 
 - `mpp/src/RenderGraph.cpp:518-674`
 
@@ -275,6 +277,19 @@ Execution calls this normal caps-aware compile. This leaves useful compiler work
 - return compilation and allocation as one immutable artifact.
 
 Dead-pass culling is especially useful for optional bloom, debug views, and effect templates, avoiding topology mutation and unnecessary allocations.
+
+**Implemented changes**
+
+- Normal compilation now derives a stable topological execution order. Sampled reads and attachment `load` operations both contribute dependencies; authored order is retained only as the deterministic tie-breaker.
+- Compilation performs backwards liveness from written external, presentation, and explicitly exported values. Non-contributing passes are omitted from execution and allocation. Graphs without explicit roots retain their historical terminal outputs, while unused discard-only leaves can still be removed safely.
+- `GraphImageUsage::Exported` identifies host-consumed offscreen values. PBR named colour/depth outputs are marked as compiler roots during parsing, and generic RenderGraph XML/parser/serializer/editor support the flag.
+- Structured compiler messages report errors, dependency reorderings, disabled passes, dead-pass elimination, and unused outputs with pass/image handles. Legacy error strings remain available for execution exceptions.
+- `RenderGraphCompiledPlan` returns capability validation and viewport allocation together as one generation-local value artifact. Existing topology, device, and allocation caches back both halves.
+- Disabled independent passes are folded out. A disabled pass that still has consumers remains a compile error rather than inventing an unsafe implicit pass-through copy; explicit pass-through semantics can be added with compute/copy pass types later.
+- PipelineEditor shows compiler warning/information counts in Diagnostics, makes pass/image messages selectable, annotates culled/reordered process-flow nodes, exposes compiler messages in the flow view, and reports executed/culled/reordered/unused counts plus plan-cache telemetry in Allocations.
+- Regression coverage includes sampled and attachment-load auto-ordering, reorder information, unused-output severity, discard-only culling, presentation-root liveness, read-only imports, and combined compile/allocation artifacts.
+
+No barrier records are emitted yet because the graph currently has no compute, storage-image, transfer, or explicit resource-state operations to transition. The compiled artifact and structured message model provide the integration point without adding speculative OpenGL barriers to graphics-only passes.
 
 ---
 
@@ -329,14 +344,14 @@ The current validation documentation explicitly notes several of these asset gap
 
 6. ✅ Cache compiled graph/allocation plans.
 7. ✅ Cache framebuffer views.
-8. Integrate graph state with a `RenderSystem` state cache.
-9. Cache reflected output masks and unique-program scene validation.
+8. ✅ Integrate graph state with a `RenderSystem` state cache.
+9. ✅ Cache reflected output masks and unique-program scene validation.
 10. ✅ Add persistent mapped streaming buffers.
 
 ### Feature growth
 
 11. Make `PostEffect` a render-graph fragment.
-12. Add dead-pass culling, texture views, and compute passes.
+12. ✅ Add dead-pass culling; then add texture views and compute passes.
 13. Build downsampled bloom/exposure/colour grading.
 14. Add automated image comparisons and archived GPU captures.
 
