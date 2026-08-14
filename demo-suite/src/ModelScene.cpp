@@ -216,10 +216,6 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::Nearest, mpp::TextureParams::MagFilter::Nearest);
 	addResource(resourceMgr->declareResource("Atlas.Texture", ResourceStreamPtr(textureStream)).first, false);
 
-	// Create texture from file definition.
-	auto fileStream = new resource_parsers::FileTextureStream(resourceMgr, demoResourcePath(options, "Doughnut.xml"));
-	addResource(resourceMgr->declareResource("Doughnut.Texture", ResourceStreamPtr(fileStream)).first, false);
-
 	// Create 1D texture from programmatic data.
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture1D);
@@ -373,14 +369,6 @@ mesh::MeshSpecification ModelScene::createSphereMeshSpecification()
 	return meshSpec;
 }
 
-void ModelScene::createSphereMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
-{
-	auto resourceMgr = getResourceManager();
-
-	auto materialStream = resource_parsers::FileMaterialStream::fromFile(resourceMgr, demoResourcePath(options, "ElectricMaterial.xml"));
-	addResource(resourceMgr->declareResource("Sphere.Material", materialStream).first, true);
-}
-
 //
 // Textured cylinder primitive
 //
@@ -460,89 +448,6 @@ mesh::MeshSpecification ModelScene::createTorusMeshSpecification()
 	meshSpec.setIndexedVertices(true);
 
 	return meshSpec;
-}
-
-void ModelScene::createTorusMaterial(mpp::mesh::MeshSpecification const& meshSpec, ProgramOptions const& options)
-{
-	auto resourceMgr = getResourceManager();
-
-	auto materialStream = new ProgrammaticBasicMaterialStream(resourceMgr);
-	materialStream->setProgram2d(false);
-	materialStream->setMeshSpecification(meshSpec);
-	materialStream->setTexture("TEX1", "Doughnut.Texture");
-
-	addResource(resourceMgr->declareResource("Torus.Material", ResourceStreamPtr(materialStream)).first, true);
-}
-
-ResourcePtr ModelScene::createTorusModel(ProgramOptions const& options)
-{
-	auto resourceMgr = getResourceManager();
-
-	auto torusMeshSpec = createTorusMeshSpecification();
-	createTorusMaterial(torusMeshSpec, options);
-
-	auto torusStream = new ProgrammaticModelStream(resourceMgr);
-	auto torusMeshId = torusStream->createMesh("Torus", torusMeshSpec, "Torus.Material", 32);
-
-	// Torus has 64 rings of 16 vertices each
-	size_t ringSize{ 16 };
-	size_t numRings{ 64 };
-	size_t radius{ 48 };
-	size_t thickness{ 12 };
-
-	mesh::VertexData torusData(torusMeshSpec, ringSize * numRings);
-
-	float dp = 2 * 3.14159f / ringSize;
-	float dt = 2 * 3.14159f / numRings;
-
-	for (size_t i = 0; i < numRings; ++i)
-	{
-		float theta = dt * i;
-
-		for (size_t j = 0; j < ringSize; ++j)
-		{
-			float phi = dp * j;
-
-			float nx = cosf(theta);
-			float ny = sinf(phi);
-			float nz = sinf(theta);
-
-			float x = nx * (radius + cosf(phi) * thickness);
-			float y = ny * thickness;
-			float z = nz * (radius + cosf(phi) * thickness);
-
-			// Hypertrochoid
-			//float x = pow(cosf(theta), 3) * (radius + cosf(phi) * thickness);
-			//float z = pow(sinf(theta), 3) * (radius + cosf(phi) * thickness);
-
-			torusData.f32(x, y, z); // Position
-			torusData.f32(nx, ny, nz); // Normal
-			torusData.f32(i / ((float)numRings - 1) * 8, j / ((float)ringSize - 1)); // UV coord
-			torusData.f32(1.0f, 1.0f, 1.0f, 1.0f); // Colour
-		}
-	}
-
-	torusStream->addVertexData(torusMeshId, torusData);
-
-	for (size_t i = 0; i < numRings; ++i)
-	{
-		for (size_t j = 0; j < ringSize; ++j)
-		{
-			auto i0 = i * ringSize + j;
-			auto i1 = i * ringSize + ((j + 1) % ringSize);
-			auto i2 = ((i + 1) % numRings) * ringSize + ((j + 1) % ringSize);
-			auto i3 = ((i + 1) % numRings) * ringSize + j;
-
-			torusStream->addTriangle(torusMeshId, (uint32_t)i0, (uint32_t)i1, (uint32_t)i2);
-			torusStream->addTriangle(torusMeshId, (uint32_t)i2, (uint32_t)i3, (uint32_t)i0);
-		}
-	}
-
-	mTorus = resourceMgr->declareResource("Model.Torus", ResourceStreamPtr(torusStream)).first;
-	mTorus->acquire(this);
-	mTorus->load();
-
-	return mTorus;
 }
 
 //
@@ -898,23 +803,6 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	addShadowWall(glm::vec3(-800.0f, 800.0f, 0.0f), -halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
 	addShadowWall(glm::vec3(800.0f, 800.0f, 0.0f), halfPi, glm::vec3(0.0f, 0.0f, 1.0f));
 
-	// Load Sphere
-	auto sphereMeshSpec = createSphereMeshSpecification();
-	createSphereMaterial(sphereMeshSpec, options);
-
-	auto sphereStream = new SphereModelStream(resourceMgr, sphereMeshSpec, "Sphere.Material", 40, 4);
-	mSphere = resourceMgr->declareResource("Model.Sphere", ResourceStreamPtr(sphereStream)).first;
-	mSphere->acquire(this);
-	mSphere->load();
-
-	auto sphereModel = mppScene->add3dModel(mSphere);
-	mModels.push_back(sphereModel);
-
-	auto sphereParams = sphereModel->getParams();
-	sphereParams->setModelFlags(sphereParams->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
-	sphereParams->addModelRenderCommand({ 0, 400, nullptr, { nullptr, nullptr } });
-	sphereParams->addModelRenderCommand({ 400, 400, nullptr, { resourceMgr->getResource("Test.Texture"), nullptr } });
-
 	// Load Cylinder
 	auto cylinderMeshSpec = createCylinderMeshSpecification();
 	createCylinderMaterial(cylinderMeshSpec, options);
@@ -959,12 +847,6 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	mShadowCube = mppScene->add3dModel(mBox);
 	mShadowCube->translate(glm::vec3(0.0f, 32.0f, -160.0f));
 	mShadowCube->scale(glm::vec3(2.0f));
-
-	// Load torus
-	createTorusModel(options);
-
-	mModels.push_back(mppScene->add3dModel(mTorus));
-	mModels.back()->getParams()->setModelFlags(mModels.back()->getParams()->getModelFlags() & ~mpp::ModelRenderParams::Flag_Visible);
 
 	// Load the PBR preview model. It remains visible by default and is rendered
 	// through the opt-in PBR pipeline below.
@@ -1271,10 +1153,8 @@ void ModelScene::teardownImpl()
 	teardownImGui();
 
 	mGrid->release(this);
-	mSphere->release(this);
 	mCylinder->release(this);
 	mBox->release(this);
-	mTorus->release(this);
 	mStatue->release(this);
 	if (mPbrPreviewMaterial) mPbrPreviewMaterial->release(this);
 }
