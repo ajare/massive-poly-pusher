@@ -27,6 +27,16 @@ namespace mpp
 			GraphPassHandle pass{ id };
 			auto const info = mGraph->getPassInfo(pass);
 			if (info.programResource.empty()) continue;
+			// A pass with a registered callbackFactory (e.g. MPP.FullscreenEffect)
+			// resolves its own programResource at execute time -- for
+			// FullscreenEffectPass that's a PostEffectMaterial, not a Program -- and
+			// RenderGraphExecutor never consults mPrograms/getProgram() for such a
+			// pass (see its declarativeFullscreen check, gated on an empty
+			// callbackFactory). Preloading and type-checking it here as a literal
+			// Program only applies to the declarative convention: a fullscreen pass
+			// with no factory at all, authored with program naming a Program
+			// directly.
+			if (!info.callbackFactory.empty()) continue;
 			auto program = getResourceManager()->getResource(info.programResource, true);
 			if (!program)
 			{
