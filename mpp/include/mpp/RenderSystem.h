@@ -129,6 +129,7 @@ namespace mpp
 
 		size_t mWindowWidth, mWindowHeight;
 
+		int mViewportX{ 0 }, mViewportY{ 0 };
 		size_t mViewportWidth, mViewportHeight;
 
 		ResourceManager* mResourceMgr;
@@ -287,6 +288,18 @@ namespace mpp
 		
 		RenderInfo mRenderInfo;
 
+		GraphRasterState mRasterStateCache;
+		bool mRasterStateCacheKnown{ false };
+		bool mPolygonOffsetFill{ false };
+		float mPolygonOffsetFactor{ 0.0f };
+		float mPolygonOffsetUnits{ 0.0f };
+		bool mProgramPointSize{ false };
+		bool mPointSprite{ false };
+		bool mCubeMapSeamless{ false };
+		uint64_t mStateChangesApplied{ 0 };
+		uint64_t mStateChangesSkipped{ 0 };
+		uint64_t mStateVerificationCounter{ 0 };
+
 		//
 		// Built-in lights
 		//
@@ -347,6 +360,27 @@ namespace mpp
 
 		void teardownRenderMeshInstance(MeshInstance* meshInstance);
 
+		void setDepthTestState(bool enabled, bool force = false);
+		void setDepthWriteState(bool enabled, bool force = false);
+		void setDepthCompareState(GraphCompareOp compare, bool force = false);
+		void setCullState(GraphCullMode mode, bool force = false);
+		void setFrontFaceState(GraphFrontFace face, bool force = false);
+		void setFillModeState(GraphFillMode mode, bool force = false);
+		void setBlendState(bool enabled, bool force = false);
+		void setBlendEquationState(GraphBlendOp colour, GraphBlendOp alpha, bool force = false);
+		void setBlendFunctionState(GraphBlendFactor sourceColour, GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha, GraphBlendFactor destinationAlpha, bool force = false);
+		void setMultisampleState(bool enabled, bool force = false);
+		void setAlphaToCoverageState(bool enabled, bool force = false);
+		void setScissorState(bool enabled, bool force = false);
+		void setScissorRectangleState(glm::uvec4 const& rectangle, bool force = false);
+		void setColourMaskState(size_t output, GraphColourWriteMask const& mask, bool force = false);
+		void setAllColourMasksState(GraphColourWriteMask const& mask, bool force = false);
+		void setPolygonOffsetFillState(bool enabled);
+		void setPolygonOffsetState(float factor, float units);
+		void setProgramPointSizeState(bool enabled);
+		void setPointSpriteState(bool enabled);
+		void setCubeMapSeamlessState(bool enabled);
+
 		RenderTargetPtr createPhysicalRenderTexture(std::string const& name, size_t width, size_t height, RenderTextureOptions const& options, uint32_t samples);
 		void validateEquirectangularConversionSource(Texture const* source, std::string const& generatedName, uint32_t faceSize, uint32_t mipLevels) const;
 		void renderEquirectangularCubemapFace(Texture* source, RenderTargetPtr const& destination, uint32_t face, uint32_t mipLevel);
@@ -405,6 +439,17 @@ namespace mpp
 		void setDebugPostMessages(std::vector<std::string> const& messages);
 
 		void setDefaultState();
+
+		struct RasterStateCacheStats
+		{
+			uint64_t applied{ 0 };
+			uint64_t skipped{ 0 };
+		};
+		GraphRasterState captureRasterState(size_t colourOutputs) const;
+		void applyRasterState(GraphRasterState const& state, size_t colourOutputs, size_t width, size_t height, bool force = false);
+		void forceRenderWriteMasks(bool depth, GraphColourWriteMask const& colour);
+		void debugVerifyRasterStateCache();
+		RasterStateCacheStats getRasterStateCacheStats() const;
 
 		void setDisplay(int width, int height);
 

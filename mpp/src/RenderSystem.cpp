@@ -69,6 +69,26 @@ namespace mpp
 			Colour colour;
 		};
 
+		GLenum graphCompareOp(GraphCompareOp value)
+		{
+			switch (value) { case GraphCompareOp::Never: return GL_NEVER; case GraphCompareOp::Less: return GL_LESS; case GraphCompareOp::Equal: return GL_EQUAL; case GraphCompareOp::LessEqual: return GL_LEQUAL; case GraphCompareOp::Greater: return GL_GREATER; case GraphCompareOp::NotEqual: return GL_NOTEQUAL; case GraphCompareOp::GreaterEqual: return GL_GEQUAL; default: return GL_ALWAYS; }
+		}
+
+		GLenum graphBlendOp(GraphBlendOp value)
+		{
+			switch (value) { case GraphBlendOp::Add: return GL_FUNC_ADD; case GraphBlendOp::Subtract: return GL_FUNC_SUBTRACT; case GraphBlendOp::ReverseSubtract: return GL_FUNC_REVERSE_SUBTRACT; case GraphBlendOp::Minimum: return GL_MIN; default: return GL_MAX; }
+		}
+
+		GLenum graphBlendFactor(GraphBlendFactor value)
+		{
+			switch (value) { case GraphBlendFactor::Zero: return GL_ZERO; case GraphBlendFactor::One: return GL_ONE; case GraphBlendFactor::SourceColour: return GL_SRC_COLOR; case GraphBlendFactor::OneMinusSourceColour: return GL_ONE_MINUS_SRC_COLOR; case GraphBlendFactor::DestinationColour: return GL_DST_COLOR; case GraphBlendFactor::OneMinusDestinationColour: return GL_ONE_MINUS_DST_COLOR; case GraphBlendFactor::SourceAlpha: return GL_SRC_ALPHA; case GraphBlendFactor::OneMinusSourceAlpha: return GL_ONE_MINUS_SRC_ALPHA; case GraphBlendFactor::DestinationAlpha: return GL_DST_ALPHA; default: return GL_ONE_MINUS_DST_ALPHA; }
+		}
+
+		GraphBlendFactor graphBlendFactor(BlendMode value)
+		{
+			switch (value) { case BlendMode::Zero: return GraphBlendFactor::Zero; case BlendMode::One: return GraphBlendFactor::One; case BlendMode::SrcColour: return GraphBlendFactor::SourceColour; case BlendMode::OneMinusSrcColour: return GraphBlendFactor::OneMinusSourceColour; case BlendMode::DstColour: return GraphBlendFactor::DestinationColour; case BlendMode::OneMinusDstColour: return GraphBlendFactor::OneMinusDestinationColour; case BlendMode::SrcAlpha: return GraphBlendFactor::SourceAlpha; case BlendMode::OneMinusSrcAlpha: return GraphBlendFactor::OneMinusSourceAlpha; case BlendMode::DstAlpha: return GraphBlendFactor::DestinationAlpha; default: return GraphBlendFactor::OneMinusDestinationAlpha; }
+		}
+
 		int hexDigit(char value)
 		{
 			if (value >= '0' && value <= '9') return value - '0';
@@ -1307,17 +1327,248 @@ namespace mpp
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
 
+	void RenderSystem::setDepthTestState(bool enabled, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.depthTest == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST));
+		mRasterStateCache.depthTest = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setDepthWriteState(bool enabled, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.depthWrite == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glDepthMask(enabled ? GL_TRUE : GL_FALSE));
+		mRasterStateCache.depthWrite = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setDepthCompareState(GraphCompareOp compare, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.depthCompare == compare) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glDepthFunc(graphCompareOp(compare)));
+		mRasterStateCache.depthCompare = compare; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setCullState(GraphCullMode mode, bool force)
+	{
+		bool const enabled = mode != GraphCullMode::None;
+		bool const wasEnabled = mRasterStateCache.cullMode != GraphCullMode::None;
+		if (force || !mRasterStateCacheKnown || wasEnabled != enabled)
+		{
+			GL_CHECK(enabled ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); ++mStateChangesApplied;
+		}
+		else ++mStateChangesSkipped;
+		if (enabled)
+		{
+			if (force || !mRasterStateCacheKnown || mRasterStateCache.cullMode != mode) { GL_CHECK(glCullFace(mode == GraphCullMode::Front ? GL_FRONT : GL_BACK)); ++mStateChangesApplied; }
+			else ++mStateChangesSkipped;
+		}
+		mRasterStateCache.cullMode = mode;
+	}
+
+	void RenderSystem::setFrontFaceState(GraphFrontFace face, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.frontFace == face) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glFrontFace(face == GraphFrontFace::Clockwise ? GL_CW : GL_CCW));
+		mRasterStateCache.frontFace = face; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setFillModeState(GraphFillMode mode, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.fillMode == mode) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, mode == GraphFillMode::Line ? GL_LINE : GL_FILL));
+		mRasterStateCache.fillMode = mode; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setBlendState(bool enabled, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.blend == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_BLEND) : glDisable(GL_BLEND));
+		mRasterStateCache.blend = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setBlendEquationState(GraphBlendOp colour, GraphBlendOp alpha, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.colourBlendOp == colour && mRasterStateCache.alphaBlendOp == alpha) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glBlendEquationSeparate(graphBlendOp(colour), graphBlendOp(alpha)));
+		mRasterStateCache.colourBlendOp = colour; mRasterStateCache.alphaBlendOp = alpha; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setBlendFunctionState(GraphBlendFactor sourceColour, GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha, GraphBlendFactor destinationAlpha, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.sourceColourBlend == sourceColour && mRasterStateCache.destinationColourBlend == destinationColour && mRasterStateCache.sourceAlphaBlend == sourceAlpha && mRasterStateCache.destinationAlphaBlend == destinationAlpha) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glBlendFuncSeparate(graphBlendFactor(sourceColour), graphBlendFactor(destinationColour), graphBlendFactor(sourceAlpha), graphBlendFactor(destinationAlpha)));
+		mRasterStateCache.sourceColourBlend = sourceColour; mRasterStateCache.destinationColourBlend = destinationColour; mRasterStateCache.sourceAlphaBlend = sourceAlpha; mRasterStateCache.destinationAlphaBlend = destinationAlpha; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setMultisampleState(bool enabled, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.multisample == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_MULTISAMPLE) : glDisable(GL_MULTISAMPLE));
+		mRasterStateCache.multisample = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setAlphaToCoverageState(bool enabled, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.alphaToCoverage == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE) : glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE));
+		mRasterStateCache.alphaToCoverage = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setScissorState(bool enabled, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.scissor == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST));
+		mRasterStateCache.scissor = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setScissorRectangleState(glm::uvec4 const& rectangle, bool force)
+	{
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.scissorRectangle == rectangle) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glScissor(static_cast<GLint>(rectangle.x), static_cast<GLint>(rectangle.y), static_cast<GLsizei>(rectangle.z), static_cast<GLsizei>(rectangle.w)));
+		mRasterStateCache.scissorRectangle = rectangle; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setColourMaskState(size_t output, GraphColourWriteMask const& mask, bool force)
+	{
+		if (mRasterStateCache.colourWriteMasks.size() <= output) mRasterStateCache.colourWriteMasks.resize(output + 1);
+		if (!force && mRasterStateCacheKnown && mRasterStateCache.colourWriteMasks[output] == mask) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glColorMaski(static_cast<GLuint>(output), mask.red, mask.green, mask.blue, mask.alpha));
+		mRasterStateCache.colourWriteMasks[output] = mask; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setAllColourMasksState(GraphColourWriteMask const& mask, bool force)
+	{
+		size_t const count = max<size_t>(1, max<size_t>(mCaps.maxDrawBuffers, mRasterStateCache.colourWriteMasks.size()));
+		bool unchanged = mRasterStateCacheKnown;
+		for (size_t output = 0; output < count && unchanged; ++output)
+			unchanged = output < mRasterStateCache.colourWriteMasks.size() && mRasterStateCache.colourWriteMasks[output] == mask;
+		if (!force && unchanged) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glColorMask(mask.red, mask.green, mask.blue, mask.alpha));
+		mRasterStateCache.colourWriteMasks.assign(count, mask); ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setPolygonOffsetFillState(bool enabled)
+	{
+		if (mRasterStateCacheKnown && mPolygonOffsetFill == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_POLYGON_OFFSET_FILL) : glDisable(GL_POLYGON_OFFSET_FILL)); mPolygonOffsetFill = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setPolygonOffsetState(float factor, float units)
+	{
+		if (mRasterStateCacheKnown && mPolygonOffsetFactor == factor && mPolygonOffsetUnits == units) { ++mStateChangesSkipped; return; }
+		GL_CHECK(glPolygonOffset(factor, units)); mPolygonOffsetFactor = factor; mPolygonOffsetUnits = units; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setProgramPointSizeState(bool enabled)
+	{
+		if (mRasterStateCacheKnown && mProgramPointSize == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_PROGRAM_POINT_SIZE) : glDisable(GL_PROGRAM_POINT_SIZE)); mProgramPointSize = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setPointSpriteState(bool enabled)
+	{
+		if (mRasterStateCacheKnown && mPointSprite == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_POINT_SPRITE) : glDisable(GL_POINT_SPRITE)); mPointSprite = enabled; ++mStateChangesApplied;
+	}
+
+	void RenderSystem::setCubeMapSeamlessState(bool enabled)
+	{
+		if (mRasterStateCacheKnown && mCubeMapSeamless == enabled) { ++mStateChangesSkipped; return; }
+		GL_CHECK(enabled ? glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS) : glDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS)); mCubeMapSeamless = enabled; ++mStateChangesApplied;
+	}
+
+	GraphRasterState RenderSystem::captureRasterState(size_t colourOutputs) const
+	{
+		if (!mRasterStateCacheKnown) THROW_MPP("Render-state cache is not initialized.", __LINE__, __FILE__, __func__);
+		auto result = mRasterStateCache;
+		result.explicitState = true;
+		if (result.colourWriteMasks.size() < max<size_t>(1, colourOutputs))
+			result.colourWriteMasks.resize(max<size_t>(1, colourOutputs));
+		return result;
+	}
+
+	void RenderSystem::applyRasterState(GraphRasterState const& state, size_t colourOutputs, size_t width, size_t height, bool force)
+	{
+		setDepthTestState(state.depthTest, force); setDepthWriteState(state.depthWrite, force); setDepthCompareState(state.depthCompare, force);
+		setCullState(state.cullMode, force); setFrontFaceState(state.frontFace, force); setFillModeState(state.fillMode, force);
+		setBlendState(state.blend, force); setBlendEquationState(state.colourBlendOp, state.alphaBlendOp, force);
+		setBlendFunctionState(state.sourceColourBlend, state.destinationColourBlend, state.sourceAlphaBlend, state.destinationAlphaBlend, force);
+		setMultisampleState(state.multisample, force); setAlphaToCoverageState(state.alphaToCoverage, force); setScissorState(state.scissor, force);
+		glm::uvec4 rectangle = state.scissorRectangle;
+		if (state.scissor) { if (!rectangle.z) rectangle.z = static_cast<uint32_t>(width); if (!rectangle.w) rectangle.w = static_cast<uint32_t>(height); }
+		setScissorRectangleState(rectangle, force);
+		for (size_t output = 0; output < max<size_t>(1, colourOutputs); ++output)
+			setColourMaskState(output, output < state.colourWriteMasks.size() ? state.colourWriteMasks[output] : GraphColourWriteMask{}, force);
+		mRasterStateCacheKnown = true;
+	}
+
+	void RenderSystem::forceRenderWriteMasks(bool depth, GraphColourWriteMask const& colour)
+	{
+		setDepthWriteState(depth);
+		setAllColourMasksState(colour);
+		mRasterStateCacheKnown = true;
+	}
+
+	void RenderSystem::debugVerifyRasterStateCache()
+	{
+#if defined(_DEBUG)
+		if (!mRasterStateCacheKnown || (++mStateVerificationCounter & 255u) != 0) return;
+		bool mismatch = (glIsEnabled(GL_DEPTH_TEST) == GL_TRUE) != mRasterStateCache.depthTest ||
+			(glIsEnabled(GL_CULL_FACE) == GL_TRUE) != (mRasterStateCache.cullMode != GraphCullMode::None) ||
+			(glIsEnabled(GL_BLEND) == GL_TRUE) != mRasterStateCache.blend ||
+			(glIsEnabled(GL_MULTISAMPLE) == GL_TRUE) != mRasterStateCache.multisample ||
+			(glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE) == GL_TRUE) != mRasterStateCache.alphaToCoverage ||
+			(glIsEnabled(GL_SCISSOR_TEST) == GL_TRUE) != mRasterStateCache.scissor;
+		GLboolean depthWrite = GL_TRUE;
+		GLint depthCompare = 0, cullMode = 0, frontFace = 0, polygonMode[2]{}, blendEquationColour = 0, blendEquationAlpha = 0;
+		GLint sourceColour = 0, destinationColour = 0, sourceAlpha = 0, destinationAlpha = 0, scissor[4]{};
+		GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWrite)); GL_CHECK(glGetIntegerv(GL_DEPTH_FUNC, &depthCompare));
+		GL_CHECK(glGetIntegerv(GL_CULL_FACE_MODE, &cullMode)); GL_CHECK(glGetIntegerv(GL_FRONT_FACE, &frontFace)); GL_CHECK(glGetIntegerv(GL_POLYGON_MODE, polygonMode));
+		GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_RGB, &blendEquationColour)); GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &blendEquationAlpha));
+		GL_CHECK(glGetIntegerv(GL_BLEND_SRC_RGB, &sourceColour)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_RGB, &destinationColour));
+		GL_CHECK(glGetIntegerv(GL_BLEND_SRC_ALPHA, &sourceAlpha)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_ALPHA, &destinationAlpha)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, scissor));
+		mismatch = mismatch || (depthWrite == GL_TRUE) != mRasterStateCache.depthWrite || depthCompare != static_cast<GLint>(graphCompareOp(mRasterStateCache.depthCompare)) ||
+			(mRasterStateCache.cullMode != GraphCullMode::None && cullMode != (mRasterStateCache.cullMode == GraphCullMode::Front ? GL_FRONT : GL_BACK)) ||
+			frontFace != (mRasterStateCache.frontFace == GraphFrontFace::Clockwise ? GL_CW : GL_CCW) || polygonMode[0] != (mRasterStateCache.fillMode == GraphFillMode::Line ? GL_LINE : GL_FILL) ||
+			blendEquationColour != static_cast<GLint>(graphBlendOp(mRasterStateCache.colourBlendOp)) || blendEquationAlpha != static_cast<GLint>(graphBlendOp(mRasterStateCache.alphaBlendOp)) ||
+			sourceColour != static_cast<GLint>(graphBlendFactor(mRasterStateCache.sourceColourBlend)) || destinationColour != static_cast<GLint>(graphBlendFactor(mRasterStateCache.destinationColourBlend)) ||
+			sourceAlpha != static_cast<GLint>(graphBlendFactor(mRasterStateCache.sourceAlphaBlend)) || destinationAlpha != static_cast<GLint>(graphBlendFactor(mRasterStateCache.destinationAlphaBlend)) ||
+			scissor[0] != static_cast<GLint>(mRasterStateCache.scissorRectangle.x) || scissor[1] != static_cast<GLint>(mRasterStateCache.scissorRectangle.y) ||
+			scissor[2] != static_cast<GLint>(mRasterStateCache.scissorRectangle.z) || scissor[3] != static_cast<GLint>(mRasterStateCache.scissorRectangle.w);
+		for (GLuint output = 0; output < mRasterStateCache.colourWriteMasks.size() && !mismatch; ++output)
+		{
+			GLboolean mask[4]{}; GL_CHECK(glGetBooleani_v(GL_COLOR_WRITEMASK, output, mask)); auto const& cached = mRasterStateCache.colourWriteMasks[output];
+			mismatch = (mask[0] == GL_TRUE) != cached.red || (mask[1] == GL_TRUE) != cached.green || (mask[2] == GL_TRUE) != cached.blue || (mask[3] == GL_TRUE) != cached.alpha;
+		}
+		if (mismatch)
+		{
+			warnMessage("Render-state cache diverged from OpenGL state; restoring the authoritative cached snapshot.");
+			auto snapshot = mRasterStateCache;
+			applyRasterState(snapshot, snapshot.colourWriteMasks.size(), mViewportWidth, mViewportHeight, true);
+		}
+#endif
+	}
+
+	RenderSystem::RasterStateCacheStats RenderSystem::getRasterStateCacheStats() const
+	{
+		return { mStateChangesApplied, mStateChangesSkipped };
+	}
+
 	/*
 	* Set up basic OpenGL state.
 	*
 	*/
 	void RenderSystem::setDefaultState()
 	{
-		GL_CHECK(glDisable(GL_SCISSOR_TEST));
-		GL_CHECK(glEnable(GL_DEPTH_TEST));
-		GL_CHECK(glDepthFunc(GL_LESS));
+		mRasterStateCacheKnown = false;
+		GraphRasterState defaults;
+		defaults.explicitState = true;
+		defaults.cullMode = GraphCullMode::None;
+		defaults.scissor = false;
+		defaults.scissorRectangle = { 0, 0, static_cast<uint32_t>(mWindowWidth), static_cast<uint32_t>(mWindowHeight) };
+		applyRasterState(defaults, max<size_t>(1, mCaps.maxDrawBuffers), mWindowWidth, mWindowHeight, true);
 
-		GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
+		setProgramPointSizeState(true);
 
 		// Without this, a bilinear tap near a cube edge clamps inside its own face
 		// instead of reaching across, so every edge shows a seam. The IBL cubemaps
@@ -1326,7 +1577,7 @@ namespace mpp
 		// visible. Every cubemap this engine samples wants seamless filtering, so
 		// enable it globally rather than per texture; core since GL 3.2.
 		if (mCaps.glVersionMajor > 3 || (mCaps.glVersionMajor == 3 && mCaps.glVersionMinor >= 2))
-			GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
+			setCubeMapSeamlessState(true);
 		else
 			warnMessage("OpenGL " + std::to_string(mCaps.glVersionMajor) + "." + std::to_string(mCaps.glVersionMinor) +
 				" predates seamless cubemap filtering; IBL cube edges will show seams.");
@@ -1441,18 +1692,21 @@ namespace mpp
 		if (mSystem->mCubemapFaceRenderActive) THROW_MPP("Nested cubemap face render scopes are not supported.", __LINE__, __FILE__, __func__);
 		mSystem->mCubemapFaceRenderActive = true;
 		mGpuScope = std::make_unique<GpuDebugScope>("Cubemap: " + mTarget->getName() + " face " + std::to_string(face) + " mip " + std::to_string(mipLevel));
-		GL_CHECK(glGetIntegerv(GL_VIEWPORT, mViewport));
-		GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, mScissor));
+		mViewport[0] = mSystem->mViewportX; mViewport[1] = mSystem->mViewportY;
+		mViewport[2] = static_cast<int>(mSystem->mViewportWidth); mViewport[3] = static_cast<int>(mSystem->mViewportHeight);
+		auto const rasterState = mSystem->captureRasterState(1);
+		mScissor[0] = static_cast<int>(rasterState.scissorRectangle.x); mScissor[1] = static_cast<int>(rasterState.scissorRectangle.y);
+		mScissor[2] = static_cast<int>(rasterState.scissorRectangle.z); mScissor[3] = static_cast<int>(rasterState.scissorRectangle.w);
 		GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &mDrawBuffer));
 		GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &mReadBuffer));
-		mScissorEnabled = glIsEnabled(GL_SCISSOR_TEST) == GL_TRUE;
+		mScissorEnabled = rasterState.scissor;
 		mSystem->pushRenderTarget(target);
 		try
 		{
 			mTarget->attachColourFace(0, face, mipLevel);
 			auto dimension = std::max<size_t>(1, mTarget->getWidth() >> mipLevel);
 			mSystem->setViewport(0, 0, dimension, dimension);
-			GL_CHECK(glScissor(0, 0, (GLsizei)dimension, (GLsizei)dimension));
+			mSystem->setScissorRectangleState({ 0, 0, dimension, dimension });
 		}
 		catch (...) { mSystem->popRenderTarget(); mSystem->mCubemapFaceRenderActive = false; throw; }
 	}
@@ -1463,10 +1717,10 @@ namespace mpp
 		mTarget->restoreColourFaces();
 		mSystem->popRenderTarget();
 		mSystem->setViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]);
-		GL_CHECK(glScissor(mScissor[0], mScissor[1], mScissor[2], mScissor[3]));
+		mSystem->setScissorRectangleState({ static_cast<uint32_t>(mScissor[0]), static_cast<uint32_t>(mScissor[1]), static_cast<uint32_t>(mScissor[2]), static_cast<uint32_t>(mScissor[3]) });
 		GL_CHECK(glDrawBuffer((GLenum)mDrawBuffer));
 		GL_CHECK(glReadBuffer((GLenum)mReadBuffer));
-		if (mScissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		if (mScissorEnabled) mSystem->setScissorState(true); else mSystem->setScissorState(false);
 		mGpuScope.reset();
 		mSystem->mCubemapFaceRenderActive = false;
 		mFinished = true;
@@ -1796,7 +2050,10 @@ namespace mpp
 		// the grazing-incidence texel at u=0, whose scale/bias are nothing alike.
 		RenderTextureOptions options; options.colourInternalFormat = GL_RG16F; options.params.minFilter = GL_LINEAR; options.params.magFilter = GL_LINEAR; options.params.wrap = GL_CLAMP_TO_EDGE; options.params.useMipmaps = false;
 		auto candidate = createRenderTexture("__mpp_ibl_brdf_integration_lut__", 512, 512, options);
-		GLint viewport[4]{}, scissor[4]{}, drawBuffer = 0, readBuffer = 0; GL_CHECK(glGetIntegerv(GL_VIEWPORT, viewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, scissor)); GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &readBuffer)); auto scissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
+		GLint viewport[4]{ mViewportX, mViewportY, static_cast<GLint>(mViewportWidth), static_cast<GLint>(mViewportHeight) }, drawBuffer = 0, readBuffer = 0;
+		auto const rasterState = captureRasterState(1);
+		auto const scissor = rasterState.scissorRectangle;
+		GL_CHECK(glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer)); GL_CHECK(glGetIntegerv(GL_READ_BUFFER, &readBuffer));
 		pushRenderTarget(candidate); pushModelMatrix(); pushCameraMatrix(); pushProjectionMatrix();
 		try
 		{
@@ -1812,8 +2069,8 @@ namespace mpp
 			auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0); mesh->bind(true); mesh->render(1); mesh->bind(false); mRenderInfo.programSwitches++; mRenderInfo.fullscreenQuads++;
 			popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget();
 		}
-		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); GL_CHECK(glScissor(scissor[0], scissor[1], scissor[2], scissor[3])); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST)); throw; }
-		setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); GL_CHECK(glScissor(scissor[0], scissor[1], scissor[2], scissor[3])); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); if (scissorEnabled) GL_CHECK(glEnable(GL_SCISSOR_TEST)); else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		catch (...) { popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); setScissorRectangleState(scissor); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); setScissorState(rasterState.scissor); throw; }
+		setViewport(viewport[0], viewport[1], viewport[2], viewport[3]); setScissorRectangleState(scissor); GL_CHECK(glDrawBuffer((GLenum)drawBuffer)); GL_CHECK(glReadBuffer((GLenum)readBuffer)); setScissorState(rasterState.scissor);
 		mPbrBrdfIntegrationLut = std::static_pointer_cast<Resource>(std::dynamic_pointer_cast<RenderTexture>(candidate));
 		return mPbrBrdfIntegrationLut;
 	}
@@ -1859,7 +2116,7 @@ namespace mpp
 		}
 
 		mClipStack.push(cr);
-		GL_CHECK(glScissor(cr.x, cr.y, cr.width, cr.height));
+		setScissorRectangleState({ static_cast<uint32_t>(cr.x), static_cast<uint32_t>(cr.y), static_cast<uint32_t>(cr.width), static_cast<uint32_t>(cr.height) });
 	}
 
 	/*
@@ -1875,21 +2132,23 @@ namespace mpp
 		if (mClipStack.empty())
 		{
 			// Set to target size.
-			GL_CHECK(glScissor(0, 0, (GLsizei)mRenderTarget->getWidth(), (GLsizei)mRenderTarget->getHeight()));
+			setScissorRectangleState({ 0, 0, static_cast<uint32_t>(mRenderTarget->getWidth()), static_cast<uint32_t>(mRenderTarget->getHeight()) });
 		}
 		else
 		{
 			ClipRectangle const& cr = mClipStack.top();
-			GL_CHECK(glScissor(cr.x, cr.y, (GLsizei)cr.width, (GLsizei)cr.height));
+			setScissorRectangleState({ static_cast<uint32_t>(cr.x), static_cast<uint32_t>(cr.y), static_cast<uint32_t>(cr.width), static_cast<uint32_t>(cr.height) });
 		}
 	}
 
 	void RenderSystem::setViewport(int x, int y, size_t width, size_t height)
 	{
+		mViewportX = x;
+		mViewportY = y;
 		mViewportWidth = width;
 		mViewportHeight = height;
 		GL_CHECK(glViewport(x, y, (GLsizei)mViewportWidth, (GLsizei)mViewportHeight));
-		GL_CHECK(glScissor(x, y, (GLsizei)mViewportWidth, (GLsizei)mViewportHeight));
+		setScissorRectangleState({ static_cast<uint32_t>(x), static_cast<uint32_t>(y), static_cast<uint32_t>(mViewportWidth), static_cast<uint32_t>(mViewportHeight) });
 	}
 
 	void RenderSystem::resetViewport()
@@ -2031,7 +2290,7 @@ namespace mpp
 	{
 		flushVertexBuffers();
 
-		GL_CHECK(glEnable(GL_DEPTH_TEST));
+		setDepthTestState(true);
 
 		mProjectionType = ProjectionType::Perspective3D;
 		mFarPlaneDistance = farDist;
@@ -2104,15 +2363,15 @@ namespace mpp
 	{
 		flushVertexBuffers();
 
-		GL_CHECK(glDisable(GL_DEPTH_TEST));
-		GL_CHECK(glDisable(GL_CULL_FACE));
-		GL_CHECK(glDisable(GL_SCISSOR_TEST));
-		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
-		GL_CHECK(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE));
+		setDepthTestState(false);
+		setCullState(GraphCullMode::None);
+		setScissorState(false);
+		setFillModeState(GraphFillMode::Fill);
+		setAllColourMasksState({});
 		if (mTextAsPoints)
 		{
-			GL_CHECK(glEnable(GL_PROGRAM_POINT_SIZE));
-			GL_CHECK(glEnable(GL_POINT_SPRITE));
+			setProgramPointSizeState(true);
+			setPointSpriteState(true);
 		}
 
 		mProjectionType = ProjectionType::Ortho2D;
@@ -2244,9 +2503,9 @@ namespace mpp
 	{
 		GL_CHECK(glClearColor(colour.red, colour.green, colour.blue, colour.alpha));
 
-		glEnable(GL_SCISSOR_TEST);
+		setScissorState(true);
 		GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-		glDisable(GL_SCISSOR_TEST);
+		setScissorState(false);
 	}
 
 	void RenderSystem::setGamma(float gamma)
@@ -2839,29 +3098,20 @@ namespace mpp
 		memcpy(frameBytes.data(), &frame, sizeof(frame));
 		domain.frameBuffer->mapBufferData();
 
-		GLint previousViewport[4];
-		GLint previousCullMode;
-		GLboolean depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
-		GLboolean blendEnabled = glIsEnabled(GL_BLEND);
-		GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
-		GLboolean polygonOffsetEnabled = glIsEnabled(GL_POLYGON_OFFSET_FILL);
-		GLboolean depthWriteEnabled;
-		GLfloat previousPolygonOffsetFactor, previousPolygonOffsetUnits;
-		GL_CHECK(glGetIntegerv(GL_VIEWPORT, previousViewport));
-		GL_CHECK(glGetIntegerv(GL_CULL_FACE_MODE, &previousCullMode));
-		GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteEnabled));
-		GL_CHECK(glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &previousPolygonOffsetFactor));
-		GL_CHECK(glGetFloatv(GL_POLYGON_OFFSET_UNITS, &previousPolygonOffsetUnits));
+		GLint previousViewport[4]{ mViewportX, mViewportY, static_cast<GLint>(mViewportWidth), static_cast<GLint>(mViewportHeight) };
+		auto const previousRasterState = captureRasterState(1);
+		bool const previousPolygonOffsetEnabled = mPolygonOffsetFill;
+		float const previousPolygonOffsetFactor = mPolygonOffsetFactor;
+		float const previousPolygonOffsetUnits = mPolygonOffsetUnits;
 
 		pushRenderTarget(depthTarget);
 		GL_CHECK(glViewport(0, 0, (GLsizei)depthTarget->getWidth(), (GLsizei)depthTarget->getHeight()));
-		GL_CHECK(glEnable(GL_DEPTH_TEST));
-		GL_CHECK(glDepthMask(GL_TRUE));
-		GL_CHECK(glDisable(GL_BLEND));
-		GL_CHECK(glEnable(GL_CULL_FACE));
-		GL_CHECK(glCullFace(GL_FRONT));
-		GL_CHECK(glEnable(GL_POLYGON_OFFSET_FILL));
-		GL_CHECK(glPolygonOffset(2.0f, 4.0f));
+		setDepthTestState(true);
+		setDepthWriteState(true);
+		setBlendState(false);
+		setCullState(GraphCullMode::Front);
+		setPolygonOffsetFillState(true);
+		setPolygonOffsetState(2.0f, 4.0f);
 		GL_CHECK(glClearDepth(1.0));
 		GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
@@ -2918,13 +3168,9 @@ namespace mpp
 
 		popRenderTarget();
 		GL_CHECK(glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]));
-		if (depthTestEnabled) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
-		if (blendEnabled) GL_CHECK(glEnable(GL_BLEND)); else GL_CHECK(glDisable(GL_BLEND));
-		if (cullEnabled) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
-		GL_CHECK(glCullFace(previousCullMode));
-		if (polygonOffsetEnabled) GL_CHECK(glEnable(GL_POLYGON_OFFSET_FILL)); else GL_CHECK(glDisable(GL_POLYGON_OFFSET_FILL));
-		GL_CHECK(glPolygonOffset(previousPolygonOffsetFactor, previousPolygonOffsetUnits));
-		GL_CHECK(glDepthMask(depthWriteEnabled));
+		applyRasterState(previousRasterState, 1, depthTarget->getWidth(), depthTarget->getHeight());
+		setPolygonOffsetFillState(previousPolygonOffsetEnabled);
+		setPolygonOffsetState(previousPolygonOffsetFactor, previousPolygonOffsetUnits);
 		GL_CHECK(glUseProgram(0));
 		mActiveProgram.reset();
 	}
@@ -3028,8 +3274,10 @@ namespace mpp
 		mRenderInfo.textureSwitches++;
 
 		// Set blend
-		GL_CHECK(glEnable(GL_BLEND));
-		GL_CHECK(glBlendFunc((int)srcBlend, (int)dstBlend));
+		setBlendState(true);
+		auto const sourceFactor = graphBlendFactor(srcBlend);
+		auto const destinationFactor = graphBlendFactor(dstBlend);
+		setBlendFunctionState(sourceFactor, destinationFactor, sourceFactor, destinationFactor);
 
 		// Bind mesh
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
@@ -3040,7 +3288,7 @@ namespace mpp
 		quadMesh->bind(false);
 
 		// Disable blend
-		GL_CHECK(glDisable(GL_BLEND));
+		setBlendState(false);
 
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;
@@ -3079,13 +3327,13 @@ namespace mpp
 			}
 			texture->bind((uint32_t)unit, 0);
 		}
-		GL_CHECK(glEnable(GL_BLEND));
-		GL_CHECK(glBlendFunc(GL_ONE, GL_ZERO));
+		setBlendState(true);
+		setBlendFunctionState(GraphBlendFactor::One, GraphBlendFactor::Zero, GraphBlendFactor::One, GraphBlendFactor::Zero);
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
 		quadMesh->render(1);
 		quadMesh->bind(false);
-		GL_CHECK(glDisable(GL_BLEND));
+		setBlendState(false);
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;
 	}
@@ -3097,8 +3345,8 @@ namespace mpp
 			THROW_MPP("Texture diagnostics require a resolved texture source and destination.", __LINE__, __FILE__, __func__);
 		}
 		flushVertexBuffers();
-		GLint previousViewport[4]{}, previousScissor[4]{}; GLboolean depth = glIsEnabled(GL_DEPTH_TEST), cull = glIsEnabled(GL_CULL_FACE), blend = glIsEnabled(GL_BLEND), scissor = glIsEnabled(GL_SCISSOR_TEST); GLboolean depthMask = GL_TRUE;
-		GL_CHECK(glGetIntegerv(GL_VIEWPORT, previousViewport)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, previousScissor)); GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
+		GLint previousViewport[4]{ mViewportX, mViewportY, static_cast<GLint>(mViewportWidth), static_cast<GLint>(mViewportHeight) };
+		auto const previousRasterState = captureRasterState(1);
 		pushRenderTarget(destination);
 		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
 		setProjection2dOrthographic();
@@ -3109,7 +3357,7 @@ namespace mpp
 			(float)destination->getWidth() / (float)getWindowWidth(),
 			(float)destination->getHeight() / (float)getWindowHeight()));
 		setViewport(0, 0, destination->getWidth(), destination->getHeight());
-		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE)); GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND)); GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		setDepthTestState(false); setDepthWriteState(false); setCullState(GraphCullMode::None); setBlendState(false); setScissorState(false);
 		try
 		{
 			source->applyMipView(options.mipLevel);
@@ -3125,9 +3373,9 @@ namespace mpp
 		}
 		catch (...)
 		{
-			source->restoreMipView(); popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]); glScissor(previousScissor[0],previousScissor[1],previousScissor[2],previousScissor[3]); GL_CHECK(glDepthMask(depthMask)); if(depth)glEnable(GL_DEPTH_TEST);if(cull)glEnable(GL_CULL_FACE);if(blend)glEnable(GL_BLEND);if(scissor)glEnable(GL_SCISSOR_TEST); throw;
+			source->restoreMipView(); popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]); applyRasterState(previousRasterState, 1, previousViewport[2], previousViewport[3]); throw;
 		}
-		popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]); GL_CHECK(glScissor(previousScissor[0],previousScissor[1],previousScissor[2],previousScissor[3])); GL_CHECK(glDepthMask(depthMask)); if(depth)GL_CHECK(glEnable(GL_DEPTH_TEST));else GL_CHECK(glDisable(GL_DEPTH_TEST));if(cull)GL_CHECK(glEnable(GL_CULL_FACE));else GL_CHECK(glDisable(GL_CULL_FACE));if(blend)GL_CHECK(glEnable(GL_BLEND));else GL_CHECK(glDisable(GL_BLEND));if(scissor)GL_CHECK(glEnable(GL_SCISSOR_TEST));else GL_CHECK(glDisable(GL_SCISSOR_TEST));
+		popModelMatrix(); popCameraMatrix(); popProjectionMatrix(); popRenderTarget(); setViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]); applyRasterState(previousRasterState, 1, previousViewport[2], previousViewport[3]);
 	}
 
 	void RenderSystem::renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap)
@@ -3147,7 +3395,7 @@ namespace mpp
 		texture->bind(0, 0);
 		mRenderInfo.textureSwitches++;
 
-		GL_CHECK(glDisable(GL_BLEND));
+		setBlendState(false);
 		auto quadMesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		quadMesh->bind(true);
 		quadMesh->render(1);
@@ -3170,7 +3418,7 @@ namespace mpp
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		GL_CHECK(glUniform1f(program->getUniformId("THRESHOLD"), threshold));
 		source->bind(0);
-		GL_CHECK(glDisable(GL_BLEND));
+		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
@@ -3185,7 +3433,7 @@ namespace mpp
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"), direction.x, direction.y));
 		source->bind(0);
-		GL_CHECK(glDisable(GL_BLEND));
+		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
@@ -3193,17 +3441,17 @@ namespace mpp
 
 	void RenderSystem::renderFxaa(RenderTexture* source,RenderTargetPtr const& destination)
 	{
-		if(!source||!destination)THROW_MPP("FXAA pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mFxaaProgram.get());setUsedProgram(mFxaaProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
+		if(!source||!destination)THROW_MPP("FXAA pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mFxaaProgram.get());setUsedProgram(mFxaaProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));source->bind(0);setBlendState(false);auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
 	}
 
 	void RenderSystem::renderTaa(RenderTexture* currentColour,RenderTexture* currentDepth,RenderTexture* historyColour,RenderTexture* historyDepth,RenderTargetPtr const& destination,glm::mat4 const& inverseCurrentViewProjection,glm::mat4 const& previousViewProjection)
 	{
-		if(!currentColour||!currentDepth||!historyColour||!historyDepth||!destination)THROW_MPP("TAA pass requires current colour/depth, history colour/depth, and a destination.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mTaaProgram.get());setUsedProgram(mTaaProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_CURRENT_VIEW_PROJECTION"),1,GL_FALSE,glm::value_ptr(inverseCurrentViewProjection)));GL_CHECK(glUniformMatrix4fv(program->getUniformId("PREVIOUS_VIEW_PROJECTION"),1,GL_FALSE,glm::value_ptr(previousViewProjection)));GL_CHECK(glUniform1i(program->getUniformId("CURRENT_COLOUR"),0));GL_CHECK(glUniform1i(program->getUniformId("CURRENT_DEPTH"),1));GL_CHECK(glUniform1i(program->getUniformId("HISTORY_COLOUR"),2));GL_CHECK(glUniform1i(program->getUniformId("HISTORY_DEPTH"),3));currentColour->bind(0);currentDepth->bindDepth(1);historyColour->bind(2);historyDepth->bindDepth(3);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches+=4;mRenderInfo.fullscreenQuads++;
+		if(!currentColour||!currentDepth||!historyColour||!historyDepth||!destination)THROW_MPP("TAA pass requires current colour/depth, history colour/depth, and a destination.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mTaaProgram.get());setUsedProgram(mTaaProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_CURRENT_VIEW_PROJECTION"),1,GL_FALSE,glm::value_ptr(inverseCurrentViewProjection)));GL_CHECK(glUniformMatrix4fv(program->getUniformId("PREVIOUS_VIEW_PROJECTION"),1,GL_FALSE,glm::value_ptr(previousViewProjection)));GL_CHECK(glUniform1i(program->getUniformId("CURRENT_COLOUR"),0));GL_CHECK(glUniform1i(program->getUniformId("CURRENT_DEPTH"),1));GL_CHECK(glUniform1i(program->getUniformId("HISTORY_COLOUR"),2));GL_CHECK(glUniform1i(program->getUniformId("HISTORY_DEPTH"),3));currentColour->bind(0);currentDepth->bindDepth(1);historyColour->bind(2);historyDepth->bindDepth(3);setBlendState(false);auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches+=4;mRenderInfo.fullscreenQuads++;
 	}
 
 	void RenderSystem::renderSsaaLanczos(RenderTexture* source,RenderTargetPtr const& destination,glm::vec2 const& direction)
 	{
-		if(!source||!destination)THROW_MPP("SSAA Lanczos pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mSsaaLanczosProgram.get());setUsedProgram(mSsaaLanczosProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"),direction.x,direction.y));GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"),(float)destination->getWidth(),(float)destination->getHeight()));source->bind(0);GL_CHECK(glDisable(GL_BLEND));auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
+		if(!source||!destination)THROW_MPP("SSAA Lanczos pass requires source and destination targets.",__LINE__,__FILE__,__func__);setProjection2dOrthographic();resetTransform();scaleTransform2d(glm::vec2((float)destination->getWidth()/getWindowWidth(),(float)destination->getHeight()/getWindowHeight()));setRenderTarget(destination);setViewport(0,0,destination->getWidth(),destination->getHeight());flushVertexBuffers();auto program=static_cast<Program*>(mSsaaLanczosProgram.get());setUsedProgram(mSsaaLanczosProgram);GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),1,GL_FALSE,glm::value_ptr(m3dModelCameraProjectionMatrix)));GL_CHECK(glUniform2f(program->getHalfWindowSizeId(),destination->getWidth()/2.0f,destination->getHeight()/2.0f));GL_CHECK(glUniform2f(program->getUniformId("DIRECTION"),direction.x,direction.y));GL_CHECK(glUniform2f(program->getUniformId("OUTPUT_SIZE"),(float)destination->getWidth(),(float)destination->getHeight()));source->bind(0);setBlendState(false);auto mesh=static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);mesh->bind(true);mesh->render(1);mesh->bind(false);mRenderInfo.programSwitches++;mRenderInfo.textureSwitches++;mRenderInfo.fullscreenQuads++;
 	}
 
 	void RenderSystem::renderEnvironmentDebugCube(Texture* environment, Camera* camera)
@@ -3215,9 +3463,7 @@ namespace mpp
 		flushVertexBuffers();
 		auto inverseViewProjection = glm::inverse(camera->getProjectionTransform() * camera->getViewTransform());
 		auto cameraPosition = camera->getPosition();
-		GLboolean depth = glIsEnabled(GL_DEPTH_TEST), cull = glIsEnabled(GL_CULL_FACE), blend = glIsEnabled(GL_BLEND);
-		GLboolean depthMask = GL_TRUE;
-		GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask));
+		auto const previousRasterState = captureRasterState(1);
 		pushProjectionMatrix(); pushCameraMatrix(); pushModelMatrix();
 		setProjection2dOrthographic(); resetTransform();
 		scaleTransform2d(glm::vec2((float)mRenderTarget->getWidth() / (float)getWindowWidth(),
@@ -3230,15 +3476,12 @@ namespace mpp
 		GL_CHECK(glUniform3fv(program->getUniformId("CAMERA_POSITION"), 1, glm::value_ptr(cameraPosition)));
 		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
 			if (program->getSamplerName(unit) == "ENVIRONMENT") environment->bind((uint32_t)unit);
-		GL_CHECK(glDisable(GL_DEPTH_TEST)); GL_CHECK(glDepthMask(GL_FALSE));
-		GL_CHECK(glDisable(GL_CULL_FACE)); GL_CHECK(glDisable(GL_BLEND));
+		setDepthTestState(false); setDepthWriteState(false);
+		setCullState(GraphCullMode::None); setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
 		popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
-		GL_CHECK(glDepthMask(depthMask));
-		if (depth) GL_CHECK(glEnable(GL_DEPTH_TEST)); else GL_CHECK(glDisable(GL_DEPTH_TEST));
-		if (cull) GL_CHECK(glEnable(GL_CULL_FACE)); else GL_CHECK(glDisable(GL_CULL_FACE));
-		if (blend) GL_CHECK(glEnable(GL_BLEND)); else GL_CHECK(glDisable(GL_BLEND));
+		applyRasterState(previousRasterState, 1, mRenderTarget->getWidth(), mRenderTarget->getHeight());
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; mRenderInfo.batchCount++;
 	}
 
@@ -3259,7 +3502,7 @@ namespace mpp
 			if (sampler == "SCENE") scene->bind((uint32_t)unit);
 			else if (sampler == "BLOOM") bloom->bind((uint32_t)unit);
 		}
-		GL_CHECK(glDisable(GL_BLEND));
+		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += 2; mRenderInfo.fullscreenQuads++;
@@ -3307,13 +3550,13 @@ namespace mpp
 		// Bind mesh
 		if (alphaBlend)
 		{
-			GL_CHECK(glEnable(GL_BLEND));
-			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+			setBlendState(true);
+			setBlendFunctionState(GraphBlendFactor::SourceAlpha, GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::SourceAlpha, GraphBlendFactor::OneMinusSourceAlpha);
 		}
 
 		if (wireFrame)
 		{
-			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
+			setFillModeState(GraphFillMode::Line);
 		}
 
 		auto quadMesh = ((Model*)mFullscreenQuad.get())->getMesh(0);
@@ -3325,12 +3568,12 @@ namespace mpp
 
 		if (alphaBlend)
 		{
-			GL_CHECK(glDisable(GL_BLEND));
+			setBlendState(false);
 		}
 
 		if (wireFrame)
 		{
-			GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+			setFillModeState(GraphFillMode::Fill);
 		}
 
 		popModelMatrix();
@@ -3447,10 +3690,10 @@ namespace mpp
 		size_t indexBytes = indexWidth >> 3;
 		bool useIndices = indexData != nullptr && (indexBytes == 2 || indexBytes == 4);
 
-		GL_CHECK(glEnable(GL_SCISSOR_TEST));
-		GL_CHECK(glEnable(GL_BLEND));
-		GL_CHECK(glBlendEquation(GL_FUNC_ADD));
-		GL_CHECK(glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
+		setScissorState(true);
+		setBlendState(true);
+		setBlendEquationState(GraphBlendOp::Add, GraphBlendOp::Add);
+		setBlendFunctionState(GraphBlendFactor::SourceAlpha, GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::One, GraphBlendFactor::OneMinusSourceAlpha);
 
 		// Create VAO.  The VAO stores the vertex attributes and the VBO and IBO
 		GLuint vao{ 0 };
@@ -3537,7 +3780,7 @@ namespace mpp
 
 			if (cmd.clipSize[0] > 0 && cmd.clipSize[1] > 0)
 			{
-				glScissor(cmd.clipMin[0], cmd.clipMin[1], cmd.clipSize[0], cmd.clipSize[1]);
+				setScissorRectangleState({ static_cast<uint32_t>(cmd.clipMin[0]), static_cast<uint32_t>(cmd.clipMin[1]), static_cast<uint32_t>(cmd.clipSize[0]), static_cast<uint32_t>(cmd.clipSize[1]) });
 			}
 
 			// Draw
@@ -3562,8 +3805,8 @@ namespace mpp
 		// Destroy VAO
 		GL_CHECK(glDeleteVertexArrays(1, &vao));
 
-		GL_CHECK(glDisable(GL_SCISSOR_TEST));
-		GL_CHECK(glDisable(GL_BLEND));
+		setScissorState(false);
+		setBlendState(false);
 	}
 
 	void RenderSystem::setDebugPreMessages(vector<string> const& messages)
@@ -3997,22 +4240,21 @@ namespace mpp
 		meshInstance->bindUniforms();
 
 		// Wireframe?
-		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, meshInstance->mWireframe ? GL_LINE : GL_FILL));
+		setFillModeState(meshInstance->mWireframe ? GraphFillMode::Line : GraphFillMode::Fill);
 		if (flowStateChanges && meshInstance->mWireframe) flowStateChanges->push_back("Polygon mode: line");
 
 		if (meshInstance->mCullBackFaces)
 		{
-			GL_CHECK(glEnable(GL_CULL_FACE));
-			GL_CHECK(glCullFace(GL_BACK));
+			setCullState(GraphCullMode::Back);
 			if (flowStateChanges) flowStateChanges->push_back("Cull face: back");
 		}
 
 		// Blend?
 		if (meshInstance->mBlend)
 		{
-			GL_CHECK(glEnable(GL_BLEND));
-			GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-			GL_CHECK(glDepthMask(GL_FALSE));
+			setBlendState(true);
+			setBlendFunctionState(GraphBlendFactor::SourceAlpha, GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::SourceAlpha, GraphBlendFactor::OneMinusSourceAlpha);
+			setDepthWriteState(false);
 			if (flowStateChanges) { flowStateChanges->push_back("Blend: src alpha / one minus src alpha"); flowStateChanges->push_back("Depth write: disabled"); }
 		}
 	}
@@ -4022,17 +4264,17 @@ namespace mpp
 		// Unbind
 		meshInstance->mwMesh->bind(false);
 
-		GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+		setFillModeState(GraphFillMode::Fill);
 
 		if (meshInstance->mCullBackFaces)
 		{
-			GL_CHECK(glDisable(GL_CULL_FACE));
+			setCullState(GraphCullMode::None);
 		}
 
 		if (meshInstance->mBlend)
 		{
-			GL_CHECK(glDisable(GL_BLEND));
-			GL_CHECK(glDepthMask(GL_TRUE));
+			setBlendState(false);
+			setDepthWriteState(true);
 		}
 	}
 

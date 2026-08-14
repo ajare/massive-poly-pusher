@@ -531,6 +531,12 @@ namespace mpp
 					if (plannedTogether != (aliasTargets.get(leftImage.image) == aliasTargets.get(rightImage.image)))
 						return fail("planned allocation grouping disagrees with the allocated targets for '" + leftImage.debugName + "' and '" + rightImage.debugName + "'");
 				}
+			auto const rasterStateBefore = renderSystem->captureRasterState(1);
+			auto const cacheStatsBefore = renderSystem->getRasterStateCacheStats();
+			renderSystem->applyRasterState(rasterStateBefore, 1, 8, 8);
+			auto const cacheStatsAfter = renderSystem->getRasterStateCacheStats();
+			if (cacheStatsAfter.applied != cacheStatsBefore.applied || cacheStatsAfter.skipped <= cacheStatsBefore.skipped)
+				return fail("reapplying cached raster state issued redundant OpenGL changes");
 			GraphRasterState rasterState;
 			rasterState.explicitState = true;
 			rasterState.depthTest = false;
@@ -547,9 +553,58 @@ namespace mpp
 			aliasExecutor.setPassCallback(aliasGraph, aliasPass3, [](RenderGraphExecutionContext const&) {});
 			aliasExecutor.execute(aliasGraph, aliasTargets, renderSystem->getCaps());
 			if (!observedRasterState) return fail("explicit graph raster state was not applied");
+			if (renderSystem->captureRasterState(1) != rasterStateBefore) return fail("graph execution did not restore the cached raster-state snapshot");
 			if (aliasExecutor.getLastExecutionStats().size() != 4) return fail("per-pass execution statistics were not recorded");
 			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=4||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id||aliasOrder[3].id!=aliasPass3.id)return fail("executor did not retain its last successful compiled pass order");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
+
+			stage = "raster-state cache CPU benchmark";
+			for (size_t passCount : { 10u, 50u, 100u })
+			{
+				RenderGraph benchmarkGraph;
+				GraphImageDesc benchmarkImageDesc;
+				benchmarkImageDesc.absoluteSize = { 1, 1 };
+				std::vector<GraphPassHandle> benchmarkPasses;
+				for (size_t index = 0; index < passCount; ++index)
+				{
+					auto image = benchmarkGraph.createImage("RasterStateBenchmark.Image." + std::to_string(index), benchmarkImageDesc);
+					auto pass = benchmarkGraph.addPass("RasterStateBenchmark.Pass." + std::to_string(index), GraphPassType::Fullscreen);
+					benchmarkGraph.writeColour(pass, image, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+					benchmarkGraph.setPassRasterState(pass, rasterState);
+					benchmarkPasses.push_back(pass);
+				}
+				auto benchmarkPlan = benchmarkGraph.buildAllocationPlan({ 1, 1 });
+				if (!benchmarkPlan.valid) return fail("raster-state benchmark graph did not compile");
+				RenderGraphTargets benchmarkTargets(renderSystem);
+				benchmarkTargets.allocate(benchmarkPlan);
+				RenderGraphExecutor benchmarkExecutor(renderSystem);
+				for (auto pass : benchmarkPasses) benchmarkExecutor.setPassCallback(benchmarkGraph, pass, [](RenderGraphExecutionContext const&) {});
+				benchmarkExecutor.execute(benchmarkGraph, benchmarkTargets, renderSystem->getCaps());
+				auto measure = [&]()
+				{
+					GL_CHECK(glFinish());
+					auto const begin = std::chrono::steady_clock::now();
+					for (size_t frame = 0; frame < 10; ++frame) benchmarkExecutor.execute(benchmarkGraph, benchmarkTargets, renderSystem->getCaps());
+					auto const end = std::chrono::steady_clock::now();
+					return std::chrono::duration<double, std::milli>(end - begin).count() / 10.0;
+				};
+				auto const cachedMilliseconds = measure();
+				for (auto pass : benchmarkPasses)
+					benchmarkExecutor.setPassCallback(benchmarkGraph, pass, [](RenderGraphExecutionContext const&)
+					{
+						GLint values[4]{}; GLboolean mask = GL_TRUE;
+						(void)glIsEnabled(GL_DEPTH_TEST); (void)glIsEnabled(GL_CULL_FACE); (void)glIsEnabled(GL_BLEND);
+						(void)glIsEnabled(GL_MULTISAMPLE); (void)glIsEnabled(GL_SAMPLE_ALPHA_TO_COVERAGE); (void)glIsEnabled(GL_SCISSOR_TEST);
+						GL_CHECK(glGetBooleanv(GL_DEPTH_WRITEMASK, &mask)); GL_CHECK(glGetIntegerv(GL_DEPTH_FUNC, values));
+						GL_CHECK(glGetIntegerv(GL_CULL_FACE_MODE, values)); GL_CHECK(glGetIntegerv(GL_FRONT_FACE, values)); GL_CHECK(glGetIntegerv(GL_POLYGON_MODE, values));
+						GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_RGB, values)); GL_CHECK(glGetIntegerv(GL_BLEND_EQUATION_ALPHA, values));
+						GL_CHECK(glGetIntegerv(GL_BLEND_SRC_RGB, values)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_RGB, values));
+						GL_CHECK(glGetIntegerv(GL_BLEND_SRC_ALPHA, values)); GL_CHECK(glGetIntegerv(GL_BLEND_DST_ALPHA, values)); GL_CHECK(glGetIntegerv(GL_SCISSOR_BOX, values));
+					});
+				auto const queriedMilliseconds = measure();
+				renderSystem->infoMessage("Raster-state CPU benchmark (" + std::to_string(passCount) + " lightweight passes): cached=" +
+					std::to_string(cachedMilliseconds) + " ms/frame, query baseline=" + std::to_string(queriedMilliseconds) + " ms/frame.");
+			}
 
 			stage = "fullscreen sampler routing";
 			// renderGraphFullscreen used to bind each texture to the binding's own

@@ -146,9 +146,11 @@ Cache framebuffer views by attachment texture IDs, mip levels, depth/stencil asp
 
 ---
 
-### 6. Eliminate synchronous GL state interrogation per pass — high payoff, medium/high effort
+### 6. Eliminate synchronous GL state interrogation per pass — implemented
 
-`GraphRasterStateScope` reads extensive driver state whenever explicit state is used:
+**Status:** Completed on `perf/render-state-cache`.
+
+`GraphRasterStateScope` previously read extensive driver state whenever explicit state was used:
 
 - `mpp/src/RenderGraphExecutor.cpp:145-156`
 
@@ -160,14 +162,14 @@ Additional reads occur during clears and invalidation:
 
 `glGet*` calls can serialize command submission and make graph cost scale poorly with pass count.
 
-**Change**
+**Implemented changes**
 
-- Make `RenderSystem` own an authoritative state cache.
-- Have graph passes apply state through the same cache instead of modifying GL independently.
-- Restore a known engine state snapshot, not driver-queried state.
-- Retain optional debug-only verification that compares cached and actual GL state periodically.
-
-Benchmark CPU frame time with 10, 50, and 100 lightweight passes before and after the change.
+- `RenderSystem` now owns the authoritative depth, cull, fill, front-face, blend, multisample, alpha-to-coverage, scissor, colour-mask, polygon-offset, point, and seamless-cubemap state caches. Its existing raster mutations are routed through cache-aware setters, and viewport origin/dimensions are tracked without driver reads.
+- Graph raster scopes capture and restore engine snapshots and apply only changed state. They no longer call `glGet*` or `glIsEnabled`; clear write-mask overrides also use and restore the cache.
+- Framebuffer invalidation derives default-framebuffer attachment names from the selected render target rather than querying `GL_DRAW_FRAMEBUFFER_BINDING` per pass.
+- Applied/skipped state-change telemetry and GPU-context regressions verify that repeated snapshots issue no GL changes and graph execution restores the prior snapshot.
+- Debug builds periodically compare the complete cached graph raster state with OpenGL and repair/report divergence. Verification is sampled once per 256 explicit scopes, so release execution has no query path.
+- GPU regression coverage includes a 10-frame CPU benchmark for 10, 50, and 100 lightweight explicit-state passes. It logs cached frame time beside a driver-query baseline that executes the former synchronous query set in every pass. The benchmark is ready to run with the DemoSuite GPU tests; local execution remains blocked earlier in DemoSuite startup by the pre-existing material-resource `RSE3`/`RSE4` version mismatch.
 
 ---
 
