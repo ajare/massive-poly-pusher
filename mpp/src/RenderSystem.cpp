@@ -3307,6 +3307,14 @@ namespace mpp
 		uniformCopy.bindUniforms(program);
 		GL_CHECK(glUniformMatrix4fv(p->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 		GL_CHECK(glUniform2f(p->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		// GAMMA is an engine-wide renderer setting, not something PostEffectMaterial
+		// authors declare (see every other fullscreen render function, which all
+		// auto-inject it from mGamma the same way). Never set here, it stays at
+		// GLSL's uniform default of 0, so 1.0/GAMMA is +inf and pow(colour, vec3(inf))
+		// crushes everything below 1.0 to black -- this generic function replaced the
+		// old bespoke tonemap pass, which did get this injection, and never picked it up.
+		int gammaId = p->getUniformId("GAMMA");
+		if (gammaId >= 0) GL_CHECK(glUniform1f(gammaId, mGamma));
 		// Bind each texture to the unit the program itself samples that name from.
 		// The previous code bound to the binding's own position and tried to point
 		// the sampler at it with getUniformId, which cannot work: samplers are marked
