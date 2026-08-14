@@ -219,6 +219,9 @@ add_library(MassivePolyPusher SHARED
     mpp/src/LineBatch.cpp
     mpp/src/Logger.cpp
     mpp/src/BasicMaterial.cpp
+    mpp/src/LegacyMaterialConversion.cpp
+    mpp/src/LegacyPipelineDocument.cpp
+    mpp/src/LegacyPipelineStream.cpp
     mpp/src/PbrMaterial.cpp
     mpp/src/PbrPipelineDocument.cpp
     mpp/src/PbrPipelineStream.cpp
@@ -319,6 +322,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/FilePostEffectMaterialStream.cpp
     mpp-resource-parsers/src/FileGltfPbrMaterialStream.cpp
     mpp-resource-parsers/src/GltfPbrMaterialLoader.cpp
+    mpp-resource-parsers/src/FileLegacyPipelineStream.cpp
     mpp-resource-parsers/src/FilePbrPipelineStream.cpp
     mpp-resource-parsers/src/FileRenderGraphStream.cpp
     mpp-resource-parsers/src/FileProgramStream.cpp
@@ -330,6 +334,12 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/MeshSpecificationParser.cpp
     mpp-resource-parsers/src/MaterialResourceTests.cpp
     mpp-resource-parsers/src/RenderGraphParser.cpp
+    mpp-resource-parsers/src/LegacyPipelineConversion.cpp
+    mpp-resource-parsers/src/LegacyPipelineDocumentLoader.cpp
+    mpp-resource-parsers/src/LegacyPipelineParser.cpp
+    mpp-resource-parsers/src/LegacyPipelineSerializer.cpp
+    mpp-resource-parsers/src/LegacyPipelineRuntime.cpp
+    mpp-resource-parsers/src/LegacyPipelineResourceValidator.cpp
     mpp-resource-parsers/src/PbrPipelineDocumentLoader.cpp
     mpp-resource-parsers/src/PbrPipelineParser.cpp
     mpp-resource-parsers/src/PbrPipelineSerializer.cpp
