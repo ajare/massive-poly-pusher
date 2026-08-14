@@ -3,6 +3,7 @@
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
+#include "mpp/ModelRenderParams.h"
 #include "mpp/mesh/MeshSpecification.h"
 
 namespace mpp
@@ -10,6 +11,20 @@ namespace mpp
 	bool runRenderGraphTopologyTests(std::string* failure)
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+
+		ModelRenderParams modelParams;
+		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();
+		modelParams.setModelInstanceCount(2);
+		modelParams.setMeshUniforms("Mesh", {});
+		if (modelParams.getProgramSetRevision() != initialProgramSetRevision) return fail("non-program model parameters invalidated the visible program set");
+		modelParams.setModelFlags(ModelRenderParams::Flag_Visible);
+		auto const modelFlagsRevision = modelParams.getProgramSetRevision();
+		modelParams.setMeshFlags("Mesh", 0);
+		if (modelFlagsRevision <= initialProgramSetRevision || modelParams.getProgramSetRevision() <= modelFlagsRevision)
+			return fail("visibility/material model parameters did not invalidate the visible program set");
+		auto const unchangedFlagsRevision = modelParams.getProgramSetRevision();
+		modelParams.setMeshFlags("Mesh", 0);
+		if (modelParams.getProgramSetRevision() != unchangedFlagsRevision) return fail("unchanged visibility invalidated the visible program set");
 
 		// Mesh layout identity feeds program caching. Every equality field must be
 		// represented by an unambiguous canonical key, while the compact hash and

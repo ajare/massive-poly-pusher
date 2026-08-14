@@ -38,6 +38,7 @@ namespace mpp
 		std::map<std::string, MeshRenderParams> mMeshParams;
 
 		MeshRenderParams mModelParams;
+		uint64_t mProgramSetRevision{ 1 };
 
 	public:
 
@@ -63,8 +64,8 @@ namespace mpp
 
 		void setModelFlags(uint32_t flags)
 		{
-			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
-			
+			auto [it, inserted] = mMeshParams.insert(std::make_pair("", MeshRenderParams()));
+			if (inserted || it->second.flags != flags) ++mProgramSetRevision;
 			it->second.flags = flags;
 		}
 
@@ -99,8 +100,8 @@ namespace mpp
 
 		void setModelMaterial(ResourcePtr material)
 		{
-			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
-			
+			auto [it, inserted] = mMeshParams.insert(std::make_pair("", MeshRenderParams()));
+			if (inserted || it->second.material != material) ++mProgramSetRevision;
 			it->second.material = material;
 		}
 
@@ -126,8 +127,8 @@ namespace mpp
 
 		void setMeshFlags(std::string const& mesh, uint32_t flags)
 		{
-			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
-			
+			auto [it, inserted] = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams()));
+			if (inserted || it->second.flags != flags) ++mProgramSetRevision;
 			it->second.flags = flags;
 		}
 
@@ -161,8 +162,8 @@ namespace mpp
 
 		void setMeshMaterial(std::string const& mesh, ResourcePtr material)
 		{
-			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
-
+			auto [it, inserted] = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams()));
+			if (inserted || it->second.material != material) ++mProgramSetRevision;
 			it->second.material = material;
 		}
 
@@ -184,6 +185,11 @@ namespace mpp
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
 
 			it->second.renderCommands.push_back(cmd);
+		}
+
+		uint64_t getProgramSetRevision() const
+		{
+			return mProgramSetRevision;
 		}
 
 		std::map<std::string, MeshRenderParams> const& getMeshParams() const

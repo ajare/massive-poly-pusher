@@ -38,6 +38,7 @@ namespace mpp
 		RenderSystem* mwRenderSystem;
 
 		ResourcePtr mMaterial;
+		uint64_t* mMaterialRevision{ nullptr };
 
 		std::vector<VertexBuffer*> mVertexBuffers;
 
@@ -54,6 +55,9 @@ namespace mpp
 
 		// Methods to be used by RenderSystem
 		friend class RenderSystem;
+		friend class Model;
+
+		void setMaterialRevisionCounter(uint64_t* revision) { mMaterialRevision = revision; }
 
 		void setPrimitiveData(mesh::Primitive::Type type);
 

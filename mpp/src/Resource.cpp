@@ -154,6 +154,11 @@ namespace mpp
 		return mLoaded;
 	}
 
+	uint64_t Resource::getLifecycleRevision() const
+	{
+		return mLifecycleRevision;
+	}
+
 	/*
 	 * Get the associated RenderSystem.
 	 *
@@ -223,7 +228,7 @@ namespace mpp
 		if (!isCreated())
 		{
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Create " + getType () + ": '" + getName() + "'");
-			try{createImpl();mCreated=true;}
+			try{createImpl();mCreated=true;++mLifecycleRevision;}
 			catch(...){releaseDependentResources();if(mResourceStream)mResourceStream->destroyChildResources(getName());throw;}
 		}
 	}
@@ -252,6 +257,7 @@ namespace mpp
 			}
 
 			mCreated = false;
+			++mLifecycleRevision;
 		}
 
 	}
@@ -278,6 +284,7 @@ namespace mpp
 			//static_log_message(MPP_RESOURCE_LOGFILE, "Load " + getType() + ": '" + getName() + "'");
 			loadImpl();
 			mLoaded = true;
+			++mLifecycleRevision;
 
 			if (mResourceStream && unloadStreamsAfterwards)
 			{
@@ -304,6 +311,7 @@ namespace mpp
 			}
 
 			mLoaded = false;
+			++mLifecycleRevision;
 		}
 	}
 

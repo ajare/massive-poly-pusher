@@ -2,6 +2,7 @@
 
 #include <string>
 #include <set>
+#include <cstdint>
 #include <memory>
 
 #include "mpp/Config.h"
@@ -26,6 +27,7 @@ namespace mpp
 		bool mCreated;
 
 		bool mLoaded;
+		uint64_t mLifecycleRevision{ 1 };
 
 		uint32_t mId;
 
@@ -68,6 +70,8 @@ namespace mpp
 		bool isCreated() const;
 
 		bool isLoaded() const;
+
+		uint64_t getLifecycleRevision() const;
 
 		bool isReferenced() const;
 		

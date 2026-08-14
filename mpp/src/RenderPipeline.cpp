@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <atomic>
+#include <functional>
 #include <glm/gtc/matrix_inverse.hpp>
 
 #include <GL/glew.h>
@@ -37,22 +38,6 @@ namespace mpp
 			default: return "Unknown";
 			}
 		}
-
-		bool sceneProgramsSupportOutputs(vector<SceneModel3dPtr> const& models, size_t requiredCount)
-		{
-			for (auto const& sceneModel : models)
-			{
-				auto model = static_cast<Model*>(sceneModel->getModel().get());
-				for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
-				{
-					auto material = static_cast<Material*>(model->getMesh(meshIndex)->getMaterial().get());
-					auto program = static_cast<Program*>(material->getProgram().get());
-					string diagnostic;
-					if (!program || !program->validateFragmentOutputLocations(requiredCount, diagnostic)) return false;
-				}
-			}
-			return true;
-		}
 	}
 
 
@@ -71,6 +56,106 @@ namespace mpp
 
 	RenderPipeline::~RenderPipeline()
 	{
+	}
+
+	bool RenderPipeline::sceneProgramsSupportOutputs(vector<SceneModel3dPtr> const& models, size_t requiredCount)
+	{
+		vector<shared_ptr<Program>> programs;
+		map<SceneModel3d const*, SceneModelProgramCache> currentModelCache;
+		for (auto const& sceneModel : models)
+		{
+			if (!sceneModel) { programs.push_back({}); continue; }
+			auto model = dynamic_cast<Model*>(sceneModel->getModel().get());
+			auto params = sceneModel->getParams();
+			uint64_t const modelRevision = model ? model->getMaterialRevision() : 0;
+			uint64_t const parameterRevision = params->getProgramSetRevision();
+			auto const cached = mSceneModelProgramCache.find(sceneModel.get());
+			bool const cachedMaterialsCurrent = cached != mSceneModelProgramCache.end() && std::all_of(cached->second.materials.begin(), cached->second.materials.end(), [](auto const& material)
+			{
+				return material.first && material.first->getLifecycleRevision() == material.second;
+			});
+			if (cached != mSceneModelProgramCache.end() && cached->second.model == model &&
+				cached->second.modelMaterialRevision == modelRevision && cached->second.parameterRevision == parameterRevision && cachedMaterialsCurrent)
+			{
+				++mOutputValidationModelHits;
+				programs.insert(programs.end(), cached->second.programs.begin(), cached->second.programs.end());
+				currentModelCache.emplace(sceneModel.get(), cached->second);
+				continue;
+			}
+
+			++mOutputValidationModelMisses;
+			SceneModelProgramCache modelCache{ model, modelRevision, parameterRevision, {}, {} };
+			if (!model)
+			{
+				modelCache.programs.push_back({});
+			}
+			else
+			{
+				auto const& meshParams = params->getMeshParams();
+				auto const defaultParams = meshParams.find("");
+				for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+				{
+					auto mesh = model->getMesh(meshIndex);
+					auto const specificParams = meshParams.find(mesh->getName());
+					auto const* renderParams = specificParams != meshParams.end() ? &specificParams->second :
+						(defaultParams != meshParams.end() ? &defaultParams->second : nullptr);
+					if (renderParams && (renderParams->flags & ModelRenderParams::Flag_Visible) == 0) continue;
+					auto materialResource = renderParams && renderParams->material ? renderParams->material : mesh->getMaterial();
+					if (materialResource) modelCache.materials.push_back({ materialResource, materialResource->getLifecycleRevision() });
+					auto material = dynamic_cast<Material*>(materialResource.get());
+					modelCache.programs.push_back(material ? dynamic_pointer_cast<Program>(material->getProgram()) : shared_ptr<Program>{});
+				}
+			}
+			std::sort(modelCache.materials.begin(), modelCache.materials.end(), [](auto const& left, auto const& right)
+			{
+				return std::less<Resource const*>{}(left.first.get(), right.first.get());
+			});
+			modelCache.materials.erase(std::unique(modelCache.materials.begin(), modelCache.materials.end(), [](auto const& left, auto const& right)
+			{
+				return left.first.get() == right.first.get();
+			}), modelCache.materials.end());
+			std::sort(modelCache.programs.begin(), modelCache.programs.end(), [](auto const& left, auto const& right)
+			{
+				return std::less<Program const*>{}(left.get(), right.get());
+			});
+			modelCache.programs.erase(std::unique(modelCache.programs.begin(), modelCache.programs.end(), [](auto const& left, auto const& right)
+			{
+				return left.get() == right.get();
+			}), modelCache.programs.end());
+			programs.insert(programs.end(), modelCache.programs.begin(), modelCache.programs.end());
+			currentModelCache.emplace(sceneModel.get(), std::move(modelCache));
+		}
+		mSceneModelProgramCache.swap(currentModelCache);
+		std::sort(programs.begin(), programs.end(), [](auto const& left, auto const& right)
+		{
+			return std::less<Program const*>{}(left.get(), right.get());
+		});
+		programs.erase(std::unique(programs.begin(), programs.end(), [](auto const& left, auto const& right)
+		{
+			return left.get() == right.get();
+		}), programs.end());
+
+		vector<ProgramOutputKey> key;
+		key.reserve(programs.size());
+		for (auto const& program : programs) key.push_back({ program, program ? program->getFragmentOutputRevision() : 0 });
+		if (mOutputValidationKnown && requiredCount == mOutputValidationRequiredCount && key == mOutputValidationPrograms)
+		{
+			++mOutputValidationHits;
+			return mOutputValidationResult;
+		}
+
+		++mOutputValidationMisses;
+		bool supported = true;
+		for (auto const& program : programs)
+		{
+			string diagnostic;
+			if (!program || !program->validateFragmentOutputLocations(requiredCount, diagnostic)) { supported = false; break; }
+		}
+		mOutputValidationPrograms = std::move(key);
+		mOutputValidationRequiredCount = requiredCount;
+		mOutputValidationResult = supported;
+		mOutputValidationKnown = true;
+		return supported;
 	}
 
 	string const& RenderPipeline::getName() const
@@ -96,6 +181,12 @@ namespace mpp
 	void RenderPipeline::setBloomOptions(BloomOptions const& bloomOptions)
 	{
 		mOptions.bloom = bloomOptions;
+		if (!mOptions.bloom.enabled || !mOptions.bloom.useMrtEmissiveMask)
+		{
+			mSceneModelProgramCache.clear();
+			mOutputValidationPrograms.clear();
+			mOutputValidationKnown = false;
+		}
 	}
 
 	void RenderPipeline::setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses)
@@ -214,6 +305,10 @@ namespace mpp
 
 	uint64_t RenderPipeline::getOutputGeneration() const{return mOutputProcessor?mOutputProcessor->getGeneration():0;}
 	vector<RenderPipelineOutputPlan> const& RenderPipeline::getOutputPlans() const{static vector<RenderPipelineOutputPlan> const empty;return mOutputProcessor?mOutputProcessor->getPlans():empty;}
+	SceneOutputValidationCacheStats RenderPipeline::getSceneOutputValidationCacheStats() const
+	{
+		return { mOutputValidationHits, mOutputValidationMisses, mOutputValidationModelHits, mOutputValidationModelMisses, mOutputValidationPrograms.size() };
+	}
 	void RenderPipeline::prepareOutputs(RenderGraph const& graph,map<string,RenderTargetPtr> const& destinations){if(mOutputProcessor)mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);}
 
 	void RenderPipeline::resize(size_t width, size_t height)
