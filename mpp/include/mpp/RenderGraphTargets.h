@@ -31,9 +31,19 @@ namespace mpp
 		std::map<uint64_t, RenderTargetPtr> mTargets;
 		std::map<uint64_t, RenderTargetPtr> mWriteTargets;
 		std::map<uint32_t, RenderTargetPtr> mImportedTargets;
+		struct TargetSignature
+		{
+			uint64_t width{ 0 }, height{ 0 };
+			uint32_t textureTarget{ 0 }, colourTexture{ 0 }, depthTexture{ 0 };
+			bool depthStencil{ false };
+			bool operator ==(TargetSignature const&) const = default;
+		};
+		std::map<uint32_t, TargetSignature> mImportedSignatures;
 		std::vector<PoolEntry> mPool;
+		uint64_t mGeneration{ 1 };
 
 		static uint64_t makeKey(GraphImageHandle image);
+		static TargetSignature targetSignature(RenderTargetPtr const& target);
 		void allocatePhysical(RenderGraphAllocationPlan const& plan, uint32_t samples);
 		friend class RenderPipeline;
 		friend _MPPAPI bool runRenderGraphGpuTests(RenderSystem* renderSystem, std::string* failure);
@@ -48,6 +58,9 @@ namespace mpp
 		void bindImported(GraphImageHandle image, RenderTargetPtr target);
 		void bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports);
 		void clear();
+		// Changes only when an attachment mapping acquires different backing
+		// storage. Repeating an unchanged allocation keeps framebuffer views valid.
+		uint64_t getGeneration() const;
 		RenderTargetPtr get(GraphImageHandle image) const;
 		RenderTargetPtr getWriteTarget(GraphImageHandle image) const;
 		bool resolve(GraphImageHandle image, bool depth) const;

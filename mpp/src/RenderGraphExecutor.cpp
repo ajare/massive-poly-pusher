@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <optional>
 #include <sstream>
+#include <tuple>
 
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
@@ -27,6 +29,10 @@ namespace mpp
 			GLuint mFramebuffer{ 0 };
 			vector<GLenum> mDrawBuffers;
 			vector<RenderTexture*> mMipTargets;
+			// Cached views must keep every attached texture object alive. OpenGL keeps
+			// a deleted attachment alive internally, but the engine object also owns
+			// mip generation and dimensions used when the view is activated.
+			vector<RenderTargetPtr> mAttachments;
 
 			static RenderTexture* requireRenderTexture(RenderTargetPtr const& target)
 			{
@@ -54,8 +60,16 @@ namespace mpp
 		public:
 			GraphFramebufferTarget(string const& name, vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips, RenderTargetPtr const& depth, uint32_t depthMip)
 				: RenderTarget(colours.empty() ? max<size_t>(1, depth->getWidth() >> depthMip) : max<size_t>(1, colours.front()->getWidth() >> colourMips.front()), colours.empty() ? max<size_t>(1, depth->getHeight() >> depthMip) : max<size_t>(1, colours.front()->getHeight() >> colourMips.front()))
+				, mAttachments(colours)
 			{
+				if (depth) mAttachments.push_back(depth);
 				GL_CHECK(glGenFramebuffers(1, &mFramebuffer));
+				struct PendingFramebuffer
+				{
+					GLuint* id;
+					bool committed{ false };
+					~PendingFramebuffer() { if (!committed && *id != 0) { glDeleteFramebuffers(1, id); *id = 0; } }
+				} pending{ &mFramebuffer };
 				// glGenFramebuffers reserves a name; binding it creates the object.
 				// Labeling a never-bound name is GL_INVALID_VALUE on strict drivers.
 				GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFramebuffer));
@@ -87,6 +101,7 @@ namespace mpp
 					THROW_MPP("Render graph pass framebuffer is incomplete.", __LINE__, __FILE__, __func__);
 				}
 				GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+				pending.committed = true;
 			}
 
 			~GraphFramebufferTarget() override
@@ -211,6 +226,37 @@ namespace mpp
 			if (!attachments.empty()) GL_CHECK(glInvalidateFramebuffer(GL_FRAMEBUFFER, (GLsizei)attachments.size(), attachments.data()));
 		}
 	}
+
+	struct RenderGraphExecutor::FramebufferViewCache
+	{
+		struct Attachment
+		{
+			uint32_t textureTarget{ 0 };
+			uint32_t textureId{ 0 };
+			uint32_t mipLevel{ 0 };
+			uint32_t aspect{ 0 }; // 0 colour, 1 depth, 2 packed depth/stencil.
+			uint64_t width{ 0 };
+			uint64_t height{ 0 };
+			bool operator <(Attachment const& other) const
+			{
+				return tie(textureTarget, textureId, mipLevel, aspect, width, height) <
+					tie(other.textureTarget, other.textureId, other.mipLevel, other.aspect, other.width, other.height);
+			}
+		};
+		struct Key
+		{
+			vector<Attachment> drawBuffers;
+			optional<Attachment> depth;
+			bool operator <(Key const& other) const
+			{
+				return tie(drawBuffers, depth) < tie(other.drawBuffers, other.depth);
+			}
+		};
+
+		RenderGraphTargets const* targets{ nullptr };
+		uint64_t targetGeneration{ 0 };
+		map<Key, RenderTargetPtr> views;
+	};
 
 	RenderGraphExecutionContext::RenderGraphExecutionContext(RenderGraphTargets const* targets, UniformCollection const* parameters, RenderGraphFrameContext const* frame, GraphPassInfo const* pass)
 		: mTargets(targets)
@@ -346,6 +392,64 @@ namespace mpp
 		return mLastExecutionOrder;
 	}
 
+	GraphFramebufferCacheStats RenderGraphExecutor::getFramebufferCacheStats() const
+	{
+		auto result = mFramebufferCacheStats;
+		result.entries = mFramebufferViews ? mFramebufferViews->views.size() : 0;
+		return result;
+	}
+
+	void RenderGraphExecutor::synchronizeFramebufferViews(RenderGraphTargets const& targets)
+	{
+		if (!mFramebufferViews) return;
+		auto& cache = *mFramebufferViews;
+		if (cache.targets == &targets && cache.targetGeneration == targets.getGeneration()) return;
+		if (!cache.views.empty()) ++mFramebufferCacheStats.invalidations;
+		cache.views.clear();
+		cache.targets = &targets;
+		cache.targetGeneration = targets.getGeneration();
+	}
+
+	RenderTargetPtr RenderGraphExecutor::getFramebufferView(string const& name, RenderGraphTargets const& targets,
+		vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips,
+		RenderTargetPtr const& depth, uint32_t depthMip)
+	{
+		if (!mFramebufferViews) mFramebufferViews = make_unique<FramebufferViewCache>();
+		synchronizeFramebufferViews(targets);
+		auto& cache = *mFramebufferViews;
+
+		auto attachmentKey = [](RenderTargetPtr const& target, uint32_t mipLevel, bool depthAttachment)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get());
+			if (!texture)
+				THROW_MPP("A cached render graph framebuffer requires RenderTexture-backed outputs.", __LINE__, __FILE__, __func__);
+			FramebufferViewCache::Attachment key;
+			key.textureTarget = texture->getAttachmentTextureTarget();
+			key.textureId = depthAttachment ? texture->getDepthTextureId() : texture->getColourAttachmentId(0);
+			key.mipLevel = mipLevel;
+			key.aspect = depthAttachment ? (texture->hasStencilBuffer() ? 2u : 1u) : 0u;
+			key.width = max<size_t>(1, texture->getWidth() >> mipLevel);
+			key.height = max<size_t>(1, texture->getHeight() >> mipLevel);
+			return key;
+		};
+
+		FramebufferViewCache::Key key;
+		key.drawBuffers.reserve(colours.size());
+		for (size_t index = 0; index < colours.size(); ++index)
+			key.drawBuffers.push_back(attachmentKey(colours[index], colourMips[index], false));
+		if (depth) key.depth = attachmentKey(depth, depthMip, true);
+		auto const found = cache.views.find(key);
+		if (found != cache.views.end())
+		{
+			++mFramebufferCacheStats.hits;
+			return found->second;
+		}
+		++mFramebufferCacheStats.misses;
+		auto view = make_shared<GraphFramebufferTarget>(name, colours, colourMips, depth, depthMip);
+		cache.views.emplace(move(key), view);
+		return view;
+	}
+
 	void RenderGraphExecutor::execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps)
 	{
 		auto compiled = graph.compile(caps);
@@ -356,6 +460,7 @@ namespace mpp
 			for (auto const& diagnostic : compiled.diagnostics) message << "\n- " << diagnostic;
 			THROW_MPP(message.str(), __LINE__, __FILE__, __func__);
 		}
+		synchronizeFramebufferViews(targets);
 		mLastExecutionStats.clear();
 		if (mGpuTimingSupported) collectGpuTimings();
 		vector<GpuTimingQuery> frameGpuQueries;
@@ -429,7 +534,7 @@ namespace mpp
 			}
 			else
 			{
-				passTarget = make_shared<GraphFramebufferTarget>(pass.name, colours, colourMips, depth, depthMip);
+				passTarget = getFramebufferView(pass.name, targets, colours, colourMips, depth, depthMip);
 			}
 			map<RenderTexture*, uint32_t> mipViews;
 			for (auto const& binding : pass.samplerBindings)

@@ -560,6 +560,11 @@ namespace mpp
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
 	}
 
+	size_t RenderTexture::getNumColourAttachments() const
+	{
+		return mTextureIds.size();
+	}
+
 	uint32_t RenderTexture::getColourAttachmentId(size_t attachment) const
 	{
 		if (attachment >= mTextureIds.size())

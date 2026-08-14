@@ -91,6 +91,7 @@ namespace mpp
 		void restoreColourFaces();
 		uint32_t getMipLevels() const override;
 
+		size_t getNumColourAttachments() const;
 		uint32_t getColourAttachmentId(size_t attachment) const;
 
 	};
