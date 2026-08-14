@@ -12,7 +12,6 @@
 
 #include "mpp/Config.h"
 #include "mpp/RenderPass.h"
-#include "mpp/PostEffect.h"
 #include "mpp/Scene.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphExecutor.h"
@@ -137,6 +136,15 @@ namespace mpp
 		bool debugEnvironmentCube{ false };
 		// Empty means this pipeline is not a shadow-domain participant.
 		std::string shadowDomain;
+		// Root resource name (e.g. a PbrPipelineRuntime generation's declared root)
+		// that MPP.FullscreenEffect passes prefix a bare programResource with when
+		// resolving it, before falling back to a plain global lookup. Lets a
+		// PbrPipelineDocument-authored pass reference one of its own LocalResources
+		// by its authored name, even though that resource is only ever registered
+		// under a dynamically-generated root the document can't predict itself.
+		// Empty for pipelines with no document-local post-effect materials (e.g.
+		// DemoSuite's XmlGraphPBR, which declares its materials as global names).
+		std::string resourceRoot;
 	};
 
 	class _MPPAPI RenderPipeline
@@ -148,8 +156,6 @@ namespace mpp
 		RenderPipelineOptions mOptions;
 
 		std::vector<RenderPassPtr> mPasses;
-
-		std::vector<ResourcePtr> mPostEffects;
 
 		RenderTargetPtr mBloomExtractTarget;
 		RenderTargetPtr mBloomPingTarget;
@@ -166,6 +172,13 @@ namespace mpp
 		uint64_t mLastTaaFrameSerial{ 0 }, mLastCameraCutRevision{ 0 };
 		glm::vec3 mLastCameraPosition{ 0.0f }, mLastCameraDirection{ 0.0f, 0.0f, -1.0f };
 		float mLastCameraFov{ 0.0f }, mLastCameraAspect{ 0.0f }, mLastCameraNear{ 0.0f }, mLastCameraFar{ 0.0f };
+		// Keyed by graph pass name. setPostEffectEnabled/setPostEffectParameter each
+		// update this pass's entry and push the merged result, since
+		// RenderGraphExecutor::setPassParameterOverrides replaces a pass's entire
+		// effective parameter set rather than merging into it -- accumulating here
+		// is what lets ENABLED and a numeric parameter be set independently
+		// without one call clobbering the other.
+		std::map<std::string, UniformCollection> mPostEffectParameterOverrides;
 		bool mFlowTelemetryEnabled{ false };
 		uint64_t mFlowGeneration{ 0 };
 		RenderPipelineFlowSnapshotPtr mLastFlowSnapshot;
@@ -218,6 +231,13 @@ namespace mpp
 
 		void setBloomOptions(BloomOptions const& bloomOptions);
 
+		// Generic post-effect-chain tuning: enable/disable or set a named uniform
+		// on the MPP.FullscreenEffect graph pass identified by `passName`. Replaces
+		// BloomOptions-style typed options for chain-authored effects -- new
+		// effects need no new C++ here, just a pass name and parameter name.
+		void setPostEffectEnabled(std::string const& passName, bool enabled);
+		void setPostEffectParameter(std::string const& passName, std::string const& parameterName, float value);
+
 		void setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses);
 		void setDebugEnvironmentCube(bool enabled);
 
@@ -240,8 +260,6 @@ namespace mpp
 		void resize(size_t width, size_t height);
 
 		void addRenderPass(RenderPassPtr pass);
-
-		void addPostEffect(ResourcePtr effect);
 
 		virtual void render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d);
 

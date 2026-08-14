@@ -82,5 +82,6 @@ namespace mpp::resource_parsers
 	RenderTargetPtr const& PbrPipelineRuntime::getPresentationTarget()const{return mPresentationTarget;}
 	PbrEnvironmentPtr const& PbrPipelineRuntime::getEnvironment()const{return mEnvironment;}
 	ResourcePtr PbrPipelineRuntime::getResolvedResource(std::string const& reference)const{return resolve(reference,mRootResource);}
+	std::string const& PbrPipelineRuntime::getRootResource()const{return mRootResource;}
 	DiagnosticBag const& PbrPipelineRuntime::getDiagnostics()const{return mDiagnostics;}
 }

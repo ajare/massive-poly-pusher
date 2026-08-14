@@ -54,6 +54,13 @@ namespace mpp::resource_parsers
 		RenderTargetPtr const& getPresentationTarget()const;
 		PbrEnvironmentPtr const& getEnvironment()const;
 		ResourcePtr getResolvedResource(std::string const& reference)const;
+		// The current generation's declared resource root (e.g. "PbrPipelineRuntime.3")
+		// that LocalResources/PbrPipelineDocument-authored resources are children
+		// of. RenderPipelineOptions::resourceRoot needs this so a graph pass's
+		// MPP.FullscreenEffect programResource (authored as a bare local resource
+		// name, since the document can't predict its own dynamic root) resolves
+		// against the right generation at execute time.
+		std::string const& getRootResource()const;
 		DiagnosticBag const& getDiagnostics()const;
 	};
 }

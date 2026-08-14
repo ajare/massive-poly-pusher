@@ -12,7 +12,7 @@
 #include "mpp/Program.h"
 #include "mpp/Sampler.h"
 #include "mpp/String.h"
-#include "mpp/PostEffect.h"
+#include "mpp/PostEffectMaterial.h"
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/PbrPipelineTemplate.h"
 #include "mpp/SceneTemplate.h"
@@ -73,9 +73,9 @@ namespace mpp
 		{
 			return ResourcePtr(new String(name, this->mwRenderSystem, this, rStream));
 		};
-		mResourceFactories["PostEffect"] = [this](string const& name, ResourceStreamPtr rStream)
+		mResourceFactories["PostEffectMaterial"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
-			return ResourcePtr(new PostEffect(name, this->mwRenderSystem, this, rStream));
+			return ResourcePtr(new PostEffectMaterial(name, this->mwRenderSystem, this, rStream));
 		};
 		mResourceFactories["RenderGraph"] = [this](string const& name, ResourceStreamPtr rStream)
 		{

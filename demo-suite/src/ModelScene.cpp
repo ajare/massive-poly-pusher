@@ -28,6 +28,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <filesystem>
 #include <fstream>
 
+#include <functional>
 #include <stdexcept>
 
 #include <mpp/data/StructuredData.h>
@@ -39,6 +40,7 @@ is owned and shared by the ResourceManager and may be used by other meshes.
 #include <mpp/ProgrammaticModelStream.h>
 #include <mpp/ProgrammaticBasicMaterialStream.h>
 #include <mpp/ProgrammaticPbrMaterialStream.h>
+#include <mpp/ProgrammaticPostEffectMaterialStream.h>
 #include <mpp/ProgrammaticStringStream.h>
 #include <mpp/PbrMaterial.h>
 #include <mpp/PbrShaders.h>
@@ -1033,6 +1035,34 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	graphPbrOptions.mode = mpp::RenderPipelineMode::GraphPbrForward;
 	graphPbrOptions.outputs.push_back({"Main","Presentation",{}, {}});
 	renderSystem->getOrCreateRenderPipeline("GraphPBR", graphPbrOptions);
+
+	// Generic post-effect-chain materials for the XmlGraphPBR/XmlGraphMrtPBR
+	// pipelines: each wraps one of RenderSystem's existing built-in bloom/tonemap
+	// programs, so PbrPipeline.rendergraph.xml can reference it by name via
+	// MPP.FullscreenEffect instead of a bespoke BloomExtractPass/BloomBlurPass/
+	// BloomCompositePass/ToneMapPresentPass C++ class (see
+	// doc/POST_EFFECT_CHAIN_IMPLEMENTATION_PLAN.md). Default uniform values here
+	// match what the migrated XML used to author inline per-pass.
+	auto declarePostEffectMaterial = [&](std::string const& name, std::string const& program,
+		std::vector<std::string> const& samplerSlots, std::function<void(mpp::ProgrammaticPostEffectMaterialStream&)> const& configure)
+	{
+		auto stream = new mpp::ProgrammaticPostEffectMaterialStream(resourceMgr);
+		stream->setProgram(program);
+		for (auto const& slot : samplerSlots) stream->addSamplerSlot(slot);
+		if (configure) configure(*stream);
+		return resourceMgr->declareResource(name, mpp::ResourceStreamPtr(stream)).first;
+	};
+	declarePostEffectMaterial("DemoSuite.PostEffect.BloomExtract", "__mpp_p2d_bloom_extract__", { "TEX1" },
+		[](mpp::ProgrammaticPostEffectMaterialStream& s) { s.setUniform("THRESHOLD", 0.7f); });
+	declarePostEffectMaterial("DemoSuite.PostEffect.BloomBlurHorizontal", "__mpp_p2d_bloom_blur__", { "TEX1" },
+		[](mpp::ProgrammaticPostEffectMaterialStream& s) { s.setUniform("DIRECTION", glm::vec2(1.0f, 0.0f)); });
+	declarePostEffectMaterial("DemoSuite.PostEffect.BloomBlurVertical", "__mpp_p2d_bloom_blur__", { "TEX1" },
+		[](mpp::ProgrammaticPostEffectMaterialStream& s) { s.setUniform("DIRECTION", glm::vec2(0.0f, 1.0f)); });
+	declarePostEffectMaterial("DemoSuite.PostEffect.BloomComposite", "__mpp_p2d_bloom_combine__", { "SCENE", "BLOOM" },
+		[](mpp::ProgrammaticPostEffectMaterialStream& s) { s.setUniform("INTENSITY", 0.2f); });
+	declarePostEffectMaterial("DemoSuite.PostEffect.ToneMap", "__mpp_p2d_tonemap__", { "TEX1" },
+		[](mpp::ProgrammaticPostEffectMaterialStream& s) { s.setUniform("EXPOSURE", 1.0f); s.setUniform("TONE_MAP_OPERATOR", (int32_t)1); });
+
 	auto xmlGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, demoResourcePath(options, "PbrPipeline.rendergraph.xml"));
 	auto xmlGraph = resourceMgr->declareResource("PBR.XmlGraph", mpp::ResourceStreamPtr(xmlGraphStream)).first;
 	auto xmlMrtGraphStream = new mpp::resource_parsers::FileRenderGraphStream(resourceMgr, demoResourcePath(options, "PbrPipelineMrt.rendergraph.xml"));
@@ -1041,7 +1071,22 @@ void ModelScene::setupImpl(mpp::RenderSystem* renderSystem, ProgramOptions const
 	xmlPbrOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
 	xmlPbrOptions.graphTemplate = xmlGraph;
 	xmlPbrOptions.graphTemplateMrt = xmlMrtGraph;
-	renderSystem->getOrCreateRenderPipeline("XmlGraphPBR", xmlPbrOptions);
+	auto xmlGraphPbrPipelineSetup = renderSystem->getOrCreateRenderPipeline("XmlGraphPBR", xmlPbrOptions);
+	// Seed the generic chain's initial state to match mBloomOptions' defaults --
+	// FullscreenEffectPass falls back to ENABLED=1 (and each material's own
+	// default uniforms) until an explicit override is pushed, so without this
+	// every blur pair would run at startup regardless of the default blurPasses
+	// count of 2.
+	xmlGraphPbrPipelineSetup->setPostEffectEnabled("BloomExtract", mBloomOptions.enabled);
+	xmlGraphPbrPipelineSetup->setPostEffectParameter("BloomExtract", "THRESHOLD", mBloomOptions.threshold);
+	xmlGraphPbrPipelineSetup->setPostEffectEnabled("BloomComposite", mBloomOptions.enabled);
+	xmlGraphPbrPipelineSetup->setPostEffectParameter("BloomComposite", "INTENSITY", mBloomOptions.intensity);
+	for (uint32_t iteration = 0; iteration < 4; ++iteration)
+	{
+		bool const active = mBloomOptions.enabled && iteration < mBloomOptions.blurPasses;
+		xmlGraphPbrPipelineSetup->setPostEffectEnabled("BloomBlurHorizontal" + std::to_string(iteration), active);
+		xmlGraphPbrPipelineSetup->setPostEffectEnabled("BloomBlurVertical" + std::to_string(iteration), active);
+	}
 	mpp::RenderPipelineOptions defaultOptions;
 	defaultOptions.bloom = mBloomOptions;
 	renderSystem->getOrCreateRenderPipeline("Default", defaultOptions);
@@ -1300,7 +1345,24 @@ void ModelScene::renderUI(mpp::RenderSystem* renderSystem)
 		{
 			pbrPipeline->setBloomOptions(mBloomOptions);
 			graphPbrPipeline->setBloomOptions(mBloomOptions);
+			// useMrtEmissiveMask still routes xmlGraphPbrPipeline between
+			// PbrPipeline.rendergraph.xml/PbrPipelineMrt.rendergraph.xml at the
+			// RenderPipeline level, so this call stays -- but the migrated
+			// MPP.FullscreenEffect bloom/tonemap passes in both no longer read
+			// BloomOptions at all (that's the point of the generic chain), so
+			// enabled/threshold/intensity/blur-pass-count are driven explicitly
+			// below via the generic per-pass parameter API instead.
 			xmlGraphPbrPipeline->setBloomOptions(mBloomOptions);
+			xmlGraphPbrPipeline->setPostEffectEnabled("BloomExtract", mBloomOptions.enabled);
+			xmlGraphPbrPipeline->setPostEffectParameter("BloomExtract", "THRESHOLD", mBloomOptions.threshold);
+			xmlGraphPbrPipeline->setPostEffectEnabled("BloomComposite", mBloomOptions.enabled);
+			xmlGraphPbrPipeline->setPostEffectParameter("BloomComposite", "INTENSITY", mBloomOptions.intensity);
+			for (uint32_t iteration = 0; iteration < 4; ++iteration)
+			{
+				bool const active = mBloomOptions.enabled && iteration < mBloomOptions.blurPasses;
+				xmlGraphPbrPipeline->setPostEffectEnabled("BloomBlurHorizontal" + std::to_string(iteration), active);
+				xmlGraphPbrPipeline->setPostEffectEnabled("BloomBlurVertical" + std::to_string(iteration), active);
+			}
 			renderSystem->getRenderPipeline("Default")->setBloomOptions(mBloomOptions);
 			renderSystem->getRenderPipeline("GraphDefault")->setBloomOptions(mBloomOptions);
 		}

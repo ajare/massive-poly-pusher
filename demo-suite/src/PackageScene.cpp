@@ -103,6 +103,10 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 	renderOptions.environment = mPipelineRuntime->getEnvironment();
 	renderOptions.bloom.enabled = pipeline->bloom.enabled;
 	renderOptions.bloom.blurPasses = pipeline->bloom.blurPasses;
+	// Lets MPP.FullscreenEffect passes resolve a programResource authored as a
+	// bare PostEffectMaterial LocalResources name against this generation's
+	// actual (dynamically-rooted) registered resource name.
+	renderOptions.resourceRoot = mPipelineRuntime->getRootResource();
 
 	if (auto direction = mDocument.getShadowLightDirection())
 	{

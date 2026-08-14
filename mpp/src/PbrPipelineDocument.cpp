@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <map>
 #include <set>
 
 #include "mpp/Caps.h"
@@ -21,6 +22,21 @@ namespace mpp
 	{
 		bloom.enabled = enabled;
 		if (!graph) return;
+		// Recognizes both the legacy hard-coded bloom passes (callbackFactory
+		// MPP.Bloom*/MPP.ToneMapPresent) and a migrated generic post-effect chain
+		// (callbackFactory MPP.FullscreenEffect, identified by its
+		// programResource -- PostEffectMaterial local resources authored for
+		// bloom/tonemap are named with a "Bloom"/"ToneMap" suffix by convention,
+		// e.g. "PostEffect.BloomExtract"). This bridge exists only because
+		// setBloomEnabled predates the generic chain; it goes away with
+		// setBloomEnabled itself once every authored document has migrated (see
+		// doc/POST_EFFECT_CHAIN_IMPLEMENTATION_PLAN.md M4).
+		auto endsWith = [](string const& value, string const& suffix) { return value.size() >= suffix.size() && value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0; };
+		auto isFullscreenEffect = [&](GraphPassInfo const& info, string const& suffix) { return info.callbackFactory == "MPP.FullscreenEffect" && endsWith(info.programResource, suffix); };
+		auto isAnyBloomPass = [&](GraphPassInfo const& info) { return info.callbackFactory.starts_with("MPP.Bloom") || (info.callbackFactory == "MPP.FullscreenEffect" && info.programResource.find("Bloom") != string::npos); };
+		auto isBloomExtract = [&](GraphPassInfo const& info) { return info.callbackFactory == "MPP.BloomExtract" || isFullscreenEffect(info, "BloomExtract"); };
+		auto isBloomComposite = [&](GraphPassInfo const& info) { return info.callbackFactory == "MPP.BloomComposite" || isFullscreenEffect(info, "BloomComposite"); };
+		auto isToneMapPresent = [&](GraphPassInfo const& info) { return info.callbackFactory == "MPP.ToneMapPresent" || isFullscreenEffect(info, "ToneMap"); };
 		GraphImageHandle sceneColour, emissive;
 		std::vector<GraphImageHandle> bloomCompositeOutputs;
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
@@ -50,13 +66,13 @@ namespace mpp
 					emissive = info.colourOutputs[1].image;
 				}
 			}
-			if (info.callbackFactory.starts_with("MPP.Bloom")) graph->setPassEnabled({pass}, enabled);
+			if (isAnyBloomPass(info)) graph->setPassEnabled({pass}, enabled);
 		}
 		if (!sceneColour.isValid()) return;
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 		{
 			auto info = graph->getPassInfo({pass});
-			if (info.callbackFactory == "MPP.BloomExtract" && enabled && emissive.isValid())
+			if (isBloomExtract(info) && enabled && emissive.isValid())
 			{
 				// Removing SceneEmissive while Bloom is disabled removes every
 				// dependent sampler binding. Re-enable must restore TEX1, not merely
@@ -66,15 +82,86 @@ namespace mpp
 				else
 					graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, emissive, info.samplerBindings[0].mipLevel);
 			}
-			if (info.callbackFactory == "MPP.BloomComposite" && !info.colourOutputs.empty()) bloomCompositeOutputs.push_back(info.colourOutputs.front().image);
+			if (isBloomComposite(info) && !info.colourOutputs.empty()) bloomCompositeOutputs.push_back(info.colourOutputs.front().image);
 		}
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 		{
 			auto info = graph->getPassInfo({pass});
-			if (info.callbackFactory != "MPP.ToneMapPresent" || info.samplerBindings.empty()) continue;
+			if (!isToneMapPresent(info) || info.samplerBindings.empty()) continue;
 			auto input = !enabled || bloomCompositeOutputs.empty() ? sceneColour : bloomCompositeOutputs.front();
 			graph->setSamplerBinding({pass}, 0, info.samplerBindings[0].sampler, input, info.samplerBindings[0].mipLevel);
 		}
+	}
+
+	GraphImageHandle PbrPipelineDocument::buildPostEffectChain(GraphImageHandle inputImage, string const& inputImageName)
+	{
+		if (!graph) return inputImage;
+
+		static constexpr char const* kPassPrefix = "PostEffect:";
+		static constexpr char const* kImagePrefix = "PostEffectOutput:";
+		auto hasPrefix = [](string const& value, char const* prefix) { return value.rfind(prefix, 0) == 0; };
+
+		// Remove any previously generated chain passes/images so rebuilding --
+		// including after reordering `entries` -- regenerates wiring from scratch
+		// rather than layering stale passes on top of new ones. Indices renumber
+		// on removal (see RenderGraphExecutor.h's handle-vs-index note), so walk
+		// backwards.
+		for (uint32_t pass = (uint32_t)graph->getPassCount(); pass-- > 0; )
+		{
+			auto info = graph->getPassInfo({ pass });
+			if (hasPrefix(info.name, kPassPrefix)) graph->removePass({ pass });
+		}
+		for (uint32_t image = (uint32_t)graph->getImageCount(); image-- > 0; )
+		{
+			auto info = graph->getImageInfo({ image, 0 });
+			if (hasPrefix(info.name, kImagePrefix)) graph->removeImage({ image, 0 });
+		}
+
+		map<string, GraphImageHandle> outputsByName;
+		auto resolveSource = [&](string const& source) -> GraphImageHandle
+		{
+			auto found = outputsByName.find(source);
+			if (found != outputsByName.end()) return found->second;
+			if (source == inputImageName) return inputImage;
+			for (uint32_t image = 0; image < graph->getImageCount(); ++image)
+			{
+				auto info = graph->getImageInfo({ image, 0 });
+				if (info.name == source) return { image, (uint32_t)graph->getImageVersionCount(image) - 1 };
+			}
+			return {};
+		};
+
+		GraphImageHandle current = inputImage;
+		for (auto const& entry : postEffects.entries)
+		{
+			auto pass = graph->addPass(kPassPrefix + entry.name, GraphPassType::Fullscreen);
+			graph->setPassCallbackFactory(pass, "MPP.FullscreenEffect");
+			graph->setPassProgramResource(pass, entry.material);
+			graph->bindSampler(pass, "TEX0", current);
+			for (auto const& [slot, source] : entry.extraSamplerBindings)
+			{
+				auto resolved = resolveSource(source);
+				if (resolved.isValid()) graph->bindSampler(pass, slot, resolved);
+			}
+
+			UniformCollection parameters;
+			parameters.setUniform("ENABLED", entry.enabled ? 1 : 0);
+			graph->setPassParameters(pass, parameters);
+
+			auto const inputDesc = graph->getImageInfo(current).desc;
+			GraphImageDesc outputDesc = inputDesc;
+			outputDesc.relativeSize *= entry.outputScale;
+			outputDesc.absoluteSize = glm::uvec2(glm::vec2(inputDesc.absoluteSize) * entry.outputScale);
+			outputDesc.mipLevels = 1;
+			outputDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+			if (!entry.inheritFormat) outputDesc.format = entry.outputFormat;
+			auto outputImage = graph->createImage(kImagePrefix + entry.name, outputDesc);
+			auto output = graph->writeColour(pass, outputImage, GraphLoadOp::DontCare, GraphStoreOp::Store);
+
+			outputsByName[entry.name] = output;
+			current = output;
+		}
+		return current;
 	}
 
 	DiagnosticBag PbrPipelineDocument::validate(RenderGraphPassFactoryRegistry const* registry) const
