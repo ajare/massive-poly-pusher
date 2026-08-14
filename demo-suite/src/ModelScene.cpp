@@ -113,7 +113,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 	// Create texture with sampler.
 	auto textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(demoResourcePath(options, "marble_texture4662.jpg"), loadImage);
+	textureStream->setFile(demoResourcePath(options, "marble_texture4662.png"), loadImage);
 	textureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
 	textureStream->enableMipMaps(true);
 	textureStream->setSampler("Default.Sampler");
@@ -128,7 +128,7 @@ void ModelScene::createSharedTextures(ProgramOptions const& options)
 
 	textureStream = new ProgrammaticTextureStream(resourceMgr);
 	textureStream->setTarget(TextureTarget::Texture2D);
-	textureStream->setFile(demoResourcePath(options, "electbubbles.jpg"), loadImage);
+	textureStream->setFile(demoResourcePath(options, "rgba.png"), loadImage);
 	textureStream->setFiltering(mpp::TextureParams::MinFilter::LinearMipmapLinear, mpp::TextureParams::MagFilter::Linear);
 	textureStream->enableMipMaps(true);
 	addResource(resourceMgr->declareResource("Electro.Texture", ResourceStreamPtr(textureStream)).first, false);

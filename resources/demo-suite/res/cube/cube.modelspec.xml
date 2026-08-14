@@ -79,7 +79,7 @@
 						<Variable>TEX1</Variable>
 						<Resource>
 							<target>2D</target>
-							<filename>lattice.jpg</filename>
+							<filename>lattice.png</filename>
 							<minFilter>LINEAR</minFilter>
 							<magFilter>LINEAR</magFilter>
 						</Resource>
