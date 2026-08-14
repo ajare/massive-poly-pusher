@@ -85,12 +85,15 @@ namespace mpp
 						}
 					}
 				}
-				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "MetallicMap" || entry.first == "RoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
+				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "MetallicMap" || entry.first == "RoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap" || entry.first == "WaterNormalMap" || entry.first == "WaterDetailNormalMap")
 				{
 					static map<string, string> const samplers = {
 						{ "BaseColourMap", "PBR_BASE_COLOUR_MAP" }, { "MetallicRoughnessMap", "PBR_METALLIC_ROUGHNESS_MAP" },
 						{ "MetallicMap", "PBR_METALLIC_MAP" }, { "RoughnessMap", "PBR_ROUGHNESS_MAP" },
-						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" }
+						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" },
+						// The two water ripple octaves, kept separate from PBR_NORMAL_MAP so a
+						// water material can carry a surface normal map and ripples at once.
+						{ "WaterNormalMap", "PBR_WATER_NORMAL_MAP" }, { "WaterDetailNormalMap", "PBR_WATER_DETAIL_NORMAL_MAP" }
 					};
 					if (entry.second.hasEntry("Resource"))
 					{
@@ -390,6 +393,35 @@ namespace mpp
 							if (values.size() != 3) THROW_MPP_RESOURCE_PARSERS("Pbr emissiveFactor requires three values.", __LINE__, __FILE__, __func__);
 							pbr.emissiveFactor = glm::vec3(utils::StringUtils::parseFloat(values[0]), utils::StringUtils::parseFloat(values[1]), utils::StringUtils::parseFloat(values[2]));
 						}
+						else if (pbrEntry.first == "Water")
+						{
+							// Selects PbrMaterialFeature::Water. Every field is optional;
+							// an empty Water block is a clean mirror with default march
+							// tuning. See doc/WATER_SSR.md.
+							auto& water = pbr.water;
+							water.enabled = true;
+							for (auto wit = pbrEntry.second.begin(); wit != pbrEntry.second.end(); ++wit)
+							{
+								auto const& waterEntry = *wit;
+								auto const& waterValue = waterEntry.second.getValue();
+								if (waterEntry.first == "enabled") water.enabled = utils::StringUtils::parseBool(utils::StringUtils::toUpper(waterValue));
+								else if (waterEntry.first == "distortionScale") water.distortionScale = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "distortionStrength") water.distortionStrength = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "scrollSpeed")
+								{
+									auto values = utils::StringUtils::split(waterValue, " ,");
+									if (values.size() != 2) THROW_MPP_RESOURCE_PARSERS("Pbr Water scrollSpeed requires two values.", __LINE__, __FILE__, __func__);
+									water.scrollSpeed = glm::vec2(utils::StringUtils::parseFloat(values[0]), utils::StringUtils::parseFloat(values[1]));
+								}
+								else if (waterEntry.first == "microRoughness") water.microRoughness = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "ssrMaxDistance") water.ssrMaxDistance = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "ssrSteps") water.ssrSteps = (int32_t)utils::StringUtils::parseInt(waterValue);
+								else if (waterEntry.first == "ssrThickness") water.ssrThickness = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "edgeFade") water.edgeFade = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "grazingFallbackStart") water.grazingFallbackStart = utils::StringUtils::parseFloat(waterValue);
+								else if (waterEntry.first == "grazingFallbackEnd") water.grazingFallbackEnd = utils::StringUtils::parseFloat(waterValue);
+							}
+						}
 						else if (pbrEntry.first == "alphaMode")
 						{
 							if (pbrValue == "OPAQUE") pbr.alphaMode = PbrMaterialSpecification::PbrAlphaMode::Opaque;
@@ -411,6 +443,23 @@ namespace mpp
 					requireRange("normalScale", pbr.normalScale, 0.0f, std::numeric_limits<float>::max());
 					requireRange("occlusionStrength", pbr.occlusionStrength, 0.0f, 1.0f);
 					requireRange("alphaCutoff", pbr.alphaCutoff, 0.0f, 1.0f);
+					if (pbr.water.enabled)
+					{
+						requireRange("Water distortionScale", pbr.water.distortionScale, 0.0f, std::numeric_limits<float>::max());
+						requireRange("Water distortionStrength", pbr.water.distortionStrength, 0.0f, std::numeric_limits<float>::max());
+						requireRange("Water microRoughness", pbr.water.microRoughness, 0.0f, 1.0f);
+						requireRange("Water ssrMaxDistance", pbr.water.ssrMaxDistance, 0.0f, std::numeric_limits<float>::max());
+						requireRange("Water ssrThickness", pbr.water.ssrThickness, 0.0f, std::numeric_limits<float>::max());
+						requireRange("Water edgeFade", pbr.water.edgeFade, 0.0f, 0.5f);
+						requireRange("Water grazingFallbackStart", pbr.water.grazingFallbackStart, 0.0f, 1.0f);
+						requireRange("Water grazingFallbackEnd", pbr.water.grazingFallbackEnd, 0.0f, 1.0f);
+						// The shader clamps the march anyway, but rejecting it here names
+						// the authored field instead of silently changing its meaning.
+						if (pbr.water.ssrSteps < 1 || pbr.water.ssrSteps > 128)
+							THROW_MPP_RESOURCE_PARSERS("Pbr Water ssrSteps must be in [1, 128].", __LINE__, __FILE__, __func__);
+						if (pbr.water.grazingFallbackEnd >= pbr.water.grazingFallbackStart)
+							THROW_MPP_RESOURCE_PARSERS("Pbr Water grazingFallbackEnd must be below grazingFallbackStart.", __LINE__, __FILE__, __func__);
+					}
 
 					qs.uniforms.setUniform("PBR_ENABLED", (int32_t)1);
 					qs.uniforms.setUniform("PBR_BASE_COLOUR_FACTOR", pbr.baseColourFactor);
@@ -423,12 +472,15 @@ namespace mpp
 					qs.uniforms.setUniform("PBR_ALPHA_CUTOFF", pbr.alphaCutoff);
 					qs.uniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(pbr.doubleSided ? 1 : 0));
 				}
-				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "MetallicMap" || entry.first == "RoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap")
+				else if (entry.first == "BaseColourMap" || entry.first == "MetallicRoughnessMap" || entry.first == "MetallicMap" || entry.first == "RoughnessMap" || entry.first == "NormalMap" || entry.first == "OcclusionMap" || entry.first == "EmissiveMap" || entry.first == "WaterNormalMap" || entry.first == "WaterDetailNormalMap")
 				{
 					static map<string, string> const samplers = {
 						{ "BaseColourMap", "PBR_BASE_COLOUR_MAP" }, { "MetallicRoughnessMap", "PBR_METALLIC_ROUGHNESS_MAP" },
 						{ "MetallicMap", "PBR_METALLIC_MAP" }, { "RoughnessMap", "PBR_ROUGHNESS_MAP" },
-						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" }
+						{ "NormalMap", "PBR_NORMAL_MAP" }, { "OcclusionMap", "PBR_OCCLUSION_MAP" }, { "EmissiveMap", "PBR_EMISSIVE_MAP" },
+						// The two water ripple octaves, kept separate from PBR_NORMAL_MAP so a
+						// water material can carry a surface normal map and ripples at once.
+						{ "WaterNormalMap", "PBR_WATER_NORMAL_MAP" }, { "WaterDetailNormalMap", "PBR_WATER_DETAIL_NORMAL_MAP" }
 					};
 					PbrMaterialSpecification::TextureOptions textureOptions;
 					textureOptions.resourceExists = true;

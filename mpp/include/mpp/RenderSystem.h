@@ -308,6 +308,13 @@ namespace mpp
 		static constexpr size_t MaxPbrLights{ 8 };
 
 		//
+		// Per-frame camera state for scene passes that need to work in view space
+		// (currently water SSR). Fullscreen passes hand-wire the equivalent
+		// uniforms; a scene pass shades through material programs and cannot.
+		//
+		UniformBuffer* mCameraFrameBuffer{ nullptr };
+
+		//
 		// Scenes
 		//
 		std::map<std::string, SceneFactory> mSceneFactories;
@@ -347,6 +354,10 @@ namespace mpp
 		void createPbrLightsData();
 
 		void destroyPbrLightsData();
+
+		void createCameraFrameData();
+
+		void destroyCameraFrameData();
 
 		void destroyShadowDomains();
 
@@ -579,6 +590,19 @@ namespace mpp
 		void setActivePbrEnvironment(PbrEnvironmentPtr environment);
 
 		void setActivePipelineSamplerOverrides(std::map<std::string, ResourcePtr> const& overrides);
+
+		std::map<std::string, ResourcePtr> const& getActivePipelineSamplerOverrides() const;
+
+		// Publishes the camera state the CameraFrame UBO (binding 3) exposes to
+		// scene material programs. `view` and `projection` must be exactly the
+		// matrices the scene was rasterized with -- the water ray march unprojects
+		// the depth buffer through them, so a jittered projection matters.
+		void setCameraFrame(glm::mat4 const& view, glm::mat4 const& projection,
+			glm::vec2 const& viewportSize, float nearDistance, float farDistance, float seconds);
+
+		// Monotonic seconds since the first call, for shader animation that has no
+		// other clock (water ripple scroll). Deliberately not frame-rate derived.
+		float getElapsedSeconds() const;
 
 		// A shadow domain is shared by all pipelines that name it in their
 		// RenderPipelineOptions. No domain means no shadow allocations or binds.

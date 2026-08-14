@@ -38,6 +38,18 @@ namespace mpp
 			default: return "Unknown";
 			}
 		}
+
+		// The opaque scene pass has to know whether something later in the graph is
+		// going to draw the water materials it would otherwise skip.
+		bool graphHasWaterPass(RenderGraph const& graph)
+		{
+			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
+			{
+				auto const info = graph.getPassInfo({ id });
+				if (info.enabled && info.callbackFactory == "MPP.WaterScene") return true;
+			}
+			return false;
+		}
 	}
 
 
@@ -400,7 +412,7 @@ namespace mpp
 					mGraphExecutor->setPassParameterOverrides(info.name, overrides);
 				}
 			}
-			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back() };
+			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back(), graphHasWaterPass(*graph) };
 			mGraphExecutor->setFrameContext(&frameContext);
 			beginFlowSnapshot();
 			try
@@ -601,6 +613,7 @@ namespace mpp
 		frameContext.visibleModels = models;
 		frameContext.pipelineOptions = &mOptions;
 		frameContext.sceneRenderPass = mPasses.back();
+		frameContext.hasWaterPass = graphHasWaterPass(graph);
 		mGraphExecutor->setFrameContext(&frameContext);
 		beginFlowSnapshot();
 		try
@@ -639,6 +652,13 @@ namespace mpp
 		bool const graphLegacy = mOptions.mode == RenderPipelineMode::GraphLegacyForward;
 		bool const graphForward = graphPbr || graphLegacy;
 		if ((mOptions.mode == RenderPipelineMode::PbrForward || graphPbr) && scene->ownsPbrLights()) mRenderSystem->setPbrLights(scene->getPbrLights());
+		// Published once per frame alongside the lights so any scene material
+		// program can work in view space. MPP.WaterScene republishes it with its
+		// own target's dimensions, which are the viewport its ray march projects
+		// into and need not be the scene viewport.
+		mRenderSystem->setCameraFrame(camera->getViewTransform(), camera->getProjectionTransform(),
+			glm::vec2((float)viewport.width, (float)viewport.height),
+			camera->getNearClipDistance(), camera->getFarClipDistance(), mRenderSystem->getElapsedSeconds());
 		if (!graphForward && !mOptions.shadowDomain.empty())
 		{
 			GpuDebugScope shadowScope("Pass: ShadowDomain [" + mOptions.shadowDomain + "]");

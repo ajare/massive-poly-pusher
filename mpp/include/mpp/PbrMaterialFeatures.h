@@ -24,6 +24,8 @@ namespace mpp
 		MetallicMap = 1u << 10,
 		RoughnessMap = 1u << 11,
 		EmissiveMap = 1u << 12,
+		// Screen-space reflections with prefiltered-cubemap fallback. See doc/WATER_SSR.md.
+		Water = 1u << 13,
 		LegacyFullContract = 1u << 31
 	};
 

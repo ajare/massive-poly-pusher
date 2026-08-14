@@ -5554,13 +5554,51 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						text(*surface, "alphaMode", "Alpha mode");
 						number(*surface, "alphaCutoff", "Alpha cutoff", 0.5f);
 						text(*surface, "doubleSided", "Double sided");
+						// Water (screen-space reflections). Adding the block selects the
+						// PbrMaterialFeature::Water specialization; it needs a pipeline
+						// whose graph carries an MPP.WaterScene pass, otherwise the
+						// material shades with the cubemap only. See doc/WATER_SSR.md.
+						if (surface->hasEntry("Water"))
+						{
+							auto& water = surface->getEntry("Water");
+							ImGui::SeparatorText("Water (screen-space reflections)");
+							text(water, "enabled", "Water enabled");
+							ImGui::TextDisabled("Distortion strength 0 is a raw mirror; useful for checking the ray march.");
+							number(water, "distortionScale", "Distortion scale", 6.0f);
+							number(water, "distortionStrength", "Distortion strength", 0.06f);
+							text(water, "scrollSpeed", "Scroll speed (x y)");
+							number(water, "microRoughness", "Micro roughness", 0.05f);
+							ImGui::TextDisabled("Steps trade quality for cost linearly; see doc/WATER_SSR.md.");
+							number(water, "ssrMaxDistance", "SSR max distance", 40.0f);
+							number(water, "ssrSteps", "SSR steps", 32.0f);
+							number(water, "ssrThickness", "SSR thickness", 0.5f);
+							number(water, "edgeFade", "Screen-edge fade", 0.1f);
+							ImGui::TextDisabled("Below the grazing end the reflection is the cubemap only, which is the pre-SSR look.");
+							number(water, "grazingFallbackStart", "Grazing fallback start", 0.35f);
+							number(water, "grazingFallbackEnd", "Grazing fallback end", 0.1f);
+							if (ImGui::SmallButton("Remove Water"))
+							{
+								mpp::data::StructuredData withoutWater(surface->getName());
+								for (auto const& entry : *surface) if (entry.first != "Water") withoutWater.addEntry(entry.first, entry.second);
+								*surface = std::move(withoutWater);
+								changed = true;
+							}
+						}
+						else if (ImGui::SmallButton("Add Water (SSR)"))
+						{
+							surface->addEntry("Water", mpp::data::StructuredData("Water"));
+							changed = true;
+						}
 					}
 					else
 						ImGui::TextDisabled("Add a Surface block through a template before editing factors.");
 					if (ImGui::CollapsingHeader("PBR Maps and Extensions"))
 					{
 						char const* maps[] = {
-						    "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap"};
+						    "MetallicMap", "RoughnessMap", "MetallicRoughnessMap", "NormalMap", "OcclusionMap",
+						    // Only meaningful alongside a Surface/Water block; without one the
+						    // shader has no PBR_SPEC_WATER path to sample them from.
+						    "WaterNormalMap", "WaterDetailNormalMap"};
 						for (auto map : maps)
 						{
 							if (definition.hasEntry(map))
