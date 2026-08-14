@@ -17,6 +17,16 @@ namespace mpp
 {
 	namespace
 	{
+		bool sameTargetMappings(map<uint64_t, RenderTargetPtr> const& left, map<uint64_t, RenderTargetPtr> const& right)
+		{
+			if (left.size() != right.size()) return false;
+			auto leftValue = left.begin();
+			auto rightValue = right.begin();
+			for (; leftValue != left.end(); ++leftValue, ++rightValue)
+				if (leftValue->first != rightValue->first || leftValue->second != rightValue->second) return false;
+			return true;
+		}
+
 		RenderTextureOptions makeOptions(GraphImageDesc const& desc)
 		{
 			RenderTextureOptions options;
@@ -66,6 +76,22 @@ namespace mpp
 	uint64_t RenderGraphTargets::makeKey(GraphImageHandle image)
 	{
 		return ((uint64_t)image.id << 32) | image.version;
+	}
+
+	RenderGraphTargets::TargetSignature RenderGraphTargets::targetSignature(RenderTargetPtr const& target)
+	{
+		TargetSignature result;
+		if (!target) return result;
+		result.width = target->getWidth();
+		result.height = target->getHeight();
+		if (auto texture = dynamic_cast<RenderTexture*>(target.get()))
+		{
+			result.textureTarget = texture->getAttachmentTextureTarget();
+			if (texture->getNumColourAttachments() != 0) result.colourTexture = texture->getColourAttachmentId(0);
+			result.depthTexture = texture->getDepthTextureId();
+			result.depthStencil = texture->hasStencilBuffer();
+		}
+		return result;
 	}
 
 	void RenderGraphTargets::allocate(RenderGraphAllocationPlan const& plan){allocatePhysical(plan,1);}
@@ -139,7 +165,9 @@ namespace mpp
 			candidateWriteTargets.emplace(makeKey(lifetime->image), candidatePool[poolIndex].writeTarget);
 		}
 		vector<PoolEntry> activePool;for(size_t index=0;index<candidatePool.size();++index)if(!assignments[index].empty())activePool.push_back(std::move(candidatePool[index]));
+		bool const backingChanged = !sameTargetMappings(mTargets, candidateTargets) || !sameTargetMappings(mWriteTargets, candidateWriteTargets);
 		mTargets.swap(candidateTargets);mWriteTargets.swap(candidateWriteTargets);mPool.swap(activePool);
+		if (backingChanged) ++mGeneration;
 	}
 
 	void RenderGraphTargets::bindImported(GraphImageHandle image, RenderTargetPtr target)
@@ -148,7 +176,13 @@ namespace mpp
 		{
 			THROW_MPP("Render graph import requires a valid image handle and target.", __LINE__, __FILE__, __func__);
 		}
+		auto const signature = targetSignature(target);
+		auto const found = mImportedTargets.find(image.id);
+		auto const foundSignature = mImportedSignatures.find(image.id);
+		if (found != mImportedTargets.end() && found->second == target && foundSignature != mImportedSignatures.end() && foundSignature->second == signature) return;
 		mImportedTargets[image.id] = target;
+		mImportedSignatures[image.id] = signature;
+		++mGeneration;
 	}
 
 	void RenderGraphTargets::bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports)
@@ -171,10 +205,18 @@ namespace mpp
 
 	void RenderGraphTargets::clear()
 	{
+		bool const hadBacking = !mTargets.empty() || !mWriteTargets.empty() || !mImportedTargets.empty() || !mPool.empty();
 		mTargets.clear();
 		mWriteTargets.clear();
 		mImportedTargets.clear();
+		mImportedSignatures.clear();
 		mPool.clear();
+		if (hadBacking) ++mGeneration;
+	}
+
+	uint64_t RenderGraphTargets::getGeneration() const
+	{
+		return mGeneration;
 	}
 
 	RenderTargetPtr RenderGraphTargets::get(GraphImageHandle image) const

@@ -26,6 +26,14 @@ namespace mpp
 		uint64_t trianglesSubmitted{ 0 };
 		uint64_t fullscreenQuads{ 0 };
 	};
+
+	struct _MPPAPI GraphFramebufferCacheStats
+	{
+		uint64_t hits{ 0 };
+		uint64_t misses{ 0 };
+		uint64_t invalidations{ 0 };
+		uint64_t entries{ 0 };
+	};
 	class RenderGraphPassFactoryRegistry;
 	class RenderGraphScenePass;
 	class RenderGraphTemplate;
@@ -45,9 +53,9 @@ namespace mpp
 		GraphPassInfo const& getPass() const;
 	};
 
-	// Executes graphics passes supplied by application callbacks. It creates a
-	// temporary framebuffer view for each pass; graph textures remain owned by
-	// RenderGraphTargets.
+	// Executes graphics passes supplied by application callbacks. Framebuffer
+	// views are cached while their RenderGraphTargets backing generation remains
+	// unchanged; graph textures remain owned by RenderGraphTargets.
 	class _MPPAPI RenderGraphExecutor
 	{
 		RenderSystem* mRenderSystem;
@@ -71,8 +79,15 @@ namespace mpp
 		std::deque<std::vector<GpuTimingQuery>> mPendingGpuTimings;
 		std::map<std::string, GpuTimingResult> mGpuTimings;
 		bool mGpuTimingSupported{ false };
+		struct FramebufferViewCache;
+		std::unique_ptr<FramebufferViewCache> mFramebufferViews;
+		GraphFramebufferCacheStats mFramebufferCacheStats;
 		void collectGpuTimings();
 		void clearGpuTimings();
+		void synchronizeFramebufferViews(RenderGraphTargets const& targets);
+		RenderTargetPtr getFramebufferView(std::string const& name, RenderGraphTargets const& targets,
+			std::vector<RenderTargetPtr> const& colours, std::vector<uint32_t> const& colourMips,
+			RenderTargetPtr const& depth, uint32_t depthMip);
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);
@@ -92,6 +107,7 @@ namespace mpp
 		void clearPassCallbacks();
 		std::vector<GraphPassExecutionStats> const& getLastExecutionStats() const;
 		std::vector<GraphPassHandle> const& getLastExecutionOrder() const;
+		GraphFramebufferCacheStats getFramebufferCacheStats() const;
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
 		void execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps);
 	};

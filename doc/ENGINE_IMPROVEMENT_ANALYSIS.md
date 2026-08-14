@@ -97,9 +97,9 @@ This could reuse or name a program for an incompatible vertex layout.
 
 ---
 
-### 5. Cache render-graph compilation and framebuffer objects — partially implemented
+### 5. Cache render-graph compilation and framebuffer objects — implemented
 
-**Status:** Compiled graph and allocation-plan caching completed on `perf/cache-render-graph-plans`; framebuffer-view caching remains.
+**Status:** Compiled graph and allocation-plan caching completed on `perf/cache-render-graph-plans`; framebuffer-view caching completed on `perf/cache-framebuffer-views`.
 
 Every graph execution recompiles validation:
 
@@ -138,10 +138,11 @@ Cache framebuffer views by attachment texture IDs, mip levels, depth/stencil asp
 - Keep caches private to each graph generation: copies receive independent empty caches, while moves transfer the cached plans with their graph.
 - Expose cache hit/miss/invalidation counters for diagnostics and regression coverage.
 - Add context-free tests for compile hits, allocation hits, topology invalidation, viewport isolation, capability-signature isolation, and copy behavior.
-
-**Remaining work**
-
-- Cache framebuffer views by attachment identity and generation, including effective sample count and import replacement.
+- Cache composite framebuffer views by ordered colour texture IDs/draw buffers, mip levels, optional depth texture ID, and depth-versus-depth/stencil aspect. Texture target and resolved mip dimensions are also part of the key, so resized or retyped backing storage cannot reuse an incompatible view.
+- Track a monotonic backing generation in `RenderGraphTargets`. Repeating an allocation or import binding with unchanged storage preserves the generation; allocation changes, import replacement or resize, and clearing advance it.
+- Invalidate an executor's framebuffer-view cache when its target collection or backing generation changes. Cached views retain attachment ownership until invalidation, preventing dangling mip-generation state and premature attachment destruction.
+- Keep the direct single-colour, mip-zero path on its native render target; only composite, depth, and explicit-mip views consume framebuffer cache entries.
+- Make framebuffer creation cleanup transactional and expose hit/miss/invalidation/entry counters for GPU-context regression tests covering reuse, unchanged allocation, resize invalidation, and import generations.
 
 ---
 
@@ -304,7 +305,7 @@ The current validation documentation explicitly notes several of these asset gap
 ### Performance pass
 
 6. ✅ Cache compiled graph/allocation plans.
-7. Cache framebuffer views.
+7. ✅ Cache framebuffer views.
 8. Integrate graph state with a `RenderSystem` state cache.
 9. Cache reflected output masks and unique-program scene validation.
 10. Add persistent mapped streaming buffers.
