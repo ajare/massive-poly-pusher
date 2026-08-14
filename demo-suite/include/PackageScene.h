@@ -3,6 +3,7 @@
 #include <memory>
 #include <glm/vec3.hpp>
 #include <mpp/SceneRuntime.h>
+#include <mpp/resource-parsers/LegacyPipelineRuntime.h>
 #include <mpp/resource-parsers/PbrPipelineRuntime.h>
 #include "Scene.h"
 
@@ -10,6 +11,7 @@ class PackageScene final : public ::Scene
 {
 	std::filesystem::path mRoot;
 	std::unique_ptr<mpp::resource_parsers::PbrPipelineRuntime> mPipelineRuntime;
+	std::unique_ptr<mpp::resource_parsers::LegacyPipelineRuntime> mLegacyPipelineRuntime;
 	std::unique_ptr<mpp::SceneRuntime> mSceneRuntime;
 	mpp::RenderTargetPtr mPresentationTarget;
 	std::string mGraphResource{"DemoSuite.PackageGraph"};

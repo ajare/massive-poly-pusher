@@ -9,6 +9,7 @@
 #include <mpp/RenderPipeline.h>
 #include <mpp/app/PackageManifest.h>
 #include <mpp/helper/FpsCamera.h>
+#include <mpp/resource-parsers/LegacyPipelineDocumentLoader.h>
 #include <mpp/resource-parsers/PbrPipelineDocumentLoader.h>
 #include <mpp/resource-parsers/SceneParser.h>
 
@@ -67,46 +68,96 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 		throw std::runtime_error("Package manifest refers to missing workspace documents.");
 	}
 
-	auto pipeline = std::make_shared<mpp::PbrPipelineDocument>(
-		mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(pipelineFile.string()));
 	mDocument = mpp::resource_parsers::SceneParser::fromFile(sceneFile.string());
-	auto diagnostics = pipeline->validate(renderer->getCaps());
-	diagnostics.append(pipeline->validateOutputAntiAliasing(renderer->getOptions().antiAliasing,&renderer->getCaps()));
-	diagnostics.append(mDocument.validate());
-	if (diagnostics.hasErrors())
+	auto sceneDiagnostics = mDocument.validate();
+	if (sceneDiagnostics.hasErrors())
 	{
-		throw std::runtime_error("Package pipeline or scene validation failed:\n" + diagnosticsSummary(diagnostics));
+		throw std::runtime_error("Package scene validation failed:\n" + diagnosticsSummary(sceneDiagnostics));
 	}
 
-	auto stream = std::make_shared<mpp::RenderGraphStream>(getResourceManager());
-	stream->setGraph(pipeline->graph);
-	auto graph = getResourceManager()->declareResource(mGraphResource, stream).first;
-	graph->load();
-	graph->create();
-
-	mPipelineRuntime = std::make_unique<mpp::resource_parsers::PbrPipelineRuntime>(renderer, getResourceManager());
-	if (!mPipelineRuntime->rebuild(pipeline, options.screenWidth, options.screenHeight))
-	{
-		throw std::runtime_error("Package pipeline runtime preparation failed:\n" + diagnosticsSummary(mPipelineRuntime->getDiagnostics()));
-	}
+	bool legacy = mpp::resource_parsers::LegacyPipelineDocumentLoader::isLegacyPipelineFile(pipelineFile.string());
 
 	mpp::RenderPipelineOptions renderOptions;
-	renderOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
-	renderOptions.graphTemplate = graph;
-	renderOptions.graphImports = mPipelineRuntime->getImports();
-	renderOptions.outputs = pipeline->outputs;
-	mPresentationTarget = mPipelineRuntime->getPresentationTarget();
+	mpp::ResourcePtr graph;
+	std::shared_ptr<mpp::RenderGraph> graphPtr;
+	std::vector<mpp::RenderPipelineOutput> outputs;
+	std::string environmentBinding;
+
+	if (!legacy)
+	{
+		auto pipeline = std::make_shared<mpp::PbrPipelineDocument>(
+			mpp::resource_parsers::PbrPipelineDocumentLoader::fromFile(pipelineFile.string()));
+		auto diagnostics = pipeline->validate(renderer->getCaps());
+		diagnostics.append(pipeline->validateOutputAntiAliasing(renderer->getOptions().antiAliasing,&renderer->getCaps()));
+		if (diagnostics.hasErrors())
+		{
+			throw std::runtime_error("Package pipeline validation failed:\n" + diagnosticsSummary(diagnostics));
+		}
+
+		auto stream = std::make_shared<mpp::RenderGraphStream>(getResourceManager());
+		stream->setGraph(pipeline->graph);
+		graph = getResourceManager()->declareResource(mGraphResource, stream).first;
+		graph->load();
+		graph->create();
+
+		mPipelineRuntime = std::make_unique<mpp::resource_parsers::PbrPipelineRuntime>(renderer, getResourceManager());
+		if (!mPipelineRuntime->rebuild(pipeline, options.screenWidth, options.screenHeight))
+		{
+			throw std::runtime_error("Package pipeline runtime preparation failed:\n" + diagnosticsSummary(mPipelineRuntime->getDiagnostics()));
+		}
+
+		renderOptions.mode = mpp::RenderPipelineMode::XmlGraphPbrForward;
+		renderOptions.graphTemplate = graph;
+		renderOptions.graphImports = mPipelineRuntime->getImports();
+		renderOptions.outputs = pipeline->outputs;
+		mPresentationTarget = mPipelineRuntime->getPresentationTarget();
+		renderOptions.environment = mPipelineRuntime->getEnvironment();
+		renderOptions.bloom.enabled = pipeline->bloom.enabled;
+		renderOptions.bloom.blurPasses = pipeline->bloom.blurPasses;
+		renderOptions.resourceRoot = mPipelineRuntime->getRootResource();
+		environmentBinding = pipeline->environment.binding;
+		graphPtr = pipeline->graph;
+		outputs = pipeline->outputs;
+	}
+	else
+	{
+		auto pipeline = std::make_shared<mpp::LegacyPipelineDocument>(
+			mpp::resource_parsers::LegacyPipelineDocumentLoader::fromFile(pipelineFile.string()));
+		auto diagnostics = pipeline->validate(renderer->getCaps());
+		diagnostics.append(pipeline->validateOutputAntiAliasing(renderer->getOptions().antiAliasing,&renderer->getCaps()));
+		if (diagnostics.hasErrors())
+		{
+			throw std::runtime_error("Package pipeline validation failed:\n" + diagnosticsSummary(diagnostics));
+		}
+
+		auto stream = std::make_shared<mpp::RenderGraphStream>(getResourceManager());
+		stream->setGraph(pipeline->graph);
+		graph = getResourceManager()->declareResource(mGraphResource, stream).first;
+		graph->load();
+		graph->create();
+
+		mLegacyPipelineRuntime = std::make_unique<mpp::resource_parsers::LegacyPipelineRuntime>(renderer, getResourceManager());
+		if (!mLegacyPipelineRuntime->rebuild(pipeline, options.screenWidth, options.screenHeight))
+		{
+			throw std::runtime_error("Package pipeline runtime preparation failed:\n" + diagnosticsSummary(mLegacyPipelineRuntime->getDiagnostics()));
+		}
+
+		renderOptions.mode = mpp::RenderPipelineMode::GraphLegacyForward;
+		renderOptions.graphTemplate = graph;
+		renderOptions.graphImports = mLegacyPipelineRuntime->getImports();
+		renderOptions.outputs = pipeline->outputs;
+		mPresentationTarget = mLegacyPipelineRuntime->getPresentationTarget();
+		renderOptions.bloom.enabled = pipeline->bloom.enabled;
+		renderOptions.bloom.blurPasses = pipeline->bloom.blurPasses;
+		renderOptions.resourceRoot = mLegacyPipelineRuntime->getRootResource();
+		graphPtr = pipeline->graph;
+		outputs = pipeline->outputs;
+	}
+
 	if (!mPresentationTarget)
 	{
 		throw std::runtime_error("Package pipeline has no presentation target.");
 	}
-	renderOptions.environment = mPipelineRuntime->getEnvironment();
-	renderOptions.bloom.enabled = pipeline->bloom.enabled;
-	renderOptions.bloom.blurPasses = pipeline->bloom.blurPasses;
-	// Lets MPP.FullscreenEffect passes resolve a programResource authored as a
-	// bare PostEffectMaterial LocalResources name against this generation's
-	// actual (dynamically-rooted) registered resource name.
-	renderOptions.resourceRoot = mPipelineRuntime->getRootResource();
 
 	if (auto direction = mDocument.getShadowLightDirection())
 	{
@@ -119,14 +170,14 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 		renderOptions.graphImports["shadowDepth"] = renderer->getShadowDomainDepthTarget(renderOptions.shadowDomain);
 	}
 	auto packagePipeline=renderer->getOrCreateRenderPipeline("Package", renderOptions);
-	std::map<std::string,mpp::RenderTargetPtr> outputDestinations;for(auto const& output:pipeline->outputs)for(uint32_t image=0;image<pipeline->graph->getImageCount();++image){auto info=pipeline->graph->getImageInfo({image,0});if(info.name!=output.image||!info.desc.external)continue;auto destination=renderOptions.graphImports.find(info.importName);if(destination!=renderOptions.graphImports.end())outputDestinations.emplace(output.name,destination->second);break;}if(outputDestinations.size()==pipeline->outputs.size())packagePipeline->prepareOutputs(*pipeline->graph,outputDestinations);
+	std::map<std::string,mpp::RenderTargetPtr> outputDestinations;for(auto const& output:outputs)for(uint32_t image=0;image<graphPtr->getImageCount();++image){auto info=graphPtr->getImageInfo({image,0});if(info.name!=output.image||!info.desc.external)continue;auto destination=renderOptions.graphImports.find(info.importName);if(destination!=renderOptions.graphImports.end())outputDestinations.emplace(output.name,destination->second);break;}if(outputDestinations.size()==outputs.size())packagePipeline->prepareOutputs(*graphPtr,outputDestinations);
 
 	mSceneRuntime = std::make_unique<mpp::SceneRuntime>(renderer, getResourceManager());
 	if (!mSceneRuntime->rebuild(
 		mDocument,
-		mPipelineRuntime->getMaterialBindings(),
-		mPipelineRuntime->getInstanceOverrides(),
-		pipeline->environment.binding))
+		legacy ? mLegacyPipelineRuntime->getMaterialBindings() : mPipelineRuntime->getMaterialBindings(),
+		legacy ? mLegacyPipelineRuntime->getInstanceOverrides() : mPipelineRuntime->getInstanceOverrides(),
+		environmentBinding))
 	{
 		throw std::runtime_error("Package scene runtime preparation failed:\n" + diagnosticsSummary(mSceneRuntime->getDiagnostics()));
 	}
@@ -141,13 +192,14 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 	camera->markCut();
 	camera->setFov(mDocument.camera.fov);
 	camera->setClipDistances(mDocument.camera.nearPlane, mDocument.camera.farPlane);
-	mPipelineRuntime->accept();
+	if (legacy) mLegacyPipelineRuntime->accept(); else mPipelineRuntime->accept();
 }
 
 void PackageScene::teardownImpl()
 {
 	mSceneRuntime.reset();
 	mPipelineRuntime.reset();
+	mLegacyPipelineRuntime.reset();
 	mPresentationTarget.reset();
 	if (mRenderer)
 	{

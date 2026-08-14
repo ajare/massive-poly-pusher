@@ -3,7 +3,6 @@ add_executable(DemoSuite
     src/Helper.cpp
     src/Logger.cpp
     src/Main.cpp
-    src/ModelScene.cpp
     src/ProgramOptions.cpp
     src/PackageScene.cpp
     src/Scene.cpp)
