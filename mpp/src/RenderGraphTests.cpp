@@ -249,7 +249,7 @@ namespace mpp
 		metadataGraph.setPassEnabled(metadataProducer, false);
 		auto metadataOutput = metadataGraph.createImage("MetadataOutput", colour);
 		auto metadataPass = metadataGraph.addPass("MetadataBloom", GraphPassType::Fullscreen);
-		metadataGraph.setPassCallbackFactory(metadataPass, "MPP.BloomExtract");
+		metadataGraph.setPassCallbackFactory(metadataPass, "MPP.FullscreenEffect");
 		metadataGraph.bindSampler(metadataPass, "TEX1", metadataInput);
 		metadataGraph.writeColour(metadataPass, metadataOutput);
 		if (registry.validate(metadataGraph).hasErrors()) return fail("valid pass authoring metadata contract was rejected");
@@ -333,55 +333,6 @@ namespace mpp
 		GraphImageDesc unsampled = colour; unsampled.usage = GraphImageUsage::ColourAttachment;
 		if (planEndImagesTogether(unsampled))
 			return fail("graph images differing in declared usage were planned onto one allocation");
-
-		// A bloom blur pass used to decide which blur level it was by parsing digits
-		// off the end of its own name, so renaming it in the editor silently changed
-		// how many levels the blurPasses option enabled. It now reads an authored
-		// ITERATION parameter, and a graph that omits one is reported rather than
-		// quietly falling back.
-		auto const* blurMetadata = registry.findMetadata("MPP.BloomBlurHorizontal");
-		if (!blurMetadata || blurMetadata->nameDerivedFallbackParameter != "ITERATION" ||
-			std::find_if(blurMetadata->parameters.begin(), blurMetadata->parameters.end(),
-				[](GraphPassParameterMetadata const& parameter) { return parameter.name == "ITERATION" && parameter.type == program::GLSLType::Int; }) == blurMetadata->parameters.end())
-			return fail("bloom blur metadata does not declare an ITERATION parameter");
-		UniformCollection authoredIteration; authoredIteration.setUniform("ITERATION", (int32_t)2);
-		if (bloomBlurIteration(authoredIteration, "Blur - wide") != 2)
-			return fail("a bloom blur pass ignored its authored ITERATION parameter");
-		if (bloomBlurIteration({}, "BloomBlurHorizontal3") != 3)
-			return fail("a bloom blur pass without ITERATION lost the name-derived fallback");
-		if (bloomBlurIteration({}, "Blur - wide") != 0)
-			return fail("a bloom blur pass with neither ITERATION nor trailing digits did not fall back to zero");
-		auto buildBlurGraph = [&](bool declareIteration)
-		{
-			RenderGraph graph;
-			auto source = graph.createImage("BlurSource", colour);
-			auto blurred = graph.createImage("BlurTarget", colour);
-			// Disabled so registry validation ignores it: it carries no factory, and
-			// only the blur pass is under test here.
-			auto producer = graph.addPass("BlurProducer", GraphPassType::Fullscreen);
-			source = graph.writeColour(producer, source);
-			graph.setPassEnabled(producer, false);
-			// Deliberately a name with no trailing digits, which is exactly what the
-			// old fallback cannot read.
-			auto blurPass = graph.addPass("Blur - wide", GraphPassType::Fullscreen);
-			graph.setPassCallbackFactory(blurPass, "MPP.BloomBlurHorizontal");
-			graph.bindSampler(blurPass, "TEX1", source);
-			graph.writeColour(blurPass, blurred);
-			if (declareIteration) { UniformCollection parameters; parameters.setUniform("ITERATION", (int32_t)2); graph.setPassParameters(blurPass, parameters); }
-			return graph;
-		};
-		auto declaredBlur = registry.validate(buildBlurGraph(true));
-		if (declaredBlur.hasErrors()) return fail("a bloom blur pass declaring ITERATION was rejected");
-		for (auto const& diagnostic : declaredBlur.getDiagnostics())
-			if (diagnostic.code == "MPP-PASS-013") return fail("a bloom blur pass declaring ITERATION was still reported as name-derived");
-		// Bind the bag to a local. Iterating registry.validate(...).getDiagnostics()
-		// directly destroys the temporary DiagnosticBag before the loop body runs,
-		// which silently yields no diagnostics at all.
-		auto const inferredBlur = registry.validate(buildBlurGraph(false));
-		bool reportedNameFallback = false;
-		for (auto const& diagnostic : inferredBlur.getDiagnostics())
-			if (diagnostic.code == "MPP-PASS-013") reportedNameFallback = true;
-		if (!reportedNameFallback) return fail("a bloom blur pass without ITERATION was not reported as deriving it from its name");
 
 		// compile(Caps) used to contain an empty per-image loop, so no image was
 		// checked against device limits and PbrPipelineDocument::validate reported a

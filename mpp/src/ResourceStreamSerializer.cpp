@@ -10,6 +10,8 @@
 #include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/PbrMaterialStream.h"
 #include "mpp/ProgrammaticPbrMaterialStream.h"
+#include "mpp/PostEffectMaterialStream.h"
+#include "mpp/ProgrammaticPostEffectMaterialStream.h"
 #include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticSamplerStream.h"
 #include "mpp/ProgrammaticStringStream.h"
@@ -240,6 +242,20 @@ namespace mpp
 		for (auto const& texture : spec.textures) writeTextureOptions(texture);
 	}
 
+	void ResourceStreamSerializer::writePostEffectMaterialStream(ResourceStreamPtr resourceStream, ofstream& fp)
+	{
+		auto stream = static_cast<PostEffectMaterialStream*>(resourceStream.get());
+		auto const& spec = stream->mSpecification;
+		writeValue(spec.program.resourceExists, fp); writeValue(spec.program.existingResource, fp); writeValue(spec.program.isChild, fp); writeValue(spec.program.is2d, fp);
+		writeMeshSpecification(spec.program.spec, fp);
+		writeValue((uint32_t)spec.program.vertexShader.type, fp); writeValue(spec.program.vertexShader.data, fp);
+		writeValue((uint32_t)spec.program.geometryShader.type, fp); writeValue(spec.program.geometryShader.data, fp);
+		writeValue((uint32_t)spec.program.fragmentShader.type, fp); writeValue(spec.program.fragmentShader.data, fp);
+		writeUniformCollection(spec.uniforms, fp);
+		writeValue((uint32_t)spec.samplerSlots.size(), fp);
+		for (auto const& slot : spec.samplerSlots) writeValue(slot, fp);
+	}
+
 	void ResourceStreamSerializer::writeProgramStream(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
 		auto stream = static_cast<ProgramStream*>(resourceStream.get());
@@ -303,6 +319,10 @@ namespace mpp
 		else if (streamType == "PbrMaterial")
 		{
 			writePbrMaterialStream(resourceStream, fp);
+		}
+		else if (streamType == "PostEffectMaterial")
+		{
+			writePostEffectMaterialStream(resourceStream, fp);
 		}
 		else if (streamType == "Program")
 		{
@@ -561,6 +581,19 @@ namespace mpp
 		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) spec.textures.push_back(readTextureOptions());
 	}
 
+	void ResourceStreamSerializer::readPostEffectMaterialStream(ResourceStreamPtr resourceStream, ifstream& fp)
+	{
+		auto& spec = static_cast<ProgrammaticPostEffectMaterialStream*>(resourceStream.get())->mSpecification;
+		spec = {};
+		spec.program.resourceExists = readBool(fp); spec.program.existingResource = readString(fp); spec.program.isChild = readBool(fp); spec.program.is2d = readBool(fp);
+		spec.program.spec = readMeshSpecification(fp);
+		spec.program.vertexShader.type = static_cast<PostEffectMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.vertexShader.data = readString(fp);
+		spec.program.geometryShader.type = static_cast<PostEffectMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.geometryShader.data = readString(fp);
+		spec.program.fragmentShader.type = static_cast<PostEffectMaterialSpecification::ProgramOptions::Shader::Type>(readUInt(fp)); spec.program.fragmentShader.data = readString(fp);
+		spec.uniforms = readUniformCollection(fp);
+		uint32_t count = readUInt(fp); for (uint32_t i = 0; i < count; ++i) spec.samplerSlots.push_back(readString(fp));
+	}
+
 	void ResourceStreamSerializer::readProgramStream(ResourceStreamPtr resourceStream, ifstream& fp)
 	{
 		auto stream = static_cast<ProgrammaticProgramStream*>(resourceStream.get());
@@ -655,6 +688,10 @@ namespace mpp
 		{
 			resourceStream.reset(new ProgrammaticPbrMaterialStream(mResourceMgr));
 		}
+		else if (streamType == "PostEffectMaterial")
+		{
+			resourceStream.reset(new ProgrammaticPostEffectMaterialStream(mResourceMgr));
+		}
 		else if (streamType == "Program")
 		{
 			resourceStream.reset(new ProgrammaticProgramStream(mResourceMgr));
@@ -702,6 +739,10 @@ namespace mpp
 		else if (streamType == "PbrMaterial")
 		{
 			readPbrMaterialStream(resourceStream, fp);
+		}
+		else if (streamType == "PostEffectMaterial")
+		{
+			readPostEffectMaterialStream(resourceStream, fp);
 		}
 		else if (streamType == "Program")
 		{

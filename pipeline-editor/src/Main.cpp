@@ -514,6 +514,8 @@ namespace
 			return "Program";
 		case PbrPipelineResourceKind::Texture:
 			return "Texture";
+		case PbrPipelineResourceKind::PostEffectMaterial:
+			return "Post Effect Material";
 		default:
 			return "Sampler";
 		}
@@ -559,6 +561,18 @@ namespace
 			value.definition.addEntry("minFilter", "LINEAR");
 			value.definition.addEntry("magFilter", "LINEAR");
 			value.definition.addEntry("wrap", "CLAMP_TO_EDGE");
+		}
+		else if (kind == PbrPipelineResourceKind::PostEffectMaterial)
+		{
+			value.definition = mpp::data::StructuredData("PostEffectMaterial");
+			value.definition.addEntry("name", name);
+			mpp::data::StructuredData program("Program");
+			program.addEntry("Ref", "__mpp_p2d_bloom_extract__");
+			value.definition.addEntry("Program", program);
+			mpp::data::StructuredData samplerSlots("SamplerSlots");
+			samplerSlots.addEntry("Slot", "TEX1");
+			value.definition.addEntry("SamplerSlots", samplerSlots);
+			value.definition.addEntry("Uniforms", mpp::data::StructuredData("Uniforms"));
 		}
 		else
 		{
@@ -1391,6 +1405,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		bool previewStale = false;
 		ChangeFlag documentChangedSincePreview{false, &previewEditSerial};
 		uint32_t runtimeGeneration = 0;
+		// Only re-home the interactive orbit camera when the scene's *authored*
+		// camera actually changed (a different scene opened, or its Camera fields
+		// edited) -- not on every preview rebuild. installPreview runs on every
+		// pipeline edit too (bloom toggles, adding passes, ...), and those pass
+		// the same scene through unchanged; resetting the view on each of those
+		// discarded whatever orbit/pan/zoom the user had set up interactively.
+		std::optional<SceneCameraDocument> lastAppliedSceneCamera;
 		auto installPreview = [&](std::shared_ptr<PbrPipelineDocument> const& previewDocument,
 		                          std::shared_ptr<SceneDocument> const& previewScene)
 		{
@@ -1515,10 +1536,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					scene = sceneRuntime.getScene();
 					scene->setClearColour(Colour(0.094f, 0.106f, 0.125f));
 					scene->setViewport(0, 0, viewportWidth, viewportHeight);
-					setOrbitView(previewScene->camera.position, previewScene->camera.target);
-					camera->markCut();
-					camera->setFov(previewScene->camera.fov);
-					camera->setClipDistances(previewScene->camera.nearPlane, previewScene->camera.farPlane);
+					bool const sceneCameraChanged = !lastAppliedSceneCamera ||
+					    lastAppliedSceneCamera->position != previewScene->camera.position ||
+					    lastAppliedSceneCamera->target != previewScene->camera.target ||
+					    lastAppliedSceneCamera->fov != previewScene->camera.fov ||
+					    lastAppliedSceneCamera->nearPlane != previewScene->camera.nearPlane ||
+					    lastAppliedSceneCamera->farPlane != previewScene->camera.farPlane;
+					if (sceneCameraChanged)
+					{
+						setOrbitView(previewScene->camera.position, previewScene->camera.target);
+						camera->markCut();
+						camera->setFov(previewScene->camera.fov);
+						camera->setClipDistances(previewScene->camera.nearPlane, previewScene->camera.farPlane);
+					}
+					lastAppliedSceneCamera = previewScene->camera;
 				}
 				auto candidatePreviewDocument = previewDocument;
 				auto obsoletePipeline = activePipeline, obsoleteGraph = activeGraphResource;
@@ -2527,6 +2558,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 5;
 					if (ImGui::MenuItem("Sampler", nullptr, false, openDocument != nullptr))
 						addKind = 6;
+					if (ImGui::MenuItem("Post Effect Material", nullptr, false, openDocument != nullptr))
+						addKind = 11;
 					if (ImGui::MenuItem("Preview Binding", nullptr, false, openDocument != nullptr))
 						addKind = 7;
 					if (ImGui::MenuItem("Instance Override", nullptr, false, openDocument != nullptr))
@@ -2831,6 +2864,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 5;
 					if (ImGui::MenuItem("Sampler"))
 						addKind = 6;
+					if (ImGui::MenuItem("Post Effect Material"))
+						addKind = 11;
 					ImGui::EndMenu();
 				}
 				if (ImGui::MenuItem("Preview Binding", nullptr, false, openDocument != nullptr))
@@ -2845,7 +2880,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			if (addKind >= 0)
 			{
-				if (addKind <= 8 && openDocument)
+				if ((addKind <= 8 || addKind == 11) && openDocument)
 				{
 					auto before = clonePipeline(openDocument);
 					if (addKind == 0 && openDocument->graph)
@@ -2937,6 +2972,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					{
 						openDocument->previewOverrides.push_back({"Model", "MaterialBinding", {}});
 						selectedOverride = (int)openDocument->previewOverrides.size() - 1;
+					}
+					else if (addKind == 11)
+					{
+						auto name =
+						    uniqueName("PostEffect",
+						               [&](auto const& value)
+						               {
+							               return std::any_of(openDocument->localResources.begin(),
+							                                  openDocument->localResources.end(),
+							                                  [&](auto const& item) { return item.name == value; });
+						               });
+						openDocument->localResources.push_back(
+						    makeLocalResource(PbrPipelineResourceKind::PostEffectMaterial, name));
+						selectedLocalResource = (int)openDocument->localResources.size() - 1;
 					}
 					auto after = clonePipeline(openDocument);
 					pipelineCommands.execute(
