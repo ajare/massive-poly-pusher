@@ -107,7 +107,7 @@ mpp::TextureData loadImage(string const& filename)
 
 void loadAllImages(string const& dir, bool flipY, mpp::ResourceManager* resourceMgr)
 {
-	auto files = utils::FileSystem::getFilesInDirectory(utils::FileSystem::DirectoryInfo(dir), "*.jpg|*.png|*.tga", true);
+	auto files = utils::FileSystem::getFilesInDirectory(utils::FileSystem::DirectoryInfo(dir), "*.png|*.tga", true);
 	for (auto const& file: files)
 	{
 		string const& filePath = file.getFilePath();
