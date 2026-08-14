@@ -641,18 +641,24 @@ void main()
 					reflectedSamplerProgram->getModelCameraProjectionMatrixId() != -1 || reflectedSamplerProgram->getNormalMatrixId() != -1 ||
 					reflectedSamplerProgram->getHalfWindowSizeId() != -1 || reflectedSamplerProgram->getPointSizeId() != -1)
 					return fail("unloaded program reflection locations were not initialized to -1");
+				auto const unloadedOutputRevision = reflectedSamplerProgram->getFragmentOutputRevision();
 				samplerProgram->create(); samplerProgram->load();
+				auto const loadedOutputRevision = reflectedSamplerProgram->getFragmentOutputRevision();
+				if (loadedOutputRevision <= unloadedOutputRevision) return fail("program load did not advance its fragment-output revision");
 				std::string outputDiagnostic;
 				if (!reflectedSamplerProgram->validateFragmentOutputLocations(1, outputDiagnostic)) return fail("linked sampler program lost fragment output zero");
 				if ((GLEW_VERSION_4_3 || GLEW_ARB_program_interface_query) && reflectedSamplerProgram->validateFragmentOutputLocations(2, outputDiagnostic))
 					return fail("cached fragment-output reflection accepted a missing MRT output");
 				samplerProgram->unload();
+				auto const releasedOutputRevision = reflectedSamplerProgram->getFragmentOutputRevision();
+				if (releasedOutputRevision <= loadedOutputRevision) return fail("program unload did not invalidate its fragment-output revision");
 				if (samplerProgram->getId() != 0 || reflectedSamplerProgram->getNumSamplers() != 0 || !reflectedSamplerProgram->getUniformNames().empty() ||
 					reflectedSamplerProgram->getViewPosId() != -1 || reflectedSamplerProgram->getModelMatrixId() != -1 ||
 					reflectedSamplerProgram->getModelCameraProjectionMatrixId() != -1 || reflectedSamplerProgram->getNormalMatrixId() != -1 ||
 					reflectedSamplerProgram->getHalfWindowSizeId() != -1 || reflectedSamplerProgram->getPointSizeId() != -1)
 					return fail("program unload retained stale reflection state");
 				samplerProgram->load();
+				if (reflectedSamplerProgram->getFragmentOutputRevision() <= releasedOutputRevision) return fail("program reload did not publish a new fragment-output revision");
 				// Distinguishable in the red channel only, which is what the shader reads.
 				RenderTextureOptions sourceOptions; sourceOptions.params.minFilter = GL_NEAREST; sourceOptions.params.magFilter = GL_NEAREST; sourceOptions.params.wrap = GL_CLAMP_TO_EDGE;
 				auto firstSource = renderSystem->createRenderTexture("GpuTestSamplerFirst", 4, 4, sourceOptions);

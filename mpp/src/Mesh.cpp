@@ -141,7 +141,9 @@ namespace mpp
 	 */
 	void Mesh::setMaterial(ResourcePtr material)
 	{
+		if (mMaterial == material) return;
 		mMaterial = material;
+		if (mMaterialRevision) ++*mMaterialRevision;
 	}
 
 	/*

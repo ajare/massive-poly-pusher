@@ -320,6 +320,7 @@ namespace mpp
 			{
 				mesh = new Mesh(getRenderSystem(), meshDef->getName(), material, primitiveType, primitiveCount, storageType, pointSize);
 			}
+			mesh->setMaterialRevisionCounter(&mMaterialRevision);
 
 			for (size_t j = 0; j < meshDef->getNumVertexBufferDefinitions(); ++j)
 			{
@@ -376,6 +377,7 @@ namespace mpp
 		}
 		
 		mMeshes.clear();
+		++mMaterialRevision;
 	}
 
 	/*
@@ -463,6 +465,11 @@ namespace mpp
 	int Model::getNumMeshes() const
 	{
 		return (int)mMeshes.size();
+	}
+
+	uint64_t Model::getMaterialRevision() const
+	{
+		return mMaterialRevision;
 	}
 
 	/*

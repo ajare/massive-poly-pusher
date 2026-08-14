@@ -23,6 +23,16 @@
 namespace mpp
 {
 	class RenderSystem;
+	class Program;
+
+	struct _MPPAPI SceneOutputValidationCacheStats
+	{
+		uint64_t hits{ 0 };
+		uint64_t misses{ 0 };
+		uint64_t modelHits{ 0 };
+		uint64_t modelMisses{ 0 };
+		size_t uniquePrograms{ 0 };
+	};
 
 	struct _MPPAPI PbrEnvironment
 	{
@@ -161,6 +171,31 @@ namespace mpp
 		RenderPipelineFlowSnapshotPtr mLastFlowSnapshot;
 		std::shared_ptr<RenderPipelineFlowSnapshot> mPendingFlowSnapshot;
 
+		struct ProgramOutputKey
+		{
+			std::shared_ptr<Program> program;
+			uint64_t reflectionRevision{ 0 };
+			bool operator ==(ProgramOutputKey const&) const = default;
+		};
+		struct SceneModelProgramCache
+		{
+			class Model const* model{ nullptr };
+			uint64_t modelMaterialRevision{ 0 };
+			uint64_t parameterRevision{ 0 };
+			std::vector<std::pair<ResourcePtr, uint64_t>> materials;
+			std::vector<std::shared_ptr<Program>> programs;
+		};
+		std::map<SceneModel3d const*, SceneModelProgramCache> mSceneModelProgramCache;
+		std::vector<ProgramOutputKey> mOutputValidationPrograms;
+		size_t mOutputValidationRequiredCount{ 0 };
+		bool mOutputValidationKnown{ false };
+		bool mOutputValidationResult{ false };
+		uint64_t mOutputValidationHits{ 0 };
+		uint64_t mOutputValidationMisses{ 0 };
+		uint64_t mOutputValidationModelHits{ 0 };
+		uint64_t mOutputValidationModelMisses{ 0 };
+
+		bool sceneProgramsSupportOutputs(std::vector<SceneModel3dPtr> const& models, size_t requiredCount);
 		void ensureBloomTargets(size_t width, size_t height);
 		void renderGraphForward(ScenePtr scene, CameraPtr camera, std::vector<SceneModel3dPtr> const& models, bool pbr);
 		void beginFlowSnapshot() noexcept;
@@ -199,6 +234,7 @@ namespace mpp
 		RenderPipelineFlowSnapshotPtr getLastFlowSnapshot() const;
 		uint64_t getOutputGeneration() const;
 		std::vector<RenderPipelineOutputPlan> const& getOutputPlans() const;
+		SceneOutputValidationCacheStats getSceneOutputValidationCacheStats() const;
 		void prepareOutputs(RenderGraph const& graph, std::map<std::string, RenderTargetPtr> const& destinations);
 
 		void resize(size_t width, size_t height);

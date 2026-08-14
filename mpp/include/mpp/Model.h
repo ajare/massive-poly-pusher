@@ -13,6 +13,7 @@ namespace mpp
 	class _MPPAPI Model : public Resource
 	{
 		glm::vec3 mBounds[2];
+		uint64_t mMaterialRevision{ 1 };
 
 	protected:
 
@@ -49,6 +50,8 @@ namespace mpp
 		int getNumTriangles() const;
 
 		int getNumMeshes() const;
+
+		uint64_t getMaterialRevision() const;
 
 		Mesh const* getMesh(int index) const;
 

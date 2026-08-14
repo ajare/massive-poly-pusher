@@ -173,9 +173,11 @@ Additional reads occur during clears and invalidation:
 
 ---
 
-### 7. Cache MRT shader-output validation — medium/high severity, low effort
+### 7. Cache MRT shader-output validation — implemented
 
-`sceneProgramsSupportOutputs()` walks every visible model and mesh:
+**Status:** Completed on `perf/cache-mrt-output-validation`.
+
+`sceneProgramsSupportOutputs()` previously walked every visible model and mesh:
 
 - `mpp/src/RenderPipeline.cpp:41-55`
 - Called at `RenderPipeline.cpp:255` and `:335`
@@ -186,9 +188,14 @@ Each call can invoke GL program-interface reflection:
 
 This repeats work for shared materials and potentially every frame.
 
-**Change**
+**Implemented changes**
 
-Reflect active fragment output locations once after linking and store a bit mask in `Program`. During scene validation, inspect each unique program once. Cache the scene-level result by visible-program-set or material revision.
+- Fragment output reflection remains a link-time operation stored as a 64-bit location mask in `Program`; validation performs no program-interface queries.
+- Programs now expose a monotonic fragment-output revision that advances when reflected state is published, unloaded, or replaced, preventing a same-object reload from reusing a stale scene result.
+- Each pipeline caches the unique visible program set and its MRT result. Repeated frames validate no programs when the required output count, program identities, and reflection revisions are unchanged.
+- Per-scene-model program sets avoid repeated mesh/material traversal. They are invalidated by model mesh-material revisions, visibility/material override revisions in `ModelRenderParams`, material resource lifecycle revisions, model replacement, or visible-set changes.
+- Validation resolves the effective per-instance material override, skips hidden meshes, deduplicates shared programs before inspection, retains only currently visible model entries, and releases the cache when MRT bloom is disabled.
+- Hit/miss, model-hit/model-miss, and unique-program telemetry is exposed through `RenderPipeline`. Context-free revision tests and GPU program unload/reload tests cover invalidation inputs.
 
 ---
 

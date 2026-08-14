@@ -100,6 +100,7 @@ namespace mpp
 		int mPointSizeId{ -1 };
 		bool mFragmentOutputLocationsKnown{ false };
 		uint64_t mFragmentOutputLocationMask{ 0 };
+		uint64_t mFragmentOutputRevision{ 0 };
 
 		std::vector<TextureInfo> mTextures;
 
@@ -179,6 +180,10 @@ namespace mpp
 		// Validates that fragment locations [0, requiredCount) are active. Extra
 		// outputs are allowed so one MRT-capable shader can use single-target fallback.
 		bool validateFragmentOutputLocations(size_t requiredCount, std::string& diagnostic) const;
+
+		// Advances whenever successful reflection is replaced or discarded, allowing
+		// scene-level capability caches to detect reloads without querying OpenGL.
+		uint64_t getFragmentOutputRevision() const;
 
 		void bind();
 	};

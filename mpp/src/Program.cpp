@@ -608,6 +608,7 @@ namespace mpp
 			mPointSizeId = pointSizeId;
 			mFragmentOutputLocationsKnown = fragmentOutputLocationsKnown;
 			mFragmentOutputLocationMask = fragmentOutputLocationMask;
+			++mFragmentOutputRevision;
 			setId(linkedProgram.release());
 		}
 		catch (exception&)
@@ -626,6 +627,7 @@ namespace mpp
 	void Program::unloadImpl()
 	{
 		resetReflectionState();
+		++mFragmentOutputRevision;
 
 		GLuint id = getId();
 		if (id != 0)
@@ -798,6 +800,11 @@ namespace mpp
 			}
 		}
 		return true;
+	}
+
+	uint64_t Program::getFragmentOutputRevision() const
+	{
+		return mFragmentOutputRevision;
 	}
 
 	vector<Program::VariableInfo> const& Program::getVertexAttributes() const
