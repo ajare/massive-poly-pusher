@@ -927,7 +927,7 @@ namespace
 	// Mirrors exportPipelinePackage, but first converts the source PBR
 	// pipeline (and its PbrMaterial resources) down to a LegacyPipeline
 	// document + BasicMaterial resources (see
-	// doc/LEGACY_PIPELINE_EXPORT_PLAN.md). The localization/asset-copy steps
+	// doc/implemented/LEGACY_PIPELINE_EXPORT_PLAN.md). The localization/asset-copy steps
 	// below are the same generic StructuredData-walking logic used for the
 	// Pbr export; only the document/resource types and the extra
 	// baked-texture ownership override differ.

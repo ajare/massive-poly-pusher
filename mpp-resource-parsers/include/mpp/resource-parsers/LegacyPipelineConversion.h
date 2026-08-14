@@ -9,7 +9,7 @@
 
 namespace mpp::resource_parsers
 {
-	// Document-level PBR -> Legacy pipeline conversion (doc/LEGACY_PIPELINE_EXPORT_PLAN.md
+	// Document-level PBR -> Legacy pipeline conversion (doc/implemented/LEGACY_PIPELINE_EXPORT_PLAN.md
 	// section 4-5). Lives here rather than in mpp core because it needs
 	// FilePbrMaterialStream::parseDefinition to turn each PbrMaterial
 	// resource's XML into a PbrMaterialSpecification before handing it to

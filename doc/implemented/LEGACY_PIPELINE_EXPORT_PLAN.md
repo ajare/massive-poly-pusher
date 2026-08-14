@@ -1,6 +1,6 @@
 # PBR-to-Legacy Pipeline Conversion & Export Plan
 
-**Status:** Design agreed, not yet implemented.
+**Status:** Implemented on `feature/legacy-pipeline-export` (merged to `master`). DemoSuite now requires `--package` and no longer builds the legacy `ModelScene` demo content.
 
 ## 1. Objective
 
