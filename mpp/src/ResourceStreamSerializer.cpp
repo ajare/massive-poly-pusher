@@ -50,10 +50,11 @@ namespace mpp
 
 	void ResourceStreamSerializer::serialize(ResourceStreamPtr resourceStream, ofstream& fp)
 	{
-		// RSE4 adds each texture's colour space to RSE3's layout. RSE3 stores one definition per
-		// stream. RSER/RSE2 remain strict compatibility inputs only when they contain one legacy
-		// definition. All earlier versions still read; only RSE4 is written.
-		char const* magic{ "RSE4" };
+		// RSE5 appends the PbrSurface water block to RSE4's layout. RSE4 added each texture's
+		// colour space to RSE3's layout. RSE3 stores one definition per stream. RSER/RSE2 remain
+		// strict compatibility inputs only when they contain one legacy definition. All earlier
+		// versions still read; only RSE5 is written.
+		char const* magic{ "RSE5" };
 		fp.write(magic, 4);
 
 		// Recursively write streams and their children
@@ -82,12 +83,13 @@ namespace mpp
 		bool const v2 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '2';
 		bool const v3 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '3';
 		bool const v4 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '4';
-		if (!v1 && !v2 && !v3 && !v4)
+		bool const v5 = magic[0] == 'R' && magic[1] == 'S' && magic[2] == 'E' && magic[3] == '5';
+		if (!v1 && !v2 && !v3 && !v4 && !v5)
 		{
 			THROW_MPP_IO("Could not open stream for reading. Not a valid or supported format.", __LINE__, __FILE__, __func__);
 		}
 
-		mReadVersion = v4 ? 4u : (v3 ? 3u : (v2 ? 2u : 1u));
+		mReadVersion = v5 ? 5u : (v4 ? 4u : (v3 ? 3u : (v2 ? 2u : 1u)));
 		return readStream(fp);
 	}
 
@@ -227,6 +229,15 @@ namespace mpp
 		writeValue(spec.pbr.emissiveFactor.x, fp); writeValue(spec.pbr.emissiveFactor.y, fp); writeValue(spec.pbr.emissiveFactor.z, fp);
 		writeValue(spec.pbr.normalScale, fp); writeValue(spec.pbr.occlusionStrength, fp); writeValue((uint32_t)spec.pbr.alphaMode, fp);
 		writeValue(spec.pbr.alphaCutoff, fp); writeValue(spec.pbr.doubleSided, fp);
+		// RSE5: the water block. Older readers stop before it and leave PbrWater's
+		// defaults, which is the correct meaning for a stream authored without water.
+		writeValue(spec.pbr.water.enabled, fp);
+		writeValue(spec.pbr.water.distortionScale, fp); writeValue(spec.pbr.water.distortionStrength, fp);
+		writeValue(spec.pbr.water.scrollSpeed.x, fp); writeValue(spec.pbr.water.scrollSpeed.y, fp);
+		writeValue(spec.pbr.water.microRoughness, fp); writeValue(spec.pbr.water.ssrMaxDistance, fp);
+		writeValue(spec.pbr.water.ssrSteps, fp); writeValue(spec.pbr.water.ssrThickness, fp);
+		writeValue(spec.pbr.water.edgeFade, fp);
+		writeValue(spec.pbr.water.grazingFallbackStart, fp); writeValue(spec.pbr.water.grazingFallbackEnd, fp);
 		writeValue((uint32_t)spec.textures.size(), fp);
 		auto writeTextureOptions = [&](auto const& texture)
 		{
@@ -566,6 +577,17 @@ namespace mpp
 		spec.pbr.emissiveFactor = { readFloat(fp), readFloat(fp), readFloat(fp) };
 		spec.pbr.normalScale = readFloat(fp); spec.pbr.occlusionStrength = readFloat(fp);
 		spec.pbr.alphaMode = static_cast<PbrMaterialSpecification::PbrAlphaMode>(readUInt(fp)); spec.pbr.alphaCutoff = readFloat(fp); spec.pbr.doubleSided = readBool(fp);
+		// RSE5 onwards. Older streams simply lack the block and keep PbrWater's defaults.
+		if (mReadVersion >= 5)
+		{
+			spec.pbr.water.enabled = readBool(fp);
+			spec.pbr.water.distortionScale = readFloat(fp); spec.pbr.water.distortionStrength = readFloat(fp);
+			spec.pbr.water.scrollSpeed = { readFloat(fp), readFloat(fp) };
+			spec.pbr.water.microRoughness = readFloat(fp); spec.pbr.water.ssrMaxDistance = readFloat(fp);
+			spec.pbr.water.ssrSteps = readInt(fp); spec.pbr.water.ssrThickness = readFloat(fp);
+			spec.pbr.water.edgeFade = readFloat(fp);
+			spec.pbr.water.grazingFallbackStart = readFloat(fp); spec.pbr.water.grazingFallbackEnd = readFloat(fp);
+		}
 		auto readTextureOptions = [&]()
 		{
 			decltype(spec.textures)::value_type texture;

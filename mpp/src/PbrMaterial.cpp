@@ -190,6 +190,15 @@ namespace mpp
 		// model built before it existed and turn a shading fix into an asset
 		// migration. A program without it is reported below instead.
 		static constexpr char const* prefilteredMaxLodUniform = "PBR_PREFILTERED_MAX_LOD";
+		// PBR_SCENE_COLOUR_MAX_LOD is renderer-owned like PBR_PREFILTERED_MAX_LOD;
+		// the rest are authored on PbrSurface::water.
+		static vector<string> const waterUniformNames{ "PBR_SCENE_COLOUR_MAX_LOD",
+			"PBR_WATER_DISTORTION_SCALE", "PBR_WATER_DISTORTION_STRENGTH", "PBR_WATER_SCROLL_SPEED",
+			"PBR_WATER_MICRO_ROUGHNESS", "PBR_WATER_SSR_MAX_DISTANCE", "PBR_WATER_SSR_STEPS",
+			"PBR_WATER_SSR_THICKNESS", "PBR_WATER_EDGE_FADE",
+			"PBR_WATER_GRAZING_FALLBACK_START", "PBR_WATER_GRAZING_FALLBACK_END" };
+		static vector<string> const waterSamplerNames{ "PBR_SCENE_COLOUR_RESOLVED", "PBR_SCENE_DEPTH",
+			"PBR_WATER_NORMAL_MAP", "PBR_WATER_DETAIL_NORMAL_MAP" };
 		vector<string> requiredUniforms{ "PBR_BASE_COLOUR_FACTOR" };
 		if (legacyFullContract)
 		{
@@ -206,6 +215,12 @@ namespace mpp
 			if (hasPbrFeature(mFeatures, PbrMaterialFeature::NormalMap)) requiredUniforms.push_back("PBR_NORMAL_SCALE");
 			if (hasPbrFeature(mFeatures, PbrMaterialFeature::Occlusion)) requiredUniforms.push_back("PBR_OCCLUSION_STRENGTH");
 			if (hasPbrFeature(mFeatures, PbrMaterialFeature::AlphaMask)) requiredUniforms.push_back("PBR_ALPHA_CUTOFF");
+			// Water has no legacy asset population to protect, so unlike
+			// PBR_PREFILTERED_MAX_LOD its renderer-owned LOD uniform is required
+			// rather than warned about: a water program without it would silently
+			// sample the wrong mip of the resolved scene colour.
+			if (hasPbrFeature(mFeatures, PbrMaterialFeature::Water))
+				requiredUniforms.insert(requiredUniforms.end(), waterUniformNames.begin(), waterUniformNames.end());
 		}
 		for (auto const& uniform : requiredUniforms)
 		{
@@ -214,7 +229,8 @@ namespace mpp
 			uint32_t expectedType = GL_FLOAT;
 			if (uniform == "PBR_BASE_COLOUR_FACTOR") expectedType = GL_FLOAT_VEC4;
 			else if (uniform == "PBR_EMISSIVE_FACTOR") expectedType = GL_FLOAT_VEC3;
-			else if (uniform == "PBR_ALPHA_MODE" || uniform == "PBR_DOUBLE_SIDED" || uniform == "PBR_METALLIC_CHANNEL" || uniform == "PBR_ROUGHNESS_CHANNEL") expectedType = GL_INT;
+			else if (uniform == "PBR_WATER_SCROLL_SPEED") expectedType = GL_FLOAT_VEC2;
+			else if (uniform == "PBR_ALPHA_MODE" || uniform == "PBR_DOUBLE_SIDED" || uniform == "PBR_METALLIC_CHANNEL" || uniform == "PBR_ROUGHNESS_CHANNEL" || uniform == "PBR_WATER_SSR_STEPS") expectedType = GL_INT;
 			if (program->getUniformGlType(uniform) != expectedType)
 				THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + uniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
 		}
@@ -224,9 +240,10 @@ namespace mpp
 				"Add the uniform to the shader and rebuild any .mppmodel that embeds it.");
 		else if (program->getUniformGlType(prefilteredMaxLodUniform) != GL_FLOAT)
 			THROW_MPP("PbrMaterial '" + getName() + "' uniform '" + prefilteredMaxLodUniform + "' has the wrong GLSL type.", __LINE__, __FILE__, __func__);
-		set<string> const allCoreUniforms = { "PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
+		set<string> allCoreUniforms = { "PBR_BASE_COLOUR_FACTOR", "PBR_METALLIC_FACTOR", "PBR_ROUGHNESS_FACTOR", "PBR_EMISSIVE_FACTOR",
 			"PBR_NORMAL_SCALE", "PBR_OCCLUSION_STRENGTH", "PBR_ALPHA_MODE", "PBR_ALPHA_CUTOFF", "PBR_DOUBLE_SIDED", "PBR_METALLIC_CHANNEL", "PBR_ROUGHNESS_CHANNEL",
 			prefilteredMaxLodUniform };
+		allCoreUniforms.insert(waterUniformNames.begin(), waterUniformNames.end());
 		set<string> allowedCoreUniforms(requiredUniforms.begin(), requiredUniforms.end());
 		// Renderer-owned, so always permitted even though it is never required.
 		allowedCoreUniforms.insert(prefilteredMaxLodUniform);
@@ -242,6 +259,8 @@ namespace mpp
 		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::NormalMap)) requiredSamplers.push_back("PBR_NORMAL_MAP");
 		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::Occlusion)) requiredSamplers.push_back("PBR_OCCLUSION_MAP");
 		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::EmissiveMap)) requiredSamplers.push_back("PBR_EMISSIVE_MAP");
+		if (hasPbrFeature(mFeatures, PbrMaterialFeature::Water))
+			requiredSamplers.insert(requiredSamplers.end(), waterSamplerNames.begin(), waterSamplerNames.end());
 		for (auto const& sampler : requiredSamplers)
 		{
 			bool found = false;
@@ -253,8 +272,9 @@ namespace mpp
 			if (program->getSamplerGlType(sampler) != expectedType)
 				THROW_MPP("PbrMaterial '" + getName() + "' sampler '" + sampler + "' has the wrong sampler type.", __LINE__, __FILE__, __func__);
 		}
-		set<string> const allCoreSamplers = { "PBR_BASE_COLOUR_MAP", "PBR_METALLIC_ROUGHNESS_MAP", "PBR_NORMAL_MAP", "PBR_OCCLUSION_MAP",
+		set<string> allCoreSamplers = { "PBR_BASE_COLOUR_MAP", "PBR_METALLIC_ROUGHNESS_MAP", "PBR_NORMAL_MAP", "PBR_OCCLUSION_MAP",
 			"PBR_EMISSIVE_MAP", "PBR_METALLIC_MAP", "PBR_ROUGHNESS_MAP", "PBR_IRRADIANCE_MAP", "PBR_PREFILTERED_SPECULAR_MAP", "PBR_BRDF_LUT" };
+		allCoreSamplers.insert(waterSamplerNames.begin(), waterSamplerNames.end());
 		set<string> const allowedCoreSamplers(requiredSamplers.begin(), requiredSamplers.end());
 		if (!legacyFullContract) for (int index = 0; index < program->getNumSamplers(); ++index)
 		{
@@ -283,6 +303,23 @@ namespace mpp
 		if (legacyFullContract) mUniforms.setUniform("PBR_ALPHA_MODE", (int32_t)mPbrSurface.alphaMode);
 		if (legacyFullContract || hasPbrFeature(mFeatures, PbrMaterialFeature::AlphaMask)) mUniforms.setUniform("PBR_ALPHA_CUTOFF", mPbrSurface.alphaCutoff);
 		if (legacyFullContract) mUniforms.setUniform("PBR_DOUBLE_SIDED", (int32_t)(mPbrSurface.doubleSided ? 1 : 0));
+		if (hasPbrFeature(mFeatures, PbrMaterialFeature::Water))
+		{
+			auto const& water = mPbrSurface.water;
+			// PBR_SCENE_COLOUR_MAX_LOD is deliberately absent: it belongs to the
+			// resolved-scene texture the renderer binds, not to the material, and is
+			// uploaded next to PBR_PREFILTERED_MAX_LOD at bind time.
+			mUniforms.setUniform("PBR_WATER_DISTORTION_SCALE", water.distortionScale);
+			mUniforms.setUniform("PBR_WATER_DISTORTION_STRENGTH", water.distortionStrength);
+			mUniforms.setUniform("PBR_WATER_SCROLL_SPEED", water.scrollSpeed);
+			mUniforms.setUniform("PBR_WATER_MICRO_ROUGHNESS", water.microRoughness);
+			mUniforms.setUniform("PBR_WATER_SSR_MAX_DISTANCE", water.ssrMaxDistance);
+			mUniforms.setUniform("PBR_WATER_SSR_STEPS", water.ssrSteps);
+			mUniforms.setUniform("PBR_WATER_SSR_THICKNESS", water.ssrThickness);
+			mUniforms.setUniform("PBR_WATER_EDGE_FADE", water.edgeFade);
+			mUniforms.setUniform("PBR_WATER_GRAZING_FALLBACK_START", water.grazingFallbackStart);
+			mUniforms.setUniform("PBR_WATER_GRAZING_FALLBACK_END", water.grazingFallbackEnd);
+		}
 
 		set<string> const coreUniforms(requiredUniforms.begin(), requiredUniforms.end());
 		for (auto const& [name, value] : mUniforms.getUniformData())
@@ -368,9 +405,23 @@ namespace mpp
 					{
 						textureName = "__mpp_tex_pbr_metallic_roughness__";
 					}
-					else if (samplerName == "PBR_NORMAL_MAP")
+					else if (samplerName == "PBR_NORMAL_MAP" || samplerName == "PBR_WATER_NORMAL_MAP" || samplerName == "PBR_WATER_DETAIL_NORMAL_MAP")
 					{
 						textureName = "__mpp_tex_pbr_normal__";
+					}
+					else if (samplerName == "PBR_SCENE_COLOUR_RESOLVED")
+					{
+						// Replaced by the water graph pass's resolved scene colour.
+						// Black keeps a water material valid in a pipeline without
+						// that pass, where every march is a miss anyway.
+						textureName = "__mpp_tex_pbr_black__";
+					}
+					else if (samplerName == "PBR_SCENE_DEPTH")
+					{
+						// Depth 1.0 is the far plane, so the unbound case marches into
+						// empty space and falls back to the cubemap rather than hitting
+						// whatever a neutral colour texture happened to contain.
+						textureName = "__mpp_tex_pbr_white__";
 					}
 					else if (samplerName == "PBR_EMISSIVE_MAP")
 					{

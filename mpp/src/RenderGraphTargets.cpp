@@ -32,6 +32,12 @@ namespace mpp
 			RenderTextureOptions options;
 			options.params = desc.params;
 			options.params.colourSpace = desc.colourSpace;
+			// The declared chain length has to reach the texture, not just its
+			// sampler LOD clamp: consumers ask the target how many levels it has to
+			// map a roughness onto the chain that exists (PBR_SCENE_COLOUR_MAX_LOD,
+			// PBR_PREFILTERED_MAX_LOD), and a target reporting one level flattens
+			// that to no blur at all.
+			options.mipLevels = desc.mipLevels;
 			options.params.useMipmaps = desc.mipLevels > 1;
 			options.params.lodBaseLevel = 0;
 			options.params.lodMaxLevel = (int32_t)desc.mipLevels - 1;

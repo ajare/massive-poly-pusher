@@ -13,7 +13,9 @@
 #include "mpp/RenderGraphGpuTests.h"
 #include "mpp/Camera.h"
 #include "mpp/RenderGraph.h"
+#include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphExecutor.h"
+#include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTargets.h"
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
@@ -858,6 +860,80 @@ void main()
 			auto invalidMipPass = invalidMipGraph.addPass("GpuTestInvalidMipWrite", GraphPassType::Fullscreen);
 			invalidMipGraph.writeColour(invalidMipPass, invalidMip);
 			if (invalidMipGraph.buildAllocationPlan({ 8, 8 }).valid) return fail("oversized mip chain was accepted");
+
+			stage = "water SSR graph plumbing";
+			{
+				// The exact topology PbrPipelineMrt/Full author: an opaque scene pass
+				// storing depth, a mip-chained copy of its colour, and a water pass
+				// that samples both and draws back over the scene colour it was
+				// copied from. The point of the test is that this shape allocates,
+				// validates against the built-in factory contracts, keeps its mip
+				// chain across a resize, and executes without GL errors.
+				GraphImageDesc waterHdr;
+				waterHdr.format = GraphImageFormat::Rgba16f;
+				waterHdr.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+				GraphImageDesc waterResolved = waterHdr;
+				waterResolved.mipLevels = 3;
+				waterResolved.params.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+				GraphImageDesc waterDepth;
+				waterDepth.format = GraphImageFormat::Depth24;
+				waterDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
+
+				RenderGraph waterGraph;
+				auto sceneHdr = waterGraph.createImage("GpuTestWaterSceneHdr", waterHdr);
+				auto resolved = waterGraph.createImage("GpuTestWaterResolved", waterResolved);
+				auto sceneDepth = waterGraph.createImage("GpuTestWaterDepth", waterDepth);
+				auto opaquePass = waterGraph.addPass("GpuTestWaterOpaque", GraphPassType::Scene);
+				waterGraph.setPassCallbackFactory(opaquePass, "MPP.PbrScene");
+				sceneHdr = waterGraph.writeColour(opaquePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0, 0, 0, 1));
+				sceneDepth = waterGraph.writeDepth(opaquePass, sceneDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
+				auto copyPass = waterGraph.addPass("GpuTestWaterCopy", GraphPassType::Fullscreen);
+				waterGraph.setPassCallbackFactory(copyPass, "MPP.SceneColourCopy");
+				waterGraph.bindSampler(copyPass, "TEX1", sceneHdr);
+				resolved = waterGraph.writeColour(copyPass, resolved, GraphLoadOp::DontCare, GraphStoreOp::Store);
+				auto waterPass = waterGraph.addPass("GpuTestWaterScene", GraphPassType::Scene);
+				waterGraph.setPassCallbackFactory(waterPass, "MPP.WaterScene");
+				waterGraph.bindSampler(waterPass, "PBR_SCENE_COLOUR_RESOLVED", resolved);
+				waterGraph.bindSampler(waterPass, "PBR_SCENE_DEPTH", sceneDepth);
+				sceneHdr = waterGraph.writeColour(waterPass, sceneHdr, GraphLoadOp::Load, GraphStoreOp::Store);
+				GraphRasterState waterRaster;
+				waterRaster.explicitState = true;
+				waterRaster.depthTest = false;
+				waterRaster.depthWrite = false;
+				waterGraph.setPassRasterState(waterPass, waterRaster);
+
+				auto waterCompiled = waterGraph.compile(renderSystem->getCaps());
+				if (!waterCompiled.valid)
+					return fail("water SSR graph did not compile" + (waterCompiled.diagnostics.empty() ? std::string() : ": " + waterCompiled.diagnostics.front()));
+
+				RenderGraphPassFactoryRegistry waterRegistry;
+				registerBuiltInRenderGraphPasses(waterRegistry);
+				auto const waterDiagnostics = waterRegistry.validate(waterGraph);
+				if (waterDiagnostics.hasErrors())
+					return fail("water SSR graph failed its pass factory contracts: " + waterDiagnostics.getDiagnostics().front().message);
+
+				// Executed through explicit callbacks: the built-in scene passes need a
+				// live frame context, which this GPU harness has no scene for. The
+				// attachment, sampler-view and clear work under test is the executor's.
+				RenderGraphExecutor waterExecutor(renderSystem);
+				for (auto pass : { opaquePass, copyPass, waterPass })
+					waterExecutor.setPassCallback(waterGraph, pass, [](RenderGraphExecutionContext const&) {});
+				for (auto const& viewport : { glm::uvec2(64, 48), glm::uvec2(96, 32) })
+				{
+					auto waterPlan = waterGraph.buildAllocationPlan(viewport);
+					if (!waterPlan.valid)
+						return fail("water SSR graph allocation failed" + (waterPlan.diagnostics.empty() ? std::string() : ": " + waterPlan.diagnostics.front()));
+					RenderGraphTargets waterTargets(renderSystem);
+					waterTargets.allocate(waterPlan);
+					waterExecutor.execute(waterGraph, waterTargets, renderSystem->getCaps());
+					auto resolvedTarget = dynamic_cast<RenderTexture*>(waterTargets.get(resolved).get());
+					if (!resolvedTarget) return fail("resolved scene colour has no render texture");
+					if (resolvedTarget->getMipLevels() != 3)
+						return fail("resolved scene colour lost its mip chain across a resize; it reports " + std::to_string(resolvedTarget->getMipLevels()) + " levels");
+					if (resolvedTarget->getWidth() != viewport.x || resolvedTarget->getHeight() != viewport.y)
+						return fail("resolved scene colour did not follow the viewport");
+				}
+			}
 
 			stage = "MRT readback";
 			if (renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2)

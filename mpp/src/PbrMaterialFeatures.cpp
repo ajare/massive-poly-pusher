@@ -41,18 +41,23 @@ namespace mpp
 		if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Mask) enable(PbrMaterialFeature::AlphaMask);
 		else if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend) enable(PbrMaterialFeature::AlphaBlend);
 		if (surface.doubleSided) enable(PbrMaterialFeature::DoubleSided);
+		// Water is authored, not inferred: the SSR block needs renderer-supplied
+		// scene colour/depth that only the water graph pass binds, so a material
+		// must opt in rather than acquire it from a texture slot.
+		if (surface.water.enabled) enable(PbrMaterialFeature::Water);
 		return features;
 	}
 
 	string describePbrMaterialFeatures(PbrMaterialFeatures features)
 	{
 		if (hasPbrFeature(features, PbrMaterialFeature::LegacyFullContract)) return "LegacyFullContract";
-		array<pair<PbrMaterialFeature, char const*>, 13> const names = {{
+		array<pair<PbrMaterialFeature, char const*>, 14> const names = {{
 			{ PbrMaterialFeature::BaseColourMap, "BaseColourMap" }, { PbrMaterialFeature::Metallic, "Metallic" },
 			{ PbrMaterialFeature::Roughness, "Roughness" }, { PbrMaterialFeature::MetallicRoughnessMap, "MetallicRoughnessMap" },
 			{ PbrMaterialFeature::MetallicMap, "MetallicMap" }, { PbrMaterialFeature::RoughnessMap, "RoughnessMap" }, { PbrMaterialFeature::NormalMap, "NormalMap" }, { PbrMaterialFeature::Occlusion, "Occlusion" },
 			{ PbrMaterialFeature::Emissive, "Emissive" }, { PbrMaterialFeature::EmissiveMap, "EmissiveMap" }, { PbrMaterialFeature::AlphaMask, "AlphaMask" },
-			{ PbrMaterialFeature::AlphaBlend, "AlphaBlend" }, { PbrMaterialFeature::DoubleSided, "DoubleSided" }
+			{ PbrMaterialFeature::AlphaBlend, "AlphaBlend" }, { PbrMaterialFeature::DoubleSided, "DoubleSided" },
+			{ PbrMaterialFeature::Water, "Water" }
 		}};
 		ostringstream result;
 		bool first = true;
@@ -82,7 +87,8 @@ namespace mpp
 			<< "#define PBR_SPEC_EMISSIVE_MAP " << value(PbrMaterialFeature::EmissiveMap) << '\n'
 			<< "#define PBR_SPEC_ALPHA_MASK " << value(PbrMaterialFeature::AlphaMask) << '\n'
 			<< "#define PBR_SPEC_ALPHA_BLEND " << value(PbrMaterialFeature::AlphaBlend) << '\n'
-			<< "#define PBR_SPEC_DOUBLE_SIDED " << value(PbrMaterialFeature::DoubleSided) << '\n';
+			<< "#define PBR_SPEC_DOUBLE_SIDED " << value(PbrMaterialFeature::DoubleSided) << '\n'
+			<< "#define PBR_SPEC_WATER " << value(PbrMaterialFeature::Water) << '\n';
 		return source.str();
 	}
 

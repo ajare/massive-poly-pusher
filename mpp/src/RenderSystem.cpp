@@ -10,6 +10,7 @@
 #include <cassert>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <cstring>
 #include <cstddef>
 #include <string>
@@ -201,6 +202,7 @@ namespace mpp
 		delete mInternalFont;
 		destroyLightsData();
 		destroyPbrLightsData();
+		destroyCameraFrameData();
 		destroyShadowDomains();
 
 		// Deleting the above may have freed up more resources, so sweep once more
@@ -390,6 +392,7 @@ namespace mpp
 		setDisplay((int)mWindowWidth, (int)mWindowHeight);
 		createLightsData();
 		createPbrLightsData();
+		createCameraFrameData();
 
 		// Text settings
 		mTextUniforms = make_shared<UniformCollection>();
@@ -2905,6 +2908,55 @@ namespace mpp
 		}
 	}
 
+	void RenderSystem::createCameraFrameData()
+	{
+		destroyCameraFrameData();
+
+		// std140: three mat4 followed by two vec4. Every member is already a
+		// multiple of 16 bytes, so the C++ side is a straight memcpy.
+		const size_t uniformSize = 3 * 64 + 32;
+		shared_ptr<const int8_t> uniformData(new int8_t[uniformSize](), [](int8_t* p) { delete[] p; });
+		auto fp = reinterpret_cast<float*>(const_cast<int8_t*>(uniformData.get()));
+		// Identity matrices rather than zeroes: an unpopulated frame must not make
+		// a shader divide by a singular projection.
+		for (int matrix = 0; matrix < 3; ++matrix)
+			for (int diagonal = 0; diagonal < 4; ++diagonal) fp[matrix * 16 + diagonal * 5] = 1.0f;
+
+		mCameraFrameBuffer = new UniformBuffer(this, uniformData, uniformSize, 3);
+		mCameraFrameBuffer->load();
+	}
+
+	void RenderSystem::destroyCameraFrameData()
+	{
+		if (mCameraFrameBuffer)
+		{
+			mCameraFrameBuffer->unload();
+			delete mCameraFrameBuffer;
+			mCameraFrameBuffer = nullptr;
+		}
+	}
+
+	void RenderSystem::setCameraFrame(glm::mat4 const& view, glm::mat4 const& projection,
+		glm::vec2 const& viewportSize, float nearDistance, float farDistance, float seconds)
+	{
+		if (!mCameraFrameBuffer) return;
+		auto& data = mCameraFrameBuffer->getBufferData();
+		auto fp = reinterpret_cast<float*>(data.data());
+		auto const inverseProjection = glm::inverse(projection);
+		memcpy(fp, glm::value_ptr(view), 64);
+		memcpy(fp + 16, glm::value_ptr(projection), 64);
+		memcpy(fp + 32, glm::value_ptr(inverseProjection), 64);
+		fp[48] = viewportSize.x;
+		fp[49] = viewportSize.y;
+		fp[50] = viewportSize.x > 0.0f ? 1.0f / viewportSize.x : 0.0f;
+		fp[51] = viewportSize.y > 0.0f ? 1.0f / viewportSize.y : 0.0f;
+		fp[52] = nearDistance;
+		fp[53] = farDistance;
+		fp[54] = seconds;
+		fp[55] = 0.0f;
+		mCameraFrameBuffer->mapBufferData();
+	}
+
 	void RenderSystem::setPbrAmbientColour(Colour const& colour)
 	{
 		auto fp = reinterpret_cast<float*>(mPbrLightsBuffer->getBufferData().data());
@@ -3232,6 +3284,17 @@ namespace mpp
 				resource->load();
 			}
 		}
+	}
+
+	float RenderSystem::getElapsedSeconds() const
+	{
+		static auto const epoch = chrono::steady_clock::now();
+		return chrono::duration<float>(chrono::steady_clock::now() - epoch).count();
+	}
+
+	map<string, ResourcePtr> const& RenderSystem::getActivePipelineSamplerOverrides() const
+	{
+		return mActivePipelineSamplerOverrides;
 	}
 
 	/*
@@ -4194,6 +4257,9 @@ namespace mpp
 		// override, or a neutral fallback. Resolve it alongside the binding rather
 		// than assuming a fixed mip count in the shader.
 		Texture const* prefilteredSpecular = nullptr;
+		// Same question for water's SSR blur: the resolved scene colour's mip chain
+		// is a property of the graph image the water pass bound, not of the material.
+		Texture const* resolvedSceneColour = nullptr;
 		for (size_t i = 0; i < textureCount; ++i)
 		{
 			ResourcePtr textureResource = i < renderCmd.textures.size() && renderCmd.textures[i]
@@ -4215,10 +4281,29 @@ namespace mpp
 			auto pipelineSampler = mActivePipelineSamplerOverrides.find(samplerName);
 			if (pipelineSampler != mActivePipelineSamplerOverrides.end() && pipelineSampler->second)
 			{
+				// A depth-only render target has no colour attachment to bind; the
+				// aspect a sampler wants from it is the depth texture. This is the
+				// same case the SHADOW_MAP branch above handles, generalized so any
+				// pipeline-bound depth image works -- water's PBR_SCENE_DEPTH being
+				// the first one that is not a shadow map.
+				auto* depthOnly = dynamic_cast<RenderTexture*>(pipelineSampler->second.get());
+				if (depthOnly && depthOnly->getNumColourAttachments() == 0 && depthOnly->getDepthTextureId() != 0)
+				{
+					uint64_t const depthKey = (uint64_t)(uintptr_t)depthOnly;
+					if ((*currentTextureKeys)[i] != depthKey)
+					{
+						depthOnly->bindDepth((uint32_t)i);
+						(*currentTextureKeys)[i] = depthKey;
+						if (flowStateChanges) flowStateChanges->push_back("Texture unit " + std::to_string(i) + ": " + depthOnly->getName() + " (depth)");
+						mRenderInfo.textureSwitches++;
+					}
+					continue;
+				}
 				textureResource = pipelineSampler->second;
 			}
 			auto texture = static_cast<Texture*>(textureResource.get());
 			if (uniformsChanged && samplerName == "PBR_PREFILTERED_SPECULAR_MAP") prefilteredSpecular = texture;
+			if (uniformsChanged && samplerName == "PBR_SCENE_COLOUR_RESOLVED") resolvedSceneColour = texture;
 			const uint64_t textureKey = (uint64_t)(uintptr_t)texture;
 			if ((*currentTextureKeys)[i] != textureKey)
 			{
@@ -4237,6 +4322,15 @@ namespace mpp
 			if (location >= 0)
 			{
 				auto const levels = std::max(1u, prefilteredSpecular->getMipLevels());
+				GL_CHECK(glUniform1f(location, (float)(levels - 1)));
+			}
+		}
+		if (resolvedSceneColour)
+		{
+			auto const location = materialProgram->getUniformId("PBR_SCENE_COLOUR_MAX_LOD");
+			if (location >= 0)
+			{
+				auto const levels = std::max(1u, resolvedSceneColour->getMipLevels());
 				GL_CHECK(glUniform1f(location, (float)(levels - 1)));
 			}
 		}

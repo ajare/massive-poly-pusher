@@ -183,6 +183,14 @@ PbrPipeline:
       - name: SceneDepth
         format: DEPTH24
         usage: depthAttachment,sampled
+      - name: SceneColourResolved
+        format: RGBA16F
+        usage: colourAttachment,sampled
+        colourSpace: LINEAR
+        mipLevels: 5
+        minFilter: LINEAR_MIPMAP_LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
       - name: BloomExtract
         format: RGBA16F
         usage: colourAttachment,sampled
@@ -285,6 +293,45 @@ PbrPipeline:
           load: clear
           store: store
           clear: 1
+      # Water reads the shaded opaque scene while drawing into it, so it samples a
+      # frozen copy rather than the live target. The copy declares a mip chain,
+      # regenerated when this pass's target is popped, which is what the water
+      # shader's roughness blur samples.
+      - name: SceneColourCopy
+        type: fullscreen
+        factory: MPP.SceneColourCopy
+        Inputs:
+          - sampler: TEX1
+            image: SceneHdr
+        Colours:
+          - image: SceneColourResolved
+            load: dontCare
+            store: store
+      # Occlusion is resolved in the shader against the sampled depth buffer rather
+      # than through a depth attachment: the graph gives each image version its own
+      # physical target, so attaching what this pass samples would depth-test
+      # against an uninitialized copy of it.
+      - name: WaterScene
+        type: scene
+        factory: MPP.WaterScene
+        Inputs:
+          - sampler: PBR_SCENE_COLOUR_RESOLVED
+            image: SceneColourResolved
+          - sampler: PBR_SCENE_DEPTH
+            image: SceneDepth
+          - sampler: SHADOW_MAP
+            image: ShadowDepth
+        Colours:
+          - image: SceneHdr
+            load: load
+            store: store
+          - image: SceneEmissive
+            load: load
+            store: store
+        Raster:
+          explicit: true
+          depthTest: false
+          depthWrite: false
       - name: BloomExtract
         type: fullscreen
         factory: MPP.FullscreenEffect

@@ -74,6 +74,30 @@ namespace mpp
 		    fragment.find("@Uniform(PBR_PREFILTERED_MAX_LOD)", specularFetch) > fetchEnd)
 			return fail("prefiltered specular fetch does not scale roughness by PBR_PREFILTERED_MAX_LOD");
 
+		// Water is opted into, never inferred: the SSR block needs renderer-bound
+		// scene colour and depth that only a water graph pass supplies, so a
+		// material must not acquire it from a texture slot the way maps do.
+		PbrMaterialSpecification::PbrSurface waterSurface;
+		waterSurface.alphaMode = PbrMaterialSpecification::PbrAlphaMode::Blend;
+		if (hasPbrFeature(derivePbrMaterialFeatures(waterSurface, {}), PbrMaterialFeature::Water))
+			return fail("water feature was derived without being authored");
+		waterSurface.water.enabled = true;
+		auto const water = derivePbrMaterialFeatures(waterSurface, {});
+		if (!hasPbrFeature(water, PbrMaterialFeature::Water) || !hasPbrFeature(water, PbrMaterialFeature::AlphaBlend))
+			return fail("water feature derivation failed");
+		if (describePbrMaterialFeatures(water).find("Water") == std::string::npos)
+			return fail("water feature is missing from the feature summary");
+		if (makePbrSpecializationDefines(water).find("#define PBR_SPEC_WATER 1") == std::string::npos ||
+		    makePbrSpecializationDefines(full).find("#define PBR_SPEC_WATER 0") == std::string::npos)
+			return fail("water specialization define generation failed");
+		// Confidence 0 has to reproduce the ordinary IBL specular path exactly, which
+		// it only does if the SSR mix consumes the same `prefiltered` value the
+		// non-water path computed rather than a second, divergent cubemap fetch.
+		if (fragment.find("prefiltered = mix(prefiltered, waterSsr,") == std::string::npos)
+			return fail("water SSR does not blend into the existing prefiltered specular term");
+		if (fragment.find("textureLod(@Texture(PBR_SCENE_COLOUR_RESOLVED), waterHitUv, waterLod)") == std::string::npos)
+			return fail("water SSR does not sample the resolved scene colour through a roughness LOD");
+
 		// doubleSided reached the shader and the feature bitset but never the
 		// rasterizer, so back faces were culled before the normal-flipping branch
 		// could run. The material has to win over the model's culling flag here:

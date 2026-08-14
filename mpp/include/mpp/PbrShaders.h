@@ -37,6 +37,7 @@ void main()
 #define PBR_SPEC_ALPHA_MASK 0
 #define PBR_SPEC_ALPHA_BLEND 0
 #define PBR_SPEC_DOUBLE_SIDED 0
+#define PBR_SPEC_WATER 0
 #endif
 
 @@Uniform(vec4 PBR_BASE_COLOUR_FACTOR);
@@ -74,6 +75,27 @@ void main()
 #if PBR_SPEC_ALPHA_MASK || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Uniform(float PBR_ALPHA_CUTOFF);
 #endif
+#if PBR_SPEC_WATER
+// Renderer-owned, exactly like PBR_PREFILTERED_MAX_LOD: (mipLevels - 1) of the
+// resolved scene colour actually bound to PBR_SCENE_COLOUR_RESOLVED, so the
+// roughness blur maps onto the chain the render graph allocated rather than an
+// assumed one.
+@@Uniform(float PBR_SCENE_COLOUR_MAX_LOD);
+// Material-owned water tuning. Ripple animation:
+@@Uniform(float PBR_WATER_DISTORTION_SCALE);
+@@Uniform(float PBR_WATER_DISTORTION_STRENGTH);
+@@Uniform(vec2 PBR_WATER_SCROLL_SPEED);
+// Reflection blur beyond the base material roughness:
+@@Uniform(float PBR_WATER_MICRO_ROUGHNESS);
+// Ray march tuning:
+@@Uniform(float PBR_WATER_SSR_MAX_DISTANCE);
+@@Uniform(int PBR_WATER_SSR_STEPS);
+@@Uniform(float PBR_WATER_SSR_THICKNESS);
+// Confidence falloff:
+@@Uniform(float PBR_WATER_EDGE_FADE);
+@@Uniform(float PBR_WATER_GRAZING_FALLBACK_START);
+@@Uniform(float PBR_WATER_GRAZING_FALLBACK_END);
+#endif
 
 #if PBR_SPEC_BASE_COLOUR_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
 @@Texture(sampler2D PBR_BASE_COLOUR_MAP);
@@ -100,6 +122,32 @@ void main()
 @@Texture(samplerCube PBR_PREFILTERED_SPECULAR_MAP);
 @@Texture(sampler2D PBR_BRDF_LUT);
 @@Texture(sampler2DShadow SHADOW_MAP);
+#if PBR_SPEC_WATER
+// Renderer-bound by the water graph pass, never material-authored: the frozen,
+// mip-chained copy of the opaque scene colour, and the opaque depth buffer the
+// ray march tests against. SceneDepth is a plain sampler2D here rather than the
+// comparison sampler SHADOW_MAP uses -- the march needs the depth value, not a
+// shadow test.
+@@Texture(sampler2D PBR_SCENE_COLOUR_RESOLVED);
+@@Texture(sampler2D PBR_SCENE_DEPTH);
+// Material-authored ripple octaves. Both default to the neutral flat normal, so
+// an untextured water material is a clean mirror rather than a compile error.
+@@Texture(sampler2D PBR_WATER_NORMAL_MAP);
+@@Texture(sampler2D PBR_WATER_DETAIL_NORMAL_MAP);
+
+// Per-frame camera state for the view-space ray march. Fullscreen passes get
+// this through hand-wired glUniform calls, but a scene pass shades through
+// PbrMaterial::setUniforms(), so it arrives the way PbrLights and ShadowFrame
+// already do: a renderer-owned UBO at a fixed binding point.
+layout(std140, binding = 3) uniform CameraFrame
+{
+    mat4 VIEW_MATRIX;
+    mat4 PROJECTION_MATRIX;
+    mat4 INVERSE_PROJECTION_MATRIX;
+    vec4 VIEWPORT_SIZE;    // width, height, 1/width, 1/height
+    vec4 NEAR_FAR_TIME;    // near, far, seconds, unused
+};
+#endif
 
 layout(std140, binding = 2) uniform ShadowFrame
 {
@@ -192,6 +240,157 @@ float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDir
     return visibility / 9.0;
 }
 
+#if PBR_SPEC_WATER
+// View-space Z (negative away from the camera) for a depth-buffer sample.
+// Unprojecting through INVERSE_PROJECTION_MATRIX rather than a near/far formula
+// keeps this correct for whatever projection the camera supplied, including the
+// TAA-jittered one, since that is the matrix the scene was rasterized with.
+float waterViewDepth(vec2 uv, float depth)
+{
+    vec4 view = INVERSE_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    return view.z / view.w;
+}
+
+// Point-samples the depth buffer. Filtering depth is meaningless and actively
+// harmful here: across a silhouette a linear tap returns the blend of the
+// occluder and whatever is behind it, which is a depth no surface actually
+// occupies. The march then finds a perfect crossing somewhere on that phantom
+// ramp for every ray that passes near an edge, hanging a skirt of full-confidence
+// reflection below every object. texelFetch also makes this independent of how a
+// pipeline author declared the depth image's filters, and clamping to the bound
+// texture's own size keeps it correct for the 1x1 neutral fallback.
+float waterSceneDepth(vec2 uv)
+{
+    ivec2 size = textureSize(@Texture(PBR_SCENE_DEPTH), 0);
+    ivec2 texel = clamp(ivec2(uv * vec2(size)), ivec2(0), size - ivec2(1));
+    return texelFetch(@Texture(PBR_SCENE_DEPTH), texel, 0).r;
+}
+
+vec2 waterProject(vec3 viewPosition, out float valid)
+{
+    vec4 clip = PROJECTION_MATRIX * vec4(viewPosition, 1.0);
+    valid = clip.w > 0.0001 ? 1.0 : 0.0;
+    return (clip.xy / max(clip.w, 0.0001)) * 0.5 + 0.5;
+}
+
+// How much the depth buffer agrees with itself around a hit. A hit that lands on
+// a depth discontinuity is one the buffer cannot vouch for: from a front-face-only
+// depth image, "landed on the occluder" and "passed just outside it" look
+// identical there, and neighbouring rays resolve the ambiguity differently. That
+// is what fringes the edge of every reflected object with spikes. Fading those
+// toward the cubemap costs a couple of pixels of rim on a genuine reflection and
+// removes the fringe.
+float waterHitStability(vec2 uv, float hitZ, float thickness)
+{
+    ivec2 size = textureSize(@Texture(PBR_SCENE_DEPTH), 0);
+    ivec2 texel = clamp(ivec2(uv * vec2(size)), ivec2(1), max(size - ivec2(2), ivec2(1)));
+    float left = waterViewDepth(uv, texelFetch(@Texture(PBR_SCENE_DEPTH), texel + ivec2(-1, 0), 0).r);
+    float right = waterViewDepth(uv, texelFetch(@Texture(PBR_SCENE_DEPTH), texel + ivec2(1, 0), 0).r);
+    float down = waterViewDepth(uv, texelFetch(@Texture(PBR_SCENE_DEPTH), texel + ivec2(0, -1), 0).r);
+    float up = waterViewDepth(uv, texelFetch(@Texture(PBR_SCENE_DEPTH), texel + ivec2(0, 1), 0).r);
+    float spread = max(max(abs(left - hitZ), abs(right - hitZ)), max(abs(down - hitZ), abs(up - hitZ)));
+    return 1.0 - smoothstep(thickness, thickness * 3.0, spread);
+}
+
+// Interleaved-gradient noise: a cheap per-pixel value in [0,1) with no time term,
+// so it dithers without shimmering between frames.
+float waterDither(vec2 pixel)
+{
+    return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
+}
+
+// Fixed-step view-space march against the opaque depth buffer, refined by a
+// short binary search on the crossing interval. Returns the confidence in the hit
+// it wrote to hitUv: 1 where the ray lands cleanly on a surface, falling to 0 as
+// the crossing turns into a pass behind a silhouette, and 0 outright on a miss, a
+// step that leaves the viewport, or a ray that crosses behind the near plane.
+// Every one of those is a fallback case, so the caller never distinguishes them.
+//
+// The coarse loop only looks for a sign change -- the step is far too long to
+// carry a depth tolerance, and demanding one there is what makes a march either
+// tunnel through everything (tolerance below the step) or smear silhouettes
+// (tolerance above it). The thickness test belongs after refinement, where the
+// two candidates it has to separate finally look different; see below.
+float waterMarch(vec3 origin, vec3 direction, out vec2 hitUv)
+{
+    hitUv = vec2(0.0);
+    int steps = clamp(@Uniform(PBR_WATER_SSR_STEPS), 1, 128);
+    float stepSize = max(@Uniform(PBR_WATER_SSR_MAX_DISTANCE), 0.0001) / float(steps);
+    float thickness = max(@Uniform(PBR_WATER_SSR_THICKNESS), 0.0001);
+    // Blended water writes no depth, so the buffer under its own pixels holds
+    // whatever is beneath it -- the pool floor, not the water. A ray that starts
+    // out already behind that surface has not hit it; it has to come back in
+    // front before a crossing means anything.
+    float originValid;
+    vec2 originUv = waterProject(origin, originValid);
+    bool armed = origin.z >= waterViewDepth(originUv, waterSceneDepth(originUv));
+    // Offsetting each pixel's sample lattice within one step is what keeps the
+    // edge of a hit region from combing. Without it, whether a ray lands a sample
+    // inside a silhouette depends on where its fixed lattice happens to fall, and
+    // because neighbouring rays slide that lattice smoothly across the edge the
+    // result is a regular fringe of hairs rather than noise. Dithered, the same
+    // error becomes per-pixel and the roughness blur absorbs it.
+    float jitter = waterDither(gl_FragCoord.xy);
+    vec3 previous = origin;
+    for (int i = 0; i < 128; ++i)
+    {
+        if (i >= steps) break;
+        vec3 marchPoint = origin + direction * (stepSize * (float(i) + jitter));
+        float valid;
+        vec2 uv = waterProject(marchPoint, valid);
+        if (valid < 0.5) break;
+        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) break;
+        float sceneZ = waterViewDepth(uv, waterSceneDepth(uv));
+        // View Z is negative away from the camera, so the ray has passed behind
+        // the depth buffer once its Z is the more negative of the two.
+        bool behind = marchPoint.z < sceneZ;
+        if (!behind) armed = true;
+        else if (armed)
+        {
+            vec3 closer = previous;
+            vec3 further = marchPoint;
+            for (int refine = 0; refine < 5; ++refine)
+            {
+                vec3 middle = (closer + further) * 0.5;
+                float middleValid;
+                vec2 middleUv = waterProject(middle, middleValid);
+                float middleSceneZ = waterViewDepth(middleUv, waterSceneDepth(middleUv));
+                if (middle.z < middleSceneZ) { further = middle; uv = middleUv; } else { closer = middle; }
+            }
+            // Landing on a surface and passing behind its silhouette are the same
+            // sign change, and only the refined point tells them apart. A real hit
+            // converges to where the ray meets the surface, so the two depths agree;
+            // a near-miss converges to the silhouette edge, where the ray is still
+            // however far behind the occluder it was always going to pass. Without
+            // this the occluder gets extruded along the ray and every sphere
+            // reflects as a column.
+            //
+            // Fading over the last half of the tolerance rather than cutting at it
+            // matters: the two cases meet along the silhouette, where a hard test
+            // alternates per pixel and combs the edge of every reflection.
+            float hitSceneZ = waterViewDepth(uv, waterSceneDepth(uv));
+            float confidence = (1.0 - smoothstep(thickness * 0.5, thickness, hitSceneZ - further.z)) *
+                waterHitStability(uv, hitSceneZ, thickness);
+            if (confidence > 0.0)
+            {
+                hitUv = uv;
+                return confidence;
+            }
+            // Not a landing, just the ray passing behind this surface. The depth
+            // buffer only knows front faces, so it cannot say anything is really
+            // there -- keep marching instead of treating every foreground silhouette
+            // as an opaque wall. Stopping here leaves comb-like gaps under a
+            // reflection wherever neighbouring rays clear the occluder and this one
+            // does not. Disarming makes the next crossing bracket a genuine
+            // front-to-behind pair again once the ray is back in front.
+            armed = false;
+        }
+        previous = marchPoint;
+    }
+    return 0.0;
+}
+#endif
+
 void main()
 {
 #if PBR_SPEC_BASE_COLOUR_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
@@ -218,6 +417,34 @@ void main()
     if (@Uniform(PBR_DOUBLE_SIDED) != 0 && !gl_FrontFacing) normal = -normal;
 #elif PBR_SPEC_DOUBLE_SIDED
     if (!gl_FrontFacing) normal = -normal;
+#endif
+#if PBR_SPEC_WATER
+    // Water rejects occluded fragments against the opaque depth buffer it already
+    // samples, rather than through a depth attachment. The render graph gives each
+    // version of an image its own physical target, so a pass cannot both sample a
+    // depth buffer and attach it: it would test against an uninitialized copy, and
+    // attaching what it samples is a feedback loop besides. An unbound depth
+    // sampler reads the far plane, so this never discards by accident.
+    vec2 waterScreenUv = gl_FragCoord.xy * VIEWPORT_SIZE.zw;
+    if (gl_FragCoord.z > waterSceneDepth(waterScreenUv)) discard;
+    {
+        // Two octaves of scrolling normals at different scale and direction. One
+        // tiling layer reads as a moving texture; two beating against each other
+        // read as water. This is what stops a clean SSR hit looking like a mirror.
+        vec4 waterTangentInput = @In(TANGENT);
+        vec3 waterTangent = normalize(waterTangentInput.xyz - normal * dot(normal, waterTangentInput.xyz));
+        vec3 waterBitangent = normalize(cross(normal, waterTangent)) * waterTangentInput.w;
+        float waterScale = max(@Uniform(PBR_WATER_DISTORTION_SCALE), 0.0001);
+        vec2 waterScroll = @Uniform(PBR_WATER_SCROLL_SPEED) * NEAR_FAR_TIME.z;
+        vec3 rippleA = texture(@Texture(PBR_WATER_NORMAL_MAP), @In(TEXCOORDS) * waterScale + waterScroll).xyz * 2.0 - 1.0;
+        vec3 rippleB = texture(@Texture(PBR_WATER_DETAIL_NORMAL_MAP), @In(TEXCOORDS) * waterScale * 2.17 - waterScroll * 1.6).xyz * 2.0 - 1.0;
+        vec3 ripple = rippleA + rippleB;
+        // Scaling only the tangential components is the same convention as
+        // PBR_NORMAL_SCALE, and it makes strength 0 exactly the undistorted
+        // surface -- the regression guard the SSR/cubemap blend is checked against.
+        ripple.xy *= @Uniform(PBR_WATER_DISTORTION_STRENGTH);
+        normal = normalize(mat3(waterTangent, waterBitangent, normal) * normalize(ripple));
+    }
 #endif
 
 #if PBR_SPEC_METALLIC_ROUGHNESS_MAP || PBR_SPEC_LEGACY_FULL_CONTRACT
@@ -307,6 +534,31 @@ void main()
     vec3 reflection = reflect(-viewDirection, normal);
     vec3 prefiltered = textureLod(@Texture(PBR_PREFILTERED_SPECULAR_MAP), reflection,
         roughness * @Uniform(PBR_PREFILTERED_MAX_LOD)).rgb;
+#if PBR_SPEC_WATER
+    // SSR replaces the cubemap sample only where the march is trustworthy. The
+    // cubemap sample above is the fallback, and it already used the distorted
+    // reflection vector, so the two sources agree wherever they are mixed and
+    // confidence 0 reproduces the ordinary IBL specular path exactly.
+    vec3 waterViewPosition = vec3(VIEW_MATRIX * vec4(@In(WORLD_POSITION), 1.0));
+    vec3 waterViewNormal = normalize(mat3(VIEW_MATRIX) * normal);
+    vec3 waterViewReflection = normalize(reflect(normalize(waterViewPosition), waterViewNormal));
+    vec2 waterHitUv;
+    float waterConfidence = waterMarch(waterViewPosition, waterViewReflection, waterHitUv);
+    // A hit near the viewport border is about to leave the screen; popping there
+    // is the most visible SSR artifact, so fade it out over an authored margin.
+    vec2 waterEdgeDistance = min(waterHitUv, vec2(1.0) - waterHitUv);
+    waterConfidence *= clamp(min(waterEdgeDistance.x, waterEdgeDistance.y) /
+        max(@Uniform(PBR_WATER_EDGE_FADE), 0.0001), 0.0, 1.0);
+    // Grazing angles march nearly parallel to the screen: the reflection stretches
+    // badly and usually has no scene data to hit. Hand those to the cubemap.
+    float waterGrazingStart = @Uniform(PBR_WATER_GRAZING_FALLBACK_START);
+    float waterGrazingEnd = min(@Uniform(PBR_WATER_GRAZING_FALLBACK_END), waterGrazingStart - 0.0001);
+    waterConfidence *= smoothstep(waterGrazingEnd, waterGrazingStart, nDotV);
+    float waterMaxLod = max(@Uniform(PBR_SCENE_COLOUR_MAX_LOD), 0.0);
+    float waterLod = clamp((roughness + @Uniform(PBR_WATER_MICRO_ROUGHNESS)) * waterMaxLod, 0.0, waterMaxLod);
+    vec3 waterSsr = textureLod(@Texture(PBR_SCENE_COLOUR_RESOLVED), waterHitUv, waterLod).rgb;
+    prefiltered = mix(prefiltered, waterSsr, clamp(waterConfidence, 0.0, 1.0));
+#endif
     vec2 brdf = texture(@Texture(PBR_BRDF_LUT), vec2(nDotV, roughness)).rg;
     vec3 specular = prefiltered * (fresnel * brdf.x + brdf.y);
     vec3 ambient = (kD * diffuse + specular) * occlusion + AMBIENT_AND_COUNT.rgb * baseColour.rgb;
