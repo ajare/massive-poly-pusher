@@ -1,0 +1,38 @@
+ModelSpecification:
+  MeshSpecification:
+    primitive: triangles
+    indexed: true
+    storage: static
+    Buffer:
+      - data: position3
+        type: float32
+      - data: normal3
+        type: float32
+      - data: texcoord2
+        type: float16
+      - data: colour4
+        type: uint8
+        normalised: true
+  Materials:
+    BasicMaterial:
+      name: cube_material
+      Program:
+        Resource:
+          positionType: 3D
+          textures: 1
+          FragmentShader:
+            file: cube_lighting.frag
+      Textures:
+        - Variable: TEX1
+          Resource:
+            target: 2D
+            filename: lattice.png
+            minFilter: LINEAR
+            magFilter: LINEAR
+      Uniforms:
+        - name: SPEC_EXPONENT
+          type: float
+          value: 16
+        - name: SPEC_STRENGTH
+          type: float
+          value: 0.5

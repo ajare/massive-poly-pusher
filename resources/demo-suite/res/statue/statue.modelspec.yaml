@@ -1,0 +1,71 @@
+ModelSpecification:
+  MeshSpecification:
+    primitive: triangles
+    indexed: true
+    storage: static
+    Buffer:
+      - data: position3
+        type: float32
+      - data: normal3
+        type: float32
+      - data: tangent4
+        type: float32
+      - data: texcoord2
+        type: float16
+      - data: colour4
+        type: uint8
+        normalised: true
+  Materials:
+    PbrMaterial:
+      name: statue_material
+      Program:
+        Resource:
+          positionType: 3D
+          textures: 1
+          VertexShader:
+            file: statue_pbr.vert
+          FragmentShader:
+            file: statue_pbr.frag
+      Surface:
+        baseColourFactor: 1.0 1.0 1.0 1.0
+        metallicFactor: 1.0
+        roughnessFactor: 0.75
+        emissiveFactor: 0.0 0.0 0.0
+        normalScale: 1.0
+        occlusionStrength: 1.0
+        alphaMode: OPAQUE
+        alphaCutoff: 0.5
+        doubleSided: false
+      Extensions:
+        Uniform:
+          name: PBR_EXT_LIGHTING_SCALE
+          type: float
+          value: 1.0
+      BaseColourMap:
+        Resource:
+          target: 2D
+          filename: stone-1024__Jpg_albedo.png
+          colourSpace: SRGB
+          minFilter: LINEAR
+          magFilter: LINEAR
+      MetallicRoughnessMap:
+        Resource:
+          target: 2D
+          filename: stone-1024__Jpg_ORM.png
+          colourSpace: LINEAR
+          minFilter: LINEAR
+          magFilter: LINEAR
+      NormalMap:
+        Resource:
+          target: 2D
+          filename: stone-1024__Jpg_normal.png
+          colourSpace: LINEAR
+          minFilter: LINEAR
+          magFilter: LINEAR
+      OcclusionMap:
+        Resource:
+          target: 2D
+          filename: stone-1024__Jpg_ao.png
+          colourSpace: LINEAR
+          minFilter: LINEAR
+          magFilter: LINEAR

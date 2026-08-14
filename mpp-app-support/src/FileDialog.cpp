@@ -33,11 +33,11 @@ namespace mpp::app
 			else
 			{
 				COMDLG_FILTERSPEC filters[] = {
-					{ executable ? L"Executable" : package ? L"MassivePolyPusher Package" : hdrExr ? L"OpenEXR HDR environment" : image ? L"Image files" : gltf ? L"glTF 2.0" : L"MassivePolyPusher XML", executable ? L"*.exe" : package ? L"*.mpppackage" : hdrExr ? L"*.exr" : image ? L"*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.gif;*.dds;*.hdr" : gltf ? L"*.gltf;*.glb" : L"*.xml" },
+					{ executable ? L"Executable" : package ? L"MassivePolyPusher Package" : hdrExr ? L"OpenEXR HDR environment" : image ? L"Image files" : gltf ? L"glTF 2.0" : L"MassivePolyPusher Document", executable ? L"*.exe" : package ? L"*.mpppackage" : hdrExr ? L"*.exr" : image ? L"*.png;*.jpg;*.jpeg;*.tga;*.bmp;*.gif;*.dds;*.hdr" : gltf ? L"*.gltf;*.glb" : L"*.yaml;*.xml" },
 					{ L"All files", L"*.*" }
 				};
 				dialog->SetFileTypes(2, filters);
-				dialog->SetDefaultExtension(executable ? L"exe" : package ? L"mpppackage" : image ? L"png" : gltf ? L"gltf" : L"xml");
+				dialog->SetDefaultExtension(executable ? L"exe" : package ? L"mpppackage" : image ? L"png" : gltf ? L"gltf" : L"yaml");
 			}
 			if (save && !defaultName.empty()) { wstring name(defaultName.begin(), defaultName.end()); dialog->SetFileName(name.c_str()); }
 			// SDL3 replaced SDL_syswm.h with per-window properties.

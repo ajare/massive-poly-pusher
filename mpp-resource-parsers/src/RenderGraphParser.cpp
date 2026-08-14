@@ -3,7 +3,6 @@
 #include <map>
 #include <sstream>
 
-#include "utils/XmlReader.h"
 #include "utils/StringUtils.h"
 
 #include "mpp/resource-parsers/RenderGraphParser.h"
@@ -217,9 +216,7 @@ namespace mpp
 
 		RenderGraph RenderGraphParser::fromFile(string const& filepath)
 		{
-			auto reader = utils::XmlReader::fromFile(filepath);
-			auto data = detail::importStructuredData(reader->readTree());
-			delete reader;
+			auto data = detail::readDocumentRoot(filepath);
 			return fromData(data, filepath);
 		}
 

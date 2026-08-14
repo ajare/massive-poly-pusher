@@ -351,6 +351,8 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/RenderGraphResourceTests.cpp
     mpp-resource-parsers/src/Serializer.cpp
     mpp-resource-parsers/src/XmlSerializer.cpp
+    mpp-resource-parsers/src/YamlSerializer.cpp
+    mpp-resource-parsers/src/DocumentWriter.cpp
 )
 target_include_directories(MppResourceParsers PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp-resource-parsers/include")
 target_compile_definitions(MppResourceParsers PRIVATE MPP_RESOURCE_PARSERS_DLL_EXPORT)

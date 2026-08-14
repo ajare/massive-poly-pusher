@@ -42,14 +42,16 @@ if ($dumpbin) {
 }
 foreach ($asset in @(
     'shared/pbr/arrow.png',
-    'shared/pbr/DefaultPbrPreview.scene.xml',
-    'shared/pbr/PbrPreviewResources.xml',
-    'shared/pbr/templates/Minimal.pipeline.xml',
-    'shared/pbr/templates/Shadows.pipeline.xml',
-    'shared/pbr/templates/Full.pipeline.xml',
-    'shared/pbr/templates/Empty.pipeline.xml')) { Require-File (Join-Path $resources $asset) }
+    'shared/pbr/DefaultPbrPreview.scene.yaml',
+    'shared/pbr/PbrPreviewResources.yaml',
+    'shared/pbr/templates/Minimal.pipeline.yaml',
+    'shared/pbr/templates/Shadows.pipeline.yaml',
+    'shared/pbr/templates/Full.pipeline.yaml',
+    'shared/pbr/templates/Empty.pipeline.yaml')) { Require-File (Join-Path $resources $asset) }
 
 # Every shipped source XML must be well formed before parser-level validation.
+# (The invalid/ fixtures are deliberately-malformed XML testing the validator's
+# error paths, so they stay XML even though real resources moved to YAML.)
 Get-ChildItem (Join-Path $resources 'shared'),$editorResources -Recurse -Filter *.xml | ForEach-Object {
     try { [void][xml](Get-Content -LiteralPath $_.FullName -Raw) }
     catch { throw "Malformed XML: $($_.FullName): $($_.Exception.Message)" }
@@ -57,9 +59,9 @@ Get-ChildItem (Join-Path $resources 'shared'),$editorResources -Recurse -Filter 
 
 Run-Editor @('--validate') 2
 foreach ($template in @('Minimal','Shadows','Full','Empty')) {
-    Run-Editor @('--validate', (Join-Path $resources "shared/pbr/templates/$template.pipeline.xml")) 0
+    Run-Editor @('--validate', (Join-Path $resources "shared/pbr/templates/$template.pipeline.yaml")) 0
 }
-Run-Editor @('--validate','--warnings-as-errors',(Join-Path $resources 'shared/pbr/templates/Empty.pipeline.xml')) 1 'MPP-PIPELINE-008'
+Run-Editor @('--validate','--warnings-as-errors',(Join-Path $resources 'shared/pbr/templates/Empty.pipeline.yaml')) 1 'MPP-PIPELINE-008'
 
 $invalid = @{
     'MissingOptionalFallback.pipeline.xml' = 'MPP-PIPELINE-011'
@@ -73,16 +75,16 @@ foreach ($fixture in $invalid.GetEnumerator()) {
     Run-Editor @('--validate', (Join-Path $editorResources "invalid/$($fixture.Key)")) 1 $fixture.Value
 }
 
-# Reject accidentally reintroduced multi-definition/quality-era XML in native fixtures.
-$legacy = Get-ChildItem (Join-Path $resources 'shared'),$editorResources -Recurse -Filter *.xml |
-    Select-String -Pattern '<quality>|<qualities>|RSE2|RSER' -CaseSensitive:$false
+# Reject accidentally reintroduced multi-definition/quality-era markers in native fixtures.
+$legacy = Get-ChildItem (Join-Path $resources 'shared'),$editorResources -Recurse -Include *.xml,*.yaml |
+    Select-String -Pattern '<quality>|<qualities>|quality:|qualities:|RSE2|RSER' -CaseSensitive:$false
 if ($legacy) { throw "Legacy quality/multi-definition marker found: $($legacy.Path -join ', ')" }
 
 if (-not $SkipGpu) {
     # No positional document must open the Full template as a valid untitled workspace.
     Run-Editor @('--smoke-test') 0
     foreach ($template in @('Minimal','Shadows','Full','Empty')) {
-        Run-Editor @('--smoke-test', (Join-Path $resources "shared/pbr/templates/$template.pipeline.xml")) 0
+        Run-Editor @('--smoke-test', (Join-Path $resources "shared/pbr/templates/$template.pipeline.yaml")) 0
     }
 }
 

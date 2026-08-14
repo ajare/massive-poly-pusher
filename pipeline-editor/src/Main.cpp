@@ -901,15 +901,15 @@ namespace
 					}
 					model.file = packageRoot + "/" + path.filename().generic_string();
 				}
-			pipeline.previewScene = "scene.xml";
-			pipeline.sourcePath = (temporary / "pipeline.xml").string();
-			scene.sourcePath = (temporary / "scene.xml").string();
+			pipeline.previewScene = "scene.yaml";
+			pipeline.sourcePath = (temporary / "pipeline.yaml").string();
+			scene.sourcePath = (temporary / "scene.yaml").string();
 			resource_parsers::PbrPipelineSerializer::toFile(pipeline, pipeline.sourcePath);
 			resource_parsers::SceneSerializer::toFile(scene, scene.sourcePath);
 			mpp::app::writePackageManifest(temporary / "manifest.xml");
 			std::map<std::string, std::filesystem::path> files{{"manifest.xml", temporary / "manifest.xml"},
-			                                                   {"pipeline.xml", temporary / "pipeline.xml"},
-			                                                   {"scene.xml", temporary / "scene.xml"}};
+			                                                   {"pipeline.yaml", temporary / "pipeline.yaml"},
+			                                                   {"scene.yaml", temporary / "scene.yaml"}};
 			for (auto const& [source, name] : payloads)
 				files.emplace(name, source);
 			for (auto const& [name, source] : directoryPayloads)
@@ -1016,7 +1016,7 @@ namespace
 			std::map<std::string, std::filesystem::path> directoryPayloads;
 			auto pipelineOwner = pipelinePath.empty() ? std::filesystem::path(sourcePipeline.sourcePath)
 			                                          : std::filesystem::path(pipelinePath);
-			auto bakedOwner = temporary / "pipeline.xml";
+			auto bakedOwner = temporary / "pipeline.yaml";
 			for (auto& resource : pipeline.localResources)
 				rewritePackagePayloadPaths(resource.definition,
 				                           bakedTextureMaterials.contains(resource.name) ? bakedOwner
@@ -1044,15 +1044,15 @@ namespace
 					}
 					model.file = packageRoot + "/" + path.filename().generic_string();
 				}
-			pipeline.previewScene = "scene.xml";
-			pipeline.sourcePath = (temporary / "pipeline.xml").string();
-			scene.sourcePath = (temporary / "scene.xml").string();
+			pipeline.previewScene = "scene.yaml";
+			pipeline.sourcePath = (temporary / "pipeline.yaml").string();
+			scene.sourcePath = (temporary / "scene.yaml").string();
 			resource_parsers::LegacyPipelineSerializer::toFile(pipeline, pipeline.sourcePath);
 			resource_parsers::SceneSerializer::toFile(scene, scene.sourcePath);
 			mpp::app::writePackageManifest(temporary / "manifest.xml");
 			std::map<std::string, std::filesystem::path> files{{"manifest.xml", temporary / "manifest.xml"},
-			                                                   {"pipeline.xml", temporary / "pipeline.xml"},
-			                                                   {"scene.xml", temporary / "scene.xml"}};
+			                                                   {"pipeline.yaml", temporary / "pipeline.yaml"},
+			                                                   {"scene.yaml", temporary / "scene.yaml"}};
 			for (auto const& [source, name] : payloads)
 				files.emplace(name, source);
 			for (auto const& [name, source] : directoryPayloads)
@@ -1165,19 +1165,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			fprintf(stdout,
 			        "PipelineEditor options:\n  --help, -h                                  Show this help.\n  "
-			        "--validate [--warnings-as-errors] <pipeline.xml> Validate a workspace.\n  --export-package "
-			        "<pipeline.xml> <package.mpppackage> Export a self-contained package.\n  --export-legacy-package "
-			        "<pipeline.xml> <package.mpppackage> Export a self-contained legacy package.\n  --smoke-test "
-			        "[pipeline.xml]                 Render 30 frames then exit.\n  --width <pixels> --height <pixels>  "
+			        "--validate [--warnings-as-errors] <pipeline.yaml> Validate a workspace.\n  --export-package "
+			        "<pipeline.yaml> <package.mpppackage> Export a self-contained package.\n  --export-legacy-package "
+			        "<pipeline.yaml> <package.mpppackage> Export a self-contained legacy package.\n  --smoke-test "
+			        "[pipeline.yaml]                 Render 30 frames then exit.\n  --width <pixels> --height <pixels>  "
 			        "        Set editor window size.\n  --recovery-seconds <seconds>                Set recovery "
-			        "interval.\n  [pipeline.xml]                              Open a workspace.\n");
+			        "interval.\n  [pipeline.yaml]                              Open a workspace.\n");
 			return 0;
 		}
 		if (__argc >= 2 && std::string(__argv[1]) == "--export-package")
 		{
 			if (__argc != 4)
 			{
-				fprintf(stderr, "usage: PipelineEditor --export-package <pipeline.xml> <package.mpppackage>\n");
+				fprintf(stderr, "usage: PipelineEditor --export-package <pipeline.yaml> <package.mpppackage>\n");
 				return 2;
 			}
 			try
@@ -1202,7 +1202,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			if (__argc != 4)
 			{
-				fprintf(stderr, "usage: PipelineEditor --export-legacy-package <pipeline.xml> <package.mpppackage>\n");
+				fprintf(stderr, "usage: PipelineEditor --export-legacy-package <pipeline.yaml> <package.mpppackage>\n");
 				return 2;
 			}
 			try
@@ -1233,7 +1233,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			}
 			if (__argc <= pathIndex)
 			{
-				fprintf(stderr, "usage: PipelineEditor --validate [--warnings-as-errors] <pipeline.xml>\n");
+				fprintf(stderr, "usage: PipelineEditor --validate [--warnings-as-errors] <pipeline.yaml>\n");
 				return 2;
 			}
 			try
@@ -1311,10 +1311,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		auto editorResourceLocation = editorSettings.resourceLocation;
 		auto editorResourcePath = [&](std::filesystem::path const& relative)
 		{ return (editorResourceLocation / relative).lexically_normal().string(); };
-		auto minimalTemplatePath = editorResourcePath("shared/pbr/templates/Minimal.pipeline.xml"),
-		     shadowsTemplatePath = editorResourcePath("shared/pbr/templates/Shadows.pipeline.xml"),
-		     fullTemplatePath = editorResourcePath("shared/pbr/templates/Full.pipeline.xml"),
-		     emptyTemplatePath = editorResourcePath("shared/pbr/templates/Empty.pipeline.xml");
+		auto minimalTemplatePath = editorResourcePath("shared/pbr/templates/Minimal.pipeline.yaml"),
+		     shadowsTemplatePath = editorResourcePath("shared/pbr/templates/Shadows.pipeline.yaml"),
+		     fullTemplatePath = editorResourcePath("shared/pbr/templates/Full.pipeline.yaml"),
+		     emptyTemplatePath = editorResourcePath("shared/pbr/templates/Empty.pipeline.yaml");
 		int windowWidth = 1440, windowHeight = 900;
 		float recoverySeconds = 30.0f;
 		bool smokeTest = false;
@@ -2121,7 +2121,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (forceSaveAs || target.empty())
 			{
 				auto selected =
-				    mpp::app::saveXmlFileDialog(window.getWindow(), "Save Preview Scene", "preview.scene.xml");
+				    mpp::app::saveXmlFileDialog(window.getWindow(), "Save Preview Scene", "preview.scene.yaml");
 				if (!selected)
 					return false;
 				target = mpp::app::normaliseDocumentPath(*selected).string();
@@ -2172,7 +2172,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			std::string target = currentPath;
 			if (forceSaveAs || target.empty())
 			{
-				auto selected = mpp::app::saveXmlFileDialog(window.getWindow(), "Save PBR Pipeline", "pipeline.xml");
+				auto selected = mpp::app::saveXmlFileDialog(window.getWindow(), "Save PBR Pipeline", "pipeline.yaml");
 				if (!selected)
 					return false;
 				target = mpp::app::normaliseDocumentPath(*selected).string();

@@ -1,0 +1,616 @@
+PbrPipeline:
+  version: 1
+  name: Full PBR Pipeline
+  PreviewScene:
+    file: preview.scene.yaml
+  ResourceLibraries:
+    - file: pbr/PbrPreviewResources.yaml
+  LocalResources:
+    PbrMaterial:
+      - name: Preview.LocalPbr
+        MeshSpecification:
+          primitive: triangles
+          indexed: true
+          storage: static
+          Buffer:
+            - data: position3
+              type: float32
+            - data: normal3
+              type: float32
+            - data: texcoord2
+              type: float32
+            - data: colour4
+              type: float32
+              normalised: true
+            - data: tangent4
+              type: float32
+        Surface:
+          baseColourFactor: 0.72 0.76 0.82 1
+          metallicFactor: 0
+          roughnessFactor: 0.65
+          emissiveFactor: 0 0 0
+          normalScale: 1
+          occlusionStrength: 1
+          alphaMode: OPAQUE
+          alphaCutoff: 0.5
+          doubleSided: false
+      - name: sphere-test
+        MeshSpecification:
+          primitive: triangles
+          indexed: true
+          storage: static
+          Buffer:
+            - data: position3
+              type: float32
+            - data: normal3
+              type: float32
+            - data: texcoord2
+              type: float32
+            - data: colour4
+              type: float32
+              normalised: true
+            - data: tangent4
+              type: float32
+        Surface:
+          baseColourFactor: 1.000000 1.000000 1.000000 1.000000
+          metallicFactor: 1.000000
+          roughnessFactor: 1.000000
+          emissiveFactor: 1.000000 1.000000 1.000000
+          normalScale: 1.000000
+          occlusionStrength: 1.000000
+          alphaMode: OPAQUE
+          alphaCutoff: 0.500000
+          doubleSided: true
+        BaseColourMap:
+          Resource:
+            name: sphere-test.BaseColourMap
+            target: 2D
+            filename: sphere-test_albedo.png
+            colourSpace: SRGB
+            minFilter: LINEAR
+            magFilter: LINEAR
+            wrap: REPEAT
+        MetallicRoughnessMap:
+          Resource:
+            name: sphere-test.MetallicRoughnessMap
+            target: 2D
+            filename: .mpp-gltf-images/sphere-test.image2.png
+            colourSpace: LINEAR
+            minFilter: LINEAR
+            magFilter: LINEAR
+            wrap: REPEAT
+        NormalMap:
+          Resource:
+            name: sphere-test.NormalMap
+            target: 2D
+            filename: .mpp-gltf-images/sphere-test.image1.png
+            colourSpace: LINEAR
+            minFilter: LINEAR
+            magFilter: LINEAR
+            wrap: REPEAT
+        OcclusionMap:
+          Resource:
+            name: sphere-test.OcclusionMap
+            target: 2D
+            filename: .mpp-gltf-images/sphere-test.image2.png
+            colourSpace: LINEAR
+            minFilter: LINEAR
+            magFilter: LINEAR
+            wrap: REPEAT
+        EmissiveMap:
+          Resource:
+            name: sphere-test.EmissiveMap
+            target: 2D
+            filename: sphere-test_emission.png
+            colourSpace: SRGB
+            minFilter: LINEAR
+            magFilter: LINEAR
+            wrap: REPEAT
+    Texture:
+      - name: Preview.Environment
+        target: CUBEMAP
+        filename: pbr/arrow.png
+        colourSpace: SRGB
+        mipmaps: true
+        minFilter: LINEAR_MIPMAP_LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+      - name: Preview.BrdfLut
+        target: 2D
+        filename: pbr/arrow.png
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+    Sampler:
+      name: Preview.LocalSampler
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+      maxAnisotropy: 1
+    PostEffectMaterial:
+      - name: PostEffect.BloomExtract
+        Program:
+          Ref: __mpp_p2d_bloom_extract__
+        SamplerSlots:
+          - TEX1
+        Uniforms:
+          - name: THRESHOLD
+            type: float
+            value: 0.7
+      - name: PostEffect.BloomBlurHorizontal
+        Program:
+          Ref: __mpp_p2d_bloom_blur__
+        SamplerSlots:
+          - TEX1
+        Uniforms:
+          - name: DIRECTION
+            type: vec2
+            value: 1 0
+      - name: PostEffect.BloomBlurVertical
+        Program:
+          Ref: __mpp_p2d_bloom_blur__
+        SamplerSlots:
+          - TEX1
+        Uniforms:
+          - name: DIRECTION
+            type: vec2
+            value: 0 1
+      - name: PostEffect.BloomComposite
+        Program:
+          Ref: __mpp_p2d_bloom_combine__
+        SamplerSlots:
+          - SCENE
+          - BLOOM
+        Uniforms:
+          - name: INTENSITY
+            type: float
+            value: 0.2
+      - name: PostEffect.ToneMap
+        Program:
+          Ref: __mpp_p2d_tonemap__
+        SamplerSlots:
+          - TEX1
+        Uniforms:
+          - name: EXPOSURE
+            type: float
+            value: 1
+          - name: TONE_MAP_OPERATOR
+            type: int
+            value: 1
+  Imports:
+    - id: shadowDepth
+      semantic: shadowDepth
+      format: DEPTH24
+      usage: sampled,depthAttachment
+      required: true
+    - id: screen
+      semantic: presentation
+      format: RGBA8
+      usage: colourAttachment,presentation
+      required: true
+  Outputs:
+    - name: Main
+      image: Presentation
+      taaDepth: SceneDepth
+      AntiAliasing:
+        msaa: inherit
+        ssaa: inherit
+        taa: inherit
+        fxaa: inherit
+  Environment:
+    binding: Preview.Environment
+    irradiance: Preview.Environment
+    prefilteredSpecular: Preview.Environment
+    brdfLut: Preview.BrdfLut
+    background: Preview.Environment
+    hdrEquirectangular: 185_hdrmaps_com_free_4K.exr
+    environmentResolution: 512
+    irradianceResolution: 32
+    prefilterResolution: 128
+  Bloom:
+    enabled: true
+    blurPasses: 4
+  PreviewBindings:
+    - binding: Preview.Main
+      resource: Preview.LocalPbr
+    - binding: Preview.Spheres
+      resource: Preview.LocalPbr
+    - binding: Preview.Ground
+      resource: Preview.LocalPbr
+    - binding: Imported.sphere-test
+      resource: sphere-test
+  PreviewOverrides:
+    - model: Sphere.0.0
+      binding: Preview.Main
+      Values:
+        Vec4:
+          name: PBR_BASE_COLOUR_FACTOR
+          value: 1 0.8 0.6 1
+        Float:
+          name: PBR_ROUGHNESS_FACTOR
+          value: 0.35
+  Extensions:
+    Extension:
+      namespace: urn:mpp:editor-metadata:1
+      Payload:
+        EditorMetadata:
+          category: Full PBR
+  RenderGraph:
+    Images:
+      - name: ShadowDepth
+        format: DEPTH24
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,depthAttachment
+        colourSpace: LINEAR
+        minFilter: NEAREST
+        magFilter: NEAREST
+        wrap: REPEAT
+        external: true
+        transient: false
+        import: shadowDepth
+        value: ShadowDepth.Import
+      - name: SceneHdr
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: SceneHdr.Import
+      - name: SceneEmissive
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: SceneEmissive.Import
+      - name: SceneDepth
+        format: DEPTH24
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,depthAttachment
+        colourSpace: LINEAR
+        minFilter: NEAREST
+        magFilter: NEAREST
+        wrap: REPEAT
+        external: false
+        transient: true
+        value: SceneDepth.Import
+      - name: BloomExtract
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomExtract.Import
+      - name: BloomPing0
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPing0.Import
+      - name: BloomPong0
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPong0.Import
+      - name: BloomPing1
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPing1.Import
+      - name: BloomPong1
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPong1.Import
+      - name: BloomPing2
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPing2.Import
+      - name: BloomPong2
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPong2.Import
+      - name: BloomPing3
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPing3.Import
+      - name: BloomPong3
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: LINEAR
+        magFilter: LINEAR
+        wrap: CLAMP_TO_EDGE
+        external: false
+        transient: true
+        value: BloomPong3.Import
+      - name: BloomComposite
+        format: RGBA16F
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment
+        colourSpace: LINEAR
+        minFilter: NEAREST
+        magFilter: NEAREST
+        wrap: REPEAT
+        external: false
+        transient: true
+        value: BloomComposite.Import
+      - name: Presentation
+        format: RGBA8
+        scale: 1.000000 1.000000
+        mipLevels: 1
+        usage: sampled,colourAttachment,presentation
+        colourSpace: LINEAR
+        minFilter: NEAREST
+        magFilter: NEAREST
+        wrap: REPEAT
+        external: true
+        transient: false
+        import: screen
+        value: Presentation.Import
+    Passes:
+      - name: ShadowDepth
+        enabled: true
+        type: scene
+        factory: MPP.ShadowDepth
+        Depth:
+          image: ShadowDepth
+          value: ShadowDepth.v1
+          load: clear
+          store: store
+          clear: 1
+      - name: PbrScene
+        enabled: true
+        type: scene
+        factory: MPP.PbrScene
+        Inputs:
+          - sampler: SHADOW_MAP
+            image: ShadowDepth
+            source: ShadowDepth.v1
+        Colours:
+          - image: SceneHdr
+            value: SceneHdr.v1
+            load: clear
+            store: store
+            clear: 0 0 0 1
+          - image: SceneEmissive
+            value: SceneEmissive.v1
+            load: clear
+            store: store
+            clear: 0 0 0 1
+        Depth:
+          image: SceneDepth
+          value: SceneDepth.v1
+          load: clear
+          store: store
+          clear: 1
+      - name: BloomExtract
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomExtract
+        Inputs:
+          - sampler: TEX1
+            image: SceneEmissive
+            source: SceneEmissive.v1
+        Colours:
+          - image: BloomExtract
+            value: BloomExtract.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurHorizontal0
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurHorizontal
+        Inputs:
+          - sampler: TEX1
+            image: BloomExtract
+            source: BloomExtract.v1
+        Colours:
+          - image: BloomPing0
+            value: BloomPing0.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurVertical0
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurVertical
+        Inputs:
+          - sampler: TEX1
+            image: BloomPing0
+            source: BloomPing0.v1
+        Colours:
+          - image: BloomPong0
+            value: BloomPong0.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurHorizontal1
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurHorizontal
+        Inputs:
+          - sampler: TEX1
+            image: BloomPong0
+            source: BloomPong0.v1
+        Colours:
+          - image: BloomPing1
+            value: BloomPing1.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurVertical1
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurVertical
+        Inputs:
+          - sampler: TEX1
+            image: BloomPing1
+            source: BloomPing1.v1
+        Colours:
+          - image: BloomPong1
+            value: BloomPong1.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurHorizontal2
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurHorizontal
+        Inputs:
+          - sampler: TEX1
+            image: BloomPong1
+            source: BloomPong1.v1
+        Colours:
+          - image: BloomPing2
+            value: BloomPing2.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurVertical2
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurVertical
+        Inputs:
+          - sampler: TEX1
+            image: BloomPing2
+            source: BloomPing2.v1
+        Colours:
+          - image: BloomPong2
+            value: BloomPong2.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurHorizontal3
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurHorizontal
+        Inputs:
+          - sampler: TEX1
+            image: BloomPong2
+            source: BloomPong2.v1
+        Colours:
+          - image: BloomPing3
+            value: BloomPing3.v1
+            load: dontCare
+            store: store
+      - name: BloomBlurVertical3
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomBlurVertical
+        Inputs:
+          - sampler: TEX1
+            image: BloomPing3
+            source: BloomPing3.v1
+        Colours:
+          - image: BloomPong3
+            value: BloomPong3.v1
+            load: dontCare
+            store: store
+      - name: BloomComposite
+        enabled: true
+        type: fullscreen
+        factory: MPP.FullscreenEffect
+        program: PostEffect.BloomComposite
+        Inputs:
+          - sampler: SCENE
+            image: SceneHdr
+            source: SceneHdr.v1
+          - sampler: BLOOM
+            image: BloomPong3
+            source: BloomPong3.v1
+        Colours:
+          - image: BloomComposite
+            value: BloomComposite.v1
+            load: dontCare
+            store: store
+      - name: ToneMapPresentation
+        enabled: true
+        type: present
+        factory: MPP.FullscreenEffect
+        program: PostEffect.ToneMap
+        Inputs:
+          - sampler: TEX1
+            image: BloomComposite
+            source: BloomComposite.v1
+        Colours:
+          - image: Presentation
+            value: Presentation.v1
+            load: clear
+            store: store
+            clear: 0 0 0 1

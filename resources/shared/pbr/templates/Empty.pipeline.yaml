@@ -1,0 +1,29 @@
+PbrPipeline:
+  version: 1
+  name: Empty Pipeline
+  Bloom:
+    enabled: false
+    blurPasses: 0
+  Imports:
+    - id: screen
+      semantic: presentation
+      format: RGBA8
+      usage: colourAttachment,presentation
+      required: true
+  Outputs:
+    - name: Main
+      image: Presentation
+      AntiAliasing:
+        msaa: inherit
+        ssaa: inherit
+        taa: inherit
+        fxaa: inherit
+  RenderGraph:
+    Images:
+      - name: Presentation
+        format: RGBA8
+        usage: sampled,colourAttachment,presentation
+        import: screen
+        external: true
+        transient: false
+    Passes: ""

@@ -1,0 +1,17 @@
+Program:
+  positionType: 3D
+  textures: 1
+  MeshSpecification:
+    primitive: triangles
+    indexed: true
+    storage: static
+    Buffer:
+      - data: position3
+        type: float32
+      - data: normal3
+        type: float32
+      - data: texcoord2
+        type: float32
+      - data: colour4
+        type: uint8
+        normalised: true

@@ -1,0 +1,233 @@
+RenderGraph:
+  Images:
+    - name: ShadowDepth
+      format: DEPTH24
+      usage: depthAttachment,sampled
+      import: shadowDepth
+      external: true
+      transient: false
+    - name: SceneHdr
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomMaskHdr
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: SceneDepth
+      format: DEPTH24
+      usage: depthAttachment
+    - name: BloomPing0
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPong0
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPing1
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPong1
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPing2
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPong2
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPing3
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomPong3
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    - name: BloomComposite
+      format: RGBA16F
+      usage: colourAttachment,sampled
+      colourSpace: LINEAR
+    - name: Presentation
+      format: RGBA8
+      usage: colourAttachment,presentation
+      import: screen
+      external: true
+      transient: false
+  Passes:
+    - name: ShadowDepth
+      type: scene
+      factory: MPP.ShadowDepth
+      Depth:
+        image: ShadowDepth
+        load: clear
+        store: store
+        clear: 1
+    - name: PbrScene
+      type: scene
+      factory: MPP.PbrScene
+      Inputs:
+        - sampler: SHADOW_MAP
+          image: ShadowDepth
+      Colours:
+        - image: SceneHdr
+          load: clear
+          store: store
+          clear: 0 0 0 1
+        - image: BloomMaskHdr
+          load: clear
+          store: store
+          clear: 0 0 0 1
+      Depth:
+        image: SceneDepth
+        load: clear
+        store: dontCare
+        clear: 1
+    - name: BloomBlurHorizontal0
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurHorizontal
+      Inputs:
+        - sampler: TEX1
+          image: BloomMaskHdr
+      Colours:
+        - image: BloomPing0
+          load: dontCare
+          store: store
+    - name: BloomBlurVertical0
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurVertical
+      Inputs:
+        - sampler: TEX1
+          image: BloomPing0
+      Colours:
+        - image: BloomPong0
+          load: dontCare
+          store: store
+    - name: BloomBlurHorizontal1
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurHorizontal
+      Inputs:
+        - sampler: TEX1
+          image: BloomPong0
+      Colours:
+        - image: BloomPing1
+          load: dontCare
+          store: store
+    - name: BloomBlurVertical1
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurVertical
+      Inputs:
+        - sampler: TEX1
+          image: BloomPing1
+      Colours:
+        - image: BloomPong1
+          load: dontCare
+          store: store
+    - name: BloomBlurHorizontal2
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurHorizontal
+      Inputs:
+        - sampler: TEX1
+          image: BloomPong1
+      Colours:
+        - image: BloomPing2
+          load: dontCare
+          store: store
+    - name: BloomBlurVertical2
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurVertical
+      Inputs:
+        - sampler: TEX1
+          image: BloomPing2
+      Colours:
+        - image: BloomPong2
+          load: dontCare
+          store: store
+    - name: BloomBlurHorizontal3
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurHorizontal
+      Inputs:
+        - sampler: TEX1
+          image: BloomPong2
+      Colours:
+        - image: BloomPing3
+          load: dontCare
+          store: store
+    - name: BloomBlurVertical3
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomBlurVertical
+      Inputs:
+        - sampler: TEX1
+          image: BloomPing3
+      Colours:
+        - image: BloomPong3
+          load: dontCare
+          store: store
+    - name: BloomComposite
+      type: fullscreen
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.BloomComposite
+      Inputs:
+        - sampler: SCENE
+          image: SceneHdr
+        - sampler: BLOOM
+          image: BloomPong3
+      Colours:
+        - image: BloomComposite
+          load: dontCare
+          store: store
+    - name: ToneMapPresentation
+      type: present
+      factory: MPP.FullscreenEffect
+      program: DemoSuite.PostEffect.ToneMap
+      Inputs:
+        - sampler: TEX1
+          image: BloomComposite
+      Colours:
+        - image: Presentation
+          load: clear
+          store: store
+          clear: 0 0 0 1

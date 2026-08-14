@@ -1,0 +1,4 @@
+Sampler:
+  minFilter: LINEAR
+  magFilter: LINEAR
+  wrap: REPEAT
