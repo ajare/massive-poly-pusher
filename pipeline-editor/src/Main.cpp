@@ -1645,6 +1645,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				RenderPipelineOptions previewOptions;
 				previewOptions.mode = RenderPipelineMode::XmlGraphPbrForward;
 				previewOptions.graphTemplate = graphResource;
+				// Local PostEffectMaterial/etc. resources are registered by
+				// PbrPipelineRuntime under its qualified root (see rebuild()), not
+				// globally -- without this, FullscreenEffectPass's unqualified
+				// fallback lookup can't find them (see demo-suite/PackageScene.cpp's
+				// identical assignment for the same reason).
+				previewOptions.resourceRoot = pipelineRuntime.getRootResource();
 				previewOptions.graphImports = pipelineRuntime.getImports();
 				previewOptions.outputs = previewDocument->outputs;
 				previewOptions.environment = pipelineRuntime.getEnvironment();
