@@ -11,7 +11,7 @@ namespace mpp
 {
 	// Converts one <PbrMaterial> resource definition to a <BasicMaterial>
 	// definition, per the fidelity policy in
-	// doc/LEGACY_PIPELINE_EXPORT_PLAN.md section 4. Metallic/roughness/normal/
+	// doc/implemented/LEGACY_PIPELINE_EXPORT_PLAN.md section 4. Metallic/roughness/normal/
 	// occlusion/emissive maps and factors, non-Opaque alpha modes, and
 	// doubleSided are dropped with Warning diagnostics; a base-colour texture
 	// is carried across as TEX1, and a flat baseColourFactor with no texture

@@ -1,6 +1,6 @@
 # Render Graph, Attachment, and MRT Design Plan
 
-> Historical plan note: image-level sample-count authoring described below was removed during anti-aliasing phase 2. Current pipelines use explicit named outputs; see `ANTI_ALIASING_IMPLEMENTATION_PLAN.md`.
+> Historical plan note: image-level sample-count authoring described below was removed during anti-aliasing phase 2. Current pipelines use explicit named outputs; see `implemented/ANTI_ALIASING_IMPLEMENTATION_PLAN.md`.
 
 ## Goal
 

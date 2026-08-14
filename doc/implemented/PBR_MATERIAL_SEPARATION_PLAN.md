@@ -2,7 +2,7 @@
 
 **Status:** Phases 1–5 complete.
 
-**Follow-up:** The later [PBR Shader Specialization](PBR_SHADER_SPECIALIZATION.md) design supersedes this plan's full canonical custom-program interface with an exact feature-dependent reflected interface. Legacy RSER assets temporarily retain the full contract.
+**Follow-up:** The later [PBR Shader Specialization](../PBR_SHADER_SPECIALIZATION.md) design supersedes this plan's full canonical custom-program interface with an exact feature-dependent reflected interface. Legacy RSER assets temporarily retain the full contract.
 
 ## 1. Objective
 
