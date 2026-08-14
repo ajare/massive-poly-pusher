@@ -25,6 +25,8 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/Program.h"
 #include "mpp/Texture.h"
+#include "mpp/UniformBuffer.h"
+#include "mpp/VertexBuffer.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
@@ -120,6 +122,62 @@ namespace mpp
 					if (std::abs(caps.maxAnisotropy - anisotropy) > 0.001f) return fail("reported anisotropy limit does not match OpenGL");
 				}
 				else if (caps.maxAnisotropy != 1.0f) return fail("anisotropy is reported on unsupported hardware");
+			}
+
+			stage = "persistent streaming buffers";
+			{
+				auto uniformBytes = new int8_t[64]{};
+				std::shared_ptr<const int8_t> uniformData(uniformBytes, [](int8_t const* value) { delete[] value; });
+				UniformBuffer uniform(renderSystem, uniformData, 64, 7);
+				uniform.load();
+				if (uniform.usesPersistentMapping() != renderSystem->getCaps().streamingGeometry)
+					return fail("uniform buffer mapping path disagrees with the reported capability");
+				auto& uniformCpu = uniform.getBufferData();
+				for (size_t index = 0; index < uniformCpu.size(); ++index) uniformCpu[index] = static_cast<int8_t>(index);
+				uniform.mapBufferData();
+				uniformCpu[17] = 99;
+				uniform.updateData(17, 1);
+				GLint uniformName = 0;
+				GLint64 uniformStart = 0;
+				GL_CHECK(glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, 7, &uniformName));
+				GL_CHECK(glGetInteger64i_v(GL_UNIFORM_BUFFER_START, 7, &uniformStart));
+				if (!uniformName || (uniform.usesPersistentMapping() && uniformStart == 0)) return fail("uniform ring did not bind its active segment range");
+				std::array<int8_t, 64> uniformReadback{};
+				GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, static_cast<GLuint>(uniformName)));
+				GL_CHECK(glGetBufferSubData(GL_UNIFORM_BUFFER, uniformStart, uniformReadback.size(), uniformReadback.data()));
+				if (uniformReadback[17] != 99 || uniformReadback[31] != 31) return fail("uniform ring lost complete or partial CPU updates");
+				if (uniform.usesPersistentMapping())
+				{
+					GLint immutable = GL_FALSE;
+					GL_CHECK(glGetBufferParameteriv(GL_UNIFORM_BUFFER, GL_BUFFER_IMMUTABLE_STORAGE, &immutable));
+					if (immutable != GL_TRUE) return fail("reported persistent uniform buffer does not use immutable storage");
+				}
+				uniform.unload();
+
+				auto vertexBytes = new int8_t[3 * 2 * sizeof(float)]{};
+				std::shared_ptr<const int8_t> vertexData(vertexBytes, [](int8_t const* value) { delete[] value; });
+				GLuint streamingVao = 0;
+				GL_CHECK(glGenVertexArrays(1, &streamingVao));
+				GL_CHECK(glBindVertexArray(streamingVao));
+				{
+					VertexBuffer vertex(renderSystem, mesh::VertexBufferStorageType::Dynamic, 3, 2 * sizeof(float), true, false, vertexData);
+					vertex.setAttribute(0, mesh::Vertex::DataType::Float, 2, 0, false);
+					vertex.load();
+					if (vertex.usesPersistentMapping() != renderSystem->getCaps().streamingGeometry)
+						return fail("vertex buffer mapping path disagrees with the reported capability");
+					auto& vertexCpu = vertex.getBufferData();
+					reinterpret_cast<float*>(vertexCpu.data())[0] = 0.5f;
+					vertex.mapBufferData(3);
+					vertex.bind();
+					if (vertex.usesPersistentMapping())
+					{
+						GLint immutable = GL_FALSE;
+						GL_CHECK(glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_IMMUTABLE_STORAGE, &immutable));
+						if (immutable != GL_TRUE) return fail("reported persistent vertex buffer does not use immutable storage");
+					}
+				}
+				GL_CHECK(glBindVertexArray(0));
+				GL_CHECK(glDeleteVertexArrays(1, &streamingVao));
 			}
 
 			stage = "resource sort-ID stability";

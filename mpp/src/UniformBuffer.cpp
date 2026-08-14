@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <cassert>
 
@@ -7,6 +8,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
+#include "PersistentMappedBuffer.h"
 
 using namespace std;
 
@@ -24,6 +26,8 @@ namespace mpp
 		, mDataSize(dataSize)
 		, mBinding(binding)
 	{
+		if (!mwRenderSystem || dataSize == 0 || !data)
+			THROW_MPP("UniformBuffer requires a RenderSystem and non-empty initial data.", __LINE__, __FILE__, __func__);
 		mData.reserve(dataSize);
 		int8_t const* dataPtr = data.get();
 
@@ -51,20 +55,32 @@ namespace mpp
 		return mData;
 	}
 
+	bool UniformBuffer::usesPersistentMapping() const
+	{
+		return mStreamBuffer && mStreamBuffer->isPersistent();
+	}
+
 	/*
 	 * Allocate buffer memory.
 	 *
 	 */
 	void UniformBuffer::allocate()
 	{
-		GLenum glStorageType = GL_DYNAMIC_DRAW;
-		GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, mDataSize, &(mData[0]), glStorageType));
+		GLint alignment = 1;
+		GL_CHECK(glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment));
+		mStreamBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mStreamBuffer->create(GL_UNIFORM_BUFFER, mDataSize, max(1, alignment), mwRenderSystem->getCaps().streamingGeometry,
+			mData.data(), mDataSize, "Uniform Buffer");
+		mUBO = mStreamBuffer->getBuffer();
 	}
 
 	void UniformBuffer::updateData(uint32_t offset, size_t size)
 	{
-		bind();
-		glBufferSubData(GL_UNIFORM_BUFFER, offset, size, &mData[offset]);
+		if (offset > mDataSize || size > mDataSize - offset) THROW_MPP("Uniform buffer update range is out of bounds.", __LINE__, __FILE__, __func__);
+		if (!mStreamBuffer) THROW_MPP("Cannot update an unloaded uniform buffer.", __LINE__, __FILE__, __func__);
+		mStreamBuffer->upload(mData.data(), mDataSize, offset, size);
+		mUBO = mStreamBuffer->getBuffer();
+		activate();
 	}
 
 	/*
@@ -77,14 +93,10 @@ namespace mpp
 	{
 		bind();
 
-		// glMapBuffer blocks
-		//int8_t* bufferPtr{ nullptr };
-		//GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY));
-
-		//memcpy(bufferPtr, &(mData[0]), mDataSize);
-		//GL_CHECK(glUnmapBuffer(GL_UNIFORM_BUFFER));
-
-		GL_CHECK(glBufferData(GL_UNIFORM_BUFFER, mDataSize, &(mData[0]), GL_DYNAMIC_DRAW));
+		if (!mStreamBuffer) THROW_MPP("Cannot update an unloaded uniform buffer.", __LINE__, __FILE__, __func__);
+		mStreamBuffer->upload(mData.data(), mDataSize, 0, mDataSize);
+		mUBO = mStreamBuffer->getBuffer();
+		activate();
 	}
 
 	/*
@@ -102,7 +114,15 @@ namespace mpp
 	 */
 	void UniformBuffer::activate()
 	{
-		GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO));
+		if (mStreamBuffer)
+		{
+			GL_CHECK(glBindBufferRange(GL_UNIFORM_BUFFER, mBinding, mStreamBuffer->getBuffer(), static_cast<GLintptr>(mStreamBuffer->getActiveOffset()), static_cast<GLsizeiptr>(mDataSize)));
+			mStreamBuffer->markUsed();
+		}
+		else
+		{
+			GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO));
+		}
 	}
 
 	void UniformBuffer::unbind()
@@ -117,17 +137,9 @@ namespace mpp
 	void UniformBuffer::load()
 	{
 		unload();
-		GL_CHECK(glGenBuffers(1, &mUBO));
-
-		bind();
-
-		// Set name for debugging
-		string label = "Uniform Buffer";
-		glObjectLabel(GL_BUFFER, mUBO, -1, label.c_str());
-
 		allocate();
-
-		glBindBufferBase(GL_UNIFORM_BUFFER, mBinding, mUBO);
+		bind();
+		activate();
 	}
 
 	/*
@@ -136,7 +148,12 @@ namespace mpp
 	 */
 	void UniformBuffer::unload()
 	{
-		if (mUBO != 0)
+		if (mStreamBuffer)
+		{
+			mStreamBuffer.reset();
+			mUBO = 0;
+		}
+		else if (mUBO != 0)
 		{
 			GL_CHECK(glDeleteBuffers(1, &mUBO));
 			mUBO = 0;

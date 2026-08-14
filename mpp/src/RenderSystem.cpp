@@ -585,7 +585,7 @@ namespace mpp
 
 		// Streaming geometry
 		// ARB_buffer_storage && ARB_map_buffer_range
-		mCaps.streamingGeometry = GLEW_ARB_buffer_storage && GLEW_ARB_map_buffer_range;
+		mCaps.streamingGeometry = (GLEW_VERSION_4_4 || GLEW_ARB_buffer_storage) && (GLEW_VERSION_3_0 || GLEW_ARB_map_buffer_range);
 
 		// Filtering. GL_TEXTURE_MAX_ANISOTROPY is not legal to query or set
 		// unless one of the anisotropic-filtering extensions is present.

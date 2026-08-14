@@ -9,6 +9,7 @@
 namespace mpp
 {
 	class RenderSystem;
+	namespace detail { class PersistentMappedBuffer; }
 
 	class _MPPAPI UniformBuffer
 	{
@@ -22,6 +23,8 @@ namespace mpp
 		
 		uint32_t mBinding;
 
+		std::unique_ptr<detail::PersistentMappedBuffer> mStreamBuffer;
+
 	private:
 
 		void allocate();
@@ -33,6 +36,8 @@ namespace mpp
 		virtual ~UniformBuffer();
 
 		std::vector<int8_t>& getBufferData();
+
+		bool usesPersistentMapping() const;
 
 		void updateData(uint32_t offset, size_t size);
 

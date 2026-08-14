@@ -7,6 +7,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/MppException.h"
 #include "mpp/GLErrorCheck.h"
+#include "PersistentMappedBuffer.h"
 
 using namespace std;
 
@@ -26,19 +27,23 @@ namespace mpp
 		, mVertexStride(vertexStride)
 		, mStreaming(streaming)
 		, mStatic(staticData)
-		, mUseBufferDataMethod(true)
 	{
 		if (!mwRenderSystem)
 		{
 			THROW_MPP("VertexBuffer requires a RenderSystem.", __LINE__, __FILE__, __func__);
 		}
 		auto const maxStride = mwRenderSystem->getCaps().maxVertexAttributeStride;
+		if (vertexStride != 0 && vertexCount > SIZE_MAX / vertexStride)
+		{
+			THROW_MPP("Vertex buffer CPU allocation size overflow.", __LINE__, __FILE__, __func__);
+		}
 		if (maxStride != 0 && vertexStride > maxStride)
 		{
 			THROW_MPP("Vertex buffer stride " + to_string(vertexStride) + " exceeds the GPU maximum of " + to_string(maxStride) + " bytes.", __LINE__, __FILE__, __func__);
 		}
 		mData.reserve(vertexCount * vertexStride);
 		int8_t const* dataPtr = data.get();
+		if (vertexCount * vertexStride != 0 && !dataPtr) THROW_MPP("Vertex buffer has no initial CPU data.", __LINE__, __FILE__, __func__);
 
 		for (size_t i = 0; i < vertexCount * vertexStride; ++i)
 		{
@@ -133,6 +138,11 @@ namespace mpp
 		return mStatic;
 	}
 
+	bool VertexBuffer::usesPersistentMapping() const
+	{
+		return mStreamBuffer && mStreamBuffer->isPersistent();
+	}
+
 	/*
 	 * Get the number of attributes this buffer has.
 	 *
@@ -151,6 +161,7 @@ namespace mpp
 		assert(index < getNumAttributes() && "VertexBuffer::enableAttribute() 'index' argument out of range!");
 
 		Attribute const& attrib = mAttributes[index];
+		size_t const baseOffset = mStreamBuffer ? mStreamBuffer->getActiveOffset() : 0;
 
 		if (enable)
 		{
@@ -168,21 +179,21 @@ namespace mpp
 			case GL_UNSIGNED_INT_2_10_10_10_REV:
 				if (attrib.normalise)
 				{
-					GL_CHECK(glVertexAttribPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+					GL_CHECK(glVertexAttribPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, (GLsizei)mVertexStride, (const GLvoid*)(baseOffset + attrib.offsetInBytes)));
 				}
 				else
 				{
-					GL_CHECK(glVertexAttribIPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+					GL_CHECK(glVertexAttribIPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, (GLsizei)mVertexStride, (const GLvoid*)(baseOffset + attrib.offsetInBytes)));
 				}
 				break;
 
 			case GL_FLOAT:
 			case GL_HALF_FLOAT:
-				GL_CHECK(glVertexAttribPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+				GL_CHECK(glVertexAttribPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, attrib.normalise ? GL_TRUE : GL_FALSE, (GLsizei)mVertexStride, (const GLvoid*)(baseOffset + attrib.offsetInBytes)));
 				break;
 
 			case GL_DOUBLE:
-				GL_CHECK(glVertexAttribLPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, (GLsizei)mVertexStride, (const GLvoid*)(attrib.offsetInBytes)));
+				GL_CHECK(glVertexAttribLPointer(attrib.id, (GLint)attrib.componentSize, attrib.dataType, (GLsizei)mVertexStride, (const GLvoid*)(baseOffset + attrib.offsetInBytes)));
 				break;
 
 			default:
@@ -227,7 +238,14 @@ namespace mpp
 
 		if (mStreaming)
 		{
-			THROW_MPP_NOTIMP("geometry streaming", __LINE__, __FILE__, __func__);
+			if (size > mData.size()) THROW_MPP("Streaming vertex buffer allocation exceeds its CPU data.", __LINE__, __FILE__, __func__);
+			if (!mStreamBuffer)
+			{
+				mStreamBuffer = make_unique<detail::PersistentMappedBuffer>();
+				mStreamBuffer->create(GL_ARRAY_BUFFER, max<size_t>(1, size), max<size_t>(1, mVertexStride), mwRenderSystem->getCaps().streamingGeometry,
+					size ? mData.data() : nullptr, size, "Streaming Vertex Buffer");
+			}
+			mVBO = mStreamBuffer->getBuffer();
 		}
 		else
 		{
@@ -255,25 +273,18 @@ namespace mpp
 		bind();
 
 		// If the data has increased in size, then reallocate
+		if (mVertexStride != 0 && numVertices > SIZE_MAX / mVertexStride) THROW_MPP("Vertex buffer upload size overflow.", __LINE__, __FILE__, __func__);
 		size_t curSize = numVertices * mVertexStride;
-		if (mUseBufferDataMethod)
+		if (curSize > mData.size()) THROW_MPP("Vertex buffer upload exceeds its CPU data.", __LINE__, __FILE__, __func__);
+		if (mStreamBuffer)
 		{
-			allocate(curSize);
+			mStreamBuffer->upload(curSize ? mData.data() : nullptr, curSize, 0, curSize);
+			mVBO = mStreamBuffer->getBuffer();
+			mMaxDataSize = max(mMaxDataSize, curSize);
 		}
 		else
 		{
-			if (curSize > mMaxDataSize)
-			{
-				allocate(curSize);
-			}
-			else
-			{
-				int8_t* bufferPtr{ nullptr };
-				GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY));
-
-				memcpy(bufferPtr, &(mData[0]), curSize);
-				GL_CHECK(glUnmapBuffer(GL_ARRAY_BUFFER));
-			}
+			allocate(curSize);
 		}
 	}
 
@@ -287,8 +298,18 @@ namespace mpp
 		bind();
 
 		// If (startVertex + numVertices) is greater than max vertices, then reallocate
+		if (numVertices > SIZE_MAX - startVertex || (mVertexStride != 0 && (startVertex + numVertices) > SIZE_MAX / mVertexStride))
+			THROW_MPP("Vertex buffer range upload size overflow.", __LINE__, __FILE__, __func__);
 		size_t curSize = (startVertex + numVertices) * mVertexStride;
-		if (curSize > mMaxDataSize)
+		if (curSize > mData.size()) THROW_MPP("Vertex buffer range upload exceeds its CPU data.", __LINE__, __FILE__, __func__);
+		if (mStreamBuffer)
+		{
+			size_t const completeSize = mData.size();
+			mStreamBuffer->upload(completeSize ? mData.data() : nullptr, completeSize, startVertex * mVertexStride, numVertices * mVertexStride);
+			mVBO = mStreamBuffer->getBuffer();
+			mMaxDataSize = max(mMaxDataSize, completeSize);
+		}
+		else if (curSize > mMaxDataSize)
 		{
 			allocate(curSize);
 		}
@@ -307,6 +328,21 @@ namespace mpp
 		GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, mVBO));
 	}
 
+	void VertexBuffer::prepareForRender()
+	{
+		if (!mStreamBuffer) return;
+		mVBO = mStreamBuffer->getBuffer();
+		auto const activeOffset = mStreamBuffer->getActiveOffset();
+		if (mConfiguredBuffer != mVBO || mConfiguredOffset != activeOffset)
+		{
+			bind();
+			for (size_t index = 0; index < getNumAttributes(); ++index) enableAttribute(static_cast<uint32_t>(index), true);
+			mConfiguredBuffer = mVBO;
+			mConfiguredOffset = activeOffset;
+		}
+		mStreamBuffer->markUsed();
+	}
+
 	/*
 	 * Unbind buffer
 	 *
@@ -323,13 +359,16 @@ namespace mpp
 	void VertexBuffer::load()
 	{
 		unload();
-		GL_CHECK(glGenBuffers(1, &mVBO));
+		if (!mStreaming) GL_CHECK(glGenBuffers(1, &mVBO));
 	
-		bind();
+		if (!mStreaming) bind();
 
-		// Set name for debugging
-		string label = "Vertex Buffer";
-		glObjectLabel(GL_BUFFER, mVBO, -1, label.c_str());
+		// Set name for debugging. Streaming storage owns and labels its GL name.
+		if (!mStreaming)
+		{
+			string label = "Vertex Buffer";
+			GL_CHECK(glObjectLabel(GL_BUFFER, mVBO, -1, label.c_str()));
+		}
 
 		allocate(mVertexStride * mVertexCount);
 			
@@ -337,6 +376,8 @@ namespace mpp
 		{
 			enableAttribute((uint32_t)i, true);
 		}
+		mConfiguredBuffer = mVBO;
+		mConfiguredOffset = mStreamBuffer ? mStreamBuffer->getActiveOffset() : 0;
 	}
 
 	/*
@@ -345,7 +386,14 @@ namespace mpp
 	 */
 	void VertexBuffer::unload()
 	{
-		if (mVBO != 0)
+		mConfiguredBuffer = 0;
+		mConfiguredOffset = SIZE_MAX;
+		if (mStreamBuffer)
+		{
+			mStreamBuffer.reset();
+			mVBO = 0;
+		}
+		else if (mVBO != 0)
 		{
 			GL_CHECK(glDeleteBuffers(1, &mVBO));
 			mVBO = 0;
