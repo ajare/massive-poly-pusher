@@ -142,7 +142,7 @@ namespace mpp
 		int8_t* data = new int8_t[vertexCount * bufferSize];
 		shared_ptr<const int8_t> dataPtr(data, [](int8_t*p) { delete[] p; });
 
-		auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, false, staticData, dataPtr);
+		auto vb = mesh->createVertexBuffer(vertexCount, bufferSize, !staticData, staticData, dataPtr);
 
 		for (size_t j = 0; j < layout.getNumAttributes(); ++j)
 		{

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include "mpp/Config.h"
@@ -12,6 +13,7 @@
 namespace mpp
 {
 	class RenderSystem;
+	namespace detail { class PersistentMappedBuffer; }
 
 	class _MPPAPI Mesh
 	{
@@ -45,7 +47,8 @@ namespace mpp
 
 		bool mIsLoaded;
 
-		bool mUseBufferDataMethod;
+		std::unique_ptr<detail::PersistentMappedBuffer> mIndexStreamBuffer;
+		mutable uint32_t mConfiguredIndexBuffer{ 0 };
 
 	private:
 
@@ -57,6 +60,7 @@ namespace mpp
 		void allocateIndexData(size_t numPrimitives);
 
 		void bind(bool use) const;
+		size_t getActiveIndexOffset() const;
 
 	public:
 
@@ -81,6 +85,8 @@ namespace mpp
 		void setIndexData(int8_t const* indexData, uint32_t numIndices, size_t indexWidth);
 
 		bool isIndexed() const;
+
+		bool usesPersistentIndexMapping() const;
 
 		void setNumPrimitives(size_t count);
 

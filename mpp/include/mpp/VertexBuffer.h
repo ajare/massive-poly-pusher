@@ -12,7 +12,9 @@
 
 namespace mpp
 {
+	class Mesh;
 	class RenderSystem;
+	namespace detail { class PersistentMappedBuffer; }
 
 	class _MPPAPI VertexBuffer
 	{
@@ -47,11 +49,15 @@ namespace mpp
 
 		size_t mMaxDataSize;
 
-		bool mUseBufferDataMethod;
+		std::unique_ptr<detail::PersistentMappedBuffer> mStreamBuffer;
+		std::uint32_t mConfiguredBuffer{ 0 };
+		size_t mConfiguredOffset{ SIZE_MAX };
 
 	private:
+		friend class Mesh;
 
 		void allocate(size_t size);
+		void prepareForRender();
 
 	public:
 
@@ -66,6 +72,8 @@ namespace mpp
 		size_t getVertexStride() const;
 
 		bool isStatic() const;
+
+		bool usesPersistentMapping() const;
 
 		size_t getNumAttributes() const;
 

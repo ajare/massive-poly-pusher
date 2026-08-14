@@ -11,6 +11,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
+#include "PersistentMappedBuffer.h"
 
 using namespace std;
 
@@ -33,7 +34,6 @@ namespace mpp
 		, mIsIndexed(false)
 		, mPrimitiveCount(primitiveCount)
 		, mIsLoaded(false)
-		, mUseBufferDataMethod(true)
 	{
 		setPrimitiveData(type);
 	}
@@ -48,12 +48,13 @@ namespace mpp
 		, mIBO(0)
 		, mStorageType(storageType)
 		, mIndexWidth(indexWidth)
+		, mIndexDataSize(indices.size())
 		, mPointSize(pointSize)
 		, mwRenderSystem(renderSystem)
 		, mMaterial(material)
 		, mIsIndexed(true)
 		, mPrimitiveCount(primitiveCount)
-		, mUseBufferDataMethod(true)
+		, mIsLoaded(false)
 	{
 		setPrimitiveData(type);
 		mIndexData = indices;
@@ -185,6 +186,11 @@ namespace mpp
 		return mIsIndexed;
 	}
 
+	bool Mesh::usesPersistentIndexMapping() const
+	{
+		return mIndexStreamBuffer && mIndexStreamBuffer->isPersistent();
+	}
+
 	/*
 	 * Set the number of primitives to render.
 	 *
@@ -275,26 +281,20 @@ namespace mpp
 		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 		// If the data has increased in size, then reallocate
-		auto newSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		auto const indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		if (indexStride != 0 && numPrimitives > SIZE_MAX / indexStride) THROW_MPP("Index buffer upload size overflow.", __LINE__, __FILE__, __func__);
+		auto newSize = numPrimitives * indexStride;
 
-		if (mUseBufferDataMethod)
+		if (newSize > mIndexData.size()) THROW_MPP("Index buffer upload exceeds its CPU data.", __LINE__, __FILE__, __func__);
+		if (mIndexStreamBuffer)
 		{
-			allocateIndexData(numPrimitives);
+			mIndexStreamBuffer->upload(newSize ? mIndexData.data() : nullptr, newSize, 0, newSize);
+			mIBO = mIndexStreamBuffer->getBuffer();
+			mIndexDataSize = max(mIndexDataSize, newSize);
 		}
 		else
 		{
-			if (newSize > mIndexDataSize)
-			{
-				allocateIndexData(numPrimitives);
-			}
-			else
-			{
-				int8_t* bufferPtr{ nullptr };
-				GL_CHECK(bufferPtr = (int8_t*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY));
-
-				memcpy(bufferPtr, &(mIndexData[0]), mIndexDataSize);
-				GL_CHECK(glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER));
-			}
+			allocateIndexData(numPrimitives);
 		}
 	}
 
@@ -307,10 +307,22 @@ namespace mpp
 		GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
 		// If the data has increased in size, then reallocate
-		auto indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
-		size_t newSize = (startPrimitive + numPrimitives) * indexStride;
+		if (startPrimitive < 0 || numPrimitives < 0) THROW_MPP("Index buffer update range cannot be negative.", __LINE__, __FILE__, __func__);
+		auto const indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		auto const endPrimitive = static_cast<size_t>(startPrimitive) + static_cast<size_t>(numPrimitives);
+		if (endPrimitive < static_cast<size_t>(startPrimitive) || (indexStride != 0 && endPrimitive > SIZE_MAX / indexStride))
+			THROW_MPP("Index buffer range upload size overflow.", __LINE__, __FILE__, __func__);
+		size_t newSize = endPrimitive * indexStride;
 
-		if (newSize > mIndexDataSize)
+		if (newSize > mIndexData.size()) THROW_MPP("Index buffer range upload exceeds its CPU data.", __LINE__, __FILE__, __func__);
+		if (mIndexStreamBuffer)
+		{
+			size_t const completeSize = mIndexData.size();
+			mIndexStreamBuffer->upload(completeSize ? mIndexData.data() : nullptr, completeSize, startPrimitive * indexStride, numPrimitives * indexStride);
+			mIBO = mIndexStreamBuffer->getBuffer();
+			mIndexDataSize = max(mIndexDataSize, completeSize);
+		}
+		else if (newSize > mIndexDataSize)
 		{
 			allocateIndexData(startPrimitive + numPrimitives);
 		}
@@ -341,9 +353,26 @@ namespace mpp
 			throw MppException("Unsupported VertexBufferStorageType value.");
 		}
 
-		mIndexDataSize = numPrimitives * mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		auto const indexStride = mesh::Primitive::size(mPrimitiveType) * (mIndexWidth / 8);
+		if (indexStride != 0 && numPrimitives > SIZE_MAX / indexStride) THROW_MPP("Index buffer allocation size overflow.", __LINE__, __FILE__, __func__);
+		mIndexDataSize = numPrimitives * indexStride;
+		if (mIndexDataSize > mIndexData.size()) THROW_MPP("Index buffer allocation exceeds its CPU data.", __LINE__, __FILE__, __func__);
 
-		if (mIndexDataSize == 0)
+		if (mStorageType == mesh::VertexBufferStorageType::Dynamic)
+		{
+			if (!mIndexStreamBuffer)
+			{
+				mIndexStreamBuffer = make_unique<detail::PersistentMappedBuffer>();
+				mIndexStreamBuffer->create(GL_ELEMENT_ARRAY_BUFFER, max<size_t>(1, mIndexDataSize), max<size_t>(1, mIndexWidth / 8), mwRenderSystem->getCaps().streamingGeometry,
+					mIndexDataSize ? mIndexData.data() : nullptr, mIndexDataSize, "Streaming Index Buffer: " + getName());
+			}
+			else
+			{
+				mIndexStreamBuffer->upload(mIndexDataSize ? mIndexData.data() : nullptr, mIndexDataSize, 0, mIndexDataSize);
+			}
+			mIBO = mIndexStreamBuffer->getBuffer();
+		}
+		else if (mIndexDataSize == 0)
 		{
 			GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, nullptr, glStorageType));
 		}
@@ -370,14 +399,18 @@ namespace mpp
 		// Create index buffer
 		if (isIndexed())
 		{
-			GL_CHECK(glGenBuffers(1, &mIBO));
-			GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
+			if (mStorageType != mesh::VertexBufferStorageType::Dynamic)
+			{
+				GL_CHECK(glGenBuffers(1, &mIBO));
+				GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIBO));
 
-			// Set name for debugging
-			string label = "Buffer: " + getName();
-			glObjectLabel(GL_BUFFER, mIBO, -1, label.c_str());
+				// Set name for debugging
+				string label = "Buffer: " + getName();
+				glObjectLabel(GL_BUFFER, mIBO, -1, label.c_str());
+			}
 
 			allocateIndexData(mPrimitiveCount);
+			mConfiguredIndexBuffer = mIBO;
 		}
 
 		// Create vertex buffers
@@ -401,12 +434,18 @@ namespace mpp
 	*/
 	void Mesh::unload()
 	{
+		mConfiguredIndexBuffer = 0;
 		if (mVAO != 0)
 		{
 			GL_CHECK(glDeleteVertexArrays(1, &mVAO));
 			mVAO = 0;
 		}
-		if (mIBO != 0)
+		if (mIndexStreamBuffer)
+		{
+			mIndexStreamBuffer.reset();
+			mIBO = 0;
+		}
+		else if (mIBO != 0)
 		{
 			GL_CHECK(glDeleteBuffers(1, &mIBO));
 			mIBO = 0;
@@ -429,6 +468,16 @@ namespace mpp
 		if (use)
 		{
 			GL_CHECK(glBindVertexArray(mVAO));
+			if (mIndexStreamBuffer)
+			{
+				if (mConfiguredIndexBuffer != mIndexStreamBuffer->getBuffer())
+				{
+					mIndexStreamBuffer->bind();
+					mConfiguredIndexBuffer = mIndexStreamBuffer->getBuffer();
+				}
+				mIndexStreamBuffer->markUsed();
+			}
+			for (auto vertexBuffer : mVertexBuffers) vertexBuffer->prepareForRender();
 		}
 		else
 		{
@@ -440,6 +489,11 @@ namespace mpp
 	 * Send vertex data.
 	 *
 	 */
+	size_t Mesh::getActiveIndexOffset() const
+	{
+		return mIndexStreamBuffer ? mIndexStreamBuffer->getActiveOffset() : 0;
+	}
+
 	void Mesh::render(size_t instanceCount) const
 	{
 		render(instanceCount, 0, mPrimitiveCount);
@@ -454,7 +508,7 @@ namespace mpp
 		if (mIsIndexed)
 		{
 			GLenum indexType = mIndexWidth == 16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-			auto offset = (void*)(intptr_t)(start * mPrimitiveSize * (mIndexWidth >> 3));
+			auto offset = (void*)(intptr_t)(getActiveIndexOffset() + start * mPrimitiveSize * (mIndexWidth >> 3));
 
 			if (instanceCount == 1)
 			{

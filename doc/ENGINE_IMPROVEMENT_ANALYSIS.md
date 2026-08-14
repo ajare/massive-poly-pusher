@@ -218,9 +218,11 @@ Rather than create a second sequencing system, define a post effect as a reusabl
 
 ---
 
-### 9. Implement the advertised streaming-geometry path — medium priority, medium effort
+### 9. Implement the advertised streaming-geometry path — implemented
 
-Capabilities report support for buffer storage/map range, but `VertexBuffer::allocate()` throws whenever streaming is selected:
+**Status:** Completed on `perf/persistent-streaming-buffers`.
+
+Capabilities report support for buffer storage/map range, but `VertexBuffer::allocate()` previously threw whenever streaming was selected:
 
 - `mpp/src/VertexBuffer.cpp:203-208`
 
@@ -232,7 +234,19 @@ The fallback paths either re-upload the entire allocation or use blocking `glMap
 
 Implement a persistently mapped ring buffer using `glBufferStorage`, coherent or explicit flush policy, and fences for segment reuse. Apply the same design to dynamic index and uniform buffers. Provide a `glBufferSubData` fallback for unsupported systems.
 
-This should materially improve batches, debug geometry, particles, and frequently updated UI meshes.
+**Implemented changes**
+
+- Add one internal dynamic-buffer implementation shared by streaming vertex buffers, dynamic index buffers, and uniform buffers.
+- On buffer-storage-capable devices, allocate three aligned immutable segments with `glBufferStorage`, map them once with persistent coherent write access, and rotate away from a segment after it has been exposed to drawing.
+- Insert a fence after the last submitted use of a retired segment and wait only when the ring wraps onto a segment the GPU has not finished consuming.
+- Copy the complete CPU image when rotating segments, so partial vertex, index, and uniform updates cannot expose stale bytes from an older ring generation.
+- Grow immutable storage transactionally when CPU data exceeds its capacity; VAO attribute pointers, element-buffer bindings, draw offsets, and uniform-buffer ranges follow the new buffer/active segment.
+- Use aligned `glBindBufferRange` offsets for uniform segments and include the active segment base in indexed and non-indexed draw addressing.
+- Use allocated dynamic buffers plus `glBufferSubData` updates when persistent mapping is unavailable; no fallback path uses blocking `glMapBuffer` or reallocates storage for ordinary updates.
+- Enable streaming for mutable batch vertex layouts while leaving fixed batch layouts on their static path.
+- Add bounds validation and GPU-context checks for capability/path agreement, immutable storage, uniform range rotation, complete-copy preservation, and partial updates.
+
+This materially improves batches, debug geometry, and frequently updated UI meshes while preserving a portable fallback.
 
 ---
 
@@ -308,7 +322,7 @@ The current validation documentation explicitly notes several of these asset gap
 7. ✅ Cache framebuffer views.
 8. Integrate graph state with a `RenderSystem` state cache.
 9. Cache reflected output masks and unique-program scene validation.
-10. Add persistent mapped streaming buffers.
+10. ✅ Add persistent mapped streaming buffers.
 
 ### Feature growth
 

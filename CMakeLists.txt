@@ -236,6 +236,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ModelStream.cpp
     mpp/src/MppException.cpp
     mpp/src/MppModelStream.cpp
+    mpp/src/PersistentMappedBuffer.cpp
     mpp/src/PostEffect.cpp
     mpp/src/PostEffectStream.cpp
     mpp/src/PrimitiveModelStream.cpp
