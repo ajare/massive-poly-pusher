@@ -7,6 +7,9 @@
 #include "mpp/RenderGraphScenePass.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderPipeline.h"
+#include "mpp/ResourceManager.h"
+#include "mpp/PostEffectMaterial.h"
+#include "mpp/MppException.h"
 
 namespace mpp
 {
@@ -52,49 +55,63 @@ namespace mpp
 			return found != bindings.end() ? dynamic_cast<Texture*>(context.getImage(found->image).get()) : nullptr;
 		}
 
-		class BloomExtractPass final : public RenderGraphScenePass
+		// The one generic post-effect-chain pass type: a fullscreen quad shaded by
+		// whichever PostEffectMaterial the authored pass names via programResource,
+		// with sampler inputs bound by name (RenderGraphExecutionContext's existing
+		// generic mechanism) and default uniforms taken from the material,
+		// overridden by any graph-authored/executor-overridden parameters. Adding a
+		// new post effect is therefore a PostEffectMaterial + shader, never a new
+		// pass class -- this replaced the old bespoke BloomExtractPass/BloomBlurPass/
+		// BloomCompositePass/ToneMapPresentPass classes (see doc/POST_EFFECT_CHAIN_IMPLEMENTATION_PLAN.md).
+		class FullscreenEffectPass final : public RenderGraphScenePass
 		{
 		public:
-			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->bloom.enabled && context.getFrame().pipelineOptions->graphPasses.bloom) context.getFrame().renderSystem->renderBloomExtract(input(context, 0), parameter(context, "THRESHOLD", 1.0f)); }
-		};
-		// Deprecated fallback for graphs authored before blur passes declared an
-		// ITERATION parameter. Renaming such a pass changes how many blur levels the
-		// blurPasses option enables, which is why the parameter replaced it.
-		uint32_t trailingPassIndex(std::string const& name)
-		{
-			auto first=name.find_last_not_of("0123456789");if(first==name.size()-1)return 0;try{return (uint32_t)std::stoul(name.substr(first+1));}catch(...){return 0;}
-		}
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				auto const& pass = context.getPass();
+				Texture* primary = input(context, 0);
+				bool const enabled = integerParameter(context, "ENABLED", 1) != 0;
+				if (!enabled || pass.programResource.empty())
+				{
+					// Copy-through: a disabled effect must not break the chain for
+					// whatever reads its output next (matches the existing bloom-blur
+					// disabled behaviour this pass generalizes).
+					frame.renderSystem->renderFullscreenQuad(primary, BlendMode::One, BlendMode::Zero);
+					return;
+				}
+				// A PbrPipelineDocument-authored pass can only name its own
+				// LocalResources by their bare authored name -- the document has no
+				// way to predict the dynamically-generated root
+				// (RenderPipelineOptions::resourceRoot) they end up registered
+				// under. Try that qualified name first, matching
+				// PbrPipelineRuntime::resolve()'s exact fallback order, before
+				// falling back to a plain global lookup (DemoSuite's XmlGraphPBR
+				// declares its materials as global names and never sets
+				// resourceRoot, so it always takes this fallback).
+				auto* resourceMgr = frame.renderSystem->getResourceManager();
+				ResourcePtr materialResource;
+				if (frame.pipelineOptions && !frame.pipelineOptions->resourceRoot.empty())
+					materialResource = resourceMgr->getResource(frame.pipelineOptions->resourceRoot + "/" + pass.programResource, true);
+				if (!materialResource) materialResource = resourceMgr->getResource(pass.programResource);
+				materialResource->load();
+				auto* material = dynamic_cast<PostEffectMaterial*>(materialResource.get());
+				if (!material)
+					THROW_MPP("FullscreenEffectPass '" + pass.name + "' programResource '" + pass.programResource + "' is not a PostEffectMaterial.", __LINE__, __FILE__, __func__);
 
-		class BloomBlurPass final : public RenderGraphScenePass
-		{
-			bool mHorizontal;
-		public:
-			explicit BloomBlurPass(bool horizontal) : mHorizontal(horizontal) {}
-			void execute(RenderGraphExecutionContext const& context) override
-			{
-				auto const& frame = context.getFrame();
-				auto const iteration = bloomBlurIteration(context.getParameters(), context.getPass().name);
-				bool enabled = frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom && iteration < frame.pipelineOptions->bloom.blurPasses;
-				if (enabled) frame.renderSystem->renderBloomBlur(input(context, 0), mHorizontal ? glm::vec2(1, 0) : glm::vec2(0, 1));
-				else frame.renderSystem->renderFullscreenQuad(input(context, 0), BlendMode::One, BlendMode::Zero);
+				std::vector<std::pair<std::string, Texture*>> samplers;
+				for (auto const& binding : pass.samplerBindings)
+					samplers.push_back({ binding.sampler, dynamic_cast<Texture*>(context.getImage(binding.image).get()) });
+
+				// Material defaults, then per-pass overrides on top -- the same layering
+				// setPostEffectParameter/setPassParameterOverrides already give every
+				// other graph pass.
+				UniformCollection parameters = material->getUniforms();
+				for (auto const& [name, value] : context.getParameters().getUniformData())
+					parameters.setUniform(name, value.type, value.count, value.numElements, value.data);
+
+				frame.renderSystem->renderGraphFullscreen(material->getProgram(), samplers, parameters);
 			}
-		};
-		class BloomCompositePass final : public RenderGraphScenePass
-		{
-		public:
-			void execute(RenderGraphExecutionContext const& context) override
-			{
-				auto const& frame = context.getFrame();
-				if (frame.pipelineOptions->bloom.enabled && frame.pipelineOptions->graphPasses.bloom)
-					frame.renderSystem->renderBloomCombine(input(context, "SCENE"), input(context, "BLOOM"), parameter(context, "INTENSITY", 0.15f));
-				else
-					frame.renderSystem->renderFullscreenQuad(input(context, "SCENE"), BlendMode::One, BlendMode::Zero);
-			}
-		};
-		class ToneMapPresentPass final : public RenderGraphScenePass
-		{
-		public:
-			void execute(RenderGraphExecutionContext const& context) override { if (context.getFrame().pipelineOptions->graphPasses.presentation) context.getFrame().renderSystem->renderToneMappedFullscreenQuad(input(context, 0), parameter(context, "EXPOSURE", 1.0f), integerParameter(context, "TONE_MAP_OPERATOR", 1) != 0); }
 		};
 
 		std::vector<GraphImageFormat> colourFormats()
@@ -136,51 +153,20 @@ namespace mpp
 		};
 	}
 
-	uint32_t bloomBlurIteration(UniformCollection const& parameters, std::string const& passName)
-	{
-		auto const& values = parameters.getUniformData();
-		auto const found = values.find("ITERATION");
-		if (found != values.end() && found->second.size >= sizeof(int32_t))
-		{
-			auto const authored = *reinterpret_cast<int32_t const*>(found->second.data);
-			if (authored >= 0) return (uint32_t)authored;
-		}
-		return trailingPassIndex(passName);
-	}
-
 	void registerBuiltInRenderGraphPasses(RenderGraphPassFactoryRegistry& registry)
 	{
 		auto shadow = metadata("Shadow Depth", "Shadows", GraphPassType::Scene);
 		shadow.outputs.push_back({ "Depth", true, true, depthFormats() });
 		registry.registerScenePassFactory("MPP.ShadowDepth", [] { return std::make_unique<ShadowDepthPass>(); }, shadow);
 
-		auto extract = metadata("Bloom Extract", "Bloom", GraphPassType::Fullscreen);
-		extract.inputs.push_back({ "Scene HDR", "TEX1", true, colourFormats(), {} });
-		extract.outputs.push_back({ "Bloom", false, true, colourFormats() });
-		extract.parameters.push_back({ "THRESHOLD", program::GLSLType::Float, 1, 1, false, true, 0.0, 100.0, "exposure" });
-		registry.registerScenePassFactory("MPP.BloomExtract", [] { return std::make_unique<BloomExtractPass>(); }, extract);
-
-		auto blur = metadata("Bloom Blur Horizontal", "Bloom", GraphPassType::Fullscreen);
-		blur.inputs.push_back({ "Input", "TEX1", true, colourFormats(), {} }); blur.outputs.push_back({ "Output", false, true, colourFormats() });
-		// Which blur level this pass is. Compared against the bloom blurPasses option
-		// to decide whether the pass blurs or just copies through.
-		blur.parameters.push_back({ "ITERATION", program::GLSLType::Int, 1, 1, false, true, 0.0, 15.0, "count" });
-		blur.nameDerivedFallbackParameter = "ITERATION";
-		registry.registerScenePassFactory("MPP.BloomBlurHorizontal", [] { return std::make_unique<BloomBlurPass>(true); }, blur);
-		blur.displayName = "Bloom Blur Vertical";
-		registry.registerScenePassFactory("MPP.BloomBlurVertical", [] { return std::make_unique<BloomBlurPass>(false); }, blur);
-
-		auto composite = metadata("Bloom Composite", "Bloom", GraphPassType::Fullscreen);
-		composite.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} }); composite.inputs.push_back({ "Bloom", "BLOOM", true, colourFormats(), {} });
-		composite.outputs.push_back({ "Composite", false, true, colourFormats() });
-		composite.parameters.push_back({ "INTENSITY", program::GLSLType::Float, 1, 1, false, true, 0.0, 10.0, "intensity" });
-		registry.registerScenePassFactory("MPP.BloomComposite", [] { return std::make_unique<BloomCompositePass>(); }, composite);
-
-		auto present = metadata("Tone Map Presentation", "Presentation", GraphPassType::Present);
-		present.inputs.push_back({ "HDR Input", "TEX1", true, colourFormats(), {} }); present.outputs.push_back({ "Presentation", false, true, colourFormats() });
-		present.parameters.push_back({ "EXPOSURE", program::GLSLType::Float, 1, 1, false, true, 0.0, 100.0, "exposure" });
-		present.parameters.push_back({ "TONE_MAP_OPERATOR", program::GLSLType::Int, 1, 1, false, true, 0.0, 1.0, "enum" });
-		registry.registerScenePassFactory("MPP.ToneMapPresent", [] { return std::make_unique<ToneMapPresentPass>(); }, present);
+		auto fullscreenEffect = metadata("Post Effect", "Post Effects", GraphPassType::Fullscreen);
+		fullscreenEffect.inputs.push_back({ "Input", "TEX0", true, colourFormats(), {} });
+		fullscreenEffect.outputs.push_back({ "Output", false, true, colourFormats() });
+		fullscreenEffect.parameters.push_back({ "ENABLED", program::GLSLType::Int, 1, 1, false, false, 0.0, 1.0, "bool" });
+		fullscreenEffect.acceptsProgram = true;
+		fullscreenEffect.allowAdditionalInputs = true;
+		fullscreenEffect.allowAdditionalParameters = true;
+		registry.registerScenePassFactory("MPP.FullscreenEffect", [] { return std::make_unique<FullscreenEffectPass>(); }, fullscreenEffect);
 
 		auto scene = metadata("PBR Scene", "Scene", GraphPassType::Scene);
 		scene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });

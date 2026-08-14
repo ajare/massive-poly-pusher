@@ -564,6 +564,7 @@ namespace mpp
 				RenderGraph benchmarkGraph;
 				GraphImageDesc benchmarkImageDesc;
 				benchmarkImageDesc.absoluteSize = { 1, 1 };
+				benchmarkImageDesc.usage = GraphImageUsage::ColourAttachment;
 				std::vector<GraphPassHandle> benchmarkPasses;
 				for (size_t index = 0; index < passCount; ++index)
 				{

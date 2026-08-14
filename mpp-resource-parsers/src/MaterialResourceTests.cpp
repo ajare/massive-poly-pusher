@@ -131,7 +131,9 @@ namespace mpp::resource_parsers
 			pbr->setExtensionUniform("PBR_EXT_TEST", glm::vec2(2.0f, 3.0f));
 			serializer.serialize(pbr, pbrBin);
 			auto bytes = readBytes(pbrBin);
-			if (bytes.size() < 4 || std::memcmp(bytes.data(), "RSE3", 4) != 0) return fail("new resource stream is not versioned RSE3");
+			// RSE4 added each texture's colour space to RSE3's layout; only RSE4 is
+			// written now (see ResourceStreamSerializer::serialize's own comment).
+			if (bytes.size() < 4 || std::memcmp(bytes.data(), "RSE4", 4) != 0) return fail("new resource stream is not versioned RSE4");
 			if (std::search(bytes.begin(), bytes.end(), "PbrMaterial", "PbrMaterial" + 11) == bytes.end()) return fail("PbrMaterial binary tag is missing");
 			if (std::search(bytes.begin(), bytes.end(), "\x08\x00\x00\x00Material", "\x08\x00\x00\x00Material" + 12) != bytes.end()) return fail("new serializer emitted a legacy Material tag");
 			auto restoredPbrBase = serializer.deserialize(pbrBin);

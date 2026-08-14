@@ -237,8 +237,9 @@ add_library(MassivePolyPusher SHARED
     mpp/src/MppException.cpp
     mpp/src/MppModelStream.cpp
     mpp/src/PersistentMappedBuffer.cpp
-    mpp/src/PostEffect.cpp
-    mpp/src/PostEffectStream.cpp
+    mpp/src/PostEffectMaterial.cpp
+    mpp/src/PostEffectMaterialStream.cpp
+    mpp/src/ProgrammaticPostEffectMaterialStream.cpp
     mpp/src/PrimitiveModelStream.cpp
     mpp/src/Profiler.cpp
     mpp/src/Program.cpp
@@ -315,6 +316,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/FileBasicMaterialStream.cpp
     mpp-resource-parsers/src/FileMaterialStream.cpp
     mpp-resource-parsers/src/FilePbrMaterialStream.cpp
+    mpp-resource-parsers/src/FilePostEffectMaterialStream.cpp
     mpp-resource-parsers/src/FileGltfPbrMaterialStream.cpp
     mpp-resource-parsers/src/GltfPbrMaterialLoader.cpp
     mpp-resource-parsers/src/FilePbrPipelineStream.cpp

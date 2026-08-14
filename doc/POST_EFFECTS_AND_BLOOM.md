@@ -1,98 +1,128 @@
 # Post Effects and Bloom
 
-## Current bloom implementation
+## Overview
 
-Bloom is a pipeline-owned image-space effect. It runs after every 3D material has rendered into the pipeline scene target, so it works for PBR, legacy forward, and custom materials without a material texture slot or shader change.
+Post effects run after the 3D scene and before UI as a chain of generic
+fullscreen passes. Adding a new effect (or changing bloom's shading) requires
+a shader and a `PostEffectMaterial` resource, never a new C++ pass class. This
+replaced the old bespoke `BloomExtractPass`/`BloomBlurPass`/`BloomCompositePass`/
+`ToneMapPresentPass` classes and the unused `PostEffect`/`PostEffectStream`
+stub they sat next to; see `doc/POST_EFFECT_CHAIN_IMPLEMENTATION_PLAN.md` for
+the full design history.
 
-`PbrForward` applies bloom to its linear RGBA16F scene target **before** ACES/Reinhard tone mapping. This is the intended HDR workflow: bright emissive/direct-light values contribute to bloom before display compression.
+There are two authoring surfaces:
 
-`LegacyForward` uses the same passes on its completed RGBA8 scene target. It is supported for compatibility and visual consistency, but legacy surface shaders have already applied their existing gamma behaviour, so its threshold is not physically comparable to PBR HDR bloom.
+- **Raw `.rendergraph.xml`** (e.g. DemoSuite's `PbrPipeline.rendergraph.xml`,
+  loaded as a `RenderGraphTemplate`) — effect materials are declared
+  programmatically in C++ (`ModelScene.cpp` wraps the engine's built-in
+  bloom/tonemap `Program`s in `ProgrammaticPostEffectMaterialStream`
+  instances with global resource names) and referenced by name from graph
+  passes.
+- **`PbrPipelineDocument`/`.pipeline.xml`** (used by `PackageScene` and
+  pipeline-editor, e.g. `resources/shared/pbr/templates/Full.pipeline.xml`,
+  `resources/shared/preview.pipeline.xml`) — effect materials are authored
+  directly as `<PostEffectMaterial>` `LocalResources` entries, parsed by
+  `FilePostEffectMaterialStream`.
 
-## Enable bloom
+Both surfaces still hand-author bloom as an explicit sequence of chain
+entries (extract → N horizontal/vertical blur pairs → composite → tonemap) in
+`<Passes>`, rather than going through `PbrPipelineDocument::buildPostEffectChain()`
+(the dynamic auto-wiring builder from Milestone 2) — no document currently
+populates `PbrPipelineDocument::postEffects.entries`. `buildPostEffectChain()`
+is available but not yet the operative path for any shipped content.
 
-```cpp
-mpp::BloomOptions bloom;
-bloom.enabled = true;
-bloom.threshold = 0.7f;
-bloom.intensity = 0.2f;
-bloom.blurPasses = 2;
+`LegacyForward` and `GraphPbrForward` pipeline modes keep the original
+hard-coded fixed-pass bloom (`RenderPipeline::ensureBloomTargets()` and the
+`BloomGraphStep` sequence in `RenderPipeline.cpp`) untouched — this was an
+explicit non-goal of the migration, not an oversight. `BloomOptions`/
+`RenderPipelineOptions::bloom` still drive that path exactly as before.
 
-mpp::RenderPipelineOptions options;
-options.mode = mpp::RenderPipelineMode::PbrForward; // LegacyForward also works
-options.bloom = bloom;
-renderSystem->getOrCreateRenderPipeline("PBR", options);
-```
+## The generic pass and material
 
-Update a live pipeline with:
+`FullscreenEffectPass` (`mpp/src/RenderGraphBuiltInPasses.cpp`, factory name
+`MPP.FullscreenEffect`) is the one pass type behind every migrated effect. At
+execute time it:
 
-```cpp
-pipeline->setBloomOptions(bloom);
-```
+1. Resolves its `programResource` to a `PostEffectMaterial` — trying
+   `RenderPipelineOptions::resourceRoot + "/" + programResource` first (for
+   `PbrPipelineDocument`-authored materials, which only ever exist under a
+   dynamically-generated per-rebuild root the document can't predict itself),
+   then falling back to a plain global lookup (DemoSuite's path, which never
+   sets `resourceRoot`).
+2. Binds every sampler the pass authored (`GraphPassInfo::samplerBindings`) by
+   name — already-generic machinery, unrelated to this pass type specifically.
+3. Layers the pass's graph-authored/executor-overridden parameters on top of
+   the material's default `UniformCollection`.
+4. Renders via `RenderSystem::renderGraphFullscreen(...)`.
+5. If disabled (`ENABLED` parameter, default `1`) or `programResource` is
+   empty, blits its primary input straight through instead — an effect
+   turning off must never break the chain for whatever reads its output next.
 
-DemoSuite exposes **Bloom Enabled**, threshold, intensity, and blur-pass controls. The same options are applied to its `PBR` and `Default` pipelines.
+`PostEffectMaterial` (`mpp/include/mpp/PostEffectMaterial.h`) wraps a
+`Program` resource plus declared sampler-slot names and default uniform
+values, validated against the compiled program at creation. It is
+deliberately not a `Material` subclass — `Material` carries surface-only
+concepts (`ShadingModel`, double-sidedness, transparency) that don't apply to
+a fullscreen quad.
 
-## Bloom input and blur textures
+## Runtime tuning
 
-Bloom does not use a ModelSpec or material-authored texture as its blur input. The completed pipeline scene target is sampled by the pipeline-owned bright-pass shader, which creates the texture that the blur passes consume:
+`RenderPipeline::setPostEffectEnabled(passName, bool)` and
+`setPostEffectParameter(passName, paramName, float)` replace `BloomOptions`
+for chain-authored effects — DemoSuite's Bloom UI (`ModelScene.cpp`) calls
+these directly instead of `setBloomOptions()` for its `XmlGraphPBR` pipeline.
+`setBloomOptions()`/`RenderPipelineOptions::bloom` remain load-bearing only
+for `LegacyForward`/`GraphPbrForward`.
 
-```text
-scene target
-  -> BloomExtract target   // thresholded bright pixels
-  -> BloomPing target      // horizontal blur
-  -> BloomPong target      // vertical blur
-  -> BloomComposite target // scene + blurred bloom
-```
+For `PbrPipelineDocument`-authored bloom, `PbrPipelineDocument::setBloomEnabled()`
+is still the mechanism pipeline-editor calls (its Bloom toggle mutates the
+document, which gets rebuilt) — it now recognizes bloom/tonemap passes under
+either the legacy `callbackFactory` scheme or the migrated
+`MPP.FullscreenEffect` + `programResource` scheme (matched by a
+`PostEffect.Bloom*`/`PostEffect.ToneMap` naming convention). This is an
+explicit migration bridge, not a permanent design: it exists only because
+authored documents still declare bloom as a fixed pass sequence rather than
+`postEffects.entries`, and it goes away once they don't.
 
-`RenderPipeline::ensureBloomTargets()` allocates these resize-aware RGBA16F render textures through `RenderSystem::createRenderTexture()`. `BloomExtract` is the texture that defines what is rendered into the blur targets: `FragmentShaderBloomExtractTemplate` samples the completed scene target and retains colour above `BloomOptions::threshold`.
+## Effect sequence (bloom's shape)
 
-To change what blooms, change or replace the extract shader. For example, a future effect graph could extract emissive-only output, a dedicated bloom mask attachment, or an application-defined bright-pass rule. Material textures are not bound directly to the blur pass; they first contribute to the rendered scene colour.
-
-## Effect sequence
-
-When enabled, the pipeline allocates four resize-aware RGBA16F intermediate targets matching the scene target:
-
-1. **Extract** — subtracts the brightness threshold from the scene colour.
-2. **Horizontal blur** — a fixed five-sample Gaussian approximation.
-3. **Vertical blur** — completes one separable blur pass.
-4. **Composite** — adds blurred extraction times intensity back to the original scene.
-
-`blurPasses` repeats horizontal/vertical blur pairs. The final composite is tone mapped for PBR or presented through the existing legacy fullscreen path.
+Bloom is authored as: extract (bright-pass threshold) → repeated
+horizontal/vertical blur pairs (ping-pong) → composite (add blurred bloom
+back onto the scene) → tonemap. This is unchanged from before the migration;
+what changed is that each stage is now a `PostEffectMaterial` + generic pass
+instead of a bespoke C++ class. See `resources/shared/pbr/templates/Full.pipeline.xml`
+for a complete authored example (five `PostEffectMaterial` local resources +
+eleven `MPP.FullscreenEffect`/`present`-type passes).
 
 ## Tuning
 
-- **Threshold:** lower values bloom more of the image; use values around `0.7–1.5` for the current DemoSuite PBR preview.
-- **Intensity:** controls only the added bloom contribution. Start around `0.1–0.3`.
-- **Blur passes:** one pass is inexpensive; two is the DemoSuite default; higher values broaden the glow and increase fullscreen work.
-- **PBR exposure:** adjust exposure independently. Bloom is computed before PBR tone mapping, so exposure changes final display brightness without changing extraction values.
-
-## Required post-effect-system extensions
-
-The existing `PostEffect` resource/stream is only a stub. Bloom is deliberately implemented as the first built-in pipeline effect while the general system is designed. A reusable post-effect graph needs the following extensions.
-
-| Extension | Purpose | Result |
-|---|---|---|
-| Explicit pass interface | Declare named colour/depth inputs, outputs, format, scale, filtering, and load/store behaviour. | Effects no longer rely on implicit `RenderTarget` ownership or attachment indexes. |
-| Executable effect contract | Add `resize()`, `render(context, inputs, outputs)`, and capability validation to `PostEffect`. | `RenderPipeline` can execute a heterogeneous ordered effect chain. |
-| Transient target allocator | Allocate/reuse intermediate textures by descriptor and lifetime. | Ping-pong blur, downsample chains, and future effects avoid persistent one-off targets. |
-| Source/output colour-space metadata | Mark linear HDR, linear LDR, and encoded display images. | Effects can enforce that bloom, exposure, and colour grading run in the correct space. |
-| Input binding abstraction | Bind colour attachment, depth texture, or pipeline frame texture by semantic name. | Effects can consume scene depth, normals, shadow/debug textures, or prior effect output safely. |
-| Per-effect shader/material resources | Give an effect a fullscreen program, uniforms, sampler policy, and resource lifecycle. | XML/programmatic effects can replace hard-coded built-ins. |
-| Ordered composition point | Define pre-tone-map HDR, post-tone-map LDR, and post-UI stages. | Bloom remains HDR-correct; vignette, film grain, and UI effects can choose their intended stage. |
-| Resize and failure handling | Recreate only affected targets, validate framebuffers, and disable an effect with diagnostics if unsupported. | Stable window resize/device-capability behaviour. |
-| Profiling/debug support | Track pass timings, attachment formats, target sizes, and optional image previews. | Makes blur cost, aliasing, and bad inputs diagnosable. |
-| Graph validation | Detect read/write feedback, incompatible dimensions/formats, missing inputs, and sampler-limit overflow. | Prevents undefined OpenGL feedback loops and makes custom effect errors actionable. |
-
-## Recommended next effects
-
-1. **Downsampled bloom pyramid** — reduces blur cost and gives wider, smoother bloom than repeatedly blurring full resolution.
-2. **Exposure adaptation and colour grading** — operate in the same linear HDR pre-tone-map stage as PBR bloom.
-3. **Depth-aware effects** — SSAO, fog, and outlines require the input-binding and depth-format contracts above.
-4. **Post-tone-map effects** — vignette, grain, chromatic aberration, and display-space FXAA should run after tone mapping but before UI, or in an explicitly selected stage.
-5. **Resource-authored effects** — complete `PostEffectStream` parsing/serialization once the runtime contract is established by built-in effects.
+- **Threshold:** lower values bloom more of the image; `0.7` is the shipped
+  default.
+- **Intensity:** controls only the added bloom contribution; `0.2` is the
+  shipped default.
+- **Blur passes:** each pre-authored horizontal/vertical pair is toggled by
+  its own `ENABLED` parameter — DemoSuite's UI (`ModelScene.cpp`) computes
+  which pairs are active from the "Bloom Blur Passes" slider and calls
+  `setPostEffectEnabled` per pair.
+- **PBR exposure:** the tonemap chain entry's `EXPOSURE`/`TONE_MAP_OPERATOR`
+  parameters are independent of bloom's threshold/intensity.
 
 ## Current limitations
 
-- Bloom targets are full resolution and RGBA16F; there is no downsample pyramid or transient target reuse yet.
-- The blur is deterministic and fixed-kernel; no anamorphic, dirt-mask, lens-flare, or temporal bloom options exist.
-- Legacy bloom operates on its legacy LDR/gamma-oriented output and is therefore an aesthetic compatibility feature, not HDR-physical bloom.
-- The generic `PostEffect` class remains unimplemented; `RenderPipeline::addPostEffect()` does not yet execute resource-authored effects.
+- Bloom's chain entries are still hand-authored per document (extract + N
+  blur-pair instances + composite + tonemap), not generated by
+  `PbrPipelineDocument::buildPostEffectChain()`'s dynamic auto-wiring — that
+  builder exists (Milestone 2) but nothing populates `postEffects.entries`
+  yet.
+- No downsample pyramid or transient target reuse beyond what the render
+  graph's existing pooled allocator already gives every pass; bloom targets
+  are still full resolution.
+- pipeline-editor can create/select `PostEffectMaterial` local resources, but
+  has no detail-panel editor for their fields yet (Program ref picker,
+  sampler-slot list, uniform list) — only the generic name field. There is
+  also no equivalent of the old bespoke "add a bloom chain" wizard for the
+  generic scheme; authoring a full chain today means adding each
+  `PostEffectMaterial` and pass by hand.
+- `LegacyForward`/`GraphPbrForward` bloom remains a separate, untouched
+  hard-coded implementation — an accepted, explicit scope boundary, not
+  planned for migration.
