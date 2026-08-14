@@ -1,18 +1,17 @@
 #include <filesystem>
 #include <memory>
 
-#include "utils/XmlReader.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 #include "mpp/resource-parsers/PbrPipelineDocumentLoader.h"
 #include "mpp/resource-parsers/PbrPipelineParser.h"
 #include "mpp/resource-parsers/RenderGraphParser.h"
+#include "StructuredDataAdapter.h"
 
 namespace mpp::resource_parsers
 {
 	PbrPipelineDocument PbrPipelineDocumentLoader::fromFile(std::string const& filepath)
 	{
-		std::unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));
-		auto root = reader->readTree().getName();
+		auto root = detail::readDocumentRoot(filepath).getName();
 		if (root == "PbrPipeline") return PbrPipelineParser::fromFile(filepath);
 		if (root == "RenderGraph")
 		{

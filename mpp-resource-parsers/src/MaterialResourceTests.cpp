@@ -91,16 +91,28 @@ namespace mpp::resource_parsers
 		auto const legacyPbrBin = root.string() + "_legacy_pbr.bin";
 		auto const legacyMultiBin = root.string() + "_legacy_multi.bin";
 		auto const hdrPipelineXml = root.string() + "_hdr_ibl.pipeline.xml";
+		auto const hdrPipelineYaml = root.string() + "_hdr_ibl.pipeline.yaml";
+		auto const basicYaml = root.string() + "_basic.yaml";
+		auto const pbrYaml = root.string() + "_pbr.yaml";
 		try
 		{
 			PbrPipelineDocument hdrPipeline; hdrPipeline.sourcePath = hdrPipelineXml; hdrPipeline.graph = std::make_shared<RenderGraph>(); hdrPipeline.environment.binding = "HdrEnvironment"; hdrPipeline.environment.hdrEquirectangular = "environments/studio.exr"; hdrPipeline.environment.environmentResolution = 256; hdrPipeline.environment.irradianceResolution = 16; hdrPipeline.environment.prefilterResolution = 64; PbrPipelineSerializer::toFile(hdrPipeline, hdrPipelineXml); auto parsedHdrPipeline = PbrPipelineParser::fromFile(hdrPipelineXml); if (parsedHdrPipeline.environment.hdrEquirectangular != "environments/studio.exr" || parsedHdrPipeline.environment.environmentResolution != 256 || parsedHdrPipeline.environment.irradianceResolution != 16 || parsedHdrPipeline.environment.prefilterResolution != 64) return fail("HDR IBL pipeline environment did not survive serializer/parser round trip");
+			// Same document, .yaml extension: proves the format is a drop-in
+			// replacement for the generic Serializer/FileStream dispatch, not just
+			// something XmlSerializer happens to accept.
+			PbrPipelineSerializer::toFile(hdrPipeline, hdrPipelineYaml); auto parsedHdrPipelineYaml = PbrPipelineParser::fromFile(hdrPipelineYaml); if (parsedHdrPipelineYaml.environment.hdrEquirectangular != "environments/studio.exr" || parsedHdrPipelineYaml.environment.environmentResolution != 256 || parsedHdrPipelineYaml.environment.irradianceResolution != 16 || parsedHdrPipelineYaml.environment.prefilterResolution != 64) return fail("HDR IBL pipeline environment did not survive YAML serializer/parser round trip");
 			{ std::ofstream file(basicXml); file << "<BasicMaterial><name>Test.Basic</name></BasicMaterial>"; }
 			{ std::ofstream file(pbrXml); file << "<PbrMaterial><name>Test.Pbr</name><Surface><metallicFactor>0.25</metallicFactor><roughnessFactor>0.75</roughnessFactor></Surface></PbrMaterial>"; }
+			{ std::ofstream file(basicYaml); file << "BasicMaterial:\n  name: Test.Basic\n"; }
+			{ std::ofstream file(pbrYaml); file << "PbrMaterial:\n  name: Test.Pbr\n  Surface:\n    metallicFactor: 0.25\n    roughnessFactor: 0.75\n"; }
 			{ std::ofstream file(invalidPbrXml); file << "<PbrMaterial><name>Test.InvalidPbr</name><Surface><roughnessFactor>1.5</roughnessFactor></Surface></PbrMaterial>"; }
 			{ std::ofstream file(embeddedVariantsXml); file << "<Texture><target>2D</target><filename>a.png</filename><Quality><name>Low</name><target>2D</target><filename>b.png</filename></Quality></Texture>"; }
 			auto basicFile = FileMaterialStream::fromFile(resourceMgr, basicXml);
 			auto pbrFile = FileMaterialStream::fromFile(resourceMgr, pbrXml);
 			if (basicFile->getType() != "BasicMaterial" || pbrFile->getType() != "PbrMaterial") return fail("material XML root dispatch selected the wrong stream type");
+			auto basicYamlFile = FileMaterialStream::fromFile(resourceMgr, basicYaml);
+			auto pbrYamlFile = FileMaterialStream::fromFile(resourceMgr, pbrYaml);
+			if (basicYamlFile->getType() != "BasicMaterial" || pbrYamlFile->getType() != "PbrMaterial") return fail("material YAML root dispatch selected the wrong stream type");
 			bool rejected = false;
 			try { FileBasicMaterialStream wrong(resourceMgr, pbrXml); wrong.load(); } catch (...) { rejected = true; }
 			if (!rejected) return fail("BasicMaterial parser accepted a PbrMaterial root");
@@ -177,8 +189,9 @@ namespace mpp::resource_parsers
 		}
 		catch (std::exception const& exception) { return fail(exception.what()); }
 		std::filesystem::remove(basicXml); std::filesystem::remove(pbrXml); std::filesystem::remove(invalidPbrXml); std::filesystem::remove(embeddedVariantsXml);
+		std::filesystem::remove(basicYaml); std::filesystem::remove(pbrYaml);
 		std::filesystem::remove(basicBin); std::filesystem::remove(pbrBin);
-		std::filesystem::remove(version2BasicBin); std::filesystem::remove(legacyBasicBin); std::filesystem::remove(legacyPbrBin); std::filesystem::remove(legacyMultiBin); std::filesystem::remove(hdrPipelineXml);
+		std::filesystem::remove(version2BasicBin); std::filesystem::remove(legacyBasicBin); std::filesystem::remove(legacyPbrBin); std::filesystem::remove(legacyMultiBin); std::filesystem::remove(hdrPipelineXml); std::filesystem::remove(hdrPipelineYaml);
 		std::filesystem::remove(root, rootError);
 		return true;
 	}

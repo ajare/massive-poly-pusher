@@ -4,8 +4,9 @@
 #include <cstring>
 #include <sstream>
 
-#include "utils/XmlWriter.h"
+#include "mpp/resource-parsers/DocumentWriter.h"
 #include "mpp/resource-parsers/RenderGraphSerializer.h"
+#include "mpp/resource-parsers/StructuredDataWriteNode.h"
 
 namespace mpp::resource_parsers
 {
@@ -94,7 +95,7 @@ namespace mpp::resource_parsers
 		}
 	}
 
-	void RenderGraphSerializer::toNode(RenderGraph const& graph, utils::XmlWriteNode* root)
+	void RenderGraphSerializer::toNode(RenderGraph const& graph, StructuredDataWriteNode* root)
 	{
 		if (!root) return;
 		auto images = root->createChild("Images");
@@ -197,8 +198,8 @@ namespace mpp::resource_parsers
 
 	void RenderGraphSerializer::toFile(RenderGraph const& graph, std::string const& filepath)
 	{
-		utils::XmlWriter writer("RenderGraph");
-		toNode(graph, writer.getRootNode());
-		writer.write(filepath);
+		StructuredDataWriteNode root("RenderGraph");
+		toNode(graph, &root);
+		detail::writeDocument(root.toStructuredData(), filepath);
 	}
 }

@@ -120,7 +120,7 @@ namespace mpp::app
 		// reject path traversal before an archive reaches a workspace loader.
 		auto zipSource = root / "zip-source.bin"; atomicWriteText(document, "second"); atomicWriteText(zipSource, "package payload");
 		auto archive = root / "workspace.mpppackage", extracted = root / "extracted", manifestFile=root / "manifest.xml";
-		writePackageManifest(manifestFile);auto manifest=readPackageManifest(manifestFile);if(manifest.pipeline!="pipeline.xml"||manifest.scene!="scene.xml")return fail("package manifest round trip failed");
+		writePackageManifest(manifestFile);auto manifest=readPackageManifest(manifestFile);if(manifest.pipeline!="pipeline.yaml"||manifest.scene!="scene.yaml")return fail("package manifest round trip failed");
 		ZipArchive::write(archive, { { "manifest.xml", document }, { "assets/payload.bin", zipSource } });
 		ZipArchive::extract(archive, extracted);
 		// Replacing an existing export must be atomic on Windows as well.

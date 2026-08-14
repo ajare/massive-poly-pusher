@@ -1,7 +1,6 @@
 #include <memory>
 #include <set>
 #include <sstream>
-#include "utils/XmlReader.h"
 #include "utils/StringUtils.h"
 #include "mpp/resource-parsers/MppResourceParsersException.h"
 #include "mpp/resource-parsers/SceneParser.h"
@@ -37,7 +36,7 @@ namespace mpp::resource_parsers
 
 	SceneDocument SceneParser::fromFile(string const& filepath)
 	{
-		unique_ptr<utils::XmlReader> reader(utils::XmlReader::fromFile(filepath));auto data=detail::importStructuredData(reader->readTree());
+		auto data=detail::readDocumentRoot(filepath);
 		if(data.getName()!="Scene")THROW_MPP_RESOURCE_PARSERS("Scene root must be Scene: "+filepath,__LINE__,__FILE__,__func__);
 		rejectUnknown(data,{"version","name","environmentBinding","Camera","Layers","Models","Lights"},"Scene");
 		SceneDocument document;document.sourcePath=filepath;document.version=data.hasEntry("version")?utils::StringUtils::parseUInt(data.getEntry("version").getValue()):1;document.name=data.hasEntry("name")?data.getEntry("name").getValue():"";

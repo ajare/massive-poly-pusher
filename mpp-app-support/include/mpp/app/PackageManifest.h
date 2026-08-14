@@ -9,8 +9,8 @@ namespace mpp::app
 	{
 		static constexpr uint32_t CurrentVersion{1};
 		uint32_t version{CurrentVersion};
-		std::string pipeline{"pipeline.xml"};
-		std::string scene{"scene.xml"};
+		std::string pipeline{"pipeline.yaml"};
+		std::string scene{"scene.yaml"};
 	};
 
 	// Strict package-manifest I/O. Paths are package-relative and may not escape

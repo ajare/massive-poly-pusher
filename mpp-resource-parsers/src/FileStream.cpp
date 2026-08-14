@@ -5,6 +5,7 @@
 
 #include "mpp/resource-parsers/FileStream.h"
 #include "mpp/resource-parsers/XmlSerializer.h"
+#include "mpp/resource-parsers/YamlSerializer.h"
 
 namespace mpp
 {
@@ -18,6 +19,7 @@ namespace mpp
 			, mData("")
 		{
 			mFactories[".xml"] = []() {return new XmlSerializer(); };
+				mFactories[".yaml"] = []() {return new YamlSerializer(); };
 		}
 
 		FileStream::FileStream(string const& filepath, mpp::data::StructuredData const& data)
@@ -25,6 +27,7 @@ namespace mpp
 			, mData(data)
 		{
 			mFactories[".xml"] = []() {return new XmlSerializer(); };
+				mFactories[".yaml"] = []() {return new YamlSerializer(); };
 		}
 
 		SerializerPtr FileStream::getSerializer(string const& type) const
