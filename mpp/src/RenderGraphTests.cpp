@@ -67,7 +67,27 @@ namespace mpp
 		valid.writeColour(bloomPass, bloom);
 		auto result = valid.compile();
 		if (!result.valid || result.passOrder.size() != 2) return fail("valid two-pass graph was rejected");if(valid.getImageVersionCount(scene.id)!=2)return fail("render graph image version inventory is incorrect");
+		auto cacheAfterFirstCompile = valid.getPlanCacheStats();
+		if (cacheAfterFirstCompile.compileMisses != 1) return fail("first graph compilation was not recorded as a cache miss");
+		if (!valid.compile().valid || valid.getPlanCacheStats().compileHits <= cacheAfterFirstCompile.compileHits) return fail("unchanged graph compilation did not hit the plan cache");
+		auto firstAllocation = valid.buildAllocationPlan({ 320, 180 });
+		auto cacheAfterFirstAllocation = valid.getPlanCacheStats();
+		auto repeatedAllocation = valid.buildAllocationPlan({ 320, 180 });
+		if (!firstAllocation.valid || repeatedAllocation.allocatedImages.size() != firstAllocation.allocatedImages.size() || valid.getPlanCacheStats().allocationHits <= cacheAfterFirstAllocation.allocationHits)
+			return fail("unchanged graph allocation did not hit the viewport plan cache");
+		auto cacheBeforeEdit = valid.getPlanCacheStats();
 		auto editedDesc=valid.getImageInfo({0,0}).desc;editedDesc.mipLevels=2;valid.setImageDesc({0,0},editedDesc);if(valid.getImageInfo({0,0}).desc.mipLevels!=2)return fail("graph image descriptor edit was not retained");
+		if (!valid.compile().valid || valid.getPlanCacheStats().compileMisses <= cacheBeforeEdit.compileMisses || valid.getPlanCacheStats().invalidations <= cacheBeforeEdit.invalidations)
+			return fail("graph edit did not invalidate the cached compilation");
+		auto rebuiltAllocation = valid.buildAllocationPlan({ 320, 180 });
+		if (!rebuiltAllocation.valid || rebuiltAllocation.allocatedImages.empty() || rebuiltAllocation.allocatedImages.front().desc.mipLevels != 2 || valid.getPlanCacheStats().allocationMisses <= cacheBeforeEdit.allocationMisses)
+			return fail("graph edit did not invalidate the cached allocation plan");
+		auto cacheBeforeResize = valid.getPlanCacheStats();
+		auto resizedAllocation = valid.buildAllocationPlan({ 321, 180 });
+		if (!resizedAllocation.valid || valid.getPlanCacheStats().allocationMisses <= cacheBeforeResize.allocationMisses) return fail("new graph viewport reused an allocation plan for different dimensions");
+		RenderGraph cacheCopy(valid);
+		if (cacheCopy.getPlanCacheStats().compileHits || cacheCopy.getPlanCacheStats().compileMisses || !cacheCopy.compile().valid || cacheCopy.getPlanCacheStats().compileMisses != 1)
+			return fail("RenderGraph copy inherited another graph's plan cache");
 		RenderGraph copied(valid);copied.setPassEnabled(scenePass,false);if(valid.getPassInfo(scenePass).enabled==copied.getPassInfo(scenePass).enabled||copied.getPassCount()!=valid.getPassCount())return fail("deep RenderGraph copy is not independent");RenderGraph assigned;assigned=valid;if(assigned.getPassCount()!=valid.getPassCount()||!assigned.compile().valid)return fail("RenderGraph copy assignment lost topology");
 		RenderGraph structural(valid);structural.setPassName({0},"SceneRenamed");structural.setImageName({0,0},"SceneTarget");auto duplicate=structural.duplicatePass({1},"BloomCopy");if(structural.getPassCount()!=3||structural.getPassInfo(duplicate).colourOutputs.empty())return fail("render graph pass duplication failed");structural.movePass(duplicate,1);if(structural.getPassInfo({1}).name!="BloomCopy")return fail("render graph pass move failed");structural.removePass({1});if(structural.getPassCount()!=2||structural.getImageVersionCount(1)!=2)return fail("render graph pass removal did not clean produced values");structural.removeImage({1,0});if(structural.getImageCount()!=1||!structural.getPassInfo({1}).colourOutputs.empty())return fail("render graph image removal did not clean pass references");
 		RenderGraph attachments;auto attachmentA=attachments.createImage("A",colour),attachmentB=attachments.createImage("B",colour),attachmentOut=attachments.createImage("Out",colour);auto attachmentWriter=attachments.addPass("Writer");attachmentA=attachments.writeColour(attachmentWriter,attachmentA);attachments.setValueId(attachmentA,"Stable.Attachment");auto attachmentReader=attachments.addPass("Reader");attachments.bindSampler(attachmentReader,"TEX",attachmentA);attachments.writeColour(attachmentReader,attachmentOut);auto replacement=attachments.retargetColourOutput(attachmentWriter,0,attachmentB);if(attachments.getValueId(replacement)!="Stable.Attachment"||attachments.getPassInfo(attachmentReader).samplerBindings[0].image.id!=attachmentB.id||!attachments.compile().valid)return fail("attachment retargeting did not preserve stable dependent references");attachments.removeColourOutput(attachmentWriter,0);if(!attachments.getPassInfo(attachmentReader).sampledInputs.empty())return fail("attachment removal did not clean sampled references");
@@ -316,6 +336,19 @@ namespace mpp
 			return fail("a viewport-relative image exceeding the maximum texture size compiled against caps");
 		if (!compileWithImage(relative, { 128, 128 }).valid)
 			return fail("a viewport-relative image within the maximum texture size was rejected");
+
+		RenderGraph capabilityCached;
+		auto capabilityImage = capabilityCached.createImage("CapabilityCached", relative);
+		auto capabilityPass = capabilityCached.addPass("CapabilityPass", GraphPassType::Fullscreen);
+		capabilityCached.writeColour(capabilityPass, capabilityImage);
+		if (capabilityCached.compile(limitedCaps, { 512, 512 }).valid) return fail("capability cache test did not reject the limited device");
+		auto cacheAfterLimitedCompile = capabilityCached.getPlanCacheStats();
+		if (capabilityCached.compile(limitedCaps, { 512, 512 }).valid || capabilityCached.getPlanCacheStats().compileHits <= cacheAfterLimitedCompile.compileHits)
+			return fail("unchanged capability compilation did not hit the plan cache");
+		auto largerCaps = limitedCaps; largerCaps.maxTextureSize = 1024;
+		auto cacheBeforeLargerDevice = capabilityCached.getPlanCacheStats();
+		if (!capabilityCached.compile(largerCaps, { 512, 512 }).valid || capabilityCached.getPlanCacheStats().compileMisses <= cacheBeforeLargerDevice.compileMisses)
+			return fail("capability compilation reused a plan for a different device signature");
 
 		return true;
 	}

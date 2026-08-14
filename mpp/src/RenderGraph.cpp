@@ -1,7 +1,10 @@
 #include <algorithm>
+#include <map>
+#include <optional>
 #include <queue>
 #include <set>
 #include <sstream>
+#include <tuple>
 
 #include "mpp/RenderGraph.h"
 #include "mpp/Caps.h"
@@ -118,12 +121,56 @@ namespace mpp
 		GraphRasterState rasterState;
 	};
 
+	struct RenderGraph::PlanCache
+	{
+		struct DeviceCompileKey
+		{
+			glm::uvec2 viewport{ 0 };
+			int maxTextureSize{ 0 };
+			uint32_t maxColourAttachments{ 0 };
+			uint32_t maxDrawBuffers{ 0 };
+			bool operator <(DeviceCompileKey const& other) const
+			{
+				return tie(viewport.x, viewport.y, maxTextureSize, maxColourAttachments, maxDrawBuffers) <
+					tie(other.viewport.x, other.viewport.y, other.maxTextureSize, other.maxColourAttachments, other.maxDrawBuffers);
+			}
+		};
+
+		optional<RenderGraphCompileResult> topology;
+		map<DeviceCompileKey, RenderGraphCompileResult> deviceCompiles;
+		map<uint64_t, RenderGraphAllocationPlan> allocations;
+	};
+
 	RenderGraph::RenderGraph() = default;
 	RenderGraph::~RenderGraph() = default;
 	RenderGraph::RenderGraph(RenderGraph&&) noexcept = default;
 	RenderGraph& RenderGraph::operator =(RenderGraph&&) noexcept = default;
-	RenderGraph::RenderGraph(RenderGraph const&) = default;
-	RenderGraph& RenderGraph::operator =(RenderGraph const&) = default;
+	RenderGraph::RenderGraph(RenderGraph const& other)
+		: mImages(other.mImages), mPasses(other.mPasses)
+	{
+	}
+	RenderGraph& RenderGraph::operator =(RenderGraph const& other)
+	{
+		if (this == &other) return *this;
+		mPlanCache.reset();
+		mPlanCacheStats = {};
+		mImages = other.mImages;
+		mPasses = other.mPasses;
+		return *this;
+	}
+
+	RenderGraph::PlanCache& RenderGraph::planCache() const
+	{
+		if (!mPlanCache) mPlanCache = make_unique<PlanCache>();
+		return *mPlanCache;
+	}
+
+	void RenderGraph::invalidatePlanCache()
+	{
+		if (!mPlanCache) return;
+		mPlanCache.reset();
+		++mPlanCacheStats.invalidations;
+	}
 
 	bool RenderGraph::validImage(GraphImageHandle image) const
 	{
@@ -154,6 +201,7 @@ namespace mpp
 		Image image{ name, desc };
 		image.valueIds.push_back(name + ".Import");
 		mImages.push_back(move(image));
+		invalidatePlanCache();
 		return { (uint32_t)mImages.size() - 1, 0 };
 	}
 
@@ -177,11 +225,12 @@ namespace mpp
 		if (!validImage(image) || name.empty() || any_of(mImages.begin(), mImages.end(), [&](Image const& value) { return value.name == name && &value != &mImages[image.id]; }))
 			THROW_MPP("Invalid or duplicate render graph image name.", __LINE__, __FILE__, __func__);
 		mImages[image.id].name = name;
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::setImageDesc(GraphImageHandle image,GraphImageDesc const& desc)
 	{
-		if(!validImage(image)||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();
+		if(!validImage(image)||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();invalidatePlanCache();
 	}
 
 	void RenderGraph::removeImage(GraphImageHandle image)
@@ -200,6 +249,7 @@ namespace mpp
 			for (auto& value : pass.depthOutputs) if (value.image.id > image.id) --value.image.id;
 		}
 		mImages.erase(mImages.begin() + image.id);
+		invalidatePlanCache();
 	}
 
 	GraphImageInfo RenderGraph::getImageInfo(GraphImageHandle image) const
@@ -227,6 +277,7 @@ namespace mpp
 		pass.name = name;
 		pass.type = type;
 		mPasses.push_back(move(pass));
+		invalidatePlanCache();
 		return { (uint32_t)mPasses.size() - 1 };
 	}
 
@@ -234,6 +285,7 @@ namespace mpp
 	{
 		if (!validPass(pass)) THROW_MPP("Invalid render graph pass handle.", __LINE__, __FILE__, __func__);
 		mPasses[pass.id].enabled = enabled;
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::setPassName(GraphPassHandle pass, string const& name)
@@ -241,6 +293,7 @@ namespace mpp
 		if (!validPass(pass) || name.empty() || any_of(mPasses.begin(), mPasses.end(), [&](Pass const& value) { return value.name == name && &value != &mPasses[pass.id]; }))
 			THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
 		mPasses[pass.id].name = name;
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::setPassProgramResource(GraphPassHandle pass, string const& resourceName)
@@ -301,6 +354,7 @@ namespace mpp
 		for (auto value : outputs) removeProducedValue(value);
 		mPasses.erase(mPasses.begin() + pass.id);
 		for (auto& image : mImages) for (auto& producer : image.producers) if (producer != UINT32_MAX && producer > pass.id) --producer;
+		invalidatePlanCache();
 	}
 
 	GraphPassHandle RenderGraph::duplicatePass(GraphPassHandle pass, string const& name)
@@ -314,6 +368,7 @@ namespace mpp
 		source.depthOutputs.clear();
 		if (name.empty() || any_of(mPasses.begin(), mPasses.end(), [&](Pass const& value) { return value.name == name; })) THROW_MPP("Invalid or duplicate render graph pass name.", __LINE__, __FILE__, __func__);
 		mPasses.push_back(move(source));
+		invalidatePlanCache();
 		GraphPassHandle result{ static_cast<uint32_t>(mPasses.size() - 1) };
 		for (auto const& value : colour) writeColour(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearColour, value.mipLevel);
 		for (auto const& value : depth) writeDepth(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearDepth, value.mipLevel);
@@ -336,6 +391,7 @@ namespace mpp
 			THROW_MPP("Invalid render graph sampled input.", __LINE__, __FILE__, __func__);
 		}
 		mPasses[pass.id].sampledInputs.push_back(image);
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::bindSampler(GraphPassHandle pass, string const& sampler, GraphImageHandle image, uint32_t mipLevel)
@@ -371,6 +427,7 @@ namespace mpp
 		target.producers.push_back(pass.id);
 		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
 		mPasses[pass.id].colourOutputs.push_back({ output, mipLevel, load, store, clear });
+		invalidatePlanCache();
 		return output;
 	}
 
@@ -386,6 +443,7 @@ namespace mpp
 		target.producers.push_back(pass.id);
 		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
 		mPasses[pass.id].depthOutputs.push_back({ output, mipLevel, load, store, clear });
+		invalidatePlanCache();
 		return output;
 	}
 
@@ -395,6 +453,7 @@ namespace mpp
 		auto& value = mPasses[pass.id].colourOutputs[output];
 		if (mipLevel >= mImages[value.image.id].desc.mipLevels) THROW_MPP("Invalid render graph colour output mip.", __LINE__, __FILE__, __func__);
 		value.load = load; value.store = store; value.clearColour = clear; value.mipLevel = mipLevel;
+		invalidatePlanCache();
 	}
 
 	GraphImageHandle RenderGraph::retargetColourOutput(GraphPassHandle pass, size_t output, GraphImageHandle image)
@@ -414,6 +473,7 @@ namespace mpp
 		auto image = mPasses[pass.id].colourOutputs[output].image;
 		mPasses[pass.id].colourOutputs.erase(mPasses[pass.id].colourOutputs.begin() + output);
 		removeProducedValue(image);
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel)
@@ -422,6 +482,7 @@ namespace mpp
 		auto& value = mPasses[pass.id].depthOutputs[output];
 		if (mipLevel >= mImages[value.image.id].desc.mipLevels) THROW_MPP("Invalid render graph depth output mip.", __LINE__, __FILE__, __func__);
 		value.load = load; value.store = store; value.clearDepth = clear; value.mipLevel = mipLevel;
+		invalidatePlanCache();
 	}
 
 	GraphImageHandle RenderGraph::retargetDepthOutput(GraphPassHandle pass, size_t output, GraphImageHandle image)
@@ -441,6 +502,7 @@ namespace mpp
 		auto image = mPasses[pass.id].depthOutputs[output].image;
 		mPasses[pass.id].depthOutputs.erase(mPasses[pass.id].depthOutputs.begin() + output);
 		removeProducedValue(image);
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::setSamplerBinding(GraphPassHandle pass, size_t binding, string const& sampler, GraphImageHandle image, uint32_t mipLevel)
@@ -453,6 +515,7 @@ namespace mpp
 		auto sampled = find_if(source.sampledInputs.begin(), source.sampledInputs.end(), [&](auto value) { return value.id == old.id && value.version == old.version; });
 		if (sampled != source.sampledInputs.end()) *sampled = image; else source.sampledInputs.push_back(image);
 		source.samplerBindings[binding] = { sampler, image, mipLevel };
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::removeSamplerBinding(GraphPassHandle pass, size_t binding)
@@ -462,6 +525,7 @@ namespace mpp
 		source.samplerBindings.erase(source.samplerBindings.begin() + binding);
 		if (none_of(source.samplerBindings.begin(), source.samplerBindings.end(), [&](auto const& value) { return value.image.id == image.id && value.image.version == image.version; }))
 			source.sampledInputs.erase(remove_if(source.sampledInputs.begin(), source.sampledInputs.end(), [&](auto value) { return value.id == image.id && value.version == image.version; }), source.sampledInputs.end());
+		invalidatePlanCache();
 	}
 
 	void RenderGraph::setValueId(GraphImageHandle image, string const& valueId)
@@ -472,6 +536,7 @@ namespace mpp
 			if (find(candidate.valueIds.begin(), candidate.valueIds.end(), valueId) != candidate.valueIds.end())
 				THROW_MPP("Duplicate render graph value ID.", __LINE__, __FILE__, __func__);
 		mImages[image.id].valueIds[image.version] = valueId;
+		invalidatePlanCache();
 	}
 
 	string const& RenderGraph::getValueId(GraphImageHandle image) const
@@ -517,6 +582,13 @@ namespace mpp
 
 	RenderGraphCompileResult RenderGraph::compile() const
 	{
+		auto& cache = planCache();
+		if (cache.topology)
+		{
+			++mPlanCacheStats.compileHits;
+			return *cache.topology;
+		}
+		++mPlanCacheStats.compileMisses;
 		RenderGraphCompileResult result;
 		for (uint32_t passId = 0; passId < mPasses.size(); ++passId)
 		{
@@ -608,10 +680,15 @@ namespace mpp
 			}
 		}
 
-		if (!result.diagnostics.empty()) return result;
+		if (!result.diagnostics.empty())
+		{
+			cache.topology = result;
+			return result;
+		}
 		for (uint32_t pass = 0; pass < mPasses.size(); ++pass)
 			if (mPasses[pass].enabled) result.passOrder.push_back({ pass });
 		result.valid = true;
+		cache.topology = result;
 		return result;
 	}
 
@@ -669,22 +746,36 @@ namespace mpp
 
 	void RenderGraph::reorderPasses(vector<GraphPassHandle> const& order)
 	{
-		if(order.size()!=mPasses.size())THROW_MPP("Render graph pass order must include every pass.",__LINE__,__FILE__,__func__);vector<uint32_t> oldToNew(mPasses.size(),UINT32_MAX);for(uint32_t next=0;next<order.size();++next){if(!validPass(order[next])||oldToNew[order[next].id]!=UINT32_MAX)THROW_MPP("Render graph pass order contains an invalid or duplicate pass.",__LINE__,__FILE__,__func__);oldToNew[order[next].id]=next;}vector<Pass> reordered;reordered.reserve(mPasses.size());for(auto handle:order)reordered.push_back(std::move(mPasses[handle.id]));mPasses=std::move(reordered);for(auto& image:mImages)for(auto& producer:image.producers)if(producer!=UINT32_MAX)producer=oldToNew[producer];
+		if(order.size()!=mPasses.size())THROW_MPP("Render graph pass order must include every pass.",__LINE__,__FILE__,__func__);vector<uint32_t> oldToNew(mPasses.size(),UINT32_MAX);for(uint32_t next=0;next<order.size();++next){if(!validPass(order[next])||oldToNew[order[next].id]!=UINT32_MAX)THROW_MPP("Render graph pass order contains an invalid or duplicate pass.",__LINE__,__FILE__,__func__);oldToNew[order[next].id]=next;}vector<Pass> reordered;reordered.reserve(mPasses.size());for(auto handle:order)reordered.push_back(std::move(mPasses[handle.id]));mPasses=std::move(reordered);for(auto& image:mImages)for(auto& producer:image.producers)if(producer!=UINT32_MAX)producer=oldToNew[producer];invalidatePlanCache();
 	}
 
 	RenderGraphAllocationPlan RenderGraph::buildAllocationPlan(glm::uvec2 const& viewport) const
 	{
+		auto& cache = planCache();
+		auto const cacheKey = (static_cast<uint64_t>(viewport.x) << 32) | viewport.y;
+		auto const cached = cache.allocations.find(cacheKey);
+		if (cached != cache.allocations.end())
+		{
+			++mPlanCacheStats.allocationHits;
+			return cached->second;
+		}
+		++mPlanCacheStats.allocationMisses;
+		auto cachePlan = [&](RenderGraphAllocationPlan const& value)
+		{
+			cache.allocations.emplace(cacheKey, value);
+			return value;
+		};
 		RenderGraphAllocationPlan plan;
 		if (viewport.x == 0 || viewport.y == 0)
 		{
 			plan.diagnostics.push_back("Render graph allocation viewport must be non-zero.");
-			return plan;
+			return cachePlan(plan);
 		}
 		auto compiled = compile();
 		if (!compiled.valid)
 		{
 			plan.diagnostics = move(compiled.diagnostics);
-			return plan;
+			return cachePlan(plan);
 		}
 
 		vector<vector<uint32_t>> allocationIndex;
@@ -789,7 +880,12 @@ namespace mpp
 			plan.allocatedImages.clear();
 			plan.importedImages.clear();
 		}
-		return plan;
+		return cachePlan(plan);
+	}
+
+	RenderGraphPlanCacheStats RenderGraph::getPlanCacheStats() const
+	{
+		return mPlanCacheStats;
 	}
 
 	string RenderGraph::describe() const
@@ -835,6 +931,15 @@ namespace mpp
 
 	RenderGraphCompileResult RenderGraph::compile(Caps const& caps, glm::uvec2 const& viewport) const
 	{
+		auto& cache = planCache();
+		PlanCache::DeviceCompileKey const key{ viewport, caps.maxTextureSize, caps.maxColourAttachments, caps.maxDrawBuffers };
+		auto const cached = cache.deviceCompiles.find(key);
+		if (cached != cache.deviceCompiles.end())
+		{
+			++mPlanCacheStats.compileHits;
+			return cached->second;
+		}
+		++mPlanCacheStats.compileMisses;
 		auto result = compile();
 		// A zero viewport means the caller has none to offer, so relative sizes stay
 		// unresolved and unchecked here -- buildAllocationPlan still catches them,
@@ -875,6 +980,7 @@ namespace mpp
 			result.valid = false;
 			result.passOrder.clear();
 		}
+		cache.deviceCompiles.emplace(key, result);
 		return result;
 	}
 }

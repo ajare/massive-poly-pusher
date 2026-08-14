@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -187,6 +188,15 @@ namespace mpp
 		std::vector<std::string> diagnostics;
 	};
 
+	struct _MPPAPI RenderGraphPlanCacheStats
+	{
+		uint64_t compileHits{ 0 };
+		uint64_t compileMisses{ 0 };
+		uint64_t allocationHits{ 0 };
+		uint64_t allocationMisses{ 0 };
+		uint64_t invalidations{ 0 };
+	};
+
 	// One physical attachment requirement for a produced image version. The
 	// first RG2 allocator may allocate one target per entry; later allocators
 	// can alias entries with compatible, non-overlapping intervals.
@@ -239,13 +249,18 @@ namespace mpp
 	{
 		struct Image;
 		struct Pass;
+		struct PlanCache;
 
 		std::vector<Image> mImages;
 		std::vector<Pass> mPasses;
+		mutable std::unique_ptr<PlanCache> mPlanCache;
+		mutable RenderGraphPlanCacheStats mPlanCacheStats;
 
 		bool validImage(GraphImageHandle image) const;
 		bool validPass(GraphPassHandle pass) const;
 		void removeProducedValue(GraphImageHandle image);
+		PlanCache& planCache() const;
+		void invalidatePlanCache();
 
 	public:
 		RenderGraph();
@@ -312,6 +327,7 @@ namespace mpp
 		RenderGraphCompileResult buildDependencyOrder() const;
 		void reorderPasses(std::vector<GraphPassHandle> const& order);
 		RenderGraphAllocationPlan buildAllocationPlan(glm::uvec2 const& viewport) const;
+		RenderGraphPlanCacheStats getPlanCacheStats() const;
 
 		// Context-free diagnostic dump for logs and tests. It reports declared
 		// images, their produced versions, and each pass's graph dependencies.
