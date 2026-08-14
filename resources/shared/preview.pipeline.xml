@@ -56,7 +56,7 @@
         <Texture>
             <name>Preview.Environment</name>
             <target>CUBEMAP</target>
-            <filename>../arrow.png</filename>
+            <filename>pbr/arrow.png</filename>
             <colourSpace>SRGB</colourSpace>
             <mipmaps>true</mipmaps>
             <minFilter>LINEAR_MIPMAP_LINEAR</minFilter>
@@ -66,7 +66,7 @@
         <Texture>
             <name>Preview.BrdfLut</name>
             <target>2D</target>
-            <filename>../arrow.png</filename>
+            <filename>pbr/arrow.png</filename>
             <colourSpace>LINEAR</colourSpace>
             <minFilter>LINEAR</minFilter>
             <magFilter>LINEAR</magFilter>
@@ -124,7 +124,7 @@
                 <Resource>
                     <name>sphere-test.BaseColourMap</name>
                     <target>2D</target>
-                    <filename>D:\Code\Projects\massivepolypusher\resources\shared\sphere-test_albedo.png</filename>
+                    <filename>sphere-test_albedo.png</filename>
                     <colourSpace>SRGB</colourSpace>
                     <minFilter>LINEAR</minFilter>
                     <magFilter>LINEAR</magFilter>
@@ -135,7 +135,7 @@
                 <Resource>
                     <name>sphere-test.MetallicRoughnessMap</name>
                     <target>2D</target>
-                    <filename>D:\Code\Projects\massivepolypusher\resources\shared\.mpp-gltf-images\sphere-test.image2.png</filename>
+                    <filename>.mpp-gltf-images/sphere-test.image2.png</filename>
                     <colourSpace>LINEAR</colourSpace>
                     <minFilter>LINEAR</minFilter>
                     <magFilter>LINEAR</magFilter>
@@ -146,7 +146,7 @@
                 <Resource>
                     <name>sphere-test.NormalMap</name>
                     <target>2D</target>
-                    <filename>D:\Code\Projects\massivepolypusher\resources\shared\.mpp-gltf-images\sphere-test.image1.png</filename>
+                    <filename>.mpp-gltf-images/sphere-test.image1.png</filename>
                     <colourSpace>LINEAR</colourSpace>
                     <minFilter>LINEAR</minFilter>
                     <magFilter>LINEAR</magFilter>
@@ -157,7 +157,7 @@
                 <Resource>
                     <name>sphere-test.OcclusionMap</name>
                     <target>2D</target>
-                    <filename>D:\Code\Projects\massivepolypusher\resources\shared\.mpp-gltf-images\sphere-test.image2.png</filename>
+                    <filename>.mpp-gltf-images/sphere-test.image2.png</filename>
                     <colourSpace>LINEAR</colourSpace>
                     <minFilter>LINEAR</minFilter>
                     <magFilter>LINEAR</magFilter>
@@ -168,7 +168,7 @@
                 <Resource>
                     <name>sphere-test.EmissiveMap</name>
                     <target>2D</target>
-                    <filename>D:\Code\Projects\massivepolypusher\resources\shared\sphere-test_emission.png</filename>
+                    <filename>sphere-test_emission.png</filename>
                     <colourSpace>SRGB</colourSpace>
                     <minFilter>LINEAR</minFilter>
                     <magFilter>LINEAR</magFilter>
@@ -176,6 +176,47 @@
                 </Resource>
             </EmissiveMap>
         </PbrMaterial>
+        <PostEffectMaterial>
+            <name>PostEffect.BloomExtract</name>
+            <Program><Ref>__mpp_p2d_bloom_extract__</Ref></Program>
+            <SamplerSlots><Slot>TEX1</Slot></SamplerSlots>
+            <Uniforms>
+                <Uniform><name>THRESHOLD</name><type>float</type><value>0.7</value></Uniform>
+            </Uniforms>
+        </PostEffectMaterial>
+        <PostEffectMaterial>
+            <name>PostEffect.BloomBlurHorizontal</name>
+            <Program><Ref>__mpp_p2d_bloom_blur__</Ref></Program>
+            <SamplerSlots><Slot>TEX1</Slot></SamplerSlots>
+            <Uniforms>
+                <Uniform><name>DIRECTION</name><type>vec2</type><value>1 0</value></Uniform>
+            </Uniforms>
+        </PostEffectMaterial>
+        <PostEffectMaterial>
+            <name>PostEffect.BloomBlurVertical</name>
+            <Program><Ref>__mpp_p2d_bloom_blur__</Ref></Program>
+            <SamplerSlots><Slot>TEX1</Slot></SamplerSlots>
+            <Uniforms>
+                <Uniform><name>DIRECTION</name><type>vec2</type><value>0 1</value></Uniform>
+            </Uniforms>
+        </PostEffectMaterial>
+        <PostEffectMaterial>
+            <name>PostEffect.BloomComposite</name>
+            <Program><Ref>__mpp_p2d_bloom_combine__</Ref></Program>
+            <SamplerSlots><Slot>SCENE</Slot><Slot>BLOOM</Slot></SamplerSlots>
+            <Uniforms>
+                <Uniform><name>INTENSITY</name><type>float</type><value>0.2</value></Uniform>
+            </Uniforms>
+        </PostEffectMaterial>
+        <PostEffectMaterial>
+            <name>PostEffect.ToneMap</name>
+            <Program><Ref>__mpp_p2d_tonemap__</Ref></Program>
+            <SamplerSlots><Slot>TEX1</Slot></SamplerSlots>
+            <Uniforms>
+                <Uniform><name>EXPOSURE</name><type>float</type><value>1</value></Uniform>
+                <Uniform><name>TONE_MAP_OPERATOR</name><type>int</type><value>1</value></Uniform>
+            </Uniforms>
+        </PostEffectMaterial>
     </LocalResources>
     <Imports>
         <Import>
@@ -212,7 +253,7 @@
         <prefilteredSpecular>Preview.Environment</prefilteredSpecular>
         <brdfLut>Preview.BrdfLut</brdfLut>
         <background>Preview.Environment</background>
-        <hdrEquirectangular>../../185_hdrmaps_com_free_4K.exr</hdrEquirectangular>
+        <hdrEquirectangular>185_hdrmaps_com_free_4K.exr</hdrEquirectangular>
         <environmentResolution>512</environmentResolution>
         <irradianceResolution>32</irradianceResolution>
         <prefilterResolution>128</prefilterResolution>
@@ -534,7 +575,8 @@
                 <name>BloomExtract</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomExtract</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomExtract</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -542,12 +584,6 @@
                         <source>SceneEmissive.v1</source>
                     </Sampled>
                 </Inputs>
-                <Parameters>
-                    <Float>
-                        <name>_mpp_u_THRESHOLD_</name>
-                        <value>0</value>
-                    </Float>
-                </Parameters>
                 <Colours>
                     <Output>
                         <image>BloomExtract</image>
@@ -561,7 +597,8 @@
                 <name>BloomBlurHorizontal0</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurHorizontal</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurHorizontal</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -582,7 +619,8 @@
                 <name>BloomBlurVertical0</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurVertical</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurVertical</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -603,7 +641,8 @@
                 <name>BloomBlurHorizontal1</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurHorizontal</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurHorizontal</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -624,7 +663,8 @@
                 <name>BloomBlurVertical1</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurVertical</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurVertical</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -645,7 +685,8 @@
                 <name>BloomBlurHorizontal2</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurHorizontal</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurHorizontal</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -666,7 +707,8 @@
                 <name>BloomBlurVertical2</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurVertical</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurVertical</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -687,7 +729,8 @@
                 <name>BloomBlurHorizontal3</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurHorizontal</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurHorizontal</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -708,7 +751,8 @@
                 <name>BloomBlurVertical3</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomBlurVertical</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomBlurVertical</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -729,7 +773,8 @@
                 <name>BloomComposite</name>
                 <enabled>true</enabled>
                 <type>fullscreen</type>
-                <factory>MPP.BloomComposite</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.BloomComposite</program>
                 <Inputs>
                     <Sampled>
                         <sampler>SCENE</sampler>
@@ -742,12 +787,6 @@
                         <source>BloomPong3.v1</source>
                     </Sampled>
                 </Inputs>
-                <Parameters>
-                    <Float>
-                        <name>_mpp_u_INTENSITY_</name>
-                        <value>0.2</value>
-                    </Float>
-                </Parameters>
                 <Colours>
                     <Output>
                         <image>BloomComposite</image>
@@ -761,7 +800,8 @@
                 <name>ToneMapPresentation</name>
                 <enabled>true</enabled>
                 <type>present</type>
-                <factory>MPP.ToneMapPresent</factory>
+                <factory>MPP.FullscreenEffect</factory>
+                <program>PostEffect.ToneMap</program>
                 <Inputs>
                     <Sampled>
                         <sampler>TEX1</sampler>
@@ -769,16 +809,6 @@
                         <source>BloomComposite.v1</source>
                     </Sampled>
                 </Inputs>
-                <Parameters>
-                    <Float>
-                        <name>_mpp_u_EXPOSURE_</name>
-                        <value>1</value>
-                    </Float>
-                    <Int>
-                        <name>_mpp_u_TONE_MAP_OPERATOR_</name>
-                        <value>1</value>
-                    </Int>
-                </Parameters>
                 <Colours>
                     <Output>
                         <image>Presentation</image>

@@ -34,6 +34,7 @@ namespace mpp
 
 		void writeBasicMaterialStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 		void writePbrMaterialStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
+		void writePostEffectMaterialStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 
 		void writeProgramStream(ResourceStreamPtr resourceStream, std::ofstream& fp);
 
@@ -64,6 +65,7 @@ namespace mpp
 
 		void readBasicMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 		void readPbrMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
+		void readPostEffectMaterialStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 
 		void readProgramStream(ResourceStreamPtr resourceStream, std::ifstream& fp);
 

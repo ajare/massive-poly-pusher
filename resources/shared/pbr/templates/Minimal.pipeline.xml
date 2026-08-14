@@ -78,6 +78,15 @@
       <wrap>CLAMP_TO_EDGE</wrap>
       <maxAnisotropy>1</maxAnisotropy>
     </Sampler>
+    <PostEffectMaterial>
+      <name>PostEffect.ToneMap</name>
+      <Program><Ref>__mpp_p2d_tonemap__</Ref></Program>
+      <SamplerSlots><Slot>TEX1</Slot></SamplerSlots>
+      <Uniforms>
+        <Uniform><name>EXPOSURE</name><type>float</type><value>1</value></Uniform>
+        <Uniform><name>TONE_MAP_OPERATOR</name><type>int</type><value>1</value></Uniform>
+      </Uniforms>
+    </PostEffectMaterial>
   </LocalResources>
   <Imports>
     <Import>
@@ -200,23 +209,14 @@
       <Pass>
         <name>ToneMapPresentation</name>
         <type>present</type>
-        <factory>MPP.ToneMapPresent</factory>
+        <factory>MPP.FullscreenEffect</factory>
+        <program>PostEffect.ToneMap</program>
         <Inputs>
           <Sampled>
             <sampler>TEX1</sampler>
             <image>SceneHdr</image>
           </Sampled>
         </Inputs>
-        <Parameters>
-          <Float>
-            <name>EXPOSURE</name>
-            <value>1</value>
-          </Float>
-          <Int>
-            <name>TONE_MAP_OPERATOR</name>
-            <value>1</value>
-          </Int>
-        </Parameters>
         <Colours>
           <Output>
             <image>Presentation</image>

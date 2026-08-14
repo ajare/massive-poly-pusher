@@ -189,6 +189,20 @@ namespace mpp
 		}
 	}
 
+	void RenderPipeline::setPostEffectEnabled(string const& passName, bool enabled)
+	{
+		auto& parameters = mPostEffectParameterOverrides[passName];
+		parameters.setUniform("ENABLED", enabled ? 1 : 0);
+		if (mGraphExecutor) mGraphExecutor->setPassParameterOverrides(passName, parameters);
+	}
+
+	void RenderPipeline::setPostEffectParameter(string const& passName, string const& parameterName, float value)
+	{
+		auto& parameters = mPostEffectParameterOverrides[passName];
+		parameters.setUniform(parameterName, value);
+		if (mGraphExecutor) mGraphExecutor->setPassParameterOverrides(passName, parameters);
+	}
+
 	void RenderPipeline::setGraphPassDebugOptions(GraphPassDebugOptions const& graphPasses)
 	{
 		mOptions.graphPasses = graphPasses;
@@ -255,14 +269,7 @@ namespace mpp
 		{
 			return mBloomCompositeTarget;
 		}
-		if (mPostEffects.empty())
-		{
-			return mPasses.back()->getRenderTarget();
-		}
-		else
-		{
-			return static_cast<PostEffect*>(mPostEffects.back().get())->getOuputRenderTarget();
-		}
+		return mPasses.back()->getRenderTarget();
 	}
 
 	RenderTargetPtr RenderPipeline::getGraphImageRenderTarget(GraphImageHandle image) const
@@ -322,11 +329,6 @@ namespace mpp
 	void RenderPipeline::addRenderPass(RenderPassPtr pass)
 	{
 		mPasses.push_back(pass);
-	}
-
-	void RenderPipeline::addPostEffect(ResourcePtr effect)
-	{
-		mPostEffects.push_back(effect);
 	}
 
 	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
