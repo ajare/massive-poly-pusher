@@ -97,7 +97,9 @@ This could reuse or name a program for an incompatible vertex layout.
 
 ---
 
-### 5. Cache render-graph compilation and framebuffer objects — high payoff, medium effort
+### 5. Cache render-graph compilation and framebuffer objects — partially implemented
+
+**Status:** Compiled graph and allocation-plan caching completed on `perf/cache-render-graph-plans`; framebuffer-view caching remains.
 
 Every graph execution recompiles validation:
 
@@ -126,6 +128,20 @@ Introduce a compiled graph object cached by:
 - import/attachment generations.
 
 Cache framebuffer views by attachment texture IDs, mip levels, depth/stencil aspect, and draw-buffer configuration. Invalidate entries when backing targets are replaced.
+
+**Implemented changes**
+
+- Cache context-free topology compilation for unchanged graph definitions, including invalid results and diagnostics.
+- Cache device validation by viewport and the capability fields it actually consumes: maximum texture size, colour attachments, and draw buffers.
+- Cache allocation plans by viewport, including invalid plans, while preserving the topology cache shared by allocation and execution.
+- Invalidate all dependent plans from every topology, attachment, descriptor, ordering, enabled-state, name, and stable-value-ID edit that can affect compilation or allocation output.
+- Keep caches private to each graph generation: copies receive independent empty caches, while moves transfer the cached plans with their graph.
+- Expose cache hit/miss/invalidation counters for diagnostics and regression coverage.
+- Add context-free tests for compile hits, allocation hits, topology invalidation, viewport isolation, capability-signature isolation, and copy behavior.
+
+**Remaining work**
+
+- Cache framebuffer views by attachment identity and generation, including effective sample count and import replacement.
 
 ---
 
@@ -287,7 +303,7 @@ The current validation documentation explicitly notes several of these asset gap
 
 ### Performance pass
 
-6. Cache compiled graph/allocation plans.
+6. ✅ Cache compiled graph/allocation plans.
 7. Cache framebuffer views.
 8. Integrate graph state with a `RenderSystem` state cache.
 9. Cache reflected output masks and unique-program scene validation.
