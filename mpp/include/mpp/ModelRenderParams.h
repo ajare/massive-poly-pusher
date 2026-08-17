@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <optional>
 
 #include "mpp/Config.h"
 #include "mpp/UniformCollection.h"
@@ -29,6 +30,7 @@ namespace mpp
 			std::vector<VertexBufferRenderCommand> renderCommands;
 			float pointSize{ 1.0f };
 			std::shared_ptr<UniformCollection> uniforms;
+			std::optional<bool> blend;
 			ResourcePtr material{ nullptr };
 			std::vector<ResourcePtr> textures;
 		};
@@ -98,6 +100,13 @@ namespace mpp
 			it->second.uniforms = uniforms;
 		}
 
+		void setModelBlend(bool blend)
+		{
+			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+
+			it->second.blend = blend;
+		}
+
 		void setModelMaterial(ResourcePtr material)
 		{
 			auto [it, inserted] = mMeshParams.insert(std::make_pair("", MeshRenderParams()));
@@ -158,6 +167,13 @@ namespace mpp
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
 
 			it->second.uniforms = uniforms;
+		}
+
+		void setMeshBlend(std::string const& mesh, bool blend)
+		{
+			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+
+			it->second.blend = blend;
 		}
 
 		void setMeshMaterial(std::string const& mesh, ResourcePtr material)

@@ -16,6 +16,12 @@ namespace mpp
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();
 		modelParams.setModelInstanceCount(2);
 		modelParams.setMeshUniforms("Mesh", {});
+		modelParams.setModelBlend(true);
+		modelParams.setMeshBlend("Mesh", false);
+		auto const& blendParams = modelParams.getMeshParams();
+		if (!blendParams.at("").blend.has_value() || !*blendParams.at("").blend ||
+			!blendParams.at("Mesh").blend.has_value() || *blendParams.at("Mesh").blend)
+			return fail("model or mesh blend override was not retained");
 		if (modelParams.getProgramSetRevision() != initialProgramSetRevision) return fail("non-program model parameters invalidated the visible program set");
 		modelParams.setModelFlags(ModelRenderParams::Flag_Visible);
 		auto const modelFlagsRevision = modelParams.getProgramSetRevision();

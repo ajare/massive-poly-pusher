@@ -143,6 +143,10 @@ namespace mpp
 				mi->setInstanceCount(rp->instanceCount);
 				mi->setPointSize(rp->pointSize);
 				mi->setUniformCollection(rp->uniforms);
+				if (rp->blend.has_value())
+				{
+					mi->blend(*rp->blend);
+				}
 
 				if (rp->material)
 				{
