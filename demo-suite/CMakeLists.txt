@@ -45,6 +45,7 @@ mpp_copy_runtime(DemoSuite
     MppProgram
     MppResourceParsers
     MppHelper)
+mpp_copy_asan_runtime(DemoSuite)
 
 add_custom_command(TARGET DemoSuite POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
@@ -53,4 +54,7 @@ add_custom_command(TARGET DemoSuite POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${PROJECT_SOURCE_DIR}/resources/demo-suite/bin/Common/DemoSuite.cfg"
         "$<TARGET_FILE_DIR:DemoSuite>/DemoSuite.cfg"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${PROJECT_SOURCE_DIR}/resources/demo-suite/packages/workspace.mpppackage"
+        "$<TARGET_FILE_DIR:DemoSuite>/workspace.mpppackage"
     VERBATIM)

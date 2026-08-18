@@ -1,6 +1,66 @@
 cmake_minimum_required(VERSION 3.22)
 project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX)
 
+# MemCheck is a Debug variant instrumented with MSVC AddressSanitizer. The
+# Visual Studio generator already seeded CMAKE_CONFIGURATION_TYPES from the
+# project() call above, so it has to be re-forced into the cache on every
+# configure for the extra configuration to take effect.
+if(CMAKE_CONFIGURATION_TYPES)
+    if(NOT "MemCheck" IN_LIST CMAKE_CONFIGURATION_TYPES)
+        list(APPEND CMAKE_CONFIGURATION_TYPES MemCheck)
+    endif()
+    set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "Semicolon separated list of supported configuration types" FORCE)
+
+    # Base MemCheck compiler flags mirror Debug for every target, including
+    # vendored dependencies (SDL, GLEW, Assimp, ...). /fsanitize=address is
+    # applied separately, only to this project's own targets, via
+    # mpp_target_defaults() below: the legacy CMake projects some
+    # dependencies vendor in reset MSVC policies to old compatibility modes
+    # and are not equipped to link against the ASan runtime thunk libraries,
+    # so instrumenting them breaks the link (missing __you_must_link_with_VCAsan_lib
+    # and basic CRT symbols).
+    # /RTC1 (runtime checks) cannot be combined with /fsanitize=address under MSVC.
+    string(REPLACE "/RTC1" "" MPP_MEMCHECK_CXX_FLAGS "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/RTC1" "" MPP_MEMCHECK_C_FLAGS "${CMAKE_C_FLAGS_DEBUG}")
+    set(CMAKE_CXX_FLAGS_MEMCHECK "${MPP_MEMCHECK_CXX_FLAGS}" CACHE STRING "Flags used by the C++ compiler for MemCheck builds" FORCE)
+    set(CMAKE_C_FLAGS_MEMCHECK "${MPP_MEMCHECK_C_FLAGS}" CACHE STRING "Flags used by the C compiler for MemCheck builds" FORCE)
+    # ASan is incompatible with incremental linking.
+    string(REPLACE "/INCREMENTAL" "" MPP_MEMCHECK_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+    string(REPLACE "/INCREMENTAL" "" MPP_MEMCHECK_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
+    string(REPLACE "/INCREMENTAL" "" MPP_MEMCHECK_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}")
+    set(CMAKE_EXE_LINKER_FLAGS_MEMCHECK "${MPP_MEMCHECK_EXE_LINKER_FLAGS} /INCREMENTAL:NO" CACHE STRING "Flags used to link an executable for MemCheck builds" FORCE)
+    set(CMAKE_SHARED_LINKER_FLAGS_MEMCHECK "${MPP_MEMCHECK_SHARED_LINKER_FLAGS} /INCREMENTAL:NO" CACHE STRING "Flags used by the shared library linker for MemCheck builds" FORCE)
+    set(CMAKE_MODULE_LINKER_FLAGS_MEMCHECK "${MPP_MEMCHECK_MODULE_LINKER_FLAGS} /INCREMENTAL:NO" CACHE STRING "Flags used by the module linker for MemCheck builds" FORCE)
+    mark_as_advanced(
+        CMAKE_CXX_FLAGS_MEMCHECK
+        CMAKE_C_FLAGS_MEMCHECK
+        CMAKE_EXE_LINKER_FLAGS_MEMCHECK
+        CMAKE_SHARED_LINKER_FLAGS_MEMCHECK
+        CMAKE_MODULE_LINKER_FLAGS_MEMCHECK)
+    unset(MPP_MEMCHECK_CXX_FLAGS)
+    unset(MPP_MEMCHECK_C_FLAGS)
+    unset(MPP_MEMCHECK_EXE_LINKER_FLAGS)
+    unset(MPP_MEMCHECK_SHARED_LINKER_FLAGS)
+    unset(MPP_MEMCHECK_MODULE_LINKER_FLAGS)
+
+    # CMake's default CMAKE_MSVC_RUNTIME_LIBRARY only selects the debug CRT
+    # for a config literally named "Debug"; without this, MemCheck still
+    # defines _DEBUG (above) but links the release CRT, which fails with
+    # unresolved _CrtDbgReport/_calloc_dbg symbols.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<OR:$<CONFIG:Debug>,$<CONFIG:MemCheck>>:Debug>DLL")
+
+    # The MSVC ASan runtime isn't on PATH by default, so MemCheck executables
+    # fail to start outside a Visual Studio developer command prompt unless
+    # its DLL (and matching PDB, for symbolised reports) travel alongside
+    # them; see mpp_copy_asan_runtime() below. It lives next to link.exe.
+    get_filename_component(MPP_ASAN_RUNTIME_DIR "${CMAKE_LINKER}" DIRECTORY)
+    set(MPP_ASAN_DLL "${MPP_ASAN_RUNTIME_DIR}/clang_rt.asan_dynamic-x86_64.dll")
+    set(MPP_ASAN_PDB "${MPP_ASAN_RUNTIME_DIR}/clang_rt.asan_dynamic-x86_64.pdb")
+    if(NOT EXISTS "${MPP_ASAN_DLL}")
+        message(WARNING "Could not find the MSVC ASan runtime DLL at ${MPP_ASAN_DLL}; MemCheck executables may fail to start.")
+    endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -97,9 +157,9 @@ function(mpp_target_defaults target)
         UNICODE
         _UNICODE
         _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING
-        $<$<CONFIG:Debug>:_DEBUG>)
+        $<$<OR:$<CONFIG:Debug>,$<CONFIG:MemCheck>>:_DEBUG>)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W3 /permissive-)
+        target_compile_options(${target} PRIVATE /W3 /permissive- $<$<CONFIG:MemCheck>:/fsanitize=address>)
     endif()
 endfunction()
 
@@ -134,6 +194,20 @@ function(mpp_copy_runtime target)
                 "$<TARGET_FILE:${runtime}>" "$<TARGET_FILE_DIR:${target}>"
             VERBATIM)
     endforeach()
+endfunction()
+
+# Copies the MSVC ASan runtime DLL/PDB next to a MemCheck config target so it
+# can run standalone. A no-op for every other configuration and generator;
+# MPP_ASAN_DLL is only defined for MSVC multi-config generators (see the
+# MemCheck setup near the top of this file).
+function(mpp_copy_asan_runtime target)
+    if(NOT DEFINED MPP_ASAN_DLL)
+        return()
+    endif()
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND "$<$<CONFIG:MemCheck>:${CMAKE_COMMAND};-E;copy_if_different;${MPP_ASAN_DLL};${MPP_ASAN_PDB};$<TARGET_FILE_DIR:${target}>>"
+        COMMAND_EXPAND_LISTS
+        VERBATIM)
 endfunction()
 
 # Utils owns its build in the source submodule. The additional build-interface
@@ -308,7 +382,7 @@ add_library(MassivePolyPusher SHARED
 target_include_directories(MassivePolyPusher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
 target_compile_definitions(MassivePolyPusher PRIVATE
     MPP_DLL_EXPORT _ENABLE_EXTENDED_ALIGNED_STORAGE
-    $<$<CONFIG:Debug>:MPP_DEBUG_BUILD>)
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:MemCheck>>:MPP_DEBUG_BUILD>)
 target_link_libraries(MassivePolyPusher
     PUBLIC MppData MppMesh MppProgram mpp_vendor_headers
     PRIVATE Utils OpenGL::GL GLEW::GLEW)
@@ -425,6 +499,7 @@ target_compile_definitions(ProgramBuilder PRIVATE _CONSOLE)
 target_link_libraries(ProgramBuilder PRIVATE MppMesh MppProgram MppMeshSpecificationParser Utils)
 mpp_target_defaults(ProgramBuilder)
 mpp_add_header_filters(ProgramBuilder "${CMAKE_CURRENT_SOURCE_DIR}/program-builder/include")
+mpp_copy_asan_runtime(ProgramBuilder)
 
 add_executable(ModelConvert
     model-convert/src/AssImpModelLoader.cpp
@@ -436,6 +511,7 @@ target_link_libraries(ModelConvert PRIVATE
 mpp_target_defaults(ModelConvert)
 mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/include")
 mpp_copy_runtime(ModelConvert assimp ${MPP_DRACO_RUNTIME} glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
+mpp_copy_asan_runtime(ModelConvert)
 
 if(WIN32)
     add_executable(PipelineEditor WIN32
@@ -451,6 +527,7 @@ if(WIN32)
     mpp_target_defaults(PipelineEditor)
     mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
     mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+    mpp_copy_asan_runtime(PipelineEditor)
     add_custom_command(TARGET PipelineEditor POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"

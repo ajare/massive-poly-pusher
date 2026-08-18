@@ -1,3 +1,13 @@
+#if defined(__SANITIZE_ADDRESS__)
+// Redirect MemCheck's ASan reports to a log file instead of stderr, which is
+// otherwise the only place they go and is easy to lose — PipelineEditor is a
+// WIN32 GUI app with no visible console.
+extern "C" const char* __asan_default_options()
+{
+	return "log_path=PipelineEditor.asan";
+}
+#endif
+
 #include <algorithm>
 #include <chrono>
 #include <cctype>

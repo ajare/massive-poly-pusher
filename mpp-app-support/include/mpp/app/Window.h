@@ -10,6 +10,8 @@ protected:
 
 public:
 
+	virtual ~Window() = default;
+
 	int getWidth() const;
 
 	int getHeight() const;

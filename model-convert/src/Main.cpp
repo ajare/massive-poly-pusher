@@ -66,6 +66,14 @@ Materials specification
 #  include <vld.h> // Memory tracking
 #endif
 
+#if defined(__SANITIZE_ADDRESS__)
+// Redirect MemCheck's ASan reports to a log file instead of stderr, which is
+// otherwise the only place they go and is easy to lose.
+extern "C" const char* __asan_default_options()
+{
+	return "log_path=ModelConvert.asan";
+}
+#endif
 
 #include <stdexcept>
 #include <iostream>

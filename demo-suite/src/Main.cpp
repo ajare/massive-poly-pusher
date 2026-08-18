@@ -1,3 +1,13 @@
+#if defined(__SANITIZE_ADDRESS__)
+// Redirect MemCheck's ASan reports to a log file instead of stderr, which is
+// otherwise the only place they go and is easy to lose — DemoSuite is a
+// WIN32 GUI app with no visible console.
+extern "C" const char* __asan_default_options()
+{
+	return "log_path=DemoSuite.asan";
+}
+#endif
+
 #include <format>
 #include <iostream>
 #include <filesystem>
@@ -189,6 +199,7 @@ void unhookRenderdoc()
 bool startup(int argc, char** argv)
 {
 	bool showHelp = false;
+	std::filesystem::path packagePath;
 	vector<std::filesystem::path> arguments;
 #ifdef _WIN32
 	int argumentCount = 0;
@@ -214,9 +225,7 @@ bool startup(int argc, char** argv)
 		if (arguments[index] == "--package")
 		{
 			if (++index >= arguments.size()) throw runtime_error("--package requires a .mpppackage path.");
-			gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
-			mpp::app::ZipArchive::extract(arguments[index], gPackageDirectory);
-			mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
+			packagePath = arguments[index];
 			continue;
 		}
 	}
@@ -226,20 +235,17 @@ bool startup(int argc, char** argv)
 		showCommandLineHelp(
 			"DemoSuite options:\r\n"
 			"  --help, -h                              Show this help.\r\n"
-			"  --package <file.mpppackage>             Load the packaged scene and pipeline. Required.\r\n"
+			"  --package <file.mpppackage>             Load the packaged scene and pipeline.\r\n"
+			"                                           Defaults to workspace.mpppackage next to the executable.\r\n"
 			"  --package-smoke-test                    With --package, render 30 frames then exit.\r\n");
 		return false;
 	}
 
-	if (gPackageDirectory.empty())
-	{
-		showCommandLineHelp(
-			"DemoSuite requires --package <file.mpppackage>.\r\n"
-			"  --help, -h                              Show this help.\r\n"
-			"  --package <file.mpppackage>             Load the packaged scene and pipeline. Required.\r\n"
-			"  --package-smoke-test                    With --package, render 30 frames then exit.\r\n");
-		return false;
-	}
+	if (packagePath.empty()) packagePath = executableDirectory() / "workspace.mpppackage";
+
+	gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
+	mpp::app::ZipArchive::extract(packagePath, gPackageDirectory);
+	mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
 
 	gOptions = parseProgramOptions("DemoSuite.cfg");
 	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableDirectory() / "demosuite.ini");
