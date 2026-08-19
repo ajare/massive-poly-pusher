@@ -2374,7 +2374,9 @@ namespace mpp
 		if (mTextAsPoints)
 		{
 			setProgramPointSizeState(true);
-			setPointSpriteState(true);
+			// GL_POINT_SPRITE is removed from core OpenGL profiles. Point sprites
+			// use gl_PointCoord automatically there, so enabling that legacy state
+			// produces GL_INVALID_ENUM without affecting rendering.
 		}
 
 		mProjectionType = ProjectionType::Ortho2D;
