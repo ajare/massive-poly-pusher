@@ -83,6 +83,17 @@ namespace mpp
 		uint32_t blurPasses{ 0 };
 	};
 
+	struct _MPPAPI PbrPipelineSSAODocument
+	{
+		bool enabled{ false };
+		float radius{ 0.5f };
+		float intensity{ 1.0f };
+		float bias{ 0.025f };
+		float power{ 1.0f };
+		int sampleCount{ 16 };
+		int blurRadius{ 2 };
+	};
+
 	// One entry in the ordered, reorderable post-effect chain that runs after
 	// the 3D scene and before UI (see doc/POST_EFFECT_CHAIN_IMPLEMENTATION_PLAN.md).
 	// Each entry becomes one MPP.FullscreenEffect graph pass; PbrPipelineDocument
@@ -133,6 +144,7 @@ namespace mpp
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineEnvironmentDocument environment;
 		PbrPipelineBloomDocument bloom;
+		PbrPipelineSSAODocument ssao;
 		PostEffectChain postEffects;
 		std::vector<PbrPreviewBinding> previewBindings;
 		std::vector<PbrPreviewOverride> previewOverrides;
@@ -142,6 +154,9 @@ namespace mpp
 		// Keeps the authored graph consistent with Bloom: the PBR emissive MRT and
 		// Bloom passes exist only while Bloom is enabled.
 		void setBloomEnabled(bool enabled);
+		// Inserts/removes the fixed SSAO sequence immediately after the opaque scene
+		// pass, before bloom extraction.
+		void setSSAOEnabled(bool enabled);
 		// Expands `postEffects.entries` into concrete MPP.FullscreenEffect passes,
 		// auto-wiring each entry's primary input to the previous entry's output (or
 		// `inputImage`/`inputImageName` for the first entry). Removes any

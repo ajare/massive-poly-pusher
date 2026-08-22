@@ -1,6 +1,9 @@
 #include <filesystem>
 #include <fstream>
 
+#include "mpp/PbrPipelineDocument.h"
+#include "mpp/resource-parsers/PbrPipelineParser.h"
+#include "mpp/resource-parsers/PbrPipelineSerializer.h"
 #include "mpp/resource-parsers/RenderGraphParser.h"
 #include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/RenderGraphSerializer.h"
@@ -105,11 +108,52 @@ namespace mpp::resource_parsers
 		}
 	}
 
+		bool runPbrPipelineSsaoDocumentTest(std::string const& extension, std::string* failure)
+		{
+			auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+			auto const path = (std::filesystem::temp_directory_path() / ("mpp_ssao_pipeline_document" + extension)).string();
+			try
+			{
+				PbrPipelineDocument document;
+				document.name = "SSAO structural test";
+				document.graph = std::make_shared<RenderGraph>();
+				GraphImageDesc colour; colour.format = GraphImageFormat::Rgba16f; colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+				GraphImageDesc depth; depth.format = GraphImageFormat::Depth24; depth.usage = GraphImageUsage::DepthAttachment;
+				auto scene = document.graph->createImage("SceneHdr", colour);
+				auto sceneDepth = document.graph->createImage("SceneDepth", depth);
+				auto bloom = document.graph->createImage("BloomExtract", colour);
+				auto scenePass = document.graph->addPass("PbrScene", GraphPassType::Scene);
+				document.graph->setPassCallbackFactory(scenePass, "MPP.PbrScene");
+				scene = document.graph->writeColour(scenePass, scene, GraphLoadOp::Clear, GraphStoreOp::Store);
+				document.graph->writeDepth(scenePass, sceneDepth, GraphLoadOp::Clear, GraphStoreOp::DontCare);
+				auto bloomPass = document.graph->addPass("BloomExtract", GraphPassType::Fullscreen);
+				document.graph->setPassCallbackFactory(bloomPass, "MPP.FullscreenEffect");
+				document.graph->setPassProgramResource(bloomPass, "PostEffect.BloomExtract");
+				document.graph->bindSampler(bloomPass, "TEX1", scene);
+				document.graph->writeColour(bloomPass, bloom);
+				document.ssao = { true, 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
+				document.setSSAOEnabled(true);
+				auto const pass = [&](uint32_t index) { return document.graph->getPassInfo({ index }); };
+				if (document.graph->getPassCount() != 5 || pass(1).name != "SSAO" || pass(2).name != "SSAOBlur" || pass(3).name != "SSAOComposite" || pass(4).name != "BloomExtract") return fail(extension + ": SSAO passes were not inserted between the scene and bloom extract passes");
+				if (document.graph->getImageCount() != 6 || pass(4).samplerBindings.front().image.id == scene.id) return fail(extension + ": SSAO images or bloom routing were not authored");
+				if (!hasGraphImageUsage(document.graph->getImageInfo({ sceneDepth.id, 0 }).desc.usage, GraphImageUsage::Sampled) || document.graph->getPassInfo(scenePass).depthOutputs.front().store != GraphStoreOp::Store) return fail(extension + ": SSAO did not retain sampled scene depth");
+				PbrPipelineSerializer::toFile(document, path);
+				auto restored = PbrPipelineParser::fromFile(path);
+				if (!restored.ssao.enabled || restored.ssao.radius != 0.7f || restored.ssao.intensity != 1.3f || restored.ssao.bias != 0.04f || restored.ssao.power != 1.2f || restored.ssao.sampleCount != 24 || restored.ssao.blurRadius != 3) return fail(extension + ": SSAO options did not survive pipeline round trip");
+				restored.setSSAOEnabled(false);
+				if (restored.graph->getPassCount() != 2 || restored.graph->getImageCount() != 3) return fail(extension + ": disabling SSAO did not remove its authored passes and images");
+			}
+			catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
+			std::filesystem::remove(path);
+			return true;
+		}
+
 	bool runRenderGraphResourceTests(std::string* failure)
 	{
 		for (auto const& extension : { std::string(".xml"), std::string(".yaml") })
 		{
 			if (!runForExtension(extension, failure)) return false;
+			if (!runPbrPipelineSsaoDocumentTest(extension, failure)) return false;
 		}
 		return true;
 	}

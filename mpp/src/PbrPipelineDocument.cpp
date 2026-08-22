@@ -93,6 +93,122 @@ namespace mpp
 		}
 	}
 
+	void PbrPipelineDocument::setSSAOEnabled(bool enabled)
+	{
+		ssao.enabled = enabled;
+		if (!graph) return;
+
+		auto isSsaoPass = [](GraphPassInfo const& info)
+		{
+			return info.callbackFactory == "MPP.SSAORaw" || info.callbackFactory == "MPP.SSAOBlur" || info.callbackFactory == "MPP.SSAOComposite";
+		};
+		auto findImage = [&](string const& name)
+		{
+			for (uint32_t image = 0; image < graph->getImageCount(); ++image)
+				if (graph->getImageInfo({ image, 0 }).name == name) return GraphImageHandle{ image, (uint32_t)graph->getImageVersionCount(image) - 1 };
+			return GraphImageHandle{};
+		};
+		if (!enabled)
+		{
+			auto composite = findImage("SsaoComposite");
+			auto sceneColour = GraphImageHandle{};
+			for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+			{
+				auto info = graph->getPassInfo({ pass });
+				if (info.callbackFactory == "MPP.PbrScene" && !info.colourOutputs.empty()) sceneColour = info.colourOutputs.front().image;
+			}
+			if (composite.isValid() && sceneColour.isValid())
+				for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+				{
+					auto info = graph->getPassInfo({ pass });
+					if (isSsaoPass(info)) continue;
+					for (size_t binding = 0; binding < info.samplerBindings.size(); ++binding)
+						if (info.samplerBindings[binding].image.id == composite.id)
+							graph->setSamplerBinding({ pass }, binding, info.samplerBindings[binding].sampler, sceneColour, info.samplerBindings[binding].mipLevel);
+				}
+			for (uint32_t pass = (uint32_t)graph->getPassCount(); pass-- > 0; )
+				if (isSsaoPass(graph->getPassInfo({ pass }))) graph->removePass({ pass });
+			for (uint32_t image = (uint32_t)graph->getImageCount(); image-- > 0; )
+			{
+				auto const& name = graph->getImageInfo({ image, 0 }).name;
+				if (name == "SsaoRaw" || name == "SsaoBlur" || name == "SsaoComposite") graph->removeImage({ image, 0 });
+			}
+			return;
+		}
+
+		// Rebuilding instead of layering duplicates keeps repeated enable calls and
+		// parse-time normalization deterministic.
+		setSSAOEnabled(false);
+		ssao.enabled = true;
+		GraphPassHandle scenePass;
+		GraphImageHandle sceneColour, sceneDepth;
+		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+		{
+			auto info = graph->getPassInfo({ pass });
+			if (info.callbackFactory != "MPP.PbrScene" || info.colourOutputs.empty() || info.depthOutputs.empty()) continue;
+			scenePass = { pass }; sceneColour = info.colourOutputs.front().image; sceneDepth = info.depthOutputs.front().image;
+			for (size_t output = 0; output < info.depthOutputs.size(); ++output)
+				if (info.depthOutputs[output].image.id == sceneDepth.id)
+					graph->setDepthOutput(scenePass, output, info.depthOutputs[output].load, GraphStoreOp::Store, info.depthOutputs[output].clearDepth, info.depthOutputs[output].mipLevel);
+			break;
+		}
+		if (!scenePass.isValid()) return;
+		auto depthDesc = graph->getImageInfo({ sceneDepth.id, 0 }).desc;
+		depthDesc.usage = depthDesc.usage | GraphImageUsage::Sampled;
+		graph->setImageDesc({ sceneDepth.id, 0 }, depthDesc);
+		auto colourDesc = graph->getImageInfo({ sceneColour.id, 0 }).desc;
+		auto effectDesc = colourDesc;
+		effectDesc.format = GraphImageFormat::Rgba8;
+		effectDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+		effectDesc.external = false;
+		effectDesc.transient = true;
+		auto raw = graph->createImage("SsaoRaw", effectDesc);
+		auto blur = graph->createImage("SsaoBlur", effectDesc);
+		auto compositeDesc = colourDesc;
+		compositeDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+		compositeDesc.external = false;
+		compositeDesc.transient = true;
+		auto composite = graph->createImage("SsaoComposite", compositeDesc);
+
+		UniformCollection rawParameters;
+		rawParameters.setUniform("RADIUS", ssao.radius); rawParameters.setUniform("INTENSITY", ssao.intensity);
+		rawParameters.setUniform("BIAS", ssao.bias); rawParameters.setUniform("POWER", ssao.power);
+		rawParameters.setUniform("SAMPLE_COUNT", (int32_t)ssao.sampleCount);
+		auto rawPass = graph->addPass("SSAO", GraphPassType::Fullscreen);
+		graph->setPassCallbackFactory(rawPass, "MPP.SSAORaw");
+		graph->bindSampler(rawPass, "DEPTH", sceneDepth);
+		graph->setPassParameters(rawPass, rawParameters);
+		graph->writeColour(rawPass, raw);
+		auto blurPass = graph->addPass("SSAOBlur", GraphPassType::Fullscreen);
+		graph->setPassCallbackFactory(blurPass, "MPP.SSAOBlur");
+		graph->bindSampler(blurPass, "AO", raw);
+		graph->bindSampler(blurPass, "DEPTH", sceneDepth);
+		UniformCollection blurParameters; blurParameters.setUniform("BLUR_RADIUS", (int32_t)ssao.blurRadius);
+		graph->setPassParameters(blurPass, blurParameters);
+		graph->writeColour(blurPass, blur);
+		auto compositePass = graph->addPass("SSAOComposite", GraphPassType::Fullscreen);
+		graph->setPassCallbackFactory(compositePass, "MPP.SSAOComposite");
+		graph->bindSampler(compositePass, "SCENE", sceneColour);
+		graph->bindSampler(compositePass, "AO", blur);
+		composite = graph->writeColour(compositePass, composite);
+
+		auto moveAfterScene = [&](string const& name, uint32_t offset)
+		{
+			uint32_t scene = UINT32_MAX, pass = UINT32_MAX;
+			for (uint32_t index = 0; index < graph->getPassCount(); ++index) { auto info = graph->getPassInfo({ index }); if (info.callbackFactory == "MPP.PbrScene") scene = index; if (info.name == name) pass = index; }
+			if (scene != UINT32_MAX && pass != UINT32_MAX) graph->movePass({ pass }, scene + offset);
+		};
+		moveAfterScene("SSAO", 1); moveAfterScene("SSAOBlur", 2); moveAfterScene("SSAOComposite", 3);
+		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+		{
+			auto info = graph->getPassInfo({ pass });
+			if (isSsaoPass(info)) continue;
+			for (size_t binding = 0; binding < info.samplerBindings.size(); ++binding)
+				if (info.samplerBindings[binding].image.id == sceneColour.id)
+					graph->setSamplerBinding({ pass }, binding, info.samplerBindings[binding].sampler, composite, info.samplerBindings[binding].mipLevel);
+		}
+	}
+
 	GraphImageHandle PbrPipelineDocument::buildPostEffectChain(GraphImageHandle inputImage, string const& inputImageName)
 	{
 		if (!graph) return inputImage;

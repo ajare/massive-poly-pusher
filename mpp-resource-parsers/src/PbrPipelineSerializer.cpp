@@ -52,6 +52,7 @@ namespace mpp::resource_parsers
 		environment->createChild("background")->setValue(document.environment.background);
 		if(!document.environment.hdrEquirectangular.empty()){environment->createChild("hdrEquirectangular")->setValue(document.environment.hdrEquirectangular);environment->createChild("environmentResolution")->setValue(document.environment.environmentResolution);environment->createChild("irradianceResolution")->setValue(document.environment.irradianceResolution);environment->createChild("prefilterResolution")->setValue(document.environment.prefilterResolution);}
 		auto bloom=root->createChild("Bloom");bloom->createChild("enabled")->setValue(document.bloom.enabled);bloom->createChild("blurPasses")->setValue(document.bloom.blurPasses);
+		auto ssao=root->createChild("SSAO");ssao->createChild("enabled")->setValue(document.ssao.enabled);ssao->createChild("radius")->setValue(document.ssao.radius);ssao->createChild("intensity")->setValue(document.ssao.intensity);ssao->createChild("bias")->setValue(document.ssao.bias);ssao->createChild("power")->setValue(document.ssao.power);ssao->createChild("sampleCount")->setValue(document.ssao.sampleCount);ssao->createChild("blurRadius")->setValue(document.ssao.blurRadius);
 		if (!document.previewBindings.empty())
 		{
 			auto bindings = root->createChild("PreviewBindings");
