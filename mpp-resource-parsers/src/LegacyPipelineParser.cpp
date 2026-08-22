@@ -55,7 +55,7 @@ namespace mpp::resource_parsers
 	{
 		auto data = detail::readDocumentRoot(filepath);
 		if (data.getName() != "LegacyPipeline") THROW_MPP_RESOURCE_PARSERS("Pipeline root must be LegacyPipeline: " + filepath, __LINE__, __FILE__, __func__);
-		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Outputs","Bloom","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"LegacyPipeline");
+		rejectUnknown(data,{"version","name","PreviewScene","ResourceLibraries","LocalResources","Imports","Outputs","Bloom","SSAO","PreviewBindings","PreviewOverrides","Extensions","RenderGraph"},"LegacyPipeline");
 		LegacyPipelineDocument document;
 		document.sourcePath = filepath;
 		document.version = data.hasEntry("version") ? utils::StringUtils::parseUInt(data.getEntry("version").getValue()) : 1;
@@ -81,6 +81,10 @@ namespace mpp::resource_parsers
 		if (data.hasEntry("Bloom"))
 		{
 			auto const& bloom=data.getEntry("Bloom");rejectUnknown(bloom,{"enabled","blurPasses"},"Bloom");if(bloom.hasEntry("enabled"))document.bloom.enabled=boolean(bloom.getEntry("enabled").getValue());if(bloom.hasEntry("blurPasses"))document.bloom.blurPasses=utils::StringUtils::parseUInt(bloom.getEntry("blurPasses").getValue());
+		}
+		if (data.hasEntry("SSAO"))
+		{
+			auto const& ssao=data.getEntry("SSAO");rejectUnknown(ssao,{"enabled","radius","intensity","bias","power","sampleCount","blurRadius"},"SSAO");if(ssao.hasEntry("enabled"))document.ssao.enabled=boolean(ssao.getEntry("enabled").getValue());if(ssao.hasEntry("radius"))document.ssao.radius=utils::StringUtils::parseFloat(ssao.getEntry("radius").getValue());if(ssao.hasEntry("intensity"))document.ssao.intensity=utils::StringUtils::parseFloat(ssao.getEntry("intensity").getValue());if(ssao.hasEntry("bias"))document.ssao.bias=utils::StringUtils::parseFloat(ssao.getEntry("bias").getValue());if(ssao.hasEntry("power"))document.ssao.power=utils::StringUtils::parseFloat(ssao.getEntry("power").getValue());if(ssao.hasEntry("sampleCount"))document.ssao.sampleCount=utils::StringUtils::parseInt(ssao.getEntry("sampleCount").getValue());if(ssao.hasEntry("blurRadius"))document.ssao.blurRadius=utils::StringUtils::parseInt(ssao.getEntry("blurRadius").getValue());
 		}
 		if (data.hasEntry("PreviewBindings"))
 			for (auto const& entry : data.getEntry("PreviewBindings")) { if(entry.first!="Material")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in PreviewBindings.",__LINE__,__FILE__,__func__);rejectUnknown(entry.second,{"binding","resource"},"PreviewBindings/Material");document.previewBindings.push_back({ entry.second.getEntry("binding").getValue(), entry.second.getEntry("resource").getValue() }); }

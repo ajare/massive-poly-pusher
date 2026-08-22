@@ -45,6 +45,7 @@ namespace mpp::resource_parsers
 			auto outputs=root->createChild("Outputs");for(auto const& value:document.outputs){auto output=outputs->createChild("Output");output->createChild("name")->setValue(value.name);output->createChild("image")->setValue(value.image);if(!value.taaDepth.empty())output->createChild("taaDepth")->setValue(value.taaDepth);auto aa=output->createChild("AntiAliasing");aa->createChild("msaa")->setValue(samples(value.antiAliasing.msaa));aa->createChild("ssaa")->setValue(samples(value.antiAliasing.ssaa));aa->createChild("taa")->setValue(boolean(value.antiAliasing.taa));aa->createChild("fxaa")->setValue(boolean(value.antiAliasing.fxaa));}
 		}
 		auto bloom=root->createChild("Bloom");bloom->createChild("enabled")->setValue(document.bloom.enabled);bloom->createChild("blurPasses")->setValue(document.bloom.blurPasses);
+		auto ssao=root->createChild("SSAO");ssao->createChild("enabled")->setValue(document.ssao.enabled);ssao->createChild("radius")->setValue(document.ssao.radius);ssao->createChild("intensity")->setValue(document.ssao.intensity);ssao->createChild("bias")->setValue(document.ssao.bias);ssao->createChild("power")->setValue(document.ssao.power);ssao->createChild("sampleCount")->setValue(document.ssao.sampleCount);ssao->createChild("blurRadius")->setValue(document.ssao.blurRadius);
 		if (!document.previewBindings.empty())
 		{
 			auto bindings = root->createChild("PreviewBindings");

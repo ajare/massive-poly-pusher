@@ -58,6 +58,7 @@ namespace mpp
 		std::vector<PbrPipelineExtensionDocument> extensions;
 		std::shared_ptr<RenderGraph> graph;
 		PbrPipelineBloomDocument bloom;
+		PbrPipelineSSAODocument ssao;
 		PostEffectChain postEffects;
 		std::vector<PbrPreviewBinding> previewBindings;
 		std::vector<PbrPreviewOverride> previewOverrides;

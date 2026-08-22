@@ -1,7 +1,10 @@
 #include <filesystem>
 #include <fstream>
 
+#include "mpp/LegacyPipelineDocument.h"
 #include "mpp/PbrPipelineDocument.h"
+#include "mpp/resource-parsers/LegacyPipelineParser.h"
+#include "mpp/resource-parsers/LegacyPipelineSerializer.h"
 #include "mpp/resource-parsers/PbrPipelineParser.h"
 #include "mpp/resource-parsers/PbrPipelineSerializer.h"
 #include "mpp/resource-parsers/RenderGraphParser.h"
@@ -148,12 +151,48 @@ namespace mpp::resource_parsers
 			return true;
 		}
 
+	bool runLegacyPipelineSsaoDocumentTest(std::string const& extension, std::string* failure)
+	{
+		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+		auto const path = (std::filesystem::temp_directory_path() / ("mpp_legacy_ssao_pipeline_document" + extension)).string();
+		auto hasDiagnostic = [](DiagnosticBag const& diagnostics, std::string const& code)
+		{
+			for (auto const& diagnostic : diagnostics.getDiagnostics()) if (diagnostic.code == code) return true;
+			return false;
+		};
+		try
+		{
+			LegacyPipelineDocument document;
+			document.name = "Legacy SSAO structural test";
+			document.graph = std::make_shared<RenderGraph>();
+			GraphImageDesc colour; colour.format = GraphImageFormat::Rgba16f; colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+			auto output = document.graph->createImage("Output", colour);
+			auto raw = document.graph->addPass("SSAO", GraphPassType::Fullscreen);
+			document.graph->setPassCallbackFactory(raw, "MPP.SSAORaw");
+			document.graph->writeColour(raw, output);
+			document.outputs.push_back({ "Output", "Output" });
+			document.ssao = { true, 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
+			LegacyPipelineSerializer::toFile(document, path);
+			auto restored = LegacyPipelineParser::fromFile(path);
+			if (!restored.ssao.enabled || restored.ssao.radius != 0.7f || restored.ssao.intensity != 1.3f || restored.ssao.bias != 0.04f || restored.ssao.power != 1.2f || restored.ssao.sampleCount != 24 || restored.ssao.blurRadius != 3) return fail(extension + ": SSAO options did not survive LegacyPipeline round trip");
+			if (hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-038")) return fail(extension + ": enabled SSAO with its raw pass was rejected");
+			restored.graph->removePass({ 0 });
+			if (!hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-038")) return fail(extension + ": enabled SSAO without its raw pass was accepted");
+			restored.ssao.enabled = false;
+			if (hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-038")) return fail(extension + ": disabled SSAO without its raw pass was rejected");
+		}
+		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
+		std::filesystem::remove(path);
+		return true;
+	}
+
 	bool runRenderGraphResourceTests(std::string* failure)
 	{
 		for (auto const& extension : { std::string(".xml"), std::string(".yaml") })
 		{
 			if (!runForExtension(extension, failure)) return false;
 			if (!runPbrPipelineSsaoDocumentTest(extension, failure)) return false;
+			if (!runLegacyPipelineSsaoDocumentTest(extension, failure)) return false;
 		}
 		return true;
 	}
