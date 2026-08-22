@@ -724,6 +724,86 @@ void main()
 }
 )";
 
+const std::string FragmentShaderGtaoRawTemplate =
+R"(
+@@Version
+
+@@Uniform(mat4 PROJECTION);
+@@Uniform(mat4 INVERSE_PROJECTION);
+@@Uniform(float RADIUS);
+@@Uniform(float INTENSITY);
+@@Uniform(float THICKNESS);
+@@Uniform(float HORIZON_BIAS);
+@@Uniform(float FALLOFF_START);
+@@Uniform(float FALLOFF_END);
+@@Uniform(int SLICE_COUNT);
+@@Uniform(int STEPS_PER_SLICE);
+@@Uniform(float POWER);
+@@Texture(sampler2D DEPTH);
+
+vec3 gtaoViewPosition(vec2 uv, float depth)
+{
+    vec4 position = @Uniform(INVERSE_PROJECTION) * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    return position.xyz / position.w;
+}
+
+float gtaoNoise(vec2 value)
+{
+    return fract(sin(dot(value, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void main()
+{
+    vec2 uv = @In(TEXCOORDS);
+    float centreDepth = texture(@Texture(DEPTH), uv).r;
+    float ambient = 1.0;
+    float radius = max(@Uniform(RADIUS), 0.0);
+    if (centreDepth < 0.999999 && radius > 0.0)
+    {
+        vec3 position = gtaoViewPosition(uv, centreDepth);
+        vec3 normal = normalize(cross(dFdx(position), dFdy(position)));
+        if (normal.z < 0.0) normal = -normal;
+        int slices = clamp(@Uniform(SLICE_COUNT), 1, 16);
+        int steps = clamp(@Uniform(STEPS_PER_SLICE), 1, 16);
+        float projectedRadius = radius * abs(@Uniform(PROJECTION)[1][1]) / max(-position.z, 0.001) * 0.5;
+        float rotation = gtaoNoise(gl_FragCoord.xy) * 3.14159265359;
+        float occlusion = 0.0;
+        for (int slice = 0; slice < 16; ++slice)
+        {
+            if (slice >= slices) break;
+            float angle = rotation + (float(slice) + 0.5) * 3.14159265359 / float(slices);
+            vec2 axis = vec2(cos(angle), sin(angle));
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float horizon = 0.0;
+                for (int stepIndex = 0; stepIndex < 16; ++stepIndex)
+                {
+                    if (stepIndex >= steps) break;
+                    float fraction = (float(stepIndex) + 1.0) / float(steps);
+                    vec2 sampleUv = uv + axis * float(side) * projectedRadius * fraction;
+                    if (sampleUv.x <= 0.0 || sampleUv.x >= 1.0 || sampleUv.y <= 0.0 || sampleUv.y >= 1.0) continue;
+                    float sampleDepth = texture(@Texture(DEPTH), sampleUv).r;
+                    if (sampleDepth >= 0.999999) continue;
+                    vec3 delta = gtaoViewPosition(sampleUv, sampleDepth) - position;
+                    float distanceToSample = length(delta);
+                    if (distanceToSample <= 0.0001 || distanceToSample > radius) continue;
+                    float startDistance = clamp(@Uniform(FALLOFF_START), 0.0, 1.0) * radius;
+                    float endDistance = max(clamp(@Uniform(FALLOFF_END), 0.0, 1.0) * radius, startDistance + 0.0001);
+                    float rangeWeight = 1.0 - smoothstep(startDistance, endDistance, distanceToSample);
+                    float thicknessWeight = clamp(max(@Uniform(THICKNESS), 0.0001) / (abs(delta.z) + max(@Uniform(THICKNESS), 0.0001)), 0.0, 1.0);
+                    float elevation = max(dot(normal, delta / distanceToSample) - max(@Uniform(HORIZON_BIAS), 0.0), 0.0);
+                    horizon = max(horizon, elevation * rangeWeight * thicknessWeight);
+                }
+                occlusion += horizon;
+            }
+        }
+        float visibility = clamp(1.0 - max(@Uniform(INTENSITY), 0.0) * occlusion / float(slices * 2), 0.0, 1.0);
+        ambient = pow(visibility, max(@Uniform(POWER), 0.0001));
+    }
+    @Out(vec4 COLOUR) = vec4(ambient, ambient, ambient, 1.0);
+}
+)";
+
 const std::string FragmentShaderSsaoBlurTemplate =
 R"(
 @@Version

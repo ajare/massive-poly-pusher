@@ -23,6 +23,7 @@ Diagnostics have a stable code, severity, message, source path, and optional sub
 | `MPP-PIPELINE-001` | Unsupported pipeline version. Migrate to version 1. |
 | `MPP-PIPELINE-011` | Optional import lacks an explicit fallback. Make it required or select a compatible fallback. |
 | `MPP-PIPELINE-030`–`032` | Bloom count is out of range or enabled bloom lacks enough authored extract/composite/blur passes. |
+| `MPP-PIPELINE-053` | SSAO or GTAO parameters are outside supported finite ranges. Correct the values shown under Ambient Occlusion. |
 | `MPP-PIPELINE-RESOURCE-001` | Concrete resource XML is invalid. Inspect the nested parser message and resource inspector. |
 | `MPP-PIPELINE-CLI-001` | `PreviewScene/file` does not resolve from the pipeline location. |
 | `MPP-PIPELINE-CLI-002` | Root/core XML, enum, or resource-library parsing failed. Unknown core fields are rejected. |

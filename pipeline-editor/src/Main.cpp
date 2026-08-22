@@ -1671,13 +1671,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// (1.0), rather than subtracting BloomOptions' scene threshold of 1.0.
 				previewOptions.bloom.useMrtEmissiveMask = previewDocument->bloom.enabled;
 				previewOptions.bloom.threshold = 0.0f;
-				previewOptions.ssao.enabled = previewDocument->ssao.enabled;
-				previewOptions.ssao.radius = previewDocument->ssao.radius;
-				previewOptions.ssao.intensity = previewDocument->ssao.intensity;
-				previewOptions.ssao.bias = previewDocument->ssao.bias;
-				previewOptions.ssao.power = previewDocument->ssao.power;
-				previewOptions.ssao.sampleCount = previewDocument->ssao.sampleCount;
-				previewOptions.ssao.blurRadius = previewDocument->ssao.blurRadius;
+				previewOptions.ambientOcclusion = previewDocument->ambientOcclusion;
 				previewOptions.debugEnvironmentCube = debugEnvironmentCube;
 				if (previewScene)
 				{
@@ -2959,20 +2953,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (ImGui::IsItemHovered())
 						ImGui::SetTooltip("Enable or disable bloom in the preview pipeline");
 					ImGui::SameLine();
-					auto ssaoBefore = clonePipeline(openDocument);
-					bool toolbarSsaoEnabled = openDocument->ssao.enabled;
-					if (ImGui::Checkbox("SSAO##Toolbar", &toolbarSsaoEnabled))
+					auto aoBefore = clonePipeline(openDocument);
+					int toolbarAoMethod = (int)openDocument->ambientOcclusion.method;
+					ImGui::SetNextItemWidth(90.0f);
+					if (ImGui::Combo("AO##Toolbar", &toolbarAoMethod, "None\0SSAO\0GTAO\0"))
 					{
-						openDocument->setSSAOEnabled(toolbarSsaoEnabled);
+						openDocument->setAmbientOcclusionMethod((AmbientOcclusionMethod)toolbarAoMethod);
 						auto after = clonePipeline(openDocument);
 						pipelineCommands.execute(std::make_unique<PipelineSnapshotCommand>(
-						                             "Toggle SSAO", &openDocument, ssaoBefore, after), true);
+						                             "Change Ambient Occlusion", &openDocument, aoBefore, after), true);
 						pipelineDirty = true;
 						documentChangedSincePreview = true;
 						lastEditScene = false;
 					}
 					if (ImGui::IsItemHovered())
-						ImGui::SetTooltip("Enable or disable screen-space ambient occlusion in the preview pipeline");
+						ImGui::SetTooltip("Select the fixed ambient-occlusion method for the preview pipeline");
 				}
 				auto workProgress = backgroundJobs.progress();
 				if (workProgress.queued || workProgress.running || gpuInstallationPending)
@@ -4039,7 +4034,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				selectedPass = selectedImage = selectedImport = selectedOverride = selectedModel =
 				    selectedLocalResource = selectedExternalResource = -1;
 			}
-			if (openDocument && ImGui::Selectable("SSAO Settings", selectedBinding == -4))
+			if (openDocument && ImGui::Selectable("Ambient Occlusion", selectedBinding == -4))
 			{
 				selectedBinding = -4;
 				selectedPass = selectedImage = selectedImport = selectedOverride = selectedModel =
@@ -5866,40 +5861,59 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			else if (openDocument && selectedBinding == -4)
 			{
 				auto before = clonePipeline(openDocument);
-				auto& ssao = openDocument->ssao;
-				bool enabled = ssao.enabled;
-				bool changed = ImGui::Checkbox("Enable SSAO", &enabled);
-				if (changed) openDocument->setSSAOEnabled(enabled);
-				changed |= ImGui::InputFloat("Radius", &ssao.radius);
-				changed |= ImGui::InputFloat("Intensity", &ssao.intensity);
-				changed |= ImGui::InputFloat("Bias", &ssao.bias);
-				changed |= ImGui::InputFloat("Power", &ssao.power);
-				changed |= ImGui::InputInt("Sample count", &ssao.sampleCount);
-				changed |= ImGui::InputInt("Blur radius", &ssao.blurRadius);
-				if (changed && ssao.enabled)
-					openDocument->setSSAOEnabled(true);
+				auto& ambientOcclusion = openDocument->ambientOcclusion;
+				int selectedMethod = (int)ambientOcclusion.method;
+				bool methodChanged = ImGui::Combo("Method", &selectedMethod, "None\0SSAO\0GTAO\0");
+				bool changed = methodChanged;
+				if (methodChanged) openDocument->setAmbientOcclusionMethod((AmbientOcclusionMethod)selectedMethod);
+				if (ambientOcclusion.method == AmbientOcclusionMethod::Ssao)
+				{
+					auto& options = ambientOcclusion.ssao;
+					changed |= ImGui::InputFloat("Radius", &options.radius);
+					changed |= ImGui::InputFloat("Intensity", &options.intensity);
+					changed |= ImGui::InputFloat("Bias", &options.bias);
+					changed |= ImGui::InputFloat("Power", &options.power);
+					changed |= ImGui::InputInt("Sample count", &options.sampleCount);
+					changed |= ImGui::InputInt("Blur radius", &options.blurRadius);
+				}
+				else if (ambientOcclusion.method == AmbientOcclusionMethod::Gtao)
+				{
+					auto& options = ambientOcclusion.gtao;
+					changed |= ImGui::InputFloat("Radius", &options.radius);
+					changed |= ImGui::InputFloat("Intensity", &options.intensity);
+					changed |= ImGui::InputFloat("Thickness", &options.thickness);
+					changed |= ImGui::InputFloat("Horizon bias", &options.horizonBias);
+					changed |= ImGui::InputFloat("Falloff start", &options.falloffStart);
+					changed |= ImGui::InputFloat("Falloff end", &options.falloffEnd);
+					changed |= ImGui::InputInt("Slice count", &options.sliceCount);
+					changed |= ImGui::InputInt("Steps per slice", &options.stepsPerSlice);
+					changed |= ImGui::InputFloat("Power", &options.power);
+					changed |= ImGui::InputInt("Blur radius", &options.blurRadius);
+				}
+				if (changed && !methodChanged && ambientOcclusion.method != AmbientOcclusionMethod::None)
+					openDocument->setAmbientOcclusionMethod(ambientOcclusion.method);
 
-				bool ssaoActive = false;
-				if (openDocument->graph)
+				bool aoActive = ambientOcclusion.method == AmbientOcclusionMethod::None;
+				if (openDocument->graph && ambientOcclusion.method != AmbientOcclusionMethod::None)
 				{
 					auto compilation = openDocument->graph->compile();
 					bool raw = false, blur = false, composite = false;
 					for (auto pass : compilation.passOrder)
 					{
 						auto const& info = openDocument->graph->getPassInfo(pass);
-						raw |= info.callbackFactory == "MPP.SSAORaw";
-						blur |= info.callbackFactory == "MPP.SSAOBlur";
-						composite |= info.callbackFactory == "MPP.SSAOComposite";
+						raw |= info.callbackFactory == (ambientOcclusion.method == AmbientOcclusionMethod::Ssao ? "MPP.SSAORaw" : "MPP.GTAORaw");
+						blur |= info.callbackFactory == "MPP.AmbientOcclusionBlur";
+						composite |= info.callbackFactory == "MPP.AmbientOcclusionComposite";
 					}
-					ssaoActive = compilation.valid && raw && blur && composite;
+					aoActive = compilation.valid && raw && blur && composite;
 				}
-				ImGui::TextColored(ssaoActive ? ImVec4(0.3f, 0.9f, 0.4f, 1.0f) : ImVec4(0.9f, 0.6f, 0.25f, 1.0f),
-				                   ssaoActive ? "SSAO execution: active in compiled graph" : "SSAO execution: bypassed in compiled graph");
+				ImGui::TextColored(aoActive ? ImVec4(0.3f, 0.9f, 0.4f, 1.0f) : ImVec4(0.9f, 0.6f, 0.25f, 1.0f),
+				                   aoActive ? "Ambient occlusion graph is valid" : "Ambient occlusion is bypassed in the compiled graph");
 				if (changed)
 				{
 					auto after = clonePipeline(openDocument);
 					pipelineCommands.execute(
-					    std::make_unique<PipelineSnapshotCommand>("Edit SSAO Settings", &openDocument, before, after),
+					    std::make_unique<PipelineSnapshotCommand>("Edit Ambient Occlusion", &openDocument, before, after),
 					    true);
 					pipelineDirty = true;
 					documentChangedSincePreview = true;

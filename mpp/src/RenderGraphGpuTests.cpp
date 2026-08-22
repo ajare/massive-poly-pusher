@@ -517,8 +517,8 @@ namespace mpp
 				};
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
 				if (executedSsao()) return fail("disabled SSAO was inserted into the graph");
-				SSAOOptions gateOptions; gateOptions.enabled = true;
-				pipeline->setSSAOOptions(gateOptions);
+				AmbientOcclusionOptions gateOptions; gateOptions.method = AmbientOcclusionMethod::Ssao;
+				pipeline->setAmbientOcclusionOptions(gateOptions);
 				BloomOptions gateBloom; gateBloom.enabled = true; gateBloom.blurPasses = 0;
 				pipeline->setBloomOptions(gateBloom);
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
@@ -532,7 +532,13 @@ namespace mpp
 				}
 				if (ssaoOrder == SIZE_MAX || bloomOrder == SIZE_MAX || ssaoOrder >= bloomOrder)
 					return fail("SSAO was not fixed immediately before the bloom sequence");
-				GraphPassDebugOptions graphPasses; graphPasses.ssao = false;
+				gateOptions.method = AmbientOcclusionMethod::Gtao;
+				pipeline->setAmbientOcclusionOptions(gateOptions);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				bool executedGtao = false;
+				for (auto const& stats : pipeline->getLastGraphExecutionStats()) executedGtao |= stats.name == "GTAO";
+				if (!executedGtao || executedSsao()) return fail("switching ambient-occlusion method did not replace SSAO with GTAO");
+				GraphPassDebugOptions graphPasses; graphPasses.ambientOcclusion = false;
 				pipeline->setGraphPassDebugOptions(graphPasses);
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
 				if (executedSsao()) return fail("the SSAO graph debug gate did not suppress the pass");
@@ -551,6 +557,7 @@ namespace mpp
 				auto rawOutput = renderSystem->createRenderTexture("GpuTestSsaoRaw", size, size, colourOptions);
 				auto blurredOutput = renderSystem->createRenderTexture("GpuTestSsaoBlurred", size, size, colourOptions);
 				auto zeroRadiusOutput = renderSystem->createRenderTexture("GpuTestSsaoZeroRadius", size, size, colourOptions);
+				auto gtaoOutput = renderSystem->createRenderTexture("GpuTestGtaoRaw", size, size, colourOptions);
 				RenderTextureOptions ssaoDepthOptions;
 				ssaoDepthOptions.numAttachments = 0;
 				ssaoDepthOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
@@ -580,10 +587,11 @@ namespace mpp
 				renderSystem->setProjection2dOrthographic(); renderSystem->resetTransform();
 				renderSystem->scaleTransform2d(glm::vec2((float)size / renderSystem->getWindowWidth(), (float)size / renderSystem->getWindowHeight()));
 				SSAOOptions ssao;
+				bool ssaoEnabled = false;
 				auto renderSsaoFixture = [&](RenderTargetPtr const& output)
 				{
 					renderSystem->pushRenderTarget(output); renderSystem->setViewport(0, 0, size, size);
-					if (ssao.enabled)
+					if (ssaoEnabled)
 					{
 						renderSystem->pushRenderTarget(rawOutput); renderSystem->setViewport(0, 0, size, size);
 						renderSystem->renderSSAORaw(sceneDepthTexture, projection, glm::inverse(projection), ssao);
@@ -594,7 +602,7 @@ namespace mpp
 					renderSystem->popRenderTarget();
 				};
 				renderSsaoFixture(disabledOutput);
-				ssao.enabled = true;
+				ssaoEnabled = true;
 				renderSsaoFixture(enabledOutput);
 				// Render the raw AO term once more, then denoise it with a larger radius.
 				renderSystem->pushRenderTarget(rawOutput); renderSystem->setViewport(0, 0, size, size);
@@ -606,6 +614,10 @@ namespace mpp
 				ssao.radius = 0.0f;
 				renderSystem->pushRenderTarget(zeroRadiusOutput); renderSystem->setViewport(0, 0, size, size);
 				renderSystem->renderSSAORaw(sceneDepthTexture, projection, glm::inverse(projection), ssao);
+				renderSystem->popRenderTarget();
+				GTAOOptions gtao; gtao.radius = 2.0f; gtao.intensity = 4.0f; gtao.thickness = 1.0f; gtao.falloffStart = 0.0f; gtao.falloffEnd = 1.0f; gtao.sliceCount = 8; gtao.stepsPerSlice = 8;
+				renderSystem->pushRenderTarget(gtaoOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderGTAORaw(sceneDepthTexture, projection, glm::inverse(projection), gtao);
 				renderSystem->popRenderTarget();
 				renderSystem->popModelMatrix(); renderSystem->popCameraMatrix(); renderSystem->popProjectionMatrix();
 
@@ -620,6 +632,10 @@ namespace mpp
 				auto const zeroRadius = readPixel(zeroRadiusOutput, 34, 32);
 				if (std::abs((int)zeroRadius[0] - 255) > 1)
 					return fail("SSAO radius zero did not collapse to neutral ambient occlusion (got " + std::to_string(zeroRadius[0]) + ")");
+				auto const gtaoOccluded = readPixel(gtaoOutput, 34, 32);
+				auto const gtaoOpen = readPixel(gtaoOutput, 52, 32);
+				if ((int)gtaoOpen[0] - (int)gtaoOccluded[0] < 3)
+					return fail("GTAO did not detect the depth-fixture horizon (occluded=" + std::to_string(gtaoOccluded[0]) + ", open=" + std::to_string(gtaoOpen[0]) + ")");
 				auto variance = [&](RenderTargetPtr const& target)
 				{
 					auto pixels = readPixels(target); double mean = 0.0, squared = 0.0; size_t count = 0;

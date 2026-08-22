@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 #include <map>
 #include <set>
@@ -93,14 +94,16 @@ namespace mpp
 		}
 	}
 
-	void PbrPipelineDocument::setSSAOEnabled(bool enabled)
+	void PbrPipelineDocument::setAmbientOcclusionMethod(AmbientOcclusionMethod method)
 	{
-		ssao.enabled = enabled;
+		ambientOcclusion.method = method;
 		if (!graph) return;
 
-		auto isSsaoPass = [](GraphPassInfo const& info)
+		auto isAmbientOcclusionPass = [](GraphPassInfo const& info)
 		{
-			return info.callbackFactory == "MPP.SSAORaw" || info.callbackFactory == "MPP.SSAOBlur" || info.callbackFactory == "MPP.SSAOComposite";
+			return info.callbackFactory == "MPP.SSAORaw" || info.callbackFactory == "MPP.GTAORaw" ||
+				info.callbackFactory == "MPP.SSAOBlur" || info.callbackFactory == "MPP.SSAOComposite" ||
+				info.callbackFactory == "MPP.AmbientOcclusionBlur" || info.callbackFactory == "MPP.AmbientOcclusionComposite";
 		};
 		auto findImage = [&](string const& name)
 		{
@@ -108,9 +111,10 @@ namespace mpp
 				if (graph->getImageInfo({ image, 0 }).name == name) return GraphImageHandle{ image, (uint32_t)graph->getImageVersionCount(image) - 1 };
 			return GraphImageHandle{};
 		};
-		if (!enabled)
+		if (method == AmbientOcclusionMethod::None)
 		{
-			auto composite = findImage("SsaoComposite");
+			auto composite = findImage("AmbientOcclusionComposite");
+			if (!composite.isValid()) composite = findImage("SsaoComposite");
 			auto sceneColour = GraphImageHandle{};
 			for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 			{
@@ -121,25 +125,25 @@ namespace mpp
 				for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 				{
 					auto info = graph->getPassInfo({ pass });
-					if (isSsaoPass(info)) continue;
+					if (isAmbientOcclusionPass(info)) continue;
 					for (size_t binding = 0; binding < info.samplerBindings.size(); ++binding)
 						if (info.samplerBindings[binding].image.id == composite.id)
 							graph->setSamplerBinding({ pass }, binding, info.samplerBindings[binding].sampler, sceneColour, info.samplerBindings[binding].mipLevel);
 				}
 			for (uint32_t pass = (uint32_t)graph->getPassCount(); pass-- > 0; )
-				if (isSsaoPass(graph->getPassInfo({ pass }))) graph->removePass({ pass });
+				if (isAmbientOcclusionPass(graph->getPassInfo({ pass }))) graph->removePass({ pass });
 			for (uint32_t image = (uint32_t)graph->getImageCount(); image-- > 0; )
 			{
 				auto const& name = graph->getImageInfo({ image, 0 }).name;
-				if (name == "SsaoRaw" || name == "SsaoBlur" || name == "SsaoComposite") graph->removeImage({ image, 0 });
+				if (name == "SsaoRaw" || name == "SsaoBlur" || name == "SsaoComposite" || name == "AmbientOcclusionRaw" || name == "AmbientOcclusionBlur" || name == "AmbientOcclusionComposite") graph->removeImage({ image, 0 });
 			}
 			return;
 		}
 
 		// Rebuilding instead of layering duplicates keeps repeated enable calls and
 		// parse-time normalization deterministic.
-		setSSAOEnabled(false);
-		ssao.enabled = true;
+		setAmbientOcclusionMethod(AmbientOcclusionMethod::None);
+		ambientOcclusion.method = method;
 		GraphPassHandle scenePass;
 		GraphImageHandle sceneColour, sceneDepth;
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
@@ -162,32 +166,45 @@ namespace mpp
 		effectDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
 		effectDesc.external = false;
 		effectDesc.transient = true;
-		auto raw = graph->createImage("SsaoRaw", effectDesc);
-		auto blur = graph->createImage("SsaoBlur", effectDesc);
+		auto raw = graph->createImage("AmbientOcclusionRaw", effectDesc);
+		auto blur = graph->createImage("AmbientOcclusionBlur", effectDesc);
 		auto compositeDesc = colourDesc;
 		compositeDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
 		compositeDesc.external = false;
 		compositeDesc.transient = true;
-		auto composite = graph->createImage("SsaoComposite", compositeDesc);
+		auto composite = graph->createImage("AmbientOcclusionComposite", compositeDesc);
 
 		UniformCollection rawParameters;
-		rawParameters.setUniform("RADIUS", ssao.radius); rawParameters.setUniform("INTENSITY", ssao.intensity);
-		rawParameters.setUniform("BIAS", ssao.bias); rawParameters.setUniform("POWER", ssao.power);
-		rawParameters.setUniform("SAMPLE_COUNT", (int32_t)ssao.sampleCount);
-		auto rawPass = graph->addPass("SSAO", GraphPassType::Fullscreen);
-		graph->setPassCallbackFactory(rawPass, "MPP.SSAORaw");
+		if (method == AmbientOcclusionMethod::Ssao)
+		{
+			auto const& options = ambientOcclusion.ssao;
+			rawParameters.setUniform("RADIUS", options.radius); rawParameters.setUniform("INTENSITY", options.intensity);
+			rawParameters.setUniform("BIAS", options.bias); rawParameters.setUniform("POWER", options.power);
+			rawParameters.setUniform("SAMPLE_COUNT", (int32_t)options.sampleCount);
+		}
+		else
+		{
+			auto const& options = ambientOcclusion.gtao;
+			rawParameters.setUniform("RADIUS", options.radius); rawParameters.setUniform("INTENSITY", options.intensity);
+			rawParameters.setUniform("THICKNESS", options.thickness); rawParameters.setUniform("HORIZON_BIAS", options.horizonBias);
+			rawParameters.setUniform("FALLOFF_START", options.falloffStart); rawParameters.setUniform("FALLOFF_END", options.falloffEnd);
+			rawParameters.setUniform("SLICE_COUNT", (int32_t)options.sliceCount); rawParameters.setUniform("STEPS_PER_SLICE", (int32_t)options.stepsPerSlice);
+			rawParameters.setUniform("POWER", options.power);
+		}
+		auto rawPass = graph->addPass(method == AmbientOcclusionMethod::Ssao ? "SSAO" : "GTAO", GraphPassType::Fullscreen);
+		graph->setPassCallbackFactory(rawPass, method == AmbientOcclusionMethod::Ssao ? "MPP.SSAORaw" : "MPP.GTAORaw");
 		graph->bindSampler(rawPass, "DEPTH", sceneDepth);
 		graph->setPassParameters(rawPass, rawParameters);
-		graph->writeColour(rawPass, raw);
-		auto blurPass = graph->addPass("SSAOBlur", GraphPassType::Fullscreen);
-		graph->setPassCallbackFactory(blurPass, "MPP.SSAOBlur");
+		raw = graph->writeColour(rawPass, raw);
+		auto blurPass = graph->addPass("AmbientOcclusionBlur", GraphPassType::Fullscreen);
+		graph->setPassCallbackFactory(blurPass, "MPP.AmbientOcclusionBlur");
 		graph->bindSampler(blurPass, "AO", raw);
 		graph->bindSampler(blurPass, "DEPTH", sceneDepth);
-		UniformCollection blurParameters; blurParameters.setUniform("BLUR_RADIUS", (int32_t)ssao.blurRadius);
+		UniformCollection blurParameters; blurParameters.setUniform("BLUR_RADIUS", (int32_t)(method == AmbientOcclusionMethod::Ssao ? ambientOcclusion.ssao.blurRadius : ambientOcclusion.gtao.blurRadius));
 		graph->setPassParameters(blurPass, blurParameters);
-		graph->writeColour(blurPass, blur);
-		auto compositePass = graph->addPass("SSAOComposite", GraphPassType::Fullscreen);
-		graph->setPassCallbackFactory(compositePass, "MPP.SSAOComposite");
+		blur = graph->writeColour(blurPass, blur);
+		auto compositePass = graph->addPass("AmbientOcclusionComposite", GraphPassType::Fullscreen);
+		graph->setPassCallbackFactory(compositePass, "MPP.AmbientOcclusionComposite");
 		graph->bindSampler(compositePass, "SCENE", sceneColour);
 		graph->bindSampler(compositePass, "AO", blur);
 		composite = graph->writeColour(compositePass, composite);
@@ -198,11 +215,11 @@ namespace mpp
 			for (uint32_t index = 0; index < graph->getPassCount(); ++index) { auto info = graph->getPassInfo({ index }); if (info.callbackFactory == "MPP.PbrScene") scene = index; if (info.name == name) pass = index; }
 			if (scene != UINT32_MAX && pass != UINT32_MAX) graph->movePass({ pass }, scene + offset);
 		};
-		moveAfterScene("SSAO", 1); moveAfterScene("SSAOBlur", 2); moveAfterScene("SSAOComposite", 3);
+		moveAfterScene(method == AmbientOcclusionMethod::Ssao ? "SSAO" : "GTAO", 1); moveAfterScene("AmbientOcclusionBlur", 2); moveAfterScene("AmbientOcclusionComposite", 3);
 		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
 		{
 			auto info = graph->getPassInfo({ pass });
-			if (isSsaoPass(info)) continue;
+			if (isAmbientOcclusionPass(info)) continue;
 			for (size_t binding = 0; binding < info.samplerBindings.size(); ++binding)
 				if (info.samplerBindings[binding].image.id == sceneColour.id)
 					graph->setSamplerBinding({ pass }, binding, info.samplerBindings[binding].sampler, composite, info.samplerBindings[binding].mipLevel);
@@ -298,6 +315,19 @@ namespace mpp
 			auto endsWith=[](string const& value,string const& suffix){return value.size()>=suffix.size()&&value.compare(value.size()-suffix.size(),suffix.size(),suffix)==0;};
 			auto isFullscreenEffect=[&](GraphPassInfo const& info,string const& suffix){return info.callbackFactory=="MPP.FullscreenEffect"&&endsWith(info.programResource,suffix);};
 			uint32_t horizontal=0,vertical=0,extract=0,composite=0;for(uint32_t pass=0;pass<graph->getPassCount();++pass){auto info=graph->getPassInfo({pass});auto const& factory=info.callbackFactory;if(factory=="MPP.BloomBlurHorizontal"||isFullscreenEffect(info,"BloomBlurHorizontal"))++horizontal;else if(factory=="MPP.BloomBlurVertical"||isFullscreenEffect(info,"BloomBlurVertical"))++vertical;else if(factory=="MPP.BloomExtract"||isFullscreenEffect(info,"BloomExtract"))++extract;else if(factory=="MPP.BloomComposite"||isFullscreenEffect(info,"BloomComposite"))++composite;}auto available=std::min(horizontal,vertical);if(bloom.blurPasses>64)diagnostics.error("MPP-PIPELINE-030","Bloom blur-pass count cannot exceed 64.",{sourcePath},"bloom");if(bloom.enabled&&(extract==0||composite==0))diagnostics.error("MPP-PIPELINE-031","Enabled bloom requires extract and composite passes.",{sourcePath},"bloom");if(bloom.enabled&&bloom.blurPasses>available)diagnostics.error("MPP-PIPELINE-032","Bloom requests "+std::to_string(bloom.blurPasses)+" blur pass(es), but the graph authors only "+std::to_string(available)+" horizontal/vertical pair(s).",{sourcePath},"bloom");
+
+			if (ambientOcclusion.method == AmbientOcclusionMethod::Ssao)
+			{
+				auto const& options = ambientOcclusion.ssao;
+				if (!std::isfinite(options.radius) || options.radius < 0.0f || !std::isfinite(options.intensity) || options.intensity < 0.0f || !std::isfinite(options.bias) || options.bias < 0.0f || !std::isfinite(options.power) || options.power <= 0.0f || options.sampleCount < 1 || options.sampleCount > 64 || options.blurRadius < 0 || options.blurRadius > 8)
+					diagnostics.error("MPP-PIPELINE-053", "SSAO parameters require finite non-negative radius, intensity, and bias; positive power; 1-64 samples; and blur radius 0-8.", {sourcePath}, "ambientOcclusion");
+			}
+			else if (ambientOcclusion.method == AmbientOcclusionMethod::Gtao)
+			{
+				auto const& options = ambientOcclusion.gtao;
+				bool valid = std::isfinite(options.radius) && options.radius >= 0.0f && std::isfinite(options.intensity) && options.intensity >= 0.0f && std::isfinite(options.thickness) && options.thickness >= 0.0f && std::isfinite(options.horizonBias) && options.horizonBias >= 0.0f && options.horizonBias <= 1.0f && std::isfinite(options.falloffStart) && std::isfinite(options.falloffEnd) && options.falloffStart >= 0.0f && options.falloffStart < options.falloffEnd && options.falloffEnd <= 1.0f && options.sliceCount >= 1 && options.sliceCount <= 16 && options.stepsPerSlice >= 1 && options.stepsPerSlice <= 16 && std::isfinite(options.power) && options.power > 0.0f && options.blurRadius >= 0 && options.blurRadius <= 8;
+				if (!valid) diagnostics.error("MPP-PIPELINE-053", "GTAO parameters require finite non-negative radius, intensity, and thickness; horizon bias 0-1; ordered falloff in [0,1]; 1-16 slices and steps; positive power; and blur radius 0-8.", {sourcePath}, "ambientOcclusion");
+			}
 
 			if(outputs.empty())diagnostics.error("MPP-PIPELINE-033","PbrPipeline requires at least one explicit named output.",{sourcePath},"outputs");
 			set<string> outputNames;

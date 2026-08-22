@@ -213,7 +213,7 @@ namespace mpp
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
 		ResourcePtr mPbrBrdfIntegrationLut;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -713,6 +713,7 @@ namespace mpp
 		void renderBloomCombine(Texture* scene, Texture* bloom, float intensity);
 
 		void renderSSAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, SSAOOptions const& options);
+		void renderGTAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, GTAOOptions const& options);
 		void renderSSAOBlur(Texture* ambientOcclusion, RenderTexture* depth, int blurRadius);
 		void renderSSAOCombine(Texture* scene, Texture* ambientOcclusion);
 		void renderEnvironmentDebugCube(Texture* environment, Camera* camera);

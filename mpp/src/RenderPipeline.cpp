@@ -201,9 +201,9 @@ namespace mpp
 		}
 	}
 
-	void RenderPipeline::setSSAOOptions(SSAOOptions const& ssaoOptions)
+	void RenderPipeline::setAmbientOcclusionOptions(AmbientOcclusionOptions const& ambientOcclusionOptions)
 	{
-		mOptions.ssao = ssaoOptions;
+		mOptions.ambientOcclusion = ambientOcclusionOptions;
 	}
 
 	void RenderPipeline::setPostEffectEnabled(string const& passName, bool enabled)
@@ -455,7 +455,7 @@ namespace mpp
 		}
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
-		bool const sampleSceneDepth = outputAntiAliasing.taa || (mOptions.ssao.enabled && mOptions.graphPasses.ssao);
+		bool const sampleSceneDepth = outputAntiAliasing.taa || (mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
 
@@ -488,20 +488,20 @@ namespace mpp
 		vector<GraphPassHandle> ssaoPasses;
 		vector<SsaoGraphStep> ssaoSteps;
 		vector<GraphImageHandle> ssaoInputs;
-		if (mOptions.ssao.enabled && mOptions.graphPasses.ssao)
+		if (mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion)
 		{
-			// Keep SSAO's fixed placement, but make its raw occlusion visible to a
-			// depth-aware denoise pass before it is applied to scene colour.
-			auto rawOcclusion = graph.createImage("SsaoRaw", makeColour(GraphImageFormat::Rgba8));
-			auto rawPass = graph.addPass("SSAO", GraphPassType::Fullscreen);
+			// Keep ambient occlusion's fixed placement, with a shared depth-aware
+			// denoise and composite sequence after the selected raw method.
+			auto rawOcclusion = graph.createImage("AmbientOcclusionRaw", makeColour(GraphImageFormat::Rgba8));
+			auto rawPass = graph.addPass(mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Ssao ? "SSAO" : "GTAO", GraphPassType::Fullscreen);
 			graph.readSampled(rawPass, sceneDepth);
 			rawOcclusion = graph.writeColour(rawPass, rawOcclusion);
 			ssaoPasses.push_back(rawPass);
 			ssaoSteps.push_back(SsaoGraphStep::Raw);
 			ssaoInputs.push_back({});
 
-			auto blurredOcclusion = graph.createImage("SsaoBlur", makeColour(GraphImageFormat::Rgba8));
-			auto blurPass = graph.addPass("SSAOBlur", GraphPassType::Fullscreen);
+			auto blurredOcclusion = graph.createImage("AmbientOcclusionBlur", makeColour(GraphImageFormat::Rgba8));
+			auto blurPass = graph.addPass("AmbientOcclusionBlur", GraphPassType::Fullscreen);
 			graph.readSampled(blurPass, rawOcclusion);
 			graph.readSampled(blurPass, sceneDepth);
 			blurredOcclusion = graph.writeColour(blurPass, blurredOcclusion);
@@ -509,8 +509,8 @@ namespace mpp
 			ssaoSteps.push_back(SsaoGraphStep::Blur);
 			ssaoInputs.push_back(rawOcclusion);
 
-			auto ssaoComposite = graph.createImage("SsaoComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
-			auto compositePass = graph.addPass("SSAOComposite", GraphPassType::Fullscreen);
+			auto ssaoComposite = graph.createImage("AmbientOcclusionComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			auto compositePass = graph.addPass("AmbientOcclusionComposite", GraphPassType::Fullscreen);
 			graph.readSampled(compositePass, sceneHdr);
 			graph.readSampled(compositePass, blurredOcclusion);
 			presentationTexture = graph.writeColour(compositePass, ssaoComposite);
@@ -613,14 +613,17 @@ namespace mpp
 				{
 					auto depthTexture = dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get());
 					auto projection = camera->getProjectionTransform();
-					mRenderSystem->renderSSAORaw(depthTexture, projection, glm::inverse(projection), mOptions.ssao);
+					if (mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Ssao)
+						mRenderSystem->renderSSAORaw(depthTexture, projection, glm::inverse(projection), mOptions.ambientOcclusion.ssao);
+					else
+						mRenderSystem->renderGTAORaw(depthTexture, projection, glm::inverse(projection), mOptions.ambientOcclusion.gtao);
 				});
 				break;
 			case SsaoGraphStep::Blur:
 				mGraphExecutor->setPassCallback(graph, pass, [this, input, sceneDepth](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderSSAOBlur(dynamic_cast<Texture*>(context.getImage(input).get()),
-						dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get()), mOptions.ssao.blurRadius);
+						dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get()), (mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Ssao ? mOptions.ambientOcclusion.ssao.blurRadius : mOptions.ambientOcclusion.gtao.blurRadius));
 				});
 				break;
 			case SsaoGraphStep::Composite:

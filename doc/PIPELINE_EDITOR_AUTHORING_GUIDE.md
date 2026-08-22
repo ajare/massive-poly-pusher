@@ -46,6 +46,12 @@ PipelineEditor can import glTF materials through **File > Import glTF...**. Sele
 
 Enable **Bloom** in PipelineEditor to add the HDR `SceneEmissive` attachment to each `MPP.PbrScene` pass and route every `MPP.BloomExtract` input to it. Emissive defaults to flat black, so every PBR material safely writes a black emissive value until a flat colour or EmissiveMap is authored. Disabling Bloom removes the emissive attachment, disables every Bloom pass, and restores presentation from scene colour. This requires two colour attachments/draw buffers and PBR material programs that write locations 0 and 1.
 
+## Ambient occlusion
+
+Select **Ambient Occlusion** in PipelineEditor and choose **None**, **SSAO**, or **GTAO**. Both methods are fixed immediately after the opaque scene pass and use sampled scene depth with depth-reconstructed normals. SSAO exposes radius, intensity, bias, power, sample count, and blur radius. GTAO exposes radius, intensity, thickness, horizon bias, distance falloff start/end, slice count, steps per slice, power, and blur radius. The falloff range is normalized to the selected radius; slice and step counts trade GPU cost for horizon-search quality.
+
+Native pipeline documents serialize an `AmbientOcclusion` section containing `method`, nested `SSAO`, and nested `GTAO` settings. Legacy `SSAO` sections remain readable and migrate to `method: ssao` when saved.
+
 ## Viewport controls
 
 - Left-drag empty viewport space: orbit.

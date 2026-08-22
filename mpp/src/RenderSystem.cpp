@@ -823,6 +823,8 @@ namespace mpp
 		addCoreResource(mBloomCombineProgram, true);
 		mSsaoRawProgram = createBloomProgram("__mpp_p2d_ssao_raw__", FragmentShaderSsaoRawTemplate);
 		addCoreResource(mSsaoRawProgram, true);
+		mGtaoRawProgram = createBloomProgram("__mpp_p2d_gtao_raw__", FragmentShaderGtaoRawTemplate);
+		addCoreResource(mGtaoRawProgram, true);
 		mSsaoBlurProgram = createBloomProgram("__mpp_p2d_ssao_blur__", FragmentShaderSsaoBlurTemplate);
 		addCoreResource(mSsaoBlurProgram, true);
 		mSsaoCombineProgram = createBloomProgram("__mpp_p2d_ssao_combine__", FragmentShaderSsaoCombineTemplate);
@@ -3577,6 +3579,32 @@ namespace mpp
 		GL_CHECK(glUniform1f(program->getUniformId("BIAS"), options.bias));
 		GL_CHECK(glUniform1f(program->getUniformId("POWER"), options.power));
 		GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), options.sampleCount));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit) if (program->getSamplerName(unit) == "DEPTH") depth->bindDepth((uint32_t)unit);
+		setBlendState(false);
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderGTAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, GTAOOptions const& options)
+	{
+		if (!depth || !depth->getDepthTextureId()) THROW_MPP("GTAO requires a sampled depth texture.", __LINE__, __FILE__, __func__);
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mGtaoRawProgram.get());
+		setUsedProgram(mGtaoRawProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniformMatrix4fv(program->getUniformId("PROJECTION"), 1, GL_FALSE, glm::value_ptr(projection)));
+		GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_PROJECTION"), 1, GL_FALSE, glm::value_ptr(inverseProjection)));
+		GL_CHECK(glUniform1f(program->getUniformId("RADIUS"), options.radius));
+		GL_CHECK(glUniform1f(program->getUniformId("INTENSITY"), options.intensity));
+		GL_CHECK(glUniform1f(program->getUniformId("THICKNESS"), options.thickness));
+		GL_CHECK(glUniform1f(program->getUniformId("HORIZON_BIAS"), options.horizonBias));
+		GL_CHECK(glUniform1f(program->getUniformId("FALLOFF_START"), options.falloffStart));
+		GL_CHECK(glUniform1f(program->getUniformId("FALLOFF_END"), options.falloffEnd));
+		GL_CHECK(glUniform1i(program->getUniformId("SLICE_COUNT"), options.sliceCount));
+		GL_CHECK(glUniform1i(program->getUniformId("STEPS_PER_SLICE"), options.stepsPerSlice));
+		GL_CHECK(glUniform1f(program->getUniformId("POWER"), options.power));
 		for (int unit = 0; unit < program->getNumSamplers(); ++unit) if (program->getSamplerName(unit) == "DEPTH") depth->bindDepth((uint32_t)unit);
 		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <set>
 
@@ -21,7 +22,19 @@ namespace mpp
 			auto compiled = graph->compile();
 			for (auto const& message : compiled.diagnostics) diagnostics.error("MPP-LEGACY-PIPELINE-004", message, { sourcePath }, "graph");
 			if (registry) diagnostics.append(registry->validate(*graph));
-			uint32_t horizontal=0,vertical=0,extract=0,composite=0,ssaoRaw=0;for(uint32_t pass=0;pass<graph->getPassCount();++pass){auto factory=graph->getPassInfo({pass}).callbackFactory;if(factory=="MPP.BloomBlurHorizontal")++horizontal;else if(factory=="MPP.BloomBlurVertical")++vertical;else if(factory=="MPP.BloomExtract")++extract;else if(factory=="MPP.BloomComposite")++composite;else if(factory=="MPP.SSAORaw")++ssaoRaw;}auto available=std::min(horizontal,vertical);if(bloom.blurPasses>64)diagnostics.error("MPP-LEGACY-PIPELINE-030","Bloom blur-pass count cannot exceed 64.",{sourcePath},"bloom");if(bloom.enabled&&(extract==0||composite==0))diagnostics.error("MPP-LEGACY-PIPELINE-031","Enabled bloom requires extract and composite passes.",{sourcePath},"bloom");if(bloom.enabled&&bloom.blurPasses>available)diagnostics.error("MPP-LEGACY-PIPELINE-032","Bloom requests "+std::to_string(bloom.blurPasses)+" blur pass(es), but the graph authors only "+std::to_string(available)+" horizontal/vertical pair(s).",{sourcePath},"bloom");if(ssao.enabled&&ssaoRaw==0)diagnostics.error("MPP-LEGACY-PIPELINE-038","Enabled SSAO requires an SSAO raw pass.",{sourcePath},"ssao");
+			uint32_t horizontal=0,vertical=0,extract=0,composite=0,ssaoRaw=0,gtaoRaw=0;for(uint32_t pass=0;pass<graph->getPassCount();++pass){auto factory=graph->getPassInfo({pass}).callbackFactory;if(factory=="MPP.BloomBlurHorizontal")++horizontal;else if(factory=="MPP.BloomBlurVertical")++vertical;else if(factory=="MPP.BloomExtract")++extract;else if(factory=="MPP.BloomComposite")++composite;else if(factory=="MPP.SSAORaw")++ssaoRaw;else if(factory=="MPP.GTAORaw")++gtaoRaw;}auto available=std::min(horizontal,vertical);if(bloom.blurPasses>64)diagnostics.error("MPP-LEGACY-PIPELINE-030","Bloom blur-pass count cannot exceed 64.",{sourcePath},"bloom");if(bloom.enabled&&(extract==0||composite==0))diagnostics.error("MPP-LEGACY-PIPELINE-031","Enabled bloom requires extract and composite passes.",{sourcePath},"bloom");if(bloom.enabled&&bloom.blurPasses>available)diagnostics.error("MPP-LEGACY-PIPELINE-032","Bloom requests "+std::to_string(bloom.blurPasses)+" blur pass(es), but the graph authors only "+std::to_string(available)+" horizontal/vertical pair(s).",{sourcePath},"bloom");if(ambientOcclusion.method==AmbientOcclusionMethod::Ssao&&ssaoRaw==0)diagnostics.error("MPP-LEGACY-PIPELINE-038","Selected SSAO requires an SSAO raw pass.",{sourcePath},"ambientOcclusion");if(ambientOcclusion.method==AmbientOcclusionMethod::Gtao&&gtaoRaw==0)diagnostics.error("MPP-LEGACY-PIPELINE-039","Selected GTAO requires a GTAO raw pass.",{sourcePath},"ambientOcclusion");
+
+			if (ambientOcclusion.method == AmbientOcclusionMethod::Ssao)
+			{
+				auto const& options = ambientOcclusion.ssao;
+				if (!std::isfinite(options.radius) || options.radius < 0.0f || !std::isfinite(options.intensity) || options.intensity < 0.0f || !std::isfinite(options.bias) || options.bias < 0.0f || !std::isfinite(options.power) || options.power <= 0.0f || options.sampleCount < 1 || options.sampleCount > 64 || options.blurRadius < 0 || options.blurRadius > 8) diagnostics.error("MPP-LEGACY-PIPELINE-040", "SSAO parameters are outside their supported ranges.", {sourcePath}, "ambientOcclusion");
+			}
+			else if (ambientOcclusion.method == AmbientOcclusionMethod::Gtao)
+			{
+				auto const& options = ambientOcclusion.gtao;
+				bool valid = std::isfinite(options.radius) && options.radius >= 0.0f && std::isfinite(options.intensity) && options.intensity >= 0.0f && std::isfinite(options.thickness) && options.thickness >= 0.0f && std::isfinite(options.horizonBias) && options.horizonBias >= 0.0f && options.horizonBias <= 1.0f && std::isfinite(options.falloffStart) && std::isfinite(options.falloffEnd) && options.falloffStart >= 0.0f && options.falloffStart < options.falloffEnd && options.falloffEnd <= 1.0f && options.sliceCount >= 1 && options.sliceCount <= 16 && options.stepsPerSlice >= 1 && options.stepsPerSlice <= 16 && std::isfinite(options.power) && options.power > 0.0f && options.blurRadius >= 0 && options.blurRadius <= 8;
+				if (!valid) diagnostics.error("MPP-LEGACY-PIPELINE-040", "GTAO parameters are outside their supported ranges.", {sourcePath}, "ambientOcclusion");
+			}
 
 			if(outputs.empty())diagnostics.error("MPP-LEGACY-PIPELINE-033","LegacyPipeline requires at least one explicit named output.",{sourcePath},"outputs");
 			set<string> outputNames;

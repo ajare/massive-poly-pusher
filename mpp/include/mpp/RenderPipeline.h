@@ -11,6 +11,7 @@
 #pragma warning(pop)
 
 #include "mpp/Config.h"
+#include "mpp/AmbientOcclusion.h"
 #include "mpp/RenderPass.h"
 #include "mpp/Scene.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
@@ -74,20 +75,6 @@ namespace mpp
 		uint32_t blurPasses{ 2 };
 	};
 
-	// A fixed depth-only screen-space ambient-occlusion pass. The tuning fields
-	// establish the public contract now even though this first implementation
-	// intentionally uses their defaults as its quality preset.
-	struct _MPPAPI SSAOOptions
-	{
-		bool enabled{ false };
-		float radius{ 0.5f };
-		float intensity{ 1.0f };
-		float bias{ 0.025f };
-		float power{ 1.0f };
-		int sampleCount{ 16 };
-		int blurRadius{ 2 };
-	};
-
 	enum class ShadowLightType
 	{
 		Directional
@@ -126,7 +113,7 @@ namespace mpp
 	{
 		bool shadow{ true };
 		bool scene{ true };
-		bool ssao{ true };
+		bool ambientOcclusion{ true };
 		bool bloom{ true };
 		bool presentation{ true };
 	};
@@ -147,7 +134,7 @@ namespace mpp
 		// when requested and all hardware/material output requirements validate.
 		ResourcePtr graphTemplateMrt;
 		BloomOptions bloom;
-		SSAOOptions ssao;
+		AmbientOcclusionOptions ambientOcclusion;
 		GraphPassDebugOptions graphPasses;
 		bool debugEnvironmentCube{ false };
 		// Empty means this pipeline is not a shadow-domain participant.
@@ -247,7 +234,7 @@ namespace mpp
 
 		void setBloomOptions(BloomOptions const& bloomOptions);
 
-		void setSSAOOptions(SSAOOptions const& ssaoOptions);
+		void setAmbientOcclusionOptions(AmbientOcclusionOptions const& ambientOcclusionOptions);
 
 		// Generic post-effect-chain tuning: enable/disable or set a named uniform
 		// on the MPP.FullscreenEffect graph pass identified by `passName`. Replaces

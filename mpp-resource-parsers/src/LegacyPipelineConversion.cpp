@@ -74,7 +74,7 @@ namespace mpp::resource_parsers
 		result.extensions = source.extensions;
 		result.graph = source.graph;
 		result.bloom = source.bloom;
-		result.ssao = source.ssao;
+		result.ambientOcclusion = source.ambientOcclusion;
 		result.postEffects = source.postEffects;
 		result.previewBindings = source.previewBindings;
 		result.previewOverrides = source.previewOverrides;

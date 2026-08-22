@@ -135,6 +135,29 @@ namespace mpp
 			}
 		};
 
+		class GTAORawPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				auto* depth = dynamic_cast<RenderTexture*>(input(context, "DEPTH"));
+				if (!depth || !frame.camera) THROW_MPP("GTAORawPass requires depth and a camera.", __LINE__, __FILE__, __func__);
+				GTAOOptions options;
+				options.radius = parameter(context, "RADIUS", options.radius);
+				options.intensity = parameter(context, "INTENSITY", options.intensity);
+				options.thickness = parameter(context, "THICKNESS", options.thickness);
+				options.horizonBias = parameter(context, "HORIZON_BIAS", options.horizonBias);
+				options.falloffStart = parameter(context, "FALLOFF_START", options.falloffStart);
+				options.falloffEnd = parameter(context, "FALLOFF_END", options.falloffEnd);
+				options.sliceCount = integerParameter(context, "SLICE_COUNT", options.sliceCount);
+				options.stepsPerSlice = integerParameter(context, "STEPS_PER_SLICE", options.stepsPerSlice);
+				options.power = parameter(context, "POWER", options.power);
+				auto projection = frame.camera->getProjectionTransform();
+				frame.renderSystem->renderGTAORaw(depth, projection, glm::inverse(projection), options);
+			}
+		};
+
 		class SSAOBlurPass final : public RenderGraphScenePass
 		{
 		public:
@@ -312,12 +335,18 @@ namespace mpp
 		ssaoRaw.inputs.push_back({ "Depth", "DEPTH", true, depthFormats(), {} }); ssaoRaw.outputs.push_back({ "Occlusion", false, true, colourFormats() });
 		ssaoRaw.parameters = { { "RADIUS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "INTENSITY", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "BIAS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "POWER", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "SAMPLE_COUNT", program::GLSLType::Int, 1, 1, false, false, 0.0, 0.0, "" } };
 		registry.registerScenePassFactory("MPP.SSAORaw", [] { return std::make_unique<SSAORawPass>(); }, ssaoRaw);
+		auto gtaoRaw = metadata("GTAO Raw", "Post Effects", GraphPassType::Fullscreen);
+		gtaoRaw.inputs.push_back({ "Depth", "DEPTH", true, depthFormats(), {} }); gtaoRaw.outputs.push_back({ "Occlusion", false, true, colourFormats() });
+		gtaoRaw.parameters = { { "RADIUS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "INTENSITY", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "THICKNESS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "HORIZON_BIAS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "FALLOFF_START", program::GLSLType::Float, 1, 1, false, false, 0.0, 1.0, "" }, { "FALLOFF_END", program::GLSLType::Float, 1, 1, false, false, 0.0, 1.0, "" }, { "SLICE_COUNT", program::GLSLType::Int, 1, 1, false, false, 1.0, 16.0, "" }, { "STEPS_PER_SLICE", program::GLSLType::Int, 1, 1, false, false, 1.0, 16.0, "" }, { "POWER", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" } };
+		registry.registerScenePassFactory("MPP.GTAORaw", [] { return std::make_unique<GTAORawPass>(); }, gtaoRaw);
 		auto ssaoBlur = metadata("SSAO Blur", "Post Effects", GraphPassType::Fullscreen);
 		ssaoBlur.inputs.push_back({ "Occlusion", "AO", true, colourFormats(), {} }); ssaoBlur.inputs.push_back({ "Depth", "DEPTH", true, depthFormats(), {} }); ssaoBlur.outputs.push_back({ "Occlusion", false, true, colourFormats() }); ssaoBlur.parameters.push_back({ "BLUR_RADIUS", program::GLSLType::Int, 1, 1, false, false, 0.0, 0.0, "" });
 		registry.registerScenePassFactory("MPP.SSAOBlur", [] { return std::make_unique<SSAOBlurPass>(); }, ssaoBlur);
+		registry.registerScenePassFactory("MPP.AmbientOcclusionBlur", [] { return std::make_unique<SSAOBlurPass>(); }, ssaoBlur);
 		auto ssaoComposite = metadata("SSAO Composite", "Post Effects", GraphPassType::Fullscreen);
 		ssaoComposite.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} }); ssaoComposite.inputs.push_back({ "Occlusion", "AO", true, colourFormats(), {} }); ssaoComposite.outputs.push_back({ "Output", false, true, colourFormats() });
 		registry.registerScenePassFactory("MPP.SSAOComposite", [] { return std::make_unique<SSAOCompositePass>(); }, ssaoComposite);
+		registry.registerScenePassFactory("MPP.AmbientOcclusionComposite", [] { return std::make_unique<SSAOCompositePass>(); }, ssaoComposite);
 
 		auto scene = metadata("PBR Scene", "Scene", GraphPassType::Scene);
 		scene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });

@@ -134,17 +134,42 @@ namespace mpp::resource_parsers
 				document.graph->setPassProgramResource(bloomPass, "PostEffect.BloomExtract");
 				document.graph->bindSampler(bloomPass, "TEX1", scene);
 				document.graph->writeColour(bloomPass, bloom);
-				document.ssao = { true, 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
-				document.setSSAOEnabled(true);
+				document.ambientOcclusion.method = AmbientOcclusionMethod::Gtao;
+				document.ambientOcclusion.ssao = { 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
+				document.ambientOcclusion.gtao = { 1.5f, 1.2f, 0.4f, 0.05f, 0.1f, 1.0f, 6, 4, 1.4f, 3 };
+				document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
+				if (!document.graph->compile().diagnostics.empty()) return fail(extension + ": ambient occlusion authored an invalid graph: " + document.graph->compile().diagnostics.front());
 				auto const pass = [&](uint32_t index) { return document.graph->getPassInfo({ index }); };
-				if (document.graph->getPassCount() != 5 || pass(1).name != "SSAO" || pass(2).name != "SSAOBlur" || pass(3).name != "SSAOComposite" || pass(4).name != "BloomExtract") return fail(extension + ": SSAO passes were not inserted between the scene and bloom extract passes");
-				if (document.graph->getImageCount() != 6 || pass(4).samplerBindings.front().image.id == scene.id) return fail(extension + ": SSAO images or bloom routing were not authored");
-				if (!hasGraphImageUsage(document.graph->getImageInfo({ sceneDepth.id, 0 }).desc.usage, GraphImageUsage::Sampled) || document.graph->getPassInfo(scenePass).depthOutputs.front().store != GraphStoreOp::Store) return fail(extension + ": SSAO did not retain sampled scene depth");
+				if (document.graph->getPassCount() != 5 || pass(1).name != "GTAO" || pass(1).callbackFactory != "MPP.GTAORaw" || pass(2).name != "AmbientOcclusionBlur" || pass(3).name != "AmbientOcclusionComposite" || pass(4).name != "BloomExtract") return fail(extension + ": GTAO passes were not inserted between the scene and bloom extract passes");
+				if (document.graph->getImageCount() != 6 || pass(4).samplerBindings.front().image.id == scene.id) return fail(extension + ": GTAO images or bloom routing were not authored");
+				if (!hasGraphImageUsage(document.graph->getImageInfo({ sceneDepth.id, 0 }).desc.usage, GraphImageUsage::Sampled) || document.graph->getPassInfo(scenePass).depthOutputs.front().store != GraphStoreOp::Store) return fail(extension + ": GTAO did not retain sampled scene depth");
 				PbrPipelineSerializer::toFile(document, path);
 				auto restored = PbrPipelineParser::fromFile(path);
-				if (!restored.ssao.enabled || restored.ssao.radius != 0.7f || restored.ssao.intensity != 1.3f || restored.ssao.bias != 0.04f || restored.ssao.power != 1.2f || restored.ssao.sampleCount != 24 || restored.ssao.blurRadius != 3) return fail(extension + ": SSAO options did not survive pipeline round trip");
-				restored.setSSAOEnabled(false);
-				if (restored.graph->getPassCount() != 2 || restored.graph->getImageCount() != 3) return fail(extension + ": disabling SSAO did not remove its authored passes and images");
+				if (!restored.graph->compile().diagnostics.empty()) return fail(extension + ": round-tripped ambient-occlusion graph is invalid: " + restored.graph->compile().diagnostics.front());
+				if (restored.ambientOcclusion.method != AmbientOcclusionMethod::Gtao || restored.ambientOcclusion.ssao.sampleCount != 24 || restored.ambientOcclusion.gtao.radius != 1.5f || restored.ambientOcclusion.gtao.thickness != 0.4f || restored.ambientOcclusion.gtao.sliceCount != 6 || restored.ambientOcclusion.gtao.stepsPerSlice != 4 || restored.ambientOcclusion.gtao.blurRadius != 3) return fail(extension + ": ambient-occlusion options did not survive pipeline round trip");
+				restored.ambientOcclusion.gtao.falloffEnd = restored.ambientOcclusion.gtao.falloffStart;
+				auto invalidGtaoDiagnostics = restored.validate(); bool rejectedInvalidGtao = false; for (auto const& diagnostic : invalidGtaoDiagnostics.getDiagnostics()) rejectedInvalidGtao |= diagnostic.code == "MPP-PIPELINE-053";
+				if (!rejectedInvalidGtao) return fail(extension + ": invalid GTAO parameters were accepted");
+				restored.setAmbientOcclusionMethod(AmbientOcclusionMethod::None);
+				if (restored.graph->getPassCount() != 2 || restored.graph->getImageCount() != 3) return fail(extension + ": disabling ambient occlusion did not remove its authored passes and images");
+
+				std::ifstream nativeFile(path); std::string legacyText((std::istreambuf_iterator<char>(nativeFile)), std::istreambuf_iterator<char>()); nativeFile.close();
+				if (extension == ".xml")
+				{
+					auto begin = legacyText.find("    <AmbientOcclusion>"); auto end = legacyText.find("    </AmbientOcclusion>", begin);
+					if (begin == std::string::npos || end == std::string::npos) return fail(extension + ": native AmbientOcclusion section was not serialized");
+					end += std::string("    </AmbientOcclusion>\n").size();
+					legacyText.replace(begin, end - begin, "    <SSAO>\n        <enabled>true</enabled>\n        <radius>0.75</radius>\n        <sampleCount>12</sampleCount>\n    </SSAO>\n");
+				}
+				else
+				{
+					auto begin = legacyText.find("  AmbientOcclusion:\n"); auto end = legacyText.find("  RenderGraph:\n", begin);
+					if (begin == std::string::npos || end == std::string::npos) return fail(extension + ": native AmbientOcclusion section was not serialized");
+					legacyText.replace(begin, end - begin, "  SSAO:\n    enabled: true\n    radius: 0.75\n    sampleCount: 12\n");
+				}
+				std::ofstream legacyFile(path, std::ios::trunc); legacyFile << legacyText; legacyFile.close();
+				auto migrated = PbrPipelineParser::fromFile(path);
+				if (migrated.ambientOcclusion.method != AmbientOcclusionMethod::Ssao || migrated.ambientOcclusion.ssao.radius != 0.75f || migrated.ambientOcclusion.ssao.sampleCount != 12 || migrated.graph->getPassInfo({1}).callbackFactory != "MPP.SSAORaw") return fail(extension + ": legacy SSAO section was not migrated");
 			}
 			catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
 			std::filesystem::remove(path);
@@ -171,14 +196,15 @@ namespace mpp::resource_parsers
 			document.graph->setPassCallbackFactory(raw, "MPP.SSAORaw");
 			document.graph->writeColour(raw, output);
 			document.outputs.push_back({ "Output", "Output" });
-			document.ssao = { true, 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
+			document.ambientOcclusion.method = AmbientOcclusionMethod::Ssao;
+			document.ambientOcclusion.ssao = { 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
 			LegacyPipelineSerializer::toFile(document, path);
 			auto restored = LegacyPipelineParser::fromFile(path);
-			if (!restored.ssao.enabled || restored.ssao.radius != 0.7f || restored.ssao.intensity != 1.3f || restored.ssao.bias != 0.04f || restored.ssao.power != 1.2f || restored.ssao.sampleCount != 24 || restored.ssao.blurRadius != 3) return fail(extension + ": SSAO options did not survive LegacyPipeline round trip");
+			if (restored.ambientOcclusion.method != AmbientOcclusionMethod::Ssao || restored.ambientOcclusion.ssao.radius != 0.7f || restored.ambientOcclusion.ssao.intensity != 1.3f || restored.ambientOcclusion.ssao.bias != 0.04f || restored.ambientOcclusion.ssao.power != 1.2f || restored.ambientOcclusion.ssao.sampleCount != 24 || restored.ambientOcclusion.ssao.blurRadius != 3) return fail(extension + ": SSAO options did not survive LegacyPipeline round trip");
 			if (hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-038")) return fail(extension + ": enabled SSAO with its raw pass was rejected");
 			restored.graph->removePass({ 0 });
 			if (!hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-038")) return fail(extension + ": enabled SSAO without its raw pass was accepted");
-			restored.ssao.enabled = false;
+			restored.ambientOcclusion.method = AmbientOcclusionMethod::None;
 			if (hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-038")) return fail(extension + ": disabled SSAO without its raw pass was rejected");
 		}
 		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
