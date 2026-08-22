@@ -1671,6 +1671,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				// (1.0), rather than subtracting BloomOptions' scene threshold of 1.0.
 				previewOptions.bloom.useMrtEmissiveMask = previewDocument->bloom.enabled;
 				previewOptions.bloom.threshold = 0.0f;
+				previewOptions.ssao.enabled = previewDocument->ssao.enabled;
+				previewOptions.ssao.radius = previewDocument->ssao.radius;
+				previewOptions.ssao.intensity = previewDocument->ssao.intensity;
+				previewOptions.ssao.bias = previewDocument->ssao.bias;
+				previewOptions.ssao.power = previewDocument->ssao.power;
+				previewOptions.ssao.sampleCount = previewDocument->ssao.sampleCount;
+				previewOptions.ssao.blurRadius = previewDocument->ssao.blurRadius;
 				previewOptions.debugEnvironmentCube = debugEnvironmentCube;
 				if (previewScene)
 				{
@@ -2951,6 +2958,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					}
 					if (ImGui::IsItemHovered())
 						ImGui::SetTooltip("Enable or disable bloom in the preview pipeline");
+					ImGui::SameLine();
+					auto ssaoBefore = clonePipeline(openDocument);
+					bool toolbarSsaoEnabled = openDocument->ssao.enabled;
+					if (ImGui::Checkbox("SSAO##Toolbar", &toolbarSsaoEnabled))
+					{
+						openDocument->setSSAOEnabled(toolbarSsaoEnabled);
+						auto after = clonePipeline(openDocument);
+						pipelineCommands.execute(std::make_unique<PipelineSnapshotCommand>(
+						                             "Toggle SSAO", &openDocument, ssaoBefore, after), true);
+						pipelineDirty = true;
+						documentChangedSincePreview = true;
+						lastEditScene = false;
+					}
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Enable or disable screen-space ambient occlusion in the preview pipeline");
 				}
 				auto workProgress = backgroundJobs.progress();
 				if (workProgress.queued || workProgress.running || gpuInstallationPending)
@@ -4014,6 +4036,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			if (openDocument && ImGui::Selectable("Bloom Settings", selectedBinding == -3))
 			{
 				selectedBinding = -3;
+				selectedPass = selectedImage = selectedImport = selectedOverride = selectedModel =
+				    selectedLocalResource = selectedExternalResource = -1;
+			}
+			if (openDocument && ImGui::Selectable("SSAO Settings", selectedBinding == -4))
+			{
+				selectedBinding = -4;
 				selectedPass = selectedImage = selectedImport = selectedOverride = selectedModel =
 				    selectedLocalResource = selectedExternalResource = -1;
 			}
@@ -5829,6 +5857,49 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					auto after = clonePipeline(openDocument);
 					pipelineCommands.execute(
 					    std::make_unique<PipelineSnapshotCommand>("Edit Bloom Settings", &openDocument, before, after),
+					    true);
+					pipelineDirty = true;
+					documentChangedSincePreview = true;
+					lastEditScene = false;
+				}
+			}
+			else if (openDocument && selectedBinding == -4)
+			{
+				auto before = clonePipeline(openDocument);
+				auto& ssao = openDocument->ssao;
+				bool enabled = ssao.enabled;
+				bool changed = ImGui::Checkbox("Enable SSAO", &enabled);
+				if (changed) openDocument->setSSAOEnabled(enabled);
+				changed |= ImGui::InputFloat("Radius", &ssao.radius);
+				changed |= ImGui::InputFloat("Intensity", &ssao.intensity);
+				changed |= ImGui::InputFloat("Bias", &ssao.bias);
+				changed |= ImGui::InputFloat("Power", &ssao.power);
+				changed |= ImGui::InputInt("Sample count", &ssao.sampleCount);
+				changed |= ImGui::InputInt("Blur radius", &ssao.blurRadius);
+				if (changed && ssao.enabled)
+					openDocument->setSSAOEnabled(true);
+
+				bool ssaoActive = false;
+				if (openDocument->graph)
+				{
+					auto compilation = openDocument->graph->compile();
+					bool raw = false, blur = false, composite = false;
+					for (auto pass : compilation.passOrder)
+					{
+						auto const& info = openDocument->graph->getPassInfo(pass);
+						raw |= info.callbackFactory == "MPP.SSAORaw";
+						blur |= info.callbackFactory == "MPP.SSAOBlur";
+						composite |= info.callbackFactory == "MPP.SSAOComposite";
+					}
+					ssaoActive = compilation.valid && raw && blur && composite;
+				}
+				ImGui::TextColored(ssaoActive ? ImVec4(0.3f, 0.9f, 0.4f, 1.0f) : ImVec4(0.9f, 0.6f, 0.25f, 1.0f),
+				                   ssaoActive ? "SSAO execution: active in compiled graph" : "SSAO execution: bypassed in compiled graph");
+				if (changed)
+				{
+					auto after = clonePipeline(openDocument);
+					pipelineCommands.execute(
+					    std::make_unique<PipelineSnapshotCommand>("Edit SSAO Settings", &openDocument, before, after),
 					    true);
 					pipelineDirty = true;
 					documentChangedSincePreview = true;
