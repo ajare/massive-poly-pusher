@@ -649,7 +649,7 @@ void main()
 }
 )";
 
-const std::string FragmentShaderSsaoTemplate =
+const std::string FragmentShaderSsaoRawTemplate =
 R"(
 @@Version
 
@@ -660,7 +660,6 @@ R"(
 @@Uniform(float BIAS);
 @@Uniform(float POWER);
 @@Uniform(int SAMPLE_COUNT);
-@@Texture(sampler2D SCENE);
 @@Texture(sampler2D DEPTH);
 
 vec3 viewPosition(vec2 uv, float depth)
@@ -677,7 +676,6 @@ float noise(vec2 value)
 void main()
 {
     vec2 uv = @In(TEXCOORDS);
-    vec4 scene = texture(@Texture(SCENE), uv);
     float centreDepth = texture(@Texture(DEPTH), uv).r;
     vec3 position = viewPosition(uv, centreDepth);
     // Forward rendering has no normals attachment. Reconstruct the geometric
@@ -686,7 +684,8 @@ void main()
     vec3 normal = normalize(cross(dFdx(position), dFdy(position)));
     if (normal.z < 0.0) normal = -normal;
     float ambient = 1.0;
-    if (centreDepth < 0.999999)
+    float radius = max(@Uniform(RADIUS), 0.0);
+    if (radius > 0.0 && centreDepth < 0.999999)
     {
         float angle = noise(gl_FragCoord.xy) * 6.28318530718;
         vec3 randomVector = vec3(cos(angle), sin(angle), 0.0);
@@ -707,20 +706,69 @@ void main()
             float radial = sqrt(fraction);
             vec3 hemisphere = vec3(cos(phi) * radial, sin(phi) * radial, sqrt(1.0 - fraction));
             vec3 direction = tangent * hemisphere.x + bitangent * hemisphere.y + normal * hemisphere.z;
-            vec3 samplePosition = position + direction * @Uniform(RADIUS);
+            vec3 samplePosition = position + direction * radius;
             vec4 projected = @Uniform(PROJECTION) * vec4(samplePosition, 1.0);
             vec2 sampleUv = projected.xy / projected.w * 0.5 + 0.5;
             if (sampleUv.x <= 0.0 || sampleUv.x >= 1.0 || sampleUv.y <= 0.0 || sampleUv.y >= 1.0) continue;
             float sampledDepth = texture(@Texture(DEPTH), sampleUv).r;
             if (sampledDepth >= 0.999999) continue;
             float sampledZ = viewPosition(sampleUv, sampledDepth).z;
-            float rangeWeight = smoothstep(0.0, 1.0, @Uniform(RADIUS) / max(abs(position.z - sampledZ), 0.0001));
-            occluded += (sampledZ >= samplePosition.z + @Uniform(BIAS) ? 1.0 : 0.0) * rangeWeight;
+            float rangeWeight = smoothstep(0.0, 1.0, radius / max(abs(position.z - sampledZ), 0.0001));
+            occluded += (sampledZ >= samplePosition.z + max(@Uniform(BIAS), 0.0) ? 1.0 : 0.0) * rangeWeight;
             considered += 1.0;
         }
         float rawOcclusion = considered > 0.0 ? occluded / considered : 0.0;
-        ambient = pow(clamp(1.0 - rawOcclusion * @Uniform(INTENSITY), 0.0, 1.0), @Uniform(POWER));
+        ambient = pow(clamp(1.0 - rawOcclusion * max(@Uniform(INTENSITY), 0.0), 0.0, 1.0), max(@Uniform(POWER), 0.0));
     }
+    @Out(vec4 COLOUR) = vec4(ambient, ambient, ambient, 1.0);
+}
+)";
+
+const std::string FragmentShaderSsaoBlurTemplate =
+R"(
+@@Version
+
+@@Uniform(int BLUR_RADIUS);
+@@Texture(sampler2D AMBIENT_OCCLUSION);
+@@Texture(sampler2D DEPTH);
+
+void main()
+{
+    ivec2 size = textureSize(@Texture(AMBIENT_OCCLUSION), 0);
+    ivec2 centre = clamp(ivec2(gl_FragCoord.xy), ivec2(0), size - ivec2(1));
+    float centreDepth = texelFetch(@Texture(DEPTH), centre, 0).r;
+    int radius = clamp(@Uniform(BLUR_RADIUS), 0, 8);
+    float sum = 0.0;
+    float weightSum = 0.0;
+    for (int y = -8; y <= 8; ++y)
+    for (int x = -8; x <= 8; ++x)
+    {
+        if (abs(x) > radius || abs(y) > radius) continue;
+        ivec2 samplePixel = clamp(centre + ivec2(x, y), ivec2(0), size - ivec2(1));
+        float sampleDepth = texelFetch(@Texture(DEPTH), samplePixel, 0).r;
+        float spatialWeight = 1.0 / (1.0 + float(x * x + y * y));
+        // Preserve depth discontinuities while smoothing the stochastic SSAO term.
+        float depthWeight = exp(-abs(sampleDepth - centreDepth) * 100.0);
+        float weight = spatialWeight * depthWeight;
+        sum += texelFetch(@Texture(AMBIENT_OCCLUSION), samplePixel, 0).r * weight;
+        weightSum += weight;
+    }
+    float ambient = sum / max(weightSum, 0.00001);
+    @Out(vec4 COLOUR) = vec4(ambient, ambient, ambient, 1.0);
+}
+)";
+
+const std::string FragmentShaderSsaoCombineTemplate =
+R"(
+@@Version
+
+@@Texture(sampler2D SCENE);
+@@Texture(sampler2D AMBIENT_OCCLUSION);
+
+void main()
+{
+    vec4 scene = texture(@Texture(SCENE), @In(TEXCOORDS));
+    float ambient = texture(@Texture(AMBIENT_OCCLUSION), @In(TEXCOORDS)).r;
     @Out(vec4 COLOUR) = vec4(scene.rgb * ambient, scene.a);
 }
 )";

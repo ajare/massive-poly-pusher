@@ -821,8 +821,12 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
-		mSsaoProgram = createBloomProgram("__mpp_p2d_ssao__", FragmentShaderSsaoTemplate);
-		addCoreResource(mSsaoProgram, true);
+		mSsaoRawProgram = createBloomProgram("__mpp_p2d_ssao_raw__", FragmentShaderSsaoRawTemplate);
+		addCoreResource(mSsaoRawProgram, true);
+		mSsaoBlurProgram = createBloomProgram("__mpp_p2d_ssao_blur__", FragmentShaderSsaoBlurTemplate);
+		addCoreResource(mSsaoBlurProgram, true);
+		mSsaoCombineProgram = createBloomProgram("__mpp_p2d_ssao_combine__", FragmentShaderSsaoCombineTemplate);
+		addCoreResource(mSsaoCombineProgram, true);
 		mEnvironmentDebugCubeProgram = createBloomProgram("__mpp_p2d_environment_debug_cube__", FragmentShaderEnvironmentDebugCubeTemplate);
 		addCoreResource(mEnvironmentDebugCubeProgram, true);
 		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
@@ -3558,15 +3562,12 @@ namespace mpp
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; mRenderInfo.batchCount++;
 	}
 
-	void RenderSystem::renderSSAO(Texture* scene, RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, SSAOOptions const& options)
+	void RenderSystem::renderSSAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, SSAOOptions const& options)
 	{
-		if (!scene || !depth || !depth->getDepthTextureId())
-		{
-			THROW_MPP("SSAO requires scene colour and sampled depth textures.", __LINE__, __FILE__, __func__);
-		}
+		if (!depth || !depth->getDepthTextureId()) THROW_MPP("SSAO requires a sampled depth texture.", __LINE__, __FILE__, __func__);
 		flushVertexBuffers();
-		auto program = static_cast<Program*>(mSsaoProgram.get());
-		setUsedProgram(mSsaoProgram);
+		auto program = static_cast<Program*>(mSsaoRawProgram.get());
+		setUsedProgram(mSsaoRawProgram);
 		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		GL_CHECK(glUniformMatrix4fv(program->getUniformId("PROJECTION"), 1, GL_FALSE, glm::value_ptr(projection)));
@@ -3576,11 +3577,47 @@ namespace mpp
 		GL_CHECK(glUniform1f(program->getUniformId("BIAS"), options.bias));
 		GL_CHECK(glUniform1f(program->getUniformId("POWER"), options.power));
 		GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), options.sampleCount));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit) if (program->getSamplerName(unit) == "DEPTH") depth->bindDepth((uint32_t)unit);
+		setBlendState(false);
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderSSAOBlur(Texture* ambientOcclusion, RenderTexture* depth, int blurRadius)
+	{
+		if (!ambientOcclusion || !depth || !depth->getDepthTextureId()) THROW_MPP("SSAO blur requires ambient-occlusion and sampled depth textures.", __LINE__, __FILE__, __func__);
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mSsaoBlurProgram.get());
+		setUsedProgram(mSsaoBlurProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniform1i(program->getUniformId("BLUR_RADIUS"), blurRadius));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+		{
+			auto const& sampler = program->getSamplerName(unit);
+			if (sampler == "AMBIENT_OCCLUSION") ambientOcclusion->bind((uint32_t)unit);
+			else if (sampler == "DEPTH") depth->bindDepth((uint32_t)unit);
+		}
+		setBlendState(false);
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += 2; mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderSSAOCombine(Texture* scene, Texture* ambientOcclusion)
+	{
+		if (!scene || !ambientOcclusion) THROW_MPP("SSAO combine requires scene and ambient-occlusion textures.", __LINE__, __FILE__, __func__);
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mSsaoCombineProgram.get());
+		setUsedProgram(mSsaoCombineProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
 		{
 			auto const& sampler = program->getSamplerName(unit);
 			if (sampler == "SCENE") scene->bind((uint32_t)unit);
-			else if (sampler == "DEPTH") depth->bindDepth((uint32_t)unit);
+			else if (sampler == "AMBIENT_OCCLUSION") ambientOcclusion->bind((uint32_t)unit);
 		}
 		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);

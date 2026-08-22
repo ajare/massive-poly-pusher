@@ -548,6 +548,9 @@ namespace mpp
 				auto sceneColour = renderSystem->createRenderTexture("GpuTestSsaoScene", size, size, colourOptions);
 				auto disabledOutput = renderSystem->createRenderTexture("GpuTestSsaoDisabled", size, size, colourOptions);
 				auto enabledOutput = renderSystem->createRenderTexture("GpuTestSsaoEnabled", size, size, colourOptions);
+				auto rawOutput = renderSystem->createRenderTexture("GpuTestSsaoRaw", size, size, colourOptions);
+				auto blurredOutput = renderSystem->createRenderTexture("GpuTestSsaoBlurred", size, size, colourOptions);
+				auto zeroRadiusOutput = renderSystem->createRenderTexture("GpuTestSsaoZeroRadius", size, size, colourOptions);
 				RenderTextureOptions ssaoDepthOptions;
 				ssaoDepthOptions.numAttachments = 0;
 				ssaoDepthOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
@@ -581,14 +584,29 @@ namespace mpp
 				{
 					renderSystem->pushRenderTarget(output); renderSystem->setViewport(0, 0, size, size);
 					if (ssao.enabled)
-						renderSystem->renderSSAO(dynamic_cast<Texture*>(sceneColour.get()), sceneDepthTexture, projection, glm::inverse(projection), ssao);
-					else
-						renderSystem->renderFullscreenQuad(dynamic_cast<Texture*>(sceneColour.get()), BlendMode::One, BlendMode::Zero);
+					{
+						renderSystem->pushRenderTarget(rawOutput); renderSystem->setViewport(0, 0, size, size);
+						renderSystem->renderSSAORaw(sceneDepthTexture, projection, glm::inverse(projection), ssao);
+						renderSystem->popRenderTarget();
+						renderSystem->renderSSAOCombine(dynamic_cast<Texture*>(sceneColour.get()), dynamic_cast<Texture*>(rawOutput.get()));
+					}
+					else renderSystem->renderFullscreenQuad(dynamic_cast<Texture*>(sceneColour.get()), BlendMode::One, BlendMode::Zero);
 					renderSystem->popRenderTarget();
 				};
 				renderSsaoFixture(disabledOutput);
 				ssao.enabled = true;
 				renderSsaoFixture(enabledOutput);
+				// Render the raw AO term once more, then denoise it with a larger radius.
+				renderSystem->pushRenderTarget(rawOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderSSAORaw(sceneDepthTexture, projection, glm::inverse(projection), ssao);
+				renderSystem->popRenderTarget();
+				renderSystem->pushRenderTarget(blurredOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderSSAOBlur(dynamic_cast<Texture*>(rawOutput.get()), sceneDepthTexture, 4);
+				renderSystem->popRenderTarget();
+				ssao.radius = 0.0f;
+				renderSystem->pushRenderTarget(zeroRadiusOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderSSAORaw(sceneDepthTexture, projection, glm::inverse(projection), ssao);
+				renderSystem->popRenderTarget();
 				renderSystem->popModelMatrix(); renderSystem->popCameraMatrix(); renderSystem->popProjectionMatrix();
 
 				auto const occludedDisabled = readPixel(disabledOutput, 34, 32);
@@ -599,6 +617,21 @@ namespace mpp
 					return fail("enabled SSAO did not measurably darken the occluded crease (disabled=" + std::to_string(occludedDisabled[0]) + ", enabled=" + std::to_string(occludedEnabled[0]) + ")");
 				if (std::abs((int)openEnabled[0] - (int)openDisabled[0]) > 2)
 					return fail("enabled SSAO meaningfully changed an open-area pixel (disabled=" + std::to_string(openDisabled[0]) + ", enabled=" + std::to_string(openEnabled[0]) + ")");
+				auto const zeroRadius = readPixel(zeroRadiusOutput, 34, 32);
+				if (std::abs((int)zeroRadius[0] - 255) > 1)
+					return fail("SSAO radius zero did not collapse to neutral ambient occlusion (got " + std::to_string(zeroRadius[0]) + ")");
+				auto variance = [&](RenderTargetPtr const& target)
+				{
+					auto pixels = readPixels(target); double mean = 0.0, squared = 0.0; size_t count = 0;
+					for (size_t y = 16; y < 48; ++y) for (size_t x = 34; x < 48; ++x)
+					{
+						double value = pixels[(y * size + x) * 4]; mean += value; squared += value * value; ++count;
+					}
+					mean /= count; return squared / count - mean * mean;
+				};
+				auto const rawVariance = variance(rawOutput), blurredVariance = variance(blurredOutput);
+				if (!(blurredVariance < rawVariance * 0.9))
+					return fail("SSAO blur did not measurably reduce raw AO variance (raw=" + std::to_string(rawVariance) + ", blurred=" + std::to_string(blurredVariance) + ")");
 			}
 
 			stage = "transient aliasing";

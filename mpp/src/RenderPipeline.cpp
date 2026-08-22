@@ -484,18 +484,39 @@ namespace mpp
 		sceneDepth=graph.writeDepth(scenePass,sceneDepth,GraphLoadOp::Clear,sampleSceneDepth?GraphStoreOp::Store:GraphStoreOp::DontCare);
 
 		GraphImageHandle presentationTexture = sceneHdr;
-		enum class SsaoGraphStep { Composite };
+		enum class SsaoGraphStep { Raw, Blur, Composite };
 		vector<GraphPassHandle> ssaoPasses;
 		vector<SsaoGraphStep> ssaoSteps;
+		vector<GraphImageHandle> ssaoInputs;
 		if (mOptions.ssao.enabled && mOptions.graphPasses.ssao)
 		{
+			// Keep SSAO's fixed placement, but make its raw occlusion visible to a
+			// depth-aware denoise pass before it is applied to scene colour.
+			auto rawOcclusion = graph.createImage("SsaoRaw", makeColour(GraphImageFormat::Rgba8));
+			auto rawPass = graph.addPass("SSAO", GraphPassType::Fullscreen);
+			graph.readSampled(rawPass, sceneDepth);
+			rawOcclusion = graph.writeColour(rawPass, rawOcclusion);
+			ssaoPasses.push_back(rawPass);
+			ssaoSteps.push_back(SsaoGraphStep::Raw);
+			ssaoInputs.push_back({});
+
+			auto blurredOcclusion = graph.createImage("SsaoBlur", makeColour(GraphImageFormat::Rgba8));
+			auto blurPass = graph.addPass("SSAOBlur", GraphPassType::Fullscreen);
+			graph.readSampled(blurPass, rawOcclusion);
+			graph.readSampled(blurPass, sceneDepth);
+			blurredOcclusion = graph.writeColour(blurPass, blurredOcclusion);
+			ssaoPasses.push_back(blurPass);
+			ssaoSteps.push_back(SsaoGraphStep::Blur);
+			ssaoInputs.push_back(rawOcclusion);
+
 			auto ssaoComposite = graph.createImage("SsaoComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
-			auto ssaoPass = graph.addPass("SSAO", GraphPassType::Fullscreen);
-			graph.readSampled(ssaoPass, sceneHdr);
-			graph.readSampled(ssaoPass, sceneDepth);
-			presentationTexture = graph.writeColour(ssaoPass, ssaoComposite);
-			ssaoPasses.push_back(ssaoPass);
+			auto compositePass = graph.addPass("SSAOComposite", GraphPassType::Fullscreen);
+			graph.readSampled(compositePass, sceneHdr);
+			graph.readSampled(compositePass, blurredOcclusion);
+			presentationTexture = graph.writeColour(compositePass, ssaoComposite);
+			ssaoPasses.push_back(compositePass);
 			ssaoSteps.push_back(SsaoGraphStep::Composite);
+			ssaoInputs.push_back(blurredOcclusion);
 		}
 		GraphImageHandle const shadedSceneTexture = presentationTexture;
 
@@ -584,15 +605,28 @@ namespace mpp
 		for (size_t index = 0; index < ssaoPasses.size(); ++index)
 		{
 			auto pass = ssaoPasses[index];
+			auto input = ssaoInputs[index];
 			switch (ssaoSteps[index])
 			{
-			case SsaoGraphStep::Composite:
-				mGraphExecutor->setPassCallback(graph, pass, [this, sceneHdr, sceneDepth, camera](RenderGraphExecutionContext const& context)
+			case SsaoGraphStep::Raw:
+				mGraphExecutor->setPassCallback(graph, pass, [this, sceneDepth, camera](RenderGraphExecutionContext const& context)
 				{
-					auto sceneTexture = dynamic_cast<Texture*>(context.getImage(sceneHdr).get());
 					auto depthTexture = dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get());
 					auto projection = camera->getProjectionTransform();
-					mRenderSystem->renderSSAO(sceneTexture, depthTexture, projection, glm::inverse(projection), mOptions.ssao);
+					mRenderSystem->renderSSAORaw(depthTexture, projection, glm::inverse(projection), mOptions.ssao);
+				});
+				break;
+			case SsaoGraphStep::Blur:
+				mGraphExecutor->setPassCallback(graph, pass, [this, input, sceneDepth](RenderGraphExecutionContext const& context)
+				{
+					mRenderSystem->renderSSAOBlur(dynamic_cast<Texture*>(context.getImage(input).get()),
+						dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get()), mOptions.ssao.blurRadius);
+				});
+				break;
+			case SsaoGraphStep::Composite:
+				mGraphExecutor->setPassCallback(graph, pass, [this, sceneHdr, input](RenderGraphExecutionContext const& context)
+				{
+					mRenderSystem->renderSSAOCombine(dynamic_cast<Texture*>(context.getImage(sceneHdr).get()), dynamic_cast<Texture*>(context.getImage(input).get()));
 				});
 				break;
 			}
