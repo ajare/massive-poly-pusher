@@ -821,6 +821,8 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
+		mSsaoProgram = createBloomProgram("__mpp_p2d_ssao__", FragmentShaderSsaoTemplate);
+		addCoreResource(mSsaoProgram, true);
 		mEnvironmentDebugCubeProgram = createBloomProgram("__mpp_p2d_environment_debug_cube__", FragmentShaderEnvironmentDebugCubeTemplate);
 		addCoreResource(mEnvironmentDebugCubeProgram, true);
 		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
@@ -3554,6 +3556,36 @@ namespace mpp
 		popModelMatrix(); popCameraMatrix(); popProjectionMatrix();
 		applyRasterState(previousRasterState, 1, mRenderTarget->getWidth(), mRenderTarget->getHeight());
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches++; mRenderInfo.fullscreenQuads++; mRenderInfo.batchCount++;
+	}
+
+	void RenderSystem::renderSSAO(Texture* scene, RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, SSAOOptions const& options)
+	{
+		if (!scene || !depth || !depth->getDepthTextureId())
+		{
+			THROW_MPP("SSAO requires scene colour and sampled depth textures.", __LINE__, __FILE__, __func__);
+		}
+		flushVertexBuffers();
+		auto program = static_cast<Program*>(mSsaoProgram.get());
+		setUsedProgram(mSsaoProgram);
+		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
+		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
+		GL_CHECK(glUniformMatrix4fv(program->getUniformId("PROJECTION"), 1, GL_FALSE, glm::value_ptr(projection)));
+		GL_CHECK(glUniformMatrix4fv(program->getUniformId("INVERSE_PROJECTION"), 1, GL_FALSE, glm::value_ptr(inverseProjection)));
+		GL_CHECK(glUniform1f(program->getUniformId("RADIUS"), options.radius));
+		GL_CHECK(glUniform1f(program->getUniformId("INTENSITY"), options.intensity));
+		GL_CHECK(glUniform1f(program->getUniformId("BIAS"), options.bias));
+		GL_CHECK(glUniform1f(program->getUniformId("POWER"), options.power));
+		GL_CHECK(glUniform1i(program->getUniformId("SAMPLE_COUNT"), options.sampleCount));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+		{
+			auto const& sampler = program->getSamplerName(unit);
+			if (sampler == "SCENE") scene->bind((uint32_t)unit);
+			else if (sampler == "DEPTH") depth->bindDepth((uint32_t)unit);
+		}
+		setBlendState(false);
+		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
+		mesh->bind(true); mesh->render(1); mesh->bind(false);
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += 2; mRenderInfo.fullscreenQuads++;
 	}
 
 	void RenderSystem::renderBloomCombine(Texture* scene, Texture* bloom, float intensity)

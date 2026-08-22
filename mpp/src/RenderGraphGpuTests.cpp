@@ -73,6 +73,15 @@ namespace mpp
 			return pixels;
 		}
 
+		std::array<uint8_t, 4> readPixel(RenderTargetPtr const& target, size_t x, size_t y)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get());
+			auto pixels = readPixels(target);
+			if (!texture || x >= texture->getWidth() || y >= texture->getHeight() || pixels.empty()) return { 0, 0, 0, 0 };
+			auto const index = (y * texture->getWidth() + x) * 4;
+			return { pixels[index], pixels[index + 1], pixels[index + 2], pixels[index + 3] };
+		}
+
 		bool containsVisiblePixel(RenderTargetPtr const& target)
 		{
 			auto pixels = readPixels(target);
@@ -489,6 +498,108 @@ namespace mpp
 			diagnosticDepthInspect.mode = RenderSystem::TextureDiagnosticMode::Depth;
 			renderSystem->renderTextureDiagnostic(static_cast<RenderTexture*>(diagnosticDepthTargets.get(diagnosticDepthImage).get()), diagnosticDepthOutput, diagnosticDepthInspect);
 			if (!nearColour(readFirstPixel(diagnosticDepthOutput), { 255, 255, 255, 255 })) return fail("depth diagnostic visualization failed");
+
+			stage = "SSAO depth-only tracer bullet";
+			{
+				// Exercise the runtime gates through the generated forward graph before
+				// checking the AO pixels in an isolated deterministic depth fixture.
+				RenderPipelineOptions pipelineOptions;
+				pipelineOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				auto pipeline = renderSystem->getOrCreateRenderPipeline("GpuTestSsaoPipeline", pipelineOptions);
+				auto gateScene = renderSystem->createScene("Default");
+				gateScene->setViewport(0, 0, 64, 64);
+				gateScene->setClearColour(Colour(0.8f, 0.8f, 0.8f, 1.0f));
+				auto gateCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				auto executedSsao = [&]
+				{
+					for (auto const& stats : pipeline->getLastGraphExecutionStats()) if (stats.name == "SSAO") return true;
+					return false;
+				};
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (executedSsao()) return fail("disabled SSAO was inserted into the graph");
+				SSAOOptions gateOptions; gateOptions.enabled = true;
+				pipeline->setSSAOOptions(gateOptions);
+				BloomOptions gateBloom; gateBloom.enabled = true; gateBloom.blurPasses = 0;
+				pipeline->setBloomOptions(gateBloom);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (!executedSsao()) return fail("enabled SSAO was not inserted into the graph");
+				size_t ssaoOrder = SIZE_MAX, bloomOrder = SIZE_MAX;
+				auto const& gateStats = pipeline->getLastGraphExecutionStats();
+				for (size_t index = 0; index < gateStats.size(); ++index)
+				{
+					if (gateStats[index].name == "SSAO") ssaoOrder = index;
+					else if (gateStats[index].name == "BloomExtract") bloomOrder = index;
+				}
+				if (ssaoOrder == SIZE_MAX || bloomOrder == SIZE_MAX || ssaoOrder >= bloomOrder)
+					return fail("SSAO was not fixed immediately before the bloom sequence");
+				GraphPassDebugOptions graphPasses; graphPasses.ssao = false;
+				pipeline->setGraphPassDebugOptions(graphPasses);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (executedSsao()) return fail("the SSAO graph debug gate did not suppress the pass");
+				renderSystem->removeRenderPipeline("GpuTestSsaoPipeline");
+
+				// A white plane at z=-4 with a nearer slab at z=-3 forms a known
+				// screen-space crease. Its shaded colour is deliberately uniform so
+				// any difference comes from depth-only AO, not scene lighting.
+				constexpr size_t size = 64;
+				RenderTextureOptions colourOptions;
+				colourOptions.params.minFilter = GL_NEAREST; colourOptions.params.magFilter = GL_NEAREST;
+				colourOptions.params.wrap = GL_CLAMP_TO_EDGE;
+				auto sceneColour = renderSystem->createRenderTexture("GpuTestSsaoScene", size, size, colourOptions);
+				auto disabledOutput = renderSystem->createRenderTexture("GpuTestSsaoDisabled", size, size, colourOptions);
+				auto enabledOutput = renderSystem->createRenderTexture("GpuTestSsaoEnabled", size, size, colourOptions);
+				RenderTextureOptions ssaoDepthOptions;
+				ssaoDepthOptions.numAttachments = 0;
+				ssaoDepthOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
+				ssaoDepthOptions.depthFormat = RenderTextureDepthFormat::Depth24;
+				ssaoDepthOptions.depthParams.params.minFilter = GL_NEAREST;
+				ssaoDepthOptions.depthParams.params.magFilter = GL_NEAREST;
+				ssaoDepthOptions.depthParams.params.wrap = GL_CLAMP_TO_EDGE;
+				auto sceneDepthTarget = renderSystem->createRenderTexture("GpuTestSsaoDepth", size, size, ssaoDepthOptions);
+				auto sceneDepthTexture = static_cast<RenderTexture*>(sceneDepthTarget.get());
+				auto projection = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 20.0f);
+				auto deviceDepth = [&](float viewZ)
+				{
+					auto clip = projection * glm::vec4(0.0f, 0.0f, viewZ, 1.0f);
+					return clip.z / clip.w * 0.5f + 0.5f;
+				};
+				std::vector<float> depthValues(size * size, deviceDepth(-4.0f));
+				for (size_t y = 8; y < 56; ++y) for (size_t x = 16; x < 32; ++x)
+					depthValues[y * size + x] = deviceDepth(-3.0f);
+				GL_CHECK(glBindTexture(GL_TEXTURE_2D, sceneDepthTexture->getDepthTextureId()));
+				GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (GLsizei)size, (GLsizei)size, GL_DEPTH_COMPONENT, GL_FLOAT, depthValues.data()));
+				GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+				renderSystem->pushRenderTarget(sceneColour); renderSystem->setViewport(0, 0, size, size);
+				GL_CHECK(glClearColor(0.8f, 0.8f, 0.8f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+				renderSystem->popRenderTarget();
+
+				renderSystem->pushProjectionMatrix(); renderSystem->pushCameraMatrix(); renderSystem->pushModelMatrix();
+				renderSystem->setProjection2dOrthographic(); renderSystem->resetTransform();
+				renderSystem->scaleTransform2d(glm::vec2((float)size / renderSystem->getWindowWidth(), (float)size / renderSystem->getWindowHeight()));
+				SSAOOptions ssao;
+				auto renderSsaoFixture = [&](RenderTargetPtr const& output)
+				{
+					renderSystem->pushRenderTarget(output); renderSystem->setViewport(0, 0, size, size);
+					if (ssao.enabled)
+						renderSystem->renderSSAO(dynamic_cast<Texture*>(sceneColour.get()), sceneDepthTexture, projection, glm::inverse(projection), ssao);
+					else
+						renderSystem->renderFullscreenQuad(dynamic_cast<Texture*>(sceneColour.get()), BlendMode::One, BlendMode::Zero);
+					renderSystem->popRenderTarget();
+				};
+				renderSsaoFixture(disabledOutput);
+				ssao.enabled = true;
+				renderSsaoFixture(enabledOutput);
+				renderSystem->popModelMatrix(); renderSystem->popCameraMatrix(); renderSystem->popProjectionMatrix();
+
+				auto const occludedDisabled = readPixel(disabledOutput, 34, 32);
+				auto const occludedEnabled = readPixel(enabledOutput, 34, 32);
+				auto const openDisabled = readPixel(disabledOutput, 52, 32);
+				auto const openEnabled = readPixel(enabledOutput, 52, 32);
+				if (occludedEnabled[0] + 5 >= occludedDisabled[0])
+					return fail("enabled SSAO did not measurably darken the occluded crease (disabled=" + std::to_string(occludedDisabled[0]) + ", enabled=" + std::to_string(occludedEnabled[0]) + ")");
+				if (std::abs((int)openEnabled[0] - (int)openDisabled[0]) > 2)
+					return fail("enabled SSAO meaningfully changed an open-area pixel (disabled=" + std::to_string(openDisabled[0]) + ", enabled=" + std::to_string(openEnabled[0]) + ")");
+			}
 
 			stage = "transient aliasing";
 			RenderGraph aliasGraph;

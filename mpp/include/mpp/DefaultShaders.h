@@ -649,6 +649,82 @@ void main()
 }
 )";
 
+const std::string FragmentShaderSsaoTemplate =
+R"(
+@@Version
+
+@@Uniform(mat4 PROJECTION);
+@@Uniform(mat4 INVERSE_PROJECTION);
+@@Uniform(float RADIUS);
+@@Uniform(float INTENSITY);
+@@Uniform(float BIAS);
+@@Uniform(float POWER);
+@@Uniform(int SAMPLE_COUNT);
+@@Texture(sampler2D SCENE);
+@@Texture(sampler2D DEPTH);
+
+vec3 viewPosition(vec2 uv, float depth)
+{
+    vec4 position = @Uniform(INVERSE_PROJECTION) * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    return position.xyz / position.w;
+}
+
+float noise(vec2 value)
+{
+    return fract(sin(dot(value, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void main()
+{
+    vec2 uv = @In(TEXCOORDS);
+    vec4 scene = texture(@Texture(SCENE), uv);
+    float centreDepth = texture(@Texture(DEPTH), uv).r;
+    vec3 position = viewPosition(uv, centreDepth);
+    // Forward rendering has no normals attachment. Reconstruct the geometric
+    // view-space normal from neighbouring depth samples instead. Derivatives
+    // stay outside depth-dependent control flow so silhouette quads are defined.
+    vec3 normal = normalize(cross(dFdx(position), dFdy(position)));
+    if (normal.z < 0.0) normal = -normal;
+    float ambient = 1.0;
+    if (centreDepth < 0.999999)
+    {
+        float angle = noise(gl_FragCoord.xy) * 6.28318530718;
+        vec3 randomVector = vec3(cos(angle), sin(angle), 0.0);
+        vec3 tangentCandidate = randomVector - normal * dot(randomVector, normal);
+        if (dot(tangentCandidate, tangentCandidate) < 0.01)
+            tangentCandidate = cross(normal, abs(normal.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0));
+        vec3 tangent = normalize(tangentCandidate);
+        vec3 bitangent = cross(normal, tangent);
+
+        int count = clamp(@Uniform(SAMPLE_COUNT), 1, 64);
+        float occluded = 0.0;
+        float considered = 0.0;
+        for (int index = 0; index < 64; ++index)
+        {
+            if (index >= count) break;
+            float fraction = (float(index) + 0.5) / float(count);
+            float phi = 6.28318530718 * fract(float(index) * 0.61803398875 + noise(gl_FragCoord.xy));
+            float radial = sqrt(fraction);
+            vec3 hemisphere = vec3(cos(phi) * radial, sin(phi) * radial, sqrt(1.0 - fraction));
+            vec3 direction = tangent * hemisphere.x + bitangent * hemisphere.y + normal * hemisphere.z;
+            vec3 samplePosition = position + direction * @Uniform(RADIUS);
+            vec4 projected = @Uniform(PROJECTION) * vec4(samplePosition, 1.0);
+            vec2 sampleUv = projected.xy / projected.w * 0.5 + 0.5;
+            if (sampleUv.x <= 0.0 || sampleUv.x >= 1.0 || sampleUv.y <= 0.0 || sampleUv.y >= 1.0) continue;
+            float sampledDepth = texture(@Texture(DEPTH), sampleUv).r;
+            if (sampledDepth >= 0.999999) continue;
+            float sampledZ = viewPosition(sampleUv, sampledDepth).z;
+            float rangeWeight = smoothstep(0.0, 1.0, @Uniform(RADIUS) / max(abs(position.z - sampledZ), 0.0001));
+            occluded += (sampledZ >= samplePosition.z + @Uniform(BIAS) ? 1.0 : 0.0) * rangeWeight;
+            considered += 1.0;
+        }
+        float rawOcclusion = considered > 0.0 ? occluded / considered : 0.0;
+        ambient = pow(clamp(1.0 - rawOcclusion * @Uniform(INTENSITY), 0.0, 1.0), @Uniform(POWER));
+    }
+    @Out(vec4 COLOUR) = vec4(scene.rgb * ambient, scene.a);
+}
+)";
+
 const std::string FragmentShaderBloomExtractTemplate =
 R"(
 @@Version

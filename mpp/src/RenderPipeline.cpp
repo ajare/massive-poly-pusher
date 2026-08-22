@@ -201,6 +201,11 @@ namespace mpp
 		}
 	}
 
+	void RenderPipeline::setSSAOOptions(SSAOOptions const& ssaoOptions)
+	{
+		mOptions.ssao = ssaoOptions;
+	}
+
 	void RenderPipeline::setPostEffectEnabled(string const& passName, bool enabled)
 	{
 		auto& parameters = mPostEffectParameterOverrides[passName];
@@ -450,7 +455,8 @@ namespace mpp
 		}
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
-		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (outputAntiAliasing.taa ? GraphImageUsage::Sampled : GraphImageUsage::None);
+		bool const sampleSceneDepth = outputAntiAliasing.taa || (mOptions.ssao.enabled && mOptions.graphPasses.ssao);
+		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
 
 		GraphImageHandle shadowDepth;
@@ -475,9 +481,24 @@ namespace mpp
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
 		if (useMrtEmissiveMask) bloomMask = graph.writeColour(scenePass, bloomMask, GraphLoadOp::Clear, GraphStoreOp::Store);
-		sceneDepth=graph.writeDepth(scenePass,sceneDepth,GraphLoadOp::Clear,outputAntiAliasing.taa?GraphStoreOp::Store:GraphStoreOp::DontCare);
+		sceneDepth=graph.writeDepth(scenePass,sceneDepth,GraphLoadOp::Clear,sampleSceneDepth?GraphStoreOp::Store:GraphStoreOp::DontCare);
 
 		GraphImageHandle presentationTexture = sceneHdr;
+		enum class SsaoGraphStep { Composite };
+		vector<GraphPassHandle> ssaoPasses;
+		vector<SsaoGraphStep> ssaoSteps;
+		if (mOptions.ssao.enabled && mOptions.graphPasses.ssao)
+		{
+			auto ssaoComposite = graph.createImage("SsaoComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			auto ssaoPass = graph.addPass("SSAO", GraphPassType::Fullscreen);
+			graph.readSampled(ssaoPass, sceneHdr);
+			graph.readSampled(ssaoPass, sceneDepth);
+			presentationTexture = graph.writeColour(ssaoPass, ssaoComposite);
+			ssaoPasses.push_back(ssaoPass);
+			ssaoSteps.push_back(SsaoGraphStep::Composite);
+		}
+		GraphImageHandle const shadedSceneTexture = presentationTexture;
+
 		enum class BloomGraphStep { Extract, Horizontal, Vertical, Composite };
 		vector<GraphPassHandle> bloomPasses;
 		vector<GraphImageHandle> bloomInputs;
@@ -489,10 +510,10 @@ namespace mpp
 			{
 				auto bloomExtract = graph.createImage("BloomExtract", makeColour(GraphImageFormat::Rgba16f));
 				auto extractPass = graph.addPass("BloomExtract", GraphPassType::Fullscreen);
-				graph.readSampled(extractPass, sceneHdr);
+				graph.readSampled(extractPass, shadedSceneTexture);
 				blurred = graph.writeColour(extractPass, bloomExtract);
 				bloomPasses.push_back(extractPass);
-				bloomInputs.push_back(sceneHdr);
+				bloomInputs.push_back(shadedSceneTexture);
 				bloomSteps.push_back(BloomGraphStep::Extract);
 			}
 			for (uint32_t index = 0; index < mOptions.bloom.blurPasses; ++index)
@@ -520,7 +541,7 @@ namespace mpp
 			}
 			auto composite = graph.createImage("BloomComposite", makeColour(GraphImageFormat::Rgba16f));
 			auto compositePass = graph.addPass("BloomComposite", GraphPassType::Fullscreen);
-			graph.readSampled(compositePass, sceneHdr);
+			graph.readSampled(compositePass, shadedSceneTexture);
 			graph.readSampled(compositePass, blurred);
 			presentationTexture = graph.writeColour(compositePass, composite);
 			bloomPasses.push_back(compositePass);
@@ -560,6 +581,22 @@ namespace mpp
 				mRenderSystem->flushVertexBuffers();
 			}
 		});
+		for (size_t index = 0; index < ssaoPasses.size(); ++index)
+		{
+			auto pass = ssaoPasses[index];
+			switch (ssaoSteps[index])
+			{
+			case SsaoGraphStep::Composite:
+				mGraphExecutor->setPassCallback(graph, pass, [this, sceneHdr, sceneDepth, camera](RenderGraphExecutionContext const& context)
+				{
+					auto sceneTexture = dynamic_cast<Texture*>(context.getImage(sceneHdr).get());
+					auto depthTexture = dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get());
+					auto projection = camera->getProjectionTransform();
+					mRenderSystem->renderSSAO(sceneTexture, depthTexture, projection, glm::inverse(projection), mOptions.ssao);
+				});
+				break;
+			}
+		}
 		for (size_t index = 0; index < bloomPasses.size(); ++index)
 		{
 			auto pass = bloomPasses[index];
@@ -584,7 +621,7 @@ namespace mpp
 			}
 			case BloomGraphStep::Composite:
 			{
-				auto sceneInput = sceneHdr;
+				auto sceneInput = shadedSceneTexture;
 				mGraphExecutor->setPassCallback(graph, pass, [this, sceneInput, input](RenderGraphExecutionContext const& context)
 				{
 					mRenderSystem->renderBloomCombine(static_cast<RenderTexture*>(context.getImage(sceneInput).get()), static_cast<RenderTexture*>(context.getImage(input).get()), mOptions.bloom.intensity);
