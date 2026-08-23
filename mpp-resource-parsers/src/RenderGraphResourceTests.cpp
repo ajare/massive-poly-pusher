@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 
+#include "mpp/Caps.h"
 #include "mpp/LegacyPipelineDocument.h"
 #include "mpp/PbrPipelineDocument.h"
 #include "mpp/resource-parsers/LegacyPipelineParser.h"
@@ -142,17 +143,41 @@ namespace mpp::resource_parsers
 				if (!document.graph->compile().diagnostics.empty()) return fail(extension + ": ambient occlusion authored an invalid graph: " + document.graph->compile().diagnostics.front());
 				auto const pass = [&](uint32_t index) { return document.graph->getPassInfo({ index }); };
 				if (document.graph->getPassCount() != 5 || pass(1).name != "GTAO" || pass(1).callbackFactory != "MPP.GTAORaw" || pass(2).name != "AmbientOcclusionBlur" || pass(3).name != "AmbientOcclusionComposite" || pass(4).name != "BloomExtract") return fail(extension + ": GTAO passes were not inserted between the scene and bloom extract passes");
-				if (document.graph->getImageCount() != 6 || pass(4).samplerBindings.front().image.id == scene.id) return fail(extension + ": GTAO images or bloom routing were not authored");
+				if (document.graph->getImageCount() != 8 || pass(4).samplerBindings.front().image.id == scene.id) return fail(extension + ": GTAO images or bloom routing were not authored");
+				auto sceneInfo = document.graph->getPassInfo(scenePass);
+				if (sceneInfo.colourOutputs.size() != 3 || document.graph->getImageInfo(sceneInfo.colourOutputs[2].image).desc.format != GraphImageFormat::Rg16f || pass(1).samplerBindings.size() != 2 || pass(1).samplerBindings[1].sampler != "NORMALS" || pass(1).samplerBindings[1].image.id != sceneInfo.colourOutputs[2].image.id) return fail(extension + ": GTAO MRT normals were not attached at scene location 2 and bound to the raw pass");
 				if (!hasGraphImageUsage(document.graph->getImageInfo({ sceneDepth.id, 0 }).desc.usage, GraphImageUsage::Sampled) || document.graph->getPassInfo(scenePass).depthOutputs.front().store != GraphStoreOp::Store) return fail(extension + ": GTAO did not retain sampled scene depth");
+				document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
+				if (document.graph->getPassCount() != 5 || document.graph->getImageCount() != 8) return fail(extension + ": repeated MRT GTAO selection duplicated graph resources");
+				document.ambientOcclusion.gtao.normalSource = GTAONormalSource::Depth;
+				document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
+				if (document.graph->getPassCount() != 5 || document.graph->getImageCount() != 6 || document.graph->getPassInfo({ 0 }).colourOutputs.size() != 1 || document.graph->getPassInfo({ 1 }).samplerBindings.size() != 1) return fail(extension + ": depth GTAO did not remove MRT-only resources and bindings");
+				document.ambientOcclusion.gtao.normalSource = GTAONormalSource::Mrt;
+				document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
 				PbrPipelineSerializer::toFile(document, path);
+				std::ifstream normalSourceFile(path); std::string withoutNormalSource((std::istreambuf_iterator<char>(normalSourceFile)), std::istreambuf_iterator<char>()); normalSourceFile.close();
+				if (extension == ".xml") { auto begin = withoutNormalSource.find("        <normalSource>mrt</normalSource>\n"); if (begin == std::string::npos) return fail(extension + ": GTAO normal source was not serialized"); withoutNormalSource.erase(begin, std::string("        <normalSource>mrt</normalSource>\n").size()); }
+				else { auto begin = withoutNormalSource.find("      normalSource: mrt\n"); if (begin == std::string::npos) return fail(extension + ": GTAO normal source was not serialized"); withoutNormalSource.erase(begin, std::string("      normalSource: mrt\n").size()); }
+				auto const defaultPath = (std::filesystem::temp_directory_path() / ("mpp_default_gtao_normal_source" + extension)).string(); std::ofstream defaultFile(defaultPath); defaultFile << withoutNormalSource; defaultFile.close();
+				auto defaulted = PbrPipelineParser::fromFile(defaultPath);
+				if (defaulted.ambientOcclusion.gtao.normalSource != GTAONormalSource::Depth || defaulted.graph->getPassInfo({ 0 }).colourOutputs.size() != 1) return fail(extension + ": omitted GTAO normal source did not preserve depth behavior");
+				std::filesystem::remove(defaultPath);
 				auto restored = PbrPipelineParser::fromFile(path);
 				if (!restored.graph->compile().diagnostics.empty()) return fail(extension + ": round-tripped ambient-occlusion graph is invalid: " + restored.graph->compile().diagnostics.front());
 				if (restored.ambientOcclusion.method != AmbientOcclusionMethod::Gtao || restored.ambientOcclusion.ssao.sampleCount != 24 || restored.ambientOcclusion.gtao.radius != 1.5f || restored.ambientOcclusion.gtao.thickness != 0.4f || restored.ambientOcclusion.gtao.sliceCount != 6 || restored.ambientOcclusion.gtao.stepsPerSlice != 4 || restored.ambientOcclusion.gtao.blurRadius != 3 || restored.ambientOcclusion.gtao.normalSource != GTAONormalSource::Mrt) return fail(extension + ": ambient-occlusion options did not survive pipeline round trip");
 				restored.ambientOcclusion.gtao.falloffEnd = restored.ambientOcclusion.gtao.falloffStart;
 				auto invalidGtaoDiagnostics = restored.validate(); bool rejectedInvalidGtao = false; for (auto const& diagnostic : invalidGtaoDiagnostics.getDiagnostics()) rejectedInvalidGtao |= diagnostic.code == "MPP-PIPELINE-053";
 				if (!rejectedInvalidGtao) return fail(extension + ": invalid GTAO parameters were accepted");
+				restored.ambientOcclusion.gtao.falloffEnd = 1.0f;
+				Caps insufficientMrtCaps; insufficientMrtCaps.maxColourAttachments = 2; insufficientMrtCaps.maxDrawBuffers = 2;
+				auto capabilityDiagnostics = restored.validate(insufficientMrtCaps); bool rejectedMrtCapability = false; std::string capabilityCodes; for (auto const& diagnostic : capabilityDiagnostics.getDiagnostics()) { rejectedMrtCapability |= diagnostic.code == "MPP-PIPELINE-056"; capabilityCodes += diagnostic.code + " "; }
+				if (!rejectedMrtCapability) return fail(extension + ": MRT GTAO did not report insufficient hardware capability (" + capabilityCodes + ")");
+				for (uint32_t passId = 0; passId < restored.graph->getPassCount(); ++passId) if (restored.graph->getPassInfo({ passId }).callbackFactory == "MPP.PbrScene") { restored.graph->removeColourOutput({ passId }, 2); break; }
+				auto contractDiagnostics = restored.validate(); bool rejectedMrtContract = false; std::string contractCodes; for (auto const& diagnostic : contractDiagnostics.getDiagnostics()) { rejectedMrtContract |= diagnostic.code == "MPP-PIPELINE-054"; contractCodes += diagnostic.code + " "; }
+				if (!rejectedMrtContract) return fail(extension + ": MRT GTAO did not report a missing location-2 scene output (" + contractCodes + ")");
+				restored.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
 				restored.setAmbientOcclusionMethod(AmbientOcclusionMethod::None);
-				if (restored.graph->getPassCount() != 2 || restored.graph->getImageCount() != 3) return fail(extension + ": disabling ambient occlusion did not remove its authored passes and images");
+				if (restored.graph->getPassCount() != 2 || restored.graph->getImageCount() != 3 || restored.graph->getPassInfo({ 1 }).name != "BloomExtract" || restored.graph->getPassInfo({ 1 }).samplerBindings.front().image.id != scene.id) return fail(extension + ": disabling ambient occlusion did not clean up only its generated resources");
 
 				std::ifstream nativeFile(path); std::string legacyText((std::istreambuf_iterator<char>(nativeFile)), std::istreambuf_iterator<char>()); nativeFile.close();
 				if (extension == ".xml")

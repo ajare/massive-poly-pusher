@@ -111,8 +111,43 @@ namespace mpp
 				if (graph->getImageInfo({ image, 0 }).name == name) return GraphImageHandle{ image, (uint32_t)graph->getImageVersionCount(image) - 1 };
 			return GraphImageHandle{};
 		};
+		auto removeGeneratedMrtNormals = [&]
+		{
+			// The location-1 placeholder exists only to make the generated normals
+			// target location 2 when Bloom has not already supplied its MRT output.
+			// Remove only our named resources and their attachments; author-owned
+			// images, bindings, and scene outputs remain untouched.
+			auto normals = findImage("GtaoMrtNormals");
+			auto reserved = findImage("GtaoMrtReserved1");
+			for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+			{
+				auto info = graph->getPassInfo({ pass });
+				if (info.callbackFactory != "MPP.PbrScene") continue;
+				for (uint32_t output = (uint32_t)info.colourOutputs.size(); output-- > 0; )
+				{
+					auto image = info.colourOutputs[output].image;
+					if ((normals.isValid() && image.id == normals.id) ||
+						(reserved.isValid() && image.id == reserved.id && !bloom.enabled))
+						graph->removeColourOutput({ pass }, output);
+				}
+			}
+			auto isReferenced = [&](GraphImageHandle image)
+			{
+				for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+				{
+					auto info = graph->getPassInfo({ pass });
+					if (isAmbientOcclusionPass(info)) continue;
+					for (auto const& output : info.colourOutputs) if (output.image.id == image.id) return true;
+					for (auto const& binding : info.samplerBindings) if (binding.image.id == image.id) return true;
+				}
+				return false;
+			};
+			if (normals.isValid() && !isReferenced(normals)) graph->removeImage({ normals.id, 0 });
+			if (reserved.isValid() && !isReferenced(reserved)) graph->removeImage({ reserved.id, 0 });
+		};
 		if (method == AmbientOcclusionMethod::None)
 		{
+			removeGeneratedMrtNormals();
 			auto composite = findImage("AmbientOcclusionComposite");
 			if (!composite.isValid()) composite = findImage("SsaoComposite");
 			auto sceneColour = GraphImageHandle{};
@@ -195,6 +230,31 @@ namespace mpp
 		auto rawPass = graph->addPass(method == AmbientOcclusionMethod::Ssao ? "SSAO" : "GTAO", GraphPassType::Fullscreen);
 		graph->setPassCallbackFactory(rawPass, method == AmbientOcclusionMethod::Ssao ? "MPP.SSAORaw" : "MPP.GTAORaw");
 		graph->bindSampler(rawPass, "DEPTH", sceneDepth);
+		if (method == AmbientOcclusionMethod::Gtao && ambientOcclusion.gtao.normalSource == GTAONormalSource::Mrt)
+		{
+			// Fragment output locations are attachment indices. Preserve location 1
+			// for Bloom (or add a disposable placeholder) before attaching the
+			// RG16F octahedral view-space normals target at location 2.
+			auto sceneInfo = graph->getPassInfo(scenePass);
+			if (sceneInfo.colourOutputs.size() < 2)
+			{
+				GraphImageDesc placeholderDesc = colourDesc;
+				placeholderDesc.format = GraphImageFormat::Rgba16f;
+				placeholderDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+				placeholderDesc.external = false;
+				placeholderDesc.transient = true;
+				auto placeholder = graph->createImage("GtaoMrtReserved1", placeholderDesc);
+				graph->writeColour(scenePass, placeholder, GraphLoadOp::Clear, GraphStoreOp::DontCare);
+			}
+			GraphImageDesc normalsDesc = colourDesc;
+			normalsDesc.format = GraphImageFormat::Rg16f;
+			normalsDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+			normalsDesc.external = false;
+			normalsDesc.transient = true;
+			auto normals = graph->createImage("GtaoMrtNormals", normalsDesc);
+			normals = graph->writeColour(scenePass, normals, GraphLoadOp::Clear, GraphStoreOp::Store);
+			graph->bindSampler(rawPass, "NORMALS", normals);
+		}
 		graph->setPassParameters(rawPass, rawParameters);
 		raw = graph->writeColour(rawPass, raw);
 		auto blurPass = graph->addPass("AmbientOcclusionBlur", GraphPassType::Fullscreen);
@@ -328,6 +388,34 @@ namespace mpp
 				auto const& options = ambientOcclusion.gtao;
 				bool valid = std::isfinite(options.radius) && options.radius >= 0.0f && std::isfinite(options.intensity) && options.intensity >= 0.0f && std::isfinite(options.thickness) && options.thickness >= 0.0f && std::isfinite(options.horizonBias) && options.horizonBias >= 0.0f && options.horizonBias <= 1.0f && std::isfinite(options.falloffStart) && std::isfinite(options.falloffEnd) && options.falloffStart >= 0.0f && options.falloffStart < options.falloffEnd && options.falloffEnd <= 1.0f && options.sliceCount >= 1 && options.sliceCount <= 16 && options.stepsPerSlice >= 1 && options.stepsPerSlice <= 16 && std::isfinite(options.power) && options.power > 0.0f && options.blurRadius >= 0 && options.blurRadius <= 8;
 				if (!valid) diagnostics.error("MPP-PIPELINE-053", "GTAO parameters require finite non-negative radius, intensity, and thickness; horizon bias 0-1; ordered falloff in [0,1]; 1-16 slices and steps; positive power; and blur radius 0-8.", {sourcePath}, "ambientOcclusion");
+				if (options.normalSource == GTAONormalSource::Mrt)
+				{
+					GraphImageHandle normals;
+					bool sceneContract = false;
+					for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+					{
+						auto const& info = graph->getPassInfo({ pass });
+						if (info.callbackFactory != "MPP.PbrScene") continue;
+						if (info.colourOutputs.size() >= 3 && graph->getImageInfo(info.colourOutputs[2].image).desc.format == GraphImageFormat::Rg16f)
+						{
+							normals = info.colourOutputs[2].image;
+							sceneContract = true;
+						}
+						break;
+					}
+					if (!sceneContract)
+						diagnostics.error("MPP-PIPELINE-054", "GTAO normalSource=mrt requires the PBR scene shader contract: an RG16F octahedrally encoded view-space shading-normal output at colour location 2 (locations 0 and 1 must also be attached). Update the scene shader/graph or select normalSource=depth.", {sourcePath}, "ambientOcclusion");
+					bool rawContract = false;
+					for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+					{
+						auto const& info = graph->getPassInfo({ pass });
+						if (info.callbackFactory != "MPP.GTAORaw") continue;
+						for (auto const& binding : info.samplerBindings)
+							if (binding.sampler == "NORMALS" && sceneContract && binding.image.id == normals.id) rawContract = true;
+					}
+					if (!rawContract)
+						diagnostics.error("MPP-PIPELINE-055", "GTAO normalSource=mrt requires its raw pass to bind the PBR scene location-2 RG16F normals image as sampler NORMALS; no depth fallback is used.", {sourcePath}, "ambientOcclusion");
+				}
 			}
 
 			if(outputs.empty())diagnostics.error("MPP-PIPELINE-033","PbrPipeline requires at least one explicit named output.",{sourcePath},"outputs");
@@ -394,7 +482,7 @@ namespace mpp
 
 	DiagnosticBag PbrPipelineDocument::validate(Caps const& caps,glm::uvec2 const& viewport,RenderGraphPassFactoryRegistry const* registry) const
 	{
-		auto diagnostics=validate(registry);if(graph){auto compiled=graph->compile(caps,viewport);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
+		auto diagnostics=validate(registry);if(graph){if(ambientOcclusion.method==AmbientOcclusionMethod::Gtao&&ambientOcclusion.gtao.normalSource==GTAONormalSource::Mrt&&(caps.maxColourAttachments<3||caps.maxDrawBuffers<3))diagnostics.error("MPP-PIPELINE-056","GTAO normalSource=mrt requires hardware with at least 3 colour attachments and 3 draw buffers for scene colour (location 0), Bloom/reserved MRT (location 1), and RG16F normals (location 2); select normalSource=depth on incompatible hardware.",{sourcePath},"ambientOcclusion");auto compiled=graph->compile(caps,viewport);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
 	}
 
 	DiagnosticBag PbrPipelineDocument::validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps) const

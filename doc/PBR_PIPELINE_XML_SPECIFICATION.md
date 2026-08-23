@@ -19,6 +19,7 @@ Paths are resolved relative to the pipeline file. Relative paths are portable; a
   <Outputs>...</Outputs>
   <Environment>...</Environment>
   <Bloom><enabled>true</enabled><blurPasses>4</blurPasses></Bloom>
+  <AmbientOcclusion><method>gtao</method><GTAO><normalSource>depth</normalSource></GTAO></AmbientOcclusion>
   <PreviewBindings>...</PreviewBindings>
   <PreviewOverrides>...</PreviewOverrides>
   <Extensions>...</Extensions>
@@ -75,9 +76,11 @@ Usage is a comma-separated combination of `sampled`, `colourAttachment`, `depthA
 
 Output names are unique. `image` must name a sampled colour-attachment graph image. `taaDepth` is optional unless effective TAA lacks an external output target with its own depth texture; when present it must name a sampled depth-attachment image whose final write uses `store=store`. MSAA and SSAA accept `inherit`, `off`, `2x`, `4x`, or `8x`; TAA and FXAA accept `inherit`, `true`, or `false`. Omitting `AntiAliasing` inherits every global `[mpp]` default. All outputs in one pipeline must resolve to identical MSAA, SSAA, and TAA settings, while FXAA may vary. FXAA requires `RGBA8`, `SRGB8_ALPHA8`, or `RGB10_A2` output. Effective MSAA is applied privately to compatible non-external raster colour/depth attachments; stored writes are automatically resolved before sampled reads and output processing. Multisampled attachments cannot declare mip chains—render and resolve a single-level attachment before generating or sampling mips. Effective SSAA values are total sample counts: 2×, 4×, and 8× use approximately √2, 2, and √8 linear viewport scaling with deterministic upward dimension rounding. Relative graph images use that supersampled viewport; authored absolute-size resources remain unchanged. Outputs return to logical size through a separable alpha-preserving Lanczos filter. Effective TAA applies renderer-owned eight-sample Halton projection jitter and resolved-depth reprojection before that downsample. The named `taaDepth` source must resolve to the same supersampled dimensions as the output. History is rejected for depth mismatch/out-of-bounds reprojection, clamped to the current 3×3 neighbourhood, and reset on generation/size/setting changes, camera cuts or conservative discontinuities, and skipped output frames. Effective FXAA runs last at logical output resolution using the engine's fixed high-quality edge-search/subpixel preset; it preserves centre alpha and remains independently selectable per output.
 
-## Environment, bloom, and preview binding
+## Environment, bloom, ambient occlusion, and preview binding
 
 `Bloom` contains `enabled` and `blurPasses`. The count selects how many authored horizontal/vertical blur pairs execute; enabled bloom requires extract/composite passes and cannot request more pairs than the graph authors. Remaining authored blur pairs preserve the image chain without applying additional blur.
+
+`AmbientOcclusion/GTAO/normalSource` accepts `depth` (the default when omitted) or `mrt`. `depth` reconstructs GTAO normals from scene depth. Selecting `mrt` automatically authors the fixed GTAO graph's `RG16F` sampled normals image, attaches it to the `MPP.PbrScene` pass at colour-output location 2, and binds it as the GTAO raw pass `NORMALS` sampler. Location 2 must be written by every participating PBR scene shader as an octahedrally encoded **view-space shading normal**; locations 0 (scene colour) and 1 (Bloom output or an automatic reserved attachment) are also required by the MRT layout. The `RG16F` encoding and a device with at least three colour attachments and draw buffers are mandatory. There is no depth-reconstruction fallback when `mrt` is selected: a missing shader output, graph attachment, normal binding, or hardware capability is a validation error. Switching to `depth`, SSAO, or no ambient occlusion removes only the generated MRT-normal wiring.
 
 `Environment` supports `binding`, `irradiance`, `prefilteredSpecular`, `brdfLut`, and `background`. These resources are pipeline-owned. Missing optional components use diagnosed neutral fallbacks.
 

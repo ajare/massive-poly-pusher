@@ -351,7 +351,7 @@ namespace mpp
 
 		auto scene = metadata("PBR Scene", "Scene", GraphPassType::Scene);
 		scene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });
-		scene.outputs.push_back({ "HDR Colour", false, true, colourFormats() }); scene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() }); scene.outputs.push_back({ "Depth", true, true, depthFormats() });
+		scene.outputs.push_back({ "HDR Colour", false, true, colourFormats() }); scene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() }); scene.outputs.push_back({ "GTAO shading normals", false, false, { GraphImageFormat::Rg16f } }); scene.outputs.push_back({ "Depth", true, true, depthFormats() });
 		scene.materialSlots.push_back("SceneMaterials");
 		registry.registerScenePassFactory("MPP.PbrScene", [] { return std::make_unique<ScenePass>(); }, scene);
 		scene.displayName = "Legacy Scene";

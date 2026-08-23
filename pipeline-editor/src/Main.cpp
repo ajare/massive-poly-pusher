@@ -5889,6 +5889,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					changed |= ImGui::InputInt("Steps per slice", &options.stepsPerSlice);
 					changed |= ImGui::InputFloat("Power", &options.power);
 					changed |= ImGui::InputInt("Blur radius", &options.blurRadius);
+					int normalSource = (int)options.normalSource;
+					if (ImGui::Combo("Normal source", &normalSource, "Depth reconstruction\0MRT shading normals\0"))
+					{
+						options.normalSource = (GTAONormalSource)normalSource;
+						changed = true;
+					}
 				}
 				if (changed && !methodChanged && ambientOcclusion.method != AmbientOcclusionMethod::None)
 					openDocument->setAmbientOcclusionMethod(ambientOcclusion.method);
@@ -5897,18 +5903,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (openDocument->graph && ambientOcclusion.method != AmbientOcclusionMethod::None)
 				{
 					auto compilation = openDocument->graph->compile();
-					bool raw = false, blur = false, composite = false;
+					bool raw = false, blur = false, composite = false, mrtContract = ambientOcclusion.gtao.normalSource != GTAONormalSource::Mrt;
+					GraphImageHandle normals;
 					for (auto pass : compilation.passOrder)
 					{
 						auto const& info = openDocument->graph->getPassInfo(pass);
+						if (info.callbackFactory == "MPP.PbrScene" && info.colourOutputs.size() >= 3 && openDocument->graph->getImageInfo(info.colourOutputs[2].image).desc.format == GraphImageFormat::Rg16f)
+							normals = info.colourOutputs[2].image;
 						raw |= info.callbackFactory == (ambientOcclusion.method == AmbientOcclusionMethod::Ssao ? "MPP.SSAORaw" : "MPP.GTAORaw");
 						blur |= info.callbackFactory == "MPP.AmbientOcclusionBlur";
 						composite |= info.callbackFactory == "MPP.AmbientOcclusionComposite";
+						if (info.callbackFactory == "MPP.GTAORaw") for (auto const& binding : info.samplerBindings)
+							if (binding.sampler == "NORMALS" && normals.isValid() && binding.image.id == normals.id) mrtContract = true;
 					}
-					aoActive = compilation.valid && raw && blur && composite;
+					aoActive = compilation.valid && raw && blur && composite && mrtContract;
 				}
 				ImGui::TextColored(aoActive ? ImVec4(0.3f, 0.9f, 0.4f, 1.0f) : ImVec4(0.9f, 0.6f, 0.25f, 1.0f),
-				                   aoActive ? "Ambient occlusion graph is valid" : "Ambient occlusion is bypassed in the compiled graph");
+				                   aoActive ? "Ambient occlusion graph is valid" : "Ambient occlusion graph is invalid or bypassed in the compiled graph");
 				if (changed)
 				{
 					auto after = clonePipeline(openDocument);

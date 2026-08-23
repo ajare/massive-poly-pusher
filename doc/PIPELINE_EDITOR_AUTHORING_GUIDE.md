@@ -48,9 +48,9 @@ Enable **Bloom** in PipelineEditor to add the HDR `SceneEmissive` attachment to 
 
 ## Ambient occlusion
 
-Select **Ambient Occlusion** in PipelineEditor and choose **None**, **SSAO**, or **GTAO**. Both methods are fixed immediately after the opaque scene pass and use sampled scene depth with depth-reconstructed normals. SSAO exposes radius, intensity, bias, power, sample count, and blur radius. GTAO exposes radius, intensity, thickness, horizon bias, distance falloff start/end, slice count, steps per slice, power, and blur radius. The falloff range is normalized to the selected radius; slice and step counts trade GPU cost for horizon-search quality.
+Select **Ambient Occlusion** in PipelineEditor and choose **None**, **SSAO**, or **GTAO**. Both methods are fixed immediately after the opaque scene pass and use sampled scene depth. SSAO always reconstructs normals from depth. GTAO exposes radius, intensity, thickness, horizon bias, distance falloff start/end, slice count, steps per slice, power, blur radius, and **Normal source**. The default **Depth reconstruction** preserves the existing depth-normal behavior. **MRT shading normals** automatically creates an `RG16F` image, attaches it at PBR scene colour-output location 2, and binds it to GTAO's raw pass; switching away cleans up that generated wiring. Every participating PBR shader must write an octahedrally encoded view-space shading normal at location 2 (with scene colour at location 0 and Bloom/reserved output at location 1), and hardware must support three colour attachments and draw buffers. MRT mode has no depth fallback: PipelineEditor marks the AO graph invalid when that contract is not satisfied. The falloff range is normalized to the selected radius; slice and step counts trade GPU cost for horizon-search quality.
 
-Native pipeline documents serialize an `AmbientOcclusion` section containing `method`, nested `SSAO`, and nested `GTAO` settings. Legacy `SSAO` sections remain readable and migrate to `method: ssao` when saved.
+Native pipeline documents serialize an `AmbientOcclusion` section containing `method`, nested `SSAO`, and nested `GTAO` settings, including GTAO `normalSource` as `depth` or `mrt`. Documents without `normalSource` load as `depth`. Legacy `SSAO` sections remain readable and migrate to `method: ssao` when saved.
 
 ## Viewport controls
 
