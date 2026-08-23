@@ -604,6 +604,7 @@ namespace mpp
 				stats.primitivesSubmitted = static_cast<uint64_t>(max(0, statsAfter.primitivesRendered - statsBefore.primitivesRendered));
 				stats.trianglesSubmitted = static_cast<uint64_t>(max(0, statsAfter.trianglesRendered - statsBefore.trianglesRendered));
 				stats.fullscreenQuads = static_cast<uint64_t>(max(0, statsAfter.fullscreenQuads - statsBefore.fullscreenQuads));
+				stats.colourOutputCount = static_cast<uint32_t>(pass.colourOutputs.size());
 				mLastExecutionStats.push_back(move(stats));
 				mRenderSystem->endRenderFlowPass(passHandle, pass.name);
 			}

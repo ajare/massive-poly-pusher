@@ -134,11 +134,10 @@ void main()
 // an untextured water material is a clean mirror rather than a compile error.
 @@Texture(sampler2D PBR_WATER_NORMAL_MAP);
 @@Texture(sampler2D PBR_WATER_DETAIL_NORMAL_MAP);
+#endif
 
-// Per-frame camera state for the view-space ray march. Fullscreen passes get
-// this through hand-wired glUniform calls, but a scene pass shades through
-// PbrMaterial::setUniforms(), so it arrives the way PbrLights and ShadowFrame
-// already do: a renderer-owned UBO at a fixed binding point.
+// Per-frame camera state is shared by water's view-space ray march and the
+// pipeline-owned view-space shading-normal output.
 layout(std140, binding = 3) uniform CameraFrame
 {
     mat4 VIEW_MATRIX;
@@ -147,7 +146,6 @@ layout(std140, binding = 3) uniform CameraFrame
     vec4 VIEWPORT_SIZE;    // width, height, 1/width, 1/height
     vec4 NEAR_FAR_TIME;    // near, far, seconds, unused
 };
-#endif
 
 layout(std140, binding = 2) uniform ShadowFrame
 {
@@ -179,6 +177,14 @@ float distributionGgx(vec3 normal, vec3 halfway, float roughness)
     float nDotH2 = nDotH * nDotH;
     float denominator = nDotH2 * (a2 - 1.0) + 1.0;
     return a2 / max(PI * denominator * denominator, 0.000001);
+}
+
+vec2 encodeOctahedralNormal(vec3 normal)
+{
+    normal /= abs(normal.x) + abs(normal.y) + abs(normal.z);
+    vec2 oct = normal.xy;
+    if (normal.z < 0.0) oct = (1.0 - abs(oct.yx)) * sign(oct.xy);
+    return oct * 0.5 + 0.5;
 }
 
 float geometrySchlickGgx(float nDotV, float roughness)
@@ -577,6 +583,9 @@ void main()
     // attaches it as an HDR bloom mask, so authored emissive is isolated from
     // otherwise bright direct/albedo lighting.
     @Out(vec4 BLOOM_MASK) = vec4(emissive, 1.0);
+    // Final material normal, after normal maps, double-sided handling, and water
+    // ripples. CameraFrame converts world space to GTAO's view-space contract.
+    @Out(vec2 SHADING_NORMAL) = encodeOctahedralNormal(normalize(mat3(VIEW_MATRIX) * normal));
 }
 )MPP";
 }

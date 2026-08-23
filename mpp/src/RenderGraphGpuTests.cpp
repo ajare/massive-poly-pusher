@@ -538,6 +538,45 @@ namespace mpp
 				bool executedGtao = false;
 				for (auto const& stats : pipeline->getLastGraphExecutionStats()) executedGtao |= stats.name == "GTAO";
 				if (!executedGtao || executedSsao()) return fail("switching ambient-occlusion method did not replace SSAO with GTAO");
+
+				// Generated legacy and PBR pipelines both own location 2, route it to
+				// GTAO, and remove it again when depth normals are restored. PBR also
+				// keeps the location-1 emissive mask and AO-before-bloom ordering.
+				gateOptions.gtao.normalSource = GTAONormalSource::Mrt;
+				pipeline->setAmbientOcclusionOptions(gateOptions);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				auto sceneOutputCount = [](RenderPipeline const& candidate, std::string const& scenePass)
+				{
+					for (auto const& stats : candidate.getLastGraphExecutionStats()) if (stats.name == scenePass) return stats.colourOutputCount;
+					return uint32_t{ 0 };
+				};
+				if (sceneOutputCount(*pipeline, "LegacyScene") != 3) return fail("generated legacy MRT-normal GTAO did not execute with the stable three-output scene contract");
+				gateOptions.gtao.normalSource = GTAONormalSource::Depth;
+				pipeline->setAmbientOcclusionOptions(gateOptions);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (sceneOutputCount(*pipeline, "LegacyScene") != 1) return fail("generated legacy depth-normal GTAO retained MRT-normal attachments");
+
+				RenderPipelineOptions pbrOptions; pbrOptions.mode = RenderPipelineMode::GraphPbrForward;
+				pbrOptions.ambientOcclusion = gateOptions; pbrOptions.ambientOcclusion.gtao.normalSource = GTAONormalSource::Mrt;
+				pbrOptions.bloom.enabled = true; pbrOptions.bloom.useMrtEmissiveMask = true; pbrOptions.bloom.blurPasses = 0;
+				auto pbrPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGtaoMrtPbrPipeline", pbrOptions);
+				pbrPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (sceneOutputCount(*pbrPipeline, "PbrScene") != 3) return fail("generated PBR GTAO normals did not coexist with the bloom emissive MRT");
+				size_t gtaoOrder = SIZE_MAX, bloomCompositeOrder = SIZE_MAX;
+				for (size_t index = 0; index < pbrPipeline->getLastGraphExecutionStats().size(); ++index)
+				{
+					auto const& name = pbrPipeline->getLastGraphExecutionStats()[index].name;
+					if (name == "GTAO") gtaoOrder = index;
+					else if (name == "BloomComposite") bloomCompositeOrder = index;
+				}
+				if (gtaoOrder == SIZE_MAX || bloomCompositeOrder == SIZE_MAX || gtaoOrder >= bloomCompositeOrder)
+					return fail("generated PBR MRT-normal GTAO did not retain AO-before-bloom ordering");
+				pbrOptions.ambientOcclusion.gtao.normalSource = GTAONormalSource::Depth;
+				pbrPipeline->setAmbientOcclusionOptions(pbrOptions.ambientOcclusion);
+				pbrPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (sceneOutputCount(*pbrPipeline, "PbrScene") != 2) return fail("generated PBR depth normals did not remove location-2 resource cost while retaining bloom MRT");
+				renderSystem->removeRenderPipeline("GpuTestGtaoMrtPbrPipeline");
+
 				GraphPassDebugOptions graphPasses; graphPasses.ambientOcclusion = false;
 				pipeline->setGraphPassDebugOptions(graphPasses);
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));

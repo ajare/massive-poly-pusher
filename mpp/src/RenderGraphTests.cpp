@@ -3,6 +3,8 @@
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
+#include "mpp/DefaultShaders.h"
+#include "mpp/PbrShaders.h"
 #include "mpp/ModelRenderParams.h"
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -11,6 +13,20 @@ namespace mpp
 	bool runRenderGraphTopologyTests(std::string* failure)
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+
+		auto validatesBuiltInNormalContract = [](std::string const& shader)
+		{
+			auto colour = shader.find("@Out(vec4 COLOUR)");
+			auto bloom = shader.find("@Out(vec4 BLOOM_MASK)");
+			auto normals = shader.find("@Out(vec2 SHADING_NORMAL)");
+			return colour != std::string::npos && bloom > colour && normals > bloom &&
+				shader.find("encodeOctahedralNormal") != std::string::npos && shader.find("mat3(VIEW_MATRIX)") != std::string::npos;
+		};
+		if (!validatesBuiltInNormalContract(FragmentShader3dTemplate)) return fail("built-in legacy shader lost the location-2 view-space octahedral shading-normal contract");
+		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
+		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
+		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
+			return fail("built-in PBR shader writes MRT normals before material normal processing");
 
 		ModelRenderParams modelParams;
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();

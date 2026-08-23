@@ -444,15 +444,27 @@ namespace mpp
 			desc.params.wrap = GL_CLAMP_TO_EDGE;
 			return desc;
 		};
+		bool const useMrtNormals = mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Gtao &&
+			mOptions.graphPasses.ambientOcclusion && mOptions.ambientOcclusion.gtao.normalSource == GTAONormalSource::Mrt;
+		if (useMrtNormals && (mRenderSystem->getCaps().maxDrawBuffers < 3 || mRenderSystem->getCaps().maxColourAttachments < 3))
+		{
+			THROW_MPP("GTAO MRT normal sourcing requires at least 3 colour attachments and 3 draw buffers (location 0 scene colour, location 1 bloom mask, location 2 RG16F normals).", __LINE__, __FILE__, __func__);
+		}
+		if (useMrtNormals && !sceneProgramsSupportOutputs(models, 3))
+		{
+			THROW_MPP("GTAO MRT normal sourcing requires every visible scene material program to declare active fragment outputs at locations 0, 1, and 2; update the incompatible material shader or select normalSource=depth.", __LINE__, __FILE__, __func__);
+		}
 		bool const useMrtEmissiveMask = pbr && mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
 			mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2 &&
-			sceneProgramsSupportOutputs(models, 2);
+			(useMrtNormals || sceneProgramsSupportOutputs(models, 2));
 		auto sceneHdr = graph.createImage(pbr ? "SceneHdr" : "SceneLdr", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
 		GraphImageHandle bloomMask;
-		if (useMrtEmissiveMask)
+		if (useMrtEmissiveMask || useMrtNormals)
 		{
-			bloomMask = graph.createImage("BloomMaskHdr", makeColour(GraphImageFormat::Rgba16f));
+			bloomMask = graph.createImage(useMrtEmissiveMask ? "BloomMaskHdr" : "SceneMrtReserved1", makeColour(GraphImageFormat::Rgba16f));
 		}
+		GraphImageHandle sceneNormals;
+		if (useMrtNormals) sceneNormals = graph.createImage("SceneShadingNormals", makeColour(GraphImageFormat::Rg16f));
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
 		bool const sampleSceneDepth = outputAntiAliasing.taa || (mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
@@ -480,7 +492,8 @@ namespace mpp
 		if (shadowDepthOutput.isValid()) graph.readSampled(scenePass, shadowDepthOutput);
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
-		if (useMrtEmissiveMask) bloomMask = graph.writeColour(scenePass, bloomMask, GraphLoadOp::Clear, GraphStoreOp::Store);
+		if (bloomMask.isValid()) bloomMask = graph.writeColour(scenePass, bloomMask, GraphLoadOp::Clear, useMrtEmissiveMask ? GraphStoreOp::Store : GraphStoreOp::DontCare);
+		if (useMrtNormals) sceneNormals = graph.writeColour(scenePass, sceneNormals, GraphLoadOp::Clear, GraphStoreOp::Store);
 		sceneDepth=graph.writeDepth(scenePass,sceneDepth,GraphLoadOp::Clear,sampleSceneDepth?GraphStoreOp::Store:GraphStoreOp::DontCare);
 
 		GraphImageHandle presentationTexture = sceneHdr;
@@ -495,6 +508,7 @@ namespace mpp
 			auto rawOcclusion = graph.createImage("AmbientOcclusionRaw", makeColour(GraphImageFormat::Rgba8));
 			auto rawPass = graph.addPass(mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Ssao ? "SSAO" : "GTAO", GraphPassType::Fullscreen);
 			graph.readSampled(rawPass, sceneDepth);
+			if (useMrtNormals) graph.readSampled(rawPass, sceneNormals);
 			rawOcclusion = graph.writeColour(rawPass, rawOcclusion);
 			ssaoPasses.push_back(rawPass);
 			ssaoSteps.push_back(SsaoGraphStep::Raw);
@@ -609,14 +623,14 @@ namespace mpp
 			switch (ssaoSteps[index])
 			{
 			case SsaoGraphStep::Raw:
-				mGraphExecutor->setPassCallback(graph, pass, [this, sceneDepth, camera](RenderGraphExecutionContext const& context)
+				mGraphExecutor->setPassCallback(graph, pass, [this, sceneDepth, sceneNormals, camera](RenderGraphExecutionContext const& context)
 				{
 					auto depthTexture = dynamic_cast<RenderTexture*>(context.getImage(sceneDepth).get());
 					auto projection = camera->getProjectionTransform();
 					if (mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Ssao)
 						mRenderSystem->renderSSAORaw(depthTexture, projection, glm::inverse(projection), mOptions.ambientOcclusion.ssao);
 					else
-						mRenderSystem->renderGTAORaw(depthTexture, projection, glm::inverse(projection), mOptions.ambientOcclusion.gtao);
+						mRenderSystem->renderGTAORaw(depthTexture, sceneNormals.isValid() ? dynamic_cast<Texture*>(context.getImage(sceneNormals).get()) : nullptr, projection, glm::inverse(projection), mOptions.ambientOcclusion.gtao);
 				});
 				break;
 			case SsaoGraphStep::Blur:

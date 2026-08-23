@@ -38,6 +38,23 @@ layout(std140, binding = 2) uniform ShadowFrame
     vec4 BIAS_AND_ENABLED;
 };
 
+layout(std140, binding = 3) uniform CameraFrame
+{
+    mat4 VIEW_MATRIX;
+    mat4 PROJECTION_MATRIX;
+    mat4 INVERSE_PROJECTION_MATRIX;
+    vec4 VIEWPORT_SIZE;
+    vec4 NEAR_FAR_TIME;
+};
+
+vec2 encodeOctahedralNormal(vec3 normal)
+{
+    normal /= abs(normal.x) + abs(normal.y) + abs(normal.z);
+    vec2 oct = normal.xy;
+    if (normal.z < 0.0) oct = (1.0 - abs(oct.yx)) * sign(oct.xy);
+    return oct * 0.5 + 0.5;
+}
+
 struct Light
 {
     vec3 position;
@@ -130,6 +147,10 @@ void main()
     @Out(vec4 COLOUR) = shadedColour;
 ##
 	@Out(COLOUR).rgb = pow(@Out(COLOUR).rgb, vec3(1.0 / @Uniform(GAMMA)));
+    // Location 1 is reserved for the PBR emissive mask. Legacy materials have
+    // no emissive term, but retain the stable forward-pipeline MRT contract.
+    @Out(vec4 BLOOM_MASK) = vec4(0.0);
+    @Out(vec2 SHADING_NORMAL) = encodeOctahedralNormal(normalize(mat3(VIEW_MATRIX) * normalDir));
 }
 )";
 

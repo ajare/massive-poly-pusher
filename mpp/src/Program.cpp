@@ -592,6 +592,21 @@ namespace mpp
 					if (location >= 0 && location < 64) fragmentOutputLocationMask |= uint64_t{ 1 } << location;
 				}
 			}
+			else
+			{
+				// glGetFragDataLocation is available on the engine's baseline context.
+				// Query every generated output declaration so MRT contracts remain
+				// enforceable even without ARB_program_interface_query.
+				static regex const outputDeclaration(R"(layout\s*\(\s*location\s*=\s*\d+\s*\)\s*out\s+\w+\s+(\w+)\s*;)");
+				for (sregex_iterator output(mFragmentSource.begin(), mFragmentSource.end(), outputDeclaration), end; output != end; ++output)
+				{
+					fragmentOutputLocationsKnown = true;
+					auto const name = (*output)[1].str();
+					GLint location = -1;
+					GL_CHECK(location = glGetFragDataLocation(programId, name.c_str()));
+					if (location >= 0 && location < 64) fragmentOutputLocationMask |= uint64_t{ 1 } << location;
+				}
+			}
 
 			// Publish CPU reflection and the GL name only after every operation has
 			// succeeded. Until this point all GL names are owned by local handles.

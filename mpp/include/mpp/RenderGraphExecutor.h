@@ -25,6 +25,9 @@ namespace mpp
 		uint64_t primitivesSubmitted{ 0 };
 		uint64_t trianglesSubmitted{ 0 };
 		uint64_t fullscreenQuads{ 0 };
+		// The executed framebuffer contract, useful to diagnostics and GPU tests
+		// that verify optional MRT resources disappear when their gate is disabled.
+		uint32_t colourOutputCount{ 0 };
 	};
 
 	struct _MPPAPI GraphFramebufferCacheStats
