@@ -714,6 +714,7 @@ namespace mpp
 
 		void renderSSAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, SSAOOptions const& options);
 		void renderGTAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, GTAOOptions const& options);
+		void renderGTAORaw(RenderTexture* depth, Texture* normals, glm::mat4 const& projection, glm::mat4 const& inverseProjection, GTAOOptions const& options);
 		void renderSSAOBlur(Texture* ambientOcclusion, RenderTexture* depth, int blurRadius);
 		void renderSSAOCombine(Texture* scene, Texture* ambientOcclusion);
 		void renderEnvironmentDebugCube(Texture* environment, Camera* camera);

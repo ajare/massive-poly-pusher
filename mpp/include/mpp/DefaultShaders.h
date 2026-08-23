@@ -739,7 +739,9 @@ R"(
 @@Uniform(int SLICE_COUNT);
 @@Uniform(int STEPS_PER_SLICE);
 @@Uniform(float POWER);
+@@Uniform(int NORMAL_SOURCE);
 @@Texture(sampler2D DEPTH);
+@@Texture(sampler2D NORMALS);
 
 vec3 gtaoViewPosition(vec2 uv, float depth)
 {
@@ -752,6 +754,14 @@ float gtaoNoise(vec2 value)
     return fract(sin(dot(value, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+vec3 gtaoDecodeOctahedralNormal(vec2 encoded)
+{
+    vec2 oct = encoded * 2.0 - 1.0;
+    vec3 normal = vec3(oct, 1.0 - abs(oct.x) - abs(oct.y));
+    if (normal.z < 0.0) normal.xy = (1.0 - abs(normal.yx)) * sign(normal.xy);
+    return normalize(normal);
+}
+
 void main()
 {
     vec2 uv = @In(TEXCOORDS);
@@ -762,7 +772,9 @@ void main()
     {
         vec3 position = gtaoViewPosition(uv, centreDepth);
         vec3 normal = normalize(cross(dFdx(position), dFdy(position)));
-        if (normal.z < 0.0) normal = -normal;
+        if (@Uniform(NORMAL_SOURCE) != 0)
+            normal = gtaoDecodeOctahedralNormal(texture(@Texture(NORMALS), uv).rg);
+        else if (normal.z < 0.0) normal = -normal;
         int slices = clamp(@Uniform(SLICE_COUNT), 1, 16);
         int steps = clamp(@Uniform(STEPS_PER_SLICE), 1, 16);
         float projectedRadius = radius * abs(@Uniform(PROJECTION)[1][1]) / max(-position.z, 0.001) * 0.5;

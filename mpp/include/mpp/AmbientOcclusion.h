@@ -21,6 +21,12 @@ namespace mpp
 		int blurRadius{ 2 };
 	};
 
+	enum class GTAONormalSource
+	{
+		Depth,
+		Mrt
+	};
+
 	struct _MPPAPI GTAOOptions
 	{
 		float radius{ 1.0f };
@@ -33,6 +39,7 @@ namespace mpp
 		int stepsPerSlice{ 4 };
 		float power{ 1.0f };
 		int blurRadius{ 2 };
+		GTAONormalSource normalSource{ GTAONormalSource::Depth };
 	};
 
 	struct _MPPAPI AmbientOcclusionOptions

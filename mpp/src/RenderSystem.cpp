@@ -3590,7 +3590,13 @@ namespace mpp
 
 	void RenderSystem::renderGTAORaw(RenderTexture* depth, glm::mat4 const& projection, glm::mat4 const& inverseProjection, GTAOOptions const& options)
 	{
+		renderGTAORaw(depth, nullptr, projection, inverseProjection, options);
+	}
+
+	void RenderSystem::renderGTAORaw(RenderTexture* depth, Texture* normals, glm::mat4 const& projection, glm::mat4 const& inverseProjection, GTAOOptions const& options)
+	{
 		if (!depth || !depth->getDepthTextureId()) THROW_MPP("GTAO requires a sampled depth texture.", __LINE__, __FILE__, __func__);
+		if (options.normalSource == GTAONormalSource::Mrt && (!normals || normals->getTextureTarget() != GL_TEXTURE_2D || normals->getInternalFormat() != GL_RG16F)) THROW_MPP("GTAO MRT normals require a valid RG16F normals texture.", __LINE__, __FILE__, __func__);
 		flushVertexBuffers();
 		auto program = static_cast<Program*>(mGtaoRawProgram.get());
 		setUsedProgram(mGtaoRawProgram);
@@ -3607,7 +3613,12 @@ namespace mpp
 		GL_CHECK(glUniform1i(program->getUniformId("SLICE_COUNT"), options.sliceCount));
 		GL_CHECK(glUniform1i(program->getUniformId("STEPS_PER_SLICE"), options.stepsPerSlice));
 		GL_CHECK(glUniform1f(program->getUniformId("POWER"), options.power));
-		for (int unit = 0; unit < program->getNumSamplers(); ++unit) if (program->getSamplerName(unit) == "DEPTH") depth->bindDepth((uint32_t)unit);
+		GL_CHECK(glUniform1i(program->getUniformId("NORMAL_SOURCE"), options.normalSource == GTAONormalSource::Mrt ? 1 : 0));
+		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
+		{
+			if (program->getSamplerName(unit) == "DEPTH") depth->bindDepth((uint32_t)unit);
+			else if (program->getSamplerName(unit) == "NORMALS" && normals) normals->bind((uint32_t)unit);
+		}
 		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);

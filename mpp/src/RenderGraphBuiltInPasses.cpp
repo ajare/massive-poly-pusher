@@ -153,8 +153,9 @@ namespace mpp
 				options.sliceCount = integerParameter(context, "SLICE_COUNT", options.sliceCount);
 				options.stepsPerSlice = integerParameter(context, "STEPS_PER_SLICE", options.stepsPerSlice);
 				options.power = parameter(context, "POWER", options.power);
+				options.normalSource = integerParameter(context, "NORMAL_SOURCE", 0) == 0 ? GTAONormalSource::Depth : GTAONormalSource::Mrt;
 				auto projection = frame.camera->getProjectionTransform();
-				frame.renderSystem->renderGTAORaw(depth, projection, glm::inverse(projection), options);
+				frame.renderSystem->renderGTAORaw(depth, input(context, "NORMALS"), projection, glm::inverse(projection), options);
 			}
 		};
 
@@ -336,8 +337,8 @@ namespace mpp
 		ssaoRaw.parameters = { { "RADIUS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "INTENSITY", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "BIAS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "POWER", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "SAMPLE_COUNT", program::GLSLType::Int, 1, 1, false, false, 0.0, 0.0, "" } };
 		registry.registerScenePassFactory("MPP.SSAORaw", [] { return std::make_unique<SSAORawPass>(); }, ssaoRaw);
 		auto gtaoRaw = metadata("GTAO Raw", "Post Effects", GraphPassType::Fullscreen);
-		gtaoRaw.inputs.push_back({ "Depth", "DEPTH", true, depthFormats(), {} }); gtaoRaw.outputs.push_back({ "Occlusion", false, true, colourFormats() });
-		gtaoRaw.parameters = { { "RADIUS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "INTENSITY", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "THICKNESS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "HORIZON_BIAS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "FALLOFF_START", program::GLSLType::Float, 1, 1, false, false, 0.0, 1.0, "" }, { "FALLOFF_END", program::GLSLType::Float, 1, 1, false, false, 0.0, 1.0, "" }, { "SLICE_COUNT", program::GLSLType::Int, 1, 1, false, false, 1.0, 16.0, "" }, { "STEPS_PER_SLICE", program::GLSLType::Int, 1, 1, false, false, 1.0, 16.0, "" }, { "POWER", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" } };
+		gtaoRaw.inputs.push_back({ "Depth", "DEPTH", true, depthFormats(), {} }); gtaoRaw.inputs.push_back({ "Normals", "NORMALS", false, { GraphImageFormat::Rg16f }, {} }); gtaoRaw.outputs.push_back({ "Occlusion", false, true, colourFormats() });
+		gtaoRaw.parameters = { { "RADIUS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "INTENSITY", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "THICKNESS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "HORIZON_BIAS", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "FALLOFF_START", program::GLSLType::Float, 1, 1, false, false, 0.0, 1.0, "" }, { "FALLOFF_END", program::GLSLType::Float, 1, 1, false, false, 0.0, 1.0, "" }, { "SLICE_COUNT", program::GLSLType::Int, 1, 1, false, false, 1.0, 16.0, "" }, { "STEPS_PER_SLICE", program::GLSLType::Int, 1, 1, false, false, 1.0, 16.0, "" }, { "POWER", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "" }, { "NORMAL_SOURCE", program::GLSLType::Int, 1, 1, false, false, 0.0, 1.0, "depth=0, mrt=1" } };
 		registry.registerScenePassFactory("MPP.GTAORaw", [] { return std::make_unique<GTAORawPass>(); }, gtaoRaw);
 		auto ssaoBlur = metadata("SSAO Blur", "Post Effects", GraphPassType::Fullscreen);
 		ssaoBlur.inputs.push_back({ "Occlusion", "AO", true, colourFormats(), {} }); ssaoBlur.inputs.push_back({ "Depth", "DEPTH", true, depthFormats(), {} }); ssaoBlur.outputs.push_back({ "Occlusion", false, true, colourFormats() }); ssaoBlur.parameters.push_back({ "BLUR_RADIUS", program::GLSLType::Int, 1, 1, false, false, 0.0, 0.0, "" });

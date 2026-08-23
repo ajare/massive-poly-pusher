@@ -190,6 +190,7 @@ namespace mpp
 			rawParameters.setUniform("FALLOFF_START", options.falloffStart); rawParameters.setUniform("FALLOFF_END", options.falloffEnd);
 			rawParameters.setUniform("SLICE_COUNT", (int32_t)options.sliceCount); rawParameters.setUniform("STEPS_PER_SLICE", (int32_t)options.stepsPerSlice);
 			rawParameters.setUniform("POWER", options.power);
+			rawParameters.setUniform("NORMAL_SOURCE", (int32_t)(options.normalSource == GTAONormalSource::Mrt ? 1 : 0));
 		}
 		auto rawPass = graph->addPass(method == AmbientOcclusionMethod::Ssao ? "SSAO" : "GTAO", GraphPassType::Fullscreen);
 		graph->setPassCallbackFactory(rawPass, method == AmbientOcclusionMethod::Ssao ? "MPP.SSAORaw" : "MPP.GTAORaw");

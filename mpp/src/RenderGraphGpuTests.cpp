@@ -558,6 +558,10 @@ namespace mpp
 				auto blurredOutput = renderSystem->createRenderTexture("GpuTestSsaoBlurred", size, size, colourOptions);
 				auto zeroRadiusOutput = renderSystem->createRenderTexture("GpuTestSsaoZeroRadius", size, size, colourOptions);
 				auto gtaoOutput = renderSystem->createRenderTexture("GpuTestGtaoRaw", size, size, colourOptions);
+				auto gtaoMrtFlatOutput = renderSystem->createRenderTexture("GpuTestGtaoMrtFlat", size, size, colourOptions);
+				auto gtaoMrtTiltedOutput = renderSystem->createRenderTexture("GpuTestGtaoMrtTilted", size, size, colourOptions);
+				RenderTextureOptions normalsOptions = colourOptions; normalsOptions.colourInternalFormat = GL_RG16F;
+				auto gtaoNormals = renderSystem->createRenderTexture("GpuTestGtaoNormals", size, size, normalsOptions);
 				RenderTextureOptions ssaoDepthOptions;
 				ssaoDepthOptions.numAttachments = 0;
 				ssaoDepthOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
@@ -619,6 +623,29 @@ namespace mpp
 				renderSystem->pushRenderTarget(gtaoOutput); renderSystem->setViewport(0, 0, size, size);
 				renderSystem->renderGTAORaw(sceneDepthTexture, projection, glm::inverse(projection), gtao);
 				renderSystem->popRenderTarget();
+				gtao.normalSource = GTAONormalSource::Mrt;
+				bool rejectedMissingMrtNormals = false;
+				try { renderSystem->renderGTAORaw(sceneDepthTexture, projection, glm::inverse(projection), gtao); } catch (...) { rejectedMissingMrtNormals = true; }
+				if (!rejectedMissingMrtNormals) return fail("GTAO MRT normal source accepted a missing normals texture");
+				std::fill(depthValues.begin(), depthValues.end(), deviceDepth(-4.0f));
+				GL_CHECK(glBindTexture(GL_TEXTURE_2D, sceneDepthTexture->getDepthTextureId()));
+				GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (GLsizei)size, (GLsizei)size, GL_DEPTH_COMPONENT, GL_FLOAT, depthValues.data())); GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+				auto uploadNormal = [&](glm::vec3 normal)
+				{
+					normal = glm::normalize(normal); glm::vec2 oct = glm::vec2(normal) / (abs(normal.x) + abs(normal.y) + abs(normal.z));
+					if (normal.z < 0.0f) oct = (glm::vec2(1.0f) - glm::abs(glm::vec2(oct.y, oct.x))) * glm::sign(oct);
+					std::vector<float> encoded(size * size * 2); for (size_t pixel = 0; pixel < size * size; ++pixel) { encoded[pixel * 2] = oct.x * 0.5f + 0.5f; encoded[pixel * 2 + 1] = oct.y * 0.5f + 0.5f; }
+					GL_CHECK(glBindTexture(GL_TEXTURE_2D, static_cast<RenderTexture*>(gtaoNormals.get())->getColourAttachmentId(0)));
+					GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (GLsizei)size, (GLsizei)size, GL_RG, GL_FLOAT, encoded.data())); GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+				};
+				uploadNormal(glm::vec3(0.0f, 0.0f, 1.0f));
+				renderSystem->pushRenderTarget(gtaoMrtFlatOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderGTAORaw(sceneDepthTexture, dynamic_cast<Texture*>(gtaoNormals.get()), projection, glm::inverse(projection), gtao);
+				renderSystem->popRenderTarget();
+				uploadNormal(glm::vec3(0.8f, 0.0f, 0.6f));
+				renderSystem->pushRenderTarget(gtaoMrtTiltedOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderGTAORaw(sceneDepthTexture, dynamic_cast<Texture*>(gtaoNormals.get()), projection, glm::inverse(projection), gtao);
+				renderSystem->popRenderTarget();
 				renderSystem->popModelMatrix(); renderSystem->popCameraMatrix(); renderSystem->popProjectionMatrix();
 
 				auto const occludedDisabled = readPixel(disabledOutput, 34, 32);
@@ -636,6 +663,10 @@ namespace mpp
 				auto const gtaoOpen = readPixel(gtaoOutput, 52, 32);
 				if ((int)gtaoOpen[0] - (int)gtaoOccluded[0] < 3)
 					return fail("GTAO did not detect the depth-fixture horizon (occluded=" + std::to_string(gtaoOccluded[0]) + ", open=" + std::to_string(gtaoOpen[0]) + ")");
+				auto const gtaoMrtFlat = readPixel(gtaoMrtFlatOutput, 32, 32);
+				auto const gtaoMrtTilted = readPixel(gtaoMrtTiltedOutput, 32, 32);
+				if (std::abs((int)gtaoMrtFlat[0] - (int)gtaoMrtTilted[0]) < 3)
+					return fail("GTAO MRT normals did not affect a constant-depth fixture (flat=" + std::to_string(gtaoMrtFlat[0]) + ", tilted=" + std::to_string(gtaoMrtTilted[0]) + ")");
 				auto variance = [&](RenderTargetPtr const& target)
 				{
 					auto pixels = readPixels(target); double mean = 0.0, squared = 0.0; size_t count = 0;

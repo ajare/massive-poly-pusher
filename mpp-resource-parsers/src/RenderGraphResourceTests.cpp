@@ -137,6 +137,7 @@ namespace mpp::resource_parsers
 				document.ambientOcclusion.method = AmbientOcclusionMethod::Gtao;
 				document.ambientOcclusion.ssao = { 0.7f, 1.3f, 0.04f, 1.2f, 24, 3 };
 				document.ambientOcclusion.gtao = { 1.5f, 1.2f, 0.4f, 0.05f, 0.1f, 1.0f, 6, 4, 1.4f, 3 };
+				document.ambientOcclusion.gtao.normalSource = GTAONormalSource::Mrt;
 				document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
 				if (!document.graph->compile().diagnostics.empty()) return fail(extension + ": ambient occlusion authored an invalid graph: " + document.graph->compile().diagnostics.front());
 				auto const pass = [&](uint32_t index) { return document.graph->getPassInfo({ index }); };
@@ -146,7 +147,7 @@ namespace mpp::resource_parsers
 				PbrPipelineSerializer::toFile(document, path);
 				auto restored = PbrPipelineParser::fromFile(path);
 				if (!restored.graph->compile().diagnostics.empty()) return fail(extension + ": round-tripped ambient-occlusion graph is invalid: " + restored.graph->compile().diagnostics.front());
-				if (restored.ambientOcclusion.method != AmbientOcclusionMethod::Gtao || restored.ambientOcclusion.ssao.sampleCount != 24 || restored.ambientOcclusion.gtao.radius != 1.5f || restored.ambientOcclusion.gtao.thickness != 0.4f || restored.ambientOcclusion.gtao.sliceCount != 6 || restored.ambientOcclusion.gtao.stepsPerSlice != 4 || restored.ambientOcclusion.gtao.blurRadius != 3) return fail(extension + ": ambient-occlusion options did not survive pipeline round trip");
+				if (restored.ambientOcclusion.method != AmbientOcclusionMethod::Gtao || restored.ambientOcclusion.ssao.sampleCount != 24 || restored.ambientOcclusion.gtao.radius != 1.5f || restored.ambientOcclusion.gtao.thickness != 0.4f || restored.ambientOcclusion.gtao.sliceCount != 6 || restored.ambientOcclusion.gtao.stepsPerSlice != 4 || restored.ambientOcclusion.gtao.blurRadius != 3 || restored.ambientOcclusion.gtao.normalSource != GTAONormalSource::Mrt) return fail(extension + ": ambient-occlusion options did not survive pipeline round trip");
 				restored.ambientOcclusion.gtao.falloffEnd = restored.ambientOcclusion.gtao.falloffStart;
 				auto invalidGtaoDiagnostics = restored.validate(); bool rejectedInvalidGtao = false; for (auto const& diagnostic : invalidGtaoDiagnostics.getDiagnostics()) rejectedInvalidGtao |= diagnostic.code == "MPP-PIPELINE-053";
 				if (!rejectedInvalidGtao) return fail(extension + ": invalid GTAO parameters were accepted");
