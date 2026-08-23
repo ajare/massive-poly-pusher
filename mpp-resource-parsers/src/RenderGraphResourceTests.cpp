@@ -238,6 +238,90 @@ namespace mpp::resource_parsers
 		return true;
 	}
 
+	bool runLegacyPipelineGtaoMrtDocumentTest(std::string const& extension, std::string* failure)
+	{
+		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+		auto const path = (std::filesystem::temp_directory_path() / ("mpp_legacy_gtao_mrt_pipeline_document" + extension)).string();
+		auto hasDiagnostic = [](DiagnosticBag const& diagnostics, std::string const& code)
+		{
+			for (auto const& diagnostic : diagnostics.getDiagnostics()) if (diagnostic.code == code) return true;
+			return false;
+		};
+		try
+		{
+			LegacyPipelineDocument document;
+			document.name = "Legacy GTAO MRT structural test";
+			document.graph = std::make_shared<RenderGraph>();
+			GraphImageDesc colour; colour.format = GraphImageFormat::Rgba16f; colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+			GraphImageDesc depth; depth.format = GraphImageFormat::Depth24; depth.usage = GraphImageUsage::DepthAttachment;
+			auto sceneColour = document.graph->createImage("SceneColour", colour);
+			auto sceneDepth = document.graph->createImage("SceneDepth", depth);
+			auto scene = document.graph->addPass("LegacyScene", GraphPassType::Scene);
+			document.graph->setPassCallbackFactory(scene, "MPP.LegacyScene");
+			document.graph->writeColour(scene, sceneColour);
+			document.graph->writeDepth(scene, sceneDepth);
+			auto rawImage = document.graph->createImage("GtaoRaw", colour);
+			auto raw = document.graph->addPass("GTAO", GraphPassType::Fullscreen);
+			document.graph->setPassCallbackFactory(raw, "MPP.GTAORaw");
+			document.graph->bindSampler(raw, "DEPTH", sceneDepth);
+			document.graph->writeColour(raw, rawImage);
+			document.outputs.push_back({ "Output", "SceneColour" });
+			document.ambientOcclusion.method = AmbientOcclusionMethod::Gtao;
+			document.ambientOcclusion.gtao.normalSource = GTAONormalSource::Mrt;
+			document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
+			LegacyPipelineSerializer::toFile(document, path);
+			auto restored = LegacyPipelineParser::fromFile(path);
+			auto sceneInfo = restored.graph->getPassInfo({ 0 });
+			auto rawInfo = restored.graph->getPassInfo({ 1 });
+			if (restored.ambientOcclusion.gtao.normalSource != GTAONormalSource::Mrt || sceneInfo.colourOutputs.size() != 3 || restored.graph->getImageInfo(sceneInfo.colourOutputs[2].image).desc.format != GraphImageFormat::Rg16f || rawInfo.samplerBindings.size() != 2 || rawInfo.samplerBindings[1].sampler != "NORMALS" || rawInfo.samplerBindings[1].image.id != sceneInfo.colourOutputs[2].image.id) return fail(extension + ": legacy MRT GTAO did not round-trip its location-2 normals wiring");
+			Caps insufficientMrtCaps; insufficientMrtCaps.maxColourAttachments = 2; insufficientMrtCaps.maxDrawBuffers = 2;
+			if (!hasDiagnostic(restored.validate(insufficientMrtCaps), "MPP-LEGACY-PIPELINE-048")) return fail(extension + ": legacy MRT GTAO accepted insufficient hardware");
+			restored.graph->removeColourOutput({ 0 }, 2);
+			if (!hasDiagnostic(restored.validate(), "MPP-LEGACY-PIPELINE-046")) return fail(extension + ": legacy MRT GTAO accepted a missing location-2 scene output");
+			restored.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
+
+			std::ifstream file(path); std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()); file.close();
+			std::string marker = extension == ".xml" ? "        <normalSource>mrt</normalSource>\n" : "      normalSource: mrt\n";
+			auto begin = text.find(marker); if (begin == std::string::npos) return fail(extension + ": legacy GTAO normal source was not serialized");
+			text.erase(begin, marker.size()); std::ofstream defaultFile(path, std::ios::trunc); defaultFile << text; defaultFile.close();
+			auto defaulted = LegacyPipelineParser::fromFile(path);
+			if (defaulted.ambientOcclusion.gtao.normalSource != GTAONormalSource::Depth || defaulted.graph->getPassInfo({ 0 }).colourOutputs.size() != 1 || defaulted.graph->getPassInfo({ 1 }).samplerBindings.size() != 1) return fail(extension + ": omitted legacy GTAO normal source did not retain depth graph shape");
+			defaulted.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
+			LegacyPipelineSerializer::toFile(defaulted, path);
+			auto depthRoundTrip = LegacyPipelineParser::fromFile(path);
+			if (depthRoundTrip.ambientOcclusion.gtao.normalSource != GTAONormalSource::Depth) return fail(extension + ": explicit legacy depth normal source did not round-trip");
+
+			std::ifstream depthFile(path); text.assign((std::istreambuf_iterator<char>(depthFile)), std::istreambuf_iterator<char>()); depthFile.close();
+			auto gtaoText = text;
+			if (extension == ".xml")
+			{
+				auto aoBegin = text.find("    <AmbientOcclusion>"); auto aoEnd = text.find("    </AmbientOcclusion>", aoBegin);
+				if (aoBegin == std::string::npos || aoEnd == std::string::npos) return fail(extension + ": legacy AmbientOcclusion section was not serialized");
+				aoEnd += std::string("    </AmbientOcclusion>\n").size();
+				text.replace(aoBegin, aoEnd - aoBegin, "    <SSAO>\n        <enabled>true</enabled>\n    </SSAO>\n");
+			}
+			else
+			{
+				auto aoBegin = text.find("  AmbientOcclusion:\n"); auto aoEnd = text.find("  RenderGraph:\n", aoBegin);
+				if (aoBegin == std::string::npos || aoEnd == std::string::npos) return fail(extension + ": legacy AmbientOcclusion section was not serialized");
+				text.replace(aoBegin, aoEnd - aoBegin, "  SSAO:\n    enabled: true\n");
+			}
+			std::ofstream ssaoFile(path, std::ios::trunc); ssaoFile << text; ssaoFile.close();
+			auto migrated = LegacyPipelineParser::fromFile(path);
+			if (migrated.ambientOcclusion.method != AmbientOcclusionMethod::Ssao || migrated.ambientOcclusion.gtao.normalSource != GTAONormalSource::Depth || migrated.graph->getPassInfo({ 0 }).colourOutputs.size() != 1) return fail(extension + ": historical legacy SSAO acquired GTAO MRT behavior");
+
+			text = gtaoText;
+			if (extension == ".xml") text.replace(text.find("<normalSource>depth</normalSource>"), std::string("<normalSource>depth</normalSource>").size(), "<normalSource>invalid</normalSource>");
+			else text.replace(text.find("normalSource: depth"), std::string("normalSource: depth").size(), "normalSource: invalid");
+			std::ofstream invalidFile(path, std::ios::trunc); invalidFile << text; invalidFile.close();
+			try { (void)LegacyPipelineParser::fromFile(path); return fail(extension + ": invalid legacy GTAO normal source was accepted"); }
+			catch (std::exception const& exception) { if (std::string(exception.what()).find("Invalid GTAO normal source") == std::string::npos) return fail(extension + ": invalid legacy GTAO normal source diagnostic was unclear"); }
+		}
+		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
+		std::filesystem::remove(path);
+		return true;
+	}
+
 	bool runRenderGraphResourceTests(std::string* failure)
 	{
 		for (auto const& extension : { std::string(".xml"), std::string(".yaml") })
@@ -245,6 +329,7 @@ namespace mpp::resource_parsers
 			if (!runForExtension(extension, failure)) return false;
 			if (!runPbrPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineSsaoDocumentTest(extension, failure)) return false;
+			if (!runLegacyPipelineGtaoMrtDocumentTest(extension, failure)) return false;
 		}
 		return true;
 	}

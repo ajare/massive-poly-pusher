@@ -63,6 +63,9 @@ namespace mpp
 		std::vector<PbrPreviewBinding> previewBindings;
 		std::vector<PbrPreviewOverride> previewOverrides;
 
+		// Normalizes the generated GTAO MRT-normal wiring after parsing or an
+		// authoring change. SSAO deliberately remains depth-only.
+		void setAmbientOcclusionMethod(AmbientOcclusionMethod method);
 		DiagnosticBag validate(RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		DiagnosticBag validate(Caps const& caps, RenderGraphPassFactoryRegistry const* registry = nullptr) const;
 		// Prefer this wherever a viewport is known: without one, graph images sized

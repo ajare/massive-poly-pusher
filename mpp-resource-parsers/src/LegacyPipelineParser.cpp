@@ -106,6 +106,10 @@ namespace mpp::resource_parsers
 		}
 		if (!data.hasEntry("RenderGraph")) THROW_MPP_RESOURCE_PARSERS("LegacyPipeline has no embedded RenderGraph: " + filepath, __LINE__, __FILE__, __func__);
 		document.graph = make_shared<RenderGraph>(RenderGraphParser::fromData(data.getEntry("RenderGraph"), filepath));
+		// GTAO owns its optional MRT-normal wiring. Historical SSAO sections are
+		// intentionally left depth-only and retain their authored graph unchanged.
+		if (document.ambientOcclusion.method == AmbientOcclusionMethod::Gtao)
+			document.setAmbientOcclusionMethod(AmbientOcclusionMethod::Gtao);
 		// Named outputs are consumed by the host-side output processor even when
 		// they are not swapchain images. Mark them as compiler roots so dead-pass
 		// elimination cannot discard their producers.

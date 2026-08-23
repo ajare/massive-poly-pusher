@@ -11,6 +11,106 @@ using namespace std;
 
 namespace mpp
 {
+	void LegacyPipelineDocument::setAmbientOcclusionMethod(AmbientOcclusionMethod method)
+	{
+		ambientOcclusion.method = method;
+		if (!graph) return;
+
+		auto findImage = [&](string const& name)
+		{
+			for (uint32_t image = 0; image < graph->getImageCount(); ++image)
+				if (graph->getImageInfo({ image, 0 }).name == name)
+					return GraphImageHandle{ image, (uint32_t)graph->getImageVersionCount(image) - 1 };
+			return GraphImageHandle{};
+		};
+		auto removeGeneratedMrtNormals = [&]
+		{
+			auto normals = findImage("LegacyGtaoMrtNormals");
+			auto reserved = findImage("LegacyGtaoMrtReserved1");
+			for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+			{
+				auto info = graph->getPassInfo({ pass });
+				if (info.callbackFactory != "MPP.LegacyScene") continue;
+				for (uint32_t output = (uint32_t)info.colourOutputs.size(); output-- > 0; )
+				{
+					auto image = info.colourOutputs[output].image;
+					if ((normals.isValid() && image.id == normals.id) || (reserved.isValid() && image.id == reserved.id))
+						graph->removeColourOutput({ pass }, output);
+				}
+			}
+			for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+			{
+				auto info = graph->getPassInfo({ pass });
+				if (info.callbackFactory != "MPP.GTAORaw") continue;
+				for (size_t binding = info.samplerBindings.size(); binding-- > 0; )
+					if (info.samplerBindings[binding].sampler == "NORMALS" && normals.isValid() && info.samplerBindings[binding].image.id == normals.id)
+						graph->removeSamplerBinding({ pass }, binding);
+			}
+			if (normals.isValid()) graph->removeImage({ normals.id, 0 });
+			if (reserved.isValid()) graph->removeImage({ reserved.id, 0 });
+		};
+
+		removeGeneratedMrtNormals();
+		if (method != AmbientOcclusionMethod::Gtao || ambientOcclusion.gtao.normalSource != GTAONormalSource::Mrt)
+		{
+			if (method == AmbientOcclusionMethod::Gtao)
+				for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+				{
+					auto info = graph->getPassInfo({ pass });
+					if (info.callbackFactory != "MPP.GTAORaw") continue;
+					auto parameters = info.parameters;
+					parameters.setUniform("NORMAL_SOURCE", int32_t{ 0 });
+					graph->setPassParameters({ pass }, parameters);
+				}
+			return;
+		}
+
+		GraphPassHandle scenePass, rawPass;
+		GraphImageHandle sceneColour;
+		for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+		{
+			auto info = graph->getPassInfo({ pass });
+			if (info.callbackFactory == "MPP.LegacyScene" && !info.colourOutputs.empty())
+			{
+				scenePass = { pass };
+				sceneColour = info.colourOutputs.front().image;
+			}
+			else if (info.callbackFactory == "MPP.GTAORaw") rawPass = { pass };
+		}
+		if (!scenePass.isValid() || !rawPass.isValid()) return;
+
+		auto colourDesc = graph->getImageInfo({ sceneColour.id, 0 }).desc;
+		if (graph->getPassInfo(scenePass).colourOutputs.size() < 2)
+		{
+			GraphImageDesc placeholderDesc = colourDesc;
+			placeholderDesc.format = GraphImageFormat::Rgba16f;
+			placeholderDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+			placeholderDesc.external = false;
+			placeholderDesc.transient = true;
+			auto placeholder = graph->createImage("LegacyGtaoMrtReserved1", placeholderDesc);
+			graph->writeColour(scenePass, placeholder, GraphLoadOp::Clear, GraphStoreOp::DontCare);
+		}
+		GraphImageDesc normalsDesc = colourDesc;
+		normalsDesc.format = GraphImageFormat::Rg16f;
+		normalsDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+		normalsDesc.external = false;
+		normalsDesc.transient = true;
+		auto normals = graph->createImage("LegacyGtaoMrtNormals", normalsDesc);
+		normals = graph->writeColour(scenePass, normals, GraphLoadOp::Clear, GraphStoreOp::Store);
+		auto rawInfo = graph->getPassInfo(rawPass);
+		bool boundNormals = false;
+		for (size_t binding = 0; binding < rawInfo.samplerBindings.size(); ++binding)
+			if (rawInfo.samplerBindings[binding].sampler == "NORMALS")
+			{
+				graph->setSamplerBinding(rawPass, binding, "NORMALS", normals);
+				boundNormals = true;
+			}
+		if (!boundNormals) graph->bindSampler(rawPass, "NORMALS", normals);
+		auto parameters = rawInfo.parameters;
+		parameters.setUniform("NORMAL_SOURCE", int32_t{ 1 });
+		graph->setPassParameters(rawPass, parameters);
+	}
+
 	DiagnosticBag LegacyPipelineDocument::validate(RenderGraphPassFactoryRegistry const* registry) const
 	{
 		DiagnosticBag diagnostics;
@@ -34,6 +134,34 @@ namespace mpp
 				auto const& options = ambientOcclusion.gtao;
 				bool valid = std::isfinite(options.radius) && options.radius >= 0.0f && std::isfinite(options.intensity) && options.intensity >= 0.0f && std::isfinite(options.thickness) && options.thickness >= 0.0f && std::isfinite(options.horizonBias) && options.horizonBias >= 0.0f && options.horizonBias <= 1.0f && std::isfinite(options.falloffStart) && std::isfinite(options.falloffEnd) && options.falloffStart >= 0.0f && options.falloffStart < options.falloffEnd && options.falloffEnd <= 1.0f && options.sliceCount >= 1 && options.sliceCount <= 16 && options.stepsPerSlice >= 1 && options.stepsPerSlice <= 16 && std::isfinite(options.power) && options.power > 0.0f && options.blurRadius >= 0 && options.blurRadius <= 8;
 				if (!valid) diagnostics.error("MPP-LEGACY-PIPELINE-040", "GTAO parameters are outside their supported ranges.", {sourcePath}, "ambientOcclusion");
+				if (options.normalSource == GTAONormalSource::Mrt)
+				{
+					GraphImageHandle normals;
+					bool sceneContract = false;
+					for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+					{
+						auto const& info = graph->getPassInfo({ pass });
+						if (info.callbackFactory != "MPP.LegacyScene") continue;
+						if (info.colourOutputs.size() >= 3 && graph->getImageInfo(info.colourOutputs[2].image).desc.format == GraphImageFormat::Rg16f)
+						{
+							normals = info.colourOutputs[2].image;
+							sceneContract = true;
+						}
+						break;
+					}
+					if (!sceneContract)
+						diagnostics.error("MPP-LEGACY-PIPELINE-046", "GTAO normalSource=mrt requires the legacy scene shader contract: an RG16F octahedrally encoded view-space shading-normal output at colour location 2 (locations 0 and 1 must also be attached). Update the scene shader/graph or select normalSource=depth.", {sourcePath}, "ambientOcclusion");
+					bool rawContract = false;
+					for (uint32_t pass = 0; pass < graph->getPassCount(); ++pass)
+					{
+						auto const& info = graph->getPassInfo({ pass });
+						if (info.callbackFactory != "MPP.GTAORaw") continue;
+						for (auto const& binding : info.samplerBindings)
+							if (binding.sampler == "NORMALS" && sceneContract && binding.image.id == normals.id) rawContract = true;
+					}
+					if (!rawContract)
+						diagnostics.error("MPP-LEGACY-PIPELINE-047", "GTAO normalSource=mrt requires its raw pass to bind the legacy scene location-2 RG16F normals image as sampler NORMALS; no depth fallback is used.", {sourcePath}, "ambientOcclusion");
+				}
 			}
 
 			if(outputs.empty())diagnostics.error("MPP-LEGACY-PIPELINE-033","LegacyPipeline requires at least one explicit named output.",{sourcePath},"outputs");
@@ -98,7 +226,7 @@ namespace mpp
 
 	DiagnosticBag LegacyPipelineDocument::validate(Caps const& caps,glm::uvec2 const& viewport,RenderGraphPassFactoryRegistry const* registry) const
 	{
-		auto diagnostics=validate(registry);if(graph){auto compiled=graph->compile(caps,viewport);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-LEGACY-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
+		auto diagnostics=validate(registry);if(graph){if(ambientOcclusion.method==AmbientOcclusionMethod::Gtao&&ambientOcclusion.gtao.normalSource==GTAONormalSource::Mrt&&(caps.maxColourAttachments<3||caps.maxDrawBuffers<3))diagnostics.error("MPP-LEGACY-PIPELINE-048","GTAO normalSource=mrt requires hardware with at least 3 colour attachments and 3 draw buffers for scene colour (location 0), reserved MRT (location 1), and RG16F normals (location 2); select normalSource=depth on incompatible hardware.",{sourcePath},"ambientOcclusion");auto compiled=graph->compile(caps,viewport);for(auto const& message:compiled.diagnostics)diagnostics.error("MPP-LEGACY-PIPELINE-029",message,{sourcePath},"graph");}return diagnostics;
 	}
 
 	DiagnosticBag LegacyPipelineDocument::validateOutputAntiAliasing(AntiAliasingDefaults const& defaults,Caps const* caps) const
