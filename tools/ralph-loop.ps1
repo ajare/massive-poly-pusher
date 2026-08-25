@@ -71,6 +71,15 @@ from the current checkout's origin remote.
 .PARAMETER ReadyLabel
 Label used to identify executable tickets. Defaults to ready-for-agent.
 
+.PARAMETER Labels
+Additional labels a ticket must carry, on top of ReadyLabel, to be eligible.
+Repeat the parameter or pass a comma-separated list.
+
+.PARAMETER UseBranch
+Branch to run the loop against. If it exists locally or on the remote it is
+checked out; otherwise it is created from the current HEAD. When omitted, the
+loop runs on whatever branch is already checked out.
+
 .PARAMETER InitialRetryIntervalSeconds
 Initial delay after a retryable provider or server failure. Defaults to 30.
 
@@ -144,6 +153,13 @@ Shows the next eligible ticket in an explicit repository without claiming or
 running it.
 
 .EXAMPLE
+.\tools\ralph-loop.ps1 -Agent pi -AdaptiveModelAndEffort -Labels "feature:editor-3d-preview" -UseBranch feature/editor-3d-preview
+
+Runs only tickets also labeled feature:editor-3d-preview, on the
+feature/editor-3d-preview branch (created from the current HEAD if it doesn't
+already exist).
+
+.EXAMPLE
 .\tools\ralph-loop.ps1 -InitialRetryIntervalSeconds 15 -MaxRetryIntervalSeconds 300 -UsagePollSeconds 900
 
 Overrides provider-failure backoff and usage-limit polling intervals.
@@ -168,6 +184,8 @@ param(
 
     [string]$Repo = "",
     [string]$ReadyLabel = "ready-for-agent",
+    [string[]]$Labels = @(),
+    [string]$UseBranch = "",
     [int]$InitialRetryIntervalSeconds = 30,
     [int]$MaxRetryIntervalSeconds = 900,
     [int]$UsagePollSeconds = 600,
@@ -281,14 +299,22 @@ function Get-NextTicket {
     param(
         [Parameter(Mandatory = $true)][string]$Repository,
         [Parameter(Mandatory = $true)][string]$Label,
+        [string[]]$ExtraLabels = @(),
         [Parameter(Mandatory = $true)][string]$CurrentUser
     )
 
-    $json = Invoke-Gh @(
+    $listArguments = @(
         "issue", "list", "--repo", $Repository,
-        "--state", "open", "--label", $Label, "--limit", "100",
+        "--state", "open", "--label", $Label
+    )
+    foreach ($extraLabel in $ExtraLabels) {
+        $listArguments += @("--label", $extraLabel)
+    }
+    $listArguments += @(
+        "--limit", "100",
         "--json", "number,title,body,labels,assignees,url"
     )
+    $json = Invoke-Gh $listArguments
     $issues = $json | ConvertFrom-Json
     if ($issues.Count -eq 0) {
         return $null
@@ -754,6 +780,27 @@ if ($initialTrackedChanges.Count -gt 0) {
     throw "The tracked worktree is not clean. Commit or restore tracked changes before starting the loop."
 }
 
+if ($UseBranch) {
+    $currentBranch = (& git rev-parse --abbrev-ref HEAD).Trim()
+    if ($currentBranch -ne $UseBranch) {
+        & git rev-parse --verify --quiet "refs/heads/$UseBranch" *> $null
+        if ($LASTEXITCODE -eq 0) {
+            & git checkout $UseBranch 2>&1 | Out-Null
+        } else {
+            & git ls-remote --exit-code --heads origin $UseBranch *> $null
+            if ($LASTEXITCODE -eq 0) {
+                & git checkout -b $UseBranch --track "origin/$UseBranch" 2>&1 | Out-Null
+            } else {
+                & git checkout -b $UseBranch 2>&1 | Out-Null
+            }
+        }
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to check out branch '$UseBranch'."
+        }
+        Write-Status "Switched to branch '$UseBranch'."
+    }
+}
+
 if (-not $Repo) {
     $Repo = (Invoke-Gh @("repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")).Trim()
 }
@@ -762,7 +809,7 @@ $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "$Agent-ralph-loop"
 New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
 
 while ($true) {
-    $ticket = Get-NextTicket -Repository $Repo -Label $ReadyLabel -CurrentUser $currentUser
+    $ticket = Get-NextTicket -Repository $Repo -Label $ReadyLabel -ExtraLabels $Labels -CurrentUser $currentUser
     if ($null -eq $ticket) {
         Write-Status "No unblocked, unclaimed '$ReadyLabel' tickets are available."
         break
