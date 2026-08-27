@@ -23,10 +23,11 @@ namespace mpp
 		std::shared_ptr<ModelRenderParams> mParams;
 
 		std::vector<std::string> mRenderLayers;
+		uint64_t mShadowRevision{ 1 };
 
 #pragma warning(push)
 #pragma warning(disable: 4324)
-		alignas(16) glm::mat4 mTransform;
+		alignas(16) glm::mat4 mTransform{ 1.0f };
 #pragma warning(pop)
 
 	public:
@@ -50,6 +51,12 @@ namespace mpp
 		ResourcePtr getModel() const;
 
 		glm::mat4 const& getTransform() const;
+
+		uint64_t getShadowRevision() const;
+
+		// Uses the model's transformed local AABB, conservatively retaining every
+		// model whose bounds touch the finite point-light volume.
+		bool intersectsSphere(glm::vec3 const& centre, float radius) const;
 
 		std::shared_ptr<ModelRenderParams> getParams();
 

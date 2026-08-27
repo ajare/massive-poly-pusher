@@ -118,6 +118,30 @@ namespace mpp
 		float fadeStartNormalized{ 0.9f };
 	};
 
+	enum class ShadowInvalidationReason
+	{
+		None,
+		InitialConfiguration,
+		LightChanged,
+		OptionsChanged,
+		SceneChanged,
+		Explicit
+	};
+
+	struct _MPPAPI ShadowDomainDiagnostics
+	{
+		uint64_t revision{ 0 };
+		uint64_t renderedRevision{ 0 };
+		uint64_t renderedFrame{ 0 };
+		uint64_t reuseCount{ 0 };
+		uint64_t regenerationCount{ 0 };
+		uint64_t facePassCount{ 0 };
+		size_t selectedModelCount{ 0 };
+		bool reusedLastRequest{ false };
+		bool cacheComplete{ false };
+		ShadowInvalidationReason invalidationReason{ ShadowInvalidationReason::None };
+	};
+
 	struct _MPPAPI GraphPassDebugOptions
 	{
 		bool shadow{ true };

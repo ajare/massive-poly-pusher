@@ -59,7 +59,9 @@ namespace mpp
 
 		ModelRenderParams modelParams;
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();
+		auto const initialShadowRevision = modelParams.getShadowRevision();
 		modelParams.setModelInstanceCount(2);
+		if (modelParams.getShadowRevision() <= initialShadowRevision) return fail("model instance change did not invalidate shadow output");
 		modelParams.setMeshUniforms("Mesh", {});
 		modelParams.setModelBlend(true);
 		modelParams.setMeshBlend("Mesh", false);
@@ -73,6 +75,12 @@ namespace mpp
 		modelParams.setMeshFlags("Mesh", 0);
 		if (modelFlagsRevision <= initialProgramSetRevision || modelParams.getProgramSetRevision() <= modelFlagsRevision)
 			return fail("visibility/material model parameters did not invalidate the visible program set");
+		auto const casterPolicyRevision = modelParams.getShadowRevision();
+		modelParams.setModelFlags(ModelRenderParams::Flag_Visible | ModelRenderParams::Flag_CastShadows);
+		if (modelParams.getShadowRevision() <= casterPolicyRevision) return fail("caster-policy change did not invalidate shadow output");
+		auto const materialContractRevision = modelParams.getShadowRevision();
+		modelParams.setMeshMaterial("ShadowContractMesh", {});
+		if (modelParams.getShadowRevision() <= materialContractRevision) return fail("material shadow-contract override did not invalidate shadow output");
 		auto const unchangedFlagsRevision = modelParams.getProgramSetRevision();
 		modelParams.setMeshFlags("Mesh", 0);
 		if (modelParams.getProgramSetRevision() != unchangedFlagsRevision) return fail("unchanged visibility invalidated the visible program set");

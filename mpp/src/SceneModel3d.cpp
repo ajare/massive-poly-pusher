@@ -1,9 +1,11 @@
 #include <algorithm>
+#include <limits>
 #include <utility>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/matrix_interpolation.hpp>
 
 #include "mpp/SceneModel3d.h"
+#include "mpp/Model.h"
 
 using namespace std;
 
@@ -29,39 +31,51 @@ namespace mpp
 
 	void SceneModel3d::resetTransform()
 	{
-		mTransform = glm::mat4(1.0f);
+		glm::mat4 const next(1.0f);
+		if (mTransform != next) ++mShadowRevision;
+		mTransform = next;
 	}
 
 	void SceneModel3d::translate(glm::vec3 const& translate)
 	{
-		mTransform = glm::translate(mTransform, translate);
+		auto const next = glm::translate(mTransform, translate);
+		if (mTransform != next) ++mShadowRevision;
+		mTransform = next;
 	}
 
 	void SceneModel3d::rotateSelf(float angle, glm::vec3 const& axis)
 	{
 		auto rotMat = glm::axisAngleMatrix(axis, angle);
-		mTransform = mTransform * rotMat;
+		auto const next = mTransform * rotMat;
+		if (mTransform != next) ++mShadowRevision;
+		mTransform = next;
 	}
 
 	void SceneModel3d::rotateOrigin(float angle, glm::vec3 const& axis)
 	{
 		auto rotMat = glm::axisAngleMatrix(axis, angle);
-		mTransform = rotMat * mTransform;
+		auto const next = rotMat * mTransform;
+		if (mTransform != next) ++mShadowRevision;
+		mTransform = next;
 	}
 
 	void SceneModel3d::scale(glm::vec3 const& scale)
 	{
-		mTransform = glm::scale(mTransform, scale);
+		auto const next = glm::scale(mTransform, scale);
+		if (mTransform != next) ++mShadowRevision;
+		mTransform = next;
 	}
 
 	void SceneModel3d::setModel(ResourcePtr model)
 	{
+		if (mModel == model) return;
 		if (mModel)
 		{
 			mModel->release(this);
 		}
 
 		mModel = model;
+		++mShadowRevision;
 	
 		if (mModel)
 		{
@@ -77,6 +91,32 @@ namespace mpp
 	glm::mat4 const& SceneModel3d::getTransform() const
 	{
 		return mTransform;
+	}
+
+	uint64_t SceneModel3d::getShadowRevision() const
+	{
+		return mShadowRevision;
+	}
+
+	bool SceneModel3d::intersectsSphere(glm::vec3 const& centre, float radius) const
+	{
+		auto const* model = dynamic_cast<Model const*>(mModel.get());
+		if (!model || radius < 0.0f) return false;
+		glm::vec3 localMin, localMax;
+		model->getBounds(localMin, localMax);
+		glm::vec3 worldMin(std::numeric_limits<float>::max());
+		glm::vec3 worldMax(std::numeric_limits<float>::lowest());
+		for (uint32_t corner = 0; corner < 8; ++corner)
+		{
+			glm::vec3 local((corner & 1) ? localMax.x : localMin.x,
+				(corner & 2) ? localMax.y : localMin.y, (corner & 4) ? localMax.z : localMin.z);
+			glm::vec3 world = glm::vec3(mTransform * glm::vec4(local, 1.0f));
+			worldMin = glm::min(worldMin, world);
+			worldMax = glm::max(worldMax, world);
+		}
+		glm::vec3 const nearest = glm::clamp(centre, worldMin, worldMax);
+		glm::vec3 const delta = centre - nearest;
+		return glm::dot(delta, delta) <= radius * radius;
 	}
 
 	shared_ptr<ModelRenderParams> SceneModel3d::getParams()

@@ -166,6 +166,12 @@ namespace mpp
 			RenderTargetPtr depthTarget;
 			std::shared_ptr<UniformBuffer> frameBuffer;
 			bool fallbackWarningIssued{ false };
+			bool cacheDirty{ true };
+			bool regenerationStarted{ false };
+			uint8_t renderedFaces{ 0 };
+			std::vector<uint64_t> casterState;
+			ShadowInvalidationReason pendingReason{ ShadowInvalidationReason::InitialConfiguration };
+			ShadowDomainDiagnostics diagnostics;
 		};
 		std::map<std::string, ShadowDomainState> mShadowDomains;
 		RenderTargetPtr mActiveShadowDepthTarget;
@@ -364,6 +370,10 @@ namespace mpp
 		void destroyShadowDomains();
 
 		void createShadowDomainResources(std::string const& name, ShadowDomainState& domain);
+
+		std::vector<uint64_t> captureShadowCasterState(std::vector<SceneModel3dPtr> const& models) const;
+
+		void markShadowDomainDirty(ShadowDomainState& domain, ShadowInvalidationReason reason);
 
 		void createShadowDisabledFrameBuffer();
 
@@ -617,6 +627,15 @@ namespace mpp
 		RenderTargetPtr getShadowDomainDepthTarget(std::string const& name);
 
 		void ensureShadowDomainResources(std::string const& name);
+
+		// Captures automatic scene revisions and reports whether the shared point
+		// cubemap needs its six face passes. A completed stable revision is reused
+		// by every pipeline naming the domain.
+		bool prepareShadowDomain(std::string const& name, std::vector<SceneModel3dPtr> const& models);
+
+		void invalidateShadowDomain(std::string const& name);
+
+		ShadowDomainDiagnostics getShadowDomainDiagnostics(std::string const& name) const;
 
 		// face is ignored for directional domains. Point domains render all six
 		// faces when omitted, or exactly the requested canonical cubemap face.

@@ -474,8 +474,14 @@ namespace mpp
 		GraphImageHandle shadowDepth;
 		GraphImageHandle shadowDepthOutput;
 		std::vector<GraphPassHandle> shadowPasses;
+		std::vector<SceneModel3dPtr> shadowModels = models;
+		bool renderShadowPasses = false;
 		if (!mOptions.shadowDomain.empty() && mOptions.graphPasses.shadow)
 		{
+			auto const& configuredShadow = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
+			if (configuredShadow.light.type == ShadowLightType::Point)
+				shadowModels = scene->get3dModelsInSphere(configuredShadow.light.position, configuredShadow.light.range);
+			renderShadowPasses = mRenderSystem->prepareShadowDomain(mOptions.shadowDomain, shadowModels);
 			GraphImageDesc shadowDesc;
 			shadowDesc.format = GraphImageFormat::Depth24;
 			shadowDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
@@ -487,7 +493,8 @@ namespace mpp
 			bool const pointShadow = shadowOptions.light.type == ShadowLightType::Point;
 			shadowDesc.shape = pointShadow ? GraphImageShape::CubeMap : GraphImageShape::Texture2D;
 			shadowDepth = graph.createImage(pointShadow ? "PointShadowDepthCube" : "ShadowDepth", shadowDesc);
-			if (pointShadow)
+			shadowDepthOutput = shadowDepth;
+			if (pointShadow && renderShadowPasses)
 			{
 				static constexpr char const* faces[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
 				shadowDepthOutput = shadowDepth;
@@ -498,7 +505,7 @@ namespace mpp
 					shadowDepthOutput = graph.writeDepth(pass, shadowDepthOutput, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, face);
 				}
 			}
-			else
+			else if (!pointShadow && renderShadowPasses)
 			{
 				auto pass = graph.addPass("ShadowDepth", GraphPassType::Scene);
 				shadowPasses.push_back(pass);
@@ -625,9 +632,9 @@ namespace mpp
 			for (uint32_t index = 0; index < shadowPasses.size(); ++index)
 			{
 				auto pass = shadowPasses[index];
-				mGraphExecutor->setPassCallback(graph, pass, [this, models, pointShadow, index](RenderGraphExecutionContext const&)
+				mGraphExecutor->setPassCallback(graph, pass, [this, shadowModels, pointShadow, index](RenderGraphExecutionContext const&)
 				{
-					mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models, pointShadow ? index : UINT32_MAX);
+					mRenderSystem->renderShadowDomain(mOptions.shadowDomain, shadowModels, pointShadow ? index : UINT32_MAX);
 				});
 			}
 		}
@@ -773,7 +780,12 @@ namespace mpp
 		if (!graphForward && !mOptions.shadowDomain.empty())
 		{
 			GpuDebugScope shadowScope("Pass: ShadowDomain [" + mOptions.shadowDomain + "]");
-			mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
+			auto shadowModels = models;
+			auto const& shadow = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
+			if (shadow.light.type == ShadowLightType::Point)
+				shadowModels = scene->get3dModelsInSphere(shadow.light.position, shadow.light.range);
+			if (mRenderSystem->prepareShadowDomain(mOptions.shadowDomain, shadowModels))
+				mRenderSystem->renderShadowDomain(mOptions.shadowDomain, shadowModels);
 		}
 		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
 

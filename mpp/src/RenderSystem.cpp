@@ -3114,6 +3114,75 @@ namespace mpp
 		domain.frameBuffer->load();
 	}
 
+	namespace
+	{
+		bool shadowLightEqual(ShadowLight const& a, ShadowLight const& b)
+		{
+			return a.type == b.type && a.direction == b.direction && a.focusPoint == b.focusPoint &&
+				a.position == b.position && a.range == b.range && a.lightIndex == b.lightIndex;
+		}
+
+		bool shadowOptionsEqual(ShadowOptions const& a, ShadowOptions const& b)
+		{
+			return a.enabled == b.enabled && shadowLightEqual(a.light, b.light) && a.resolution == b.resolution &&
+				a.orthoHalfWidth == b.orthoHalfWidth && a.nearPlane == b.nearPlane && a.farPlane == b.farPlane &&
+				a.constantBias == b.constantBias && a.normalBias == b.normalBias &&
+				a.filterRadiusTexels == b.filterRadiusTexels && a.filterMode == b.filterMode &&
+				a.fadeStartNormalized == b.fadeStartNormalized;
+		}
+
+		uint64_t shadowPointer(void const* value)
+		{
+			return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value));
+		}
+	}
+
+	void RenderSystem::markShadowDomainDirty(ShadowDomainState& domain, ShadowInvalidationReason reason)
+	{
+		domain.cacheDirty = true;
+		domain.regenerationStarted = false;
+		domain.renderedFaces = 0;
+		domain.pendingReason = reason;
+		++domain.diagnostics.revision;
+		domain.diagnostics.cacheComplete = false;
+		domain.diagnostics.reusedLastRequest = false;
+	}
+
+	vector<uint64_t> RenderSystem::captureShadowCasterState(vector<SceneModel3dPtr> const& models) const
+	{
+		vector<uint64_t> state;
+		state.reserve(models.size() * 8);
+		for (auto const& sceneModel : models)
+		{
+			if (!sceneModel) continue;
+			auto modelResource = sceneModel->getModel();
+			auto const* model = dynamic_cast<Model const*>(modelResource.get());
+			auto const params = sceneModel->getParams();
+			state.push_back(shadowPointer(sceneModel.get()));
+			state.push_back(sceneModel->getShadowRevision());
+			state.push_back(shadowPointer(model));
+			state.push_back(modelResource ? modelResource->getLifecycleRevision() : 0);
+			state.push_back(model ? model->getMaterialRevision() : 0);
+			state.push_back(params ? params->getShadowRevision() : 0);
+			if (!model || !params) continue;
+			auto const& meshParams = params->getMeshParams();
+			auto const defaultParams = meshParams.find("");
+			for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+			{
+				auto const* mesh = model->getMesh(meshIndex);
+				auto const meshOverride = meshParams.find(mesh->getName());
+				auto const* renderParams = meshOverride != meshParams.end() ? &meshOverride->second :
+					(defaultParams != meshParams.end() ? &defaultParams->second : nullptr);
+				auto materialResource = renderParams && renderParams->material ? renderParams->material : mesh->getMaterial();
+				auto const* material = dynamic_cast<Material const*>(materialResource.get());
+				state.push_back(shadowPointer(material));
+				state.push_back(materialResource ? materialResource->getLifecycleRevision() : 0);
+				state.push_back(material && material->isTransparent() ? 1 : 0);
+			}
+		}
+		return state;
+	}
+
 	void RenderSystem::configureShadowDomain(string const& name, ShadowOptions const& options)
 	{
 		if (name.empty())
@@ -3141,7 +3210,11 @@ namespace mpp
 			}
 		}
 
+		auto existing = mShadowDomains.find(name);
+		bool const newlyConfigured = existing == mShadowDomains.end();
 		auto& domain = mShadowDomains[name];
+		bool const lightChanged = !newlyConfigured && !shadowLightEqual(domain.options.light, options.light);
+		bool const optionsChanged = newlyConfigured || !shadowOptionsEqual(domain.options, options);
 		// Direction, projection bounds, bias, and filter values are uploaded on
 		// the next shadow pass. Only a resolution or enabled-state change needs
 		// to discard GL resources, which keeps interactive light movement cheap.
@@ -3153,6 +3226,9 @@ namespace mpp
 			domain.frameBuffer.reset();
 		}
 		domain.options = options;
+		if (optionsChanged)
+			markShadowDomainDirty(domain, newlyConfigured ? ShadowInvalidationReason::InitialConfiguration :
+				(lightChanged ? ShadowInvalidationReason::LightChanged : ShadowInvalidationReason::OptionsChanged));
 	}
 
 	bool RenderSystem::hasShadowDomain(string const& name) const
@@ -3186,6 +3262,49 @@ namespace mpp
 		createShadowDomainResources(name, it->second);
 	}
 
+	bool RenderSystem::prepareShadowDomain(string const& name, vector<SceneModel3dPtr> const& models)
+	{
+		ensureShadowDomainResources(name);
+		auto& domain = mShadowDomains.at(name);
+		if (!domain.options.enabled || !domain.depthTarget) return false;
+		if (domain.options.light.type != ShadowLightType::Point) return true;
+
+		auto state = captureShadowCasterState(models);
+		domain.diagnostics.selectedModelCount = models.size();
+		if (domain.casterState != state)
+		{
+			domain.casterState = std::move(state);
+			if (!domain.cacheDirty) markShadowDomainDirty(domain, ShadowInvalidationReason::SceneChanged);
+		}
+		if (!domain.cacheDirty && domain.diagnostics.cacheComplete)
+		{
+			++domain.diagnostics.reuseCount;
+			domain.diagnostics.reusedLastRequest = true;
+			return false;
+		}
+		if (!domain.regenerationStarted)
+		{
+			domain.regenerationStarted = true;
+			++domain.diagnostics.regenerationCount;
+			domain.diagnostics.reusedLastRequest = false;
+		}
+		return true;
+	}
+
+	void RenderSystem::invalidateShadowDomain(string const& name)
+	{
+		auto found = mShadowDomains.find(name);
+		if (found == mShadowDomains.end()) THROW_MPP("Unknown shadow domain.", __LINE__, __FILE__, __func__);
+		markShadowDomainDirty(found->second, ShadowInvalidationReason::Explicit);
+	}
+
+	ShadowDomainDiagnostics RenderSystem::getShadowDomainDiagnostics(string const& name) const
+	{
+		auto found = mShadowDomains.find(name);
+		if (found == mShadowDomains.end()) THROW_MPP("Unknown shadow domain.", __LINE__, __FILE__, __func__);
+		return found->second.diagnostics;
+	}
+
 	void RenderSystem::renderShadowDomain(string const& name, vector<SceneModel3dPtr> const& models, uint32_t face)
 	{
 		ensureShadowDomainResources(name);
@@ -3195,6 +3314,7 @@ namespace mpp
 			return;
 		}
 		bool const point = domain.options.light.type == ShadowLightType::Point;
+		if (point && !prepareShadowDomain(name, models)) return;
 		if (point && face == UINT32_MAX)
 		{
 			for (uint32_t cubeFace = 0; cubeFace < 6; ++cubeFace) renderShadowDomain(name, models, cubeFace);
@@ -3286,7 +3406,8 @@ namespace mpp
 					continue;
 				}
 
-				auto material = static_cast<Material*>(mesh->getMaterial().get());
+				auto materialResource = renderParams && renderParams->material ? renderParams->material : mesh->getMaterial();
+				auto material = static_cast<Material*>(materialResource.get());
 				if (material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent())
 				{
 					continue; // Conventional blended materials do not cast in S2.
@@ -3314,6 +3435,21 @@ namespace mpp
 		}
 
 		popRenderTarget();
+		if (point)
+		{
+			domain.renderedFaces |= static_cast<uint8_t>(1u << face);
+			++domain.diagnostics.facePassCount;
+			if (domain.renderedFaces == 0x3f)
+			{
+				domain.cacheDirty = false;
+				domain.regenerationStarted = false;
+				domain.diagnostics.renderedRevision = domain.diagnostics.revision;
+				domain.diagnostics.renderedFrame = mFrameSerial;
+				domain.diagnostics.cacheComplete = true;
+				domain.diagnostics.reusedLastRequest = false;
+				domain.diagnostics.invalidationReason = domain.pendingReason;
+			}
+		}
 		GL_CHECK(glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]));
 		applyRasterState(previousRasterState, 1, depthTarget->getWidth(), depthTarget->getHeight());
 		setPolygonOffsetFillState(previousPolygonOffsetEnabled);

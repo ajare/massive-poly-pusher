@@ -135,6 +135,16 @@ namespace mpp
 		return inView;
 	}
 
+	vector<SceneModel3dPtr> Scene::get3dModelsInSphere(glm::vec3 const& centre, float radius)
+	{
+		vector<SceneModel3dPtr> inVolume;
+		copy_if(m3dModels.begin(), m3dModels.end(), back_inserter(inVolume), [&](SceneModel3dPtr const& model)
+		{
+			return model && model->intersectsSphere(centre, radius);
+		});
+		return inVolume;
+	}
+
 	vector<SceneModel3dPtr> Scene::get3dModelsInLayers(CameraPtr camera, vector<string> const& layers)
 	{
 		auto models = get3dModelsInView(camera);

@@ -41,6 +41,10 @@ namespace mpp
 
 		MeshRenderParams mModelParams;
 		uint64_t mProgramSetRevision{ 1 };
+		// Changes that can alter depth-only shadow output. Kept separate from the
+		// visible-program cache because instance and draw-range changes do not
+		// change a material program.
+		uint64_t mShadowRevision{ 1 };
 
 	public:
 
@@ -67,21 +71,21 @@ namespace mpp
 		void setModelFlags(uint32_t flags)
 		{
 			auto [it, inserted] = mMeshParams.insert(std::make_pair("", MeshRenderParams()));
-			if (inserted || it->second.flags != flags) ++mProgramSetRevision;
+			if (inserted || it->second.flags != flags) { ++mProgramSetRevision; ++mShadowRevision; }
 			it->second.flags = flags;
 		}
 
 		void setModelInstanceCount(size_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
-			
+			if (it->second.instanceCount != count) ++mShadowRevision;
 			it->second.instanceCount = count;
 		}
 
 		void setModelPrimitiveCount(size_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
-			
+			++mShadowRevision;
 			it->second.renderCommands.clear();
 			it->second.renderCommands.push_back({ 0, (uint32_t)count });
 		}
@@ -110,7 +114,7 @@ namespace mpp
 		void setModelMaterial(ResourcePtr material)
 		{
 			auto [it, inserted] = mMeshParams.insert(std::make_pair("", MeshRenderParams()));
-			if (inserted || it->second.material != material) ++mProgramSetRevision;
+			if (inserted || it->second.material != material) { ++mProgramSetRevision; ++mShadowRevision; }
 			it->second.material = material;
 		}
 
@@ -130,28 +134,28 @@ namespace mpp
 		void addModelRenderCommand(VertexBufferRenderCommand const& cmd)
 		{
 			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
-
+			++mShadowRevision;
 			it->second.renderCommands.push_back(cmd);
 		}
 
 		void setMeshFlags(std::string const& mesh, uint32_t flags)
 		{
 			auto [it, inserted] = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams()));
-			if (inserted || it->second.flags != flags) ++mProgramSetRevision;
+			if (inserted || it->second.flags != flags) { ++mProgramSetRevision; ++mShadowRevision; }
 			it->second.flags = flags;
 		}
 
 		void setMeshInstanceCount(std::string const& mesh, uint32_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
-			
+			if (it->second.instanceCount != count) ++mShadowRevision;
 			it->second.instanceCount = count;
 		}
 
 		void setMeshPrimitiveCount(std::string const& mesh, size_t count)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
-			
+			++mShadowRevision;
 			it->second.renderCommands = { { 0, (uint32_t)count} };
 		}
 
@@ -179,7 +183,7 @@ namespace mpp
 		void setMeshMaterial(std::string const& mesh, ResourcePtr material)
 		{
 			auto [it, inserted] = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams()));
-			if (inserted || it->second.material != material) ++mProgramSetRevision;
+			if (inserted || it->second.material != material) { ++mProgramSetRevision; ++mShadowRevision; }
 			it->second.material = material;
 		}
 
@@ -199,13 +203,18 @@ namespace mpp
 		void addMeshRenderCommand(std::string const& mesh, VertexBufferRenderCommand const& cmd)
 		{
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
-
+			++mShadowRevision;
 			it->second.renderCommands.push_back(cmd);
 		}
 
 		uint64_t getProgramSetRevision() const
 		{
 			return mProgramSetRevision;
+		}
+
+		uint64_t getShadowRevision() const
+		{
+			return mShadowRevision;
 		}
 
 		std::map<std::string, MeshRenderParams> const& getMeshParams() const

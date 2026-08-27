@@ -20,6 +20,8 @@
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/Scene.h"
+#include "mpp/Model.h"
 #include "mpp/IblEnvironmentCache.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/ProgrammaticTextureStream.h"
@@ -99,6 +101,13 @@ namespace mpp
 			}
 			return false;
 		}
+
+		class CameraCulledShadowTestScene : public Scene
+		{
+		public:
+			using Scene::Scene;
+			std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr) override { return {}; }
+		};
 
 		uint8_t maximumRed(RenderTargetPtr const& target)
 		{
@@ -478,6 +487,7 @@ namespace mpp
 			stage = "point shadow quality options";
 			ShadowOptions pointQuality;
 			pointQuality.enabled = true;
+			pointQuality.resolution = 16;
 			pointQuality.light.type = ShadowLightType::Point;
 			pointQuality.light.position = { 1.0f, 2.0f, 3.0f };
 			pointQuality.light.range = 24.0f;
@@ -502,6 +512,78 @@ namespace mpp
 			try { auto invalid = pointQuality; invalid.nearPlane = 0.0f; renderSystem->configureShadowDomain("GpuTestInvalidPointNear", invalid); }
 			catch (...) { rejectedInvalidPointQuality = true; }
 			if (!rejectedInvalidPointQuality) return fail("point shadow accepted a non-positive near plane");
+
+			stage = "point shadow domain cache";
+			std::vector<SceneModel3dPtr> noCasters;
+			if (!renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters)) return fail("new point-shadow revision was reported reusable");
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto initialCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (!initialCache.cacheComplete || initialCache.facePassCount != 6 || initialCache.regenerationCount != 1 ||
+				initialCache.renderedRevision != initialCache.revision || initialCache.invalidationReason != ShadowInvalidationReason::InitialConfiguration)
+				return fail("initial point-shadow cubemap was not published as one six-face cache unit");
+			if (renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters) ||
+				renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters))
+				return fail("stable point-shadow revision was not shared across pipeline requests");
+			auto reusedCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (reusedCache.reuseCount < 2 || !reusedCache.reusedLastRequest || reusedCache.facePassCount != 6)
+				return fail("point-shadow reuse diagnostics did not report stationary/shared reuse");
+			auto movedPoint = pointQuality; movedPoint.light.position.x += 1.0f;
+			renderSystem->configureShadowDomain("GpuTestPointQuality", movedPoint);
+			if (!renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters)) return fail("point-light movement reused a stale cubemap");
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto movedCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (movedCache.facePassCount != 12 || movedCache.invalidationReason != ShadowInvalidationReason::LightChanged)
+				return fail("point-light movement did not regenerate all six faces with diagnostics");
+			auto changedQuality = movedPoint; changedQuality.normalBias += 0.001f;
+			renderSystem->configureShadowDomain("GpuTestPointQuality", changedQuality);
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto optionCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (optionCache.facePassCount != 18 || optionCache.invalidationReason != ShadowInvalidationReason::OptionsChanged)
+				return fail("shadow-relevant option change did not regenerate all six faces");
+			renderSystem->invalidateShadowDomain("GpuTestPointQuality");
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto explicitCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (explicitCache.facePassCount != 24 || explicitCache.invalidationReason != ShadowInvalidationReason::Explicit)
+				return fail("explicit named-domain invalidation did not regenerate all six faces");
+
+			stage = "point shadow volume selection and automatic invalidation";
+			auto boundsModelResource = renderSystem->getResourceManager()->getResource("__mpp_mesh_fullscreen_quad__");
+			auto* boundsModel = dynamic_cast<Model*>(boundsModelResource.get());
+			if (!boundsModel) return fail("core bounds model is unavailable for point-shadow volume tests");
+			CameraCulledShadowTestScene casterScene(renderSystem);
+			auto inRangeCaster = casterScene.add3dModel(boundsModelResource);
+			auto outOfRangeCaster = casterScene.add3dModel(boundsModelResource);
+			outOfRangeCaster->translate({ 100.0f, 0.0f, 0.0f });
+			if (!casterScene.get3dModelsInView({}).empty()) return fail("camera-culling test scene unexpectedly returned visible models");
+			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
+			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
+				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
+			auto casterOptions = changedQuality; casterOptions.light.position = {}; casterOptions.light.range = 10.0f;
+			renderSystem->configureShadowDomain("GpuTestVolumeCasters", casterOptions);
+			renderSystem->renderShadowDomain("GpuTestVolumeCasters", volumeCasters);
+			auto verifySceneInvalidation = [&](char const* route)
+			{
+				if (!renderSystem->prepareShadowDomain("GpuTestVolumeCasters", volumeCasters)) return false;
+				renderSystem->renderShadowDomain("GpuTestVolumeCasters", volumeCasters);
+				auto diagnostic = renderSystem->getShadowDomainDiagnostics("GpuTestVolumeCasters");
+				if (diagnostic.invalidationReason != ShadowInvalidationReason::SceneChanged || diagnostic.facePassCount % 6 != 0)
+				{
+					if (failure) *failure = std::string(route) + " did not invalidate the complete point-shadow cubemap";
+					return false;
+				}
+				return true;
+			};
+			inRangeCaster->translate({ 0.25f, 0.0f, 0.0f });
+			if (!verifySceneInvalidation("model transform")) return false;
+			inRangeCaster->getParams()->setModelFlags(0);
+			if (!verifySceneInvalidation("visibility")) return false;
+			inRangeCaster->getParams()->setModelFlags(ModelRenderParams::Flag_Visible);
+			if (!verifySceneInvalidation("caster policy")) return false;
+			inRangeCaster->getParams()->setModelInstanceCount(2);
+			if (!verifySceneInvalidation("instance count")) return false;
+			auto* firstMesh = boundsModel->getMesh(0);
+			inRangeCaster->getParams()->setModelMaterial(firstMesh->getMaterial());
+			if (!verifySceneInvalidation("material shadow contract")) return false;
 
 			stage = "point shadow hardware fallback";
 			ShadowOptions unsupportedPointShadow;
