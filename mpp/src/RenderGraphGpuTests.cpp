@@ -5,6 +5,7 @@
 #include <cmath>
 #include <chrono>
 #include <memory>
+#include <limits>
 #include <filesystem>
 #include <fstream>
 #include <type_traits>
@@ -21,6 +22,7 @@
 #include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Scene.h"
+#include "mpp/SceneRuntime.h"
 #include "mpp/Model.h"
 #include "mpp/IblEnvironmentCache.h"
 #include "mpp/RenderTexture.h"
@@ -512,6 +514,28 @@ namespace mpp
 			try { auto invalid = pointQuality; invalid.nearPlane = 0.0f; renderSystem->configureShadowDomain("GpuTestInvalidPointNear", invalid); }
 			catch (...) { rejectedInvalidPointQuality = true; }
 			if (!rejectedInvalidPointQuality) return fail("point shadow accepted a non-positive near plane");
+
+			stage = "authored point-shadow scene runtime";
+			SceneDocument authoredPointScene;
+			authoredPointScene.name = "GPU authored point shadow";
+			authoredPointScene.models.push_back({ "Caster", SceneModelSource::Box });
+			SceneLightDocument authoredFill; authoredFill.id = "Fill";
+			SceneLightDocument authoredPoint; authoredPoint.id = "AuthoredPoint"; authoredPoint.type = SceneLightType::Point;
+			authoredPoint.position = { 3.0f, 4.0f, 5.0f }; authoredPoint.range = 24.0f; authoredPoint.castsShadows = true;
+			SceneLightDocument authoredRim; authoredRim.id = "Rim";
+			authoredPointScene.lights = { authoredFill, authoredPoint, authoredRim };
+			SceneRuntime authoredRuntime(renderSystem, renderSystem->getResourceManager());
+			if (!authoredRuntime.rebuild(authoredPointScene, {}, {}, {}, "GpuTestAuthoredPoint"))
+				return fail("a valid authored point-shadow scene did not instantiate");
+			auto const& authoredShadow = renderSystem->getShadowDomainOptions("GpuTestAuthoredPoint");
+			if (authoredShadow.light.type != ShadowLightType::Point || authoredShadow.light.position != authoredPointScene.lights[1].position ||
+				authoredShadow.light.range != authoredPointScene.lights[1].range || authoredShadow.light.lightIndex != 1)
+				return fail("scene runtime did not configure the authored point shadow or its independent direct-light index");
+			auto const previousAuthoredScene = authoredRuntime.getScene();
+			auto invalidAuthoredPointScene = authoredPointScene;
+			invalidAuthoredPointScene.lights[1].position.x = std::numeric_limits<float>::infinity();
+			if (authoredRuntime.rebuild(invalidAuthoredPointScene, {}, {}, {}, "GpuTestAuthoredPoint") || authoredRuntime.getScene() != previousAuthoredScene)
+				return fail("an invalid point shadow replaced the previous valid runtime scene");
 
 			stage = "point shadow domain cache";
 			std::vector<SceneModel3dPtr> noCasters;

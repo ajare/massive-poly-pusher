@@ -4,6 +4,7 @@
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
 #include "mpp/RenderPipeline.h"
+#include "mpp/SceneDocument.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/PbrShaders.h"
 #include "mpp/ModelRenderParams.h"
@@ -63,6 +64,25 @@ namespace mpp
 			pointDefaults.filterRadiusTexels != 1.0f || pointDefaults.fadeStartNormalized != 0.9f ||
 			pointDefaults.filterMode != ShadowFilterMode::Pcf3x3)
 			return fail("point-shadow quality defaults are not the Player Torch contract");
+
+		SceneDocument pointScene;
+		pointScene.name = "Authored point shadow";
+		SceneLightDocument fillLight; fillLight.id = "Fill";
+		SceneLightDocument pointLight; pointLight.id = "PointShadow"; pointLight.type = SceneLightType::Point;
+		pointLight.position = { 3.0f, 4.0f, 5.0f }; pointLight.range = 24.0f; pointLight.castsShadows = true;
+		SceneLightDocument rimLight; rimLight.id = "Rim";
+		pointScene.lights = { fillLight, pointLight, rimLight };
+		if (pointScene.validate().hasErrors() || pointScene.getShadowLightIndex() != 1)
+			return fail("an authored point shadow was rejected or lost its independent light index");
+		auto invalidPointScene = pointScene;
+		invalidPointScene.lights[1].range = 0.0f;
+		if (!invalidPointScene.validate().hasErrors())
+			return fail("a shadow-casting point light accepted a non-positive range");
+		invalidPointScene = pointScene;
+		SceneLightDocument secondShadow; secondShadow.id = "SecondShadow"; secondShadow.castsShadows = true;
+		invalidPointScene.lights.push_back(secondShadow);
+		if (!invalidPointScene.validate().hasErrors())
+			return fail("multiple authored shadow lights were accepted");
 
 		ModelRenderParams modelParams;
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();

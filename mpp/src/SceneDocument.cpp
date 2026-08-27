@@ -53,6 +53,13 @@ namespace mpp
 		return nullopt;
 	}
 
+	optional<size_t> SceneDocument::getShadowLightIndex() const
+	{
+		for (size_t index = 0; index < lights.size(); ++index)
+			if (lights[index].castsShadows) return index;
+		return nullopt;
+	}
+
 	DiagnosticBag SceneDocument::validate() const
 	{
 		DiagnosticBag diagnostics;
@@ -110,12 +117,13 @@ namespace mpp
 			if (light.castsShadows)
 			{
 				++shadowLights;
-				if (light.type != SceneLightType::Directional) diagnostics.error("MPP-SCENE-023", "Point lights cannot cast shadows in the version-1 scene runtime.", { sourcePath }, light.id);
+				if (light.type == SceneLightType::Point && light.range <= 0)
+					diagnostics.error("MPP-SCENE-023", "Shadow-casting point light range must be positive.", { sourcePath }, light.id);
 			}
 		}
 		if (lights.size() > 8) diagnostics.error("MPP-SCENE-014", "Scene exceeds the renderer limit of eight PBR lights.", { sourcePath }, "lights");
-		if (shadowLights > 1) diagnostics.error("MPP-SCENE-024", "Version-1 scenes support only one directional shadow light.", { sourcePath }, "lights");
-		if (hasShadowCasters && shadowLights == 0) diagnostics.warning("MPP-SCENE-028", "The scene has shadow-casting models but no shadow-casting directional light.", { sourcePath }, "lights");
+		if (shadowLights > 1) diagnostics.error("MPP-SCENE-024", "Scenes support only one shadow-casting light.", { sourcePath }, "lights");
+		if (hasShadowCasters && shadowLights == 0) diagnostics.warning("MPP-SCENE-028", "The scene has shadow-casting models but no shadow-casting light.", { sourcePath }, "lights");
 		if (!hasShadowCasters && shadowLights != 0) diagnostics.warning("MPP-SCENE-029", "The shadow light has no visible shadow-casting models.", { sourcePath }, "lights");
 		if (camera.nearPlane <= 0 || camera.farPlane <= camera.nearPlane || !finite(camera.position) || !finite(camera.target) || !std::isfinite(camera.fov)) diagnostics.error("MPP-SCENE-007", "Camera values or clip distances are invalid.", { sourcePath }, "camera");
 		if (environmentBinding.empty()) diagnostics.warning("MPP-SCENE-008", "Scene has no logical environment binding.", { sourcePath }, "environment");

@@ -11,6 +11,8 @@
 #include "mpp/resource-parsers/RenderGraphParser.h"
 #include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/RenderGraphSerializer.h"
+#include "mpp/resource-parsers/SceneParser.h"
+#include "mpp/resource-parsers/SceneSerializer.h"
 
 namespace mpp::resource_parsers
 {
@@ -328,11 +330,37 @@ namespace mpp::resource_parsers
 		return true;
 	}
 
+	bool runSceneShadowDocumentTest(std::string const& extension, std::string* failure)
+	{
+		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+		auto const path = std::filesystem::temp_directory_path() / ("mpp_scene_shadow_round_trip" + extension);
+		try
+		{
+			SceneDocument document;
+			document.name = "Point-shadow round trip";
+			SceneLightDocument fill; fill.id = "Fill";
+			SceneLightDocument point; point.id = "PointShadow"; point.type = SceneLightType::Point;
+			point.position = { 3.0f, 4.0f, 5.0f }; point.range = 24.0f; point.castsShadows = true;
+			SceneLightDocument rim; rim.id = "Rim";
+			document.lights = { fill, point, rim };
+			SceneSerializer::toFile(document, path.string());
+			auto restored = SceneParser::fromFile(path.string());
+			if (restored.validate().hasErrors() || restored.getShadowLightIndex() != 1 ||
+				restored.lights[1].type != SceneLightType::Point || restored.lights[1].position != document.lights[1].position ||
+				restored.lights[1].range != document.lights[1].range)
+				return fail(extension + ": point-shadow scene round trip lost its authored light");
+		}
+		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
+		std::filesystem::remove(path);
+		return true;
+	}
+
 	bool runRenderGraphResourceTests(std::string* failure)
 	{
 		for (auto const& extension : { std::string(".xml"), std::string(".yaml") })
 		{
 			if (!runForExtension(extension, failure)) return false;
+			if (!runSceneShadowDocumentTest(extension, failure)) return false;
 			if (!runPbrPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineGtaoMrtDocumentTest(extension, failure)) return false;

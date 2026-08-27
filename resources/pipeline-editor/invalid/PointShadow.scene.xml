@@ -1,6 +1,6 @@
 <Scene>
-  <version>1</version><name>Invalid Point Shadow</name><environmentBinding>Preview.Environment</environmentBinding>
+  <version>1</version><name>Invalid Point Shadow Range</name><environmentBinding>Preview.Environment</environmentBinding>
   <Layers><Layer>Default</Layer></Layers>
   <Models><Model><id>Box</id><source>box</source><materialBinding>Preview.Main</materialBinding><Layers><Layer>Default</Layer></Layers></Model></Models>
-  <Lights><Light><id>Point</id><type>point</type><position>0 4 0</position><range>10</range><castsShadows>true</castsShadows></Light></Lights>
+  <Lights><Light><id>Point</id><type>point</type><position>0 4 0</position><range>0</range><castsShadows>true</castsShadows></Light></Lights>
 </Scene>

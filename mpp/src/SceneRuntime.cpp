@@ -12,6 +12,7 @@
 #include "mpp/PbrMaterial.h"
 #include "mpp/ProgrammaticPbrMaterialStream.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/RenderSystem.h"
 #include "mpp/SceneRuntime.h"
 #include "mpp/SphereModelStream.h"
 #include "mpp/mesh/MeshSpecification.h"
@@ -51,7 +52,7 @@ namespace mpp
 		mModelInstances.clear();clearResources(mScene,mResourceNames);mDiagnostics.clear();mModelTriangles.clear();mLights.clear();mEnvironmentBinding.clear();mUniqueTriangles=0;
 	}
 
-	bool SceneRuntime::rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings,std::map<std::string,UniformCollection> const& instanceOverrides,std::string const& expectedEnvironmentBinding)
+	bool SceneRuntime::rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings,std::map<std::string,UniformCollection> const& instanceOverrides,std::string const& expectedEnvironmentBinding,std::string const& shadowDomain)
 	{
 		mDiagnostics=document.validate();
 		if(!expectedEnvironmentBinding.empty()&&document.environmentBinding!=expectedEnvironmentBinding)
@@ -88,6 +89,36 @@ namespace mpp
 			}
 		}
 		catch(std::exception const& error){mDiagnostics.error("MPP-SCENE-RUNTIME-004","Scene candidate creation failed: "+std::string(error.what()),{document.sourcePath},"scene");clearResources(candidate,candidateNames);return false;}
+		if (!shadowDomain.empty())
+		{
+			try
+			{
+				auto const shadowLightIndex = document.getShadowLightIndex();
+				if (!shadowLightIndex) THROW_MPP("Shadow domain requires a shadow-casting scene light.", __LINE__, __FILE__, __func__);
+				auto const& authored = document.lights[*shadowLightIndex];
+				ShadowOptions shadow;
+				shadow.enabled = true;
+				shadow.light.type = authored.type == SceneLightType::Point ? ShadowLightType::Point : ShadowLightType::Directional;
+				shadow.light.lightIndex = static_cast<uint32_t>(*shadowLightIndex);
+				if (authored.type == SceneLightType::Point)
+				{
+					shadow.light.position = authored.position;
+					shadow.light.range = authored.range;
+				}
+				else
+				{
+					shadow.light.direction = glm::normalize(authored.direction);
+					shadow.light.focusPoint = document.camera.target;
+				}
+				mRenderSystem->configureShadowDomain(shadowDomain, shadow);
+			}
+			catch (std::exception const& error)
+			{
+				mDiagnostics.error("MPP-SCENE-RUNTIME-008", "Scene shadow domain setup failed: " + std::string(error.what()), { document.sourcePath }, "lights");
+				clearResources(candidate, candidateNames);
+				return false;
+			}
+		}
 		auto previous=mScene;auto previousNames=std::move(mResourceNames);mScene=std::move(candidate);mResourceNames=std::move(candidateNames);mModelTriangles=std::move(candidateTriangles);mModelInstances=std::move(candidateInstances);mLights=std::move(candidateLights);mEnvironmentBinding=document.environmentBinding;mUniqueTriangles=candidateTriangleTotal;clearResources(previous,previousNames);return true;
 	}
 	ScenePtr const& SceneRuntime::getScene()const{return mScene;}
