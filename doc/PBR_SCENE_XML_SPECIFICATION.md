@@ -55,7 +55,7 @@ Every referenced layer must appear in top-level `Layers`. Legacy scenes without 
   <castsShadows>true</castsShadows></Light>
 ```
 
-Types are `directional` and `point`. Point lights use `position` and non-negative `range`; directional lights require a non-zero direction. Intensity and colour components are non-negative. Version 1 permits one shadow-casting directional light; point-light shadows are invalid. Scene-authored lights are opt-in ownership—scenes without authored lights retain host-managed compatibility lighting.
+Types are `directional` and `point`. Point lights use `position` and a positive `range`; directional lights require a non-zero direction. Intensity and colour components are non-negative. A scene permits exactly one `castsShadows: true` light, directional or point. Scene runtime configures the named domain from that light and records its exact zero-based light-array index, so visibility affects only that direct-light contribution. Scene-authored lights are opt-in ownership—scenes without authored lights retain host-managed compatibility lighting.
 
 ## Binding rules
 
