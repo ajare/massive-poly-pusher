@@ -100,6 +100,12 @@ namespace mpp::resource_parsers
 					if (text.find(rasterMarker) == std::string::npos) return fail(extension + ": explicit raster state was not serialized");
 					if (text.find(rasterMarker) != text.rfind(rasterMarker)) return fail(extension + ": default raster state was serialized");
 				}
+
+				GraphImageDesc cubeDepth; cubeDepth.format = GraphImageFormat::Depth24; cubeDepth.shape = GraphImageShape::CubeMap; cubeDepth.absoluteSize = { 32, 32 };
+				cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled; cubeDepth.depthCompare = true;
+				RenderGraph cubeGraph; auto cube = cubeGraph.createImage("ShadowCube", cubeDepth); cube = cubeGraph.writeDepth(cubeGraph.addPass("Face4"), cube, GraphLoadOp::Clear, GraphStoreOp::Store, 0.4f, 0, 4);
+				RenderGraphSerializer::toFile(cubeGraph, roundTrip); auto restoredCube = RenderGraphParser::fromFile(roundTrip); auto restoredCubeInfo = restoredCube.getImageInfo({ 0, 0 }); auto restoredCubePass = restoredCube.getPassInfo({ 0 });
+				if (restoredCubeInfo.desc.shape != GraphImageShape::CubeMap || !restoredCubeInfo.desc.depthCompare || restoredCubePass.depthOutputs.front().cubeFace != 4) return fail(extension + ": depth cubemap shape, comparison, or face was lost in round trip");
 			}
 			catch (std::exception const& exception)
 			{

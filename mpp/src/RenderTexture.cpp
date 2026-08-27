@@ -266,35 +266,39 @@ namespace mpp
 		case RenderTextureDepthAttachment::DepthStencilTexture:
 		{
 			GL_CHECK(glGenTextures(1, &mDepthTexture));
-			GLenum depthTarget = mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+			GLenum depthTarget = mSamples > 1 ? GL_TEXTURE_2D_MULTISAMPLE : (GLenum)mTarget;
 			GL_CHECK(glBindTexture(depthTarget, mDepthTexture));
+			label = "Depth texture: " + getName();
+			GL_CHECK(glObjectLabel(GL_TEXTURE, mDepthTexture, -1, label.c_str()));
 			const bool stencil = mDepthAttachment == RenderTextureDepthAttachment::DepthStencilTexture;
 			const auto depthInternalFormat = getDepthInternalFormat(mDepthFormat);
 			if (mSamples > 1) GL_CHECK(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, (GLsizei)mSamples, depthInternalFormat, (GLsizei)width, (GLsizei)height, GL_TRUE));
+			else if (mTarget == GL_TEXTURE_CUBE_MAP) for (uint32_t face = 0; face < 6; ++face) for (uint32_t mip = 0; mip < mMipLevels; ++mip) { auto dimension = (GLsizei)std::max<size_t>(1, width >> mip); GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mip, depthInternalFormat, dimension, dimension, 0, GL_DEPTH_COMPONENT, getDepthDataType(mDepthFormat), nullptr)); }
 			else GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, depthInternalFormat, (GLsizei)width, (GLsizei)height, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, getDepthDataType(mDepthFormat), nullptr));
-			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, mDepthParams.params.minFilter));
-			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mDepthParams.params.magFilter));
-			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mDepthParams.params.wrap));
-			if (mSamples == 1) GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, mDepthParams.params.wrap));
+			if (mSamples == 1) GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_MIN_FILTER, mDepthParams.params.minFilter));
+			if (mSamples == 1) GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_MAG_FILTER, mDepthParams.params.magFilter));
+			if (mSamples == 1) GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_WRAP_S, mDepthParams.params.wrap));
+			if (mSamples == 1) GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_WRAP_T, mDepthParams.params.wrap));
+			if (mSamples == 1 && mTarget == GL_TEXTURE_CUBE_MAP) GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_WRAP_R, mDepthParams.params.wrap));
 			if (mDepthParams.params.useMipmaps)
 			{
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mDepthParams.params.lodBaseLevel));
-				GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mDepthParams.params.lodMaxLevel));
-				GL_CHECK(glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, mDepthParams.params.lodBias));
-				GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+				GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_BASE_LEVEL, mDepthParams.params.lodBaseLevel));
+				GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_MAX_LEVEL, mDepthParams.params.lodMaxLevel));
+				GL_CHECK(glTexParameterf(depthTarget, GL_TEXTURE_LOD_BIAS, mDepthParams.params.lodBias));
+				GL_CHECK(glGenerateMipmap(depthTarget));
 			}
 			if (mSamples == 1)
 			{
 				if (mDepthParams.compareRefToTexture)
 				{
 					const GLfloat litBorder[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-					GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE));
-					GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL));
-					GL_CHECK(glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, litBorder));
+					GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE));
+					GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL));
+					GL_CHECK(glTexParameterfv(depthTarget, GL_TEXTURE_BORDER_COLOR, litBorder));
 				}
-				else GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE));
+				else GL_CHECK(glTexParameteri(depthTarget, GL_TEXTURE_COMPARE_MODE, GL_NONE));
 			}
-			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, depthTarget, mDepthTexture, 0));
+			GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, stencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, mTarget == GL_TEXTURE_CUBE_MAP ? GL_TEXTURE_CUBE_MAP_POSITIVE_X : depthTarget, mDepthTexture, 0));
 			break;
 		}
 		}
@@ -373,9 +377,9 @@ namespace mpp
 		}
 		if (mDepthTexture != 0)
 		{
-			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, (GLint)mipLevel));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)mipLevel));
+			GL_CHECK(glBindTexture(mTarget, mDepthTexture));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, (GLint)mipLevel));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, (GLint)mipLevel));
 		}
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
@@ -390,9 +394,9 @@ namespace mpp
 		}
 		if (mDepthTexture != 0)
 		{
-			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, mDepthParams.params.lodBaseLevel));
-			GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, mDepthParams.params.lodMaxLevel));
+			GL_CHECK(glBindTexture(mTarget, mDepthTexture));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_BASE_LEVEL, mDepthParams.params.lodBaseLevel));
+			GL_CHECK(glTexParameteri(mTarget, GL_TEXTURE_MAX_LEVEL, mDepthParams.params.lodMaxLevel));
 		}
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
@@ -409,8 +413,8 @@ namespace mpp
 		}
 		if (mDepthParams.params.useMipmaps && mDepthTexture != 0)
 		{
-			GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
-			GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+			GL_CHECK(glBindTexture(mTarget, mDepthTexture));
+			GL_CHECK(glGenerateMipmap(mTarget));
 		}
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 	}
@@ -527,6 +531,16 @@ namespace mpp
 		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
 	}
 
+	void RenderTexture::attachDepthFace(uint32_t face, uint32_t mipLevel)
+	{
+		if (mTarget != GL_TEXTURE_CUBE_MAP || mDepthTexture == 0) THROW_MPP("Depth-face attachment requires a depth cubemap render texture.", __LINE__, __FILE__, __func__);
+		if (face >= 6 || mipLevel >= mMipLevels) THROW_MPP("Depth cubemap face or mip index is out of range.", __LINE__, __FILE__, __func__);
+		GLint previous = 0; GL_CHECK(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previous)); GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffer));
+		GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mDepthTexture, mipLevel));
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) { GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous)); THROW_MPP("Depth cubemap face framebuffer attachment is incomplete.", __LINE__, __FILE__, __func__); }
+		GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)previous));
+	}
+
 	void RenderTexture::restoreColourFaces()
 	{
 		if (mTarget != GL_TEXTURE_CUBE_MAP) return;
@@ -557,7 +571,7 @@ namespace mpp
 			THROW_MPP("Render texture has no depth texture attachment.", __LINE__, __FILE__, __func__);
 		}
 		GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
-		GL_CHECK(glBindTexture(GL_TEXTURE_2D, mDepthTexture));
+		GL_CHECK(glBindTexture(mTarget, mDepthTexture));
 	}
 
 	size_t RenderTexture::getNumColourAttachments() const

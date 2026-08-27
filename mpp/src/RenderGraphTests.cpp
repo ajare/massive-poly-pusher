@@ -93,6 +93,26 @@ namespace mpp
 		GraphImageDesc colour;
 		colour.format = GraphImageFormat::Rgba16f;
 		colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+		if (colour.shape != GraphImageShape::Texture2D) return fail("existing graph image descriptors no longer default to 2D");
+
+		GraphImageDesc cubeDepth;
+		cubeDepth.format = GraphImageFormat::Depth24;
+		cubeDepth.shape = GraphImageShape::CubeMap;
+		cubeDepth.absoluteSize = { 64, 64 };
+		cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled | GraphImageUsage::Exported;
+		cubeDepth.depthCompare = true;
+		RenderGraph cubeGraph;
+		auto cube = cubeGraph.createImage("PointShadow", cubeDepth);
+		for (uint32_t face = 0; face < 6; ++face) { auto pass = cubeGraph.addPass("Face" + std::to_string(face)); cube = cubeGraph.writeDepth(pass, cube, GraphLoadOp::Clear, GraphStoreOp::Store, 0.1f * (face + 1), 0, face); }
+		if (!cubeGraph.compile().valid || cubeGraph.getPassInfo({ 5 }).depthOutputs.front().cubeFace != 5 || cubeGraph.describe().find("face 5") == std::string::npos) return fail("depth cubemap face writes were not compiled or described");
+		bool rejectedFace = false; try { auto pass = cubeGraph.addPass("BadFace"); cubeGraph.writeDepth(pass, cube, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, 6); } catch (...) { rejectedFace = true; }
+		if (!rejectedFace) return fail("out-of-range cubemap face was accepted");
+		bool rejectedMissingFace = false; try { RenderGraph graph; auto image = graph.createImage("Cube", cubeDepth); graph.writeDepth(graph.addPass("MissingFace"), image); } catch (...) { rejectedMissingFace = true; }
+		if (!rejectedMissingFace) return fail("cubemap attachment without a selected face was accepted");
+		bool rejected2dFace = false; try { RenderGraph graph; GraphImageDesc depth2d = cubeDepth; depth2d.shape = GraphImageShape::Texture2D; auto image = graph.createImage("Depth2D", depth2d); graph.writeDepth(graph.addPass("2DFace"), image, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, 0); } catch (...) { rejected2dFace = true; }
+		if (!rejected2dFace) return fail("2D attachment accepted a cubemap face");
+		bool rejectedShape = false; try { RenderGraph graph; auto invalid = cubeDepth; invalid.absoluteSize = { 64, 32 }; graph.createImage("NonSquareCube", invalid); } catch (...) { rejectedShape = true; }
+		if (!rejectedShape) return fail("non-square cubemap descriptor was accepted");
 
 		RenderGraph valid;
 		auto scene = valid.createImage("Scene", colour);

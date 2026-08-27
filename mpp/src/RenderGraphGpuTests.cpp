@@ -55,6 +55,14 @@ namespace mpp
 			auto texture=dynamic_cast<RenderTexture*>(target.get());if(!texture||!texture->getDepthTextureId())return -1.0f;std::vector<float> values(texture->getWidth()*texture->getHeight());GL_CHECK(glBindTexture(GL_TEXTURE_2D,texture->getDepthTextureId()));GL_CHECK(glGetTexImage(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,GL_FLOAT,values.data()));GL_CHECK(glBindTexture(GL_TEXTURE_2D,0));return values.empty()?-1.0f:values.front();
 		}
 
+		float readFirstCubeDepth(RenderTargetPtr const& target, uint32_t face)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get()); if (!texture || face >= 6) return -1.0f;
+			std::vector<float> values(texture->getWidth() * texture->getHeight()); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texture->getDepthTextureId()));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT, GL_FLOAT, values.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+			return values.empty() ? -1.0f : values.front();
+		}
+
 		bool nearColour(std::array<uint8_t, 4> const& pixel, std::array<uint8_t, 4> const& expected)
 		{
 			for (size_t i = 0; i < 4; ++i)
@@ -445,6 +453,25 @@ namespace mpp
 			if (!resizedTarget || resizedTarget->getWidth() != 37 || resizedTarget->getHeight() != 29) return fail("resized graph target dimensions are wrong");
 			auto retainedTarget=resizedTarget;bool invalidPlanRejected=false;try{RenderGraphAllocationPlan invalidPlan;targets.allocate(invalidPlan);}catch(...){invalidPlanRejected=true;}if(!invalidPlanRejected||targets.get(first)!=retainedTarget)return fail("failed graph allocation did not retain the prior generation");
 			resizedTarget.reset();retainedTarget.reset();
+
+			stage = "depth cubemap graph faces";
+			GraphImageDesc cubeDepth; cubeDepth.format = GraphImageFormat::Depth24; cubeDepth.shape = GraphImageShape::CubeMap; cubeDepth.absoluteSize = { 16, 16 };
+			cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled; cubeDepth.depthCompare = true; cubeDepth.transient = false;
+			RenderGraph cubeGraph; auto cubeImage = cubeGraph.createImage("GpuTestDepthCube", cubeDepth); std::vector<GraphImageHandle> cubeVersions; std::vector<GraphPassHandle> cubePasses;
+			for (uint32_t face = 0; face < 6; ++face) { auto pass = cubeGraph.addPass("GpuTestDepthFace" + std::to_string(face)); cubePasses.push_back(pass); cubeImage = cubeGraph.writeDepth(pass, cubeImage, GraphLoadOp::Clear, GraphStoreOp::Store, 0.1f * (face + 1), 0, face); cubeVersions.push_back(cubeImage); }
+			auto retain = cubeGraph.addPass("GpuTestRetainDepthFaces"); for (auto version : cubeVersions) cubeGraph.readSampled(retain, version); auto retained = cubeGraph.createImage("GpuTestCubeRetention", colour); cubeGraph.writeColour(retain, retained, GraphLoadOp::Clear);
+			auto cubePlan = cubeGraph.buildAllocationPlan({ 16, 16 }); if (!cubePlan.valid) return fail("depth cubemap allocation plan was rejected");
+			RenderGraphTargets cubeTargets(renderSystem); cubeTargets.allocate(cubePlan); auto cubeTarget = cubeTargets.get(cubeVersions.back()); auto depthCubeTexture = dynamic_cast<RenderTexture*>(cubeTarget.get());
+			if (!depthCubeTexture || depthCubeTexture->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || depthCubeTexture->getDepthFormat() != RenderTextureDepthFormat::Depth24 || !depthCubeTexture->usesDepthComparison()) return fail("allocated depth cubemap contract is incomplete");
+			for (auto version : cubeVersions) if (cubeTargets.get(version) != cubeTarget) return fail("one logical cubemap's face writes did not share backing storage");
+			GLint compareMode = GL_NONE; GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubeTexture->getDepthTextureId())); GL_CHECK(glGetTexParameteriv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, &compareMode)); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (compareMode != GL_COMPARE_REF_TO_TEXTURE) return fail("depth cubemap comparison sampling was not enabled");
+			GLchar objectLabel[256]{}; GLsizei objectLabelLength = 0; GL_CHECK(glGetObjectLabel(GL_TEXTURE, depthCubeTexture->getDepthTextureId(), sizeof(objectLabel), &objectLabelLength, objectLabel)); if (!objectLabelLength) return fail("depth cubemap texture was not labelled");
+			{ RenderGraphExecutor cubeExecutor(renderSystem); for (auto pass : cubePasses) cubeExecutor.setPassCallback(cubeGraph, pass, [](RenderGraphExecutionContext const&) {}); cubeExecutor.setPassCallback(cubeGraph, retain, [](RenderGraphExecutionContext const&) {}); cubeExecutor.execute(cubeGraph, cubeTargets, renderSystem->getCaps()); }
+			for (uint32_t face = 0; face < 6; ++face) { auto value = readFirstCubeDepth(cubeTarget, face); auto expected = 0.1f * (face + 1); if (std::abs(value - expected) > 0.002f) return fail("depth cubemap face " + std::to_string(face) + " readback was " + std::to_string(value)); }
+			bool rejectedCubeMsaa = false; for (uint32_t samples : { 2u, 4u, 8u }) if (renderSystem->getCaps().supportsMsaa(samples)) { try { cubeTargets.allocatePhysical(cubePlan, samples); } catch (...) { rejectedCubeMsaa = true; } break; } if (!rejectedCubeMsaa) return fail("multisampled depth cubemap allocation was accepted");
+			GraphImageDesc importedCubeDesc = cubeDepth; importedCubeDesc.external = true; RenderGraph importedCubeGraph; auto importedCube = importedCubeGraph.createImage("ImportedDepthCube", importedCubeDesc); RenderGraphTargets importedCubeTargets(renderSystem); importedCubeTargets.bindImported(importedCubeGraph, importedCube, cubeTarget);
+			bool rejectedMismatchedImport = false; try { importedCubeTargets.bindImported(importedCubeGraph, importedCube, targets.get(second)); } catch (...) { rejectedMismatchedImport = true; } if (!rejectedMismatchedImport) return fail("mismatched 2D import was accepted for a depth cubemap");
+			std::weak_ptr<RenderTarget> releasedCube = cubeTarget; importedCubeTargets.clear(); cubeTargets.clear(); cubeTarget.reset(); if (!releasedCube.expired()) return fail("destroyed depth cubemap remained owned by graph targets");
 
 			stage="physical MSAA colour/depth allocation and resolve";
 			for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(plan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(first).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(first).get());if(!write||!resolved||write==resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA colour write/resolve targets are invalid");executor.execute(graph,targets,renderSystem->getCaps());if(!nearColour(readFirstPixel(targets.get(first)),{255,0,0,64}))return fail("MSAA colour/alpha resolve readback failed");}

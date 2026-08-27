@@ -239,6 +239,7 @@ namespace mpp
 				auto const& image = entry.second;
 				GraphImageDesc desc;
 				desc.format = parseFormat(image.getEntry("format").getValue(), filepath);
+				if (image.hasEntry("shape")) { auto shape = image.getEntry("shape").getValue(); utils::StringUtils::toUpper(shape); if (shape == "CUBEMAP") desc.shape = GraphImageShape::CubeMap; else if (shape != "2D" && shape != "TEXTURE2D") THROW_MPP_RESOURCE_PARSERS("Unknown render graph image shape '" + shape + "' in " + filepath, __LINE__, __FILE__, __func__); }
 				desc.relativeSize = image.hasEntry("scale") ? parseVec2(image.getEntry("scale").getValue()) : glm::vec2(1.0f);
 				if (image.hasEntry("width")) desc.absoluteSize.x = utils::StringUtils::parseUInt(image.getEntry("width").getValue());
 				if (image.hasEntry("height")) desc.absoluteSize.y = utils::StringUtils::parseUInt(image.getEntry("height").getValue());
@@ -249,6 +250,7 @@ namespace mpp
 				if (image.hasEntry("magFilter")) desc.params.magFilter = parseMagFilter(image.getEntry("magFilter").getValue(), filepath);
 				if (image.hasEntry("wrap")) desc.params.wrap = parseWrap(image.getEntry("wrap").getValue(), filepath);
 				desc.params.useMipmaps = desc.mipLevels > 1;
+				desc.depthCompare = image.hasEntry("depthCompare") && parseBool(image.getEntry("depthCompare").getValue());
 				desc.external = image.hasEntry("import") || (image.hasEntry("external") && parseBool(image.getEntry("external").getValue()));
 				desc.transient = !image.hasEntry("transient") || parseBool(image.getEntry("transient").getValue());
 				string usage = image.getEntry("usage").getValue();
@@ -314,7 +316,7 @@ namespace mpp
 						if (output.first != "Output") continue;
 						auto it = images.find(output.second.getEntry("image").getValue());
 						if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown colour graph image in " + filepath, __LINE__, __FILE__, __func__);
-						auto next = graph.writeColour(pass, it->second, parseLoad(output.second.getEntry("load").getValue()), parseStore(output.second.getEntry("store").getValue()), output.second.hasEntry("clear") ? parseVec4(output.second.getEntry("clear").getValue()) : glm::vec4(0.0f), output.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.second.getEntry("mipLevel").getValue()) : 0);
+						auto next = graph.writeColour(pass, it->second, parseLoad(output.second.getEntry("load").getValue()), parseStore(output.second.getEntry("store").getValue()), output.second.hasEntry("clear") ? parseVec4(output.second.getEntry("clear").getValue()) : glm::vec4(0.0f), output.second.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.second.getEntry("mipLevel").getValue()) : 0, output.second.hasEntry("face") ? utils::StringUtils::parseUInt(output.second.getEntry("face").getValue()) : GraphNoCubeFace);
 						if (output.second.hasEntry("value")) graph.setValueId(next, output.second.getEntry("value").getValue());
 						it->second = next;
 					}
@@ -324,7 +326,7 @@ namespace mpp
 					auto const& output = passData.getEntry("Depth");
 					auto it = images.find(output.getEntry("image").getValue());
 					if (it == images.end()) THROW_MPP_RESOURCE_PARSERS("Unknown depth graph image in " + filepath, __LINE__, __FILE__, __func__);
-					auto next = graph.writeDepth(pass, it->second, parseLoad(output.getEntry("load").getValue()), parseStore(output.getEntry("store").getValue()), output.hasEntry("clear") ? utils::StringUtils::parseFloat(output.getEntry("clear").getValue()) : 1.0f, output.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.getEntry("mipLevel").getValue()) : 0);
+					auto next = graph.writeDepth(pass, it->second, parseLoad(output.getEntry("load").getValue()), parseStore(output.getEntry("store").getValue()), output.hasEntry("clear") ? utils::StringUtils::parseFloat(output.getEntry("clear").getValue()) : 1.0f, output.hasEntry("mipLevel") ? utils::StringUtils::parseUInt(output.getEntry("mipLevel").getValue()) : 0, output.hasEntry("face") ? utils::StringUtils::parseUInt(output.getEntry("face").getValue()) : GraphNoCubeFace);
 					if (output.hasEntry("value")) graph.setValueId(next, output.getEntry("value").getValue());
 					it->second = next;
 				}

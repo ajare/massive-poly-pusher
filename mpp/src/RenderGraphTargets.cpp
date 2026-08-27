@@ -30,6 +30,7 @@ namespace mpp
 		RenderTextureOptions makeOptions(GraphImageDesc const& desc)
 		{
 			RenderTextureOptions options;
+			options.target = desc.shape == GraphImageShape::CubeMap ? TextureTarget::CubeMap : TextureTarget::Texture2D;
 			options.params = desc.params;
 			options.params.colourSpace = desc.colourSpace;
 			// The declared chain length has to reach the texture, not just its
@@ -55,11 +56,11 @@ namespace mpp
 			case GraphImageFormat::Rgba32f: options.colourType = TextureInternalType::Float; options.colourNormalised = false; options.colourBitSize = 32; options.colourChannels = 4; break;
 			case GraphImageFormat::R11g11b10f: options.colourInternalFormat = GL_R11F_G11F_B10F; break;
 			case GraphImageFormat::Rgb10a2: options.colourInternalFormat = GL_RGB10_A2; break;
-			case GraphImageFormat::Depth16: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth16; options.depthParams.params = options.params; break;
-			case GraphImageFormat::Depth24: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth24; options.depthParams.params = options.params; break;
-			case GraphImageFormat::Depth32f: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth32f; options.depthParams.params = options.params; break;
-			case GraphImageFormat::Depth24Stencil8: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture; options.depthFormat = RenderTextureDepthFormat::Depth24Stencil8; options.depthParams.params = options.params; break;
-			case GraphImageFormat::Depth32fStencil8: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture; options.depthFormat = RenderTextureDepthFormat::Depth32fStencil8; options.depthParams.params = options.params; break;
+			case GraphImageFormat::Depth16: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth16; options.depthParams.params = options.params; options.depthParams.compareRefToTexture = desc.depthCompare; break;
+			case GraphImageFormat::Depth24: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth24; options.depthParams.params = options.params; options.depthParams.compareRefToTexture = desc.depthCompare; break;
+			case GraphImageFormat::Depth32f: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthTexture; options.depthFormat = RenderTextureDepthFormat::Depth32f; options.depthParams.params = options.params; options.depthParams.compareRefToTexture = desc.depthCompare; break;
+			case GraphImageFormat::Depth24Stencil8: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture; options.depthFormat = RenderTextureDepthFormat::Depth24Stencil8; options.depthParams.params = options.params; options.depthParams.compareRefToTexture = desc.depthCompare; break;
+			case GraphImageFormat::Depth32fStencil8: options.numAttachments = 0; options.depthAttachment = RenderTextureDepthAttachment::DepthStencilTexture; options.depthFormat = RenderTextureDepthFormat::Depth32fStencil8; options.depthParams.params = options.params; options.depthParams.compareRefToTexture = desc.depthCompare; break;
 			}
 			return options;
 		}
@@ -131,11 +132,13 @@ namespace mpp
 		};
 		for (auto const* lifetime : lifetimes)
 		{
-			bool rasterAttachment=hasGraphImageUsage(lifetime->desc.usage,GraphImageUsage::ColourAttachment)||hasGraphImageUsage(lifetime->desc.usage,GraphImageUsage::DepthAttachment);uint32_t physicalSamples=rasterAttachment?samples:1;if(physicalSamples>1&&lifetime->desc.mipLevels>1)THROW_MPP("Multisampled graph attachment '"+lifetime->debugName+"' cannot declare mip levels.",__LINE__,__FILE__,__func__);
+			bool rasterAttachment=hasGraphImageUsage(lifetime->desc.usage,GraphImageUsage::ColourAttachment)||hasGraphImageUsage(lifetime->desc.usage,GraphImageUsage::DepthAttachment);uint32_t physicalSamples=rasterAttachment?samples:1;if(physicalSamples>1&&lifetime->desc.shape==GraphImageShape::CubeMap)THROW_MPP("Multisampled graph attachment '"+lifetime->debugName+"' cannot be a cubemap.",__LINE__,__FILE__,__func__);if(physicalSamples>1&&lifetime->desc.mipLevels>1)THROW_MPP("Multisampled graph attachment '"+lifetime->debugName+"' cannot declare mip levels.",__LINE__,__FILE__,__func__);
 			size_t poolIndex = SIZE_MAX;
 			for (size_t index = 0; index < candidatePool.size(); ++index)
 			{
 				if (candidatePool[index].samples!=physicalSamples||!graphImagesCanAlias(candidatePool[index].lifetime, *lifetime)) continue;
+				bool const sameCubemap = lifetime->desc.shape == GraphImageShape::CubeMap && candidatePool[index].lifetime.image.id == lifetime->image.id;
+				if (sameCubemap) { poolIndex = index; break; }
 				auto const& used = assignments[index];
 				if (used.empty())
 				{
@@ -161,9 +164,10 @@ namespace mpp
 				assignments.emplace_back();
 				poolIndex = candidatePool.size() - 1;
 			}
+			bool const sameLogicalCubemap = lifetime->desc.shape == GraphImageShape::CubeMap && candidatePool[poolIndex].lifetime.image.id == lifetime->image.id;
 			for (auto const& previous : assignments[poolIndex])
 			{
-				if (intervalsOverlap(previous, *lifetime))
+				if (!sameLogicalCubemap && intervalsOverlap(previous, *lifetime))
 					THROW_MPP("Render graph allocator attempted to alias overlapping image lifetimes.", __LINE__, __FILE__, __func__);
 			}
 			assignments[poolIndex].push_back({ lifetime->firstPass, lifetime->lastPass, lifetime->desc.transient });
@@ -191,6 +195,30 @@ namespace mpp
 		++mGeneration;
 	}
 
+	void RenderGraphTargets::bindImported(RenderGraph const& graph, GraphImageHandle image, RenderTargetPtr target)
+	{
+		if (!target) THROW_MPP("Render graph import requires a target.", __LINE__, __FILE__, __func__);
+		auto const info = graph.getImageInfo(image);
+		auto texture = dynamic_cast<RenderTexture*>(target.get());
+		if (!texture)
+		{
+			if (info.desc.shape == GraphImageShape::Texture2D && hasGraphImageUsage(info.desc.usage, GraphImageUsage::Presentation) && !hasGraphImageUsage(info.desc.usage, GraphImageUsage::DepthAttachment)) { bindImported(image, std::move(target)); return; }
+			THROW_MPP("Render graph import '" + info.name + "' requires a RenderTexture-backed target.", __LINE__, __FILE__, __func__);
+		}
+		auto const expectedTarget = info.desc.shape == GraphImageShape::CubeMap ? (uint32_t)GL_TEXTURE_CUBE_MAP : (uint32_t)GL_TEXTURE_2D;
+		bool const depth = hasGraphImageUsage(info.desc.usage, GraphImageUsage::DepthAttachment);
+		auto expectedDepthFormat = [&]()
+		{
+			switch (info.desc.format) { case GraphImageFormat::Depth16: return RenderTextureDepthFormat::Depth16; case GraphImageFormat::Depth32f: return RenderTextureDepthFormat::Depth32f; case GraphImageFormat::Depth24Stencil8: return RenderTextureDepthFormat::Depth24Stencil8; case GraphImageFormat::Depth32fStencil8: return RenderTextureDepthFormat::Depth32fStencil8; default: return RenderTextureDepthFormat::Depth24; }
+		}();
+		if (texture->getAttachmentTextureTarget() != expectedTarget || (info.desc.absoluteSize.x && texture->getWidth() != info.desc.absoluteSize.x) ||
+			(info.desc.absoluteSize.y && texture->getHeight() != info.desc.absoluteSize.y) || texture->getMipLevels() != info.desc.mipLevels ||
+			depth != texture->hasDepthBuffer() || (!depth && texture->getNumColourAttachments() == 0) ||
+			(depth && (texture->getDepthFormat() != expectedDepthFormat || texture->usesDepthComparison() != info.desc.depthCompare)))
+			THROW_MPP("Imported target for graph image '" + info.name + "' does not match its shape, dimensions, format, mip, or depth-comparison contract.", __LINE__, __FILE__, __func__);
+		bindImported(image, std::move(target));
+	}
+
 	void RenderGraphTargets::bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports)
 	{
 		for (auto const image : graph.getImportedImages())
@@ -205,7 +233,7 @@ namespace mpp
 			{
 				THROW_MPP("No target registered for render graph import '" + info.importName + "'.", __LINE__, __FILE__, __func__);
 			}
-			bindImported(image, target);
+			bindImported(graph, image, target);
 		}
 	}
 

@@ -72,6 +72,8 @@ namespace mpp
 		bool resize(size_t width, size_t height) override;
 
 		uint32_t getDepthTextureId() const;
+		RenderTextureDepthFormat getDepthFormat() const { return mDepthFormat; }
+		bool usesDepthComparison() const { return mDepthParams.compareRefToTexture; }
 
 		void bindDepth(uint32_t unit);
 
@@ -87,6 +89,7 @@ namespace mpp
 		// Selects the cubemap face and mip attached to a colour output. The
 		// caller owns render-state/attachment restoration (Phase 4.4).
 		void attachColourFace(size_t attachment, uint32_t face, uint32_t mipLevel);
+		void attachDepthFace(uint32_t face, uint32_t mipLevel);
 		// Restores every colour attachment to the conventional +X, mip-zero view.
 		void restoreColourFaces();
 		uint32_t getMipLevels() const override;

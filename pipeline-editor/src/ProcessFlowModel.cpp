@@ -211,11 +211,11 @@ namespace pipeline_editor
 			}
 			for (auto const& output : info.colourOutputs)
 			{
-				node.outputLabels.push_back("Colour -> " + imageLabel(output.image));
+				node.outputLabels.push_back("Colour -> " + imageLabel(output.image) + (output.cubeFace == GraphNoCubeFace ? "" : " face " + std::to_string(output.cubeFace)));
 			}
 			for (auto const& output : info.depthOutputs)
 			{
-				node.outputLabels.push_back("Depth -> " + imageLabel(output.image));
+				node.outputLabels.push_back("Depth -> " + imageLabel(output.image) + (output.cubeFace == GraphNoCubeFace ? "" : " face " + std::to_string(output.cubeFace)));
 			}
 			node.kind = ProcessFlowNodeKind::AuthoredPass;
 			node.passId = (int)pass;
@@ -470,7 +470,7 @@ namespace pipeline_editor
 						                   ? std::to_string(info.desc.absoluteSize.x) + " x " + std::to_string(info.desc.absoluteSize.y)
 						                   : std::to_string((int)(info.desc.relativeSize.x * 100)) + "% x " +
 						                         std::to_string((int)(info.desc.relativeSize.y * 100)) + "%";
-						node.details += ", " + std::to_string(info.desc.mipLevels) + " mip(s), " +
+						node.details += ", " + std::string(info.desc.shape == GraphImageShape::CubeMap ? "cubemap, " : "2D, ") + std::to_string(info.desc.mipLevels) + " mip(s), " +
 						                (info.desc.transient ? "transient" : "persistent") +
 						                (info.desc.external ? ", external" : "");
 						node.kind = imported ? ProcessFlowNodeKind::Import : ProcessFlowNodeKind::AuthoredImage;
@@ -658,6 +658,11 @@ namespace pipeline_editor
 		    std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
 		    { return node.kind == ProcessFlowNodeKind::AuthoredPass && !node.outputLabels.empty(); }))
 			throw std::runtime_error("Process-flow pass I/O labels were not populated.");
+		GraphImageDesc cubeDesc; cubeDesc.format = GraphImageFormat::Depth24; cubeDesc.shape = GraphImageShape::CubeMap; cubeDesc.absoluteSize = { 16, 16 }; cubeDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Exported;
+		RenderGraph cubeGraph; auto cubeImage = cubeGraph.createImage("FlowDepthCube", cubeDesc); cubeGraph.writeDepth(cubeGraph.addPass("CubeFace3"), cubeImage, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, 3);
+		ProcessFlowBuildInput cubeInput; cubeInput.graph = &cubeGraph; auto cubeModel = builder.build(cubeInput);
+		if (std::none_of(cubeModel.nodes.begin(), cubeModel.nodes.end(), [](auto const& node) { return std::find(node.outputLabels.begin(), node.outputLabels.end(), "Depth -> FlowDepthCube.v1 face 3") != node.outputLabels.end(); }))
+			throw std::runtime_error("Process-flow depth cubemap write omitted its selected face.");
 		if (!model.findNode(model.nodes[0].id) || !std::any_of(model.nodes.begin(), model.nodes.end(), [](auto const& node) { return node.orderWarning; }))
 			throw std::runtime_error("Process-flow model stable identity/order warning test failed.");
 		if (model.sceneGeneration != 12 || std::none_of(model.nodes.begin(), model.nodes.end(), [](auto const& node)
