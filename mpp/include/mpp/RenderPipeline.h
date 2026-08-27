@@ -89,7 +89,7 @@ namespace mpp
 		glm::vec3 direction{ 0.0f, -1.0f, 0.0f };
 		glm::vec3 focusPoint{ 0.0f };
 		glm::vec3 position{ 0.0f };
-		float range{ 100.0f };
+		float range{ 192.0f };
 		// Index in the receiving pipeline's light array. Visibility is applied
 		// only to this direct-light contribution.
 		uint32_t lightIndex{ 0 };
@@ -107,12 +107,15 @@ namespace mpp
 		ShadowLight light;
 		size_t resolution{ 2048 };
 		float orthoHalfWidth{ 450.0f };
-		float nearPlane{ 1.0f };
+		float nearPlane{ 0.25f };
 		float farPlane{ 1800.0f };
 		float constantBias{ 0.0008f };
 		float normalBias{ 0.0025f };
 		float filterRadiusTexels{ 1.0f };
 		ShadowFilterMode filterMode{ ShadowFilterMode::Pcf3x3 };
+		// Fraction of the point-light range where visibility starts fading to
+		// fully unshadowed. Directional domains ignore this value.
+		float fadeStartNormalized{ 0.9f };
 	};
 
 	struct _MPPAPI GraphPassDebugOptions

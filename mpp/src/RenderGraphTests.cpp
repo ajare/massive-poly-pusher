@@ -3,6 +3,7 @@
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
+#include "mpp/RenderPipeline.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/PbrShaders.h"
 #include "mpp/ModelRenderParams.h"
@@ -39,6 +40,22 @@ namespace mpp
 		if (VertexShaderPointShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
 			FragmentShaderPointShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
 			return fail("point caster no longer writes radial cubemap depth");
+		auto validatesFilteredPointShadow = [](std::string const& shader)
+		{
+			return shader.find("for (int y = -1; y <= 1; ++y)") != std::string::npos &&
+				shader.find("for (int x = -1; x <= 1; ++x)") != std::string::npos &&
+				shader.find("tapDirection") != std::string::npos &&
+				shader.find("visibility /= 9.0") != std::string::npos &&
+				shader.find("BIAS_AND_ENABLED.w") != std::string::npos &&
+				shader.find("mix(visibility, 1.0, fade)") != std::string::npos;
+		};
+		if (!validatesFilteredPointShadow(FragmentShader3dTemplate) || !validatesFilteredPointShadow(BuiltInPbrFragmentShader))
+			return fail("built-in point receivers lost tangent-space 3x3 PCF or range fade");
+		ShadowOptions pointDefaults;
+		if (pointDefaults.nearPlane != 0.25f || pointDefaults.light.range != 192.0f ||
+			pointDefaults.filterRadiusTexels != 1.0f || pointDefaults.fadeStartNormalized != 0.9f ||
+			pointDefaults.filterMode != ShadowFilterMode::Pcf3x3)
+			return fail("point-shadow quality defaults are not the Player Torch contract");
 
 		ModelRenderParams modelParams;
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();

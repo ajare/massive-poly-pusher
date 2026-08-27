@@ -216,12 +216,42 @@ vec3 fresnelSchlickRoughness(float cosine, vec3 f0, float roughness)
 float pointShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
 {
     vec3 lightToFragment = worldPosition - POINT_POSITION_AND_RANGE.xyz;
+    float range = POINT_POSITION_AND_RANGE.w;
     float distanceToLight = length(lightToFragment);
-    if (distanceToLight >= POINT_POSITION_AND_RANGE.w) return 1.0;
+    if (distanceToLight >= range) return 1.0;
     float nDotL = max(dot(normal, lightDirection), 0.0);
     float bias = BIAS_AND_ENABLED.x + BIAS_AND_ENABLED.y * (1.0 - nDotL);
-    return texture(@Texture(POINT_SHADOW_MAP), vec4(lightToFragment,
-        distanceToLight / POINT_POSITION_AND_RANGE.w - bias));
+    float compareDepth = distanceToLight / range - bias;
+    float visibility;
+    if (MAP_TEXEL_SIZE_AND_RADIUS.w < 0.5)
+    {
+        visibility = texture(@Texture(POINT_SHADOW_MAP), vec4(lightToFragment, compareDepth));
+    }
+    else
+    {
+        // Sampling offset directions lets the cubemap resolve taps across a
+        // face edge instead of clamping them in one projected face.
+        vec3 direction = lightToFragment / max(distanceToLight, 0.00001);
+        vec3 reference = abs(direction.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+        vec3 tangent = normalize(cross(reference, direction));
+        vec3 bitangent = cross(direction, tangent);
+        float radius = 2.0 * MAP_TEXEL_SIZE_AND_RADIUS.x * MAP_TEXEL_SIZE_AND_RADIUS.z;
+        visibility = 0.0;
+        for (int y = -1; y <= 1; ++y)
+        {
+            for (int x = -1; x <= 1; ++x)
+            {
+                vec3 tapDirection = normalize(direction + tangent * (float(x) * radius) + bitangent * (float(y) * radius));
+                visibility += texture(@Texture(POINT_SHADOW_MAP), vec4(tapDirection, compareDepth));
+            }
+        }
+        visibility /= 9.0;
+    }
+
+    float fade = clamp((distanceToLight / range - BIAS_AND_ENABLED.w) /
+        max(1.0 - BIAS_AND_ENABLED.w, 0.00001), 0.0, 1.0);
+    fade = fade * fade * (3.0 - 2.0 * fade);
+    return mix(visibility, 1.0, fade);
 }
 
 float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)

@@ -3103,7 +3103,7 @@ namespace mpp
 		const float texelSize = 1.0f / (float)domain.options.resolution;
 		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
 			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
-		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, domain.options.fadeStartNormalized);
 		frame.pointPositionAndRange = glm::vec4(domain.options.light.position, domain.options.light.range);
 		frame.shadowTypeAndLightIndex = glm::vec4(domain.options.light.type == ShadowLightType::Point ? 1.0f : 0.0f,
 			(float)domain.options.light.lightIndex, 0.0f, 0.0f);
@@ -3122,17 +3122,20 @@ namespace mpp
 		}
 		if (options.enabled)
 		{
-			if (options.resolution == 0 || options.orthoHalfWidth <= 0.0f || options.nearPlane < 0.0f ||
+			if ((options.light.type != ShadowLightType::Directional && options.light.type != ShadowLightType::Point) ||
+				options.resolution == 0 || options.orthoHalfWidth <= 0.0f || options.nearPlane < 0.0f ||
 				options.farPlane <= options.nearPlane || options.constantBias < 0.0f || options.normalBias < 0.0f ||
 				options.filterRadiusTexels < 0.0f || !isfinite(options.orthoHalfWidth) ||
 				!isfinite(options.nearPlane) || !isfinite(options.farPlane) ||
 				!isfinite(options.constantBias) || !isfinite(options.normalBias) || !isfinite(options.filterRadiusTexels) ||
+				!isfinite(options.fadeStartNormalized) || options.fadeStartNormalized < 0.0f || options.fadeStartNormalized > 1.0f ||
+				(options.filterMode != ShadowFilterMode::Hard && options.filterMode != ShadowFilterMode::Pcf3x3) ||
 				(options.light.type == ShadowLightType::Directional &&
 				 (!isfinite(options.light.direction.x) || !isfinite(options.light.direction.y) || !isfinite(options.light.direction.z) ||
 				  glm::dot(options.light.direction, options.light.direction) < 0.000001f)) ||
 				(options.light.type == ShadowLightType::Point &&
 				 (!isfinite(options.light.position.x) || !isfinite(options.light.position.y) || !isfinite(options.light.position.z) ||
-				  !isfinite(options.light.range) || options.light.range <= options.nearPlane)))
+				  !isfinite(options.light.range) || options.nearPlane <= 0.0f || options.light.range <= options.nearPlane)))
 			{
 				THROW_MPP("Invalid shadow domain options.", __LINE__, __FILE__, __func__);
 			}
@@ -3232,7 +3235,7 @@ namespace mpp
 		float texelSize = 1.0f / (float)domain.options.resolution;
 		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
 			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
-		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, domain.options.fadeStartNormalized);
 		frame.pointPositionAndRange = glm::vec4(domain.options.light.position, domain.options.light.range);
 		frame.shadowTypeAndLightIndex = glm::vec4(point ? 1.0f : 0.0f, (float)domain.options.light.lightIndex, 0.0f, 0.0f);
 		auto& frameBytes = domain.frameBuffer->getBufferData();

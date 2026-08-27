@@ -475,6 +475,34 @@ namespace mpp
 			bool rejectedMismatchedImport = false; try { importedCubeTargets.bindImported(importedCubeGraph, importedCube, targets.get(second)); } catch (...) { rejectedMismatchedImport = true; } if (!rejectedMismatchedImport) return fail("mismatched 2D import was accepted for a depth cubemap");
 			std::weak_ptr<RenderTarget> releasedCube = cubeTarget; importedCubeTargets.clear(); cubeTargets.clear(); cubeTarget.reset(); if (!releasedCube.expired()) return fail("destroyed depth cubemap remained owned by graph targets");
 
+			stage = "point shadow quality options";
+			ShadowOptions pointQuality;
+			pointQuality.enabled = true;
+			pointQuality.light.type = ShadowLightType::Point;
+			pointQuality.light.position = { 1.0f, 2.0f, 3.0f };
+			pointQuality.light.range = 24.0f;
+			pointQuality.nearPlane = 0.25f;
+			pointQuality.constantBias = 0.001f;
+			pointQuality.normalBias = 0.003f;
+			pointQuality.filterMode = ShadowFilterMode::Hard;
+			pointQuality.filterRadiusTexels = 2.0f;
+			pointQuality.fadeStartNormalized = 0.75f;
+			renderSystem->configureShadowDomain("GpuTestPointQuality", pointQuality);
+			auto const& appliedPointQuality = renderSystem->getShadowDomainOptions("GpuTestPointQuality");
+			if (appliedPointQuality.nearPlane != pointQuality.nearPlane || appliedPointQuality.light.range != pointQuality.light.range ||
+				appliedPointQuality.constantBias != pointQuality.constantBias || appliedPointQuality.normalBias != pointQuality.normalBias ||
+				appliedPointQuality.filterMode != ShadowFilterMode::Hard || appliedPointQuality.filterRadiusTexels != pointQuality.filterRadiusTexels ||
+				appliedPointQuality.fadeStartNormalized != pointQuality.fadeStartNormalized)
+				return fail("point shadow quality options were not retained by the public domain API");
+			bool rejectedInvalidPointQuality = false;
+			try { auto invalid = pointQuality; invalid.fadeStartNormalized = 1.01f; renderSystem->configureShadowDomain("GpuTestInvalidPointQuality", invalid); }
+			catch (...) { rejectedInvalidPointQuality = true; }
+			if (!rejectedInvalidPointQuality) return fail("point shadow accepted an out-of-range normalized fade start");
+			rejectedInvalidPointQuality = false;
+			try { auto invalid = pointQuality; invalid.nearPlane = 0.0f; renderSystem->configureShadowDomain("GpuTestInvalidPointNear", invalid); }
+			catch (...) { rejectedInvalidPointQuality = true; }
+			if (!rejectedInvalidPointQuality) return fail("point shadow accepted a non-positive near plane");
+
 			stage = "point shadow hardware fallback";
 			ShadowOptions unsupportedPointShadow;
 			unsupportedPointShadow.enabled = true;

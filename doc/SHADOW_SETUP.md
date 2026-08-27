@@ -36,10 +36,15 @@ shadows.light.type = mpp::ShadowLightType::Point;
 shadows.light.position = { 0.0f, 2.0f, 0.0f };
 shadows.light.range = 30.0f;
 shadows.light.lightIndex = 0;
-shadows.nearPlane = 0.1f;
+shadows.nearPlane = 0.25f;
+shadows.constantBias = 0.0008f;
+shadows.normalBias = 0.0025f;
+shadows.filterMode = mpp::ShadowFilterMode::Pcf3x3;
+shadows.filterRadiusTexels = 1.0f;
+shadows.fadeStartNormalized = 0.9f;
 ```
 
-Point casters are opaque and two-sided. If Depth24 cubemap allocation is unavailable, only that domain is disabled with one warning; direct lighting remains active.
+Point casters are opaque and two-sided. Point domains use hard comparison or a nine-tap 3-by-3 tangent-space PCF kernel. Its radius is expressed in cubemap texels; every tap offsets the lookup direction, so cube sampling remains continuous across face edges. Visibility begins fading at `fadeStartNormalized * range` and is fully unshadowed at range. If Depth24 cubemap allocation is unavailable, only that domain is disabled with one warning; direct lighting remains active.
 
 Render the scene through a pipeline that joined the domain:
 
