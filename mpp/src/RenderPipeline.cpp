@@ -473,19 +473,37 @@ namespace mpp
 
 		GraphImageHandle shadowDepth;
 		GraphImageHandle shadowDepthOutput;
-		GraphPassHandle shadowPass;
+		std::vector<GraphPassHandle> shadowPasses;
 		if (!mOptions.shadowDomain.empty() && mOptions.graphPasses.shadow)
 		{
 			GraphImageDesc shadowDesc;
 			shadowDesc.format = GraphImageFormat::Depth24;
 			shadowDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
+			shadowDesc.depthCompare = true;
 			shadowDesc.external = true;
 			shadowDesc.transient = false;
 			auto const& shadowOptions = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
 			shadowDesc.absoluteSize = glm::uvec2((uint32_t)shadowOptions.resolution);
-			shadowDepth = graph.createImage("ShadowDepth", shadowDesc);
-			shadowPass = graph.addPass("ShadowDepth", GraphPassType::Scene);
-			shadowDepthOutput = graph.writeDepth(shadowPass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
+			bool const pointShadow = shadowOptions.light.type == ShadowLightType::Point;
+			shadowDesc.shape = pointShadow ? GraphImageShape::CubeMap : GraphImageShape::Texture2D;
+			shadowDepth = graph.createImage(pointShadow ? "PointShadowDepthCube" : "ShadowDepth", shadowDesc);
+			if (pointShadow)
+			{
+				static constexpr char const* faces[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
+				shadowDepthOutput = shadowDepth;
+				for (uint32_t face = 0; face < 6; ++face)
+				{
+					auto pass = graph.addPass("PointShadowFace " + std::string(faces[face]), GraphPassType::Scene);
+					shadowPasses.push_back(pass);
+					shadowDepthOutput = graph.writeDepth(pass, shadowDepthOutput, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, face);
+				}
+			}
+			else
+			{
+				auto pass = graph.addPass("ShadowDepth", GraphPassType::Scene);
+				shadowPasses.push_back(pass);
+				shadowDepthOutput = graph.writeDepth(pass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
+			}
 		}
 
 		auto scenePass = graph.addPass(pbr ? "PbrScene" : "LegacyScene", GraphPassType::Scene);
@@ -603,10 +621,15 @@ namespace mpp
 		mGraphExecutor->clearPassCallbacks();
 		if (shadowDepth.isValid())
 		{
-			mGraphExecutor->setPassCallback(graph, shadowPass, [this, models](RenderGraphExecutionContext const&)
+			bool const pointShadow = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain).light.type == ShadowLightType::Point;
+			for (uint32_t index = 0; index < shadowPasses.size(); ++index)
 			{
-				mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models);
-			});
+				auto pass = shadowPasses[index];
+				mGraphExecutor->setPassCallback(graph, pass, [this, models, pointShadow, index](RenderGraphExecutionContext const&)
+				{
+					mRenderSystem->renderShadowDomain(mOptions.shadowDomain, models, pointShadow ? index : UINT32_MAX);
+				});
+			}
 		}
 		mGraphExecutor->setPassCallback(graph, scenePass, [this, scene, models, camera](RenderGraphExecutionContext const&)
 		{

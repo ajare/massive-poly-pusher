@@ -27,7 +27,19 @@ renderSystem->getOrCreateRenderPipeline("PBR", options);
 
 An empty `RenderPipelineOptions::shadowDomain` is the compatibility default: it allocates no shadow target and binds a disabled shadow frame. Pipelines joined to the same domain share one depth texture and frame data.
 
-The generic shadow direction must match the directional light contribution that a receiving shader shadows. DemoSuite uses the same direction for its PBR directional light and `MainDirectionalShadow`.
+The generic shadow light must match the receiving pipeline's direct light at `shadow.light.lightIndex` (zero by default). DemoSuite uses the same direction for its PBR directional light and `MainDirectionalShadow`.
+
+For an omnidirectional point shadow, select `ShadowLightType::Point` and provide its finite position/range. MPP allocates one shared Depth24 cubemap and executes the canonical `+X`, `-X`, `+Y`, `-Y`, `+Z`, and `-Z` graph face passes:
+
+```cpp
+shadows.light.type = mpp::ShadowLightType::Point;
+shadows.light.position = { 0.0f, 2.0f, 0.0f };
+shadows.light.range = 30.0f;
+shadows.light.lightIndex = 0;
+shadows.nearPlane = 0.1f;
+```
+
+Point casters are opaque and two-sided. If Depth24 cubemap allocation is unavailable, only that domain is disabled with one warning; direct lighting remains active.
 
 Render the scene through a pipeline that joined the domain:
 
@@ -84,7 +96,7 @@ params->setModelFlags(mpp::ModelRenderParams::Flag_Visible |
 - PBR `BLEND` meshes do not cast shadows.
 - PBR `MASK` currently casts as opaque; generic mask-caster metadata and alpha-tested depth rendering are not implemented yet.
 - A material can receive only if its shader implements the generic contract.
-- The first implementation supports one directional 2D shadow map per domain. Point lights, spots, cascades, and shadow caching are not implemented.
+- A domain supports one directional 2D shadow map or one point-light depth cubemap. Spot lights, cascades, and shadow caching are not implemented.
 - Shadow maps use explicit orthographic bounds. Increase `orthoHalfWidth` to cover more scene area at the cost of resolution; set near/far tightly around the shadowed scene.
 
 ## Tuning

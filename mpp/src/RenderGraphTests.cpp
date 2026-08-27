@@ -27,6 +27,18 @@ namespace mpp
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
 			return fail("built-in PBR shader writes MRT normals before material normal processing");
+		auto validatesPointShadowContract = [](std::string const& shader)
+		{
+			return shader.find("sampler2DShadow SHADOW_MAP") != std::string::npos &&
+				shader.find("samplerCubeShadow POINT_SHADOW_MAP") != std::string::npos &&
+				shader.find("SHADOW_TYPE_AND_LIGHT_INDEX.y") != std::string::npos &&
+				shader.find("pointShadowVisibility") != std::string::npos;
+		};
+		if (!validatesPointShadowContract(FragmentShader3dTemplate) || !validatesPointShadowContract(BuiltInPbrFragmentShader))
+			return fail("built-in receiver lost directional/point shadow sampling or explicit light association");
+		if (VertexShaderPointShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
+			FragmentShaderPointShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
+			return fail("point caster no longer writes radial cubemap depth");
 
 		ModelRenderParams modelParams;
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();

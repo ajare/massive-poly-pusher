@@ -240,6 +240,7 @@ PbrPipeline:
     Images:
       - name: ShadowDepth
         format: DEPTH24
+        depthCompare: true
         scale: 1.000000 1.000000
         mipLevels: 1
         usage: sampled,depthAttachment

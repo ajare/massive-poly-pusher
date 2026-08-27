@@ -77,7 +77,8 @@ namespace mpp
 
 	enum class ShadowLightType
 	{
-		Directional
+		Directional,
+		Point
 	};
 
 	// Shadow lights deliberately do not reuse PbrLight or the legacy light
@@ -87,6 +88,11 @@ namespace mpp
 		ShadowLightType type{ ShadowLightType::Directional };
 		glm::vec3 direction{ 0.0f, -1.0f, 0.0f };
 		glm::vec3 focusPoint{ 0.0f };
+		glm::vec3 position{ 0.0f };
+		float range{ 100.0f };
+		// Index in the receiving pipeline's light array. Visibility is applied
+		// only to this direct-light contribution.
+		uint32_t lightIndex{ 0 };
 	};
 
 	enum class ShadowFilterMode

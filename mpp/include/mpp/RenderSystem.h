@@ -165,6 +165,7 @@ namespace mpp
 			ShadowOptions options;
 			RenderTargetPtr depthTarget;
 			std::shared_ptr<UniformBuffer> frameBuffer;
+			bool fallbackWarningIssued{ false };
 		};
 		std::map<std::string, ShadowDomainState> mShadowDomains;
 		RenderTargetPtr mActiveShadowDepthTarget;
@@ -204,6 +205,7 @@ namespace mpp
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
 		ResourcePtr mShadowDepthProgram;
+		ResourcePtr mPointShadowDepthProgram;
 
 		// Internal textures
 		ResourcePtr mNoTexture;
@@ -616,7 +618,9 @@ namespace mpp
 
 		void ensureShadowDomainResources(std::string const& name);
 
-		void renderShadowDomain(std::string const& name, std::vector<SceneModel3dPtr> const& models);
+		// face is ignored for directional domains. Point domains render all six
+		// faces when omitted, or exactly the requested canonical cubemap face.
+		void renderShadowDomain(std::string const& name, std::vector<SceneModel3dPtr> const& models, uint32_t face = UINT32_MAX);
 
 		void setActiveShadowDomain(std::string const& name);
 

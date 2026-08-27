@@ -2,6 +2,7 @@ RenderGraph:
   Images:
     - name: ShadowDepth
       format: DEPTH24
+      depthCompare: true
       usage: depthAttachment,sampled
       import: shadowDepth
       external: true

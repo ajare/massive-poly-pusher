@@ -61,6 +61,8 @@ namespace mpp
 			glm::mat4 lightViewProjection{ 1.0f };
 			glm::vec4 mapTexelSizeAndRadius{ 0.0f };
 			glm::vec4 biasAndEnabled{ 0.0f };
+			glm::vec4 pointPositionAndRange{ 0.0f };
+			glm::vec4 shadowTypeAndLightIndex{ 0.0f };
 		};
 		static_assert(offsetof(ShadowFrameData, lightViewProjection) == 0);
 
@@ -141,7 +143,9 @@ namespace mpp
 		}
 		static_assert(offsetof(ShadowFrameData, mapTexelSizeAndRadius) == 64);
 		static_assert(offsetof(ShadowFrameData, biasAndEnabled) == 80);
-		static_assert(sizeof(ShadowFrameData) == 96);
+		static_assert(offsetof(ShadowFrameData, pointPositionAndRange) == 96);
+		static_assert(offsetof(ShadowFrameData, shadowTypeAndLightIndex) == 112);
+		static_assert(sizeof(ShadowFrameData) == 128);
 	}
 
 	/*
@@ -548,8 +552,10 @@ namespace mpp
 		// Get texture info
 		GLint maxTextureSize;
 		GLint maxRectTextureSize = 0;
+		GLint maxCubeMapTextureSize = 0;
 
 		GL_CHECK(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize));
+		GL_CHECK(glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &maxCubeMapTextureSize));
 
 		if (glewIsSupported("GL_EXT_texture_rectangle"))
 		{
@@ -558,6 +564,7 @@ namespace mpp
 
 		mCaps.maxTextureSize = maxTextureSize;
 		mCaps.maxRectTextureSize = maxRectTextureSize;
+		mCaps.maxCubeMapTextureSize = maxCubeMapTextureSize;
 
 		// Framebuffer/MRT limits.  These are required before a render graph may
 		// turn a declared list of colour outputs into glDrawBuffers calls.
@@ -741,6 +748,15 @@ namespace mpp
 			ps->setParser(parser);
 			mShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_shadow_depth__", ResourceStreamPtr(ps)).first;
 			addCoreResource(mShadowDepthProgram, true);
+
+			auto pointParser = make_shared<program::Parser>();
+			pointParser->setMeshSpecification(meshSpec);
+			pointParser->setVertexSource(VertexShaderPointShadowDepthTemplate);
+			pointParser->setFragmentSource(FragmentShaderPointShadowDepthTemplate);
+			auto pointStream = new ProgrammaticProgramStream(resourceMgr);
+			pointStream->setParser(pointParser);
+			mPointShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_point_shadow_depth__", ResourceStreamPtr(pointStream)).first;
+			addCoreResource(mPointShadowDepthProgram, true);
 		}
 		createShadowDisabledFrameBuffer();
 
@@ -3039,18 +3055,47 @@ namespace mpp
 			THROW_MPP("Cannot create a shadow domain before core resources are available.", __LINE__, __FILE__, __func__);
 		}
 
+		bool const point = domain.options.light.type == ShadowLightType::Point;
+		if (point && (mCaps.maxCubeMapTextureSize <= 0 || domain.options.resolution > (size_t)mCaps.maxCubeMapTextureSize))
+		{
+			domain.options.enabled = false;
+			if (!domain.fallbackWarningIssued)
+			{
+				warnMessage("Shadow domain '" + name + "' disabled: requested Depth24 cubemap is unsupported; direct lighting remains enabled.");
+				domain.fallbackWarningIssued = true;
+			}
+			return;
+		}
+
 		RenderTextureOptions targetOptions;
+		targetOptions.target = point ? TextureTarget::CubeMap : TextureTarget::Texture2D;
 		targetOptions.numAttachments = 0;
 		targetOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
 		targetOptions.depthParams.params.minFilter = GL_LINEAR;
 		targetOptions.depthParams.params.magFilter = GL_LINEAR;
-		targetOptions.depthParams.params.wrap = GL_CLAMP_TO_BORDER;
+		targetOptions.depthParams.params.wrap = domain.options.light.type == ShadowLightType::Point ? GL_CLAMP_TO_EDGE : GL_CLAMP_TO_BORDER;
 		targetOptions.depthParams.compareRefToTexture = true;
-		domain.depthTarget = createRenderTexture(
-			"ShadowDomain." + name + ".Depth",
-			domain.options.resolution,
-			domain.options.resolution,
-			targetOptions);
+		try
+		{
+			domain.depthTarget = createRenderTexture(
+				"ShadowDomain." + name + (domain.options.light.type == ShadowLightType::Point ? ".PointDepthCube" : ".Depth"),
+				domain.options.resolution,
+				domain.options.resolution,
+				targetOptions);
+		}
+		catch (...)
+		{
+			if (domain.options.light.type != ShadowLightType::Point) throw;
+			domain.options.enabled = false;
+			domain.depthTarget.reset();
+			domain.frameBuffer.reset();
+			if (!domain.fallbackWarningIssued)
+			{
+				warnMessage("Shadow domain '" + name + "' disabled: depth cubemap allocation/capability is unavailable; direct lighting remains enabled.");
+				domain.fallbackWarningIssued = true;
+			}
+			return;
+		}
 
 		// std140: mat4 (64 bytes), then two vec4 values. Keep this independent
 		// of PBR lighting so legacy/custom shaders can use the same frame data.
@@ -3059,6 +3104,9 @@ namespace mpp
 		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
 			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
 		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+		frame.pointPositionAndRange = glm::vec4(domain.options.light.position, domain.options.light.range);
+		frame.shadowTypeAndLightIndex = glm::vec4(domain.options.light.type == ShadowLightType::Point ? 1.0f : 0.0f,
+			(float)domain.options.light.lightIndex, 0.0f, 0.0f);
 
 		shared_ptr<const int8_t> frameBytes(new int8_t[sizeof(frame)](), [](int8_t* p) { delete[] p; });
 		memcpy(const_cast<int8_t*>(frameBytes.get()), &frame, sizeof(frame));
@@ -3079,8 +3127,12 @@ namespace mpp
 				options.filterRadiusTexels < 0.0f || !isfinite(options.orthoHalfWidth) ||
 				!isfinite(options.nearPlane) || !isfinite(options.farPlane) ||
 				!isfinite(options.constantBias) || !isfinite(options.normalBias) || !isfinite(options.filterRadiusTexels) ||
-				!isfinite(options.light.direction.x) || !isfinite(options.light.direction.y) || !isfinite(options.light.direction.z) ||
-				glm::dot(options.light.direction, options.light.direction) < 0.000001f)
+				(options.light.type == ShadowLightType::Directional &&
+				 (!isfinite(options.light.direction.x) || !isfinite(options.light.direction.y) || !isfinite(options.light.direction.z) ||
+				  glm::dot(options.light.direction, options.light.direction) < 0.000001f)) ||
+				(options.light.type == ShadowLightType::Point &&
+				 (!isfinite(options.light.position.x) || !isfinite(options.light.position.y) || !isfinite(options.light.position.z) ||
+				  !isfinite(options.light.range) || options.light.range <= options.nearPlane)))
 			{
 				THROW_MPP("Invalid shadow domain options.", __LINE__, __FILE__, __func__);
 			}
@@ -3091,7 +3143,7 @@ namespace mpp
 		// the next shadow pass. Only a resolution or enabled-state change needs
 		// to discard GL resources, which keeps interactive light movement cheap.
 		const bool recreateResources = domain.depthTarget &&
-			(!options.enabled || domain.options.resolution != options.resolution);
+			(!options.enabled || domain.options.resolution != options.resolution || domain.options.light.type != options.light.type);
 		if (recreateResources)
 		{
 			domain.depthTarget.reset();
@@ -3131,23 +3183,48 @@ namespace mpp
 		createShadowDomainResources(name, it->second);
 	}
 
-	void RenderSystem::renderShadowDomain(string const& name, vector<SceneModel3dPtr> const& models)
+	void RenderSystem::renderShadowDomain(string const& name, vector<SceneModel3dPtr> const& models, uint32_t face)
 	{
 		ensureShadowDomainResources(name);
 		auto& domain = mShadowDomains.at(name);
-		if (!domain.options.enabled)
+		if (!domain.options.enabled || !domain.depthTarget)
 		{
 			return;
 		}
+		bool const point = domain.options.light.type == ShadowLightType::Point;
+		if (point && face == UINT32_MAX)
+		{
+			for (uint32_t cubeFace = 0; cubeFace < 6; ++cubeFace) renderShadowDomain(name, models, cubeFace);
+			return;
+		}
+		if (point && face >= 6)
+		{
+			THROW_MPP("Point shadow cubemap face must be in [0, 5].", __LINE__, __FILE__, __func__);
+		}
 
+		static constexpr char const* faceNames[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
+		GpuDebugScope faceScope(point ? "Pass: PointShadow [" + name + "] Face " + faceNames[face] : "Pass: DirectionalShadow [" + name + "]");
 		auto depthTarget = domain.depthTarget;
-		auto shadowProgram = static_cast<Program*>(mShadowDepthProgram.get());
-		glm::vec3 direction = glm::normalize(domain.options.light.direction);
-		glm::vec3 up = abs(direction.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
-		float lightDistance = (domain.options.farPlane - domain.options.nearPlane) * 0.5f;
-		glm::mat4 lightView = glm::lookAt(domain.options.light.focusPoint - direction * lightDistance, domain.options.light.focusPoint, up);
-		float extent = domain.options.orthoHalfWidth;
-		glm::mat4 lightProjection = glm::ortho(-extent, extent, -extent, extent, domain.options.nearPlane, domain.options.farPlane);
+		auto shadowProgramResource = point ? mPointShadowDepthProgram : mShadowDepthProgram;
+		auto shadowProgram = static_cast<Program*>(shadowProgramResource.get());
+		glm::mat4 lightView;
+		glm::mat4 lightProjection;
+		if (point)
+		{
+			static glm::vec3 const directions[] = { { 1,0,0 }, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1} };
+			static glm::vec3 const ups[] = { {0,-1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}, {0,-1,0}, {0,-1,0} };
+			lightView = glm::lookAt(domain.options.light.position, domain.options.light.position + directions[face], ups[face]);
+			lightProjection = glm::perspective(glm::radians(90.0f), 1.0f, domain.options.nearPlane, domain.options.light.range);
+		}
+		else
+		{
+			glm::vec3 direction = glm::normalize(domain.options.light.direction);
+			glm::vec3 up = abs(direction.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+			float lightDistance = (domain.options.farPlane - domain.options.nearPlane) * 0.5f;
+			lightView = glm::lookAt(domain.options.light.focusPoint - direction * lightDistance, domain.options.light.focusPoint, up);
+			float extent = domain.options.orthoHalfWidth;
+			lightProjection = glm::ortho(-extent, extent, -extent, extent, domain.options.nearPlane, domain.options.farPlane);
+		}
 		glm::mat4 lightViewProjection = lightProjection * lightView;
 
 		ShadowFrameData frame;
@@ -3156,6 +3233,8 @@ namespace mpp
 		frame.mapTexelSizeAndRadius = glm::vec4(texelSize, texelSize, domain.options.filterRadiusTexels,
 			domain.options.filterMode == ShadowFilterMode::Pcf3x3 ? 1.0f : 0.0f);
 		frame.biasAndEnabled = glm::vec4(domain.options.constantBias, domain.options.normalBias, 1.0f, 0.0f);
+		frame.pointPositionAndRange = glm::vec4(domain.options.light.position, domain.options.light.range);
+		frame.shadowTypeAndLightIndex = glm::vec4(point ? 1.0f : 0.0f, (float)domain.options.light.lightIndex, 0.0f, 0.0f);
 		auto& frameBytes = domain.frameBuffer->getBufferData();
 		memcpy(frameBytes.data(), &frame, sizeof(frame));
 		domain.frameBuffer->mapBufferData();
@@ -3167,21 +3246,23 @@ namespace mpp
 		float const previousPolygonOffsetUnits = mPolygonOffsetUnits;
 
 		pushRenderTarget(depthTarget);
+		if (point) static_cast<RenderTexture*>(depthTarget.get())->attachDepthFace(face, 0);
 		GL_CHECK(glViewport(0, 0, (GLsizei)depthTarget->getWidth(), (GLsizei)depthTarget->getHeight()));
 		setDepthTestState(true);
 		setDepthWriteState(true);
 		setBlendState(false);
-		setCullState(GraphCullMode::Front);
+		setCullState(point ? GraphCullMode::None : GraphCullMode::Front);
 		setPolygonOffsetFillState(true);
 		setPolygonOffsetState(2.0f, 4.0f);
 		GL_CHECK(glClearDepth(1.0));
 		GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
-		setUsedProgram(mShadowDepthProgram);
+		setUsedProgram(shadowProgramResource);
 		if (isRenderFlowCaptureActive())
-			recordRenderFlowStateChanges({"Render target: shadow depth", "Depth test: enabled", "Depth write: enabled",
-			                              "Blend: disabled", "Cull face: front", "Polygon offset: enabled",
-			                              "Program: " + shadowProgram->getName()});
+			recordRenderFlowStateChanges({ point ? "Render target: shared point depth cubemap face " + string(faceNames[face]) : "Render target: shadow depth",
+			                              "Depth test: enabled", "Depth write: enabled", "Blend: disabled",
+			                              point ? "Cull face: disabled (two-sided caster)" : "Cull face: front",
+			                              "Polygon offset: enabled", "Program: " + shadowProgram->getName()});
 		for (auto const& sceneModel : models)
 		{
 			auto params = sceneModel->getParams();
@@ -3209,6 +3290,7 @@ namespace mpp
 				}
 
 				GL_CHECK(glUniformMatrix4fv(shadowProgram->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(modelLightProjection)));
+				if (point) GL_CHECK(glUniformMatrix4fv(shadowProgram->getModelMatrixId(), 1, GL_FALSE, glm::value_ptr(sceneModel->getTransform())));
 				mesh->bind(true);
 				size_t instanceCount = renderParams ? renderParams->instanceCount : 1;
 				if (renderParams && !renderParams->renderCommands.empty())
@@ -4380,11 +4462,14 @@ namespace mpp
 			// This generalizes PBR IBL binding and will also bind generic shadow
 			// maps without making them material-owned texture slots.
 			auto const& samplerName = materialProgram->getSamplerName((int)i);
-			if (samplerName == "SHADOW_MAP" && mActiveShadowDepthTarget)
+			auto* activeShadowTexture = dynamic_cast<RenderTexture*>(mActiveShadowDepthTarget.get());
+			bool const activePointShadow = activeShadowTexture && activeShadowTexture->getAttachmentTextureTarget() == GL_TEXTURE_CUBE_MAP;
+			if (activeShadowTexture && ((samplerName == "SHADOW_MAP" && !activePointShadow) ||
+				(samplerName == "POINT_SHADOW_MAP" && activePointShadow)))
 			{
-				static_cast<RenderTexture*>(mActiveShadowDepthTarget.get())->bindDepth((uint32_t)i);
+				activeShadowTexture->bindDepth((uint32_t)i);
 				(*currentTextureKeys)[i] = (uint64_t)(uintptr_t)mActiveShadowDepthTarget.get();
-				if (flowStateChanges) flowStateChanges->push_back("Texture unit " + std::to_string(i) + ": shadow depth");
+				if (flowStateChanges) flowStateChanges->push_back("Texture unit " + std::to_string(i) + (activePointShadow ? ": point shadow depth cubemap" : ": shadow depth"));
 				mRenderInfo.textureSwitches++;
 				continue;
 			}
@@ -4612,7 +4697,7 @@ namespace mpp
 					RenderBatchSubmission submission;submission.sceneObject=meshInstance->mSourceSceneObject;submission.meshName=mesh->getName();submission.materialName=material->getName();submission.programName=program->getName();submission.primitiveType=mesh->mPrimitiveType;submission.offset=cmd.offset;submission.count=static_cast<uint32_t>(count);submission.instanceCount=instanceCount;submission.transparent=meshInstance->sortTransparent();submission.blend=meshInstance->mBlend;submission.cullBackFaces=meshInstance->mCullBackFaces;submission.wireframe=meshInstance->mWireframe;
 					for (int textureIndex=0;textureIndex<material->getNumTextures();++textureIndex)
 					{
-						auto const& samplerName=program->getSamplerName(textureIndex);if(samplerName=="SHADOW_MAP"&&mActiveShadowDepthTarget){submission.textureNames.push_back("__pipeline_shadow_depth__");continue;}auto pipelineTexture=mActivePipelineSamplerOverrides.find(samplerName);if(pipelineTexture!=mActivePipelineSamplerOverrides.end()&&pipelineTexture->second){submission.textureNames.push_back(pipelineTexture->second->getName());continue;}auto texture=textureIndex<(int)cmd.textures.size()&&cmd.textures[textureIndex]?cmd.textures[textureIndex]:material->getTexture(textureIndex);submission.textureNames.push_back(texture?texture->getName():string());
+						auto const& samplerName=program->getSamplerName(textureIndex);if((samplerName=="SHADOW_MAP"||samplerName=="POINT_SHADOW_MAP")&&mActiveShadowDepthTarget){submission.textureNames.push_back(samplerName=="POINT_SHADOW_MAP"?"__pipeline_point_shadow_depth_cube__":"__pipeline_shadow_depth__");continue;}auto pipelineTexture=mActivePipelineSamplerOverrides.find(samplerName);if(pipelineTexture!=mActivePipelineSamplerOverrides.end()&&pipelineTexture->second){submission.textureNames.push_back(pipelineTexture->second->getName());continue;}auto texture=textureIndex<(int)cmd.textures.size()&&cmd.textures[textureIndex]?cmd.textures[textureIndex]:material->getTexture(textureIndex);submission.textureNames.push_back(texture?texture->getName():string());
 					}
 					recordRenderFlowBatch(std::move(submission));
 				}

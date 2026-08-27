@@ -121,6 +121,8 @@ namespace mpp
 			{
 				auto const& caps = renderSystem->getCaps();
 				GLint value = 0;
+				GL_CHECK(glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &value));
+				if (caps.maxCubeMapTextureSize != value) return fail("reported cubemap texture-size limit does not match OpenGL");
 				GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &value));
 				if (caps.maxVertexTextureUnits != static_cast<uint32_t>(value)) return fail("reported vertex texture-unit limit does not match OpenGL");
 				GL_CHECK(glGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS, &value));
@@ -472,6 +474,18 @@ namespace mpp
 			GraphImageDesc importedCubeDesc = cubeDepth; importedCubeDesc.external = true; RenderGraph importedCubeGraph; auto importedCube = importedCubeGraph.createImage("ImportedDepthCube", importedCubeDesc); RenderGraphTargets importedCubeTargets(renderSystem); importedCubeTargets.bindImported(importedCubeGraph, importedCube, cubeTarget);
 			bool rejectedMismatchedImport = false; try { importedCubeTargets.bindImported(importedCubeGraph, importedCube, targets.get(second)); } catch (...) { rejectedMismatchedImport = true; } if (!rejectedMismatchedImport) return fail("mismatched 2D import was accepted for a depth cubemap");
 			std::weak_ptr<RenderTarget> releasedCube = cubeTarget; importedCubeTargets.clear(); cubeTargets.clear(); cubeTarget.reset(); if (!releasedCube.expired()) return fail("destroyed depth cubemap remained owned by graph targets");
+
+			stage = "point shadow hardware fallback";
+			ShadowOptions unsupportedPointShadow;
+			unsupportedPointShadow.enabled = true;
+			unsupportedPointShadow.light.type = ShadowLightType::Point;
+			unsupportedPointShadow.light.range = 10.0f;
+			unsupportedPointShadow.nearPlane = 0.1f;
+			unsupportedPointShadow.resolution = (size_t)renderSystem->getCaps().maxCubeMapTextureSize + 1;
+			renderSystem->configureShadowDomain("GpuTestUnsupportedPointShadow", unsupportedPointShadow);
+			if (renderSystem->getShadowDomainDepthTarget("GpuTestUnsupportedPointShadow") ||
+				renderSystem->getShadowDomainOptions("GpuTestUnsupportedPointShadow").enabled)
+				return fail("unsupported point-shadow cubemap did not disable its domain");
 
 			stage="physical MSAA colour/depth allocation and resolve";
 			for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(plan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(first).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(first).get());if(!write||!resolved||write==resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA colour write/resolve targets are invalid");executor.execute(graph,targets,renderSystem->getCaps());if(!nearColour(readFirstPixel(targets.get(first)),{255,0,0,64}))return fail("MSAA colour/alpha resolve readback failed");}
