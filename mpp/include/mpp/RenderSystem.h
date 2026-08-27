@@ -211,7 +211,9 @@ namespace mpp
 		// Internal programs
 		ResourcePtr mInternalProgram2d;
 		ResourcePtr mShadowDepthProgram;
+		ResourcePtr mAlphaShadowDepthProgram;
 		ResourcePtr mPointShadowDepthProgram;
+		ResourcePtr mPointAlphaShadowDepthProgram;
 
 		// Internal textures
 		ResourcePtr mNoTexture;

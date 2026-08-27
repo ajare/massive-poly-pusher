@@ -749,6 +749,19 @@ namespace mpp
 			mShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_shadow_depth__", ResourceStreamPtr(ps)).first;
 			addCoreResource(mShadowDepthProgram, true);
 
+			mesh::MeshSpecification alphaMeshSpec;
+			auto alphaLayout = alphaMeshSpec.createVertexBufferAttributeLayout(false);
+			alphaLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+			alphaLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			auto alphaParser = make_shared<program::Parser>();
+			alphaParser->setMeshSpecification(alphaMeshSpec);
+			alphaParser->setVertexSource(VertexShaderAlphaShadowDepthTemplate);
+			alphaParser->setFragmentSource(FragmentShaderAlphaShadowDepthTemplate);
+			auto alphaStream = new ProgrammaticProgramStream(resourceMgr);
+			alphaStream->setParser(alphaParser);
+			mAlphaShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_alpha_shadow_depth__", ResourceStreamPtr(alphaStream)).first;
+			addCoreResource(mAlphaShadowDepthProgram, true);
+
 			auto pointParser = make_shared<program::Parser>();
 			pointParser->setMeshSpecification(meshSpec);
 			pointParser->setVertexSource(VertexShaderPointShadowDepthTemplate);
@@ -757,6 +770,15 @@ namespace mpp
 			pointStream->setParser(pointParser);
 			mPointShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_point_shadow_depth__", ResourceStreamPtr(pointStream)).first;
 			addCoreResource(mPointShadowDepthProgram, true);
+
+			auto pointAlphaParser = make_shared<program::Parser>();
+			pointAlphaParser->setMeshSpecification(alphaMeshSpec);
+			pointAlphaParser->setVertexSource(VertexShaderPointAlphaShadowDepthTemplate);
+			pointAlphaParser->setFragmentSource(FragmentShaderPointAlphaShadowDepthTemplate);
+			auto pointAlphaStream = new ProgrammaticProgramStream(resourceMgr);
+			pointAlphaStream->setParser(pointAlphaParser);
+			mPointAlphaShadowDepthProgram = resourceMgr->declareResource("__mpp_p3d_point_alpha_shadow_depth__", ResourceStreamPtr(pointAlphaStream)).first;
+			addCoreResource(mPointAlphaShadowDepthProgram, true);
 		}
 		createShadowDisabledFrameBuffer();
 
@@ -3329,7 +3351,6 @@ namespace mpp
 		GpuDebugScope faceScope(point ? "Pass: PointShadow [" + name + "] Face " + faceNames[face] : "Pass: DirectionalShadow [" + name + "]");
 		auto depthTarget = domain.depthTarget;
 		auto shadowProgramResource = point ? mPointShadowDepthProgram : mShadowDepthProgram;
-		auto shadowProgram = static_cast<Program*>(shadowProgramResource.get());
 		glm::mat4 lightView;
 		glm::mat4 lightProjection;
 		if (point)
@@ -3380,12 +3401,11 @@ namespace mpp
 		GL_CHECK(glClearDepth(1.0));
 		GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
-		setUsedProgram(shadowProgramResource);
 		if (isRenderFlowCaptureActive())
 			recordRenderFlowStateChanges({ point ? "Render target: shared point depth cubemap face " + string(faceNames[face]) : "Render target: shadow depth",
 			                              "Depth test: enabled", "Depth write: enabled", "Blend: disabled",
 			                              point ? "Cull face: disabled (two-sided caster)" : "Cull face: front",
-			                              "Polygon offset: enabled", "Program: " + shadowProgram->getName()});
+			                              "Polygon offset: enabled" });
 		for (auto const& sceneModel : models)
 		{
 			auto params = sceneModel->getParams();
@@ -3408,9 +3428,31 @@ namespace mpp
 
 				auto materialResource = renderParams && renderParams->material ? renderParams->material : mesh->getMaterial();
 				auto material = static_cast<Material*>(materialResource.get());
-				if (material->getShadingModel() == Material::ShadingModel::Pbr && material->isTransparent())
+				auto const shadowContract = material->getShadowCasterContract();
+				if (!castsShadow(shadowContract)) continue;
+				bool const alphaMasked = shadowContract.behaviour == ShadowCasterContract::Behaviour::AlphaMask;
+				auto const activeShadowProgramResource = alphaMasked
+					? (point ? mPointAlphaShadowDepthProgram : mAlphaShadowDepthProgram)
+					: shadowProgramResource;
+				auto shadowProgram = static_cast<Program*>(activeShadowProgramResource.get());
+				setUsedProgram(activeShadowProgramResource);
+				if (isRenderFlowCaptureActive())
+					recordRenderFlowStateChanges({ "Program: " + shadowProgram->getName() });
+				if (alphaMasked)
 				{
-					continue; // Conventional blended materials do not cast in S2.
+					auto materialProgram = static_cast<Program*>(material->getProgram().get());
+					ResourcePtr alphaTexture = mNoTexture;
+					for (int sampler = 0; sampler < materialProgram->getNumSamplers(); ++sampler)
+						if (materialProgram->getSamplerName(sampler) == shadowContract.alphaSampler)
+						{
+							alphaTexture = material->getTexture(sampler);
+							break;
+						}
+					auto* texture = dynamic_cast<Texture*>(alphaTexture.get());
+					if (!texture) THROW_MPP("Shadow alpha contract sampler is not a texture.", __LINE__, __FILE__, __func__);
+					texture->bind((uint32_t)shadowProgram->getSamplerUnit("SHADOW_ALPHA_MAP"));
+					GL_CHECK(glUniform1f(shadowProgram->getUniformId("SHADOW_ALPHA_CUTOFF"), shadowContract.alphaCutoff));
+					GL_CHECK(glUniform1f(shadowProgram->getUniformId("SHADOW_ALPHA_FACTOR"), shadowContract.alphaFactor));
 				}
 
 				GL_CHECK(glUniformMatrix4fv(shadowProgram->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(modelLightProjection)));

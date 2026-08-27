@@ -52,6 +52,7 @@ namespace mpp
 
 		void setDefaultTexture(std::string const& sampler);
 
+		void setShadowCasterContract(ShadowCasterContract const& contract);
 
 		void setUniforms(UniformCollection const& uniforms);
 

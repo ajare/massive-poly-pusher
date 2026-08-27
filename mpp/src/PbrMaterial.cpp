@@ -508,6 +508,29 @@ namespace mpp
 		return mFeatures;
 	}
 
+	ShadowCasterContract makePbrShadowCasterContract(PbrMaterialSpecification::PbrSurface const& surface)
+	{
+		ShadowCasterContract contract;
+		if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend)
+		{
+			contract.behaviour = ShadowCasterContract::Behaviour::Disabled;
+			return contract;
+		}
+		if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Mask)
+		{
+			contract.behaviour = ShadowCasterContract::Behaviour::AlphaMask;
+			contract.alphaSampler = "PBR_BASE_COLOUR_MAP";
+			contract.alphaCutoff = surface.alphaCutoff;
+			contract.alphaFactor = surface.baseColourFactor.a;
+		}
+		return contract;
+	}
+
+	ShadowCasterContract PbrMaterial::getShadowCasterContract() const
+	{
+		return makePbrShadowCasterContract(mPbrSurface);
+	}
+
 	string const& PbrMaterial::getFeatureSummary() const
 	{
 		return mFeatureSummary;

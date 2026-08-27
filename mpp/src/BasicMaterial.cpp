@@ -143,8 +143,9 @@ namespace mpp
 		acquireDependentResource(mProgram);
 		mProgram->load();
 
-		// Set uniforms
+		// Set uniforms and the explicitly authored generic shadow-caster policy.
 		mUniforms = mStr->getUniforms();
+		mShadowCaster = mStr->getShadowCasterContract();
 		// Set textures
 		Program* program = (Program*)(mProgram.get());
 		auto const& materialTextures = mStr->getTextures();

@@ -5,6 +5,7 @@
 
 #include "mpp/TextureParams.h"
 #include "mpp/UniformCollection.h"
+#include "mpp/Material.h"
 #include <mpp/mesh/MeshSpecification.h>
 
 namespace mpp
@@ -41,6 +42,9 @@ namespace mpp
 		};
 
 		ProgramOptions program;
+		// Generic shaders can only cast a non-solid silhouette when they author
+		// this contract; the opaque default preserves legacy materials.
+		ShadowCasterContract shadowCaster;
 		UniformCollection uniforms;
 		std::vector<TextureOptions> textures;
 	};

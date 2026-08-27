@@ -244,6 +244,31 @@ void main()
 }
 )";
 
+const std::string VertexShaderAlphaShadowDepthTemplate =
+R"(
+@@Version
+
+void main()
+{
+    @Out(vec2 SHADOW_TEXCOORDS) = @In(TEXCOORDS);
+    gl_Position = @MCPMatrix * @Vec4(@In(POSITION));
+}
+)";
+
+const std::string FragmentShaderAlphaShadowDepthTemplate =
+R"(
+@@Version
+
+@@Uniform(float SHADOW_ALPHA_CUTOFF);
+@@Uniform(float SHADOW_ALPHA_FACTOR);
+@@Texture(sampler2D SHADOW_ALPHA_MAP);
+
+void main()
+{
+    if (texture(@Texture(SHADOW_ALPHA_MAP), @In(SHADOW_TEXCOORDS)).a * @Uniform(SHADOW_ALPHA_FACTOR) < @Uniform(SHADOW_ALPHA_CUTOFF)) discard;
+}
+)";
+
 const std::string VertexShaderPointShadowDepthTemplate =
 R"(
 @@Version
@@ -270,6 +295,42 @@ layout(std140, binding = 2) uniform ShadowFrame
 
 void main()
 {
+    gl_FragDepth = length(@In(SHADOW_WORLD_POSITION) - POINT_POSITION_AND_RANGE.xyz) / POINT_POSITION_AND_RANGE.w;
+}
+)";
+
+const std::string VertexShaderPointAlphaShadowDepthTemplate =
+R"(
+@@Version
+
+void main()
+{
+    @Out(vec3 SHADOW_WORLD_POSITION) = @Vec3(@MMatrix * @Vec4(@In(POSITION)));
+    @Out(vec2 SHADOW_TEXCOORDS) = @In(TEXCOORDS);
+    gl_Position = @MCPMatrix * @Vec4(@In(POSITION));
+}
+)";
+
+const std::string FragmentShaderPointAlphaShadowDepthTemplate =
+R"(
+@@Version
+
+@@Uniform(float SHADOW_ALPHA_CUTOFF);
+@@Uniform(float SHADOW_ALPHA_FACTOR);
+@@Texture(sampler2D SHADOW_ALPHA_MAP);
+
+layout(std140, binding = 2) uniform ShadowFrame
+{
+    mat4 LIGHT_VIEW_PROJECTION;
+    vec4 MAP_TEXEL_SIZE_AND_RADIUS;
+    vec4 BIAS_AND_ENABLED;
+    vec4 POINT_POSITION_AND_RANGE;
+    vec4 SHADOW_TYPE_AND_LIGHT_INDEX;
+};
+
+void main()
+{
+    if (texture(@Texture(SHADOW_ALPHA_MAP), @In(SHADOW_TEXCOORDS)).a * @Uniform(SHADOW_ALPHA_FACTOR) < @Uniform(SHADOW_ALPHA_CUTOFF)) discard;
     gl_FragDepth = length(@In(SHADOW_WORLD_POSITION) - POINT_POSITION_AND_RANGE.xyz) / POINT_POSITION_AND_RANGE.w;
 }
 )";

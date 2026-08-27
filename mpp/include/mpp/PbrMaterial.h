@@ -8,6 +8,8 @@
 
 namespace mpp
 {
+	_MPPAPI ShadowCasterContract makePbrShadowCasterContract(PbrMaterialSpecification::PbrSurface const& surface);
+
 	class _MPPAPI PbrMaterial final : public Material
 	{
 		ResourcePtr mProgram;
@@ -33,6 +35,7 @@ namespace mpp
 		void setUniforms() override;
 		ShadingModel getShadingModel() const override { return ShadingModel::Pbr; }
 		bool isTransparent() const override { return mPbrSurface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend; }
+		ShadowCasterContract getShadowCasterContract() const override;
 		bool isDoubleSided() const override { return mPbrSurface.doubleSided; }
 		PbrMaterialSpecification::PbrSurface const& getSurface() const;
 		PbrMaterialFeatures getFeatures() const;

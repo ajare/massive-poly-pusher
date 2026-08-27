@@ -1,3 +1,4 @@
+#include "mpp/PbrMaterial.h"
 #include "mpp/PbrMaterialFeatures.h"
 #include "mpp/PbrMaterialTests.h"
 #include "mpp/PbrShaders.h"
@@ -33,6 +34,24 @@ namespace mpp
 			PbrMaterialFeature::Emissive, PbrMaterialFeature::AlphaMask, PbrMaterialFeature::DoubleSided })
 			if (!hasPbrFeature(full, feature)) return fail("full feature derivation omitted a required bit");
 		if (hasPbrFeature(full, PbrMaterialFeature::AlphaBlend)) return fail("mask derivation also enabled blend");
+
+		// The generic caster policy deliberately does not infer arbitrary fragment
+		// alpha. PBR is the one standardized adapter: Mask follows base-colour
+		// alpha, while Blend stays a receiver but never becomes a solid caster.
+		surface.baseColourFactor.a = 0.75f;
+		surface.alphaCutoff = 0.42f;
+		auto maskedCaster = makePbrShadowCasterContract(surface);
+		if (maskedCaster.behaviour != ShadowCasterContract::Behaviour::AlphaMask ||
+			maskedCaster.alphaSampler != "PBR_BASE_COLOUR_MAP" || maskedCaster.alphaCutoff != 0.42f ||
+			maskedCaster.alphaFactor != 0.75f || !castsShadow(maskedCaster))
+			return fail("PBR alpha-mask did not adapt to the generic shadow caster contract");
+		surface.alphaMode = PbrMaterialSpecification::PbrAlphaMode::Blend;
+		if (castsShadow(makePbrShadowCasterContract(surface))) return fail("PBR blend material casts an opaque shadow");
+		surface.alphaMode = PbrMaterialSpecification::PbrAlphaMode::Opaque;
+		if (!castsShadow(makePbrShadowCasterContract(surface))) return fail("opaque material no longer casts by default");
+		ShadowCasterContract disabled; disabled.behaviour = ShadowCasterContract::Behaviour::Disabled;
+		ShadowCasterContract custom; custom.behaviour = ShadowCasterContract::Behaviour::Custom;
+		if (castsShadow(disabled) || !castsShadow(custom)) return fail("explicit generic caster policy was not retained");
 
 		auto defines = makePbrSpecializationDefines(full);
 		if (defines.find("#define PBR_SPEC_NORMAL_MAP 1") == std::string::npos || defines.find("#define PBR_SPEC_ALPHA_BLEND 0") == std::string::npos)

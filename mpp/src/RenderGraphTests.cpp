@@ -40,6 +40,13 @@ namespace mpp
 		if (VertexShaderPointShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
 			FragmentShaderPointShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
 			return fail("point caster no longer writes radial cubemap depth");
+		if (VertexShaderAlphaShadowDepthTemplate.find("SHADOW_TEXCOORDS") == std::string::npos ||
+			FragmentShaderAlphaShadowDepthTemplate.find("SHADOW_ALPHA_CUTOFF") == std::string::npos ||
+			FragmentShaderAlphaShadowDepthTemplate.find("discard") == std::string::npos ||
+			VertexShaderPointAlphaShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
+			FragmentShaderPointAlphaShadowDepthTemplate.find("discard") == std::string::npos ||
+			FragmentShaderPointAlphaShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
+			return fail("masked caster lost its directional or point-depth silhouette path");
 		auto validatesFilteredPointShadow = [](std::string const& shader)
 		{
 			return shader.find("for (int y = -1; y <= 1; ++y)") != std::string::npos &&

@@ -11,6 +11,7 @@ namespace mpp
 	{
 		ResourcePtr mProgram;
 		UniformCollection mUniforms;
+		ShadowCasterContract mShadowCaster;
 		std::vector<ResourcePtr> mTextures;
 
 	protected:
@@ -30,6 +31,7 @@ namespace mpp
 		void setUniforms() override;
 		ShadingModel getShadingModel() const override { return ShadingModel::Basic; }
 		bool isTransparent() const override { return false; }
+		ShadowCasterContract getShadowCasterContract() const override { return mShadowCaster; }
 		void validateInstanceUniforms(UniformCollection const&) const override {}
 	};
 }
