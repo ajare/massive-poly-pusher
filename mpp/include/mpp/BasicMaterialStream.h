@@ -23,6 +23,7 @@ namespace mpp
 		BasicMaterialSpecification::ProgramOptions const& getProgramOptions() const;
 		mesh::MeshSpecification const& getMeshSpecification();
 		UniformCollection const& getUniforms() const;
+		ShadowCasterContract const& getShadowCasterContract() const;
 		std::vector<BasicMaterialSpecification::TextureOptions> const& getTextures() const;
 	};
 }

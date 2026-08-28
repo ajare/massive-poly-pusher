@@ -122,6 +122,7 @@ void main()
 @@Texture(samplerCube PBR_PREFILTERED_SPECULAR_MAP);
 @@Texture(sampler2D PBR_BRDF_LUT);
 @@Texture(sampler2DShadow SHADOW_MAP);
+@@Texture(samplerCubeShadow POINT_SHADOW_MAP);
 #if PBR_SPEC_WATER
 // Renderer-bound by the water graph pass, never material-authored: the frozen,
 // mip-chained copy of the opaque scene colour, and the opaque depth buffer the
@@ -152,6 +153,8 @@ layout(std140, binding = 2) uniform ShadowFrame
     mat4 LIGHT_VIEW_PROJECTION;
     vec4 MAP_TEXEL_SIZE_AND_RADIUS;
     vec4 BIAS_AND_ENABLED;
+    vec4 POINT_POSITION_AND_RANGE;
+    vec4 SHADOW_TYPE_AND_LIGHT_INDEX;
 };
 
 struct PbrLight
@@ -208,6 +211,47 @@ vec3 fresnelSchlick(float cosine, vec3 f0)
 vec3 fresnelSchlickRoughness(float cosine, vec3 f0, float roughness)
 {
     return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(1.0 - cosine, 5.0);
+}
+
+float pointShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
+{
+    vec3 lightToFragment = worldPosition - POINT_POSITION_AND_RANGE.xyz;
+    float range = POINT_POSITION_AND_RANGE.w;
+    float distanceToLight = length(lightToFragment);
+    if (distanceToLight >= range) return 1.0;
+    float nDotL = max(dot(normal, lightDirection), 0.0);
+    float bias = BIAS_AND_ENABLED.x + BIAS_AND_ENABLED.y * (1.0 - nDotL);
+    float compareDepth = distanceToLight / range - bias;
+    float visibility;
+    if (MAP_TEXEL_SIZE_AND_RADIUS.w < 0.5)
+    {
+        visibility = texture(@Texture(POINT_SHADOW_MAP), vec4(lightToFragment, compareDepth));
+    }
+    else
+    {
+        // Sampling offset directions lets the cubemap resolve taps across a
+        // face edge instead of clamping them in one projected face.
+        vec3 direction = lightToFragment / max(distanceToLight, 0.00001);
+        vec3 reference = abs(direction.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+        vec3 tangent = normalize(cross(reference, direction));
+        vec3 bitangent = cross(direction, tangent);
+        float radius = 2.0 * MAP_TEXEL_SIZE_AND_RADIUS.x * MAP_TEXEL_SIZE_AND_RADIUS.z;
+        visibility = 0.0;
+        for (int y = -1; y <= 1; ++y)
+        {
+            for (int x = -1; x <= 1; ++x)
+            {
+                vec3 tapDirection = normalize(direction + tangent * (float(x) * radius) + bitangent * (float(y) * radius));
+                visibility += texture(@Texture(POINT_SHADOW_MAP), vec4(tapDirection, compareDepth));
+            }
+        }
+        visibility /= 9.0;
+    }
+
+    float fade = clamp((distanceToLight / range - BIAS_AND_ENABLED.w) /
+        max(1.0 - BIAS_AND_ENABLED.w, 0.00001), 0.0, 1.0);
+    fade = fade * fade * (3.0 - 2.0 * fade);
+    return mix(visibility, 1.0, fade);
 }
 
 float directionalShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
@@ -527,7 +571,11 @@ void main()
         vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
         float nDotL = max(dot(normal, lightDirection), 0.0);
         vec3 radiance = light.colourIntensity.rgb * light.colourIntensity.a * attenuation;
-        float shadow = isPoint > 0.5 ? 1.0 : directionalShadowVisibility(@In(WORLD_POSITION), normal, lightDirection);
+        float shadow = 1.0;
+        if (BIAS_AND_ENABLED.z > 0.5 && i == int(SHADOW_TYPE_AND_LIGHT_INDEX.y))
+            shadow = SHADOW_TYPE_AND_LIGHT_INDEX.x > 0.5
+                ? pointShadowVisibility(@In(WORLD_POSITION), normal, lightDirection)
+                : directionalShadowVisibility(@In(WORLD_POSITION), normal, lightDirection);
         direct += (kD * baseColour.rgb / PI + specular) * radiance * nDotL * shadow;
     }
 

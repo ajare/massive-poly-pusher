@@ -11,6 +11,8 @@
 #include "mpp/resource-parsers/RenderGraphParser.h"
 #include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/RenderGraphSerializer.h"
+#include "mpp/resource-parsers/SceneParser.h"
+#include "mpp/resource-parsers/SceneSerializer.h"
 
 namespace mpp::resource_parsers
 {
@@ -100,6 +102,12 @@ namespace mpp::resource_parsers
 					if (text.find(rasterMarker) == std::string::npos) return fail(extension + ": explicit raster state was not serialized");
 					if (text.find(rasterMarker) != text.rfind(rasterMarker)) return fail(extension + ": default raster state was serialized");
 				}
+
+				GraphImageDesc cubeDepth; cubeDepth.format = GraphImageFormat::Depth24; cubeDepth.shape = GraphImageShape::CubeMap; cubeDepth.absoluteSize = { 32, 32 };
+				cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled; cubeDepth.depthCompare = true;
+				RenderGraph cubeGraph; auto cube = cubeGraph.createImage("ShadowCube", cubeDepth); cube = cubeGraph.writeDepth(cubeGraph.addPass("Face4"), cube, GraphLoadOp::Clear, GraphStoreOp::Store, 0.4f, 0, 4);
+				RenderGraphSerializer::toFile(cubeGraph, roundTrip); auto restoredCube = RenderGraphParser::fromFile(roundTrip); auto restoredCubeInfo = restoredCube.getImageInfo({ 0, 0 }); auto restoredCubePass = restoredCube.getPassInfo({ 0 });
+				if (restoredCubeInfo.desc.shape != GraphImageShape::CubeMap || !restoredCubeInfo.desc.depthCompare || restoredCubePass.depthOutputs.front().cubeFace != 4) return fail(extension + ": depth cubemap shape, comparison, or face was lost in round trip");
 			}
 			catch (std::exception const& exception)
 			{
@@ -322,11 +330,37 @@ namespace mpp::resource_parsers
 		return true;
 	}
 
+	bool runSceneShadowDocumentTest(std::string const& extension, std::string* failure)
+	{
+		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+		auto const path = std::filesystem::temp_directory_path() / ("mpp_scene_shadow_round_trip" + extension);
+		try
+		{
+			SceneDocument document;
+			document.name = "Point-shadow round trip";
+			SceneLightDocument fill; fill.id = "Fill";
+			SceneLightDocument point; point.id = "PointShadow"; point.type = SceneLightType::Point;
+			point.position = { 3.0f, 4.0f, 5.0f }; point.range = 24.0f; point.castsShadows = true;
+			SceneLightDocument rim; rim.id = "Rim";
+			document.lights = { fill, point, rim };
+			SceneSerializer::toFile(document, path.string());
+			auto restored = SceneParser::fromFile(path.string());
+			if (restored.validate().hasErrors() || restored.getShadowLightIndex() != 1 ||
+				restored.lights[1].type != SceneLightType::Point || restored.lights[1].position != document.lights[1].position ||
+				restored.lights[1].range != document.lights[1].range)
+				return fail(extension + ": point-shadow scene round trip lost its authored light");
+		}
+		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
+		std::filesystem::remove(path);
+		return true;
+	}
+
 	bool runRenderGraphResourceTests(std::string* failure)
 	{
 		for (auto const& extension : { std::string(".xml"), std::string(".yaml") })
 		{
 			if (!runForExtension(extension, failure)) return false;
+			if (!runSceneShadowDocumentTest(extension, failure)) return false;
 			if (!runPbrPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineGtaoMrtDocumentTest(extension, failure)) return false;

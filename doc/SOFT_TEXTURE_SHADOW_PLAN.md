@@ -21,12 +21,12 @@ In this document, *soft texture shadows* means filtered shadow-map visibility, n
 - Orthographic light projection and configurable 1-tap/3×3 PCF filtering.
 - Opaque casters and receivers in any shadow-enabled pipeline.
 - PBR `MASK` casters supported through the generic mask-caster adapter; `BLEND` meshes receive but do not cast shadows initially.
-- Render the map every frame initially; caching is deferred.
+- Cache a domain map and render only when light/options, caster state, or explicit invalidation makes it dirty.
 - DemoSuite demonstrates the same scene through PBR and a non-PBR pipeline, with a statue/opaque geometry casting onto a receiving ground plane.
 
 ## Explicitly out of scope
 
-- Point-light cube shadows, spotlights, cascades, PCSS, VSM/EVSM, screen-space shadows, and general render graphs.
+- Spotlights, cascades, PCSS, VSM/EVSM, screen-space shadows, and general render graphs. Point-light cubemap shadows are delivered.
 - Changing a pipeline that has not opted in.
 - Correct sorted-transparent, refractive, or transmission shadow casting.
 - Automatic understanding of arbitrary material alpha logic without an explicit shadow-caster declaration.
@@ -38,7 +38,7 @@ In this document, *soft texture shadows* means filtered shadow-map visibility, n
 Define shadow settings independently from either `PbrLight` or the legacy two-light API:
 
 ```cpp
-enum class ShadowLightType { Directional };
+enum class ShadowLightType { Directional, Point };
 
 struct ShadowLight
 {
@@ -238,7 +238,7 @@ Start with one center comparison to validate projection and bias, then implement
 - Hard/soft presets change edge softness as expected.
 - Bias extremes visibly demonstrate acne versus peter-panning; defaults are stable at statue scale.
 - Outside-map pixels are lit rather than sampling edge garbage.
-- Alpha-masked holes do not cast solid silhouettes; initial blend casters are reported as skipped.
+- Alpha-masked holes use the material cutoff in depth; blend casters remain skipped while blend receivers remain valid.
 - PBR IBL, exposure, tone mapping, material factors, and PBR transparency remain functional.
 - A `Default` pipeline created without `ShadowOptions` remains byte-for-byte/state-equivalent in its intended legacy behaviour.
 - Resize, repeated pipeline creation/destruction, and PBR/default switching do not leak GL objects or log framebuffer/shader errors.
@@ -254,14 +254,13 @@ Start with one center comparison to validate projection and bias, then implement
 | Arbitrary alpha materials cannot cast correctly | Generic explicit mask metadata/shadow-depth-program override; opt out otherwise. |
 | Texture-unit exhaustion | Count pipeline-frame samplers with material samplers and report the program/pipeline requiring too many. |
 | State leakage | Centralize shadow pass state setup/restore and validate a subsequent non-PBR/default draw. |
-| Point-light expectations | Reject unsupported shadow light types initially; add cube maps later. |
+| Point-light expectations | Delivered: one finite point-light cubemap expands to six canonical faces and uses explicit light association. |
 
 ## Deferred extensions
 
 1. camera-frustum fitting and texel snapping for directional projections;
 2. cascaded directional maps;
-3. spot and point-light shadows;
+3. spot shadows (point-light cubemap shadows are delivered);
 4. PCSS/contact hardening or VSM/EVSM;
-5. static shadow caching;
-6. alpha-blended/transmission shadow policy;
-7. shader include/variant tooling so custom materials can opt in with less boilerplate.
+5. alpha-blended/transmission casting policy (`BLEND` remains receive-only);
+6. shader include/variant tooling so custom materials can opt in with less boilerplate.

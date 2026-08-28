@@ -57,6 +57,28 @@ namespace mpp
 		{
 			switch (type) { case GraphPassType::Scene: return "scene"; case GraphPassType::Fullscreen: return "fullscreen"; default: return "present"; }
 		}
+
+		string descriptorError(GraphImageDesc const& desc)
+		{
+			bool const depth = isDepthFormat(desc.format);
+			bool const colourUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::ColourAttachment);
+			bool const depthUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::DepthAttachment);
+			if (desc.mipLevels == 0 || (desc.absoluteSize.x == 0 && desc.relativeSize.x <= 0.0f) ||
+				(desc.absoluteSize.y == 0 && desc.relativeSize.y <= 0.0f)) return "dimensions and mip count must be positive";
+			if ((depth && (!depthUsage || colourUsage)) || (!depth && depthUsage)) return "format and attachment usage are incompatible";
+			if (desc.depthCompare && (!depth || !hasGraphImageUsage(desc.usage, GraphImageUsage::Sampled))) return "depth comparison requires a sampled depth format";
+			if (desc.shape == GraphImageShape::CubeMap)
+			{
+				if (desc.absoluteSize.x != desc.absoluteSize.y || desc.relativeSize.x != desc.relativeSize.y) return "cubemap faces must be square";
+				if (depth && desc.format != GraphImageFormat::Depth24) return "depth cubemaps support only depth-only Depth24";
+			}
+			return {};
+		}
+
+		bool validAttachmentFace(GraphImageDesc const& desc, uint32_t face)
+		{
+			return desc.shape == GraphImageShape::CubeMap ? face < 6 : face == GraphNoCubeFace;
+		}
 	}
 
 	char const* graphImageFormatName(GraphImageFormat format)
@@ -86,6 +108,7 @@ namespace mpp
 		// every depth image is depthAttachment|sampled, so this costs no aliasing
 		// there -- and presentation images are external, hence never allocated here.
 		return left.size == right.size && left.desc.format == right.desc.format &&
+			left.desc.shape == right.desc.shape && left.desc.depthCompare == right.desc.depthCompare &&
 			left.desc.usage == right.desc.usage &&
 			left.desc.mipLevels == right.desc.mipLevels &&
 			left.desc.colourSpace == right.desc.colourSpace &&
@@ -184,16 +207,9 @@ namespace mpp
 
 	GraphImageHandle RenderGraph::createImage(string const& name, GraphImageDesc const& desc)
 	{
-		bool const depthFormat = isDepthFormat(desc.format);
-		bool const colourUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::ColourAttachment);
-		bool const depthUsage = hasGraphImageUsage(desc.usage, GraphImageUsage::DepthAttachment);
-		if (name.empty() || desc.mipLevels == 0 ||
-			(desc.absoluteSize.x == 0 && desc.relativeSize.x <= 0.0f) ||
-			(desc.absoluteSize.y == 0 && desc.relativeSize.y <= 0.0f) ||
-			(depthFormat && (!depthUsage || colourUsage)) || (!depthFormat && depthUsage))
-		{
-			THROW_MPP("Invalid render graph image descriptor.", __LINE__, __FILE__, __func__);
-		}
+		if (name.empty()) THROW_MPP("Render graph image name must not be empty.", __LINE__, __FILE__, __func__);
+		if (auto reason = descriptorError(desc); !reason.empty())
+			THROW_MPP("Invalid render graph image '" + name + "': " + reason + ".", __LINE__, __FILE__, __func__);
 		if (find_if(mImages.begin(), mImages.end(), [&](Image const& image) { return image.name == name; }) != mImages.end())
 		{
 			THROW_MPP("Duplicate render graph image name.", __LINE__, __FILE__, __func__);
@@ -230,7 +246,9 @@ namespace mpp
 
 	void RenderGraph::setImageDesc(GraphImageHandle image,GraphImageDesc const& desc)
 	{
-		if(!validImage(image)||desc.mipLevels==0||(desc.absoluteSize.x==0&&desc.relativeSize.x<=0)||(desc.absoluteSize.y==0&&desc.relativeSize.y<=0))THROW_MPP("Invalid render graph image descriptor.",__LINE__,__FILE__,__func__);bool depth=isDepthFormat(desc.format),colour=hasGraphImageUsage(desc.usage,GraphImageUsage::ColourAttachment),depthUsage=hasGraphImageUsage(desc.usage,GraphImageUsage::DepthAttachment);if((depth&&(!depthUsage||colour))||(!depth&&depthUsage))THROW_MPP("Render graph image format and usage are incompatible.",__LINE__,__FILE__,__func__);mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();invalidatePlanCache();
+		if(!validImage(image))THROW_MPP("Invalid render graph image handle.",__LINE__,__FILE__,__func__);
+		if(auto reason=descriptorError(desc);!reason.empty())THROW_MPP("Invalid render graph image '"+mImages[image.id].name+"': "+reason+".",__LINE__,__FILE__,__func__);
+		mImages[image.id].desc=desc;if(!desc.external)mImages[image.id].importName.clear();invalidatePlanCache();
 	}
 
 	void RenderGraph::removeImage(GraphImageHandle image)
@@ -370,8 +388,8 @@ namespace mpp
 		mPasses.push_back(move(source));
 		invalidatePlanCache();
 		GraphPassHandle result{ static_cast<uint32_t>(mPasses.size() - 1) };
-		for (auto const& value : colour) writeColour(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearColour, value.mipLevel);
-		for (auto const& value : depth) writeDepth(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearDepth, value.mipLevel);
+		for (auto const& value : colour) writeColour(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearColour, value.mipLevel, value.cubeFace);
+		for (auto const& value : depth) writeDepth(result, { value.image.id, mImages[value.image.id].latestVersion }, value.load, value.store, value.clearDepth, value.mipLevel, value.cubeFace);
 		return result;
 	}
 
@@ -415,9 +433,9 @@ namespace mpp
 		mPasses[pass.id].parameters = parameters;
 	}
 
-	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel)
+	GraphImageHandle RenderGraph::writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel, uint32_t cubeFace)
 	{
-		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || mipLevel >= mImages[image.id].desc.mipLevels ||
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || mipLevel >= mImages[image.id].desc.mipLevels || !validAttachmentFace(mImages[image.id].desc, cubeFace) ||
 			!hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment) || isDepthFormat(mImages[image.id].desc.format))
 		{
 			THROW_MPP("Invalid render graph colour output.", __LINE__, __FILE__, __func__);
@@ -426,14 +444,14 @@ namespace mpp
 		GraphImageHandle output{ image.id, ++target.latestVersion };
 		target.producers.push_back(pass.id);
 		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
-		mPasses[pass.id].colourOutputs.push_back({ output, mipLevel, load, store, clear });
+		mPasses[pass.id].colourOutputs.push_back({ output, mipLevel, load, store, clear, cubeFace });
 		invalidatePlanCache();
 		return output;
 	}
 
-	GraphImageHandle RenderGraph::writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel)
+	GraphImageHandle RenderGraph::writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel, uint32_t cubeFace)
 	{
-		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || mipLevel >= mImages[image.id].desc.mipLevels ||
+		if (!validPass(pass) || !validImage(image) || image.version != mImages[image.id].latestVersion || mipLevel >= mImages[image.id].desc.mipLevels || !validAttachmentFace(mImages[image.id].desc, cubeFace) ||
 			!hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment) || !isDepthFormat(mImages[image.id].desc.format))
 		{
 			THROW_MPP("Invalid render graph depth output.", __LINE__, __FILE__, __func__);
@@ -442,17 +460,17 @@ namespace mpp
 		GraphImageHandle output{ image.id, ++target.latestVersion };
 		target.producers.push_back(pass.id);
 		target.valueIds.push_back(target.name + ".v" + to_string(output.version));
-		mPasses[pass.id].depthOutputs.push_back({ output, mipLevel, load, store, clear });
+		mPasses[pass.id].depthOutputs.push_back({ output, mipLevel, load, store, clear, cubeFace });
 		invalidatePlanCache();
 		return output;
 	}
 
-	void RenderGraph::setColourOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel)
+	void RenderGraph::setColourOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel, uint32_t cubeFace)
 	{
 		if (!validPass(pass) || output >= mPasses[pass.id].colourOutputs.size()) THROW_MPP("Invalid render graph colour output edit.", __LINE__, __FILE__, __func__);
 		auto& value = mPasses[pass.id].colourOutputs[output];
-		if (mipLevel >= mImages[value.image.id].desc.mipLevels) THROW_MPP("Invalid render graph colour output mip.", __LINE__, __FILE__, __func__);
-		value.load = load; value.store = store; value.clearColour = clear; value.mipLevel = mipLevel;
+		if (mipLevel >= mImages[value.image.id].desc.mipLevels || !validAttachmentFace(mImages[value.image.id].desc, cubeFace)) THROW_MPP("Invalid render graph colour output subresource.", __LINE__, __FILE__, __func__);
+		value.load = load; value.store = store; value.clearColour = clear; value.mipLevel = mipLevel; value.cubeFace = cubeFace;
 		invalidatePlanCache();
 	}
 
@@ -461,7 +479,7 @@ namespace mpp
 		if (!validPass(pass) || output >= mPasses[pass.id].colourOutputs.size() || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::ColourAttachment) || isDepthFormat(mImages[image.id].desc.format)) THROW_MPP("Invalid render graph colour output target.", __LINE__, __FILE__, __func__);
 		auto value = mPasses[pass.id].colourOutputs[output]; auto old = value.image;
 		if (old.id == image.id) return old;
-		auto stableId = getValueId(old); auto replacement = writeColour(pass, image, value.load, value.store, value.clearColour, value.mipLevel);
+		auto stableId = getValueId(old); auto replacement = writeColour(pass, image, value.load, value.store, value.clearColour, value.mipLevel, value.cubeFace);
 		mPasses[pass.id].colourOutputs.pop_back(); mPasses[pass.id].colourOutputs[output].image = replacement;
 		for (auto& candidate : mPasses) { for (auto& input : candidate.sampledInputs) if (input.id == old.id && input.version == old.version) input = replacement; for (auto& binding : candidate.samplerBindings) if (binding.image.id == old.id && binding.image.version == old.version) binding.image = replacement; }
 		removeProducedValue(old); setValueId(replacement, stableId); return replacement;
@@ -476,12 +494,12 @@ namespace mpp
 		invalidatePlanCache();
 	}
 
-	void RenderGraph::setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel)
+	void RenderGraph::setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel, uint32_t cubeFace)
 	{
 		if (!validPass(pass) || output >= mPasses[pass.id].depthOutputs.size()) THROW_MPP("Invalid render graph depth output edit.", __LINE__, __FILE__, __func__);
 		auto& value = mPasses[pass.id].depthOutputs[output];
-		if (mipLevel >= mImages[value.image.id].desc.mipLevels) THROW_MPP("Invalid render graph depth output mip.", __LINE__, __FILE__, __func__);
-		value.load = load; value.store = store; value.clearDepth = clear; value.mipLevel = mipLevel;
+		if (mipLevel >= mImages[value.image.id].desc.mipLevels || !validAttachmentFace(mImages[value.image.id].desc, cubeFace)) THROW_MPP("Invalid render graph depth output subresource.", __LINE__, __FILE__, __func__);
+		value.load = load; value.store = store; value.clearDepth = clear; value.mipLevel = mipLevel; value.cubeFace = cubeFace;
 		invalidatePlanCache();
 	}
 
@@ -490,7 +508,7 @@ namespace mpp
 		if (!validPass(pass) || output >= mPasses[pass.id].depthOutputs.size() || !validImage(image) || image.version != mImages[image.id].latestVersion || !hasGraphImageUsage(mImages[image.id].desc.usage, GraphImageUsage::DepthAttachment) || !isDepthFormat(mImages[image.id].desc.format)) THROW_MPP("Invalid render graph depth output target.", __LINE__, __FILE__, __func__);
 		auto value = mPasses[pass.id].depthOutputs[output]; auto old = value.image;
 		if (old.id == image.id) return old;
-		auto stableId = getValueId(old); auto replacement = writeDepth(pass, image, value.load, value.store, value.clearDepth, value.mipLevel);
+		auto stableId = getValueId(old); auto replacement = writeDepth(pass, image, value.load, value.store, value.clearDepth, value.mipLevel, value.cubeFace);
 		mPasses[pass.id].depthOutputs.pop_back(); mPasses[pass.id].depthOutputs[output].image = replacement;
 		for (auto& candidate : mPasses) { for (auto& input : candidate.sampledInputs) if (input.id == old.id && input.version == old.version) input = replacement; for (auto& binding : candidate.samplerBindings) if (binding.image.id == old.id && binding.image.version == old.version) binding.image = replacement; }
 		removeProducedValue(old); setValueId(replacement, stableId); return replacement;
@@ -657,7 +675,7 @@ namespace mpp
 				for (auto const& output : pass.colourOutputs)
 				{
 					auto const& desc = mImages[output.image.id].desc;
-					if (effectiveSize(desc, output.mipLevel) != effectiveSize(first, firstOutput.mipLevel))
+					if (desc.shape != first.shape || effectiveSize(desc, output.mipLevel) != effectiveSize(first, firstOutput.mipLevel))
 					{
 						error("MRT pass '" + pass.name + "' has incompatible colour attachment mip dimensions.", output.image);
 					}
@@ -673,7 +691,7 @@ namespace mpp
 				auto const& depthOutput = pass.depthOutputs.front();
 				auto const& colour = mImages[colourOutput.image.id].desc;
 				auto const& depth = mImages[depthOutput.image.id].desc;
-				if (effectiveSize(colour, colourOutput.mipLevel) != effectiveSize(depth, depthOutput.mipLevel))
+				if (colour.shape != depth.shape || effectiveSize(colour, colourOutput.mipLevel) != effectiveSize(depth, depthOutput.mipLevel))
 				{
 					error("Pass '" + pass.name + "' has incompatible colour and depth attachment dimensions.", colourOutput.image);
 				}
@@ -930,6 +948,11 @@ namespace mpp
 				lifetime.debugName = image.name;
 				lifetime.desc = image.desc;
 				lifetime.size = resolveGraphImageSize(image.desc, viewport);
+				if (image.desc.shape == GraphImageShape::CubeMap && lifetime.size.x != lifetime.size.y)
+				{
+					plan.diagnostics.push_back("Cubemap image '" + image.name + "' resolves to non-square dimensions " + to_string(lifetime.size.x) + "x" + to_string(lifetime.size.y) + ".");
+					return;
+				}
 				auto const maxMipLevels = maxGraphImageMipLevels(lifetime.size);
 				if (image.desc.mipLevels > maxMipLevels)
 				{
@@ -942,7 +965,7 @@ namespace mpp
 				uint64_t texels = 0;
 				for (uint32_t mip = 0; mip < image.desc.mipLevels; ++mip)
 					texels += static_cast<uint64_t>(max(1u, lifetime.size.x >> mip)) * max(1u, lifetime.size.y >> mip);
-				lifetime.estimatedBytes = (texels * formatBits(image.desc.format) + 7) / 8;
+				lifetime.estimatedBytes = (texels * formatBits(image.desc.format) * (image.desc.shape == GraphImageShape::CubeMap ? 6 : 1) + 7) / 8;
 				index = (uint32_t)plan.allocatedImages.size();
 				plan.allocatedImages.push_back(lifetime);
 			}
@@ -975,7 +998,12 @@ namespace mpp
 			{
 				auto& lifetime = plan.allocatedImages[imageIndex];
 				uint32_t allocation = UINT32_MAX;
-				if (lifetime.desc.transient)
+				if (lifetime.desc.shape == GraphImageShape::CubeMap)
+				{
+					for (uint32_t candidate = 0; candidate < allocationGroups.size(); ++candidate)
+						if (plan.allocatedImages[allocationGroups[candidate].members.front()].image.id == lifetime.image.id) { allocation = candidate; break; }
+				}
+				if (allocation == UINT32_MAX && lifetime.desc.transient)
 				{
 					for (uint32_t candidate = 0; candidate < allocationGroups.size(); ++candidate)
 					{
@@ -1038,7 +1066,7 @@ namespace mpp
 			auto const& image = mImages[id];
 			output << "  Image[" << id << "] '" << image.name << "': format=" << formatName(image.desc.format)
 				<< ", versions=0.." << image.latestVersion << ", size=" << image.desc.absoluteSize.x << "x" << image.desc.absoluteSize.y
-				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y << ", mips=" << image.desc.mipLevels << ", colourSpace=" << (image.desc.colourSpace == TextureColourSpace::Srgb ? "sRGB" : "linear")
+				<< " @ " << image.desc.relativeSize.x << "x" << image.desc.relativeSize.y << ", shape=" << (image.desc.shape == GraphImageShape::CubeMap ? "cubemap" : "2D") << ", mips=" << image.desc.mipLevels << ", colourSpace=" << (image.desc.colourSpace == TextureColourSpace::Srgb ? "sRGB" : "linear")
 				<< ", filters=" << image.desc.params.minFilter << "/" << image.desc.params.magFilter << ", wrap=" << image.desc.params.wrap
 				<< ", transient=" << (image.desc.transient ? "true" : "false") << ", external=" << (image.desc.external ? "true" : "false");
 			if (!image.importName.empty()) output << ", import='" << image.importName << "'";
@@ -1058,9 +1086,9 @@ namespace mpp
 			for (auto const& input : pass.sampledInputs)
 				output << "    reads '" << mImages[input.id].valueIds[input.version] << "' Image[" << input.id << "]@" << input.version << "\n";
 			for (auto const& target : pass.colourOutputs)
-				output << "    writes colour '" << mImages[target.image.id].valueIds[target.image.version] << "' Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
+				output << "    writes colour '" << mImages[target.image.id].valueIds[target.image.version] << "' Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << (target.cubeFace == GraphNoCubeFace ? "" : " face " + to_string(target.cubeFace)) << "\n";
 			for (auto const& target : pass.depthOutputs)
-				output << "    writes depth '" << mImages[target.image.id].valueIds[target.image.version] << "' Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << "\n";
+				output << "    writes depth '" << mImages[target.image.id].valueIds[target.image.version] << "' Image[" << target.image.id << "]@" << target.image.version << " mip " << target.mipLevel << (target.cubeFace == GraphNoCubeFace ? "" : " face " + to_string(target.cubeFace)) << "\n";
 		}
 		return output.str();
 	}
@@ -1096,6 +1124,10 @@ namespace mpp
 			if (!absolute && !haveViewport) continue;
 			auto const size = resolveGraphImageSize(image.desc, viewport);
 			auto const maxSize = (uint32_t)max(0, caps.maxTextureSize);
+			if (image.desc.shape == GraphImageShape::CubeMap && size.x != size.y)
+			{
+				result.diagnostics.push_back("Cubemap image '" + image.name + "' resolves to non-square dimensions " + to_string(size.x) + "x" + to_string(size.y) + ".");
+			}
 			if (maxSize && (size.x > maxSize || size.y > maxSize))
 			{
 				result.diagnostics.push_back("Image '" + image.name + "' resolves to " + to_string(size.x) + "x" + to_string(size.y) +

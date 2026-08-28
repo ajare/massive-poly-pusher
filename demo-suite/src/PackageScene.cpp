@@ -159,15 +159,11 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 		throw std::runtime_error("Package pipeline has no presentation target.");
 	}
 
-	if (auto direction = mDocument.getShadowLightDirection())
+	if (mDocument.getShadowLightIndex())
 	{
-		mpp::ShadowOptions shadow;
-		shadow.enabled = true;
-		shadow.light.direction = glm::normalize(*direction);
-		shadow.light.focusPoint = mDocument.camera.target;
+		// SceneRuntime configures this shared domain only after the candidate scene
+		// has been instantiated successfully.
 		renderOptions.shadowDomain = "DemoSuite.PackageShadow";
-		renderer->configureShadowDomain(renderOptions.shadowDomain, shadow);
-		renderOptions.graphImports["shadowDepth"] = renderer->getShadowDomainDepthTarget(renderOptions.shadowDomain);
 	}
 	auto packagePipeline=renderer->getOrCreateRenderPipeline("Package", renderOptions);
 	std::map<std::string,mpp::RenderTargetPtr> outputDestinations;for(auto const& output:outputs)for(uint32_t image=0;image<graphPtr->getImageCount();++image){auto info=graphPtr->getImageInfo({image,0});if(info.name!=output.image||!info.desc.external)continue;auto destination=renderOptions.graphImports.find(info.importName);if(destination!=renderOptions.graphImports.end())outputDestinations.emplace(output.name,destination->second);break;}if(outputDestinations.size()==outputs.size())packagePipeline->prepareOutputs(*graphPtr,outputDestinations);
@@ -177,7 +173,8 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 		mDocument,
 		legacy ? mLegacyPipelineRuntime->getMaterialBindings() : mPipelineRuntime->getMaterialBindings(),
 		legacy ? mLegacyPipelineRuntime->getInstanceOverrides() : mPipelineRuntime->getInstanceOverrides(),
-		environmentBinding))
+		environmentBinding,
+		renderOptions.shadowDomain))
 	{
 		throw std::runtime_error("Package scene runtime preparation failed:\n" + diagnosticsSummary(mSceneRuntime->getDiagnostics()));
 	}

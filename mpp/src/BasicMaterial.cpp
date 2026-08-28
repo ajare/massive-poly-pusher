@@ -143,8 +143,9 @@ namespace mpp
 		acquireDependentResource(mProgram);
 		mProgram->load();
 
-		// Set uniforms
+		// Set uniforms and the explicitly authored generic shadow-caster policy.
 		mUniforms = mStr->getUniforms();
+		mShadowCaster = mStr->getShadowCasterContract();
 		// Set textures
 		Program* program = (Program*)(mProgram.get());
 		auto const& materialTextures = mStr->getTextures();
@@ -163,7 +164,7 @@ namespace mpp
 			string textureName;
 			if (it == materialTextures.end())
 			{
-				if (samplerName == "SHADOW_MAP")
+				if (samplerName == "SHADOW_MAP" || samplerName == "POINT_SHADOW_MAP")
 				{
 					// Shadow domains replace this binding during an opted-in scene flush.
 					// The normal no-texture fallback keeps non-shadow pipelines valid.

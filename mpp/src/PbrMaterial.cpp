@@ -389,7 +389,7 @@ namespace mpp
 			string textureName;
 			if (it == materialTextures.end())
 			{
-				if (samplerName == "SHADOW_MAP")
+				if (samplerName == "SHADOW_MAP" || samplerName == "POINT_SHADOW_MAP")
 				{
 					// Shadow domains replace this binding during an opted-in scene flush.
 					// The normal no-texture fallback keeps non-shadow pipelines valid.
@@ -506,6 +506,29 @@ namespace mpp
 	PbrMaterialFeatures PbrMaterial::getFeatures() const
 	{
 		return mFeatures;
+	}
+
+	ShadowCasterContract makePbrShadowCasterContract(PbrMaterialSpecification::PbrSurface const& surface)
+	{
+		ShadowCasterContract contract;
+		if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Blend)
+		{
+			contract.behaviour = ShadowCasterContract::Behaviour::Disabled;
+			return contract;
+		}
+		if (surface.alphaMode == PbrMaterialSpecification::PbrAlphaMode::Mask)
+		{
+			contract.behaviour = ShadowCasterContract::Behaviour::AlphaMask;
+			contract.alphaSampler = "PBR_BASE_COLOUR_MAP";
+			contract.alphaCutoff = surface.alphaCutoff;
+			contract.alphaFactor = surface.baseColourFactor.a;
+		}
+		return contract;
+	}
+
+	ShadowCasterContract PbrMaterial::getShadowCasterContract() const
+	{
+		return makePbrShadowCasterContract(mPbrSurface);
 	}
 
 	string const& PbrMaterial::getFeatureSummary() const

@@ -105,6 +105,7 @@ namespace mpp::resource_parsers
 			auto image = images->createChild("Image");
 			image->createChild("name")->setValue(info.name);
 			image->createChild("format")->setValue(format(info.desc.format));
+			if (info.desc.shape == GraphImageShape::CubeMap) image->createChild("shape")->setValue("cubemap");
 			image->createChild("scale")->setValue(std::to_string(info.desc.relativeSize.x) + " " + std::to_string(info.desc.relativeSize.y));
 			if (info.desc.absoluteSize.x) image->createChild("width")->setValue(info.desc.absoluteSize.x);
 			if (info.desc.absoluteSize.y) image->createChild("height")->setValue(info.desc.absoluteSize.y);
@@ -114,6 +115,7 @@ namespace mpp::resource_parsers
 			image->createChild("minFilter")->setValue(minFilter(info.desc.params.minFilter));
 			image->createChild("magFilter")->setValue(magFilter(info.desc.params.magFilter));
 			image->createChild("wrap")->setValue(wrap(info.desc.params.wrap));
+			if (info.desc.depthCompare) image->createChild("depthCompare")->setValue(true);
 			image->createChild("external")->setValue(info.desc.external);
 			image->createChild("transient")->setValue(info.desc.transient);
 			if (!info.importName.empty()) image->createChild("import")->setValue(info.importName);
@@ -159,9 +161,9 @@ namespace mpp::resource_parsers
 			if (!info.colourOutputs.empty())
 			{
 				auto colours = pass->createChild("Colours");
-				for (auto const& output : info.colourOutputs) { auto node = colours->createChild("Output"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(vec4(output.clearColour)); }
+				for (auto const& output : info.colourOutputs) { auto node = colours->createChild("Output"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); if (output.cubeFace != GraphNoCubeFace) node->createChild("face")->setValue(output.cubeFace); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(vec4(output.clearColour)); }
 			}
-			if (!info.depthOutputs.empty()) { auto const& output = info.depthOutputs.front(); auto node = pass->createChild("Depth"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(output.clearDepth); }
+			if (!info.depthOutputs.empty()) { auto const& output = info.depthOutputs.front(); auto node = pass->createChild("Depth"); node->createChild("image")->setValue(imageName(graph, output.image)); node->createChild("value")->setValue(graph.getValueId(output.image)); if (output.mipLevel) node->createChild("mipLevel")->setValue(output.mipLevel); if (output.cubeFace != GraphNoCubeFace) node->createChild("face")->setValue(output.cubeFace); node->createChild("load")->setValue(load(output.load)); node->createChild("store")->setValue(store(output.store)); if (output.load == GraphLoadOp::Clear) node->createChild("clear")->setValue(output.clearDepth); }
 			// Emitted whenever the state is not the default, rather than only when
 			// explicitState is set, so a configuration the author has temporarily
 			// switched off is still preserved across a save/reload.

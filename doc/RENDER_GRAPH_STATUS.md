@@ -8,7 +8,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 
 - [x] Versioned `GraphImageHandle` and `GraphPassHandle` declarations.
 - [x] Image descriptors for format, absolute/relative size, usage, sampling, colour space, external, and transient intent.
-- [x] Programmatic graph declaration: images, passes, sampled reads, colour writes, and depth writes.
+- [x] Programmatic graph declaration: 2D/cubemap images, passes, sampled reads, and colour/depth writes. Cubemap attachment writes select one canonical face subresource.
 - [x] Validation for invalid/stale handles, duplicate names, sampled usage, missing producers, read/write feedback, dependency cycles, depth/colour format-usage mismatches, and incompatible MRT dimensions/sample counts.
 - [x] Deterministic topological pass ordering.
 - [x] `Caps` reports draw-buffer and colour-attachment limits; caps-aware compilation rejects oversized MRT declarations.
@@ -17,7 +17,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 - [x] Physical attachment allocation through `RenderGraphTargets`: RenderTexture mappings for RGBA8, RGBA16F, RG16F, depth24, and depth24-stencil8, with compatible non-overlapping plan intervals aliased to one target.
 - [x] Imported-target binding, resolving every version of an external logical image to its application-provided backing target.
 - [x] Transactional graph-target allocation and named-output generations, with shared screen/offscreen pass-through presentation, immutable physical plans, work/history ownership, and prior-generation retention on failure.
-- [x] Graphics-pass execution through `RenderGraphExecutor`: per-pass framebuffer views, MRT draw buffers, colour/depth clear load operations, callback execution, and RenderSystem target-stack restoration on exceptions.
+- [x] Graphics-pass execution through `RenderGraphExecutor`: per-pass framebuffer views (including cubemap faces), MRT draw buffers, colour/depth clear load operations, callback execution, and RenderSystem target-stack restoration on exceptions.
 - [x] Nested XML topology parser (`RenderGraphParser`) for images, sampled reads, colour outputs, one depth output, load/store operations, and clear values.
 - [x] Debug builds of `MassivePolyPusher` and `MppResourceParsers` after the graph work.
 
@@ -34,7 +34,7 @@ This is the implementation status for `render-graph-plan`. Existing `Default` an
 
 - [~] Compute passes, multiple simultaneous views of one texture, and broader effect/readback comparisons. Declared mip chains, explicit colour/depth mip attachments, temporary sampler mip views, XML round trips, dimension validation, generated-mip readback, and explicit-mip readback are tested.
 - [x] Shader output-location validation and runtime MRT fallback. During graph execution every selected program is checked for active fragment locations required by the pass (when program-interface reflection is available); extra outputs remain legal. GraphPBR enables bloom-mask MRT only when hardware and every visible scene material expose locations 0 and 1, otherwise it falls back to threshold bloom.
-- [x] Opt-in hardcoded and XML graph PBR pipelines with shadows, bloom, tone mapping, and presentation.
+- [x] Opt-in hardcoded and XML graph PBR pipelines with directional or point shadows, bloom, tone mapping, and presentation. Point domains share one cached cubemap and expand a dirty update to six face passes.
 - [~] DemoSuite graph controls and comparisons. Pipeline/pass isolation and live image-effect controls are implemented; automated screenshots and RenderDoc archives remain.
 
 ## Current safe-use boundary

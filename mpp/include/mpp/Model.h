@@ -57,7 +57,7 @@ namespace mpp
 
 		Mesh* getMesh(int index);
 
-		void getBounds(glm::vec3& bMin, glm::vec3& bMax);
+		void getBounds(glm::vec3& bMin, glm::vec3& bMax) const;
 
 		void setMeshesDynamic();
 

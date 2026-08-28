@@ -89,8 +89,8 @@ namespace mpp
 		void clearGpuTimings();
 		void synchronizeFramebufferViews(RenderGraphTargets const& targets);
 		RenderTargetPtr getFramebufferView(std::string const& name, RenderGraphTargets const& targets,
-			std::vector<RenderTargetPtr> const& colours, std::vector<uint32_t> const& colourMips,
-			RenderTargetPtr const& depth, uint32_t depthMip);
+			std::vector<RenderTargetPtr> const& colours, std::vector<uint32_t> const& colourMips, std::vector<uint32_t> const& colourFaces,
+			RenderTargetPtr const& depth, uint32_t depthMip, uint32_t depthFace);
 
 	public:
 		explicit RenderGraphExecutor(RenderSystem* renderSystem);

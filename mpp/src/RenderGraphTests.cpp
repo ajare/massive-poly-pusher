@@ -3,6 +3,8 @@
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphTests.h"
+#include "mpp/RenderPipeline.h"
+#include "mpp/SceneDocument.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/PbrShaders.h"
 #include "mpp/ModelRenderParams.h"
@@ -27,10 +29,66 @@ namespace mpp
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
 			return fail("built-in PBR shader writes MRT normals before material normal processing");
+		auto validatesPointShadowContract = [](std::string const& shader)
+		{
+			return shader.find("sampler2DShadow SHADOW_MAP") != std::string::npos &&
+				shader.find("samplerCubeShadow POINT_SHADOW_MAP") != std::string::npos &&
+				shader.find("SHADOW_TYPE_AND_LIGHT_INDEX.y") != std::string::npos &&
+				shader.find("pointShadowVisibility") != std::string::npos;
+		};
+		if (!validatesPointShadowContract(FragmentShader3dTemplate) || !validatesPointShadowContract(BuiltInPbrFragmentShader))
+			return fail("built-in receiver lost directional/point shadow sampling or explicit light association");
+		if (VertexShaderPointShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
+			FragmentShaderPointShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
+			return fail("point caster no longer writes radial cubemap depth");
+		if (VertexShaderAlphaShadowDepthTemplate.find("SHADOW_TEXCOORDS") == std::string::npos ||
+			FragmentShaderAlphaShadowDepthTemplate.find("SHADOW_ALPHA_CUTOFF") == std::string::npos ||
+			FragmentShaderAlphaShadowDepthTemplate.find("discard") == std::string::npos ||
+			VertexShaderPointAlphaShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
+			FragmentShaderPointAlphaShadowDepthTemplate.find("discard") == std::string::npos ||
+			FragmentShaderPointAlphaShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
+			return fail("masked caster lost its directional or point-depth silhouette path");
+		auto validatesFilteredPointShadow = [](std::string const& shader)
+		{
+			return shader.find("for (int y = -1; y <= 1; ++y)") != std::string::npos &&
+				shader.find("for (int x = -1; x <= 1; ++x)") != std::string::npos &&
+				shader.find("tapDirection") != std::string::npos &&
+				shader.find("visibility /= 9.0") != std::string::npos &&
+				shader.find("BIAS_AND_ENABLED.w") != std::string::npos &&
+				shader.find("mix(visibility, 1.0, fade)") != std::string::npos;
+		};
+		if (!validatesFilteredPointShadow(FragmentShader3dTemplate) || !validatesFilteredPointShadow(BuiltInPbrFragmentShader))
+			return fail("built-in point receivers lost tangent-space 3x3 PCF or range fade");
+		ShadowOptions pointDefaults;
+		if (pointDefaults.nearPlane != 0.25f || pointDefaults.light.range != 192.0f ||
+			pointDefaults.filterRadiusTexels != 1.0f || pointDefaults.fadeStartNormalized != 0.9f ||
+			pointDefaults.filterMode != ShadowFilterMode::Pcf3x3)
+			return fail("point-shadow quality defaults are not the Player Torch contract");
+
+		SceneDocument pointScene;
+		pointScene.name = "Authored point shadow";
+		SceneLightDocument fillLight; fillLight.id = "Fill";
+		SceneLightDocument pointLight; pointLight.id = "PointShadow"; pointLight.type = SceneLightType::Point;
+		pointLight.position = { 3.0f, 4.0f, 5.0f }; pointLight.range = 24.0f; pointLight.castsShadows = true;
+		SceneLightDocument rimLight; rimLight.id = "Rim";
+		pointScene.lights = { fillLight, pointLight, rimLight };
+		if (pointScene.validate().hasErrors() || pointScene.getShadowLightIndex() != 1)
+			return fail("an authored point shadow was rejected or lost its independent light index");
+		auto invalidPointScene = pointScene;
+		invalidPointScene.lights[1].range = 0.0f;
+		if (!invalidPointScene.validate().hasErrors())
+			return fail("a shadow-casting point light accepted a non-positive range");
+		invalidPointScene = pointScene;
+		SceneLightDocument secondShadow; secondShadow.id = "SecondShadow"; secondShadow.castsShadows = true;
+		invalidPointScene.lights.push_back(secondShadow);
+		if (!invalidPointScene.validate().hasErrors())
+			return fail("multiple authored shadow lights were accepted");
 
 		ModelRenderParams modelParams;
 		auto const initialProgramSetRevision = modelParams.getProgramSetRevision();
+		auto const initialShadowRevision = modelParams.getShadowRevision();
 		modelParams.setModelInstanceCount(2);
+		if (modelParams.getShadowRevision() <= initialShadowRevision) return fail("model instance change did not invalidate shadow output");
 		modelParams.setMeshUniforms("Mesh", {});
 		modelParams.setModelBlend(true);
 		modelParams.setMeshBlend("Mesh", false);
@@ -44,6 +102,12 @@ namespace mpp
 		modelParams.setMeshFlags("Mesh", 0);
 		if (modelFlagsRevision <= initialProgramSetRevision || modelParams.getProgramSetRevision() <= modelFlagsRevision)
 			return fail("visibility/material model parameters did not invalidate the visible program set");
+		auto const casterPolicyRevision = modelParams.getShadowRevision();
+		modelParams.setModelFlags(ModelRenderParams::Flag_Visible | ModelRenderParams::Flag_CastShadows);
+		if (modelParams.getShadowRevision() <= casterPolicyRevision) return fail("caster-policy change did not invalidate shadow output");
+		auto const materialContractRevision = modelParams.getShadowRevision();
+		modelParams.setMeshMaterial("ShadowContractMesh", {});
+		if (modelParams.getShadowRevision() <= materialContractRevision) return fail("material shadow-contract override did not invalidate shadow output");
 		auto const unchangedFlagsRevision = modelParams.getProgramSetRevision();
 		modelParams.setMeshFlags("Mesh", 0);
 		if (modelParams.getProgramSetRevision() != unchangedFlagsRevision) return fail("unchanged visibility invalidated the visible program set");
@@ -93,6 +157,26 @@ namespace mpp
 		GraphImageDesc colour;
 		colour.format = GraphImageFormat::Rgba16f;
 		colour.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+		if (colour.shape != GraphImageShape::Texture2D) return fail("existing graph image descriptors no longer default to 2D");
+
+		GraphImageDesc cubeDepth;
+		cubeDepth.format = GraphImageFormat::Depth24;
+		cubeDepth.shape = GraphImageShape::CubeMap;
+		cubeDepth.absoluteSize = { 64, 64 };
+		cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled | GraphImageUsage::Exported;
+		cubeDepth.depthCompare = true;
+		RenderGraph cubeGraph;
+		auto cube = cubeGraph.createImage("PointShadow", cubeDepth);
+		for (uint32_t face = 0; face < 6; ++face) { auto pass = cubeGraph.addPass("Face" + std::to_string(face)); cube = cubeGraph.writeDepth(pass, cube, GraphLoadOp::Clear, GraphStoreOp::Store, 0.1f * (face + 1), 0, face); }
+		if (!cubeGraph.compile().valid || cubeGraph.getPassInfo({ 5 }).depthOutputs.front().cubeFace != 5 || cubeGraph.describe().find("face 5") == std::string::npos) return fail("depth cubemap face writes were not compiled or described");
+		bool rejectedFace = false; try { auto pass = cubeGraph.addPass("BadFace"); cubeGraph.writeDepth(pass, cube, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, 6); } catch (...) { rejectedFace = true; }
+		if (!rejectedFace) return fail("out-of-range cubemap face was accepted");
+		bool rejectedMissingFace = false; try { RenderGraph graph; auto image = graph.createImage("Cube", cubeDepth); graph.writeDepth(graph.addPass("MissingFace"), image); } catch (...) { rejectedMissingFace = true; }
+		if (!rejectedMissingFace) return fail("cubemap attachment without a selected face was accepted");
+		bool rejected2dFace = false; try { RenderGraph graph; GraphImageDesc depth2d = cubeDepth; depth2d.shape = GraphImageShape::Texture2D; auto image = graph.createImage("Depth2D", depth2d); graph.writeDepth(graph.addPass("2DFace"), image, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, 0); } catch (...) { rejected2dFace = true; }
+		if (!rejected2dFace) return fail("2D attachment accepted a cubemap face");
+		bool rejectedShape = false; try { RenderGraph graph; auto invalid = cubeDepth; invalid.absoluteSize = { 64, 32 }; graph.createImage("NonSquareCube", invalid); } catch (...) { rejectedShape = true; }
+		if (!rejectedShape) return fail("non-square cubemap descriptor was accepted");
 
 		RenderGraph valid;
 		auto scene = valid.createImage("Scene", colour);

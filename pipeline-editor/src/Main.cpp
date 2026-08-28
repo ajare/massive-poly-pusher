@@ -1673,19 +1673,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				previewOptions.bloom.threshold = 0.0f;
 				previewOptions.ambientOcclusion = previewDocument->ambientOcclusion;
 				previewOptions.debugEnvironmentCube = debugEnvironmentCube;
-				if (previewScene)
+				if (previewScene && previewScene->getShadowLightIndex())
 				{
-					if (auto direction = previewScene->getShadowLightDirection())
-					{
-						ShadowOptions shadow;
-						shadow.enabled = true;
-						shadow.light.direction = glm::normalize(*direction);
-						shadow.light.focusPoint = previewScene->camera.target;
-						previewOptions.shadowDomain = "PipelineEditor.PreviewShadow";
-						renderSystem.configureShadowDomain(previewOptions.shadowDomain, shadow);
-						previewOptions.graphImports["shadowDepth"] =
-						    renderSystem.getShadowDomainDepthTarget(previewOptions.shadowDomain);
-					}
+					// SceneRuntime commits this shared domain only with a valid candidate.
+					previewOptions.shadowDomain = "PipelineEditor.PreviewShadow";
 				}
 				auto candidatePreviewTarget = pipelineRuntime.getPresentationTarget();
 				auto candidatePipelineObject =
@@ -1711,7 +1702,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					if (!sceneRuntime.rebuild(*previewScene,
 					                          pipelineRuntime.getMaterialBindings(),
 					                          pipelineRuntime.getInstanceOverrides(),
-					                          previewDocument->environment.binding))
+					                          previewDocument->environment.binding,
+					                          previewOptions.shadowDomain))
 					{
 						std::string message = "Preview scene rebuild failed.";
 						for (auto const& diagnostic : sceneRuntime.getDiagnostics().getDiagnostics())

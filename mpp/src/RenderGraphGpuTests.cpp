@@ -5,6 +5,7 @@
 #include <cmath>
 #include <chrono>
 #include <memory>
+#include <limits>
 #include <filesystem>
 #include <fstream>
 #include <type_traits>
@@ -20,6 +21,9 @@
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/Scene.h"
+#include "mpp/SceneRuntime.h"
+#include "mpp/Model.h"
 #include "mpp/IblEnvironmentCache.h"
 #include "mpp/RenderTexture.h"
 #include "mpp/ProgrammaticTextureStream.h"
@@ -53,6 +57,14 @@ namespace mpp
 		float readFirstDepth(RenderTargetPtr const& target)
 		{
 			auto texture=dynamic_cast<RenderTexture*>(target.get());if(!texture||!texture->getDepthTextureId())return -1.0f;std::vector<float> values(texture->getWidth()*texture->getHeight());GL_CHECK(glBindTexture(GL_TEXTURE_2D,texture->getDepthTextureId()));GL_CHECK(glGetTexImage(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,GL_FLOAT,values.data()));GL_CHECK(glBindTexture(GL_TEXTURE_2D,0));return values.empty()?-1.0f:values.front();
+		}
+
+		float readFirstCubeDepth(RenderTargetPtr const& target, uint32_t face)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get()); if (!texture || face >= 6) return -1.0f;
+			std::vector<float> values(texture->getWidth() * texture->getHeight()); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texture->getDepthTextureId()));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT, GL_FLOAT, values.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+			return values.empty() ? -1.0f : values.front();
 		}
 
 		bool nearColour(std::array<uint8_t, 4> const& pixel, std::array<uint8_t, 4> const& expected)
@@ -92,6 +104,13 @@ namespace mpp
 			return false;
 		}
 
+		class CameraCulledShadowTestScene : public Scene
+		{
+		public:
+			using Scene::Scene;
+			std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr) override { return {}; }
+		};
+
 		uint8_t maximumRed(RenderTargetPtr const& target)
 		{
 			auto pixels = readPixels(target);
@@ -113,6 +132,8 @@ namespace mpp
 			{
 				auto const& caps = renderSystem->getCaps();
 				GLint value = 0;
+				GL_CHECK(glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &value));
+				if (caps.maxCubeMapTextureSize != value) return fail("reported cubemap texture-size limit does not match OpenGL");
 				GL_CHECK(glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &value));
 				if (caps.maxVertexTextureUnits != static_cast<uint32_t>(value)) return fail("reported vertex texture-unit limit does not match OpenGL");
 				GL_CHECK(glGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS, &value));
@@ -446,6 +467,162 @@ namespace mpp
 			auto retainedTarget=resizedTarget;bool invalidPlanRejected=false;try{RenderGraphAllocationPlan invalidPlan;targets.allocate(invalidPlan);}catch(...){invalidPlanRejected=true;}if(!invalidPlanRejected||targets.get(first)!=retainedTarget)return fail("failed graph allocation did not retain the prior generation");
 			resizedTarget.reset();retainedTarget.reset();
 
+			stage = "depth cubemap graph faces";
+			GraphImageDesc cubeDepth; cubeDepth.format = GraphImageFormat::Depth24; cubeDepth.shape = GraphImageShape::CubeMap; cubeDepth.absoluteSize = { 16, 16 };
+			cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled; cubeDepth.depthCompare = true; cubeDepth.transient = false;
+			RenderGraph cubeGraph; auto cubeImage = cubeGraph.createImage("GpuTestDepthCube", cubeDepth); std::vector<GraphImageHandle> cubeVersions; std::vector<GraphPassHandle> cubePasses;
+			for (uint32_t face = 0; face < 6; ++face) { auto pass = cubeGraph.addPass("GpuTestDepthFace" + std::to_string(face)); cubePasses.push_back(pass); cubeImage = cubeGraph.writeDepth(pass, cubeImage, face == 0 ? GraphLoadOp::Clear : GraphLoadOp::Load, GraphStoreOp::Store, 0.1f * (face + 1), 0, face); cubeVersions.push_back(cubeImage); }
+			// The final version alone must retain every prior face write. Point-shadow
+			// consumers sample one completed cubemap, not six historical versions.
+			auto retain = cubeGraph.addPass("GpuTestRetainDepthFaces"); cubeGraph.readSampled(retain, cubeVersions.back()); auto retained = cubeGraph.createImage("GpuTestCubeRetention", colour); cubeGraph.writeColour(retain, retained, GraphLoadOp::Clear);
+			auto cubePlan = cubeGraph.buildAllocationPlan({ 16, 16 }); if (!cubePlan.valid) return fail("depth cubemap allocation plan was rejected");
+			RenderGraphTargets cubeTargets(renderSystem); cubeTargets.allocate(cubePlan); auto cubeTarget = cubeTargets.get(cubeVersions.back()); auto depthCubeTexture = dynamic_cast<RenderTexture*>(cubeTarget.get());
+			if (!depthCubeTexture || depthCubeTexture->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || depthCubeTexture->getDepthFormat() != RenderTextureDepthFormat::Depth24 || !depthCubeTexture->usesDepthComparison()) return fail("allocated depth cubemap contract is incomplete");
+			for (auto version : cubeVersions) if (cubeTargets.get(version) != cubeTarget) return fail("one logical cubemap's face writes did not share backing storage");
+			GLint compareMode = GL_NONE; GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubeTexture->getDepthTextureId())); GL_CHECK(glGetTexParameteriv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, &compareMode)); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (compareMode != GL_COMPARE_REF_TO_TEXTURE) return fail("depth cubemap comparison sampling was not enabled");
+			GLchar objectLabel[256]{}; GLsizei objectLabelLength = 0; GL_CHECK(glGetObjectLabel(GL_TEXTURE, depthCubeTexture->getDepthTextureId(), sizeof(objectLabel), &objectLabelLength, objectLabel)); if (!objectLabelLength) return fail("depth cubemap texture was not labelled");
+			{ RenderGraphExecutor cubeExecutor(renderSystem); for (uint32_t face = 0; face < cubePasses.size(); ++face) cubeExecutor.setPassCallback(cubeGraph, cubePasses[face], [face](RenderGraphExecutionContext const&) { float value = 0.1f * (face + 1); GL_CHECK(glClearBufferfv(GL_DEPTH, 0, &value)); }); cubeExecutor.setPassCallback(cubeGraph, retain, [](RenderGraphExecutionContext const&) {}); cubeExecutor.execute(cubeGraph, cubeTargets, renderSystem->getCaps()); }
+			for (uint32_t face = 0; face < 6; ++face) { auto value = readFirstCubeDepth(cubeTarget, face); auto expected = 0.1f * (face + 1); if (std::abs(value - expected) > 0.002f) return fail("depth cubemap face " + std::to_string(face) + " readback was " + std::to_string(value)); }
+			bool rejectedCubeMsaa = false; for (uint32_t samples : { 2u, 4u, 8u }) if (renderSystem->getCaps().supportsMsaa(samples)) { try { cubeTargets.allocatePhysical(cubePlan, samples); } catch (...) { rejectedCubeMsaa = true; } break; } if (!rejectedCubeMsaa) return fail("multisampled depth cubemap allocation was accepted");
+			GraphImageDesc importedCubeDesc = cubeDepth; importedCubeDesc.external = true; RenderGraph importedCubeGraph; auto importedCube = importedCubeGraph.createImage("ImportedDepthCube", importedCubeDesc); RenderGraphTargets importedCubeTargets(renderSystem); importedCubeTargets.bindImported(importedCubeGraph, importedCube, cubeTarget);
+			bool rejectedMismatchedImport = false; try { importedCubeTargets.bindImported(importedCubeGraph, importedCube, targets.get(second)); } catch (...) { rejectedMismatchedImport = true; } if (!rejectedMismatchedImport) return fail("mismatched 2D import was accepted for a depth cubemap");
+			std::weak_ptr<RenderTarget> releasedCube = cubeTarget; importedCubeTargets.clear(); cubeTargets.clear(); cubeTarget.reset(); if (!releasedCube.expired()) return fail("destroyed depth cubemap remained owned by graph targets");
+
+			stage = "point shadow quality options";
+			ShadowOptions pointQuality;
+			pointQuality.enabled = true;
+			pointQuality.resolution = 16;
+			pointQuality.light.type = ShadowLightType::Point;
+			pointQuality.light.position = { 1.0f, 2.0f, 3.0f };
+			pointQuality.light.range = 24.0f;
+			pointQuality.nearPlane = 0.25f;
+			pointQuality.constantBias = 0.001f;
+			pointQuality.normalBias = 0.003f;
+			pointQuality.filterMode = ShadowFilterMode::Hard;
+			pointQuality.filterRadiusTexels = 2.0f;
+			pointQuality.fadeStartNormalized = 0.75f;
+			renderSystem->configureShadowDomain("GpuTestPointQuality", pointQuality);
+			auto const& appliedPointQuality = renderSystem->getShadowDomainOptions("GpuTestPointQuality");
+			if (appliedPointQuality.nearPlane != pointQuality.nearPlane || appliedPointQuality.light.range != pointQuality.light.range ||
+				appliedPointQuality.constantBias != pointQuality.constantBias || appliedPointQuality.normalBias != pointQuality.normalBias ||
+				appliedPointQuality.filterMode != ShadowFilterMode::Hard || appliedPointQuality.filterRadiusTexels != pointQuality.filterRadiusTexels ||
+				appliedPointQuality.fadeStartNormalized != pointQuality.fadeStartNormalized)
+				return fail("point shadow quality options were not retained by the public domain API");
+			bool rejectedInvalidPointQuality = false;
+			try { auto invalid = pointQuality; invalid.fadeStartNormalized = 1.01f; renderSystem->configureShadowDomain("GpuTestInvalidPointQuality", invalid); }
+			catch (...) { rejectedInvalidPointQuality = true; }
+			if (!rejectedInvalidPointQuality) return fail("point shadow accepted an out-of-range normalized fade start");
+			rejectedInvalidPointQuality = false;
+			try { auto invalid = pointQuality; invalid.nearPlane = 0.0f; renderSystem->configureShadowDomain("GpuTestInvalidPointNear", invalid); }
+			catch (...) { rejectedInvalidPointQuality = true; }
+			if (!rejectedInvalidPointQuality) return fail("point shadow accepted a non-positive near plane");
+
+			stage = "authored point-shadow scene runtime";
+			SceneDocument authoredPointScene;
+			authoredPointScene.name = "GPU authored point shadow";
+			authoredPointScene.models.push_back({ "Caster", SceneModelSource::Box });
+			SceneLightDocument authoredFill; authoredFill.id = "Fill";
+			SceneLightDocument authoredPoint; authoredPoint.id = "AuthoredPoint"; authoredPoint.type = SceneLightType::Point;
+			authoredPoint.position = { 3.0f, 4.0f, 5.0f }; authoredPoint.range = 24.0f; authoredPoint.castsShadows = true;
+			SceneLightDocument authoredRim; authoredRim.id = "Rim";
+			authoredPointScene.lights = { authoredFill, authoredPoint, authoredRim };
+			SceneRuntime authoredRuntime(renderSystem, renderSystem->getResourceManager());
+			if (!authoredRuntime.rebuild(authoredPointScene, {}, {}, {}, "GpuTestAuthoredPoint"))
+				return fail("a valid authored point-shadow scene did not instantiate");
+			auto const& authoredShadow = renderSystem->getShadowDomainOptions("GpuTestAuthoredPoint");
+			if (authoredShadow.light.type != ShadowLightType::Point || authoredShadow.light.position != authoredPointScene.lights[1].position ||
+				authoredShadow.light.range != authoredPointScene.lights[1].range || authoredShadow.light.lightIndex != 1)
+				return fail("scene runtime did not configure the authored point shadow or its independent direct-light index");
+			auto const previousAuthoredScene = authoredRuntime.getScene();
+			auto invalidAuthoredPointScene = authoredPointScene;
+			invalidAuthoredPointScene.lights[1].position.x = std::numeric_limits<float>::infinity();
+			if (authoredRuntime.rebuild(invalidAuthoredPointScene, {}, {}, {}, "GpuTestAuthoredPoint") || authoredRuntime.getScene() != previousAuthoredScene)
+				return fail("an invalid point shadow replaced the previous valid runtime scene");
+
+			stage = "point shadow domain cache";
+			std::vector<SceneModel3dPtr> noCasters;
+			if (!renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters)) return fail("new point-shadow revision was reported reusable");
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto initialCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (!initialCache.cacheComplete || initialCache.facePassCount != 6 || initialCache.regenerationCount != 1 ||
+				initialCache.renderedRevision != initialCache.revision || initialCache.invalidationReason != ShadowInvalidationReason::InitialConfiguration)
+				return fail("initial point-shadow cubemap was not published as one six-face cache unit");
+			if (renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters) ||
+				renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters))
+				return fail("stable point-shadow revision was not shared across pipeline requests");
+			auto reusedCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (reusedCache.reuseCount < 2 || !reusedCache.reusedLastRequest || reusedCache.facePassCount != 6)
+				return fail("point-shadow reuse diagnostics did not report stationary/shared reuse");
+			auto movedPoint = pointQuality; movedPoint.light.position.x += 1.0f;
+			renderSystem->configureShadowDomain("GpuTestPointQuality", movedPoint);
+			if (!renderSystem->prepareShadowDomain("GpuTestPointQuality", noCasters)) return fail("point-light movement reused a stale cubemap");
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto movedCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (movedCache.facePassCount != 12 || movedCache.invalidationReason != ShadowInvalidationReason::LightChanged)
+				return fail("point-light movement did not regenerate all six faces with diagnostics");
+			auto changedQuality = movedPoint; changedQuality.normalBias += 0.001f;
+			renderSystem->configureShadowDomain("GpuTestPointQuality", changedQuality);
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto optionCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (optionCache.facePassCount != 18 || optionCache.invalidationReason != ShadowInvalidationReason::OptionsChanged)
+				return fail("shadow-relevant option change did not regenerate all six faces");
+			renderSystem->invalidateShadowDomain("GpuTestPointQuality");
+			renderSystem->renderShadowDomain("GpuTestPointQuality", noCasters);
+			auto explicitCache = renderSystem->getShadowDomainDiagnostics("GpuTestPointQuality");
+			if (explicitCache.facePassCount != 24 || explicitCache.invalidationReason != ShadowInvalidationReason::Explicit)
+				return fail("explicit named-domain invalidation did not regenerate all six faces");
+
+			stage = "point shadow volume selection and automatic invalidation";
+			auto boundsModelResource = renderSystem->getResourceManager()->getResource("__mpp_mesh_fullscreen_quad__");
+			auto* boundsModel = dynamic_cast<Model*>(boundsModelResource.get());
+			if (!boundsModel) return fail("core bounds model is unavailable for point-shadow volume tests");
+			CameraCulledShadowTestScene casterScene(renderSystem);
+			auto inRangeCaster = casterScene.add3dModel(boundsModelResource);
+			auto outOfRangeCaster = casterScene.add3dModel(boundsModelResource);
+			outOfRangeCaster->translate({ 100.0f, 0.0f, 0.0f });
+			if (!casterScene.get3dModelsInView({}).empty()) return fail("camera-culling test scene unexpectedly returned visible models");
+			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
+			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
+				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
+			auto casterOptions = changedQuality; casterOptions.light.position = {}; casterOptions.light.range = 10.0f;
+			renderSystem->configureShadowDomain("GpuTestVolumeCasters", casterOptions);
+			renderSystem->renderShadowDomain("GpuTestVolumeCasters", volumeCasters);
+			auto verifySceneInvalidation = [&](char const* route)
+			{
+				if (!renderSystem->prepareShadowDomain("GpuTestVolumeCasters", volumeCasters)) return false;
+				renderSystem->renderShadowDomain("GpuTestVolumeCasters", volumeCasters);
+				auto diagnostic = renderSystem->getShadowDomainDiagnostics("GpuTestVolumeCasters");
+				if (diagnostic.invalidationReason != ShadowInvalidationReason::SceneChanged || diagnostic.facePassCount % 6 != 0)
+				{
+					if (failure) *failure = std::string(route) + " did not invalidate the complete point-shadow cubemap";
+					return false;
+				}
+				return true;
+			};
+			inRangeCaster->translate({ 0.25f, 0.0f, 0.0f });
+			if (!verifySceneInvalidation("model transform")) return false;
+			inRangeCaster->getParams()->setModelFlags(0);
+			if (!verifySceneInvalidation("visibility")) return false;
+			inRangeCaster->getParams()->setModelFlags(ModelRenderParams::Flag_Visible);
+			if (!verifySceneInvalidation("caster policy")) return false;
+			inRangeCaster->getParams()->setModelInstanceCount(2);
+			if (!verifySceneInvalidation("instance count")) return false;
+			auto* firstMesh = boundsModel->getMesh(0);
+			inRangeCaster->getParams()->setModelMaterial(firstMesh->getMaterial());
+			if (!verifySceneInvalidation("material shadow contract")) return false;
+
+			stage = "point shadow hardware fallback";
+			ShadowOptions unsupportedPointShadow;
+			unsupportedPointShadow.enabled = true;
+			unsupportedPointShadow.light.type = ShadowLightType::Point;
+			unsupportedPointShadow.light.range = 10.0f;
+			unsupportedPointShadow.nearPlane = 0.1f;
+			unsupportedPointShadow.resolution = (size_t)renderSystem->getCaps().maxCubeMapTextureSize + 1;
+			renderSystem->configureShadowDomain("GpuTestUnsupportedPointShadow", unsupportedPointShadow);
+			if (renderSystem->getShadowDomainDepthTarget("GpuTestUnsupportedPointShadow") ||
+				renderSystem->getShadowDomainOptions("GpuTestUnsupportedPointShadow").enabled)
+				return fail("unsupported point-shadow cubemap did not disable its domain");
+
 			stage="physical MSAA colour/depth allocation and resolve";
 			for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(plan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(first).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(first).get());if(!write||!resolved||write==resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA colour write/resolve targets are invalid");executor.execute(graph,targets,renderSystem->getCaps());if(!nearColour(readFirstPixel(targets.get(first)),{255,0,0,64}))return fail("MSAA colour/alpha resolve readback failed");}
 			GraphImageDesc depthDesc;depthDesc.format=GraphImageFormat::Depth24;depthDesc.usage=GraphImageUsage::DepthAttachment|GraphImageUsage::Sampled;RenderGraph depthGraph;auto depthImage=depthGraph.createImage("GpuTestMsaaDepth",depthDesc);auto depthPass=depthGraph.addPass("GpuTestMsaaDepthClear",GraphPassType::Fullscreen);depthImage=depthGraph.writeDepth(depthPass,depthImage,GraphLoadOp::Clear,GraphStoreOp::Store,0.25f);RenderGraphExecutor depthExecutor(renderSystem);depthExecutor.setPassCallback(depthGraph, depthPass,[](RenderGraphExecutionContext const&){});auto depthPlan=depthGraph.buildAllocationPlan({32,24});for(uint32_t samples:{2u,4u,8u})if(renderSystem->getCaps().supportsMsaa(samples)){targets.allocatePhysical(depthPlan,samples);auto write=dynamic_cast<RenderTexture*>(targets.getWriteTarget(depthImage).get());auto resolved=dynamic_cast<RenderTexture*>(targets.get(depthImage).get());if(!write||!resolved||write->getSamples()!=samples||resolved->getSamples()!=1)return fail("MSAA depth write/resolve targets are invalid");depthExecutor.execute(depthGraph,targets,renderSystem->getCaps());auto value=readFirstDepth(targets.get(depthImage));if(value<0.24f||value>0.26f)return fail("MSAA depth resolve readback failed: "+std::to_string(value));}
@@ -510,6 +687,29 @@ namespace mpp
 				gateScene->setViewport(0, 0, 64, 64);
 				gateScene->setClearColour(Colour(0.8f, 0.8f, 0.8f, 1.0f));
 				auto gateCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+
+				// A named but disabled domain has no depth target. Generated graphs must
+				// omit its external shadow image while the disabled ShadowFrame keeps
+				// direct lighting active; binding a null import used to abort rendering.
+				ShadowOptions disabledShadow;
+				disabledShadow.enabled = false;
+				disabledShadow.light.type = ShadowLightType::Point;
+				disabledShadow.light.range = 24.0f;
+				disabledShadow.nearPlane = 0.25f;
+				disabledShadow.resolution = 16;
+				renderSystem->configureShadowDomain("GpuTestDisabledPointShadow", disabledShadow);
+				pipeline->setShadowDomain("GpuTestDisabledPointShadow");
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				for (auto const& stats : pipeline->getLastGraphExecutionStats())
+					if (stats.name.rfind("PointShadowFace", 0) == 0)
+						return fail("disabled point-shadow domain inserted a cubemap face pass");
+				auto enabledShadow = disabledShadow;
+				enabledShadow.enabled = true;
+				renderSystem->configureShadowDomain("GpuTestDisabledPointShadow", enabledShadow);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				renderSystem->configureShadowDomain("GpuTestDisabledPointShadow", disabledShadow);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+
 				auto executedSsao = [&]
 				{
 					for (auto const& stats : pipeline->getLastGraphExecutionStats()) if (stats.name == "SSAO") return true;

@@ -495,7 +495,7 @@ namespace mpp
 	/*
 	 * Get model extents
 	 */
-	void Model::getBounds(glm::vec3& bMin, glm::vec3& bMax)
+	void Model::getBounds(glm::vec3& bMin, glm::vec3& bMax) const
 	{
 		bMin = mBounds[0];
 		bMax = mBounds[1];

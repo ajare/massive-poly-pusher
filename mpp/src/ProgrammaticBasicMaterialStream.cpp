@@ -202,6 +202,11 @@ namespace mpp
 		mSpecification.textures.push_back(textureOptions);
 	}
 
+	void ProgrammaticBasicMaterialStream::setShadowCasterContract(ShadowCasterContract const& contract)
+	{
+		mSpecification.shadowCaster = contract;
+	}
+
 	void ProgrammaticBasicMaterialStream::setUniforms(UniformCollection const& uniforms)
 	{
 

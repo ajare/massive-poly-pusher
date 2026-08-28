@@ -17,6 +17,7 @@ namespace mpp
 
 		int maxTextureSize{ 0 };
 		int maxRectTextureSize{ 0 };
+		int maxCubeMapTextureSize{ 0 };
 
 		// Framebuffer limits used by graph/MRT validation and execution.
 		uint32_t maxColourAttachments{ 1 };

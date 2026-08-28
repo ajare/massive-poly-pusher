@@ -56,6 +56,8 @@ namespace mpp
 		// An import identifies backing storage, so every version of an external
 		// logical image resolves to this target.
 		void bindImported(GraphImageHandle image, RenderTargetPtr target);
+		// Validates the imported target against the graph's public descriptor.
+		void bindImported(RenderGraph const& graph, GraphImageHandle image, RenderTargetPtr target);
 		void bindImports(RenderGraph const& graph, RenderGraphImportRegistry const& imports);
 		void clear();
 		// Changes only when an attachment mapping acquires different backing

@@ -78,6 +78,10 @@ namespace mpp
 
 		virtual std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr camera);
 
+		// Point-shadow caster discovery is deliberately independent of camera
+		// visibility. Models touching the finite light sphere are returned.
+		virtual std::vector<SceneModel3dPtr> get3dModelsInSphere(glm::vec3 const& centre, float radius);
+
 		virtual std::vector<SceneModel3dPtr> get3dModelsInLayers(CameraPtr camera, std::vector<std::string> const& layers);
 
 		virtual std::vector<std::pair<SceneModel2dPtr, int>> get2dModelsInView();

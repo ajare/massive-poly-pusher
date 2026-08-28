@@ -42,6 +42,8 @@ namespace mpp
 
 	_MPPAPI char const* graphImageFormatName(GraphImageFormat format);
 
+	enum class GraphImageShape { Texture2D, CubeMap };
+
 	enum class GraphImageUsage : uint32_t
 	{
 		None = 0,
@@ -67,12 +69,16 @@ namespace mpp
 	struct _MPPAPI GraphImageDesc
 	{
 		GraphImageFormat format{ GraphImageFormat::Rgba8 };
+		// Texture2D preserves the historical render-graph default.
+		GraphImageShape shape{ GraphImageShape::Texture2D };
 		glm::uvec2 absoluteSize{ 0 };
 		glm::vec2 relativeSize{ 1.0f };
 		uint32_t mipLevels{ 1 };
 		GraphImageUsage usage{ GraphImageUsage::None };
 		TextureParams params;
 		TextureColourSpace colourSpace{ TextureColourSpace::Linear };
+		// Enables sampler2DShadow/samplerCubeShadow comparison on depth images.
+		bool depthCompare{ false };
 		bool transient{ true };
 		bool external{ false };
 	};
@@ -140,6 +146,10 @@ namespace mpp
 		bool operator ==(GraphRasterState const&) const = default;
 	};
 
+	// UINT32_MAX means the ordinary 2D subresource; cubemap attachments select
+	// exactly one of the six faces [0, 5].
+	inline constexpr uint32_t GraphNoCubeFace = UINT32_MAX;
+
 	struct _MPPAPI GraphColourOutput
 	{
 		GraphImageHandle image;
@@ -147,6 +157,7 @@ namespace mpp
 		GraphLoadOp load{ GraphLoadOp::DontCare };
 		GraphStoreOp store{ GraphStoreOp::Store };
 		glm::vec4 clearColour{ 0.0f };
+		uint32_t cubeFace{ GraphNoCubeFace };
 	};
 
 	struct _MPPAPI GraphDepthOutput
@@ -156,6 +167,7 @@ namespace mpp
 		GraphLoadOp load{ GraphLoadOp::DontCare };
 		GraphStoreOp store{ GraphStoreOp::Store };
 		float clearDepth{ 1.0f };
+		uint32_t cubeFace{ GraphNoCubeFace };
 	};
 
 	struct _MPPAPI GraphSamplerBinding
@@ -323,12 +335,12 @@ namespace mpp
 		void readSampled(GraphPassHandle pass, GraphImageHandle image);
 		void bindSampler(GraphPassHandle pass, std::string const& sampler, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX);
 		void setPassParameters(GraphPassHandle pass, UniformCollection const& parameters);
-		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f), uint32_t mipLevel = 0);
-		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f, uint32_t mipLevel = 0);
-		void setColourOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel);
+		GraphImageHandle writeColour(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, glm::vec4 const& clear = glm::vec4(0.0f), uint32_t mipLevel = 0, uint32_t cubeFace = GraphNoCubeFace);
+		GraphImageHandle writeDepth(GraphPassHandle pass, GraphImageHandle image, GraphLoadOp load = GraphLoadOp::DontCare, GraphStoreOp store = GraphStoreOp::Store, float clear = 1.0f, uint32_t mipLevel = 0, uint32_t cubeFace = GraphNoCubeFace);
+		void setColourOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, glm::vec4 const& clear, uint32_t mipLevel, uint32_t cubeFace = GraphNoCubeFace);
 		GraphImageHandle retargetColourOutput(GraphPassHandle pass, size_t output, GraphImageHandle image);
 		void removeColourOutput(GraphPassHandle pass, size_t output);
-		void setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel);
+		void setDepthOutput(GraphPassHandle pass, size_t output, GraphLoadOp load, GraphStoreOp store, float clear, uint32_t mipLevel, uint32_t cubeFace = GraphNoCubeFace);
 		GraphImageHandle retargetDepthOutput(GraphPassHandle pass, size_t output, GraphImageHandle image);
 		void removeDepthOutput(GraphPassHandle pass, size_t output);
 		void setSamplerBinding(GraphPassHandle pass, size_t binding, std::string const& sampler, GraphImageHandle image, uint32_t mipLevel = UINT32_MAX);

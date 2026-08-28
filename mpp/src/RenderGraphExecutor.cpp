@@ -58,7 +58,7 @@ namespace mpp
 			}
 
 		public:
-			GraphFramebufferTarget(string const& name, vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips, RenderTargetPtr const& depth, uint32_t depthMip)
+			GraphFramebufferTarget(string const& name, vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips, vector<uint32_t> const& colourFaces, RenderTargetPtr const& depth, uint32_t depthMip, uint32_t depthFace)
 				: RenderTarget(colours.empty() ? max<size_t>(1, depth->getWidth() >> depthMip) : max<size_t>(1, colours.front()->getWidth() >> colourMips.front()), colours.empty() ? max<size_t>(1, depth->getHeight() >> depthMip) : max<size_t>(1, colours.front()->getHeight() >> colourMips.front()))
 				, mAttachments(colours)
 			{
@@ -83,7 +83,8 @@ namespace mpp
 						THROW_MPP("Render graph pass attachment dimensions do not match.", __LINE__, __FILE__, __func__);
 					}
 					GLenum attachment = (GLenum)(GL_COLOR_ATTACHMENT0 + index);
-					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, texture->getAttachmentTextureTarget(), texture->getColourAttachmentId(0), (GLint)colourMips[index]));
+					auto target = colourFaces[index] == GraphNoCubeFace ? texture->getAttachmentTextureTarget() : GL_TEXTURE_CUBE_MAP_POSITIVE_X + colourFaces[index];
+					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, target, texture->getColourAttachmentId(0), (GLint)colourMips[index]));
 					mDrawBuffers.push_back(attachment);
 				}
 				if (depth)
@@ -94,7 +95,8 @@ namespace mpp
 					{
 						THROW_MPP("Render graph depth attachment dimensions do not match colour attachments.", __LINE__, __FILE__, __func__);
 					}
-					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, texture->getAttachmentTextureTarget(), texture->getDepthTextureId(), (GLint)depthMip));
+					auto target = depthFace == GraphNoCubeFace ? texture->getAttachmentTextureTarget() : GL_TEXTURE_CUBE_MAP_POSITIVE_X + depthFace;
+					GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, texture->hasStencilBuffer() ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, target, texture->getDepthTextureId(), (GLint)depthMip));
 				}
 				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 				{
@@ -192,13 +194,14 @@ namespace mpp
 			uint32_t textureTarget{ 0 };
 			uint32_t textureId{ 0 };
 			uint32_t mipLevel{ 0 };
+			uint32_t cubeFace{ GraphNoCubeFace };
 			uint32_t aspect{ 0 }; // 0 colour, 1 depth, 2 packed depth/stencil.
 			uint64_t width{ 0 };
 			uint64_t height{ 0 };
 			bool operator <(Attachment const& other) const
 			{
-				return tie(textureTarget, textureId, mipLevel, aspect, width, height) <
-					tie(other.textureTarget, other.textureId, other.mipLevel, other.aspect, other.width, other.height);
+				return tie(textureTarget, textureId, mipLevel, cubeFace, aspect, width, height) <
+					tie(other.textureTarget, other.textureId, other.mipLevel, other.cubeFace, other.aspect, other.width, other.height);
 			}
 		};
 		struct Key
@@ -369,14 +372,14 @@ namespace mpp
 	}
 
 	RenderTargetPtr RenderGraphExecutor::getFramebufferView(string const& name, RenderGraphTargets const& targets,
-		vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips,
-		RenderTargetPtr const& depth, uint32_t depthMip)
+		vector<RenderTargetPtr> const& colours, vector<uint32_t> const& colourMips, vector<uint32_t> const& colourFaces,
+		RenderTargetPtr const& depth, uint32_t depthMip, uint32_t depthFace)
 	{
 		if (!mFramebufferViews) mFramebufferViews = make_unique<FramebufferViewCache>();
 		synchronizeFramebufferViews(targets);
 		auto& cache = *mFramebufferViews;
 
-		auto attachmentKey = [](RenderTargetPtr const& target, uint32_t mipLevel, bool depthAttachment)
+		auto attachmentKey = [](RenderTargetPtr const& target, uint32_t mipLevel, uint32_t cubeFace, bool depthAttachment)
 		{
 			auto texture = dynamic_cast<RenderTexture*>(target.get());
 			if (!texture)
@@ -385,6 +388,7 @@ namespace mpp
 			key.textureTarget = texture->getAttachmentTextureTarget();
 			key.textureId = depthAttachment ? texture->getDepthTextureId() : texture->getColourAttachmentId(0);
 			key.mipLevel = mipLevel;
+			key.cubeFace = cubeFace;
 			key.aspect = depthAttachment ? (texture->hasStencilBuffer() ? 2u : 1u) : 0u;
 			key.width = max<size_t>(1, texture->getWidth() >> mipLevel);
 			key.height = max<size_t>(1, texture->getHeight() >> mipLevel);
@@ -394,8 +398,8 @@ namespace mpp
 		FramebufferViewCache::Key key;
 		key.drawBuffers.reserve(colours.size());
 		for (size_t index = 0; index < colours.size(); ++index)
-			key.drawBuffers.push_back(attachmentKey(colours[index], colourMips[index], false));
-		if (depth) key.depth = attachmentKey(depth, depthMip, true);
+			key.drawBuffers.push_back(attachmentKey(colours[index], colourMips[index], colourFaces[index], false));
+		if (depth) key.depth = attachmentKey(depth, depthMip, depthFace, true);
 		auto const found = cache.views.find(key);
 		if (found != cache.views.end())
 		{
@@ -403,7 +407,7 @@ namespace mpp
 			return found->second;
 		}
 		++mFramebufferCacheStats.misses;
-		auto view = make_shared<GraphFramebufferTarget>(name, colours, colourMips, depth, depthMip);
+		auto view = make_shared<GraphFramebufferTarget>(name, colours, colourMips, colourFaces, depth, depthMip, depthFace);
 		cache.views.emplace(move(key), view);
 		return view;
 	}
@@ -464,20 +468,22 @@ namespace mpp
 					(pass.callbackFactory.empty() ? "." : " (factory '" + pass.callbackFactory + "')."), __LINE__, __FILE__, __func__);
 			}
 			vector<RenderTargetPtr> colours;
-			vector<uint32_t> colourMips;
+			vector<uint32_t> colourMips, colourFaces;
 			for (auto const& output : pass.colourOutputs)
 			{
 				auto target = targets.getWriteTarget(output.image);
 				if (!target) THROW_MPP("Render graph colour output has no allocated or imported target.", __LINE__, __FILE__, __func__);
 				colours.push_back(target);
 				colourMips.push_back(output.mipLevel);
+				colourFaces.push_back(output.cubeFace);
 			}
 			RenderTargetPtr depth;
-			uint32_t depthMip = 0;
+			uint32_t depthMip = 0, depthFace = GraphNoCubeFace;
 			if (!pass.depthOutputs.empty())
 			{
 				depth = targets.getWriteTarget(pass.depthOutputs.front().image);
 				depthMip = pass.depthOutputs.front().mipLevel;
+				depthFace = pass.depthOutputs.front().cubeFace;
 				if (!depth) THROW_MPP("Render graph depth output has no allocated or imported target.", __LINE__, __FILE__, __func__);
 			}
 
@@ -486,13 +492,13 @@ namespace mpp
 				THROW_MPP("Render graph executor supports graphics passes with at least one output.", __LINE__, __FILE__, __func__);
 			}
 			RenderTargetPtr passTarget;
-			if (colours.size() == 1 && colourMips.front() == 0 && !depth)
+			if (colours.size() == 1 && colourMips.front() == 0 && colourFaces.front() == GraphNoCubeFace && !depth)
 			{
 				passTarget = colours.front();
 			}
 			else
 			{
-				passTarget = getFramebufferView(pass.name, targets, colours, colourMips, depth, depthMip);
+				passTarget = getFramebufferView(pass.name, targets, colours, colourMips, colourFaces, depth, depthMip, depthFace);
 			}
 			map<RenderTexture*, uint32_t> mipViews;
 			for (auto const& binding : pass.samplerBindings)

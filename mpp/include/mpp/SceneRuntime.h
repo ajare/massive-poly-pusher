@@ -31,7 +31,10 @@ namespace mpp
 	public:
 		SceneRuntime(RenderSystem* renderSystem,ResourceManager* resourceManager);
 		~SceneRuntime();
-		bool rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings={},std::map<std::string,UniformCollection> const& instanceOverrides={},std::string const& expectedEnvironmentBinding={});
+		// When supplied, the domain is configured only after the scene candidate is
+		// fully instantiated, so invalid documents and failed imports leave both
+		// the active scene and its shadow setup untouched.
+		bool rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings={},std::map<std::string,UniformCollection> const& instanceOverrides={},std::string const& expectedEnvironmentBinding={},std::string const& shadowDomain={});
 		void clear();
 		ScenePtr const& getScene()const;
 		DiagnosticBag const& getDiagnostics()const;
