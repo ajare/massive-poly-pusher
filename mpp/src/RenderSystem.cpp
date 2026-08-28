@@ -4794,26 +4794,12 @@ namespace mpp
 						programKey <<= MPP_RENDER_SORT_PROGRAM_BITS_OFFSET;
 						sortKey |= programKey;
 
-						renderCommands.push_back({ sortKey,	renderCmd, mi });
-
-						// Depth
-						// modelMatrix is used to create final transform, so can use this
-						// (Not used at the moment)
-						/*
 						auto modelMatrix = mi->mModelMatrix * mi->mLocalTransform;
+						auto modelPosition = glm::vec3(modelMatrix[3]);
+						auto viewDelta = modelPosition - mi->mViewPos;
+						auto viewDistanceSquared = glm::dot(viewDelta, viewDelta);
 
-						auto cameraPos = mi->mViewPos;
-						auto modelPos = glm::vec3(modelMatrix[3]);
-
-						float distanceToModel = glm::distance(cameraPos, modelPos);
-						float distanceInScene = min(distanceToModel / mFarPlaneDistance, 1.0f);
-
-						uint64_t distanceKey = 1 << MPP_RENDER_SORT_DEPTH_BITS_SIZE;
-						distanceKey = (uint64_t)(distanceKey * distanceInScene);
-
-						distanceKey <<= MPP_RENDER_SORT_DEPTH_BITS_OFFSET;
-						sortKey |= distanceKey;
-						*/
+						renderCommands.push_back({ sortKey, viewDistanceSquared, renderCmd, mi });
 					}
 				}
 			}
@@ -4822,24 +4808,33 @@ namespace mpp
 		// Sort in 3D mode.  In Orthographic/2D assume everything is specified in order.
 		if (mProjectionType == ProjectionType::Perspective3D)
 		{
-			sort(renderCommands.begin(), renderCommands.end(), [](SortedRenderCommand const& a, SortedRenderCommand const& b) -> bool
+			if (mSortGeometryFrontToBack)
 			{
-				bool const aTransparent = a.meshInstance->sortTransparent();
-				bool const bTransparent = b.meshInstance->sortTransparent();
-				if (aTransparent != bTransparent)
+				// Diagnostic mode is deliberately strict: even transparent commands
+				// render closest-first. This makes the toggle describe one unambiguous
+				// ordering for every queued piece of 3D geometry.
+				stable_sort(renderCommands.begin(), renderCommands.end(), [](SortedRenderCommand const& a, SortedRenderCommand const& b) -> bool
 				{
-					return !aTransparent; // Opaque and masked geometry first.
-				}
-				if (aTransparent)
+					if (a.viewDistanceSquared != b.viewDistanceSquared)
+						return a.viewDistanceSquared < b.viewDistanceSquared;
+					return a.key < b.key;
+				});
+			}
+			else
+			{
+				sort(renderCommands.begin(), renderCommands.end(), [](SortedRenderCommand const& a, SortedRenderCommand const& b) -> bool
 				{
-					auto const aPos = glm::vec3((a.meshInstance->mModelMatrix * a.meshInstance->mLocalTransform)[3]);
-					auto const bPos = glm::vec3((b.meshInstance->mModelMatrix * b.meshInstance->mLocalTransform)[3]);
-					auto const aDelta = aPos - a.meshInstance->mViewPos;
-					auto const bDelta = bPos - b.meshInstance->mViewPos;
-					return glm::dot(aDelta, aDelta) > glm::dot(bDelta, bDelta);
-				}
-				return a.key < b.key;
-			});
+					bool const aTransparent = a.meshInstance->sortTransparent();
+					bool const bTransparent = b.meshInstance->sortTransparent();
+					if (aTransparent != bTransparent)
+					{
+						return !aTransparent; // Opaque and masked geometry first.
+					}
+					if (aTransparent)
+						return a.viewDistanceSquared > b.viewDistanceSquared;
+					return a.key < b.key;
+				});
+			}
 		}
 
 		// Now render all the meshes.
@@ -4851,7 +4846,9 @@ namespace mpp
 		int currentGeometryClass = -1;
 		for (auto const& renderCommand: renderCommands)
 		{
-			auto [key, cmd, meshInstance] = renderCommand;
+			auto key = renderCommand.key;
+			auto const& cmd = renderCommand.cmd;
+			auto meshInstance = renderCommand.meshInstance;
 			int const geometryClass = meshInstance->sortTransparent() ? 1 : 0;
 			if (geometryClass != currentGeometryClass)
 			{
@@ -5004,6 +5001,16 @@ namespace mpp
 	RenderInfo const& RenderSystem::getCurrentRenderInfo() const
 	{
 		return mRenderInfo;
+	}
+
+	void RenderSystem::setSortGeometryFrontToBack(bool enabled)
+	{
+		mSortGeometryFrontToBack = enabled;
+	}
+
+	bool RenderSystem::sortGeometryFrontToBack() const
+	{
+		return mSortGeometryFrontToBack;
 	}
 
 	RenderInfo const& RenderSystem::finishStatsCollection()

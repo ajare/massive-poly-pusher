@@ -111,6 +111,7 @@ namespace mpp
 		struct SortedRenderCommand
 		{
 			uint64_t key;
+			float viewDistanceSquared;
 			VertexBufferRenderCommand cmd;
 			MeshInstance* meshInstance;
 		};
@@ -183,6 +184,10 @@ namespace mpp
 		Pool<ModelInstance>* mModelInstances;
 
 		Pool<MeshInstance>* mMeshInstances;
+
+		// Optional diagnostic path for measuring front-to-back rendering. The
+		// default keeps the established program/transparent ordering.
+		bool mSortGeometryFrontToBack{ false };
 
 		float mGamma;
 
@@ -694,6 +699,14 @@ namespace mpp
 		RenderInfo const& finishStatsCollection();
 
 		RenderInfo const& getCurrentRenderInfo() const;
+
+		// Sorts every queued perspective render command by its model-space draw
+		// position's distance from the active view. This is intentionally opt-in:
+		// it trades material batching (and normal transparent ordering) for a
+		// strict closest-first diagnostic path.
+		void setSortGeometryFrontToBack(bool enabled);
+
+		bool sortGeometryFrontToBack() const;
 
 		void clearScreen(Colour const& colour);
 
