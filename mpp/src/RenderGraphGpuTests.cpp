@@ -990,6 +990,21 @@ namespace mpp
 			auto const& aliasOrder=aliasExecutor.getLastExecutionOrder();if(aliasOrder.size()!=4||aliasOrder[0].id!=aliasPass0.id||aliasOrder[1].id!=aliasPass1.id||aliasOrder[2].id!=aliasPass2.id||aliasOrder[3].id!=aliasPass3.id)return fail("executor did not retain its last successful compiled pass order");
 			if (!nearColour(readFirstPixel(aliasTargets.get(aliasLast)), { 0, 0, 255, 255 })) return fail("aliased transient final output readback failed");
 
+			stage = "depth-prepass raster handoff";
+			{
+				auto beforePrepass = renderSystem->captureRasterState(1);
+				auto prepassInputState = beforePrepass;
+				prepassInputState.depthCompare = GraphCompareOp::Less;
+				renderSystem->applyRasterState(prepassInputState, 1, 1, 1);
+				auto depthCamera = std::make_shared<Camera>(
+					glm::vec3(0.0f, 0.0f, 5.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				renderSystem->renderDepthPrepass({}, depthCamera, 1);
+				auto afterPrepass = renderSystem->captureRasterState(1);
+				if (afterPrepass.depthCompare != GraphCompareOp::LessEqual)
+					return fail("depth prepass did not hand the material pass a less-equal depth comparison");
+				renderSystem->applyRasterState(beforePrepass, 1, 1, 1);
+			}
+
 			stage = "raster-state cache CPU benchmark";
 			for (size_t passCount : { 10u, 50u, 100u })
 			{

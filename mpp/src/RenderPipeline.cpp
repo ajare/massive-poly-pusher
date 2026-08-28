@@ -652,10 +652,13 @@ namespace mpp
 				});
 			}
 		}
-		mGraphExecutor->setPassCallback(graph, scenePass, [this, scene, models, camera](RenderGraphExecutionContext const&)
+		mGraphExecutor->setPassCallback(graph, scenePass, [this, scene, models, camera](RenderGraphExecutionContext const& context)
 		{
 			if (mOptions.graphPasses.scene && !models.empty() && scene->show3dModels() && mPasses.back())
 			{
+				if (mOptions.depthPrepass)
+					mRenderSystem->renderDepthPrepass(
+						models, camera, context.getPass().colourOutputs.size());
 				mPasses.back()->render(models, camera);
 				mRenderSystem->flushVertexBuffers();
 			}
@@ -838,6 +841,8 @@ namespace mpp
 				// Render pass
 				if (!models.empty() && scene->show3dModels())
 				{
+					if (mOptions.depthPrepass)
+						mRenderSystem->renderDepthPrepass(models, camera, 1);
 					pass->render(models, camera);
 
 					// Flush

@@ -3525,6 +3525,146 @@ namespace mpp
 		}
 	}
 
+	void RenderSystem::renderDepthPrepass(
+		vector<SceneModel3dPtr> const& models, CameraPtr camera,
+		size_t colourOutputCount)
+	{
+		if (!camera || models.empty())
+		{
+			setDepthCompareState(GraphCompareOp::LessEqual);
+			return;
+		}
+
+		GpuDebugScope prepassScope("Depth Prepass");
+		auto savedState = captureRasterState(colourOutputCount);
+		auto prepassState = savedState;
+		prepassState.depthTest = true;
+		prepassState.depthWrite = true;
+		prepassState.depthCompare = GraphCompareOp::Less;
+		prepassState.blend = false;
+		prepassState.colourWriteMasks.assign(
+			max<size_t>(1, colourOutputCount),
+			GraphColourWriteMask{ false, false, false, false });
+		auto const expectedOutputs = mExpectedGraphColourOutputs;
+		applyRasterState(prepassState, colourOutputCount, mViewportWidth, mViewportHeight);
+		setExpectedGraphColourOutputs(0);
+
+		auto restore = [&](bool materialPass)
+		{
+			setExpectedGraphColourOutputs(expectedOutputs);
+			if (materialPass) savedState.depthCompare = GraphCompareOp::LessEqual;
+			applyRasterState(savedState, colourOutputCount, mViewportWidth, mViewportHeight);
+		};
+
+		try
+		{
+			if (isRenderFlowCaptureActive())
+				recordRenderFlowStateChanges({ "Depth prepass: enabled", "Colour writes: disabled",
+					"Depth test: less", "Depth write: enabled" });
+
+			auto const viewProjection =
+				camera->getProjectionTransform() * camera->getViewTransform();
+			for (auto const& sceneModel : models)
+			{
+				if (!sceneModel) continue;
+				auto params = sceneModel->getParams();
+				auto const& meshParams = params->getMeshParams();
+				auto defaultParams = meshParams.find("");
+				auto model = static_cast<Model*>(sceneModel->getModel().get());
+				auto modelViewProjection = viewProjection * sceneModel->getTransform();
+
+				for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+				{
+					auto mesh = model->getMesh(meshIndex);
+					auto meshParamsIt = meshParams.find(mesh->getName());
+					auto const* renderParams = meshParamsIt != meshParams.end()
+						? &meshParamsIt->second
+						: (defaultParams != meshParams.end() ? &defaultParams->second : nullptr);
+					if (renderParams && (renderParams->flags & ModelRenderParams::Flag_Visible) == 0)
+						continue;
+
+					auto baseMaterial = renderParams && renderParams->material
+						? renderParams->material : mesh->getMaterial();
+					size_t const instanceCount = renderParams ? renderParams->instanceCount : 1;
+					bool const wireframe = renderParams &&
+						(renderParams->flags & ModelRenderParams::Flag_Wireframe) != 0;
+					bool const requestedCull = renderParams &&
+						(renderParams->flags & ModelRenderParams::Flag_CullBackFaces) != 0;
+
+					auto draw = [&](VertexBufferRenderCommand const* command)
+					{
+						auto materialResource = command && command->material
+							? command->material : baseMaterial;
+						auto material = static_cast<Material*>(materialResource.get());
+						bool const pbr = material->getShadingModel() == Material::ShadingModel::Pbr;
+						// PBR derives blend semantics from the material. Legacy scene
+						// submission defaults to blending unless params explicitly turn it
+						// off, so mirror the proper pass rather than letting translucent
+						// geometry become an occluder here.
+						bool const blended = pbr ? material->isTransparent()
+							: (!renderParams || renderParams->blend.value_or(true));
+						bool const participates = renderParams && renderParams->depthPrepass
+							? *renderParams->depthPrepass : !blended;
+						if (!participates) return;
+
+						auto const contract = material->getShadowCasterContract();
+						bool const alphaMasked =
+							contract.behaviour == ShadowCasterContract::Behaviour::AlphaMask;
+						auto programResource = alphaMasked
+							? mAlphaShadowDepthProgram : mShadowDepthProgram;
+						auto program = static_cast<Program*>(programResource.get());
+						setUsedProgram(programResource);
+
+						bool const cull = requestedCull && !(pbr && material->isDoubleSided());
+						setCullState(cull ? GraphCullMode::Back : GraphCullMode::None);
+						setFillModeState(wireframe ? GraphFillMode::Line : GraphFillMode::Fill);
+
+						if (alphaMasked)
+						{
+							auto materialProgram = static_cast<Program*>(material->getProgram().get());
+							ResourcePtr alphaTexture = mNoTexture;
+							for (int sampler = 0; sampler < materialProgram->getNumSamplers(); ++sampler)
+							{
+								if (materialProgram->getSamplerName(sampler) != contract.alphaSampler) continue;
+								if (command && sampler < (int)command->textures.size() && command->textures[sampler])
+									alphaTexture = command->textures[sampler];
+								else if (renderParams && sampler < (int)renderParams->textures.size() && renderParams->textures[sampler])
+									alphaTexture = renderParams->textures[sampler];
+								else alphaTexture = material->getTexture(sampler);
+								break;
+							}
+							auto texture = dynamic_cast<Texture*>(alphaTexture.get());
+							if (!texture) THROW_MPP("Depth-prepass alpha contract sampler is not a texture.", __LINE__, __FILE__, __func__);
+							texture->bind((uint32_t)program->getSamplerUnit("SHADOW_ALPHA_MAP"));
+							GL_CHECK(glUniform1f(program->getUniformId("SHADOW_ALPHA_CUTOFF"), contract.alphaCutoff));
+							GL_CHECK(glUniform1f(program->getUniformId("SHADOW_ALPHA_FACTOR"), contract.alphaFactor));
+						}
+
+						GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(),
+							1, GL_FALSE, glm::value_ptr(modelViewProjection)));
+						mesh->bind(true);
+						if (command) mesh->render(instanceCount, command->offset, command->count);
+						else mesh->render(instanceCount);
+						mesh->bind(false);
+					};
+
+					if (renderParams && !renderParams->renderCommands.empty())
+						for (auto const& command : renderParams->renderCommands) draw(&command);
+					else draw(nullptr);
+				}
+			}
+		}
+		catch (...)
+		{
+			restore(false);
+			throw;
+		}
+
+		restore(true);
+		if (isRenderFlowCaptureActive())
+			recordRenderFlowStateChanges({ "Depth prepass complete", "Depth test: less-equal", "Colour writes: enabled" });
+	}
+
 	void RenderSystem::setActivePbrEnvironment(PbrEnvironmentPtr environment)
 	{
 		mActivePbrEnvironment = std::move(environment);

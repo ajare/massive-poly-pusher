@@ -168,6 +168,9 @@ namespace mpp
 		ResourcePtr graphTemplateMrt;
 		BloomOptions bloom;
 		AmbientOcclusionOptions ambientOcclusion;
+		// Draw opaque scene geometry with depth-only programs before material
+		// shading. The material pass then uses LessEqual against that depth.
+		bool depthPrepass{ true };
 		GraphPassDebugOptions graphPasses;
 		bool debugEnvironmentCube{ false };
 		// Empty means this pipeline is not a shadow-domain participant.

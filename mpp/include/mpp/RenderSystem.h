@@ -650,6 +650,14 @@ namespace mpp
 
 		void setActiveShadowDomain(std::string const& name);
 
+		// Renders visible opaque geometry with renderer-owned depth-only programs,
+		// suppressing every colour attachment. On success the prior raster state is
+		// restored except that depth comparison is set to LessEqual for the
+		// immediately-following material pass.
+		void renderDepthPrepass(
+			std::vector<SceneModel3dPtr> const& models, CameraPtr camera,
+			size_t colourOutputCount = 1);
+
 		static constexpr size_t getMaxPbrLights() { return MaxPbrLights; }
 
 		//

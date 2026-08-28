@@ -230,20 +230,27 @@ namespace mpp
 			{
 				auto const& frame = context.getFrame();
 				if (!frame.pipelineOptions->graphPasses.scene) return;
+				auto const opaque = frame.hasWaterPass
+					? selectModels(frame.visibleModels, false) : frame.visibleModels;
+				if (frame.pipelineOptions->depthPrepass && frame.scene &&
+					frame.scene->show3dModels() && !opaque.empty())
+				{
+					frame.renderSystem->renderDepthPrepass(
+						opaque, frame.camera, context.getPass().colourOutputs.size());
+				}
 				if (frame.pipelineOptions->debugEnvironmentCube && frame.pipelineOptions->environment)
 				{
 					auto const& environment = frame.pipelineOptions->environment;
 					auto resource = environment->environmentMap ? environment->environmentMap : environment->backgroundMap;
 					frame.renderSystem->renderEnvironmentDebugCube(dynamic_cast<Texture*>(resource.get()), frame.camera.get());
 				}
-				if (frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !frame.visibleModels.empty())
+				if (frame.scene && frame.scene->show3dModels() && frame.sceneRenderPass && !opaque.empty())
 				{
 					// Water is drawn by MPP.WaterScene after this pass's colour has
 					// been copied -- but only if the graph has such a pass. Without
 					// one, water shades here and falls back to the cubemap, which is
 					// a degraded look rather than an invisible surface.
-					auto const opaque = frame.hasWaterPass ? selectModels(frame.visibleModels, false) : frame.visibleModels;
-					if (!opaque.empty()) frame.sceneRenderPass->render(opaque, frame.camera);
+					frame.sceneRenderPass->render(opaque, frame.camera);
 					frame.renderSystem->flushVertexBuffers();
 				}
 			}

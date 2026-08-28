@@ -31,6 +31,9 @@ namespace mpp
 			float pointSize{ 1.0f };
 			std::shared_ptr<UniformCollection> uniforms;
 			std::optional<bool> blend;
+			// Overrides automatic opaque/blended participation in a depth prepass.
+			// Useful for diagnostic blend materials drawn over opaque geometry.
+			std::optional<bool> depthPrepass;
 			ResourcePtr material{ nullptr };
 			std::vector<ResourcePtr> textures;
 		};
@@ -111,6 +114,12 @@ namespace mpp
 			it->second.blend = blend;
 		}
 
+		void setModelDepthPrepass(std::optional<bool> enabled)
+		{
+			auto it = mMeshParams.insert(std::make_pair("", MeshRenderParams())).first;
+			it->second.depthPrepass = enabled;
+		}
+
 		void setModelMaterial(ResourcePtr material)
 		{
 			auto [it, inserted] = mMeshParams.insert(std::make_pair("", MeshRenderParams()));
@@ -178,6 +187,12 @@ namespace mpp
 			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
 
 			it->second.blend = blend;
+		}
+
+		void setMeshDepthPrepass(std::string const& mesh, std::optional<bool> enabled)
+		{
+			auto it = mMeshParams.insert(std::make_pair(mesh, MeshRenderParams())).first;
+			it->second.depthPrepass = enabled;
 		}
 
 		void setMeshMaterial(std::string const& mesh, ResourcePtr material)

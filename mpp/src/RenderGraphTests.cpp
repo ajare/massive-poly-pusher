@@ -59,6 +59,13 @@ namespace mpp
 		};
 		if (!validatesFilteredPointShadow(FragmentShader3dTemplate) || !validatesFilteredPointShadow(BuiltInPbrFragmentShader))
 			return fail("built-in point receivers lost tangent-space 3x3 PCF or range fade");
+		RenderPipelineOptions pipelineDefaults;
+		if (!pipelineDefaults.depthPrepass)
+			return fail("depth prepass is not enabled by default");
+		pipelineDefaults.depthPrepass = false;
+		if (pipelineDefaults.depthPrepass)
+			return fail("disabled depth prepass pipeline option was not retained");
+
 		ShadowOptions pointDefaults;
 		if (pointDefaults.nearPlane != 0.25f || pointDefaults.light.range != 192.0f ||
 			pointDefaults.filterRadiusTexels != 1.0f || pointDefaults.fadeStartNormalized != 0.9f ||
