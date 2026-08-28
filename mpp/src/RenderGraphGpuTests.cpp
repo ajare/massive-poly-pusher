@@ -471,15 +471,17 @@ namespace mpp
 			GraphImageDesc cubeDepth; cubeDepth.format = GraphImageFormat::Depth24; cubeDepth.shape = GraphImageShape::CubeMap; cubeDepth.absoluteSize = { 16, 16 };
 			cubeDepth.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled; cubeDepth.depthCompare = true; cubeDepth.transient = false;
 			RenderGraph cubeGraph; auto cubeImage = cubeGraph.createImage("GpuTestDepthCube", cubeDepth); std::vector<GraphImageHandle> cubeVersions; std::vector<GraphPassHandle> cubePasses;
-			for (uint32_t face = 0; face < 6; ++face) { auto pass = cubeGraph.addPass("GpuTestDepthFace" + std::to_string(face)); cubePasses.push_back(pass); cubeImage = cubeGraph.writeDepth(pass, cubeImage, GraphLoadOp::Clear, GraphStoreOp::Store, 0.1f * (face + 1), 0, face); cubeVersions.push_back(cubeImage); }
-			auto retain = cubeGraph.addPass("GpuTestRetainDepthFaces"); for (auto version : cubeVersions) cubeGraph.readSampled(retain, version); auto retained = cubeGraph.createImage("GpuTestCubeRetention", colour); cubeGraph.writeColour(retain, retained, GraphLoadOp::Clear);
+			for (uint32_t face = 0; face < 6; ++face) { auto pass = cubeGraph.addPass("GpuTestDepthFace" + std::to_string(face)); cubePasses.push_back(pass); cubeImage = cubeGraph.writeDepth(pass, cubeImage, face == 0 ? GraphLoadOp::Clear : GraphLoadOp::Load, GraphStoreOp::Store, 0.1f * (face + 1), 0, face); cubeVersions.push_back(cubeImage); }
+			// The final version alone must retain every prior face write. Point-shadow
+			// consumers sample one completed cubemap, not six historical versions.
+			auto retain = cubeGraph.addPass("GpuTestRetainDepthFaces"); cubeGraph.readSampled(retain, cubeVersions.back()); auto retained = cubeGraph.createImage("GpuTestCubeRetention", colour); cubeGraph.writeColour(retain, retained, GraphLoadOp::Clear);
 			auto cubePlan = cubeGraph.buildAllocationPlan({ 16, 16 }); if (!cubePlan.valid) return fail("depth cubemap allocation plan was rejected");
 			RenderGraphTargets cubeTargets(renderSystem); cubeTargets.allocate(cubePlan); auto cubeTarget = cubeTargets.get(cubeVersions.back()); auto depthCubeTexture = dynamic_cast<RenderTexture*>(cubeTarget.get());
 			if (!depthCubeTexture || depthCubeTexture->getAttachmentTextureTarget() != GL_TEXTURE_CUBE_MAP || depthCubeTexture->getDepthFormat() != RenderTextureDepthFormat::Depth24 || !depthCubeTexture->usesDepthComparison()) return fail("allocated depth cubemap contract is incomplete");
 			for (auto version : cubeVersions) if (cubeTargets.get(version) != cubeTarget) return fail("one logical cubemap's face writes did not share backing storage");
 			GLint compareMode = GL_NONE; GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubeTexture->getDepthTextureId())); GL_CHECK(glGetTexParameteriv(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, &compareMode)); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0)); if (compareMode != GL_COMPARE_REF_TO_TEXTURE) return fail("depth cubemap comparison sampling was not enabled");
 			GLchar objectLabel[256]{}; GLsizei objectLabelLength = 0; GL_CHECK(glGetObjectLabel(GL_TEXTURE, depthCubeTexture->getDepthTextureId(), sizeof(objectLabel), &objectLabelLength, objectLabel)); if (!objectLabelLength) return fail("depth cubemap texture was not labelled");
-			{ RenderGraphExecutor cubeExecutor(renderSystem); for (auto pass : cubePasses) cubeExecutor.setPassCallback(cubeGraph, pass, [](RenderGraphExecutionContext const&) {}); cubeExecutor.setPassCallback(cubeGraph, retain, [](RenderGraphExecutionContext const&) {}); cubeExecutor.execute(cubeGraph, cubeTargets, renderSystem->getCaps()); }
+			{ RenderGraphExecutor cubeExecutor(renderSystem); for (uint32_t face = 0; face < cubePasses.size(); ++face) cubeExecutor.setPassCallback(cubeGraph, cubePasses[face], [face](RenderGraphExecutionContext const&) { float value = 0.1f * (face + 1); GL_CHECK(glClearBufferfv(GL_DEPTH, 0, &value)); }); cubeExecutor.setPassCallback(cubeGraph, retain, [](RenderGraphExecutionContext const&) {}); cubeExecutor.execute(cubeGraph, cubeTargets, renderSystem->getCaps()); }
 			for (uint32_t face = 0; face < 6; ++face) { auto value = readFirstCubeDepth(cubeTarget, face); auto expected = 0.1f * (face + 1); if (std::abs(value - expected) > 0.002f) return fail("depth cubemap face " + std::to_string(face) + " readback was " + std::to_string(value)); }
 			bool rejectedCubeMsaa = false; for (uint32_t samples : { 2u, 4u, 8u }) if (renderSystem->getCaps().supportsMsaa(samples)) { try { cubeTargets.allocatePhysical(cubePlan, samples); } catch (...) { rejectedCubeMsaa = true; } break; } if (!rejectedCubeMsaa) return fail("multisampled depth cubemap allocation was accepted");
 			GraphImageDesc importedCubeDesc = cubeDepth; importedCubeDesc.external = true; RenderGraph importedCubeGraph; auto importedCube = importedCubeGraph.createImage("ImportedDepthCube", importedCubeDesc); RenderGraphTargets importedCubeTargets(renderSystem); importedCubeTargets.bindImported(importedCubeGraph, importedCube, cubeTarget);
@@ -685,6 +687,29 @@ namespace mpp
 				gateScene->setViewport(0, 0, 64, 64);
 				gateScene->setClearColour(Colour(0.8f, 0.8f, 0.8f, 1.0f));
 				auto gateCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+
+				// A named but disabled domain has no depth target. Generated graphs must
+				// omit its external shadow image while the disabled ShadowFrame keeps
+				// direct lighting active; binding a null import used to abort rendering.
+				ShadowOptions disabledShadow;
+				disabledShadow.enabled = false;
+				disabledShadow.light.type = ShadowLightType::Point;
+				disabledShadow.light.range = 24.0f;
+				disabledShadow.nearPlane = 0.25f;
+				disabledShadow.resolution = 16;
+				renderSystem->configureShadowDomain("GpuTestDisabledPointShadow", disabledShadow);
+				pipeline->setShadowDomain("GpuTestDisabledPointShadow");
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				for (auto const& stats : pipeline->getLastGraphExecutionStats())
+					if (stats.name.rfind("PointShadowFace", 0) == 0)
+						return fail("disabled point-shadow domain inserted a cubemap face pass");
+				auto enabledShadow = disabledShadow;
+				enabledShadow.enabled = true;
+				renderSystem->configureShadowDomain("GpuTestDisabledPointShadow", enabledShadow);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				renderSystem->configureShadowDomain("GpuTestDisabledPointShadow", disabledShadow);
+				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+
 				auto executedSsao = [&]
 				{
 					for (auto const& stats : pipeline->getLastGraphExecutionStats()) if (stats.name == "SSAO") return true;

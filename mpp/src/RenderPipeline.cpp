@@ -473,43 +473,57 @@ namespace mpp
 
 		GraphImageHandle shadowDepth;
 		GraphImageHandle shadowDepthOutput;
+		RenderTargetPtr shadowTarget;
 		std::vector<GraphPassHandle> shadowPasses;
 		std::vector<SceneModel3dPtr> shadowModels = models;
 		bool renderShadowPasses = false;
 		if (!mOptions.shadowDomain.empty() && mOptions.graphPasses.shadow)
 		{
-			auto const& configuredShadow = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
-			if (configuredShadow.light.type == ShadowLightType::Point)
-				shadowModels = scene->get3dModelsInSphere(configuredShadow.light.position, configuredShadow.light.range);
-			renderShadowPasses = mRenderSystem->prepareShadowDomain(mOptions.shadowDomain, shadowModels);
-			GraphImageDesc shadowDesc;
-			shadowDesc.format = GraphImageFormat::Depth24;
-			shadowDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
-			shadowDesc.depthCompare = true;
-			shadowDesc.external = true;
-			shadowDesc.transient = false;
-			auto const& shadowOptions = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
-			shadowDesc.absoluteSize = glm::uvec2((uint32_t)shadowOptions.resolution);
-			bool const pointShadow = shadowOptions.light.type == ShadowLightType::Point;
-			shadowDesc.shape = pointShadow ? GraphImageShape::CubeMap : GraphImageShape::Texture2D;
-			shadowDepth = graph.createImage(pointShadow ? "PointShadowDepthCube" : "ShadowDepth", shadowDesc);
-			shadowDepthOutput = shadowDepth;
-			if (pointShadow && renderShadowPasses)
+			// Disabled and hardware-fallback domains deliberately have no depth
+			// target. Keep their disabled ShadowFrame active, but do not declare a
+			// graph import that can only be bound to null.
+			shadowTarget = mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain);
+			if (shadowTarget)
 			{
-				static constexpr char const* faces[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
+				auto const& configuredShadow = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
+				if (configuredShadow.light.type == ShadowLightType::Point)
+					shadowModels = scene->get3dModelsInSphere(configuredShadow.light.position, configuredShadow.light.range);
+				renderShadowPasses = mRenderSystem->prepareShadowDomain(mOptions.shadowDomain, shadowModels);
+				GraphImageDesc shadowDesc;
+				shadowDesc.format = GraphImageFormat::Depth24;
+				shadowDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
+				shadowDesc.depthCompare = true;
+				shadowDesc.external = true;
+				shadowDesc.transient = false;
+				auto const& shadowOptions = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain);
+				shadowDesc.absoluteSize = glm::uvec2((uint32_t)shadowOptions.resolution);
+				bool const pointShadow = shadowOptions.light.type == ShadowLightType::Point;
+				shadowDesc.shape = pointShadow ? GraphImageShape::CubeMap : GraphImageShape::Texture2D;
+				shadowDepth = graph.createImage(pointShadow ? "PointShadowDepthCube" : "ShadowDepth", shadowDesc);
 				shadowDepthOutput = shadowDepth;
-				for (uint32_t face = 0; face < 6; ++face)
+				if (pointShadow && renderShadowPasses)
 				{
-					auto pass = graph.addPass("PointShadowFace " + std::string(faces[face]), GraphPassType::Scene);
-					shadowPasses.push_back(pass);
-					shadowDepthOutput = graph.writeDepth(pass, shadowDepthOutput, GraphLoadOp::Clear, GraphStoreOp::Store, 1.0f, 0, face);
+					static constexpr char const* faces[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
+					shadowDepthOutput = shadowDepth;
+					for (uint32_t face = 0; face < 6; ++face)
+					{
+						auto pass = graph.addPass("PointShadowFace " + std::string(faces[face]), GraphPassType::Scene);
+						shadowPasses.push_back(pass);
+						// A cubemap-face write only replaces that subresource. Loading the
+						// preceding logical version after the first face keeps the version
+						// chain live, so graph culling cannot discard faces +X through +Z
+						// when the scene samples only the completed sixth version.
+						shadowDepthOutput = graph.writeDepth(pass, shadowDepthOutput,
+							face == 0 ? GraphLoadOp::Clear : GraphLoadOp::Load,
+							GraphStoreOp::Store, 1.0f, 0, face);
+					}
 				}
-			}
-			else if (!pointShadow && renderShadowPasses)
-			{
-				auto pass = graph.addPass("ShadowDepth", GraphPassType::Scene);
-				shadowPasses.push_back(pass);
-				shadowDepthOutput = graph.writeDepth(pass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
+				else if (!pointShadow && renderShadowPasses)
+				{
+					auto pass = graph.addPass("ShadowDepth", GraphPassType::Scene);
+					shadowPasses.push_back(pass);
+					shadowDepthOutput = graph.writeDepth(pass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
+				}
 			}
 		}
 
@@ -623,7 +637,7 @@ namespace mpp
 		{
 			map<string,RenderTargetPtr> destinations;for(auto const& output:mOptions.outputs){GraphImageHandle handle;GraphImageInfo info;for(uint32_t id=0;id<graph.getImageCount();++id){auto candidate=graph.getImageInfo({id,0});if(candidate.name==output.image){handle={id,0};info=candidate;break;}}if(!handle.isValid())THROW_MPP("Named output '"+output.name+"' references an unknown generated graph image.",__LINE__,__FILE__,__func__);for(uint32_t pass=0;pass<graph.getPassCount();++pass){auto const& passInfo=graph.getPassInfo({pass});for(auto const& attachment:passInfo.colourOutputs)if(attachment.image.id==handle.id&&attachment.image.version>handle.version)handle=attachment.image;}auto destination=info.desc.external?mRenderSystem->getScreenRenderTarget():mGraphTargets->get(handle);destinations.emplace(output.name,destination);GraphImageHandle depthHandle;if(!output.taaDepth.empty()){for(uint32_t id=0;id<graph.getImageCount();++id)if(graph.getImageInfo({id,0}).name==output.taaDepth){depthHandle={id,0};break;}for(uint32_t pass=0;pass<graph.getPassCount();++pass)for(auto const& attachment:graph.getPassInfo({pass}).depthOutputs)if(attachment.image.id==depthHandle.id&&attachment.image.version>depthHandle.version)depthHandle=attachment.image;}dynamicOutputs.push_back({output.name,handle,depthHandle,destination,{},info.desc.external});}mOutputProcessor->rebuild(mOptions.outputs,graph,destinations,mRenderSystem->getOptions().antiAliasing);map<uint32_t,RenderTargetPtr> externalSources;for(auto& output:dynamicOutputs)if(output.external){auto [found,inserted]=externalSources.emplace(output.image.id,mOutputProcessor->getInput(output.name));output.source=found->second;if(inserted)mGraphTargets->bindImported(output.image,output.source);}
 		}
-		if (shadowDepth.isValid()) mGraphTargets->bindImported(shadowDepth, mRenderSystem->getShadowDomainDepthTarget(mOptions.shadowDomain));
+		if (shadowDepth.isValid()) mGraphTargets->bindImported(shadowDepth, shadowTarget);
 
 		mGraphExecutor->clearPassCallbacks();
 		if (shadowDepth.isValid())
