@@ -289,10 +289,37 @@ namespace mpp
 				auto* resolvedScene = input(context, 0);
 				if (!resolvedScene) THROW_MPP("WaterScenePass '" + context.getPass().name + "' has no resolved scene colour bound.", __LINE__, __FILE__, __func__);
 				// Generated graphs write a distinct WaterComposite image, so seed it
-				// with the frozen shaded scene before alpha-compositing water. For
-				// authored graphs that load their scene target this is an equivalent,
-				// deterministic refresh and preserves their established topology.
-				frame.renderSystem->renderFullscreenQuad(resolvedScene, BlendMode::One, BlendMode::Zero);
+				// with the frozen shaded scene before alpha-compositing water. This is a
+				// scene pass, so the executor deliberately leaves the 3D camera active;
+				// install the target-sized fullscreen transform only for the copy, then
+				// restore the camera before drawing water geometry.
+				auto const& outputs = context.getPass().colourOutputs;
+				auto target = outputs.empty() ? nullptr : context.getImage(outputs.front().image);
+				glm::vec2 const viewport = target
+					? glm::vec2((float)target->getWidth(), (float)target->getHeight())
+					: glm::vec2((float)frame.renderSystem->getWindowWidth(), (float)frame.renderSystem->getWindowHeight());
+				frame.renderSystem->pushProjectionMatrix();
+				frame.renderSystem->pushCameraMatrix();
+				frame.renderSystem->pushModelMatrix();
+				try
+				{
+					frame.renderSystem->setProjection2dOrthographic();
+					frame.renderSystem->resetTransform();
+					frame.renderSystem->scaleTransform2d(glm::vec2(
+						viewport.x / (float)frame.renderSystem->getWindowWidth(),
+						viewport.y / (float)frame.renderSystem->getWindowHeight()));
+					frame.renderSystem->renderFullscreenQuad(resolvedScene, BlendMode::One, BlendMode::Zero);
+				}
+				catch (...)
+				{
+					frame.renderSystem->popModelMatrix();
+					frame.renderSystem->popCameraMatrix();
+					frame.renderSystem->popProjectionMatrix();
+					throw;
+				}
+				frame.renderSystem->popModelMatrix();
+				frame.renderSystem->popCameraMatrix();
+				frame.renderSystem->popProjectionMatrix();
 
 				auto const water = selectModels(frame.visibleModels, true);
 				if (water.empty()) return;
@@ -309,11 +336,6 @@ namespace mpp
 
 				// The march works in view space against this pass's own target, so the
 				// viewport it reports has to be the target's, not the window's.
-				auto const& outputs = context.getPass().colourOutputs;
-				auto target = outputs.empty() ? nullptr : context.getImage(outputs.front().image);
-				glm::vec2 const viewport = target
-					? glm::vec2((float)target->getWidth(), (float)target->getHeight())
-					: glm::vec2((float)frame.renderSystem->getWindowWidth(), (float)frame.renderSystem->getWindowHeight());
 				frame.renderSystem->setCameraFrame(frame.camera->getViewTransform(), frame.camera->getProjectionTransform(),
 					viewport, frame.camera->getNearClipDistance(), frame.camera->getFarClipDistance(),
 					frame.renderSystem->getElapsedSeconds());

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <optional>
 #include <sstream>
 #include <tuple>
@@ -155,6 +156,112 @@ namespace mpp
 				mRenderSystem->debugVerifyRasterStateCache();
 			}
 		};
+
+		optional<GraphImageCapture> captureStoredOutput(RenderGraph const& graph, GraphPassInfo const& pass,
+			RenderGraphTargets const& targets, GraphImageHandle image, uint32_t mipLevel, uint32_t cubeFace, bool depth)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(targets.get(image).get());
+			if (!texture) return nullopt; // Presentation/default-framebuffer output.
+			auto const info = graph.getImageInfo(image);
+			bool const cube = info.desc.shape == GraphImageShape::CubeMap;
+			if (cube && cubeFace == GraphNoCubeFace) return nullopt;
+			GraphImageCapture capture;
+			capture.passName = pass.name;
+			capture.imageName = info.name;
+			capture.width = (uint32_t)max<size_t>(1, texture->getWidth() >> mipLevel);
+			capture.height = (uint32_t)max<size_t>(1, texture->getHeight() >> mipLevel);
+			capture.depth = depth;
+			capture.cubeFace = cubeFace;
+			GLint previousPackAlignment = 0;
+			GL_CHECK(glGetIntegerv(GL_PACK_ALIGNMENT, &previousPackAlignment));
+			GL_CHECK(glPixelStorei(GL_PACK_ALIGNMENT, 1));
+			struct PackAlignmentRestore
+			{
+				GLint value;
+				~PackAlignmentRestore() { glPixelStorei(GL_PACK_ALIGNMENT, value); }
+			} packAlignmentRestore{ previousPackAlignment };
+			auto const bindTarget = cube ? (GLenum)GL_TEXTURE_CUBE_MAP : (GLenum)GL_TEXTURE_2D;
+			auto const bindingQuery = cube ? (GLenum)GL_TEXTURE_BINDING_CUBE_MAP : (GLenum)GL_TEXTURE_BINDING_2D;
+			auto const imageTarget = cube ? (GLenum)(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cubeFace) : (GLenum)GL_TEXTURE_2D;
+			GLint previousTexture = 0;
+			GL_CHECK(glGetIntegerv(bindingQuery, &previousTexture));
+			struct TextureBindingRestore
+			{
+				GLenum target;
+				GLuint texture;
+				~TextureBindingRestore() { glBindTexture(target, texture); }
+			} textureBindingRestore{ bindTarget, (GLuint)previousTexture };
+			if (depth)
+			{
+				auto const id = texture->getDepthTextureId();
+				if (!id) return nullopt;
+				vector<float> values((size_t)capture.width * capture.height);
+				GL_CHECK(glBindTexture(bindTarget, id));
+				GL_CHECK(glGetTexImage(imageTarget, (GLint)mipLevel, GL_DEPTH_COMPONENT, GL_FLOAT, values.data()));
+				GL_CHECK(glBindTexture(bindTarget, (GLuint)previousTexture));
+				capture.pixels.resize(values.size() * 3);
+				for (size_t index = 0; index < values.size(); ++index)
+				{
+					auto const value = (uint8_t)round(clamp(1.0f - values[index], 0.0f, 1.0f) * 255.0f);
+					capture.pixels[index * 3] = capture.pixels[index * 3 + 1] = capture.pixels[index * 3 + 2] = value;
+				}
+			}
+			else
+			{
+				auto const id = texture->getColourAttachmentId(0);
+				if (!id) return nullopt;
+				auto const pixelCount = (size_t)capture.width * capture.height;
+				capture.pixels.resize(pixelCount * 3);
+				GL_CHECK(glBindTexture(bindTarget, id));
+				auto const format = info.desc.format;
+				bool const redOnly = format == GraphImageFormat::R8 || format == GraphImageFormat::R16f || format == GraphImageFormat::R32f;
+				bool const redGreen = format == GraphImageFormat::Rg8 || format == GraphImageFormat::Rg16f || format == GraphImageFormat::Rg32f;
+				bool const hdr = format == GraphImageFormat::Rgba16f || format == GraphImageFormat::Rgba32f || format == GraphImageFormat::R11g11b10f;
+				if (redOnly || redGreen)
+				{
+					auto const channels = redOnly ? 1u : 2u;
+					vector<float> values(pixelCount * channels);
+					GL_CHECK(glGetTexImage(imageTarget, (GLint)mipLevel, redOnly ? GL_RED : GL_RG, GL_FLOAT, values.data()));
+					bool const signedValues = info.name.find("Normal") != string::npos || info.name.find("normal") != string::npos;
+					for (size_t index = 0; index < pixelCount; ++index)
+					{
+						auto encode = [&](float value)
+						{
+							if (signedValues) value = value * 0.5f + 0.5f;
+							return (uint8_t)round(clamp(value, 0.0f, 1.0f) * 255.0f);
+						};
+						auto const red = encode(values[index * channels]);
+						auto const green = redOnly ? red : encode(values[index * channels + 1]);
+						capture.pixels[index * 3] = red;
+						capture.pixels[index * 3 + 1] = green;
+						capture.pixels[index * 3 + 2] = redOnly ? red : 0;
+					}
+				}
+				else if (hdr)
+				{
+					vector<float> values(pixelCount * 3);
+					GL_CHECK(glGetTexImage(imageTarget, (GLint)mipLevel, GL_RGB, GL_FLOAT, values.data()));
+					for (size_t index = 0; index < values.size(); ++index)
+					{
+						auto const value = max(values[index], 0.0f);
+						capture.pixels[index] = (uint8_t)round((value / (1.0f + value)) * 255.0f);
+					}
+				}
+				else
+				{
+					GL_CHECK(glGetTexImage(imageTarget, (GLint)mipLevel, GL_RGB, GL_UNSIGNED_BYTE, capture.pixels.data()));
+				}
+				GL_CHECK(glBindTexture(bindTarget, (GLuint)previousTexture));
+			}
+			auto const rowSize = (size_t)capture.width * 3;
+			for (size_t y = 0; y < capture.height / 2; ++y)
+			{
+				auto top = capture.pixels.begin() + y * rowSize;
+				auto bottom = capture.pixels.begin() + (capture.height - y - 1) * rowSize;
+				swap_ranges(top, top + rowSize, bottom);
+			}
+			return capture;
+		}
 
 		void discardDontCareOutputs(GraphPassInfo const& pass, RenderGraphExecutionContext const& context, bool defaultFramebuffer)
 		{
@@ -360,6 +467,18 @@ namespace mpp
 		return result;
 	}
 
+	void RenderGraphExecutor::requestImageCapture()
+	{
+		mCaptureNextExecution = true;
+	}
+
+	vector<GraphImageCapture> RenderGraphExecutor::takeImageCaptures()
+	{
+		auto captures = move(mLastImageCaptures);
+		mLastImageCaptures.clear();
+		return captures;
+	}
+
 	void RenderGraphExecutor::synchronizeFramebufferViews(RenderGraphTargets const& targets)
 	{
 		if (!mFramebufferViews) return;
@@ -424,6 +543,9 @@ namespace mpp
 		}
 		synchronizeFramebufferViews(targets);
 		mLastExecutionStats.clear();
+		bool const captureThisExecution = mCaptureNextExecution;
+		mCaptureNextExecution = false;
+		if (captureThisExecution) mLastImageCaptures.clear();
 		if (mGpuTimingSupported) collectGpuTimings();
 		vector<GpuTimingQuery> frameGpuQueries;
 		auto cleanupQueries = [&](void*)
@@ -586,6 +708,17 @@ namespace mpp
 					discardDontCareOutputs(pass, context, passTarget == mRenderSystem->getScreenRenderTarget());
 					for (auto const& output : pass.colourOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, false) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},false,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
 					for (auto const& output : pass.depthOutputs) if (output.store == GraphStoreOp::Store && targets.resolve(output.image, true) && mRenderSystem->isRenderFlowCaptureActive()){try{auto info=graph.getImageInfo(output.image);auto source=targets.getWriteTarget(output.image),destination=targets.get(output.image);RenderFlowResourceDesc sourceDesc{info.name+".v"+to_string(output.image.version)+".msaa",{(uint32_t)source->getWidth(),(uint32_t)source->getHeight()},info.desc.format,dynamic_cast<RenderTexture*>(source.get())->getSamples()};RenderFlowResourceDesc destinationDesc{info.name+".v"+to_string(output.image.version)+".resolved",{(uint32_t)destination->getWidth(),(uint32_t)destination->getHeight()},info.desc.format,1};mRenderSystem->recordRenderFlowEvent(RenderFlowEventKind::MsaaResolve,info.name+".v"+to_string(output.image.version),output.image,true,{}, {},true,{std::move(sourceDesc)},{std::move(destinationDesc)});}catch(...){mRenderSystem->failRenderFlowCapture();}}
+					if (captureThisExecution)
+					{
+						for (auto const& output : pass.colourOutputs)
+							if (output.store == GraphStoreOp::Store)
+								if (auto capture = captureStoredOutput(graph, pass, targets, output.image, output.mipLevel, output.cubeFace, false))
+									mLastImageCaptures.push_back(move(*capture));
+						for (auto const& output : pass.depthOutputs)
+							if (output.store == GraphStoreOp::Store)
+								if (auto capture = captureStoredOutput(graph, pass, targets, output.image, output.mipLevel, output.cubeFace, true))
+									mLastImageCaptures.push_back(move(*capture));
+					}
 				}
 				for (auto const& view : mipViews) view.first->restoreMipView();
 				restoreImagePassState();

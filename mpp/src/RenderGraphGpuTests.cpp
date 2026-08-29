@@ -755,6 +755,7 @@ namespace mpp
 				waterDepthOptions.generatedWater = true;
 				waterDepthOptions.outputs = { { "Water", "WaterComposite" } };
 				auto waterDepthPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedWaterDepthPipeline", waterDepthOptions);
+				waterDepthPipeline->requestGraphImageCapture();
 				waterDepthPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
 				bool storedWaterDepth = false, boundWaterDepth = false;
 				for (auto const& stats : waterDepthPipeline->getLastGraphExecutionStats())
@@ -764,6 +765,26 @@ namespace mpp
 				}
 				if (!storedWaterDepth || !boundWaterDepth)
 					return fail("generated water did not sample and store otherwise-unused scene depth");
+				// WaterScene is a scene pass but seeds its target with a fullscreen copy.
+				// Verify that the copy covers the offscreen target instead of inheriting
+				// the 3D camera and window-sized quad transform.
+				auto waterComposite = waterDepthPipeline->getGraphImageRenderTarget({ 3, 1 });
+				if (!waterComposite || !nearColour(readFirstPixel(waterComposite), { 204, 204, 204, 255 }))
+					return fail("generated water composite did not preserve the full opaque scene");
+				auto captures = waterDepthPipeline->takeGraphImageCaptures();
+				auto capturedPass = [&](char const* name, bool depth)
+				{
+					return find_if(captures.begin(), captures.end(), [&](auto const& capture)
+					{
+						return capture.passName == name && capture.depth == depth &&
+							capture.width == 64 && capture.height == 64 && !capture.pixels.empty();
+					}) != captures.end();
+				};
+				if (!capturedPass("LegacyScene", false) || !capturedPass("LegacyScene", true) ||
+					!capturedPass("SceneColourCopy", false) || !capturedPass("WaterScene", false))
+					return fail("one-shot graph image capture missed a stored generated-water pass output");
+				if (!waterDepthPipeline->takeGraphImageCaptures().empty())
+					return fail("taking graph image captures did not consume them");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterDepthPipeline");
 
 				RenderPipelineOptions waterOptions;

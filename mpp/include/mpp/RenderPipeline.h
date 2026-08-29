@@ -237,6 +237,7 @@ namespace mpp
 		// without one call clobbering the other.
 		std::map<std::string, UniformCollection> mPostEffectParameterOverrides;
 		bool mFlowTelemetryEnabled{ false };
+		bool mGraphImageCaptureRequested{ false };
 		uint64_t mFlowGeneration{ 0 };
 		RenderPipelineFlowSnapshotPtr mLastFlowSnapshot;
 		std::shared_ptr<RenderPipelineFlowSnapshot> mPendingFlowSnapshot;
@@ -306,6 +307,8 @@ namespace mpp
 
 		RenderTargetPtr getOutputRenderTarget();
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
+		void requestGraphImageCapture();
+		std::vector<GraphImageCapture> takeGraphImageCaptures();
 		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;
 		std::vector<GraphPassHandle> const& getLastGraphExecutionOrder() const;
 		void setFlowTelemetryEnabled(bool enabled);

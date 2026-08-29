@@ -34,6 +34,18 @@ namespace mpp
 		uint32_t maxColourOutputMipLevels{ 0 };
 	};
 
+	// One stored attachment read back immediately after its producing pass.
+	// Pixels are top-left-origin RGB8, ready for application-side PNG encoding.
+	struct _MPPAPI GraphImageCapture
+	{
+		std::string passName;
+		std::string imageName;
+		uint32_t width{ 0 }, height{ 0 };
+		bool depth{ false };
+		uint32_t cubeFace{ GraphNoCubeFace };
+		std::vector<uint8_t> pixels;
+	};
+
 	struct _MPPAPI GraphFramebufferCacheStats
 	{
 		uint64_t hits{ 0 };
@@ -89,6 +101,8 @@ namespace mpp
 		struct FramebufferViewCache;
 		std::unique_ptr<FramebufferViewCache> mFramebufferViews;
 		GraphFramebufferCacheStats mFramebufferCacheStats;
+		bool mCaptureNextExecution{ false };
+		std::vector<GraphImageCapture> mLastImageCaptures;
 		void collectGpuTimings();
 		void clearGpuTimings();
 		void synchronizeFramebufferViews(RenderGraphTargets const& targets);
@@ -115,6 +129,11 @@ namespace mpp
 		std::vector<GraphPassExecutionStats> const& getLastExecutionStats() const;
 		std::vector<GraphPassHandle> const& getLastExecutionOrder() const;
 		GraphFramebufferCacheStats getFramebufferCacheStats() const;
+		// Arms a synchronous readback of every stored pass output in the next
+		// execution. Capturing at pass boundaries preserves transient images before
+		// later graph work can reuse their backing textures.
+		void requestImageCapture();
+		std::vector<GraphImageCapture> takeImageCaptures();
 		void execute(RenderGraph const& graph, RenderGraphTargets const& targets, Caps const& caps);
 		void execute(RenderGraphTemplate const& graphTemplate, RenderGraphTargets const& targets, Caps const& caps);
 	};

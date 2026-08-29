@@ -294,6 +294,16 @@ namespace mpp
 		return mGraphTargets?mGraphTargets->get(image):nullptr;
 	}
 
+	void RenderPipeline::requestGraphImageCapture()
+	{
+		mGraphImageCaptureRequested = true;
+	}
+
+	vector<GraphImageCapture> RenderPipeline::takeGraphImageCaptures()
+	{
+		return mGraphExecutor ? mGraphExecutor->takeImageCaptures() : vector<GraphImageCapture>{};
+	}
+
 	vector<GraphPassExecutionStats> const& RenderPipeline::getLastGraphExecutionStats() const
 	{
 		static vector<GraphPassExecutionStats> const empty;return mGraphExecutor?mGraphExecutor->getLastExecutionStats():empty;
@@ -359,6 +369,11 @@ namespace mpp
 			mGraphExecutor = make_unique<RenderGraphExecutor>(mRenderSystem);
 			registerBuiltInRenderGraphPasses(mGraphPassFactories);
 			mGraphExecutor->setPassFactoryRegistry(&mGraphPassFactories);
+		}
+		if (mGraphImageCaptureRequested)
+		{
+			mGraphExecutor->requestImageCapture();
+			mGraphImageCaptureRequested = false;
 		}
 
 		if (mOptions.graphTemplate)
@@ -654,6 +669,7 @@ namespace mpp
 			waterRaster.explicitState = true;
 			waterRaster.depthTest = false;
 			waterRaster.depthWrite = false;
+			waterRaster.cullMode = GraphCullMode::None;
 			graph.setPassRasterState(waterPass, waterRaster);
 			presentationTexture = shadedSceneTexture;
 		}
