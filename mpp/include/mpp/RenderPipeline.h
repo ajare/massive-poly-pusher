@@ -151,6 +151,18 @@ namespace mpp
 		bool presentation{ true };
 	};
 
+	// A client-declared extra scene-pass colour output, appended after the
+	// built-in colour/bloom-mask/normals MRT slots at whichever location comes
+	// next. `name` must match a fragment shader `@Out(... NAME)` declaration;
+	// nothing in mpp reads the resulting image today -- it exists purely so a
+	// host material can publish a per-pixel value for a later, host-authored
+	// pass to consume.
+	struct _MPPAPI RenderPipelineSceneExtraOutput
+	{
+		std::string name;
+		GraphImageFormat format{ GraphImageFormat::R8 };
+	};
+
 	struct _MPPAPI RenderPipelineOptions
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
@@ -168,6 +180,9 @@ namespace mpp
 		ResourcePtr graphTemplateMrt;
 		BloomOptions bloom;
 		AmbientOcclusionOptions ambientOcclusion;
+		// Client-declared extra scene-pass colour outputs. Empty (the default)
+		// changes nothing about the generated graph or its attachment budget.
+		std::vector<RenderPipelineSceneExtraOutput> sceneExtraOutputs;
 		// Draw opaque scene geometry with depth-only programs before material
 		// shading. The material pass then uses LessEqual against that depth.
 		bool depthPrepass{ true };

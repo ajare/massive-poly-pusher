@@ -777,6 +777,28 @@ namespace mpp
 				if (sceneOutputCount(*pbrPipeline, "PbrScene") != 2) return fail("generated PBR depth normals did not remove location-2 resource cost while retaining bloom MRT");
 				renderSystem->removeRenderPipeline("GpuTestGtaoMrtPbrPipeline");
 
+				// sceneExtraOutputs appends one more scene-pass colour attachment per
+				// declared entry, following the same allocation pattern as GTAO's MRT
+				// normals slot, and must fail fast (like that slot) when the request
+				// exceeds what the hardware or scene materials can support.
+				RenderPipelineOptions extraOptions; extraOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				extraOptions.sceneExtraOutputs = { { "GpuTestExtra", GraphImageFormat::R8 } };
+				auto extraPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestSceneExtraPipeline", extraOptions);
+				extraPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				if (sceneOutputCount(*extraPipeline, "LegacyScene") != 2)
+					return fail("scene extra output did not append an additional MRT colour attachment");
+				renderSystem->removeRenderPipeline("GpuTestSceneExtraPipeline");
+
+				RenderPipelineOptions overflowOptions; overflowOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				size_t const overflowCount = (size_t)std::max(renderSystem->getCaps().maxColourAttachments, renderSystem->getCaps().maxDrawBuffers) + 4;
+				for (size_t index = 0; index < overflowCount; ++index)
+					overflowOptions.sceneExtraOutputs.push_back({ "GpuTestExtraOverflow" + std::to_string(index), GraphImageFormat::R8 });
+				auto overflowPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestSceneExtraOverflowPipeline", overflowOptions);
+				bool rejectedExtraOverflow = false;
+				try { overflowPipeline->render(gateScene, gateCamera, glm::vec2(0.0f)); } catch (...) { rejectedExtraOverflow = true; }
+				if (!rejectedExtraOverflow) return fail("scene extra outputs exceeding the attachment budget were accepted");
+				renderSystem->removeRenderPipeline("GpuTestSceneExtraOverflowPipeline");
+
 				GraphPassDebugOptions graphPasses; graphPasses.ambientOcclusion = false;
 				pipeline->setGraphPassDebugOptions(graphPasses);
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));

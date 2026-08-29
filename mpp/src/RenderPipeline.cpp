@@ -444,15 +444,27 @@ namespace mpp
 			desc.params.wrap = GL_CLAMP_TO_EDGE;
 			return desc;
 		};
+		size_t const sceneExtraOutputCount = mOptions.sceneExtraOutputs.size();
 		bool const useMrtNormals = mOptions.ambientOcclusion.method == AmbientOcclusionMethod::Gtao &&
 			mOptions.graphPasses.ambientOcclusion && mOptions.ambientOcclusion.gtao.normalSource == GTAONormalSource::Mrt;
-		if (useMrtNormals && (mRenderSystem->getCaps().maxDrawBuffers < 3 || mRenderSystem->getCaps().maxColourAttachments < 3))
+		// Client-declared extras are appended immediately after whichever
+		// built-in MRT slots are in play, so a hard-requirement path (GTAO MRT
+		// normals; extras with no fallback of their own) must budget for them
+		// too. Bloom's MRT emissive mask keeps its existing graceful fallback
+		// and is deliberately not extended here -- it silently reverts to a
+		// threshold extract rather than throwing.
+		size_t const mrtNormalsRequiredCount = 3 + sceneExtraOutputCount;
+		if (useMrtNormals && (mRenderSystem->getCaps().maxDrawBuffers < mrtNormalsRequiredCount || mRenderSystem->getCaps().maxColourAttachments < mrtNormalsRequiredCount))
 		{
-			THROW_MPP("GTAO MRT normal sourcing requires at least 3 colour attachments and 3 draw buffers (location 0 scene colour, location 1 bloom mask, location 2 RG16F normals).", __LINE__, __FILE__, __func__);
+			THROW_MPP("GTAO MRT normal sourcing" + (sceneExtraOutputCount ? " plus " + to_string(sceneExtraOutputCount) + " scene extra output(s)" : string()) +
+				" requires at least " + to_string(mrtNormalsRequiredCount) + " colour attachments and " + to_string(mrtNormalsRequiredCount) +
+				" draw buffers (location 0 scene colour, location 1 bloom mask, location 2 RG16F normals, remaining locations scene extra outputs).", __LINE__, __FILE__, __func__);
 		}
-		if (useMrtNormals && !sceneProgramsSupportOutputs(models, 3))
+		if (useMrtNormals && !sceneProgramsSupportOutputs(models, mrtNormalsRequiredCount))
 		{
-			THROW_MPP("GTAO MRT normal sourcing requires every visible scene material program to declare active fragment outputs at locations 0, 1, and 2; update the incompatible material shader or select normalSource=depth.", __LINE__, __FILE__, __func__);
+			THROW_MPP("GTAO MRT normal sourcing" + (sceneExtraOutputCount ? " plus scene extra outputs" : string()) +
+				" requires every visible scene material program to declare active fragment outputs at locations 0.." + to_string(mrtNormalsRequiredCount - 1) +
+				"; update the incompatible material shader or select normalSource=depth.", __LINE__, __FILE__, __func__);
 		}
 		bool const useMrtEmissiveMask = pbr && mOptions.bloom.enabled && mOptions.bloom.useMrtEmissiveMask &&
 			mRenderSystem->getCaps().maxDrawBuffers >= 2 && mRenderSystem->getCaps().maxColourAttachments >= 2 &&
@@ -465,6 +477,25 @@ namespace mpp
 		}
 		GraphImageHandle sceneNormals;
 		if (useMrtNormals) sceneNormals = graph.createImage("SceneShadingNormals", makeColour(GraphImageFormat::Rg16f));
+		// Extras with no MRT normals in play still need their own fail-fast
+		// budget/program-support check (the normals branch above already
+		// covers the combined case). Bloom's mask carries no such hard
+		// requirement, so it is excluded from the required-location count.
+		if (sceneExtraOutputCount && !useMrtNormals)
+		{
+			size_t const requiredCount = 1 + (bloomMask.isValid() ? 1 : 0) + sceneExtraOutputCount;
+			if (mRenderSystem->getCaps().maxDrawBuffers < requiredCount || mRenderSystem->getCaps().maxColourAttachments < requiredCount ||
+				!sceneProgramsSupportOutputs(models, requiredCount))
+			{
+				THROW_MPP("Scene extra outputs require at least " + to_string(requiredCount) + " colour attachments and " + to_string(requiredCount) +
+					" draw buffers, and every visible scene material program to declare active fragment outputs through location " + to_string(requiredCount - 1) + ".",
+					__LINE__, __FILE__, __func__);
+			}
+		}
+		std::vector<GraphImageHandle> sceneExtraOutputImages;
+		sceneExtraOutputImages.reserve(sceneExtraOutputCount);
+		for (auto const& extra : mOptions.sceneExtraOutputs)
+			sceneExtraOutputImages.push_back(graph.createImage("SceneExtra." + extra.name, makeColour(extra.format)));
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
 		bool const sampleSceneDepth = outputAntiAliasing.taa || (mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
@@ -533,6 +564,7 @@ namespace mpp
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
 		if (bloomMask.isValid()) bloomMask = graph.writeColour(scenePass, bloomMask, GraphLoadOp::Clear, useMrtEmissiveMask ? GraphStoreOp::Store : GraphStoreOp::DontCare);
 		if (useMrtNormals) sceneNormals = graph.writeColour(scenePass, sceneNormals, GraphLoadOp::Clear, GraphStoreOp::Store);
+		for (auto& extraImage : sceneExtraOutputImages) extraImage = graph.writeColour(scenePass, extraImage, GraphLoadOp::Clear, GraphStoreOp::Store);
 		sceneDepth=graph.writeDepth(scenePass,sceneDepth,GraphLoadOp::Clear,sampleSceneDepth?GraphStoreOp::Store:GraphStoreOp::DontCare);
 
 		GraphImageHandle presentationTexture = sceneHdr;
