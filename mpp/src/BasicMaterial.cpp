@@ -179,6 +179,11 @@ namespace mpp
 				else if (samplerName == "PBR_EMISSIVE_MAP") textureName = "__mpp_tex_pbr_black__";
 				else if (samplerName == "PBR_IRRADIANCE_MAP" || samplerName == "PBR_PREFILTERED_SPECULAR_MAP") textureName = "__mpp_tex_pbr_ibl_cube__";
 				else if (samplerName == "PBR_BRDF_LUT") textureName = "__mpp_tex_pbr_brdf_lut__";
+				// Render-graph water inputs are pipeline-owned just like IBL and
+				// shadows. Neutral material resources keep a generic shader valid in
+				// a pipeline without a water pass; MPP.WaterScene replaces both.
+				else if (samplerName == "PBR_SCENE_COLOUR_RESOLVED") textureName = "__mpp_tex_pbr_black__";
+				else if (samplerName == "PBR_SCENE_DEPTH") textureName = "__mpp_tex_pbr_white__";
 				if (textureName.empty())
 				{
 					string errMsg = std::format("Sampler '{}' declared in program '{}' is not bound by material '{}'.",
