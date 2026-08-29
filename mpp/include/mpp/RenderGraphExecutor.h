@@ -28,6 +28,10 @@ namespace mpp
 		// The executed framebuffer contract, useful to diagnostics and GPU tests
 		// that verify optional MRT resources disappear when their gate is disabled.
 		uint32_t colourOutputCount{ 0 };
+		uint32_t depthOutputCount{ 0 };
+		uint32_t storedDepthOutputCount{ 0 };
+		uint32_t samplerBindingCount{ 0 };
+		uint32_t maxColourOutputMipLevels{ 0 };
 	};
 
 	struct _MPPAPI GraphFramebufferCacheStats

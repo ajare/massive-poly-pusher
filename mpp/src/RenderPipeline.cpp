@@ -498,7 +498,8 @@ namespace mpp
 			sceneExtraOutputImages.push_back(graph.createImage("SceneExtra." + extra.name, makeColour(extra.format)));
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
-		bool const sampleSceneDepth = outputAntiAliasing.taa || (mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
+		bool const sampleSceneDepth = mOptions.generatedWater || outputAntiAliasing.taa ||
+			(mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
 
@@ -559,6 +560,7 @@ namespace mpp
 		}
 
 		auto scenePass = graph.addPass(pbr ? "PbrScene" : "LegacyScene", GraphPassType::Scene);
+		if (mOptions.generatedWater) graph.setPassCallbackFactory(scenePass, pbr ? "MPP.PbrScene" : "MPP.LegacyScene");
 		if (shadowDepthOutput.isValid()) graph.readSampled(scenePass, shadowDepthOutput);
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
 			glm::vec4(scene->getClearColour().red, scene->getClearColour().green, scene->getClearColour().blue, scene->getClearColour().alpha));
@@ -625,7 +627,36 @@ namespace mpp
 			ssaoSteps.push_back(SsaoGraphStep::Composite);
 			ssaoInputs.push_back(blurredOcclusion);
 		}
-		GraphImageHandle const shadedSceneTexture = presentationTexture;
+		GraphImageHandle shadedSceneTexture = presentationTexture;
+		if (mOptions.generatedWater)
+		{
+			GraphImageDesc resolvedDesc = makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8);
+			auto const& waterViewport = scene->getViewport();
+			auto const resolvedSize = glm::uvec2(
+				ssaaDimension((uint32_t)waterViewport.width, outputAntiAliasing.ssaa),
+				ssaaDimension((uint32_t)waterViewport.height, outputAntiAliasing.ssaa));
+			resolvedDesc.mipLevels = std::min(5u, maxGraphImageMipLevels(resolvedSize));
+			resolvedDesc.params.minFilter = resolvedDesc.mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
+			auto resolvedScene = graph.createImage("SceneColourResolved", resolvedDesc);
+			auto copyPass = graph.addPass("SceneColourCopy", GraphPassType::Fullscreen);
+			graph.setPassCallbackFactory(copyPass, "MPP.SceneColourCopy");
+			graph.bindSampler(copyPass, "TEX1", shadedSceneTexture);
+			resolvedScene = graph.writeColour(copyPass, resolvedScene, GraphLoadOp::DontCare, GraphStoreOp::Store);
+
+			auto waterComposite = graph.createImage("WaterComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			auto waterPass = graph.addPass("WaterScene", GraphPassType::Scene);
+			graph.setPassCallbackFactory(waterPass, "MPP.WaterScene");
+			graph.bindSampler(waterPass, "PBR_SCENE_COLOUR_RESOLVED", resolvedScene);
+			graph.bindSampler(waterPass, "PBR_SCENE_DEPTH", sceneDepth);
+			if (shadowDepthOutput.isValid()) graph.bindSampler(waterPass, "SHADOW_MAP", shadowDepthOutput);
+			shadedSceneTexture = graph.writeColour(waterPass, waterComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			GraphRasterState waterRaster;
+			waterRaster.explicitState = true;
+			waterRaster.depthTest = false;
+			waterRaster.depthWrite = false;
+			graph.setPassRasterState(waterPass, waterRaster);
+			presentationTexture = shadedSceneTexture;
+		}
 
 		enum class BloomGraphStep { Extract, Horizontal, Vertical, Composite };
 		vector<GraphPassHandle> bloomPasses;
@@ -706,17 +737,20 @@ namespace mpp
 				});
 			}
 		}
-		mGraphExecutor->setPassCallback(graph, scenePass, [this, scene, models, camera](RenderGraphExecutionContext const& context)
+		if (!mOptions.generatedWater)
 		{
-			if (mOptions.graphPasses.scene && !models.empty() && scene->show3dModels() && mPasses.back())
+			mGraphExecutor->setPassCallback(graph, scenePass, [this, scene, models, camera](RenderGraphExecutionContext const& context)
 			{
-				if (mOptions.depthPrepass)
-					mRenderSystem->renderDepthPrepass(
-						models, camera, context.getPass().colourOutputs.size());
-				mPasses.back()->render(models, camera);
-				mRenderSystem->flushVertexBuffers();
-			}
-		});
+				if (mOptions.graphPasses.scene && !models.empty() && scene->show3dModels() && mPasses.back())
+				{
+					if (mOptions.depthPrepass)
+						mRenderSystem->renderDepthPrepass(
+							models, camera, context.getPass().colourOutputs.size());
+					mPasses.back()->render(models, camera);
+					mRenderSystem->flushVertexBuffers();
+				}
+			});
+		}
 		for (size_t index = 0; index < ssaoPasses.size(); ++index)
 		{
 			auto pass = ssaoPasses[index];

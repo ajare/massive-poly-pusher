@@ -24,6 +24,9 @@ namespace mpp
 
 		std::vector<std::string> mRenderLayers;
 		uint64_t mShadowRevision{ 1 };
+		// Explicitly classifies this whole model for a graph water pass. Material-
+		// based PBR Water classification remains supported independently.
+		bool mDeferToWaterPass{ false };
 
 #pragma warning(push)
 #pragma warning(disable: 4324)
@@ -65,6 +68,10 @@ namespace mpp
 		std::vector<std::string> const& getRenderLayers() const;
 
 		bool isInRenderLayer(std::string const& layer) const;
+
+		void setDeferToWaterPass(bool defer);
+
+		bool getDeferToWaterPass() const;
 	};
 
 	typedef std::shared_ptr<SceneModel3d> SceneModel3dPtr;

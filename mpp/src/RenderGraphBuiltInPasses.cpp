@@ -206,6 +206,7 @@ namespace mpp
 		bool usesWaterMaterial(SceneModel3dPtr const& sceneModel)
 		{
 			if (!sceneModel) return false;
+			if (sceneModel->getDeferToWaterPass()) return true;
 			auto const* model = dynamic_cast<Model const*>(sceneModel->getModel().get());
 			if (!model) return false;
 			for (int mesh = 0; mesh < model->getNumMeshes(); ++mesh)
@@ -285,6 +286,14 @@ namespace mpp
 				auto const& frame = context.getFrame();
 				if (!frame.pipelineOptions->graphPasses.scene) return;
 				if (!frame.scene || !frame.scene->show3dModels() || !frame.sceneRenderPass || !frame.camera) return;
+				auto* resolvedScene = input(context, 0);
+				if (!resolvedScene) THROW_MPP("WaterScenePass '" + context.getPass().name + "' has no resolved scene colour bound.", __LINE__, __FILE__, __func__);
+				// Generated graphs write a distinct WaterComposite image, so seed it
+				// with the frozen shaded scene before alpha-compositing water. For
+				// authored graphs that load their scene target this is an equivalent,
+				// deterministic refresh and preserves their established topology.
+				frame.renderSystem->renderFullscreenQuad(resolvedScene, BlendMode::One, BlendMode::Zero);
+
 				auto const water = selectModels(frame.visibleModels, true);
 				if (water.empty()) return;
 

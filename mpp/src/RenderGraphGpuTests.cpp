@@ -687,6 +687,12 @@ namespace mpp
 				gateScene->setViewport(0, 0, 64, 64);
 				gateScene->setClearColour(Colour(0.8f, 0.8f, 0.8f, 1.0f));
 				auto gateCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				auto waterFlagModelResource = renderSystem->getResourceManager()->getResource("__mpp_mesh_fullscreen_quad__");
+				auto waterFlagModel = gateScene->add3dModel(waterFlagModelResource);
+				if (waterFlagModel->getDeferToWaterPass()) return fail("scene model water-pass deferral did not default false");
+				waterFlagModel->setDeferToWaterPass(true);
+				if (!waterFlagModel->getDeferToWaterPass()) return fail("scene model water-pass deferral flag was not retained");
+				gateScene->remove3dModel(waterFlagModel);
 
 				// A named but disabled domain has no depth target. Generated graphs must
 				// omit its external shadow image while the disabled ShadowFrame keeps
@@ -717,6 +723,13 @@ namespace mpp
 				};
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
 				if (executedSsao()) return fail("disabled SSAO was inserted into the graph");
+				for (auto const& stats : pipeline->getLastGraphExecutionStats())
+				{
+					if (stats.name == "SceneColourCopy" || stats.name == "WaterScene")
+						return fail("default-off generated graph inserted water topology");
+					if (stats.name == "LegacyScene" && stats.storedDepthOutputCount != 0)
+						return fail("default-off generated graph stored otherwise-unused scene depth");
+				}
 				AmbientOcclusionOptions gateOptions; gateOptions.method = AmbientOcclusionMethod::Ssao;
 				pipeline->setAmbientOcclusionOptions(gateOptions);
 				BloomOptions gateBloom; gateBloom.enabled = true; gateBloom.blurPasses = 0;
@@ -732,6 +745,64 @@ namespace mpp
 				}
 				if (ssaoOrder == SIZE_MAX || bloomOrder == SIZE_MAX || ssaoOrder >= bloomOrder)
 					return fail("SSAO was not fixed immediately before the bloom sequence");
+				for (auto const& stats : gateStats)
+					if (stats.name == "SceneColourCopy" || stats.name == "WaterScene")
+						return fail("default-off generated graph inserted water topology");
+				if (pipelineOptions.generatedWater) return fail("generated water did not default disabled");
+
+				RenderPipelineOptions waterDepthOptions;
+				waterDepthOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				waterDepthOptions.generatedWater = true;
+				waterDepthOptions.outputs = { { "Water", "WaterComposite" } };
+				auto waterDepthPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedWaterDepthPipeline", waterDepthOptions);
+				waterDepthPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				bool storedWaterDepth = false, boundWaterDepth = false;
+				for (auto const& stats : waterDepthPipeline->getLastGraphExecutionStats())
+				{
+					if (stats.name == "LegacyScene") storedWaterDepth = stats.storedDepthOutputCount == 1;
+					else if (stats.name == "WaterScene") boundWaterDepth = stats.samplerBindingCount >= 2;
+				}
+				if (!storedWaterDepth || !boundWaterDepth)
+					return fail("generated water did not sample and store otherwise-unused scene depth");
+				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterDepthPipeline");
+
+				RenderPipelineOptions waterOptions;
+				waterOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				waterOptions.generatedWater = true;
+				waterOptions.ambientOcclusion = gateOptions;
+				waterOptions.bloom = gateBloom;
+				auto waterPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedWaterPipeline", waterOptions);
+				auto verifyGeneratedWater = [&](uint32_t width, uint32_t height)
+				{
+					gateScene->setViewport(0, 0, width, height);
+					waterPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+					size_t aoComposite = SIZE_MAX, copy = SIZE_MAX, water = SIZE_MAX, bloom = SIZE_MAX, presentation = SIZE_MAX;
+					for (size_t index = 0; index < waterPipeline->getLastGraphExecutionStats().size(); ++index)
+					{
+						auto const& stats = waterPipeline->getLastGraphExecutionStats()[index];
+						if (stats.name == "AmbientOcclusionComposite") aoComposite = index;
+						else if (stats.name == "SceneColourCopy")
+						{
+							copy = index;
+							if (stats.samplerBindingCount != 1 || stats.maxColourOutputMipLevels < 2)
+								return false;
+						}
+						else if (stats.name == "WaterScene")
+						{
+							water = index;
+							if (stats.samplerBindingCount < 2 || stats.colourOutputCount != 1 || stats.depthOutputCount != 0)
+								return false;
+						}
+						else if (stats.name == "BloomExtract") bloom = index;
+						else if (stats.name == "ToneMapPresentation") presentation = index;
+					}
+					return aoComposite < copy && copy < water && water < bloom && bloom < presentation;
+				};
+				if (!verifyGeneratedWater(64, 64) || !verifyGeneratedWater(96, 32))
+					return fail("opted-in generated water topology, sampler binding, mip preservation, or resize execution failed");
+				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterPipeline");
+				gateScene->setViewport(0, 0, 64, 64);
+
 				gateOptions.method = AmbientOcclusionMethod::Gtao;
 				pipeline->setAmbientOcclusionOptions(gateOptions);
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));

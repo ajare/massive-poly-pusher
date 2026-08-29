@@ -138,4 +138,14 @@ namespace mpp
 	{
 		return find(mRenderLayers.begin(), mRenderLayers.end(), layer) != mRenderLayers.end();
 	}
+
+	void SceneModel3d::setDeferToWaterPass(bool defer)
+	{
+		mDeferToWaterPass = defer;
+	}
+
+	bool SceneModel3d::getDeferToWaterPass() const
+	{
+		return mDeferToWaterPass;
+	}
 }

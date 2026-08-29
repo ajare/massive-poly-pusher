@@ -183,6 +183,9 @@ namespace mpp
 		// Client-declared extra scene-pass colour outputs. Empty (the default)
 		// changes nothing about the generated graph or its attachment budget.
 		std::vector<RenderPipelineSceneExtraOutput> sceneExtraOutputs;
+		// Adds colour-copy and water scene passes to generated graphs. Authored
+		// graph templates keep their own topology. Default-off for compatibility.
+		bool generatedWater{ false };
 		// Draw opaque scene geometry with depth-only programs before material
 		// shading. The material pass then uses LessEqual against that depth.
 		bool depthPrepass{ true };

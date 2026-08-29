@@ -611,6 +611,13 @@ namespace mpp
 				stats.trianglesSubmitted = static_cast<uint64_t>(max(0, statsAfter.trianglesRendered - statsBefore.trianglesRendered));
 				stats.fullscreenQuads = static_cast<uint64_t>(max(0, statsAfter.fullscreenQuads - statsBefore.fullscreenQuads));
 				stats.colourOutputCount = static_cast<uint32_t>(pass.colourOutputs.size());
+				stats.depthOutputCount = static_cast<uint32_t>(pass.depthOutputs.size());
+				stats.storedDepthOutputCount = static_cast<uint32_t>(std::count_if(pass.depthOutputs.begin(), pass.depthOutputs.end(),
+					[](auto const& output) { return output.store == GraphStoreOp::Store; }));
+				stats.samplerBindingCount = static_cast<uint32_t>(pass.samplerBindings.size());
+				for (auto const& output : pass.colourOutputs)
+					if (auto texture = dynamic_cast<RenderTexture*>(targets.get(output.image).get()))
+						stats.maxColourOutputMipLevels = std::max(stats.maxColourOutputMipLevels, texture->getMipLevels());
 				mLastExecutionStats.push_back(move(stats));
 				mRenderSystem->endRenderFlowPass(passHandle, pass.name);
 			}
