@@ -375,6 +375,9 @@ namespace mpp
 			auto const& ud = it.second;
 			int index = ud.count == 1 ? -1 : 0;
 			auto id = (GLint)p->getUniformId(it.first, index); // Use non-marked up value
+			// Pass-scoped overrides are intentionally sparse: most scene programs do
+			// not declare every virtual-camera marker. Missing uniforms are no-ops.
+			if (id < 0) continue;
 			
 			switch (ud.type)
 			{

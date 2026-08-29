@@ -3712,6 +3712,16 @@ namespace mpp
 		return mActivePipelineSamplerOverrides;
 	}
 
+	void RenderSystem::setActivePipelineUniformOverrides(UniformCollection const& overrides)
+	{
+		mActivePipelineUniformOverrides = overrides;
+	}
+
+	UniformCollection const& RenderSystem::getActivePipelineUniformOverrides() const
+	{
+		return mActivePipelineUniformOverrides;
+	}
+
 	/*
 	 * Render a texture as a fullscreen quad
 	 *
@@ -4858,8 +4868,11 @@ namespace mpp
 		// Bind mesh material (including program), and vertex buffers
 		meshInstance->mwMesh->bind(true);
 
-		// Go through all mesh uniforms and set them.
+		// Go through all mesh uniforms and set them, then apply the active pass's
+		// authoritative values. The latter deliberately happens last so a virtual
+		// camera cannot be mistaken for the main camera by host material code.
 		meshInstance->bindUniforms();
+		mActivePipelineUniformOverrides.bindUniforms(material->getProgram());
 
 		// Wireframe?
 		setFillModeState(meshInstance->mWireframe ? GraphFillMode::Line : GraphFillMode::Fill);

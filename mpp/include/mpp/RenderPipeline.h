@@ -8,6 +8,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4201)
 #include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 #pragma warning(pop)
 
 #include "mpp/Config.h"
@@ -189,6 +190,22 @@ namespace mpp
 		float elevation{ 0.0f };
 		ReflectionPlaneSide viewerSide{ ReflectionPlaneSide::Above };
 	};
+
+	// The complete virtual-camera state used by one horizontal Planar pass.
+	// Exposed as a pure seam so callers and GPU-independent tests can verify the
+	// reflection and oblique-clipping contract without reproducing its maths.
+	struct _MPPAPI PlanarReflectionView
+	{
+		glm::vec3 position;
+		glm::vec3 direction;
+		glm::vec3 up;
+		glm::mat4 view{ 1.0f };
+		glm::mat4 projection{ 1.0f };
+	};
+
+	_MPPAPI PlanarReflectionView buildPlanarReflectionView(
+		Camera& camera, PlanarReflectionPlaneDescriptor const& plane,
+		float aspectRatio);
 
 	struct _MPPAPI WaterReflectionOptions
 	{

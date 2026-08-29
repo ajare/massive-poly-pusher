@@ -9,10 +9,13 @@
 #include <filesystem>
 #include <fstream>
 #include <type_traits>
+#include <tuple>
 #include <vector>
 
 #include "mpp/RenderGraphGpuTests.h"
 #include "mpp/Camera.h"
+#include "mpp/BoxModelStream.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphExecutor.h"
@@ -825,8 +828,8 @@ namespace mpp
 					return fail("opted-in generated water topology, sampler binding, mip preservation, or resize execution failed");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterPipeline");
 
-				// Planar is an explicit, distinct source contract even before its scene
-				// renderer lands: it must never acquire Screen-space's frozen copy/mips.
+				// Planar owns one reflected-scene branch per supplied plane and never
+				// acquires Screen-space's frozen colour copy or mip chain.
 				RenderPipelineOptions planarSeamOptions;
 				planarSeamOptions.mode = RenderPipelineMode::GraphLegacyForward;
 				planarSeamOptions.generatedWater = true;
@@ -835,11 +838,146 @@ namespace mpp
 				planarSeamOptions.waterReflections.planarPlanes = { { 3.0f, ReflectionPlaneSide::Above } };
 				auto planarSeamPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestPlanarWaterSeamPipeline", planarSeamOptions);
 				planarSeamPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				size_t planarPasses = 0, planarWaterPasses = 0;
 				for (auto const& stats : planarSeamPipeline->getLastGraphExecutionStats())
-					if (stats.name == "SceneColourCopy" || stats.name == "WaterScene")
-						return fail("Planar reflection-source contract reused Screen-space Water topology");
+				{
+					if (stats.name == "SceneColourCopy") return fail("Planar reflection-source contract reused Screen-space copy topology");
+					if (stats.name == "PlanarReflection0")
+					{
+						++planarPasses;
+						if (stats.colourOutputCount != 1 || stats.depthOutputCount != 1 || stats.maxColourOutputMipLevels != 1)
+							return fail("Planar reflection pass lost its single colour/depth, no-mip output contract");
+					}
+					else if (stats.name == "WaterScene")
+					{
+						++planarWaterPasses;
+						if (stats.samplerBindingCount < 3) return fail("Planar Water pass did not consume the reflected scene image");
+					}
+				}
+				if (planarPasses != 1 || planarWaterPasses != 1)
+					return fail("one supplied Planar plane did not create exactly one reflected-scene and Water pass");
+				auto planarTarget = planarSeamPipeline->getGraphImageRenderTarget({ 2, 1 });
+				if (!planarTarget || planarTarget->getWidth() != 16 || planarTarget->getHeight() != 16 ||
+					!nearColour(readFirstPixel(planarTarget), { 0, 0, 0, 0 }))
+					return fail("Quarter Planar image dimensions, transparent clear, or alpha validity were incorrect");
 				renderSystem->removeRenderPipeline("GpuTestPlanarWaterSeamPipeline");
+
+				planarSeamOptions.waterReflections.planarPlanes.clear();
+				auto dryPlanarPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestDryPlanarWaterPipeline", planarSeamOptions);
+				dryPlanarPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				for (auto const& stats : dryPlanarPipeline->getLastGraphExecutionStats())
+					if (stats.name.rfind("PlanarReflection", 0) == 0 || stats.name == "WaterScene")
+						return fail("zero supplied Planar planes created Planar GPU work");
+				renderSystem->removeRenderPipeline("GpuTestDryPlanarWaterPipeline");
+
+				gateScene->setViewport(0, 0, 65, 33);
+				for (auto const& [resolution, expected, name] : {
+					std::tuple{ PlanarReflectionResolution::Full, glm::uvec2(65, 33), "Full" },
+					std::tuple{ PlanarReflectionResolution::Half, glm::uvec2(33, 17), "Half" },
+					std::tuple{ PlanarReflectionResolution::Quarter, glm::uvec2(17, 9), "Quarter" } })
+				{
+					auto resolutionOptions = planarSeamOptions;
+					resolutionOptions.waterReflections.planarResolution = resolution;
+					resolutionOptions.waterReflections.planarPlanes = { { 0.0f, ReflectionPlaneSide::Above } };
+					auto pipelineName = "GpuTestPlanarResolution" + std::string(name);
+					auto resolutionPipeline = renderSystem->getOrCreateRenderPipeline(pipelineName, resolutionOptions);
+					resolutionPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+					auto target = resolutionPipeline->getGraphImageRenderTarget({ 2, 1 });
+					if (!target || glm::uvec2(target->getWidth(), target->getHeight()) != expected)
+						return fail("Planar " + std::string(name) + " resolution did not round relative to the active world target");
+					renderSystem->removeRenderPipeline(pipelineName);
+				}
 				gateScene->setViewport(0, 0, 64, 64);
+
+				// Render asymmetric real scene geometry through the generated pass. Red
+				// is a normally culled box (proving mirrored winding), blue is deliberately
+				// two-sided, green is below the retained plane, yellow is classified as
+				// Water, and magenta is transparent. The shader emits full colour only when
+				// the pass-scoped virtual-camera marker is active.
+				mesh::MeshSpecification planarMeshSpec(mesh::Primitive::Type::Triangles);
+				auto planarLayout = planarMeshSpec.createVertexBufferAttributeLayout(false);
+				planarLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+				planarLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+				planarLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+				planarLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
+				auto planarParser = std::make_shared<program::Parser>();
+				planarParser->setMeshSpecification(planarMeshSpec);
+				planarParser->setVertexSource(VertexShader3dTemplate);
+				planarParser->setFragmentSource(R"(
+@@Version
+@@Uniform(vec4 GPU_TEST_COLOUR);
+@@Uniform(int MPP_VIRTUAL_CAMERA);
+void main()
+{
+    bool virtualCamera = @Uniform(MPP_VIRTUAL_CAMERA) == 1;
+    float validity = virtualCamera ? 1.0 : 0.25;
+    @Out(vec4 COLOUR) = vec4(@Uniform(GPU_TEST_COLOUR).rgb * validity, 1.0);
+}
+)");
+				auto planarProgramStream = std::make_shared<ProgrammaticProgramStream>(renderSystem->getResourceManager());
+				planarProgramStream->setParser(planarParser);
+				auto planarProgram = renderSystem->getResourceManager()->declareResource(
+					"GpuTestPlanar.Program", planarProgramStream).first;
+				planarProgram->load();
+				auto planarMaterialStream = std::make_shared<ProgrammaticBasicMaterialStream>(renderSystem->getResourceManager());
+				planarMaterialStream->setProgram(planarProgram->getName());
+				planarMaterialStream->setUniform("GPU_TEST_COLOUR", glm::vec4(1.0f));
+				auto planarMaterial = renderSystem->getResourceManager()->declareResource(
+					"GpuTestPlanar.Material", planarMaterialStream).first;
+				planarMaterial->load();
+				auto planarModelStream = std::make_shared<BoxModelStream>(renderSystem->getResourceManager(),
+					planarMeshSpec, planarMaterial->getName(), 0.9f, 0.9f, 0.9f);
+				auto planarModel = renderSystem->getResourceManager()->declareResource(
+					"GpuTestPlanar.Model", planarModelStream).first;
+				planarModel->load();
+				auto planarScene = renderSystem->createScene("Default");
+				planarScene->setViewport(0, 0, 64, 64);
+				planarScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 0.0f));
+				auto addPlanarFixture = [&](glm::vec3 const& position, glm::vec4 const& colour,
+					bool cull, bool water, bool transparent = false)
+				{
+					auto model = planarScene->add3dModel(planarModel);
+					model->translate(position);
+					auto uniforms = std::make_shared<UniformCollection>();
+					uniforms->setUniform("GPU_TEST_COLOUR", colour);
+					model->getParams()->setModelUniforms(uniforms);
+					model->getParams()->setModelFlags(ModelRenderParams::Flag_Visible |
+						ModelRenderParams::Flag_CastShadows | (cull ? ModelRenderParams::Flag_CullBackFaces : 0));
+					if (transparent) model->getParams()->setModelBlend(true);
+					model->setDeferToWaterPass(water);
+				};
+				addPlanarFixture(glm::vec3(-1.0f, 1.1f, 0.0f), glm::vec4(1, 0, 0, 1), true, false);
+				addPlanarFixture(glm::vec3(1.0f, 1.1f, 0.0f), glm::vec4(0, 0, 1, 1), false, false);
+				addPlanarFixture(glm::vec3(0.0f, -1.1f, 0.0f), glm::vec4(0, 1, 0, 1), true, false);
+				addPlanarFixture(glm::vec3(0.0f, 1.1f, -1.5f), glm::vec4(1, 1, 0, 1), true, true);
+				addPlanarFixture(glm::vec3(0.0f, 1.1f, 1.5f), glm::vec4(1, 0, 1, 1), true, false, true);
+				auto planarCamera = std::make_shared<Camera>(glm::vec3(0.0f, 2.5f, 6.0f),
+					0.0f, 0.0f, 0.0f, 55.0f, 1.0f);
+				planarCamera->setLookAt(planarCamera->getPosition(), glm::vec3(0.0f, 0.5f, 0.0f));
+				RenderPipelineOptions renderedPlanarOptions;
+				renderedPlanarOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				renderedPlanarOptions.generatedWater = true;
+				renderedPlanarOptions.waterReflections.technique = WaterReflectionTechnique::Planar;
+				renderedPlanarOptions.waterReflections.planarResolution = PlanarReflectionResolution::Full;
+				renderedPlanarOptions.waterReflections.planarPlanes = { { 0.0f, ReflectionPlaneSide::Above } };
+				auto renderedPlanarPipeline = renderSystem->getOrCreateRenderPipeline(
+					"GpuTestRenderedPlanarPipeline", renderedPlanarOptions);
+				renderedPlanarPipeline->render(planarScene, planarCamera, glm::vec2(0.0f));
+				auto renderedPlanarTarget = renderedPlanarPipeline->getGraphImageRenderTarget({ 2, 1 });
+				auto planarPixels = readPixels(renderedPlanarTarget);
+				bool foundRed = false, foundBlue = false, foundForbiddenGreen = false,
+					foundForbiddenMagenta = false, foundValidAlpha = false;
+				for (size_t pixel = 0; pixel + 3 < planarPixels.size(); pixel += 4)
+				{
+					foundRed |= planarPixels[pixel] > 180 && planarPixels[pixel + 1] < 40 && planarPixels[pixel + 2] < 40;
+					foundBlue |= planarPixels[pixel + 2] > 180 && planarPixels[pixel] < 40 && planarPixels[pixel + 1] < 40;
+					foundForbiddenGreen |= planarPixels[pixel + 1] > 100;
+					foundForbiddenMagenta |= planarPixels[pixel] > 100 && planarPixels[pixel + 2] > 100;
+					foundValidAlpha |= planarPixels[pixel + 3] > 250;
+				}
+				if (!foundRed || !foundBlue || foundForbiddenGreen || foundForbiddenMagenta || !foundValidAlpha)
+					return fail("rendered Planar output lost reflected content, winding/two-sided geometry, clipping, opaque/non-Water filtering, virtual-camera state, or alpha validity");
+				renderSystem->removeRenderPipeline("GpuTestRenderedPlanarPipeline");
 
 				gateOptions.method = AmbientOcclusionMethod::Gtao;
 				pipeline->setAmbientOcclusionOptions(gateOptions);

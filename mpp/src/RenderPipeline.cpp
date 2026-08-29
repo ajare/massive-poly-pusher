@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <atomic>
 #include <functional>
+#include <cmath>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <GL/glew.h>
 
@@ -22,6 +24,48 @@ using namespace std;
 
 namespace mpp
 {
+	PlanarReflectionView buildPlanarReflectionView(
+		Camera& camera, PlanarReflectionPlaneDescriptor const& plane,
+		float aspectRatio)
+	{
+		if (aspectRatio <= 0.0f)
+			THROW_MPP("A Planar reflection camera requires a positive aspect ratio.", __LINE__, __FILE__, __func__);
+
+		constexpr float clipBias = 0.05f;
+		auto mirror = [elevation = plane.elevation](glm::vec3 value, bool position)
+		{
+			value.y = position ? 2.0f * elevation - value.y : -value.y;
+			return value;
+		};
+
+		PlanarReflectionView result;
+		result.position = mirror(camera.getPosition(), true);
+		result.direction = glm::normalize(mirror(camera.getDirection(), false));
+		result.up = glm::normalize(mirror(camera.getUp(), false));
+		result.view = glm::lookAt(result.position, result.position + result.direction, result.up);
+		result.projection = glm::perspective(glm::radians(camera.getFov()), aspectRatio,
+			camera.getNearClipDistance(), camera.getFarClipDistance());
+
+		// Positive distance is the real viewer's side. Move the clipping plane
+		// 0.05 units through the surface into the rejected side so tiny numerical
+		// disagreements at the interface cannot open a seam.
+		glm::vec4 worldClip = plane.viewerSide == ReflectionPlaneSide::Above
+			? glm::vec4(0.0f, 1.0f, 0.0f, -plane.elevation + clipBias)
+			: glm::vec4(0.0f, -1.0f, 0.0f, plane.elevation + clipBias);
+		auto cameraClip = glm::transpose(glm::inverse(result.view)) * worldClip;
+		auto nonZeroSign = [](float value) { return value < 0.0f ? -1.0f : 1.0f; };
+		auto corner = glm::inverse(result.projection) * glm::vec4(
+			nonZeroSign(cameraClip.x), nonZeroSign(cameraClip.y), 1.0f, 1.0f);
+		float const denominator = glm::dot(cameraClip, corner);
+		if (std::abs(denominator) < 0.000001f)
+			THROW_MPP("A Planar reflection clip plane is degenerate for the reflected camera.", __LINE__, __FILE__, __func__);
+		auto scaledClip = cameraClip * (2.0f / denominator);
+		// Replace projection row 2 with C - row 3 (OpenGL's -w near plane).
+		for (int column = 0; column < 4; ++column)
+			result.projection[column][2] = scaledClip[column] - result.projection[column][3];
+		return result;
+	}
+
 	namespace
 	{
 		atomic<uint64_t> nextFlowGeneration{ 1 };
@@ -517,7 +561,10 @@ namespace mpp
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
 		bool const screenSpaceWater = mOptions.generatedWater &&
 			mOptions.waterReflections.technique == WaterReflectionTechnique::ScreenSpace;
-		bool const sampleSceneDepth = screenSpaceWater || outputAntiAliasing.taa ||
+		bool const planarWater = mOptions.generatedWater &&
+			mOptions.waterReflections.technique == WaterReflectionTechnique::Planar &&
+			!mOptions.waterReflections.planarPlanes.empty();
+		bool const sampleSceneDepth = screenSpaceWater || planarWater || outputAntiAliasing.taa ||
 			(mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
@@ -575,6 +622,60 @@ namespace mpp
 					shadowPasses.push_back(pass);
 					shadowDepthOutput = graph.writeDepth(pass, shadowDepth, GraphLoadOp::Clear, GraphStoreOp::Store);
 				}
+			}
+		}
+
+		std::vector<GraphImageHandle> planarReflections;
+		if (planarWater)
+		{
+			auto const resolutionDivisor = mOptions.waterReflections.planarResolution == PlanarReflectionResolution::Full ? 1u :
+				(mOptions.waterReflections.planarResolution == PlanarReflectionResolution::Half ? 2u : 4u);
+			auto const& planarViewport = scene->getViewport();
+			auto const worldTargetSize = glm::uvec2(
+				ssaaDimension((uint32_t)planarViewport.width, outputAntiAliasing.ssaa),
+				ssaaDimension((uint32_t)planarViewport.height, outputAntiAliasing.ssaa));
+			auto const planarSize = glm::uvec2(
+				std::max(1u, (worldTargetSize.x + resolutionDivisor - 1) / resolutionDivisor),
+				std::max(1u, (worldTargetSize.y + resolutionDivisor - 1) / resolutionDivisor));
+			for (size_t index = 0; index < mOptions.waterReflections.planarPlanes.size(); ++index)
+			{
+				auto const suffix = std::to_string(index);
+				auto reflectionDesc = makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8);
+				reflectionDesc.absoluteSize = planarSize;
+				reflectionDesc.relativeSize = glm::vec2(0.0f);
+				reflectionDesc.mipLevels = 1;
+				reflectionDesc.params.minFilter = GL_LINEAR;
+				reflectionDesc.params.magFilter = GL_LINEAR;
+				reflectionDesc.params.wrap = GL_CLAMP_TO_EDGE;
+				auto reflection = graph.createImage("PlanarReflection" + suffix, reflectionDesc);
+				GraphImageDesc reflectionDepthDesc;
+				reflectionDepthDesc.format = GraphImageFormat::Depth24;
+				reflectionDepthDesc.usage = GraphImageUsage::DepthAttachment;
+				reflectionDepthDesc.absoluteSize = planarSize;
+				reflectionDepthDesc.relativeSize = glm::vec2(0.0f);
+				auto reflectionDepth = graph.createImage("PlanarReflectionDepth" + suffix, reflectionDepthDesc);
+				auto reflectionPass = graph.addPass("PlanarReflection" + suffix, GraphPassType::Scene);
+				graph.setPassCallbackFactory(reflectionPass, "MPP.PlanarReflectionScene");
+				if (shadowDepthOutput.isValid()) graph.readSampled(reflectionPass, shadowDepthOutput);
+				UniformCollection reflectionParameters;
+				reflectionParameters.setUniform("ELEVATION", mOptions.waterReflections.planarPlanes[index].elevation);
+				reflectionParameters.setUniform("VIEWER_SIDE", int32_t{ mOptions.waterReflections.planarPlanes[index].viewerSide == ReflectionPlaneSide::Above ? 0 : 1 });
+				graph.setPassParameters(reflectionPass, reflectionParameters);
+				reflection = graph.writeColour(reflectionPass, reflection, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+				reflectionDepth = graph.writeDepth(reflectionPass, reflectionDepth, GraphLoadOp::Clear, GraphStoreOp::DontCare);
+				GraphRasterState reflectionRaster;
+				reflectionRaster.explicitState = true;
+				reflectionRaster.frontFace = GraphFrontFace::Clockwise;
+				// Individual scene meshes enable back-face culling as required; starting
+				// disabled is what preserves deliberately two-sided materials/models.
+				reflectionRaster.cullMode = GraphCullMode::None;
+				reflectionRaster.depthTest = true;
+				reflectionRaster.depthWrite = true;
+				reflectionRaster.depthCompare = GraphCompareOp::Less;
+				reflectionRaster.blend = false;
+				reflectionRaster.multisample = false;
+				graph.setPassRasterState(reflectionPass, reflectionRaster);
+				planarReflections.push_back(reflection);
 			}
 		}
 
@@ -650,26 +751,36 @@ namespace mpp
 		// Reflection-source topology starts at this seam. Screen-space owns the
 		// frozen, mipmapped scene copy; Planar deliberately owns none of that
 		// topology and will add its per-plane sources independently.
-		if (screenSpaceWater)
+		if (screenSpaceWater || planarWater)
 		{
-			GraphImageDesc resolvedDesc = makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8);
-			auto const& waterViewport = scene->getViewport();
-			auto const resolvedSize = glm::uvec2(
-				ssaaDimension((uint32_t)waterViewport.width, outputAntiAliasing.ssaa),
-				ssaaDimension((uint32_t)waterViewport.height, outputAntiAliasing.ssaa));
-			resolvedDesc.mipLevels = std::min(5u, maxGraphImageMipLevels(resolvedSize));
-			resolvedDesc.params.minFilter = resolvedDesc.mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
-			auto resolvedScene = graph.createImage("SceneColourResolved", resolvedDesc);
-			auto copyPass = graph.addPass("SceneColourCopy", GraphPassType::Fullscreen);
-			graph.setPassCallbackFactory(copyPass, "MPP.SceneColourCopy");
-			graph.bindSampler(copyPass, "TEX1", shadedSceneTexture);
-			resolvedScene = graph.writeColour(copyPass, resolvedScene, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			GraphImageHandle waterBase = shadedSceneTexture;
+			if (screenSpaceWater)
+			{
+				GraphImageDesc resolvedDesc = makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8);
+				auto const& waterViewport = scene->getViewport();
+				auto const resolvedSize = glm::uvec2(
+					ssaaDimension((uint32_t)waterViewport.width, outputAntiAliasing.ssaa),
+					ssaaDimension((uint32_t)waterViewport.height, outputAntiAliasing.ssaa));
+				resolvedDesc.mipLevels = std::min(5u, maxGraphImageMipLevels(resolvedSize));
+				resolvedDesc.params.minFilter = resolvedDesc.mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
+				auto resolvedScene = graph.createImage("SceneColourResolved", resolvedDesc);
+				auto copyPass = graph.addPass("SceneColourCopy", GraphPassType::Fullscreen);
+				graph.setPassCallbackFactory(copyPass, "MPP.SceneColourCopy");
+				graph.bindSampler(copyPass, "TEX1", shadedSceneTexture);
+				waterBase = graph.writeColour(copyPass, resolvedScene, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			}
 
 			auto waterComposite = graph.createImage("WaterComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
 			auto waterPass = graph.addPass("WaterScene", GraphPassType::Scene);
 			graph.setPassCallbackFactory(waterPass, "MPP.WaterScene");
-			graph.bindSampler(waterPass, "PBR_SCENE_COLOUR_RESOLVED", resolvedScene);
+			// Input zero is also the image copied into WaterComposite before the
+			// interface draw. Planar has no frozen Screen-space copy, so it uses the
+			// already shaded opaque scene directly and binds its reflected source(s)
+			// under distinct names for the generated Water material to consume.
+			graph.bindSampler(waterPass, "PBR_SCENE_COLOUR_RESOLVED", waterBase);
 			graph.bindSampler(waterPass, "PBR_SCENE_DEPTH", sceneDepth);
+			for (size_t index = 0; index < planarReflections.size(); ++index)
+				graph.bindSampler(waterPass, "PBR_PLANAR_REFLECTION_" + std::to_string(index), planarReflections[index]);
 			if (shadowDepthOutput.isValid()) graph.bindSampler(waterPass, "SHADOW_MAP", shadowDepthOutput);
 			shadedSceneTexture = graph.writeColour(waterPass, waterComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
 			GraphRasterState waterRaster;
@@ -919,6 +1030,9 @@ namespace mpp
 		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
 
 		map<string, ResourcePtr> pipelineSamplerOverrides;
+		UniformCollection pipelineUniformOverrides;
+		pipelineUniformOverrides.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 0 });
+		mRenderSystem->setActivePipelineUniformOverrides(pipelineUniformOverrides);
 		if (mOptions.mode == RenderPipelineMode::PbrForward || graphPbr)
 		{
 			mRenderSystem->setActivePbrEnvironment(mOptions.environment);
@@ -963,6 +1077,7 @@ namespace mpp
 			}
 		}
 		mRenderSystem->setActivePipelineSamplerOverrides({});
+		mRenderSystem->setActivePipelineUniformOverrides({});
 		mRenderSystem->setActiveShadowDomain("");
 		if (mOptions.mode == RenderPipelineMode::PbrForward || graphPbr)
 		{

@@ -161,6 +161,10 @@ namespace mpp
 		// material bindings by shader sampler name during a scene flush.
 		std::map<std::string, ResourcePtr> mActivePipelineSamplerOverrides;
 
+		// Pass-scoped values applied after material and instance uniforms. Virtual
+		// camera passes use this without mutating host-owned scene-model state.
+		UniformCollection mActivePipelineUniformOverrides;
+
 		struct ShadowDomainState
 		{
 			ShadowOptions options;
@@ -611,6 +615,10 @@ namespace mpp
 		void setActivePipelineSamplerOverrides(std::map<std::string, ResourcePtr> const& overrides);
 
 		std::map<std::string, ResourcePtr> const& getActivePipelineSamplerOverrides() const;
+
+		void setActivePipelineUniformOverrides(UniformCollection const& overrides);
+
+		UniformCollection const& getActivePipelineUniformOverrides() const;
 
 		// Publishes the camera state the CameraFrame UBO (binding 3) exposes to
 		// scene material programs. `view` and `projection` must be exactly the

@@ -224,6 +224,105 @@ namespace mpp
 			return result;
 		}
 
+		bool usesTransparentMaterial(SceneModel3dPtr const& sceneModel)
+		{
+			if (!sceneModel) return false;
+			auto const* model = dynamic_cast<Model const*>(sceneModel->getModel().get());
+			if (!model) return false;
+			auto const& meshParams = sceneModel->getParams()->getMeshParams();
+			auto const defaults = meshParams.find("");
+			for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+			{
+				auto mesh = model->getMesh(meshIndex);
+				auto const specific = meshParams.find(mesh->getName());
+				auto const* params = specific != meshParams.end() ? &specific->second :
+					(defaults != meshParams.end() ? &defaults->second : nullptr);
+				if (params && (params->flags & ModelRenderParams::Flag_Visible) == 0) continue;
+				auto resource = params && params->material ? params->material : mesh->getMaterial();
+				auto const* material = dynamic_cast<Material const*>(resource.get());
+				if ((material && material->isTransparent()) || (params && params->blend.value_or(false))) return true;
+			}
+			return false;
+		}
+
+		class PlanarReflectionCamera final : public Camera
+		{
+			glm::mat4 mProjection;
+		public:
+			PlanarReflectionCamera(Camera& source, PlanarReflectionPlaneDescriptor const& plane, float aspectRatio)
+				: Camera(source.getPosition(), 0.0f, 0.0f, 0.0f, source.getFov(), aspectRatio)
+			{
+				auto const reflected = buildPlanarReflectionView(source, plane, aspectRatio);
+				setClipDistances(source.getNearClipDistance(), source.getFarClipDistance());
+				setLookAt(reflected.position, reflected.position + reflected.direction, reflected.up);
+				mProjection = reflected.projection;
+			}
+			glm::mat4 getProjectionTransform() const override { return mProjection; }
+		};
+
+		class PlanarReflectionScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (!frame.pipelineOptions->graphPasses.scene || !frame.scene || !frame.camera ||
+					!frame.sceneRenderPass || !frame.scene->show3dModels()) return;
+				auto const& outputs = context.getPass().colourOutputs;
+				auto target = outputs.empty() ? nullptr : context.getImage(outputs.front().image);
+				if (!target) THROW_MPP("PlanarReflectionScenePass requires a colour target.", __LINE__, __FILE__, __func__);
+
+				PlanarReflectionPlaneDescriptor plane;
+				plane.elevation = parameter(context, "ELEVATION", 0.0f);
+				plane.viewerSide = integerParameter(context, "VIEWER_SIDE", 0) == 0
+					? ReflectionPlaneSide::Above : ReflectionPlaneSide::Below;
+				auto reflectedCamera = std::make_shared<PlanarReflectionCamera>(*frame.camera, plane,
+					(float)target->getWidth() / (float)target->getHeight());
+				auto reflectedModels = selectModels(frame.scene->get3dModelsInView(reflectedCamera), false);
+				reflectedModels.erase(std::remove_if(reflectedModels.begin(), reflectedModels.end(),
+					usesTransparentMaterial), reflectedModels.end());
+
+				auto const savedUniforms = frame.renderSystem->getActivePipelineUniformOverrides();
+				auto reflectionUniforms = savedUniforms;
+				if (reflectionUniforms.getUniformData().contains("MPP_VIRTUAL_CAMERA"))
+					reflectionUniforms.updateUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
+				else reflectionUniforms.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
+				frame.renderSystem->setActivePipelineUniformOverrides(reflectionUniforms);
+				frame.renderSystem->setCameraFrame(reflectedCamera->getViewTransform(), reflectedCamera->getProjectionTransform(),
+					glm::vec2((float)target->getWidth(), (float)target->getHeight()),
+					reflectedCamera->getNearClipDistance(), reflectedCamera->getFarClipDistance(),
+					frame.renderSystem->getElapsedSeconds());
+
+				auto restore = [&]
+				{
+					frame.renderSystem->setActivePipelineUniformOverrides(savedUniforms);
+					auto const& viewport = frame.scene->getViewport();
+					frame.renderSystem->setCameraFrame(frame.camera->getViewTransform(), frame.camera->getProjectionTransform(),
+						glm::vec2((float)viewport.width, (float)viewport.height),
+						frame.camera->getNearClipDistance(), frame.camera->getFarClipDistance(),
+						frame.renderSystem->getElapsedSeconds());
+				};
+				try
+				{
+					if (frame.pipelineOptions->depthPrepass && !reflectedModels.empty())
+						frame.renderSystem->renderDepthPrepass(reflectedModels, reflectedCamera, outputs.size());
+					if (frame.pipelineOptions->debugEnvironmentCube && frame.pipelineOptions->environment)
+					{
+						auto const& environment = frame.pipelineOptions->environment;
+						auto resource = environment->environmentMap ? environment->environmentMap : environment->backgroundMap;
+						frame.renderSystem->renderEnvironmentDebugCube(dynamic_cast<Texture*>(resource.get()), reflectedCamera.get());
+					}
+					if (!reflectedModels.empty())
+					{
+						frame.sceneRenderPass->render(reflectedModels, reflectedCamera);
+						frame.renderSystem->flushVertexBuffers();
+					}
+				}
+				catch (...) { restore(); throw; }
+				restore();
+			}
+		};
+
 		class ScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -395,6 +494,15 @@ namespace mpp
 		scene.displayName = "Legacy Scene";
 		registry.registerScenePassFactory("MPP.LegacyScene", [] { return std::make_unique<ScenePass>(); }, scene);
 
+		auto planarReflection = metadata("Planar Reflection", "Scene", GraphPassType::Scene);
+		planarReflection.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });
+		planarReflection.outputs.push_back({ "Reflected Scene", false, true, colourFormats() });
+		planarReflection.outputs.push_back({ "Depth", true, true, depthFormats() });
+		planarReflection.parameters.push_back({ "ELEVATION", program::GLSLType::Float, 1, 1, false, false, 0.0, 0.0, "world units" });
+		planarReflection.parameters.push_back({ "VIEWER_SIDE", program::GLSLType::Int, 1, 1, false, false, 0.0, 1.0, "above=0, below=1" });
+		planarReflection.materialSlots.push_back("SceneMaterials");
+		registry.registerScenePassFactory("MPP.PlanarReflectionScene", [] { return std::make_unique<PlanarReflectionScenePass>(); }, planarReflection);
+
 		auto sceneColourCopy = metadata("Scene Colour Copy", "Scene", GraphPassType::Fullscreen);
 		sceneColourCopy.inputs.push_back({ "Scene Colour", "TEX1", true, colourFormats(), {} });
 		sceneColourCopy.outputs.push_back({ "Resolved Scene Colour", false, true, colourFormats() });
@@ -404,6 +512,8 @@ namespace mpp
 		waterScene.inputs.push_back({ "Resolved Scene Colour", "PBR_SCENE_COLOUR_RESOLVED", true, colourFormats(), {} });
 		waterScene.inputs.push_back({ "Scene Depth", "PBR_SCENE_DEPTH", true, depthFormats(), {} });
 		waterScene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });
+		// Generated Planar branches append one reflected-scene sampler per plane.
+		waterScene.allowAdditionalInputs = true;
 		waterScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
 		waterScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
 		// Deliberately no depth attachment. Water needs the opaque depth buffer as a

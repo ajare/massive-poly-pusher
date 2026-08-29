@@ -79,6 +79,31 @@ namespace mpp
 		if (pipelineDefaults.depthPrepass)
 			return fail("disabled depth prepass pipeline option was not retained");
 
+		auto nearVector = [](glm::vec3 const& left, glm::vec3 const& right)
+		{
+			return glm::length(left - right) < 0.0001f;
+		};
+		Camera reflectionSource(glm::vec3(2.0f, 6.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.5f);
+		reflectionSource.setLookAt(reflectionSource.getPosition(), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto const sourceDirection = reflectionSource.getDirection();
+		auto const sourceUp = reflectionSource.getUp();
+		auto const reflected = buildPlanarReflectionView(reflectionSource,
+			{ 1.0f, ReflectionPlaneSide::Above }, 1.5f);
+		if (!nearVector(reflected.position, glm::vec3(2.0f, -4.0f, 4.0f)) ||
+			!nearVector(reflected.direction, glm::vec3(sourceDirection.x, -sourceDirection.y, sourceDirection.z)) ||
+			!nearVector(reflected.up, glm::vec3(sourceUp.x, -sourceUp.y, sourceUp.z)))
+			return fail("Planar reflection did not mirror camera position, direction, and up around the horizontal plane");
+		auto insideClip = [&](glm::vec3 const& point)
+		{
+			auto clip = reflected.projection * reflected.view * glm::vec4(point, 1.0f);
+			return clip.w > 0.0f && clip.z >= -clip.w && clip.z <= clip.w;
+		};
+		if (!insideClip(glm::vec3(0.0f, 2.0f, 0.0f)) ||
+			!insideClip(glm::vec3(0.0f, 0.96f, 0.0f)) ||
+			insideClip(glm::vec3(0.0f, 0.94f, 0.0f)) ||
+			insideClip(glm::vec3(0.0f, 0.0f, 0.0f)))
+			return fail("Planar oblique clipping did not retain only the real viewer's side with a 0.05-unit bias");
+
 		ShadowOptions pointDefaults;
 		if (pointDefaults.nearPlane != 0.25f || pointDefaults.light.range != 192.0f ||
 			pointDefaults.filterRadiusTexels != 1.0f || pointDefaults.fadeStartNormalized != 0.9f ||
