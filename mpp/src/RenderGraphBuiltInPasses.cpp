@@ -433,6 +433,31 @@ namespace mpp
 						overrides[binding.sampler] = resource;
 				frame.renderSystem->setActivePipelineSamplerOverrides(overrides);
 
+				// Publish reflection-source metadata alongside the graph samplers. A host
+				// Water shader can therefore project its own world-space interface point
+				// without knowing how MPP built the reflected camera.
+				auto const restoreUniforms = frame.renderSystem->getActivePipelineUniformOverrides();
+				auto waterUniforms = restoreUniforms;
+				auto const planar = frame.pipelineOptions->waterReflections.technique ==
+					WaterReflectionTechnique::Planar;
+				waterUniforms.setUniform("MPP_WATER_REFLECTION_TECHNIQUE", int32_t{ planar ? 1 : 0 });
+				waterUniforms.setUniform("MPP_PLANAR_REFLECTION_COUNT", int32_t{
+					static_cast<int32_t>(frame.pipelineOptions->waterReflections.planarPlanes.size()) });
+				for (size_t index = 0; index < frame.pipelineOptions->waterReflections.planarPlanes.size(); ++index)
+				{
+					auto const& plane = frame.pipelineOptions->waterReflections.planarPlanes[index];
+					auto reflected = buildPlanarReflectionView(
+						*frame.camera, plane, viewport.x / viewport.y);
+					auto const suffix = std::to_string(index);
+					waterUniforms.setUniform(
+						"MPP_PLANAR_REFLECTION_VIEW_PROJECTION_" + suffix,
+						reflected.projection * reflected.view);
+					waterUniforms.setUniform(
+						"MPP_PLANAR_REFLECTION_ELEVATION_" + suffix,
+						plane.elevation);
+				}
+				frame.renderSystem->setActivePipelineUniformOverrides(waterUniforms);
+
 				// The march works in view space against this pass's own target, so the
 				// viewport it reports has to be the target's, not the window's.
 				frame.renderSystem->setCameraFrame(frame.camera->getViewTransform(), frame.camera->getProjectionTransform(),
@@ -447,9 +472,11 @@ namespace mpp
 				catch (...)
 				{
 					frame.renderSystem->setActivePipelineSamplerOverrides(restore);
+					frame.renderSystem->setActivePipelineUniformOverrides(restoreUniforms);
 					throw;
 				}
 				frame.renderSystem->setActivePipelineSamplerOverrides(restore);
+				frame.renderSystem->setActivePipelineUniformOverrides(restoreUniforms);
 			}
 		};
 	}

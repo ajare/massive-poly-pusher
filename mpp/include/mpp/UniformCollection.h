@@ -103,6 +103,8 @@ namespace mpp
 
 		void setUniform(std::string const& name, glm::vec4 const& value);
 
+		void setUniform(std::string const& name, glm::mat4 const& value);
+
 		void setUniform(std::string const& name, size_t count, size_t numElements, int32_t const* values);
 
 		void setUniform(std::string const& name, size_t count, size_t numElements, uint32_t const* values);
@@ -128,6 +130,8 @@ namespace mpp
 		void updateUniform(std::string const& name, glm::vec3 const& value);
 
 		void updateUniform(std::string const& name, glm::vec4 const& value);
+
+		void updateUniform(std::string const& name, glm::mat4 const& value);
 
 		void updateUniform(std::string const& name, int32_t const* values);
 

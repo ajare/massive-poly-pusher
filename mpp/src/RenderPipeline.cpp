@@ -781,6 +781,12 @@ namespace mpp
 			graph.bindSampler(waterPass, "PBR_SCENE_DEPTH", sceneDepth);
 			for (size_t index = 0; index < planarReflections.size(); ++index)
 				graph.bindSampler(waterPass, "PBR_PLANAR_REFLECTION_" + std::to_string(index), planarReflections[index]);
+			// Keep the first Planar sampler valid in the Screen-space shader variant;
+			// the technique uniform prevents sampling it, while binding the existing
+			// scene source avoids requiring a second material/program solely to make
+			// an inactive sampler complete.
+			if (planarReflections.empty())
+				graph.bindSampler(waterPass, "PBR_PLANAR_REFLECTION_0", waterBase);
 			if (shadowDepthOutput.isValid()) graph.bindSampler(waterPass, "SHADOW_MAP", shadowDepthOutput);
 			shadedSceneTexture = graph.writeColour(waterPass, waterComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
 			GraphRasterState waterRaster;

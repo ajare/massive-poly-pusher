@@ -131,6 +131,20 @@ namespace mpp
 		mUniformData.emplace(name, move(ud));
 	}
 
+	void UniformCollection::setUniform(string const& name, glm::mat4 const& value)
+	{
+		UniformData ud(
+			MPP_PROGRAM_MARKUP_UNIFORM(name),
+			program::GLSLType::FloatMatrix,
+			1,
+			sizeof(glm::mat4),
+			4
+		);
+
+		memcpy(ud.data, glm::value_ptr(value), ud.size);
+		mUniformData.emplace(name, move(ud));
+	}
+
 	void UniformCollection::setUniform(string const& name, size_t count, size_t numElements, int32_t const* values)
 	{
 		UniformData ud(
@@ -302,6 +316,12 @@ namespace mpp
 		memcpy(ud.data, &value, ud.size);
 	}
 
+	void UniformCollection::updateUniform(string const& name, glm::mat4 const& value)
+	{
+		auto& ud = mUniformData.find(name)->second;
+		memcpy(ud.data, glm::value_ptr(value), ud.size);
+	}
+
 	void UniformCollection::updateUniform(string const& name, int32_t const* values)
 	{
 		auto& ud = mUniformData.find(name)->second;
@@ -391,6 +411,12 @@ namespace mpp
 
 			case program::GLSLType::Float:
 				GL_CHECK(floatFunctions[ud.numElements - 1](id, (GLsizei)ud.count, (const GLfloat*)ud.data));
+				break;
+
+			case program::GLSLType::FloatMatrix:
+				if (ud.numElements != 4)
+					THROW_MPP("Only mat4 UniformCollection values are supported.", __LINE__, __FILE__, __func__);
+				GL_CHECK(glUniformMatrix4fv(id, (GLsizei)ud.count, GL_FALSE, (const GLfloat*)ud.data));
 				break;
 
 			default:
