@@ -572,6 +572,7 @@ namespace mpp
 		vector<GraphPassHandle> ssaoPasses;
 		vector<SsaoGraphStep> ssaoSteps;
 		vector<GraphImageHandle> ssaoInputs;
+		GraphImageHandle ssaoModulationImage;
 		if (mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion)
 		{
 			// Keep ambient occlusion's fixed placement, with a shared depth-aware
@@ -594,10 +595,31 @@ namespace mpp
 			ssaoSteps.push_back(SsaoGraphStep::Blur);
 			ssaoInputs.push_back(rawOcclusion);
 
+			if (!mOptions.ambientOcclusion.modulationInput.empty())
+			{
+				// Resolve the latest version of the named image, mirroring the
+				// named-output resolution below: find the image by name, then
+				// walk passes added so far for a higher-versioned colour write.
+				for (uint32_t id = 0; id < graph.getImageCount(); ++id)
+				{
+					auto candidate = graph.getImageInfo({ id, 0 });
+					if (candidate.name == mOptions.ambientOcclusion.modulationInput) { ssaoModulationImage = { id, 0 }; break; }
+				}
+				if (!ssaoModulationImage.isValid())
+					THROW_MPP("Ambient occlusion modulationInput '" + mOptions.ambientOcclusion.modulationInput + "' does not name a known graph image.", __LINE__, __FILE__, __func__);
+				for (uint32_t pass = 0; pass < graph.getPassCount(); ++pass)
+				{
+					auto const& passInfo = graph.getPassInfo({ pass });
+					for (auto const& attachment : passInfo.colourOutputs)
+						if (attachment.image.id == ssaoModulationImage.id && attachment.image.version > ssaoModulationImage.version)
+							ssaoModulationImage = attachment.image;
+				}
+			}
 			auto ssaoComposite = graph.createImage("AmbientOcclusionComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
 			auto compositePass = graph.addPass("AmbientOcclusionComposite", GraphPassType::Fullscreen);
 			graph.readSampled(compositePass, sceneHdr);
 			graph.readSampled(compositePass, blurredOcclusion);
+			if (ssaoModulationImage.isValid()) graph.readSampled(compositePass, ssaoModulationImage);
 			presentationTexture = graph.writeColour(compositePass, ssaoComposite);
 			ssaoPasses.push_back(compositePass);
 			ssaoSteps.push_back(SsaoGraphStep::Composite);
@@ -720,9 +742,10 @@ namespace mpp
 				});
 				break;
 			case SsaoGraphStep::Composite:
-				mGraphExecutor->setPassCallback(graph, pass, [this, sceneHdr, input](RenderGraphExecutionContext const& context)
+				mGraphExecutor->setPassCallback(graph, pass, [this, sceneHdr, input, ssaoModulationImage](RenderGraphExecutionContext const& context)
 				{
-					mRenderSystem->renderSSAOCombine(dynamic_cast<Texture*>(context.getImage(sceneHdr).get()), dynamic_cast<Texture*>(context.getImage(input).get()));
+					mRenderSystem->renderSSAOCombine(dynamic_cast<Texture*>(context.getImage(sceneHdr).get()), dynamic_cast<Texture*>(context.getImage(input).get()),
+						ssaoModulationImage.isValid() ? dynamic_cast<Texture*>(context.getImage(ssaoModulationImage).get()) : nullptr);
 				});
 				break;
 			}

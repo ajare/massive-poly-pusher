@@ -799,6 +799,28 @@ namespace mpp
 				if (!rejectedExtraOverflow) return fail("scene extra outputs exceeding the attachment budget were accepted");
 				renderSystem->removeRenderPipeline("GpuTestSceneExtraOverflowPipeline");
 
+				// AmbientOcclusionOptions::modulationInput names a graph image (typically
+				// a sceneExtraOutputs entry) that the composite pass optionally samples;
+				// a valid name must wire through without throwing, an unknown one must
+				// fail fast like the other named-output lookups in this file.
+				RenderPipelineOptions modulationOptions; modulationOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				modulationOptions.sceneExtraOutputs = { { "GpuTestModulation", GraphImageFormat::R8 } };
+				modulationOptions.ambientOcclusion.method = AmbientOcclusionMethod::Ssao;
+				modulationOptions.ambientOcclusion.modulationInput = "SceneExtra.GpuTestModulation";
+				auto modulationPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestAoModulationPipeline", modulationOptions);
+				bool modulationRenderThrew = false;
+				try { modulationPipeline->render(gateScene, gateCamera, glm::vec2(0.0f)); } catch (...) { modulationRenderThrew = true; }
+				if (modulationRenderThrew) return fail("ambient-occlusion modulationInput naming a declared scene extra output was rejected");
+				renderSystem->removeRenderPipeline("GpuTestAoModulationPipeline");
+
+				auto unknownModulationOptions = modulationOptions;
+				unknownModulationOptions.ambientOcclusion.modulationInput = "SceneExtra.NoSuchImage";
+				auto unknownModulationPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestAoModulationUnknownPipeline", unknownModulationOptions);
+				bool rejectedUnknownModulation = false;
+				try { unknownModulationPipeline->render(gateScene, gateCamera, glm::vec2(0.0f)); } catch (...) { rejectedUnknownModulation = true; }
+				if (!rejectedUnknownModulation) return fail("ambient-occlusion modulationInput naming an unknown graph image was accepted");
+				renderSystem->removeRenderPipeline("GpuTestAoModulationUnknownPipeline");
+
 				GraphPassDebugOptions graphPasses; graphPasses.ambientOcclusion = false;
 				pipeline->setGraphPassDebugOptions(graphPasses);
 				pipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
@@ -876,6 +898,28 @@ namespace mpp
 				renderSystem->pushRenderTarget(blurredOutput); renderSystem->setViewport(0, 0, size, size);
 				renderSystem->renderSSAOBlur(dynamic_cast<Texture*>(rawOutput.get()), sceneDepthTexture, 4);
 				renderSystem->popRenderTarget();
+
+				// renderSSAOCombine's optional modulation input blends
+				// appliedAmbient = mix(1.0, ao, modulation): modulation=0 must fall back
+				// to the unmodified scene colour, and modulation=1 must reproduce the
+				// plain (unmodulated) combine exactly.
+				auto modulationZero = renderSystem->createRenderTexture("GpuTestSsaoModulationZero", size, size, colourOptions);
+				auto modulationOne = renderSystem->createRenderTexture("GpuTestSsaoModulationOne", size, size, colourOptions);
+				auto modulatedZeroOutput = renderSystem->createRenderTexture("GpuTestSsaoModulatedZero", size, size, colourOptions);
+				auto modulatedOneOutput = renderSystem->createRenderTexture("GpuTestSsaoModulatedOne", size, size, colourOptions);
+				renderSystem->pushRenderTarget(modulationZero); renderSystem->setViewport(0, 0, size, size);
+				GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+				renderSystem->popRenderTarget();
+				renderSystem->pushRenderTarget(modulationOne); renderSystem->setViewport(0, 0, size, size);
+				GL_CHECK(glClearColor(1.0f, 1.0f, 1.0f, 1.0f)); GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+				renderSystem->popRenderTarget();
+				renderSystem->pushRenderTarget(modulatedZeroOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderSSAOCombine(dynamic_cast<Texture*>(sceneColour.get()), dynamic_cast<Texture*>(rawOutput.get()), dynamic_cast<Texture*>(modulationZero.get()));
+				renderSystem->popRenderTarget();
+				renderSystem->pushRenderTarget(modulatedOneOutput); renderSystem->setViewport(0, 0, size, size);
+				renderSystem->renderSSAOCombine(dynamic_cast<Texture*>(sceneColour.get()), dynamic_cast<Texture*>(rawOutput.get()), dynamic_cast<Texture*>(modulationOne.get()));
+				renderSystem->popRenderTarget();
+
 				ssao.radius = 0.0f;
 				renderSystem->pushRenderTarget(zeroRadiusOutput); renderSystem->setViewport(0, 0, size, size);
 				renderSystem->renderSSAORaw(sceneDepthTexture, projection, glm::inverse(projection), ssao);
@@ -917,6 +961,12 @@ namespace mpp
 					return fail("enabled SSAO did not measurably darken the occluded crease (disabled=" + std::to_string(occludedDisabled[0]) + ", enabled=" + std::to_string(occludedEnabled[0]) + ")");
 				if (std::abs((int)openEnabled[0] - (int)openDisabled[0]) > 2)
 					return fail("enabled SSAO meaningfully changed an open-area pixel (disabled=" + std::to_string(openDisabled[0]) + ", enabled=" + std::to_string(openEnabled[0]) + ")");
+				auto const occludedModulatedZero = readPixel(modulatedZeroOutput, 34, 32);
+				auto const occludedModulatedOne = readPixel(modulatedOneOutput, 34, 32);
+				if (std::abs((int)occludedModulatedZero[0] - (int)occludedDisabled[0]) > 1)
+					return fail("modulation=0 did not fall back to the unmodified scene colour (scene=" + std::to_string(occludedDisabled[0]) + ", modulated=" + std::to_string(occludedModulatedZero[0]) + ")");
+				if (std::abs((int)occludedModulatedOne[0] - (int)occludedEnabled[0]) > 1)
+					return fail("modulation=1 did not reproduce the plain (unmodulated) combine result (plain=" + std::to_string(occludedEnabled[0]) + ", modulated=" + std::to_string(occludedModulatedOne[0]) + ")");
 				auto const zeroRadius = readPixel(zeroRadiusOutput, 34, 32);
 				if (std::abs((int)zeroRadius[0] - 255) > 1)
 					return fail("SSAO radius zero did not collapse to neutral ambient occlusion (got " + std::to_string(zeroRadius[0]) + ")");

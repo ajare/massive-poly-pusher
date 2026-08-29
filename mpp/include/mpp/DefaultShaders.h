@@ -1026,6 +1026,23 @@ void main()
 }
 )";
 
+const std::string FragmentShaderSsaoCombineModulatedTemplate =
+R"(
+@@Version
+
+@@Texture(sampler2D SCENE);
+@@Texture(sampler2D AMBIENT_OCCLUSION);
+@@Texture(sampler2D MODULATION);
+
+void main()
+{
+    vec4 scene = texture(@Texture(SCENE), @In(TEXCOORDS));
+    float ambient = texture(@Texture(AMBIENT_OCCLUSION), @In(TEXCOORDS)).r;
+    float modulation = texture(@Texture(MODULATION), @In(TEXCOORDS)).r;
+    @Out(vec4 COLOUR) = vec4(scene.rgb * mix(1.0, ambient, modulation), scene.a);
+}
+)";
+
 const std::string FragmentShaderBloomExtractTemplate =
 R"(
 @@Version

@@ -867,6 +867,8 @@ namespace mpp
 		addCoreResource(mSsaoBlurProgram, true);
 		mSsaoCombineProgram = createBloomProgram("__mpp_p2d_ssao_combine__", FragmentShaderSsaoCombineTemplate);
 		addCoreResource(mSsaoCombineProgram, true);
+		mSsaoCombineModulatedProgram = createBloomProgram("__mpp_p2d_ssao_combine_modulated__", FragmentShaderSsaoCombineModulatedTemplate);
+		addCoreResource(mSsaoCombineModulatedProgram, true);
 		mEnvironmentDebugCubeProgram = createBloomProgram("__mpp_p2d_environment_debug_cube__", FragmentShaderEnvironmentDebugCubeTemplate);
 		addCoreResource(mEnvironmentDebugCubeProgram, true);
 		mSsaaLanczosProgram = createBloomProgram("__mpp_p2d_ssaa_lanczos__", FragmentShaderSsaaLanczosTemplate);
@@ -4049,12 +4051,13 @@ namespace mpp
 		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += 2; mRenderInfo.fullscreenQuads++;
 	}
 
-	void RenderSystem::renderSSAOCombine(Texture* scene, Texture* ambientOcclusion)
+	void RenderSystem::renderSSAOCombine(Texture* scene, Texture* ambientOcclusion, Texture* modulation)
 	{
 		if (!scene || !ambientOcclusion) THROW_MPP("SSAO combine requires scene and ambient-occlusion textures.", __LINE__, __FILE__, __func__);
 		flushVertexBuffers();
-		auto program = static_cast<Program*>(mSsaoCombineProgram.get());
-		setUsedProgram(mSsaoCombineProgram);
+		auto const& combineProgram = modulation ? mSsaoCombineModulatedProgram : mSsaoCombineProgram;
+		auto program = static_cast<Program*>(combineProgram.get());
+		setUsedProgram(combineProgram);
 		GL_CHECK(glUniformMatrix4fv(program->getModelCameraProjectionMatrixId(), 1, GL_FALSE, glm::value_ptr(m3dModelCameraProjectionMatrix)));
 		GL_CHECK(glUniform2f(program->getHalfWindowSizeId(), mRenderTarget->getWidth() / 2.0f, mRenderTarget->getHeight() / 2.0f));
 		for (int unit = 0; unit < program->getNumSamplers(); ++unit)
@@ -4062,11 +4065,12 @@ namespace mpp
 			auto const& sampler = program->getSamplerName(unit);
 			if (sampler == "SCENE") scene->bind((uint32_t)unit);
 			else if (sampler == "AMBIENT_OCCLUSION") ambientOcclusion->bind((uint32_t)unit);
+			else if (sampler == "MODULATION" && modulation) modulation->bind((uint32_t)unit);
 		}
 		setBlendState(false);
 		auto mesh = static_cast<Model*>(mFullscreenQuad.get())->getMesh(0);
 		mesh->bind(true); mesh->render(1); mesh->bind(false);
-		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += 2; mRenderInfo.fullscreenQuads++;
+		mRenderInfo.programSwitches++; mRenderInfo.textureSwitches += (modulation ? 3 : 2); mRenderInfo.fullscreenQuads++;
 	}
 
 	void RenderSystem::renderBloomCombine(Texture* scene, Texture* bloom, float intensity)

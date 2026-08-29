@@ -2,6 +2,8 @@
 
 #include "mpp/Config.h"
 
+#include <string>
+
 namespace mpp
 {
 	enum class AmbientOcclusionMethod
@@ -47,5 +49,11 @@ namespace mpp
 		AmbientOcclusionMethod method{ AmbientOcclusionMethod::None };
 		SSAOOptions ssao;
 		GTAOOptions gtao;
+		// Optional graph-image name (e.g. a RenderPipelineOptions::sceneExtraOutputs
+		// entry, or any other graph image) whose red channel modulates the
+		// composited occlusion factor: appliedAmbient = mix(1.0, ao, modulation).
+		// Empty (the default) keeps compositing byte-for-byte identical to plain
+		// scene.rgb * ao.r.
+		std::string modulationInput;
 	};
 }
