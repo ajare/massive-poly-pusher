@@ -753,6 +753,7 @@ namespace mpp
 				RenderPipelineOptions waterDepthOptions;
 				waterDepthOptions.mode = RenderPipelineMode::GraphLegacyForward;
 				waterDepthOptions.generatedWater = true;
+				waterDepthOptions.waterReflections.technique = WaterReflectionTechnique::ScreenSpace;
 				waterDepthOptions.outputs = { { "Water", "WaterComposite" } };
 				auto waterDepthPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedWaterDepthPipeline", waterDepthOptions);
 				waterDepthPipeline->requestGraphImageCapture();
@@ -790,6 +791,7 @@ namespace mpp
 				RenderPipelineOptions waterOptions;
 				waterOptions.mode = RenderPipelineMode::GraphLegacyForward;
 				waterOptions.generatedWater = true;
+				waterOptions.waterReflections.technique = WaterReflectionTechnique::ScreenSpace;
 				waterOptions.ambientOcclusion = gateOptions;
 				waterOptions.bloom = gateBloom;
 				auto waterPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedWaterPipeline", waterOptions);
@@ -822,6 +824,21 @@ namespace mpp
 				if (!verifyGeneratedWater(64, 64) || !verifyGeneratedWater(96, 32))
 					return fail("opted-in generated water topology, sampler binding, mip preservation, or resize execution failed");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterPipeline");
+
+				// Planar is an explicit, distinct source contract even before its scene
+				// renderer lands: it must never acquire Screen-space's frozen copy/mips.
+				RenderPipelineOptions planarSeamOptions;
+				planarSeamOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				planarSeamOptions.generatedWater = true;
+				planarSeamOptions.waterReflections.technique = WaterReflectionTechnique::Planar;
+				planarSeamOptions.waterReflections.planarResolution = PlanarReflectionResolution::Quarter;
+				planarSeamOptions.waterReflections.planarPlanes = { { 3.0f, ReflectionPlaneSide::Above } };
+				auto planarSeamPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestPlanarWaterSeamPipeline", planarSeamOptions);
+				planarSeamPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				for (auto const& stats : planarSeamPipeline->getLastGraphExecutionStats())
+					if (stats.name == "SceneColourCopy" || stats.name == "WaterScene")
+						return fail("Planar reflection-source contract reused Screen-space Water topology");
+				renderSystem->removeRenderPipeline("GpuTestPlanarWaterSeamPipeline");
 				gateScene->setViewport(0, 0, 64, 64);
 
 				gateOptions.method = AmbientOcclusionMethod::Gtao;

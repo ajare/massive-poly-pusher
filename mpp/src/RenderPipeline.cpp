@@ -59,6 +59,8 @@ namespace mpp
 		, mOptions(options)
 	{
 		mFlowGeneration = nextFlowGeneration.fetch_add(1, memory_order_relaxed);
+		if (mOptions.waterReflections.planarPlanes.size() > WaterReflectionOptions::MaxPlanarPlanes)
+			THROW_MPP("A generated Water pipeline accepts at most four planar reflection planes.", __LINE__, __FILE__, __func__);
 		if(!mOptions.outputs.empty())mOutputProcessor=make_unique<RenderOutputProcessor>(renderSystem,mName);
 		// The PBR preview path owns an HDR scene target. Legacy pipelines keep
 		// their RGBA8 target and existing presentation behaviour.
@@ -513,7 +515,9 @@ namespace mpp
 			sceneExtraOutputImages.push_back(graph.createImage("SceneExtra." + extra.name, makeColour(extra.format)));
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
-		bool const sampleSceneDepth = mOptions.generatedWater || outputAntiAliasing.taa ||
+		bool const screenSpaceWater = mOptions.generatedWater &&
+			mOptions.waterReflections.technique == WaterReflectionTechnique::ScreenSpace;
+		bool const sampleSceneDepth = screenSpaceWater || outputAntiAliasing.taa ||
 			(mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
@@ -643,7 +647,10 @@ namespace mpp
 			ssaoInputs.push_back(blurredOcclusion);
 		}
 		GraphImageHandle shadedSceneTexture = presentationTexture;
-		if (mOptions.generatedWater)
+		// Reflection-source topology starts at this seam. Screen-space owns the
+		// frozen, mipmapped scene copy; Planar deliberately owns none of that
+		// topology and will add its per-plane sources independently.
+		if (screenSpaceWater)
 		{
 			GraphImageDesc resolvedDesc = makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8);
 			auto const& waterViewport = scene->getViewport();

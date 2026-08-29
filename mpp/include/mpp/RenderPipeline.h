@@ -163,6 +163,41 @@ namespace mpp
 		GraphImageFormat format{ GraphImageFormat::R8 };
 	};
 
+	enum class WaterReflectionTechnique
+	{
+		ScreenSpace,
+		Planar
+	};
+
+	enum class PlanarReflectionResolution
+	{
+		Full,
+		Half,
+		Quarter
+	};
+
+	enum class ReflectionPlaneSide
+	{
+		Above,
+		Below
+	};
+
+	// A generic horizontal reflection plane supplied by the host. MPP does not
+	// know what authored or generated feature selected it.
+	struct _MPPAPI PlanarReflectionPlaneDescriptor
+	{
+		float elevation{ 0.0f };
+		ReflectionPlaneSide viewerSide{ ReflectionPlaneSide::Above };
+	};
+
+	struct _MPPAPI WaterReflectionOptions
+	{
+		static constexpr size_t MaxPlanarPlanes = 4;
+		WaterReflectionTechnique technique{ WaterReflectionTechnique::ScreenSpace };
+		PlanarReflectionResolution planarResolution{ PlanarReflectionResolution::Half };
+		std::vector<PlanarReflectionPlaneDescriptor> planarPlanes;
+	};
+
 	struct _MPPAPI RenderPipelineOptions
 	{
 		RenderPipelineMode mode{ RenderPipelineMode::LegacyForward };
@@ -183,9 +218,11 @@ namespace mpp
 		// Client-declared extra scene-pass colour outputs. Empty (the default)
 		// changes nothing about the generated graph or its attachment budget.
 		std::vector<RenderPipelineSceneExtraOutput> sceneExtraOutputs;
-		// Adds colour-copy and water scene passes to generated graphs. Authored
-		// graph templates keep their own topology. Default-off for compatibility.
+		// Adds generated Water topology. Authored graph templates keep their own
+		// topology. The reflection source is selected explicitly below rather than
+		// being implied by this graph opt-in. Default-off for compatibility.
 		bool generatedWater{ false };
+		WaterReflectionOptions waterReflections;
 		// Draw opaque scene geometry with depth-only programs before material
 		// shading. The material pass then uses LessEqual against that depth.
 		bool depthPrepass{ true };
