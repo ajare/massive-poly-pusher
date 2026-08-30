@@ -995,6 +995,32 @@ void main()
 					return fail("rendered Planar output lost reflected content, winding/two-sided geometry, clipping, opaque/non-Water filtering, virtual-camera state, or alpha validity");
 				renderSystem->removeRenderPipeline("GpuTestRenderedPlanarPipeline");
 
+				// Crossing the plane changes only its retained side. The below view must
+				// continue to produce valid reflected content, now excluding every fixture
+				// that the preceding above view retained.
+				renderedPlanarOptions.waterReflections.planarPlanes = {
+					{ 0.0f, ReflectionPlaneSide::Below } };
+				auto renderedBelowPipeline = renderSystem->getOrCreateRenderPipeline(
+					"GpuTestRenderedPlanarBelowPipeline", renderedPlanarOptions);
+				auto planarCameraBelow = std::make_shared<Camera>(
+					glm::vec3(0.0f, -2.5f, 6.0f), 0.0f, 0.0f, 0.0f, 55.0f, 1.0f);
+				planarCameraBelow->setLookAt(
+					planarCameraBelow->getPosition(), glm::vec3(0.0f, -0.5f, 0.0f));
+				renderedBelowPipeline->render(
+					planarScene, planarCameraBelow, glm::vec2(0.0f));
+				auto belowPixels = readPixels(
+					renderedBelowPipeline->getGraphImageRenderTarget({ 2, 1 }));
+				bool foundBelowGreen = false, foundForbiddenAbove = false;
+				for (size_t pixel = 0; pixel + 3 < belowPixels.size(); pixel += 4)
+				{
+					foundBelowGreen |= belowPixels[pixel + 1] > 180 &&
+						belowPixels[pixel] < 40 && belowPixels[pixel + 2] < 40;
+					foundForbiddenAbove |= belowPixels[pixel] > 100 || belowPixels[pixel + 2] > 100;
+				}
+				if (!foundBelowGreen || foundForbiddenAbove)
+					return fail("rendered Planar content was unstable while crossing from the above side to the below side");
+				renderSystem->removeRenderPipeline("GpuTestRenderedPlanarBelowPipeline");
+
 				// Different horizontal planes own independent camera projections and
 				// clipping results. Plane zero sees the fixture above it; plane two sees
 				// no retained fixture, so their images must remain observably distinct.

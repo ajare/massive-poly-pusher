@@ -105,7 +105,22 @@ namespace mpp
 			!insideClip(glm::vec3(0.0f, 0.96f, 0.0f)) ||
 			insideClip(glm::vec3(0.0f, 0.94f, 0.0f)) ||
 			insideClip(glm::vec3(0.0f, 0.0f, 0.0f)))
-			return fail("Planar oblique clipping did not retain only the real viewer's side with a 0.05-unit bias");
+			return fail("viewer-above Planar clipping did not retain above-plane geometry with a 0.05-unit bias");
+		Camera reflectionSourceBelow(glm::vec3(2.0f, -4.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.5f);
+		reflectionSourceBelow.setLookAt(reflectionSourceBelow.getPosition(),
+			glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto const reflectedBelow = buildPlanarReflectionView(reflectionSourceBelow,
+			{ 1.0f, ReflectionPlaneSide::Below }, 1.5f);
+		auto insideBelowClip = [&](glm::vec3 const& point)
+		{
+			auto clip = reflectedBelow.projection * reflectedBelow.view * glm::vec4(point, 1.0f);
+			return clip.w > 0.0f && clip.z >= -clip.w && clip.z <= clip.w;
+		};
+		if (!insideBelowClip(glm::vec3(0.0f, 0.0f, 0.0f)) ||
+			!insideBelowClip(glm::vec3(0.0f, 1.04f, 0.0f)) ||
+			insideBelowClip(glm::vec3(0.0f, 1.06f, 0.0f)) ||
+			insideBelowClip(glm::vec3(0.0f, 2.0f, 0.0f)))
+			return fail("viewer-below Planar clipping did not retain below-plane geometry with a 0.05-unit bias");
 
 		ShadowOptions pointDefaults;
 		if (pointDefaults.nearPlane != 0.25f || pointDefaults.light.range != 192.0f ||
