@@ -360,6 +360,25 @@ namespace mpp
 		static vector<GraphPassHandle> const empty;return mGraphExecutor?mGraphExecutor->getLastExecutionOrder():empty;
 	}
 
+	bool RenderPipeline::planarReflectionRuntimeFailed() const
+	{
+		return mPlanarReflectionRuntimeFailed;
+	}
+
+	string const& RenderPipeline::getPlanarReflectionFailureMessage() const
+	{
+		return mPlanarReflectionFailureMessage;
+	}
+
+	void RenderPipeline::disablePlanarReflectionsAfterFailure(string const& reason)
+	{
+		if (mPlanarReflectionRuntimeFailed) return;
+		mPlanarReflectionRuntimeFailed = true;
+		mPlanarReflectionFailureMessage = reason.empty() ? "unknown Planar reflection failure" : reason;
+		mRenderSystem->warnMessage("Planar Water reflection disabled for pipeline '" + mName +
+			"' without selecting Screen-space: " + mPlanarReflectionFailureMessage);
+	}
+
 	void RenderPipeline::setFlowTelemetryEnabled(bool enabled)
 	{
 		if(mFlowTelemetryEnabled==enabled)return;discardFlowSnapshot();mFlowTelemetryEnabled=enabled;mLastFlowSnapshot.reset();
@@ -407,6 +426,7 @@ namespace mpp
 	void RenderPipeline::renderGraphForward(ScenePtr scene, CameraPtr camera, vector<SceneModel3dPtr> const& models, bool pbr)
 	{
 		GpuDebugScope graphScope("Pipeline " + mName + ": RenderGraph");
+		bool const captureRequestedThisFrame = mGraphImageCaptureRequested;
 		auto outputAntiAliasing=mOptions.outputs.empty()?AntiAliasingDefaults{}:resolveAntiAliasing(mRenderSystem->getOptions().antiAliasing,mOptions.outputs.front().antiAliasing);uint32_t physicalSamples=antiAliasingSampleCount(outputAntiAliasing.msaa);std::optional<TaaFrameContext> taaFrame;struct JitterReset{Camera* camera{};~JitterReset(){if(camera)camera->setProjectionJitter({0,0});}}jitterReset;
 		if(outputAntiAliasing.taa){auto const& viewport=scene->getViewport();auto rasterWidth=ssaaDimension((uint32_t)viewport.width,outputAntiAliasing.ssaa),rasterHeight=ssaaDimension((uint32_t)viewport.height,outputAntiAliasing.ssaa);auto jitter=taaHaltonJitter(mTaaSequenceIndex++);camera->setProjectionJitter({2.0f*jitter.x/(float)rasterWidth,2.0f*jitter.y/(float)rasterHeight});jitterReset.camera=camera.get();auto direction=camera->getDirection();auto frameSerial=mRenderSystem->getFrameSerial();bool discontinuity=!mTaaCameraValid||camera->getCutRevision()!=mLastCameraCutRevision||(mLastTaaFrameSerial&&frameSerial!=mLastTaaFrameSerial+1)||glm::distance(camera->getPosition(),mLastCameraPosition)>std::max(1.0f,std::min(10.0f,camera->getFarClipDistance()*0.01f))||glm::dot(direction,mLastCameraDirection)<0.8f||std::abs(camera->getFov()-mLastCameraFov)>10.0f||std::abs(camera->getAspectRatio()-mLastCameraAspect)>0.001f||std::abs(camera->getNearClipDistance()-mLastCameraNear)>0.001f||std::abs(camera->getFarClipDistance()-mLastCameraFar)>0.01f;auto viewProjection=camera->getProjectionTransform()*camera->getViewTransform();taaFrame=TaaFrameContext{viewProjection,glm::inverse(viewProjection),frameSerial,discontinuity};mTaaCameraValid=true;mLastTaaFrameSerial=frameSerial;mLastCameraCutRevision=camera->getCutRevision();mLastCameraPosition=camera->getPosition();mLastCameraDirection=direction;mLastCameraFov=camera->getFov();mLastCameraAspect=camera->getAspectRatio();mLastCameraNear=camera->getNearClipDistance();mLastCameraFar=camera->getFarClipDistance();}
 		if (!mGraphTargets)
@@ -478,7 +498,7 @@ namespace mpp
 					mGraphExecutor->setPassParameterOverrides(info.name, overrides);
 				}
 			}
-			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back(), graphHasWaterPass(*graph) };
+			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back(), graphHasWaterPass(*graph), mOptions.waterReflections.enabled };
 			mGraphExecutor->setFrameContext(&frameContext);
 			beginFlowSnapshot();
 			try
@@ -559,12 +579,15 @@ namespace mpp
 			sceneExtraOutputImages.push_back(graph.createImage("SceneExtra." + extra.name, makeColour(extra.format)));
 		GraphImageDesc sceneDepthDesc;
 		sceneDepthDesc.format = GraphImageFormat::Depth24;
-		bool const screenSpaceWater = mOptions.generatedWater &&
+		bool const reflectionEnabled = mOptions.waterReflections.enabled && !mPlanarReflectionRuntimeFailed;
+		bool const screenSpaceWater = mOptions.generatedWater && reflectionEnabled &&
 			mOptions.waterReflections.technique == WaterReflectionTechnique::ScreenSpace;
-		bool const planarWater = mOptions.generatedWater &&
+		bool const planarRequested = mOptions.generatedWater &&
 			mOptions.waterReflections.technique == WaterReflectionTechnique::Planar &&
 			!mOptions.waterReflections.planarPlanes.empty();
-		bool const sampleSceneDepth = screenSpaceWater || planarWater || outputAntiAliasing.taa ||
+		bool const planarWater = planarRequested && reflectionEnabled;
+		bool const reflectionFailureWater = planarRequested && !reflectionEnabled;
+		bool const sampleSceneDepth = screenSpaceWater || planarWater || reflectionFailureWater || outputAntiAliasing.taa ||
 			(mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
@@ -751,7 +774,7 @@ namespace mpp
 		// Reflection-source topology starts at this seam. Screen-space owns the
 		// frozen, mipmapped scene copy; Planar deliberately owns none of that
 		// topology and will add its per-plane sources independently.
-		if (screenSpaceWater || planarWater)
+		if (screenSpaceWater || planarWater || reflectionFailureWater)
 		{
 			GraphImageHandle waterBase = shadedSceneTexture;
 			if (screenSpaceWater)
@@ -853,7 +876,26 @@ namespace mpp
 
 		auto const& viewport = scene->getViewport();
 		auto plan = graph.buildAllocationPlan(glm::uvec2(ssaaDimension((uint32_t)viewport.width,outputAntiAliasing.ssaa),ssaaDimension((uint32_t)viewport.height,outputAntiAliasing.ssaa)));
-		mGraphTargets->allocatePhysical(plan,physicalSamples);
+		try
+		{
+			mGraphTargets->allocatePhysical(plan,physicalSamples);
+		}
+		catch (std::exception const& error)
+		{
+			if (!planarWater) throw;
+			disablePlanarReflectionsAfterFailure("reflection-image allocation failed: " + string(error.what()));
+			mGraphImageCaptureRequested = captureRequestedThisFrame;
+			renderGraphForward(scene, camera, models, pbr);
+			return;
+		}
+		catch (...)
+		{
+			if (!planarWater) throw;
+			disablePlanarReflectionsAfterFailure("reflection-image allocation failed with an unknown error");
+			mGraphImageCaptureRequested = captureRequestedThisFrame;
+			renderGraphForward(scene, camera, models, pbr);
+			return;
+		}
 		mGraphTargets->bindImported(screen, mRenderSystem->getScreenRenderTarget());
 		struct DynamicPreparedOutput{string name;GraphImageHandle image;GraphImageHandle depth;RenderTargetPtr destination;RenderTargetPtr source;bool external;};vector<DynamicPreparedOutput> dynamicOutputs;
 		if(mOutputProcessor)
@@ -976,6 +1018,7 @@ namespace mpp
 		frameContext.pipelineOptions = &mOptions;
 		frameContext.sceneRenderPass = mPasses.back();
 		frameContext.hasWaterPass = graphHasWaterPass(graph);
+		frameContext.waterReflectionEnabled = reflectionEnabled;
 		mGraphExecutor->setFrameContext(&frameContext);
 		beginFlowSnapshot();
 		try
@@ -985,7 +1028,28 @@ namespace mpp
 			for(auto const& output:dynamicOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
 			publishFlowSnapshot();
 		}
-		catch(...){mGraphExecutor->setFrameContext(nullptr);discardFlowSnapshot();throw;}
+		catch (std::exception const& error)
+		{
+			auto const failedPass = mGraphExecutor->getLastFailedPassName();
+			mGraphExecutor->setFrameContext(nullptr);
+			discardFlowSnapshot();
+			if (!planarWater || failedPass.rfind("PlanarReflection", 0) != 0) throw;
+			disablePlanarReflectionsAfterFailure("reflected-scene pass '" + failedPass + "' failed: " + error.what());
+			mGraphImageCaptureRequested = captureRequestedThisFrame;
+			renderGraphForward(scene, camera, models, pbr);
+			return;
+		}
+		catch (...)
+		{
+			auto const failedPass = mGraphExecutor->getLastFailedPassName();
+			mGraphExecutor->setFrameContext(nullptr);
+			discardFlowSnapshot();
+			if (!planarWater || failedPass.rfind("PlanarReflection", 0) != 0) throw;
+			disablePlanarReflectionsAfterFailure("reflected-scene pass '" + failedPass + "' failed with an unknown error");
+			mGraphImageCaptureRequested = captureRequestedThisFrame;
+			renderGraphForward(scene, camera, models, pbr);
+			return;
+		}
 	}
 
 	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)

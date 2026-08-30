@@ -215,6 +215,9 @@ namespace mpp
 	struct _MPPAPI WaterReflectionOptions
 	{
 		static constexpr size_t MaxPlanarPlanes = 4;
+		// False keeps WaterScene compositing active when a requested reflection
+		// source has failed, but binds no reflection topology or radiance.
+		bool enabled{ true };
 		WaterReflectionTechnique technique{ WaterReflectionTechnique::ScreenSpace };
 		PlanarReflectionResolution planarResolution{ PlanarReflectionResolution::Half };
 		std::vector<PlanarReflectionPlaneDescriptor> planarPlanes;
@@ -297,6 +300,8 @@ namespace mpp
 		std::map<std::string, UniformCollection> mPostEffectParameterOverrides;
 		bool mFlowTelemetryEnabled{ false };
 		bool mGraphImageCaptureRequested{ false };
+		bool mPlanarReflectionRuntimeFailed{ false };
+		std::string mPlanarReflectionFailureMessage;
 		uint64_t mFlowGeneration{ 0 };
 		RenderPipelineFlowSnapshotPtr mLastFlowSnapshot;
 		std::shared_ptr<RenderPipelineFlowSnapshot> mPendingFlowSnapshot;
@@ -370,6 +375,11 @@ namespace mpp
 		std::vector<GraphImageCapture> takeGraphImageCaptures();
 		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;
 		std::vector<GraphPassHandle> const& getLastGraphExecutionOrder() const;
+		// Failure is sticky for this pipeline. The selected technique remains
+		// Planar; only reflected radiance is disabled while WaterScene continues.
+		bool planarReflectionRuntimeFailed() const;
+		std::string const& getPlanarReflectionFailureMessage() const;
+		void disablePlanarReflectionsAfterFailure(std::string const& reason);
 		void setFlowTelemetryEnabled(bool enabled);
 		bool isFlowTelemetryEnabled() const;
 		RenderPipelineFlowSnapshotPtr getLastFlowSnapshot() const;

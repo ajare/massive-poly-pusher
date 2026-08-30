@@ -787,6 +787,9 @@ namespace mpp
 				if (!capturedPass("LegacyScene", false) || !capturedPass("LegacyScene", true) ||
 					!capturedPass("SceneColourCopy", false) || !capturedPass("WaterScene", false))
 					return fail("one-shot graph image capture missed a stored generated-water pass output");
+				for (auto const& capture : captures)
+					if (capture.passName.rfind("PlanarReflection", 0) == 0)
+						return fail("Screen-space capture contained a Planar output");
 				if (!waterDepthPipeline->takeGraphImageCaptures().empty())
 					return fail("taking graph image captures did not consume them");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterDepthPipeline");
@@ -843,6 +846,7 @@ namespace mpp
 							{ 3.0f + float(index), ReflectionPlaneSide::Above });
 					auto pipelineName = "GpuTestPlanarWaterBranches" + std::to_string(planeCount);
 					auto candidate = renderSystem->getOrCreateRenderPipeline(pipelineName, planarSeamOptions);
+					candidate->requestGraphImageCapture();
 					// Every active reflected-scene branch must execute again on the next
 					// frame; the graph owns no temporal cache or refresh throttle.
 					for (int frame = 0; frame < 2; ++frame)
@@ -861,6 +865,10 @@ namespace mpp
 									ranks[rank] |= stats.name == "PlanarReflection" + std::to_string(rank);
 								if (stats.colourOutputCount != 1 || stats.depthOutputCount != 1 || stats.maxColourOutputMipLevels != 1)
 									return fail("Planar reflection pass lost its single colour/depth, no-mip output contract");
+								auto const rank = stats.name.substr(std::string("PlanarReflection").size());
+								if (stats.primaryColourOutputName != "PlanarReflection" + rank ||
+									stats.primaryColourOutputWidth != 16 || stats.primaryColourOutputHeight != 16)
+									return fail("Planar pass telemetry lost its stable image name or dimensions");
 							}
 							else if (stats.name == "WaterScene")
 							{
@@ -875,6 +883,17 @@ namespace mpp
 							if (ranks[rank] != (rank < planeCount))
 								return fail("dynamic Planar branches lost stable rank-based names");
 					}
+					auto planarCaptures = candidate->takeGraphImageCaptures();
+					size_t capturedPlanarImages = 0;
+					for (auto const& capture : planarCaptures)
+						if (capture.passName.rfind("PlanarReflection", 0) == 0 && !capture.depth)
+						{
+							++capturedPlanarImages;
+							if (capture.passName != capture.imageName || capture.width != 16 || capture.height != 16)
+								return fail("Planar capture lost its stable rank-based pass/image name or dimensions");
+						}
+					if (capturedPlanarImages != planeCount || !candidate->takeGraphImageCaptures().empty())
+						return fail("Planar capture did not follow active topology or consume exactly once");
 					for (size_t rank = 0; rank < planeCount; ++rank)
 					{
 						auto target = candidate->getGraphImageRenderTarget(
@@ -885,6 +904,34 @@ namespace mpp
 					}
 					renderSystem->removeRenderPipeline(pipelineName);
 				}
+
+				// The same public failure path used by allocation/pass recovery is sticky:
+				// it retains Planar as the selected technique, removes its resources and
+				// passes, and still runs opaque depth plus WaterScene compositing.
+				auto failedOptions = planarSeamOptions;
+				failedOptions.waterReflections.planarPlanes = { { 1.0f, ReflectionPlaneSide::Above } };
+				auto failedPipeline = renderSystem->getOrCreateRenderPipeline(
+					"GpuTestFailedPlanarWater", failedOptions);
+				failedPipeline->disablePlanarReflectionsAfterFailure("injected reflected-render failure");
+				failedPipeline->requestGraphImageCapture();
+				failedPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				bool failedOpaque = false, failedWater = false, hiddenScreenSpace = false, failedPlanarPass = false;
+				for (auto const& stats : failedPipeline->getLastGraphExecutionStats())
+				{
+					failedOpaque |= stats.name == "LegacyScene" && stats.storedDepthOutputCount == 1;
+					failedWater |= stats.name == "WaterScene";
+					hiddenScreenSpace |= stats.name == "SceneColourCopy";
+					failedPlanarPass |= stats.name.rfind("PlanarReflection", 0) == 0;
+				}
+				if (!failedPipeline->planarReflectionRuntimeFailed() ||
+					failedPipeline->getPlanarReflectionFailureMessage().find("injected") == std::string::npos ||
+					failedPipeline->getOptions().waterReflections.technique != WaterReflectionTechnique::Planar ||
+					!failedOpaque || !failedWater || hiddenScreenSpace || failedPlanarPass)
+					return fail("Planar runtime failure did not disable reflection while retaining Planar Water compositing");
+				for (auto const& capture : failedPipeline->takeGraphImageCaptures())
+					if (capture.passName.rfind("PlanarReflection", 0) == 0)
+						return fail("failed Planar topology emitted a reflection capture");
+				renderSystem->removeRenderPipeline("GpuTestFailedPlanarWater");
 
 				gateScene->setViewport(0, 0, 65, 33);
 				for (auto const& [resolution, expected, name] : {

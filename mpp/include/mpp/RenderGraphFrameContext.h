@@ -28,5 +28,8 @@ namespace mpp
 		// to the cubemap because no resolved scene colour is bound. That keeps a
 		// water material from silently disappearing in an older pipeline.
 		bool hasWaterPass{ false };
+		// False is a failure fallback, not a technique change: WaterScene still
+		// draws absorption/compositing while reflected radiance is suppressed.
+		bool waterReflectionEnabled{ true };
 	};
 }

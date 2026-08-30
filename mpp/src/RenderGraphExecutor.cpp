@@ -460,6 +460,11 @@ namespace mpp
 		return mLastExecutionOrder;
 	}
 
+	string const& RenderGraphExecutor::getLastFailedPassName() const
+	{
+		return mLastFailedPassName;
+	}
+
 	GraphFramebufferCacheStats RenderGraphExecutor::getFramebufferCacheStats() const
 	{
 		auto result = mFramebufferCacheStats;
@@ -543,6 +548,7 @@ namespace mpp
 		}
 		synchronizeFramebufferViews(targets);
 		mLastExecutionStats.clear();
+		mLastFailedPassName.clear();
 		bool const captureThisExecution = mCaptureNextExecution;
 		mCaptureNextExecution = false;
 		if (captureThisExecution) mLastImageCaptures.clear();
@@ -748,14 +754,26 @@ namespace mpp
 				stats.storedDepthOutputCount = static_cast<uint32_t>(std::count_if(pass.depthOutputs.begin(), pass.depthOutputs.end(),
 					[](auto const& output) { return output.store == GraphStoreOp::Store; }));
 				stats.samplerBindingCount = static_cast<uint32_t>(pass.samplerBindings.size());
-				for (auto const& output : pass.colourOutputs)
+				for (size_t outputIndex = 0; outputIndex < pass.colourOutputs.size(); ++outputIndex)
+				{
+					auto const& output = pass.colourOutputs[outputIndex];
 					if (auto texture = dynamic_cast<RenderTexture*>(targets.get(output.image).get()))
+					{
 						stats.maxColourOutputMipLevels = std::max(stats.maxColourOutputMipLevels, texture->getMipLevels());
+						if (outputIndex == 0)
+						{
+							stats.primaryColourOutputName = graph.getImageInfo(output.image).name;
+							stats.primaryColourOutputWidth = static_cast<uint32_t>(texture->getWidth());
+							stats.primaryColourOutputHeight = static_cast<uint32_t>(texture->getHeight());
+						}
+					}
+				}
 				mLastExecutionStats.push_back(move(stats));
 				mRenderSystem->endRenderFlowPass(passHandle, pass.name);
 			}
 			catch (...)
 			{
+				mLastFailedPassName = pass.name;
 				if (gpuQueryStarted)
 				{
 					glQueryCounter(gpuQuery.end, GL_TIMESTAMP);

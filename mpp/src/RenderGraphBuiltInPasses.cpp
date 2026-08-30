@@ -443,8 +443,10 @@ namespace mpp
 					WaterReflectionTechnique::Planar;
 				waterUniforms.setUniform("MPP_WATER_REFLECTION_TECHNIQUE", int32_t{ planar ? 1 : 0 });
 				waterUniforms.setUniform("MPP_PLANAR_REFLECTION_COUNT", int32_t{
-					static_cast<int32_t>(frame.pipelineOptions->waterReflections.planarPlanes.size()) });
-				for (size_t index = 0; index < frame.pipelineOptions->waterReflections.planarPlanes.size(); ++index)
+					frame.waterReflectionEnabled ? static_cast<int32_t>(frame.pipelineOptions->waterReflections.planarPlanes.size()) : 0 });
+				if (!frame.waterReflectionEnabled)
+					waterUniforms.setUniform("LIQUID_REFLECTION_ENABLED", int32_t{ 0 });
+				for (size_t index = 0; frame.waterReflectionEnabled && index < frame.pipelineOptions->waterReflections.planarPlanes.size(); ++index)
 				{
 					auto const& plane = frame.pipelineOptions->waterReflections.planarPlanes[index];
 					auto reflected = buildPlanarReflectionView(

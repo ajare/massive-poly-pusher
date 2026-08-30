@@ -32,6 +32,12 @@ namespace mpp
 		uint32_t storedDepthOutputCount{ 0 };
 		uint32_t samplerBindingCount{ 0 };
 		uint32_t maxColourOutputMipLevels{ 0 };
+		// The first colour attachment is the pass's primary observable output.
+		// Generated Planar passes have exactly one, so telemetry can report the
+		// stable image name and its actual allocated dimensions directly.
+		std::string primaryColourOutputName;
+		uint32_t primaryColourOutputWidth{ 0 };
+		uint32_t primaryColourOutputHeight{ 0 };
 	};
 
 	// One stored attachment read back immediately after its producing pass.
@@ -93,6 +99,7 @@ namespace mpp
 		std::map<std::string, UniformCollection> mParameterOverrides;
 		std::vector<GraphPassExecutionStats> mLastExecutionStats;
 		std::vector<GraphPassHandle> mLastExecutionOrder;
+		std::string mLastFailedPassName;
 		struct GpuTimingQuery { GraphPassHandle pass; std::string name; uint32_t begin{ 0 }, end{ 0 }; };
 		struct GpuTimingResult { std::string name; double milliseconds{ 0.0 }; };
 		std::deque<std::vector<GpuTimingQuery>> mPendingGpuTimings;
@@ -128,6 +135,7 @@ namespace mpp
 		void clearPassCallbacks();
 		std::vector<GraphPassExecutionStats> const& getLastExecutionStats() const;
 		std::vector<GraphPassHandle> const& getLastExecutionOrder() const;
+		std::string const& getLastFailedPassName() const;
 		GraphFramebufferCacheStats getFramebufferCacheStats() const;
 		// Arms a synchronous readback of every stored pass output in the next
 		// execution. Capturing at pass boundaries preserves transient images before
