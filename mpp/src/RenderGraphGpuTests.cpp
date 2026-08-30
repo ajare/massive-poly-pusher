@@ -835,40 +835,56 @@ namespace mpp
 				planarSeamOptions.generatedWater = true;
 				planarSeamOptions.waterReflections.technique = WaterReflectionTechnique::Planar;
 				planarSeamOptions.waterReflections.planarResolution = PlanarReflectionResolution::Quarter;
-				planarSeamOptions.waterReflections.planarPlanes = { { 3.0f, ReflectionPlaneSide::Above } };
-				auto planarSeamPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestPlanarWaterSeamPipeline", planarSeamOptions);
-				planarSeamPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
-				size_t planarPasses = 0, planarWaterPasses = 0;
-				for (auto const& stats : planarSeamPipeline->getLastGraphExecutionStats())
+				for (size_t planeCount = 0; planeCount <= WaterReflectionOptions::MaxPlanarPlanes; ++planeCount)
 				{
-					if (stats.name == "SceneColourCopy") return fail("Planar reflection-source contract reused Screen-space copy topology");
-					if (stats.name == "PlanarReflection0")
+					planarSeamOptions.waterReflections.planarPlanes.clear();
+					for (size_t index = 0; index < planeCount; ++index)
+						planarSeamOptions.waterReflections.planarPlanes.push_back(
+							{ 3.0f + float(index), ReflectionPlaneSide::Above });
+					auto pipelineName = "GpuTestPlanarWaterBranches" + std::to_string(planeCount);
+					auto candidate = renderSystem->getOrCreateRenderPipeline(pipelineName, planarSeamOptions);
+					// Every active reflected-scene branch must execute again on the next
+					// frame; the graph owns no temporal cache or refresh throttle.
+					for (int frame = 0; frame < 2; ++frame)
 					{
-						++planarPasses;
-						if (stats.colourOutputCount != 1 || stats.depthOutputCount != 1 || stats.maxColourOutputMipLevels != 1)
-							return fail("Planar reflection pass lost its single colour/depth, no-mip output contract");
+						candidate->render(gateScene, gateCamera, glm::vec2(0.0f));
+						size_t planarPasses = 0, waterPasses = 0;
+						std::array<bool, WaterReflectionOptions::MaxPlanarPlanes> ranks{};
+						for (auto const& stats : candidate->getLastGraphExecutionStats())
+						{
+							if (stats.name == "SceneColourCopy")
+								return fail("Planar reflection-source contract reused Screen-space copy topology");
+							if (stats.name.rfind("PlanarReflection", 0) == 0)
+							{
+								++planarPasses;
+								for (size_t rank = 0; rank < ranks.size(); ++rank)
+									ranks[rank] |= stats.name == "PlanarReflection" + std::to_string(rank);
+								if (stats.colourOutputCount != 1 || stats.depthOutputCount != 1 || stats.maxColourOutputMipLevels != 1)
+									return fail("Planar reflection pass lost its single colour/depth, no-mip output contract");
+							}
+							else if (stats.name == "WaterScene")
+							{
+								++waterPasses;
+								if (stats.samplerBindingCount < 6)
+									return fail("Planar Water pass did not bind its bounded reflected-scene sampler set");
+							}
+						}
+						if (planarPasses != planeCount || waterPasses != (planeCount ? 1u : 0u))
+							return fail("zero-through-four Planar descriptors did not create exactly matching dynamic branches");
+						for (size_t rank = 0; rank < ranks.size(); ++rank)
+							if (ranks[rank] != (rank < planeCount))
+								return fail("dynamic Planar branches lost stable rank-based names");
 					}
-					else if (stats.name == "WaterScene")
+					for (size_t rank = 0; rank < planeCount; ++rank)
 					{
-						++planarWaterPasses;
-						if (stats.samplerBindingCount < 3) return fail("Planar Water pass did not consume the reflected scene image");
+						auto target = candidate->getGraphImageRenderTarget(
+							{ static_cast<uint32_t>(2 + 2 * rank), 1 });
+						if (!target || target->getWidth() != 16 || target->getHeight() != 16 ||
+							!nearColour(readFirstPixel(target), { 0, 0, 0, 0 }))
+							return fail("dynamic Quarter Planar image dimensions, transparent clear, or alpha validity were incorrect");
 					}
+					renderSystem->removeRenderPipeline(pipelineName);
 				}
-				if (planarPasses != 1 || planarWaterPasses != 1)
-					return fail("one supplied Planar plane did not create exactly one reflected-scene and Water pass");
-				auto planarTarget = planarSeamPipeline->getGraphImageRenderTarget({ 2, 1 });
-				if (!planarTarget || planarTarget->getWidth() != 16 || planarTarget->getHeight() != 16 ||
-					!nearColour(readFirstPixel(planarTarget), { 0, 0, 0, 0 }))
-					return fail("Quarter Planar image dimensions, transparent clear, or alpha validity were incorrect");
-				renderSystem->removeRenderPipeline("GpuTestPlanarWaterSeamPipeline");
-
-				planarSeamOptions.waterReflections.planarPlanes.clear();
-				auto dryPlanarPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestDryPlanarWaterPipeline", planarSeamOptions);
-				dryPlanarPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
-				for (auto const& stats : dryPlanarPipeline->getLastGraphExecutionStats())
-					if (stats.name.rfind("PlanarReflection", 0) == 0 || stats.name == "WaterScene")
-						return fail("zero supplied Planar planes created Planar GPU work");
-				renderSystem->removeRenderPipeline("GpuTestDryPlanarWaterPipeline");
 
 				gateScene->setViewport(0, 0, 65, 33);
 				for (auto const& [resolution, expected, name] : {
@@ -978,6 +994,24 @@ void main()
 				if (!foundRed || !foundBlue || foundForbiddenGreen || foundForbiddenMagenta || !foundValidAlpha)
 					return fail("rendered Planar output lost reflected content, winding/two-sided geometry, clipping, opaque/non-Water filtering, virtual-camera state, or alpha validity");
 				renderSystem->removeRenderPipeline("GpuTestRenderedPlanarPipeline");
+
+				// Different horizontal planes own independent camera projections and
+				// clipping results. Plane zero sees the fixture above it; plane two sees
+				// no retained fixture, so their images must remain observably distinct.
+				renderedPlanarOptions.waterReflections.planarPlanes = {
+					{ 0.0f, ReflectionPlaneSide::Above },
+					{ 2.0f, ReflectionPlaneSide::Above } };
+				auto multiElevationPipeline = renderSystem->getOrCreateRenderPipeline(
+					"GpuTestMultiElevationPlanarPipeline", renderedPlanarOptions);
+				multiElevationPipeline->render(planarScene, planarCamera, glm::vec2(0.0f));
+				auto lowPlaneTarget =
+					multiElevationPipeline->getGraphImageRenderTarget({ 2, 1 });
+				auto highPlaneTarget =
+					multiElevationPipeline->getGraphImageRenderTarget({ 4, 1 });
+				if (!lowPlaneTarget || !highPlaneTarget ||
+					readPixels(lowPlaneTarget) == readPixels(highPlaneTarget))
+					return fail("different Planar elevations produced indistinguishable reflected results");
+				renderSystem->removeRenderPipeline("GpuTestMultiElevationPlanarPipeline");
 
 				gateOptions.method = AmbientOcclusionMethod::Gtao;
 				pipeline->setAmbientOcclusionOptions(gateOptions);

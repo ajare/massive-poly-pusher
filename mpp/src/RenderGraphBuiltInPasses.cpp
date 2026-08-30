@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 #include "mpp/RenderGraphBuiltInPasses.h"
@@ -455,6 +456,14 @@ namespace mpp
 					waterUniforms.setUniform(
 						"MPP_PLANAR_REFLECTION_ELEVATION_" + suffix,
 						plane.elevation);
+					waterUniforms.setUniform(
+						"MPP_PLANAR_REFLECTION_MINIMUM_ELEVATION_" + suffix,
+						std::isfinite(plane.minimumMatchingElevation)
+							? plane.minimumMatchingElevation : plane.elevation - 0.01f);
+					waterUniforms.setUniform(
+						"MPP_PLANAR_REFLECTION_MAXIMUM_ELEVATION_" + suffix,
+						std::isfinite(plane.maximumMatchingElevation)
+							? plane.maximumMatchingElevation : plane.elevation + 0.01f);
 				}
 				frame.renderSystem->setActivePipelineUniformOverrides(waterUniforms);
 

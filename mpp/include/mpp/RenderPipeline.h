@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <limits>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -184,11 +185,15 @@ namespace mpp
 	};
 
 	// A generic horizontal reflection plane supplied by the host. MPP does not
-	// know what authored or generated feature selected it.
+	// know what authored or generated feature selected it. Optional matching
+	// bounds identify which horizontal surfaces consume this plane's image;
+	// omitted bounds retain the one-plane 0.01-unit matching contract.
 	struct _MPPAPI PlanarReflectionPlaneDescriptor
 	{
 		float elevation{ 0.0f };
 		ReflectionPlaneSide viewerSide{ ReflectionPlaneSide::Above };
+		float minimumMatchingElevation{ std::numeric_limits<float>::quiet_NaN() };
+		float maximumMatchingElevation{ std::numeric_limits<float>::quiet_NaN() };
 	};
 
 	// The complete virtual-camera state used by one horizontal Planar pass.

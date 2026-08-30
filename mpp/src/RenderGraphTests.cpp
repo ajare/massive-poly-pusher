@@ -69,11 +69,14 @@ namespace mpp
 			return fail("generated Water reflection-source defaults changed unexpectedly");
 		pipelineDefaults.waterReflections.technique = WaterReflectionTechnique::Planar;
 		pipelineDefaults.waterReflections.planarResolution = PlanarReflectionResolution::Quarter;
-		pipelineDefaults.waterReflections.planarPlanes.push_back({ 12.5f, ReflectionPlaneSide::Below });
+		pipelineDefaults.waterReflections.planarPlanes.push_back(
+			{ 12.5f, ReflectionPlaneSide::Below, 12.49f, 12.51f });
 		if (pipelineDefaults.waterReflections.technique != WaterReflectionTechnique::Planar ||
 			pipelineDefaults.waterReflections.planarResolution != PlanarReflectionResolution::Quarter ||
 			pipelineDefaults.waterReflections.planarPlanes.front().elevation != 12.5f ||
-			pipelineDefaults.waterReflections.planarPlanes.front().viewerSide != ReflectionPlaneSide::Below)
+			pipelineDefaults.waterReflections.planarPlanes.front().viewerSide != ReflectionPlaneSide::Below ||
+			pipelineDefaults.waterReflections.planarPlanes.front().minimumMatchingElevation != 12.49f ||
+			pipelineDefaults.waterReflections.planarPlanes.front().maximumMatchingElevation != 12.51f)
 			return fail("generated Water pipeline did not retain its generic Planar source contract");
 		pipelineDefaults.depthPrepass = false;
 		if (pipelineDefaults.depthPrepass)
