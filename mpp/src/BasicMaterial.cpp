@@ -183,7 +183,10 @@ namespace mpp
 				// shadows. Neutral material resources keep a generic shader valid in
 				// a pipeline without a water pass; MPP.WaterScene replaces them.
 				else if (samplerName == "PBR_SCENE_COLOUR_RESOLVED" ||
-					samplerName == "PBR_PLANAR_REFLECTION_0") textureName = "__mpp_tex_pbr_black__";
+					samplerName == "PBR_PLANAR_REFLECTION_0" ||
+					samplerName == "PBR_PLANAR_REFLECTION_1" ||
+					samplerName == "PBR_PLANAR_REFLECTION_2" ||
+					samplerName == "PBR_PLANAR_REFLECTION_3") textureName = "__mpp_tex_pbr_black__";
 				else if (samplerName == "PBR_SCENE_DEPTH") textureName = "__mpp_tex_pbr_white__";
 				if (textureName.empty())
 				{

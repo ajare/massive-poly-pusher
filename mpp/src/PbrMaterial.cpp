@@ -409,7 +409,11 @@ namespace mpp
 					{
 						textureName = "__mpp_tex_pbr_normal__";
 					}
-					else if (samplerName == "PBR_SCENE_COLOUR_RESOLVED")
+					else if (samplerName == "PBR_SCENE_COLOUR_RESOLVED" ||
+						samplerName == "PBR_PLANAR_REFLECTION_0" ||
+						samplerName == "PBR_PLANAR_REFLECTION_1" ||
+						samplerName == "PBR_PLANAR_REFLECTION_2" ||
+						samplerName == "PBR_PLANAR_REFLECTION_3")
 					{
 						// Replaced by the water graph pass's resolved scene colour.
 						// Black keeps a water material valid in a pipeline without
