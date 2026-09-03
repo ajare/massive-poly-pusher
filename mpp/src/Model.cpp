@@ -248,6 +248,7 @@ namespace mpp
 		auto resourceMgr = getResourceManager();
 
 		// Initialise extents calcualation
+		mBoundsCalculated = mStr->getCalculateBounds();
 		if (mStr->getCalculateBounds())
 		{
 			mBounds[0].x = 1e10f;
@@ -499,6 +500,15 @@ namespace mpp
 	{
 		bMin = mBounds[0];
 		bMax = mBounds[1];
+	}
+
+	/*
+	 * Are the model extents a measurement of this model's geometry?
+	 */
+	bool Model::hasBounds() const
+	{
+		return mBoundsCalculated && mBounds[0].x <= mBounds[1].x &&
+			mBounds[0].y <= mBounds[1].y && mBounds[0].z <= mBounds[1].z;
 	}
 
 	/*

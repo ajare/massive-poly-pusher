@@ -13,6 +13,11 @@ namespace mpp
 	class _MPPAPI Model : public Resource
 	{
 		glm::vec3 mBounds[2];
+		// A stream can decline the load-time position scan; a
+		// ProgrammaticModelStream whose vertices are rewritten every frame is the
+		// usual case. mBounds is then a placeholder rather than a measurement, so
+		// record which of the two it holds.
+		bool mBoundsCalculated{ false };
 		uint64_t mMaterialRevision{ 1 };
 
 	protected:
@@ -58,6 +63,12 @@ namespace mpp
 		Mesh* getMesh(int index);
 
 		void getBounds(glm::vec3& bMin, glm::vec3& bMax) const;
+
+		// Whether getBounds() describes this model's geometry. False when the
+		// stream declined the calculation, and when it ran over no vertices and
+		// left the inverted initial extent. A caller that culls by bounds must
+		// read false as unbounded, never as the box getBounds() reports.
+		bool hasBounds() const;
 
 		void setMeshesDynamic();
 

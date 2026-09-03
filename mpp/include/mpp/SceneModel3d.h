@@ -58,7 +58,8 @@ namespace mpp
 		uint64_t getShadowRevision() const;
 
 		// Uses the model's transformed local AABB, conservatively retaining every
-		// model whose bounds touch the finite point-light volume.
+		// model whose bounds touch the finite point-light volume. A model with no
+		// measured bounds (Model::hasBounds()) is unbounded and always retained.
 		bool intersectsSphere(glm::vec3 const& centre, float radius) const;
 
 		std::shared_ptr<ModelRenderParams> getParams();
