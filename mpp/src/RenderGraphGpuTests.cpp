@@ -587,6 +587,61 @@ namespace mpp
 			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
 			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
 				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
+
+			// A batched or otherwise dynamic model declines the load-time position
+			// scan, so its extents are a placeholder at its own local origin rather
+			// than a measurement. Volume selection has to read that as unbounded:
+			// culling against the placeholder selects by the distance from the light
+			// to the model's origin, which drops a world-sized caster entirely as
+			// soon as the light moves further than the range away from that origin.
+			mesh::MeshSpecification casterSpec(mesh::Primitive::Type::Triangles);
+			auto casterLayout = casterSpec.createVertexBufferAttributeLayout(false);
+			casterLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+			casterLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+			casterLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			casterLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
+			auto casterParser = std::make_shared<program::Parser>();
+			casterParser->setMeshSpecification(casterSpec);
+			casterParser->setVertexSource(VertexShader3dTemplate);
+			casterParser->setFragmentSource(R"(
+@@Version
+@@Uniform(vec4 GPU_TEST_COLOUR);
+void main()
+{
+    @Out(vec4 COLOUR) = @Uniform(GPU_TEST_COLOUR);
+}
+)");
+			auto casterProgramStream = std::make_shared<ProgrammaticProgramStream>(renderSystem->getResourceManager());
+			casterProgramStream->setParser(casterParser);
+			auto casterProgram = renderSystem->getResourceManager()->declareResource("GpuTestVolumeCaster.Program", casterProgramStream).first;
+			casterProgram->load();
+			auto casterMaterialStream = std::make_shared<ProgrammaticBasicMaterialStream>(renderSystem->getResourceManager());
+			casterMaterialStream->setProgram(casterProgram->getName());
+			casterMaterialStream->setUniform("GPU_TEST_COLOUR", glm::vec4(1.0f));
+			auto casterMaterial = renderSystem->getResourceManager()->declareResource("GpuTestVolumeCaster.Material", casterMaterialStream).first;
+			casterMaterial->load();
+			auto measuredStream = std::make_shared<BoxModelStream>(renderSystem->getResourceManager(), casterSpec, casterMaterial->getName(), 1.0f, 1.0f, 1.0f);
+			auto measuredModelResource = renderSystem->getResourceManager()->declareResource("GpuTestMeasuredCaster.Model", measuredStream).first;
+			measuredModelResource->load();
+			auto unmeasuredStream = std::make_shared<BoxModelStream>(renderSystem->getResourceManager(), casterSpec, casterMaterial->getName(), 1.0f, 1.0f, 1.0f);
+			unmeasuredStream->setCalculateBounds(false);
+			auto unmeasuredModelResource = renderSystem->getResourceManager()->declareResource("GpuTestUnmeasuredCaster.Model", unmeasuredStream).first;
+			unmeasuredModelResource->load();
+			auto const* measuredModel = dynamic_cast<Model const*>(measuredModelResource.get());
+			auto const* unmeasuredModel = dynamic_cast<Model const*>(unmeasuredModelResource.get());
+			if (!measuredModel || !unmeasuredModel || !measuredModel->hasBounds() || unmeasuredModel->hasBounds())
+				return fail("a model that declined the bounds calculation did not report unmeasured extents");
+			auto measuredDistantCaster = casterScene.add3dModel(measuredModelResource);
+			measuredDistantCaster->translate({ 100.0f, 0.0f, 0.0f });
+			auto unmeasuredDistantCaster = casterScene.add3dModel(unmeasuredModelResource);
+			unmeasuredDistantCaster->translate({ 100.0f, 0.0f, 0.0f });
+			auto unmeasuredSelection = casterScene.get3dModelsInSphere({}, 10.0f);
+			if (std::find(unmeasuredSelection.begin(), unmeasuredSelection.end(), measuredDistantCaster) != unmeasuredSelection.end())
+				return fail("point-light volume retained a measured caster lying outside the light range");
+			if (std::find(unmeasuredSelection.begin(), unmeasuredSelection.end(), unmeasuredDistantCaster) == unmeasuredSelection.end())
+				return fail("point-light volume culled a caster whose model never measured its bounds");
+			casterScene.remove3dModel(measuredDistantCaster);
+			casterScene.remove3dModel(unmeasuredDistantCaster);
 			auto casterOptions = changedQuality; casterOptions.light.position = {}; casterOptions.light.range = 10.0f;
 			renderSystem->configureShadowDomain("GpuTestVolumeCasters", casterOptions);
 			renderSystem->renderShadowDomain("GpuTestVolumeCasters", volumeCasters);

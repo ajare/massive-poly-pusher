@@ -102,6 +102,13 @@ namespace mpp
 	{
 		auto const* model = dynamic_cast<Model const*>(mModel.get());
 		if (!model || radius < 0.0f) return false;
+		// A model that never measured its extents reports the placeholder box at
+		// its own local origin. Culling against that would select a caster by the
+		// distance from the light to the model's origin rather than to its
+		// geometry, dropping a world-sized dynamic model as soon as the light
+		// moved further than the radius from that origin. Unknown bounds are
+		// unbounded: retain the model and let the depth pass decide.
+		if (!model->hasBounds()) return true;
 		glm::vec3 localMin, localMax;
 		model->getBounds(localMin, localMax);
 		glm::vec3 worldMin(std::numeric_limits<float>::max());

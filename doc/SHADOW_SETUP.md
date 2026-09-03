@@ -58,6 +58,15 @@ range boundary. Increase normal bias before constant bias to address grazing-ang
 acne; too much of either causes peter-panning. Use the smallest range and tightest
 near plane that cover the intended volume.
 
+A point domain selects its casters by the finite light sphere, independently of
+camera visibility. Selection uses each model's measured bounds; a model that
+declined the load-time bounds calculation -- every `Batch` model, and any stream
+with `setCalculateBounds(false)` -- reports no measured extents and is therefore
+treated as unbounded and always retained. Its placeholder bounds are a point at
+the model's own origin, so culling against them would silently drop a
+world-sized dynamic caster once the light moved beyond the range from that
+origin.
+
 Shadow domains are cached. A clean domain performs no face passes; changes to the
 light/options, participating caster state/revision, or explicit
 `invalidateShadowDomain()` make it dirty. `getShadowDomainDiagnostics()` reports
