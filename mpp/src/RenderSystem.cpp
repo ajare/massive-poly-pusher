@@ -26,6 +26,7 @@
 #include "utils/StringUtils.h"
 
 #include "mpp/Config.h"
+#include "mpp/ParticleSystem.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Camera.h"
 #include "mpp/ResourceManager.h"
@@ -204,6 +205,9 @@ namespace mpp
 		delete mModelInstances;
 		delete mMeshInstances;
 		delete mInternalFont;
+		// Ahead of the core-resource sweep: this releases the programs it acquired
+		// and deletes its GPU objects while the context is still current.
+		mParticleSystem.reset();
 		destroyLightsData();
 		destroyPbrLightsData();
 		destroyCameraFrameData();
@@ -664,6 +668,37 @@ namespace mpp
 			mCaps.maxVertexAttributeStride = (uint32_t)max(0, maxVertexAttributeStride);
 		}
 
+		// Compute and shader-storage limits. Compute is queried rather than assumed
+		// -- see Caps. MPP_FORCE_NO_COMPUTE_SUPPORT builds the unsupported path so
+		// the graceful-degradation contract can be exercised on hardware that does
+		// support it: the particle system then warns once and draws nothing.
+#if defined(MPP_FORCE_NO_COMPUTE_SUPPORT)
+		mCaps.supportsCompute = false;
+#else
+		mCaps.supportsCompute = GLEW_VERSION_4_3 ||
+			(GLEW_ARB_compute_shader && GLEW_ARB_shader_storage_buffer_object && GLEW_ARB_draw_indirect);
+#endif
+		if (mCaps.supportsCompute)
+		{
+			GLint limit = 0;
+			for (GLuint axis = 0; axis < 3; ++axis)
+			{
+				GL_CHECK(glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, axis, &limit));
+				mCaps.maxComputeWorkGroupCount[axis] = (uint32_t)max(0, limit);
+				GL_CHECK(glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, axis, &limit));
+				mCaps.maxComputeWorkGroupSize[axis] = (uint32_t)max(0, limit);
+			}
+			GL_CHECK(glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &limit));
+			mCaps.maxComputeWorkGroupInvocations = (uint32_t)max(0, limit);
+			// The block-size query is a 64-bit limit in the specification; the 32-bit
+			// entry point saturates at INT_MAX, which is far beyond any pool this
+			// engine allocates and is what the limit is compared against.
+			GL_CHECK(glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &limit));
+			mCaps.maxShaderStorageBlockSize = (uint32_t)max(0, limit);
+			GL_CHECK(glGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS, &limit));
+			mCaps.maxShaderStorageBufferBindings = (uint32_t)max(0, limit);
+		}
+
 		// Print caps
 		infoMessage(std::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
 		infoMessage(std::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
@@ -688,6 +723,16 @@ namespace mpp
 		infoMessage(std::format("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
 		infoMessage(std::format("Max vertex attributes: {}", mCaps.maxVertexAttributes));
 		infoMessage(std::format("Max vertex attribute stride: {} bytes", mCaps.maxVertexAttributeStride));
+
+		infoMessage(std::format("Compute shaders: {}", mCaps.supportsCompute ? "yes" : "no"));
+		if (mCaps.supportsCompute)
+		{
+			infoMessage(std::format("Max compute work group count: {}x{}x{}", mCaps.maxComputeWorkGroupCount[0], mCaps.maxComputeWorkGroupCount[1], mCaps.maxComputeWorkGroupCount[2]));
+			infoMessage(std::format("Max compute work group size: {}x{}x{}", mCaps.maxComputeWorkGroupSize[0], mCaps.maxComputeWorkGroupSize[1], mCaps.maxComputeWorkGroupSize[2]));
+			infoMessage(std::format("Max compute work group invocations: {}", mCaps.maxComputeWorkGroupInvocations));
+			infoMessage(std::format("Max shader storage block size: {} bytes", mCaps.maxShaderStorageBlockSize));
+			infoMessage(std::format("Max shader storage buffer bindings: {}", mCaps.maxShaderStorageBufferBindings));
+		}
 	}
 
 	void RenderSystem::addCoreResource(ResourcePtr resource, bool load)
@@ -709,6 +754,10 @@ namespace mpp
 	void RenderSystem::createCoreResources(ResourceManager* resourceMgr)
 	{
 		mResourceMgr = resourceMgr;
+
+		// Cheap to construct: nothing GPU-side happens until a graph actually
+		// draws particles.
+		mParticleSystem = make_unique<ParticleSystem>(this, resourceMgr);
 
 		// Default 3d program
 		{
@@ -3710,6 +3759,41 @@ namespace mpp
 	map<string, ResourcePtr> const& RenderSystem::getActivePipelineSamplerOverrides() const
 	{
 		return mActivePipelineSamplerOverrides;
+	}
+
+	/*
+	 * Advance the particle simulation for this frame.
+	 *
+	 */
+	void RenderSystem::simulateParticles()
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->simulate();
+
+		// The raw compute program was bound outside the Program cache, which would
+		// otherwise skip rebinding whatever material program was last used.
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	/*
+	 * Draw the live particles into the current render target.
+	 *
+	 */
+	void RenderSystem::renderParticles()
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->render();
+
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	bool RenderSystem::particlesAvailable()
+	{
+		if (!mParticleSystem) return false;
+		mParticleSystem->initialise();
+		return mParticleSystem->isAvailable();
 	}
 
 	void RenderSystem::setActivePipelineUniformOverrides(UniformCollection const& overrides)

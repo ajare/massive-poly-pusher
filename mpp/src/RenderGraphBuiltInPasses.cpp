@@ -378,6 +378,21 @@ namespace mpp
 		// Water-only scene pass: draws the water materials the opaque pass skipped,
 		// on top of the opaque result, with the resolved scene colour and the opaque
 		// depth buffer bound as pipeline samplers so PBR_SPEC_WATER can march them.
+		// A pure draw pass. Simulation is dispatched once per frame outside the
+		// graph (ADR 0005), so this may appear any number of times in a graph and
+		// runs unchanged from a planar reflection's mirrored camera or a
+		// point-shadow face expansion -- none of which advance the particles.
+		class ParticleScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				frame.renderSystem->renderParticles();
+			}
+		};
+
 		class WaterScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -562,6 +577,13 @@ namespace mpp
 		// behind the sampled depth instead, which is the same occlusion result.
 		waterScene.materialSlots.push_back("SceneMaterials");
 		registry.registerScenePassFactory("MPP.WaterScene", [] { return std::make_unique<WaterScenePass>(); }, waterScene);
+
+		auto particleScene = metadata("Particles", "Scene", GraphPassType::Scene);
+		// Deliberately no depth attachment and no scene depth input yet: particles
+		// never write depth, and the soft-particle depth read arrives as an
+		// ordinary optional named input once billboards and appearances exist.
+		particleScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleScene", [] { return std::make_unique<ParticleScenePass>(); }, particleScene);
 
 		auto customFullscreen = metadata("Custom Fullscreen", "Custom", GraphPassType::Fullscreen);
 		customFullscreen.acceptsProgram = true;

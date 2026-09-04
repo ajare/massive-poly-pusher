@@ -94,6 +94,19 @@ namespace mpp
 			}
 			return false;
 		}
+
+		// Particles simulate once per rendered frame, outside the graph (ADR 0005),
+		// so the dispatch is issued here rather than by the pass -- but only when
+		// something in this graph is actually going to draw them.
+		bool graphHasParticlePass(RenderGraph const& graph)
+		{
+			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
+			{
+				auto const info = graph.getPassInfo({ id });
+				if (info.enabled && info.callbackFactory == "MPP.ParticleScene") return true;
+			}
+			return false;
+		}
 	}
 
 
@@ -500,6 +513,7 @@ namespace mpp
 			}
 			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back(), graphHasWaterPass(*graph), mOptions.waterReflections.enabled };
 			mGraphExecutor->setFrameContext(&frameContext);
+			if (mOptions.graphPasses.particles && graphHasParticlePass(*graph)) mRenderSystem->simulateParticles();
 			beginFlowSnapshot();
 			try
 			{
@@ -819,6 +833,31 @@ namespace mpp
 			presentationTexture = shadedSceneTexture;
 		}
 
+		if (mOptions.generatedParticles && mOptions.graphPasses.particles)
+		{
+			// After the opaque scene and any water, before bloom: particles are
+			// emissive-and-never-lit, so they belong in the image bloom extracts
+			// from. No depth attachment -- transparent geometry must not write
+			// depth, and depth testing arrives with soft particles.
+			auto particlePass = graph.addPass("Particles", GraphPassType::Scene);
+			graph.setPassCallbackFactory(particlePass, "MPP.ParticleScene");
+			presentationTexture = graph.writeColour(particlePass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+			GraphRasterState particleRaster;
+			particleRaster.explicitState = true;
+			particleRaster.depthTest = false;
+			particleRaster.depthWrite = false;
+			particleRaster.cullMode = GraphCullMode::None;
+			particleRaster.blend = true;
+			particleRaster.sourceColourBlend = GraphBlendFactor::One;
+			particleRaster.destinationColourBlend = GraphBlendFactor::One;
+			// Additive in colour only: the scene target's own coverage is left alone.
+			particleRaster.sourceAlphaBlend = GraphBlendFactor::Zero;
+			particleRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			particleRaster.multisample = false;
+			graph.setPassRasterState(particlePass, particleRaster);
+			shadedSceneTexture = presentationTexture;
+		}
+
 		enum class BloomGraphStep { Extract, Horizontal, Vertical, Composite };
 		vector<GraphPassHandle> bloomPasses;
 		vector<GraphImageHandle> bloomInputs;
@@ -1020,6 +1059,7 @@ namespace mpp
 		frameContext.hasWaterPass = graphHasWaterPass(graph);
 		frameContext.waterReflectionEnabled = reflectionEnabled;
 		mGraphExecutor->setFrameContext(&frameContext);
+		if (mOptions.graphPasses.particles && graphHasParticlePass(graph)) mRenderSystem->simulateParticles();
 		beginFlowSnapshot();
 		try
 		{

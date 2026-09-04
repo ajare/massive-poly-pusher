@@ -150,6 +150,7 @@ namespace mpp
 		bool scene{ true };
 		bool ambientOcclusion{ true };
 		bool bloom{ true };
+		bool particles{ true };
 		bool presentation{ true };
 	};
 
@@ -248,6 +249,11 @@ namespace mpp
 		// being implied by this graph opt-in. Default-off for compatibility.
 		bool generatedWater{ false };
 		WaterReflectionOptions waterReflections;
+		// Adds a generated MPP.ParticleScene pass after the opaque/water scene and
+		// before bloom, so particles bloom like any other emissive. Authored graph
+		// templates place their own particle passes instead. Default-off: a
+		// pipeline that never asked for particles must not grow a pass.
+		bool generatedParticles{ false };
 		// Draw opaque scene geometry with depth-only programs before material
 		// shading. The material pass then uses LessEqual against that depth.
 		bool depthPrepass{ true };

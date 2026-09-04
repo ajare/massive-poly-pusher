@@ -20,6 +20,7 @@
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
+#include "mpp/RenderGraphStream.h"
 #include "mpp/RenderGraphTargets.h"
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
@@ -1859,6 +1860,109 @@ void main()
 					if (resolvedTarget->getWidth() != viewport.x || resolvedTarget->getHeight() != viewport.y)
 						return fail("resolved scene colour did not follow the viewport");
 				}
+			}
+
+			stage = "particle vertical slice";
+			{
+				// The thin end-to-end path: a compute dispatch and an attribute-less
+				// indirect draw of GPU-written arguments, surviving GL_CHECK, the debug
+				// context and graph state management, in both a generated graph and an
+				// authored template. Unavailable compute is not fatal anywhere here.
+				auto const& particleCaps = renderSystem->getCaps();
+				if (particleCaps.supportsCompute &&
+					(particleCaps.maxComputeWorkGroupInvocations == 0 || particleCaps.maxComputeWorkGroupCount[0] == 0 ||
+						particleCaps.maxComputeWorkGroupSize[0] == 0 || particleCaps.maxShaderStorageBlockSize == 0 ||
+						particleCaps.maxShaderStorageBufferBindings == 0))
+					return fail("compute support was reported without querying its limits");
+
+				auto particleScene = renderSystem->createScene("Default");
+				particleScene->setViewport(0, 0, 64, 64);
+				particleScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 1.0f));
+				auto particleCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 6.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+
+				// Particles are the only thing in this scene, so any lit pixel in the
+				// pass's own stored output came from the indirect draw.
+				auto drewParticles = [](std::vector<GraphImageCapture> const& captures)
+				{
+					for (auto const& capture : captures)
+						if (capture.passName == "Particles" && !capture.depth)
+							for (auto value : capture.pixels) if (value) return true;
+					return false;
+				};
+
+				RenderPipelineOptions withoutParticles;
+				withoutParticles.mode = RenderPipelineMode::GraphLegacyForward;
+				auto plainPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestParticlesOffPipeline", withoutParticles);
+				plainPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				for (auto const& stats : plainPipeline->getLastGraphExecutionStats())
+					if (stats.name == "Particles") return fail("default-off generated graph inserted a particle pass");
+				renderSystem->removeRenderPipeline("GpuTestParticlesOffPipeline");
+
+				RenderPipelineOptions generatedParticleOptions;
+				generatedParticleOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				generatedParticleOptions.generatedParticles = true;
+				auto generatedPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedParticlePipeline", generatedParticleOptions);
+				generatedPipeline->requestGraphImageCapture();
+				generatedPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				bool executedParticles = false;
+				for (auto const& stats : generatedPipeline->getLastGraphExecutionStats())
+					if (stats.name == "Particles")
+					{
+						executedParticles = true;
+						// Transparent geometry must not write depth, and the slice has no
+						// soft-particle depth read, so the pass carries no depth attachment.
+						if (stats.colourOutputCount != 1 || stats.depthOutputCount != 0)
+							return fail("the generated particle pass did not draw into exactly one colour output with no depth attachment");
+					}
+				if (!executedParticles) return fail("opted-in generated particles did not insert a particle pass");
+				bool const particlesAvailable = renderSystem->particlesAvailable();
+				if (drewParticles(generatedPipeline->takeGraphImageCaptures()) != particlesAvailable)
+					return fail("GraphLegacyForward particles did not draw exactly when the particle system reported itself available");
+				renderSystem->removeRenderPipeline("GpuTestGeneratedParticlePipeline");
+
+				// The same pass, authored into a graph template instead of generated.
+				auto authoredGraph = std::make_shared<RenderGraph>();
+				GraphImageDesc authoredColourDesc;
+				authoredColourDesc.format = GraphImageFormat::Rgba16f;
+				authoredColourDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+				auto authoredColour = authoredGraph->createImage("GpuTestParticleColour", authoredColourDesc);
+				auto authoredPass = authoredGraph->addPass("Particles", GraphPassType::Scene);
+				authoredGraph->setPassCallbackFactory(authoredPass, "MPP.ParticleScene");
+				authoredColour = authoredGraph->writeColour(authoredPass, authoredColour, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+				GraphRasterState authoredRaster;
+				authoredRaster.explicitState = true;
+				authoredRaster.depthTest = false;
+				authoredRaster.depthWrite = false;
+				authoredRaster.cullMode = GraphCullMode::None;
+				authoredRaster.blend = true;
+				authoredRaster.sourceColourBlend = GraphBlendFactor::One;
+				authoredRaster.destinationColourBlend = GraphBlendFactor::One;
+				authoredRaster.sourceAlphaBlend = GraphBlendFactor::Zero;
+				authoredRaster.destinationAlphaBlend = GraphBlendFactor::One;
+				authoredRaster.multisample = false;
+				authoredGraph->setPassRasterState(authoredPass, authoredRaster);
+
+				RenderGraphPassFactoryRegistry particleRegistry;
+				registerBuiltInRenderGraphPasses(particleRegistry);
+				auto const particleDiagnostics = particleRegistry.validate(*authoredGraph);
+				if (particleDiagnostics.hasErrors())
+					return fail("the authored particle pass failed its factory contract: " + particleDiagnostics.getDiagnostics().front().message);
+
+				auto authoredStream = std::make_shared<RenderGraphStream>(renderSystem->getResourceManager());
+				authoredStream->setGraph(authoredGraph);
+				auto authoredTemplate = renderSystem->getResourceManager()->declareResource("GpuTestParticleGraph", authoredStream).first;
+				authoredTemplate->load();
+				authoredTemplate->create();
+
+				RenderPipelineOptions authoredParticleOptions;
+				authoredParticleOptions.mode = RenderPipelineMode::XmlGraphPbrForward;
+				authoredParticleOptions.graphTemplate = authoredTemplate;
+				auto authoredPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestAuthoredParticlePipeline", authoredParticleOptions);
+				authoredPipeline->requestGraphImageCapture();
+				authoredPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				if (drewParticles(authoredPipeline->takeGraphImageCaptures()) != particlesAvailable)
+					return fail("XmlGraphPbrForward particles did not draw the same as the generated graph");
+				renderSystem->removeRenderPipeline("GpuTestAuthoredParticlePipeline");
 			}
 
 			stage = "MRT readback";

@@ -46,6 +46,7 @@ namespace mpp
 {
 	class Program;
 	class Camera;
+	class ParticleSystem; // Forward-declared so as to not pollute client apps.
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
@@ -334,6 +335,13 @@ namespace mpp
 		UniformBuffer* mCameraFrameBuffer{ nullptr };
 
 		//
+		// GPU particles. Created with the core resources; its GPU resources are
+		// built on first use, so a pipeline whose graph has no MPP.ParticleScene
+		// pass never pays for compute programs or shader storage buffers.
+		//
+		std::unique_ptr<ParticleSystem> mParticleSystem;
+
+		//
 		// Scenes
 		//
 		std::map<std::string, SceneFactory> mSceneFactories;
@@ -619,6 +627,21 @@ namespace mpp
 		void setActivePipelineUniformOverrides(UniformCollection const& overrides);
 
 		UniformCollection const& getActivePipelineUniformOverrides() const;
+
+		//
+		// Particles
+		//
+
+		// One simulation dispatch for this rendered frame, issued before graph
+		// execution (ADR 0005) by a pipeline whose graph draws particles. A graph
+		// pass may execute several times per frame and must never call this.
+		void simulateParticles();
+
+		// The particle draw, issued from inside MPP.ParticleScene. Does nothing
+		// when the particle system is unavailable.
+		void renderParticles();
+
+		bool particlesAvailable();
 
 		// Publishes the camera state the CameraFrame UBO (binding 3) exposes to
 		// scene material programs. `view` and `projection` must be exactly the

@@ -278,6 +278,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/BufferDataProvider.cpp
     mpp/src/BufferRenderer.cpp
     mpp/src/Camera.cpp
+    mpp/src/ComputeProgram.cpp
     mpp/src/CircleBatch.cpp
     mpp/src/ClipRectangle.cpp
     mpp/src/Colour.cpp
@@ -313,6 +314,8 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ModelStream.cpp
     mpp/src/MppException.cpp
     mpp/src/MppModelStream.cpp
+    mpp/src/ParticleDrawProgram.cpp
+    mpp/src/ParticleSystem.cpp
     mpp/src/PersistentMappedBuffer.cpp
     mpp/src/PostEffectMaterial.cpp
     mpp/src/PostEffectMaterialStream.cpp
@@ -329,6 +332,8 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ProgrammaticTextureStream.cpp
     mpp/src/ProgramStream.cpp
     mpp/src/QuadBatch.cpp
+    mpp/src/RawShaderProgram.cpp
+    mpp/src/RawShaderStream.cpp
     mpp/src/RenderGraph.cpp
     mpp/src/RenderGraphExecutor.cpp
     mpp/src/RenderGraphStream.cpp
@@ -362,6 +367,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/SceneTemplate.cpp
     mpp/src/SceneModel2d.cpp
     mpp/src/SceneModel3d.cpp
+    mpp/src/ShaderStorageBuffer.cpp
     mpp/src/Screen.cpp
     mpp/src/SphereModelStream.cpp
     mpp/src/StaticLogger.cpp

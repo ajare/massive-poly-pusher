@@ -52,6 +52,18 @@ namespace mpp
 
 		uint32_t maxVertexAttributes{ 0 };
 		uint32_t maxVertexAttributeStride{ 0 };
+
+		// Compute and shader-storage limits. The context is requested at 4.4 core,
+		// but a request is only a request: SDL may return a lower context and a
+		// driver may still refuse a valid kernel. Everything below stays zero
+		// while supportsCompute is false, so callers validate against queried
+		// numbers rather than assumed ones.
+		bool supportsCompute{ false };
+		uint32_t maxComputeWorkGroupCount[3]{};
+		uint32_t maxComputeWorkGroupSize[3]{};
+		uint32_t maxComputeWorkGroupInvocations{ 0 };
+		uint32_t maxShaderStorageBlockSize{ 0 };
+		uint32_t maxShaderStorageBufferBindings{ 0 };
 	};
 
 }
