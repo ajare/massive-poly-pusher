@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -26,6 +27,7 @@
 #include <mpp/app/RenderSystemConfig.h>
 #include <mpp/app/TimerSDL.h>
 #include <mpp/app/WindowSDL.h>
+#include <mpp/resource-parsers/ParticleEffectParser.h>
 
 #include "DiagnosticsView.h"
 #include "ParticleDocument.h"
@@ -82,19 +84,46 @@ namespace particle_editor
 			std::fprintf(stderr, "Particle Editor fatal error: %s\n", message.c_str());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Particle Editor Error", message.c_str(), nullptr);
 		}
+
+		int validateParticleEffect(std::filesystem::path const& path)
+		{
+			auto result = mpp::resource_parsers::ParticleEffectParser::fromFile(path.string());
+			for (auto const& diagnostic : result.diagnostics.getDiagnostics())
+			{
+				auto const& location = diagnostic.location;
+				auto source = location.document.empty() ? path.string() : location.document;
+				if (location.line) source += ":" + std::to_string(location.line);
+				if (location.column) source += ":" + std::to_string(location.column);
+				std::fprintf(stderr, "%s: %s %s: %s\n", source.c_str(),
+					mpp::diagnosticSeverityName(diagnostic.severity), diagnostic.code.c_str(), diagnostic.message.c_str());
+			}
+			if (result.diagnostics.hasErrors()) return 1;
+			std::fprintf(stdout, "%s: valid particle effect\n", path.string().c_str());
+			return 0;
+		}
 	}
 
 	int ParticleEditorApplication::run(int argc, char** argv)
 	{
 		try
 		{
+			if (argc >= 2 && std::string(argv[1]) == "--validate")
+			{
+				if (argc != 3)
+				{
+					std::fprintf(stderr, "usage: ParticleEditor --validate <effect.particle.yaml>\n");
+					return 2;
+				}
+				return validateParticleEffect(argv[2]);
+			}
+
 			std::filesystem::path startupPath;
 			for (int index = 1; index < argc; ++index)
 			{
 				std::string argument = argv[index];
 				if (argument == "--help" || argument == "-h")
 				{
-					std::printf("ParticleEditor options:\n  --help, -h          Show this help.\n  --document-tests    Run document contract tests.\n  [effect.particle.yaml] Open a particle effect.\n");
+					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
 					return 0;
 				}
 				if (argument == "--document-tests")
@@ -123,18 +152,19 @@ namespace particle_editor
 			auto resourcesPath = resourceRoot(iniPath);
 			auto options = mpp::app::loadRenderSystemOptions(iniPath);
 
-			ParticleDocument document;
+			ParticleDocumentTabs documents(false);
+			std::string startupFailure;
+			if (!startupPath.empty() && !documents.open(startupPath))
+				startupFailure = "Could not open particle effect '" + startupPath.string() + "'.";
+			if (documents.size() == 0u) documents.createNew();
 			DiagnosticsView diagnostics;
-			if (!startupPath.empty()) document.open(startupPath);
-			diagnostics.setDocumentDiagnostics(document.diagnostics());
+			diagnostics.setOperationFailure(startupFailure);
 
 			WindowSDL window("Particle Editor");
 			window.create(1280, 800, false, true);
 			mpp::Logger logger;
 			if (!logger.initialise("ParticleEditor.log", mpp::Logger::Level::Debug))
 				throw std::runtime_error("Could not create Particle Editor log.");
-			// ResourceManager must outlive RenderSystem because renderer-owned resources
-			// release themselves back to it from RenderSystem's destructor.
 			std::unique_ptr<mpp::ResourceManager> resourceManager;
 			mpp::RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger, options);
 			resourceManager = std::make_unique<mpp::ResourceManager>(&renderSystem, &logger);
@@ -150,41 +180,115 @@ namespace particle_editor
 
 			ParticlePreview preview(&renderSystem, resourceManager.get());
 			preview.initialise(resourcesPath, 900, 650);
-			std::string previewFailure;
-			preview.install(document.specification(), &previewFailure);
-			diagnostics.setPreviewFailure(previewFailure);
 			auto previewTexture = provider->registerTexture(preview.texture());
+			ParticleDocument* installedDocument = nullptr;
+			uint64_t installedRevision = 0;
 			ParticleInspector inspector;
 			mpp::app::AsyncParticleFileDialog fileDialog;
 			enum class DialogPurpose { None, Open, Save };
 			DialogPurpose dialogPurpose = DialogPurpose::None;
-			bool showDiagnostics = false;
-			// Preserve a saved ImGui docking arrangement. An absent or unsplit
-			// dockspace still receives the default left/right editor layout below.
+			size_t dialogDocument = 0;
+			bool dialogClosesDocument = false;
+			bool showDiagnostics = !startupFailure.empty();
 			bool resetLayout = false;
 			bool showAbout = false;
 			bool running = true;
+			bool exitSequence = false;
+			std::optional<size_t> pendingClose;
+			bool openUnsavedPrompt = false;
+			std::optional<size_t> invalidSaveDocument;
+			std::filesystem::path invalidSavePath;
+			bool invalidSaveClosesDocument = false;
+			bool openInvalidPrompt = false;
+			std::optional<size_t> conflictSaveDocument;
+			bool conflictSaveClosesDocument = false;
+			std::optional<ParticleDocumentComparison> comparison;
+			bool openComparison = false;
 			InputManagerSDL input;
 			TimerSDL timer;
 			timer.reset();
 			float fps = 0.0f;
 
-			auto installDocument = [&]
+			auto forgetInstalled = [&] { installedDocument = nullptr; installedRevision = 0; };
+			auto eraseDocument = [&](size_t index)
 			{
-				diagnostics.setDocumentDiagnostics(document.diagnostics());
-				previewFailure.clear();
-				preview.install(document.specification(), &previewFailure);
-				diagnostics.setPreviewFailure(previewFailure);
+				if (index < documents.size())
+				{
+					if (&documents.at(index) == installedDocument) forgetInstalled();
+					documents.discardAndClose(index);
+				}
 			};
-			auto saveTo = [&](std::filesystem::path const& path)
+			auto installActive = [&](bool force = false)
 			{
+				auto* document = documents.active();
+				if (!document) return;
+				if (!force && installedDocument == document && installedRevision == document->previewRevision()) return;
+				std::string failure;
+				if (auto specification = document->previewSpecification()) preview.install(*specification, &failure);
+				else failure = "This document has no valid preview state.";
+				document->setPreviewFailure(failure);
+				if (document->previewPaused()) preview.pauseSimulation(); else preview.resumeSimulation();
+				preview.setSimulationTimeScale(document->previewTimeScale());
+				installedDocument = document;
+				installedRevision = document->previewRevision();
+			};
+			installActive(true);
+
+			std::function<void(size_t, std::filesystem::path const&, bool, bool)> attemptSave;
+			attemptSave = [&](size_t index, std::filesystem::path const& path, bool closesDocument, bool allowInvalid)
+			{
+				if (index >= documents.size()) return;
 				try
 				{
-					document.save(path);
-					diagnostics.setOperationFailure({});
-					diagnostics.setDocumentDiagnostics(document.diagnostics());
+					auto result = documents.at(index).save(path, allowInvalid);
+					if (result == ParticleSaveResult::Saved)
+					{
+						diagnostics.setOperationFailure({});
+						if (closesDocument) eraseDocument(index);
+					}
+					else if (result == ParticleSaveResult::InvalidConfirmationRequired)
+					{
+						invalidSaveDocument = index;
+						invalidSavePath = path;
+						invalidSaveClosesDocument = closesDocument;
+						openInvalidPrompt = true;
+					}
+					else
+					{
+						conflictSaveDocument = index;
+						conflictSaveClosesDocument = closesDocument;
+						documents.activate(index);
+					}
 				}
-				catch (std::exception const& error) { diagnostics.setOperationFailure(error.what()); showDiagnostics = true; }
+				catch (std::exception const& error)
+				{
+					diagnostics.setOperationFailure(error.what());
+					showDiagnostics = true;
+				}
+			};
+
+			auto beginSaveAs = [&](size_t index, bool closesDocument)
+			{
+				if (index >= documents.size() || fileDialog.busy()) return;
+				dialogPurpose = DialogPurpose::Save;
+				dialogDocument = index;
+				dialogClosesDocument = closesDocument;
+				auto& document = documents.at(index);
+				auto suggested = document.hasPath() ? document.path() :
+					(std::filesystem::current_path() / "Untitled Particle Effect.particle.yaml");
+				fileDialog.save(window.getWindow(), suggested.string());
+			};
+
+			auto requestClose = [&](size_t index)
+			{
+				if (index >= documents.size()) return;
+				if (documents.requestClose(index) == CloseRequestResult::UnsavedChanges)
+				{
+					documents.activate(index);
+					pendingClose = index;
+					openUnsavedPrompt = true;
+				}
+				else forgetInstalled();
 			};
 
 			while (running)
@@ -194,7 +298,8 @@ namespace particle_editor
 				bool closeRequested = !window.processEvents(&input);
 				imGuiHandleInput(&input, &backend);
 				input.update();
-				if (closeRequested || input.keyPressed(Key_Escape)) running = false;
+				if ((closeRequested || input.keyPressed(Key_Escape)) && !exitSequence)
+					exitSequence = true;
 				if (window.getWidth() > 0 && window.getHeight() > 0 &&
 					(size_t(window.getWidth()) != renderSystem.getWindowWidth() ||
 					 size_t(window.getHeight()) != renderSystem.getWindowHeight()))
@@ -211,20 +316,18 @@ namespace particle_editor
 					{
 						if (dialogPurpose == DialogPurpose::Open)
 						{
-							if (document.open(*result->path))
+							if (!documents.open(*result->path))
 							{
-								diagnostics.setOperationFailure({});
-								installDocument();
-							}
-							else
-							{
-								diagnostics.setDocumentDiagnostics(document.diagnostics());
+								diagnostics.setOperationFailure("Could not open particle effect '" + *result->path + "'.");
 								showDiagnostics = true;
 							}
+							else diagnostics.setOperationFailure({});
 						}
-						else if (dialogPurpose == DialogPurpose::Save) saveTo(*result->path);
+						else if (dialogPurpose == DialogPurpose::Save)
+							attemptSave(dialogDocument, *result->path, dialogClosesDocument, false);
 					}
 					dialogPurpose = DialogPurpose::None;
+					dialogClosesDocument = false;
 				}
 
 				imGuiNewFrame(window.getWindow(), &backend);
@@ -233,18 +336,29 @@ namespace particle_editor
 				bool requestOpen = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal);
 				bool requestSave = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal);
 				bool requestSaveAs = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal);
+				bool requestUndo = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal);
+				bool requestRedo = ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal);
 				if (requestSaveAs) requestSave = false;
 
+				auto* active = documents.active();
 				if (ImGui::BeginMainMenuBar())
 				{
 					if (ImGui::BeginMenu("File"))
 					{
 						requestNew |= ImGui::MenuItem("New", "Ctrl+N");
 						requestOpen |= ImGui::MenuItem("Open...", "Ctrl+O", false, !fileDialog.busy());
-						requestSave |= ImGui::MenuItem("Save", "Ctrl+S");
-						requestSaveAs |= ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, !fileDialog.busy());
+						requestSave |= ImGui::MenuItem("Save", "Ctrl+S", false, active != nullptr);
+						requestSaveAs |= ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, active && !fileDialog.busy());
+						if (ImGui::MenuItem("Close", "Ctrl+W", false, active != nullptr)) requestClose(documents.activeIndex());
 						ImGui::Separator();
-						if (ImGui::MenuItem("Exit")) running = false;
+						if (ImGui::MenuItem("Exit")) exitSequence = true;
+						ImGui::EndMenu();
+					}
+					active = documents.active();
+					if (ImGui::BeginMenu("Edit"))
+					{
+						requestUndo |= ImGui::MenuItem("Undo", "Ctrl+Z", false, active && active->canUndo());
+						requestRedo |= ImGui::MenuItem("Redo", "Ctrl+Y", false, active && active->canRedo());
 						ImGui::EndMenu();
 					}
 					if (ImGui::BeginMenu("View"))
@@ -255,14 +369,16 @@ namespace particle_editor
 					}
 					if (ImGui::BeginMenu("Particle Effect"))
 					{
-						if (ImGui::MenuItem("Rebuild Preview", "F5")) installDocument();
-						ImGui::Separator();
-						if (preview.isSimulationPaused())
+						if (ImGui::MenuItem("Rebuild Preview", "F5", false, active != nullptr)) installActive(true);
+						if (active)
 						{
-							if (ImGui::MenuItem("Resume Simulation")) preview.resumeSimulation();
+							if (active->previewPaused())
+							{
+								if (ImGui::MenuItem("Resume Simulation")) { active->setPreviewPaused(false); preview.resumeSimulation(); }
+							}
+							else if (ImGui::MenuItem("Pause Simulation")) { active->setPreviewPaused(true); preview.pauseSimulation(); }
+							if (ImGui::MenuItem("Step Simulation", nullptr, false, preview.ready())) preview.stepSimulation();
 						}
-						else if (ImGui::MenuItem("Pause Simulation")) preview.pauseSimulation();
-						if (ImGui::MenuItem("Step Simulation", nullptr, false, preview.ready())) preview.stepSimulation();
 						ImGui::EndMenu();
 					}
 					if (ImGui::BeginMenu("Help"))
@@ -272,63 +388,78 @@ namespace particle_editor
 					}
 					ImGui::EndMainMenuBar();
 				}
-				if (ImGui::Shortcut(ImGuiKey_F5, ImGuiInputFlags_RouteGlobal)) installDocument();
+				if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_W, ImGuiInputFlags_RouteGlobal) && active)
+					requestClose(documents.activeIndex());
+				if (ImGui::Shortcut(ImGuiKey_F5, ImGuiInputFlags_RouteGlobal)) installActive(true);
 
-				if (ImGui::BeginViewportSideBar("##ParticleEditorToolbar", ImGui::GetMainViewport(), ImGuiDir_Up,
-					ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.y * 2.0f,
-					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings))
-				{
-					if (ImGui::Button("New")) requestNew = true;
-					ImGui::SameLine();
-					if (ImGui::Button("Open")) requestOpen = true;
-					ImGui::SameLine();
-					if (ImGui::Button("Save")) requestSave = true;
-					ImGui::SameLine();
-					if (ImGui::Button("Rebuild Preview")) installDocument();
-					ImGui::SameLine();
-					if (ImGui::Button(preview.isSimulationPaused() ? "Resume" : "Pause"))
-					{
-						if (preview.isSimulationPaused()) preview.resumeSimulation();
-						else preview.pauseSimulation();
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Step")) preview.stepSimulation();
-					ImGui::SameLine();
-					ImGui::SetNextItemWidth(110.0f);
-					float timeScale = preview.simulationTimeScale();
-					if (ImGui::SliderFloat("Time scale", &timeScale, 0.0f, 4.0f, "%.2fx"))
-						preview.setSimulationTimeScale(timeScale);
-					ImGui::SameLine();
-					ImGui::TextDisabled("PBR graph | %s", preview.ready() ? "Live" : "Unavailable");
-				}
-				ImGui::End();
-
-				if (requestNew)
-				{
-					document.createNew();
-					diagnostics.setOperationFailure({});
-					installDocument();
-				}
+				if (requestNew) { documents.createNew(); diagnostics.setOperationFailure({}); }
 				if (requestOpen && !fileDialog.busy())
 				{
 					dialogPurpose = DialogPurpose::Open;
 					fileDialog.open(window.getWindow());
 				}
-				if (requestSave && document.hasPath()) saveTo(document.path());
-				else if ((requestSave || requestSaveAs) && !fileDialog.busy())
+				active = documents.active();
+				if (requestUndo && active) active->undo();
+				if (requestRedo && active) active->redo();
+				if (requestSave && active)
 				{
-					dialogPurpose = DialogPurpose::Save;
-					auto suggested = document.hasPath() ? document.path() :
-						(std::filesystem::current_path() / "Untitled Particle Effect.particle.yaml");
-					fileDialog.save(window.getWindow(), suggested.string());
+					if (active->hasPath()) attemptSave(documents.activeIndex(), active->path(), false, false);
+					else beginSaveAs(documents.activeIndex(), false);
 				}
+				if (requestSaveAs && active) beginSaveAs(documents.activeIndex(), false);
+
+				if (ImGui::BeginViewportSideBar("##ParticleEditorToolbar", ImGui::GetMainViewport(), ImGuiDir_Up,
+					ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.y * 2.0f,
+					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings))
+				{
+					if (ImGui::Button("New")) documents.createNew();
+					ImGui::SameLine();
+					if (ImGui::Button("Open") && !fileDialog.busy()) { dialogPurpose = DialogPurpose::Open; fileDialog.open(window.getWindow()); }
+					ImGui::SameLine();
+					if (ImGui::Button("Save") && documents.active())
+					{
+						auto& document = *documents.active();
+						if (document.hasPath()) attemptSave(documents.activeIndex(), document.path(), false, false);
+						else beginSaveAs(documents.activeIndex(), false);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Undo") && documents.active()) documents.active()->undo();
+					ImGui::SameLine();
+					if (ImGui::Button("Redo") && documents.active()) documents.active()->redo();
+					ImGui::SameLine();
+					if (ImGui::Button("Rebuild Preview")) installActive(true);
+					active = documents.active();
+					if (active)
+					{
+						ImGui::SameLine();
+						if (ImGui::Button(active->previewPaused() ? "Resume" : "Pause"))
+						{
+							active->setPreviewPaused(!active->previewPaused());
+							if (active->previewPaused()) preview.pauseSimulation(); else preview.resumeSimulation();
+						}
+						ImGui::SameLine();
+						if (ImGui::Button("Step")) preview.stepSimulation();
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(110.0f);
+						float timeScale = active->previewTimeScale();
+						if (ImGui::SliderFloat("Time scale", &timeScale, 0.0f, 4.0f, "%.2fx"))
+						{
+							active->setPreviewTimeScale(timeScale);
+							preview.setSimulationTimeScale(timeScale);
+						}
+					}
+				}
+				ImGui::End();
 
 				if (ImGui::BeginViewportSideBar("##ParticleEditorStatus", ImGui::GetMainViewport(), ImGuiDir_Down,
 					ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.y * 2.0f,
 					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings))
 				{
-					ImGui::Text("%s%s | %s | %.1f FPS", document.path().empty() ? "Unsaved" : document.path().string().c_str(),
-						document.dirty() ? " *" : "", diagnostics.statusText().c_str(), fps);
+					active = documents.active();
+					if (active)
+						ImGui::Text("%s%s | %s | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
+							active->dirty() ? " *" : "", diagnostics.statusText().c_str(), fps);
+					else ImGui::TextDisabled("No particle effect is open | %.1f FPS", fps);
 					if (preview.stats().valid)
 					{
 						ImGui::SameLine();
@@ -349,42 +480,180 @@ namespace particle_editor
 					ImGui::DockBuilderSetNodeSize(dockspace, ImGui::GetMainViewport()->WorkSize);
 					ImGuiID left = 0, right = 0;
 					ImGui::DockBuilderSplitNode(dockspace, ImGuiDir_Left, 0.30f, &left, &right);
+					ImGui::DockBuilderDockWindow("Documents", left);
 					ImGui::DockBuilderDockWindow("Particle Effect", left);
 					ImGui::DockBuilderDockWindow("Diagnostics", left);
 					ImGui::DockBuilderDockWindow("MPP Viewport", right);
 					ImGui::DockBuilderFinish(dockspace);
 				}
 
-				inspector.draw(document);
+				ImGui::Begin("Documents");
+				if (ImGui::BeginTabBar("ParticleEffectDocuments", ImGuiTabBarFlags_Reorderable))
+				{
+					std::optional<size_t> tabClose;
+					for (size_t index = 0; index < documents.size(); ++index)
+					{
+						auto& document = documents.at(index);
+						bool tabOpen = true;
+						auto flags = document.dirty() ? ImGuiTabItemFlags_UnsavedDocument : ImGuiTabItemFlags_None;
+						if (ImGui::BeginTabItem((document.displayName() + "##" + std::to_string(index)).c_str(), &tabOpen, flags))
+						{
+							documents.activate(index);
+							ImGui::TextDisabled("%s", document.path().empty() ? "Not saved" : document.path().string().c_str());
+							ImGui::EndTabItem();
+						}
+						if (!tabOpen) tabClose = index;
+					}
+					ImGui::EndTabBar();
+					if (tabClose) requestClose(*tabClose);
+				}
+				if (documents.size() == 0u && ImGui::Button("New Particle Effect")) documents.createNew();
+				ImGui::End();
+
+				active = documents.active();
+				if (active) inspector.draw(*active);
+				else { ImGui::Begin("Particle Effect"); ImGui::TextDisabled("No particle effect is open."); ImGui::End(); }
+
+				active = documents.active();
+				if (active)
+				{
+					diagnostics.setDocumentDiagnostics(active->diagnostics());
+					diagnostics.setPreviewFailure(active->previewFailure());
+				}
+				else { diagnostics.setDocumentDiagnostics({}); diagnostics.setPreviewFailure({}); }
 				if (showDiagnostics) diagnostics.draw(&showDiagnostics);
+
 				ImGui::Begin("MPP Viewport");
 				auto available = ImGui::GetContentRegionAvail();
 				uint32_t viewportWidth = std::max(64u, uint32_t(std::max(0.0f, available.x)));
 				uint32_t viewportHeight = std::max(64u, uint32_t(std::max(0.0f, available.y)));
-				try
-				{
-					preview.resize(viewportWidth, viewportHeight);
-				}
+				try { preview.resize(viewportWidth, viewportHeight); }
 				catch (std::exception const& error)
 				{
-					diagnostics.setPreviewFailure("Preview resize failed: " + std::string(error.what()));
+					if (active) active->setPreviewFailure("Preview resize failed: " + std::string(error.what()));
 				}
 				ImGui::Image(previewTexture, ImVec2(float(viewportWidth), float(viewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
 				ImGui::End();
 
-				if (showAbout)
+				for (size_t index = 0; index < documents.size(); ++index)
 				{
-					ImGui::OpenPopup("About Particle Editor");
-					showAbout = false;
+					auto state = documents.at(index).externalChangeState();
+					if (state == ExternalChangeState::None) continue;
+					ImGui::Begin(("External Change##" + std::to_string(index)).c_str());
+					ImGui::TextWrapped("%s changed outside Particle Editor.", documents.at(index).path().string().c_str());
+					if (state == ExternalChangeState::Conflict)
+						ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f), "The editor version has unsaved changes. It will not be overwritten silently.");
+					if (ImGui::Button(("Compare##" + std::to_string(index)).c_str()))
+					{
+						try { comparison = documents.at(index).compareWithDisk(); openComparison = true; }
+						catch (std::exception const& error) { diagnostics.setOperationFailure(error.what()); showDiagnostics = true; }
+					}
+					ImGui::SameLine();
+					if (ImGui::Button(("Reload from Disk##" + std::to_string(index)).c_str()))
+					{
+						forgetInstalled();
+						if (!documents.at(index).reload()) { diagnostics.setOperationFailure("The changed particle effect could not be reloaded."); showDiagnostics = true; }
+					}
+					if (state == ExternalChangeState::Conflict)
+					{
+						ImGui::SameLine();
+						if (ImGui::Button(("Keep Editor Version##" + std::to_string(index)).c_str()))
+						{
+							documents.at(index).keepEditorVersion();
+							if (conflictSaveDocument && *conflictSaveDocument == index)
+							{
+								auto closes = conflictSaveClosesDocument;
+								conflictSaveDocument.reset();
+								attemptSave(index, documents.at(index).path(), closes, false);
+							}
+						}
+					}
+					ImGui::End();
 				}
+
+				if (openUnsavedPrompt) { ImGui::OpenPopup("Unsaved Particle Effect"); openUnsavedPrompt = false; }
+				if (ImGui::BeginPopupModal("Unsaved Particle Effect", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					if (pendingClose && *pendingClose < documents.size())
+					{
+						auto index = *pendingClose;
+						auto& document = documents.at(index);
+						ImGui::TextWrapped("Save changes to %s before closing?", document.displayName().c_str());
+						if (ImGui::Button("Save"))
+						{
+							pendingClose.reset();
+							if (document.hasPath()) attemptSave(index, document.path(), true, false);
+							else beginSaveAs(index, true);
+							ImGui::CloseCurrentPopup();
+						}
+						ImGui::SameLine();
+						if (ImGui::Button("Discard"))
+						{
+							pendingClose.reset();
+							eraseDocument(index);
+							ImGui::CloseCurrentPopup();
+						}
+						ImGui::SameLine();
+						if (ImGui::Button("Cancel"))
+						{
+							pendingClose.reset();
+							exitSequence = false;
+							ImGui::CloseCurrentPopup();
+						}
+					}
+					else ImGui::CloseCurrentPopup();
+					ImGui::EndPopup();
+				}
+
+				if (openInvalidPrompt) { ImGui::OpenPopup("Invalid Particle Effect"); openInvalidPrompt = false; }
+				if (ImGui::BeginPopupModal("Invalid Particle Effect", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					ImGui::TextWrapped("This particle effect has production validation errors.\nIt can be saved, but the last valid live preview will remain active.");
+					if (ImGui::Button("Save Invalid Document"))
+					{
+						if (invalidSaveDocument)
+							attemptSave(*invalidSaveDocument, invalidSavePath, invalidSaveClosesDocument, true);
+						invalidSaveDocument.reset();
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Cancel")) { invalidSaveDocument.reset(); exitSequence = false; ImGui::CloseCurrentPopup(); }
+					ImGui::EndPopup();
+				}
+
+				if (openComparison) { ImGui::OpenPopup("Compare Particle Effect Versions"); openComparison = false; }
+				if (ImGui::BeginPopupModal("Compare Particle Effect Versions", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					if (comparison)
+					{
+						ImGui::BeginChild("EditorVersion", ImVec2(420, 420), ImGuiChildFlags_Borders);
+						ImGui::TextUnformatted("Editor version"); ImGui::Separator(); ImGui::TextUnformatted(comparison->editorYaml.c_str()); ImGui::EndChild();
+						ImGui::SameLine();
+						ImGui::BeginChild("DiskVersion", ImVec2(420, 420), ImGuiChildFlags_Borders);
+						ImGui::TextUnformatted("Disk version"); ImGui::Separator(); ImGui::TextUnformatted(comparison->diskYaml.c_str()); ImGui::EndChild();
+					}
+					if (ImGui::Button("Close")) { comparison.reset(); ImGui::CloseCurrentPopup(); }
+					ImGui::EndPopup();
+				}
+
+				if (showAbout) { ImGui::OpenPopup("About Particle Editor"); showAbout = false; }
 				if (ImGui::BeginPopupModal("About Particle Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 				{
-					ImGui::TextUnformatted("Particle Editor\nCanonical version-2 particle effect authoring\nLive MPP PBR graph preview");
+					ImGui::TextUnformatted("Particle Editor\nCanonical version-2 particle effect authoring\nSafe tabbed workflows and live MPP preview");
 					if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
 					ImGui::EndPopup();
 				}
 
-				SDL_SetWindowTitle(window.getWindow(), (document.displayName() + (document.dirty() ? " * - Particle Editor" : " - Particle Editor")).c_str());
+				if (exitSequence && !pendingClose && !invalidSaveDocument && !fileDialog.busy())
+				{
+					if (documents.size() == 0u) running = false;
+					else requestClose(0u);
+				}
+
+				installActive();
+				active = documents.active();
+				SDL_SetWindowTitle(window.getWindow(), active ?
+					(active->displayName() + (active->dirty() ? " * - Particle Editor" : " - Particle Editor")).c_str() : "Particle Editor");
 				ImGui::Render();
 				provider->setDrawData(ImGui::GetDrawData());
 				renderSystem.startStatsCollection();

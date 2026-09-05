@@ -1,5 +1,6 @@
 #include "ParticleInspector.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -10,7 +11,7 @@
 
 namespace particle_editor
 {
-	void ParticleInspector::draw(ParticleDocument const& document)
+	void ParticleInspector::draw(ParticleDocument& document)
 	{
 		if (!ImGui::Begin("Particle Effect"))
 		{
@@ -18,7 +19,17 @@ namespace particle_editor
 			return;
 		}
 		auto const& effect = document.specification();
-		ImGui::TextUnformatted(effect.name.c_str());
+		char effectName[256]{};
+		std::copy_n(effect.name.data(), std::min(effect.name.size(), sizeof(effectName) - 1), effectName);
+		if (ImGui::InputText("Name", effectName, sizeof(effectName)))
+		{
+			std::string name = effectName;
+			document.executeEdit("Rename particle effect", [name = std::move(name)](auto& value)
+				{ value.name = name; }, true);
+			ImGui::End();
+			return;
+		}
+		if (ImGui::IsItemDeactivatedAfterEdit()) document.endContinuousEdit();
 		ImGui::TextDisabled("Version %u | %u particles", effect.version, effect.maximumParticleCount);
 		if (effect.bounds)
 		{
@@ -54,7 +65,15 @@ namespace particle_editor
 				ImGui::Text("Shape: %s", shape < shapes.size() ? shapes[shape] : "Unknown");
 				ImGui::Text("Deterministic seed: %u", simulation.shapeSeedModulesBudget[1]);
 				ImGui::Text("Budget: %u", simulation.shapeSeedModulesBudget[3]);
-				ImGui::Text("Continuous rate: %.2f / s", simulation.emissionRateAndPadding[0]);
+				float emissionRate = simulation.emissionRateAndPadding[0];
+				if (ImGui::DragFloat("Continuous rate", &emissionRate, 0.1f, 0.0f, 100000.0f, "%.2f / s"))
+				{
+					document.executeEdit("Change emission rate", [emissionRate, emitterIndex = size_t(mSelectedEmitter)](auto& value)
+						{ value.emitterTemplates[emitterIndex].value.simulation.emissionRateAndPadding[0] = emissionRate; }, true);
+					ImGui::End();
+					return;
+				}
+				if (ImGui::IsItemDeactivatedAfterEdit()) document.endContinuousEdit();
 				ImGui::Text("Lifetime: %.2f - %.2f s", simulation.lifetimeSizeRanges[0],
 					simulation.lifetimeSizeRanges[1]);
 				ImGui::Text("Size: %.2f - %.2f", simulation.lifetimeSizeRanges[2], simulation.lifetimeSizeRanges[3]);

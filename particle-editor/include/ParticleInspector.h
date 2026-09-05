@@ -9,6 +9,6 @@ namespace particle_editor
 		int mSelectedEmitter{ 0 };
 
 	public:
-		void draw(ParticleDocument const& document);
+		void draw(ParticleDocument& document);
 	};
 }

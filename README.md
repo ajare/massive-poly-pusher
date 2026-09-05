@@ -39,13 +39,16 @@ Documentation:
 
 ## Particle Editor
 
-The cross-platform `ParticleEditor` target creates, opens, previews, and saves canonical `*.particle.yaml` assets. It starts with a deterministic bounded version-2 particle effect and renders the active document through MPP's PBR particle graph. Its dockable shell includes the Particle Effect inspector, MPP viewport, toolbar, status bar, and diagnostics view. The deployed `particle-editor.ini` resolves the shared resource tree from `build/bin/<Configuration>`.
+The cross-platform `ParticleEditor` target creates, opens, previews, and atomically saves canonical `*.particle.yaml` assets. Multiple tabs keep independent command histories, diagnostics, file revisions, dirty state, and last-valid preview state. Save and close warnings protect invalid, externally changed, and unsaved documents. The editor starts with a deterministic bounded version-2 particle effect and renders the active document through MPP's PBR particle graph. Its dockable shell includes the document tabs, Particle Effect inspector, MPP viewport, toolbar, status bar, and diagnostics view. The deployed `particle-editor.ini` resolves the shared resource tree from `build/bin/<Configuration>`.
 
-Run its context-free document contract tests without creating a window:
+Run its context-free document workflow tests or production particle-file validation without creating a window:
 
 ```text
 ParticleEditor.exe --document-tests
+ParticleEditor.exe --validate path/to/effect.particle.yaml
 ```
+
+Validation prints stable production diagnostic codes and returns a non-zero process status when the particle effect is invalid.
 
 ## Pipeline packages
 
