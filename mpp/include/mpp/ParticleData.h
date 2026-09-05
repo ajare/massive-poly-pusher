@@ -238,6 +238,10 @@ namespace mpp
 		uint32_t activeCountA{ 0 };
 		uint32_t activeCountB{ 0 };
 		uint32_t droppedSpawnCount{ 0 };
+		uint32_t spawnedCount{ 0 };
+		uint32_t killedCount{ 0 };
+		uint32_t renderedCount{ 0 };
+		uint32_t culledCount{ 0 };
 	};
 
 	// Binary layout required by glMultiDrawArraysIndirect. first encodes the
@@ -262,6 +266,6 @@ namespace mpp
 	static_assert(sizeof(EmitterSimData) == 304);
 	static_assert(sizeof(TemplateRenderData) == 64);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);
-	static_assert(sizeof(ParticleCounterHeader) == 16);
+	static_assert(sizeof(ParticleCounterHeader) == 32);
 	static_assert(sizeof(ParticleDrawArraysIndirectCommand) == 16);
 }

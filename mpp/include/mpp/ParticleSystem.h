@@ -22,7 +22,32 @@ namespace mpp
 	class ShaderStorageBuffer;
 	class RenderTexture;
 	class ParticleEffectCurveLut;
-	namespace detail { class PersistentMappedBuffer; }
+	namespace detail
+	{
+		class PersistentMappedBuffer;
+		class ParticleStatisticsState;
+	}
+
+	// A completed, asynchronous snapshot. sourceFrame identifies the renderer
+	// frame that produced it; framesLagged makes its intentional staleness explicit.
+	struct _MPPAPI ParticleStats
+	{
+		bool valid{ false };
+		uint64_t sourceFrame{ 0 };
+		uint32_t framesLagged{ 0 };
+		uint32_t activeParticles{ 0 };
+		uint32_t freeParticles{ 0 };
+		uint32_t spawnedParticles{ 0 };
+		uint32_t killedParticles{ 0 };
+		uint32_t droppedParticles{ 0 };
+		uint32_t renderedParticles{ 0 };
+		uint32_t culledParticles{ 0 };
+		uint32_t activeEmitters{ 0 };
+		uint32_t capacity{ 0 };
+		float capacityUsage{ 0.0f };
+		double simulationGpuMilliseconds{ 0.0 };
+		double renderGpuMilliseconds{ 0.0 };
+	};
 
 	enum class ParticleParameter : uint32_t
 	{
@@ -99,7 +124,7 @@ namespace mpp
 		RenderSystem* mwRenderSystem;
 		ResourceManager* mwResourceManager;
 
-		ResourcePtr mPoolInitialiseProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
+		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
 		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
 		ResourcePtr mDrawProgram;
 
@@ -116,6 +141,7 @@ namespace mpp
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
+		std::unique_ptr<detail::ParticleStatisticsState> mStatistics;
 
 		std::vector<EmitterSimData> mEmitters;
 		std::vector<TemplateRenderData> mTemplateRenderData;
@@ -170,9 +196,15 @@ namespace mpp
 		void uploadFrameData();
 		void updateTemplateTextureHandles();
 		void releaseTemplateTextureHandle(uint32_t templateIndex);
+		void dispatchStatisticsPrepare();
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
 		void dispatchCompaction();
+		void advanceStatisticsFrame();
+		void beginStatisticsSample();
+		void finishStatisticsSample();
+		void beginRenderTiming();
+		void finishRenderTiming();
 		void disableWithWarning(std::string const& reason);
 		ParticleEmitterHandle allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform,
 			std::shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex);
@@ -198,6 +230,12 @@ namespace mpp
 		bool isAvailable() const { return mAvailable; }
 		bool isPoolAllocated() const { return mPoolAllocated; }
 		uint32_t getPoolCapacity() const { return mPoolCapacity; }
+
+		// Disabled by default. Enabling lazily allocates the readback/query ring;
+		// disabling immediately removes all particle-path polling and retrieval.
+		void setStatisticsEnabled(bool enabled);
+		bool isStatisticsEnabled() const;
+		ParticleStats const& getStats() const;
 
 		ParticleEffectHandle createEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		ParticleEffectHandle createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));

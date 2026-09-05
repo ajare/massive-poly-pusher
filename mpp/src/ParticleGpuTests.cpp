@@ -142,14 +142,18 @@ namespace mpp
 			};
 			auto runFrame = [&](ParticleSystem& system, float dt)
 			{
+				system.advanceStatisticsFrame();
 				system.mSimulationSeconds += dt;
 				system.buildSpawnCommands(dt);
 				system.ensurePoolAllocated();
 				system.uploadFrameData();
+				system.dispatchStatisticsPrepare();
+				system.beginStatisticsSample();
 				system.dispatchSpawnCommands();
 				system.dispatchSimulation(dt);
 				system.dispatchCompaction();
 				system.retireCompletedEmitters();
+				system.finishStatisticsSample();
 			};
 			auto queue = [&](ParticleSystem& system, std::string name)
 			{
@@ -158,8 +162,12 @@ namespace mpp
 
 			ParticleSystem& system = renderSystem->getParticleSystem();
 			if (!initialise(system)) return fail("particle GPU path is unavailable");
+			if (system.isStatisticsEnabled() || system.getStats().valid)
+				return fail("particle statistics were not off by default");
 			if (system.hasOccupiedEmitters() || system.mPoolAllocated)
 				return fail("particle GPU tests require a fresh particle pool");
+
+			system.setStatisticsEnabled(true);
 
 			stage = "spawn and expiry counters";
 			std::array spawnEmitters{ burst(37u, 37u, 0.05f) };
@@ -192,6 +200,17 @@ namespace mpp
 			// Complete all queued test work before polling. The readback itself still
 			// has a zero timeout and will fail rather than block on an unsignalled slot.
 			GL_CHECK(glFinish());
+			system.advanceStatisticsFrame();
+			auto const stats = system.getStats();
+			if (!stats.valid || stats.framesLagged < 2u || stats.activeParticles != 23u ||
+				stats.freeParticles != capacity - 23u || stats.spawnedParticles != 0u ||
+				stats.killedParticles != 0u || stats.droppedParticles != 0u ||
+				stats.renderedParticles != 23u || stats.culledParticles != 0u ||
+				stats.activeEmitters != 1u || stats.capacity != capacity || stats.capacityUsage <= 0.0f ||
+				stats.simulationGpuMilliseconds < 0.0 || stats.renderGpuMilliseconds != 0.0)
+				return fail("public ParticleStats did not publish the complete frame-lagged GPU snapshot");
+			system.setStatisticsEnabled(false);
+
 			std::vector<CounterSnapshot> snapshots(pending.size());
 			for (size_t index = 0; index < pending.size(); ++index)
 				if (!readback.read(pending[index].index, snapshots[index]))

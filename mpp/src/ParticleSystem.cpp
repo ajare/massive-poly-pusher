@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <exception>
 #include <stdexcept>
@@ -30,6 +31,68 @@ using namespace std;
 
 namespace mpp
 {
+	namespace detail
+	{
+		class ParticleStatisticsState
+		{
+		public:
+			static constexpr size_t RingSize = 4;
+			static constexpr uint64_t MinimumLag = 2;
+
+			struct QueryPair { GLuint begin{ 0 }; GLuint end{ 0 }; };
+			struct Slot
+			{
+				GLuint buffer{ 0 };
+				GLsync fence{ nullptr };
+				QueryPair simulation;
+				std::vector<QueryPair> renders;
+				uint64_t sequence{ 0 };
+				uint64_t sourceFrame{ 0 };
+				uint32_t activeListIndex{ 0 };
+				uint32_t activeEmitters{ 0 };
+				uint32_t capacity{ 0 };
+				bool submitted{ false };
+			};
+
+			bool enabled{ false };
+			uint64_t sequence{ 0 };
+			uint64_t latestSequence{ 0 };
+			int currentSlot{ -1 };
+			std::array<Slot, RingSize> slots;
+			ParticleStats stats;
+
+			~ParticleStatisticsState() { release(); }
+
+			static void deleteQueries(Slot& slot) noexcept
+			{
+				if (slot.simulation.begin)
+				{
+					GLuint ids[]{ slot.simulation.begin, slot.simulation.end };
+					glDeleteQueries(2, ids);
+					slot.simulation = {};
+				}
+				for (auto const& query : slot.renders)
+				{
+					GLuint ids[]{ query.begin, query.end };
+					glDeleteQueries(2, ids);
+				}
+				slot.renders.clear();
+			}
+
+			void release() noexcept
+			{
+				for (auto& slot : slots)
+				{
+					if (slot.fence) glDeleteSync(slot.fence);
+					deleteQueries(slot);
+					if (slot.buffer) glDeleteBuffers(1, &slot.buffer);
+					slot = {};
+				}
+				currentSlot = -1;
+			}
+		};
+	}
+
 	namespace
 	{
 		char const* PoolInitialiseProgramName = "__mpp_particle_pool_initialise__";
@@ -80,11 +143,15 @@ namespace mpp
 	ParticleSystem::ParticleSystem(RenderSystem* renderSystem, ResourceManager* resourceManager)
 		: mwRenderSystem(renderSystem)
 		, mwResourceManager(resourceManager)
+		, mStatistics(make_unique<detail::ParticleStatisticsState>())
 	{
 	}
 
 	ParticleSystem::~ParticleSystem()
 	{
+		// Queries, fences and staging buffers require the GL context, just like the
+		// other particle resources destroyed below.
+		mStatistics.reset();
 		for (uint32_t index = 0; index < mTemplateTextureHandles.size(); ++index)
 			releaseTemplateTextureHandle(index);
 		mTemplateTextures.clear();
@@ -121,6 +188,7 @@ namespace mpp
 			program.reset();
 		};
 		releaseProgram(mPoolInitialiseProgram);
+		releaseProgram(mStatisticsPrepareProgram);
 		releaseProgram(mSpawnProgram);
 		releaseProgram(mSimulationPrepareProgram);
 		releaseProgram(mSimulationProgram);
@@ -176,6 +244,7 @@ namespace mpp
 				return program;
 			};
 			mPoolInitialiseProgram = createComputeProgram(PoolInitialiseProgramName, ParticlePoolInitialiseComputeShader);
+			mStatisticsPrepareProgram = createComputeProgram("__mpp_particle_statistics_prepare__", ParticleStatisticsPrepareComputeShader);
 			mSpawnProgram = createComputeProgram(SpawnProgramName, ParticleSpawnComputeShader);
 			mSimulationPrepareProgram = createComputeProgram(SimulationPrepareProgramName, ParticleSimulationPrepareComputeShader);
 			mSimulationProgram = createComputeProgram(SimulationProgramName, ParticleSimulationComputeShader);
@@ -732,6 +801,179 @@ namespace mpp
 			mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
 	}
 
+	void ParticleSystem::setStatisticsEnabled(bool enabled)
+	{
+		if (mStatistics->enabled == enabled) return;
+		mStatistics->enabled = enabled;
+		if (enabled)
+		{
+			mStatistics->stats = {};
+			mStatistics->sequence = 0;
+			mStatistics->latestSequence = 0;
+		}
+		else
+		{
+			// Deleting an in-flight GL object defers its storage reclamation; it does
+			// not wait for the GPU. More importantly, no result is polled or retrieved.
+			mStatistics->release();
+		}
+	}
+
+	bool ParticleSystem::isStatisticsEnabled() const
+	{
+		return mStatistics->enabled;
+	}
+
+	ParticleStats const& ParticleSystem::getStats() const
+	{
+		return mStatistics->stats;
+	}
+
+	void ParticleSystem::advanceStatisticsFrame()
+	{
+		if (!mStatistics->enabled) return;
+		auto& state = *mStatistics;
+		++state.sequence;
+
+		// The next particle frame is the only reliable point after every graph pass
+		// from the prior frame. Its fence therefore covers both simulation and all
+		// particle draws without requiring a render-graph callback.
+		if (state.currentSlot >= 0)
+		{
+			auto& previous = state.slots[size_t(state.currentSlot)];
+			if (previous.submitted && !previous.fence)
+				previous.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+			state.currentSlot = -1;
+		}
+
+		for (auto& slot : state.slots)
+		{
+			if (!slot.submitted || !slot.fence || state.sequence < slot.sequence + detail::ParticleStatisticsState::MinimumLag)
+				continue;
+			auto const status = glClientWaitSync(slot.fence, 0, 0);
+			if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) continue;
+
+			ParticleCounterHeader counters;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, slot.buffer));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sizeof(counters), &counters));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			auto elapsedMilliseconds = [](detail::ParticleStatisticsState::QueryPair const& query)
+			{
+				GLuint64 begin = 0, end = 0;
+				GL_CHECK(glGetQueryObjectui64v(query.begin, GL_QUERY_RESULT, &begin));
+				GL_CHECK(glGetQueryObjectui64v(query.end, GL_QUERY_RESULT, &end));
+				return end >= begin ? double(end - begin) / 1000000.0 : 0.0;
+			};
+
+			if (slot.sequence >= state.latestSequence)
+			{
+				auto& stats = state.stats;
+				stats.valid = true;
+				stats.sourceFrame = slot.sourceFrame;
+				stats.framesLagged = uint32_t(min<uint64_t>(state.sequence - slot.sequence, UINT32_MAX));
+				stats.activeParticles = slot.activeListIndex == 0u ? counters.activeCountA : counters.activeCountB;
+				stats.freeParticles = counters.freeCount;
+				stats.spawnedParticles = counters.spawnedCount;
+				stats.killedParticles = counters.killedCount;
+				stats.droppedParticles = counters.droppedSpawnCount;
+				stats.renderedParticles = counters.renderedCount;
+				stats.culledParticles = counters.culledCount;
+				stats.activeEmitters = slot.activeEmitters;
+				stats.capacity = slot.capacity;
+				stats.capacityUsage = slot.capacity == 0u ? 0.0f : float(stats.activeParticles) / float(slot.capacity);
+				stats.simulationGpuMilliseconds = elapsedMilliseconds(slot.simulation);
+				stats.renderGpuMilliseconds = 0.0;
+				for (auto const& query : slot.renders) stats.renderGpuMilliseconds += elapsedMilliseconds(query);
+				state.latestSequence = slot.sequence;
+			}
+
+			glDeleteSync(slot.fence);
+			slot.fence = nullptr;
+			detail::ParticleStatisticsState::deleteQueries(slot);
+			slot.submitted = false;
+		}
+
+		auto& candidate = state.slots[size_t(state.sequence % state.slots.size())];
+		if (!candidate.submitted)
+		{
+			candidate.sequence = state.sequence;
+			candidate.sourceFrame = mwRenderSystem->getFrameSerial();
+			state.currentSlot = int(state.sequence % state.slots.size());
+		}
+		// If all slots are still busy, this frame simply has no sample. Statistics
+		// are diagnostic and must never turn ring pressure into a wait.
+	}
+
+	void ParticleSystem::dispatchStatisticsPrepare()
+	{
+		if (!mStatistics->enabled) return;
+		mCounters->bindStorage(CountersBinding);
+		auto* program = static_cast<ComputeProgram*>(mStatisticsPrepareProgram.get());
+		program->use();
+		uint64_t requestedSpawnCount = 0;
+		for (auto const& command : mSpawnCommands) requestedSpawnCount += command.count;
+		program->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		program->setUniform("REQUESTED_SPAWN_COUNT", uint32_t(min<uint64_t>(requestedSpawnCount, UINT32_MAX)));
+		program->dispatch(1u);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+	}
+
+	void ParticleSystem::beginStatisticsSample()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (slot.buffer == 0)
+		{
+			GL_CHECK(glGenBuffers(1, &slot.buffer));
+			GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, slot.buffer));
+			GL_CHECK(glBufferData(GL_COPY_WRITE_BUFFER, sizeof(ParticleCounterHeader), nullptr, GL_STREAM_READ));
+			GL_CHECK(glObjectLabel(GL_BUFFER, slot.buffer, -1, "Particle statistics readback"));
+			GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
+		}
+		GLuint ids[2]{};
+		GL_CHECK(glGenQueries(2, ids));
+		slot.simulation = { ids[0], ids[1] };
+		slot.activeListIndex = mActiveListIndex;
+		slot.capacity = mPoolCapacity;
+		GL_CHECK(glQueryCounter(slot.simulation.begin, GL_TIMESTAMP));
+	}
+
+	void ParticleSystem::finishStatisticsSample()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (!slot.simulation.begin) return;
+		GL_CHECK(glQueryCounter(slot.simulation.end, GL_TIMESTAMP));
+		slot.activeListIndex = mActiveListIndex;
+		slot.activeEmitters = uint32_t(getLiveEmitterCount());
+		GL_CHECK(glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT));
+		GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, mCounters->getBuffer()));
+		GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, slot.buffer));
+		GL_CHECK(glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(ParticleCounterHeader)));
+		GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+		GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
+		slot.submitted = true;
+	}
+
+	void ParticleSystem::beginRenderTiming()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (!slot.submitted) return;
+		GLuint ids[2]{};
+		GL_CHECK(glGenQueries(2, ids));
+		slot.renders.push_back({ ids[0], ids[1] });
+		GL_CHECK(glQueryCounter(ids[0], GL_TIMESTAMP));
+	}
+
+	void ParticleSystem::finishRenderTiming()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (!slot.submitted || slot.renders.empty()) return;
+		GL_CHECK(glQueryCounter(slot.renders.back().end, GL_TIMESTAMP));
+	}
+
 	void ParticleSystem::dispatchSpawnCommands()
 	{
 		if (mSpawnCommands.empty()) return;
@@ -864,6 +1106,7 @@ namespace mpp
 
 		try
 		{
+			advanceStatisticsFrame();
 			auto const now = chrono::steady_clock::now();
 			float dt = 0.0f;
 			if (mHasLastSimulationTime)
@@ -884,6 +1127,8 @@ namespace mpp
 			}
 			ensurePoolAllocated();
 			uploadFrameData();
+			dispatchStatisticsPrepare();
+			beginStatisticsSample();
 			{
 				GpuDebugScope spawnScope("Particles: Spawn");
 				dispatchSpawnCommands();
@@ -899,6 +1144,7 @@ namespace mpp
 			// Retirement happens only after this frame's simulation has consumed the
 			// old emitter record. Reusing a slot before then could retarget a particle.
 			retireCompletedEmitters();
+			finishStatisticsSample();
 		}
 		catch (exception const& error)
 		{
@@ -946,6 +1192,7 @@ namespace mpp
 		// texture, never allocates or copies rows at runtime.
 		size_t command = firstCommand;
 		size_t const commandEnd = firstCommand + commandCount;
+		beginRenderTiming();
 		while (command < commandEnd)
 		{
 			auto const& lut = mTemplateCurveLuts[command];
@@ -958,6 +1205,7 @@ namespace mpp
 				static_cast<GLsizei>(groupEnd - command), sizeof(ParticleDrawArraysIndirectCommand)));
 			command = groupEnd;
 		}
+		finishRenderTiming();
 		GL_CHECK(glBindVertexArray(0));
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
 		GL_CHECK(glActiveTexture(GL_TEXTURE1));

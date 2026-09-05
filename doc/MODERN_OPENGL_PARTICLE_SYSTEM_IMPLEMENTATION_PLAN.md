@@ -511,7 +511,14 @@ milliseconds ago, with nothing marking which is which.
 `Profiler` is the wrong home — it is a Windows performance-counter stub behind
 `MPP_PROFILE_BUILD`, with no GL timer-query support.
 
-**Status:** not started.
+**Status:** done. `ParticleStats` is populated from a four-slot staging-buffer
+and timestamp-query ring at least two frames after submission. Every slot is
+fence-polled with a zero timeout; a busy ring drops a diagnostic sample rather
+than waiting. Spawn, kill, drop and render totals are authored alongside the
+existing allocation and per-template counters. Collection is default-off and
+its counter reset, copies, fences and query operations are all absent while off.
+Counter copies and timer-query commands sit outside the measured simulation and
+draw intervals.
 
 **Acceptance:** with statistics off, no `glMapBuffer`, `glGetBufferSubData` or
 query retrieval occurs on the particle path.

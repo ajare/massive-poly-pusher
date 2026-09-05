@@ -19,6 +19,10 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint LIVE_COUNTS[];
 };
 
@@ -39,7 +43,43 @@ void main()
         ACTIVE_COUNT_A = 0u;
         ACTIVE_COUNT_B = 0u;
         DROPPED_SPAWN_COUNT = 0u;
+        SPAWNED_COUNT = 0u;
+        KILLED_COUNT = 0u;
+        RENDERED_COUNT = 0u;
+        CULLED_COUNT = 0u;
     }
+}
+)MPP";
+
+	// Resets only the per-frame diagnostic counters. This dispatch exists only
+	// while statistics are enabled and never touches the allocation counters.
+	inline char const* ParticleStatisticsPrepareComputeShader = R"MPP(#version 430
+
+layout(local_size_x = 1) in;
+
+layout(std430, binding = 4) restrict buffer ParticleCounters
+{
+    uint FREE_COUNT;
+    uint ACTIVE_COUNT_A;
+    uint ACTIVE_COUNT_B;
+    uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
+    uint LIVE_COUNTS[];
+};
+
+uniform uint ACTIVE_LIST_INDEX;
+uniform uint REQUESTED_SPAWN_COUNT;
+
+void main()
+{
+    DROPPED_SPAWN_COUNT = 0u;
+    SPAWNED_COUNT = REQUESTED_SPAWN_COUNT;
+    KILLED_COUNT = ACTIVE_LIST_INDEX == 0u ? ACTIVE_COUNT_A : ACTIVE_COUNT_B;
+    RENDERED_COUNT = 0u;
+    CULLED_COUNT = 0u;
 }
 )MPP";
 
@@ -115,6 +155,10 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint LIVE_COUNTS[];
 };
 layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
@@ -317,6 +361,10 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint LIVE_COUNTS[];
 };
 layout(std430, binding = 7) restrict writeonly buffer ParticleSimulationDispatchCommand
@@ -407,6 +455,10 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint LIVE_COUNTS[];
 };
 layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
@@ -506,6 +558,10 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint TEMPLATE_COUNTS[];
 };
 layout(std430, binding = 6) restrict buffer ParticleCompactionScratch
@@ -600,6 +656,10 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint TEMPLATE_COUNTS[];
 };
 layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
@@ -634,12 +694,16 @@ void main()
 
 layout(local_size_x = 1) in;
 
-layout(std430, binding = 4) restrict readonly buffer ParticleCounters
+layout(std430, binding = 4) restrict buffer ParticleCounters
 {
     uint FREE_COUNT;
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint TEMPLATE_COUNTS[];
 };
 layout(std430, binding = 6) restrict writeonly buffer ParticleCompactionScratch
@@ -667,6 +731,15 @@ void main()
         INDIRECT_COMMANDS[commandOffset + 3u] = templateIndex;
         offset += count;
     }
+    // Statistics prepare stores the requested spawn count and starting active
+    // count in these fields. Resolve successful spawns and deaths from counters
+    // the hot kernels already maintain, avoiding diagnostic per-particle atomics.
+    uint spawned = SPAWNED_COUNT >= DROPPED_SPAWN_COUNT ? SPAWNED_COUNT - DROPPED_SPAWN_COUNT : 0u;
+    uint startAndSpawned = KILLED_COUNT + spawned;
+    SPAWNED_COUNT = spawned;
+    KILLED_COUNT = startAndSpawned >= offset ? startAndSpawned - offset : 0u;
+    RENDERED_COUNT = offset;
+    CULLED_COUNT = 0u;
 }
 )MPP";
 
@@ -733,6 +806,10 @@ layout(std430, binding = 4) restrict readonly buffer ParticleCounters
     uint ACTIVE_COUNT_A;
     uint ACTIVE_COUNT_B;
     uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
     uint TEMPLATE_COUNTS[];
 };
 layout(std430, binding = 5) restrict readonly buffer ParticleEmitters

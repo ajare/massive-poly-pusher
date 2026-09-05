@@ -2075,7 +2075,7 @@ void main()
 					emitters[3].noiseFrequencyStrength = { 0.0f, 0.0f, 0.0f, 2.0f };
 					std::array<uint32_t, 5> freeIndices{};
 					std::array<uint32_t, 5> activeA{ 0u, 1u, 2u, 3u, 4u }, activeB{};
-					std::array<uint32_t, 8> counters{ 0u, 5u, 0u, 0u, 2u, 1u, 1u, 1u };
+					std::array<uint32_t, 12> counters{ 0u, 5u, 0u, 0u, 0u, 0u, 0u, 0u, 2u, 1u, 1u, 1u };
 					std::array<GLuint, 6> buffers{};
 					auto bindTestBuffer = [&](uint32_t binding, auto const& values)
 					{
@@ -2136,7 +2136,7 @@ void main()
 						simulationFailure = "3D-texture noise module did not integrate independently";
 					else if (!near(particles[0].rotation, 0.3f) || !near(particles[0].positionAge[3], 0.1f))
 						simulationFailure = "base age or angular-velocity integration failed";
-					else if (counters[0] != 1u || counters[2] != 4u || counters[4] != 1u || freeIndices[0] != 4u)
+					else if (counters[0] != 1u || counters[2] != 4u || counters[8] != 1u || freeIndices[0] != 4u)
 						simulationFailure = "survivor active-list append or dead-particle reclamation failed";
 					else
 					{
@@ -2167,7 +2167,7 @@ void main()
 					for (uint32_t index = 0; index < compactEmitters.size(); ++index)
 						compactEmitters[index].emissionState[3] = emitterTemplates[index];
 					compactEmitters[1].shapeSeedModulesBudget[3] = 2u;
-					std::array<uint32_t, 8> compactCounters{ 8u, 8u, 0u, 0u, 99u, 99u, 99u, 99u };
+					std::array<uint32_t, 12> compactCounters{ 8u, 8u, 0u, 0u, 0u, 0u, 0u, 0u, 99u, 99u, 99u, 99u };
 					std::array<uint32_t, 8> compactScratch{};
 					std::array<uint32_t, 8> renderIndices{};
 					std::array<ParticleDrawArraysIndirectCommand, 4> drawCommands{};
@@ -2257,7 +2257,7 @@ void main()
 					std::string compactionFailure;
 					for (uint32_t templateIndex = 0; templateIndex < referenceCounts.size(); ++templateIndex)
 					{
-						if (compactCounters[4u + templateIndex] != referenceCounts[templateIndex] ||
+						if (compactCounters[8u + templateIndex] != referenceCounts[templateIndex] ||
 							compactScratch[templateIndex] != referenceOffset ||
 							compactScratch[4u + templateIndex] != referenceCounts[templateIndex])
 						{
@@ -2311,7 +2311,7 @@ void main()
 					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
 					readBuffer(compactCounterBuffer, compactCounters);
 					if (compactCounters[0] != 8u || compactCounters[1] != 8u || compactCounters[3] != 1u ||
-						compactCounters[4] != referenceCounts[0])
+						compactCounters[8] != referenceCounts[0])
 						return fail("spawn budget clamp did not consume the compaction template counter");
 
 					(void)compactFreeBuffer;
