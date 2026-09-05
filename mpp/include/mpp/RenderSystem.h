@@ -209,6 +209,28 @@ namespace mpp
 		ResourcePtr mActiveProgram;
 		size_t mExpectedGraphColourOutputs{ 0 };
 
+		// Scope for the renderer's own single-output core programs (the fullscreen
+		// quad and the debug quad) when they draw inside a multi-output graph pass.
+		// GL leaves every attachment a fragment shader does not write undefined for
+		// the fragments it covers, so an unguarded quad would corrupt a loaded
+		// attachment such as SceneEmissive -- and setUsedProgram would rightly reject
+		// the program for having no output at location one. Masking writes to the
+		// attachments beyond the first states the intent instead: these helpers only
+		// ever shade colour attachment zero.
+		class PrimaryColourOutputDraw
+		{
+			RenderSystem* mRenderSystem{ nullptr };
+			GraphRasterState mSavedState;
+			size_t mColourOutputs{ 0 };
+
+		public:
+			explicit PrimaryColourOutputDraw(RenderSystem* renderSystem);
+			~PrimaryColourOutputDraw();
+
+			PrimaryColourOutputDraw(PrimaryColourOutputDraw const&) = delete;
+			PrimaryColourOutputDraw& operator =(PrimaryColourOutputDraw const&) = delete;
+		};
+
 		// Render-thread-only, non-owning process-flow recorder state. A pipeline
 		// owns the mutable candidate until endRenderFlowCapture() succeeds.
 		RenderPipelineFlowSnapshot* mFlowCapture{ nullptr };

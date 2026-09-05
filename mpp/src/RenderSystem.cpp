@@ -1399,6 +1399,25 @@ namespace mpp
 		}
 	}
 
+	RenderSystem::PrimaryColourOutputDraw::PrimaryColourOutputDraw(RenderSystem* renderSystem)
+	{
+		if (!renderSystem || renderSystem->mExpectedGraphColourOutputs < 2) return;
+		mRenderSystem = renderSystem;
+		mColourOutputs = renderSystem->mExpectedGraphColourOutputs;
+		mSavedState = renderSystem->captureRasterState(mColourOutputs);
+		auto state = mSavedState;
+		for (size_t output = 1; output < state.colourWriteMasks.size(); ++output)
+			state.colourWriteMasks[output] = GraphColourWriteMask{ false, false, false, false };
+		renderSystem->applyRasterState(state, mColourOutputs, renderSystem->mViewportWidth, renderSystem->mViewportHeight);
+		renderSystem->setExpectedGraphColourOutputs(0);
+	}
+
+	RenderSystem::PrimaryColourOutputDraw::~PrimaryColourOutputDraw()
+	{
+		if (!mRenderSystem) return;
+		mRenderSystem->setExpectedGraphColourOutputs(mColourOutputs);
+		mRenderSystem->applyRasterState(mSavedState, mColourOutputs, mRenderSystem->mViewportWidth, mRenderSystem->mViewportHeight);
+	}
 	/*
 	 * Set the used program.  This should only be called
 	 * after GL has accepted the program as active.
@@ -3839,6 +3858,11 @@ namespace mpp
 	{
 		flushVertexBuffers();
 
+		// The shared fullscreen program writes colour attachment zero only, and
+		// graph passes such as MPP.WaterScene seed their primary output with it
+		// while a second, loaded attachment is still bound.
+		PrimaryColourOutputDraw primaryOutput(this);
+
 		// Set program
 		auto p = static_cast<Program*>(mFullscreenProgram.get());
 
@@ -4227,6 +4251,9 @@ namespace mpp
 	void RenderSystem::renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture)
 	{
 		flushVertexBuffers();
+
+		// Same single-output contract as renderFullscreenQuad above.
+		PrimaryColourOutputDraw primaryOutput(this);
 
 		// Set program
 		auto p = static_cast<Program*>(mFullscreenProgram.get());
