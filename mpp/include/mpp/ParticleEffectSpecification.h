@@ -1,0 +1,28 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "mpp/ParticleSystem.h"
+
+namespace mpp
+{
+	// Authored, reusable particle effect data. It deliberately contains no live
+	// emitter handles or instance transforms; those belong to ParticleSystem.
+	struct _MPPAPI ParticleEffectSpecification
+	{
+		struct EmitterTemplate
+		{
+			std::string name;
+			ParticleEmitterTemplate value;
+			// Optional ResourceManager name for the appearance's albedo/flipbook.
+			std::string albedoTexture;
+		};
+
+		uint32_t version{ 1 };
+		std::string name;
+		uint32_t maximumParticleCount{ 0 };
+		std::vector<EmitterTemplate> emitterTemplates;
+	};
+}

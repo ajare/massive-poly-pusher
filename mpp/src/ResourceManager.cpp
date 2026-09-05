@@ -14,6 +14,7 @@
 #include "mpp/Sampler.h"
 #include "mpp/String.h"
 #include "mpp/ParticleDrawProgram.h"
+#include "mpp/ParticleEffect.h"
 #include "mpp/PostEffectMaterial.h"
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/PbrPipelineTemplate.h"
@@ -101,6 +102,10 @@ namespace mpp
 		mResourceFactories["ParticleDrawProgram"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new ParticleDrawProgram(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["ParticleEffect"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new ParticleEffect(name, this->mwRenderSystem, this, rStream));
 		};
 	}
 

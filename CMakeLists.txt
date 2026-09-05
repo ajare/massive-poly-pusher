@@ -316,6 +316,8 @@ add_library(MassivePolyPusher SHARED
     mpp/src/MppModelStream.cpp
     mpp/src/ParticleCurveLut.cpp
     mpp/src/ParticleDrawProgram.cpp
+    mpp/src/ParticleEffect.cpp
+    mpp/src/ParticleEffectStream.cpp
     mpp/src/ParticleGpuTests.cpp
     mpp/src/ParticleSystem.cpp
     mpp/src/ParticleSystemTests.cpp
@@ -323,6 +325,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/PostEffectMaterial.cpp
     mpp/src/PostEffectMaterialStream.cpp
     mpp/src/ProgrammaticPostEffectMaterialStream.cpp
+    mpp/src/ProgrammaticParticleEffectStream.cpp
     mpp/src/PrimitiveModelStream.cpp
     mpp/src/Profiler.cpp
     mpp/src/Program.cpp
@@ -402,6 +405,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/FileBasicMaterialStream.cpp
     mpp-resource-parsers/src/FileMaterialStream.cpp
     mpp-resource-parsers/src/FilePbrMaterialStream.cpp
+    mpp-resource-parsers/src/FileParticleEffectStream.cpp
     mpp-resource-parsers/src/FilePostEffectMaterialStream.cpp
     mpp-resource-parsers/src/FileGltfPbrMaterialStream.cpp
     mpp-resource-parsers/src/GltfPbrMaterialLoader.cpp
@@ -428,6 +432,8 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/PbrPipelineSerializer.cpp
     mpp-resource-parsers/src/PbrPipelineRuntime.cpp
     mpp-resource-parsers/src/PbrPipelineResourceValidator.cpp
+    mpp-resource-parsers/src/ParticleEffectParser.cpp
+    mpp-resource-parsers/src/ParticleEffectSerializer.cpp
     mpp-resource-parsers/src/ParticleResourceTests.cpp
     mpp-resource-parsers/src/SceneParser.cpp
     mpp-resource-parsers/src/SceneSerializer.cpp
