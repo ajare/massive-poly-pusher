@@ -24,6 +24,9 @@ RenderGraph:
     - name: SceneDepth
       format: DEPTH24
       usage: depthAttachment,sampled
+    - name: ParticleDistortion
+      format: RG16F
+      usage: colourAttachment,sampled
     - name: SceneColourResolved
       format: RGBA16F
       usage: colourAttachment,sampled
@@ -98,6 +101,12 @@ RenderGraph:
       import: screen
       external: true
       transient: false
+    - name: ParticleOitAccumulation
+      format: RGBA16F
+      usage: colourAttachment,sampled
+    - name: ParticleOitOpticalDepth
+      format: R16F
+      usage: colourAttachment,sampled
   Passes:
     - name: ShadowDepth
       type: scene
@@ -166,6 +175,220 @@ RenderGraph:
         explicit: true
         depthTest: false
         depthWrite: false
+    - name: ParticleMeshes
+      type: scene
+      factory: MPP.ParticleMeshScene
+      Inputs:
+        - sampler: SHADOW_MAP
+          image: ShadowDepth
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Depth:
+        image: SceneDepth
+        load: load
+        store: store
+      Raster:
+        explicit: true
+        cull: back
+        depthTest: true
+        depthWrite: true
+        blend: false
+    - name: ParticleWeightedOit
+      type: scene
+      factory: MPP.ParticleWeightedOit
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Colours:
+        - image: ParticleOitAccumulation
+          load: clear
+          store: store
+          clear: 0 0 0 0
+        - image: ParticleOitOpticalDepth
+          load: clear
+          store: store
+          clear: 0 0 0 0
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: one
+        destinationColourBlend: one
+        sourceAlphaBlend: one
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleWeightedOitResolve
+      type: fullscreen
+      factory: MPP.ParticleWeightedOitResolve
+      Inputs:
+        - sampler: SCENE
+          image: SceneHdr
+        - sampler: ACCUMULATION
+          image: ParticleOitAccumulation
+        - sampler: OPTICAL_DEPTH
+          image: ParticleOitOpticalDepth
+        - sampler: BLOOM
+          image: BloomMaskHdr
+      Colours:
+        - image: SceneHdr
+          load: dontCare
+          store: store
+        - image: BloomMaskHdr
+          load: dontCare
+          store: store
+    - name: ParticleAlpha
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 1
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: oneMinusSourceAlpha
+        sourceAlphaBlend: one
+        destinationAlphaBlend: oneMinusSourceAlpha
+        multisample: false
+    - name: TrailAlpha
+      type: scene
+      factory: MPP.TrailScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 1
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: oneMinusSourceAlpha
+        sourceAlphaBlend: one
+        destinationAlphaBlend: oneMinusSourceAlpha
+        multisample: false
+    - name: TrailAdditive
+      type: scene
+      factory: MPP.TrailScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 0
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: one
+        sourceAlphaBlend: zero
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleAdditive
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 0
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: one
+        sourceAlphaBlend: zero
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleDistortion
+      type: scene
+      factory: MPP.ParticleDistortion
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Colours:
+        - image: ParticleDistortion
+          load: clear
+          store: store
+          clear: 0 0 0 0
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: one
+        destinationColourBlend: one
+        sourceAlphaBlend: one
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleDistortionComposite
+      type: fullscreen
+      factory: MPP.ParticleDistortionComposite
+      Inputs:
+        - sampler: SCENE
+          image: SceneHdr
+        - sampler: DISTORTION
+          image: ParticleDistortion
+      Colours:
+        - image: SceneHdr
+          load: dontCare
+          store: store
     - name: BloomBlurHorizontal0
       type: fullscreen
       factory: MPP.FullscreenEffect

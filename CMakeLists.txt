@@ -65,9 +65,25 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_DEBUG_POSTFIX d)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+# Keep all generated binaries and libraries in the repository's root build
+# directory. This remains stable even if a developer uses a nested CMake
+# binary directory, and makes the checked-in ../../../resources paths resolve
+# directly to the source resource tree for every multi-config build.
+set(MPP_BUILD_OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/build")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/lib")
+# Explicit per-configuration directories keep single-config generators (Make
+# and Ninja) consistent with Visual Studio. The extra directory level is also
+# required by the checked-in ../../../resources paths beside the executables.
+foreach(MPP_OUTPUT_CONFIG Debug Release RelWithDebInfo MinSizeRel MemCheck)
+    string(TOUPPER "${MPP_OUTPUT_CONFIG}" MPP_OUTPUT_CONFIG_UPPER)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/bin/${MPP_OUTPUT_CONFIG}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/bin/${MPP_OUTPUT_CONFIG}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/lib/${MPP_OUTPUT_CONFIG}")
+endforeach()
+unset(MPP_OUTPUT_CONFIG)
+unset(MPP_OUTPUT_CONFIG_UPPER)
 
 find_package(OpenGL REQUIRED)
 
@@ -278,6 +294,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/BufferDataProvider.cpp
     mpp/src/BufferRenderer.cpp
     mpp/src/Camera.cpp
+    mpp/src/ComputeProgram.cpp
     mpp/src/CircleBatch.cpp
     mpp/src/ClipRectangle.cpp
     mpp/src/Colour.cpp
@@ -313,10 +330,19 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ModelStream.cpp
     mpp/src/MppException.cpp
     mpp/src/MppModelStream.cpp
+    mpp/src/ParticleCurveLut.cpp
+    mpp/src/ParticleDrawProgram.cpp
+    mpp/src/ParticleEffect.cpp
+    mpp/src/ParticleEffectStream.cpp
+    mpp/src/ParticleGpuTests.cpp
+    mpp/src/ParticleSystem.cpp
+    mpp/src/ParticleSystemTests.cpp
+    mpp/src/TrailSystem.cpp
     mpp/src/PersistentMappedBuffer.cpp
     mpp/src/PostEffectMaterial.cpp
     mpp/src/PostEffectMaterialStream.cpp
     mpp/src/ProgrammaticPostEffectMaterialStream.cpp
+    mpp/src/ProgrammaticParticleEffectStream.cpp
     mpp/src/PrimitiveModelStream.cpp
     mpp/src/Profiler.cpp
     mpp/src/Program.cpp
@@ -329,6 +355,8 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ProgrammaticTextureStream.cpp
     mpp/src/ProgramStream.cpp
     mpp/src/QuadBatch.cpp
+    mpp/src/RawShaderProgram.cpp
+    mpp/src/RawShaderStream.cpp
     mpp/src/RenderGraph.cpp
     mpp/src/RenderGraphExecutor.cpp
     mpp/src/RenderGraphStream.cpp
@@ -362,6 +390,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/SceneTemplate.cpp
     mpp/src/SceneModel2d.cpp
     mpp/src/SceneModel3d.cpp
+    mpp/src/ShaderStorageBuffer.cpp
     mpp/src/Screen.cpp
     mpp/src/SphereModelStream.cpp
     mpp/src/StaticLogger.cpp
@@ -393,6 +422,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/FileBasicMaterialStream.cpp
     mpp-resource-parsers/src/FileMaterialStream.cpp
     mpp-resource-parsers/src/FilePbrMaterialStream.cpp
+    mpp-resource-parsers/src/FileParticleEffectStream.cpp
     mpp-resource-parsers/src/FilePostEffectMaterialStream.cpp
     mpp-resource-parsers/src/FileGltfPbrMaterialStream.cpp
     mpp-resource-parsers/src/GltfPbrMaterialLoader.cpp
@@ -419,6 +449,9 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/PbrPipelineSerializer.cpp
     mpp-resource-parsers/src/PbrPipelineRuntime.cpp
     mpp-resource-parsers/src/PbrPipelineResourceValidator.cpp
+    mpp-resource-parsers/src/ParticleEffectParser.cpp
+    mpp-resource-parsers/src/ParticleEffectSerializer.cpp
+    mpp-resource-parsers/src/ParticleResourceTests.cpp
     mpp-resource-parsers/src/SceneParser.cpp
     mpp-resource-parsers/src/SceneSerializer.cpp
     mpp-resource-parsers/src/RenderGraphSerializer.cpp
@@ -513,28 +546,29 @@ mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/i
 mpp_copy_runtime(ModelConvert assimp ${MPP_DRACO_RUNTIME} glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 mpp_copy_asan_runtime(ModelConvert)
 
+set(MPP_PIPELINE_EDITOR_TYPE)
 if(WIN32)
-    add_executable(PipelineEditor WIN32
-        pipeline-editor/src/Main.cpp
-        pipeline-editor/src/ProcessFlowModel.cpp
-        pipeline-editor/src/ProcessFlowLayout.cpp
-        pipeline-editor/src/ProcessFlowView.cpp)
-    target_include_directories(PipelineEditor PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-    target_link_libraries(PipelineEditor PRIVATE
-        MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
-        Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
-    mpp_target_defaults(PipelineEditor)
-    mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-    mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
-    mpp_copy_asan_runtime(PipelineEditor)
-    add_custom_command(TARGET PipelineEditor POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
-            "$<TARGET_FILE_DIR:PipelineEditor>/editor.ini"
-        VERBATIM)
-else()
-    message(STATUS "Skipping PipelineEditor: its RenderDoc/process integration is Windows-only")
+    list(APPEND MPP_PIPELINE_EDITOR_TYPE WIN32)
 endif()
+add_executable(PipelineEditor ${MPP_PIPELINE_EDITOR_TYPE}
+    pipeline-editor/src/Main.cpp
+    pipeline-editor/src/ProcessFlowModel.cpp
+    pipeline-editor/src/ProcessFlowLayout.cpp
+    pipeline-editor/src/ProcessFlowView.cpp)
+unset(MPP_PIPELINE_EDITOR_TYPE)
+target_include_directories(PipelineEditor PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
+target_link_libraries(PipelineEditor PRIVATE
+    MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
+    Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
+mpp_target_defaults(PipelineEditor)
+mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
+mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+mpp_copy_asan_runtime(PipelineEditor)
+add_custom_command(TARGET PipelineEditor POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
+        "$<TARGET_FILE_DIR:PipelineEditor>/editor.ini"
+    VERBATIM)
 
 add_subdirectory(demo-suite)

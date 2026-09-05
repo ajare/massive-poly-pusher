@@ -30,6 +30,8 @@ namespace mpp::resource_parsers
 			{"Models", "Model"},
 			{"Lights", "Light"},
 			{"Images", "Image"},
+			{"Emitters", "Emitter"},
+			{"Keys", "Key"},
 			{"Passes", "Pass"},
 			{"Buffer", "Channel"},
 			{"Inputs", "Sampled"},

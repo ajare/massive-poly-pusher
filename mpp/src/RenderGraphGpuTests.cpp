@@ -15,11 +15,13 @@
 #include "mpp/RenderGraphGpuTests.h"
 #include "mpp/Camera.h"
 #include "mpp/BoxModelStream.h"
+#include "mpp/ComputeProgram.h"
 #include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
+#include "mpp/RenderGraphStream.h"
 #include "mpp/RenderGraphTargets.h"
 #include "mpp/RenderOutputProcessor.h"
 #include "mpp/RenderPipelineFlow.h"
@@ -39,6 +41,8 @@
 #include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
+#include "mpp/ParticleData.h"
+#include "mpp/ParticleSystem.h"
 
 namespace mpp
 {
@@ -576,18 +580,10 @@ namespace mpp
 				return fail("explicit named-domain invalidation did not regenerate all six faces");
 
 			stage = "point shadow volume selection and automatic invalidation";
-			auto boundsModelResource = renderSystem->getResourceManager()->getResource("__mpp_mesh_fullscreen_quad__");
-			auto* boundsModel = dynamic_cast<Model*>(boundsModelResource.get());
-			if (!boundsModel) return fail("core bounds model is unavailable for point-shadow volume tests");
-			CameraCulledShadowTestScene casterScene(renderSystem);
-			auto inRangeCaster = casterScene.add3dModel(boundsModelResource);
-			auto outOfRangeCaster = casterScene.add3dModel(boundsModelResource);
-			outOfRangeCaster->translate({ 100.0f, 0.0f, 0.0f });
-			if (!casterScene.get3dModelsInView({}).empty()) return fail("camera-culling test scene unexpectedly returned visible models");
-			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
-			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
-				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
-
+			// The shadow pass resolves a material per caster mesh and reads its caster
+			// contract, so the casters have to be real models with real materials. A
+			// core mesh built against a bare program name is not a usable stand-in:
+			// its "material" resolves to a Program and the pass walks into it.
 			// A batched or otherwise dynamic model declines the load-time position
 			// scan, so its extents are a placeholder at its own local origin rather
 			// than a measurement. Volume selection has to read that as unbounded:
@@ -627,10 +623,20 @@ void main()
 			unmeasuredStream->setCalculateBounds(false);
 			auto unmeasuredModelResource = renderSystem->getResourceManager()->declareResource("GpuTestUnmeasuredCaster.Model", unmeasuredStream).first;
 			unmeasuredModelResource->load();
-			auto const* measuredModel = dynamic_cast<Model const*>(measuredModelResource.get());
+			auto* measuredModel = dynamic_cast<Model*>(measuredModelResource.get());
 			auto const* unmeasuredModel = dynamic_cast<Model const*>(unmeasuredModelResource.get());
 			if (!measuredModel || !unmeasuredModel || !measuredModel->hasBounds() || unmeasuredModel->hasBounds())
 				return fail("a model that declined the bounds calculation did not report unmeasured extents");
+
+			CameraCulledShadowTestScene casterScene(renderSystem);
+			auto inRangeCaster = casterScene.add3dModel(measuredModelResource);
+			auto outOfRangeCaster = casterScene.add3dModel(measuredModelResource);
+			outOfRangeCaster->translate({ 100.0f, 0.0f, 0.0f });
+			if (!casterScene.get3dModelsInView({}).empty()) return fail("camera-culling test scene unexpectedly returned visible models");
+			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
+			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
+				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
+
 			auto measuredDistantCaster = casterScene.add3dModel(measuredModelResource);
 			measuredDistantCaster->translate({ 100.0f, 0.0f, 0.0f });
 			auto unmeasuredDistantCaster = casterScene.add3dModel(unmeasuredModelResource);
@@ -665,7 +671,7 @@ void main()
 			if (!verifySceneInvalidation("caster policy")) return false;
 			inRangeCaster->getParams()->setModelInstanceCount(2);
 			if (!verifySceneInvalidation("instance count")) return false;
-			auto* firstMesh = boundsModel->getMesh(0);
+			auto* firstMesh = measuredModel->getMesh(0);
 			inRangeCaster->getParams()->setModelMaterial(firstMesh->getMaterial());
 			if (!verifySceneInvalidation("material shadow contract")) return false;
 
@@ -885,6 +891,10 @@ void main()
 				if (!verifyGeneratedWater(64, 64) || !verifyGeneratedWater(96, 32))
 					return fail("opted-in generated water topology, sampler binding, mip preservation, or resize execution failed");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterPipeline");
+				// The resize check leaves the gate scene at whichever size it last
+				// rendered, and everything below sizes its expectations against the
+				// 64x64 gate viewport.
+				gateScene->setViewport(0, 0, 64, 64);
 
 				// Planar owns one reflected-scene branch per supplied plane and never
 				// acquires Screen-space's frozen colour copy or mip chain.
@@ -923,7 +933,9 @@ void main()
 								auto const rank = stats.name.substr(std::string("PlanarReflection").size());
 								if (stats.primaryColourOutputName != "PlanarReflection" + rank ||
 									stats.primaryColourOutputWidth != 16 || stats.primaryColourOutputHeight != 16)
-									return fail("Planar pass telemetry lost its stable image name or dimensions");
+									return fail("Planar pass telemetry lost its stable image name or dimensions: " +
+										stats.primaryColourOutputName + " " + std::to_string(stats.primaryColourOutputWidth) +
+										"x" + std::to_string(stats.primaryColourOutputHeight));
 							}
 							else if (stats.name == "WaterScene")
 							{
@@ -1861,6 +1873,560 @@ void main()
 				}
 			}
 
+			stage = "particle simulation frame policy";
+			{
+				if (clampParticleDeltaSeconds(3.0f) != MaximumParticleDeltaSeconds)
+					return fail("particle simulation did not clamp a multi-second frame stall");
+				ParticleSpawnAccumulator lowRate;
+				uint32_t const expected[]{ 0u, 0u, 0u, 1u };
+				for (uint32_t count : expected)
+					if (lowRate.accumulate(0.5f, 1.0f, 0.5f) != count)
+						return fail("fractional particle spawn accumulation quantised a low-rate emitter");
+			}
+
+			stage = "particle vertical slice";
+			{
+				// The thin end-to-end path: a compute dispatch and an attribute-less
+				// indirect draw of GPU-written arguments, surviving GL_CHECK, the debug
+				// context and graph state management, in both a generated graph and an
+				// authored template. Unavailable compute is not fatal anywhere here.
+				auto const& particleCaps = renderSystem->getCaps();
+				if (particleCaps.supportsCompute &&
+					(particleCaps.maxComputeWorkGroupInvocations == 0 || particleCaps.maxComputeWorkGroupCount[0] == 0 ||
+						particleCaps.maxComputeWorkGroupSize[0] == 0 || particleCaps.maxShaderStorageBlockSize == 0 ||
+						particleCaps.maxShaderStorageBufferBindings == 0))
+					return fail("compute support was reported without querying its limits");
+
+				auto particleScene = renderSystem->createScene("Default");
+				particleScene->setViewport(0, 0, 64, 64);
+				particleScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 1.0f));
+				auto particleCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 6.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+
+				// One template per billboard mode plus alpha and weighted-OIT templates
+				// exercises every authored command span. The burst is submitted by the first graph.
+				std::array<ParticleEmitterTemplate, 8> particleTemplates{};
+				for (uint32_t index = 0; index < particleTemplates.size(); ++index)
+				{
+					auto& emitter = particleTemplates[index];
+					emitter.simulation.emissionState = { 1u, 1u, 1u, 0u };
+					emitter.simulation.shapeSeedModulesBudget[3] = 1u;
+					emitter.simulation.lifetimeSizeRanges = { 10.0f, 10.0f, 0.35f, 0.35f };
+					emitter.simulation.initialVelocityMin = emitter.simulation.initialVelocityMax = { 0.0f, 1.0f, 0.0f, 0.0f };
+					emitter.localTransform = glm::translate(glm::mat4(1.0f), { (float(index) - 3.5f) * 0.5f, 0.0f, 0.0f });
+					emitter.appearance.appearance[1] = 1.0f;
+					emitter.appearance.modes[2] = std::min(index, uint32_t(ParticleBillboardMode::VelocityStretched));
+					emitter.appearance.modes[3] = index < 6u ? uint32_t(ParticleBlendClass::Additive) :
+						(index == 6u ? uint32_t(ParticleBlendClass::Alpha) : uint32_t(ParticleBlendClass::WeightedOit));
+				}
+				auto particleEffect = renderSystem->getParticleSystem().createEffect(particleTemplates);
+
+				// Particles are the only thing in this scene, so any lit pixel in the
+				// pass's own stored output came from the indirect draw.
+				auto drewParticles = [](std::vector<GraphImageCapture> const& captures)
+				{
+					for (auto const& capture : captures)
+						if ((capture.passName == "ParticleAlpha" || capture.passName == "ParticleAdditive" ||
+							capture.passName == "ParticleWeightedOit" || capture.passName == "Particles") && !capture.depth)
+							for (auto value : capture.pixels) if (value) return true;
+					return false;
+				};
+
+				RenderPipelineOptions withoutParticles;
+				withoutParticles.mode = RenderPipelineMode::GraphLegacyForward;
+				auto plainPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestParticlesOffPipeline", withoutParticles);
+				plainPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				for (auto const& stats : plainPipeline->getLastGraphExecutionStats())
+					if (stats.name == "ParticleMeshes" || stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" ||
+						stats.name == "ParticleWeightedOit" || stats.name == "ParticleWeightedOitResolve" ||
+						stats.name == "TrailAlpha" || stats.name == "TrailAdditive")
+						return fail("default-off generated graph inserted a particle primitive pass");
+				renderSystem->removeRenderPipeline("GpuTestParticlesOffPipeline");
+
+				RenderPipelineOptions generatedParticleOptions;
+				generatedParticleOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				generatedParticleOptions.generatedParticles = true;
+				auto generatedPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedParticlePipeline", generatedParticleOptions);
+				generatedPipeline->requestGraphImageCapture();
+				generatedPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				size_t executedParticlePasses = 0;
+				size_t executedTrailPasses = 0;
+				bool executedMeshParticlePass = false;
+				bool executedOitResolve = false;
+				for (auto const& stats : generatedPipeline->getLastGraphExecutionStats())
+				{
+					if (stats.name == "ParticleMeshes")
+					{
+						executedMeshParticlePass = stats.colourOutputCount == 1u && stats.depthOutputCount == 1u;
+					}
+					else if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" || stats.name == "ParticleWeightedOit")
+					{
+						++executedParticlePasses;
+						// Soft particles sample live depth but never attach or write it.
+						size_t const expectedOutputs = stats.name == "ParticleWeightedOit" ? 2u : 1u;
+						if (stats.colourOutputCount != expectedOutputs || stats.depthOutputCount != 0)
+							return fail("a generated blend-class particle pass has the wrong colour/depth attachment contract");
+					}
+					else if (stats.name == "TrailAlpha" || stats.name == "TrailAdditive")
+					{
+						++executedTrailPasses;
+						if (stats.colourOutputCount != 1u || stats.depthOutputCount != 0u)
+							return fail("a generated trail ribbon pass has the wrong colour/depth attachment contract");
+					}
+					else if (stats.name == "ParticleWeightedOitResolve") executedOitResolve = stats.colourOutputCount == 1;
+				}
+				if (!executedMeshParticlePass || executedParticlePasses != 3 || executedTrailPasses != 2 || !executedOitResolve)
+					return fail("generated particle primitives did not insert mesh, billboard, trail, and OIT passes");
+				bool const particlesAvailable = renderSystem->particlesAvailable();
+				std::vector<uint8_t> poolAfterGeneratedDraw;
+				if (particlesAvailable)
+				{
+					// Query the linked spawn kernel rather than trusting the C++ declaration:
+					// GL_TOP_LEVEL_ARRAY_STRIDE is the driver's resolved std430 stride.
+					auto spawnProgram = renderSystem->getResourceManager()->getResource("__mpp_particle_spawn__", true);
+					if (!spawnProgram) return fail("the available particle system has no spawn kernel");
+					GLuint variable = glGetProgramResourceIndex(spawnProgram->getId(), GL_BUFFER_VARIABLE, "PARTICLES[0].padding");
+					if (variable == GL_INVALID_INDEX) return fail("could not introspect the particle record in the spawn kernel");
+					GLenum properties[]{ GL_OFFSET, GL_TOP_LEVEL_ARRAY_STRIDE };
+					GLint values[2]{};
+					GL_CHECK(glGetProgramResourceiv(spawnProgram->getId(), GL_BUFFER_VARIABLE, variable, 2, properties, 2, nullptr, values));
+					if (values[0] != 60 || values[1] != GLint(sizeof(ParticleRecord)))
+						return fail("the particle record is not exactly 64 bytes under std430");
+
+					auto simulationProgram = renderSystem->getResourceManager()->getResource("__mpp_particle_simulation__", true);
+					if (!simulationProgram) return fail("the available particle system has no simulation kernel");
+
+					// Snapshot the allocated tail of the GPU pool. Rendering another
+					// particle graph in this same renderer frame must be a pure draw: a
+					// second simulation would change age even when its tiny dt did not move
+					// a particle far enough to alter a captured RGB8 pixel.
+					GLint poolBuffer = 0;
+					GL_CHECK(glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &poolBuffer));
+					if (poolBuffer == 0) return fail("particle pool was not left bound after drawing");
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, GLuint(poolBuffer)));
+					GLint poolBytes = 0;
+					GL_CHECK(glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &poolBytes));
+					size_t const snapshotBytes = 8u * 24u * sizeof(ParticleRecord);
+					if (size_t(poolBytes) < snapshotBytes) return fail("particle pool is smaller than the bootstrap allocation");
+					poolAfterGeneratedDraw.resize(snapshotBytes);
+					GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, poolBytes - GLint(snapshotBytes), snapshotBytes, poolAfterGeneratedDraw.data()));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+				}
+				if (drewParticles(generatedPipeline->takeGraphImageCaptures()) != particlesAvailable)
+					return fail("GraphLegacyForward particles did not draw exactly when the particle system reported itself available");
+				renderSystem->removeRenderPipeline("GpuTestGeneratedParticlePipeline");
+
+				// The same pass, authored into a graph template instead of generated.
+				auto authoredGraph = std::make_shared<RenderGraph>();
+				GraphImageDesc authoredColourDesc;
+				authoredColourDesc.format = GraphImageFormat::Rgba16f;
+				authoredColourDesc.usage = GraphImageUsage::ColourAttachment | GraphImageUsage::Sampled;
+				auto authoredColour = authoredGraph->createImage("GpuTestParticleColour", authoredColourDesc);
+				auto authoredPass = authoredGraph->addPass("Particles", GraphPassType::Scene);
+				authoredGraph->setPassCallbackFactory(authoredPass, "MPP.ParticleScene");
+				UniformCollection authoredParameters;
+				authoredParameters.setUniform("BLEND_MODE", int32_t(ParticleBlendClass::Additive));
+				authoredGraph->setPassParameters(authoredPass, authoredParameters);
+				authoredColour = authoredGraph->writeColour(authoredPass, authoredColour, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+				GraphRasterState authoredRaster;
+				authoredRaster.explicitState = true;
+				authoredRaster.depthTest = false;
+				authoredRaster.depthWrite = false;
+				authoredRaster.cullMode = GraphCullMode::None;
+				authoredRaster.blend = true;
+				authoredRaster.sourceColourBlend = GraphBlendFactor::SourceAlpha;
+				authoredRaster.destinationColourBlend = GraphBlendFactor::One;
+				authoredRaster.sourceAlphaBlend = GraphBlendFactor::Zero;
+				authoredRaster.destinationAlphaBlend = GraphBlendFactor::One;
+				authoredRaster.multisample = false;
+				authoredGraph->setPassRasterState(authoredPass, authoredRaster);
+
+				RenderGraphPassFactoryRegistry particleRegistry;
+				registerBuiltInRenderGraphPasses(particleRegistry);
+				auto const particleDiagnostics = particleRegistry.validate(*authoredGraph);
+				if (particleDiagnostics.hasErrors())
+					return fail("the authored particle pass failed its factory contract: " + particleDiagnostics.getDiagnostics().front().message);
+
+				auto authoredStream = std::make_shared<RenderGraphStream>(renderSystem->getResourceManager());
+				authoredStream->setGraph(authoredGraph);
+				auto authoredTemplate = renderSystem->getResourceManager()->declareResource("GpuTestParticleGraph", authoredStream).first;
+				authoredTemplate->load();
+				authoredTemplate->create();
+
+				RenderPipelineOptions authoredParticleOptions;
+				authoredParticleOptions.mode = RenderPipelineMode::XmlGraphPbrForward;
+				authoredParticleOptions.graphTemplate = authoredTemplate;
+				auto authoredPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestAuthoredParticlePipeline", authoredParticleOptions);
+				authoredPipeline->requestGraphImageCapture();
+				authoredPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				if (drewParticles(authoredPipeline->takeGraphImageCaptures()) != particlesAvailable)
+					return fail("XmlGraphPbrForward particles did not draw the same as the generated graph");
+				if (particlesAvailable)
+				{
+					GLint poolBuffer = 0;
+					GL_CHECK(glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &poolBuffer));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, GLuint(poolBuffer)));
+					GLint poolBytes = 0;
+					GL_CHECK(glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &poolBytes));
+					std::vector<uint8_t> poolAfterAuthoredDraw(poolAfterGeneratedDraw.size());
+					GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, poolBytes - GLint(poolAfterAuthoredDraw.size()),
+						poolAfterAuthoredDraw.size(), poolAfterAuthoredDraw.data()));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+					if (poolAfterAuthoredDraw != poolAfterGeneratedDraw)
+						return fail("particles simulated more than once in one rendered frame");
+
+					// Exercise the linked kernel against a tiny known pool. This isolates
+					// every module bit and both survivor/death paths from bootstrap random
+					// values while still executing the production GLSL on the driver.
+					std::array<ParticleRecord, 8> particles{};
+					for (uint32_t index = 0; index < particles.size(); ++index)
+					{
+						particles[index].velocityLifetime = { (index == 3u || index >= 4u) ? 0.0f : 2.0f, 0.0f, 0.0f, 10.0f };
+						particles[index].emitterIndex = std::min(index, 6u);
+						particles[index].angularVelocity = 3.0f;
+					}
+					particles[4].positionAge = { 0.5f, 0.5f, 0.5f, 0.0f };
+					particles[7].emitterIndex = 0u;
+					particles[7].positionAge[3] = 0.95f;
+					particles[7].velocityLifetime[3] = 1.0f;
+					std::array<EmitterSimData, 7> emitters{};
+					emitters[1].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Gravity);
+					emitters[1].gravityAndDrag = { 0.0f, -10.0f, 0.0f, 0.0f };
+					emitters[2].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Drag);
+					emitters[2].gravityAndDrag[3] = 5.0f;
+					emitters[3].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Noise);
+					emitters[3].noiseFrequencyStrength = { 0.0f, 0.0f, 0.0f, 2.0f };
+					emitters[4].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::CurlNoise);
+					emitters[4].curlNoiseFrequencyStrength = { 1.0f, 1.0f, 1.0f, 1.0f };
+					emitters[5].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Turbulence);
+					emitters[5].turbulenceFrequencyStrength = { 1.0f, 1.0f, 1.0f, 2.0f };
+					emitters[5].turbulenceOctavesLacunarityGain = { 3.0f, 2.0f, 0.5f, 0.0f };
+					emitters[6].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::VectorField);
+					emitters[6].vectorFieldFrequencyStrength = { 1.0f, 1.0f, 1.0f, 2.0f };
+					std::array<uint32_t, 8> freeIndices{};
+					std::array<uint32_t, 8> activeA{ 0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u }, activeB{};
+					std::array<uint32_t, 15> counters{ 0u, 8u, 0u, 0u, 0u, 0u, 0u, 0u, 2u, 1u, 1u, 1u, 1u, 1u, 1u };
+					std::array<GLuint, 6> buffers{};
+					auto bindTestBuffer = [&](uint32_t binding, auto const& values)
+					{
+						GLuint buffer = 0;
+						GL_CHECK(glGenBuffers(1, &buffer));
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
+						GL_CHECK(glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(values), values.data(), GL_DYNAMIC_COPY));
+						GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer));
+						buffers[binding] = buffer;
+					};
+					bindTestBuffer(0, particles);
+					bindTestBuffer(1, freeIndices);
+					bindTestBuffer(2, activeA);
+					bindTestBuffer(3, activeB);
+					bindTestBuffer(4, counters);
+					bindTestBuffer(5, emitters);
+
+					GLuint noiseTexture = 0, vectorFieldTexture = 0;
+					std::array<float, 4u * 4u * 4u * 4u> noiseTexels{};
+					for (uint32_t z = 0; z < 4u; ++z) for (uint32_t y = 0; y < 4u; ++y) for (uint32_t x = 0; x < 4u; ++x)
+					{
+						auto const texel = size_t((z * 16u + y * 4u + x) * 4u);
+						noiseTexels[texel] = 1.0f;
+						noiseTexels[texel + 1u] = 0.5f;
+						noiseTexels[texel + 2u] = (float(y) + 0.5f) / 4.0f;
+						noiseTexels[texel + 3u] = 1.0f;
+					}
+					GL_CHECK(glGenTextures(1, &noiseTexture));
+					GL_CHECK(glActiveTexture(GL_TEXTURE0));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, noiseTexture));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT));
+					GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA32F, 4, 4, 4, 0, GL_RGBA, GL_FLOAT, noiseTexels.data()));
+					std::array<float, 4> vectorFieldTexel{ 0.5f, 1.0f, 0.5f, 1.0f };
+					GL_CHECK(glGenTextures(1, &vectorFieldTexture));
+					GL_CHECK(glActiveTexture(GL_TEXTURE3));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, vectorFieldTexture));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+					GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA32F, 1, 1, 1, 0, GL_RGBA, GL_FLOAT, vectorFieldTexel.data()));
+
+					auto simulationResource = renderSystem->getResourceManager()->getResource("__mpp_particle_simulation__", true);
+					auto* simulation = dynamic_cast<ComputeProgram*>(simulationResource.get());
+					if (!simulation) return fail("particle simulation resource is not a compute program");
+					simulation->use();
+					simulation->setUniform("ACTIVE_LIST_INDEX", 0u);
+					simulation->setUniform("EMITTER_COUNT", 7u);
+					simulation->setUniform("TEMPLATE_COUNT", 7u);
+					simulation->setUniform("DELTA_SECONDS", 0.1f);
+					simulation->setUniform("SIMULATION_SECONDS", 0.0f);
+					simulation->setUniform("NOISE_TEXTURE", int32_t(0));
+					simulation->setUniform("VECTOR_FIELD_TEXTURE", int32_t(3));
+					simulation->setUniform("HAS_VECTOR_FIELD", int32_t(1));
+					simulation->setUniform("HAS_COLLISION_DEPTH", int32_t(0));
+					simulation->setUniform("HAS_SIGNED_DISTANCE_FIELD", int32_t(0));
+					simulation->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+					auto readTestBuffer = [&](uint32_t binding, auto& values)
+					{
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[binding]));
+						GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(values), values.data()));
+					};
+					readTestBuffer(0, particles);
+					readTestBuffer(1, freeIndices);
+					readTestBuffer(3, activeB);
+					readTestBuffer(4, counters);
+					auto near = [](float left, float right) { return std::abs(left - right) < 0.0001f; };
+					std::string simulationFailure;
+					if (!near(particles[0].positionAge[0], 0.2f) || !near(particles[0].positionAge[1], 0.0f))
+						simulationFailure = "disabled behaviour modules changed velocity";
+					else if (!near(particles[1].velocityLifetime[1], -1.0f) || !near(particles[1].positionAge[1], -0.1f))
+						simulationFailure = "gravity module did not integrate independently";
+					else if (!near(particles[2].velocityLifetime[0], 1.0f) || !near(particles[2].positionAge[0], 0.1f))
+						simulationFailure = "drag module did not integrate independently";
+					else if (!(particles[3].velocityLifetime[0] > 0.19f) || !(particles[3].positionAge[0] > 0.019f))
+						simulationFailure = "3D-texture noise module did not integrate independently";
+					else if (!(particles[4].velocityLifetime[0] > 0.19f) || !(particles[4].positionAge[0] > 0.519f))
+						simulationFailure = "curl-noise module did not integrate independently";
+					else if (!(particles[5].velocityLifetime[0] > 0.19f) || !(particles[5].positionAge[0] > 0.019f))
+						simulationFailure = "multi-octave turbulence module did not integrate independently";
+					else if (!(particles[6].velocityLifetime[1] > 0.19f) || !(particles[6].positionAge[1] > 0.019f))
+						simulationFailure = "arbitrary vector-field module did not integrate independently";
+					else if (!near(particles[0].rotation, 0.3f) || !near(particles[0].positionAge[3], 0.1f))
+						simulationFailure = "base age or angular-velocity integration failed";
+					else if (counters[0] != 1u || counters[2] != 7u || counters[8] != 1u || freeIndices[0] != 7u)
+						simulationFailure = "survivor active-list append or dead-particle reclamation failed";
+					else
+					{
+						auto survivors = activeB;
+						std::sort(survivors.begin(), survivors.begin() + 7);
+						for (uint32_t index = 0; index < 7u; ++index)
+							if (survivors[index] != index) simulationFailure = "survivors were not written to the opposite active list";
+					}
+
+					GL_CHECK(glUseProgram(0));
+					GL_CHECK(glActiveTexture(GL_TEXTURE3));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+					GL_CHECK(glDeleteTextures(1, &vectorFieldTexture));
+					GL_CHECK(glActiveTexture(GL_TEXTURE0));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+					GL_CHECK(glDeleteTextures(1, &noiseTexture));
+					GL_CHECK(glDeleteBuffers(GLsizei(buffers.size()), buffers.data()));
+					if (!simulationFailure.empty()) return fail(simulationFailure);
+
+					// Exercise all four production compaction kernels against an
+					// interleaved survivor list. The CPU reference checks both counts and
+					// every contiguous template run; indirect instance counts and range
+					// starts must have been authored by the prefix kernel.
+					std::array<ParticleRecord, 8> compactParticles{};
+					uint32_t const particleEmitters[]{ 2u, 0u, 3u, 1u, 0u, 2u, 2u, 1u };
+					for (uint32_t index = 0; index < compactParticles.size(); ++index)
+						compactParticles[index].emitterIndex = particleEmitters[index];
+					std::array<uint32_t, 8> compactActiveA{ 6u, 1u, 4u, 0u, 7u, 2u, 5u, 3u };
+					std::array<uint32_t, 8> compactActiveB{};
+					std::array<EmitterSimData, 4> compactEmitters{};
+					uint32_t const emitterTemplates[]{ 2u, 0u, 2u, 1u };
+					for (uint32_t index = 0; index < compactEmitters.size(); ++index)
+						compactEmitters[index].emissionState[3] = emitterTemplates[index];
+					compactEmitters[1].shapeSeedModulesBudget[3] = 2u;
+					std::array<uint32_t, 12> compactCounters{ 8u, 8u, 0u, 0u, 0u, 0u, 0u, 0u, 99u, 99u, 99u, 99u };
+					std::array<uint32_t, 12> compactScratch{};
+					std::array<TemplateRenderData, 4> compactTemplates{};
+					std::array<uint32_t, 8> renderIndices{};
+					std::array<ParticleDrawArraysIndirectCommand, 4> drawCommands{};
+					std::array<uint32_t, 3> compactDispatch{};
+					std::array<uint32_t, 8> compactFreeIndices{};
+					std::array<ParticleSpawnCommand, 1> budgetCommands{ ParticleSpawnCommand{ 1u, 1u, 7u, 0u } };
+					std::vector<GLuint> compactBuffers;
+					auto createTestBuffer = [&](uint32_t binding, auto const& values)
+					{
+						GLuint buffer = 0;
+						GL_CHECK(glGenBuffers(1, &buffer));
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
+						GL_CHECK(glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(values), values.data(), GL_DYNAMIC_COPY));
+						GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer));
+						compactBuffers.push_back(buffer);
+						return buffer;
+					};
+					auto readBuffer = [&](GLuint buffer, auto& values)
+					{
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
+						GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(values), values.data()));
+					};
+					auto getCompute = [&](char const* name)
+					{
+						auto resource = renderSystem->getResourceManager()->getResource(name, true);
+						return dynamic_cast<ComputeProgram*>(resource.get());
+					};
+
+					GLuint compactParticleBuffer = createTestBuffer(0, compactParticles);
+					GLuint compactActiveABuffer = createTestBuffer(2, compactActiveA);
+					GLuint compactActiveBBuffer = createTestBuffer(3, compactActiveB);
+					GLuint compactCounterBuffer = createTestBuffer(4, compactCounters);
+					GLuint compactEmitterBuffer = createTestBuffer(5, compactEmitters);
+					GLuint compactScratchBuffer = createTestBuffer(6, compactScratch);
+					GLuint compactDispatchBuffer = createTestBuffer(7, compactDispatch);
+					GLuint compactTemplateBuffer = createTestBuffer(7, compactTemplates);
+
+					auto* compactPrepare = getCompute("__mpp_particle_compaction_prepare__");
+					auto* compactCount = getCompute("__mpp_particle_compaction_count__");
+					auto* compactPrefix = getCompute("__mpp_particle_compaction_prefix__");
+					auto* compactScatter = getCompute("__mpp_particle_compaction_scatter__");
+					if (!compactPrepare || !compactCount || !compactPrefix || !compactScatter)
+						return fail("particle compaction programs were not registered");
+
+					compactPrepare->use();
+					compactPrepare->setUniform("ACTIVE_LIST_INDEX", 0u);
+					compactPrepare->setUniform("TEMPLATE_COUNT", 4u);
+					compactPrepare->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, compactDispatchBuffer));
+					compactPrepare->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+					compactCount->use();
+					compactCount->setUniform("ACTIVE_LIST_INDEX", 0u);
+					compactCount->setUniform("EMITTER_COUNT", 4u);
+					compactCount->setUniform("TEMPLATE_COUNT", 4u);
+					compactCount->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, compactTemplateBuffer));
+					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compactDispatchBuffer));
+					compactCount->dispatchIndirect();
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+					GLuint drawCommandBuffer = createTestBuffer(7, drawCommands);
+					compactPrefix->use();
+					compactPrefix->setUniform("TEMPLATE_COUNT", 4u);
+					compactPrefix->setUniform("TEMPLATE_CAPACITY", 4u);
+					compactPrefix->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+					GLuint renderIndexBuffer = createTestBuffer(1, renderIndices);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, compactScratchBuffer));
+					compactScatter->use();
+					compactScatter->setUniform("ACTIVE_LIST_INDEX", 0u);
+					compactScatter->setUniform("EMITTER_COUNT", 4u);
+					compactScatter->setUniform("TEMPLATE_COUNT", 4u);
+					compactScatter->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, compactTemplateBuffer));
+					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compactDispatchBuffer));
+					compactScatter->dispatchIndirect();
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+					readBuffer(compactCounterBuffer, compactCounters);
+					readBuffer(compactScratchBuffer, compactScratch);
+					readBuffer(renderIndexBuffer, renderIndices);
+					readBuffer(drawCommandBuffer, drawCommands);
+					readBuffer(compactDispatchBuffer, compactDispatch);
+
+					std::array<uint32_t, 4> referenceCounts{};
+					for (uint32_t particleIndex : compactActiveA)
+						++referenceCounts[emitterTemplates[compactParticles[particleIndex].emitterIndex]];
+					uint32_t referenceOffset = 0u;
+					std::array<bool, 8> seenParticles{};
+					std::string compactionFailure;
+					for (uint32_t templateIndex = 0; templateIndex < referenceCounts.size(); ++templateIndex)
+					{
+						if (compactCounters[8u + templateIndex] != referenceCounts[templateIndex] ||
+							compactScratch[templateIndex] != referenceOffset ||
+							compactScratch[4u + templateIndex] != referenceCounts[templateIndex])
+						{
+							compactionFailure = "GPU template counts or prefix offsets do not match the CPU reference";
+							break;
+						}
+						auto const& command = drawCommands[templateIndex];
+						if (command.count != 4u || command.instanceCount != referenceCounts[templateIndex] ||
+							command.first != referenceOffset * 4u || command.baseInstance != templateIndex)
+						{
+							compactionFailure = "GPU indirect command does not describe its emitter-template range";
+							break;
+						}
+						for (uint32_t ordinal = referenceOffset; ordinal < referenceOffset + referenceCounts[templateIndex]; ++ordinal)
+						{
+							uint32_t particleIndex = renderIndices[ordinal];
+							if (particleIndex >= compactParticles.size() || seenParticles[particleIndex] ||
+								emitterTemplates[compactParticles[particleIndex].emitterIndex] != templateIndex)
+							{
+								compactionFailure = "render index list does not contain one contiguous run per emitter template";
+								break;
+							}
+							seenParticles[particleIndex] = true;
+						}
+						if (!compactionFailure.empty()) break;
+						referenceOffset += referenceCounts[templateIndex];
+					}
+					if (compactDispatch != std::array<uint32_t, 3>{ 1u, 1u, 1u })
+						compactionFailure = "compaction dispatch was not generated from the GPU active count";
+					if (!compactionFailure.empty()) return fail(compactionFailure);
+
+					// Feed the count produced above straight into the production spawn
+					// kernel. Template zero is already at its budget, so this request must
+					// be dropped without touching the free or active counts.
+					GLuint compactFreeBuffer = createTestBuffer(1, compactFreeIndices);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, compactParticleBuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, compactActiveABuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, compactActiveBBuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, compactCounterBuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, compactEmitterBuffer));
+					GLuint budgetCommandBuffer = createTestBuffer(7, budgetCommands);
+					auto budgetSpawnResource = renderSystem->getResourceManager()->getResource("__mpp_particle_spawn__", true);
+					auto* budgetSpawn = dynamic_cast<ComputeProgram*>(budgetSpawnResource.get());
+					if (!budgetSpawn) return fail("particle spawn resource is not a compute program");
+					budgetSpawn->use();
+					budgetSpawn->setUniform("EMITTER_COUNT", 4u);
+					budgetSpawn->setUniform("TEMPLATE_COUNT", 4u);
+					budgetSpawn->setUniform("SPAWN_COMMAND_OFFSET", 0u);
+					budgetSpawn->setUniform("ACTIVE_LIST_INDEX", 0u);
+					budgetSpawn->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+					readBuffer(compactCounterBuffer, compactCounters);
+					if (compactCounters[0] != 8u || compactCounters[1] != 8u || compactCounters[3] != 1u ||
+						compactCounters[8] != referenceCounts[0])
+						return fail("spawn budget clamp did not consume the compaction template counter");
+
+					(void)compactFreeBuffer;
+					(void)budgetCommandBuffer;
+					GL_CHECK(glUseProgram(0));
+					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+					GL_CHECK(glDeleteBuffers(GLsizei(compactBuffers.size()), compactBuffers.data()));
+				}
+				// A live depth image at the particle plane must fade the same particles
+				// completely. The otherwise identical authored pass above omitted DEPTH
+				// and therefore proves the hard-edged fallback remains drawable.
+				auto softGraph = std::make_shared<RenderGraph>();
+				GraphImageDesc softDepthDesc;
+				softDepthDesc.format = GraphImageFormat::Depth24;
+				softDepthDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
+				auto softDepth = softGraph->createImage("GpuTestParticleDepth", softDepthDesc);
+				auto softDepthPass = softGraph->addPass("ParticleDepth", GraphPassType::Scene);
+				softGraph->setPassCallbackFactory(softDepthPass, "MPP.ShadowDepth");
+				auto centreClip = particleCamera->getProjectionTransform() * particleCamera->getViewTransform() * glm::vec4(0, 0, 0, 1);
+				float const particlePlaneDepth = (centreClip.z / centreClip.w) * 0.5f + 0.5f;
+				softDepth = softGraph->writeDepth(softDepthPass, softDepth, GraphLoadOp::Clear, GraphStoreOp::Store, particlePlaneDepth);
+				auto softColour = softGraph->createImage("GpuTestSoftParticleColour", authoredColourDesc);
+				auto softPass = softGraph->addPass("Particles", GraphPassType::Scene);
+				softGraph->setPassCallbackFactory(softPass, "MPP.ParticleScene");
+				softGraph->bindSampler(softPass, "DEPTH", softDepth);
+				softGraph->setPassParameters(softPass, authoredParameters);
+				softColour = softGraph->writeColour(softPass, softColour, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+				softGraph->setPassRasterState(softPass, authoredRaster);
+				auto softStream = std::make_shared<RenderGraphStream>(renderSystem->getResourceManager());
+				softStream->setGraph(softGraph);
+				auto softTemplate = renderSystem->getResourceManager()->declareResource("GpuTestSoftParticleGraph", softStream).first;
+				softTemplate->load();
+				softTemplate->create();
+				auto softOptions = authoredParticleOptions;
+				softOptions.graphTemplate = softTemplate;
+				auto softPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestSoftParticlePipeline", softOptions);
+				softPipeline->requestGraphImageCapture();
+				softPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				if (drewParticles(softPipeline->takeGraphImageCaptures()))
+					return fail("soft particles did not fade at the live scene-depth intersection");
+				renderSystem->removeRenderPipeline("GpuTestSoftParticlePipeline");
+
+				renderSystem->getParticleSystem().destroyEffect(particleEffect);
+				renderSystem->removeRenderPipeline("GpuTestAuthoredParticlePipeline");
+			}
+
 			stage = "MRT readback";
 			if (renderSystem->getCaps().maxDrawBuffers >= 2 && renderSystem->getCaps().maxColourAttachments >= 2)
 			{
@@ -1887,6 +2453,10 @@ void main()
 				renderSystem->getWindowHeight(),
 				textTargetOptions);
 			renderSystem->setRenderTarget(textTarget);
+			// Binding a target does not resize the viewport, and the graph stages above
+			// leave it at their own fixture sizes. Text is placed in window space, so
+			// without this the glyphs land outside the viewport entirely.
+			renderSystem->setViewport(0, 0, textTarget->getWidth(), textTarget->getHeight());
 			renderSystem->clearScreen(Colour::Black);
 			renderSystem->renderText("RenderGraph text overlay", 8, 0, Colour::White);
 			GL_CHECK(glFinish());

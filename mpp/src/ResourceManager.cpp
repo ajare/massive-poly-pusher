@@ -7,11 +7,14 @@
 #include "mpp/program/Parser.h"
 
 #include "mpp/ResourceManager.h"
+#include "mpp/ComputeProgram.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/InternalFont.h"
 #include "mpp/Program.h"
 #include "mpp/Sampler.h"
 #include "mpp/String.h"
+#include "mpp/ParticleDrawProgram.h"
+#include "mpp/ParticleEffect.h"
 #include "mpp/PostEffectMaterial.h"
 #include "mpp/RenderGraphTemplate.h"
 #include "mpp/PbrPipelineTemplate.h"
@@ -88,6 +91,21 @@ namespace mpp
 		mResourceFactories["SceneTemplate"] = [this](string const& name, ResourceStreamPtr rStream)
 		{
 			return ResourcePtr(new SceneTemplate(name, this->mwRenderSystem, this, rStream));
+		};
+		// The raw-GLSL program family. These take part in the same lifetime,
+		// naming and create/load/unload ordering as Program, but share none of its
+		// MeshSpecification, markup or attribute plumbing.
+		mResourceFactories["ComputeProgram"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new ComputeProgram(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["ParticleDrawProgram"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new ParticleDrawProgram(name, this->mwRenderSystem, this, rStream));
+		};
+		mResourceFactories["ParticleEffect"] = [this](string const& name, ResourceStreamPtr rStream)
+		{
+			return ResourcePtr(new ParticleEffect(name, this->mwRenderSystem, this, rStream));
 		};
 	}
 

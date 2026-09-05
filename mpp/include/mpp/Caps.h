@@ -12,6 +12,11 @@ namespace mpp
 		int glslVersionMajor{ 0 };
 		int glslVersionMinor{ 0 };
 
+		// A compatibility context still gates point-sprite coordinate generation
+		// behind GL_POINT_SPRITE; a core context generates gl_PointCoord always and
+		// rejects the enum. Which one this is decides whether that state is set.
+		bool compatibilityProfile{ false };
+
 		float pointSizeRange[2]{ 0.0f, 0.0f };
 		float aliasedLineWidthRange[2]{ 0.0f, 0.0f };
 
@@ -52,6 +57,22 @@ namespace mpp
 
 		uint32_t maxVertexAttributes{ 0 };
 		uint32_t maxVertexAttributeStride{ 0 };
+
+		// Compute and shader-storage limits. The context is requested at 4.4 core,
+		// but a request is only a request: SDL may return a lower context and a
+		// driver may still refuse a valid kernel. Everything below stays zero
+		// while supportsCompute is false, so callers validate against queried
+		// numbers rather than assumed ones.
+		bool supportsCompute{ false };
+		bool supportsMultiDrawIndirect{ false };
+		// Generic capability flag retained for clients that use bindless textures;
+		// the particle renderer itself uses a core texture-array path.
+		bool supportsBindlessTextures{ false };
+		uint32_t maxComputeWorkGroupCount[3]{};
+		uint32_t maxComputeWorkGroupSize[3]{};
+		uint32_t maxComputeWorkGroupInvocations{ 0 };
+		uint32_t maxShaderStorageBlockSize{ 0 };
+		uint32_t maxShaderStorageBufferBindings{ 0 };
 	};
 
 }

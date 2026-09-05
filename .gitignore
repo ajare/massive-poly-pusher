@@ -9,7 +9,7 @@
 **/build/vs*/obj
 **/build/vs*/lib
 **/build/**/.vs
-/build/cmake*/
+/build/
 **/__pycache__
 pipeline-editor/captures/
 **/.mpp-gltf-images/

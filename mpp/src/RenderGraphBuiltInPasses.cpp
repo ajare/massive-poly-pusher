@@ -12,6 +12,7 @@
 #include "mpp/Model.h"
 #include "mpp/PbrMaterial.h"
 #include "mpp/PostEffectMaterial.h"
+#include "mpp/ParticleData.h"
 #include "mpp/MppException.h"
 
 namespace mpp
@@ -56,6 +57,18 @@ namespace mpp
 				return binding.sampler == sampler;
 			});
 			return found != bindings.end() ? dynamic_cast<Texture*>(context.getImage(found->image).get()) : nullptr;
+		}
+
+		ResourcePtr resourceInput(RenderGraphExecutionContext const& context, std::string const& sampler)
+		{
+			auto const& bindings = context.getPass().samplerBindings;
+			auto found = std::find_if(bindings.begin(), bindings.end(), [&](auto const& binding)
+			{
+				return binding.sampler == sampler;
+			});
+			if (found == bindings.end()) return {};
+			auto texture = std::dynamic_pointer_cast<RenderTexture>(context.getImage(found->image));
+			return texture ? std::static_pointer_cast<Resource>(texture) : ResourcePtr{};
 		}
 
 		// The one generic post-effect-chain pass type: a fullscreen quad shaded by
@@ -378,6 +391,127 @@ namespace mpp
 		// Water-only scene pass: draws the water materials the opaque pass skipped,
 		// on top of the opaque result, with the resolved scene colour and the opaque
 		// depth buffer bound as pipeline samplers so PBR_SPEC_WATER can march them.
+		// A pure draw pass. Simulation is dispatched once per frame outside the
+		// graph (ADR 0005), so this may appear any number of times in a graph and
+		// runs unchanged from a planar reflection's mirrored camera or a
+		// point-shadow face expansion -- none of which advance the particles.
+		class ParticleScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				int32_t const blendMode = integerParameter(context, "BLEND_MODE", -1);
+				if (blendMode < int32_t(ParticleBlendClass::Additive) || blendMode > int32_t(ParticleBlendClass::Alpha))
+					THROW_MPP("ParticleScenePass '" + context.getPass().name + "' requires BLEND_MODE additive=0 or alpha=1.", __LINE__, __FILE__, __func__);
+				auto depth = resourceInput(context, "DEPTH");
+				frame.renderSystem->renderParticles(ParticleBlendClass(blendMode), depth);
+			}
+		};
+
+		// Real mesh particles bind vertex arrays and Material resources, so they are
+		// intentionally not an appearance variant of the attribute-less billboard pass.
+		class ParticleMeshScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+
+				// Mesh particles use ordinary materials, so named graph inputs must be
+				// exposed through the same authoritative sampler overrides as other
+				// material-driven scene passes. This covers shadows and permits authored
+				// materials to consume additional pass-local images.
+				auto const restore = frame.renderSystem->getActivePipelineSamplerOverrides();
+				auto overrides = restore;
+				for (auto const& binding : context.getPass().samplerBindings)
+					if (auto resource = std::dynamic_pointer_cast<Resource>(context.getImage(binding.image)))
+						overrides[binding.sampler] = resource;
+				frame.renderSystem->setActivePipelineSamplerOverrides(overrides);
+				try { frame.renderSystem->renderMeshParticles(); }
+				catch (...)
+				{
+					frame.renderSystem->setActivePipelineSamplerOverrides(restore);
+					throw;
+				}
+				frame.renderSystem->setActivePipelineSamplerOverrides(restore);
+			}
+		};
+
+		class TrailScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				int32_t const blendMode = integerParameter(context, "BLEND_MODE", -1);
+				if (blendMode < int32_t(ParticleBlendClass::Additive) || blendMode > int32_t(ParticleBlendClass::Alpha))
+					THROW_MPP("TrailScenePass '" + context.getPass().name + "' requires BLEND_MODE additive=0 or alpha=1.", __LINE__, __FILE__, __func__);
+				auto depth = resourceInput(context, "DEPTH");
+				frame.renderSystem->renderTrails(ParticleBlendClass(blendMode), depth);
+			}
+		};
+
+		class ParticleVolumetricLightingPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				frame.renderSystem->renderParticleVolumetricLighting(resourceInput(context, "DEPTH"));
+			}
+		};
+
+		class ParticleDistortionPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				frame.renderSystem->renderParticleDistortion(resourceInput(context, "DEPTH"));
+			}
+		};
+
+		class ParticleDistortionCompositePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				context.getFrame().renderSystem->renderParticleDistortionComposite(
+					input(context, "SCENE"), input(context, "DISTORTION"));
+			}
+		};
+
+		class ParticleWeightedOitPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				auto depth = resourceInput(context, "DEPTH");
+				frame.renderSystem->renderParticles(ParticleBlendClass::WeightedOit, depth);
+			}
+		};
+
+		class ParticleWeightedOitResolvePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto* scene = input(context, "SCENE");
+				auto* accumulation = input(context, "ACCUMULATION");
+				auto* opticalDepth = input(context, "OPTICAL_DEPTH");
+				auto* bloom = input(context, "BLOOM");
+				context.getFrame().renderSystem->renderParticleWeightedOitResolve(scene, accumulation, opticalDepth, bloom);
+			}
+		};
+
 		class WaterScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -562,6 +696,64 @@ namespace mpp
 		// behind the sampled depth instead, which is the same occlusion result.
 		waterScene.materialSlots.push_back("SceneMaterials");
 		registry.registerScenePassFactory("MPP.WaterScene", [] { return std::make_unique<WaterScenePass>(); }, waterScene);
+
+		auto particleScene = metadata("Particles", "Scene", GraphPassType::Scene);
+		// DEPTH is an ordinary optional named graph input. HardParticles is the
+		// declared no-depth fallback; the callback implements it by disabling the
+		// depth sample rather than manufacturing a copy of the live image.
+		particleScene.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });
+		particleScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		particleScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		particleScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
+		registry.registerScenePassFactory("MPP.ParticleScene", [] { return std::make_unique<ParticleScenePass>(); }, particleScene);
+
+		auto particleMeshScene = metadata("Mesh Particles", "Scene", GraphPassType::Scene);
+		particleMeshScene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });
+		particleMeshScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		particleMeshScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		particleMeshScene.outputs.push_back({ "Depth", true, true, depthFormats() });
+		particleMeshScene.materialSlots.push_back("ParticleMeshMaterials");
+		particleMeshScene.allowAdditionalInputs = true;
+		registry.registerScenePassFactory("MPP.ParticleMeshScene", [] { return std::make_unique<ParticleMeshScenePass>(); }, particleMeshScene);
+
+		auto trailScene = metadata("Trails", "Scene", GraphPassType::Scene);
+		trailScene.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardTrails" });
+		trailScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		trailScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		trailScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
+		registry.registerScenePassFactory("MPP.TrailScene", [] { return std::make_unique<TrailScenePass>(); }, trailScene);
+
+		auto particleVolumetricLighting = metadata("Particle Volumetric Lighting", "Lighting", GraphPassType::Scene);
+		particleVolumetricLighting.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "UnoccludedParticleVolumes" });
+		particleVolumetricLighting.outputs.push_back({ "HDR Volumetric Lighting", false, true, colourFormats() });
+		particleVolumetricLighting.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleVolumetricLighting", [] { return std::make_unique<ParticleVolumetricLightingPass>(); }, particleVolumetricLighting);
+
+		auto particleDistortion = metadata("Particle Distortion", "Scene", GraphPassType::Scene);
+		particleDistortion.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });
+		particleDistortion.outputs.push_back({ "Distortion Vectors", false, true, { GraphImageFormat::Rg16f, GraphImageFormat::Rg32f } });
+		registry.registerScenePassFactory("MPP.ParticleDistortion", [] { return std::make_unique<ParticleDistortionPass>(); }, particleDistortion);
+
+		auto particleDistortionComposite = metadata("Particle Distortion Composite", "Post Effects", GraphPassType::Fullscreen);
+		particleDistortionComposite.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} });
+		particleDistortionComposite.inputs.push_back({ "Distortion Vectors", "DISTORTION", true, { GraphImageFormat::Rg16f, GraphImageFormat::Rg32f }, {} });
+		particleDistortionComposite.outputs.push_back({ "Distorted Scene", false, true, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleDistortionComposite", [] { return std::make_unique<ParticleDistortionCompositePass>(); }, particleDistortionComposite);
+
+		auto particleOit = metadata("Particle Weighted OIT", "Scene", GraphPassType::Scene);
+		particleOit.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });
+		particleOit.outputs.push_back({ "Weighted Accumulation", false, true, { GraphImageFormat::Rgba16f, GraphImageFormat::Rgba32f } });
+		particleOit.outputs.push_back({ "Optical Depth", false, true, { GraphImageFormat::R16f, GraphImageFormat::R32f } });
+		registry.registerScenePassFactory("MPP.ParticleWeightedOit", [] { return std::make_unique<ParticleWeightedOitPass>(); }, particleOit);
+
+		auto particleOitResolve = metadata("Particle Weighted OIT Resolve", "Scene", GraphPassType::Fullscreen);
+		particleOitResolve.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} });
+		particleOitResolve.inputs.push_back({ "Weighted Accumulation", "ACCUMULATION", true, { GraphImageFormat::Rgba16f, GraphImageFormat::Rgba32f }, {} });
+		particleOitResolve.inputs.push_back({ "Optical Depth", "OPTICAL_DEPTH", true, { GraphImageFormat::R16f, GraphImageFormat::R32f }, {} });
+		particleOitResolve.inputs.push_back({ "Emissive MRT", "BLOOM", false, colourFormats(), {} });
+		particleOitResolve.outputs.push_back({ "Composited Scene", false, true, colourFormats() });
+		particleOitResolve.outputs.push_back({ "Composited Emissive MRT", false, false, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleWeightedOitResolve", [] { return std::make_unique<ParticleWeightedOitResolvePass>(); }, particleOitResolve);
 
 		auto customFullscreen = metadata("Custom Fullscreen", "Custom", GraphPassType::Fullscreen);
 		customFullscreen.acceptsProgram = true;

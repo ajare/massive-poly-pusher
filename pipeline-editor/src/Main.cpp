@@ -31,7 +31,10 @@ extern "C" const char* __asan_default_options()
 #include <string>
 #include <string_view>
 #include <vector>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 #include <SDL3/SDL.h>
 #include <renderdoc/renderdoc_app.h>
 #include <glm/geometric.hpp>
@@ -49,6 +52,8 @@ extern "C" const char* __asan_default_options()
 #include "mpp/Logger.h"
 #include "mpp/PbrMaterial.h"
 #include "mpp/PbrMaterialTests.h"
+#include "mpp/ParticleSystemTests.h"
+#include "mpp/RenderGraphGpuTests.h"
 #include "mpp/RenderGraphTests.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphStream.h"
@@ -82,12 +87,56 @@ extern "C" const char* __asan_default_options()
 #include "mpp/resource-parsers/PbrPipelineRuntime.h"
 #include "mpp/resource-parsers/GltfPbrMaterialLoader.h"
 #include "mpp/resource-parsers/PbrPipelineResourceValidator.h"
+#include "mpp/resource-parsers/ParticleResourceTests.h"
 #include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/SceneParser.h"
 #include "mpp/resource-parsers/SceneSerializer.h"
 
 using namespace mpp;
 using namespace pipeline_editor;
+
+#ifndef _WIN32
+// Keep the existing call sites platform-neutral while using SDL's native
+// message-box implementation outside Windows.
+constexpr unsigned MB_OK = 0;
+constexpr unsigned MB_YESNO = 1;
+constexpr unsigned MB_ICONERROR = 2;
+constexpr unsigned MB_ICONWARNING = 4;
+constexpr unsigned MB_ICONQUESTION = 8;
+constexpr int IDYES = 1;
+constexpr int IDNO = 0;
+
+template<size_t Size>
+int strncpy_s(char (&destination)[Size], char const* source, size_t count)
+{
+	count = std::min(count, Size - 1);
+	std::strncpy(destination, source, count);
+	destination[count] = '\0';
+	return 0;
+}
+
+int MessageBoxA(void*, char const* message, char const* title, unsigned flags)
+{
+	if ((flags & MB_YESNO) == 0)
+	{
+		auto kind = (flags & MB_ICONERROR) ? SDL_MESSAGEBOX_ERROR :
+		            (flags & MB_ICONWARNING) ? SDL_MESSAGEBOX_WARNING : SDL_MESSAGEBOX_INFORMATION;
+		SDL_ShowSimpleMessageBox(kind, title, message, nullptr);
+		return IDYES;
+	}
+	SDL_MessageBoxButtonData buttons[] = {
+	    {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, IDYES, "Yes"},
+	    {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, IDNO, "No"}};
+	SDL_MessageBoxData data{};
+	data.flags = (flags & MB_ICONWARNING) ? SDL_MESSAGEBOX_WARNING : SDL_MESSAGEBOX_INFORMATION;
+	data.title = title;
+	data.message = message;
+	data.numbuttons = 2;
+	data.buttons = buttons;
+	int selected = IDNO;
+	return SDL_ShowMessageBox(&data, &selected) ? selected : IDNO;
+}
+#endif
 
 namespace
 {
@@ -189,11 +238,10 @@ namespace
 
 	std::filesystem::path editorExecutableDirectory()
 	{
-		std::vector<wchar_t> filename(32768);
-		auto length = GetModuleFileNameW(nullptr, filename.data(), (DWORD)filename.size());
-		if (length == 0 || length == filename.size())
+		auto basePath = SDL_GetBasePath();
+		if (!basePath || !*basePath)
 			throw std::runtime_error("Could not determine the PipelineEditor executable directory.");
-		return std::filesystem::path(std::wstring(filename.data(), length)).parent_path();
+		return std::filesystem::path(basePath);
 	}
 
 	std::string trim(std::string value)
@@ -326,7 +374,7 @@ namespace
 
 	class RenderDocCapture
 	{
-		HMODULE mModule{nullptr};
+		SDL_SharedObject* mModule{nullptr};
 		RENDERDOC_API_1_1_1* mApi{nullptr};
 		uint32_t mCaptureCountBefore{0};
 		std::filesystem::path mRequestedCapture;
@@ -336,15 +384,21 @@ namespace
 		{
 			if (mApi)
 				return;
+#ifdef _WIN32
 			auto library = executable.parent_path() / "renderdoc.dll";
-			if (!std::filesystem::is_regular_file(library))
-			{
-				throw std::runtime_error("RenderDoc library was not found beside qrenderdoc.exe: " + library.string());
-			}
-			mModule = LoadLibraryW(library.c_str());
+#else
+			auto library = executable.parent_path() / "librenderdoc.so";
+#endif
+			mModule = SDL_LoadObject(library.string().c_str());
+#ifndef _WIN32
+			// Distribution packages generally install qrenderdoc in /usr/bin and
+			// librenderdoc.so in a system library directory.
 			if (!mModule)
-				throw std::runtime_error("Could not load RenderDoc library: " + library.string());
-			auto getApi = reinterpret_cast<pRENDERDOC_GetAPI>(GetProcAddress(mModule, "RENDERDOC_GetAPI"));
+				mModule = SDL_LoadObject("librenderdoc.so");
+#endif
+			if (!mModule)
+				throw std::runtime_error("Could not load RenderDoc library: " + library.string() + ": " + SDL_GetError());
+			auto getApi = reinterpret_cast<pRENDERDOC_GetAPI>(SDL_LoadFunction(mModule, "RENDERDOC_GetAPI"));
 			if (!getApi || getApi(eRENDERDOC_API_Version_1_1_1, reinterpret_cast<void**>(&mApi)) != 1 || !mApi)
 			{
 				throw std::runtime_error("Could not acquire the RenderDoc 1.1.1 API.");
@@ -395,7 +449,11 @@ namespace
 			auto now = std::chrono::system_clock::now();
 			auto time = std::chrono::system_clock::to_time_t(now);
 			std::tm local{};
+#ifdef _WIN32
 			localtime_s(&local, &time);
+#else
+			localtime_r(&time, &local);
+#endif
 			std::ostringstream name;
 			name << "PipelineEditor_" << std::put_time(&local, "%Y-%m-%d_%H-%M-%S");
 			mRequestedCapture = captureDirectory / (name.str() + ".rdc");
@@ -450,28 +508,13 @@ namespace
 
 	void launchRenderDoc(std::filesystem::path const& executable, std::filesystem::path const& capture)
 	{
-		std::wstring command = L"\"" + executable.wstring() + L"\" \"" + capture.wstring() + L"\"";
-		std::vector<wchar_t> writable(command.begin(), command.end());
-		writable.push_back(L'\0');
-		STARTUPINFOW startup{};
-		startup.cb = sizeof(startup);
-		PROCESS_INFORMATION process{};
-		auto workingDirectory = executable.parent_path().wstring();
-		if (!CreateProcessW(nullptr,
-		                    writable.data(),
-		                    nullptr,
-		                    nullptr,
-		                    FALSE,
-		                    0,
-		                    nullptr,
-		                    workingDirectory.c_str(),
-		                    &startup,
-		                    &process))
-		{
-			throw std::runtime_error("Could not launch RenderDoc for capture: " + capture.string());
-		}
-		CloseHandle(process.hThread);
-		CloseHandle(process.hProcess);
+		auto executableName = executable.string();
+		auto captureName = capture.string();
+		char const* arguments[] = {executableName.c_str(), captureName.c_str(), nullptr};
+		auto process = SDL_CreateProcess(arguments, false);
+		if (!process)
+			throw std::runtime_error("Could not launch RenderDoc for capture: " + capture.string() + ": " + SDL_GetError());
+		SDL_DestroyProcess(process);
 	}
 
 	mpp::data::StructuredData meshSpecification()
@@ -529,6 +572,8 @@ namespace
 			return "Texture";
 		case PbrPipelineResourceKind::PostEffectMaterial:
 			return "Post Effect Material";
+		case PbrPipelineResourceKind::ParticleEffect:
+			return "Particle Effect";
 		default:
 			return "Sampler";
 		}
@@ -574,6 +619,21 @@ namespace
 			value.definition.addEntry("minFilter", "LINEAR");
 			value.definition.addEntry("magFilter", "LINEAR");
 			value.definition.addEntry("wrap", "CLAMP_TO_EDGE");
+		}
+		else if (kind == PbrPipelineResourceKind::ParticleEffect)
+		{
+			value.definition = mpp::data::StructuredData("ParticleEffect");
+			value.definition.addEntry("version", "1");
+			value.definition.addEntry("name", name);
+			value.definition.addEntry("maximumParticleCount", "1024");
+			mpp::data::StructuredData emitters("Emitters"), emitter("Emitter"), spawn("Spawn");
+			emitter.addEntry("name", "Emitter");
+			emitter.addEntry("maximumParticleCount", "1024");
+			spawn.addEntry("shape", "point");
+			spawn.addEntry("rate", "10");
+			emitter.addEntry("Spawn", spawn);
+			emitters.addEntry("Emitter", emitter);
+			value.definition.addEntry("Emitters", emitters);
 		}
 		else if (kind == PbrPipelineResourceKind::PostEffectMaterial)
 		{
@@ -819,6 +879,12 @@ namespace
 		auto diagnostics = pipeline.validate();
 		diagnostics.append(resource_parsers::validatePbrPipelineResourceDefinitions(pipeline));
 		diagnostics.append(scene.validate());
+		for (auto const& effect : scene.particleEffects)
+		{
+			bool resolved = std::any_of(pipeline.localResources.begin(), pipeline.localResources.end(), [&](auto const& resource) { return resource.name == effect.effect && resource.kind == PbrPipelineResourceKind::ParticleEffect; }) ||
+				std::any_of(pipeline.externalResources.begin(), pipeline.externalResources.end(), [&](auto const& resource) { return resource.libraryName + "::" + resource.resource.name == effect.effect && resource.resource.kind == PbrPipelineResourceKind::ParticleEffect; });
+			if (!resolved) diagnostics.error("MPP-SCENE-035", "Scene particle effect resource '" + effect.effect + "' is unavailable or has the wrong type.", { scene.sourcePath }, effect.id);
+		}
 		if (diagnostics.hasErrors())
 			throw std::runtime_error("Package export requires a valid pipeline and preview scene.\n" +
 			                         packageDiagnosticSummary(diagnostics));
@@ -862,6 +928,8 @@ namespace
 		};
 		for (auto& binding : pipeline.previewBindings)
 			replace(binding.materialResource);
+		for (auto& effect : scene.particleEffects)
+			replace(effect.effect);
 		replace(pipeline.environment.irradiance);
 		replace(pipeline.environment.prefilteredSpecular);
 		replace(pipeline.environment.brdfLut);
@@ -958,6 +1026,12 @@ namespace
 			diagnostics.append(resource_parsers::validateLegacyPipelineResourceDefinitions(pipeline));
 			diagnostics.append(scene.validate());
 			diagnostics.append(conversionDiagnostics);
+			for (auto const& effect : scene.particleEffects)
+			{
+				bool resolved = std::any_of(pipeline.localResources.begin(), pipeline.localResources.end(), [&](auto const& resource) { return resource.name == effect.effect && resource.kind == LegacyPipelineResourceKind::ParticleEffect; }) ||
+					std::any_of(pipeline.externalResources.begin(), pipeline.externalResources.end(), [&](auto const& resource) { return resource.libraryName + "::" + resource.resource.name == effect.effect && resource.resource.kind == LegacyPipelineResourceKind::ParticleEffect; });
+				if (!resolved) diagnostics.error("MPP-SCENE-035", "Scene particle effect resource '" + effect.effect + "' is unavailable or has the wrong type.", { scene.sourcePath }, effect.id);
+			}
 			if (!sourceScene.environmentBinding.empty())
 				diagnostics.warning("MPP-LEGACY-EXPORT-001",
 				                    "Preview scene's environment binding '" + sourceScene.environmentBinding +
@@ -1019,6 +1093,8 @@ namespace
 			};
 			for (auto& binding : pipeline.previewBindings)
 				replace(binding.materialResource);
+			for (auto& effect : scene.particleEffects)
+				replace(effect.effect);
 			pipeline.externalResources.clear();
 			pipeline.resourceLibraries.clear();
 
@@ -1166,7 +1242,13 @@ namespace
 	}
 } // namespace
 
+#ifdef _WIN32
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+#else
+#define __argc argc
+#define __argv argv
+int main(int argc, char** argv)
+#endif
 {
 	try
 	{
@@ -1178,7 +1260,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			        "--validate [--warnings-as-errors] <pipeline.yaml> Validate a workspace.\n  --export-package "
 			        "<pipeline.yaml> <package.mpppackage> Export a self-contained package.\n  --export-legacy-package "
 			        "<pipeline.yaml> <package.mpppackage> Export a self-contained legacy package.\n  --smoke-test "
-			        "[pipeline.yaml]                 Render 30 frames then exit.\n  --width <pixels> --height <pixels>  "
+			        "[pipeline.yaml]                 Render 30 frames then exit.\n  --gpu-tests                     "
+			        "            Run the render graph GPU suite then exit.\n  --width <pixels> --height <pixels>  "
 			        "        Set editor window size.\n  --recovery-seconds <seconds>                Set recovery "
 			        "interval.\n  [pipeline.yaml]                              Open a workspace.\n");
 			return 0;
@@ -1262,9 +1345,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					fprintf(stderr, "MPP-PIPELINE-CLI-003: render graph resource tests failed: %s\n", suiteFailure.c_str());
 					return 1;
 				}
+				if (!resource_parsers::runParticleResourceTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-007: particle resource tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
 				if (!mpp::runPbrMaterialSpecializationTests(&suiteFailure))
 				{
 					fprintf(stderr, "MPP-PIPELINE-CLI-004: PBR material specialization tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
+				if (!mpp::runParticleSystemCpuTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-006: particle system CPU tests failed: %s\n", suiteFailure.c_str());
 					return 1;
 				}
 				auto document = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[pathIndex]);
@@ -1327,7 +1420,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		     emptyTemplatePath = editorResourcePath("shared/pbr/templates/Empty.pipeline.yaml");
 		int windowWidth = 1440, windowHeight = 900;
 		float recoverySeconds = 30.0f;
-		bool smokeTest = false;
+		bool smokeTest = false, gpuTests = false;
 		std::string configurationWarning;
 		try
 		{
@@ -1358,6 +1451,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			std::string value = __argv[argument];
 			if (value == "--smoke-test")
 				smokeTest = true;
+			else if (value == "--gpu-tests")
+				gpuTests = true;
 			else if (value == "--width" && argument + 1 < __argc)
 				windowWidth = std::max(640, std::stoi(__argv[++argument]));
 			else if (value == "--height" && argument + 1 < __argc)
@@ -1511,6 +1606,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				scenePath.clear();
 			}
 		}
+#if defined(__linux__)
+		// The vendored GLEW build uses its GLX backend. SDL otherwise prefers
+		// Wayland when both Wayland and XWayland are available, producing a valid
+		// EGL context that GLEW cannot initialise ("No GLX display"). Respect an
+		// explicit user choice, but default the editor to SDL's X11 backend.
+		if (!SDL_getenv("SDL_VIDEODRIVER"))
+			SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+#endif
 		if (!SDL_Init(SDL_INIT_VIDEO))
 			throw std::runtime_error(SDL_GetError());
 		SdlLifetime sdlLifetime;
@@ -1527,6 +1630,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		registerBuiltInRenderGraphPasses(authoringRegistry);
 		ImGuiBackendData backend{};
 		imGuiSetup(&renderSystem, &resources, &backend, true, editorResourcePath("pipeline-editor/fa-solid-900.ttf"));
+		if (gpuTests)
+		{
+			// The GPU suite needs a live context, so this is the only place it can
+			// run. Without a caller it is compiled and never executed.
+			std::string suiteFailure;
+			if (!mpp::runRenderGraphGpuTests(&renderSystem, &suiteFailure))
+			{
+				fprintf(stderr, "MPP-PIPELINE-CLI-005: render graph GPU tests failed: %s\n", suiteFailure.c_str());
+				return 1;
+			}
+			fprintf(stderr, "Render graph GPU tests passed.\n");
+			return 0;
+		}
 		InputManagerSDL input;
 		TimerSDL timer;
 		timer.reset();
@@ -1699,11 +1815,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					candidatePipelineObject->prepareOutputs(*previewDocument->graph, outputDestinations);
 				if (previewScene)
 				{
+					std::map<std::string, ResourcePtr> particleEffectBindings;
+					for (auto const& authored : previewScene->particleEffects)
+						if (auto resource = pipelineRuntime.getResolvedResource(authored.effect))
+							particleEffectBindings.emplace(authored.effect, std::move(resource));
 					if (!sceneRuntime.rebuild(*previewScene,
 					                          pipelineRuntime.getMaterialBindings(),
 					                          pipelineRuntime.getInstanceOverrides(),
 					                          previewDocument->environment.binding,
-					                          previewOptions.shadowDomain))
+					                          previewOptions.shadowDomain,
+					                          particleEffectBindings))
 					{
 						std::string message = "Preview scene rebuild failed.";
 						for (auto const& diagnostic : sceneRuntime.getDiagnostics().getDiagnostics())
@@ -2747,6 +2868,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 6;
 					if (ImGui::MenuItem("Post Effect Material", nullptr, false, openDocument != nullptr))
 						addKind = 11;
+					if (ImGui::MenuItem("Particle Effect", nullptr, false, openDocument != nullptr))
+						addKind = 12;
 					if (ImGui::MenuItem("Preview Binding", nullptr, false, openDocument != nullptr))
 						addKind = 7;
 					if (ImGui::MenuItem("Instance Override", nullptr, false, openDocument != nullptr))
@@ -2756,6 +2879,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 9;
 					if (ImGui::MenuItem("Directional Light", nullptr, false, openScene != nullptr))
 						addKind = 10;
+					if (ImGui::MenuItem("Particle Effect Instance", nullptr, false, openScene != nullptr))
+						addKind = 13;
 					ImGui::EndMenu();
 				}
 				if (ImGui::BeginMenu("Pipeline"))
@@ -3069,6 +3194,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 6;
 					if (ImGui::MenuItem("Post Effect Material"))
 						addKind = 11;
+					if (ImGui::MenuItem("Particle Effect"))
+						addKind = 12;
 					ImGui::EndMenu();
 				}
 				if (ImGui::MenuItem("Preview Binding", nullptr, false, openDocument != nullptr))
@@ -3079,11 +3206,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					addKind = 9;
 				if (ImGui::MenuItem("Directional Light", nullptr, false, openScene != nullptr))
 					addKind = 10;
+				if (ImGui::MenuItem("Particle Effect Instance", nullptr, false, openScene != nullptr))
+					addKind = 13;
 				ImGui::EndPopup();
 			}
 			if (addKind >= 0)
 			{
-				if ((addKind <= 8 || addKind == 11) && openDocument)
+				if ((addKind <= 8 || addKind == 11 || addKind == 12) && openDocument)
 				{
 					auto before = clonePipeline(openDocument);
 					if (addKind == 0 && openDocument->graph)
@@ -3190,6 +3319,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						    makeLocalResource(PbrPipelineResourceKind::PostEffectMaterial, name));
 						selectedLocalResource = (int)openDocument->localResources.size() - 1;
 					}
+					else if (addKind == 12)
+					{
+						auto name = uniqueName("ParticleEffect", [&](auto const& value) { return std::any_of(openDocument->localResources.begin(), openDocument->localResources.end(), [&](auto const& item) { return item.name == value; }); });
+						openDocument->localResources.push_back(makeLocalResource(PbrPipelineResourceKind::ParticleEffect, name));
+						selectedLocalResource = (int)openDocument->localResources.size() - 1;
+					}
 					auto after = clonePipeline(openDocument);
 					pipelineCommands.execute(
 					    std::make_unique<PipelineSnapshotCommand>("Add Pipeline Item", &openDocument, before, after));
@@ -3197,7 +3332,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					lastEditScene = false;
 					documentChangedSincePreview = true;
 				}
-				else if (openScene && (addKind == 9 || addKind == 10))
+				else if (openScene && (addKind == 9 || addKind == 10 || addKind == 13))
 				{
 					auto before = std::make_shared<SceneDocument>(*openScene);
 					if (addKind == 9)
@@ -3220,7 +3355,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						openScene->models.push_back(value);
 						selectedModel = (int)openScene->models.size() - 1;
 					}
-					else
+					else if (addKind == 10)
 					{
 						SceneLightDocument value;
 						value.id = uniqueName("Light",
@@ -3232,6 +3367,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						                      });
 						openScene->lights.push_back(value);
 						selectedModel = -100 - (int)openScene->lights.size() + 1;
+					}
+					else
+					{
+						SceneParticleEffectDocument value;
+						value.id = uniqueName("ParticleEffect", [&](auto const& id) { return std::any_of(openScene->particleEffects.begin(), openScene->particleEffects.end(), [&](auto const& item) { return item.id == id; }); });
+						if (openDocument) for (auto const& resource : openDocument->localResources) if (resource.kind == PbrPipelineResourceKind::ParticleEffect) { value.effect = resource.name; break; }
+						openScene->particleEffects.push_back(value);
+						selectedModel = -10000 - (int)openScene->particleEffects.size() + 1;
 					}
 					auto after = std::make_shared<SceneDocument>(*openScene);
 					sceneCommands.execute(
@@ -3478,7 +3621,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				lastEditScene = true;
 				sceneDirty = scenePath.empty() || sceneCommands.dirty();
 			}
-			if (requestDuplicate && openScene && selectedModel <= -100)
+			if (requestDuplicate && openScene && selectedModel <= -100 && selectedModel > -10000)
 			{
 				auto index = (size_t)(-100 - selectedModel);
 				if (index < openScene->lights.size())
@@ -3502,6 +3645,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					sceneDirty = scenePath.empty() || sceneCommands.dirty();
 				}
 			}
+			if (requestDuplicate && openScene && selectedModel <= -10000)
+			{
+				auto index = (size_t)(-10000 - selectedModel);
+				if (index < openScene->particleEffects.size())
+				{
+					auto before = std::make_shared<SceneDocument>(*openScene); auto value = openScene->particleEffects[index]; auto base = value.id + ".Copy"; value.id = base; unsigned suffix = 2;
+					while (std::any_of(openScene->particleEffects.begin(), openScene->particleEffects.end(), [&](auto const& current) { return current.id == value.id; })) value.id = base + std::to_string(suffix++);
+					openScene->particleEffects.insert(openScene->particleEffects.begin() + index + 1, value); selectedModel = -10000 - (int)(index + 1);
+					auto after = std::make_shared<SceneDocument>(*openScene); documentChangedSincePreview = true; sceneCommands.execute(std::make_unique<SceneSnapshotCommand>("Duplicate Particle Effect", &openScene, before, after)); lastEditScene = true; sceneDirty = scenePath.empty() || sceneCommands.dirty();
+				}
+			}
 			if (requestDelete && openScene && selectedModel >= 0 && (size_t)selectedModel < openScene->models.size())
 			{
 				auto before = std::make_shared<SceneDocument>(*openScene);
@@ -3514,7 +3668,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				lastEditScene = true;
 				sceneDirty = scenePath.empty() || sceneCommands.dirty();
 			}
-			if (requestDelete && openScene && selectedModel <= -100)
+			if (requestDelete && openScene && selectedModel <= -100 && selectedModel > -10000)
 			{
 				auto index = (size_t)(-100 - selectedModel);
 				if (index < openScene->lights.size())
@@ -3528,6 +3682,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					    std::make_unique<SceneSnapshotCommand>("Delete Scene Light", &openScene, before, after));
 					lastEditScene = true;
 					sceneDirty = scenePath.empty() || sceneCommands.dirty();
+				}
+			}
+			if (requestDelete && openScene && selectedModel <= -10000)
+			{
+				auto index = (size_t)(-10000 - selectedModel);
+				if (index < openScene->particleEffects.size())
+				{
+					auto before = std::make_shared<SceneDocument>(*openScene); openScene->particleEffects.erase(openScene->particleEffects.begin() + index); selectedModel = -1;
+					auto after = std::make_shared<SceneDocument>(*openScene); documentChangedSincePreview = true; sceneCommands.execute(std::make_unique<SceneSnapshotCommand>("Delete Particle Effect", &openScene, before, after)); lastEditScene = true; sceneDirty = scenePath.empty() || sceneCommands.dirty();
 				}
 			}
 			if (requestNew && confirmDiscardWorkspace())
@@ -4119,6 +4282,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					for (size_t light = 0; light < openScene->lights.size(); ++light)
 						if (ImGui::Selectable(openScene->lights[light].id.c_str(), selectedModel == -100 - (int)light))
 							selectScene(-100 - (int)light);
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNodeEx("Particle Effects", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					for (size_t effect = 0; effect < openScene->particleEffects.size(); ++effect)
+						if (ImGui::Selectable(openScene->particleEffects[effect].id.c_str(), selectedModel == -10000 - (int)effect))
+							selectScene(-10000 - (int)effect);
 					ImGui::TreePop();
 				}
 				ImGui::TreePop();
@@ -5702,6 +5872,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						                                          : "unresolved");
 					}
 				}
+				else if (value.kind == PbrPipelineResourceKind::ParticleEffect)
+				{
+					text(definition, "name", "Asset name");
+					if (definition.hasEntry("Emitters")) ImGui::Text("Emitter templates: %zu", (size_t)std::distance(definition.getEntry("Emitters").begin(), definition.getEntry("Emitters").end()));
+					ImGui::TextDisabled("Edit emitter-template details in the serialized resource document.");
+				}
 				else
 				{
 					choice(definition, "positionType", "Position type", {"2D", "3D"});
@@ -6329,7 +6505,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					sceneDirty = scenePath.empty() || sceneCommands.dirty();
 				}
 			}
-			else if (openScene && selectedModel <= -100)
+			else if (openScene && selectedModel <= -100 && selectedModel > -10000)
 			{
 				auto index = (size_t)(-100 - selectedModel);
 				if (index < openScene->lights.size())
@@ -6365,6 +6541,36 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						    true);
 						lastEditScene = true;
 						sceneDirty = scenePath.empty() || sceneCommands.dirty();
+					}
+				}
+			}
+			else if (openScene && selectedModel <= -10000)
+			{
+				auto index = (size_t)(-10000 - selectedModel);
+				if (index < openScene->particleEffects.size())
+				{
+					auto before = std::make_shared<SceneDocument>(*openScene);
+					auto& value = openScene->particleEffects[index];
+					bool changed = false;
+					char id[256]{}; strncpy_s(id, value.id.c_str(), 255);
+					if (ImGui::InputText("Particle effect ID", id, sizeof(id))) { value.id = id; changed = true; }
+					auto preview = value.effect.empty() ? std::string("(none)") : value.effect;
+					if (ImGui::BeginCombo("Particle effect resource", preview.c_str()))
+					{
+						if (ImGui::Selectable("(none)", value.effect.empty())) { value.effect.clear(); changed = true; }
+						if (openDocument) for (auto const& resource : openDocument->localResources) if (resource.kind == PbrPipelineResourceKind::ParticleEffect)
+							if (ImGui::Selectable(resource.name.c_str(), value.effect == resource.name)) { value.effect = resource.name; changed = true; }
+						ImGui::EndCombo();
+					}
+					changed |= ImGui::InputFloat3("Translation", &value.translation.x);
+					changed |= ImGui::InputFloat3("Rotation (degrees)", &value.rotationDegrees.x);
+					changed |= ImGui::InputFloat3("Scale", &value.scale.x);
+					changed |= ImGui::Checkbox("Visible", &value.visible);
+					if (changed)
+					{
+						auto after = std::make_shared<SceneDocument>(*openScene); documentChangedSincePreview = true;
+						sceneCommands.execute(std::make_unique<SceneSnapshotCommand>("Edit Particle Effect", &openScene, before, after), true);
+						lastEditScene = true; sceneDirty = scenePath.empty() || sceneCommands.dirty();
 					}
 				}
 			}

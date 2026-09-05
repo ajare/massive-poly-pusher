@@ -63,4 +63,6 @@ public:
 	virtual void update(mpp::RenderSystem* renderSystem, float frameTime) {}
 
 	virtual void render(mpp::RenderSystem* renderSystem, World const& world, RenderOptions const& options) {}
+
+	virtual std::vector<std::string> getOverlayLines() const { return {}; }
 };

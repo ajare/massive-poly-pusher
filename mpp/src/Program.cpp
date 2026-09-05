@@ -33,6 +33,118 @@ namespace mpp
 {
 	namespace
 	{
+		// A surface material keeps its own fragment shader and vertex-attribute
+		// contract when used by mesh particles.  Injecting this small opt-in path
+		// into generated 3D vertex programs lets the dedicated mesh-particle pass
+		// use that exact material while sourcing one model matrix per GPU instance.
+		// Ordinary model draws leave MPP_PARTICLE_MESH_ENABLED at zero and retain
+		// the generated program's original matrix uniforms.
+		string addParticleMeshInstancing(string source)
+		{
+			string const modelDeclaration = string("uniform mat4 ") + MPP_PROGRAM_MMATRIX_NAME + ";";
+			string const mcpDeclaration = string("uniform mat4 ") + MPP_PROGRAM_MCPMATRIX_NAME + ";";
+			bool const hasModelMatrix = source.find(modelDeclaration) != string::npos;
+			if (source.find(mcpDeclaration) == string::npos) return source;
+
+			auto const mainPosition = source.find("void main");
+			auto const bodyPosition = mainPosition == string::npos ? string::npos : source.find('{', mainPosition);
+			if (bodyPosition == string::npos) return source;
+			bool const hasNormalMatrix = source.find(string("uniform mat3 ") + MPP_PROGRAM_NORMALMATRIX_NAME + ";") != string::npos;
+
+			string body = source.substr(bodyPosition + 1u);
+			auto replaceAll = [](string& value, string const& search, string const& replacement)
+			{
+				size_t position = 0u;
+				while ((position = value.find(search, position)) != string::npos)
+				{
+					value.replace(position, search.size(), replacement);
+					position += replacement.size();
+				}
+			};
+			replaceAll(body, MPP_PROGRAM_MCPMATRIX_NAME, "mppParticleModelCameraProjection");
+			if (hasModelMatrix) replaceAll(body, MPP_PROGRAM_MMATRIX_NAME, "mppParticleModel");
+			if (hasNormalMatrix) replaceAll(body, MPP_PROGRAM_NORMALMATRIX_NAME, "mppParticleNormalMatrix");
+
+			string locals = "\n    mat4 mppParticleModel = _mpp_u_MPP_PARTICLE_MESH_ENABLED_ != 0 ? mppParticleMeshModel() : ";
+			locals += hasModelMatrix ? string(MPP_PROGRAM_MMATRIX_NAME) : "mat4(1.0)";
+			locals += string(";\n    mat4 mppParticleModelCameraProjection = _mpp_u_MPP_PARTICLE_MESH_ENABLED_ != 0 ? ") +
+				"MPP_PARTICLE_PROJECTION_MATRIX * MPP_PARTICLE_VIEW_MATRIX * mppParticleModel : " +
+				MPP_PROGRAM_MCPMATRIX_NAME + ";\n";
+			if (hasNormalMatrix)
+				locals += string("    mat3 mppParticleNormalMatrix = _mpp_u_MPP_PARTICLE_MESH_ENABLED_ != 0 ? ") +
+					"transpose(inverse(mat3(mppParticleModel))) : " + MPP_PROGRAM_NORMALMATRIX_NAME + ";\n";
+			source = source.substr(0u, bodyPosition + 1u) + locals + body;
+
+			string const support = R"MPP(
+
+// Engine-reserved mesh-particle instancing interface.
+layout(std140, binding = 3) uniform MppParticleMeshCameraFrame
+{
+    mat4 MPP_PARTICLE_VIEW_MATRIX;
+    mat4 MPP_PARTICLE_PROJECTION_MATRIX;
+    mat4 MPP_PARTICLE_INVERSE_PROJECTION_MATRIX;
+    vec4 MPP_PARTICLE_VIEWPORT_SIZE;
+    vec4 MPP_PARTICLE_NEAR_FAR_TIME;
+};
+struct MppParticleMeshRecord
+{
+    vec4 positionAge;
+    vec4 velocityLifetime;
+    uint packedColour;
+    float baseSize;
+    float rotation;
+    float angularVelocity;
+    uint emitterIndex;
+    uint seed;
+    uint flags;
+    uint padding;
+};
+layout(std430, binding = 0) restrict readonly buffer MppParticleMeshPool
+{
+    MppParticleMeshRecord MPP_PARTICLE_MESH_PARTICLES[];
+};
+layout(std430, binding = 1) restrict readonly buffer MppParticleMeshRenderIndices
+{
+    uint MPP_PARTICLE_MESH_RENDER_INDICES[];
+};
+layout(std430, binding = 7) restrict readonly buffer MppParticleMeshCompaction
+{
+    uint MPP_PARTICLE_MESH_COMPACTION_VALUES[];
+};
+uniform int _mpp_u_MPP_PARTICLE_MESH_ENABLED_;
+uniform uint _mpp_u_MPP_PARTICLE_MESH_TEMPLATE_;
+
+mat4 mppParticleMeshModel()
+{
+    uint renderOrdinal = MPP_PARTICLE_MESH_COMPACTION_VALUES[_mpp_u_MPP_PARTICLE_MESH_TEMPLATE_] + uint(gl_InstanceID);
+    MppParticleMeshRecord particle = MPP_PARTICLE_MESH_PARTICLES[MPP_PARTICLE_MESH_RENDER_INDICES[renderOrdinal]];
+    vec3 axis = particle.velocityLifetime.xyz;
+    float axisLengthSquared = dot(axis, axis);
+    axis = axisLengthSquared > 1.0e-12 ? axis * inversesqrt(axisLengthSquared) : vec3(0.0, 1.0, 0.0);
+    float sineRotation = sin(particle.rotation);
+    float cosineRotation = cos(particle.rotation);
+    float oneMinusCosine = 1.0 - cosineRotation;
+    mat3 rotation = mat3(
+        cosineRotation + axis.x * axis.x * oneMinusCosine,
+        axis.y * axis.x * oneMinusCosine + axis.z * sineRotation,
+        axis.z * axis.x * oneMinusCosine - axis.y * sineRotation,
+        axis.x * axis.y * oneMinusCosine - axis.z * sineRotation,
+        cosineRotation + axis.y * axis.y * oneMinusCosine,
+        axis.z * axis.y * oneMinusCosine + axis.x * sineRotation,
+        axis.x * axis.z * oneMinusCosine + axis.y * sineRotation,
+        axis.y * axis.z * oneMinusCosine - axis.x * sineRotation,
+        cosineRotation + axis.z * axis.z * oneMinusCosine);
+    float scale = particle.baseSize;
+    return mat4(vec4(rotation[0] * scale, 0.0), vec4(rotation[1] * scale, 0.0),
+        vec4(rotation[2] * scale, 0.0), vec4(particle.positionAge.xyz, 1.0));
+}
+)MPP";
+			auto const versionEnd = source.find('\n', source.find("#version"));
+			if (versionEnd == string::npos) return source;
+			source.insert(versionEnd + 1u, support);
+			return source;
+		}
+
 		struct ShaderHandle
 		{
 			GLuint id{ 0 };
@@ -115,7 +227,9 @@ namespace mpp
 			THROW_MPP("Could not cast to type 'ProgramStream'.", __LINE__, __FILE__, __func__);
 		}
 
-		mVertexSource = pStr->getVertexSource();
+		auto const& caps = getRenderSystem()->getCaps();
+		mVertexSource = caps.supportsCompute && caps.maxShaderStorageBufferBindings >= 8u
+			? addParticleMeshInstancing(pStr->getVertexSource()) : pStr->getVertexSource();
 		mFragmentSource = pStr->getFragmentSource();
 		mFlags = pStr->getFlags();
 	}

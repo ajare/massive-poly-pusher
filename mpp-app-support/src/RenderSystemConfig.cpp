@@ -1,6 +1,7 @@
 #include "mpp/app/RenderSystemConfig.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 #include <fstream>
 #include <set>
@@ -45,6 +46,21 @@ namespace mpp::app
 			if (normalised == "false") return false;
 			throw std::runtime_error(location + ": expected true or false, but found '" + trim(value) + "'.");
 		}
+
+		uint32_t parseParticlePoolCapacity(std::string const& value, std::string const& location)
+		{
+			auto normalised = trim(value);
+			uint32_t capacity = 0;
+			auto result = std::from_chars(normalised.data(), normalised.data() + normalised.size(), capacity);
+			if (normalised.empty() || result.ec != std::errc{} || result.ptr != normalised.data() + normalised.size() ||
+				capacity < MinimumParticlePoolCapacity || capacity > MaximumParticlePoolCapacity)
+			{
+				throw std::runtime_error(location + ": expected an integer from " +
+					std::to_string(MinimumParticlePoolCapacity) + " to " + std::to_string(MaximumParticlePoolCapacity) +
+					", but found '" + normalised + "'.");
+			}
+			return capacity;
+		}
 	}
 
 	RenderSystemOptions parseRenderSystemOptions(std::istream& input, std::string const& sourceName)
@@ -81,7 +97,8 @@ namespace mpp::app
 			else if (key == "ssaa") options.antiAliasing.ssaa = parseSamples(value, location + " ssaa");
 			else if (key == "taa") options.antiAliasing.taa = parseBool(value, location + " taa");
 			else if (key == "fxaa") options.antiAliasing.fxaa = parseBool(value, location + " fxaa");
-			else throw std::runtime_error(location + ": unknown setting '" + key + "'. Expected msaa, ssaa, taa, or fxaa.");
+			else if (key == "particlepoolcapacity") options.particlePoolCapacity = parseParticlePoolCapacity(value, location + " particlePoolCapacity");
+			else throw std::runtime_error(location + ": unknown setting '" + key + "'. Expected msaa, ssaa, taa, fxaa, or particlePoolCapacity.");
 		}
 		return options;
 	}

@@ -7,6 +7,8 @@
 #include "mpp/SceneDocument.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/PbrShaders.h"
+#include "mpp/ParticleData.h"
+#include "mpp/ParticleShaders.h"
 #include "mpp/ModelRenderParams.h"
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -25,6 +27,30 @@ namespace mpp
 				shader.find("encodeOctahedralNormal") != std::string::npos && shader.find("mat3(VIEW_MATRIX)") != std::string::npos;
 		};
 		if (!validatesBuiltInNormalContract(FragmentShader3dTemplate)) return fail("built-in legacy shader lost the location-2 view-space octahedral shading-normal contract");
+		auto const particleVertex = std::string(ParticleDrawVertexShader);
+		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED", "BILLBOARD_VELOCITY_STRETCHED" })
+			if (particleVertex.find(mode) == std::string::npos) return fail("particle shader lost a required billboard mode");
+		auto const particleFragment = std::string(ParticleDrawFragmentShader);
+		auto const radixScatter = std::string(ParticleRadixScatterComputeShader);
+		auto const oitResolve = std::string(ParticleWeightedOitResolveFragmentShader);
+		auto const distortionComposite = std::string(ParticleDistortionCompositeFragmentShader);
+		if (particleVertex.find("particleHalfExtents") == std::string::npos ||
+			particleVertex.find("length(projectedVelocity)") == std::string::npos ||
+			particleVertex.find("expandParticleQuad") == std::string::npos ||
+			particleVertex.find("ANIMATION_FRAME_OVER_LIFE") == std::string::npos ||
+			particleVertex.find("ANIMATION_FIXED_RATE") == std::string::npos ||
+			particleVertex.find("ANIMATION_RANDOM_START") == std::string::npos ||
+			particleFragment.find("linearViewDepth(sceneDepth) - PARTICLE_VIEW_DEPTH") == std::string::npos ||
+			particleFragment.find("MPP_PARTICLE_WEIGHTED_OIT") == std::string::npos ||
+			particleFragment.find("MPP_PARTICLE_DISTORTION") == std::string::npos ||
+			particleFragment.find("PARTICLE_DISTORTION_STRENGTH") == std::string::npos ||
+			particleFragment.find("-log(max(1.0 - alpha") == std::string::npos ||
+			std::string(ParticleSortKeyComputeShader).find("descendingFloatKey") == std::string::npos ||
+			radixScatter.find("LOCAL_DIGITS[earlier] == digit") == std::string::npos ||
+			oitResolve.find("exp(-opticalDepth)") == std::string::npos ||
+			oitResolve.find("accumulation.rgb / max(accumulation.a") == std::string::npos ||
+			distortionComposite.find("uv + offset") == std::string::npos)
+			return fail("particle shader lost billboard expansion, animation, soft depth, distortion, radix sorting, or weighted blended OIT");
 		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
@@ -424,6 +450,110 @@ namespace mpp
 		if (registry.validate(metadataGraph).hasErrors()) return fail("valid pass authoring metadata contract was rejected");
 		metadataGraph.setPassCallbackFactory(metadataPass, "Unknown.Factory");
 		if (!registry.validate(metadataGraph).hasErrors()) return fail("unknown pass factory metadata was accepted");
+
+		auto const* particleMetadata = registry.findMetadata("MPP.ParticleScene");
+		if (!particleMetadata || particleMetadata->inputs.size() != 1 || particleMetadata->inputs.front().required ||
+			particleMetadata->inputs.front().sampler != "DEPTH" || particleMetadata->inputs.front().fallbackId != "HardParticles")
+			return fail("particle scene metadata lost its optional named depth fallback");
+		auto const* meshParticleMetadata = registry.findMetadata("MPP.ParticleMeshScene");
+		if (!meshParticleMetadata || meshParticleMetadata->inputs.size() != 1u ||
+			meshParticleMetadata->inputs[0].sampler != "SHADOW_MAP" || meshParticleMetadata->inputs[0].required ||
+			!meshParticleMetadata->allowAdditionalInputs || meshParticleMetadata->outputs.size() != 3u ||
+			!meshParticleMetadata->outputs[2].depth || meshParticleMetadata->materialSlots.size() != 1u)
+			return fail("mesh particle scene metadata lost its dedicated material/geometry pass contract");
+		auto const* trailMetadata = registry.findMetadata("MPP.TrailScene");
+		if (!trailMetadata || trailMetadata->inputs.size() != 1 || trailMetadata->inputs.front().required ||
+			trailMetadata->inputs.front().sampler != "DEPTH" || trailMetadata->inputs.front().fallbackId != "HardTrails" ||
+			trailMetadata->parameters.size() != 1)
+			return fail("trail scene metadata lost its separate draw contract or optional depth fallback");
+		auto const* volumetricLightingMetadata = registry.findMetadata("MPP.ParticleVolumetricLighting");
+		if (!volumetricLightingMetadata || volumetricLightingMetadata->inputs.size() != 1u ||
+			volumetricLightingMetadata->inputs[0].sampler != "DEPTH" || volumetricLightingMetadata->inputs[0].required ||
+			volumetricLightingMetadata->inputs[0].fallbackId != "UnoccludedParticleVolumes" ||
+			volumetricLightingMetadata->outputs.size() != 2u || !volumetricLightingMetadata->outputs[0].required ||
+			volumetricLightingMetadata->outputs[1].required)
+			return fail("particle volumetric-lighting metadata lost its optional depth and emissive-output contract");
+		auto const* distortionMetadata = registry.findMetadata("MPP.ParticleDistortion");
+		auto const* distortionCompositeMetadata = registry.findMetadata("MPP.ParticleDistortionComposite");
+		if (!distortionMetadata || distortionMetadata->inputs.size() != 1 || distortionMetadata->inputs.front().required ||
+			distortionMetadata->outputs.size() != 1 ||
+			distortionMetadata->outputs.front().acceptedFormats != std::vector<GraphImageFormat>{ GraphImageFormat::Rg16f, GraphImageFormat::Rg32f } ||
+			!distortionCompositeMetadata || distortionCompositeMetadata->inputs.size() != 2 || distortionCompositeMetadata->outputs.size() != 1)
+			return fail("particle distortion draw/composite authoring metadata was not registered");
+		RenderGraph distortionGraph;
+		GraphImageDesc distortionSceneDesc = colour; distortionSceneDesc.external = true; distortionSceneDesc.transient = false;
+		auto distortionScene = distortionGraph.createImage("DistortionScene", distortionSceneDesc);
+		GraphImageDesc distortionDesc = colour; distortionDesc.format = GraphImageFormat::Rg16f;
+		auto distortionVectors = distortionGraph.createImage("DistortionVectors", distortionDesc);
+		auto distortionOutput = distortionGraph.createImage("DistortionOutput", colour);
+		auto distortionPass = distortionGraph.addPass("ParticleDistortion", GraphPassType::Scene);
+		distortionGraph.setPassCallbackFactory(distortionPass, "MPP.ParticleDistortion");
+		distortionVectors = distortionGraph.writeColour(distortionPass, distortionVectors, GraphLoadOp::Clear);
+		auto distortionCompositePass = distortionGraph.addPass("ParticleDistortionComposite", GraphPassType::Fullscreen);
+		distortionGraph.setPassCallbackFactory(distortionCompositePass, "MPP.ParticleDistortionComposite");
+		distortionGraph.bindSampler(distortionCompositePass, "SCENE", distortionScene);
+		distortionGraph.bindSampler(distortionCompositePass, "DISTORTION", distortionVectors);
+		distortionGraph.writeColour(distortionCompositePass, distortionOutput);
+		if (registry.validate(distortionGraph).hasErrors() || !distortionGraph.compile().valid)
+			return fail("valid particle distortion draw/composite graph was rejected");
+
+		auto const* oitMetadata = registry.findMetadata("MPP.ParticleWeightedOit");
+		auto const* oitResolveMetadata = registry.findMetadata("MPP.ParticleWeightedOitResolve");
+		if (!oitMetadata || oitMetadata->inputs.size() != 1 || oitMetadata->outputs.size() != 2 ||
+			oitMetadata->outputs[0].acceptedFormats != std::vector<GraphImageFormat>{ GraphImageFormat::Rgba16f, GraphImageFormat::Rgba32f } ||
+			oitMetadata->outputs[1].acceptedFormats != std::vector<GraphImageFormat>{ GraphImageFormat::R16f, GraphImageFormat::R32f } ||
+			!oitResolveMetadata || oitResolveMetadata->inputs.size() != 4 || oitResolveMetadata->outputs.size() != 2)
+			return fail("weighted blended OIT accumulation/resolve authoring metadata was not registered");
+		RenderGraph oitGraph;
+		GraphImageDesc oitSceneDesc = colour; oitSceneDesc.external = true; oitSceneDesc.transient = false;
+		auto oitScene = oitGraph.createImage("OitScene", oitSceneDesc);
+		GraphImageDesc accumulationDesc = colour; accumulationDesc.format = GraphImageFormat::Rgba16f;
+		GraphImageDesc opticalDepthDesc = colour; opticalDepthDesc.format = GraphImageFormat::R16f;
+		auto oitAccumulation = oitGraph.createImage("OitAccumulation", accumulationDesc);
+		auto oitOpticalDepth = oitGraph.createImage("OitOpticalDepth", opticalDepthDesc);
+		auto oitComposite = oitGraph.createImage("OitComposite", colour);
+		auto oitPass = oitGraph.addPass("ParticleWeightedOit", GraphPassType::Scene);
+		oitGraph.setPassCallbackFactory(oitPass, "MPP.ParticleWeightedOit");
+		oitAccumulation = oitGraph.writeColour(oitPass, oitAccumulation, GraphLoadOp::Clear);
+		oitOpticalDepth = oitGraph.writeColour(oitPass, oitOpticalDepth, GraphLoadOp::Clear);
+		auto oitResolvePass = oitGraph.addPass("ParticleWeightedOitResolve", GraphPassType::Fullscreen);
+		oitGraph.setPassCallbackFactory(oitResolvePass, "MPP.ParticleWeightedOitResolve");
+		oitGraph.bindSampler(oitResolvePass, "SCENE", oitScene);
+		oitGraph.bindSampler(oitResolvePass, "ACCUMULATION", oitAccumulation);
+		oitGraph.bindSampler(oitResolvePass, "OPTICAL_DEPTH", oitOpticalDepth);
+		oitGraph.writeColour(oitResolvePass, oitComposite);
+		if (registry.validate(oitGraph).hasErrors() || !oitGraph.compile().valid)
+			return fail("valid weighted blended OIT accumulation/resolve graph was rejected");
+
+		RenderGraph particleGraph;
+		auto particleColour = particleGraph.createImage("ParticleColour", colour);
+		auto particlePass = particleGraph.addPass("ParticleAlpha", GraphPassType::Scene);
+		particleGraph.setPassCallbackFactory(particlePass, "MPP.ParticleScene");
+		UniformCollection particleParameters;
+		particleParameters.setUniform("BLEND_MODE", int32_t(ParticleBlendClass::Alpha));
+		particleGraph.setPassParameters(particlePass, particleParameters);
+		particleGraph.writeColour(particlePass, particleColour);
+		GraphRasterState invalidParticleRaster;
+		invalidParticleRaster.explicitState = true;
+		invalidParticleRaster.depthWrite = true;
+		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
+		auto particleDiagnostics = registry.validate(particleGraph);
+		if (particleDiagnostics.hasErrors() || particleDiagnostics.count(DiagnosticSeverity::Warning) != 1 ||
+			particleDiagnostics.getDiagnostics().front().code != "MPP-PASS-014")
+			return fail("particle depth-write request did not produce exactly the override warning");
+		invalidParticleRaster.depthWrite = false;
+		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
+		if (registry.validate(particleGraph).hasErrors())
+			return fail("particle pass without optional depth did not select its hard-particle fallback");
+		particleGraph.setPassCallbackFactory(particlePass, "MPP.TrailScene");
+		if (registry.validate(particleGraph).hasErrors())
+			return fail("trail pass without optional depth did not select its hard-trail fallback");
+		invalidParticleRaster.depthWrite = true;
+		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
+		auto trailDiagnostics = registry.validate(particleGraph);
+		if (trailDiagnostics.hasErrors() || trailDiagnostics.count(DiagnosticSeverity::Warning) != 1 ||
+			trailDiagnostics.getDiagnostics().front().code != "MPP-PASS-014")
+			return fail("trail depth-write request did not produce exactly the transparent-primitive override warning");
 
 		// A non-transient image holds contents that outlive the frame, so nothing may
 		// be planned on top of it. The plan used to test only the incoming image for

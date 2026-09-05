@@ -13,6 +13,7 @@
 namespace mpp
 {
 	class RenderSystem;
+	class ParticleSystem;
 	namespace detail { class PersistentMappedBuffer; }
 
 	class _MPPAPI Mesh
@@ -56,6 +57,7 @@ namespace mpp
 		// Methods to be used by RenderSystem
 		friend class RenderSystem;
 		friend class Model;
+		friend class ParticleSystem;
 
 		void setMaterialRevisionCounter(uint64_t* revision) { mMaterialRevision = revision; }
 

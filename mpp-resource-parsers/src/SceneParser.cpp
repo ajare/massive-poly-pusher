@@ -38,7 +38,7 @@ namespace mpp::resource_parsers
 	{
 		auto data=detail::readDocumentRoot(filepath);
 		if(data.getName()!="Scene")THROW_MPP_RESOURCE_PARSERS("Scene root must be Scene: "+filepath,__LINE__,__FILE__,__func__);
-		rejectUnknown(data,{"version","name","environmentBinding","Camera","Layers","Models","Lights"},"Scene");
+		rejectUnknown(data,{"version","name","environmentBinding","Camera","Layers","Models","Lights","ParticleEffects"},"Scene");
 		SceneDocument document;document.sourcePath=filepath;document.version=data.hasEntry("version")?utils::StringUtils::parseUInt(data.getEntry("version").getValue()):1;document.name=data.hasEntry("name")?data.getEntry("name").getValue():"";
 		if(data.hasEntry("environmentBinding"))document.environmentBinding=data.getEntry("environmentBinding").getValue();
 		if(data.hasEntry("Camera"))
@@ -58,6 +58,10 @@ namespace mpp::resource_parsers
 		{
 			if(entry.first!="Light")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in Lights.",__LINE__,__FILE__,__func__);auto const& light=entry.second;rejectUnknown(light,{"id","type","colour","intensity","position","direction","range","castsShadows"},"Lights/Light");SceneLightDocument value;value.id=light.getEntry("id").getValue();
 			if(light.hasEntry("type")){auto type=light.getEntry("type").getValue();utils::StringUtils::toUpper(type);if(type=="POINT")value.type=SceneLightType::Point;else if(type=="DIRECTIONAL")value.type=SceneLightType::Directional;else THROW_MPP_RESOURCE_PARSERS("Unknown scene light type '"+type+"'.",__LINE__,__FILE__,__func__);}if(light.hasEntry("colour"))value.colour=vec3(light.getEntry("colour").getValue());if(light.hasEntry("intensity"))value.intensity=utils::StringUtils::parseFloat(light.getEntry("intensity").getValue());if(light.hasEntry("position"))value.position=vec3(light.getEntry("position").getValue());if(light.hasEntry("direction"))value.direction=vec3(light.getEntry("direction").getValue());if(light.hasEntry("range"))value.range=utils::StringUtils::parseFloat(light.getEntry("range").getValue());if(light.hasEntry("castsShadows"))value.castsShadows=boolean(light.getEntry("castsShadows").getValue());document.lights.push_back(value);
+		}
+		if(data.hasEntry("ParticleEffects"))for(auto const& entry:data.getEntry("ParticleEffects"))
+		{
+			if(entry.first!="ParticleEffect")THROW_MPP_RESOURCE_PARSERS("Unknown field '"+entry.first+"' in ParticleEffects.",__LINE__,__FILE__,__func__);auto const& effect=entry.second;rejectUnknown(effect,{"id","effect","translation","rotation","scale","visible"},"ParticleEffects/ParticleEffect");SceneParticleEffectDocument value;value.id=effect.getEntry("id").getValue();value.effect=effect.getEntry("effect").getValue();if(effect.hasEntry("translation"))value.translation=vec3(effect.getEntry("translation").getValue());if(effect.hasEntry("rotation"))value.rotationDegrees=vec3(effect.getEntry("rotation").getValue());if(effect.hasEntry("scale"))value.scale=vec3(effect.getEntry("scale").getValue());if(effect.hasEntry("visible"))value.visible=boolean(effect.getEntry("visible").getValue());document.particleEffects.push_back(value);
 		}
 		return document;
 	}

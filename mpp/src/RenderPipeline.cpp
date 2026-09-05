@@ -18,6 +18,7 @@
 #include "mpp/GpuDebugScope.h"
 #include "mpp/MppException.h"
 #include "mpp/Material.h"
+#include "mpp/ParticleData.h"
 #include "mpp/Program.h"
 
 using namespace std;
@@ -91,6 +92,32 @@ namespace mpp
 			{
 				auto const info = graph.getPassInfo({ id });
 				if (info.enabled && info.callbackFactory == "MPP.WaterScene") return true;
+			}
+			return false;
+		}
+
+		// GPU primitives update once per rendered frame outside the graph, so each
+		// independent owner is scheduled only when its own pure draw pass is present.
+		bool graphHasParticlePass(RenderGraph const& graph)
+		{
+			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
+			{
+				auto const info = graph.getPassInfo({ id });
+				if (info.enabled && (info.callbackFactory == "MPP.ParticleScene" ||
+					info.callbackFactory == "MPP.ParticleWeightedOit" ||
+					info.callbackFactory == "MPP.ParticleDistortion" ||
+					info.callbackFactory == "MPP.ParticleVolumetricLighting" ||
+					info.callbackFactory == "MPP.ParticleMeshScene")) return true;
+			}
+			return false;
+		}
+
+		bool graphHasTrailPass(RenderGraph const& graph)
+		{
+			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
+			{
+				auto const info = graph.getPassInfo({ id });
+				if (info.enabled && info.callbackFactory == "MPP.TrailScene") return true;
 			}
 			return false;
 		}
@@ -500,6 +527,8 @@ namespace mpp
 			}
 			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back(), graphHasWaterPass(*graph), mOptions.waterReflections.enabled };
 			mGraphExecutor->setFrameContext(&frameContext);
+			if (mOptions.graphPasses.particles && graphHasParticlePass(*graph)) mRenderSystem->simulateParticles();
+			if (mOptions.graphPasses.particles && graphHasTrailPass(*graph)) mRenderSystem->simulateTrails();
 			beginFlowSnapshot();
 			try
 			{
@@ -588,6 +617,7 @@ namespace mpp
 		bool const planarWater = planarRequested && reflectionEnabled;
 		bool const reflectionFailureWater = planarRequested && !reflectionEnabled;
 		bool const sampleSceneDepth = screenSpaceWater || planarWater || reflectionFailureWater || outputAntiAliasing.taa ||
+			(mOptions.generatedParticles && mOptions.graphPasses.particles) ||
 			(mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
@@ -819,6 +849,153 @@ namespace mpp
 			presentationTexture = shadedSceneTexture;
 		}
 
+		if (mOptions.generatedParticles && mOptions.graphPasses.particles)
+		{
+			// Real meshes are depth-tested material geometry and therefore run in a
+			// separate pass before transparent billboard/ribbon composition.
+			auto meshParticlePass = graph.addPass("ParticleMeshes", GraphPassType::Scene);
+			graph.setPassCallbackFactory(meshParticlePass, "MPP.ParticleMeshScene");
+			if (shadowDepthOutput.isValid()) graph.bindSampler(meshParticlePass, "SHADOW_MAP", shadowDepthOutput);
+			presentationTexture = graph.writeColour(meshParticlePass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+			if (useMrtEmissiveMask)
+				bloomMask = graph.writeColour(meshParticlePass, bloomMask, GraphLoadOp::Load, GraphStoreOp::Store);
+			sceneDepth = graph.writeDepth(meshParticlePass, sceneDepth, GraphLoadOp::Load, GraphStoreOp::Store);
+			GraphRasterState meshParticleRaster;
+			meshParticleRaster.explicitState = true;
+			meshParticleRaster.depthTest = true;
+			meshParticleRaster.depthWrite = true;
+			meshParticleRaster.cullMode = GraphCullMode::Back;
+			meshParticleRaster.blend = false;
+			graph.setPassRasterState(meshParticlePass, meshParticleRaster);
+
+			// Emitter-level proxy spheres add depth-aware inscattering to the HDR scene
+			// and emissive mask. Draw count is bounded by live emitters, never particles.
+			auto volumetricLightingPass = graph.addPass("ParticleVolumetricLighting", GraphPassType::Scene);
+			graph.setPassCallbackFactory(volumetricLightingPass, "MPP.ParticleVolumetricLighting");
+			graph.bindSampler(volumetricLightingPass, "DEPTH", sceneDepth);
+			presentationTexture = graph.writeColour(volumetricLightingPass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+			if (useMrtEmissiveMask)
+				bloomMask = graph.writeColour(volumetricLightingPass, bloomMask, GraphLoadOp::Load, GraphStoreOp::Store);
+			GraphRasterState volumetricLightingRaster;
+			volumetricLightingRaster.explicitState = true;
+			volumetricLightingRaster.depthTest = false;
+			volumetricLightingRaster.depthWrite = false;
+			volumetricLightingRaster.cullMode = GraphCullMode::None;
+			volumetricLightingRaster.blend = true;
+			volumetricLightingRaster.sourceColourBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.destinationColourBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.sourceAlphaBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.multisample = false;
+			graph.setPassRasterState(volumetricLightingPass, volumetricLightingRaster);
+
+			// Weighted OIT is an authored accumulation pass plus an authored resolve.
+			// Optical depth is additive (-log(revealage)), so both accumulation targets
+			// share one ordinary GraphRasterState and remain order-independent.
+			auto oitAccumulation = graph.createImage("ParticleOitAccumulation", makeColour(GraphImageFormat::Rgba16f));
+			auto oitOpticalDepth = graph.createImage("ParticleOitOpticalDepth", makeColour(GraphImageFormat::R16f));
+			auto oitPass = graph.addPass("ParticleWeightedOit", GraphPassType::Scene);
+			graph.setPassCallbackFactory(oitPass, "MPP.ParticleWeightedOit");
+			graph.bindSampler(oitPass, "DEPTH", sceneDepth);
+			oitAccumulation = graph.writeColour(oitPass, oitAccumulation, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+			oitOpticalDepth = graph.writeColour(oitPass, oitOpticalDepth, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+			GraphRasterState oitRaster;
+			oitRaster.explicitState = true;
+			oitRaster.depthTest = false;
+			oitRaster.depthWrite = false;
+			oitRaster.cullMode = GraphCullMode::None;
+			oitRaster.blend = true;
+			oitRaster.sourceColourBlend = GraphBlendFactor::One;
+			oitRaster.destinationColourBlend = GraphBlendFactor::One;
+			oitRaster.sourceAlphaBlend = GraphBlendFactor::One;
+			oitRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			oitRaster.multisample = false;
+			graph.setPassRasterState(oitPass, oitRaster);
+
+			auto oitResolve = graph.addPass("ParticleWeightedOitResolve", GraphPassType::Fullscreen);
+			graph.setPassCallbackFactory(oitResolve, "MPP.ParticleWeightedOitResolve");
+			graph.bindSampler(oitResolve, "SCENE", presentationTexture);
+			graph.bindSampler(oitResolve, "ACCUMULATION", oitAccumulation);
+			graph.bindSampler(oitResolve, "OPTICAL_DEPTH", oitOpticalDepth);
+			if (useMrtEmissiveMask) graph.bindSampler(oitResolve, "BLOOM", bloomMask);
+			auto oitComposite = graph.createImage("ParticleOitComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			presentationTexture = graph.writeColour(oitResolve, oitComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			if (useMrtEmissiveMask)
+			{
+				auto oitBloomComposite = graph.createImage("ParticleOitBloomComposite", makeColour(GraphImageFormat::Rgba16f));
+				bloomMask = graph.writeColour(oitResolve, oitBloomComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			}
+
+			// Conventional classes remain separate authored passes with complete raster
+			// state. BLEND_MODE only selects their matching indirect-command span.
+			auto addParticlePrimitivePass = [&](std::string const& name, std::string const& factory,
+				ParticleBlendClass blendClass, GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha)
+			{
+				auto pass = graph.addPass(name, GraphPassType::Scene);
+				graph.setPassCallbackFactory(pass, factory);
+				graph.bindSampler(pass, "DEPTH", sceneDepth);
+				UniformCollection parameters;
+				parameters.setUniform("BLEND_MODE", int32_t(blendClass));
+				graph.setPassParameters(pass, parameters);
+				presentationTexture = graph.writeColour(pass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+				if (useMrtEmissiveMask)
+					bloomMask = graph.writeColour(pass, bloomMask, GraphLoadOp::Load, GraphStoreOp::Store);
+
+				GraphRasterState raster;
+				raster.explicitState = true;
+				raster.depthTest = false;
+				raster.depthWrite = false;
+				raster.cullMode = GraphCullMode::None;
+				raster.blend = true;
+				raster.sourceColourBlend = GraphBlendFactor::SourceAlpha;
+				raster.destinationColourBlend = destinationColour;
+				raster.sourceAlphaBlend = sourceAlpha;
+				raster.destinationAlphaBlend = blendClass == ParticleBlendClass::Additive
+					? GraphBlendFactor::One : GraphBlendFactor::OneMinusSourceAlpha;
+				raster.multisample = false;
+				graph.setPassRasterState(pass, raster);
+			};
+			// Conventional alpha is laid down first; additive energy is independent of
+			// ordering. Authors remain free to choose another order in graph templates.
+			addParticlePrimitivePass("ParticleAlpha", "MPP.ParticleScene", ParticleBlendClass::Alpha,
+				GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::One);
+			addParticlePrimitivePass("TrailAlpha", "MPP.TrailScene", ParticleBlendClass::Alpha,
+				GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::One);
+			addParticlePrimitivePass("TrailAdditive", "MPP.TrailScene", ParticleBlendClass::Additive,
+				GraphBlendFactor::One, GraphBlendFactor::Zero);
+			addParticlePrimitivePass("ParticleAdditive", "MPP.ParticleScene", ParticleBlendClass::Additive,
+				GraphBlendFactor::One, GraphBlendFactor::Zero);
+
+			// Distortion is an orthogonal appearance output: opted-in billboards are
+			// drawn again into an additive signed RG field, then composited over the
+			// completed particle scene as the first image-space post effect.
+			auto distortion = graph.createImage("ParticleDistortion", makeColour(GraphImageFormat::Rg16f));
+			auto distortionPass = graph.addPass("ParticleDistortion", GraphPassType::Scene);
+			graph.setPassCallbackFactory(distortionPass, "MPP.ParticleDistortion");
+			graph.bindSampler(distortionPass, "DEPTH", sceneDepth);
+			distortion = graph.writeColour(distortionPass, distortion, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+			GraphRasterState distortionRaster;
+			distortionRaster.explicitState = true;
+			distortionRaster.depthTest = false;
+			distortionRaster.depthWrite = false;
+			distortionRaster.cullMode = GraphCullMode::None;
+			distortionRaster.blend = true;
+			distortionRaster.sourceColourBlend = GraphBlendFactor::One;
+			distortionRaster.destinationColourBlend = GraphBlendFactor::One;
+			distortionRaster.sourceAlphaBlend = GraphBlendFactor::One;
+			distortionRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			distortionRaster.multisample = false;
+			graph.setPassRasterState(distortionPass, distortionRaster);
+
+			auto distortionComposite = graph.addPass("ParticleDistortionComposite", GraphPassType::Fullscreen);
+			graph.setPassCallbackFactory(distortionComposite, "MPP.ParticleDistortionComposite");
+			graph.bindSampler(distortionComposite, "SCENE", presentationTexture);
+			graph.bindSampler(distortionComposite, "DISTORTION", distortion);
+			auto distortedScene = graph.createImage("ParticleDistortionComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			presentationTexture = graph.writeColour(distortionComposite, distortedScene, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			shadedSceneTexture = presentationTexture;
+		}
+
 		enum class BloomGraphStep { Extract, Horizontal, Vertical, Composite };
 		vector<GraphPassHandle> bloomPasses;
 		vector<GraphImageHandle> bloomInputs;
@@ -1020,6 +1197,8 @@ namespace mpp
 		frameContext.hasWaterPass = graphHasWaterPass(graph);
 		frameContext.waterReflectionEnabled = reflectionEnabled;
 		mGraphExecutor->setFrameContext(&frameContext);
+		if (mOptions.graphPasses.particles && graphHasParticlePass(graph)) mRenderSystem->simulateParticles();
+		if (mOptions.graphPasses.particles && graphHasTrailPass(graph)) mRenderSystem->simulateTrails();
 		beginFlowSnapshot();
 		try
 		{

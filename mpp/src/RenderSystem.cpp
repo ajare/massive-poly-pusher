@@ -26,6 +26,9 @@
 #include "utils/StringUtils.h"
 
 #include "mpp/Config.h"
+#include "mpp/ParticleSystem.h"
+#include "mpp/ParticleShaders.h"
+#include "mpp/TrailSystem.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Camera.h"
 #include "mpp/ResourceManager.h"
@@ -204,6 +207,10 @@ namespace mpp
 		delete mModelInstances;
 		delete mMeshInstances;
 		delete mInternalFont;
+		// Ahead of the core-resource sweep: this releases the programs it acquired
+		// and deletes its GPU objects while the context is still current.
+		mTrailSystem.reset();
+		mParticleSystem.reset();
 		destroyLightsData();
 		destroyPbrLightsData();
 		destroyCameraFrameData();
@@ -535,6 +542,21 @@ namespace mpp
 		infoMessage("Renderer: " + glRenderer);
 		infoMessage("Vendor: " + vendorInfo);
 
+		// GL_CONTEXT_PROFILE_MASK is core since 3.2; anything older is compatibility
+		// by definition.
+		{
+			GLint profileMask = 0;
+			if (mCaps.glVersionMajor > 3 || (mCaps.glVersionMajor == 3 && mCaps.glVersionMinor >= 2))
+			{
+				GL_CHECK(glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profileMask));
+				mCaps.compatibilityProfile = (profileMask & GL_CONTEXT_CORE_PROFILE_BIT) == 0;
+			}
+			else
+			{
+				mCaps.compatibilityProfile = true;
+			}
+		}
+
 		// Get point size render range
 		GLfloat sizeRange[2] = { 0.0f, 0.0f };
 		GL_CHECK(glGetFloatv(GL_SMOOTH_POINT_SIZE_RANGE, sizeRange));
@@ -664,6 +686,39 @@ namespace mpp
 			mCaps.maxVertexAttributeStride = (uint32_t)max(0, maxVertexAttributeStride);
 		}
 
+		// Compute and shader-storage limits. Compute is queried rather than assumed
+		// -- see Caps. MPP_FORCE_NO_COMPUTE_SUPPORT builds the unsupported path so
+		// the graceful-degradation contract can be exercised on hardware that does
+		// support it: the particle system then warns once and draws nothing.
+#if defined(MPP_FORCE_NO_COMPUTE_SUPPORT)
+		mCaps.supportsCompute = false;
+#else
+		mCaps.supportsCompute = GLEW_VERSION_4_3 ||
+			(GLEW_ARB_compute_shader && GLEW_ARB_shader_storage_buffer_object && GLEW_ARB_draw_indirect);
+#endif
+		mCaps.supportsMultiDrawIndirect = GLEW_VERSION_4_3 || GLEW_ARB_multi_draw_indirect;
+		mCaps.supportsBindlessTextures = GLEW_ARB_bindless_texture != 0;
+		if (mCaps.supportsCompute)
+		{
+			GLint limit = 0;
+			for (GLuint axis = 0; axis < 3; ++axis)
+			{
+				GL_CHECK(glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, axis, &limit));
+				mCaps.maxComputeWorkGroupCount[axis] = (uint32_t)max(0, limit);
+				GL_CHECK(glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, axis, &limit));
+				mCaps.maxComputeWorkGroupSize[axis] = (uint32_t)max(0, limit);
+			}
+			GL_CHECK(glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &limit));
+			mCaps.maxComputeWorkGroupInvocations = (uint32_t)max(0, limit);
+			// The block-size query is a 64-bit limit in the specification; the 32-bit
+			// entry point saturates at INT_MAX, which is far beyond any pool this
+			// engine allocates and is what the limit is compared against.
+			GL_CHECK(glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &limit));
+			mCaps.maxShaderStorageBlockSize = (uint32_t)max(0, limit);
+			GL_CHECK(glGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS, &limit));
+			mCaps.maxShaderStorageBufferBindings = (uint32_t)max(0, limit);
+		}
+
 		// Print caps
 		infoMessage(std::format("Supported point size range: {} to {}", mCaps.pointSizeRange[0], mCaps.pointSizeRange[1]));
 		infoMessage(std::format("Supported aliased line width range: {} to {}", mCaps.aliasedLineWidthRange[0], mCaps.aliasedLineWidthRange[1]));
@@ -688,6 +743,18 @@ namespace mpp
 		infoMessage(std::format("Max fragment texture units: {}", mCaps.maxFragmentTextureUnits));
 		infoMessage(std::format("Max vertex attributes: {}", mCaps.maxVertexAttributes));
 		infoMessage(std::format("Max vertex attribute stride: {} bytes", mCaps.maxVertexAttributeStride));
+
+		infoMessage(std::format("Compute shaders: {}", mCaps.supportsCompute ? "yes" : "no"));
+		infoMessage(std::format("Multi-draw indirect: {}", mCaps.supportsMultiDrawIndirect ? "yes" : "no"));
+		infoMessage(std::format("Bindless textures: {}", mCaps.supportsBindlessTextures ? "yes" : "no"));
+		if (mCaps.supportsCompute)
+		{
+			infoMessage(std::format("Max compute work group count: {}x{}x{}", mCaps.maxComputeWorkGroupCount[0], mCaps.maxComputeWorkGroupCount[1], mCaps.maxComputeWorkGroupCount[2]));
+			infoMessage(std::format("Max compute work group size: {}x{}x{}", mCaps.maxComputeWorkGroupSize[0], mCaps.maxComputeWorkGroupSize[1], mCaps.maxComputeWorkGroupSize[2]));
+			infoMessage(std::format("Max compute work group invocations: {}", mCaps.maxComputeWorkGroupInvocations));
+			infoMessage(std::format("Max shader storage block size: {} bytes", mCaps.maxShaderStorageBlockSize));
+			infoMessage(std::format("Max shader storage buffer bindings: {}", mCaps.maxShaderStorageBufferBindings));
+		}
 	}
 
 	void RenderSystem::addCoreResource(ResourcePtr resource, bool load)
@@ -709,6 +776,11 @@ namespace mpp
 	void RenderSystem::createCoreResources(ResourceManager* resourceMgr)
 	{
 		mResourceMgr = resourceMgr;
+
+		// Cheap to construct: neither primitive allocates GPU state until a graph
+		// draws it.
+		mParticleSystem = make_unique<ParticleSystem>(this, resourceMgr);
+		mTrailSystem = make_unique<TrailSystem>(this, resourceMgr);
 
 		// Default 3d program
 		{
@@ -859,6 +931,12 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
+		mParticleWeightedOitResolveProgram = createBloomProgram("__mpp_particle_weighted_oit_resolve__", ParticleWeightedOitResolveFragmentShader);
+		// Keep particle GPU work lazy: graphs without a particle pass never compile
+		// these composite programs.
+		addCoreResource(mParticleWeightedOitResolveProgram, false);
+		mParticleDistortionCompositeProgram = createBloomProgram("__mpp_particle_distortion_composite__", ParticleDistortionCompositeFragmentShader);
+		addCoreResource(mParticleDistortionCompositeProgram, false);
 		mSsaoRawProgram = createBloomProgram("__mpp_p2d_ssao_raw__", FragmentShaderSsaoRawTemplate);
 		addCoreResource(mSsaoRawProgram, true);
 		mGtaoRawProgram = createBloomProgram("__mpp_p2d_gtao_raw__", FragmentShaderGtaoRawTemplate);
@@ -1335,6 +1413,25 @@ namespace mpp
 		}
 	}
 
+	RenderSystem::PrimaryColourOutputDraw::PrimaryColourOutputDraw(RenderSystem* renderSystem)
+	{
+		if (!renderSystem || renderSystem->mExpectedGraphColourOutputs < 2) return;
+		mRenderSystem = renderSystem;
+		mColourOutputs = renderSystem->mExpectedGraphColourOutputs;
+		mSavedState = renderSystem->captureRasterState(mColourOutputs);
+		auto state = mSavedState;
+		for (size_t output = 1; output < state.colourWriteMasks.size(); ++output)
+			state.colourWriteMasks[output] = GraphColourWriteMask{ false, false, false, false };
+		renderSystem->applyRasterState(state, mColourOutputs, renderSystem->mViewportWidth, renderSystem->mViewportHeight);
+		renderSystem->setExpectedGraphColourOutputs(0);
+	}
+
+	RenderSystem::PrimaryColourOutputDraw::~PrimaryColourOutputDraw()
+	{
+		if (!mRenderSystem) return;
+		mRenderSystem->setExpectedGraphColourOutputs(mColourOutputs);
+		mRenderSystem->applyRasterState(mSavedState, mColourOutputs, mRenderSystem->mViewportWidth, mRenderSystem->mViewportHeight);
+	}
 	/*
 	 * Set the used program.  This should only be called
 	 * after GL has accepted the program as active.
@@ -1620,6 +1717,16 @@ namespace mpp
 		applyRasterState(defaults, max<size_t>(1, mCaps.maxDrawBuffers), mWindowWidth, mWindowHeight, true);
 
 		setProgramPointSizeState(true);
+
+		// A core profile always generates gl_PointCoord and rejects this enum, but a
+		// compatibility profile leaves point-sprite coordinate generation off, and
+		// then gl_PointCoord reads (0, 0) in every fragment. Text is drawn as point
+		// sprites whose glyph is a gl_PointCoord lookup into the font atlas, so
+		// without this every glyph samples one transparent texel and no overlay ever
+		// appears. SDL requests no profile mask, so which one we get is the driver's
+		// choice: set the state whenever the context still honours it.
+		if (mCaps.compatibilityProfile)
+			setPointSpriteState(true);
 
 		// Without this, a bilinear tap near a cube edge clamps inside its own face
 		// instead of reaching across, so every edge shows a seam. The IBL cubemaps
@@ -3022,6 +3129,19 @@ namespace mpp
 		{
 			THROW_MPP("Too many PBR lights for the PBR light uniform buffer.", __LINE__, __FILE__, __func__);
 		}
+		mPbrLights = lights;
+		uploadPbrLights();
+	}
+
+	void RenderSystem::uploadPbrLights()
+	{
+		if (!mPbrLightsBuffer) return;
+		auto lights = mPbrLights;
+		if (mParticleSystem && lights.size() < MaxPbrLights)
+		{
+			auto proxies = mParticleSystem->getProxyLights(MaxPbrLights - lights.size(), true);
+			for (auto const& proxy : proxies) lights.push_back(proxy.light);
+		}
 
 		auto& data = mPbrLightsBuffer->getBufferData();
 		fill(data.begin() + 16, data.end(), 0);
@@ -3712,6 +3832,151 @@ namespace mpp
 		return mActivePipelineSamplerOverrides;
 	}
 
+	ParticleSystem& RenderSystem::getParticleSystem()
+	{
+		if (!mParticleSystem) THROW_MPP("ParticleSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mParticleSystem;
+	}
+
+	ParticleSystem const& RenderSystem::getParticleSystem() const
+	{
+		if (!mParticleSystem) THROW_MPP("ParticleSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mParticleSystem;
+	}
+
+	TrailSystem& RenderSystem::getTrailSystem()
+	{
+		if (!mTrailSystem) THROW_MPP("TrailSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mTrailSystem;
+	}
+
+	TrailSystem const& RenderSystem::getTrailSystem() const
+	{
+		if (!mTrailSystem) THROW_MPP("TrailSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mTrailSystem;
+	}
+
+	/*
+	 * Advance particles for this frame.
+	 *
+	 */
+	void RenderSystem::simulateParticles()
+	{
+		if (!mParticleSystem) return;
+		// A graph can retry after a recoverable pass failure, and an application can
+		// render several pipelines/views between frame boundaries. Neither is a new
+		// particle frame: startStatsCollection() is the renderer's frame boundary.
+		if (mParticleSimulationFrameValid && mParticleSimulationFrameSerial == mFrameSerial) return;
+		mParticleSimulationFrameSerial = mFrameSerial;
+		mParticleSimulationFrameValid = true;
+		mParticleSystem->simulate();
+		// Emitter transforms and enabled state may have changed since the scene
+		// supplied its base lights. Refresh the bounded proxy-light tail before the
+		// opaque PBR pass consumes the UBO.
+		uploadPbrLights();
+
+		// The raw compute program was bound outside the Program cache, which would
+		// otherwise skip rebinding whatever material program was last used.
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::simulateTrails()
+	{
+		if (!mTrailSystem) return;
+		if (mTrailSimulationFrameValid && mTrailSimulationFrameSerial == mFrameSerial) return;
+		mTrailSimulationFrameSerial = mFrameSerial;
+		mTrailSimulationFrameValid = true;
+		mTrailSystem->simulate();
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	/*
+	 * Draw the live particles into the current render target.
+	 *
+	 */
+	void RenderSystem::renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->render(blendClass, sceneDepth);
+
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->render(blendClass, sceneDepth);
+
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleDistortion(RenderTexture* sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderDistortion(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleDistortion(ResourcePtr const& sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderDistortion(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleVolumetricLighting(RenderTexture* sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderVolumetricLighting(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleVolumetricLighting(ResourcePtr const& sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderVolumetricLighting(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderMeshParticles()
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderMeshes();
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderTrails(ParticleBlendClass blendClass, RenderTexture* sceneDepth)
+	{
+		if (!mTrailSystem) return;
+		mTrailSystem->render(blendClass, sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderTrails(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth)
+	{
+		if (!mTrailSystem) return;
+		mTrailSystem->render(blendClass, sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	bool RenderSystem::particlesAvailable()
+	{
+		if (!mParticleSystem) return false;
+		mParticleSystem->initialise();
+		return mParticleSystem->isAvailable();
+	}
+
 	void RenderSystem::setActivePipelineUniformOverrides(UniformCollection const& overrides)
 	{
 		mActivePipelineUniformOverrides = overrides;
@@ -3729,6 +3994,11 @@ namespace mpp
 	void RenderSystem::renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, shared_ptr<UniformCollection> uniforms)
 	{
 		flushVertexBuffers();
+
+		// The shared fullscreen program writes colour attachment zero only, and
+		// graph passes such as MPP.WaterScene seed their primary output with it
+		// while a second, loaded attachment is still bound.
+		PrimaryColourOutputDraw primaryOutput(this);
 
 		// Set program
 		auto p = static_cast<Program*>(mFullscreenProgram.get());
@@ -3832,6 +4102,32 @@ namespace mpp
 		setBlendState(false);
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderParticleWeightedOitResolve(Texture* scene, Texture* accumulation, Texture* opticalDepth, Texture* bloom)
+	{
+		if (!scene || !accumulation || !opticalDepth)
+			THROW_MPP("Weighted blended OIT resolve requires scene, accumulation, and optical-depth textures.", __LINE__, __FILE__, __func__);
+		mParticleWeightedOitResolveProgram->load();
+		UniformCollection parameters;
+		parameters.setUniform("HAS_BLOOM", int32_t(bloom ? 1 : 0));
+		std::vector<std::pair<std::string, Texture*>> samplers{
+			{ "SCENE", scene }, { "ACCUMULATION", accumulation }, { "OPTICAL_DEPTH", opticalDepth }
+		};
+		// Every declared sampler has a fixed program unit. Bind a harmless valid
+		// texture when the optional MRT bloom input is absent; HAS_BLOOM prevents it
+		// from contributing to the result.
+		samplers.push_back({ "BLOOM", bloom ? bloom : scene });
+		renderGraphFullscreen(mParticleWeightedOitResolveProgram, samplers, parameters);
+	}
+
+	void RenderSystem::renderParticleDistortionComposite(Texture* scene, Texture* distortion)
+	{
+		if (!scene || !distortion)
+			THROW_MPP("Particle distortion composite requires scene and distortion textures.", __LINE__, __FILE__, __func__);
+		mParticleDistortionCompositeProgram->load();
+		renderGraphFullscreen(mParticleDistortionCompositeProgram,
+			{ { "SCENE", scene }, { "DISTORTION", distortion } }, {});
 	}
 
 	void RenderSystem::renderTextureDiagnostic(RenderTexture* source, RenderTargetPtr const& destination, TextureDiagnosticOptions const& options)
@@ -4118,6 +4414,9 @@ namespace mpp
 	void RenderSystem::renderQuad(int x, int y, int width, int height, Colour const& colour, bool alphaBlend, bool wireFrame, ResourcePtr texture)
 	{
 		flushVertexBuffers();
+
+		// Same single-output contract as renderFullscreenQuad above.
+		PrimaryColourOutputDraw primaryOutput(this);
 
 		// Set program
 		auto p = static_cast<Program*>(mFullscreenProgram.get());
@@ -4763,6 +5062,17 @@ namespace mpp
 		if (uniformsChanged)
 		{
 			material->setUniforms();
+			// GAMMA is an engine-wide renderer setting, not an authored material
+			// value, so every other render path injects it from mGamma. This one did
+			// not, leaving it at GLSL's uniform default of 0: 1.0/GAMMA is then +inf
+			// and pow(colour, vec3(inf)) resolves to NaN, which the blend and the
+			// unorm target turn into black. Every batched draw whose shader gamma
+			// -corrects -- renderText's overlays among them -- came out black.
+			auto const gammaId = static_cast<Program*>(material->getProgram().get())->getUniformId("GAMMA");
+			if (gammaId >= 0)
+			{
+				GL_CHECK(glUniform1f(gammaId, mGamma));
+			}
 		}
 
 		*currentMaterial = material;

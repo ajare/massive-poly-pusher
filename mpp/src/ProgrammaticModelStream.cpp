@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 
 #include "mpp/Config.h"
 #include "mpp/ProgrammaticModelStream.h"

@@ -22,7 +22,7 @@ namespace mpp
 	// with no equivalent to translate environment into. Preview binding and
 	// override types are shared with PbrPipelineDocument (PbrPreviewBinding,
 	// PbrPreviewOverride) since neither is PBR-specific in shape.
-	enum class LegacyPipelineResourceKind { BasicMaterial, Program, Texture, Sampler, PostEffectMaterial };
+	enum class LegacyPipelineResourceKind { BasicMaterial, Program, Texture, Sampler, PostEffectMaterial, ParticleEffect };
 
 	struct _MPPAPI LegacyPipelineResourceDocument
 	{

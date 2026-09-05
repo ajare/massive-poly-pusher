@@ -6,8 +6,10 @@
 #include "mpp/PbrPipelineDocument.h"
 #include "mpp/resource-parsers/LegacyPipelineParser.h"
 #include "mpp/resource-parsers/LegacyPipelineSerializer.h"
+#include "mpp/resource-parsers/LegacyPipelineResourceValidator.h"
 #include "mpp/resource-parsers/PbrPipelineParser.h"
 #include "mpp/resource-parsers/PbrPipelineSerializer.h"
+#include "mpp/resource-parsers/PbrPipelineResourceValidator.h"
 #include "mpp/resource-parsers/RenderGraphParser.h"
 #include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/RenderGraphSerializer.h"
@@ -330,6 +332,26 @@ namespace mpp::resource_parsers
 		return true;
 	}
 
+	bool runParticlePipelineResourceTest(std::string const& extension, std::string* failure)
+	{
+		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
+		auto const path = (std::filesystem::temp_directory_path() / ("mpp_particle_pipeline_resource" + extension)).string();
+		try
+		{
+			PbrPipelineDocument document; document.name = "Particle resource round trip"; document.graph = std::make_shared<RenderGraph>();
+			PbrPipelineResourceDocument resource; resource.name = "Effects.Smoke"; resource.kind = PbrPipelineResourceKind::ParticleEffect; resource.definition = mpp::data::StructuredData("ParticleEffect");
+			resource.definition.addEntry("version", "1"); resource.definition.addEntry("name", "Smoke"); resource.definition.addEntry("maximumParticleCount", "8");
+			mpp::data::StructuredData emitters("Emitters"), emitter("Emitter"), spawn("Spawn"); emitter.addEntry("name", "Smoke"); emitter.addEntry("maximumParticleCount", "8"); spawn.addEntry("shape", "point"); spawn.addEntry("rate", "1"); emitter.addEntry("Spawn", spawn); emitters.addEntry("Emitter", emitter); resource.definition.addEntry("Emitters", emitters); document.localResources.push_back(resource);
+			PbrPipelineSerializer::toFile(document, path); auto restored = PbrPipelineParser::fromFile(path);
+			if (restored.localResources.size() != 1u || restored.localResources[0].kind != PbrPipelineResourceKind::ParticleEffect || validatePbrPipelineResourceDefinitions(restored).hasErrors()) return fail(extension + ": PBR particle effect pipeline resource did not round-trip or validate");
+			LegacyPipelineDocument legacy; legacy.name = "Legacy particle resource round trip"; legacy.graph = std::make_shared<RenderGraph>(); LegacyPipelineResourceDocument legacyResource; legacyResource.name = resource.name; legacyResource.kind = LegacyPipelineResourceKind::ParticleEffect; legacyResource.definition = resource.definition; legacy.localResources.push_back(legacyResource);
+			LegacyPipelineSerializer::toFile(legacy, path); auto restoredLegacy = LegacyPipelineParser::fromFile(path);
+			if (restoredLegacy.localResources.size() != 1u || restoredLegacy.localResources[0].kind != LegacyPipelineResourceKind::ParticleEffect || validateLegacyPipelineResourceDefinitions(restoredLegacy).hasErrors()) return fail(extension + ": legacy particle effect pipeline resource did not round-trip or validate");
+		}
+		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
+		std::filesystem::remove(path); return true;
+	}
+
 	bool runSceneShadowDocumentTest(std::string const& extension, std::string* failure)
 	{
 		auto fail = [&](std::string const& message) { if (failure) *failure = message; return false; };
@@ -343,12 +365,19 @@ namespace mpp::resource_parsers
 			point.position = { 3.0f, 4.0f, 5.0f }; point.range = 24.0f; point.castsShadows = true;
 			SceneLightDocument rim; rim.id = "Rim";
 			document.lights = { fill, point, rim };
+			SceneParticleEffectDocument particles; particles.id = "Campfire"; particles.effect = "Effects/Fire";
+			particles.translation = { 1.0f, 2.0f, 3.0f }; particles.rotationDegrees = { 0.0f, 45.0f, 0.0f };
+			particles.scale = { 2.0f, 2.0f, 2.0f }; particles.visible = false; document.particleEffects.push_back(particles);
 			SceneSerializer::toFile(document, path.string());
 			auto restored = SceneParser::fromFile(path.string());
 			if (restored.validate().hasErrors() || restored.getShadowLightIndex() != 1 ||
 				restored.lights[1].type != SceneLightType::Point || restored.lights[1].position != document.lights[1].position ||
-				restored.lights[1].range != document.lights[1].range)
-				return fail(extension + ": point-shadow scene round trip lost its authored light");
+				restored.lights[1].range != document.lights[1].range || restored.particleEffects.size() != 1u ||
+				restored.particleEffects[0].id != particles.id || restored.particleEffects[0].effect != particles.effect ||
+				restored.particleEffects[0].translation != particles.translation ||
+				restored.particleEffects[0].rotationDegrees != particles.rotationDegrees ||
+				restored.particleEffects[0].scale != particles.scale || restored.particleEffects[0].visible)
+				return fail(extension + ": scene round trip lost its authored light or particle effect");
 		}
 		catch (std::exception const& exception) { return fail(extension + ": " + exception.what()); }
 		std::filesystem::remove(path);
@@ -361,6 +390,7 @@ namespace mpp::resource_parsers
 		{
 			if (!runForExtension(extension, failure)) return false;
 			if (!runSceneShadowDocumentTest(extension, failure)) return false;
+			if (!runParticlePipelineResourceTest(extension, failure)) return false;
 			if (!runPbrPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineSsaoDocumentTest(extension, failure)) return false;
 			if (!runLegacyPipelineGtaoMrtDocumentTest(extension, failure)) return false;

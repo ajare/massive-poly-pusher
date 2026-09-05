@@ -121,6 +121,14 @@ namespace mpp
 					diagnostics.error("MPP-SCENE-023", "Shadow-casting point light range must be positive.", { sourcePath }, light.id);
 			}
 		}
+		for (auto const& effect : particleEffects)
+		{
+			if (effect.id.empty() || !ids.insert(effect.id).second) diagnostics.error("MPP-SCENE-031", "Particle effect IDs must be non-empty and unique across scene objects.", { sourcePath }, effect.id);
+			if (effect.effect.empty()) diagnostics.error("MPP-SCENE-032", "Particle effect resource is required.", { sourcePath }, effect.id);
+			if (!finite(effect.translation) || !finite(effect.rotationDegrees) || !finite(effect.scale)) diagnostics.error("MPP-SCENE-033", "Particle effect transform values must be finite.", { sourcePath }, effect.id);
+			if (effect.scale.x == 0 || effect.scale.y == 0 || effect.scale.z == 0) diagnostics.error("MPP-SCENE-034", "Particle effect scale components cannot be zero.", { sourcePath }, effect.id);
+		}
+
 		if (lights.size() > 8) diagnostics.error("MPP-SCENE-014", "Scene exceeds the renderer limit of eight PBR lights.", { sourcePath }, "lights");
 		if (shadowLights > 1) diagnostics.error("MPP-SCENE-024", "Scenes support only one shadow-casting light.", { sourcePath }, "lights");
 		if (hasShadowCasters && shadowLights == 0) diagnostics.warning("MPP-SCENE-028", "The scene has shadow-casting models but no shadow-casting light.", { sourcePath }, "lights");

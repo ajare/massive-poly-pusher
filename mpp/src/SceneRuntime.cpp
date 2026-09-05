@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <glm/gtc/constants.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "mpp/BoxModelStream.h"
 #include "mpp/CylinderModelStream.h"
 #include "mpp/GridModelStream.h"
@@ -49,16 +50,17 @@ namespace mpp
 	}
 	void SceneRuntime::clear()
 	{
+		auto& particles=mRenderSystem->getParticleSystem();for(auto const& [id,handle]:mParticleEffects)if(particles.isAlive(handle))particles.destroyEffect(handle);mParticleEffects.clear();
 		mModelInstances.clear();clearResources(mScene,mResourceNames);mDiagnostics.clear();mModelTriangles.clear();mLights.clear();mEnvironmentBinding.clear();mUniqueTriangles=0;
 	}
 
-	bool SceneRuntime::rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings,std::map<std::string,UniformCollection> const& instanceOverrides,std::string const& expectedEnvironmentBinding,std::string const& shadowDomain)
+	bool SceneRuntime::rebuild(SceneDocument const& document,std::map<std::string,ResourcePtr> const& materialBindings,std::map<std::string,UniformCollection> const& instanceOverrides,std::string const& expectedEnvironmentBinding,std::string const& shadowDomain,std::map<std::string,ResourcePtr> const& particleEffectBindings)
 	{
 		mDiagnostics=document.validate();
 		if(!expectedEnvironmentBinding.empty()&&document.environmentBinding!=expectedEnvironmentBinding)
 			mDiagnostics.error("MPP-SCENE-RUNTIME-007","Scene environment binding '"+document.environmentBinding+"' does not match active pipeline binding '"+expectedEnvironmentBinding+"'.",{document.sourcePath},"environment");
 		if(mDiagnostics.hasErrors())return false;
-		ScenePtr candidate=std::make_shared<Scene>(mRenderSystem);std::vector<std::string> candidateNames;std::map<std::string,uint64_t> candidateTriangles;std::map<std::string,SceneModel3dPtr> candidateInstances;std::vector<PbrLight> candidateLights;uint64_t candidateTriangleTotal=0;auto generation=std::to_string(++mGeneration),prefix="SceneRuntime."+generation+".";
+		ScenePtr candidate=std::make_shared<Scene>(mRenderSystem);std::vector<std::string> candidateNames;std::map<std::string,uint64_t> candidateTriangles;std::map<std::string,SceneModel3dPtr> candidateInstances;std::map<std::string,ParticleEffectHandle> candidateEffects;std::vector<PbrLight> candidateLights;uint64_t candidateTriangleTotal=0;auto generation=std::to_string(++mGeneration),prefix="SceneRuntime."+generation+".";
 		try
 		{
 			candidate->load();
@@ -87,8 +89,14 @@ namespace mpp
 				auto triangles=placeholder?0u:(uint64_t)modelValue->getNumTriangles();candidateTriangles[authored.id]=triangles;if(authored.visible)candidateTriangleTotal+=triangles;
 				auto instance=candidate->add3dModel(model);instance->setRenderLayers(authored.layers);instance->resetTransform();instance->translate(authored.translation);instance->rotateSelf(glm::radians(authored.rotationDegrees.x),glm::vec3(1,0,0));instance->rotateSelf(glm::radians(authored.rotationDegrees.y),glm::vec3(0,1,0));instance->rotateSelf(glm::radians(authored.rotationDegrees.z),glm::vec3(0,0,1));instance->scale(authored.scale);uint32_t flags=0;if(authored.visible)flags|=ModelRenderParams::Flag_Visible;if(authored.shadowCaster)flags|=ModelRenderParams::Flag_CastShadows;instance->getParams()->setModelFlags(flags);instance->getParams()->setModelMaterial(material);auto overrideValue=instanceOverrides.find(authored.id);if(overrideValue!=instanceOverrides.end())instance->getParams()->setModelUniforms(std::make_shared<UniformCollection>(overrideValue->second));candidateInstances[authored.id]=instance;
 			}
+			for(auto const& authored:document.particleEffects)
+			{
+				auto binding=particleEffectBindings.find(authored.effect);if(binding==particleEffectBindings.end()||!binding->second)THROW_MPP("Particle effect resource is unavailable: "+authored.effect,__LINE__,__FILE__,__func__);
+				auto transform=glm::translate(glm::mat4(1.0f),authored.translation);transform=glm::rotate(transform,glm::radians(authored.rotationDegrees.x),glm::vec3(1,0,0));transform=glm::rotate(transform,glm::radians(authored.rotationDegrees.y),glm::vec3(0,1,0));transform=glm::rotate(transform,glm::radians(authored.rotationDegrees.z),glm::vec3(0,0,1));transform=glm::scale(transform,authored.scale);
+				auto handle=mRenderSystem->getParticleSystem().createEffect(binding->second,transform);mRenderSystem->getParticleSystem().setEffectVisible(handle,authored.visible);candidateEffects.emplace(authored.id,handle);
+			}
 		}
-		catch(std::exception const& error){mDiagnostics.error("MPP-SCENE-RUNTIME-004","Scene candidate creation failed: "+std::string(error.what()),{document.sourcePath},"scene");clearResources(candidate,candidateNames);return false;}
+		catch(std::exception const& error){auto& particles=mRenderSystem->getParticleSystem();for(auto const& [id,handle]:candidateEffects)if(particles.isAlive(handle))particles.destroyEffect(handle);mDiagnostics.error("MPP-SCENE-RUNTIME-004","Scene candidate creation failed: "+std::string(error.what()),{document.sourcePath},"scene");clearResources(candidate,candidateNames);return false;}
 		if (!shadowDomain.empty())
 		{
 			try
@@ -115,11 +123,12 @@ namespace mpp
 			catch (std::exception const& error)
 			{
 				mDiagnostics.error("MPP-SCENE-RUNTIME-008", "Scene shadow domain setup failed: " + std::string(error.what()), { document.sourcePath }, "lights");
+				auto& particles=mRenderSystem->getParticleSystem();for(auto const& [id,handle]:candidateEffects)if(particles.isAlive(handle))particles.destroyEffect(handle);
 				clearResources(candidate, candidateNames);
 				return false;
 			}
 		}
-		auto previous=mScene;auto previousNames=std::move(mResourceNames);mScene=std::move(candidate);mResourceNames=std::move(candidateNames);mModelTriangles=std::move(candidateTriangles);mModelInstances=std::move(candidateInstances);mLights=std::move(candidateLights);mEnvironmentBinding=document.environmentBinding;mUniqueTriangles=candidateTriangleTotal;clearResources(previous,previousNames);return true;
+		auto previous=mScene;auto previousNames=std::move(mResourceNames);auto previousEffects=std::move(mParticleEffects);mScene=std::move(candidate);mResourceNames=std::move(candidateNames);mModelTriangles=std::move(candidateTriangles);mModelInstances=std::move(candidateInstances);mParticleEffects=std::move(candidateEffects);mLights=std::move(candidateLights);mEnvironmentBinding=document.environmentBinding;mUniqueTriangles=candidateTriangleTotal;auto& particles=mRenderSystem->getParticleSystem();for(auto const& [id,handle]:previousEffects)if(particles.isAlive(handle))particles.destroyEffect(handle);clearResources(previous,previousNames);return true;
 	}
 	ScenePtr const& SceneRuntime::getScene()const{return mScene;}
 	DiagnosticBag const& SceneRuntime::getDiagnostics()const{return mDiagnostics;}
@@ -127,6 +136,7 @@ namespace mpp
 	uint64_t SceneRuntime::getUniqueTriangleCount()const{return mUniqueTriangles;}
 	uint64_t SceneRuntime::getModelTriangleCount(std::string const& modelId)const{auto found=mModelTriangles.find(modelId);return found==mModelTriangles.end()?0:found->second;}
 	SceneModel3dPtr SceneRuntime::getModelInstance(std::string const& modelId)const{auto found=mModelInstances.find(modelId);return found==mModelInstances.end()?SceneModel3dPtr{}:found->second;}
+	ParticleEffectHandle SceneRuntime::getParticleEffect(std::string const& effectId)const{auto found=mParticleEffects.find(effectId);return found==mParticleEffects.end()?ParticleEffectHandle{}:found->second;}
 	std::string SceneRuntime::getModelId(SceneModel3d const* instance)const{for(auto const& [id,value]:mModelInstances)if(value.get()==instance)return id;return {};}
 	std::vector<PbrLight> const& SceneRuntime::getLights()const{return mLights;}
 	std::string const& SceneRuntime::getEnvironmentBinding()const{return mEnvironmentBinding;}

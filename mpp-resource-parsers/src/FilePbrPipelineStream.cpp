@@ -1,5 +1,6 @@
 #include "mpp/resource-parsers/FilePbrPipelineStream.h"
 #include "mpp/resource-parsers/FilePbrMaterialStream.h"
+#include "mpp/resource-parsers/FileParticleEffectStream.h"
 #include "mpp/resource-parsers/FilePostEffectMaterialStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/FileSamplerStream.h"
@@ -23,6 +24,7 @@ namespace mpp::resource_parsers
 			case PbrPipelineResourceKind::Texture:stream=std::make_shared<FileTextureStream>(getResourceMgr(),filepath,resource.definition);break;
 			case PbrPipelineResourceKind::Sampler:stream=std::make_shared<FileSamplerStream>(getResourceMgr(),filepath,resource.definition);break;
 			case PbrPipelineResourceKind::PostEffectMaterial:stream=std::make_shared<FilePostEffectMaterialStream>(getResourceMgr(),filepath,resource.definition);break;
+			case PbrPipelineResourceKind::ParticleEffect:stream=std::make_shared<FileParticleEffectStream>(getResourceMgr(),filepath,resource.definition);break;
 			}addChild(runtimeName,stream);
 		};
 		for(auto const& resource:getDocument()->localResources)addResource(resource,mFilepath,resource.name);

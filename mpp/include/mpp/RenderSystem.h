@@ -46,11 +46,17 @@ namespace mpp
 {
 	class Program;
 	class Camera;
+	class ParticleSystem; // Forward-declared so as to not pollute client apps.
+	class TrailSystem;
+	enum class ParticleBlendClass : uint32_t;
+	class RenderTexture;
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
 	class _MPPAPI RenderSystem : public ResourceWrangler
 	{
+		friend class ParticleSystem;
+		friend class TrailSystem;
 		enum class ProjectionType
 		{
 			Unknown,
@@ -152,6 +158,10 @@ namespace mpp
 
 		RenderTargetPtr mScreen;
 		uint64_t mFrameSerial{ 0 };
+		uint64_t mParticleSimulationFrameSerial{ 0 };
+		bool mParticleSimulationFrameValid{ false };
+		uint64_t mTrailSimulationFrameSerial{ 0 };
+		bool mTrailSimulationFrameValid{ false };
 
 		// Set only while a PBR pipeline is flushing its scene pass. Environment
 		// samplers then override per-material placeholder bindings.
@@ -208,6 +218,28 @@ namespace mpp
 		ResourcePtr mActiveProgram;
 		size_t mExpectedGraphColourOutputs{ 0 };
 
+		// Scope for the renderer's own single-output core programs (the fullscreen
+		// quad and the debug quad) when they draw inside a multi-output graph pass.
+		// GL leaves every attachment a fragment shader does not write undefined for
+		// the fragments it covers, so an unguarded quad would corrupt a loaded
+		// attachment such as SceneEmissive -- and setUsedProgram would rightly reject
+		// the program for having no output at location one. Masking writes to the
+		// attachments beyond the first states the intent instead: these helpers only
+		// ever shade colour attachment zero.
+		class PrimaryColourOutputDraw
+		{
+			RenderSystem* mRenderSystem{ nullptr };
+			GraphRasterState mSavedState;
+			size_t mColourOutputs{ 0 };
+
+		public:
+			explicit PrimaryColourOutputDraw(RenderSystem* renderSystem);
+			~PrimaryColourOutputDraw();
+
+			PrimaryColourOutputDraw(PrimaryColourOutputDraw const&) = delete;
+			PrimaryColourOutputDraw& operator =(PrimaryColourOutputDraw const&) = delete;
+		};
+
 		// Render-thread-only, non-owning process-flow recorder state. A pipeline
 		// owns the mutable candidate until endRenderFlowCapture() succeeds.
 		RenderPipelineFlowSnapshot* mFlowCapture{ nullptr };
@@ -232,7 +264,7 @@ namespace mpp
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
 		ResourcePtr mPbrBrdfIntegrationLut;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mSsaoCombineModulatedProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mParticleWeightedOitResolveProgram, mParticleDistortionCompositeProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mSsaoCombineModulatedProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -324,6 +356,7 @@ namespace mpp
 		//
 		UniformBuffer* mLightsBuffer{ nullptr };
 		UniformBuffer* mPbrLightsBuffer{ nullptr };
+		std::vector<PbrLight> mPbrLights;
 		static constexpr size_t MaxPbrLights{ 8 };
 
 		//
@@ -332,6 +365,16 @@ namespace mpp
 		// uniforms; a scene pass shades through material programs and cannot.
 		//
 		UniformBuffer* mCameraFrameBuffer{ nullptr };
+
+		//
+		// GPU particles. Created with the core resources; its GPU resources are
+		// built on first use, so a pipeline whose graph has no MPP.ParticleScene
+		// pass never pays for compute programs or shader storage buffers.
+		//
+		std::unique_ptr<ParticleSystem> mParticleSystem;
+		// Trails are a distinct primitive with their own point histories, GPU
+		// buffers, update kernel and ribbon draw path.
+		std::unique_ptr<TrailSystem> mTrailSystem;
 
 		//
 		// Scenes
@@ -373,6 +416,8 @@ namespace mpp
 		void createPbrLightsData();
 
 		void destroyPbrLightsData();
+
+		void uploadPbrLights();
 
 		void createCameraFrameData();
 
@@ -620,6 +665,40 @@ namespace mpp
 
 		UniformCollection const& getActivePipelineUniformOverrides() const;
 
+		//
+		// Particles
+		//
+
+		// Gameplay reaches the extracted CPU API through its renderer owner.
+		ParticleSystem& getParticleSystem();
+		ParticleSystem const& getParticleSystem() const;
+		TrailSystem& getTrailSystem();
+		TrailSystem const& getTrailSystem() const;
+
+		// Simulation for this rendered frame, issued before graph execution by a
+		// pipeline whose graph draws the corresponding primitive. Graph passes may
+		// execute several times per frame and must never call these methods.
+		void simulateParticles();
+		void simulateTrails();
+
+		// The particle draw, issued from inside an authored blend-class-specific
+		// MPP.ParticleScene or MPP.ParticleWeightedOit pass. Scene depth is optional.
+		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
+		void renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+		void renderParticleDistortion(RenderTexture* sceneDepth = nullptr);
+		void renderParticleDistortion(ResourcePtr const& sceneDepth);
+		// Emitter-level, depth-aware additive inscattering. The matching graph pass
+		// writes HDR colour and, when present, the emissive/bloom attachment.
+		void renderParticleVolumetricLighting(RenderTexture* sceneDepth = nullptr);
+		void renderParticleVolumetricLighting(ResourcePtr const& sceneDepth);
+		// Real mesh particles use their own material/vertex-attribute pass.
+		void renderMeshParticles();
+		// The separate ribbon draw issued by MPP.TrailScene.
+		void renderTrails(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
+		void renderTrails(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+
+		bool particlesAvailable();
+
 		// Publishes the camera state the CameraFrame UBO (binding 3) exposes to
 		// scene material programs. `view` and `projection` must be exactly the
 		// matrices the scene was rasterized with -- the water ray march unprojects
@@ -754,6 +833,8 @@ namespace mpp
 		// 
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 		void renderGraphFullscreen(ResourcePtr program, std::vector<std::pair<std::string, Texture*>> const& samplers, UniformCollection const& parameters);
+		void renderParticleWeightedOitResolve(Texture* scene, Texture* accumulation, Texture* opticalDepth, Texture* bloom = nullptr);
+		void renderParticleDistortionComposite(Texture* scene, Texture* distortion);
 
 		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
 
