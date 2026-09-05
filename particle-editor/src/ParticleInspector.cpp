@@ -485,14 +485,29 @@ namespace particle_editor
 		ImGui::Text("Maximum particles: %u", effect.maximumParticleCount);
 		ImGui::SameLine();
 		ImGui::TextDisabled("(derived from emitter-template budgets)");
+		ImGui::SeparatorText("Particle effect bounds");
 		if (effect.bounds)
 		{
-			ImGui::Text("Bounds center: %.2f, %.2f, %.2f", effect.bounds->center.x, effect.bounds->center.y,
-				effect.bounds->center.z);
-			ImGui::Text("Bounds size:   %.2f, %.2f, %.2f", effect.bounds->size.x, effect.bounds->size.y,
-				effect.bounds->size.z);
+			auto center = std::array<float, 3>{ effect.bounds->center.x, effect.bounds->center.y, effect.bounds->center.z };
+			if (editValue(document, "Edit bounds center", center,
+				[](auto& value) { return ImGui::InputFloat3("Local-space center", value.data(), "%.6g"); },
+				[](auto& value, auto const& edited)
+					{ value.bounds->center = { edited[0], edited[1], edited[2] }; }))
+			{ ImGui::End(); return; }
+			auto size = std::array<float, 3>{ effect.bounds->size.x, effect.bounds->size.y, effect.bounds->size.z };
+			if (editValue(document, "Edit bounds size", size,
+				[](auto& value) { return ImGui::InputFloat3("Strictly positive size", value.data(), "%.6g"); },
+				[](auto& value, auto const& edited)
+					{ value.bounds->size = { edited[0], edited[1], edited[2] }; }))
+			{ ImGui::End(); return; }
+			if (ImGui::Button("Remove bounds")) { document.removeBounds(); ImGui::End(); return; }
 		}
-		else ImGui::TextDisabled("Bounds: unbounded");
+		else
+		{
+			ImGui::TextDisabled("Unbounded: no local-space bounds are authored.");
+			if (ImGui::Button("Add bounds")) { document.addBounds(); ImGui::End(); return; }
+		}
+		ImGui::TextDisabled("Center values must be finite; every size component must be finite and > 0.");
 		auto aggregate = resources.aggregateBounds(effect, document.path().string());
 		if (aggregate.bounds)
 			ImGui::Text("Recursive aggregate bounds: center %.2f, %.2f, %.2f; size %.2f, %.2f, %.2f",

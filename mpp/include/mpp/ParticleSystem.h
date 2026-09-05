@@ -237,6 +237,7 @@ namespace mpp
 			glm::mat4 transform{ 1.0f };
 			std::vector<ParticleEmitterHandle> emitters;
 			std::optional<ParticleEffectBounds> bounds;
+			bool boundsCullingEnabled{ true };
 			ResourcePtr asset;
 			std::shared_ptr<ParticleEffectCurveLut> curveLut;
 		};
@@ -364,6 +365,13 @@ namespace mpp
 			ParticleEffectBounds const& bounds, glm::mat4 const& transform = glm::mat4(1.0f));
 		void destroyEffect(ParticleEffectHandle effect);
 		void setEffectTransform(ParticleEffectHandle effect, glm::mat4 const& transform);
+		// Runtime-only per-effect preview/debug override. Authored bounds remain
+		// installed and simulation is unaffected.
+		void setEffectBoundsCullingEnabled(ParticleEffectHandle effect, bool enabled);
+		bool isEffectBoundsCullingEnabled(ParticleEffectHandle effect) const;
+		// Explicit synchronous inspection seam for editor tooling. Returns the
+		// local-space visual extents of currently live particles in this effect.
+		std::optional<ParticleEffectBounds> sampleObservedEffectBounds(ParticleEffectHandle effect) const;
 		// Visibility changes affect every existing particle in the live particle
 		// effect on the next GPU compaction, without stopping its emitters.
 		void setEffectVisibilityFlags(ParticleEffectHandle effect, uint32_t flags);

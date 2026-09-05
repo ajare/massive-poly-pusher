@@ -14,6 +14,7 @@
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "mpp/ComputeProgram.h"
@@ -777,6 +778,7 @@ namespace mpp
 		effect.occupied = true;
 		effect.transform = transform;
 		effect.bounds = std::move(bounds);
+		effect.boundsCullingEnabled = true;
 		effect.emitters.clear();
 		effect.emitters.reserve(emitterTemplates.size());
 		effect.asset.reset();
@@ -857,6 +859,100 @@ namespace mpp
 			auto const* slot = findEmitter(emitter);
 			if (slot) setTransform(mEmitters[emitter.index], transform * slot->localTransform);
 		}
+	}
+
+	void ParticleSystem::setEffectBoundsCullingEnabled(ParticleEffectHandle handle, bool enabled)
+	{
+		auto* effect = findEffect(handle);
+		if (!effect || effect->boundsCullingEnabled == enabled) return;
+		effect->boundsCullingEnabled = enabled;
+		invalidateViewBounds();
+	}
+
+	bool ParticleSystem::isEffectBoundsCullingEnabled(ParticleEffectHandle handle) const
+	{
+		if (!handle || handle.index >= mEffectSlots.size()) return false;
+		auto const& effect = mEffectSlots[handle.index];
+		return effect.occupied && effect.generation == handle.generation && effect.boundsCullingEnabled;
+	}
+
+	optional<ParticleEffectBounds> ParticleSystem::sampleObservedEffectBounds(ParticleEffectHandle handle) const
+	{
+		if (!handle || handle.index >= mEffectSlots.size() || !mPoolAllocated) return nullopt;
+		auto const& effect = mEffectSlots[handle.index];
+		if (!effect.occupied || effect.generation != handle.generation || effect.emitters.empty()) return nullopt;
+		float const determinant = glm::determinant(effect.transform);
+		if (!isfinite(determinant) || abs(determinant) < 0.000001f) return nullopt;
+
+		GL_CHECK(glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT));
+		ParticleCounterHeader counters{};
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, mCounters->getBuffer()));
+		GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(counters), &counters));
+		uint32_t const reportedActiveCount = mActiveListIndex == 0u ? counters.activeCountA : counters.activeCountB;
+		uint32_t const activeCount = min(reportedActiveCount, mPoolCapacity);
+		if (activeCount == 0u) { GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)); return nullopt; }
+		vector<uint32_t> activeIndices(activeCount);
+		auto const* active = mActiveListIndex == 0u ? mActiveIndicesA.get() : mActiveIndicesB.get();
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, active->getBuffer()));
+		GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
+			GLsizeiptr(activeIndices.size() * sizeof(uint32_t)), activeIndices.data()));
+
+		vector<uint8_t> included(mEmitterSlots.size(), 0u);
+		for (auto emitter : effect.emitters) if (emitter.index < included.size()) included[emitter.index] = 1u;
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, mParticlePool->getBuffer()));
+		auto const* records = static_cast<ParticleRecord const*>(glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
+			GLsizeiptr(mParticlePool->getSize()), GL_MAP_READ_BIT));
+		CheckOpenGLError("glMapBufferRange observed particle bounds", __LINE__, __FILE__, __func__);
+		if (!records) { GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0)); return nullopt; }
+
+		glm::vec3 minimum(numeric_limits<float>::max()), maximum(numeric_limits<float>::lowest());
+		bool found = false;
+		auto const inverseEffect = glm::inverse(effect.transform);
+		for (uint32_t particleIndex : activeIndices)
+		{
+			if (particleIndex >= mPoolCapacity) continue;
+			auto const& particle = records[particleIndex];
+			if (particle.emitterIndex >= included.size() || !included[particle.emitterIndex]) continue;
+			auto const emitterIndex = particle.emitterIndex;
+			float normalizedLife = particle.velocityLifetime[3] > 0.0f ?
+				clamp(particle.positionAge[3] / particle.velocityLifetime[3], 0.0f, 1.0f) : 0.0f;
+			float sizeCurve = 1.0f;
+			auto const& lut = mTemplateCurveLuts[emitterIndex];
+			if (lut)
+			{
+				auto const& texels = lut->getFloatTexels();
+				uint32_t const row = uint32_t(max(0.0f, mTemplateRenderData[emitterIndex].appearance[3]));
+				float sample = normalizedLife * float(ParticleEffectCurveLut::SampleCount - 1u);
+				uint32_t left = uint32_t(sample), right = min(left + 1u, ParticleEffectCurveLut::SampleCount - 1u);
+				float amount = sample - float(left);
+				size_t leftOffset = (size_t(row) * ParticleEffectCurveLut::SampleCount + left) * 4u;
+				size_t rightOffset = (size_t(row) * ParticleEffectCurveLut::SampleCount + right) * 4u;
+				if (rightOffset < texels.size()) sizeCurve = texels[leftOffset] + (texels[rightOffset] - texels[leftOffset]) * amount;
+			}
+			float radius = abs(particle.baseSize * sizeCurve);
+			auto const& appearance = mTemplateRenderData[emitterIndex];
+			if (particleTemplateRendersMesh(appearance)) radius *= max(appearance.culling[2], 1.0f);
+			else if (appearance.modes[2] == uint32_t(ParticleBillboardMode::VelocityStretched))
+			{
+				float const stretch = 1.0f + glm::length(glm::vec3(particle.velocityLifetime[0],
+					particle.velocityLifetime[1], particle.velocityLifetime[2]));
+				radius *= sqrt(1.0f + stretch * stretch);
+			}
+			else radius *= sqrt(2.0f);
+			auto local = glm::vec3(inverseEffect * glm::vec4(particle.positionAge[0], particle.positionAge[1], particle.positionAge[2], 1.0f));
+			glm::vec3 localRadius(radius * glm::length(glm::vec3(inverseEffect[0][0], inverseEffect[1][0], inverseEffect[2][0])),
+				radius * glm::length(glm::vec3(inverseEffect[0][1], inverseEffect[1][1], inverseEffect[2][1])),
+				radius * glm::length(glm::vec3(inverseEffect[0][2], inverseEffect[1][2], inverseEffect[2][2])));
+			if (!isfinite(local.x) || !isfinite(local.y) || !isfinite(local.z) ||
+				!isfinite(localRadius.x) || !isfinite(localRadius.y) || !isfinite(localRadius.z)) continue;
+			minimum = glm::min(minimum, local - localRadius);
+			maximum = glm::max(maximum, local + localRadius);
+			found = true;
+		}
+		GL_CHECK(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+		if (!found) return nullopt;
+		return ParticleEffectBounds{ (minimum + maximum) * 0.5f, maximum - minimum };
 	}
 
 	void ParticleSystem::setEffectVisibilityFlags(ParticleEffectHandle handle, uint32_t flags)
@@ -1102,7 +1198,7 @@ namespace mpp
 			{
 				auto const& effect = mEffectSlots[index];
 				if (!effect.occupied) continue;
-				mViewEffectSubmissions[index] = !mwRenderSystem || !effect.bounds ||
+				mViewEffectSubmissions[index] = !mwRenderSystem || !effect.boundsCullingEnabled || !effect.bounds ||
 					particleEffectBoundsIntersectFrustum(*effect.bounds, effect.transform, viewProjection) ? 1u : 0u;
 			}
 		}

@@ -100,6 +100,10 @@ namespace particle_editor
 			std::function<void(mpp::ParticleEffectSpecification&)> const& edit, bool coalesce = false,
 			ParticlePreviewChange change = ParticlePreviewChange::Structural);
 		void endContinuousEdit();
+		void addBounds();
+		void removeBounds();
+		void setBounds(mpp::ParticleEffectBounds bounds, bool continuous = false,
+			std::string commandName = "Edit particle effect bounds");
 		bool undo();
 		bool redo();
 

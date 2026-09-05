@@ -274,6 +274,12 @@ namespace particle_editor
 			bool openComparison = false;
 			bool lightGizmoDragging = false;
 			bool showSpatialOverlays = true;
+			bool showBoundsOverlay = true;
+			float boundsEstimateDuration = 3.0f;
+			float boundsEstimatePadding = 0.25f;
+			ParticleBoundsEstimate boundsEstimate;
+			ParticleDocument* estimatingDocument = nullptr;
+			bool openBoundsProposal = false;
 			int manualBurstCount = 10;
 			int transformGizmoMode = 0; // translate, rotate, scale
 			int transformGizmoAxis = -1;
@@ -442,6 +448,18 @@ namespace particle_editor
 				if (requestSaveAs) requestSave = false;
 
 				auto* active = documents.active();
+				if (estimatingDocument && active != estimatingDocument)
+				{
+					boundsEstimate.cancel(); estimatingDocument = nullptr;
+				}
+				if (boundsEstimate.sampling())
+				{
+					if (active == estimatingDocument)
+					{
+						boundsEstimate.update(delta, preview.sampleObservedBounds());
+						if (boundsEstimate.complete()) openBoundsProposal = true;
+					}
+				}
 				if (ImGui::BeginMainMenuBar())
 				{
 					if (ImGui::BeginMenu("File"))
@@ -515,6 +533,11 @@ namespace particle_editor
 							if (ImGui::MenuItem("Focus Selection"))
 								preview.focusSelection(active->specification(), active->selectedSpatialTarget());
 							if (ImGui::MenuItem("Frame Particle Effect Bounds")) preview.frameBounds();
+							if (ImGui::MenuItem("Estimate Bounds...", nullptr, false, preview.ready() && !boundsEstimate.sampling()))
+							{
+								boundsEstimate.start(boundsEstimateDuration, boundsEstimatePadding);
+								estimatingDocument = active;
+							}
 							if (ImGui::MenuItem("Reset Camera")) preview.resetCamera();
 						}
 						ImGui::EndMenu();
@@ -624,6 +647,11 @@ namespace particle_editor
 						ImGui::Text("%s%s | preview %s | %s | %s graph | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
 							active->dirty() ? " *" : "", particlePreviewStatusText(previewStatus), diagnostics.statusText().c_str(),
 							preview.activeGraph() == PreviewGraph::Pbr ? "PBR" : "legacy", fps);
+						if (!preview.boundsCullingEnabled())
+						{
+							ImGui::SameLine();
+							ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.12f, 1.0f), "| BOUNDS CULLING OFF (PREVIEW OVERRIDE)");
+						}
 					}
 					else ImGui::TextDisabled("No particle effect is open | %.1f FPS", fps);
 					if (preview.stats().valid)
@@ -738,6 +766,10 @@ namespace particle_editor
 				if (ImGui::Button("Reset")) preview.resetCamera();
 				ImGui::SameLine(); ImGui::TextUnformatted("Gizmo:"); ImGui::SameLine();
 				ImGui::SameLine(); ImGui::Checkbox("Overlays", &showSpatialOverlays);
+				ImGui::SameLine(); ImGui::Checkbox("Bounds", &showBoundsOverlay);
+				ImGui::SameLine();
+				bool boundsCulling = preview.boundsCullingEnabled();
+				if (ImGui::Checkbox("Bounds culling", &boundsCulling)) preview.setBoundsCullingEnabled(boundsCulling);
 				ImGui::SameLine();
 				if (ImGui::RadioButton("Move (W)", transformGizmoMode == 0)) transformGizmoMode = 0;
 				ImGui::SameLine(); if (ImGui::RadioButton("Rotate (E)", transformGizmoMode == 1)) transformGizmoMode = 1;
@@ -805,6 +837,25 @@ namespace particle_editor
 					if (!preferences.studioCollisions)
 						ImGui::TextDisabled("Studio collisions are disabled by default and do not follow hidden visual faces.");
 				}
+				ImGui::SetNextItemWidth(80.0f);
+				ImGui::DragFloat("Estimate seconds", &boundsEstimateDuration, 0.1f, 0.1f, 120.0f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SameLine(); ImGui::SetNextItemWidth(80.0f);
+				ImGui::DragFloat("Padding", &boundsEstimatePadding, 0.05f, 0.0f, 10000.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				ImGui::SameLine();
+				if (!boundsEstimate.sampling())
+				{
+					if (ImGui::Button("Estimate Bounds") && active && preview.ready())
+					{
+						boundsEstimate.start(boundsEstimateDuration, boundsEstimatePadding);
+						estimatingDocument = active;
+					}
+				}
+				else
+				{
+					ImGui::ProgressBar(boundsEstimate.progress(), { 120.0f, 0.0f }, "Sampling extents");
+					ImGui::SameLine();
+					if (ImGui::Button("Cancel estimate")) { boundsEstimate.cancel(); estimatingDocument = nullptr; }
+				}
 				if (preferencesChanged) preview.applyPreferences();
 				for (auto const& warning : preview.inputWarnings())
 					ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.22f, 1.0f), "Warning: %s", warning.c_str());
@@ -834,6 +885,14 @@ namespace particle_editor
 						viewportDraw->AddLine({ viewportOrigin.x + overlay.points[point - 1u].x, viewportOrigin.y + overlay.points[point - 1u].y },
 							{ viewportOrigin.x + overlay.points[point].x, viewportOrigin.y + overlay.points[point].y },
 							overlay.selected ? IM_COL32(255, 205, 65, 255) : IM_COL32(90, 210, 255, 190), overlay.selected ? 2.5f : 1.5f);
+				if (active && showBoundsOverlay)
+				{
+					auto boundsLines = preview.boundsViewportLines(active->specification().bounds);
+					for (size_t point = 1; point < boundsLines.size(); point += 2u)
+						viewportDraw->AddLine({ viewportOrigin.x + boundsLines[point - 1u].x, viewportOrigin.y + boundsLines[point - 1u].y },
+							{ viewportOrigin.x + boundsLines[point].x, viewportOrigin.y + boundsLines[point].y },
+							IM_COL32(255, 170, 45, 235), 2.0f);
+				}
 
 				std::optional<glm::vec2> gizmoCentre;
 				if (active && active->selectedSpatialTarget())
@@ -1006,6 +1065,30 @@ namespace particle_editor
 						ImGui::TextUnformatted("Disk version"); ImGui::Separator(); ImGui::TextUnformatted(comparison->diskYaml.c_str()); ImGui::EndChild();
 					}
 					if (ImGui::Button("Close")) { comparison.reset(); ImGui::CloseCurrentPopup(); }
+					ImGui::EndPopup();
+				}
+
+				if (openBoundsProposal) { ImGui::OpenPopup("Estimated Particle Effect Bounds"); openBoundsProposal = false; }
+				if (ImGui::BeginPopupModal("Estimated Particle Effect Bounds", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					if (auto const& proposal = boundsEstimate.proposal())
+					{
+						ImGui::Text("Proposed center: %.6g, %.6g, %.6g", proposal->center.x, proposal->center.y, proposal->center.z);
+						ImGui::Text("Proposed size:   %.6g, %.6g, %.6g", proposal->size.x, proposal->size.y, proposal->size.z);
+						ImGui::Text("Observed for %.1f seconds with %.2f units of padding per side.",
+							boundsEstimate.duration(), boundsEstimate.padding());
+					}
+					else ImGui::TextWrapped("No live particle extents were observed during the selected duration.");
+					ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f),
+						"Warning: unbounded lifetime or motion may require manually authored bounds.");
+					ImGui::BeginDisabled(!boundsEstimate.proposal() || !estimatingDocument);
+					if (ImGui::Button("Accept"))
+					{
+						estimatingDocument->setBounds(*boundsEstimate.proposal(), false, "Accept estimated particle effect bounds");
+						boundsEstimate.cancel(); estimatingDocument = nullptr; ImGui::CloseCurrentPopup();
+					}
+					ImGui::EndDisabled(); ImGui::SameLine();
+					if (ImGui::Button("Cancel")) { boundsEstimate.cancel(); estimatingDocument = nullptr; ImGui::CloseCurrentPopup(); }
 					ImGui::EndPopup();
 				}
 

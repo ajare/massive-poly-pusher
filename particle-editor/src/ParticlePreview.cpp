@@ -75,6 +75,46 @@ namespace particle_editor
 		return result;
 	}
 
+	void ParticleBoundsEstimate::start(float duration, float padding)
+	{
+		mDuration = std::isfinite(duration) ? std::max(duration, 0.1f) : 3.0f;
+		mPadding = std::isfinite(padding) ? std::max(padding, 0.0f) : 0.0f;
+		mElapsed = 0.0f;
+		mSampling = true;
+		mComplete = false;
+		mObserved.reset();
+		mProposal.reset();
+	}
+
+	void ParticleBoundsEstimate::update(float deltaSeconds,
+		std::optional<mpp::ParticleEffectBounds> const& observed)
+	{
+		if (!mSampling) return;
+		if (observed && std::isfinite(observed->center.x) && std::isfinite(observed->center.y) &&
+			std::isfinite(observed->center.z) && std::isfinite(observed->size.x) &&
+			std::isfinite(observed->size.y) && std::isfinite(observed->size.z) &&
+			observed->size.x >= 0.0f && observed->size.y >= 0.0f && observed->size.z >= 0.0f)
+			mObserved = mObserved ? mpp::combineParticleEffectBounds(*mObserved, *observed) : observed;
+		if (std::isfinite(deltaSeconds) && deltaSeconds > 0.0f) mElapsed += deltaSeconds;
+		if (mElapsed < mDuration) return;
+		mSampling = false;
+		mComplete = true;
+		if (mObserved)
+		{
+			mProposal = *mObserved;
+			mProposal->size = glm::max(mProposal->size + glm::vec3(mPadding * 2.0f), glm::vec3(0.000001f));
+		}
+	}
+
+	void ParticleBoundsEstimate::cancel()
+	{
+		mSampling = false;
+		mComplete = false;
+		mObserved.reset();
+		mProposal.reset();
+		mElapsed = 0.0f;
+	}
+
 	bool runParticlePreviewControlTests(std::string* failure)
 	{
 		auto fail = [&](char const* message) { if (failure) *failure = message; return false; };
@@ -89,6 +129,21 @@ namespace particle_editor
 			manualBurstTargets(3u, std::nullopt) != std::vector<size_t>{ 0u, 1u, 2u } ||
 			manualBurstTargets(2u, 9u) != std::vector<size_t>{ 0u, 1u })
 			return fail("manual burst did not target the selection or all emitter templates");
+		ParticleBoundsEstimate estimate;
+		estimate.start(2.0f, 0.5f);
+		estimate.update(1.0f, mpp::ParticleEffectBounds{ { 0, 0, 0 }, { 2, 2, 2 } });
+		estimate.update(1.0f, mpp::ParticleEffectBounds{ { 2, 0, 0 }, { 2, 4, 2 } });
+		if (!estimate.complete() || estimate.sampling() || !estimate.proposal() ||
+			estimate.proposal()->center != glm::vec3(1, 0, 0) || estimate.proposal()->size != glm::vec3(5, 5, 3))
+			return fail("bounds estimation did not aggregate observations and apply padding only to its proposal");
+		estimate.start(0.5f, 0.0f); estimate.update(0.5f, std::nullopt);
+		if (!estimate.complete() || estimate.proposal()) return fail("an empty bounds sample fabricated a proposal");
+		estimate.start(3.0f, 1.0f); estimate.cancel();
+		if (estimate.sampling() || estimate.complete() || estimate.proposal()) return fail("bounds estimation cancellation retained workflow state");
+		ParticlePreview previewState(nullptr, nullptr);
+		if (!previewState.boundsCullingEnabled()) return fail("preview bounds culling was not enabled by default");
+		previewState.setBoundsCullingEnabled(false);
+		if (previewState.boundsCullingEnabled()) return fail("the document-independent bounds culling override was not retained");
 		if (failure) failure->clear();
 		return true;
 	}
@@ -566,6 +621,7 @@ namespace particle_editor
 			mEffect = candidateEffect;
 			mInstalledSpecification = specification;
 			setEffectBounds(specification.bounds);
+			mRenderSystem->getParticleSystem().setEffectBoundsCullingEnabled(mEffect, mBoundsCullingEnabled);
 			if (oldEffect && mRenderSystem->getParticleSystem().isAlive(oldEffect))
 				mRenderSystem->getParticleSystem().destroyEffect(oldEffect);
 			if (oldResource)
@@ -726,6 +782,43 @@ namespace particle_editor
 		mPreferences.cameraDistance = std::max(0.5f, radius / std::max(std::tan(halfFov), 0.05f) * 1.15f);
 		updateCamera();
 		mPreferencesDirty = true;
+	}
+
+	void ParticlePreview::setBoundsCullingEnabled(bool enabled)
+	{
+		mBoundsCullingEnabled = enabled;
+		if (ready()) mRenderSystem->getParticleSystem().setEffectBoundsCullingEnabled(mEffect, enabled);
+	}
+
+	bool ParticlePreview::boundsCullingEnabled() const
+	{
+		return mBoundsCullingEnabled;
+	}
+
+	std::optional<mpp::ParticleEffectBounds> ParticlePreview::sampleObservedBounds() const
+	{
+		return ready() ? mRenderSystem->getParticleSystem().sampleObservedEffectBounds(mEffect) : std::nullopt;
+	}
+
+	std::vector<glm::vec2> ParticlePreview::boundsViewportLines(
+		std::optional<mpp::ParticleEffectBounds> const& bounds) const
+	{
+		std::vector<glm::vec2> result;
+		if (!bounds) return result;
+		glm::vec3 const half = bounds->size * 0.5f;
+		std::array<glm::vec3, 8> corners;
+		for (uint32_t index = 0; index < corners.size(); ++index)
+			corners[index] = bounds->center + glm::vec3(index & 1u ? half.x : -half.x,
+				index & 2u ? half.y : -half.y, index & 4u ? half.z : -half.z);
+		for (uint32_t index = 0; index < corners.size(); ++index)
+			for (uint32_t axis = 0; axis < 3u; ++axis)
+				if ((index & (1u << axis)) == 0u)
+				{
+					auto first = viewportPosition(corners[index]);
+					auto second = viewportPosition(corners[index | (1u << axis)]);
+					if (first && second) { result.push_back(*first); result.push_back(*second); }
+				}
+		return result;
 	}
 
 	void ParticlePreview::resetCamera()

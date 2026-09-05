@@ -333,6 +333,27 @@ namespace particle_editor
 		mCommands.endCoalescing();
 	}
 
+	void ParticleDocument::addBounds()
+	{
+		if (mSpecification.bounds) return;
+		executeEdit("Add particle effect bounds", [](auto& effect)
+			{ effect.bounds = mpp::ParticleEffectBounds{ { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } }; },
+			false, ParticlePreviewChange::Live);
+	}
+
+	void ParticleDocument::removeBounds()
+	{
+		if (!mSpecification.bounds) return;
+		executeEdit("Remove particle effect bounds", [](auto& effect) { effect.bounds.reset(); },
+			false, ParticlePreviewChange::Live);
+	}
+
+	void ParticleDocument::setBounds(mpp::ParticleEffectBounds bounds, bool continuous, std::string commandName)
+	{
+		executeEdit(std::move(commandName), [bounds](auto& effect) { effect.bounds = bounds; },
+			continuous, ParticlePreviewChange::Live);
+	}
+
 	bool ParticleDocument::undo()
 	{
 		if (!mCommands.undo()) return false;
@@ -861,6 +882,21 @@ namespace particle_editor
 			if (mpp::ParticleEffectValidator::validate(first).hasErrors() ||
 				mpp::ParticleEffectValidator::validate(second).hasErrors())
 				return fail("the starter particle effect is not production-valid");
+
+			ParticleDocument boundsDocument;
+			boundsDocument.removeBounds();
+			if (boundsDocument.specification().bounds || !boundsDocument.undo() || !boundsDocument.specification().bounds ||
+				!boundsDocument.redo() || boundsDocument.specification().bounds)
+				return fail("particle effect bounds removal was not undoable and redoable");
+			boundsDocument.addBounds();
+			boundsDocument.setBounds({ { 1.0f, 2.0f, 3.0f }, { 4.0f, 5.0f, 6.0f } });
+			if (!boundsDocument.specification().bounds || boundsDocument.specification().bounds->center != glm::vec3(1, 2, 3) ||
+				boundsDocument.specification().bounds->size != glm::vec3(4, 5, 6) || !boundsDocument.undo() ||
+				boundsDocument.specification().bounds->size != glm::vec3(1))
+				return fail("particle effect bounds add/edit did not preserve one undoable confirmed value");
+			boundsDocument.setBounds({ { std::numeric_limits<float>::infinity(), 0, 0 }, { 0, -1, 1 } });
+			if (!boundsDocument.diagnostics().hasErrors())
+				return fail("bounds editing accepted non-finite centers or non-positive sizes");
 
 			ParticleDocument spatial;
 			auto originalTransform = spatial.selectedTransform();

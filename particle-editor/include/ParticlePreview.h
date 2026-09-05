@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -44,6 +45,28 @@ namespace particle_editor
 		bool stepping, bool rebuilding, bool failed);
 	char const* particlePreviewStatusText(ParticlePreviewStatus status);
 	std::vector<size_t> manualBurstTargets(size_t emitterTemplateCount, std::optional<size_t> selectedEmitter);
+	class ParticleBoundsEstimate
+	{
+		float mDuration{ 3.0f };
+		float mPadding{ 0.25f };
+		float mElapsed{ 0.0f };
+		bool mSampling{ false };
+		bool mComplete{ false };
+		std::optional<mpp::ParticleEffectBounds> mObserved;
+		std::optional<mpp::ParticleEffectBounds> mProposal;
+
+	public:
+		void start(float duration, float padding);
+		void update(float deltaSeconds, std::optional<mpp::ParticleEffectBounds> const& observed);
+		void cancel();
+		bool sampling() const { return mSampling; }
+		bool complete() const { return mComplete; }
+		float duration() const { return mDuration; }
+		float padding() const { return mPadding; }
+		float progress() const { return mDuration > 0.0f ? std::min(mElapsed / mDuration, 1.0f) : 0.0f; }
+		std::optional<mpp::ParticleEffectBounds> const& proposal() const { return mProposal; }
+	};
+
 	bool runParticlePreviewControlTests(std::string* failure = nullptr);
 
 	class ParticlePreview
@@ -83,6 +106,7 @@ namespace particle_editor
 		uint32_t mRebuildCount{ 0 };
 		uint32_t mLiveUpdateCount{ 0 };
 		bool mPreferencesDirty{ false };
+		bool mBoundsCullingEnabled{ true };
 		bool mInitialised{ false };
 		bool mStepping{ false };
 		bool mRebuilding{ false };
@@ -124,6 +148,10 @@ namespace particle_editor
 		void zoomCamera(float amount);
 		void focusSelection(mpp::ParticleEffectSpecification const& specification, std::optional<SpatialTarget> target);
 		void frameBounds();
+		void setBoundsCullingEnabled(bool enabled);
+		bool boundsCullingEnabled() const;
+		std::optional<mpp::ParticleEffectBounds> sampleObservedBounds() const;
+		std::vector<glm::vec2> boundsViewportLines(std::optional<mpp::ParticleEffectBounds> const& bounds) const;
 		void resetCamera();
 		void manipulateLight(float horizontal, float vertical);
 		std::optional<glm::vec2> lightViewportPosition() const;

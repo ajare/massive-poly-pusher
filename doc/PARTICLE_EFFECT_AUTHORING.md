@@ -4,9 +4,12 @@ Particle effects are reusable assets stored as `*.particle.yaml` or embedded as 
 
 ```yaml
 ParticleEffect:
-  version: 1
+  version: 2
   name: Smoke
   maximumParticleCount: 1024
+  Bounds:                         # optional local-space particle effect bounds
+    center: 0 2 0
+    size: 8 6 8
   Emitters:
     - name: Plume
       maximumParticleCount: 1024
@@ -89,6 +92,23 @@ ParticleEffect:
         maximumDrawDistance: 250
         minimumProjectedSize: 1.5
 ```
+
+## Particle effect bounds
+
+Version-2 assets may author optional local-space `Bounds` with a finite `center`
+and a finite, strictly positive `size`. Omitting `Bounds` makes the particle
+effect unbounded. Fully bounded child particle effects are aggregated
+conservatively; any unbounded participating branch makes the aggregate
+unbounded. Bounds affect per-view rendering culling only and never pause
+simulation or event processing.
+
+Particle Editor can show the authored box, frame the camera around it, and turn
+bounds culling off as a conspicuous preview-only override. **Estimate Bounds**
+samples the visual extents of live preview particles for the selected duration,
+adds the requested padding, and presents a proposal. The document changes only
+when that proposal is accepted, and acceptance is undoable. An estimate is an
+observation, not a proof: effects with unbounded lifetime or motion may require
+manual bounds.
 
 ## Child particle effects
 

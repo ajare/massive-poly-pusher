@@ -7,8 +7,9 @@
 
 namespace mpp
 {
-	// A GPU-only shader storage buffer: allocated once, bound, never mapped, with
-	// no CPU shadow copy and no triple buffering.
+	// A GPU-owned shader storage buffer: allocated once and normally only bound,
+	// with no CPU shadow copy and no triple buffering. Explicit diagnostics and
+	// authoring tools may synchronously inspect its OpenGL handle.
 	//
 	// detail::PersistentMappedBuffer covers the CPU-written case at
 	// GL_SHADER_STORAGE_BUFFER, where segment rotation provides the
@@ -31,8 +32,8 @@ namespace mpp
 
 		ShaderStorageBuffer& operator =(ShaderStorageBuffer const&) = delete;
 
-		// Allocates and zero-fills, or uploads initialData when supplied. The
-		// contents are never read back: this is the GPU's memory.
+		// Allocates and zero-fills, or uploads initialData when supplied. There is
+		// no routine CPU shadow or update path.
 		void create(size_t size, void const* initialData, std::string const& label);
 
 		void destroy() noexcept;

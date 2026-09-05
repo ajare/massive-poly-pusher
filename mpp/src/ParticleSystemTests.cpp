@@ -204,8 +204,12 @@ namespace mpp
 		system.destroyEffect(rawEffect);
 		auto boundedRawEffect = system.createEffect(lutTemplates, unitBounds,
 			glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -5.0f }));
-		if (!system.mEffectSlots[boundedRawEffect.index].bounds)
-			return fail("explicit bounds were discarded by raw emitter-span creation");
+		if (!system.mEffectSlots[boundedRawEffect.index].bounds ||
+			!system.isEffectBoundsCullingEnabled(boundedRawEffect))
+			return fail("explicit bounds were discarded or culling was not enabled by default");
+		system.setEffectBoundsCullingEnabled(boundedRawEffect, false);
+		if (system.isEffectBoundsCullingEnabled(boundedRawEffect) || system.mEffectSlots[boundedRawEffect.index].bounds == std::nullopt)
+			return fail("the runtime bounds-culling override modified authored bounds or was not retained");
 		system.destroyEffect(boundedRawEffect);
 		TestParticleEffect boundedSource(lutTemplates, unitBounds);
 		auto boundedSourceEffect = system.createEffect(boundedSource);
