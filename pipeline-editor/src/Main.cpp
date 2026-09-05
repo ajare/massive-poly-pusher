@@ -49,6 +49,7 @@ extern "C" const char* __asan_default_options()
 #include "mpp/Logger.h"
 #include "mpp/PbrMaterial.h"
 #include "mpp/PbrMaterialTests.h"
+#include "mpp/RenderGraphGpuTests.h"
 #include "mpp/RenderGraphTests.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderGraphStream.h"
@@ -1178,7 +1179,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			        "--validate [--warnings-as-errors] <pipeline.yaml> Validate a workspace.\n  --export-package "
 			        "<pipeline.yaml> <package.mpppackage> Export a self-contained package.\n  --export-legacy-package "
 			        "<pipeline.yaml> <package.mpppackage> Export a self-contained legacy package.\n  --smoke-test "
-			        "[pipeline.yaml]                 Render 30 frames then exit.\n  --width <pixels> --height <pixels>  "
+			        "[pipeline.yaml]                 Render 30 frames then exit.\n  --gpu-tests                     "
+			        "            Run the render graph GPU suite then exit.\n  --width <pixels> --height <pixels>  "
 			        "        Set editor window size.\n  --recovery-seconds <seconds>                Set recovery "
 			        "interval.\n  [pipeline.yaml]                              Open a workspace.\n");
 			return 0;
@@ -1327,7 +1329,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		     emptyTemplatePath = editorResourcePath("shared/pbr/templates/Empty.pipeline.yaml");
 		int windowWidth = 1440, windowHeight = 900;
 		float recoverySeconds = 30.0f;
-		bool smokeTest = false;
+		bool smokeTest = false, gpuTests = false;
 		std::string configurationWarning;
 		try
 		{
@@ -1358,6 +1360,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			std::string value = __argv[argument];
 			if (value == "--smoke-test")
 				smokeTest = true;
+			else if (value == "--gpu-tests")
+				gpuTests = true;
 			else if (value == "--width" && argument + 1 < __argc)
 				windowWidth = std::max(640, std::stoi(__argv[++argument]));
 			else if (value == "--height" && argument + 1 < __argc)
@@ -1527,6 +1531,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		registerBuiltInRenderGraphPasses(authoringRegistry);
 		ImGuiBackendData backend{};
 		imGuiSetup(&renderSystem, &resources, &backend, true, editorResourcePath("pipeline-editor/fa-solid-900.ttf"));
+		if (gpuTests)
+		{
+			// The GPU suite needs a live context, so this is the only place it can
+			// run. Without a caller it is compiled and never executed.
+			std::string suiteFailure;
+			if (!mpp::runRenderGraphGpuTests(&renderSystem, &suiteFailure))
+			{
+				fprintf(stderr, "MPP-PIPELINE-CLI-005: render graph GPU tests failed: %s\n", suiteFailure.c_str());
+				return 1;
+			}
+			fprintf(stderr, "Render graph GPU tests passed.\n");
+			return 0;
+		}
 		InputManagerSDL input;
 		TimerSDL timer;
 		timer.reset();

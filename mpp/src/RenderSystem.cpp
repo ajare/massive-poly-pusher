@@ -539,6 +539,21 @@ namespace mpp
 		infoMessage("Renderer: " + glRenderer);
 		infoMessage("Vendor: " + vendorInfo);
 
+		// GL_CONTEXT_PROFILE_MASK is core since 3.2; anything older is compatibility
+		// by definition.
+		{
+			GLint profileMask = 0;
+			if (mCaps.glVersionMajor > 3 || (mCaps.glVersionMajor == 3 && mCaps.glVersionMinor >= 2))
+			{
+				GL_CHECK(glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profileMask));
+				mCaps.compatibilityProfile = (profileMask & GL_CONTEXT_CORE_PROFILE_BIT) == 0;
+			}
+			else
+			{
+				mCaps.compatibilityProfile = true;
+			}
+		}
+
 		// Get point size render range
 		GLfloat sizeRange[2] = { 0.0f, 0.0f };
 		GL_CHECK(glGetFloatv(GL_SMOOTH_POINT_SIZE_RANGE, sizeRange));
@@ -1669,6 +1684,16 @@ namespace mpp
 		applyRasterState(defaults, max<size_t>(1, mCaps.maxDrawBuffers), mWindowWidth, mWindowHeight, true);
 
 		setProgramPointSizeState(true);
+
+		// A core profile always generates gl_PointCoord and rejects this enum, but a
+		// compatibility profile leaves point-sprite coordinate generation off, and
+		// then gl_PointCoord reads (0, 0) in every fragment. Text is drawn as point
+		// sprites whose glyph is a gl_PointCoord lookup into the font atlas, so
+		// without this every glyph samples one transparent texel and no overlay ever
+		// appears. SDL requests no profile mask, so which one we get is the driver's
+		// choice: set the state whenever the context still honours it.
+		if (mCaps.compatibilityProfile)
+			setPointSpriteState(true);
 
 		// Without this, a bilinear tap near a cube edge clamps inside its own face
 		// instead of reaching across, so every edge shows a seam. The IBL cubemaps
@@ -4847,6 +4872,17 @@ namespace mpp
 		if (uniformsChanged)
 		{
 			material->setUniforms();
+			// GAMMA is an engine-wide renderer setting, not an authored material
+			// value, so every other render path injects it from mGamma. This one did
+			// not, leaving it at GLSL's uniform default of 0: 1.0/GAMMA is then +inf
+			// and pow(colour, vec3(inf)) resolves to NaN, which the blend and the
+			// unorm target turn into black. Every batched draw whose shader gamma
+			// -corrects -- renderText's overlays among them -- came out black.
+			auto const gammaId = static_cast<Program*>(material->getProgram().get())->getUniformId("GAMMA");
+			if (gammaId >= 0)
+			{
+				GL_CHECK(glUniform1f(gammaId, mGamma));
+			}
 		}
 
 		*currentMaterial = material;

@@ -577,18 +577,10 @@ namespace mpp
 				return fail("explicit named-domain invalidation did not regenerate all six faces");
 
 			stage = "point shadow volume selection and automatic invalidation";
-			auto boundsModelResource = renderSystem->getResourceManager()->getResource("__mpp_mesh_fullscreen_quad__");
-			auto* boundsModel = dynamic_cast<Model*>(boundsModelResource.get());
-			if (!boundsModel) return fail("core bounds model is unavailable for point-shadow volume tests");
-			CameraCulledShadowTestScene casterScene(renderSystem);
-			auto inRangeCaster = casterScene.add3dModel(boundsModelResource);
-			auto outOfRangeCaster = casterScene.add3dModel(boundsModelResource);
-			outOfRangeCaster->translate({ 100.0f, 0.0f, 0.0f });
-			if (!casterScene.get3dModelsInView({}).empty()) return fail("camera-culling test scene unexpectedly returned visible models");
-			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
-			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
-				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
-
+			// The shadow pass resolves a material per caster mesh and reads its caster
+			// contract, so the casters have to be real models with real materials. A
+			// core mesh built against a bare program name is not a usable stand-in:
+			// its "material" resolves to a Program and the pass walks into it.
 			// A batched or otherwise dynamic model declines the load-time position
 			// scan, so its extents are a placeholder at its own local origin rather
 			// than a measurement. Volume selection has to read that as unbounded:
@@ -628,10 +620,20 @@ void main()
 			unmeasuredStream->setCalculateBounds(false);
 			auto unmeasuredModelResource = renderSystem->getResourceManager()->declareResource("GpuTestUnmeasuredCaster.Model", unmeasuredStream).first;
 			unmeasuredModelResource->load();
-			auto const* measuredModel = dynamic_cast<Model const*>(measuredModelResource.get());
+			auto* measuredModel = dynamic_cast<Model*>(measuredModelResource.get());
 			auto const* unmeasuredModel = dynamic_cast<Model const*>(unmeasuredModelResource.get());
 			if (!measuredModel || !unmeasuredModel || !measuredModel->hasBounds() || unmeasuredModel->hasBounds())
 				return fail("a model that declined the bounds calculation did not report unmeasured extents");
+
+			CameraCulledShadowTestScene casterScene(renderSystem);
+			auto inRangeCaster = casterScene.add3dModel(measuredModelResource);
+			auto outOfRangeCaster = casterScene.add3dModel(measuredModelResource);
+			outOfRangeCaster->translate({ 100.0f, 0.0f, 0.0f });
+			if (!casterScene.get3dModelsInView({}).empty()) return fail("camera-culling test scene unexpectedly returned visible models");
+			auto volumeCasters = casterScene.get3dModelsInSphere({}, 10.0f);
+			if (volumeCasters.size() != 1 || volumeCasters.front() != inRangeCaster)
+				return fail("point-light volume did not retain the off-camera intersecting caster and exclude the out-of-range model");
+
 			auto measuredDistantCaster = casterScene.add3dModel(measuredModelResource);
 			measuredDistantCaster->translate({ 100.0f, 0.0f, 0.0f });
 			auto unmeasuredDistantCaster = casterScene.add3dModel(unmeasuredModelResource);
@@ -666,7 +668,7 @@ void main()
 			if (!verifySceneInvalidation("caster policy")) return false;
 			inRangeCaster->getParams()->setModelInstanceCount(2);
 			if (!verifySceneInvalidation("instance count")) return false;
-			auto* firstMesh = boundsModel->getMesh(0);
+			auto* firstMesh = measuredModel->getMesh(0);
 			inRangeCaster->getParams()->setModelMaterial(firstMesh->getMaterial());
 			if (!verifySceneInvalidation("material shadow contract")) return false;
 
@@ -886,6 +888,10 @@ void main()
 				if (!verifyGeneratedWater(64, 64) || !verifyGeneratedWater(96, 32))
 					return fail("opted-in generated water topology, sampler binding, mip preservation, or resize execution failed");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterPipeline");
+				// The resize check leaves the gate scene at whichever size it last
+				// rendered, and everything below sizes its expectations against the
+				// 64x64 gate viewport.
+				gateScene->setViewport(0, 0, 64, 64);
 
 				// Planar owns one reflected-scene branch per supplied plane and never
 				// acquires Screen-space's frozen colour copy or mip chain.
@@ -924,7 +930,9 @@ void main()
 								auto const rank = stats.name.substr(std::string("PlanarReflection").size());
 								if (stats.primaryColourOutputName != "PlanarReflection" + rank ||
 									stats.primaryColourOutputWidth != 16 || stats.primaryColourOutputHeight != 16)
-									return fail("Planar pass telemetry lost its stable image name or dimensions");
+									return fail("Planar pass telemetry lost its stable image name or dimensions: " +
+										stats.primaryColourOutputName + " " + std::to_string(stats.primaryColourOutputWidth) +
+										"x" + std::to_string(stats.primaryColourOutputHeight));
 							}
 							else if (stats.name == "WaterScene")
 							{
@@ -1991,6 +1999,10 @@ void main()
 				renderSystem->getWindowHeight(),
 				textTargetOptions);
 			renderSystem->setRenderTarget(textTarget);
+			// Binding a target does not resize the viewport, and the graph stages above
+			// leave it at their own fixture sizes. Text is placed in window space, so
+			// without this the glyphs land outside the viewport entirely.
+			renderSystem->setViewport(0, 0, textTarget->getWidth(), textTarget->getHeight());
 			renderSystem->clearScreen(Colour::Black);
 			renderSystem->renderText("RenderGraph text overlay", 8, 0, Colour::White);
 			GL_CHECK(glFinish());

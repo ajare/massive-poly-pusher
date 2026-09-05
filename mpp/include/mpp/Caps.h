@@ -12,6 +12,11 @@ namespace mpp
 		int glslVersionMajor{ 0 };
 		int glslVersionMinor{ 0 };
 
+		// A compatibility context still gates point-sprite coordinate generation
+		// behind GL_POINT_SPRITE; a core context generates gl_PointCoord always and
+		// rejects the enum. Which one this is decides whether that state is set.
+		bool compatibilityProfile{ false };
+
 		float pointSizeRange[2]{ 0.0f, 0.0f };
 		float aliasedLineWidthRange[2]{ 0.0f, 0.0f };
 
