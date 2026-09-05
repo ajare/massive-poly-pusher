@@ -321,6 +321,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ParticleGpuTests.cpp
     mpp/src/ParticleSystem.cpp
     mpp/src/ParticleSystemTests.cpp
+    mpp/src/TrailSystem.cpp
     mpp/src/PersistentMappedBuffer.cpp
     mpp/src/PostEffectMaterial.cpp
     mpp/src/PostEffectMaterialStream.cpp

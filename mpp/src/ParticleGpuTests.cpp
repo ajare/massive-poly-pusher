@@ -20,6 +20,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/ShaderStorageBuffer.h"
+#include "mpp/TrailSystem.h"
 
 namespace mpp
 {
@@ -500,6 +501,81 @@ namespace mpp
 			}
 			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
 			runFrame(system, 10.0f);
+
+			stage = "GPU trail position history and ribbon commands";
+			auto& trails = renderSystem->getTrailSystem();
+			trails.initialise();
+			if (!trails.mAvailable) return fail("trail GPU path is unavailable");
+			TrailSpecification trailSpecification;
+			trailSpecification.maximumPointCount = 8u;
+			trailSpecification.pointLifetime = 0.5f;
+			trailSpecification.minimumPointDistance = 0.1f;
+			trailSpecification.width = 0.5f;
+			trailSpecification.uvScale = 2.0f;
+			trailSpecification.widthOverLife.keys = { { 0.0f, 1.0f }, { 1.0f, 0.0f } };
+			trailSpecification.colourOverLife.keys = {
+				{ 0.0f, { 2.0f, 0.0f, 0.0f } }, { 1.0f, { 0.0f, 0.0f, 3.0f } }
+			};
+			auto trail = trails.createTrail(trailSpecification, { -0.5f, 0.0f, -5.0f });
+			trails.simulate(0.0f);
+			trails.setTrailPosition(trail, { 0.5f, 0.0f, -5.0f });
+			trails.simulate(0.1f);
+			trails.stopTrail(trail);
+			GL_CHECK(glFinish());
+			TrailState trailState;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, trails.mStates->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(trail.index) * sizeof(TrailState)),
+				sizeof(trailState), &trailState));
+			if (trailState.ring[1] != 2u) return fail("trail did not retain two independent position-history points");
+			std::array<TrailPointRecord, 2> trailPoints;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, trails.mPoints->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr((size_t(trail.index) * TrailSystem::MaxPointCount + trailState.ring[0]) * sizeof(TrailPointRecord)),
+				sizeof(trailPoints), trailPoints.data()));
+			if (std::abs(trailPoints[0].positionAge[0] + 0.5f) > 0.001f ||
+				std::abs(trailPoints[1].positionAge[0] - 0.5f) > 0.001f ||
+				std::abs(trailPoints[0].positionAge[3] - 0.1f) > 0.001f ||
+				std::abs(trailPoints[0].lifetimeDistance[0] - 0.5f) > 0.001f ||
+				std::abs(trailPoints[1].lifetimeDistance[0] - 0.5f) > 0.001f ||
+				std::abs(trailPoints[1].lifetimeDistance[1] - 1.0f) > 0.001f)
+				return fail("trail points lost position, per-point lifetime, age, or cumulative UV distance");
+			ParticleDrawArraysIndirectCommand trailCommand;
+			size_t const trailCommandIndex = size_t(uint32_t(ParticleBlendClass::Additive)) * TrailSystem::MaxTrailCount + trail.index;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, trails.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(trailCommandIndex * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(trailCommand), &trailCommand));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (trailCommand.count != 4u || trailCommand.first != trail.index * TrailSystem::MaxPointCount * 2u)
+				return fail("trail did not author its separate indirect triangle-strip command");
+			std::vector<float> trailLut(size_t(TrailSystem::CurveSampleCount) * TrailSystem::MaxTrailCount * 2u * 4u);
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, trails.mCurveLut));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, trailLut.data()));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+			size_t const trailRow = size_t(trail.index) * 2u;
+			auto trailSample = [&](uint32_t row, uint32_t x, uint32_t channel)
+			{
+				return trailLut[((trailRow + row) * TrailSystem::CurveSampleCount + x) * 4u + channel];
+			};
+			if (std::abs(trailSample(0u, 0u, 0u) - 1.0f) > 0.01f ||
+				std::abs(trailSample(0u, TrailSystem::CurveSampleCount - 1u, 0u)) > 0.01f ||
+				std::abs(trailSample(1u, 0u, 0u) - 2.0f) > 0.01f ||
+				std::abs(trailSample(1u, TrailSystem::CurveSampleCount - 1u, 2u) - 3.0f) > 0.01f)
+				return fail("trail width-over-life or HDR colour-over-life did not reach the GPU LUT");
+			for (size_t frame = 0; frame < 6u; ++frame) trails.simulate(0.1f);
+			GL_CHECK(glFinish());
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, trails.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(trailCommandIndex * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(trailCommand), &trailCommand));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (trailCommand.count != 0u || trails.isAlive(trail))
+				return fail("stopped trail points did not expire independently and retire the ribbon");
+			// Leave one valid ribbon for the render graph GPU suite that follows this
+			// function, so its generated MPP.TrailScene passes execute non-empty draws.
+			trailSpecification.pointLifetime = 10.0f;
+			auto graphTrail = trails.createTrail(trailSpecification, { -0.5f, 0.0f, 0.0f });
+			trails.simulate(0.0f);
+			trails.setTrailPosition(graphTrail, { 0.5f, 0.0f, 0.0f });
+			trails.simulate(0.1f);
 
 			stage = "std430 particle record stride";
 			auto* spawnProgram = static_cast<RawShaderProgram*>(system.mSpawnProgram.get());

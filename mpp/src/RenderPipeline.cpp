@@ -96,9 +96,8 @@ namespace mpp
 			return false;
 		}
 
-		// Particles simulate once per rendered frame, outside the graph (ADR 0005),
-		// so the dispatch is issued here rather than by the pass -- but only when
-		// something in this graph is actually going to draw them.
+		// GPU primitives update once per rendered frame outside the graph, so each
+		// independent owner is scheduled only when its own pure draw pass is present.
 		bool graphHasParticlePass(RenderGraph const& graph)
 		{
 			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
@@ -106,6 +105,16 @@ namespace mpp
 				auto const info = graph.getPassInfo({ id });
 				if (info.enabled && (info.callbackFactory == "MPP.ParticleScene" ||
 					info.callbackFactory == "MPP.ParticleWeightedOit")) return true;
+			}
+			return false;
+		}
+
+		bool graphHasTrailPass(RenderGraph const& graph)
+		{
+			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
+			{
+				auto const info = graph.getPassInfo({ id });
+				if (info.enabled && info.callbackFactory == "MPP.TrailScene") return true;
 			}
 			return false;
 		}
@@ -516,6 +525,7 @@ namespace mpp
 			RenderGraphFrameContext frameContext{ mRenderSystem, scene, camera, models, &mOptions, mPasses.back(), graphHasWaterPass(*graph), mOptions.waterReflections.enabled };
 			mGraphExecutor->setFrameContext(&frameContext);
 			if (mOptions.graphPasses.particles && graphHasParticlePass(*graph)) mRenderSystem->simulateParticles();
+			if (mOptions.graphPasses.particles && graphHasTrailPass(*graph)) mRenderSystem->simulateTrails();
 			beginFlowSnapshot();
 			try
 			{
@@ -877,11 +887,11 @@ namespace mpp
 
 			// Conventional classes remain separate authored passes with complete raster
 			// state. BLEND_MODE only selects their matching indirect-command span.
-			auto addParticlePass = [&](std::string const& name, ParticleBlendClass blendClass,
-				GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha)
+			auto addParticlePrimitivePass = [&](std::string const& name, std::string const& factory,
+				ParticleBlendClass blendClass, GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha)
 			{
 				auto pass = graph.addPass(name, GraphPassType::Scene);
-				graph.setPassCallbackFactory(pass, "MPP.ParticleScene");
+				graph.setPassCallbackFactory(pass, factory);
 				graph.bindSampler(pass, "DEPTH", sceneDepth);
 				UniformCollection parameters;
 				parameters.setUniform("BLEND_MODE", int32_t(blendClass));
@@ -906,9 +916,13 @@ namespace mpp
 			};
 			// Conventional alpha is laid down first; additive energy is independent of
 			// ordering. Authors remain free to choose another order in graph templates.
-			addParticlePass("ParticleAlpha", ParticleBlendClass::Alpha,
+			addParticlePrimitivePass("ParticleAlpha", "MPP.ParticleScene", ParticleBlendClass::Alpha,
 				GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::One);
-			addParticlePass("ParticleAdditive", ParticleBlendClass::Additive,
+			addParticlePrimitivePass("TrailAlpha", "MPP.TrailScene", ParticleBlendClass::Alpha,
+				GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::One);
+			addParticlePrimitivePass("TrailAdditive", "MPP.TrailScene", ParticleBlendClass::Additive,
+				GraphBlendFactor::One, GraphBlendFactor::Zero);
+			addParticlePrimitivePass("ParticleAdditive", "MPP.ParticleScene", ParticleBlendClass::Additive,
 				GraphBlendFactor::One, GraphBlendFactor::Zero);
 			shadedSceneTexture = presentationTexture;
 		}
@@ -1115,6 +1129,7 @@ namespace mpp
 		frameContext.waterReflectionEnabled = reflectionEnabled;
 		mGraphExecutor->setFrameContext(&frameContext);
 		if (mOptions.graphPasses.particles && graphHasParticlePass(graph)) mRenderSystem->simulateParticles();
+		if (mOptions.graphPasses.particles && graphHasTrailPass(graph)) mRenderSystem->simulateTrails();
 		beginFlowSnapshot();
 		try
 		{

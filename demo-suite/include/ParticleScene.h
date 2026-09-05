@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <mpp/ParticleSystem.h>
+#include <mpp/TrailSystem.h>
 #include <mpp/SceneRuntime.h>
 
 #include "Scene.h"
@@ -18,6 +19,7 @@ class ParticleScene final : public ::Scene
 	mpp::RenderTargetPtr mPresentationTarget;
 	mpp::ParticleEffectHandle mDemoEffect;
 	mpp::ParticleEffectHandle mStressEffect;
+	mpp::TrailHandle mDemoTrail;
 	std::string mPipelineName{ "ParticlePbr" };
 	bool mPbr{ true };
 	bool mStressMode{ false };

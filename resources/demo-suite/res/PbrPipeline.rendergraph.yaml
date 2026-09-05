@@ -186,6 +186,56 @@ RenderGraph:
         sourceAlphaBlend: one
         destinationAlphaBlend: oneMinusSourceAlpha
         multisample: false
+    - name: TrailAlpha
+      type: scene
+      factory: MPP.TrailScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 1
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: oneMinusSourceAlpha
+        sourceAlphaBlend: one
+        destinationAlphaBlend: oneMinusSourceAlpha
+        multisample: false
+    - name: TrailAdditive
+      type: scene
+      factory: MPP.TrailScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 0
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: one
+        sourceAlphaBlend: zero
+        destinationAlphaBlend: one
+        multisample: false
     - name: ParticleAdditive
       type: scene
       factory: MPP.ParticleScene

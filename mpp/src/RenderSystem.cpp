@@ -28,6 +28,7 @@
 #include "mpp/Config.h"
 #include "mpp/ParticleSystem.h"
 #include "mpp/ParticleShaders.h"
+#include "mpp/TrailSystem.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Camera.h"
 #include "mpp/ResourceManager.h"
@@ -208,6 +209,7 @@ namespace mpp
 		delete mInternalFont;
 		// Ahead of the core-resource sweep: this releases the programs it acquired
 		// and deletes its GPU objects while the context is still current.
+		mTrailSystem.reset();
 		mParticleSystem.reset();
 		destroyLightsData();
 		destroyPbrLightsData();
@@ -775,9 +777,10 @@ namespace mpp
 	{
 		mResourceMgr = resourceMgr;
 
-		// Cheap to construct: nothing GPU-side happens until a graph actually
-		// draws particles.
+		// Cheap to construct: neither primitive allocates GPU state until a graph
+		// draws it.
 		mParticleSystem = make_unique<ParticleSystem>(this, resourceMgr);
+		mTrailSystem = make_unique<TrailSystem>(this, resourceMgr);
 
 		// Default 3d program
 		{
@@ -3826,8 +3829,20 @@ namespace mpp
 		return *mParticleSystem;
 	}
 
+	TrailSystem& RenderSystem::getTrailSystem()
+	{
+		if (!mTrailSystem) THROW_MPP("TrailSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mTrailSystem;
+	}
+
+	TrailSystem const& RenderSystem::getTrailSystem() const
+	{
+		if (!mTrailSystem) THROW_MPP("TrailSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mTrailSystem;
+	}
+
 	/*
-	 * Advance the particle simulation for this frame.
+	 * Advance particles for this frame.
 	 *
 	 */
 	void RenderSystem::simulateParticles()
@@ -3843,6 +3858,17 @@ namespace mpp
 
 		// The raw compute program was bound outside the Program cache, which would
 		// otherwise skip rebinding whatever material program was last used.
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::simulateTrails()
+	{
+		if (!mTrailSystem) return;
+		if (mTrailSimulationFrameValid && mTrailSimulationFrameSerial == mFrameSerial) return;
+		mTrailSimulationFrameSerial = mFrameSerial;
+		mTrailSimulationFrameValid = true;
+		mTrailSystem->simulate();
 		GL_CHECK(glUseProgram(0));
 		mActiveProgram.reset();
 	}
@@ -3865,6 +3891,22 @@ namespace mpp
 		if (!mParticleSystem) return;
 		mParticleSystem->render(blendClass, sceneDepth);
 
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderTrails(ParticleBlendClass blendClass, RenderTexture* sceneDepth)
+	{
+		if (!mTrailSystem) return;
+		mTrailSystem->render(blendClass, sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderTrails(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth)
+	{
+		if (!mTrailSystem) return;
+		mTrailSystem->render(blendClass, sceneDepth);
 		GL_CHECK(glUseProgram(0));
 		mActiveProgram.reset();
 	}

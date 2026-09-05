@@ -410,6 +410,21 @@ namespace mpp
 			}
 		};
 
+		class TrailScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				int32_t const blendMode = integerParameter(context, "BLEND_MODE", -1);
+				if (blendMode < int32_t(ParticleBlendClass::Additive) || blendMode > int32_t(ParticleBlendClass::Alpha))
+					THROW_MPP("TrailScenePass '" + context.getPass().name + "' requires BLEND_MODE additive=0 or alpha=1.", __LINE__, __FILE__, __func__);
+				auto depth = resourceInput(context, "DEPTH");
+				frame.renderSystem->renderTrails(ParticleBlendClass(blendMode), depth);
+			}
+		};
+
 		class ParticleWeightedOitPass final : public RenderGraphScenePass
 		{
 		public:
@@ -629,6 +644,13 @@ namespace mpp
 		particleScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
 		particleScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
 		registry.registerScenePassFactory("MPP.ParticleScene", [] { return std::make_unique<ParticleScenePass>(); }, particleScene);
+
+		auto trailScene = metadata("Trails", "Scene", GraphPassType::Scene);
+		trailScene.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardTrails" });
+		trailScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		trailScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		trailScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
+		registry.registerScenePassFactory("MPP.TrailScene", [] { return std::make_unique<TrailScenePass>(); }, trailScene);
 
 		auto particleOit = metadata("Particle Weighted OIT", "Scene", GraphPassType::Scene);
 		particleOit.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });

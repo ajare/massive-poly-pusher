@@ -49,6 +49,19 @@ The transparency strategy a particle appearance composites with — additive,
 alpha, or weighted blended OIT. Determines which render pass draws it.
 _Avoid_: Blend mode (that is the engine-wide `BlendMode` enum)
 
+**Trail**:
+A live visual primitive that records the path of a moving source over time.
+Independent of particles and individually controlled by the CPU.
+_Avoid_: Dense particle stream, trail emitter
+
+**Trail point**:
+One time-limited position sample in a trail's history. Not a Particle.
+_Avoid_: Trail particle
+
+**Ribbon**:
+The continuous camera-facing strip reconstructed through a trail's live points.
+_Avoid_: Trail (the history and its live control, rather than its rendered form)
+
 ### Rendering
 
 **Post effect**:

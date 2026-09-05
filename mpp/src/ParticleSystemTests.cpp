@@ -7,6 +7,7 @@
 #include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleSystem.h"
 #include "mpp/ParticleSystemTests.h"
+#include "mpp/TrailSystem.h"
 
 using namespace std;
 
@@ -61,6 +62,44 @@ namespace mpp
 			particleFlipbookFrame(8u, randomOverLife, 0.5f, 2.0f, 0.0f, 11u) != 5u ||
 			particleFlipbookFrame(8u, randomFixedRate, 1.25f, 2.0f, 4.0f, 11u) != 0u)
 			return fail("flipbook playback or combinable random start selected the wrong frame");
+
+		TrailSpecification trailSpecification;
+		trailSpecification.maximumPointCount = 64u;
+		trailSpecification.pointLifetime = 0.5f;
+		trailSpecification.minimumPointDistance = 0.2f;
+		trailSpecification.width = 2.0f;
+		trailSpecification.uvScale = 3.0f;
+		trailSpecification.widthOverLife.keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
+		trailSpecification.colourOverLife.keys = {
+			{ 0.0f, { 1.0f, 0.0f, 0.0f } }, { 1.0f, { 0.0f, 0.5f, 4.0f } }
+		};
+		auto trailRows = TrailSystem::bakeCurveRows(trailSpecification);
+		if (trailRows.size() != size_t(TrailSystem::CurveSampleCount) * 2u * 4u ||
+			abs(trailRows[0] - 0.25f) > 0.0001f ||
+			abs(trailRows[(size_t(TrailSystem::CurveSampleCount) - 1u) * 4u] - 2.0f) > 0.0001f ||
+			abs(trailRows.back() - 1.0f) > 0.0001f ||
+			abs(trailRows[(size_t(TrailSystem::CurveSampleCount) * 2u - 1u) * 4u + 2u] - 4.0f) > 0.0001f)
+			return fail("trail width-over-life or HDR colour-over-life did not bake into separate LUT rows");
+		TrailSystem trails(nullptr, nullptr);
+		auto oldTrail = trails.createTrail(trailSpecification, { 1.0f, 2.0f, 3.0f });
+		if (!oldTrail || trails.mControls[oldTrail.index].lifetimeDistanceUvWidth !=
+			array<float, 4>{ 0.5f, 0.2f, 3.0f, 2.0f })
+			return fail("trail creation did not retain point lifetime, spacing, UV scale, and width");
+		auto historyGeneration = trails.mControls[oldTrail.index].modes[2];
+		trails.clearTrail(oldTrail);
+		if (trails.mControls[oldTrail.index].modes[2] == historyGeneration)
+			return fail("clearing a trail did not invalidate its GPU position history");
+		trails.stopTrail(oldTrail);
+		for (size_t frame = 0; frame < 4u; ++frame) trails.simulate(0.1f);
+		if (!trails.isAlive(oldTrail)) return fail("a stopped trail retired before its points could fade");
+		for (size_t frame = 0; frame < 2u; ++frame) trails.simulate(0.1f);
+		if (trails.isAlive(oldTrail)) return fail("a stopped trail did not retire after its point lifetime");
+		auto replacementTrail = trails.createTrail(trailSpecification);
+		if (replacementTrail.index != oldTrail.index || replacementTrail.generation == oldTrail.generation)
+			return fail("a reused trail slot did not advance its generational handle");
+		trails.stopTrail(oldTrail);
+		if (trails.mControls[replacementTrail.index].positionEnabled[3] == 0.0f)
+			return fail("a stale trail handle retargeted its replacement");
 
 		TemplateRenderData sortingAppearance;
 		sortingAppearance.sorting[0] = uint32_t(ParticleSortMode::BackToFront);

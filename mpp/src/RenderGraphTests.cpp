@@ -451,6 +451,11 @@ namespace mpp
 		if (!particleMetadata || particleMetadata->inputs.size() != 1 || particleMetadata->inputs.front().required ||
 			particleMetadata->inputs.front().sampler != "DEPTH" || particleMetadata->inputs.front().fallbackId != "HardParticles")
 			return fail("particle scene metadata lost its optional named depth fallback");
+		auto const* trailMetadata = registry.findMetadata("MPP.TrailScene");
+		if (!trailMetadata || trailMetadata->inputs.size() != 1 || trailMetadata->inputs.front().required ||
+			trailMetadata->inputs.front().sampler != "DEPTH" || trailMetadata->inputs.front().fallbackId != "HardTrails" ||
+			trailMetadata->parameters.size() != 1)
+			return fail("trail scene metadata lost its separate draw contract or optional depth fallback");
 		auto const* oitMetadata = registry.findMetadata("MPP.ParticleWeightedOit");
 		auto const* oitResolveMetadata = registry.findMetadata("MPP.ParticleWeightedOitResolve");
 		if (!oitMetadata || oitMetadata->inputs.size() != 1 || oitMetadata->outputs.size() != 2 ||
@@ -499,6 +504,15 @@ namespace mpp
 		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
 		if (registry.validate(particleGraph).hasErrors())
 			return fail("particle pass without optional depth did not select its hard-particle fallback");
+		particleGraph.setPassCallbackFactory(particlePass, "MPP.TrailScene");
+		if (registry.validate(particleGraph).hasErrors())
+			return fail("trail pass without optional depth did not select its hard-trail fallback");
+		invalidParticleRaster.depthWrite = true;
+		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
+		auto trailDiagnostics = registry.validate(particleGraph);
+		if (trailDiagnostics.hasErrors() || trailDiagnostics.count(DiagnosticSeverity::Warning) != 1 ||
+			trailDiagnostics.getDiagnostics().front().code != "MPP-PASS-014")
+			return fail("trail depth-write request did not produce exactly the transparent-primitive override warning");
 
 		// A non-transient image holds contents that outlive the frame, so nothing may
 		// be planned on top of it. The plan used to test only the incoming image for

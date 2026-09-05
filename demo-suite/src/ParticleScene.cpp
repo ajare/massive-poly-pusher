@@ -1,6 +1,7 @@
 #include "ParticleScene.h"
 
 #include <array>
+#include <cmath>
 #include <format>
 #include <stdexcept>
 #include <tuple>
@@ -143,6 +144,20 @@ void ParticleScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const&
 	std::array colliders{ floor };
 	particles.setColliders(colliders);
 	createDemoEffect();
+
+	mpp::TrailSpecification trail;
+	trail.maximumPointCount = 128u;
+	trail.pointLifetime = 1.8f;
+	trail.minimumPointDistance = 0.04f;
+	trail.width = 0.28f;
+	trail.uvScale = 2.0f;
+	trail.emissiveIntensity = 2.5f;
+	trail.tintAndAlpha = { 0.25f, 0.65f, 1.0f, 0.9f };
+	trail.widthOverLife.keys = { { 0.0f, 1.0f }, { 0.75f, 0.55f }, { 1.0f, 0.0f } };
+	trail.colourOverLife.keys = {
+		{ 0.0f, { 1.0f, 1.0f, 1.0f } }, { 1.0f, { 0.05f, 0.15f, 1.0f } }
+	};
+	mDemoTrail = renderer->getTrailSystem().createTrail(trail, { 0.0f, 1.5f, 0.0f });
 }
 
 void ParticleScene::createDemoEffect()
@@ -229,6 +244,7 @@ void ParticleScene::teardownImpl()
 	if (mRenderer)
 	{
 		auto& particles = mRenderer->getParticleSystem();
+		if (mDemoTrail) mRenderer->getTrailSystem().destroyTrail(mDemoTrail);
 		if (mDemoEffect) particles.destroyEffect(mDemoEffect);
 		if (mStressEffect) particles.destroyEffect(mStressEffect);
 		particles.setColliders({});
@@ -263,6 +279,13 @@ void ParticleScene::handleInput(InputManager* input)
 
 void ParticleScene::render(mpp::RenderSystem* renderer, World const&, RenderOptions const&)
 {
+	if (mDemoTrail)
+	{
+		float const seconds = renderer->getElapsedSeconds();
+		renderer->getTrailSystem().setTrailPosition(mDemoTrail,
+			{ std::sin(seconds * 1.7f) * 1.4f, 1.25f + std::sin(seconds * 2.3f) * 0.45f,
+				std::cos(seconds * 1.7f) * 1.4f });
+	}
 	if (mSceneRuntime) renderer->renderScene(mSceneRuntime->getScene(), getCamera(), glm::vec2(0.0f), mPipelineName);
 }
 

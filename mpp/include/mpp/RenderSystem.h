@@ -47,6 +47,7 @@ namespace mpp
 	class Program;
 	class Camera;
 	class ParticleSystem; // Forward-declared so as to not pollute client apps.
+	class TrailSystem;
 	enum class ParticleBlendClass : uint32_t;
 	class RenderTexture;
 	class Profiler; // Forward-declared so as to not pollute client apps.
@@ -55,6 +56,7 @@ namespace mpp
 	class _MPPAPI RenderSystem : public ResourceWrangler
 	{
 		friend class ParticleSystem;
+		friend class TrailSystem;
 		enum class ProjectionType
 		{
 			Unknown,
@@ -158,6 +160,8 @@ namespace mpp
 		uint64_t mFrameSerial{ 0 };
 		uint64_t mParticleSimulationFrameSerial{ 0 };
 		bool mParticleSimulationFrameValid{ false };
+		uint64_t mTrailSimulationFrameSerial{ 0 };
+		bool mTrailSimulationFrameValid{ false };
 
 		// Set only while a PBR pipeline is flushing its scene pass. Environment
 		// samplers then override per-material placeholder bindings.
@@ -367,6 +371,9 @@ namespace mpp
 		// pass never pays for compute programs or shader storage buffers.
 		//
 		std::unique_ptr<ParticleSystem> mParticleSystem;
+		// Trails are a distinct primitive with their own point histories, GPU
+		// buffers, update kernel and ribbon draw path.
+		std::unique_ptr<TrailSystem> mTrailSystem;
 
 		//
 		// Scenes
@@ -662,16 +669,22 @@ namespace mpp
 		// Gameplay reaches the extracted CPU API through its renderer owner.
 		ParticleSystem& getParticleSystem();
 		ParticleSystem const& getParticleSystem() const;
+		TrailSystem& getTrailSystem();
+		TrailSystem const& getTrailSystem() const;
 
-		// One simulation dispatch for this rendered frame, issued before graph
-		// execution (ADR 0005) by a pipeline whose graph draws particles. A graph
-		// pass may execute several times per frame and must never call this.
+		// Simulation for this rendered frame, issued before graph execution by a
+		// pipeline whose graph draws the corresponding primitive. Graph passes may
+		// execute several times per frame and must never call these methods.
 		void simulateParticles();
+		void simulateTrails();
 
 		// The particle draw, issued from inside an authored blend-class-specific
 		// MPP.ParticleScene or MPP.ParticleWeightedOit pass. Scene depth is optional.
 		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
 		void renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+		// The separate ribbon draw issued by MPP.TrailScene.
+		void renderTrails(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
+		void renderTrails(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
 
 		bool particlesAvailable();
 

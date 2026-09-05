@@ -671,6 +671,12 @@ the GPU; collision-state and one-frame event bits stay in the existing particle
 record. Retaining the previous graph depth preserves the once-per-frame pre-graph
 simulation decision in ADR 0005.
 
+Trails and ribbons now use a separate `TrailSystem`, fixed-capacity GPU point
+history slices, width/colour LUT rows, cumulative arc-length UVs, and dedicated
+indirect `MPP.TrailScene` draws. They share only the once-per-frame scheduling
+rule and blend-class graph placement with particles; they do not consume the
+particle pool or its commands.
+
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and
 scene-document pipeline, and a shared albedo atlas to remove the remaining

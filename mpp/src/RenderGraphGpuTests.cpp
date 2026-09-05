@@ -1937,8 +1937,9 @@ void main()
 				plainPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				for (auto const& stats : plainPipeline->getLastGraphExecutionStats())
 					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" ||
-						stats.name == "ParticleWeightedOit" || stats.name == "ParticleWeightedOitResolve")
-						return fail("default-off generated graph inserted a particle pass");
+						stats.name == "ParticleWeightedOit" || stats.name == "ParticleWeightedOitResolve" ||
+						stats.name == "TrailAlpha" || stats.name == "TrailAdditive")
+						return fail("default-off generated graph inserted a particle primitive pass");
 				renderSystem->removeRenderPipeline("GpuTestParticlesOffPipeline");
 
 				RenderPipelineOptions generatedParticleOptions;
@@ -1948,6 +1949,7 @@ void main()
 				generatedPipeline->requestGraphImageCapture();
 				generatedPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				size_t executedParticlePasses = 0;
+				size_t executedTrailPasses = 0;
 				bool executedOitResolve = false;
 				for (auto const& stats : generatedPipeline->getLastGraphExecutionStats())
 				{
@@ -1959,10 +1961,16 @@ void main()
 						if (stats.colourOutputCount != expectedOutputs || stats.depthOutputCount != 0)
 							return fail("a generated blend-class particle pass has the wrong colour/depth attachment contract");
 					}
+					else if (stats.name == "TrailAlpha" || stats.name == "TrailAdditive")
+					{
+						++executedTrailPasses;
+						if (stats.colourOutputCount != 1u || stats.depthOutputCount != 0u)
+							return fail("a generated trail ribbon pass has the wrong colour/depth attachment contract");
+					}
 					else if (stats.name == "ParticleWeightedOitResolve") executedOitResolve = stats.colourOutputCount == 1;
 				}
-				if (executedParticlePasses != 3 || !executedOitResolve)
-					return fail("generated particles did not insert one authored pass per blend class plus the OIT resolve");
+				if (executedParticlePasses != 3 || executedTrailPasses != 2 || !executedOitResolve)
+					return fail("generated particle primitives did not insert particle, trail, and OIT passes");
 				bool const particlesAvailable = renderSystem->particlesAvailable();
 				std::vector<uint8_t> poolAfterGeneratedDraw;
 				if (particlesAvailable)
