@@ -129,10 +129,10 @@ defaulting to 262,144 particles, and is allocated lazily on first emitter
 creation so applications that never use particles pay nothing. Per spec §33 the
 supported range is 262,144–1,048,576.
 
-**Status:** partially done. `ShaderStorageBuffer` exists for the GPU-only
-buffers. Only the particle pool and the indirect command buffer are allocated so
-far; the free list, active lists, counters and the CPU-written
-`PersistentMappedBuffer` buffers arrive with the pool and the CPU API.
+**Status:** particle allocation buffers done. The pool, free list, double-buffered
+active lists, counters and CPU-written emitter/template/spawn buffers allocate
+lazily at the configured capacity. The render index list remains part of the
+compaction milestone (§10).
 
 **Acceptance:** buffers allocate lazily, respect the configured capacity, and
 `PersistentMappedBuffer` requires no modification.
@@ -183,7 +183,9 @@ multiplier, emissive intensity, soft-particle fade distance, atlas columns, rows
 frame count, animation mode and rate, curve LUT row offset, billboard mode, and
 blend class.
 
-**Status:** not started.
+**Status:** done. The 64-byte `ParticleRecord`, split `EmitterSimData` and
+64-byte `TemplateRenderData` have matching C++ and GLSL declarations. The GPU
+suite introspects the linked spawn kernel's `GL_TOP_LEVEL_ARRAY_STRIDE`.
 
 **Acceptance:** the particle record is exactly 64 bytes under `std430`, verified
 by a test rather than by inspection.
@@ -368,7 +370,10 @@ Pool exhaustion is graceful per §33: the spawn kernel clamps to what the free
 list can supply and to the emitter's template budget, incrementing a dropped-spawn
 counter rather than failing.
 
-**Status:** not started.
+**Status:** spawn done; integration follows in the simulation milestone. The
+spawn kernel samples all seven shapes, derives deterministic per-particle seeds,
+and reserves both emitter budget and free-list entries with atomic CAS loops.
+It dispatches over spawn commands rather than pool capacity.
 
 **Acceptance:** determinism holds for a fixed seed and fixed frame sequence;
 over-spawning clamps and reports rather than corrupting the free list.

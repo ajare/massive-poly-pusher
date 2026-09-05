@@ -21,9 +21,10 @@ msaa=off
 ssaa=off
 taa=false
 fxaa=false
+particlePoolCapacity=262144
 ```
 
-`msaa` and `ssaa` accept `off`, `2x`, `4x`, or `8x`. `taa` and `fxaa` accept `true` or `false`. Names and values are case-insensitive and surrounding whitespace is ignored. Every key may appear at most once. Unknown keys, duplicate keys, malformed values, unsupported MSAA counts, and startup dimensions that exceed GPU limits are fatal; the applications do not silently downgrade settings.
+`msaa` and `ssaa` accept `off`, `2x`, `4x`, or `8x`. `taa` and `fxaa` accept `true` or `false`. The independent `particlePoolCapacity` setting accepts an integer from 262,144 through 1,048,576 and allocates lazily when particles are first used. Names and values are case-insensitive and surrounding whitespace is ignored. Every key may appear at most once. Unknown keys, duplicate keys, malformed values, unsupported MSAA counts, and startup dimensions that exceed GPU limits are fatal; the applications do not silently downgrade settings.
 
 Applications parse configuration through `mpp::app::loadRenderSystemOptions()` and pass the immutable `RenderSystemOptions` into `RenderSystem`. The renderer does not locate or parse INI files.
 

@@ -16,8 +16,9 @@ namespace mpp::app
 				auto options = parseRenderSystemOptions(input, "defaults.ini");
 				if (options.antiAliasing.msaa != AntiAliasingSamples::Off ||
 					options.antiAliasing.ssaa != AntiAliasingSamples::Off ||
-					options.antiAliasing.taa || options.antiAliasing.fxaa)
-					throw std::runtime_error("Missing [mpp] section did not produce disabled defaults.");
+					options.antiAliasing.taa || options.antiAliasing.fxaa ||
+					options.particlePoolCapacity != DefaultParticlePoolCapacity)
+					throw std::runtime_error("Missing [mpp] section did not produce the render-system defaults.");
 			}
 			{
 				std::istringstream input(
@@ -25,11 +26,13 @@ namespace mpp::app
 					" MSAA = 2X ; comment\n"
 					"ssaa= 8x\n"
 					"TAA = TrUe\n"
-					"FxAa = FALSE # comment\n");
+					"FxAa = FALSE # comment\n"
+					"particlePoolCapacity = 524288\n");
 				auto options = parseRenderSystemOptions(input, "valid.ini");
 				if (options.antiAliasing.msaa != AntiAliasingSamples::X2 ||
 					options.antiAliasing.ssaa != AntiAliasingSamples::X8 ||
-					!options.antiAliasing.taa || options.antiAliasing.fxaa)
+					!options.antiAliasing.taa || options.antiAliasing.fxaa ||
+					options.particlePoolCapacity != 524288)
 					throw std::runtime_error("Valid case-insensitive [mpp] settings were parsed incorrectly.");
 				if (std::abs(ssaaLinearScale(options.antiAliasing.ssaa) - std::sqrt(8.0f)) > 0.0001f || ssaaDimension(64,AntiAliasingSamples::X2)!=91 || ssaaDimension(64,AntiAliasingSamples::X4)!=128 || ssaaDimension(64,AntiAliasingSamples::X8)!=182)
 					throw std::runtime_error("SSAA total-sample dimension scaling/rounding is incorrect.");
@@ -56,6 +59,9 @@ namespace mpp::app
 			expectFailure("[mpp]\nmsaa=16x\n", "off, 2x, 4x, or 8x");
 			expectFailure("[mpp]\ntaa=yes\n", "true or false");
 			expectFailure("[mpp]\nquality=high\n", "unknown setting 'quality'");
+			expectFailure("[mpp]\nparticlePoolCapacity=262143\n", "262144 to 1048576");
+			expectFailure("[mpp]\nparticlePoolCapacity=1048577\n", "262144 to 1048576");
+			expectFailure("[mpp]\nparticlePoolCapacity=many\n", "expected an integer");
 			expectFailure("[mpp]\nfxaa=true\nFXAA=false\n", "duplicate setting 'fxaa'");
 			expectFailure("[mpp]\nnot-an-entry\n", "expected key=value");
 

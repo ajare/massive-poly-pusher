@@ -16,6 +16,7 @@
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/ShaderStorageBuffer.h"
+#include "PersistentMappedBuffer.h"
 
 using namespace std;
 
@@ -23,17 +24,36 @@ namespace mpp
 {
 	namespace
 	{
-		char const* SimulationProgramName = "__mpp_particle_simulation__";
+		char const* PoolInitialiseProgramName = "__mpp_particle_pool_initialise__";
+		char const* SpawnProgramName = "__mpp_particle_spawn__";
 		char const* DrawProgramName = "__mpp_particle_draw_additive__";
 
-		// std430 binding points shared by the simulation kernel and the draw.
 		constexpr uint32_t ParticlePoolBinding = 0;
-		constexpr uint32_t IndirectCommandBinding = 1;
-
-		// vec4 position and half-extent, for now.
-		constexpr size_t ParticleStride = 16;
-		// count, instanceCount, first, baseInstance.
+		constexpr uint32_t FreeIndicesBinding = 1;
+		constexpr uint32_t ActiveIndicesABinding = 2;
+		constexpr uint32_t ActiveIndicesBBinding = 3;
+		constexpr uint32_t CountersBinding = 4;
+		constexpr uint32_t EmitterBinding = 5;
+		// The indirect command uses the draw-only template binding during compute;
+		// the two buffers are never consumed by the same program.
+		constexpr uint32_t TemplateRenderBinding = 6;
+		constexpr uint32_t IndirectCommandBinding = TemplateRenderBinding;
+		constexpr uint32_t SpawnCommandBinding = 7;
+		constexpr uint32_t RequiredStorageBindings = 8;
 		constexpr size_t IndirectCommandBytes = 4 * sizeof(uint32_t);
+
+		template<typename T>
+		size_t bytes(vector<T> const& values)
+		{
+			return values.size() * sizeof(T);
+		}
+
+		void setTranslation(EmitterSimData& emitter, float x, float y, float z)
+		{
+			emitter.transform[12] = x;
+			emitter.transform[13] = y;
+			emitter.transform[14] = z;
+		}
 	}
 
 	ParticleSystem::ParticleSystem(RenderSystem* renderSystem, ResourceManager* resourceManager)
@@ -50,11 +70,16 @@ namespace mpp
 			mVertexArray = 0;
 		}
 
-		mParticlePool.reset();
+		mSpawnCommandBuffer.reset();
+		mTemplateRenderBuffer.reset();
+		mEmitterBuffer.reset();
 		mIndirectCommands.reset();
+		mCounters.reset();
+		mActiveIndicesB.reset();
+		mActiveIndicesA.reset();
+		mFreeIndices.reset();
+		mParticlePool.reset();
 
-		// Mirrors RenderSystem::destroyCoreResources: release, then destroy what
-		// nothing else still holds.
 		auto releaseProgram = [this](ResourcePtr& program)
 		{
 			if (!program) return;
@@ -62,8 +87,16 @@ namespace mpp
 			if (!program->isReferenced()) program->destroy();
 			program.reset();
 		};
-		releaseProgram(mSimulationProgram);
+		releaseProgram(mPoolInitialiseProgram);
+		releaseProgram(mSpawnProgram);
 		releaseProgram(mDrawProgram);
+	}
+
+	void ParticleSystem::disableWithWarning(string const& reason)
+	{
+		if (!mAvailable) return;
+		mwRenderSystem->warnMessage("The particle system is disabled and no particles will be drawn. " + reason);
+		mAvailable = false;
 	}
 
 	void ParticleSystem::initialise()
@@ -80,34 +113,26 @@ namespace mpp
 
 		try
 		{
-			// Queried, not assumed: 64 is the size the kernel is written for, but a
-			// context that permits fewer invocations gets a smaller group rather than
-			// a link failure. The value reaches the kernel as a #define.
 			mWorkGroupSize = max(1u, min<uint32_t>(64, min(caps.maxComputeWorkGroupSize[0], caps.maxComputeWorkGroupInvocations)));
-
-			size_t const poolBytes = size_t(ParticleCount) * ParticleStride;
-			if (caps.maxShaderStorageBufferBindings < 2)
+			if (caps.maxShaderStorageBufferBindings < RequiredStorageBindings)
 			{
-				THROW_MPP("The particle system needs two shader storage buffer bindings; this context reports " +
+				THROW_MPP("The particle system needs " + to_string(RequiredStorageBindings) +
+					" shader storage buffer bindings; this context reports " +
 					to_string(caps.maxShaderStorageBufferBindings) + ".", __LINE__, __FILE__, __func__);
 			}
-			if (poolBytes > caps.maxShaderStorageBlockSize)
+
+			auto createComputeProgram = [this](char const* name, char const* source)
 			{
-				THROW_MPP("The particle pool needs " + to_string(poolBytes) + " bytes, exceeding the maximum shader storage block size of " +
-					to_string(caps.maxShaderStorageBlockSize) + " bytes.", __LINE__, __FILE__, __func__);
-			}
-
-			mParticlePool = make_unique<ShaderStorageBuffer>();
-			mParticlePool->create(poolBytes, nullptr, "Particle pool");
-			mIndirectCommands = make_unique<ShaderStorageBuffer>();
-			mIndirectCommands->create(IndirectCommandBytes, nullptr, "Particle indirect draw commands");
-
-			auto simulationStream = make_shared<ComputeProgramStream>(mwResourceManager);
-			simulationStream->setSource(RawShaderStage::Compute, ParticleSimulationComputeShader);
-			simulationStream->setDefine("MPP_PARTICLE_WORK_GROUP_SIZE", to_string(mWorkGroupSize));
-			mSimulationProgram = mwResourceManager->declareResource(SimulationProgramName, simulationStream).first;
-			mSimulationProgram->acquire(mwRenderSystem);
-			mSimulationProgram->load();
+				auto stream = make_shared<ComputeProgramStream>(mwResourceManager);
+				stream->setSource(RawShaderStage::Compute, source);
+				stream->setDefine("MPP_PARTICLE_WORK_GROUP_SIZE", to_string(mWorkGroupSize));
+				auto program = mwResourceManager->declareResource(name, stream).first;
+				program->acquire(mwRenderSystem);
+				program->load();
+				return program;
+			};
+			mPoolInitialiseProgram = createComputeProgram(PoolInitialiseProgramName, ParticlePoolInitialiseComputeShader);
+			mSpawnProgram = createComputeProgram(SpawnProgramName, ParticleSpawnComputeShader);
 
 			auto drawStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
 			drawStream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
@@ -117,23 +142,155 @@ namespace mpp
 			mDrawProgram->acquire(mwRenderSystem);
 			mDrawProgram->load();
 
-			// A core-profile draw needs a bound vertex array object even when it
-			// reads no attributes at all.
 			GL_CHECK(glGenVertexArrays(1, &mVertexArray));
 			if (mVertexArray == 0)
-			{
 				THROW_MPP("Could not create the particle vertex array object.", __LINE__, __FILE__, __func__);
-			}
 
 			mAvailable = true;
 		}
 		catch (exception const& error)
 		{
 			// A driver may report compute support and still refuse a valid kernel.
-			// That is a degraded frame, not a failed one.
 			mwRenderSystem->warnMessage(string("The particle system could not be initialised and is disabled; no particles will be drawn. ") + error.what());
 			mAvailable = false;
 		}
+	}
+
+	void ParticleSystem::ensurePoolAllocated()
+	{
+		if (mPoolAllocated) return;
+		if (mEmitters.empty())
+			THROW_MPP("A particle pool cannot be allocated before the first emitter is created.", __LINE__, __FILE__, __func__);
+
+		auto const configuredCapacity = mwRenderSystem->getOptions().particlePoolCapacity;
+		if (configuredCapacity < MinimumParticlePoolCapacity || configuredCapacity > MaximumParticlePoolCapacity)
+		{
+			THROW_MPP("Particle pool capacity " + to_string(configuredCapacity) + " is outside the supported range " +
+				to_string(MinimumParticlePoolCapacity) + " to " + to_string(MaximumParticlePoolCapacity) + ".",
+				__LINE__, __FILE__, __func__);
+		}
+		mPoolCapacity = configuredCapacity;
+
+		size_t const poolBytes = size_t(mPoolCapacity) * sizeof(ParticleRecord);
+		size_t const indexBytes = size_t(mPoolCapacity) * sizeof(uint32_t);
+		size_t const counterBytes = sizeof(ParticleCounterHeader) + size_t(MaxEmitterCount) * sizeof(uint32_t);
+		size_t const emitterBytes = size_t(MaxEmitterCount) * sizeof(EmitterSimData);
+		size_t const templateBytes = size_t(MaxEmitterCount) * sizeof(TemplateRenderData);
+		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
+		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes, IndirectCommandBytes });
+		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
+		{
+			THROW_MPP("The configured particle buffers need a shader storage block of " + to_string(largestBlock) +
+				" bytes, exceeding the GPU maximum of " + to_string(mwRenderSystem->getCaps().maxShaderStorageBlockSize) + " bytes.",
+				__LINE__, __FILE__, __func__);
+		}
+
+		mParticlePool = make_unique<ShaderStorageBuffer>();
+		mParticlePool->create(poolBytes, nullptr, "Particle pool");
+		mFreeIndices = make_unique<ShaderStorageBuffer>();
+		mFreeIndices->create(indexBytes, nullptr, "Particle free indices");
+		mActiveIndicesA = make_unique<ShaderStorageBuffer>();
+		mActiveIndicesA->create(indexBytes, nullptr, "Particle active indices A");
+		mActiveIndicesB = make_unique<ShaderStorageBuffer>();
+		mActiveIndicesB->create(indexBytes, nullptr, "Particle active indices B");
+		mCounters = make_unique<ShaderStorageBuffer>();
+		mCounters->create(counterBytes, nullptr, "Particle counters");
+		mIndirectCommands = make_unique<ShaderStorageBuffer>();
+		mIndirectCommands->create(IndirectCommandBytes, nullptr, "Particle indirect draw commands");
+
+		GLint storageAlignment = 1;
+		GL_CHECK(glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &storageAlignment));
+		bool const persistent = mwRenderSystem->getCaps().streamingGeometry;
+		mEmitterBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mEmitterBuffer->create(GL_SHADER_STORAGE_BUFFER, emitterBytes, max(1, storageAlignment), persistent,
+			mEmitters.data(), bytes(mEmitters), "Particle emitter simulation data");
+		mTemplateRenderBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mTemplateRenderBuffer->create(GL_SHADER_STORAGE_BUFFER, templateBytes, max(1, storageAlignment), persistent,
+			mTemplateRenderData.data(), bytes(mTemplateRenderData), "Particle emitter template render data");
+		mSpawnCommandBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mSpawnCommandBuffer->create(GL_SHADER_STORAGE_BUFFER, commandBytes, max(1, storageAlignment), persistent,
+			mSpawnCommands.data(), bytes(mSpawnCommands), "Particle spawn commands");
+
+		mFreeIndices->bindStorage(FreeIndicesBinding);
+		mCounters->bindStorage(CountersBinding);
+		mIndirectCommands->bindStorage(IndirectCommandBinding);
+		auto* initialiseProgram = static_cast<ComputeProgram*>(mPoolInitialiseProgram.get());
+		initialiseProgram->use();
+		initialiseProgram->setUniform("POOL_CAPACITY", mPoolCapacity);
+		initialiseProgram->setUniform("EMITTER_CAPACITY", MaxEmitterCount);
+		uint32_t const initialisedValues = max(mPoolCapacity, MaxEmitterCount);
+		initialiseProgram->dispatch((initialisedValues + mWorkGroupSize - 1) / mWorkGroupSize);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+		mPoolAllocated = true;
+	}
+
+	void ParticleSystem::createBootstrapEmitters()
+	{
+		// Keeps the #16 vertical slice observable until authored particle effects
+		// and the public emitter API arrive. It also exercises every spawn-shape
+		// branch in normal graph GPU runs.
+		constexpr uint32_t particlesPerShape = 128;
+		for (uint32_t shape = uint32_t(ParticleSpawnShape::Point); shape <= uint32_t(ParticleSpawnShape::Cone); ++shape)
+		{
+			EmitterSimData emitter;
+			setTranslation(emitter, (float(shape) - 3.0f) * 0.55f, -0.15f, 0.0f);
+			emitter.initialVelocityMin = { -0.1f, 0.15f, -0.1f, 0.0f };
+			emitter.initialVelocityMax = { 0.1f, 0.45f, 0.1f, 0.0f };
+			emitter.lifetimeSizeRanges = { 4.0f, 6.0f, 0.035f, 0.065f };
+			emitter.rotationRanges = { -3.14159f, 3.14159f, -1.0f, 1.0f };
+			emitter.shapeSeedModulesBudget = { shape, 0x6d2b79f5u + shape * 977u, 0u, particlesPerShape };
+			emitter.colourMin = { 0.2f + float(shape % 3u) * 0.25f, 0.35f, 0.6f, 0.75f };
+			emitter.colourMax = { 1.0f, 0.65f + float(shape % 2u) * 0.25f, 1.0f, 1.0f };
+			switch (ParticleSpawnShape(shape))
+			{
+			case ParticleSpawnShape::Point: break;
+			case ParticleSpawnShape::Line: emitter.shapeParameters = { 0.22f, 0.16f, 0.0f, 0.0f }; break;
+			case ParticleSpawnShape::Box: emitter.shapeParameters = { 0.18f, 0.18f, 0.18f, 0.0f }; break;
+			case ParticleSpawnShape::Sphere: emitter.shapeParameters = { 0.24f, 0.0f, 0.0f, 0.0f }; break;
+			case ParticleSpawnShape::Hemisphere: emitter.shapeParameters = { 0.24f, 0.0f, 0.0f, 0.0f }; break;
+			case ParticleSpawnShape::Disc: emitter.shapeParameters = { 0.27f, 0.0f, 0.0f, 0.0f }; break;
+			case ParticleSpawnShape::Cone: emitter.shapeParameters = { 0.22f, 0.42f, 0.0f, 0.0f }; break;
+			}
+
+			uint32_t const emitterIndex = uint32_t(mEmitters.size());
+			mEmitters.push_back(emitter);
+			mTemplateRenderData.emplace_back();
+			mSpawnCommands.push_back({ emitterIndex, particlesPerShape, 0x9e3779b9u + shape, 0u });
+		}
+	}
+
+	void ParticleSystem::uploadAndDispatchSpawnCommands()
+	{
+		if (mSpawnCommands.empty()) return;
+		if (mEmitters.size() > MaxEmitterCount || mSpawnCommands.size() > MaxSpawnCommandCount)
+			THROW_MPP("Particle emitter or spawn-command capacity was exceeded.", __LINE__, __FILE__, __func__);
+
+		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
+		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
+		mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
+
+		mParticlePool->bindStorage(ParticlePoolBinding);
+		mFreeIndices->bindStorage(FreeIndicesBinding);
+		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
+		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
+		mCounters->bindStorage(CountersBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, SpawnCommandBinding, mSpawnCommandBuffer->getBuffer(),
+			static_cast<GLintptr>(mSpawnCommandBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mSpawnCommands))));
+		mIndirectCommands->bindStorage(IndirectCommandBinding);
+
+		auto* spawnProgram = static_cast<ComputeProgram*>(mSpawnProgram.get());
+		spawnProgram->use();
+		spawnProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+		spawnProgram->setUniform("SPAWN_COMMAND_OFFSET", 0u);
+		spawnProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		spawnProgram->dispatch(uint32_t(mSpawnCommands.size()));
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+		mEmitterBuffer->markUsed();
+		mSpawnCommandBuffer->markUsed();
+		mSpawnCommands.clear();
 	}
 
 	void ParticleSystem::simulate()
@@ -141,33 +298,36 @@ namespace mpp
 		initialise();
 		if (!mAvailable) return;
 
-		GpuDebugScope scope("Particles: Simulate");
-
-		auto* program = static_cast<ComputeProgram*>(mSimulationProgram.get());
-		program->use();
-		program->setUniform("PARTICLE_COUNT", ParticleCount);
-		program->setUniform("ELAPSED_SECONDS", mwRenderSystem->getElapsedSeconds());
-
-		mParticlePool->bindStorage(ParticlePoolBinding);
-		mIndirectCommands->bindStorage(IndirectCommandBinding);
-
-		program->dispatch((ParticleCount + mWorkGroupSize - 1) / mWorkGroupSize);
-
-		// The pool is read by the vertex shader and the command buffer is read by
-		// the indirect draw, so both consumers need naming here.
-		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+		GpuDebugScope scope("Particles: Spawn");
+		try
+		{
+			if (!mBootstrapEmittersCreated)
+			{
+				createBootstrapEmitters();
+				ensurePoolAllocated();
+				mBootstrapEmittersCreated = true;
+			}
+			uploadAndDispatchSpawnCommands();
+		}
+		catch (exception const& error)
+		{
+			disableWithWarning(error.what());
+		}
 	}
 
 	void ParticleSystem::render()
 	{
 		initialise();
-		if (!mAvailable) return;
+		if (!mAvailable || !mPoolAllocated) return;
 
 		GpuDebugScope scope("Particles: Draw");
-
-		static_cast<ParticleDrawProgram*>(mDrawProgram.get())->use();
+		auto* program = static_cast<ParticleDrawProgram*>(mDrawProgram.get());
+		program->use();
+		program->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
+		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
+		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
 		mIndirectCommands->bindDrawIndirect();
 
 		GL_CHECK(glBindVertexArray(mVertexArray));

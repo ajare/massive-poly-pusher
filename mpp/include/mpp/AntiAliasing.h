@@ -80,8 +80,13 @@ namespace mpp
 		};
 	}
 
+	inline constexpr uint32_t MinimumParticlePoolCapacity = 262144;
+	inline constexpr uint32_t MaximumParticlePoolCapacity = 1048576;
+	inline constexpr uint32_t DefaultParticlePoolCapacity = 262144;
+
 	struct RenderSystemOptions
 	{
 		AntiAliasingDefaults antiAliasing;
+		uint32_t particlePoolCapacity{ DefaultParticlePoolCapacity };
 	};
 }

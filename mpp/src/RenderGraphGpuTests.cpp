@@ -40,6 +40,7 @@
 #include "mpp/ResourceManager.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
+#include "mpp/ParticleData.h"
 
 namespace mpp
 {
@@ -1924,6 +1925,20 @@ void main()
 					}
 				if (!executedParticles) return fail("opted-in generated particles did not insert a particle pass");
 				bool const particlesAvailable = renderSystem->particlesAvailable();
+				if (particlesAvailable)
+				{
+					// Query the linked spawn kernel rather than trusting the C++ declaration:
+					// GL_TOP_LEVEL_ARRAY_STRIDE is the driver's resolved std430 stride.
+					auto spawnProgram = renderSystem->getResourceManager()->getResource("__mpp_particle_spawn__", true);
+					if (!spawnProgram) return fail("the available particle system has no spawn kernel");
+					GLuint variable = glGetProgramResourceIndex(spawnProgram->getId(), GL_BUFFER_VARIABLE, "PARTICLES[0].padding");
+					if (variable == GL_INVALID_INDEX) return fail("could not introspect the particle record in the spawn kernel");
+					GLenum properties[]{ GL_OFFSET, GL_TOP_LEVEL_ARRAY_STRIDE };
+					GLint values[2]{};
+					GL_CHECK(glGetProgramResourceiv(spawnProgram->getId(), GL_BUFFER_VARIABLE, variable, 2, properties, 2, nullptr, values));
+					if (values[0] != 60 || values[1] != GLint(sizeof(ParticleRecord)))
+						return fail("the particle record is not exactly 64 bytes under std430");
+				}
 				if (drewParticles(generatedPipeline->takeGraphImageCaptures()) != particlesAvailable)
 					return fail("GraphLegacyForward particles did not draw exactly when the particle system reported itself available");
 				renderSystem->removeRenderPipeline("GpuTestGeneratedParticlePipeline");
