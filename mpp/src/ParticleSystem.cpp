@@ -30,6 +30,10 @@ namespace mpp
 		char const* SpawnProgramName = "__mpp_particle_spawn__";
 		char const* SimulationPrepareProgramName = "__mpp_particle_simulation_prepare__";
 		char const* SimulationProgramName = "__mpp_particle_simulation__";
+		char const* CompactionPrepareProgramName = "__mpp_particle_compaction_prepare__";
+		char const* CompactionCountProgramName = "__mpp_particle_compaction_count__";
+		char const* CompactionPrefixProgramName = "__mpp_particle_compaction_prefix__";
+		char const* CompactionScatterProgramName = "__mpp_particle_compaction_scatter__";
 		char const* DrawProgramName = "__mpp_particle_draw_additive__";
 
 		constexpr uint32_t ParticlePoolBinding = 0;
@@ -38,14 +42,15 @@ namespace mpp
 		constexpr uint32_t ActiveIndicesBBinding = 3;
 		constexpr uint32_t CountersBinding = 4;
 		constexpr uint32_t EmitterBinding = 5;
-		// The indirect command uses the draw-only template binding during compute;
-		// the two buffers are never consumed by the same program.
+		// Bindings six and seven are stage-local aliases. Template data is draw-only;
+		// scratch, spawn, dispatch, and indirect buffers are never read together.
 		constexpr uint32_t TemplateRenderBinding = 6;
-		constexpr uint32_t IndirectCommandBinding = TemplateRenderBinding;
+		constexpr uint32_t CompactionScratchBinding = 6;
 		constexpr uint32_t SpawnCommandBinding = 7;
+		constexpr uint32_t DispatchCommandBinding = 7;
+		constexpr uint32_t IndirectCommandBinding = 7;
 		constexpr uint32_t RequiredStorageBindings = 8;
-		constexpr size_t IndirectCommandBytes = 4 * sizeof(uint32_t);
-		constexpr size_t SimulationDispatchCommandBytes = 3 * sizeof(uint32_t);
+		constexpr size_t DispatchCommandBytes = 3 * sizeof(uint32_t);
 		constexpr uint32_t NoiseTextureSize = 16;
 
 		template<typename T>
@@ -84,9 +89,12 @@ namespace mpp
 		mSpawnCommandBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
+		mCompactionDispatchCommand.reset();
 		mSimulationDispatchCommand.reset();
 		mIndirectCommands.reset();
+		mCompactionScratch.reset();
 		mCounters.reset();
+		mRenderIndices.reset();
 		mActiveIndicesB.reset();
 		mActiveIndicesA.reset();
 		mFreeIndices.reset();
@@ -103,6 +111,10 @@ namespace mpp
 		releaseProgram(mSpawnProgram);
 		releaseProgram(mSimulationPrepareProgram);
 		releaseProgram(mSimulationProgram);
+		releaseProgram(mCompactionPrepareProgram);
+		releaseProgram(mCompactionCountProgram);
+		releaseProgram(mCompactionPrefixProgram);
+		releaseProgram(mCompactionScatterProgram);
 		releaseProgram(mDrawProgram);
 	}
 
@@ -122,6 +134,11 @@ namespace mpp
 		if (!caps.supportsCompute)
 		{
 			mwRenderSystem->warnMessage("This OpenGL context reports no compute shader support. The particle system is disabled and no particles will be drawn.");
+			return;
+		}
+		if (!caps.supportsMultiDrawIndirect)
+		{
+			mwRenderSystem->warnMessage("This OpenGL context reports no multi-draw indirect support. The particle system is disabled and no particles will be drawn.");
 			return;
 		}
 
@@ -149,6 +166,10 @@ namespace mpp
 			mSpawnProgram = createComputeProgram(SpawnProgramName, ParticleSpawnComputeShader);
 			mSimulationPrepareProgram = createComputeProgram(SimulationPrepareProgramName, ParticleSimulationPrepareComputeShader);
 			mSimulationProgram = createComputeProgram(SimulationProgramName, ParticleSimulationComputeShader);
+			mCompactionPrepareProgram = createComputeProgram(CompactionPrepareProgramName, ParticleCompactionPrepareComputeShader);
+			mCompactionCountProgram = createComputeProgram(CompactionCountProgramName, ParticleCompactionCountComputeShader);
+			mCompactionPrefixProgram = createComputeProgram(CompactionPrefixProgramName, ParticleCompactionPrefixComputeShader);
+			mCompactionScatterProgram = createComputeProgram(CompactionScatterProgramName, ParticleCompactionScatterComputeShader);
 			createNoiseTexture();
 
 			auto drawStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
@@ -230,12 +251,14 @@ namespace mpp
 
 		size_t const poolBytes = size_t(mPoolCapacity) * sizeof(ParticleRecord);
 		size_t const indexBytes = size_t(mPoolCapacity) * sizeof(uint32_t);
-		size_t const counterBytes = sizeof(ParticleCounterHeader) + size_t(MaxEmitterCount) * sizeof(uint32_t);
+		size_t const counterBytes = sizeof(ParticleCounterHeader) + size_t(MaxTemplateCount) * sizeof(uint32_t);
 		size_t const emitterBytes = size_t(MaxEmitterCount) * sizeof(EmitterSimData);
-		size_t const templateBytes = size_t(MaxEmitterCount) * sizeof(TemplateRenderData);
+		size_t const templateBytes = size_t(MaxTemplateCount) * sizeof(TemplateRenderData);
 		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
+		size_t const compactionScratchBytes = size_t(MaxTemplateCount) * 2u * sizeof(uint32_t);
+		size_t const indirectCommandBytes = size_t(MaxTemplateCount) * sizeof(ParticleDrawArraysIndirectCommand);
 		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes,
-			IndirectCommandBytes, SimulationDispatchCommandBytes });
+			compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
 		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
 		{
 			THROW_MPP("The configured particle buffers need a shader storage block of " + to_string(largestBlock) +
@@ -251,12 +274,18 @@ namespace mpp
 		mActiveIndicesA->create(indexBytes, nullptr, "Particle active indices A");
 		mActiveIndicesB = make_unique<ShaderStorageBuffer>();
 		mActiveIndicesB->create(indexBytes, nullptr, "Particle active indices B");
+		mRenderIndices = make_unique<ShaderStorageBuffer>();
+		mRenderIndices->create(indexBytes, nullptr, "Particle render indices by template");
 		mCounters = make_unique<ShaderStorageBuffer>();
-		mCounters->create(counterBytes, nullptr, "Particle counters");
+		mCounters->create(counterBytes, nullptr, "Particle counters and template live counts");
+		mCompactionScratch = make_unique<ShaderStorageBuffer>();
+		mCompactionScratch->create(compactionScratchBytes, nullptr, "Particle template offsets and scatter cursors");
 		mIndirectCommands = make_unique<ShaderStorageBuffer>();
-		mIndirectCommands->create(IndirectCommandBytes, nullptr, "Particle indirect draw commands");
+		mIndirectCommands->create(indirectCommandBytes, nullptr, "Particle indirect draw commands by template");
 		mSimulationDispatchCommand = make_unique<ShaderStorageBuffer>();
-		mSimulationDispatchCommand->create(SimulationDispatchCommandBytes, nullptr, "Particle simulation dispatch command");
+		mSimulationDispatchCommand->create(DispatchCommandBytes, nullptr, "Particle simulation dispatch command");
+		mCompactionDispatchCommand = make_unique<ShaderStorageBuffer>();
+		mCompactionDispatchCommand->create(DispatchCommandBytes, nullptr, "Particle compaction dispatch command");
 
 		GLint storageAlignment = 1;
 		GL_CHECK(glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &storageAlignment));
@@ -273,12 +302,11 @@ namespace mpp
 
 		mFreeIndices->bindStorage(FreeIndicesBinding);
 		mCounters->bindStorage(CountersBinding);
-		mIndirectCommands->bindStorage(IndirectCommandBinding);
 		auto* initialiseProgram = static_cast<ComputeProgram*>(mPoolInitialiseProgram.get());
 		initialiseProgram->use();
 		initialiseProgram->setUniform("POOL_CAPACITY", mPoolCapacity);
-		initialiseProgram->setUniform("EMITTER_CAPACITY", MaxEmitterCount);
-		uint32_t const initialisedValues = max(mPoolCapacity, MaxEmitterCount);
+		initialiseProgram->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
+		uint32_t const initialisedValues = max(mPoolCapacity, MaxTemplateCount);
 		initialiseProgram->dispatch((initialisedValues + mWorkGroupSize - 1) / mWorkGroupSize);
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 		mPoolAllocated = true;
@@ -327,6 +355,7 @@ namespace mpp
 			}
 
 			uint32_t const emitterIndex = uint32_t(mEmitters.size());
+			emitter.emissionState[3] = uint32_t(mTemplateRenderData.size());
 			mEmitters.push_back(emitter);
 			mTemplateRenderData.emplace_back();
 			mEmitterFrameStates.push_back({ {}, initialParticlesPerShape, false });
@@ -365,8 +394,17 @@ namespace mpp
 
 	void ParticleSystem::uploadFrameData()
 	{
-		if (mEmitters.size() > MaxEmitterCount || mSpawnCommands.size() > MaxSpawnCommandCount)
-			THROW_MPP("Particle emitter or spawn-command capacity was exceeded.", __LINE__, __FILE__, __func__);
+		if (mEmitters.size() > MaxEmitterCount || mTemplateRenderData.size() > MaxTemplateCount ||
+			mSpawnCommands.size() > MaxSpawnCommandCount)
+			THROW_MPP("Particle emitter-template, emitter, or spawn-command capacity was exceeded.", __LINE__, __FILE__, __func__);
+		if (mTemplateRenderData.empty())
+			THROW_MPP("Particle emitters require at least one emitter template.", __LINE__, __FILE__, __func__);
+		if (!is_sorted(mTemplateRenderData.begin(), mTemplateRenderData.end(), [](auto const& left, auto const& right)
+			{ return left.modes[3] < right.modes[3]; }))
+			THROW_MPP("Particle emitter templates must be ordered by blend class before upload.", __LINE__, __FILE__, __func__);
+		for (auto const& emitter : mEmitters)
+			if (emitter.emissionState[3] >= mTemplateRenderData.size())
+				THROW_MPP("A particle emitter references an invalid emitter-template index.", __LINE__, __FILE__, __func__);
 
 		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
 		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
@@ -387,11 +425,11 @@ namespace mpp
 			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, SpawnCommandBinding, mSpawnCommandBuffer->getBuffer(),
 			static_cast<GLintptr>(mSpawnCommandBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mSpawnCommands))));
-		mIndirectCommands->bindStorage(IndirectCommandBinding);
 
 		auto* spawnProgram = static_cast<ComputeProgram*>(mSpawnProgram.get());
 		spawnProgram->use();
 		spawnProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+		spawnProgram->setUniform("TEMPLATE_COUNT", uint32_t(mTemplateRenderData.size()));
 		spawnProgram->setUniform("SPAWN_COMMAND_OFFSET", 0u);
 		spawnProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 		spawnProgram->dispatch(uint32_t(mSpawnCommands.size()));
@@ -403,8 +441,7 @@ namespace mpp
 	void ParticleSystem::dispatchSimulation(float dt)
 	{
 		mCounters->bindStorage(CountersBinding);
-		mIndirectCommands->bindStorage(IndirectCommandBinding);
-		mSimulationDispatchCommand->bindStorage(SpawnCommandBinding);
+		mSimulationDispatchCommand->bindStorage(DispatchCommandBinding);
 		auto* prepareProgram = static_cast<ComputeProgram*>(mSimulationPrepareProgram.get());
 		prepareProgram->use();
 		prepareProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
@@ -418,12 +455,12 @@ namespace mpp
 		mCounters->bindStorage(CountersBinding);
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
 			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
-		mIndirectCommands->bindStorage(IndirectCommandBinding);
 
 		auto* simulationProgram = static_cast<ComputeProgram*>(mSimulationProgram.get());
 		simulationProgram->use();
 		simulationProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 		simulationProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+		simulationProgram->setUniform("TEMPLATE_COUNT", uint32_t(mTemplateRenderData.size()));
 		simulationProgram->setUniform("DELTA_SECONDS", dt);
 		simulationProgram->setUniform("SIMULATION_SECONDS", mSimulationSeconds);
 		simulationProgram->setUniform("NOISE_TEXTURE", int32_t(0));
@@ -437,6 +474,67 @@ namespace mpp
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 
 		mActiveListIndex = 1u - mActiveListIndex;
+	}
+
+	void ParticleSystem::dispatchCompaction()
+	{
+		uint32_t const templateCount = uint32_t(mTemplateRenderData.size());
+
+		mCounters->bindStorage(CountersBinding);
+		mCompactionScratch->bindStorage(CompactionScratchBinding);
+		mCompactionDispatchCommand->bindStorage(DispatchCommandBinding);
+		auto* prepareProgram = static_cast<ComputeProgram*>(mCompactionPrepareProgram.get());
+		prepareProgram->use();
+		prepareProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		prepareProgram->setUniform("TEMPLATE_COUNT", templateCount);
+		prepareProgram->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
+		prepareProgram->dispatch((templateCount + mWorkGroupSize - 1u) / mWorkGroupSize);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+		mParticlePool->bindStorage(ParticlePoolBinding);
+		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
+		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
+		mCounters->bindStorage(CountersBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		auto* countProgram = static_cast<ComputeProgram*>(mCompactionCountProgram.get());
+		countProgram->use();
+		countProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		countProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+		countProgram->setUniform("TEMPLATE_COUNT", templateCount);
+		mCompactionDispatchCommand->bindDispatchIndirect();
+		countProgram->dispatchIndirect();
+		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+		mCounters->bindStorage(CountersBinding);
+		mCompactionScratch->bindStorage(CompactionScratchBinding);
+		mIndirectCommands->bindStorage(IndirectCommandBinding);
+		auto* prefixProgram = static_cast<ComputeProgram*>(mCompactionPrefixProgram.get());
+		prefixProgram->use();
+		prefixProgram->setUniform("TEMPLATE_COUNT", templateCount);
+		prefixProgram->dispatch(1u);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+		mParticlePool->bindStorage(ParticlePoolBinding);
+		mRenderIndices->bindStorage(FreeIndicesBinding);
+		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
+		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
+		mCounters->bindStorage(CountersBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		mCompactionScratch->bindStorage(CompactionScratchBinding);
+		auto* scatterProgram = static_cast<ComputeProgram*>(mCompactionScatterProgram.get());
+		scatterProgram->use();
+		scatterProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		scatterProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+		scatterProgram->setUniform("TEMPLATE_COUNT", templateCount);
+		scatterProgram->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
+		mCompactionDispatchCommand->bindDispatchIndirect();
+		scatterProgram->dispatchIndirect();
+		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
 		mEmitterBuffer->markUsed();
 	}
 
@@ -472,6 +570,10 @@ namespace mpp
 				GpuDebugScope simulationScope("Particles: Simulate");
 				dispatchSimulation(dt);
 			}
+			{
+				GpuDebugScope compactionScope("Particles: Compact by emitter template");
+				dispatchCompaction();
+			}
 		}
 		catch (exception const& error)
 		{
@@ -487,15 +589,14 @@ namespace mpp
 		GpuDebugScope scope("Particles: Draw");
 		auto* program = static_cast<ParticleDrawProgram*>(mDrawProgram.get());
 		program->use();
-		program->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
-		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
-		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
+		mRenderIndices->bindStorage(FreeIndicesBinding);
 		mIndirectCommands->bindDrawIndirect();
 
 		GL_CHECK(glBindVertexArray(mVertexArray));
-		GL_CHECK(glDrawArraysIndirect(GL_TRIANGLE_STRIP, nullptr));
+		GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, nullptr,
+			static_cast<GLsizei>(mTemplateRenderData.size()), sizeof(ParticleDrawArraysIndirectCommand)));
 		GL_CHECK(glBindVertexArray(0));
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
 	}

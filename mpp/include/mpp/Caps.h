@@ -64,6 +64,7 @@ namespace mpp
 		// while supportsCompute is false, so callers validate against queried
 		// numbers rather than assumed ones.
 		bool supportsCompute{ false };
+		bool supportsMultiDrawIndirect{ false };
 		uint32_t maxComputeWorkGroupCount[3]{};
 		uint32_t maxComputeWorkGroupSize[3]{};
 		uint32_t maxComputeWorkGroupInvocations{ 0 };

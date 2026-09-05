@@ -2054,8 +2054,7 @@ void main()
 					std::array<uint32_t, 5> freeIndices{};
 					std::array<uint32_t, 5> activeA{ 0u, 1u, 2u, 3u, 4u }, activeB{};
 					std::array<uint32_t, 8> counters{ 0u, 5u, 0u, 0u, 2u, 1u, 1u, 1u };
-					std::array<uint32_t, 4> indirect{ 4u, 0u, 0u, 0u };
-					std::array<GLuint, 7> buffers{};
+					std::array<GLuint, 6> buffers{};
 					auto bindTestBuffer = [&](uint32_t binding, auto const& values)
 					{
 						GLuint buffer = 0;
@@ -2071,7 +2070,6 @@ void main()
 					bindTestBuffer(3, activeB);
 					bindTestBuffer(4, counters);
 					bindTestBuffer(5, emitters);
-					bindTestBuffer(6, indirect);
 
 					GLuint noiseTexture = 0;
 					std::array<uint8_t, 4> noiseTexel{ 255u, 128u, 128u, 255u };
@@ -2088,6 +2086,7 @@ void main()
 					simulation->use();
 					simulation->setUniform("ACTIVE_LIST_INDEX", 0u);
 					simulation->setUniform("EMITTER_COUNT", 4u);
+					simulation->setUniform("TEMPLATE_COUNT", 4u);
 					simulation->setUniform("DELTA_SECONDS", 0.1f);
 					simulation->setUniform("SIMULATION_SECONDS", 0.0f);
 					simulation->setUniform("NOISE_TEXTURE", int32_t(0));
@@ -2103,7 +2102,6 @@ void main()
 					readTestBuffer(1, freeIndices);
 					readTestBuffer(3, activeB);
 					readTestBuffer(4, counters);
-					readTestBuffer(6, indirect);
 					auto near = [](float left, float right) { return std::abs(left - right) < 0.0001f; };
 					std::string simulationFailure;
 					if (!near(particles[0].positionAge[0], 0.2f) || !near(particles[0].positionAge[1], 0.0f))
@@ -2116,8 +2114,8 @@ void main()
 						simulationFailure = "3D-texture noise module did not integrate independently";
 					else if (!near(particles[0].rotation, 0.3f) || !near(particles[0].positionAge[3], 0.1f))
 						simulationFailure = "base age or angular-velocity integration failed";
-					else if (counters[0] != 1u || counters[2] != 4u || counters[4] != 1u || freeIndices[0] != 4u || indirect[1] != 4u)
-						simulationFailure = "survivor compaction or dead-particle reclamation failed";
+					else if (counters[0] != 1u || counters[2] != 4u || counters[4] != 1u || freeIndices[0] != 4u)
+						simulationFailure = "survivor active-list append or dead-particle reclamation failed";
 					else
 					{
 						auto survivors = activeB;
@@ -2131,6 +2129,175 @@ void main()
 					GL_CHECK(glDeleteTextures(1, &noiseTexture));
 					GL_CHECK(glDeleteBuffers(GLsizei(buffers.size()), buffers.data()));
 					if (!simulationFailure.empty()) return fail(simulationFailure);
+
+					// Exercise all four production compaction kernels against an
+					// interleaved survivor list. The CPU reference checks both counts and
+					// every contiguous template run; indirect instance counts and range
+					// starts must have been authored by the prefix kernel.
+					std::array<ParticleRecord, 8> compactParticles{};
+					uint32_t const particleEmitters[]{ 2u, 0u, 3u, 1u, 0u, 2u, 2u, 1u };
+					for (uint32_t index = 0; index < compactParticles.size(); ++index)
+						compactParticles[index].emitterIndex = particleEmitters[index];
+					std::array<uint32_t, 8> compactActiveA{ 6u, 1u, 4u, 0u, 7u, 2u, 5u, 3u };
+					std::array<uint32_t, 8> compactActiveB{};
+					std::array<EmitterSimData, 4> compactEmitters{};
+					uint32_t const emitterTemplates[]{ 2u, 0u, 2u, 1u };
+					for (uint32_t index = 0; index < compactEmitters.size(); ++index)
+						compactEmitters[index].emissionState[3] = emitterTemplates[index];
+					compactEmitters[1].shapeSeedModulesBudget[3] = 2u;
+					std::array<uint32_t, 8> compactCounters{ 8u, 8u, 0u, 0u, 99u, 99u, 99u, 99u };
+					std::array<uint32_t, 8> compactScratch{};
+					std::array<uint32_t, 8> renderIndices{};
+					std::array<ParticleDrawArraysIndirectCommand, 4> drawCommands{};
+					std::array<uint32_t, 3> compactDispatch{};
+					std::array<uint32_t, 8> compactFreeIndices{};
+					std::array<ParticleSpawnCommand, 1> budgetCommands{ ParticleSpawnCommand{ 1u, 1u, 7u, 0u } };
+					std::vector<GLuint> compactBuffers;
+					auto createTestBuffer = [&](uint32_t binding, auto const& values)
+					{
+						GLuint buffer = 0;
+						GL_CHECK(glGenBuffers(1, &buffer));
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
+						GL_CHECK(glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(values), values.data(), GL_DYNAMIC_COPY));
+						GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer));
+						compactBuffers.push_back(buffer);
+						return buffer;
+					};
+					auto readBuffer = [&](GLuint buffer, auto& values)
+					{
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
+						GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(values), values.data()));
+					};
+					auto getCompute = [&](char const* name)
+					{
+						auto resource = renderSystem->getResourceManager()->getResource(name, true);
+						return dynamic_cast<ComputeProgram*>(resource.get());
+					};
+
+					GLuint compactParticleBuffer = createTestBuffer(0, compactParticles);
+					GLuint compactActiveABuffer = createTestBuffer(2, compactActiveA);
+					GLuint compactActiveBBuffer = createTestBuffer(3, compactActiveB);
+					GLuint compactCounterBuffer = createTestBuffer(4, compactCounters);
+					GLuint compactEmitterBuffer = createTestBuffer(5, compactEmitters);
+					GLuint compactScratchBuffer = createTestBuffer(6, compactScratch);
+					GLuint compactDispatchBuffer = createTestBuffer(7, compactDispatch);
+
+					auto* compactPrepare = getCompute("__mpp_particle_compaction_prepare__");
+					auto* compactCount = getCompute("__mpp_particle_compaction_count__");
+					auto* compactPrefix = getCompute("__mpp_particle_compaction_prefix__");
+					auto* compactScatter = getCompute("__mpp_particle_compaction_scatter__");
+					if (!compactPrepare || !compactCount || !compactPrefix || !compactScatter)
+						return fail("particle compaction programs were not registered");
+
+					compactPrepare->use();
+					compactPrepare->setUniform("ACTIVE_LIST_INDEX", 0u);
+					compactPrepare->setUniform("TEMPLATE_COUNT", 4u);
+					compactPrepare->setUniform("TEMPLATE_CAPACITY", 4u);
+					compactPrepare->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+					compactCount->use();
+					compactCount->setUniform("ACTIVE_LIST_INDEX", 0u);
+					compactCount->setUniform("EMITTER_COUNT", 4u);
+					compactCount->setUniform("TEMPLATE_COUNT", 4u);
+					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compactDispatchBuffer));
+					compactCount->dispatchIndirect();
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+					GLuint drawCommandBuffer = createTestBuffer(7, drawCommands);
+					compactPrefix->use();
+					compactPrefix->setUniform("TEMPLATE_COUNT", 4u);
+					compactPrefix->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+					GLuint renderIndexBuffer = createTestBuffer(1, renderIndices);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, compactScratchBuffer));
+					compactScatter->use();
+					compactScatter->setUniform("ACTIVE_LIST_INDEX", 0u);
+					compactScatter->setUniform("EMITTER_COUNT", 4u);
+					compactScatter->setUniform("TEMPLATE_COUNT", 4u);
+					compactScatter->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compactDispatchBuffer));
+					compactScatter->dispatchIndirect();
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+					readBuffer(compactCounterBuffer, compactCounters);
+					readBuffer(compactScratchBuffer, compactScratch);
+					readBuffer(renderIndexBuffer, renderIndices);
+					readBuffer(drawCommandBuffer, drawCommands);
+					readBuffer(compactDispatchBuffer, compactDispatch);
+
+					std::array<uint32_t, 4> referenceCounts{};
+					for (uint32_t particleIndex : compactActiveA)
+						++referenceCounts[emitterTemplates[compactParticles[particleIndex].emitterIndex]];
+					uint32_t referenceOffset = 0u;
+					std::array<bool, 8> seenParticles{};
+					std::string compactionFailure;
+					for (uint32_t templateIndex = 0; templateIndex < referenceCounts.size(); ++templateIndex)
+					{
+						if (compactCounters[4u + templateIndex] != referenceCounts[templateIndex] ||
+							compactScratch[templateIndex] != referenceOffset ||
+							compactScratch[4u + templateIndex] != referenceCounts[templateIndex])
+						{
+							compactionFailure = "GPU template counts or prefix offsets do not match the CPU reference";
+							break;
+						}
+						auto const& command = drawCommands[templateIndex];
+						if (command.count != 4u || command.instanceCount != referenceCounts[templateIndex] ||
+							command.first != referenceOffset * 4u || command.baseInstance != templateIndex)
+						{
+							compactionFailure = "GPU indirect command does not describe its emitter-template range";
+							break;
+						}
+						for (uint32_t ordinal = referenceOffset; ordinal < referenceOffset + referenceCounts[templateIndex]; ++ordinal)
+						{
+							uint32_t particleIndex = renderIndices[ordinal];
+							if (particleIndex >= compactParticles.size() || seenParticles[particleIndex] ||
+								emitterTemplates[compactParticles[particleIndex].emitterIndex] != templateIndex)
+							{
+								compactionFailure = "render index list does not contain one contiguous run per emitter template";
+								break;
+							}
+							seenParticles[particleIndex] = true;
+						}
+						if (!compactionFailure.empty()) break;
+						referenceOffset += referenceCounts[templateIndex];
+					}
+					if (compactDispatch != std::array<uint32_t, 3>{ 1u, 1u, 1u })
+						compactionFailure = "compaction dispatch was not generated from the GPU active count";
+					if (!compactionFailure.empty()) return fail(compactionFailure);
+
+					// Feed the count produced above straight into the production spawn
+					// kernel. Template zero is already at its budget, so this request must
+					// be dropped without touching the free or active counts.
+					GLuint compactFreeBuffer = createTestBuffer(1, compactFreeIndices);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, compactParticleBuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, compactActiveABuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, compactActiveBBuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, compactCounterBuffer));
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, compactEmitterBuffer));
+					GLuint budgetCommandBuffer = createTestBuffer(7, budgetCommands);
+					auto budgetSpawnResource = renderSystem->getResourceManager()->getResource("__mpp_particle_spawn__", true);
+					auto* budgetSpawn = dynamic_cast<ComputeProgram*>(budgetSpawnResource.get());
+					if (!budgetSpawn) return fail("particle spawn resource is not a compute program");
+					budgetSpawn->use();
+					budgetSpawn->setUniform("EMITTER_COUNT", 4u);
+					budgetSpawn->setUniform("TEMPLATE_COUNT", 4u);
+					budgetSpawn->setUniform("SPAWN_COMMAND_OFFSET", 0u);
+					budgetSpawn->setUniform("ACTIVE_LIST_INDEX", 0u);
+					budgetSpawn->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+					readBuffer(compactCounterBuffer, compactCounters);
+					if (compactCounters[0] != 8u || compactCounters[1] != 8u || compactCounters[3] != 1u ||
+						compactCounters[4] != referenceCounts[0])
+						return fail("spawn budget clamp did not consume the compaction template counter");
+
+					(void)compactFreeBuffer;
+					(void)budgetCommandBuffer;
+					GL_CHECK(glUseProgram(0));
+					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+					GL_CHECK(glDeleteBuffers(GLsizei(compactBuffers.size()), compactBuffers.data()));
 				}
 				renderSystem->removeRenderPipeline("GpuTestAuthoredParticlePipeline");
 			}

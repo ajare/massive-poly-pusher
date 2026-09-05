@@ -23,21 +23,27 @@ namespace mpp
 	{
 	public:
 		static constexpr uint32_t MaxEmitterCount = 4096;
+		static constexpr uint32_t MaxTemplateCount = 4096;
 		static constexpr uint32_t MaxSpawnCommandCount = 4096;
 
 	private:
 		RenderSystem* mwRenderSystem;
 		ResourceManager* mwResourceManager;
 
-		ResourcePtr mPoolInitialiseProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram, mDrawProgram;
+		ResourcePtr mPoolInitialiseProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
+		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
+		ResourcePtr mDrawProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
 		std::unique_ptr<ShaderStorageBuffer> mFreeIndices;
 		std::unique_ptr<ShaderStorageBuffer> mActiveIndicesA;
 		std::unique_ptr<ShaderStorageBuffer> mActiveIndicesB;
+		std::unique_ptr<ShaderStorageBuffer> mRenderIndices;
 		std::unique_ptr<ShaderStorageBuffer> mCounters;
+		std::unique_ptr<ShaderStorageBuffer> mCompactionScratch;
 		std::unique_ptr<ShaderStorageBuffer> mIndirectCommands;
 		std::unique_ptr<ShaderStorageBuffer> mSimulationDispatchCommand;
+		std::unique_ptr<ShaderStorageBuffer> mCompactionDispatchCommand;
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
@@ -73,6 +79,7 @@ namespace mpp
 		void uploadFrameData();
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
+		void dispatchCompaction();
 		void disableWithWarning(std::string const& reason);
 
 	public:
@@ -93,8 +100,9 @@ namespace mpp
 		// graph passes. RenderSystem guards the frame serial before entering here.
 		void simulate();
 
-		// Draws only indices in the current active list, using GPU-authored indirect
-		// arguments. Safe before pool allocation and when compute is unavailable.
+		// Draws contiguous per-template ranges from the render index list in one
+		// GPU-authored indirect multi-draw for the current additive blend class.
+		// Safe before pool allocation and when compute is unavailable.
 		void render();
 	};
 }

@@ -95,7 +95,7 @@ namespace mpp
 		std::array<float, 4> rotationRanges{};
 		// Spawn shape, emitter seed, behaviour-module mask, particle budget.
 		std::array<uint32_t, 4> shapeSeedModulesBudget{};
-		// Emission mode (continuous/burst), enabled, burst count, reserved.
+		// Emission mode (continuous/burst), enabled, burst count, emitter-template index.
 		std::array<uint32_t, 4> emissionState{ 0u, 1u, 0u, 0u };
 		// Authored continuous spawn rate in particles/second, then padding.
 		std::array<float, 4> emissionRateAndPadding{};
@@ -133,14 +133,27 @@ namespace mpp
 		uint32_t spawnCounter{ 0 };
 	};
 
-	// Header of the GPU counter buffer. Per-emitter live counts immediately
-	// follow this header in the same SSBO.
+	// Header of the GPU counter buffer. Per-template live counts immediately
+	// follow this header. Compaction rebuilds those counts, spawning consumes
+	// them for the template budget, and the statistics path copies this same
+	// buffer rather than maintaining another set of counters.
 	struct alignas(16) ParticleCounterHeader
 	{
 		uint32_t freeCount{ 0 };
 		uint32_t activeCountA{ 0 };
 		uint32_t activeCountB{ 0 };
 		uint32_t droppedSpawnCount{ 0 };
+	};
+
+	// Binary layout required by glMultiDrawArraysIndirect. first encodes the
+	// template's render-list offset as offset * 4, allowing GLSL 4.30 to recover
+	// the range without requiring ARB_shader_draw_parameters.
+	struct ParticleDrawArraysIndirectCommand
+	{
+		uint32_t count{ 4 };
+		uint32_t instanceCount{ 0 };
+		uint32_t first{ 0 };
+		uint32_t baseInstance{ 0 };
 	};
 
 	static_assert(std::is_standard_layout_v<ParticleRecord>);
@@ -155,4 +168,5 @@ namespace mpp
 	static_assert(sizeof(TemplateRenderData) == 64);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);
 	static_assert(sizeof(ParticleCounterHeader) == 16);
+	static_assert(sizeof(ParticleDrawArraysIndirectCommand) == 16);
 }

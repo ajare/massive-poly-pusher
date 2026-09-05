@@ -129,10 +129,9 @@ defaulting to 262,144 particles, and is allocated lazily on first emitter
 creation so applications that never use particles pay nothing. Per spec §33 the
 supported range is 262,144–1,048,576.
 
-**Status:** particle allocation buffers done. The pool, free list, double-buffered
-active lists, counters and CPU-written emitter/template/spawn buffers allocate
-lazily at the configured capacity. The render index list remains part of the
-compaction milestone (§10).
+**Status:** done. The pool, free list, double-buffered active lists, render index
+list, compaction scratch, counters, indirect commands and CPU-written
+emitter/template/spawn buffers allocate lazily at the configured capacity.
 
 **Acceptance:** buffers allocate lazily, respect the configured capacity, and
 `PersistentMappedBuffer` requires no modification.
@@ -406,7 +405,12 @@ spec §33's "minimal draw calls" with no per-frame CPU work.
 The per-template counters produced here also serve the budget clamp (§9) and the
 statistics (§13), rather than three separate mechanisms.
 
-**Status:** not started.
+**Status:** done. GPU prepare, count, prefix and scatter kernels rebuild the
+per-template live counts and contiguous render ranges after simulation. The
+prefix kernel authors all `DrawArraysIndirectCommand` fields, and the additive
+pass submits the blend class with one `glMultiDrawArraysIndirect`. The shared
+per-template counts remain the spawn budget source and the future statistics
+copy source.
 
 **Acceptance:** N templates render in one multi-draw per blend class; counts
 match a CPU-side reference in the GPU test.
@@ -463,10 +467,10 @@ than a failed frame, which is what lets a graph without a depth image still run
 particles.
 
 **Status:** partially done. `MPP.ParticleScene` is registered with authoring
-metadata and draws attribute-less instanced quads through
-`glDrawArraysIndirect`, in both the generated graph and an authored template.
-Billboard modes, appearances, flipbooks, soft particles and per-blend-class
-passes are still to come.
+metadata and draws GPU-compacted, per-template ranges as attribute-less
+instanced quads through `glMultiDrawArraysIndirect`, in both the generated graph
+and an authored template. Billboard modes, appearances, flipbooks, soft
+particles and separately authored per-blend-class passes are still to come.
 
 **Acceptance:** identical particle output under `XmlGraphPbrForward` and
 `GraphLegacyForward`; particles unaffected by the presence of a reflection pass.

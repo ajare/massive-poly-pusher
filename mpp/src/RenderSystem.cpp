@@ -693,6 +693,7 @@ namespace mpp
 		mCaps.supportsCompute = GLEW_VERSION_4_3 ||
 			(GLEW_ARB_compute_shader && GLEW_ARB_shader_storage_buffer_object && GLEW_ARB_draw_indirect);
 #endif
+		mCaps.supportsMultiDrawIndirect = GLEW_VERSION_4_3 || GLEW_ARB_multi_draw_indirect;
 		if (mCaps.supportsCompute)
 		{
 			GLint limit = 0;
@@ -740,6 +741,7 @@ namespace mpp
 		infoMessage(std::format("Max vertex attribute stride: {} bytes", mCaps.maxVertexAttributeStride));
 
 		infoMessage(std::format("Compute shaders: {}", mCaps.supportsCompute ? "yes" : "no"));
+		infoMessage(std::format("Multi-draw indirect: {}", mCaps.supportsMultiDrawIndirect ? "yes" : "no"));
 		if (mCaps.supportsCompute)
 		{
 			infoMessage(std::format("Max compute work group count: {}x{}x{}", mCaps.maxComputeWorkGroupCount[0], mCaps.maxComputeWorkGroupCount[1], mCaps.maxComputeWorkGroupCount[2]));
