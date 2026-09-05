@@ -59,6 +59,12 @@ namespace mpp
 		WeightedOit
 	};
 
+	enum class ParticleSortMode : uint32_t
+	{
+		None,
+		BackToFront
+	};
+
 	// Runtime visibility flags belong to a live particle effect rather than its
 	// reusable asset. More view masks can be added without changing particle data.
 	enum class ParticleEffectVisibilityFlag : uint32_t
@@ -229,6 +235,22 @@ namespace mpp
 		// Maximum draw distance and minimum projected diameter in pixels. Zero
 		// disables the corresponding test.
 		std::array<float, 4> culling{};
+		// Sort mode followed by reserved words. Back-to-front sorting is honoured
+		// only for the conventional alpha blend class; additive and weighted OIT
+		// appearances never enter the sorting path.
+		std::array<uint32_t, 4> sorting{};
+	};
+
+	constexpr bool particleAppearanceRequiresDepthSort(TemplateRenderData const& appearance) noexcept
+	{
+		return appearance.modes[3] == uint32_t(ParticleBlendClass::Alpha) &&
+			appearance.sorting[0] == uint32_t(ParticleSortMode::BackToFront);
+	}
+
+	struct ParticleSortRecord
+	{
+		uint32_t key{ 0 };
+		uint32_t particleIndex{ 0 };
 	};
 
 	// One CPU-to-GPU spawn command. spawnCounter is the first logical spawn
@@ -277,7 +299,8 @@ namespace mpp
 	static_assert(sizeof(ParticleRecord) == 64, "The std430 particle array stride must be exactly 64 bytes.");
 	static_assert(clampParticleDeltaSeconds(3.0f) == MaximumParticleDeltaSeconds);
 	static_assert(sizeof(EmitterSimData) == 304);
-	static_assert(sizeof(TemplateRenderData) == 80);
+	static_assert(sizeof(TemplateRenderData) == 96);
+	static_assert(sizeof(ParticleSortRecord) == 8);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);
 	static_assert(sizeof(ParticleCounterHeader) == 32);
 	static_assert(sizeof(ParticleDrawArraysIndirectCommand) == 16);

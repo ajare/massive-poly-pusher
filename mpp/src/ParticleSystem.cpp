@@ -45,6 +45,7 @@ namespace mpp
 				GLuint buffer{ 0 };
 				GLsync fence{ nullptr };
 				QueryPair simulation;
+				QueryPair sorting;
 				std::vector<QueryPair> renders;
 				uint64_t sequence{ 0 };
 				uint64_t sourceFrame{ 0 };
@@ -70,6 +71,12 @@ namespace mpp
 					GLuint ids[]{ slot.simulation.begin, slot.simulation.end };
 					glDeleteQueries(2, ids);
 					slot.simulation = {};
+				}
+				if (slot.sorting.begin)
+				{
+					GLuint ids[]{ slot.sorting.begin, slot.sorting.end };
+					glDeleteQueries(2, ids);
+					slot.sorting = {};
 				}
 				for (auto const& query : slot.renders)
 				{
@@ -103,6 +110,12 @@ namespace mpp
 		char const* CompactionCountProgramName = "__mpp_particle_compaction_count__";
 		char const* CompactionPrefixProgramName = "__mpp_particle_compaction_prefix__";
 		char const* CompactionScatterProgramName = "__mpp_particle_compaction_scatter__";
+		char const* SortPrepareProgramName = "__mpp_particle_sort_prepare__";
+		char const* SortKeyProgramName = "__mpp_particle_sort_keys__";
+		char const* RadixHistogramProgramName = "__mpp_particle_radix_histogram__";
+		char const* RadixPrefixProgramName = "__mpp_particle_radix_prefix__";
+		char const* RadixScatterProgramName = "__mpp_particle_radix_scatter__";
+		char const* SortFinalizeProgramName = "__mpp_particle_sort_finalize__";
 		char const* DrawProgramName = "__mpp_particle_draw__";
 		char const* WeightedOitDrawProgramName = "__mpp_particle_weighted_oit_draw__";
 
@@ -171,6 +184,10 @@ namespace mpp
 		mSpawnCommandBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
+		mSortDispatchCommand.reset();
+		mRadixHistogram.reset();
+		mSortRecordsB.reset();
+		mSortRecordsA.reset();
 		mCompactionDispatchCommand.reset();
 		mSimulationDispatchCommand.reset();
 		mIndirectCommands.reset();
@@ -198,6 +215,12 @@ namespace mpp
 		releaseProgram(mCompactionCountProgram);
 		releaseProgram(mCompactionPrefixProgram);
 		releaseProgram(mCompactionScatterProgram);
+		releaseProgram(mSortPrepareProgram);
+		releaseProgram(mSortKeyProgram);
+		releaseProgram(mRadixHistogramProgram);
+		releaseProgram(mRadixPrefixProgram);
+		releaseProgram(mRadixScatterProgram);
+		releaseProgram(mSortFinalizeProgram);
 		releaseProgram(mDrawProgram);
 		releaseProgram(mWeightedOitDrawProgram);
 	}
@@ -882,6 +905,7 @@ namespace mpp
 			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
 			auto elapsedMilliseconds = [](detail::ParticleStatisticsState::QueryPair const& query)
 			{
+				if (!query.begin || !query.end) return 0.0;
 				GLuint64 begin = 0, end = 0;
 				GL_CHECK(glGetQueryObjectui64v(query.begin, GL_QUERY_RESULT, &begin));
 				GL_CHECK(glGetQueryObjectui64v(query.end, GL_QUERY_RESULT, &end));
@@ -905,6 +929,7 @@ namespace mpp
 				stats.capacity = slot.capacity;
 				stats.capacityUsage = slot.capacity == 0u ? 0.0f : float(stats.activeParticles) / float(slot.capacity);
 				stats.simulationGpuMilliseconds = elapsedMilliseconds(slot.simulation);
+				stats.sortingGpuMilliseconds = elapsedMilliseconds(slot.sorting);
 				stats.renderGpuMilliseconds = 0.0;
 				for (auto const& query : slot.renders) stats.renderGpuMilliseconds += elapsedMilliseconds(query);
 				state.latestSequence = slot.sequence;
@@ -953,12 +978,23 @@ namespace mpp
 			GL_CHECK(glObjectLabel(GL_BUFFER, slot.buffer, -1, "Particle statistics readback"));
 			GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
 		}
-		GLuint ids[2]{};
-		GL_CHECK(glGenQueries(2, ids));
-		slot.simulation = { ids[0], ids[1] };
+		GLuint id{};
+		GL_CHECK(glGenQueries(1, &id));
+		slot.simulation = { id, 0 };
 		slot.activeListIndex = mActiveListIndex;
 		slot.capacity = mPoolCapacity;
 		GL_CHECK(glQueryCounter(slot.simulation.begin, GL_TIMESTAMP));
+	}
+
+	void ParticleSystem::finishSimulationTiming()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (slot.simulation.begin && !slot.simulation.end)
+		{
+			GL_CHECK(glGenQueries(1, &slot.simulation.end));
+			GL_CHECK(glQueryCounter(slot.simulation.end, GL_TIMESTAMP));
+		}
 	}
 
 	void ParticleSystem::finishStatisticsSample()
@@ -966,7 +1002,7 @@ namespace mpp
 		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
 		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
 		if (!slot.simulation.begin) return;
-		GL_CHECK(glQueryCounter(slot.simulation.end, GL_TIMESTAMP));
+		finishSimulationTiming();
 		slot.activeListIndex = mActiveListIndex;
 		slot.activeEmitters = uint32_t(getLiveEmitterCount());
 		GL_CHECK(glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT));
@@ -976,6 +1012,25 @@ namespace mpp
 		GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
 		GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
 		slot.submitted = true;
+	}
+
+	void ParticleSystem::beginSortTiming()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (!slot.simulation.begin || slot.sorting.begin) return;
+		GLuint ids[2]{};
+		GL_CHECK(glGenQueries(2, ids));
+		slot.sorting = { ids[0], ids[1] };
+		GL_CHECK(glQueryCounter(slot.sorting.begin, GL_TIMESTAMP));
+	}
+
+	void ParticleSystem::finishSortTiming()
+	{
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (slot.sorting.begin && slot.sorting.end)
+			GL_CHECK(glQueryCounter(slot.sorting.end, GL_TIMESTAMP));
 	}
 
 	void ParticleSystem::beginRenderTiming()
@@ -1130,6 +1185,129 @@ namespace mpp
 		mEmitterBuffer->markUsed();
 	}
 
+	void ParticleSystem::ensureSortBuffersAllocated()
+	{
+		if (mSortRecordsA) return;
+		auto createComputeProgram = [this](char const* name, char const* source)
+		{
+			auto stream = make_shared<ComputeProgramStream>(mwResourceManager);
+			stream->setSource(RawShaderStage::Compute, source);
+			stream->setDefine("MPP_PARTICLE_WORK_GROUP_SIZE", to_string(mWorkGroupSize));
+			auto program = mwResourceManager->declareResource(name, stream).first;
+			program->acquire(mwRenderSystem);
+			program->load();
+			return program;
+		};
+		mSortPrepareProgram = createComputeProgram(SortPrepareProgramName, ParticleSortPrepareComputeShader);
+		mSortKeyProgram = createComputeProgram(SortKeyProgramName, ParticleSortKeyComputeShader);
+		mRadixHistogramProgram = createComputeProgram(RadixHistogramProgramName, ParticleRadixHistogramComputeShader);
+		mRadixPrefixProgram = createComputeProgram(RadixPrefixProgramName, ParticleRadixPrefixComputeShader);
+		mRadixScatterProgram = createComputeProgram(RadixScatterProgramName, ParticleRadixScatterComputeShader);
+		mSortFinalizeProgram = createComputeProgram(SortFinalizeProgramName, ParticleSortFinalizeComputeShader);
+
+		size_t const recordBytes = size_t(mPoolCapacity) * sizeof(ParticleSortRecord);
+		size_t const groupCount = (size_t(mPoolCapacity) + mWorkGroupSize - 1u) / mWorkGroupSize;
+		size_t const histogramBytes = groupCount * 16u * sizeof(uint32_t);
+		size_t const largestBlock = max(recordBytes, histogramBytes);
+		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
+		{
+			THROW_MPP("Particle depth sorting needs a shader storage block of " + to_string(largestBlock) +
+				" bytes, exceeding the GPU maximum of " + to_string(mwRenderSystem->getCaps().maxShaderStorageBlockSize) + " bytes.",
+				__LINE__, __FILE__, __func__);
+		}
+		mSortRecordsA = make_unique<ShaderStorageBuffer>();
+		mSortRecordsA->create(recordBytes, nullptr, "Particle depth sort records A");
+		mSortRecordsB = make_unique<ShaderStorageBuffer>();
+		mSortRecordsB->create(recordBytes, nullptr, "Particle depth sort records B");
+		mRadixHistogram = make_unique<ShaderStorageBuffer>();
+		mRadixHistogram->create(histogramBytes, nullptr, "Particle radix group histograms");
+		mSortDispatchCommand = make_unique<ShaderStorageBuffer>();
+		mSortDispatchCommand->create(DispatchCommandBytes, nullptr, "Particle depth sort dispatch command");
+	}
+
+	void ParticleSystem::dispatchDepthSorts()
+	{
+		bool const hasDepthSort = any_of(mTemplateRenderData.begin(), mTemplateRenderData.end(),
+			particleAppearanceRequiresDepthSort);
+		if (!hasDepthSort) return;
+		ensureSortBuffersAllocated();
+		finishSimulationTiming();
+		beginSortTiming();
+
+		for (uint32_t templateIndex = 0; templateIndex < mTemplateRenderData.size(); ++templateIndex)
+		{
+			if (!particleAppearanceRequiresDepthSort(mTemplateRenderData[templateIndex])) continue;
+
+			mIndirectCommands->bindStorage(0u);
+			mSortDispatchCommand->bindStorage(1u);
+			auto* prepare = static_cast<ComputeProgram*>(mSortPrepareProgram.get());
+			prepare->use();
+			prepare->setUniform("TEMPLATE_INDEX", templateIndex);
+			prepare->dispatch(1u);
+			GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+			mParticlePool->bindStorage(0u);
+			mRenderIndices->bindStorage(1u);
+			mIndirectCommands->bindStorage(2u);
+			mSortRecordsA->bindStorage(3u);
+			auto* keys = static_cast<ComputeProgram*>(mSortKeyProgram.get());
+			keys->use();
+			keys->setUniform("TEMPLATE_INDEX", templateIndex);
+			mSortDispatchCommand->bindDispatchIndirect();
+			keys->dispatchIndirect();
+			GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+			ShaderStorageBuffer* input = mSortRecordsA.get();
+			ShaderStorageBuffer* output = mSortRecordsB.get();
+			for (uint32_t shift = 0u; shift < 32u; shift += 4u)
+			{
+				input->bindStorage(0u);
+				mIndirectCommands->bindStorage(1u);
+				mRadixHistogram->bindStorage(2u);
+				auto* histogram = static_cast<ComputeProgram*>(mRadixHistogramProgram.get());
+				histogram->use();
+				histogram->setUniform("TEMPLATE_INDEX", templateIndex);
+				histogram->setUniform("RADIX_SHIFT", shift);
+				mSortDispatchCommand->bindDispatchIndirect();
+				histogram->dispatchIndirect();
+				GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+				mIndirectCommands->bindStorage(0u);
+				mRadixHistogram->bindStorage(1u);
+				auto* prefix = static_cast<ComputeProgram*>(mRadixPrefixProgram.get());
+				prefix->use();
+				prefix->setUniform("TEMPLATE_INDEX", templateIndex);
+				prefix->dispatch(1u);
+				GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+				input->bindStorage(0u);
+				output->bindStorage(1u);
+				mIndirectCommands->bindStorage(2u);
+				mRadixHistogram->bindStorage(3u);
+				auto* scatter = static_cast<ComputeProgram*>(mRadixScatterProgram.get());
+				scatter->use();
+				scatter->setUniform("TEMPLATE_INDEX", templateIndex);
+				scatter->setUniform("RADIX_SHIFT", shift);
+				mSortDispatchCommand->bindDispatchIndirect();
+				scatter->dispatchIndirect();
+				GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+				swap(input, output);
+			}
+
+			input->bindStorage(0u);
+			mRenderIndices->bindStorage(1u);
+			mIndirectCommands->bindStorage(2u);
+			auto* finalize = static_cast<ComputeProgram*>(mSortFinalizeProgram.get());
+			finalize->use();
+			finalize->setUniform("TEMPLATE_INDEX", templateIndex);
+			mSortDispatchCommand->bindDispatchIndirect();
+			finalize->dispatchIndirect();
+			GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+		}
+		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+		finishSortTiming();
+	}
+
 	void ParticleSystem::simulate()
 	{
 		initialise();
@@ -1170,6 +1348,12 @@ namespace mpp
 			{
 				GpuDebugScope compactionScope("Particles: Compact by emitter template");
 				dispatchCompaction();
+			}
+			finishSimulationTiming();
+			if (any_of(mTemplateRenderData.begin(), mTemplateRenderData.end(), particleAppearanceRequiresDepthSort))
+			{
+				GpuDebugScope sortScope("Particles: Depth radix sort");
+				dispatchDepthSorts();
 			}
 			// Retirement happens only after this frame's simulation has consumed the
 			// old emitter record. Reusing a slot before then could retarget a particle.

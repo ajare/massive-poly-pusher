@@ -46,6 +46,7 @@ namespace mpp
 		uint32_t capacity{ 0 };
 		float capacityUsage{ 0.0f };
 		double simulationGpuMilliseconds{ 0.0 };
+		double sortingGpuMilliseconds{ 0.0 };
 		double renderGpuMilliseconds{ 0.0 };
 	};
 
@@ -126,6 +127,7 @@ namespace mpp
 
 		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
 		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
+		ResourcePtr mSortPrepareProgram, mSortKeyProgram, mRadixHistogramProgram, mRadixPrefixProgram, mRadixScatterProgram, mSortFinalizeProgram;
 		ResourcePtr mDrawProgram, mWeightedOitDrawProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
@@ -138,6 +140,10 @@ namespace mpp
 		std::unique_ptr<ShaderStorageBuffer> mIndirectCommands;
 		std::unique_ptr<ShaderStorageBuffer> mSimulationDispatchCommand;
 		std::unique_ptr<ShaderStorageBuffer> mCompactionDispatchCommand;
+		std::unique_ptr<ShaderStorageBuffer> mSortRecordsA;
+		std::unique_ptr<ShaderStorageBuffer> mSortRecordsB;
+		std::unique_ptr<ShaderStorageBuffer> mRadixHistogram;
+		std::unique_ptr<ShaderStorageBuffer> mSortDispatchCommand;
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
@@ -200,9 +206,14 @@ namespace mpp
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
 		void dispatchCompaction();
+		void ensureSortBuffersAllocated();
+		void dispatchDepthSorts();
 		void advanceStatisticsFrame();
 		void beginStatisticsSample();
+		void finishSimulationTiming();
 		void finishStatisticsSample();
+		void beginSortTiming();
+		void finishSortTiming();
 		void beginRenderTiming();
 		void finishRenderTiming();
 		void disableWithWarning(std::string const& reason);

@@ -62,6 +62,17 @@ namespace mpp
 			particleFlipbookFrame(8u, randomFixedRate, 1.25f, 2.0f, 4.0f, 11u) != 0u)
 			return fail("flipbook playback or combinable random start selected the wrong frame");
 
+		TemplateRenderData sortingAppearance;
+		sortingAppearance.sorting[0] = uint32_t(ParticleSortMode::BackToFront);
+		if (particleAppearanceRequiresDepthSort(sortingAppearance))
+			return fail("an additive particle appearance entered the depth-sort path");
+		sortingAppearance.modes[3] = uint32_t(ParticleBlendClass::WeightedOit);
+		if (particleAppearanceRequiresDepthSort(sortingAppearance))
+			return fail("a weighted OIT particle appearance entered the depth-sort path");
+		sortingAppearance.modes[3] = uint32_t(ParticleBlendClass::Alpha);
+		if (!particleAppearanceRequiresDepthSort(sortingAppearance))
+			return fail("an opted-in alpha particle appearance did not require depth sorting");
+
 		class TestParticleEffect final : public ParticleEffectSource
 		{
 			array<ParticleEmitterTemplate, 2> mTemplates;

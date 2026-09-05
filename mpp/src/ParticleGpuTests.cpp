@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <cmath>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -163,6 +164,8 @@ namespace mpp
 				system.dispatchSpawnCommands();
 				system.dispatchSimulation(dt);
 				system.dispatchCompaction();
+				system.finishSimulationTiming();
+				system.dispatchDepthSorts();
 				system.retireCompletedEmitters();
 				system.finishStatisticsSample();
 			};
@@ -218,7 +221,7 @@ namespace mpp
 				stats.killedParticles != 0u || stats.droppedParticles != 0u ||
 				stats.renderedParticles != 23u || stats.culledParticles != 0u ||
 				stats.activeEmitters != 1u || stats.capacity != capacity || stats.capacityUsage <= 0.0f ||
-				stats.simulationGpuMilliseconds < 0.0 || stats.renderGpuMilliseconds != 0.0)
+				stats.simulationGpuMilliseconds < 0.0 || stats.sortingGpuMilliseconds != 0.0 || stats.renderGpuMilliseconds != 0.0)
 				return fail("public ParticleStats did not publish the complete frame-lagged GPU snapshot");
 			system.setStatisticsEnabled(false);
 
@@ -266,6 +269,48 @@ namespace mpp
 			if (activeCount(cullingSnapshot) != 5u || cullingSnapshot.counters.renderedCount != 1u ||
 				cullingSnapshot.counters.culledCount != 4u)
 				return fail("frustum, distance, projected-size, or effect visibility culling did not compact five survivors to one draw");
+			runFrame(system, 10.0f);
+
+			stage = "GPU alpha depth radix sort";
+			if (system.mSortRecordsA || system.mSortRecordsB || system.mRadixHistogram || system.mSortDispatchCommand ||
+				renderSystem->getResourceManager()->getResource("__mpp_particle_sort_keys__", true))
+				return fail("additive and weighted OIT appearances allocated depth-sort resources");
+			auto sorted = burst(257u, 257u, 10.0f);
+			sorted.simulation.shapeSeedModulesBudget[0] = uint32_t(ParticleSpawnShape::Line);
+			sorted.simulation.shapeParameters = { 0.0f, 0.0f, 8.0f, 0.0f };
+			sorted.localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -20.0f });
+			sorted.appearance.modes[3] = uint32_t(ParticleBlendClass::Alpha);
+			sorted.appearance.sorting[0] = uint32_t(ParticleSortMode::BackToFront);
+			std::array sortedEmitters{ sorted };
+			auto sortedEffect = system.createEffect(sortedEmitters);
+			auto sortedEmitter = system.getEmitter(sortedEffect, 0u);
+			runFrame(system, 0.0f);
+			GL_CHECK(glFinish());
+			if (!system.mSortRecordsA || !system.mSortRecordsB || !system.mRadixHistogram || !system.mSortDispatchCommand ||
+				!renderSystem->getResourceManager()->getResource("__mpp_particle_sort_keys__", true))
+				return fail("an opted-in alpha appearance did not allocate depth-sort resources");
+			ParticleDrawArraysIndirectCommand sortedCommand;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(sortedEmitter.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(sortedCommand), &sortedCommand));
+			if (sortedCommand.instanceCount != 257u) return fail("depth-sort test appearance did not retain every visible particle");
+			std::vector<uint32_t> sortedIndices(sortedCommand.instanceCount);
+			uint32_t const sortedOffset = sortedCommand.first / 4u;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mRenderIndices->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(sortedOffset) * sizeof(uint32_t)),
+				GLsizeiptr(sortedIndices.size() * sizeof(uint32_t)), sortedIndices.data()));
+			float previousDepth = std::numeric_limits<float>::infinity();
+			for (uint32_t particleIndex : sortedIndices)
+			{
+				ParticleRecord particle;
+				GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mParticlePool->getBuffer()));
+				GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(particleIndex) * sizeof(ParticleRecord)),
+					sizeof(particle), &particle));
+				float const depth = -particle.positionAge[2];
+				if (depth > previousDepth) return fail("alpha render indices were not radix-sorted back-to-front");
+				previousDepth = depth;
+			}
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
 			runFrame(system, 10.0f);
 
 			stage = "std430 particle record stride";

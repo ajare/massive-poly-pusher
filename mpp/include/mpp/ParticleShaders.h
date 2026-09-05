@@ -615,7 +615,7 @@ layout(std140, binding = 3) uniform CameraFrame
 
 struct ParticleRecord { vec4 positionAge; vec4 velocityLifetime; uint packedColour; float baseSize; float rotation; float angularVelocity; uint emitterIndex; uint seed; uint flags; uint padding; };
 struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; };
-struct TemplateRenderData { uvec4 textureAndAtlas; vec4 tintAndAlpha; vec4 appearance; uvec4 modes; vec4 culling; };
+struct TemplateRenderData { uvec4 textureAndAtlas; vec4 tintAndAlpha; vec4 appearance; uvec4 modes; vec4 culling; uvec4 sorting; };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
 layout(std430, binding = 2) restrict readonly buffer ParticleActiveIndicesA { uint ACTIVE_INDICES_A[]; };
@@ -796,6 +796,7 @@ struct TemplateRenderData
     vec4 appearance;
     uvec4 modes;
     vec4 culling;
+    uvec4 sorting;
 };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool
@@ -893,6 +894,187 @@ void main()
 }
 )MPP";
 
+	// Reads one GPU-authored indirect draw command and turns its instance count
+	// into the indirect work size shared by all radix stages for that appearance.
+	inline char const* ParticleSortPrepareComputeShader = R"MPP(#version 430
+
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+layout(std430, binding = 1) restrict writeonly buffer ParticleSortDispatchCommand { uint DISPATCH_COMMAND[]; };
+uniform uint TEMPLATE_INDEX;
+
+void main()
+{
+    uint count = INDIRECT_COMMANDS[TEMPLATE_INDEX * 4u + 1u];
+    DISPATCH_COMMAND[0] = (count + MPP_PARTICLE_WORK_GROUP_SIZE - 1u) / MPP_PARTICLE_WORK_GROUP_SIZE;
+    DISPATCH_COMMAND[1] = 1u;
+    DISPATCH_COMMAND[2] = 1u;
+}
+)MPP";
+
+	// Generates an IEEE-754 depth key and particle-index pair for one opted-in
+	// alpha appearance. Complementing the monotonic float key makes the ascending
+	// radix result render far-to-near.
+	inline char const* ParticleSortKeyComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std140, binding = 3) uniform CameraFrame
+{
+    mat4 VIEW_MATRIX;
+    mat4 PROJECTION_MATRIX;
+    mat4 INVERSE_PROJECTION_MATRIX;
+    vec4 VIEWPORT_SIZE;
+    vec4 NEAR_FAR_TIME;
+};
+struct ParticleRecord { vec4 positionAge; vec4 velocityLifetime; uint packedColour; float baseSize; float rotation; float angularVelocity; uint emitterIndex; uint seed; uint flags; uint padding; };
+layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
+layout(std430, binding = 1) restrict readonly buffer ParticleRenderIndices { uint RENDER_INDICES[]; };
+layout(std430, binding = 2) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+layout(std430, binding = 3) restrict writeonly buffer ParticleSortRecords { uvec2 SORT_RECORDS[]; };
+uniform uint TEMPLATE_INDEX;
+
+uint descendingFloatKey(float value)
+{
+    uint bits = floatBitsToUint(value);
+    uint ascending = (bits & 0x80000000u) != 0u ? ~bits : bits ^ 0x80000000u;
+    return ~ascending;
+}
+
+void main()
+{
+    uint command = TEMPLATE_INDEX * 4u;
+    uint count = INDIRECT_COMMANDS[command + 1u];
+    uint localOrdinal = gl_GlobalInvocationID.x;
+    if (localOrdinal >= count) return;
+    uint rangeOffset = INDIRECT_COMMANDS[command + 2u] / 4u;
+    uint ordinal = rangeOffset + localOrdinal;
+    uint particleIndex = RENDER_INDICES[ordinal];
+    float viewDepth = -(VIEW_MATRIX * vec4(PARTICLES[particleIndex].positionAge.xyz, 1.0)).z;
+    SORT_RECORDS[ordinal] = uvec2(descendingFloatKey(viewDepth), particleIndex);
+}
+)MPP";
+
+	// One histogram belongs to each work group. Reusing the same scratch from one
+	// appearance and nibble to the next avoids both clears and capacity-sized work
+	// for additive appearances.
+	inline char const* ParticleRadixHistogramComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleSortRecords { uvec2 SORT_RECORDS[]; };
+layout(std430, binding = 1) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+layout(std430, binding = 2) restrict writeonly buffer ParticleRadixHistogram { uint GROUP_BUCKETS[]; };
+uniform uint TEMPLATE_INDEX;
+uniform uint RADIX_SHIFT;
+shared uint LOCAL_BUCKETS[16];
+
+void main()
+{
+    for (uint bucket = gl_LocalInvocationID.x; bucket < 16u; bucket += gl_WorkGroupSize.x)
+        LOCAL_BUCKETS[bucket] = 0u;
+    barrier();
+    uint command = TEMPLATE_INDEX * 4u;
+    uint count = INDIRECT_COMMANDS[command + 1u];
+    uint localOrdinal = gl_GlobalInvocationID.x;
+    if (localOrdinal < count)
+    {
+        uint rangeOffset = INDIRECT_COMMANDS[command + 2u] / 4u;
+        uint digit = (SORT_RECORDS[rangeOffset + localOrdinal].x >> RADIX_SHIFT) & 15u;
+        atomicAdd(LOCAL_BUCKETS[digit], 1u);
+    }
+    barrier();
+    for (uint bucket = gl_LocalInvocationID.x; bucket < 16u; bucket += gl_WorkGroupSize.x)
+        GROUP_BUCKETS[gl_WorkGroupID.x * 16u + bucket] = LOCAL_BUCKETS[bucket];
+}
+)MPP";
+
+	// The capped pool has at most 16,384 groups. A single deterministic scan is
+	// small relative to sorting the particles and supplies stable global offsets
+	// without subgroup extensions or a CPU-visible count.
+	inline char const* ParticleRadixPrefixComputeShader = R"MPP(#version 430
+
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+layout(std430, binding = 1) restrict buffer ParticleRadixHistogram { uint GROUP_BUCKETS[]; };
+uniform uint TEMPLATE_INDEX;
+
+void main()
+{
+    uint count = INDIRECT_COMMANDS[TEMPLATE_INDEX * 4u + 1u];
+    uint groupCount = (count + MPP_PARTICLE_WORK_GROUP_SIZE - 1u) / MPP_PARTICLE_WORK_GROUP_SIZE;
+    uint bucketBase = 0u;
+    for (uint bucket = 0u; bucket < 16u; ++bucket)
+    {
+        uint running = 0u;
+        for (uint group = 0u; group < groupCount; ++group)
+        {
+            uint address = group * 16u + bucket;
+            uint groupCountForBucket = GROUP_BUCKETS[address];
+            GROUP_BUCKETS[address] = bucketBase + running;
+            running += groupCountForBucket;
+        }
+        bucketBase += running;
+    }
+}
+)MPP";
+
+	// Stable scatter is the defining radix property. Each lane computes its rank
+	// among earlier lanes with the same nibble; the prefix stage contributes every
+	// earlier work group's count. Eight four-bit passes cover the complete key.
+	inline char const* ParticleRadixScatterComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleSortInput { uvec2 INPUT_RECORDS[]; };
+layout(std430, binding = 1) restrict writeonly buffer ParticleSortOutput { uvec2 OUTPUT_RECORDS[]; };
+layout(std430, binding = 2) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+layout(std430, binding = 3) restrict readonly buffer ParticleRadixHistogram { uint GROUP_BUCKETS[]; };
+uniform uint TEMPLATE_INDEX;
+uniform uint RADIX_SHIFT;
+shared uint LOCAL_DIGITS[MPP_PARTICLE_WORK_GROUP_SIZE];
+
+void main()
+{
+    uint command = TEMPLATE_INDEX * 4u;
+    uint count = INDIRECT_COMMANDS[command + 1u];
+    uint localOrdinal = gl_GlobalInvocationID.x;
+    uint lane = gl_LocalInvocationID.x;
+    uint rangeOffset = INDIRECT_COMMANDS[command + 2u] / 4u;
+    uvec2 record = uvec2(0u);
+    uint digit = 16u;
+    if (localOrdinal < count)
+    {
+        record = INPUT_RECORDS[rangeOffset + localOrdinal];
+        digit = (record.x >> RADIX_SHIFT) & 15u;
+    }
+    LOCAL_DIGITS[lane] = digit;
+    barrier();
+    if (localOrdinal >= count) return;
+    uint localRank = 0u;
+    for (uint earlier = 0u; earlier < lane; ++earlier)
+        if (LOCAL_DIGITS[earlier] == digit) ++localRank;
+    uint destination = GROUP_BUCKETS[gl_WorkGroupID.x * 16u + digit] + localRank;
+    OUTPUT_RECORDS[rangeOffset + destination] = record;
+}
+)MPP";
+
+	inline char const* ParticleSortFinalizeComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleSortRecords { uvec2 SORT_RECORDS[]; };
+layout(std430, binding = 1) restrict writeonly buffer ParticleRenderIndices { uint RENDER_INDICES[]; };
+layout(std430, binding = 2) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+uniform uint TEMPLATE_INDEX;
+
+void main()
+{
+    uint command = TEMPLATE_INDEX * 4u;
+    uint count = INDIRECT_COMMANDS[command + 1u];
+    uint localOrdinal = gl_GlobalInvocationID.x;
+    if (localOrdinal >= count) return;
+    uint rangeOffset = INDIRECT_COMMANDS[command + 2u] / 4u;
+    RENDER_INDICES[rangeOffset + localOrdinal] = SORT_RECORDS[rangeOffset + localOrdinal].y;
+}
+)MPP";
+
 	// Attribute-less instanced billboards. Basis-only modes share square
 	// expansion; velocity-stretched mode supplies independent half-extents.
 	inline char const* ParticleDrawVertexShader = R"MPP(#version 430
@@ -958,6 +1140,7 @@ struct TemplateRenderData
     vec4 appearance;
     uvec4 modes;
     vec4 culling;
+    uvec4 sorting;
 };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };

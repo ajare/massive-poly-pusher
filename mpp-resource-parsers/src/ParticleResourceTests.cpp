@@ -53,6 +53,8 @@ namespace mpp::resource_parsers
 		};
 		for (size_t index = 0; index < blendClasses.size(); ++index)
 			if (blendClasses[index] != index) return fail("particle blend-class wire values changed");
+		if (uint32_t(ParticleSortMode::None) != 0u || uint32_t(ParticleSortMode::BackToFront) != 1u)
+			return fail("particle sort-mode wire values changed");
 
 		ParticleEmitterTemplate emitter;
 		if (emitter.simulation.emissionState[1] != 1u ||
@@ -60,7 +62,8 @@ namespace mpp::resource_parsers
 			emitter.simulation.parameterMultipliers0 != std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 1.0f } ||
 			emitter.appearance.textureAndAtlas[2] != 1u || emitter.appearance.textureAndAtlas[3] != 1u ||
 			emitter.appearance.modes[0] != 1u || emitter.appearance.modes[2] != uint32_t(ParticleBillboardMode::CameraFacing) ||
-			emitter.appearance.modes[3] != uint32_t(ParticleBlendClass::Additive))
+			emitter.appearance.modes[3] != uint32_t(ParticleBlendClass::Additive) ||
+			emitter.appearance.sorting[0] != uint32_t(ParticleSortMode::None))
 			return fail("particle emitter-template resource defaults changed");
 
 		// Resource construction must copy templates. A reusable particle effect
@@ -87,7 +90,8 @@ namespace mpp::resource_parsers
 		authored.value.appearance.textureAndAtlas = { 0u, 0u, 4u, 4u };
 		authored.value.appearance.culling = { 250.0f, 1.5f, 0.0f, 0.0f };
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
-			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::WeightedOit) };
+			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::Alpha) };
+		authored.value.appearance.sorting[0] = uint32_t(ParticleSortMode::BackToFront);
 		authored.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
 		authored.value.colourGradient.keys = { { 0.0f, { 1.0f, 0.5f, 0.1f } }, { 1.0f, { 0.1f, 0.2f, 0.3f } } };
 		specification.emitterTemplates.push_back(authored);
@@ -104,6 +108,7 @@ namespace mpp::resource_parsers
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
 			restored.emitterTemplates[0].value.appearance.modes != authored.value.appearance.modes ||
 			restored.emitterTemplates[0].value.appearance.culling != authored.value.appearance.culling ||
+			restored.emitterTemplates[0].value.appearance.sorting != authored.value.appearance.sorting ||
 			restored.emitterTemplates[0].value.localTransform[3][0] != 2.0f ||
 			restored.emitterTemplates[0].value.curves[size_t(ParticleScalarCurve::Size)].keys.size() != 2 ||
 			restored.emitterTemplates[0].value.colourGradient.keys.size() != 2)

@@ -172,6 +172,7 @@ void ParticleScene::createDemoEffect()
 	mist.simulation.initialVelocityMin = { -0.05f, 0.02f, -0.05f, 0.0f };
 	mist.simulation.initialVelocityMax = { 0.05f, 0.18f, 0.05f, 0.0f };
 	mist.appearance.tintAndAlpha = { 0.65f, 0.8f, 1.0f, 0.55f };
+	mist.appearance.sorting[0] = uint32_t(mpp::ParticleSortMode::BackToFront);
 	specification.emitterTemplates.push_back({ "alpha-box-mist", mist, {} });
 
 	auto flipbook = emitterTemplate(mpp::ParticleSpawnShape::Sphere, mpp::ParticleBlendClass::Alpha, { 2.2f, 0.85f, 0.0f }, 12000u);
@@ -274,8 +275,8 @@ std::vector<std::string> ParticleScene::getOverlayLines() const
 		stats.capacity, stats.capacityUsage * 100.0f, stats.freeParticles, stats.activeEmitters));
 	lines.push_back(std::format("Spawned {}  killed {}  dropped/exhausted {}", stats.spawnedParticles,
 		stats.killedParticles, stats.droppedParticles));
-	lines.push_back(std::format("Rendered {}  culled {}  GPU sim {:.3f} ms  draw {:.3f} ms  lag {} frames",
+	lines.push_back(std::format("Rendered {}  culled {}  GPU sim {:.3f} ms  sort {:.3f} ms  draw {:.3f} ms  lag {} frames",
 		stats.renderedParticles, stats.culledParticles, stats.simulationGpuMilliseconds,
-		stats.renderGpuMilliseconds, stats.framesLagged));
+		stats.sortingGpuMilliseconds, stats.renderGpuMilliseconds, stats.framesLagged));
 	return lines;
 }

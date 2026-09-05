@@ -34,9 +34,9 @@ Spec §31, plus two deliberate additions reasoned through during design:
 
 Everything else in §32 is out of scope and filed as follow-up issues.
 
-**Known limitation to carry into review:** alpha-blended particles are unsorted
-in this version, because GPU sorting is §32. This is visible as inter-particle
-ordering artefacts in dense smoke. It is a deliberate trade, not a defect.
+Alpha-blended appearances may now opt into GPU back-to-front radix sorting.
+The initial unsorted path remains the default so appearances that do not need
+exact ordering retain its lower cost.
 
 ## 1. Capability probing
 
@@ -177,13 +177,13 @@ frequency/strength/scroll), particle budget, live count, emission mode
 (continuous or burst), spawn rate or burst count, enabled flag, and the six
 runtime parameter multipliers.
 
-**`TemplateRenderData`** (~64 B) — albedo texture handle, colour tint, alpha
+**`TemplateRenderData`** (96 B) — albedo texture handle, colour tint, alpha
 multiplier, emissive intensity, soft-particle fade distance, atlas columns, rows,
-frame count, animation mode and rate, curve LUT row offset, billboard mode, and
-blend class.
+frame count, animation mode and rate, curve LUT row offset, billboard mode,
+blend class, culling thresholds, and the optional depth-sort mode.
 
 **Status:** done. The 64-byte `ParticleRecord`, split `EmitterSimData` and
-64-byte `TemplateRenderData` have matching C++ and GLSL declarations. The GPU
+96-byte `TemplateRenderData` have matching C++ and GLSL declarations. The GPU
 suite introspects the linked spawn kernel's `GL_TOP_LEVEL_ARRAY_STRIDE`.
 
 **Acceptance:** the particle record is exactly 64 bytes under `std430`, verified
@@ -655,6 +655,13 @@ also counts visible particles; prefix generation writes visible indirect counts,
 and scatter repeats the camera-frustum, maximum-distance, projected-size and
 live particle-effect visibility predicate into the compact render list. Results
 remain GPU-resident except through the existing optional lagged statistics path.
+
+Opted-in conventional alpha appearances generate camera-depth keys after
+compaction and run eight stable four-bit GPU radix passes within their existing
+per-template render ranges. Sort buffers allocate lazily on the first such
+appearance, and additive and weighted OIT appearances dispatch no sorting work.
+The final particle indices remain GPU-resident and feed the unchanged indirect
+draw commands.
 
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and

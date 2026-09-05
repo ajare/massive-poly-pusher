@@ -31,6 +31,7 @@ namespace mpp
 		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED", "BILLBOARD_VELOCITY_STRETCHED" })
 			if (particleVertex.find(mode) == std::string::npos) return fail("particle shader lost a required billboard mode");
 		auto const particleFragment = std::string(ParticleDrawFragmentShader);
+		auto const radixScatter = std::string(ParticleRadixScatterComputeShader);
 		auto const oitResolve = std::string(ParticleWeightedOitResolveFragmentShader);
 		if (particleVertex.find("particleHalfExtents") == std::string::npos ||
 			particleVertex.find("length(projectedVelocity)") == std::string::npos ||
@@ -41,9 +42,11 @@ namespace mpp
 			particleFragment.find("linearViewDepth(sceneDepth) - PARTICLE_VIEW_DEPTH") == std::string::npos ||
 			particleFragment.find("MPP_PARTICLE_WEIGHTED_OIT") == std::string::npos ||
 			particleFragment.find("-log(max(1.0 - alpha") == std::string::npos ||
+			std::string(ParticleSortKeyComputeShader).find("descendingFloatKey") == std::string::npos ||
+			radixScatter.find("LOCAL_DIGITS[earlier] == digit") == std::string::npos ||
 			oitResolve.find("exp(-opticalDepth)") == std::string::npos ||
 			oitResolve.find("accumulation.rgb / max(accumulation.a") == std::string::npos)
-			return fail("particle shader lost billboard expansion, animation, soft depth, or weighted blended OIT");
+			return fail("particle shader lost billboard expansion, animation, soft depth, radix sorting, or weighted blended OIT");
 		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
