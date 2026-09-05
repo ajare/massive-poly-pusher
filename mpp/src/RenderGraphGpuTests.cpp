@@ -1902,9 +1902,9 @@ void main()
 				particleScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 1.0f));
 				auto particleCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 6.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
 
-				// One template per billboard basis plus an alpha-class template exercises
+				// One template per billboard mode plus an alpha-class template exercises
 				// both authored command spans. The burst is submitted by the first graph.
-				std::array<ParticleEmitterTemplate, 6> particleTemplates{};
+				std::array<ParticleEmitterTemplate, 7> particleTemplates{};
 				for (uint32_t index = 0; index < particleTemplates.size(); ++index)
 				{
 					auto& emitter = particleTemplates[index];
@@ -1912,9 +1912,9 @@ void main()
 					emitter.simulation.shapeSeedModulesBudget[3] = 1u;
 					emitter.simulation.lifetimeSizeRanges = { 10.0f, 10.0f, 0.35f, 0.35f };
 					emitter.simulation.initialVelocityMin = emitter.simulation.initialVelocityMax = { 0.0f, 1.0f, 0.0f, 0.0f };
-					emitter.localTransform = glm::translate(glm::mat4(1.0f), { (float(index) - 2.5f) * 0.55f, 0.0f, 0.0f });
+					emitter.localTransform = glm::translate(glm::mat4(1.0f), { (float(index) - 3.0f) * 0.55f, 0.0f, 0.0f });
 					emitter.appearance.appearance[1] = 1.0f;
-					emitter.appearance.modes[2] = std::min(index, uint32_t(ParticleBillboardMode::VelocityAligned));
+					emitter.appearance.modes[2] = std::min(index, uint32_t(ParticleBillboardMode::VelocityStretched));
 					emitter.appearance.modes[3] = index == particleTemplates.size() - 1u
 						? uint32_t(ParticleBlendClass::Alpha) : uint32_t(ParticleBlendClass::Additive);
 				}

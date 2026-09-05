@@ -54,4 +54,6 @@ ParticleEffect:
 
 Supported spawn shapes are `point`, `line`, `box`, `sphere`, `hemisphere`, `disc`, and `cone`. Curves may also contain `Alpha`, `VelocityMultiplier`, `Drag`, `RotationSpeed`, and `EmissiveIntensity` blocks.
 
+Supported billboard values are `cameraFacing`, `screenAligned`, `cylindrical`, `axisLocked`, `velocityAligned`, and `velocityStretched`. `velocityStretched` keeps the particle's authored width while lengthening it along its camera-projected velocity; stationary particles retain a square fallback and particle rotation is ignored so the long axis remains velocity-aligned.
+
 `Gravity`, `Drag`, and `Noise` are named optional blocks, not a sequence. Their evaluation order is fixed by the engine and cannot be authored. `maximumParticleCount` at effect level must exactly equal the sum of all emitter-template values; enforcement at runtime remains per emitter template.

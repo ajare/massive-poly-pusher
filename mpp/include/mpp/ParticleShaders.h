@@ -843,8 +843,8 @@ void main()
 }
 )MPP";
 
-	// Attribute-less instanced billboards. Every mode constructs only a basis;
-	// expandParticleQuad is the single expansion path used by all five modes.
+	// Attribute-less instanced billboards. Basis-only modes share square
+	// expansion; velocity-stretched mode supplies independent half-extents.
 	inline char const* ParticleDrawVertexShader = R"MPP(#version 430
 
 layout(std140, binding = 3) uniform CameraFrame
@@ -861,6 +861,7 @@ const uint BILLBOARD_SCREEN_ALIGNED = 1u;
 const uint BILLBOARD_CYLINDRICAL = 2u;
 const uint BILLBOARD_AXIS_LOCKED = 3u;
 const uint BILLBOARD_VELOCITY_ALIGNED = 4u;
+const uint BILLBOARD_VELOCITY_STRETCHED = 5u;
 const uint ANIMATION_PLAYBACK_MASK = 0xffu;
 const uint ANIMATION_FRAME_OVER_LIFE = 1u;
 const uint ANIMATION_FIXED_RATE = 2u;
@@ -954,9 +955,10 @@ void billboardBasis(ParticleRecord particle, EmitterSimData emitter, uint mode,
         up = safeNormal(mat3(emitter.transform) * vec3(0.0, 1.0, 0.0), screenUp);
         right = safeNormal(cross(up, toCamera), screenRight);
     }
-    else if (mode == BILLBOARD_VELOCITY_ALIGNED)
+    else if (mode == BILLBOARD_VELOCITY_ALIGNED || mode == BILLBOARD_VELOCITY_STRETCHED)
     {
-        up = safeNormal(particle.velocityLifetime.xyz - viewForward * dot(particle.velocityLifetime.xyz, viewForward), screenUp);
+        vec3 projectedVelocity = particle.velocityLifetime.xyz - viewForward * dot(particle.velocityLifetime.xyz, viewForward);
+        up = safeNormal(projectedVelocity, screenUp);
         right = safeNormal(cross(viewForward, up), screenRight);
     }
     else
@@ -966,13 +968,23 @@ void billboardBasis(ParticleRecord particle, EmitterSimData emitter, uint mode,
     }
 }
 
-vec3 expandParticleQuad(vec3 centre, vec3 right, vec3 up, vec2 corner, float size, float rotation)
+vec2 particleHalfExtents(ParticleRecord particle, uint mode, vec3 viewForward, float size)
+{
+    if (mode != BILLBOARD_VELOCITY_STRETCHED) return vec2(size);
+    vec3 projectedVelocity = particle.velocityLifetime.xyz - viewForward * dot(particle.velocityLifetime.xyz, viewForward);
+    // Screen-plane speed contributes a dimensionless stretch ratio: stationary
+    // particles remain square and faster motion lengthens only the velocity axis.
+    return vec2(size, size * (1.0 + length(projectedVelocity)));
+}
+
+vec3 expandParticleQuad(vec3 centre, vec3 right, vec3 up, vec2 corner,
+    vec2 halfExtents, float rotation)
 {
     vec2 offset = corner * 2.0 - 1.0;
     float sineRotation = sin(rotation);
     float cosineRotation = cos(rotation);
     offset = mat2(cosineRotation, sineRotation, -sineRotation, cosineRotation) * offset;
-    return centre + (right * offset.x + up * offset.y) * size;
+    return centre + right * offset.x * halfExtents.x + up * offset.y * halfExtents.y;
 }
 
 uint flipbookFrame(ParticleRecord particle, TemplateRenderData appearance)
@@ -1020,8 +1032,13 @@ void main()
     vec3 up;
     billboardBasis(particle, emitter, appearance.modes.z, cameraPosition,
         screenRight, screenUp, viewForward, right, up);
+    float size = particle.baseSize * scalarCurves0.x;
+    vec2 halfExtents = particleHalfExtents(particle, appearance.modes.z, viewForward, size);
+    // Rotation would turn the long axis away from projected velocity, so the
+    // stretched mode deliberately treats velocity as its complete orientation.
+    float rotation = appearance.modes.z == BILLBOARD_VELOCITY_STRETCHED ? 0.0 : particle.rotation;
     vec3 worldPosition = expandParticleQuad(particle.positionAge.xyz, right, up,
-        corner, particle.baseSize * scalarCurves0.x, particle.rotation);
+        corner, halfExtents, rotation);
 
     uint columns = max(1u, appearance.textureAndAtlas.z);
     uint rows = max(1u, appearance.textureAndAtlas.w);

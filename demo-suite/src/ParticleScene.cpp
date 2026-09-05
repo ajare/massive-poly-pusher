@@ -157,6 +157,7 @@ void ParticleScene::createDemoEffect()
 	cone.simulation.shapeParameters = { 0.8f, 0.35f, 0.0f, 0.0f };
 	cone.simulation.shapeSeedModulesBudget[2] = uint32_t(mpp::ParticleBehaviourModule::Gravity);
 	cone.simulation.gravityAndDrag = { 0.0f, -0.35f, 0.0f, 0.0f };
+	cone.appearance.modes[2] = uint32_t(mpp::ParticleBillboardMode::VelocityStretched);
 	specification.emitterTemplates.push_back({ "additive-cone", cone, {} });
 
 	auto disc = emitterTemplate(mpp::ParticleSpawnShape::Disc, mpp::ParticleBlendClass::Additive, { 0.0f, 0.02f, -2.0f }, 12000u);

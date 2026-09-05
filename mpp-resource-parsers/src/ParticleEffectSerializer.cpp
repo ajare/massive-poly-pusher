@@ -14,7 +14,7 @@ namespace mpp::resource_parsers
 			std::ostringstream output; bool first=true;for(auto const& item:range){if(!first)output<<' ';first=false;output<<item;}return output.str();
 		}
 		char const* shape(uint32_t value){static char const* names[]{"point","line","box","sphere","hemisphere","disc","cone"};return value<7?names[value]:"point";}
-		char const* billboard(uint32_t value){static char const* names[]{"cameraFacing","screenAligned","cylindrical","axisLocked","velocityAligned"};return value<5?names[value]:"cameraFacing";}
+		char const* billboard(uint32_t value){static char const* names[]{"cameraFacing","screenAligned","cylindrical","axisLocked","velocityAligned","velocityStretched"};return value<6?names[value]:"cameraFacing";}
 		void curve(StructuredDataWriteNode* parent,char const* name,ParticleCurve const& value)
 		{
 			auto node=parent->createChild(name);node->createChild("default")->setValue(value.defaultValue);auto keys=node->createChild("Keys");for(auto const& key:value.keys){auto item=keys->createChild("Key");item->createChild("time")->setValue(key.time);item->createChild("value")->setValue(key.value);}

@@ -28,9 +28,11 @@ namespace mpp
 		};
 		if (!validatesBuiltInNormalContract(FragmentShader3dTemplate)) return fail("built-in legacy shader lost the location-2 view-space octahedral shading-normal contract");
 		auto const particleVertex = std::string(ParticleDrawVertexShader);
-		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED" })
+		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED", "BILLBOARD_VELOCITY_STRETCHED" })
 			if (particleVertex.find(mode) == std::string::npos) return fail("particle shader lost a required billboard mode");
-		if (particleVertex.find("expandParticleQuad") == std::string::npos ||
+		if (particleVertex.find("particleHalfExtents") == std::string::npos ||
+			particleVertex.find("length(projectedVelocity)") == std::string::npos ||
+			particleVertex.find("expandParticleQuad") == std::string::npos ||
 			particleVertex.find("ANIMATION_FRAME_OVER_LIFE") == std::string::npos ||
 			particleVertex.find("ANIMATION_FIXED_RATE") == std::string::npos ||
 			particleVertex.find("ANIMATION_RANDOM_START") == std::string::npos ||

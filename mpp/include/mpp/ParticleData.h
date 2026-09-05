@@ -35,7 +35,8 @@ namespace mpp
 		ScreenAligned,
 		Cylindrical,
 		AxisLocked,
-		VelocityAligned
+		VelocityAligned,
+		VelocityStretched
 	};
 
 	enum class ParticleTextureAnimation : uint32_t
