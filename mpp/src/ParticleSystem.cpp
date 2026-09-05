@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -126,7 +127,9 @@ namespace mpp
 		constexpr uint32_t CountersBinding = 4;
 		constexpr uint32_t EmitterBinding = 5;
 		// Bindings six and seven are stage-local aliases. Template data is draw-only;
-		// scratch, spawn, dispatch, and indirect buffers are never read together.
+		// scratch, spawn, dispatch, collision, and indirect buffers are never read together.
+		constexpr uint32_t ColliderBinding = 6;
+		constexpr uint32_t SignedDistanceFieldBinding = 7;
 		constexpr uint32_t TemplateRenderBinding = 6;
 		constexpr uint32_t CompactionScratchBinding = 6;
 		constexpr uint32_t SpawnCommandBinding = 7;
@@ -181,6 +184,10 @@ namespace mpp
 			mVertexArray = 0;
 		}
 
+		mScreenSpaceCollisionDepth.reset();
+		mSignedDistanceFieldTexture.reset();
+		mSignedDistanceFieldBuffer.reset();
+		mColliderBuffer.reset();
 		mSpawnCommandBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
@@ -370,10 +377,12 @@ namespace mpp
 		size_t const emitterBytes = size_t(MaxEmitterCount) * sizeof(EmitterSimData);
 		size_t const templateBytes = size_t(MaxTemplateCount) * sizeof(TemplateRenderData);
 		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
+		size_t const colliderBytes = size_t(MaxColliderCount) * sizeof(ParticleCollider);
+		size_t const signedDistanceFieldBytes = sizeof(ParticleSignedDistanceFieldData);
 		size_t const compactionScratchBytes = size_t(MaxTemplateCount) * 3u * sizeof(uint32_t);
 		size_t const indirectCommandBytes = size_t(MaxTemplateCount) * sizeof(ParticleDrawArraysIndirectCommand);
 		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes,
-			compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
+			colliderBytes, signedDistanceFieldBytes, compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
 		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
 		{
 			THROW_MPP("The configured particle buffers need a shader storage block of " + to_string(largestBlock) +
@@ -414,6 +423,12 @@ namespace mpp
 		mSpawnCommandBuffer = make_unique<detail::PersistentMappedBuffer>();
 		mSpawnCommandBuffer->create(GL_SHADER_STORAGE_BUFFER, commandBytes, max(1, storageAlignment), persistent,
 			mSpawnCommands.data(), bytes(mSpawnCommands), "Particle spawn commands");
+		mColliderBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mColliderBuffer->create(GL_SHADER_STORAGE_BUFFER, colliderBytes, max(1, storageAlignment), persistent,
+			mColliders.data(), bytes(mColliders), "Particle analytical colliders");
+		mSignedDistanceFieldBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mSignedDistanceFieldBuffer->create(GL_SHADER_STORAGE_BUFFER, signedDistanceFieldBytes, max(1, storageAlignment), persistent,
+			&mSignedDistanceFieldData, sizeof(mSignedDistanceFieldData), "Particle signed distance field data");
 
 		mFreeIndices->bindStorage(FreeIndicesBinding);
 		mCounters->bindStorage(CountersBinding);
@@ -659,6 +674,45 @@ namespace mpp
 		}
 	}
 
+	void ParticleSystem::setColliders(span<ParticleCollider const> colliders)
+	{
+		if (colliders.size() > MaxColliderCount)
+			throw invalid_argument("ParticleSystem::setColliders exceeds MaxColliderCount.");
+		for (auto const& collider : colliders)
+			if (collider.shapeAndPadding[0] > uint32_t(ParticleColliderShape::Capsule))
+				throw invalid_argument("ParticleSystem::setColliders received an unknown analytical collider shape.");
+		mColliders.assign(colliders.begin(), colliders.end());
+	}
+
+	void ParticleSystem::setSignedDistanceField(ResourcePtr texture, glm::mat4 const& worldToTexture,
+		float distanceScale, float isoValue)
+	{
+		if (!texture)
+		{
+			clearSignedDistanceField();
+			return;
+		}
+		if (!isfinite(distanceScale) || distanceScale <= 0.0f || !isfinite(isoValue))
+			throw invalid_argument("ParticleSystem::setSignedDistanceField requires a finite positive distance scale and finite iso value.");
+		mSignedDistanceFieldTexture = std::move(texture);
+		copy_n(glm::value_ptr(worldToTexture), mSignedDistanceFieldData.worldToTexture.size(),
+			mSignedDistanceFieldData.worldToTexture.begin());
+		mSignedDistanceFieldData.parameters = { distanceScale, isoValue, 1.0f, 0.0f };
+	}
+
+	void ParticleSystem::clearSignedDistanceField()
+	{
+		mSignedDistanceFieldTexture.reset();
+		mSignedDistanceFieldData = {};
+	}
+
+	void ParticleSystem::setScreenSpaceCollisionDepth(ResourcePtr sceneDepth)
+	{
+		if (sceneDepth && !dynamic_cast<RenderTexture*>(sceneDepth.get()))
+			throw invalid_argument("ParticleSystem::setScreenSpaceCollisionDepth requires a render texture.");
+		mScreenSpaceCollisionDepth = std::move(sceneDepth);
+	}
+
 	void ParticleSystem::startEmitter(ParticleEmitterHandle handle)
 	{
 		if (!findEmitter(handle)) return;
@@ -833,6 +887,8 @@ namespace mpp
 			THROW_MPP("Particle emitter-template, emitter, or spawn-command capacity was exceeded.", __LINE__, __FILE__, __func__);
 		if (mTemplateRenderData.empty())
 			THROW_MPP("Particle emitters require at least one emitter template.", __LINE__, __FILE__, __func__);
+		if (mColliders.size() > MaxColliderCount)
+			THROW_MPP("The particle analytical-collider capacity was exceeded.", __LINE__, __FILE__, __func__);
 		if (!is_sorted(mTemplateRenderData.begin(), mTemplateRenderData.end(), [](auto const& left, auto const& right)
 			{ return left.modes[3] < right.modes[3]; }))
 			THROW_MPP("Particle emitter templates must be ordered by blend class before upload.", __LINE__, __FILE__, __func__);
@@ -845,6 +901,10 @@ namespace mpp
 		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
 		if (!mSpawnCommands.empty())
 			mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
+		if (!mColliders.empty())
+			mColliderBuffer->upload(mColliders.data(), bytes(mColliders), 0, bytes(mColliders));
+		mSignedDistanceFieldBuffer->upload(&mSignedDistanceFieldData, sizeof(mSignedDistanceFieldData),
+			0, sizeof(mSignedDistanceFieldData));
 	}
 
 	void ParticleSystem::setStatisticsEnabled(bool enabled)
@@ -1095,23 +1155,53 @@ namespace mpp
 		mCounters->bindStorage(CountersBinding);
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
 			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		if (!mColliders.empty())
+			GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, ColliderBinding, mColliderBuffer->getBuffer(),
+				static_cast<GLintptr>(mColliderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mColliders))));
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, SignedDistanceFieldBinding, mSignedDistanceFieldBuffer->getBuffer(),
+			static_cast<GLintptr>(mSignedDistanceFieldBuffer->getActiveOffset()), sizeof(mSignedDistanceFieldData)));
+
+		auto* collisionDepth = dynamic_cast<RenderTexture*>(mScreenSpaceCollisionDepth.get());
+		bool const hasCollisionDepth = collisionDepth && collisionDepth->getDepthTextureId() != 0u && !collisionDepth->isMultisampled();
+		Texture* signedDistanceField = nullptr;
+		if (mSignedDistanceFieldTexture)
+		{
+			mSignedDistanceFieldTexture->load();
+			signedDistanceField = dynamic_cast<Texture*>(mSignedDistanceFieldTexture.get());
+			if (!signedDistanceField || signedDistanceField->getTextureTarget() != GL_TEXTURE_3D)
+				THROW_MPP("A particle signed distance field must be a 3D texture.", __LINE__, __FILE__, __func__);
+		}
 
 		auto* simulationProgram = static_cast<ComputeProgram*>(mSimulationProgram.get());
 		simulationProgram->use();
 		simulationProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 		simulationProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
 		simulationProgram->setUniform("TEMPLATE_COUNT", uint32_t(mTemplateRenderData.size()));
+		simulationProgram->setUniform("COLLIDER_COUNT", uint32_t(mColliders.size()));
+		simulationProgram->setUniform("HAS_COLLISION_DEPTH", int32_t(hasCollisionDepth ? 1 : 0));
+		simulationProgram->setUniform("HAS_SIGNED_DISTANCE_FIELD", int32_t(signedDistanceField ? 1 : 0));
 		simulationProgram->setUniform("DELTA_SECONDS", dt);
 		simulationProgram->setUniform("SIMULATION_SECONDS", mSimulationSeconds);
 		simulationProgram->setUniform("NOISE_TEXTURE", int32_t(0));
+		simulationProgram->setUniform("COLLISION_DEPTH_TEXTURE", int32_t(1));
+		simulationProgram->setUniform("SIGNED_DISTANCE_FIELD_TEXTURE", int32_t(2));
 		GL_CHECK(glActiveTexture(GL_TEXTURE0));
 		GL_CHECK(glBindSampler(0, 0));
 		GL_CHECK(glBindTexture(GL_TEXTURE_3D, mNoiseTexture));
+		if (hasCollisionDepth) collisionDepth->bindDepth(1u);
+		if (signedDistanceField) signedDistanceField->bind(2u);
 		mSimulationDispatchCommand->bindDispatchIndirect();
 		simulationProgram->dispatchIndirect();
 		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE2));
+		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE1));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE0));
 		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+		if (!mColliders.empty()) mColliderBuffer->markUsed();
+		mSignedDistanceFieldBuffer->markUsed();
 
 		mActiveListIndex = 1u - mActiveListIndex;
 	}
@@ -1364,6 +1454,12 @@ namespace mpp
 		{
 			disableWithWarning(error.what());
 		}
+	}
+
+	void ParticleSystem::render(ParticleBlendClass blendClass, ResourcePtr const& sceneDepthResource)
+	{
+		setScreenSpaceCollisionDepth(sceneDepthResource);
+		render(blendClass, dynamic_cast<RenderTexture*>(sceneDepthResource.get()));
 	}
 
 	void ParticleSystem::render(ParticleBlendClass blendClass, RenderTexture* sceneDepth)

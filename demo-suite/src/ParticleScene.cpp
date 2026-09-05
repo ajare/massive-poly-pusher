@@ -137,6 +137,11 @@ void ParticleScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const&
 	auto& particles = renderer->getParticleSystem();
 	particles.initialise();
 	particles.setStatisticsEnabled(true);
+	mpp::ParticleCollider floor;
+	floor.shapeAndPadding[0] = uint32_t(mpp::ParticleColliderShape::Plane);
+	floor.first = { 0.0f, 1.0f, 0.0f, 0.0f };
+	std::array colliders{ floor };
+	particles.setColliders(colliders);
 	createDemoEffect();
 }
 
@@ -155,8 +160,12 @@ void ParticleScene::createDemoEffect()
 	specification.name = "DemoSuite particle showcase";
 	auto cone = emitterTemplate(mpp::ParticleSpawnShape::Cone, mpp::ParticleBlendClass::Additive, { -2.2f, -0.05f, 0.0f }, 12000u);
 	cone.simulation.shapeParameters = { 0.8f, 0.35f, 0.0f, 0.0f };
-	cone.simulation.shapeSeedModulesBudget[2] = uint32_t(mpp::ParticleBehaviourModule::Gravity);
+	cone.simulation.shapeSeedModulesBudget[2] = uint32_t(mpp::ParticleBehaviourModule::Gravity) |
+		uint32_t(mpp::ParticleBehaviourModule::Collision);
 	cone.simulation.gravityAndDrag = { 0.0f, -0.35f, 0.0f, 0.0f };
+	cone.simulation.collisionConfiguration = { uint32_t(mpp::ParticleCollisionSource::Analytical),
+		uint32_t(mpp::ParticleCollisionResponse::Bounce), 0u, 0u };
+	cone.simulation.collisionParameters = { 0.55f, 0.15f, 0.4f, 0.1f };
 	cone.appearance.modes[2] = uint32_t(mpp::ParticleBillboardMode::VelocityStretched);
 	specification.emitterTemplates.push_back({ "additive-cone", cone, {} });
 
@@ -171,6 +180,10 @@ void ParticleScene::createDemoEffect()
 	mist.simulation.emissionRateAndPadding[0] = 120.0f;
 	mist.simulation.initialVelocityMin = { -0.05f, 0.02f, -0.05f, 0.0f };
 	mist.simulation.initialVelocityMax = { 0.05f, 0.18f, 0.05f, 0.0f };
+	mist.simulation.shapeSeedModulesBudget[2] = uint32_t(mpp::ParticleBehaviourModule::Collision);
+	mist.simulation.collisionConfiguration = { uint32_t(mpp::ParticleCollisionSource::ScreenSpace) |
+		uint32_t(mpp::ParticleCollisionSource::Analytical), uint32_t(mpp::ParticleCollisionResponse::Slide), 0u, 0u };
+	mist.simulation.collisionParameters = { 0.0f, 0.1f, 0.25f, 0.2f };
 	mist.appearance.tintAndAlpha = { 0.65f, 0.8f, 1.0f, 0.55f };
 	mist.appearance.sorting[0] = uint32_t(mpp::ParticleSortMode::BackToFront);
 	specification.emitterTemplates.push_back({ "alpha-box-mist", mist, {} });
@@ -218,6 +231,9 @@ void ParticleScene::teardownImpl()
 		auto& particles = mRenderer->getParticleSystem();
 		if (mDemoEffect) particles.destroyEffect(mDemoEffect);
 		if (mStressEffect) particles.destroyEffect(mStressEffect);
+		particles.setColliders({});
+		particles.clearSignedDistanceField();
+		particles.setScreenSpaceCollisionDepth({});
 		particles.setStatisticsEnabled(false);
 		mRenderer->removeRenderPipeline("ParticlePbr");
 		mRenderer->removeRenderPipeline("ParticleLegacy");

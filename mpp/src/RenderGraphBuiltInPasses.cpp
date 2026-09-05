@@ -59,6 +59,18 @@ namespace mpp
 			return found != bindings.end() ? dynamic_cast<Texture*>(context.getImage(found->image).get()) : nullptr;
 		}
 
+		ResourcePtr resourceInput(RenderGraphExecutionContext const& context, std::string const& sampler)
+		{
+			auto const& bindings = context.getPass().samplerBindings;
+			auto found = std::find_if(bindings.begin(), bindings.end(), [&](auto const& binding)
+			{
+				return binding.sampler == sampler;
+			});
+			if (found == bindings.end()) return {};
+			auto texture = std::dynamic_pointer_cast<RenderTexture>(context.getImage(found->image));
+			return texture ? std::static_pointer_cast<Resource>(texture) : ResourcePtr{};
+		}
+
 		// The one generic post-effect-chain pass type: a fullscreen quad shaded by
 		// whichever PostEffectMaterial the authored pass names via programResource,
 		// with sampler inputs bound by name (RenderGraphExecutionContext's existing
@@ -393,7 +405,7 @@ namespace mpp
 				int32_t const blendMode = integerParameter(context, "BLEND_MODE", -1);
 				if (blendMode < int32_t(ParticleBlendClass::Additive) || blendMode > int32_t(ParticleBlendClass::Alpha))
 					THROW_MPP("ParticleScenePass '" + context.getPass().name + "' requires BLEND_MODE additive=0 or alpha=1.", __LINE__, __FILE__, __func__);
-				auto* depth = dynamic_cast<RenderTexture*>(input(context, "DEPTH"));
+				auto depth = resourceInput(context, "DEPTH");
 				frame.renderSystem->renderParticles(ParticleBlendClass(blendMode), depth);
 			}
 		};
@@ -405,7 +417,7 @@ namespace mpp
 			{
 				auto const& frame = context.getFrame();
 				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
-				auto* depth = dynamic_cast<RenderTexture*>(input(context, "DEPTH"));
+				auto depth = resourceInput(context, "DEPTH");
 				frame.renderSystem->renderParticles(ParticleBlendClass::WeightedOit, depth);
 			}
 		};

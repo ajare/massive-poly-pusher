@@ -671,6 +671,7 @@ namespace mpp
 		// The particle draw, issued from inside an authored blend-class-specific
 		// MPP.ParticleScene or MPP.ParticleWeightedOit pass. Scene depth is optional.
 		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
+		void renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
 
 		bool particlesAvailable();
 

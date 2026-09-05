@@ -36,8 +36,25 @@ namespace mpp::resource_parsers
 			if (shapes[index] != index) return fail("particle spawn-shape wire values changed");
 
 		auto const modules = uint32_t(ParticleBehaviourModule::Gravity) |
-			uint32_t(ParticleBehaviourModule::Drag) | uint32_t(ParticleBehaviourModule::Noise);
-		if (modules != 0x7u) return fail("particle behaviour-module flags overlap or changed");
+			uint32_t(ParticleBehaviourModule::Drag) | uint32_t(ParticleBehaviourModule::Noise) |
+			uint32_t(ParticleBehaviourModule::Collision);
+		if (modules != 0xfu) return fail("particle behaviour-module flags overlap or changed");
+		if (uint32_t(ParticleCollisionSource::ScreenSpace | ParticleCollisionSource::Analytical |
+			ParticleCollisionSource::SignedDistanceField) != 0x7u)
+			return fail("particle collision-source flags overlap or changed");
+		std::array<uint32_t, 5> const responses{
+			uint32_t(ParticleCollisionResponse::Bounce), uint32_t(ParticleCollisionResponse::Slide),
+			uint32_t(ParticleCollisionResponse::Stop), uint32_t(ParticleCollisionResponse::Kill),
+			uint32_t(ParticleCollisionResponse::SpawnSecondaryEffect)
+		};
+		for (size_t index = 0; index < responses.size(); ++index)
+			if (responses[index] != index) return fail("particle collision-response wire values changed");
+		std::array<uint32_t, 4> const colliderShapes{
+			uint32_t(ParticleColliderShape::Plane), uint32_t(ParticleColliderShape::Sphere),
+			uint32_t(ParticleColliderShape::Box), uint32_t(ParticleColliderShape::Capsule)
+		};
+		for (size_t index = 0; index < colliderShapes.size(); ++index)
+			if (colliderShapes[index] != index) return fail("particle collider-shape wire values changed");
 		if (uint32_t(ParticleTextureAnimation::FrameOverLife | ParticleTextureAnimation::RandomStart) != 0x101u)
 			return fail("particle texture-animation flags are no longer composable");
 		std::array<uint32_t, 6> const billboards{
@@ -63,7 +80,10 @@ namespace mpp::resource_parsers
 			emitter.appearance.textureAndAtlas[2] != 1u || emitter.appearance.textureAndAtlas[3] != 1u ||
 			emitter.appearance.modes[0] != 1u || emitter.appearance.modes[2] != uint32_t(ParticleBillboardMode::CameraFacing) ||
 			emitter.appearance.modes[3] != uint32_t(ParticleBlendClass::Additive) ||
-			emitter.appearance.sorting[0] != uint32_t(ParticleSortMode::None))
+			emitter.appearance.sorting[0] != uint32_t(ParticleSortMode::None) ||
+			emitter.simulation.collisionConfiguration[0] != uint32_t(ParticleCollisionSource::Analytical) ||
+			emitter.simulation.collisionConfiguration[1] != uint32_t(ParticleCollisionResponse::Bounce) ||
+			emitter.simulation.collisionParameters != std::array<float, 4>{ 0.5f, 0.0f, 1.0f, 0.1f })
 			return fail("particle emitter-template resource defaults changed");
 
 		// Resource construction must copy templates. A reusable particle effect
@@ -83,7 +103,12 @@ namespace mpp::resource_parsers
 		authored.value.localTransform[3][0] = 2.0f;
 		auto& simulation = authored.value.simulation;
 		simulation.shapeSeedModulesBudget = { uint32_t(ParticleSpawnShape::Cone), 77u,
-			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag), 96u };
+			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag) |
+			uint32_t(ParticleBehaviourModule::Collision), 96u };
+		simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::ScreenSpace) |
+			uint32_t(ParticleCollisionSource::Analytical) | uint32_t(ParticleCollisionSource::SignedDistanceField),
+			uint32_t(ParticleCollisionResponse::SpawnSecondaryEffect), 0u, 0u };
+		simulation.collisionParameters = { 0.75f, 0.2f, 0.6f, 0.15f };
 		simulation.shapeParameters = { 1.0f, 2.0f, 0.5f, 0.0f };
 		simulation.emissionRateAndPadding[0] = 24.0f;
 		simulation.gravityAndDrag = { 0.0f, -9.81f, 0.0f, 0.2f };
@@ -106,6 +131,8 @@ namespace mpp::resource_parsers
 		if (restored.name != specification.name || restored.maximumParticleCount != 96 || restored.emitterTemplates.size() != 1 ||
 			restored.emitterTemplates[0].name != authored.name || restored.emitterTemplates[0].albedoTexture != authored.albedoTexture ||
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
+			restored.emitterTemplates[0].value.simulation.collisionConfiguration != simulation.collisionConfiguration ||
+			restored.emitterTemplates[0].value.simulation.collisionParameters != simulation.collisionParameters ||
 			restored.emitterTemplates[0].value.appearance.modes != authored.value.appearance.modes ||
 			restored.emitterTemplates[0].value.appearance.culling != authored.value.appearance.culling ||
 			restored.emitterTemplates[0].value.appearance.sorting != authored.value.appearance.sorting ||

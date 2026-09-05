@@ -3860,6 +3860,15 @@ namespace mpp
 		mActiveProgram.reset();
 	}
 
+	void RenderSystem::renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->render(blendClass, sceneDepth);
+
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
 	bool RenderSystem::particlesAvailable()
 	{
 		if (!mParticleSystem) return false;

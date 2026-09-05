@@ -120,6 +120,7 @@ namespace mpp
 		static constexpr uint32_t MaxEmitterCount = 4096;
 		static constexpr uint32_t MaxTemplateCount = 4096;
 		static constexpr uint32_t MaxSpawnCommandCount = 4096;
+		static constexpr uint32_t MaxColliderCount = 1024;
 
 	private:
 		RenderSystem* mwRenderSystem;
@@ -147,6 +148,8 @@ namespace mpp
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
+		std::unique_ptr<detail::PersistentMappedBuffer> mColliderBuffer;
+		std::unique_ptr<detail::PersistentMappedBuffer> mSignedDistanceFieldBuffer;
 		std::unique_ptr<detail::ParticleStatisticsState> mStatistics;
 
 		std::vector<EmitterSimData> mEmitters;
@@ -156,6 +159,10 @@ namespace mpp
 		std::vector<uint64_t> mTemplateTextureHandles;
 		std::map<uint64_t, uint32_t> mResidentTextureHandles;
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
+		std::vector<ParticleCollider> mColliders;
+		ParticleSignedDistanceFieldData mSignedDistanceFieldData;
+		ResourcePtr mSignedDistanceFieldTexture;
+		ResourcePtr mScreenSpaceCollisionDepth;
 		struct EmitterSlot
 		{
 			uint32_t generation{ 1 };
@@ -265,6 +272,20 @@ namespace mpp
 		void destroyEmitter(ParticleEmitterHandle emitter);
 		void setEmitterTransform(ParticleEmitterHandle emitter, glm::mat4 const& transform);
 		void setEmitterParameter(ParticleEmitterHandle emitter, ParticleParameter parameter, float multiplier);
+		// Analytical colliders are shared world data scanned by every emitter that
+		// enables the analytical collision source. Replacing the span is atomic from
+		// the next simulated frame's point of view.
+		void setColliders(std::span<ParticleCollider const> colliders);
+		std::span<ParticleCollider const> getColliders() const { return mColliders; }
+		// The SDF texture must be Texture3D. worldToTexture maps world positions into
+		// its [0,1]^3 domain and red stores signed distance around isoValue.
+		void setSignedDistanceField(ResourcePtr texture, glm::mat4 const& worldToTexture = glm::mat4(1.0f),
+			float distanceScale = 1.0f, float isoValue = 0.0f);
+		void clearSignedDistanceField();
+		// Graph particle passes retain the last main scene-depth resource. Simulation
+		// samples that previous completed frame, preserving ADR 0005's once-per-frame
+		// pre-graph dispatch.
+		void setScreenSpaceCollisionDepth(ResourcePtr sceneDepth);
 		void startEmitter(ParticleEmitterHandle emitter);
 		void stopEmitter(ParticleEmitterHandle emitter);
 		bool isAlive(ParticleEmitterHandle emitter) const { return findEmitter(emitter) != nullptr; }
@@ -278,5 +299,6 @@ namespace mpp
 		// Draw only the contiguous command span selected by this authored pass.
 		// A null scene depth selects hard-edged particles.
 		void render(ParticleBlendClass blendClass, RenderTexture* sceneDepth);
+		void render(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
 	};
 }

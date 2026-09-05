@@ -81,6 +81,23 @@ namespace mpp
 			span<ParticleEmitterTemplate const> getEmitterTemplates() const override { return mTemplates; }
 		};
 		ParticleSystem system(nullptr, nullptr);
+		ParticleCollider plane;
+		plane.shapeAndPadding[0] = uint32_t(ParticleColliderShape::Plane);
+		plane.first = { 0.0f, 1.0f, 0.0f, 0.0f };
+		ParticleCollider capsule;
+		capsule.shapeAndPadding[0] = uint32_t(ParticleColliderShape::Capsule);
+		capsule.first = { -1.0f, 0.0f, 0.0f, 0.5f };
+		capsule.second = { 1.0f, 0.0f, 0.0f, 0.0f };
+		array collisionWorld{ plane, capsule };
+		system.setColliders(collisionWorld);
+		if (system.getColliders().size() != 2u || system.getColliders()[1].second[0] != 1.0f)
+			return fail("analytical collider world did not retain plane and capsule records");
+		system.setColliders({});
+		if (!system.getColliders().empty()) return fail("analytical collider world did not clear");
+		if (uint32_t(ParticleFlag::Colliding) != 1u || uint32_t(ParticleFlag::CollisionEvent) != 2u ||
+			uint32_t(ParticleFlag::SpawnSecondaryEffect) != 4u)
+			return fail("particle collision-state flag bits overlap or changed");
+
 		weak_ptr<ParticleEffectCurveLut> assetLut;
 		ParticleEffectHandle curvedEffect;
 		{

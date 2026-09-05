@@ -663,6 +663,14 @@ appearance, and additive and weighted OIT appearances dispatch no sorting work.
 The final particle indices remain GPU-resident and feed the unchanged indirect
 draw commands.
 
+Collision is now a runtime-branched behaviour module. It evaluates the previous
+completed main-view depth image, a CPU-authored analytical collider SSBO (plane,
+sphere, oriented box, and capsule), then one optional 3D signed-distance
+field. Bounce, slide, stop, kill, and spawn-secondary-event responses execute on
+the GPU; collision-state and one-frame event bits stay in the existing particle
+record. Retaining the previous graph depth preserves the once-per-frame pre-graph
+simulation decision in ADR 0005.
+
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and
 scene-document pipeline, and a shared albedo atlas to remove the remaining

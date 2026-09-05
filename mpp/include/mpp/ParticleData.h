@@ -23,7 +23,44 @@ namespace mpp
 	{
 		Gravity = 1u << 0,
 		Drag = 1u << 1,
-		Noise = 1u << 2
+		Noise = 1u << 2,
+		Collision = 1u << 3
+	};
+
+	enum class ParticleCollisionSource : uint32_t
+	{
+		ScreenSpace = 1u << 0,
+		Analytical = 1u << 1,
+		SignedDistanceField = 1u << 2
+	};
+
+	constexpr ParticleCollisionSource operator |(ParticleCollisionSource left, ParticleCollisionSource right) noexcept
+	{
+		return ParticleCollisionSource(uint32_t(left) | uint32_t(right));
+	}
+
+	enum class ParticleCollisionResponse : uint32_t
+	{
+		Bounce,
+		Slide,
+		Stop,
+		Kill,
+		SpawnSecondaryEffect
+	};
+
+	enum class ParticleColliderShape : uint32_t
+	{
+		Plane,
+		Sphere,
+		Box,
+		Capsule
+	};
+
+	enum class ParticleFlag : uint32_t
+	{
+		Colliding = 1u << 0,
+		CollisionEvent = 1u << 1,
+		SpawnSecondaryEffect = 1u << 2
 	};
 
 	// Particle appearance enums are stored directly in TemplateRenderData::modes.
@@ -216,6 +253,39 @@ namespace mpp
 		std::array<float, 4> gravityAndDrag{};
 		std::array<float, 4> noiseFrequencyStrength{};
 		std::array<float, 4> noiseScrollAndTimeScale{};
+		// Collision source mask, response, then reserved words. Collision remains a
+		// runtime-branched behaviour module, like gravity, drag, and noise.
+		std::array<uint32_t, 4> collisionConfiguration{
+			uint32_t(ParticleCollisionSource::Analytical), uint32_t(ParticleCollisionResponse::Bounce), 0u, 0u
+		};
+		// Restitution, friction, particle-radius scale, and screen-space thickness.
+		std::array<float, 4> collisionParameters{ 0.5f, 0.0f, 1.0f, 0.1f };
+	};
+
+	// A world-space analytical collider. Plane stores normal/distance in first;
+	// sphere stores centre/radius in first; box stores centre in first, half
+	// extents in second, and an XYZW orientation quaternion in third; capsule stores
+	// endpoint/radius in first and endpoint B in second.
+	struct alignas(16) ParticleCollider
+	{
+		std::array<uint32_t, 4> shapeAndPadding{};
+		std::array<float, 4> first{};
+		std::array<float, 4> second{};
+		std::array<float, 4> third{ 0.0f, 0.0f, 0.0f, 1.0f };
+	};
+
+	// One optional world signed-distance field. worldToTexture maps world positions
+	// to [0,1]^3; sampledDistance = (red - isoValue) * distanceScale.
+	struct alignas(16) ParticleSignedDistanceFieldData
+	{
+		std::array<float, 16> worldToTexture{
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		};
+		// Distance scale, iso value, enabled, padding.
+		std::array<float, 4> parameters{ 1.0f, 0.0f, 0.0f, 0.0f };
 	};
 
 	// Draw-only emitter-template data. Culling also reads this record while
@@ -298,7 +368,9 @@ namespace mpp
 	static_assert(offsetof(ParticleRecord, padding) == 60);
 	static_assert(sizeof(ParticleRecord) == 64, "The std430 particle array stride must be exactly 64 bytes.");
 	static_assert(clampParticleDeltaSeconds(3.0f) == MaximumParticleDeltaSeconds);
-	static_assert(sizeof(EmitterSimData) == 304);
+	static_assert(sizeof(EmitterSimData) == 336);
+	static_assert(sizeof(ParticleCollider) == 64);
+	static_assert(sizeof(ParticleSignedDistanceFieldData) == 80);
 	static_assert(sizeof(TemplateRenderData) == 96);
 	static_assert(sizeof(ParticleSortRecord) == 8);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);

@@ -123,6 +123,8 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    uvec4 collisionConfiguration;
+    vec4 collisionParameters;
 };
 
 struct SpawnCommand
@@ -398,6 +400,27 @@ layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
 const uint PARTICLE_MODULE_GRAVITY = 1u << 0u;
 const uint PARTICLE_MODULE_DRAG = 1u << 1u;
 const uint PARTICLE_MODULE_NOISE = 1u << 2u;
+const uint PARTICLE_MODULE_COLLISION = 1u << 3u;
+const uint COLLISION_SCREEN_SPACE = 1u << 0u;
+const uint COLLISION_ANALYTICAL = 1u << 1u;
+const uint COLLISION_SDF = 1u << 2u;
+const uint RESPONSE_BOUNCE = 0u;
+const uint RESPONSE_SLIDE = 1u;
+const uint RESPONSE_STOP = 2u;
+const uint RESPONSE_KILL = 3u;
+const uint RESPONSE_SPAWN_SECONDARY = 4u;
+const uint PARTICLE_FLAG_COLLIDING = 1u << 0u;
+const uint PARTICLE_FLAG_COLLISION_EVENT = 1u << 1u;
+const uint PARTICLE_FLAG_SPAWN_SECONDARY = 1u << 2u;
+
+layout(std140, binding = 3) uniform CameraFrame
+{
+    mat4 VIEW_MATRIX;
+    mat4 PROJECTION_MATRIX;
+    mat4 INVERSE_PROJECTION_MATRIX;
+    vec4 VIEWPORT_SIZE;
+    vec4 NEAR_FAR_TIME;
+};
 
 struct ParticleRecord
 {
@@ -431,6 +454,8 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    uvec4 collisionConfiguration;
+    vec4 collisionParameters;
 };
 
 layout(std430, binding = 0) restrict buffer ParticlePool
@@ -465,10 +490,35 @@ layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
 {
     EmitterSimData EMITTERS[];
 };
+struct ParticleCollider
+{
+    uvec4 shapeAndPadding;
+    vec4 first;
+    vec4 second;
+    vec4 third;
+};
+layout(std430, binding = 6) restrict readonly buffer ParticleColliders
+{
+    ParticleCollider COLLIDERS[];
+};
+struct SignedDistanceFieldData
+{
+    mat4 worldToTexture;
+    vec4 parameters;
+};
+layout(std430, binding = 7) restrict readonly buffer ParticleSignedDistanceField
+{
+    SignedDistanceFieldData SIGNED_DISTANCE_FIELD;
+};
 layout(binding = 0) uniform sampler3D NOISE_TEXTURE;
+layout(binding = 1) uniform sampler2D COLLISION_DEPTH_TEXTURE;
+layout(binding = 2) uniform sampler3D SIGNED_DISTANCE_FIELD_TEXTURE;
 uniform uint ACTIVE_LIST_INDEX;
 uniform uint EMITTER_COUNT;
 uniform uint TEMPLATE_COUNT;
+uniform uint COLLIDER_COUNT;
+uniform int HAS_COLLISION_DEPTH;
+uniform int HAS_SIGNED_DISTANCE_FIELD;
 uniform float DELTA_SECONDS;
 uniform float SIMULATION_SECONDS;
 
@@ -498,6 +548,171 @@ void appendSurvivor(uint particleIndex)
     }
 }
 
+vec3 safeNormal(vec3 value, vec3 fallback)
+{
+    float magnitudeSquared = dot(value, value);
+    return magnitudeSquared > 1.0e-12 ? value * inversesqrt(magnitudeSquared) : fallback;
+}
+
+float linearViewDepth(float depth)
+{
+    float nearPlane = NEAR_FAR_TIME.x;
+    float farPlane = NEAR_FAR_TIME.y;
+    float ndc = depth * 2.0 - 1.0;
+    return (2.0 * nearPlane * farPlane) /
+        max(farPlane + nearPlane - ndc * (farPlane - nearPlane), 1.0e-6);
+}
+
+vec3 reconstructWorldPosition(vec2 uv, float depth)
+{
+    vec4 view = INVERSE_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    view /= max(abs(view.w), 1.0e-6) * (view.w < 0.0 ? -1.0 : 1.0);
+    return (inverse(VIEW_MATRIX) * vec4(view.xyz, 1.0)).xyz;
+}
+
+bool screenSpaceContact(vec3 position, vec3 previousPosition, float radius, float thickness,
+    out vec3 normal, out float penetration)
+{
+    vec4 clip = PROJECTION_MATRIX * VIEW_MATRIX * vec4(position, 1.0);
+    if (clip.w <= 0.0) return false;
+    vec3 ndc = clip.xyz / clip.w;
+    vec2 uv = ndc.xy * 0.5 + 0.5;
+    if (any(lessThanEqual(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) return false;
+    float sceneDepth = textureLod(COLLISION_DEPTH_TEXTURE, uv, 0.0).r;
+    if (sceneDepth >= 1.0) return false;
+
+    float particleDepth = -(VIEW_MATRIX * vec4(position, 1.0)).z;
+    float previousDepth = -(VIEW_MATRIX * vec4(previousPosition, 1.0)).z;
+    float surfaceDepth = linearViewDepth(sceneDepth);
+    float surfaceDistance = surfaceDepth - particleDepth;
+    float travel = length(position - previousPosition);
+    if (surfaceDistance > radius || surfaceDistance < -(max(0.0, thickness) + travel + radius) ||
+        previousDepth > surfaceDepth + radius) return false;
+
+    vec2 texel = 1.0 / vec2(textureSize(COLLISION_DEPTH_TEXTURE, 0));
+    float rightDepth = textureLod(COLLISION_DEPTH_TEXTURE, clamp(uv + vec2(texel.x, 0.0), vec2(0.0), vec2(1.0)), 0.0).r;
+    float upDepth = textureLod(COLLISION_DEPTH_TEXTURE, clamp(uv + vec2(0.0, texel.y), vec2(0.0), vec2(1.0)), 0.0).r;
+    if (rightDepth >= 1.0) rightDepth = sceneDepth;
+    if (upDepth >= 1.0) upDepth = sceneDepth;
+    vec3 surface = reconstructWorldPosition(uv, sceneDepth);
+    vec3 right = reconstructWorldPosition(uv + vec2(texel.x, 0.0), rightDepth);
+    vec3 up = reconstructWorldPosition(uv + vec2(0.0, texel.y), upDepth);
+    normal = safeNormal(cross(right - surface, up - surface),
+        safeNormal((inverse(VIEW_MATRIX) * vec4(0.0, 0.0, 1.0, 0.0)).xyz, vec3(0.0, 1.0, 0.0)));
+    if (dot(normal, position - previousPosition) > 0.0) normal = -normal;
+    penetration = radius - surfaceDistance;
+    return true;
+}
+
+vec3 rotateByQuaternion(vec4 quaternion, vec3 value)
+{
+    return value + 2.0 * cross(quaternion.xyz, cross(quaternion.xyz, value) + quaternion.w * value);
+}
+
+bool analyticalContact(ParticleCollider collider, vec3 position, float radius,
+    out vec3 normal, out float penetration)
+{
+    uint shape = collider.shapeAndPadding.x;
+    float distanceToSurface;
+    if (shape == 0u) // plane: dot(normal, point) - distance = 0
+    {
+        normal = safeNormal(collider.first.xyz, vec3(0.0, 1.0, 0.0));
+        distanceToSurface = dot(normal, position) - collider.first.w;
+    }
+    else if (shape == 1u) // sphere
+    {
+        vec3 offset = position - collider.first.xyz;
+        normal = safeNormal(offset, vec3(0.0, 1.0, 0.0));
+        distanceToSurface = length(offset) - max(0.0, collider.first.w);
+    }
+    else if (shape == 2u) // oriented box
+    {
+        vec4 orientation = dot(collider.third, collider.third) > 1.0e-12 ? normalize(collider.third) : vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 local = rotateByQuaternion(vec4(-orientation.xyz, orientation.w), position - collider.first.xyz);
+        vec3 halfExtents = max(abs(collider.second.xyz), vec3(1.0e-6));
+        vec3 q = abs(local) - halfExtents;
+        vec3 outside = max(q, vec3(0.0));
+        distanceToSurface = length(outside) + min(max(q.x, max(q.y, q.z)), 0.0);
+        if (dot(outside, outside) > 1.0e-12)
+            normal = safeNormal(sign(local) * outside, vec3(0.0, 1.0, 0.0));
+        else if (q.x > q.y && q.x > q.z)
+            normal = vec3(local.x < 0.0 ? -1.0 : 1.0, 0.0, 0.0);
+        else if (q.y > q.z)
+            normal = vec3(0.0, local.y < 0.0 ? -1.0 : 1.0, 0.0);
+        else
+            normal = vec3(0.0, 0.0, local.z < 0.0 ? -1.0 : 1.0);
+        normal = rotateByQuaternion(orientation, normal);
+    }
+    else if (shape == 3u) // capsule
+    {
+        vec3 segment = collider.second.xyz - collider.first.xyz;
+        float denominator = dot(segment, segment);
+        float t = denominator > 1.0e-12 ? clamp(dot(position - collider.first.xyz, segment) / denominator, 0.0, 1.0) : 0.0;
+        vec3 offset = position - (collider.first.xyz + segment * t);
+        normal = safeNormal(offset, vec3(0.0, 1.0, 0.0));
+        distanceToSurface = length(offset) - max(0.0, collider.first.w);
+    }
+    else return false;
+
+    if (distanceToSurface > radius) return false;
+    penetration = radius - distanceToSurface;
+    return true;
+}
+
+bool signedDistanceFieldContact(vec3 position, float radius, out vec3 normal, out float penetration)
+{
+    vec3 uv = (SIGNED_DISTANCE_FIELD.worldToTexture * vec4(position, 1.0)).xyz;
+    if (any(lessThan(uv, vec3(0.0))) || any(greaterThan(uv, vec3(1.0)))) return false;
+    float scale = SIGNED_DISTANCE_FIELD.parameters.x;
+    float isoValue = SIGNED_DISTANCE_FIELD.parameters.y;
+    float distanceToSurface = (textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, uv, 0.0).r - isoValue) * scale;
+    if (distanceToSurface > radius) return false;
+
+    vec3 texel = 1.0 / vec3(textureSize(SIGNED_DISTANCE_FIELD_TEXTURE, 0));
+    vec3 gradient;
+    gradient.x = textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv + vec3(texel.x, 0.0, 0.0), vec3(0.0), vec3(1.0)), 0.0).r -
+        textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv - vec3(texel.x, 0.0, 0.0), vec3(0.0), vec3(1.0)), 0.0).r;
+    gradient.y = textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv + vec3(0.0, texel.y, 0.0), vec3(0.0), vec3(1.0)), 0.0).r -
+        textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv - vec3(0.0, texel.y, 0.0), vec3(0.0), vec3(1.0)), 0.0).r;
+    gradient.z = textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv + vec3(0.0, 0.0, texel.z), vec3(0.0), vec3(1.0)), 0.0).r -
+        textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv - vec3(0.0, 0.0, texel.z), vec3(0.0), vec3(1.0)), 0.0).r;
+    normal = safeNormal(transpose(mat3(SIGNED_DISTANCE_FIELD.worldToTexture)) * gradient, vec3(0.0, 1.0, 0.0));
+    penetration = radius - distanceToSurface;
+    return true;
+}
+
+bool applyCollisionResponse(inout ParticleRecord particle, EmitterSimData emitter,
+    vec3 normal, float penetration, bool wasColliding)
+{
+    particle.flags |= PARTICLE_FLAG_COLLIDING;
+    if (!wasColliding) particle.flags |= PARTICLE_FLAG_COLLISION_EVENT;
+    particle.positionAge.xyz += normal * max(0.0, penetration + 1.0e-5);
+
+    uint response = emitter.collisionConfiguration.y;
+    float normalSpeed = dot(particle.velocityLifetime.xyz, normal);
+    vec3 normalVelocity = normal * normalSpeed;
+    vec3 tangentVelocity = particle.velocityLifetime.xyz - normalVelocity;
+    float friction = clamp(emitter.collisionParameters.y, 0.0, 1.0);
+    if (response == RESPONSE_BOUNCE)
+    {
+        if (normalSpeed < 0.0)
+            particle.velocityLifetime.xyz = tangentVelocity * (1.0 - friction) -
+                normalVelocity * max(0.0, emitter.collisionParameters.x);
+    }
+    else if (response == RESPONSE_SLIDE)
+        particle.velocityLifetime.xyz = tangentVelocity * (1.0 - friction) + normal * max(0.0, normalSpeed);
+    else if (response == RESPONSE_STOP)
+        particle.velocityLifetime.xyz = vec3(0.0);
+    else if (response == RESPONSE_KILL)
+        return true;
+    else if (response == RESPONSE_SPAWN_SECONDARY)
+    {
+        particle.velocityLifetime.xyz = vec3(0.0);
+        if (!wasColliding) particle.flags |= PARTICLE_FLAG_SPAWN_SECONDARY;
+    }
+    return false;
+}
+
 void main()
 {
     uint sourceCount = ACTIVE_LIST_INDEX == 0u ? ACTIVE_COUNT_A : ACTIVE_COUNT_B;
@@ -521,6 +736,9 @@ void main()
 
     EmitterSimData emitter = EMITTERS[particle.emitterIndex];
     uint modules = emitter.shapeSeedModulesBudget.z;
+    bool wasColliding = (particle.flags & PARTICLE_FLAG_COLLIDING) != 0u;
+    particle.flags &= ~(PARTICLE_FLAG_COLLIDING | PARTICLE_FLAG_COLLISION_EVENT | PARTICLE_FLAG_SPAWN_SECONDARY);
+    vec3 previousPosition = particle.positionAge.xyz;
     vec3 velocity = particle.velocityLifetime.xyz;
 
     if ((modules & PARTICLE_MODULE_GRAVITY) != 0u)
@@ -540,6 +758,44 @@ void main()
     particle.velocityLifetime.xyz = velocity;
     particle.positionAge.xyz += velocity * DELTA_SECONDS;
     particle.rotation += particle.angularVelocity * DELTA_SECONDS;
+
+    if ((modules & PARTICLE_MODULE_COLLISION) != 0u)
+    {
+        uint sources = emitter.collisionConfiguration.x;
+        float radius = abs(particle.baseSize) * max(0.0, emitter.collisionParameters.z);
+        vec3 normal;
+        float penetration;
+        bool killed = false;
+        // Collision sources run in the staged order from spec section 32.
+        if ((sources & COLLISION_SCREEN_SPACE) != 0u && HAS_COLLISION_DEPTH != 0 &&
+            screenSpaceContact(particle.positionAge.xyz, previousPosition, radius,
+                emitter.collisionParameters.w, normal, penetration))
+            killed = applyCollisionResponse(particle, emitter, normal, penetration, wasColliding);
+
+        if (!killed && (sources & COLLISION_ANALYTICAL) != 0u)
+        {
+            for (uint colliderIndex = 0u; colliderIndex < COLLIDER_COUNT; ++colliderIndex)
+            {
+                if (analyticalContact(COLLIDERS[colliderIndex], particle.positionAge.xyz, radius, normal, penetration) &&
+                    applyCollisionResponse(particle, emitter, normal, penetration, wasColliding))
+                {
+                    killed = true;
+                    break;
+                }
+            }
+        }
+
+        if (!killed && (sources & COLLISION_SDF) != 0u && HAS_SIGNED_DISTANCE_FIELD != 0 &&
+            signedDistanceFieldContact(particle.positionAge.xyz, radius, normal, penetration))
+            killed = applyCollisionResponse(particle, emitter, normal, penetration, wasColliding);
+
+        if (killed)
+        {
+            killParticle(particleIndex, particle.emitterIndex);
+            return;
+        }
+    }
+
     PARTICLES[particleIndex] = particle;
     appendSurvivor(particleIndex);
 }
@@ -614,7 +870,7 @@ layout(std140, binding = 3) uniform CameraFrame
 };
 
 struct ParticleRecord { vec4 positionAge; vec4 velocityLifetime; uint packedColour; float baseSize; float rotation; float angularVelocity; uint emitterIndex; uint seed; uint flags; uint padding; };
-struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; };
+struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; uvec4 collisionConfiguration; vec4 collisionParameters; };
 struct TemplateRenderData { uvec4 textureAndAtlas; vec4 tintAndAlpha; vec4 appearance; uvec4 modes; vec4 culling; uvec4 sorting; };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
@@ -787,6 +1043,8 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    uvec4 collisionConfiguration;
+    vec4 collisionParameters;
 };
 
 struct TemplateRenderData
@@ -1131,6 +1389,8 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    uvec4 collisionConfiguration;
+    vec4 collisionParameters;
 };
 
 struct TemplateRenderData

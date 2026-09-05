@@ -107,6 +107,25 @@ namespace mpp::resource_parsers
 				return fallback;
 			}
 
+			uint32_t collisionSources(Data const& node, std::string const& path)
+			{
+				auto text = value(node, "sources", path);
+				if (text.empty()) return uint32_t(ParticleCollisionSource::Analytical);
+				std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+				std::replace(text.begin(), text.end(), ',', ' ');
+				std::istringstream input(text);
+				std::string source;
+				uint32_t result = 0u;
+				while (input >> source)
+				{
+					if (source == "screenspace") result |= uint32_t(ParticleCollisionSource::ScreenSpace);
+					else if (source == "analytical") result |= uint32_t(ParticleCollisionSource::Analytical);
+					else if (source == "signeddistancefield" || source == "sdf") result |= uint32_t(ParticleCollisionSource::SignedDistanceField);
+					else error("MPP-PARTICLE-009", "Unknown collision source '" + source + "'.", path + "/sources");
+				}
+				return result;
+			}
+
 			void parseCurve(Data const& node, ParticleCurve& curve, std::string const& path)
 			{
 				fields(node, { "default", "Keys" }, path);
@@ -176,10 +195,24 @@ namespace mpp::resource_parsers
 				if (node.hasEntry("Behaviours"))
 				{
 					auto const& behaviours = node.getEntry("Behaviours"); auto behaviourPath = path + "/Behaviours";
-					fields(behaviours, { "Gravity", "Drag", "Noise" }, behaviourPath);
+					fields(behaviours, { "Gravity", "Drag", "Noise", "Collision" }, behaviourPath);
 					if (behaviours.hasEntry("Gravity")) { auto const& block=behaviours.getEntry("Gravity"); fields(block,{"acceleration"},behaviourPath+"/Gravity"); auto acceleration=vector<3>(block,"acceleration",behaviourPath+"/Gravity",{0,-9.81f,0}); sim.gravityAndDrag[0]=acceleration[0];sim.gravityAndDrag[1]=acceleration[1];sim.gravityAndDrag[2]=acceleration[2];sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Gravity); }
 					if (behaviours.hasEntry("Drag")) { auto const& block=behaviours.getEntry("Drag"); fields(block,{"coefficient"},behaviourPath+"/Drag"); sim.gravityAndDrag[3]=number(block,"coefficient",behaviourPath+"/Drag",0,true);sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Drag); }
 					if (behaviours.hasEntry("Noise")) { auto const& block=behaviours.getEntry("Noise");fields(block,{"frequency","strength","scroll","timeScale"},behaviourPath+"/Noise");auto frequency=vector<3>(block,"frequency",behaviourPath+"/Noise",{1,1,1});auto scroll=vector<3>(block,"scroll",behaviourPath+"/Noise",{0,0,0});sim.noiseFrequencyStrength={frequency[0],frequency[1],frequency[2],number(block,"strength",behaviourPath+"/Noise",0,true)};sim.noiseScrollAndTimeScale={scroll[0],scroll[1],scroll[2],number(block,"timeScale",behaviourPath+"/Noise",1)};sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Noise); }
+					if (behaviours.hasEntry("Collision"))
+					{
+						auto const& block = behaviours.getEntry("Collision"); auto collisionPath = behaviourPath + "/Collision";
+						fields(block, { "sources", "response", "restitution", "friction", "radiusScale", "screenSpaceThickness" }, collisionPath);
+						sim.collisionConfiguration[0] = collisionSources(block, collisionPath);
+						sim.collisionConfiguration[1] = uint32_t(enumeration(block, "response", collisionPath, ParticleCollisionResponse::Bounce,
+							{ {"bounce",ParticleCollisionResponse::Bounce},{"slide",ParticleCollisionResponse::Slide},{"stop",ParticleCollisionResponse::Stop},{"kill",ParticleCollisionResponse::Kill},{"spawnsecondaryeffect",ParticleCollisionResponse::SpawnSecondaryEffect} }));
+						sim.collisionParameters = { number(block,"restitution",collisionPath,0.5f), number(block,"friction",collisionPath,0.0f),
+							number(block,"radiusScale",collisionPath,1.0f), number(block,"screenSpaceThickness",collisionPath,0.1f) };
+						if (sim.collisionParameters[0] < 0.0f || sim.collisionParameters[1] < 0.0f || sim.collisionParameters[1] > 1.0f ||
+							sim.collisionParameters[2] < 0.0f || sim.collisionParameters[3] < 0.0f)
+							error("MPP-PARTICLE-011", "Collision restitution, radius scale, and thickness must be non-negative; friction must be in [0, 1].", collisionPath);
+						sim.shapeSeedModulesBudget[2] |= uint32_t(ParticleBehaviourModule::Collision);
+					}
 				}
 
 				if (node.hasEntry("Curves"))

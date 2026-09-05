@@ -28,6 +28,13 @@ ParticleEffect:
           strength: 0.5
           scroll: 0 0.2 0
           timeScale: 1
+        Collision:
+          sources: screenSpace,analytical,signedDistanceField
+          response: bounce
+          restitution: 0.5
+          friction: 0.1
+          radiusScale: 0.5
+          screenSpaceThickness: 0.2
       Curves:
         Size:
           default: 1
@@ -63,4 +70,10 @@ Supported blend classes are `additive`, `alpha`, and `weightedOit`. Conventional
 
 `maximumDrawDistance` is measured in world units and `minimumProjectedSize` is a particle diameter in pixels. Both default to zero, which disables that culling test. Frustum culling always applies. Live particle effects can also be hidden without stopping simulation through `ParticleSystem::setEffectVisible` or assigned visibility flags through `setEffectVisibilityFlags`.
 
-`Gravity`, `Drag`, and `Noise` are named optional blocks, not a sequence. Their evaluation order is fixed by the engine and cannot be authored. `maximumParticleCount` at effect level must exactly equal the sum of all emitter-template values; enforcement at runtime remains per emitter template.
+`Gravity`, `Drag`, `Noise`, and `Collision` are named optional blocks, not a sequence. Their evaluation order is fixed by the engine and cannot be authored. `maximumParticleCount` at effect level must exactly equal the sum of all emitter-template values; enforcement at runtime remains per emitter template.
+
+Collision `sources` is a comma-separated combination of `screenSpace`, `analytical`, and `signedDistanceField`; an omitted value defaults to `analytical`. Responses are `bounce`, `slide`, `stop`, `kill`, and `spawnSecondaryEffect`. Restitution is used by bounce, friction is clamped to `[0,1]`, `radiusScale` multiplies the particle's base size, and `screenSpaceThickness` limits how far behind sampled geometry a depth collision can be recovered. The spawn-secondary response sets `ParticleFlag::CollisionEvent` and `ParticleFlag::SpawnSecondaryEffect` on first contact; consuming that GPU event to create child work belongs to the secondary-effects feature.
+
+Screen-space collision samples the last completed depth image supplied to an `MPP.ParticleScene` or `MPP.ParticleWeightedOit` pass, so the first rendered frame has no screen collision and subsequent simulation remains once-per-frame before graph execution. The pass's `DEPTH` input must therefore be a sampled, resolved depth texture. Analytical world colliders are supplied with `ParticleSystem::setColliders`; supported `ParticleColliderShape` values are plane, sphere, box, and capsule. A plane uses `first.xyz`/`first.w` as normal/distance, a sphere uses `first.xyz`/`first.w` as centre/radius, a box uses `first.xyz`, `second.xyz`, and `third.xyzw` as centre/half-extents/orientation quaternion, and a capsule uses `first.xyz`/`first.w` and `second.xyz` as endpoints/radius.
+
+Install one optional 3D signed-distance texture with `ParticleSystem::setSignedDistanceField`. Its transform maps world coordinates to `[0,1]^3`; red stores signed distance as `(red - isoValue) * distanceScale`. Sampling outside the texture domain does not collide. Use linear filtering and clamp-to-edge wrapping for stable gradients.

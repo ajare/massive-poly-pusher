@@ -36,3 +36,13 @@ because the pass only ever knows that some depth texture is bound to the input.
 Omitting the input entirely is also valid, and yields hard-edged particles
 rather than a failed frame — which is what lets the legacy graph run particles
 without a depth image.
+
+Screen-space particle collision has the same ordering constraint but cannot use
+the current frame's depth because that depth does not exist at the pre-graph
+simulation point. It therefore samples the retained depth resource from the last
+completed main-view particle pass. The first frame has no screen-space collision,
+and a missing depth input disables only that collision source; analytical and
+signed-distance-field collision continue normally. Moving collision after the
+opaque pass would provide current depth but would either advance particle state
+inside a repeatable graph pass or split one simulation frame across graph and
+non-graph ownership, both of which violate the decision above.

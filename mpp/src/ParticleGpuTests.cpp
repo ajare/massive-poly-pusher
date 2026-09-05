@@ -15,6 +15,7 @@
 #include "mpp/ParticleData.h"
 #include "mpp/ParticleGpuTests.h"
 #include "mpp/ParticleSystem.h"
+#include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/RawShaderProgram.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/ResourceManager.h"
@@ -270,6 +271,193 @@ namespace mpp
 				cullingSnapshot.counters.culledCount != 4u)
 				return fail("frustum, distance, projected-size, or effect visibility culling did not compact five survivors to one draw");
 			runFrame(system, 10.0f);
+
+			stage = "GPU screen-space depth collision";
+			RenderTextureOptions collisionDepthOptions;
+			collisionDepthOptions.numAttachments = 0u;
+			collisionDepthOptions.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
+			collisionDepthOptions.depthParams.params.minFilter = GL_NEAREST;
+			collisionDepthOptions.depthParams.params.magFilter = GL_NEAREST;
+			collisionDepthOptions.depthParams.params.wrap = GL_CLAMP_TO_EDGE;
+			auto collisionDepthTarget = renderSystem->createRenderTexture(
+				"__mpp_particle_test_collision_depth__", 16u, 16u, collisionDepthOptions);
+			auto collisionDepth = std::dynamic_pointer_cast<RenderTexture>(collisionDepthTarget);
+			if (!collisionDepth) return fail("screen-space collision depth target was not a render texture");
+			auto projection = glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+			renderSystem->setCameraFrame(glm::mat4(1.0f), projection, { 16.0f, 16.0f }, 0.1f, 100.0f, 0.0f);
+			glm::vec4 surfaceClip = projection * glm::vec4(0.0f, 0.0f, -5.0f, 1.0f);
+			double surfaceDepth = double(surfaceClip.z / surfaceClip.w * 0.5f + 0.5f);
+			renderSystem->pushRenderTarget(collisionDepthTarget);
+			GL_CHECK(glClearDepth(surfaceDepth));
+			GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
+			renderSystem->popRenderTarget();
+			system.setScreenSpaceCollisionDepth(std::static_pointer_cast<Resource>(collisionDepth));
+			auto screenEmitter = burst(1u, 1u, 10.0f);
+			screenEmitter.localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -4.0f });
+			screenEmitter.simulation.initialVelocityMin = { 0.0f, 0.0f, -2.0f, 0.0f };
+			screenEmitter.simulation.initialVelocityMax = screenEmitter.simulation.initialVelocityMin;
+			screenEmitter.simulation.lifetimeSizeRanges[2] = 0.1f;
+			screenEmitter.simulation.lifetimeSizeRanges[3] = 0.1f;
+			screenEmitter.simulation.shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Collision);
+			screenEmitter.simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::ScreenSpace),
+				uint32_t(ParticleCollisionResponse::Bounce), 0u, 0u };
+			screenEmitter.simulation.collisionParameters = { 1.0f, 0.0f, 1.0f, 0.25f };
+			std::array screenEmitters{ screenEmitter };
+			auto screenEffect = system.createEffect(screenEmitters);
+			auto screenHandle = system.getEmitter(screenEffect, 0u);
+			runFrame(system, 0.0f);
+			runFrame(system, 0.6f);
+			GL_CHECK(glFinish());
+			ParticleDrawArraysIndirectCommand screenCommand;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(screenHandle.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(screenCommand), &screenCommand));
+			if (screenCommand.instanceCount != 1u) return fail("screen-space collision removed a bouncing particle");
+			uint32_t screenParticleIndex = 0u;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mRenderIndices->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(screenCommand.first / 4u) * sizeof(uint32_t)),
+				sizeof(screenParticleIndex), &screenParticleIndex));
+			ParticleRecord screenParticle;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mParticlePool->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(screenParticleIndex) * sizeof(ParticleRecord)),
+				sizeof(screenParticle), &screenParticle));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (screenParticle.velocityLifetime[2] < 1.9f ||
+				(screenParticle.flags & uint32_t(ParticleFlag::CollisionEvent)) == 0u)
+				return fail("screen-space depth collision did not reconstruct the surface and bounce");
+			runFrame(system, 10.0f);
+			system.setScreenSpaceCollisionDepth({});
+			collisionDepth.reset();
+			collisionDepthTarget.reset();
+			renderSystem->getResourceManager()->deleteResourceTree("__mpp_particle_test_collision_depth__");
+
+			stage = "GPU analytical collision responses";
+			ParticleCollider floor;
+			floor.shapeAndPadding[0] = uint32_t(ParticleColliderShape::Plane);
+			floor.first = { 0.0f, 1.0f, 0.0f, 0.0f };
+			std::array collisionWorld{ floor };
+			system.setColliders(collisionWorld);
+			std::array<ParticleEmitterTemplate, 5> collisionEmitters;
+			for (uint32_t response = 0u; response < collisionEmitters.size(); ++response)
+			{
+				auto& emitter = collisionEmitters[response];
+				emitter = burst(1u, 1u, 10.0f);
+				emitter.localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.0f, -5.0f });
+				emitter.simulation.initialVelocityMin = { 1.0f, -2.0f, 0.0f, 0.0f };
+				emitter.simulation.initialVelocityMax = emitter.simulation.initialVelocityMin;
+				emitter.simulation.lifetimeSizeRanges[2] = 0.1f;
+				emitter.simulation.lifetimeSizeRanges[3] = 0.1f;
+				emitter.simulation.shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Collision);
+				emitter.simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::Analytical), response, 0u, 0u };
+				emitter.simulation.collisionParameters = { 1.0f, 0.25f, 1.0f, 0.1f };
+			}
+			auto collisionEffect = system.createEffect(collisionEmitters);
+			runFrame(system, 0.0f);
+			runFrame(system, 0.6f);
+			GL_CHECK(glFinish());
+			std::array<ParticleRecord, 5> collidedParticles;
+			for (uint32_t response = 0u; response < collisionEmitters.size(); ++response)
+			{
+				auto handle = system.getEmitter(collisionEffect, response);
+				ParticleDrawArraysIndirectCommand command;
+				GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mIndirectCommands->getBuffer()));
+				GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+					GLintptr(handle.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(command), &command));
+				if (response == uint32_t(ParticleCollisionResponse::Kill))
+				{
+					if (command.instanceCount != 0u) return fail("kill collision response retained its particle");
+					continue;
+				}
+				if (command.instanceCount != 1u) return fail("non-kill collision response removed its particle");
+				uint32_t particleIndex = 0u;
+				GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mRenderIndices->getBuffer()));
+				GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(command.first / 4u) * sizeof(uint32_t)),
+					sizeof(particleIndex), &particleIndex));
+				GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mParticlePool->getBuffer()));
+				GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(particleIndex) * sizeof(ParticleRecord)),
+					sizeof(ParticleRecord), &collidedParticles[response]));
+			}
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			auto collisionBits = uint32_t(ParticleFlag::Colliding) | uint32_t(ParticleFlag::CollisionEvent);
+			if ((collidedParticles[0].flags & collisionBits) != collisionBits ||
+				collidedParticles[0].positionAge[1] < 0.099f || collidedParticles[0].velocityLifetime[1] < 1.9f)
+				return fail("bounce collision did not depenetrate and reflect velocity");
+			if (std::abs(collidedParticles[1].velocityLifetime[1]) > 0.001f ||
+				std::abs(collidedParticles[1].velocityLifetime[0] - 0.75f) > 0.01f)
+				return fail("slide collision did not remove normal velocity and apply friction");
+			if (std::abs(collidedParticles[2].velocityLifetime[0]) > 0.001f ||
+				std::abs(collidedParticles[2].velocityLifetime[1]) > 0.001f)
+				return fail("stop collision response retained velocity");
+			if ((collidedParticles[4].flags & uint32_t(ParticleFlag::SpawnSecondaryEffect)) == 0u ||
+				(collidedParticles[4].flags & uint32_t(ParticleFlag::CollisionEvent)) == 0u)
+				return fail("spawn-secondary collision response did not publish a one-frame GPU event flag");
+			runFrame(system, 10.0f);
+			system.setColliders({});
+
+			stage = "GPU signed distance field collision";
+			auto sdfStream = std::make_shared<ProgrammaticTextureStream>(renderSystem->getResourceManager());
+			sdfStream->setTarget(TextureTarget::Texture3D);
+			sdfStream->setInternalFormat(TextureInternalType::Float, false, 32u, 1u);
+			sdfStream->setFiltering(TextureParams::MinFilter::Linear, TextureParams::MagFilter::Linear);
+			sdfStream->setWrapping(TextureParams::Wrapping::ClampToEdge);
+			sdfStream->setData([](std::string const&)
+			{
+				constexpr size_t size = 5u;
+				auto* data = new uint8_t[size * size * size * sizeof(float)];
+				auto* values = reinterpret_cast<float*>(data);
+				for (size_t z = 0; z < size; ++z)
+					for (size_t y = 0; y < size; ++y)
+						for (size_t x = 0; x < size; ++x)
+							values[(z * size + y) * size + x] = float(y) - 2.0f;
+				return TextureData(data, size, size, size, 32u, GL_RED, GL_FLOAT);
+			});
+			auto sdfTexture = renderSystem->getResourceManager()->declareResource("__mpp_particle_test_sdf__", sdfStream).first;
+			sdfTexture->load();
+			glm::mat4 worldToTexture(1.0f);
+			worldToTexture[0][0] = 0.25f;
+			worldToTexture[1][1] = 0.25f;
+			worldToTexture[2][2] = 0.25f;
+			worldToTexture[3] = { 0.5f, 0.5f, 1.75f, 1.0f };
+			system.setSignedDistanceField(sdfTexture, worldToTexture);
+			auto sdfEmitter = burst(1u, 1u, 10.0f);
+			sdfEmitter.localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.0f, -5.0f });
+			sdfEmitter.simulation.initialVelocityMin = { 0.0f, -2.0f, 0.0f, 0.0f };
+			sdfEmitter.simulation.initialVelocityMax = sdfEmitter.simulation.initialVelocityMin;
+			sdfEmitter.simulation.lifetimeSizeRanges[2] = 0.1f;
+			sdfEmitter.simulation.lifetimeSizeRanges[3] = 0.1f;
+			sdfEmitter.simulation.shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Collision);
+			sdfEmitter.simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::SignedDistanceField),
+				uint32_t(ParticleCollisionResponse::Bounce), 0u, 0u };
+			sdfEmitter.simulation.collisionParameters[0] = 1.0f;
+			std::array sdfEmitters{ sdfEmitter };
+			auto sdfEffect = system.createEffect(sdfEmitters);
+			auto sdfHandle = system.getEmitter(sdfEffect, 0u);
+			runFrame(system, 0.0f);
+			runFrame(system, 0.6f);
+			GL_CHECK(glFinish());
+			ParticleDrawArraysIndirectCommand sdfCommand;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(sdfHandle.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(sdfCommand), &sdfCommand));
+			if (sdfCommand.instanceCount != 1u) return fail("SDF collision removed a bouncing particle");
+			uint32_t sdfParticleIndex = 0u;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mRenderIndices->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(sdfCommand.first / 4u) * sizeof(uint32_t)),
+				sizeof(sdfParticleIndex), &sdfParticleIndex));
+			ParticleRecord sdfParticle;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mParticlePool->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(size_t(sdfParticleIndex) * sizeof(ParticleRecord)),
+				sizeof(sdfParticle), &sdfParticle));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (sdfParticle.positionAge[1] < 0.099f || sdfParticle.velocityLifetime[1] < 1.9f ||
+				(sdfParticle.flags & uint32_t(ParticleFlag::CollisionEvent)) == 0u)
+				return fail("SDF collision did not sample, depenetrate, and bounce (y=" +
+					std::to_string(sdfParticle.positionAge[1]) + ", vy=" + std::to_string(sdfParticle.velocityLifetime[1]) +
+					", flags=" + std::to_string(sdfParticle.flags) + ")");
+			runFrame(system, 10.0f);
+			system.clearSignedDistanceField();
+			sdfTexture.reset();
+			renderSystem->getResourceManager()->deleteResourceTree("__mpp_particle_test_sdf__");
 
 			stage = "GPU alpha depth radix sort";
 			if (system.mSortRecordsA || system.mSortRecordsB || system.mRadixHistogram || system.mSortDispatchCommand ||
