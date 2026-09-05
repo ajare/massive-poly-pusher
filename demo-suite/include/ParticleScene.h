@@ -18,6 +18,7 @@ class ParticleScene final : public ::Scene
 	mpp::RenderSystem* mRenderer{ nullptr };
 	mpp::RenderTargetPtr mPresentationTarget;
 	mpp::ParticleEffectHandle mDemoEffect;
+	mpp::ParticleEffectHandle mSerializedEffect;
 	mpp::ParticleEffectHandle mStressEffect;
 	mpp::TrailHandle mDemoTrail;
 	std::string mPipelineName{ "ParticlePbr" };

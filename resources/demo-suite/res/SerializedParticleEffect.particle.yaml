@@ -1,0 +1,60 @@
+ParticleEffect:
+  version: 2
+  name: DemoSuite serialized bounded particle effect
+  maximumParticleCount: 2048
+  Bounds:
+    center: 0 1.2 2
+    size: 2.4 3.6 2.4
+  Emitters:
+    - name: AuthoredEmbers
+      maximumParticleCount: 2048
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 0 0.3 2 1
+      Spawn:
+        shape: sphere
+        shapeParameters: 0.45 0 0 0
+        seed: 4601
+        mode: burst
+        enabled: true
+        rate: 0
+        burstCount: 256
+        initialVelocityMin: -0.12 0.35 -0.12 0
+        initialVelocityMax: 0.12 0.9 0.12 0
+        colourMin: 0.8 0.15 0.02 0.5
+        colourMax: 1 0.7 0.08 0.95
+        lifetime: 1.5 2.4
+        size: 0.12 0.32
+        rotation: 0 6.283185
+        angularVelocity: -1.5 1.5
+      Behaviours:
+        Gravity:
+          acceleration: 0 -0.18 0
+      Curves:
+        Size:
+          Keys:
+            - time: 0
+              value: 0.2
+            - time: 0.18
+              value: 1
+            - time: 1
+              value: 0.05
+        Alpha:
+          Keys:
+            - time: 0
+              value: 0
+            - time: 0.1
+              value: 1
+            - time: 0.75
+              value: 0.65
+            - time: 1
+              value: 0
+      Appearance:
+        texture: DemoSuite.SerializedParticleAtlas
+        tint: 1 0.45 0.08
+        alpha: 0.9
+        emissiveIntensity: 3
+        softFadeDistance: 0.5
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        billboard: cameraFacing
+        blendClass: additive

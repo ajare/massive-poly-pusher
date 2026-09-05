@@ -14,6 +14,7 @@
 #include <mpp/ProgrammaticTextureStream.h>
 #include <mpp/RenderGraphStream.h>
 #include <mpp/RenderPipeline.h>
+#include <mpp/resource-parsers/FileParticleEffectStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 
 namespace
@@ -171,6 +172,24 @@ void ParticleScene::createDemoEffect()
 	auto atlas = getResourceManager()->declareResource("DemoSuite.ParticleAtlas", textureStream).first;
 	atlas->load();
 
+	auto serializedTextureStream = std::make_shared<mpp::ProgrammaticTextureStream>(getResourceManager());
+	serializedTextureStream->setTarget(mpp::TextureTarget::Texture2D);
+	serializedTextureStream->setFile((mResourceRoot / "atlas.png").string(), getResourceManager()->getImageLoadFunction());
+	serializedTextureStream->setColourSpace(mpp::TextureColourSpace::Srgb);
+	serializedTextureStream->setFiltering(mpp::TextureParams::MinFilter::Linear, mpp::TextureParams::MagFilter::Linear);
+	serializedTextureStream->setWrapping(mpp::TextureParams::Wrapping::ClampToEdge);
+	auto serializedAtlas = getResourceManager()->declareResource("DemoSuite.SerializedParticleAtlas", serializedTextureStream).first;
+	serializedAtlas->load();
+
+	auto serializedEffectStream = std::make_shared<mpp::resource_parsers::FileParticleEffectStream>(
+		getResourceManager(), (mResourceRoot / "SerializedParticleEffect.particle.yaml").string());
+	auto serializedEffect = getResourceManager()->declareResource("DemoSuite.SerializedParticleEffect", serializedEffectStream).first;
+	serializedEffect->load();
+	if (serializedEffectStream->getDiagnostics().hasErrors() || !serializedEffectStream->getBounds())
+		throw std::runtime_error("Could not parse the bounded serialized particle effect.");
+	mSerializedEffect = mRenderer->getParticleSystem().createEffect(serializedEffect);
+	if (!mSerializedEffect) throw std::runtime_error("Could not create the serialized particle effect.");
+
 	mpp::ParticleEffectSpecification specification;
 	specification.name = "DemoSuite particle showcase";
 	auto cone = emitterTemplate(mpp::ParticleSpawnShape::Cone, mpp::ParticleBlendClass::Additive, { -2.2f, -0.05f, 0.0f }, 12000u);
@@ -252,6 +271,7 @@ void ParticleScene::teardownImpl()
 		auto& particles = mRenderer->getParticleSystem();
 		if (mDemoTrail) mRenderer->getTrailSystem().destroyTrail(mDemoTrail);
 		if (mDemoEffect) particles.destroyEffect(mDemoEffect);
+		if (mSerializedEffect) particles.destroyEffect(mSerializedEffect);
 		if (mStressEffect) particles.destroyEffect(mStressEffect);
 		particles.setColliders({});
 		particles.clearSignedDistanceField();
@@ -262,7 +282,7 @@ void ParticleScene::teardownImpl()
 	}
 	mSceneRuntime.reset();
 	mPresentationTarget.reset();
-	for (auto const* name : { "DemoSuite.ParticleEffect", "DemoSuite.ParticleAtlas", "DemoSuite.ParticlePresentation", "DemoSuite.ParticlePbr.Graph", "DemoSuite.ParticleLegacy.Graph" })
+	for (auto const* name : { "DemoSuite.ParticleEffect", "DemoSuite.ParticleAtlas", "DemoSuite.SerializedParticleEffect", "DemoSuite.SerializedParticleAtlas", "DemoSuite.ParticlePresentation", "DemoSuite.ParticlePbr.Graph", "DemoSuite.ParticleLegacy.Graph" })
 		if (getResourceManager()->getResource(name, true)) getResourceManager()->deleteResourceTree(name);
 	mRenderer = nullptr;
 }

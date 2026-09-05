@@ -133,6 +133,7 @@ bool gPackageSmokeTest{false};
 bool gParticleTests{false};
 bool gParticles{false};
 std::filesystem::path gPackageDirectory;
+std::filesystem::path gResourceRoot;
 bool gStartupComplete{false};
 
 //
@@ -274,6 +275,7 @@ bool startup(int argc, char** argv)
 	resourceRoot = std::filesystem::weakly_canonical(resourceRoot);
 	if (!std::filesystem::is_directory(resourceRoot))
 		throw runtime_error("Configured DemoSuite resource directory does not exist: " + resourceRoot.string());
+	gResourceRoot = resourceRoot;
 	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableRoot / "demosuite.ini");
 	gLogger = new ::Logger();
 	if (!gLogger->initialise("DemoSuite.log"))
@@ -418,8 +420,37 @@ int main(int argc, char** argv)
 			}
 			else
 			{
-				fprintf(stderr, "Particle and render graph GPU tests passed.\n");
-				fflush(stderr);
+				bool serializedSmokePassed = false;
+				try
+				{
+					ParticleScene serializedSmoke(gResourceManager, gResourceRoot / "demo-suite" / "res");
+					serializedSmoke.setup(gRenderSystem, gOptions);
+					for (int frame = 0; frame < 3; ++frame)
+					{
+						gRenderSystem->startStatsCollection();
+						serializedSmoke.render(gRenderSystem, gWorld, gRenderOptions);
+						serializedSmoke.present(gRenderSystem);
+						gRenderSystem->renderToScreen();
+						(void)gRenderSystem->finishStatsCollection();
+					}
+					serializedSmoke.teardown();
+					serializedSmokePassed = true;
+				}
+				catch (std::exception const& error)
+				{
+					suiteFailure = "serialized particle effect smoke test failed: " + std::string(error.what());
+				}
+				if (!serializedSmokePassed)
+				{
+					fprintf(stderr, "DemoSuite particle GPU tests failed: %s\n", suiteFailure.c_str());
+					fflush(stderr);
+					exitCode = 1;
+				}
+				else
+				{
+					fprintf(stderr, "Particle and render graph GPU tests passed.\n");
+					fflush(stderr);
+				}
 			}
 			shutdown();
 			return exitCode;
