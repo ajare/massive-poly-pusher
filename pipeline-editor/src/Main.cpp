@@ -49,6 +49,7 @@ extern "C" const char* __asan_default_options()
 #include "mpp/Logger.h"
 #include "mpp/PbrMaterial.h"
 #include "mpp/PbrMaterialTests.h"
+#include "mpp/ParticleSystemTests.h"
 #include "mpp/RenderGraphGpuTests.h"
 #include "mpp/RenderGraphTests.h"
 #include "mpp/RenderSystem.h"
@@ -1267,6 +1268,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (!mpp::runPbrMaterialSpecializationTests(&suiteFailure))
 				{
 					fprintf(stderr, "MPP-PIPELINE-CLI-004: PBR material specialization tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
+				if (!mpp::runParticleSystemCpuTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-006: particle system CPU tests failed: %s\n", suiteFailure.c_str());
 					return 1;
 				}
 				auto document = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[pathIndex]);

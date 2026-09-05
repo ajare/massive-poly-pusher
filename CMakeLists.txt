@@ -316,6 +316,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/MppModelStream.cpp
     mpp/src/ParticleDrawProgram.cpp
     mpp/src/ParticleSystem.cpp
+    mpp/src/ParticleSystemTests.cpp
     mpp/src/PersistentMappedBuffer.cpp
     mpp/src/PostEffectMaterial.cpp
     mpp/src/PostEffectMaterialStream.cpp

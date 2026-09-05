@@ -2,9 +2,13 @@
 
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
+
+#include <glm/mat4x4.hpp>
 
 #include "mpp/Config.h"
 #include "mpp/ParticleData.h"
@@ -17,8 +21,56 @@ namespace mpp
 	class ShaderStorageBuffer;
 	namespace detail { class PersistentMappedBuffer; }
 
-	// The GPU-driven particle system. CPU state consists only of emitter records
-	// and spawn commands; particles and their allocation state stay on the GPU.
+	enum class ParticleParameter : uint32_t
+	{
+		SpawnRate,
+		SizeScale,
+		SpeedScale,
+		LifetimeScale,
+		AlphaScale,
+		EmissiveScale
+	};
+
+	struct _MPPAPI ParticleEmitterHandle
+	{
+		static constexpr uint32_t InvalidIndex = std::numeric_limits<uint32_t>::max();
+		uint32_t index{ InvalidIndex };
+		uint32_t generation{ 0 };
+		explicit operator bool() const noexcept { return index != InvalidIndex && generation != 0; }
+		auto operator<=>(ParticleEmitterHandle const&) const = default;
+	};
+
+	struct _MPPAPI ParticleEffectHandle
+	{
+		static constexpr uint32_t InvalidIndex = std::numeric_limits<uint32_t>::max();
+		uint32_t index{ InvalidIndex };
+		uint32_t generation{ 0 };
+		explicit operator bool() const noexcept { return index != InvalidIndex && generation != 0; }
+		auto operator<=>(ParticleEffectHandle const&) const = default;
+	};
+
+	// Runtime form of one authored emitter template. Asset implementations copy
+	// their authored values into this structure; ParticleSystem then owns each
+	// live emitter's mutable copy.
+	struct _MPPAPI ParticleEmitterTemplate
+	{
+		EmitterSimData simulation{};
+		TemplateRenderData appearance{};
+		glm::mat4 localTransform{ 1.0f };
+	};
+
+	// Narrow bridge between the CPU API and the particle effect Resource supplied
+	// by the asset ticket. Keeping it abstract lets this API remain usable by
+	// programmatic effects without taking ownership of parsing or authoring.
+	class _MPPAPI ParticleEffectSource
+	{
+	public:
+		virtual ~ParticleEffectSource() = default;
+		virtual std::span<ParticleEmitterTemplate const> getEmitterTemplates() const = 0;
+	};
+
+	// The GPU-driven particle system. The CPU owns effects, generational emitter
+	// slots and spawn commands; particles and their allocation state stay on GPU.
 	class _MPPAPI ParticleSystem
 	{
 	public:
@@ -51,13 +103,30 @@ namespace mpp
 		std::vector<EmitterSimData> mEmitters;
 		std::vector<TemplateRenderData> mTemplateRenderData;
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
-		struct EmitterFrameState
+		struct EmitterSlot
 		{
+			uint32_t generation{ 1 };
+			bool occupied{ false };
+			bool pendingDestroy{ false };
+			glm::mat4 localTransform{ 1.0f };
 			ParticleSpawnAccumulator spawnAccumulator;
 			uint32_t spawnCounter{ 0 };
 			bool burstSubmitted{ false };
+			bool hasSpawned{ false };
+			float lastSpawnSeconds{ 0.0f };
+			float maximumSpawnedLifetime{ 0.0f };
 		};
-		std::vector<EmitterFrameState> mEmitterFrameStates;
+		struct EffectSlot
+		{
+			uint32_t generation{ 1 };
+			bool occupied{ false };
+			glm::mat4 transform{ 1.0f };
+			std::vector<ParticleEmitterHandle> emitters;
+		};
+		std::vector<EmitterSlot> mEmitterSlots;
+		std::vector<uint32_t> mFreeEmitterIndices;
+		std::vector<EffectSlot> mEffectSlots;
+		std::vector<uint32_t> mFreeEffectIndices;
 
 		uint32_t mVertexArray{ 0 };
 		uint32_t mNoiseTexture{ 0 };
@@ -67,20 +136,28 @@ namespace mpp
 		bool mInitialised{ false };
 		bool mAvailable{ false };
 		bool mPoolAllocated{ false };
-		bool mBootstrapEmittersCreated{ false };
 		bool mHasLastSimulationTime{ false };
 		std::chrono::steady_clock::time_point mLastSimulationTime{};
 		float mSimulationSeconds{ 0.0f };
 
 		void ensurePoolAllocated();
 		void createNoiseTexture();
-		void createBootstrapEmitters();
 		void buildSpawnCommands(float dt);
+		void retireCompletedEmitters();
 		void uploadFrameData();
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
 		void dispatchCompaction();
 		void disableWithWarning(std::string const& reason);
+		ParticleEmitterHandle allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform);
+		EmitterSlot* findEmitter(ParticleEmitterHandle handle);
+		EmitterSlot const* findEmitter(ParticleEmitterHandle handle) const;
+		EffectSlot* findEffect(ParticleEffectHandle handle);
+		void requestEmitterDestroy(uint32_t index);
+		void reclaimEmitter(uint32_t index);
+		void reclaimEffect(uint32_t index);
+		bool hasOccupiedEmitters() const;
+		friend _MPPAPI bool runParticleSystemCpuTests(std::string* failure);
 
 	public:
 		ParticleSystem(RenderSystem* renderSystem, ResourceManager* resourceManager);
@@ -88,21 +165,34 @@ namespace mpp
 		ParticleSystem(ParticleSystem const&) = delete;
 		ParticleSystem& operator =(ParticleSystem const&) = delete;
 
-		// Compiles the kernels and draw program, but deliberately does not allocate
-		// the pool. Pool allocation starts only when the first emitter exists.
 		void initialise();
-
 		bool isAvailable() const { return mAvailable; }
 		bool isPoolAllocated() const { return mPoolAllocated; }
 		uint32_t getPoolCapacity() const { return mPoolCapacity; }
 
+		ParticleEffectHandle createEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
+		ParticleEffectHandle createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
+		ParticleEffectHandle createEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform = glm::mat4(1.0f));
+		void destroyEffect(ParticleEffectHandle effect);
+		void setEffectTransform(ParticleEffectHandle effect, glm::mat4 const& transform);
+		void spawnEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
+		void spawnEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
+		void spawnEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform = glm::mat4(1.0f));
+
+		ParticleEmitterHandle getEmitter(ParticleEffectHandle effect, size_t index) const;
+		void destroyEmitter(ParticleEmitterHandle emitter);
+		void setEmitterTransform(ParticleEmitterHandle emitter, glm::mat4 const& transform);
+		void setEmitterParameter(ParticleEmitterHandle emitter, ParticleParameter parameter, float multiplier);
+		void startEmitter(ParticleEmitterHandle emitter);
+		void stopEmitter(ParticleEmitterHandle emitter);
+		bool isAlive(ParticleEmitterHandle emitter) const { return findEmitter(emitter) != nullptr; }
+		bool isAlive(ParticleEffectHandle effect) const;
+		size_t getLiveEmitterCount() const;
+		size_t getLiveEffectCount() const;
+
 		// Spawn preparation and simulation are called once per rendered frame outside
 		// graph passes. RenderSystem guards the frame serial before entering here.
 		void simulate();
-
-		// Draws contiguous per-template ranges from the render index list in one
-		// GPU-authored indirect multi-draw for the current additive blend class.
-		// Safe before pool allocation and when compute is unavailable.
 		void render();
 	};
 }

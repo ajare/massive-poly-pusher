@@ -656,6 +656,10 @@ namespace mpp
 		// Particles
 		//
 
+		// Gameplay reaches the extracted CPU API through its renderer owner.
+		ParticleSystem& getParticleSystem();
+		ParticleSystem const& getParticleSystem() const;
+
 		// One simulation dispatch for this rendered frame, issued before graph
 		// execution (ADR 0005) by a pipeline whose graph draws particles. A graph
 		// pass may execute several times per frame and must never call this.

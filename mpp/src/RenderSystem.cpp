@@ -3807,6 +3807,18 @@ namespace mpp
 		return mActivePipelineSamplerOverrides;
 	}
 
+	ParticleSystem& RenderSystem::getParticleSystem()
+	{
+		if (!mParticleSystem) THROW_MPP("ParticleSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mParticleSystem;
+	}
+
+	ParticleSystem const& RenderSystem::getParticleSystem() const
+	{
+		if (!mParticleSystem) THROW_MPP("ParticleSystem is unavailable before core resources are created.", __LINE__, __FILE__, __func__);
+		return *mParticleSystem;
+	}
+
 	/*
 	 * Advance the particle simulation for this frame.
 	 *

@@ -1,11 +1,14 @@
 #include <algorithm>
 #include <chrono>
 #include <exception>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
+
+#include <glm/gtc/type_ptr.hpp>
 
 #include "mpp/ComputeProgram.h"
 #include "mpp/GLErrorCheck.h"
@@ -59,11 +62,15 @@ namespace mpp
 			return values.size() * sizeof(T);
 		}
 
-		void setTranslation(EmitterSimData& emitter, float x, float y, float z)
+		void setTransform(EmitterSimData& emitter, glm::mat4 const& transform)
 		{
-			emitter.transform[12] = x;
-			emitter.transform[13] = y;
-			emitter.transform[14] = z;
+			copy_n(glm::value_ptr(transform), emitter.transform.size(), emitter.transform.begin());
+		}
+
+		uint32_t nextGeneration(uint32_t generation)
+		{
+			++generation;
+			return generation == 0 ? 1 : generation;
 		}
 	}
 
@@ -312,83 +319,309 @@ namespace mpp
 		mPoolAllocated = true;
 	}
 
-	void ParticleSystem::createBootstrapEmitters()
+	ParticleEmitterHandle ParticleSystem::allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform)
 	{
-		// Keeps the vertical slice observable until authored particle effects and
-		// the public emitter API arrive. The emitters exercise every spawn shape and
-		// every independent combination needed to keep module branches live.
-		constexpr uint32_t initialParticlesPerShape = 24;
-		constexpr uint32_t particlesPerShapeBudget = 128;
-		constexpr uint32_t moduleMasks[]{
-			0u,
-			uint32_t(ParticleBehaviourModule::Gravity),
-			uint32_t(ParticleBehaviourModule::Drag),
-			uint32_t(ParticleBehaviourModule::Noise),
-			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag),
-			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Noise),
-			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag) | uint32_t(ParticleBehaviourModule::Noise)
-		};
-		for (uint32_t shape = uint32_t(ParticleSpawnShape::Point); shape <= uint32_t(ParticleSpawnShape::Cone); ++shape)
+		uint32_t index;
+		if (!mFreeEmitterIndices.empty())
 		{
-			EmitterSimData emitter;
-			setTranslation(emitter, (float(shape) - 3.0f) * 0.55f, -0.15f, 0.0f);
-			emitter.initialVelocityMin = { -0.1f, 0.15f, -0.1f, 0.0f };
-			emitter.initialVelocityMax = { 0.1f, 0.45f, 0.1f, 0.0f };
-			emitter.lifetimeSizeRanges = { 4.0f, 6.0f, 0.035f, 0.065f };
-			emitter.rotationRanges = { -3.14159f, 3.14159f, -1.0f, 1.0f };
-			emitter.shapeSeedModulesBudget = { shape, 0x6d2b79f5u + shape * 977u, moduleMasks[shape], particlesPerShapeBudget };
-			emitter.emissionRateAndPadding[0] = shape == 0u ? 0.5f : 8.0f + float(shape);
-			emitter.gravityAndDrag = { 0.0f, -0.35f, 0.0f, 0.45f };
-			emitter.noiseFrequencyStrength = { 0.65f, 0.65f, 0.65f, 0.3f };
-			emitter.noiseScrollAndTimeScale = { 0.07f, 0.11f, 0.05f, 1.0f };
-			emitter.colourMin = { 0.2f + float(shape % 3u) * 0.25f, 0.35f, 0.6f, 0.75f };
-			emitter.colourMax = { 1.0f, 0.65f + float(shape % 2u) * 0.25f, 1.0f, 1.0f };
-			switch (ParticleSpawnShape(shape))
-			{
-			case ParticleSpawnShape::Point: break;
-			case ParticleSpawnShape::Line: emitter.shapeParameters = { 0.22f, 0.16f, 0.0f, 0.0f }; break;
-			case ParticleSpawnShape::Box: emitter.shapeParameters = { 0.18f, 0.18f, 0.18f, 0.0f }; break;
-			case ParticleSpawnShape::Sphere: emitter.shapeParameters = { 0.24f, 0.0f, 0.0f, 0.0f }; break;
-			case ParticleSpawnShape::Hemisphere: emitter.shapeParameters = { 0.24f, 0.0f, 0.0f, 0.0f }; break;
-			case ParticleSpawnShape::Disc: emitter.shapeParameters = { 0.27f, 0.0f, 0.0f, 0.0f }; break;
-			case ParticleSpawnShape::Cone: emitter.shapeParameters = { 0.22f, 0.42f, 0.0f, 0.0f }; break;
-			}
-
-			uint32_t const emitterIndex = uint32_t(mEmitters.size());
-			emitter.emissionState[3] = uint32_t(mTemplateRenderData.size());
-			mEmitters.push_back(emitter);
+			index = mFreeEmitterIndices.back();
+			mFreeEmitterIndices.pop_back();
+		}
+		else
+		{
+			if (mEmitterSlots.size() >= MaxEmitterCount)
+				THROW_MPP("The particle emitter capacity was exceeded.", __LINE__, __FILE__, __func__);
+			index = uint32_t(mEmitterSlots.size());
+			mEmitterSlots.emplace_back();
+			mEmitters.emplace_back();
 			mTemplateRenderData.emplace_back();
-			mEmitterFrameStates.push_back({ {}, initialParticlesPerShape, false });
-			mSpawnCommands.push_back({ emitterIndex, initialParticlesPerShape, 0x9e3779b9u + shape, 0u });
+		}
+
+		auto& slot = mEmitterSlots[index];
+		slot.occupied = true;
+		slot.pendingDestroy = false;
+		slot.localTransform = emitterTemplate.localTransform;
+		slot.spawnAccumulator = {};
+		slot.spawnCounter = 0;
+		slot.burstSubmitted = false;
+		slot.hasSpawned = false;
+		slot.lastSpawnSeconds = mSimulationSeconds;
+		slot.maximumSpawnedLifetime = 0.0f;
+		mEmitters[index] = emitterTemplate.simulation;
+		mEmitters[index].emissionState[3] = index;
+		setTransform(mEmitters[index], effectTransform * slot.localTransform);
+		mTemplateRenderData[index] = emitterTemplate.appearance;
+		return { index, slot.generation };
+	}
+
+	ParticleSystem::EmitterSlot* ParticleSystem::findEmitter(ParticleEmitterHandle handle)
+	{
+		if (!handle || handle.index >= mEmitterSlots.size()) return nullptr;
+		auto& slot = mEmitterSlots[handle.index];
+		return slot.occupied && !slot.pendingDestroy && slot.generation == handle.generation ? &slot : nullptr;
+	}
+
+	ParticleSystem::EmitterSlot const* ParticleSystem::findEmitter(ParticleEmitterHandle handle) const
+	{
+		if (!handle || handle.index >= mEmitterSlots.size()) return nullptr;
+		auto const& slot = mEmitterSlots[handle.index];
+		return slot.occupied && !slot.pendingDestroy && slot.generation == handle.generation ? &slot : nullptr;
+	}
+
+	ParticleSystem::EffectSlot* ParticleSystem::findEffect(ParticleEffectHandle handle)
+	{
+		if (!handle || handle.index >= mEffectSlots.size()) return nullptr;
+		auto& slot = mEffectSlots[handle.index];
+		return slot.occupied && slot.generation == handle.generation ? &slot : nullptr;
+	}
+
+	ParticleEffectHandle ParticleSystem::createEffect(ResourcePtr const& asset, glm::mat4 const& transform)
+	{
+		auto const* source = asset ? dynamic_cast<ParticleEffectSource const*>(asset.get()) : nullptr;
+		if (!source) throw invalid_argument("ParticleSystem::createEffect requires a particle effect asset.");
+		return createEffect(*source, transform);
+	}
+
+	ParticleEffectHandle ParticleSystem::createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform)
+	{
+		return createEffect(asset.getEmitterTemplates(), transform);
+	}
+
+	ParticleEffectHandle ParticleSystem::createEffect(span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform)
+	{
+		if (emitterTemplates.empty()) return {};
+		if (emitterTemplates.size() > MaxEmitterCount - getLiveEmitterCount())
+			THROW_MPP("The particle emitter capacity was exceeded.", __LINE__, __FILE__, __func__);
+
+		uint32_t effectIndex;
+		if (!mFreeEffectIndices.empty())
+		{
+			effectIndex = mFreeEffectIndices.back();
+			mFreeEffectIndices.pop_back();
+		}
+		else
+		{
+			effectIndex = uint32_t(mEffectSlots.size());
+			mEffectSlots.emplace_back();
+		}
+		auto& effect = mEffectSlots[effectIndex];
+		effect.occupied = true;
+		effect.transform = transform;
+		effect.emitters.clear();
+		effect.emitters.reserve(emitterTemplates.size());
+
+		try
+		{
+			for (auto const& emitterTemplate : emitterTemplates)
+				effect.emitters.push_back(allocateEmitter(emitterTemplate, transform));
+		}
+		catch (...)
+		{
+			for (auto emitter : effect.emitters) reclaimEmitter(emitter.index);
+			effect.occupied = false;
+			mFreeEffectIndices.push_back(effectIndex);
+			throw;
+		}
+		return { effectIndex, effect.generation };
+	}
+
+	void ParticleSystem::destroyEffect(ParticleEffectHandle handle)
+	{
+		auto* effect = findEffect(handle);
+		if (!effect) return;
+		for (auto emitter : effect->emitters) requestEmitterDestroy(emitter.index);
+		reclaimEffect(handle.index);
+	}
+
+	void ParticleSystem::setEffectTransform(ParticleEffectHandle handle, glm::mat4 const& transform)
+	{
+		auto* effect = findEffect(handle);
+		if (!effect) return;
+		effect->transform = transform;
+		for (auto emitter : effect->emitters)
+		{
+			auto const* slot = findEmitter(emitter);
+			if (slot) setTransform(mEmitters[emitter.index], transform * slot->localTransform);
+		}
+	}
+
+	void ParticleSystem::spawnEffect(ResourcePtr const& asset, glm::mat4 const& transform)
+	{
+		(void)createEffect(asset, transform);
+	}
+
+	void ParticleSystem::spawnEffect(ParticleEffectSource const& asset, glm::mat4 const& transform)
+	{
+		(void)createEffect(asset, transform);
+	}
+
+	void ParticleSystem::spawnEffect(span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform)
+	{
+		(void)createEffect(emitterTemplates, transform);
+	}
+
+	ParticleEmitterHandle ParticleSystem::getEmitter(ParticleEffectHandle handle, size_t emitterIndex) const
+	{
+		if (!handle || handle.index >= mEffectSlots.size()) return {};
+		auto const& effect = mEffectSlots[handle.index];
+		if (!effect.occupied || effect.generation != handle.generation || emitterIndex >= effect.emitters.size()) return {};
+		auto const emitter = effect.emitters[emitterIndex];
+		return findEmitter(emitter) ? emitter : ParticleEmitterHandle{};
+	}
+
+	void ParticleSystem::requestEmitterDestroy(uint32_t index)
+	{
+		if (index >= mEmitterSlots.size()) return;
+		auto& slot = mEmitterSlots[index];
+		if (!slot.occupied || slot.pendingDestroy) return;
+		slot.pendingDestroy = true;
+		slot.generation = nextGeneration(slot.generation);
+		mEmitters[index].emissionState[1] = 0u;
+		if (!slot.hasSpawned) reclaimEmitter(index);
+	}
+
+	void ParticleSystem::destroyEmitter(ParticleEmitterHandle handle)
+	{
+		if (!findEmitter(handle)) return;
+		requestEmitterDestroy(handle.index);
+	}
+
+	void ParticleSystem::setEmitterTransform(ParticleEmitterHandle handle, glm::mat4 const& transform)
+	{
+		if (!findEmitter(handle)) return;
+		setTransform(mEmitters[handle.index], transform);
+	}
+
+	void ParticleSystem::setEmitterParameter(ParticleEmitterHandle handle, ParticleParameter parameter, float multiplier)
+	{
+		if (!findEmitter(handle)) return;
+		multiplier = max(0.0f, multiplier);
+		auto& emitter = mEmitters[handle.index];
+		switch (parameter)
+		{
+		case ParticleParameter::SpawnRate: emitter.parameterMultipliers0[0] = multiplier; break;
+		case ParticleParameter::SizeScale: emitter.parameterMultipliers0[1] = multiplier; break;
+		case ParticleParameter::SpeedScale: emitter.parameterMultipliers0[2] = multiplier; break;
+		case ParticleParameter::LifetimeScale: emitter.parameterMultipliers0[3] = multiplier; break;
+		case ParticleParameter::AlphaScale: emitter.parameterMultipliers1[0] = multiplier; break;
+		case ParticleParameter::EmissiveScale: emitter.parameterMultipliers1[1] = multiplier; break;
+		}
+	}
+
+	void ParticleSystem::startEmitter(ParticleEmitterHandle handle)
+	{
+		if (!findEmitter(handle)) return;
+		mEmitters[handle.index].emissionState[1] = 1u;
+	}
+
+	void ParticleSystem::stopEmitter(ParticleEmitterHandle handle)
+	{
+		if (!findEmitter(handle)) return;
+		mEmitters[handle.index].emissionState[1] = 0u;
+	}
+
+	bool ParticleSystem::isAlive(ParticleEffectHandle handle) const
+	{
+		if (!handle || handle.index >= mEffectSlots.size()) return false;
+		auto const& effect = mEffectSlots[handle.index];
+		return effect.occupied && effect.generation == handle.generation;
+	}
+
+	size_t ParticleSystem::getLiveEmitterCount() const
+	{
+		return count_if(mEmitterSlots.begin(), mEmitterSlots.end(), [](auto const& slot) { return slot.occupied; });
+	}
+
+	size_t ParticleSystem::getLiveEffectCount() const
+	{
+		return count_if(mEffectSlots.begin(), mEffectSlots.end(), [](auto const& slot) { return slot.occupied; });
+	}
+
+	bool ParticleSystem::hasOccupiedEmitters() const
+	{
+		return any_of(mEmitterSlots.begin(), mEmitterSlots.end(), [](auto const& slot) { return slot.occupied; });
+	}
+
+	void ParticleSystem::reclaimEmitter(uint32_t index)
+	{
+		if (index >= mEmitterSlots.size()) return;
+		auto& slot = mEmitterSlots[index];
+		if (!slot.occupied) return;
+		slot.occupied = false;
+		slot.pendingDestroy = false;
+		slot.generation = nextGeneration(slot.generation);
+		mEmitters[index] = {};
+		mEmitters[index].emissionState[1] = 0u;
+		mEmitters[index].emissionState[3] = index;
+		mTemplateRenderData[index] = {};
+		mFreeEmitterIndices.push_back(index);
+	}
+
+	void ParticleSystem::reclaimEffect(uint32_t index)
+	{
+		if (index >= mEffectSlots.size()) return;
+		auto& effect = mEffectSlots[index];
+		if (!effect.occupied) return;
+		effect.occupied = false;
+		effect.generation = nextGeneration(effect.generation);
+		effect.emitters.clear();
+		mFreeEffectIndices.push_back(index);
+	}
+
+	void ParticleSystem::retireCompletedEmitters()
+	{
+		for (uint32_t index = 0; index < mEmitterSlots.size(); ++index)
+		{
+			auto const& emitter = mEmitters[index];
+			auto& slot = mEmitterSlots[index];
+			if (!slot.occupied) continue;
+			bool const oneShotComplete = emitter.emissionState[0] != 0u &&
+				(slot.burstSubmitted || emitter.emissionState[1] == 0u);
+			if (!(slot.pendingDestroy || oneShotComplete)) continue;
+			if (!slot.hasSpawned || mSimulationSeconds - slot.lastSpawnSeconds >= slot.maximumSpawnedLifetime)
+				reclaimEmitter(index);
+		}
+
+		for (uint32_t index = 0; index < mEffectSlots.size(); ++index)
+		{
+			auto const& effect = mEffectSlots[index];
+			if (!effect.occupied) continue;
+			bool const allRetired = all_of(effect.emitters.begin(), effect.emitters.end(), [this](ParticleEmitterHandle emitter)
+				{ return !findEmitter(emitter); });
+			if (allRetired) reclaimEffect(index);
 		}
 	}
 
 	void ParticleSystem::buildSpawnCommands(float dt)
 	{
-		if (mEmitterFrameStates.size() != mEmitters.size())
-			THROW_MPP("Particle emitter frame state does not match the emitter table.", __LINE__, __FILE__, __func__);
+		if (mEmitterSlots.size() != mEmitters.size())
+			THROW_MPP("Particle emitter slots do not match the emitter table.", __LINE__, __FILE__, __func__);
 
 		for (uint32_t emitterIndex = 0; emitterIndex < uint32_t(mEmitters.size()); ++emitterIndex)
 		{
 			auto const& emitter = mEmitters[emitterIndex];
-			auto& frame = mEmitterFrameStates[emitterIndex];
-			if (emitter.emissionState[1] == 0u) continue;
+			auto& slot = mEmitterSlots[emitterIndex];
+			if (!slot.occupied || slot.pendingDestroy || emitter.emissionState[1] == 0u) continue;
 
 			uint32_t spawnCount = 0;
 			if (emitter.emissionState[0] == 0u)
 			{
-				spawnCount = frame.spawnAccumulator.accumulate(
+				spawnCount = slot.spawnAccumulator.accumulate(
 					emitter.emissionRateAndPadding[0], emitter.parameterMultipliers0[0], dt);
 			}
-			else if (!frame.burstSubmitted)
+			else if (!slot.burstSubmitted)
 			{
 				spawnCount = emitter.emissionState[2];
-				frame.burstSubmitted = true;
+				slot.burstSubmitted = true;
 			}
 
 			if (spawnCount == 0u) continue;
-			mSpawnCommands.push_back({ emitterIndex, spawnCount, 0x9e3779b9u + emitterIndex, frame.spawnCounter });
-			frame.spawnCounter += spawnCount;
+			mSpawnCommands.push_back({ emitterIndex, spawnCount, 0x9e3779b9u + emitterIndex, slot.spawnCounter });
+			slot.spawnCounter += spawnCount;
+			slot.hasSpawned = true;
+			slot.lastSpawnSeconds = mSimulationSeconds;
+			slot.maximumSpawnedLifetime = max(slot.maximumSpawnedLifetime,
+				max(0.0f, emitter.lifetimeSizeRanges[1]) * max(0.0f, emitter.parameterMultipliers0[3]));
 		}
 	}
 
@@ -541,7 +774,6 @@ namespace mpp
 	void ParticleSystem::simulate()
 	{
 		initialise();
-		if (!mAvailable) return;
 
 		try
 		{
@@ -553,14 +785,17 @@ namespace mpp
 			mHasLastSimulationTime = true;
 			mSimulationSeconds += dt;
 
-			if (!mBootstrapEmittersCreated)
-			{
-				createBootstrapEmitters();
-				ensurePoolAllocated();
-				mBootstrapEmittersCreated = true;
-			}
-
+			if (!hasOccupiedEmitters()) return;
 			buildSpawnCommands(dt);
+			if (!mAvailable)
+			{
+				// CPU ownership and one-shot retirement remain deterministic even on a
+				// renderer where the GPU particle path is unavailable.
+				mSpawnCommands.clear();
+				retireCompletedEmitters();
+				return;
+			}
+			ensurePoolAllocated();
 			uploadFrameData();
 			{
 				GpuDebugScope spawnScope("Particles: Spawn");
@@ -574,6 +809,9 @@ namespace mpp
 				GpuDebugScope compactionScope("Particles: Compact by emitter template");
 				dispatchCompaction();
 			}
+			// Retirement happens only after this frame's simulation has consumed the
+			// old emitter record. Reusing a slot before then could retarget a particle.
+			retireCompletedEmitters();
 		}
 		catch (exception const& error)
 		{

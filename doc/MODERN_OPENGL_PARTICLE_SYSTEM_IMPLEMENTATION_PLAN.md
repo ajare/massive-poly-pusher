@@ -301,7 +301,10 @@ Continuous emitters never auto-retire. An effect instance retires only when all
 its emitters have, so an explosion with a long smoke plume and a short spark
 burst lives as long as the plume.
 
-**Status:** not started.
+**Status:** done. `RenderSystem` owns and exposes the extracted `ParticleSystem`;
+effects own spans of generational emitter handles over one flat upload table.
+Runtime multipliers, parent × local transform fan-out, deferred emitter-slot
+reuse, and CPU-bounded one-shot retirement require no particle readback.
 
 **Acceptance:** a destroyed emitter's stale handle is inert; `spawnEffect` leaks
 no slots across ten thousand bursts.
