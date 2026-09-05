@@ -47,11 +47,14 @@ namespace mpp
 	class Program;
 	class Camera;
 	class ParticleSystem; // Forward-declared so as to not pollute client apps.
+	enum class ParticleBlendClass : uint32_t;
+	class RenderTexture;
 	class Profiler; // Forward-declared so as to not pollute client apps.
 	class ResourceManager;
 
 	class _MPPAPI RenderSystem : public ResourceWrangler
 	{
+		friend class ParticleSystem;
 		enum class ProjectionType
 		{
 			Unknown,
@@ -665,9 +668,9 @@ namespace mpp
 		// pass may execute several times per frame and must never call this.
 		void simulateParticles();
 
-		// The particle draw, issued from inside MPP.ParticleScene. Does nothing
-		// when the particle system is unavailable.
-		void renderParticles();
+		// The particle draw, issued from inside one blend-class-specific
+		// MPP.ParticleScene pass. Scene depth is optional.
+		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
 
 		bool particlesAvailable();
 

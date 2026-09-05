@@ -42,6 +42,7 @@
 #include "mpp/GLErrorCheck.h"
 #include "mpp/MppException.h"
 #include "mpp/ParticleData.h"
+#include "mpp/ParticleSystem.h"
 
 namespace mpp
 {
@@ -1901,12 +1902,30 @@ void main()
 				particleScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 1.0f));
 				auto particleCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 6.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
 
+				// One template per billboard basis plus an alpha-class template exercises
+				// both authored command spans. The burst is submitted by the first graph.
+				std::array<ParticleEmitterTemplate, 6> particleTemplates{};
+				for (uint32_t index = 0; index < particleTemplates.size(); ++index)
+				{
+					auto& emitter = particleTemplates[index];
+					emitter.simulation.emissionState = { 1u, 1u, 1u, 0u };
+					emitter.simulation.shapeSeedModulesBudget[3] = 1u;
+					emitter.simulation.lifetimeSizeRanges = { 10.0f, 10.0f, 0.35f, 0.35f };
+					emitter.simulation.initialVelocityMin = emitter.simulation.initialVelocityMax = { 0.0f, 1.0f, 0.0f, 0.0f };
+					emitter.localTransform = glm::translate(glm::mat4(1.0f), { (float(index) - 2.5f) * 0.55f, 0.0f, 0.0f });
+					emitter.appearance.appearance[1] = 1.0f;
+					emitter.appearance.modes[2] = std::min(index, uint32_t(ParticleBillboardMode::VelocityAligned));
+					emitter.appearance.modes[3] = index == particleTemplates.size() - 1u
+						? uint32_t(ParticleBlendClass::Alpha) : uint32_t(ParticleBlendClass::Additive);
+				}
+				auto particleEffect = renderSystem->getParticleSystem().createEffect(particleTemplates);
+
 				// Particles are the only thing in this scene, so any lit pixel in the
 				// pass's own stored output came from the indirect draw.
 				auto drewParticles = [](std::vector<GraphImageCapture> const& captures)
 				{
 					for (auto const& capture : captures)
-						if (capture.passName == "Particles" && !capture.depth)
+						if ((capture.passName == "ParticleAlpha" || capture.passName == "ParticleAdditive" || capture.passName == "Particles") && !capture.depth)
 							for (auto value : capture.pixels) if (value) return true;
 					return false;
 				};
@@ -1916,7 +1935,8 @@ void main()
 				auto plainPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestParticlesOffPipeline", withoutParticles);
 				plainPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				for (auto const& stats : plainPipeline->getLastGraphExecutionStats())
-					if (stats.name == "Particles") return fail("default-off generated graph inserted a particle pass");
+					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive")
+						return fail("default-off generated graph inserted a particle pass");
 				renderSystem->removeRenderPipeline("GpuTestParticlesOffPipeline");
 
 				RenderPipelineOptions generatedParticleOptions;
@@ -1925,17 +1945,16 @@ void main()
 				auto generatedPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedParticlePipeline", generatedParticleOptions);
 				generatedPipeline->requestGraphImageCapture();
 				generatedPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
-				bool executedParticles = false;
+				size_t executedParticlePasses = 0;
 				for (auto const& stats : generatedPipeline->getLastGraphExecutionStats())
-					if (stats.name == "Particles")
+					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive")
 					{
-						executedParticles = true;
-						// Transparent geometry must not write depth, and the slice has no
-						// soft-particle depth read, so the pass carries no depth attachment.
+						++executedParticlePasses;
+						// Soft particles sample live depth but never attach or write it.
 						if (stats.colourOutputCount != 1 || stats.depthOutputCount != 0)
-							return fail("the generated particle pass did not draw into exactly one colour output with no depth attachment");
+							return fail("a generated blend-class particle pass did not draw into exactly one colour output with no depth attachment");
 					}
-				if (!executedParticles) return fail("opted-in generated particles did not insert a particle pass");
+				if (executedParticlePasses != 2) return fail("generated particles did not insert one authored pass per blend class");
 				bool const particlesAvailable = renderSystem->particlesAvailable();
 				std::vector<uint8_t> poolAfterGeneratedDraw;
 				if (particlesAvailable)
@@ -1983,6 +2002,9 @@ void main()
 				auto authoredColour = authoredGraph->createImage("GpuTestParticleColour", authoredColourDesc);
 				auto authoredPass = authoredGraph->addPass("Particles", GraphPassType::Scene);
 				authoredGraph->setPassCallbackFactory(authoredPass, "MPP.ParticleScene");
+				UniformCollection authoredParameters;
+				authoredParameters.setUniform("BLEND_MODE", int32_t(ParticleBlendClass::Additive));
+				authoredGraph->setPassParameters(authoredPass, authoredParameters);
 				authoredColour = authoredGraph->writeColour(authoredPass, authoredColour, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 				GraphRasterState authoredRaster;
 				authoredRaster.explicitState = true;
@@ -1990,7 +2012,7 @@ void main()
 				authoredRaster.depthWrite = false;
 				authoredRaster.cullMode = GraphCullMode::None;
 				authoredRaster.blend = true;
-				authoredRaster.sourceColourBlend = GraphBlendFactor::One;
+				authoredRaster.sourceColourBlend = GraphBlendFactor::SourceAlpha;
 				authoredRaster.destinationColourBlend = GraphBlendFactor::One;
 				authoredRaster.sourceAlphaBlend = GraphBlendFactor::Zero;
 				authoredRaster.destinationAlphaBlend = GraphBlendFactor::One;
@@ -2299,6 +2321,41 @@ void main()
 					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
 					GL_CHECK(glDeleteBuffers(GLsizei(compactBuffers.size()), compactBuffers.data()));
 				}
+				// A live depth image at the particle plane must fade the same particles
+				// completely. The otherwise identical authored pass above omitted DEPTH
+				// and therefore proves the hard-edged fallback remains drawable.
+				auto softGraph = std::make_shared<RenderGraph>();
+				GraphImageDesc softDepthDesc;
+				softDepthDesc.format = GraphImageFormat::Depth24;
+				softDepthDesc.usage = GraphImageUsage::DepthAttachment | GraphImageUsage::Sampled;
+				auto softDepth = softGraph->createImage("GpuTestParticleDepth", softDepthDesc);
+				auto softDepthPass = softGraph->addPass("ParticleDepth", GraphPassType::Scene);
+				softGraph->setPassCallbackFactory(softDepthPass, "MPP.ShadowDepth");
+				auto centreClip = particleCamera->getProjectionTransform() * particleCamera->getViewTransform() * glm::vec4(0, 0, 0, 1);
+				float const particlePlaneDepth = (centreClip.z / centreClip.w) * 0.5f + 0.5f;
+				softDepth = softGraph->writeDepth(softDepthPass, softDepth, GraphLoadOp::Clear, GraphStoreOp::Store, particlePlaneDepth);
+				auto softColour = softGraph->createImage("GpuTestSoftParticleColour", authoredColourDesc);
+				auto softPass = softGraph->addPass("Particles", GraphPassType::Scene);
+				softGraph->setPassCallbackFactory(softPass, "MPP.ParticleScene");
+				softGraph->bindSampler(softPass, "DEPTH", softDepth);
+				softGraph->setPassParameters(softPass, authoredParameters);
+				softColour = softGraph->writeColour(softPass, softColour, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+				softGraph->setPassRasterState(softPass, authoredRaster);
+				auto softStream = std::make_shared<RenderGraphStream>(renderSystem->getResourceManager());
+				softStream->setGraph(softGraph);
+				auto softTemplate = renderSystem->getResourceManager()->declareResource("GpuTestSoftParticleGraph", softStream).first;
+				softTemplate->load();
+				softTemplate->create();
+				auto softOptions = authoredParticleOptions;
+				softOptions.graphTemplate = softTemplate;
+				auto softPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestSoftParticlePipeline", softOptions);
+				softPipeline->requestGraphImageCapture();
+				softPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
+				if (drewParticles(softPipeline->takeGraphImageCaptures()))
+					return fail("soft particles did not fade at the live scene-depth intersection");
+				renderSystem->removeRenderPipeline("GpuTestSoftParticlePipeline");
+
+				renderSystem->getParticleSystem().destroyEffect(particleEffect);
 				renderSystem->removeRenderPipeline("GpuTestAuthoredParticlePipeline");
 			}
 

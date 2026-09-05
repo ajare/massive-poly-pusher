@@ -18,6 +18,7 @@
 #include "mpp/GpuDebugScope.h"
 #include "mpp/MppException.h"
 #include "mpp/Material.h"
+#include "mpp/ParticleData.h"
 #include "mpp/Program.h"
 
 using namespace std;
@@ -602,6 +603,7 @@ namespace mpp
 		bool const planarWater = planarRequested && reflectionEnabled;
 		bool const reflectionFailureWater = planarRequested && !reflectionEnabled;
 		bool const sampleSceneDepth = screenSpaceWater || planarWater || reflectionFailureWater || outputAntiAliasing.taa ||
+			(mOptions.generatedParticles && mOptions.graphPasses.particles) ||
 			(mOptions.ambientOcclusion.method != AmbientOcclusionMethod::None && mOptions.graphPasses.ambientOcclusion);
 		sceneDepthDesc.usage = GraphImageUsage::DepthAttachment | (sampleSceneDepth ? GraphImageUsage::Sampled : GraphImageUsage::None);
 		auto sceneDepth = graph.createImage("SceneDepth", sceneDepthDesc);
@@ -835,26 +837,42 @@ namespace mpp
 
 		if (mOptions.generatedParticles && mOptions.graphPasses.particles)
 		{
-			// After the opaque scene and any water, before bloom: particles are
-			// emissive-and-never-lit, so they belong in the image bloom extracts
-			// from. No depth attachment -- transparent geometry must not write
-			// depth, and depth testing arrives with soft particles.
-			auto particlePass = graph.addPass("Particles", GraphPassType::Scene);
-			graph.setPassCallbackFactory(particlePass, "MPP.ParticleScene");
-			presentationTexture = graph.writeColour(particlePass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
-			GraphRasterState particleRaster;
-			particleRaster.explicitState = true;
-			particleRaster.depthTest = false;
-			particleRaster.depthWrite = false;
-			particleRaster.cullMode = GraphCullMode::None;
-			particleRaster.blend = true;
-			particleRaster.sourceColourBlend = GraphBlendFactor::One;
-			particleRaster.destinationColourBlend = GraphBlendFactor::One;
-			// Additive in colour only: the scene target's own coverage is left alone.
-			particleRaster.sourceAlphaBlend = GraphBlendFactor::Zero;
-			particleRaster.destinationAlphaBlend = GraphBlendFactor::One;
-			particleRaster.multisample = false;
-			graph.setPassRasterState(particlePass, particleRaster);
+			// Each blend class is an authored graph pass with its own complete raster
+			// state. The callback only uses BLEND_MODE to select the matching contiguous
+			// indirect-command span; compositing remains entirely graph-authored.
+			auto addParticlePass = [&](std::string const& name, ParticleBlendClass blendClass,
+				GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha)
+			{
+				auto pass = graph.addPass(name, GraphPassType::Scene);
+				graph.setPassCallbackFactory(pass, "MPP.ParticleScene");
+				graph.bindSampler(pass, "DEPTH", sceneDepth);
+				UniformCollection parameters;
+				parameters.setUniform("BLEND_MODE", int32_t(blendClass));
+				graph.setPassParameters(pass, parameters);
+				presentationTexture = graph.writeColour(pass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+				if (useMrtEmissiveMask)
+					bloomMask = graph.writeColour(pass, bloomMask, GraphLoadOp::Load, GraphStoreOp::Store);
+
+				GraphRasterState raster;
+				raster.explicitState = true;
+				raster.depthTest = false;
+				raster.depthWrite = false;
+				raster.cullMode = GraphCullMode::None;
+				raster.blend = true;
+				raster.sourceColourBlend = GraphBlendFactor::SourceAlpha;
+				raster.destinationColourBlend = destinationColour;
+				raster.sourceAlphaBlend = sourceAlpha;
+				raster.destinationAlphaBlend = blendClass == ParticleBlendClass::Additive
+					? GraphBlendFactor::One : GraphBlendFactor::OneMinusSourceAlpha;
+				raster.multisample = false;
+				graph.setPassRasterState(pass, raster);
+			};
+			// Conventional alpha is laid down first; additive energy is independent of
+			// ordering. Authors remain free to choose another order in graph templates.
+			addParticlePass("ParticleAlpha", ParticleBlendClass::Alpha,
+				GraphBlendFactor::OneMinusSourceAlpha, GraphBlendFactor::One);
+			addParticlePass("ParticleAdditive", ParticleBlendClass::Additive,
+				GraphBlendFactor::One, GraphBlendFactor::Zero);
 			shadedSceneTexture = presentationTexture;
 		}
 

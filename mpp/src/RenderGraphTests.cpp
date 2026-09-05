@@ -7,6 +7,8 @@
 #include "mpp/SceneDocument.h"
 #include "mpp/DefaultShaders.h"
 #include "mpp/PbrShaders.h"
+#include "mpp/ParticleData.h"
+#include "mpp/ParticleShaders.h"
 #include "mpp/ModelRenderParams.h"
 #include "mpp/mesh/MeshSpecification.h"
 
@@ -25,6 +27,15 @@ namespace mpp
 				shader.find("encodeOctahedralNormal") != std::string::npos && shader.find("mat3(VIEW_MATRIX)") != std::string::npos;
 		};
 		if (!validatesBuiltInNormalContract(FragmentShader3dTemplate)) return fail("built-in legacy shader lost the location-2 view-space octahedral shading-normal contract");
+		auto const particleVertex = std::string(ParticleDrawVertexShader);
+		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED" })
+			if (particleVertex.find(mode) == std::string::npos) return fail("particle shader lost a required billboard mode");
+		if (particleVertex.find("expandParticleQuad") == std::string::npos ||
+			particleVertex.find("ANIMATION_FRAME_OVER_LIFE") == std::string::npos ||
+			particleVertex.find("ANIMATION_FIXED_RATE") == std::string::npos ||
+			particleVertex.find("ANIMATION_RANDOM_START") == std::string::npos ||
+			std::string(ParticleDrawFragmentShader).find("linearViewDepth(sceneDepth) - PARTICLE_VIEW_DEPTH") == std::string::npos)
+			return fail("particle shader lost shared quad expansion, flipbook playback, or soft-depth fading");
 		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
@@ -424,6 +435,31 @@ namespace mpp
 		if (registry.validate(metadataGraph).hasErrors()) return fail("valid pass authoring metadata contract was rejected");
 		metadataGraph.setPassCallbackFactory(metadataPass, "Unknown.Factory");
 		if (!registry.validate(metadataGraph).hasErrors()) return fail("unknown pass factory metadata was accepted");
+
+		auto const* particleMetadata = registry.findMetadata("MPP.ParticleScene");
+		if (!particleMetadata || particleMetadata->inputs.size() != 1 || particleMetadata->inputs.front().required ||
+			particleMetadata->inputs.front().sampler != "DEPTH" || particleMetadata->inputs.front().fallbackId != "HardParticles")
+			return fail("particle scene metadata lost its optional named depth fallback");
+		RenderGraph particleGraph;
+		auto particleColour = particleGraph.createImage("ParticleColour", colour);
+		auto particlePass = particleGraph.addPass("ParticleAlpha", GraphPassType::Scene);
+		particleGraph.setPassCallbackFactory(particlePass, "MPP.ParticleScene");
+		UniformCollection particleParameters;
+		particleParameters.setUniform("BLEND_MODE", int32_t(ParticleBlendClass::Alpha));
+		particleGraph.setPassParameters(particlePass, particleParameters);
+		particleGraph.writeColour(particlePass, particleColour);
+		GraphRasterState invalidParticleRaster;
+		invalidParticleRaster.explicitState = true;
+		invalidParticleRaster.depthWrite = true;
+		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
+		auto particleDiagnostics = registry.validate(particleGraph);
+		if (particleDiagnostics.hasErrors() || particleDiagnostics.count(DiagnosticSeverity::Warning) != 1 ||
+			particleDiagnostics.getDiagnostics().front().code != "MPP-PASS-014")
+			return fail("particle depth-write request did not produce exactly the override warning");
+		invalidParticleRaster.depthWrite = false;
+		particleGraph.setPassRasterState(particlePass, invalidParticleRaster);
+		if (registry.validate(particleGraph).hasErrors())
+			return fail("particle pass without optional depth did not select its hard-particle fallback");
 
 		// A non-transient image holds contents that outlive the frame, so nothing may
 		// be planned on top of it. The plan used to test only the incoming image for

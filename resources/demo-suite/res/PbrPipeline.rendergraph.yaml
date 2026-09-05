@@ -16,7 +16,7 @@ RenderGraph:
       wrap: CLAMP_TO_EDGE
     - name: SceneDepth
       format: DEPTH24
-      usage: depthAttachment
+      usage: depthAttachment,sampled
     - name: BloomExtract
       format: RGBA16F
       usage: colourAttachment,sampled
@@ -113,8 +113,58 @@ RenderGraph:
       Depth:
         image: SceneDepth
         load: clear
-        store: dontCare
+        store: store
         clear: 1
+    - name: ParticleAlpha
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 1
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: oneMinusSourceAlpha
+        sourceAlphaBlend: one
+        destinationAlphaBlend: oneMinusSourceAlpha
+        multisample: false
+    - name: ParticleAdditive
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 0
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: one
+        sourceAlphaBlend: zero
+        destinationAlphaBlend: one
+        multisample: false
     - name: BloomExtract
       type: fullscreen
       factory: MPP.FullscreenEffect

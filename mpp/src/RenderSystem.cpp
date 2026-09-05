@@ -694,6 +694,7 @@ namespace mpp
 			(GLEW_ARB_compute_shader && GLEW_ARB_shader_storage_buffer_object && GLEW_ARB_draw_indirect);
 #endif
 		mCaps.supportsMultiDrawIndirect = GLEW_VERSION_4_3 || GLEW_ARB_multi_draw_indirect;
+		mCaps.supportsBindlessTextures = GLEW_ARB_bindless_texture != 0;
 		if (mCaps.supportsCompute)
 		{
 			GLint limit = 0;
@@ -742,6 +743,7 @@ namespace mpp
 
 		infoMessage(std::format("Compute shaders: {}", mCaps.supportsCompute ? "yes" : "no"));
 		infoMessage(std::format("Multi-draw indirect: {}", mCaps.supportsMultiDrawIndirect ? "yes" : "no"));
+		infoMessage(std::format("Bindless textures: {}", mCaps.supportsBindlessTextures ? "yes" : "no"));
 		if (mCaps.supportsCompute)
 		{
 			infoMessage(std::format("Max compute work group count: {}x{}x{}", mCaps.maxComputeWorkGroupCount[0], mCaps.maxComputeWorkGroupCount[1], mCaps.maxComputeWorkGroupCount[2]));
@@ -3844,10 +3846,10 @@ namespace mpp
 	 * Draw the live particles into the current render target.
 	 *
 	 */
-	void RenderSystem::renderParticles()
+	void RenderSystem::renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth)
 	{
 		if (!mParticleSystem) return;
-		mParticleSystem->render();
+		mParticleSystem->render(blendClass, sceneDepth);
 
 		GL_CHECK(glUseProgram(0));
 		mActiveProgram.reset();

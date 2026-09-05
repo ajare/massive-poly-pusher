@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <memory>
 #include <span>
 #include <string>
@@ -19,6 +20,7 @@ namespace mpp
 	class RenderSystem;
 	class ResourceManager;
 	class ShaderStorageBuffer;
+	class RenderTexture;
 	namespace detail { class PersistentMappedBuffer; }
 
 	enum class ParticleParameter : uint32_t
@@ -56,6 +58,9 @@ namespace mpp
 	{
 		EmitterSimData simulation{};
 		TemplateRenderData appearance{};
+		// The atlas resource belongs to the emitter template. ParticleSystem turns
+		// it into the bindless handle stored in appearance at upload time.
+		ResourcePtr albedoTexture;
 		glm::mat4 localTransform{ 1.0f };
 	};
 
@@ -102,6 +107,9 @@ namespace mpp
 
 		std::vector<EmitterSimData> mEmitters;
 		std::vector<TemplateRenderData> mTemplateRenderData;
+		std::vector<ResourcePtr> mTemplateTextures;
+		std::vector<uint64_t> mTemplateTextureHandles;
+		std::map<uint64_t, uint32_t> mResidentTextureHandles;
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
 		struct EmitterSlot
 		{
@@ -145,6 +153,8 @@ namespace mpp
 		void buildSpawnCommands(float dt);
 		void retireCompletedEmitters();
 		void uploadFrameData();
+		void updateTemplateTextureHandles();
+		void releaseTemplateTextureHandle(uint32_t templateIndex);
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
 		void dispatchCompaction();
@@ -193,6 +203,8 @@ namespace mpp
 		// Spawn preparation and simulation are called once per rendered frame outside
 		// graph passes. RenderSystem guards the frame serial before entering here.
 		void simulate();
-		void render();
+		// Draw only the contiguous command span selected by this authored pass.
+		// A null scene depth selects hard-edged particles.
+		void render(ParticleBlendClass blendClass, RenderTexture* sceneDepth);
 	};
 }

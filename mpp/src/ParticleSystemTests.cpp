@@ -34,6 +34,14 @@ namespace mpp
 			return value;
 		};
 
+		auto const randomOverLife = uint32_t(ParticleTextureAnimation::FrameOverLife | ParticleTextureAnimation::RandomStart);
+		auto const randomFixedRate = uint32_t(ParticleTextureAnimation::FixedRate | ParticleTextureAnimation::RandomStart);
+		if (particleFlipbookFrame(8u, uint32_t(ParticleTextureAnimation::FrameOverLife), 0.5f, 2.0f, 0.0f, 0u) != 2u ||
+			particleFlipbookFrame(8u, uint32_t(ParticleTextureAnimation::FixedRate), 1.25f, 2.0f, 4.0f, 0u) != 5u ||
+			particleFlipbookFrame(8u, randomOverLife, 0.5f, 2.0f, 0.0f, 11u) != 5u ||
+			particleFlipbookFrame(8u, randomFixedRate, 1.25f, 2.0f, 4.0f, 11u) != 0u)
+			return fail("flipbook playback or combinable random start selected the wrong frame");
+
 		ParticleSystem system(nullptr, nullptr);
 
 		// Parent x local transform composition and per-emitter addressing.

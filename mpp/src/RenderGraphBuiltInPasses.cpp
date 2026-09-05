@@ -12,6 +12,7 @@
 #include "mpp/Model.h"
 #include "mpp/PbrMaterial.h"
 #include "mpp/PostEffectMaterial.h"
+#include "mpp/ParticleData.h"
 #include "mpp/MppException.h"
 
 namespace mpp
@@ -389,7 +390,11 @@ namespace mpp
 			{
 				auto const& frame = context.getFrame();
 				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
-				frame.renderSystem->renderParticles();
+				int32_t const blendMode = integerParameter(context, "BLEND_MODE", -1);
+				if (blendMode < int32_t(ParticleBlendClass::Additive) || blendMode > int32_t(ParticleBlendClass::Alpha))
+					THROW_MPP("ParticleScenePass '" + context.getPass().name + "' requires BLEND_MODE additive=0 or alpha=1.", __LINE__, __FILE__, __func__);
+				auto* depth = dynamic_cast<RenderTexture*>(input(context, "DEPTH"));
+				frame.renderSystem->renderParticles(ParticleBlendClass(blendMode), depth);
 			}
 		};
 
@@ -579,10 +584,13 @@ namespace mpp
 		registry.registerScenePassFactory("MPP.WaterScene", [] { return std::make_unique<WaterScenePass>(); }, waterScene);
 
 		auto particleScene = metadata("Particles", "Scene", GraphPassType::Scene);
-		// Deliberately no depth attachment and no scene depth input yet: particles
-		// never write depth, and the soft-particle depth read arrives as an
-		// ordinary optional named input once billboards and appearances exist.
+		// DEPTH is an ordinary optional named graph input. HardParticles is the
+		// declared no-depth fallback; the callback implements it by disabling the
+		// depth sample rather than manufacturing a copy of the live image.
+		particleScene.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });
 		particleScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		particleScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		particleScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
 		registry.registerScenePassFactory("MPP.ParticleScene", [] { return std::make_unique<ParticleScenePass>(); }, particleScene);
 
 		auto customFullscreen = metadata("Custom Fullscreen", "Custom", GraphPassType::Fullscreen);

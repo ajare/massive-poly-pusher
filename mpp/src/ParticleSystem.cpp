@@ -19,8 +19,10 @@
 #include "mpp/ParticleSystem.h"
 #include "mpp/RawShaderStream.h"
 #include "mpp/RenderSystem.h"
+#include "mpp/RenderTexture.h"
 #include "mpp/ResourceManager.h"
 #include "mpp/ShaderStorageBuffer.h"
+#include "mpp/Texture.h"
 #include "PersistentMappedBuffer.h"
 
 using namespace std;
@@ -37,7 +39,7 @@ namespace mpp
 		char const* CompactionCountProgramName = "__mpp_particle_compaction_count__";
 		char const* CompactionPrefixProgramName = "__mpp_particle_compaction_prefix__";
 		char const* CompactionScatterProgramName = "__mpp_particle_compaction_scatter__";
-		char const* DrawProgramName = "__mpp_particle_draw_additive__";
+		char const* DrawProgramName = "__mpp_particle_draw__";
 
 		constexpr uint32_t ParticlePoolBinding = 0;
 		constexpr uint32_t FreeIndicesBinding = 1;
@@ -82,6 +84,9 @@ namespace mpp
 
 	ParticleSystem::~ParticleSystem()
 	{
+		for (uint32_t index = 0; index < mTemplateTextureHandles.size(); ++index)
+			releaseTemplateTextureHandle(index);
+		mTemplateTextures.clear();
 		if (mNoiseTexture != 0)
 		{
 			glDeleteTextures(1, &mNoiseTexture);
@@ -182,7 +187,7 @@ namespace mpp
 			auto drawStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
 			drawStream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
 			drawStream->setSource(RawShaderStage::Fragment, ParticleDrawFragmentShader);
-			drawStream->setDefine("MPP_PARTICLE_BLEND_ADDITIVE", "1");
+			drawStream->setDefine("MPP_PARTICLE_BINDLESS_TEXTURES", caps.supportsBindlessTextures ? "1" : "0");
 			mDrawProgram = mwResourceManager->declareResource(DrawProgramName, drawStream).first;
 			mDrawProgram->acquire(mwRenderSystem);
 			mDrawProgram->load();
@@ -335,6 +340,8 @@ namespace mpp
 			mEmitterSlots.emplace_back();
 			mEmitters.emplace_back();
 			mTemplateRenderData.emplace_back();
+			mTemplateTextures.emplace_back();
+			mTemplateTextureHandles.push_back(0u);
 		}
 
 		auto& slot = mEmitterSlots[index];
@@ -351,6 +358,7 @@ namespace mpp
 		mEmitters[index].emissionState[3] = index;
 		setTransform(mEmitters[index], effectTransform * slot.localTransform);
 		mTemplateRenderData[index] = emitterTemplate.appearance;
+		mTemplateTextures[index] = emitterTemplate.albedoTexture;
 		return { index, slot.generation };
 	}
 
@@ -553,6 +561,8 @@ namespace mpp
 		mEmitters[index] = {};
 		mEmitters[index].emissionState[1] = 0u;
 		mEmitters[index].emissionState[3] = index;
+		releaseTemplateTextureHandle(index);
+		mTemplateTextures[index].reset();
 		mTemplateRenderData[index] = {};
 		mFreeEmitterIndices.push_back(index);
 	}
@@ -625,6 +635,51 @@ namespace mpp
 		}
 	}
 
+	void ParticleSystem::releaseTemplateTextureHandle(uint32_t templateIndex)
+	{
+		if (templateIndex >= mTemplateTextureHandles.size()) return;
+		uint64_t const handle = mTemplateTextureHandles[templateIndex];
+		if (handle == 0u) return;
+		auto found = mResidentTextureHandles.find(handle);
+		if (found != mResidentTextureHandles.end())
+		{
+			if (--found->second == 0u)
+			{
+				if (mwRenderSystem && mwRenderSystem->getCaps().supportsBindlessTextures)
+					GL_CHECK(glMakeTextureHandleNonResidentARB(handle));
+				mResidentTextureHandles.erase(found);
+			}
+		}
+		mTemplateTextureHandles[templateIndex] = 0u;
+	}
+
+	void ParticleSystem::updateTemplateTextureHandles()
+	{
+		if (!mwRenderSystem->getCaps().supportsBindlessTextures) return;
+		for (uint32_t index = 0; index < mTemplateTextures.size(); ++index)
+		{
+			auto const& resource = mTemplateTextures[index];
+			if (!resource) continue;
+			resource->load();
+			auto* texture = dynamic_cast<Texture*>(resource.get());
+			if (!texture || texture->getTextureTarget() != GL_TEXTURE_2D)
+				THROW_MPP("A particle albedo atlas must be a 2D texture.", __LINE__, __FILE__, __func__);
+			uint64_t const handle = glGetTextureHandleARB(texture->getId());
+			if (handle == 0u)
+				THROW_MPP("Could not create a bindless handle for particle atlas '" + texture->getName() + "'.", __LINE__, __FILE__, __func__);
+			if (mTemplateTextureHandles[index] != handle)
+			{
+				releaseTemplateTextureHandle(index);
+				auto [found, inserted] = mResidentTextureHandles.emplace(handle, 0u);
+				if (inserted) GL_CHECK(glMakeTextureHandleResidentARB(handle));
+				++found->second;
+				mTemplateTextureHandles[index] = handle;
+			}
+			mTemplateRenderData[index].textureAndAtlas[0] = uint32_t(handle & 0xffffffffu);
+			mTemplateRenderData[index].textureAndAtlas[1] = uint32_t(handle >> 32u);
+		}
+	}
+
 	void ParticleSystem::uploadFrameData()
 	{
 		if (mEmitters.size() > MaxEmitterCount || mTemplateRenderData.size() > MaxTemplateCount ||
@@ -638,6 +693,7 @@ namespace mpp
 		for (auto const& emitter : mEmitters)
 			if (emitter.emissionState[3] >= mTemplateRenderData.size())
 				THROW_MPP("A particle emitter references an invalid emitter-template index.", __LINE__, __FILE__, __func__);
+		updateTemplateTextureHandles();
 
 		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
 		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
@@ -819,23 +875,51 @@ namespace mpp
 		}
 	}
 
-	void ParticleSystem::render()
+	void ParticleSystem::render(ParticleBlendClass blendClass, RenderTexture* sceneDepth)
 	{
 		initialise();
 		if (!mAvailable || !mPoolAllocated) return;
 
-		GpuDebugScope scope("Particles: Draw");
+		uint32_t const requestedClass = uint32_t(blendClass);
+		auto const first = lower_bound(mTemplateRenderData.begin(), mTemplateRenderData.end(), requestedClass,
+			[](TemplateRenderData const& appearance, uint32_t value) { return appearance.modes[3] < value; });
+		auto const last = upper_bound(first, mTemplateRenderData.end(), requestedClass,
+			[](uint32_t value, TemplateRenderData const& appearance) { return value < appearance.modes[3]; });
+		if (first == last) return;
+		size_t const firstCommand = size_t(first - mTemplateRenderData.begin());
+		size_t const commandCount = size_t(last - first);
+
+		GpuDebugScope scope("Particles: Draw blend class " + to_string(requestedClass));
+		// The pass owns blend/cull/depth-test state, but depth writes are a particle
+		// invariant. Force the GL state through RenderSystem so its cache remains
+		// coherent when the graph scope restores authored state.
+		mwRenderSystem->setDepthWriteState(false, true);
 		auto* program = static_cast<ParticleDrawProgram*>(mDrawProgram.get());
 		program->use();
+		program->setUniform("SCENE_DEPTH", int32_t(0));
+		program->setUniform("HAS_SCENE_DEPTH", int32_t(sceneDepth ? 1 : 0));
+		if (sceneDepth) sceneDepth->bindDepth(0);
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
 		mRenderIndices->bindStorage(FreeIndicesBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, TemplateRenderBinding, mTemplateRenderBuffer->getBuffer(),
+			static_cast<GLintptr>(mTemplateRenderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mTemplateRenderData))));
 		mIndirectCommands->bindDrawIndirect();
 
 		GL_CHECK(glBindVertexArray(mVertexArray));
-		GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, nullptr,
-			static_cast<GLsizei>(mTemplateRenderData.size()), sizeof(ParticleDrawArraysIndirectCommand)));
+		auto const commandOffset = reinterpret_cast<void const*>(firstCommand * sizeof(ParticleDrawArraysIndirectCommand));
+		GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset,
+			static_cast<GLsizei>(commandCount), sizeof(ParticleDrawArraysIndirectCommand)));
 		GL_CHECK(glBindVertexArray(0));
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
+		if (sceneDepth)
+		{
+			GL_CHECK(glActiveTexture(GL_TEXTURE0));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		}
+		mEmitterBuffer->markUsed();
+		mTemplateRenderBuffer->markUsed();
 	}
 }

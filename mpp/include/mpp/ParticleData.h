@@ -25,12 +25,66 @@ namespace mpp
 		Noise = 1u << 2
 	};
 
+	// Particle appearance enums are stored directly in TemplateRenderData::modes.
+	// Animation playback occupies the low byte; RandomStart is an independent bit
+	// so it can be combined with either playback mode.
+	enum class ParticleBillboardMode : uint32_t
+	{
+		CameraFacing,
+		ScreenAligned,
+		Cylindrical,
+		AxisLocked,
+		VelocityAligned
+	};
+
+	enum class ParticleTextureAnimation : uint32_t
+	{
+		None = 0u,
+		FrameOverLife = 1u,
+		FixedRate = 2u,
+		RandomStart = 1u << 8
+	};
+
+	constexpr ParticleTextureAnimation operator |(ParticleTextureAnimation left, ParticleTextureAnimation right) noexcept
+	{
+		return ParticleTextureAnimation(uint32_t(left) | uint32_t(right));
+	}
+
+	enum class ParticleBlendClass : uint32_t
+	{
+		Additive,
+		Alpha
+	};
+
+	inline constexpr uint32_t ParticleTexturePlaybackMask = 0xffu;
+	inline constexpr uint32_t ParticleTextureRandomStartBit = uint32_t(ParticleTextureAnimation::RandomStart);
 	inline constexpr float MaximumParticleDeltaSeconds = 0.1f;
 
 	constexpr float clampParticleDeltaSeconds(float seconds) noexcept
 	{
 		return seconds <= 0.0f ? 0.0f :
 			(seconds > MaximumParticleDeltaSeconds ? MaximumParticleDeltaSeconds : seconds);
+	}
+
+	// CPU reference for the shader's flipbook selection. This is also useful to
+	// asset previews that need to show the exact frame the runtime will choose.
+	inline uint32_t particleFlipbookFrame(uint32_t frameCount, uint32_t animation,
+		float age, float lifetime, float fixedRate, uint32_t seed) noexcept
+	{
+		frameCount = frameCount == 0u ? 1u : frameCount;
+		uint32_t frame = 0u;
+		auto const playback = animation & ParticleTexturePlaybackMask;
+		if (playback == uint32_t(ParticleTextureAnimation::FrameOverLife) && lifetime > 0.0f)
+		{
+			float const normalizedAge = age <= 0.0f ? 0.0f : (age >= lifetime ? 1.0f : age / lifetime);
+			frame = normalizedAge >= 1.0f ? frameCount - 1u : uint32_t(normalizedAge * float(frameCount));
+		}
+		else if (playback == uint32_t(ParticleTextureAnimation::FixedRate) && age > 0.0f && fixedRate > 0.0f)
+		{
+			frame = uint32_t(age * fixedRate) % frameCount;
+		}
+		if ((animation & ParticleTextureRandomStartBit) != 0u) frame = (frame + seed % frameCount) % frameCount;
+		return frame;
 	}
 
 	// CPU-side state for one continuous emitter. Keeping the fractional part is
@@ -113,7 +167,9 @@ namespace mpp
 	// record and is not fetched by the spawn or simulation kernels.
 	struct alignas(16) TemplateRenderData
 	{
-		// Bindless albedo handle low/high words, atlas columns, atlas rows.
+		// Bindless albedo handle low/high words, atlas columns, atlas rows. A
+		// zero handle is the declared white fallback on contexts without bindless
+		// textures and for appearances that intentionally omit an albedo texture.
 		std::array<uint32_t, 4> textureAndAtlas{ 0u, 0u, 1u, 1u };
 		// RGB tint and alpha multiplier.
 		std::array<float, 4> tintAndAlpha{ 1.0f, 1.0f, 1.0f, 1.0f };

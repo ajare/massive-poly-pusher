@@ -166,6 +166,62 @@ RenderGraph:
         explicit: true
         depthTest: false
         depthWrite: false
+    - name: ParticleAlpha
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 1
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: oneMinusSourceAlpha
+        sourceAlphaBlend: one
+        destinationAlphaBlend: oneMinusSourceAlpha
+        multisample: false
+    - name: ParticleAdditive
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 0
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: one
+        sourceAlphaBlend: zero
+        destinationAlphaBlend: one
+        multisample: false
     - name: BloomBlurHorizontal0
       type: fullscreen
       factory: MPP.FullscreenEffect

@@ -469,11 +469,12 @@ to that input. Omitting the input entirely yields hard-edged particles rather
 than a failed frame, which is what lets a graph without a depth image still run
 particles.
 
-**Status:** partially done. `MPP.ParticleScene` is registered with authoring
-metadata and draws GPU-compacted, per-template ranges as attribute-less
-instanced quads through `glMultiDrawArraysIndirect`, in both the generated graph
-and an authored template. Billboard modes, appearances, flipbooks, soft
-particles and separately authored per-blend-class passes are still to come.
+**Status:** done. `MPP.ParticleScene` draws GPU-compacted, per-template ranges
+as attribute-less instanced quads through one `glMultiDrawArraysIndirect` per
+authored blend-class pass. Its shared expansion supports all five initial
+billboard bases, template-owned bindless atlases and all initial flipbook modes.
+The optional named `DEPTH` input enables soft fading and falls back to hard
+particles when omitted; particle draws always force depth writes off.
 
 **Acceptance:** identical particle output under `XmlGraphPbrForward` and
 `GraphLegacyForward`; particles unaffected by the presence of a reflection pass.

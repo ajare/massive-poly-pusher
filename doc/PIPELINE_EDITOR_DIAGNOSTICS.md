@@ -12,7 +12,7 @@ Diagnostics have a stable code, severity, message, source path, and optional sub
 | `MPP-PIPELINE-CLI-001` | Referenced preview scene is missing. |
 | `MPP-PIPELINE-CLI-002` | Strict XML parsing/loading failed before semantic diagnostics could be produced. |
 | `MPP-GRAPH-001` | Render graph structure, stable-value dependency, order, attachment, format, allocation, or active-GPU validation. |
-| `MPP-PASS-001`–`012` | Pass factory metadata, required/optional slot, parameter, output, raster, blend, or reflection validation. |
+| `MPP-PASS-001`–`014` | Pass factory metadata, required/optional slot, parameter, output, raster, blend, name-derived fallback, or forced particle depth-state validation. |
 | `MPP-SCENE-001`–`030` | Scene version/name, identity, model, primitive, transform, layer, light, camera, binding, path, and migration validation. |
 | `MPP-SCENE-RUNTIME-001`–`007` | Scene resource creation, model loading/placeholder, material/environment resolution, collision, and runtime installation. |
 
