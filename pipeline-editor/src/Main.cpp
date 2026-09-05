@@ -84,6 +84,7 @@ extern "C" const char* __asan_default_options()
 #include "mpp/resource-parsers/PbrPipelineRuntime.h"
 #include "mpp/resource-parsers/GltfPbrMaterialLoader.h"
 #include "mpp/resource-parsers/PbrPipelineResourceValidator.h"
+#include "mpp/resource-parsers/ParticleResourceTests.h"
 #include "mpp/resource-parsers/RenderGraphResourceTests.h"
 #include "mpp/resource-parsers/SceneParser.h"
 #include "mpp/resource-parsers/SceneSerializer.h"
@@ -1263,6 +1264,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				if (!resource_parsers::runRenderGraphResourceTests(&suiteFailure))
 				{
 					fprintf(stderr, "MPP-PIPELINE-CLI-003: render graph resource tests failed: %s\n", suiteFailure.c_str());
+					return 1;
+				}
+				if (!resource_parsers::runParticleResourceTests(&suiteFailure))
+				{
+					fprintf(stderr, "MPP-PIPELINE-CLI-007: particle resource tests failed: %s\n", suiteFailure.c_str());
 					return 1;
 				}
 				if (!mpp::runPbrMaterialSpecializationTests(&suiteFailure))

@@ -32,6 +32,8 @@ extern "C" const char* __asan_default_options()
 #include "utils/StringUtils.h"
 
 // RenderSystem
+#include <mpp/ParticleGpuTests.h>
+#include <mpp/RenderGraphGpuTests.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
 #include <mpp/StaticLogger.h>
@@ -127,6 +129,7 @@ void showCommandLineHelp(char const* text)
 }
 
 bool gPackageSmokeTest{false};
+bool gParticleTests{false};
 std::filesystem::path gPackageDirectory;
 bool gStartupComplete{false};
 
@@ -222,6 +225,11 @@ bool startup(int argc, char** argv)
 			gPackageSmokeTest = true;
 			continue;
 		}
+		if (arguments[index] == "--particle-tests")
+		{
+			gParticleTests = true;
+			continue;
+		}
 		if (arguments[index] == "--package")
 		{
 			if (++index >= arguments.size()) throw runtime_error("--package requires a .mpppackage path.");
@@ -237,15 +245,18 @@ bool startup(int argc, char** argv)
 			"  --help, -h                              Show this help.\r\n"
 			"  --package <file.mpppackage>             Load the packaged scene and pipeline.\r\n"
 			"                                           Defaults to workspace.mpppackage next to the executable.\r\n"
-			"  --package-smoke-test                    With --package, render 30 frames then exit.\r\n");
+			"  --package-smoke-test                    With --package, render 30 frames then exit.\r\n"
+			"  --particle-tests                         Run particle and render graph GPU tests, then exit.\r\n");
 		return false;
 	}
 
-	if (packagePath.empty()) packagePath = executableDirectory() / "workspace.mpppackage";
-
-	gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
-	mpp::app::ZipArchive::extract(packagePath, gPackageDirectory);
-	mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
+	if (!gParticleTests)
+	{
+		if (packagePath.empty()) packagePath = executableDirectory() / "workspace.mpppackage";
+		gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
+		mpp::app::ZipArchive::extract(packagePath, gPackageDirectory);
+		mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
+	}
 
 	gOptions = parseProgramOptions("DemoSuite.cfg");
 	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableDirectory() / "demosuite.ini");
@@ -293,7 +304,7 @@ bool startup(int argc, char** argv)
 	gInputMgr = new InputManagerSDL();
 	gTimer = new TimerSDL();
 
-	gScenes.push_back(new PackageScene(gResourceManager,gPackageDirectory));
+	if (!gParticleTests) gScenes.push_back(new PackageScene(gResourceManager,gPackageDirectory));
 
 	for (auto scene: gScenes)
 	{
@@ -371,6 +382,30 @@ int main(int argc, char** argv)
 	try
 	{
 		if(!startup(argc, argv))return 0;
+
+		if (gParticleTests)
+		{
+			std::string suiteFailure;
+			if (!mpp::runParticleGpuTests(gRenderSystem, &suiteFailure))
+			{
+				fprintf(stderr, "DemoSuite particle GPU tests failed: %s\n", suiteFailure.c_str());
+				fflush(stderr);
+				exitCode = 1;
+			}
+			else if (!mpp::runRenderGraphGpuTests(gRenderSystem, &suiteFailure))
+			{
+				fprintf(stderr, "DemoSuite render graph GPU tests failed: %s\n", suiteFailure.c_str());
+				fflush(stderr);
+				exitCode = 1;
+			}
+			else
+			{
+				fprintf(stderr, "Particle and render graph GPU tests passed.\n");
+				fflush(stderr);
+			}
+			shutdown();
+			return exitCode;
+		}
 
 		//
 		// Main loop

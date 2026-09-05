@@ -538,7 +538,10 @@ anywhere in the repo** — they are compiled and never run. Wire
 `runRenderGraphGpuTests` into the same `--particle-tests` flag; it is a two-line
 change that revives existing coverage.
 
-**Status:** not started.
+**Status:** done. PipelineEditor's context-free validation path runs the
+particle resource suite. DemoSuite's standalone `--particle-tests` path skips
+package extraction, runs frame-lagged particle GPU assertions, then runs the
+revived render graph GPU suite, naming failures and returning a non-zero status.
 
 **Acceptance:** `--particle-tests` runs both new suites plus the revived graph
 GPU suite and returns a non-zero exit code on failure.

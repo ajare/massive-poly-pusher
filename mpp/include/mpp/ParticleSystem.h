@@ -168,6 +168,7 @@ namespace mpp
 		void reclaimEffect(uint32_t index);
 		bool hasOccupiedEmitters() const;
 		friend _MPPAPI bool runParticleSystemCpuTests(std::string* failure);
+		friend _MPPAPI bool runParticleGpuTests(RenderSystem* renderSystem, std::string* failure);
 
 	public:
 		ParticleSystem(RenderSystem* renderSystem, ResourceManager* resourceManager);

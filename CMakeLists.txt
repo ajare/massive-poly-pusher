@@ -315,6 +315,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/MppException.cpp
     mpp/src/MppModelStream.cpp
     mpp/src/ParticleDrawProgram.cpp
+    mpp/src/ParticleGpuTests.cpp
     mpp/src/ParticleSystem.cpp
     mpp/src/ParticleSystemTests.cpp
     mpp/src/PersistentMappedBuffer.cpp
@@ -426,6 +427,7 @@ add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/PbrPipelineSerializer.cpp
     mpp-resource-parsers/src/PbrPipelineRuntime.cpp
     mpp-resource-parsers/src/PbrPipelineResourceValidator.cpp
+    mpp-resource-parsers/src/ParticleResourceTests.cpp
     mpp-resource-parsers/src/SceneParser.cpp
     mpp-resource-parsers/src/SceneSerializer.cpp
     mpp-resource-parsers/src/RenderGraphSerializer.cpp
