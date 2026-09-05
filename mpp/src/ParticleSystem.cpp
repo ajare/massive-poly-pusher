@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <string>
+#include <vector>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -26,6 +28,8 @@ namespace mpp
 	{
 		char const* PoolInitialiseProgramName = "__mpp_particle_pool_initialise__";
 		char const* SpawnProgramName = "__mpp_particle_spawn__";
+		char const* SimulationPrepareProgramName = "__mpp_particle_simulation_prepare__";
+		char const* SimulationProgramName = "__mpp_particle_simulation__";
 		char const* DrawProgramName = "__mpp_particle_draw_additive__";
 
 		constexpr uint32_t ParticlePoolBinding = 0;
@@ -41,6 +45,8 @@ namespace mpp
 		constexpr uint32_t SpawnCommandBinding = 7;
 		constexpr uint32_t RequiredStorageBindings = 8;
 		constexpr size_t IndirectCommandBytes = 4 * sizeof(uint32_t);
+		constexpr size_t SimulationDispatchCommandBytes = 3 * sizeof(uint32_t);
+		constexpr uint32_t NoiseTextureSize = 16;
 
 		template<typename T>
 		size_t bytes(vector<T> const& values)
@@ -64,6 +70,11 @@ namespace mpp
 
 	ParticleSystem::~ParticleSystem()
 	{
+		if (mNoiseTexture != 0)
+		{
+			glDeleteTextures(1, &mNoiseTexture);
+			mNoiseTexture = 0;
+		}
 		if (mVertexArray != 0)
 		{
 			glDeleteVertexArrays(1, &mVertexArray);
@@ -73,6 +84,7 @@ namespace mpp
 		mSpawnCommandBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
+		mSimulationDispatchCommand.reset();
 		mIndirectCommands.reset();
 		mCounters.reset();
 		mActiveIndicesB.reset();
@@ -89,6 +101,8 @@ namespace mpp
 		};
 		releaseProgram(mPoolInitialiseProgram);
 		releaseProgram(mSpawnProgram);
+		releaseProgram(mSimulationPrepareProgram);
+		releaseProgram(mSimulationProgram);
 		releaseProgram(mDrawProgram);
 	}
 
@@ -133,6 +147,9 @@ namespace mpp
 			};
 			mPoolInitialiseProgram = createComputeProgram(PoolInitialiseProgramName, ParticlePoolInitialiseComputeShader);
 			mSpawnProgram = createComputeProgram(SpawnProgramName, ParticleSpawnComputeShader);
+			mSimulationPrepareProgram = createComputeProgram(SimulationPrepareProgramName, ParticleSimulationPrepareComputeShader);
+			mSimulationProgram = createComputeProgram(SimulationProgramName, ParticleSimulationComputeShader);
+			createNoiseTexture();
 
 			auto drawStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
 			drawStream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
@@ -156,6 +173,46 @@ namespace mpp
 		}
 	}
 
+	void ParticleSystem::createNoiseTexture()
+	{
+		if (mNoiseTexture != 0) return;
+
+		vector<uint8_t> texels(size_t(NoiseTextureSize) * NoiseTextureSize * NoiseTextureSize * 4u);
+		auto hashValue = [](uint32_t value)
+		{
+			value ^= value >> 16u;
+			value *= 0x7feb352du;
+			value ^= value >> 15u;
+			value *= 0x846ca68bu;
+			value ^= value >> 16u;
+			return value;
+		};
+		for (size_t texel = 0; texel < texels.size() / 4u; ++texel)
+		{
+			uint32_t state = hashValue(uint32_t(texel) ^ 0x6d2b79f5u);
+			for (size_t channel = 0; channel < 3; ++channel)
+			{
+				state = hashValue(state + uint32_t(channel));
+				texels[texel * 4u + channel] = uint8_t(state >> 24u);
+			}
+			texels[texel * 4u + 3u] = 255u;
+		}
+
+		GL_CHECK(glGenTextures(1, &mNoiseTexture));
+		if (mNoiseTexture == 0)
+			THROW_MPP("Could not create the particle noise texture.", __LINE__, __FILE__, __func__);
+		GL_CHECK(glBindTexture(GL_TEXTURE_3D, mNoiseTexture));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT));
+		GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, NoiseTextureSize, NoiseTextureSize, NoiseTextureSize,
+			0, GL_RGBA, GL_UNSIGNED_BYTE, texels.data()));
+		GL_CHECK(glObjectLabel(GL_TEXTURE, mNoiseTexture, -1, "Particle 3D noise"));
+		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+	}
+
 	void ParticleSystem::ensurePoolAllocated()
 	{
 		if (mPoolAllocated) return;
@@ -177,7 +234,8 @@ namespace mpp
 		size_t const emitterBytes = size_t(MaxEmitterCount) * sizeof(EmitterSimData);
 		size_t const templateBytes = size_t(MaxEmitterCount) * sizeof(TemplateRenderData);
 		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
-		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes, IndirectCommandBytes });
+		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes,
+			IndirectCommandBytes, SimulationDispatchCommandBytes });
 		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
 		{
 			THROW_MPP("The configured particle buffers need a shader storage block of " + to_string(largestBlock) +
@@ -197,6 +255,8 @@ namespace mpp
 		mCounters->create(counterBytes, nullptr, "Particle counters");
 		mIndirectCommands = make_unique<ShaderStorageBuffer>();
 		mIndirectCommands->create(IndirectCommandBytes, nullptr, "Particle indirect draw commands");
+		mSimulationDispatchCommand = make_unique<ShaderStorageBuffer>();
+		mSimulationDispatchCommand->create(SimulationDispatchCommandBytes, nullptr, "Particle simulation dispatch command");
 
 		GLint storageAlignment = 1;
 		GL_CHECK(glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &storageAlignment));
@@ -226,10 +286,20 @@ namespace mpp
 
 	void ParticleSystem::createBootstrapEmitters()
 	{
-		// Keeps the #16 vertical slice observable until authored particle effects
-		// and the public emitter API arrive. It also exercises every spawn-shape
-		// branch in normal graph GPU runs.
-		constexpr uint32_t particlesPerShape = 128;
+		// Keeps the vertical slice observable until authored particle effects and
+		// the public emitter API arrive. The emitters exercise every spawn shape and
+		// every independent combination needed to keep module branches live.
+		constexpr uint32_t initialParticlesPerShape = 24;
+		constexpr uint32_t particlesPerShapeBudget = 128;
+		constexpr uint32_t moduleMasks[]{
+			0u,
+			uint32_t(ParticleBehaviourModule::Gravity),
+			uint32_t(ParticleBehaviourModule::Drag),
+			uint32_t(ParticleBehaviourModule::Noise),
+			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag),
+			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Noise),
+			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag) | uint32_t(ParticleBehaviourModule::Noise)
+		};
 		for (uint32_t shape = uint32_t(ParticleSpawnShape::Point); shape <= uint32_t(ParticleSpawnShape::Cone); ++shape)
 		{
 			EmitterSimData emitter;
@@ -238,7 +308,11 @@ namespace mpp
 			emitter.initialVelocityMax = { 0.1f, 0.45f, 0.1f, 0.0f };
 			emitter.lifetimeSizeRanges = { 4.0f, 6.0f, 0.035f, 0.065f };
 			emitter.rotationRanges = { -3.14159f, 3.14159f, -1.0f, 1.0f };
-			emitter.shapeSeedModulesBudget = { shape, 0x6d2b79f5u + shape * 977u, 0u, particlesPerShape };
+			emitter.shapeSeedModulesBudget = { shape, 0x6d2b79f5u + shape * 977u, moduleMasks[shape], particlesPerShapeBudget };
+			emitter.emissionRateAndPadding[0] = shape == 0u ? 0.5f : 8.0f + float(shape);
+			emitter.gravityAndDrag = { 0.0f, -0.35f, 0.0f, 0.45f };
+			emitter.noiseFrequencyStrength = { 0.65f, 0.65f, 0.65f, 0.3f };
+			emitter.noiseScrollAndTimeScale = { 0.07f, 0.11f, 0.05f, 1.0f };
 			emitter.colourMin = { 0.2f + float(shape % 3u) * 0.25f, 0.35f, 0.6f, 0.75f };
 			emitter.colourMax = { 1.0f, 0.65f + float(shape % 2u) * 0.25f, 1.0f, 1.0f };
 			switch (ParticleSpawnShape(shape))
@@ -255,19 +329,54 @@ namespace mpp
 			uint32_t const emitterIndex = uint32_t(mEmitters.size());
 			mEmitters.push_back(emitter);
 			mTemplateRenderData.emplace_back();
-			mSpawnCommands.push_back({ emitterIndex, particlesPerShape, 0x9e3779b9u + shape, 0u });
+			mEmitterFrameStates.push_back({ {}, initialParticlesPerShape, false });
+			mSpawnCommands.push_back({ emitterIndex, initialParticlesPerShape, 0x9e3779b9u + shape, 0u });
 		}
 	}
 
-	void ParticleSystem::uploadAndDispatchSpawnCommands()
+	void ParticleSystem::buildSpawnCommands(float dt)
 	{
-		if (mSpawnCommands.empty()) return;
+		if (mEmitterFrameStates.size() != mEmitters.size())
+			THROW_MPP("Particle emitter frame state does not match the emitter table.", __LINE__, __FILE__, __func__);
+
+		for (uint32_t emitterIndex = 0; emitterIndex < uint32_t(mEmitters.size()); ++emitterIndex)
+		{
+			auto const& emitter = mEmitters[emitterIndex];
+			auto& frame = mEmitterFrameStates[emitterIndex];
+			if (emitter.emissionState[1] == 0u) continue;
+
+			uint32_t spawnCount = 0;
+			if (emitter.emissionState[0] == 0u)
+			{
+				spawnCount = frame.spawnAccumulator.accumulate(
+					emitter.emissionRateAndPadding[0], emitter.parameterMultipliers0[0], dt);
+			}
+			else if (!frame.burstSubmitted)
+			{
+				spawnCount = emitter.emissionState[2];
+				frame.burstSubmitted = true;
+			}
+
+			if (spawnCount == 0u) continue;
+			mSpawnCommands.push_back({ emitterIndex, spawnCount, 0x9e3779b9u + emitterIndex, frame.spawnCounter });
+			frame.spawnCounter += spawnCount;
+		}
+	}
+
+	void ParticleSystem::uploadFrameData()
+	{
 		if (mEmitters.size() > MaxEmitterCount || mSpawnCommands.size() > MaxSpawnCommandCount)
 			THROW_MPP("Particle emitter or spawn-command capacity was exceeded.", __LINE__, __FILE__, __func__);
 
 		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
 		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
-		mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
+		if (!mSpawnCommands.empty())
+			mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
+	}
+
+	void ParticleSystem::dispatchSpawnCommands()
+	{
+		if (mSpawnCommands.empty()) return;
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
 		mFreeIndices->bindStorage(FreeIndicesBinding);
@@ -287,10 +396,48 @@ namespace mpp
 		spawnProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 		spawnProgram->dispatch(uint32_t(mSpawnCommands.size()));
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
-
-		mEmitterBuffer->markUsed();
 		mSpawnCommandBuffer->markUsed();
 		mSpawnCommands.clear();
+	}
+
+	void ParticleSystem::dispatchSimulation(float dt)
+	{
+		mCounters->bindStorage(CountersBinding);
+		mIndirectCommands->bindStorage(IndirectCommandBinding);
+		mSimulationDispatchCommand->bindStorage(SpawnCommandBinding);
+		auto* prepareProgram = static_cast<ComputeProgram*>(mSimulationPrepareProgram.get());
+		prepareProgram->use();
+		prepareProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		prepareProgram->dispatch(1u);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+		mParticlePool->bindStorage(ParticlePoolBinding);
+		mFreeIndices->bindStorage(FreeIndicesBinding);
+		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
+		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
+		mCounters->bindStorage(CountersBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		mIndirectCommands->bindStorage(IndirectCommandBinding);
+
+		auto* simulationProgram = static_cast<ComputeProgram*>(mSimulationProgram.get());
+		simulationProgram->use();
+		simulationProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+		simulationProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+		simulationProgram->setUniform("DELTA_SECONDS", dt);
+		simulationProgram->setUniform("SIMULATION_SECONDS", mSimulationSeconds);
+		simulationProgram->setUniform("NOISE_TEXTURE", int32_t(0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE0));
+		GL_CHECK(glBindSampler(0, 0));
+		GL_CHECK(glBindTexture(GL_TEXTURE_3D, mNoiseTexture));
+		mSimulationDispatchCommand->bindDispatchIndirect();
+		simulationProgram->dispatchIndirect();
+		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+
+		mActiveListIndex = 1u - mActiveListIndex;
+		mEmitterBuffer->markUsed();
 	}
 
 	void ParticleSystem::simulate()
@@ -298,16 +445,33 @@ namespace mpp
 		initialise();
 		if (!mAvailable) return;
 
-		GpuDebugScope scope("Particles: Spawn");
 		try
 		{
+			auto const now = chrono::steady_clock::now();
+			float dt = 0.0f;
+			if (mHasLastSimulationTime)
+				dt = clampParticleDeltaSeconds(chrono::duration<float>(now - mLastSimulationTime).count());
+			mLastSimulationTime = now;
+			mHasLastSimulationTime = true;
+			mSimulationSeconds += dt;
+
 			if (!mBootstrapEmittersCreated)
 			{
 				createBootstrapEmitters();
 				ensurePoolAllocated();
 				mBootstrapEmittersCreated = true;
 			}
-			uploadAndDispatchSpawnCommands();
+
+			buildSpawnCommands(dt);
+			uploadFrameData();
+			{
+				GpuDebugScope spawnScope("Particles: Spawn");
+				dispatchSpawnCommands();
+			}
+			{
+				GpuDebugScope simulationScope("Particles: Simulate");
+				dispatchSimulation(dt);
+			}
 		}
 		catch (exception const& error)
 		{

@@ -86,6 +86,7 @@ struct EmitterSimData
     vec4 rotationRanges;
     uvec4 shapeSeedModulesBudget;
     uvec4 emissionState;
+    vec4 emissionRateAndPadding;
     vec4 parameterMultipliers0;
     vec4 parameterMultipliers1;
     vec4 gravityAndDrag;
@@ -309,6 +310,201 @@ void main()
 }
 )MPP";
 
+	// Converts the GPU-owned active count into an indirect compute command and
+	// clears only the destination state. This constant-cost dispatch is what lets
+	// the simulation kernel itself run over the active list rather than capacity.
+	inline char const* ParticleSimulationPrepareComputeShader = R"MPP(#version 430
+
+layout(local_size_x = 1) in;
+
+layout(std430, binding = 4) restrict buffer ParticleCounters
+{
+    uint FREE_COUNT;
+    uint ACTIVE_COUNT_A;
+    uint ACTIVE_COUNT_B;
+    uint DROPPED_SPAWN_COUNT;
+    uint LIVE_COUNTS[];
+};
+layout(std430, binding = 6) restrict buffer ParticleIndirectCommands
+{
+    uint INDIRECT_COMMAND[];
+};
+layout(std430, binding = 7) restrict writeonly buffer ParticleSimulationDispatchCommand
+{
+    uint DISPATCH_COMMAND[];
+};
+
+uniform uint ACTIVE_LIST_INDEX;
+
+void main()
+{
+    uint activeCount = ACTIVE_LIST_INDEX == 0u ? ACTIVE_COUNT_A : ACTIVE_COUNT_B;
+    if (ACTIVE_LIST_INDEX == 0u)
+        ACTIVE_COUNT_B = 0u;
+    else
+        ACTIVE_COUNT_A = 0u;
+
+    INDIRECT_COMMAND[1] = 0u;
+    DISPATCH_COMMAND[0] = (activeCount + MPP_PARTICLE_WORK_GROUP_SIZE - 1u) / MPP_PARTICLE_WORK_GROUP_SIZE;
+    DISPATCH_COMMAND[1] = 1u;
+    DISPATCH_COMMAND[2] = 1u;
+}
+)MPP";
+
+	// The one simulation kernel. Behaviour modules branch on the emitter mask at
+	// runtime (ADR 0006); no module define permutations exist. Survivors append to
+	// the opposite list while dead slots return directly to the GPU free stack.
+	inline char const* ParticleSimulationComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+
+const uint PARTICLE_MODULE_GRAVITY = 1u << 0u;
+const uint PARTICLE_MODULE_DRAG = 1u << 1u;
+const uint PARTICLE_MODULE_NOISE = 1u << 2u;
+
+struct ParticleRecord
+{
+    vec4 positionAge;
+    vec4 velocityLifetime;
+    uint packedColour;
+    float baseSize;
+    float rotation;
+    float angularVelocity;
+    uint emitterIndex;
+    uint seed;
+    uint flags;
+    uint padding;
+};
+
+struct EmitterSimData
+{
+    mat4 transform;
+    vec4 shapeParameters;
+    vec4 initialVelocityMin;
+    vec4 initialVelocityMax;
+    vec4 colourMin;
+    vec4 colourMax;
+    vec4 lifetimeSizeRanges;
+    vec4 rotationRanges;
+    uvec4 shapeSeedModulesBudget;
+    uvec4 emissionState;
+    vec4 emissionRateAndPadding;
+    vec4 parameterMultipliers0;
+    vec4 parameterMultipliers1;
+    vec4 gravityAndDrag;
+    vec4 noiseFrequencyStrength;
+    vec4 noiseScrollAndTimeScale;
+};
+
+layout(std430, binding = 0) restrict buffer ParticlePool
+{
+    ParticleRecord PARTICLES[];
+};
+layout(std430, binding = 1) restrict buffer ParticleFreeIndices
+{
+    uint FREE_INDICES[];
+};
+layout(std430, binding = 2) restrict buffer ParticleActiveIndicesA
+{
+    uint ACTIVE_INDICES_A[];
+};
+layout(std430, binding = 3) restrict buffer ParticleActiveIndicesB
+{
+    uint ACTIVE_INDICES_B[];
+};
+layout(std430, binding = 4) restrict buffer ParticleCounters
+{
+    uint FREE_COUNT;
+    uint ACTIVE_COUNT_A;
+    uint ACTIVE_COUNT_B;
+    uint DROPPED_SPAWN_COUNT;
+    uint LIVE_COUNTS[];
+};
+layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
+{
+    EmitterSimData EMITTERS[];
+};
+layout(std430, binding = 6) restrict buffer ParticleIndirectCommands
+{
+    uint INDIRECT_COMMAND[];
+};
+
+layout(binding = 0) uniform sampler3D NOISE_TEXTURE;
+uniform uint ACTIVE_LIST_INDEX;
+uniform uint EMITTER_COUNT;
+uniform float DELTA_SECONDS;
+uniform float SIMULATION_SECONDS;
+
+void killParticle(uint particleIndex, uint emitterIndex)
+{
+    uint freeDestination = atomicAdd(FREE_COUNT, 1u);
+    FREE_INDICES[freeDestination] = particleIndex;
+    if (emitterIndex < EMITTER_COUNT)
+        atomicAdd(LIVE_COUNTS[emitterIndex], 0xffffffffu);
+}
+
+void appendSurvivor(uint particleIndex)
+{
+    if (ACTIVE_LIST_INDEX == 0u)
+    {
+        uint destination = atomicAdd(ACTIVE_COUNT_B, 1u);
+        ACTIVE_INDICES_B[destination] = particleIndex;
+    }
+    else
+    {
+        uint destination = atomicAdd(ACTIVE_COUNT_A, 1u);
+        ACTIVE_INDICES_A[destination] = particleIndex;
+    }
+    atomicAdd(INDIRECT_COMMAND[1], 1u);
+}
+
+void main()
+{
+    uint sourceCount = ACTIVE_LIST_INDEX == 0u ? ACTIVE_COUNT_A : ACTIVE_COUNT_B;
+    uint activeOrdinal = gl_GlobalInvocationID.x;
+    if (activeOrdinal >= sourceCount) return;
+
+    uint particleIndex = ACTIVE_LIST_INDEX == 0u ? ACTIVE_INDICES_A[activeOrdinal] : ACTIVE_INDICES_B[activeOrdinal];
+    ParticleRecord particle = PARTICLES[particleIndex];
+    if (particle.emitterIndex >= EMITTER_COUNT)
+    {
+        killParticle(particleIndex, particle.emitterIndex);
+        return;
+    }
+
+    particle.positionAge.w += DELTA_SECONDS;
+    if (particle.positionAge.w >= particle.velocityLifetime.w)
+    {
+        killParticle(particleIndex, particle.emitterIndex);
+        return;
+    }
+
+    EmitterSimData emitter = EMITTERS[particle.emitterIndex];
+    uint modules = emitter.shapeSeedModulesBudget.z;
+    vec3 velocity = particle.velocityLifetime.xyz;
+
+    if ((modules & PARTICLE_MODULE_GRAVITY) != 0u)
+        velocity += emitter.gravityAndDrag.xyz * DELTA_SECONDS;
+
+    if ((modules & PARTICLE_MODULE_NOISE) != 0u)
+    {
+        vec3 samplePosition = particle.positionAge.xyz * emitter.noiseFrequencyStrength.xyz;
+        samplePosition += emitter.noiseScrollAndTimeScale.xyz * (SIMULATION_SECONDS * emitter.noiseScrollAndTimeScale.w);
+        vec3 noiseForce = textureLod(NOISE_TEXTURE, samplePosition, 0.0).xyz * 2.0 - 1.0;
+        velocity += noiseForce * (emitter.noiseFrequencyStrength.w * DELTA_SECONDS);
+    }
+
+    if ((modules & PARTICLE_MODULE_DRAG) != 0u)
+        velocity *= max(0.0, 1.0 - max(0.0, emitter.gravityAndDrag.w) * DELTA_SECONDS);
+
+    particle.velocityLifetime.xyz = velocity;
+    particle.positionAge.xyz += velocity * DELTA_SECONDS;
+    particle.rotation += particle.angularVelocity * DELTA_SECONDS;
+    PARTICLES[particleIndex] = particle;
+    appendSurvivor(particleIndex);
+}
+)MPP";
+
 	// Attribute-less instanced billboards: only the compact active index list is
 	// traversed. The full fixed-capacity pool is never used as a dispatch or draw
 	// range.
@@ -365,7 +561,11 @@ void main()
     PARTICLE_TINT = unpackUnorm4x8(particle.packedColour);
 
     vec3 viewPosition = (VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).xyz;
-    viewPosition.xy += (corner * 2.0 - 1.0) * particle.baseSize;
+    vec2 billboardOffset = corner * 2.0 - 1.0;
+    float sineRotation = sin(particle.rotation);
+    float cosineRotation = cos(particle.rotation);
+    billboardOffset = mat2(cosineRotation, sineRotation, -sineRotation, cosineRotation) * billboardOffset;
+    viewPosition.xy += billboardOffset * particle.baseSize;
     gl_Position = PROJECTION_MATRIX * vec4(viewPosition, 1.0);
 }
 )MPP";

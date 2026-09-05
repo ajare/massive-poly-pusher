@@ -45,4 +45,14 @@ namespace mpp
 
 		GL_CHECK(glDispatchCompute(groupsX, groupsY, groupsZ));
 	}
+
+	void ComputeProgram::dispatchIndirect(size_t byteOffset)
+	{
+		if (byteOffset % sizeof(uint32_t) != 0)
+		{
+			THROW_MPP("Compute program '" + getName() + "' received a misaligned indirect dispatch offset.",
+				__LINE__, __FILE__, __func__);
+		}
+		GL_CHECK(glDispatchComputeIndirect(static_cast<GLintptr>(byteOffset)));
+	}
 }

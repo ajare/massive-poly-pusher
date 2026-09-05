@@ -63,4 +63,9 @@ namespace mpp
 	{
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mBuffer));
 	}
+
+	void ShaderStorageBuffer::bindDispatchIndirect() const
+	{
+		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, mBuffer));
+	}
 }

@@ -15,6 +15,7 @@
 #include "mpp/RenderGraphGpuTests.h"
 #include "mpp/Camera.h"
 #include "mpp/BoxModelStream.h"
+#include "mpp/ComputeProgram.h"
 #include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
@@ -1871,6 +1872,17 @@ void main()
 				}
 			}
 
+			stage = "particle simulation frame policy";
+			{
+				if (clampParticleDeltaSeconds(3.0f) != MaximumParticleDeltaSeconds)
+					return fail("particle simulation did not clamp a multi-second frame stall");
+				ParticleSpawnAccumulator lowRate;
+				uint32_t const expected[]{ 0u, 0u, 0u, 1u };
+				for (uint32_t count : expected)
+					if (lowRate.accumulate(0.5f, 1.0f, 0.5f) != count)
+						return fail("fractional particle spawn accumulation quantised a low-rate emitter");
+			}
+
 			stage = "particle vertical slice";
 			{
 				// The thin end-to-end path: a compute dispatch and an attribute-less
@@ -1925,6 +1937,7 @@ void main()
 					}
 				if (!executedParticles) return fail("opted-in generated particles did not insert a particle pass");
 				bool const particlesAvailable = renderSystem->particlesAvailable();
+				std::vector<uint8_t> poolAfterGeneratedDraw;
 				if (particlesAvailable)
 				{
 					// Query the linked spawn kernel rather than trusting the C++ declaration:
@@ -1938,6 +1951,25 @@ void main()
 					GL_CHECK(glGetProgramResourceiv(spawnProgram->getId(), GL_BUFFER_VARIABLE, variable, 2, properties, 2, nullptr, values));
 					if (values[0] != 60 || values[1] != GLint(sizeof(ParticleRecord)))
 						return fail("the particle record is not exactly 64 bytes under std430");
+
+					auto simulationProgram = renderSystem->getResourceManager()->getResource("__mpp_particle_simulation__", true);
+					if (!simulationProgram) return fail("the available particle system has no simulation kernel");
+
+					// Snapshot the allocated tail of the GPU pool. Rendering another
+					// particle graph in this same renderer frame must be a pure draw: a
+					// second simulation would change age even when its tiny dt did not move
+					// a particle far enough to alter a captured RGB8 pixel.
+					GLint poolBuffer = 0;
+					GL_CHECK(glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &poolBuffer));
+					if (poolBuffer == 0) return fail("particle pool was not left bound after drawing");
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, GLuint(poolBuffer)));
+					GLint poolBytes = 0;
+					GL_CHECK(glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &poolBytes));
+					size_t const snapshotBytes = 7u * 24u * sizeof(ParticleRecord);
+					if (size_t(poolBytes) < snapshotBytes) return fail("particle pool is smaller than the bootstrap allocation");
+					poolAfterGeneratedDraw.resize(snapshotBytes);
+					GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, poolBytes - GLint(snapshotBytes), snapshotBytes, poolAfterGeneratedDraw.data()));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
 				}
 				if (drewParticles(generatedPipeline->takeGraphImageCaptures()) != particlesAvailable)
 					return fail("GraphLegacyForward particles did not draw exactly when the particle system reported itself available");
@@ -1985,6 +2017,121 @@ void main()
 				authoredPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				if (drewParticles(authoredPipeline->takeGraphImageCaptures()) != particlesAvailable)
 					return fail("XmlGraphPbrForward particles did not draw the same as the generated graph");
+				if (particlesAvailable)
+				{
+					GLint poolBuffer = 0;
+					GL_CHECK(glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &poolBuffer));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, GLuint(poolBuffer)));
+					GLint poolBytes = 0;
+					GL_CHECK(glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &poolBytes));
+					std::vector<uint8_t> poolAfterAuthoredDraw(poolAfterGeneratedDraw.size());
+					GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, poolBytes - GLint(poolAfterAuthoredDraw.size()),
+						poolAfterAuthoredDraw.size(), poolAfterAuthoredDraw.data()));
+					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+					if (poolAfterAuthoredDraw != poolAfterGeneratedDraw)
+						return fail("particles simulated more than once in one rendered frame");
+
+					// Exercise the linked kernel against a tiny known pool. This isolates
+					// every module bit and both survivor/death paths from bootstrap random
+					// values while still executing the production GLSL on the driver.
+					std::array<ParticleRecord, 5> particles{};
+					for (uint32_t index = 0; index < particles.size(); ++index)
+					{
+						particles[index].velocityLifetime = { index == 3u ? 0.0f : 2.0f, 0.0f, 0.0f, 10.0f };
+						particles[index].emitterIndex = std::min(index, 3u);
+						particles[index].angularVelocity = 3.0f;
+					}
+					particles[4].emitterIndex = 0u;
+					particles[4].positionAge[3] = 0.95f;
+					particles[4].velocityLifetime[3] = 1.0f;
+					std::array<EmitterSimData, 4> emitters{};
+					emitters[1].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Gravity);
+					emitters[1].gravityAndDrag = { 0.0f, -10.0f, 0.0f, 0.0f };
+					emitters[2].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Drag);
+					emitters[2].gravityAndDrag[3] = 5.0f;
+					emitters[3].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Noise);
+					emitters[3].noiseFrequencyStrength = { 0.0f, 0.0f, 0.0f, 2.0f };
+					std::array<uint32_t, 5> freeIndices{};
+					std::array<uint32_t, 5> activeA{ 0u, 1u, 2u, 3u, 4u }, activeB{};
+					std::array<uint32_t, 8> counters{ 0u, 5u, 0u, 0u, 2u, 1u, 1u, 1u };
+					std::array<uint32_t, 4> indirect{ 4u, 0u, 0u, 0u };
+					std::array<GLuint, 7> buffers{};
+					auto bindTestBuffer = [&](uint32_t binding, auto const& values)
+					{
+						GLuint buffer = 0;
+						GL_CHECK(glGenBuffers(1, &buffer));
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer));
+						GL_CHECK(glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(values), values.data(), GL_DYNAMIC_COPY));
+						GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer));
+						buffers[binding] = buffer;
+					};
+					bindTestBuffer(0, particles);
+					bindTestBuffer(1, freeIndices);
+					bindTestBuffer(2, activeA);
+					bindTestBuffer(3, activeB);
+					bindTestBuffer(4, counters);
+					bindTestBuffer(5, emitters);
+					bindTestBuffer(6, indirect);
+
+					GLuint noiseTexture = 0;
+					std::array<uint8_t, 4> noiseTexel{ 255u, 128u, 128u, 255u };
+					GL_CHECK(glGenTextures(1, &noiseTexture));
+					GL_CHECK(glActiveTexture(GL_TEXTURE0));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, noiseTexture));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+					GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 1, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, noiseTexel.data()));
+
+					auto simulationResource = renderSystem->getResourceManager()->getResource("__mpp_particle_simulation__", true);
+					auto* simulation = dynamic_cast<ComputeProgram*>(simulationResource.get());
+					if (!simulation) return fail("particle simulation resource is not a compute program");
+					simulation->use();
+					simulation->setUniform("ACTIVE_LIST_INDEX", 0u);
+					simulation->setUniform("EMITTER_COUNT", 4u);
+					simulation->setUniform("DELTA_SECONDS", 0.1f);
+					simulation->setUniform("SIMULATION_SECONDS", 0.0f);
+					simulation->setUniform("NOISE_TEXTURE", int32_t(0));
+					simulation->dispatch(1u);
+					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+
+					auto readTestBuffer = [&](uint32_t binding, auto& values)
+					{
+						GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[binding]));
+						GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(values), values.data()));
+					};
+					readTestBuffer(0, particles);
+					readTestBuffer(1, freeIndices);
+					readTestBuffer(3, activeB);
+					readTestBuffer(4, counters);
+					readTestBuffer(6, indirect);
+					auto near = [](float left, float right) { return std::abs(left - right) < 0.0001f; };
+					std::string simulationFailure;
+					if (!near(particles[0].positionAge[0], 0.2f) || !near(particles[0].positionAge[1], 0.0f))
+						simulationFailure = "disabled behaviour modules changed velocity";
+					else if (!near(particles[1].velocityLifetime[1], -1.0f) || !near(particles[1].positionAge[1], -0.1f))
+						simulationFailure = "gravity module did not integrate independently";
+					else if (!near(particles[2].velocityLifetime[0], 1.0f) || !near(particles[2].positionAge[0], 0.1f))
+						simulationFailure = "drag module did not integrate independently";
+					else if (!(particles[3].velocityLifetime[0] > 0.19f) || !(particles[3].positionAge[0] > 0.019f))
+						simulationFailure = "3D-texture noise module did not integrate independently";
+					else if (!near(particles[0].rotation, 0.3f) || !near(particles[0].positionAge[3], 0.1f))
+						simulationFailure = "base age or angular-velocity integration failed";
+					else if (counters[0] != 1u || counters[2] != 4u || counters[4] != 1u || freeIndices[0] != 4u || indirect[1] != 4u)
+						simulationFailure = "survivor compaction or dead-particle reclamation failed";
+					else
+					{
+						auto survivors = activeB;
+						std::sort(survivors.begin(), survivors.begin() + 4);
+						if (survivors[0] != 0u || survivors[1] != 1u || survivors[2] != 2u || survivors[3] != 3u)
+							simulationFailure = "survivors were not written to the opposite active list";
+					}
+
+					GL_CHECK(glUseProgram(0));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+					GL_CHECK(glDeleteTextures(1, &noiseTexture));
+					GL_CHECK(glDeleteBuffers(GLsizei(buffers.size()), buffers.data()));
+					if (!simulationFailure.empty()) return fail(simulationFailure);
+				}
 				renderSystem->removeRenderPipeline("GpuTestAuthoredParticlePipeline");
 			}
 

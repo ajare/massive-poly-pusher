@@ -3812,6 +3812,12 @@ namespace mpp
 	void RenderSystem::simulateParticles()
 	{
 		if (!mParticleSystem) return;
+		// A graph can retry after a recoverable pass failure, and an application can
+		// render several pipelines/views between frame boundaries. Neither is a new
+		// particle frame: startStatsCollection() is the renderer's frame boundary.
+		if (mParticleSimulationFrameValid && mParticleSimulationFrameSerial == mFrameSerial) return;
+		mParticleSimulationFrameSerial = mFrameSerial;
+		mParticleSimulationFrameValid = true;
 		mParticleSystem->simulate();
 
 		// The raw compute program was bound outside the Program cache, which would

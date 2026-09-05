@@ -344,7 +344,11 @@ out of step with the `dt` the simulation actually used. Per-emitter remainders
 carry across frames so low-rate emitters stay smooth instead of quantising to one
 particle per frame.
 
-**Status:** not started.
+**Status:** once-per-rendered-frame scheduling, clamped wall-time delta,
+fractional continuous-spawn accumulation, CPU-buffer upload, spawn, simulation,
+barriers and active-list swapping are done. Emitter retirement/transform
+composition belongs to the CPU API milestone (§7); render-list compaction and
+indirect command generation remain in §10.
 
 **Acceptance:** particle speed is unchanged when planar reflections are enabled;
 a 3-second stall does not destroy live effects.
@@ -370,10 +374,14 @@ Pool exhaustion is graceful per §33: the spawn kernel clamps to what the free
 list can supply and to the emitter's template budget, incrementing a dropped-spawn
 counter rather than failing.
 
-**Status:** spawn done; integration follows in the simulation milestone. The
-spawn kernel samples all seven shapes, derives deterministic per-particle seeds,
-and reserves both emitter budget and free-list entries with atomic CAS loops.
-It dispatches over spawn commands rather than pool capacity.
+**Status:** spawn and simulation done. The spawn kernel samples all seven
+shapes, derives deterministic per-particle seeds, and reserves both emitter
+budget and free-list entries with atomic CAS loops. The single simulation kernel
+integrates age, position, velocity and rotation, branches at runtime for gravity,
+linear drag and scrolling 3D-texture noise, compacts survivors into the opposite
+active list and returns dead slots to the free list. Both kernels dispatch over
+GPU-owned work rather than pool capacity. Curve-LUT baking and sampling remains
+the independently scheduled §6 milestone (#19).
 
 **Acceptance:** determinism holds for a fixed seed and fixed frame sequence;
 over-spawning clamps and reports rather than corrupting the free list.

@@ -153,6 +153,8 @@ namespace mpp
 
 		RenderTargetPtr mScreen;
 		uint64_t mFrameSerial{ 0 };
+		uint64_t mParticleSimulationFrameSerial{ 0 };
+		bool mParticleSimulationFrameValid{ false };
 
 		// Set only while a PBR pipeline is flushing its scene pass. Environment
 		// samplers then override per-material placeholder bindings.

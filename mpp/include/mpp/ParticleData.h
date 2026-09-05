@@ -18,6 +18,42 @@ namespace mpp
 		Cone
 	};
 
+	enum class ParticleBehaviourModule : uint32_t
+	{
+		Gravity = 1u << 0,
+		Drag = 1u << 1,
+		Noise = 1u << 2
+	};
+
+	inline constexpr float MaximumParticleDeltaSeconds = 0.1f;
+
+	constexpr float clampParticleDeltaSeconds(float seconds) noexcept
+	{
+		return seconds <= 0.0f ? 0.0f :
+			(seconds > MaximumParticleDeltaSeconds ? MaximumParticleDeltaSeconds : seconds);
+	}
+
+	// CPU-side state for one continuous emitter. Keeping the fractional part is
+	// what makes rates below one particle per frame deterministic and smooth.
+	struct ParticleSpawnAccumulator
+	{
+		double remainder{ 0.0 };
+
+		uint32_t accumulate(float particlesPerSecond, float rateMultiplier, float dt) noexcept
+		{
+			if (!(particlesPerSecond > 0.0f) || !(rateMultiplier > 0.0f) || !(dt > 0.0f)) return 0u;
+			double const accumulated = remainder + double(particlesPerSecond) * double(rateMultiplier) * double(dt);
+			if (accumulated >= double(UINT32_MAX))
+			{
+				remainder = 0.0;
+				return UINT32_MAX;
+			}
+			uint32_t const whole = uint32_t(accumulated);
+			remainder = accumulated - double(whole);
+			return whole;
+		}
+	};
+
 	// CPU mirror of the std430 particle record. vec3-plus-float values are
 	// represented as four scalars so the layout does not depend on GLM alignment
 	// options. The matching GLSL declaration lives in ParticleShaders.h.
@@ -59,13 +95,15 @@ namespace mpp
 		std::array<float, 4> rotationRanges{};
 		// Spawn shape, emitter seed, behaviour-module mask, particle budget.
 		std::array<uint32_t, 4> shapeSeedModulesBudget{};
-		// Emission mode, enabled, burst count, reserved.
+		// Emission mode (continuous/burst), enabled, burst count, reserved.
 		std::array<uint32_t, 4> emissionState{ 0u, 1u, 0u, 0u };
+		// Authored continuous spawn rate in particles/second, then padding.
+		std::array<float, 4> emissionRateAndPadding{};
 		// Spawn-rate, size, speed, and lifetime multipliers.
 		std::array<float, 4> parameterMultipliers0{ 1.0f, 1.0f, 1.0f, 1.0f };
 		// Alpha and emissive multipliers, then padding.
 		std::array<float, 4> parameterMultipliers1{ 1.0f, 1.0f, 0.0f, 0.0f };
-		// Fixed module slots used by the next simulation milestone.
+		// Fixed behaviour-module slots consumed by the simulation kernel.
 		std::array<float, 4> gravityAndDrag{};
 		std::array<float, 4> noiseFrequencyStrength{};
 		std::array<float, 4> noiseScrollAndTimeScale{};
@@ -112,7 +150,8 @@ namespace mpp
 	static_assert(offsetof(ParticleRecord, emitterIndex) == 48);
 	static_assert(offsetof(ParticleRecord, padding) == 60);
 	static_assert(sizeof(ParticleRecord) == 64, "The std430 particle array stride must be exactly 64 bytes.");
-	static_assert(sizeof(EmitterSimData) == 288);
+	static_assert(clampParticleDeltaSeconds(3.0f) == MaximumParticleDeltaSeconds);
+	static_assert(sizeof(EmitterSimData) == 304);
 	static_assert(sizeof(TemplateRenderData) == 64);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);
 	static_assert(sizeof(ParticleCounterHeader) == 16);

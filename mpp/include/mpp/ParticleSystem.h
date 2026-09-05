@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -28,7 +29,7 @@ namespace mpp
 		RenderSystem* mwRenderSystem;
 		ResourceManager* mwResourceManager;
 
-		ResourcePtr mPoolInitialiseProgram, mSpawnProgram, mDrawProgram;
+		ResourcePtr mPoolInitialiseProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram, mDrawProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
 		std::unique_ptr<ShaderStorageBuffer> mFreeIndices;
@@ -36,6 +37,7 @@ namespace mpp
 		std::unique_ptr<ShaderStorageBuffer> mActiveIndicesB;
 		std::unique_ptr<ShaderStorageBuffer> mCounters;
 		std::unique_ptr<ShaderStorageBuffer> mIndirectCommands;
+		std::unique_ptr<ShaderStorageBuffer> mSimulationDispatchCommand;
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
@@ -43,8 +45,16 @@ namespace mpp
 		std::vector<EmitterSimData> mEmitters;
 		std::vector<TemplateRenderData> mTemplateRenderData;
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
+		struct EmitterFrameState
+		{
+			ParticleSpawnAccumulator spawnAccumulator;
+			uint32_t spawnCounter{ 0 };
+			bool burstSubmitted{ false };
+		};
+		std::vector<EmitterFrameState> mEmitterFrameStates;
 
 		uint32_t mVertexArray{ 0 };
+		uint32_t mNoiseTexture{ 0 };
 		uint32_t mWorkGroupSize{ 64 };
 		uint32_t mPoolCapacity{ 0 };
 		uint32_t mActiveListIndex{ 0 };
@@ -52,10 +62,17 @@ namespace mpp
 		bool mAvailable{ false };
 		bool mPoolAllocated{ false };
 		bool mBootstrapEmittersCreated{ false };
+		bool mHasLastSimulationTime{ false };
+		std::chrono::steady_clock::time_point mLastSimulationTime{};
+		float mSimulationSeconds{ 0.0f };
 
 		void ensurePoolAllocated();
+		void createNoiseTexture();
 		void createBootstrapEmitters();
-		void uploadAndDispatchSpawnCommands();
+		void buildSpawnCommands(float dt);
+		void uploadFrameData();
+		void dispatchSpawnCommands();
+		void dispatchSimulation(float dt);
 		void disableWithWarning(std::string const& reason);
 
 	public:
@@ -72,8 +89,8 @@ namespace mpp
 		bool isPoolAllocated() const { return mPoolAllocated; }
 		uint32_t getPoolCapacity() const { return mPoolCapacity; }
 
-		// Spawn preparation is called once per rendered frame outside graph passes.
-		// This milestone has no integration kernel yet; that follows in #18.
+		// Spawn preparation and simulation are called once per rendered frame outside
+		// graph passes. RenderSystem guards the frame serial before entering here.
 		void simulate();
 
 		// Draws only indices in the current active list, using GPU-authored indirect

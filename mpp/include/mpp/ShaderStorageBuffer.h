@@ -43,6 +43,9 @@ namespace mpp
 		// Binds as the source of glDraw*Indirect arguments.
 		void bindDrawIndirect() const;
 
+		// Binds as the source of glDispatchComputeIndirect arguments.
+		void bindDispatchIndirect() const;
+
 		uint32_t getBuffer() const { return mBuffer; }
 
 		size_t getSize() const { return mSize; }
