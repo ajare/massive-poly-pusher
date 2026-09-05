@@ -43,6 +43,56 @@
 
 namespace particle_editor
 {
+	ParticlePreviewStatus resolveParticlePreviewStatus(bool documentValid, bool ready, bool paused,
+		bool stepping, bool rebuilding, bool failed)
+	{
+		if (rebuilding) return ParticlePreviewStatus::Rebuilding;
+		if (!documentValid) return ParticlePreviewStatus::Invalid;
+		if (failed || !ready) return ParticlePreviewStatus::Failed;
+		if (stepping) return ParticlePreviewStatus::Stepping;
+		return paused ? ParticlePreviewStatus::Paused : ParticlePreviewStatus::Running;
+	}
+
+	char const* particlePreviewStatusText(ParticlePreviewStatus status)
+	{
+		switch (status)
+		{
+		case ParticlePreviewStatus::Running: return "running";
+		case ParticlePreviewStatus::Paused: return "paused";
+		case ParticlePreviewStatus::Stepping: return "stepping";
+		case ParticlePreviewStatus::Rebuilding: return "rebuilding";
+		case ParticlePreviewStatus::Invalid: return "invalid";
+		case ParticlePreviewStatus::Failed: return "failed";
+		}
+		return "failed";
+	}
+
+	std::vector<size_t> manualBurstTargets(size_t emitterTemplateCount, std::optional<size_t> selectedEmitter)
+	{
+		if (selectedEmitter && *selectedEmitter < emitterTemplateCount) return { *selectedEmitter };
+		std::vector<size_t> result(emitterTemplateCount);
+		for (size_t index = 0; index < emitterTemplateCount; ++index) result[index] = index;
+		return result;
+	}
+
+	bool runParticlePreviewControlTests(std::string* failure)
+	{
+		auto fail = [&](char const* message) { if (failure) *failure = message; return false; };
+		if (resolveParticlePreviewStatus(true, true, false, false, false, false) != ParticlePreviewStatus::Running ||
+			resolveParticlePreviewStatus(true, true, true, false, false, false) != ParticlePreviewStatus::Paused ||
+			resolveParticlePreviewStatus(true, true, true, true, false, false) != ParticlePreviewStatus::Stepping ||
+			resolveParticlePreviewStatus(true, true, false, false, true, false) != ParticlePreviewStatus::Rebuilding ||
+			resolveParticlePreviewStatus(false, true, false, false, false, false) != ParticlePreviewStatus::Invalid ||
+			resolveParticlePreviewStatus(true, true, false, false, false, true) != ParticlePreviewStatus::Failed)
+			return fail("preview status did not distinguish all simulation-control states");
+		if (manualBurstTargets(3u, 1u) != std::vector<size_t>{ 1u } ||
+			manualBurstTargets(3u, std::nullopt) != std::vector<size_t>{ 0u, 1u, 2u } ||
+			manualBurstTargets(2u, 9u) != std::vector<size_t>{ 0u, 1u })
+			return fail("manual burst did not target the selection or all emitter templates");
+		if (failure) failure->clear();
+		return true;
+	}
+
 	namespace
 	{
 		constexpr char PbrPipeline[] = "ParticleEditor.PbrPreview";
@@ -464,9 +514,12 @@ namespace particle_editor
 
 	bool ParticlePreview::install(mpp::ParticleEffectSpecification const& specification, std::string* failure)
 	{
+		mRebuilding = true;
+		mRebuildRendered = false;
 		if (!mInitialised)
 		{
 			if (failure) *failure = "Particle preview has not been initialised.";
+			mRebuilding = false;
 			return false;
 		}
 		auto diagnostics = mpp::ParticleEffectValidator::validate(specification);
@@ -482,6 +535,7 @@ namespace particle_editor
 						break;
 					}
 			}
+			mRebuilding = false;
 			return false;
 		}
 
@@ -535,8 +589,28 @@ namespace particle_editor
 				try { mResources->deleteResourceTree(name); } catch (...) {}
 			}
 			if (failure) *failure = error.what();
+			mRebuilding = false;
 			return false;
 		}
+	}
+
+	bool ParticlePreview::restart(std::string* failure)
+	{
+		if (!mInstalledSpecification)
+		{
+			if (failure) *failure = "There is no valid particle preview to restart.";
+			return false;
+		}
+		auto specification = *mInstalledSpecification;
+		return install(specification, failure);
+	}
+
+	void ParticlePreview::triggerManualBurst(std::optional<size_t> selectedEmitter, uint32_t count)
+	{
+		if (!ready() || count == 0u) return;
+		auto& particles = mRenderSystem->getParticleSystem();
+		for (auto const index : manualBurstTargets(mInstalledSpecification->emitterTemplates.size(), selectedEmitter))
+			particles.requestEmitterBurst(particles.getEmitter(mEffect, index), count);
 	}
 
 	bool ParticlePreview::updateLive(mpp::ParticleEffectSpecification const& specification, std::string* failure)
@@ -588,7 +662,11 @@ namespace particle_editor
 
 	void ParticlePreview::pauseSimulation() { mRenderSystem->getParticleSystem().pauseSimulation(); }
 	void ParticlePreview::resumeSimulation() { mRenderSystem->getParticleSystem().resumeSimulation(); }
-	void ParticlePreview::stepSimulation(float deltaSeconds) { mRenderSystem->getParticleSystem().requestSimulationStep(deltaSeconds); }
+	void ParticlePreview::stepSimulation(float deltaSeconds)
+	{
+		mRenderSystem->getParticleSystem().requestSimulationStep(deltaSeconds);
+		mStepping = true;
+	}
 	void ParticlePreview::setSimulationTimeScale(float scale) { mRenderSystem->getParticleSystem().setSimulationTimeScale(scale); }
 	bool ParticlePreview::isSimulationPaused() const { return mRenderSystem->getParticleSystem().isSimulationPaused(); }
 	float ParticlePreview::simulationTimeScale() const { return mRenderSystem->getParticleSystem().getSimulationTimeScale(); }
@@ -732,6 +810,12 @@ namespace particle_editor
 			mRetainedDepthAvailable[graphIndex(mActiveGraph)] = true;
 			mInputStatus.screenSpaceDepthAvailable = true;
 			refreshInputWarnings();
+			mStepping = false;
+			if (mRebuilding)
+			{
+				if (mRebuildRendered) mRebuilding = false;
+				else mRebuildRendered = true;
+			}
 		}
 	}
 
@@ -794,6 +878,9 @@ namespace particle_editor
 		mInstalledSpecification.reset();
 		mInputWarnings.clear();
 		mActivePipeline.clear();
+		mStepping = false;
+		mRebuilding = false;
+		mRebuildRendered = false;
 		mInitialised = false;
 	}
 }

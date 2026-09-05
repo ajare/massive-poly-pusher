@@ -30,6 +30,22 @@ namespace mpp
 
 namespace particle_editor
 {
+	enum class ParticlePreviewStatus
+	{
+		Running,
+		Paused,
+		Stepping,
+		Rebuilding,
+		Invalid,
+		Failed
+	};
+
+	ParticlePreviewStatus resolveParticlePreviewStatus(bool documentValid, bool ready, bool paused,
+		bool stepping, bool rebuilding, bool failed);
+	char const* particlePreviewStatusText(ParticlePreviewStatus status);
+	std::vector<size_t> manualBurstTargets(size_t emitterTemplateCount, std::optional<size_t> selectedEmitter);
+	bool runParticlePreviewControlTests(std::string* failure = nullptr);
+
 	class ParticlePreview
 	{
 		mpp::RenderSystem* mRenderSystem;
@@ -68,6 +84,9 @@ namespace particle_editor
 		uint32_t mLiveUpdateCount{ 0 };
 		bool mPreferencesDirty{ false };
 		bool mInitialised{ false };
+		bool mStepping{ false };
+		bool mRebuilding{ false };
+		bool mRebuildRendered{ false };
 
 		void createStudioResources();
 		void updateStudioGeometry();
@@ -89,6 +108,8 @@ namespace particle_editor
 		bool install(mpp::ParticleEffectSpecification const& specification, std::string* failure = nullptr);
 		bool updateLive(mpp::ParticleEffectSpecification const& specification, std::string* failure = nullptr);
 		bool selectGraph(PreviewGraph graph, std::string* failure = nullptr);
+		bool restart(std::string* failure = nullptr);
+		void triggerManualBurst(std::optional<size_t> selectedEmitter, uint32_t count);
 		void resize(uint32_t width, uint32_t height);
 		void pauseSimulation();
 		void resumeSimulation();
@@ -96,6 +117,8 @@ namespace particle_editor
 		void setSimulationTimeScale(float scale);
 		bool isSimulationPaused() const;
 		float simulationTimeScale() const;
+		bool stepping() const { return mStepping; }
+		bool rebuilding() const { return mRebuilding; }
 		void orbitCamera(float horizontal, float vertical);
 		void panCamera(float horizontal, float vertical);
 		void zoomCamera(float amount);

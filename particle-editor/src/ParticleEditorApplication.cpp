@@ -135,7 +135,7 @@ namespace particle_editor
 				std::string argument = argv[index];
 				if (argument == "--help" || argument == "-h")
 				{
-					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --resource-tests                   Run editor resource-library tests.\n  --spatial-tests                    Run transform and picking tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
+					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --control-tests                    Run preview simulation-control tests.\n  --resource-tests                   Run editor resource-library tests.\n  --spatial-tests                    Run transform and picking tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
 					return 0;
 				}
 				if (argument == "--document-tests")
@@ -158,6 +158,17 @@ namespace particle_editor
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor preview tests passed.\n");
+					return 0;
+				}
+				if (argument == "--control-tests")
+				{
+					std::string failure;
+					if (!runParticlePreviewControlTests(&failure))
+					{
+						std::fprintf(stderr, "Particle Editor control tests failed: %s\n", failure.c_str());
+						return 1;
+					}
+					std::fprintf(stderr, "Particle Editor control tests passed.\n");
 					return 0;
 				}
 				if (argument == "--resource-tests")
@@ -263,6 +274,7 @@ namespace particle_editor
 			bool openComparison = false;
 			bool lightGizmoDragging = false;
 			bool showSpatialOverlays = true;
+			int manualBurstCount = 10;
 			int transformGizmoMode = 0; // translate, rotate, scale
 			int transformGizmoAxis = -1;
 			glm::mat4 transformGizmoStart{ 1.0f };
@@ -302,6 +314,23 @@ namespace particle_editor
 				preview.setSimulationTimeScale(document->previewTimeScale());
 				installedDocument = document;
 				installedRevision = document->previewRevision();
+			};
+			auto restartPreview = [&]
+			{
+				auto* document = documents.active();
+				if (!document) return;
+				std::string failure;
+				preview.restart(&failure);
+				document->setPreviewFailure(failure);
+				if (!failure.empty()) showDiagnostics = true;
+			};
+			auto triggerManualBurst = [&]
+			{
+				auto* document = documents.active();
+				if (!document) return;
+				std::optional<size_t> selected;
+				if (document->hasSelectedEmitterTemplate()) selected = document->selectedEmitterTemplate();
+				preview.triggerManualBurst(selected, uint32_t(std::max(1, manualBurstCount)));
 			};
 			installActive(true);
 			if (!preview.graphFailure().empty()) showDiagnostics = true;
@@ -441,7 +470,7 @@ namespace particle_editor
 					}
 					if (ImGui::BeginMenu("Particle Effect"))
 					{
-						if (ImGui::MenuItem("Rebuild Preview", "F5", false, active != nullptr)) installActive(true);
+						if (ImGui::MenuItem("Restart Preview", "F5", false, active != nullptr)) restartPreview();
 						if (ImGui::BeginMenu("Preview Graph"))
 						{
 							for (auto const graph : { PreviewGraph::Pbr, PreviewGraph::Legacy })
@@ -462,7 +491,26 @@ namespace particle_editor
 								if (ImGui::MenuItem("Resume Simulation")) { active->setPreviewPaused(false); preview.resumeSimulation(); }
 							}
 							else if (ImGui::MenuItem("Pause Simulation")) { active->setPreviewPaused(true); preview.pauseSimulation(); }
-							if (ImGui::MenuItem("Step Simulation", nullptr, false, preview.ready())) preview.stepSimulation();
+							if (ImGui::MenuItem("Step One Frame", nullptr, false, preview.ready()))
+							{
+								active->setPreviewPaused(true);
+								preview.stepSimulation();
+							}
+							if (ImGui::BeginMenu("Time Scale"))
+							{
+								for (float scale : { 0.0f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f })
+								{
+									char label[16];
+									std::snprintf(label, sizeof(label), "%.2gx", scale);
+									if (ImGui::MenuItem(label, nullptr, active->previewTimeScale() == scale))
+									{
+										active->setPreviewTimeScale(scale);
+										preview.setSimulationTimeScale(scale);
+									}
+								}
+								ImGui::EndMenu();
+							}
+							if (ImGui::MenuItem("Trigger Manual Burst", nullptr, false, preview.ready())) triggerManualBurst();
 							ImGui::Separator();
 							if (ImGui::MenuItem("Focus Selection"))
 								preview.focusSelection(active->specification(), active->selectedSpatialTarget());
@@ -480,7 +528,7 @@ namespace particle_editor
 				}
 				if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_W, ImGuiInputFlags_RouteGlobal) && active)
 					requestClose(documents.activeIndex());
-				if (ImGui::Shortcut(ImGuiKey_F5, ImGuiInputFlags_RouteGlobal)) installActive(true);
+				if (ImGui::Shortcut(ImGuiKey_F5, ImGuiInputFlags_RouteGlobal)) restartPreview();
 
 				if (requestNew) { documents.createNew(); diagnostics.setOperationFailure({}); }
 				if (requestOpen && !fileDialog.busy())
@@ -517,7 +565,7 @@ namespace particle_editor
 					ImGui::SameLine();
 					if (ImGui::Button("Redo") && documents.active()) documents.active()->redo();
 					ImGui::SameLine();
-					if (ImGui::Button("Rebuild Preview")) installActive(true);
+					if (ImGui::Button("Restart Preview")) restartPreview();
 					ImGui::SameLine();
 					if (ImGui::Button(preview.activeGraph() == PreviewGraph::Pbr ? "Graph: PBR" : "Graph: Legacy"))
 					{
@@ -539,7 +587,17 @@ namespace particle_editor
 							if (active->previewPaused()) preview.pauseSimulation(); else preview.resumeSimulation();
 						}
 						ImGui::SameLine();
-						if (ImGui::Button("Step")) preview.stepSimulation();
+						if (ImGui::Button("Step"))
+						{
+							active->setPreviewPaused(true);
+							preview.stepSimulation();
+						}
+						ImGui::SameLine();
+						if (ImGui::Button("Burst")) triggerManualBurst();
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(65.0f);
+						ImGui::InputInt("Burst count", &manualBurstCount, 1, 10);
+						manualBurstCount = std::max(1, manualBurstCount);
 						ImGui::SameLine();
 						ImGui::SetNextItemWidth(110.0f);
 						float timeScale = active->previewTimeScale();
@@ -558,9 +616,15 @@ namespace particle_editor
 				{
 					active = documents.active();
 					if (active)
-						ImGui::Text("%s%s | %s | %s graph | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
-							active->dirty() ? " *" : "", diagnostics.statusText().c_str(),
+					{
+						bool const documentValid = !active->diagnostics().hasErrors();
+						bool const failed = !active->previewFailure().empty() || !preview.graphFailure().empty();
+						auto const previewStatus = resolveParticlePreviewStatus(documentValid, preview.ready(),
+							active->previewPaused(), preview.stepping(), preview.rebuilding(), failed);
+						ImGui::Text("%s%s | preview %s | %s | %s graph | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
+							active->dirty() ? " *" : "", particlePreviewStatusText(previewStatus), diagnostics.statusText().c_str(),
 							preview.activeGraph() == PreviewGraph::Pbr ? "PBR" : "legacy", fps);
+					}
 					else ImGui::TextDisabled("No particle effect is open | %.1f FPS", fps);
 					if (preview.stats().valid)
 					{

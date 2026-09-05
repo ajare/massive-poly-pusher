@@ -943,6 +943,23 @@ namespace mpp
 		}
 	}
 
+	void ParticleSystem::requestEmitterBurst(ParticleEmitterHandle handle, uint32_t count)
+	{
+		auto* slot = findEmitter(handle);
+		if (!slot || count == 0u) return;
+		auto queued = find_if(mSpawnCommands.begin(), mSpawnCommands.end(), [handle](auto const& command)
+			{ return command.emitterIndex == handle.index; });
+		if (queued == mSpawnCommands.end())
+			mSpawnCommands.push_back({ handle.index, count, 0x6d2b79f5u + handle.index, slot->spawnCounter });
+		else queued->count += count;
+		slot->spawnCounter += count;
+		slot->hasSpawned = true;
+		slot->lastSpawnSeconds = mSimulationSeconds;
+		slot->maximumSpawnedLifetime = max(slot->maximumSpawnedLifetime,
+			max(0.0f, mEmitters[handle.index].lifetimeSizeRanges[1]) *
+			max(0.0f, mEmitters[handle.index].parameterMultipliers0[3]));
+	}
+
 	void ParticleSystem::updateEmitterTemplateRuntime(ParticleEmitterHandle handle,
 		EmitterSimData const& simulation, TemplateRenderData const& appearance)
 	{
@@ -1206,7 +1223,11 @@ namespace mpp
 			}
 
 			if (spawnCount == 0u) continue;
-			mSpawnCommands.push_back({ emitterIndex, spawnCount, 0x9e3779b9u + emitterIndex, slot.spawnCounter });
+			auto queued = find_if(mSpawnCommands.begin(), mSpawnCommands.end(), [emitterIndex](auto const& command)
+				{ return command.emitterIndex == emitterIndex; });
+			if (queued == mSpawnCommands.end())
+				mSpawnCommands.push_back({ emitterIndex, spawnCount, 0x9e3779b9u + emitterIndex, slot.spawnCounter });
+			else queued->count += spawnCount;
 			slot.spawnCounter += spawnCount;
 			slot.hasSpawned = true;
 			slot.lastSpawnSeconds = mSimulationSeconds;

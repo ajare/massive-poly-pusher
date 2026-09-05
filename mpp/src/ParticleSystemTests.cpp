@@ -463,6 +463,18 @@ namespace mpp
 			system.mEmitters[first.index].parameterMultipliers1[0] != 6.5f ||
 			system.mEmitters[first.index].parameterMultipliers1[1] != 7.5f)
 			return fail("runtime particle parameter multipliers were not mapped to their authored values");
+		auto const authoredEmission = system.mEmitters[first.index].emissionState;
+		system.requestEmitterBurst(first, 3u);
+		system.requestEmitterBurst(first, 4u);
+		if (system.mSpawnCommands.size() != 1u || system.mSpawnCommands[0].emitterIndex != first.index ||
+			system.mSpawnCommands[0].count != 7u || system.mEmitters[first.index].emissionState != authoredEmission)
+			return fail("runtime manual burst changed authored emitter state or did not coalesce deterministically");
+		auto const queuedBurstCount = system.mSpawnCommands.size();
+		system.requestEmitterBurst({}, 5u);
+		system.requestEmitterBurst(first, 0u);
+		if (system.mSpawnCommands.size() != queuedBurstCount)
+			return fail("runtime manual burst accepted a stale emitter or zero count");
+		system.mSpawnCommands.clear();
 		system.setEmitterParameter(first, ParticleParameter::AlphaScale, -1.0f);
 		if (system.mEmitters[first.index].parameterMultipliers1[0] != 0.0f)
 			return fail("a negative runtime particle parameter multiplier was not clamped");

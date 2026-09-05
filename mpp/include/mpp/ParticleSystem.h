@@ -378,6 +378,10 @@ namespace mpp
 		void destroyEmitter(ParticleEmitterHandle emitter);
 		void setEmitterTransform(ParticleEmitterHandle emitter, glm::mat4 const& transform);
 		void setEmitterParameter(ParticleEmitterHandle emitter, ParticleParameter parameter, float multiplier);
+		// Queues a runtime-only burst for one live emitter. This does not alter its
+		// authored emission mode, enabled state, or burst count. The command is
+		// consumed by the next simulation frame (including an explicit paused step).
+		void requestEmitterBurst(ParticleEmitterHandle emitter, uint32_t count);
 		// Applies authored spawn and billboard values without replacing the live
 		// emitter. Runtime transform, parameter multipliers, visibility, curve rows,
 		// texture layers, mesh selection, and event routing remain independently owned.
