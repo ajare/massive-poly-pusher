@@ -36,7 +36,16 @@ namespace mpp::resource_parsers
 
 	void ParticleEffectSerializer::toFile(ParticleEffectSpecification const& specification, std::string const& filepath)
 	{
-		StructuredDataWriteNode root("ParticleEffect");root.createChild("version")->setValue(specification.version);root.createChild("name")->setValue(specification.name);root.createChild("maximumParticleCount")->setValue(specification.maximumParticleCount);auto emitters=root.createChild("Emitters");
+		StructuredDataWriteNode root("ParticleEffect");root.createChild("version")->setValue(specification.version);root.createChild("name")->setValue(specification.name);root.createChild("maximumParticleCount")->setValue(specification.maximumParticleCount);
+		if (specification.bounds)
+		{
+			auto bounds = root.createChild("Bounds");
+			bounds->createChild("center")->setValue(values(std::array<float, 3>{
+				specification.bounds->center.x, specification.bounds->center.y, specification.bounds->center.z }));
+			bounds->createChild("size")->setValue(values(std::array<float, 3>{
+				specification.bounds->size.x, specification.bounds->size.y, specification.bounds->size.z }));
+		}
+		auto emitters=root.createChild("Emitters");
 		for(auto const& authored:specification.emitterTemplates)
 		{
 			auto node=emitters->createChild("Emitter");auto const& emitter=authored.value;auto const& sim=emitter.simulation;auto const& appearance=emitter.appearance;

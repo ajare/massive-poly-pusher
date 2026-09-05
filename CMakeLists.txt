@@ -322,6 +322,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ParticleCurveLut.cpp
     mpp/src/ParticleDrawProgram.cpp
     mpp/src/ParticleEffect.cpp
+    mpp/src/ParticleEffectBounds.cpp
     mpp/src/ParticleEffectStream.cpp
     mpp/src/ParticleEffectValidator.cpp
     mpp/src/ParticleGpuTests.cpp

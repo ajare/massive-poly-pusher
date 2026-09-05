@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <unordered_set>
 #include <utility>
@@ -48,8 +49,19 @@ namespace mpp
 			diagnostics.error(std::move(code), std::move(message), { sourceName, std::move(path) });
 		};
 
-		if (specification.version != 1)
-			error("MPP-PARTICLE-013", "Unsupported particle effect version; expected 1.", "/ParticleEffect/version");
+		if (specification.version != 1 && specification.version != 2)
+			error("MPP-PARTICLE-013", "Unsupported particle effect version; expected 1 or 2.", "/ParticleEffect/version");
+		if (specification.bounds)
+		{
+			if (specification.version != 2)
+				error("MPP-PARTICLE-019", "Particle effect bounds require version 2.", "/ParticleEffect/Bounds");
+			auto const& bounds = *specification.bounds;
+			if (!std::isfinite(bounds.center.x) || !std::isfinite(bounds.center.y) || !std::isfinite(bounds.center.z))
+				error("MPP-PARTICLE-019", "Particle effect bounds center must contain three finite values.", "/ParticleEffect/Bounds/center");
+			if (!std::isfinite(bounds.size.x) || !std::isfinite(bounds.size.y) || !std::isfinite(bounds.size.z) ||
+				bounds.size.x <= 0.0f || bounds.size.y <= 0.0f || bounds.size.z <= 0.0f)
+				error("MPP-PARTICLE-019", "Particle effect bounds size must contain three finite, strictly positive values.", "/ParticleEffect/Bounds/size");
+		}
 
 		std::array<std::pair<char const*, ParticleScalarCurve>, 6> const curveNames{{
 			{ "Size", ParticleScalarCurve::Size },

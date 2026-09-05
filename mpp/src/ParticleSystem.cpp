@@ -3,6 +3,7 @@
 #include <bit>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -59,7 +60,10 @@ namespace mpp
 				uint64_t sourceFrame{ 0 };
 				uint32_t activeListIndex{ 0 };
 				uint32_t activeEmitters{ 0 };
+				uint32_t submittedEffects{ 0 };
+				uint32_t boundsCulledEffects{ 0 };
 				uint32_t capacity{ 0 };
+				std::vector<uint64_t> recordedViews;
 				bool submitted{ false };
 			};
 
@@ -555,7 +559,8 @@ namespace mpp
 	}
 
 	ParticleEmitterHandle ParticleSystem::allocateEmitter(ParticleEmitterTemplate const& emitterTemplate,
-		glm::mat4 const& effectTransform, shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex)
+		glm::mat4 const& effectTransform, shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex,
+		uint32_t effectIndex)
 	{
 		uint32_t index;
 		if (!mFreeEmitterIndices.empty())
@@ -592,6 +597,7 @@ namespace mpp
 		slot.eventTargetPersistent = false;
 		slot.lastSpawnSeconds = mSimulationSeconds;
 		slot.maximumSpawnedLifetime = 0.0f;
+		slot.effectIndex = effectIndex;
 		mEmitters[index] = emitterTemplate.simulation;
 		mEmitterEventRules[index] = emitterTemplate.events;
 		mEventRulesDirty = true;
@@ -716,25 +722,35 @@ namespace mpp
 	{
 		auto const* source = asset ? dynamic_cast<ParticleEffectSource const*>(asset.get()) : nullptr;
 		if (!source) throw invalid_argument("ParticleSystem::createEffect requires a particle effect asset.");
-		auto handle = createEffect(source->getEmitterTemplates(), transform, source->getCurveLut());
+		auto handle = createEffect(source->getEmitterTemplates(), transform, source->getBounds(), source->getCurveLut());
 		if (auto* effect = findEffect(handle)) effect->asset = asset;
 		return handle;
 	}
 
 	ParticleEffectHandle ParticleSystem::createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform)
 	{
-		return createEffect(asset.getEmitterTemplates(), transform, asset.getCurveLut());
+		return createEffect(asset.getEmitterTemplates(), transform, asset.getBounds(), asset.getCurveLut());
 	}
 
 	ParticleEffectHandle ParticleSystem::createEffect(span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform)
 	{
-		return createEffect(emitterTemplates, transform, ParticleEffectCurveLut::bake(emitterTemplates));
+		return createEffect(emitterTemplates, transform, nullopt, ParticleEffectCurveLut::bake(emitterTemplates));
 	}
 
 	ParticleEffectHandle ParticleSystem::createEffect(span<ParticleEmitterTemplate const> emitterTemplates,
-		glm::mat4 const& transform, shared_ptr<ParticleEffectCurveLut> curveLut)
+		ParticleEffectBounds const& bounds, glm::mat4 const& transform)
+	{
+		return createEffect(emitterTemplates, transform, bounds, ParticleEffectCurveLut::bake(emitterTemplates));
+	}
+
+	ParticleEffectHandle ParticleSystem::createEffect(span<ParticleEmitterTemplate const> emitterTemplates,
+		glm::mat4 const& transform, optional<ParticleEffectBounds> bounds, shared_ptr<ParticleEffectCurveLut> curveLut)
 	{
 		if (emitterTemplates.empty()) return {};
+		if (bounds && (!isfinite(bounds->center.x) || !isfinite(bounds->center.y) || !isfinite(bounds->center.z) ||
+			!isfinite(bounds->size.x) || !isfinite(bounds->size.y) || !isfinite(bounds->size.z) ||
+			bounds->size.x <= 0.0f || bounds->size.y <= 0.0f || bounds->size.z <= 0.0f))
+			throw invalid_argument("ParticleSystem::createEffect requires finite bounds with a strictly positive size.");
 		validateEventRules(emitterTemplates);
 		validateLighting(emitterTemplates);
 		size_t eventRuleCount = 0u;
@@ -760,6 +776,7 @@ namespace mpp
 		auto& effect = mEffectSlots[effectIndex];
 		effect.occupied = true;
 		effect.transform = transform;
+		effect.bounds = std::move(bounds);
 		effect.emitters.clear();
 		effect.emitters.reserve(emitterTemplates.size());
 		effect.asset.reset();
@@ -769,7 +786,7 @@ namespace mpp
 		{
 			for (size_t templateIndex = 0; templateIndex < emitterTemplates.size(); ++templateIndex)
 				effect.emitters.push_back(allocateEmitter(emitterTemplates[templateIndex], transform,
-					effect.curveLut, templateIndex));
+					effect.curveLut, templateIndex, effectIndex));
 
 			float maximumLifetime = 0.0f;
 			for (auto const& emitterTemplate : emitterTemplates)
@@ -812,10 +829,12 @@ namespace mpp
 		{
 			for (auto emitter : effect.emitters) reclaimEmitter(emitter.index);
 			effect.occupied = false;
+			effect.bounds.reset();
 			effect.curveLut.reset();
 			mFreeEffectIndices.push_back(effectIndex);
 			throw;
 		}
+		invalidateViewBounds();
 		return { effectIndex, effect.generation };
 	}
 
@@ -832,6 +851,7 @@ namespace mpp
 		auto* effect = findEffect(handle);
 		if (!effect) return;
 		effect->transform = transform;
+		invalidateViewBounds();
 		for (auto emitter : effect->emitters)
 		{
 			auto const* slot = findEmitter(emitter);
@@ -865,6 +885,12 @@ namespace mpp
 	void ParticleSystem::spawnEffect(span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform)
 	{
 		(void)createEffect(emitterTemplates, transform);
+	}
+
+	void ParticleSystem::spawnEffect(span<ParticleEmitterTemplate const> emitterTemplates,
+		ParticleEffectBounds const& bounds, glm::mat4 const& transform)
+	{
+		(void)createEffect(emitterTemplates, bounds, transform);
 	}
 
 	ParticleEmitterHandle ParticleSystem::getEmitter(ParticleEffectHandle handle, size_t emitterIndex) const
@@ -1000,6 +1026,62 @@ namespace mpp
 		return any_of(mEmitterSlots.begin(), mEmitterSlots.end(), [](auto const& slot) { return slot.occupied; });
 	}
 
+	void ParticleSystem::invalidateViewBounds()
+	{
+		mViewBoundsValid = false;
+	}
+
+	void ParticleSystem::updateViewEffectSubmissions() const
+	{
+		auto const frame = mwRenderSystem ? mwRenderSystem->getFrameSerial() : 0u;
+		auto const viewProjection = mwRenderSystem ?
+			mwRenderSystem->mCameraFrameProjection * mwRenderSystem->mCameraFrameView : glm::mat4(1.0f);
+		bool const current = mViewBoundsValid && mViewBoundsFrame == frame &&
+			std::memcmp(glm::value_ptr(mViewBoundsViewProjection), glm::value_ptr(viewProjection), sizeof(glm::mat4)) == 0;
+		if (!current)
+		{
+			mViewBoundsFrame = frame;
+			mViewBoundsViewProjection = viewProjection;
+			mViewBoundsValid = true;
+			mViewEffectSubmissions.assign(mEffectSlots.size(), 0u);
+			for (uint32_t index = 0; index < mEffectSlots.size(); ++index)
+			{
+				auto const& effect = mEffectSlots[index];
+				if (!effect.occupied) continue;
+				mViewEffectSubmissions[index] = !mwRenderSystem || !effect.bounds ||
+					particleEffectBoundsIntersectFrustum(*effect.bounds, effect.transform, viewProjection) ? 1u : 0u;
+			}
+		}
+
+		if (!mStatistics->enabled || mStatistics->currentSlot < 0) return;
+		auto& slot = mStatistics->slots[size_t(mStatistics->currentSlot)];
+		if (!slot.submitted || slot.sourceFrame != frame) return;
+		uint64_t viewKey = 1469598103934665603ull;
+		auto const* bytes = reinterpret_cast<uint8_t const*>(glm::value_ptr(viewProjection));
+		for (size_t index = 0; index < sizeof(glm::mat4); ++index)
+		{
+			viewKey ^= bytes[index];
+			viewKey *= 1099511628211ull;
+		}
+		if (find(slot.recordedViews.begin(), slot.recordedViews.end(), viewKey) != slot.recordedViews.end()) return;
+		slot.recordedViews.push_back(viewKey);
+		for (uint32_t index = 0; index < mEffectSlots.size(); ++index)
+		{
+			if (!mEffectSlots[index].occupied) continue;
+			if (index < mViewEffectSubmissions.size() && mViewEffectSubmissions[index]) ++slot.submittedEffects;
+			else ++slot.boundsCulledEffects;
+		}
+	}
+
+	bool ParticleSystem::isEmitterSubmittedForCurrentView(uint32_t emitterIndex) const
+	{
+		if (emitterIndex >= mEmitterSlots.size()) return false;
+		auto const& emitter = mEmitterSlots[emitterIndex];
+		if (!emitter.occupied || emitter.effectIndex >= mEffectSlots.size()) return false;
+		updateViewEffectSubmissions();
+		return emitter.effectIndex < mViewEffectSubmissions.size() && mViewEffectSubmissions[emitter.effectIndex] != 0u;
+	}
+
 	void ParticleSystem::reclaimEmitter(uint32_t index)
 	{
 		if (index >= mEmitterSlots.size()) return;
@@ -1008,6 +1090,7 @@ namespace mpp
 		slot.occupied = false;
 		slot.pendingDestroy = false;
 		slot.generation = nextGeneration(slot.generation);
+		slot.effectIndex = ParticleEffectHandle::InvalidIndex;
 		mEmitters[index] = {};
 		mEmitterEventRules[index].clear();
 		mEventRulesDirty = true;
@@ -1030,9 +1113,11 @@ namespace mpp
 		effect.occupied = false;
 		effect.generation = nextGeneration(effect.generation);
 		effect.emitters.clear();
+		effect.bounds.reset();
 		effect.asset.reset();
 		effect.curveLut.reset();
 		mFreeEffectIndices.push_back(index);
+		invalidateViewBounds();
 	}
 
 	void ParticleSystem::retireCompletedEmitters()
@@ -1256,7 +1341,9 @@ namespace mpp
 		rebuildMeshDrawCommands();
 
 		mVolumetricLightingGpuData.clear();
+		mVolumetricLightingEmitters.clear();
 		mVolumetricLightingGpuData.reserve(mEmitterSlots.size());
+		mVolumetricLightingEmitters.reserve(mEmitterSlots.size());
 		for (uint32_t index = 0; index < mEmitterSlots.size(); ++index)
 		{
 			if (!mEmitterSlots[index].occupied || mEmitterSlots[index].pendingDestroy) continue;
@@ -1274,6 +1361,7 @@ namespace mpp
 			gpu.flagsAndPadding = lighting.flagsAndPadding;
 			gpu.flagsAndPadding[0] |= 8u;
 			mVolumetricLightingGpuData.push_back(gpu);
+			mVolumetricLightingEmitters.push_back(index);
 		}
 
 		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
@@ -1342,12 +1430,14 @@ namespace mpp
 
 	vector<ParticleProxyLight> ParticleSystem::getProxyLights(size_t maximumCount, bool injectionOnly) const
 	{
+		updateViewEffectSubmissions();
 		vector<ParticleProxyLight> result;
 		result.reserve(min(maximumCount, mEmitterSlots.size()));
 		for (uint32_t index = 0; index < mEmitterSlots.size() && result.size() < maximumCount; ++index)
 		{
 			auto const& slot = mEmitterSlots[index];
-			if (!slot.occupied || slot.pendingDestroy || index >= mEmitterLighting.size()) continue;
+			if (!slot.occupied || slot.pendingDestroy || index >= mEmitterLighting.size() ||
+				!isEmitterSubmittedForCurrentView(index)) continue;
 			auto const& emitter = mEmitters[index];
 			if (emitter.emissionState[1] == 0u ||
 				(uint32_t(emitter.emissionRateAndPadding[1]) & uint32_t(ParticleEffectVisibilityFlag::Visible)) == 0u) continue;
@@ -1483,6 +1573,8 @@ namespace mpp
 				stats.droppedParticles = counters.droppedSpawnCount;
 				stats.renderedParticles = counters.renderedCount;
 				stats.culledParticles = counters.culledCount;
+				stats.submittedEffects = slot.submittedEffects;
+				stats.boundsCulledEffects = slot.boundsCulledEffects;
 				stats.activeEmitters = slot.activeEmitters;
 				stats.capacity = slot.capacity;
 				stats.capacityUsage = slot.capacity == 0u ? 0.0f : float(stats.activeParticles) / float(slot.capacity);
@@ -1563,6 +1655,9 @@ namespace mpp
 		finishSimulationTiming();
 		slot.activeListIndex = mActiveListIndex;
 		slot.activeEmitters = uint32_t(getLiveEmitterCount());
+		slot.submittedEffects = 0u;
+		slot.boundsCulledEffects = 0u;
+		slot.recordedViews.clear();
 		GL_CHECK(glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT));
 		GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, mCounters->getBuffer()));
 		GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, slot.buffer));
@@ -2123,6 +2218,7 @@ namespace mpp
 	{
 		initialise();
 		if (!mAvailable || !mPoolAllocated) return;
+		updateViewEffectSubmissions();
 
 		uint32_t const requestedClass = uint32_t(blendClass);
 		auto const first = lower_bound(mTemplateRenderData.begin(), mTemplateRenderData.end(), requestedClass,
@@ -2166,10 +2262,16 @@ namespace mpp
 		beginRenderTiming();
 		while (command < commandEnd)
 		{
+			if (!isEmitterSubmittedForCurrentView(uint32_t(command)))
+			{
+				++command;
+				continue;
+			}
 			auto const& lut = mTemplateCurveLuts[command];
 			if (!lut) THROW_MPP("A particle emitter template has no baked curve LUT.", __LINE__, __FILE__, __func__);
 			size_t groupEnd = command + 1u;
-			while (groupEnd < commandEnd && mTemplateCurveLuts[groupEnd] == lut) ++groupEnd;
+			while (groupEnd < commandEnd && mTemplateCurveLuts[groupEnd] == lut &&
+				isEmitterSubmittedForCurrentView(uint32_t(groupEnd))) ++groupEnd;
 			lut->bind(1u);
 			auto const commandOffset = reinterpret_cast<void const*>(command * sizeof(ParticleDrawArraysIndirectCommand));
 			GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset,
@@ -2203,6 +2305,7 @@ namespace mpp
 		initialise();
 		if (!mAvailable || !mPoolAllocated ||
 			!any_of(mTemplateRenderData.begin(), mTemplateRenderData.end(), particleAppearanceWritesDistortion)) return;
+		updateViewEffectSubmissions();
 
 		GpuDebugScope scope("Particles: Draw distortion output");
 		mwRenderSystem->setDepthWriteState(false, true);
@@ -2227,7 +2330,8 @@ namespace mpp
 		beginRenderTiming();
 		for (size_t command = 0; command < mTemplateRenderData.size(); ++command)
 		{
-			if (!particleAppearanceWritesDistortion(mTemplateRenderData[command])) continue;
+			if (!particleAppearanceWritesDistortion(mTemplateRenderData[command]) ||
+				!isEmitterSubmittedForCurrentView(uint32_t(command))) continue;
 			auto const& lut = mTemplateCurveLuts[command];
 			if (!lut) THROW_MPP("A distortion particle emitter template has no baked curve LUT.", __LINE__, __FILE__, __func__);
 			lut->bind(1u);
@@ -2259,6 +2363,15 @@ namespace mpp
 	{
 		initialise();
 		if (!mAvailable || !mPoolAllocated || mVolumetricLightingGpuData.empty()) return;
+		updateViewEffectSubmissions();
+		mVisibleVolumetricLightingGpuData.clear();
+		for (size_t index = 0; index < mVolumetricLightingGpuData.size(); ++index)
+			if (index < mVolumetricLightingEmitters.size() &&
+				isEmitterSubmittedForCurrentView(mVolumetricLightingEmitters[index]))
+				mVisibleVolumetricLightingGpuData.push_back(mVolumetricLightingGpuData[index]);
+		if (mVisibleVolumetricLightingGpuData.empty()) return;
+		mVolumetricLightingBuffer->upload(mVisibleVolumetricLightingGpuData.data(),
+			bytes(mVisibleVolumetricLightingGpuData), 0, bytes(mVisibleVolumetricLightingGpuData));
 
 		GpuDebugScope scope("Particles: Draw emitter-level volumetric lighting");
 		mwRenderSystem->setDepthWriteState(false, true);
@@ -2269,10 +2382,11 @@ namespace mpp
 		if (sceneDepth) sceneDepth->bindDepth(0);
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0u, mVolumetricLightingBuffer->getBuffer(),
 			static_cast<GLintptr>(mVolumetricLightingBuffer->getActiveOffset()),
-			static_cast<GLsizeiptr>(bytes(mVolumetricLightingGpuData))));
+			static_cast<GLsizeiptr>(bytes(mVisibleVolumetricLightingGpuData))));
 		GL_CHECK(glBindVertexArray(mVertexArray));
 		beginRenderTiming();
-		GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(mVolumetricLightingGpuData.size())));
+		GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4,
+			static_cast<GLsizei>(mVisibleVolumetricLightingGpuData.size())));
 		finishRenderTiming();
 		GL_CHECK(glBindVertexArray(0));
 		if (sceneDepth)
@@ -2350,6 +2464,7 @@ namespace mpp
 	{
 		initialise();
 		if (!mAvailable || !mPoolAllocated || mMeshDrawRecords.empty()) return;
+		updateViewEffectSubmissions();
 		GpuDebugScope scope("Particles: Draw instanced real meshes");
 		mParticlePool->bindStorage(ParticlePoolBinding);
 		mRenderIndices->bindStorage(FreeIndicesBinding);
@@ -2359,6 +2474,7 @@ namespace mpp
 		for (size_t drawIndex = 0u; drawIndex < mMeshDrawRecords.size(); ++drawIndex)
 		{
 			auto const& draw = mMeshDrawRecords[drawIndex];
+			if (!isEmitterSubmittedForCurrentView(draw.templateIndex)) continue;
 			auto* material = static_cast<Material*>(draw.material.get());
 			bindMeshParticleMaterial(draw.material, draw.templateIndex);
 			bool const transparent = material->isTransparent();

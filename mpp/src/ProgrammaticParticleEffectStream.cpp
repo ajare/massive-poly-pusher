@@ -17,6 +17,7 @@ namespace mpp
 
 	void ProgrammaticParticleEffectStream::setName(std::string name) { mSpecification.name = std::move(name); }
 	void ProgrammaticParticleEffectStream::setMaximumParticleCount(uint32_t count) { mSpecification.maximumParticleCount = count; }
+	void ProgrammaticParticleEffectStream::setBounds(std::optional<ParticleEffectBounds> bounds) { mSpecification.bounds = std::move(bounds); }
 
 	void ProgrammaticParticleEffectStream::addEmitterTemplate(ParticleEffectSpecification::EmitterTemplate const& emitterTemplate)
 	{

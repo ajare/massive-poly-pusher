@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <string>
 
 #include "mpp/data/StructuredData.h"
@@ -142,7 +143,9 @@ namespace mpp::resource_parsers
 			return fail("particle emitter-template copies share mutable state");
 
 		ParticleEffectSpecification specification;
+		specification.version = 2u;
 		specification.name = "RoundTrip";
+		specification.bounds = ParticleEffectBounds{ { 1.5f, -2.0f, 3.25f }, { 8.0f, 6.0f, 4.0f } };
 		specification.maximumParticleCount = 96;
 		ParticleEffectSpecification::EmitterTemplate authored;
 		authored.name = "Smoke";
@@ -209,10 +212,17 @@ namespace mpp::resource_parsers
 		try { ParticleEffectSerializer::toFile(specification, temporary.string()); }
 		catch (std::exception const& error) { return fail("could not write particle effect round trip: " + std::string(error.what())); }
 		auto parsed = ParticleEffectParser::fromFile(temporary.string());
+		FileParticleEffectStream fileBacked(nullptr, temporary.string());
+		fileBacked.load();
 		std::error_code ignored; std::filesystem::remove(temporary, ignored);
-		if (!parsed.succeeded()) return fail("serialized particle effect did not parse without diagnostics");
+		if (!parsed.succeeded() || fileBacked.getDiagnostics().hasErrors() || !fileBacked.getBounds() ||
+			fileBacked.getBounds()->center != specification.bounds->center ||
+			fileBacked.getBounds()->size != specification.bounds->size)
+			return fail("serialized particle effect did not parse with equivalent file-backed bounds");
 		auto const& restored = parsed.specification;
-		if (restored.name != specification.name || restored.maximumParticleCount != 96 || restored.emitterTemplates.size() != 2 ||
+		if (restored.version != 2u || restored.name != specification.name || restored.maximumParticleCount != 96 ||
+			!restored.bounds || restored.bounds->center != specification.bounds->center ||
+			restored.bounds->size != specification.bounds->size || restored.emitterTemplates.size() != 2 ||
 			restored.emitterTemplates[0].name != authored.name || restored.emitterTemplates[0].albedoTexture != authored.albedoTexture ||
 			restored.emitterTemplates[0].meshModel != authored.meshModel || restored.emitterTemplates[0].meshMaterial != authored.meshMaterial ||
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
@@ -252,6 +262,8 @@ namespace mpp::resource_parsers
 		ProgrammaticParticleEffectStream programmatic(nullptr);
 		programmatic.setSpecification(specification);
 		if (programmatic.getSpecification().maximumParticleCount != restored.maximumParticleCount ||
+			!programmatic.getBounds() || programmatic.getBounds()->center != restored.bounds->center ||
+			programmatic.getBounds()->size != restored.bounds->size ||
 			programmatic.getEmitterTemplates().size() != restored.emitterTemplates.size() ||
 			programmatic.getEmitterTemplates()[0].simulation.shapeSeedModulesBudget != restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget ||
 			programmatic.getEmitterTemplates()[0].events.size() != 2u ||
@@ -265,8 +277,40 @@ namespace mpp::resource_parsers
 		childNode.addEntry("effect", "Effects/Leaf"); children.addEntry("ChildEffect", childNode);
 		childOnly.addEntry("ChildEffects", children);
 		auto childOnlyResult = ParticleEffectParser::fromData(childOnly, "child-only.particle.yaml");
-		if (!childOnlyResult.succeeded() || childOnlyResult.specification.childEffects.size() != 1u)
-			return fail("child-only particle effect did not parse");
+		if (!childOnlyResult.succeeded() || childOnlyResult.specification.version != 1u ||
+			childOnlyResult.specification.bounds || childOnlyResult.specification.childEffects.size() != 1u)
+			return fail("version-1 child-only particle effect did not parse as unbounded");
+		auto versionOneWithBounds = childOnly;
+		mpp::data::StructuredData forbiddenBounds("Bounds");
+		forbiddenBounds.addEntry("center", "0 0 0"); forbiddenBounds.addEntry("size", "1 1 1");
+		versionOneWithBounds.addEntry("Bounds", forbiddenBounds);
+		auto forbiddenBoundsResult = ParticleEffectParser::fromData(versionOneWithBounds, "v1-bounds.particle.yaml");
+		if (!hasDiagnostic(forbiddenBoundsResult.diagnostics, "MPP-PARTICLE-002", "/ParticleEffect/Bounds"))
+			return fail("version-1 particle effects accepted the version-2 Bounds block");
+
+		mpp::data::StructuredData unboundedV2("ParticleEffect");
+		unboundedV2.addEntry("version", "2"); unboundedV2.addEntry("name", "UnboundedV2");
+		unboundedV2.addEntry("maximumParticleCount", "0"); unboundedV2.addEntry("ChildEffects", children);
+		auto unboundedV2Result = ParticleEffectParser::fromData(unboundedV2, "unbounded-v2.particle.yaml");
+		if (!unboundedV2Result.succeeded() || unboundedV2Result.specification.bounds)
+			return fail("an absent version-2 Bounds block did not remain unbounded");
+
+		mpp::data::StructuredData invalidBoundsDocument("ParticleEffect");
+		invalidBoundsDocument.addEntry("version", "2"); invalidBoundsDocument.addEntry("name", "BadBounds");
+		invalidBoundsDocument.addEntry("maximumParticleCount", "0"); invalidBoundsDocument.addEntry("ChildEffects", children);
+		mpp::data::StructuredData invalidBounds("Bounds");
+		invalidBounds.addEntry("center", "0 nan 0"); invalidBounds.addEntry("size", "1 0 -2");
+		invalidBoundsDocument.addEntry("Bounds", invalidBounds);
+		auto invalidBoundsResult = ParticleEffectParser::fromData(invalidBoundsDocument, "bad-bounds.particle.yaml");
+		if (!hasDiagnostic(invalidBoundsResult.diagnostics, "MPP-PARTICLE-008", "/ParticleEffect/Bounds/center") ||
+			!hasDiagnostic(invalidBoundsResult.diagnostics, "MPP-PARTICLE-019", "/ParticleEffect/Bounds/size"))
+			return fail("version-2 non-finite centers or non-positive sizes were not diagnosed");
+		auto invalidInMemoryBounds = specification;
+		invalidInMemoryBounds.bounds = ParticleEffectBounds{
+			{ std::numeric_limits<float>::infinity(), 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } };
+		if (!hasDiagnostic(ParticleEffectValidator::validate(invalidInMemoryBounds), "MPP-PARTICLE-019",
+			"/ParticleEffect/Bounds/center"))
+			return fail("in-memory non-finite particle effect bounds were not diagnosed");
 
 		// Ordered behaviour lists are intentionally outside the schema, and a bad
 		// effect-level budget is an authoring diagnostic. Neither case may throw.

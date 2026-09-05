@@ -21,5 +21,6 @@ namespace mpp
 		explicit ParticleEffectStream(ResourceManager* resourceManager);
 		ParticleEffectSpecification const& getSpecification() const { return mSpecification; }
 		std::span<ParticleEmitterTemplate const> getEmitterTemplates() const override { return mEmitterTemplates; }
+		std::optional<ParticleEffectBounds> getBounds() const override { return mSpecification.bounds; }
 	};
 }

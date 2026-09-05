@@ -3096,6 +3096,8 @@ namespace mpp
 	void RenderSystem::setCameraFrame(glm::mat4 const& view, glm::mat4 const& projection,
 		glm::vec2 const& viewportSize, float nearDistance, float farDistance, float seconds)
 	{
+		mCameraFrameView = view;
+		mCameraFrameProjection = projection;
 		if (!mCameraFrameBuffer) return;
 		auto& data = mCameraFrameBuffer->getBufferData();
 		auto fp = reinterpret_cast<float*>(data.data());
@@ -3112,6 +3114,9 @@ namespace mpp
 		fp[54] = seconds;
 		fp[55] = 0.0f;
 		mCameraFrameBuffer->mapBufferData();
+		// Particle proxy-light injection is view-local when a particle effect has
+		// aggregate bounds, just like its draw-pass contributions.
+		uploadPbrLights();
 	}
 
 	void RenderSystem::setPbrAmbientColour(Colour const& colour)

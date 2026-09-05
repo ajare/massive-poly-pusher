@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "mpp/ParticleEffectBounds.h"
 #include "mpp/ParticleSystem.h"
 
 namespace mpp
@@ -48,6 +50,7 @@ namespace mpp
 
 		uint32_t version{ 1 };
 		std::string name;
+		std::optional<ParticleEffectBounds> bounds;
 		// Covers this asset's emitter templates only. Child assets retain and enforce
 		// their own independently-authored per-template budgets.
 		uint32_t maximumParticleCount{ 0 };

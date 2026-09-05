@@ -319,10 +319,22 @@ namespace mpp::resource_parsers
 			void parse(Data const& data)
 			{
 				if (data.getName() != "ParticleEffect") { error("MPP-PARTICLE-001", "Expected ParticleEffect document root.", "/"); return; }
-				fields(data,{"version","name","maximumParticleCount","Emitters","ChildEffects"},"/ParticleEffect");
 				result.specification.version=integer(data,"version","/ParticleEffect",1);
+				if (result.specification.version == 2)
+					fields(data,{"version","name","maximumParticleCount","Bounds","Emitters","ChildEffects"},"/ParticleEffect");
+				else fields(data,{"version","name","maximumParticleCount","Emitters","ChildEffects"},"/ParticleEffect");
 				result.specification.name=value(data,"name","/ParticleEffect",true);
 				result.specification.maximumParticleCount=integer(data,"maximumParticleCount","/ParticleEffect",0,true);
+				if (result.specification.version == 2 && data.hasEntry("Bounds"))
+				{
+					auto const& node = data.getEntry("Bounds");
+					auto const path = std::string("/ParticleEffect/Bounds");
+					fields(node, { "center", "size" }, path);
+					auto const center = vector<3>(node, "center", path, { 0.0f, 0.0f, 0.0f }, true);
+					auto const size = vector<3>(node, "size", path, { 1.0f, 1.0f, 1.0f }, true);
+					result.specification.bounds = ParticleEffectBounds{
+						{ center[0], center[1], center[2] }, { size[0], size[1], size[2] } };
+				}
 				if(data.hasEntry("Emitters")) { size_t index=0;for(auto const& entry:data.getEntry("Emitters")){if(entry.first!="Emitter"){error("MPP-PARTICLE-002","Emitters contains only Emitter entries.","/ParticleEffect/Emitters");continue;}parseEmitter(entry.second,index++);} }
 				if(data.hasEntry("ChildEffects")) { size_t index=0;for(auto const& entry:data.getEntry("ChildEffects")){if(entry.first!="ChildEffect"){error("MPP-PARTICLE-002","ChildEffects contains only ChildEffect entries.","/ParticleEffect/ChildEffects");continue;}parseChildEffect(entry.second,index++);} }
 				result.diagnostics.append(ParticleEffectValidator::validate(result.specification, source));

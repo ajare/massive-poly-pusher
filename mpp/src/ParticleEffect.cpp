@@ -50,6 +50,7 @@ namespace mpp
 		auto stream = dynamic_cast<ParticleEffectStream*>(getResourceStream().get());
 		if (!stream) THROW_MPP("ParticleEffect resource requires a ParticleEffectStream.", __LINE__, __FILE__, __func__);
 		mEmitterTemplates.assign(stream->getEmitterTemplates().begin(), stream->getEmitterTemplates().end());
+		mBounds = stream->getBounds();
 		auto const& specification = stream->getSpecification();
 		for (size_t index = 0; index < specification.emitterTemplates.size(); ++index)
 		{
@@ -83,6 +84,15 @@ namespace mpp
 			if (!child->isCreated()) child->create();
 			acquireDependentResource(resource);
 
+			if (mBounds)
+			{
+				auto const childBounds = child->getBounds();
+				if (childBounds)
+					mBounds = combineParticleEffectBounds(*mBounds,
+						transformParticleEffectBounds(*childBounds, authoredChild.transform));
+				else mBounds.reset();
+			}
+
 			auto const firstChildTemplate = uint32_t(mEmitterTemplates.size());
 			for (auto childTemplate : child->getEmitterTemplates())
 			{
@@ -101,6 +111,7 @@ namespace mpp
 	void ParticleEffect::destroyImpl()
 	{
 		mEmitterTemplates.clear();
+		mBounds.reset();
 		invalidateCurveLut();
 	}
 }

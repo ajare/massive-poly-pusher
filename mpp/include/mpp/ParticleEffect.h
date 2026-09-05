@@ -12,6 +12,7 @@ namespace mpp
 	class _MPPAPI ParticleEffect : public Resource, public ParticleEffectSource
 	{
 		std::vector<ParticleEmitterTemplate> mEmitterTemplates;
+		std::optional<ParticleEffectBounds> mBounds;
 
 		void createImpl() override;
 		void destroyImpl() override;
@@ -21,5 +22,6 @@ namespace mpp
 	public:
 		ParticleEffect(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceManager, ResourceStreamPtr stream);
 		std::span<ParticleEmitterTemplate const> getEmitterTemplates() const override { return mEmitterTemplates; }
+		std::optional<ParticleEffectBounds> getBounds() const override { return mBounds; }
 	};
 }

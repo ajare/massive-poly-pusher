@@ -417,6 +417,7 @@ namespace mpp
 			eventSourceTemplate.lighting.rangeAndVolumetric = { 2.0f, 0.5f, 0.0f, 0.0f };
 			eventSourceTemplate.lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::ProxyLight |
 				ParticleLightingFlag::PbrLightInjection | ParticleLightingFlag::VolumetricContribution);
+			eventSourceTemplate.appearance.sorting[2] = 1u;
 			eventSourceTemplate.events = {
 				{ ParticleEventTrigger::Spawn, ParticleEventAction::SecondaryParticleBurst, 1u, 7u, 0.0f, 10u },
 				{ ParticleEventTrigger::Spawn, ParticleEventAction::Audio, 0u, 1u, 0.0f, 11u },
@@ -440,7 +441,12 @@ namespace mpp
 			system.setEventCallback(ParticleEventAction::Audio, receiveEvent);
 			system.setEventCallback(ParticleEventAction::Light, receiveEvent);
 			system.setEventCallback(ParticleEventAction::GameplayCallback, receiveEvent);
-			auto eventEffect = system.createEffect(eventTemplates);
+			auto const particleProjection = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f);
+			renderSystem->setCameraFrame(glm::mat4(1.0f), particleProjection,
+				{ 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
+			system.setStatisticsEnabled(true);
+			auto eventEffect = system.createEffect(eventTemplates,
+				ParticleEffectBounds{ { 0.0f, 1.0f, -5.0f }, { 4.0f, 4.0f, 4.0f } });
 			auto eventSourceHandle = system.getEmitter(eventEffect, 0u);
 			auto eventTargetHandle = system.getEmitter(eventEffect, 1u);
 			runFrame(system, 0.0f);
@@ -458,19 +464,50 @@ namespace mpp
 			if (proxies.size() != 1u || proxies[0].emitter != eventSourceHandle ||
 				proxies[0].light.position != glm::vec3(0.0f, 1.0f, -5.0f))
 				return fail("a particle emitter did not remain exactly one transformed dynamic-light proxy");
+			system.setEffectTransform(eventEffect,
+				glm::translate(glm::mat4(1.0f), { 100.0f, 0.0f, 0.0f }));
+			if (system.isEmitterSubmittedForCurrentView(eventSourceHandle.index))
+				return fail("a live particle effect transform did not move its bounds out of the current frustum");
+			system.setEffectTransform(eventEffect, glm::mat4(1.0f));
+			if (!system.isEmitterSubmittedForCurrentView(eventSourceHandle.index))
+				return fail("a live particle effect transform did not restore its bounds to the current frustum");
+
+			auto const awayView = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), { 0.0f, 1.0f, 0.0f });
+			renderSystem->setCameraFrame(awayView, particleProjection,
+				{ 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
+			if (!system.getProxyLights().empty() || system.isEmitterSubmittedForCurrentView(eventSourceHandle.index))
+				return fail("an off-view bounded particle effect still submitted proxy-light or PBR-injection contributions");
+			system.advanceStatisticsFrame();
+			GL_CHECK(glFinish());
+			system.advanceStatisticsFrame();
+			auto const boundsStats = system.getStats();
+			if (!boundsStats.valid || boundsStats.submittedEffects == 0u || boundsStats.boundsCulledEffects == 0u)
+				return fail("public particle statistics did not distinguish submitted and bounds-culled effects across views");
+			// Effect-level rejection is render-only: the GPU-authored particle ranges
+			// above and the lagged events below continue while this view rejects it.
+			system.setStatisticsEnabled(false);
 			RenderTextureOptions volumetricTargetOptions;
 			volumetricTargetOptions.numAttachments = 1u;
 			volumetricTargetOptions.colourInternalFormat = GL_RGBA16F;
 			auto volumetricTarget = renderSystem->createRenderTexture(
 				"ParticleGpuTest.VolumetricLighting", 32u, 32u, volumetricTargetOptions);
-			renderSystem->setCameraFrame(glm::mat4(1.0f),
-				glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f), { 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
 			renderSystem->pushRenderTarget(volumetricTarget);
 			renderSystem->setViewport(0u, 0u, 32u, 32u);
 			GL_CHECK(glDisable(GL_DEPTH_TEST));
 			GL_CHECK(glDisable(GL_CULL_FACE));
 			GL_CHECK(glDisable(GL_BLEND));
 			GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+			system.render(ParticleBlendClass::Additive, static_cast<RenderTexture*>(nullptr));
+			system.renderDistortion(static_cast<RenderTexture*>(nullptr));
+			system.renderVolumetricLighting(static_cast<RenderTexture*>(nullptr));
+			std::array<float, 4> rejectedPixel{};
+			GL_CHECK(glReadPixels(16, 16, 1, 1, GL_RGBA, GL_FLOAT, rejectedPixel.data()));
+			if (rejectedPixel != std::array<float, 4>{})
+				return fail("bounds-culled billboard, distortion, or volumetric contributions reached the render target");
+
+			renderSystem->setCameraFrame(glm::mat4(1.0f), particleProjection,
+				{ 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
 			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
 			system.renderVolumetricLighting(static_cast<RenderTexture*>(nullptr));
 			std::array<float, 4> volumetricPixel{};
@@ -654,7 +691,8 @@ void main()
 			meshEmitter.simulation.lifetimeSizeRanges[3] = 0.5f;
 			meshEmitter.simulation.rotationRanges = { 0.5f, 0.5f, 0.25f, 0.25f };
 			std::array meshEmitters{ meshEmitter };
-			auto meshEffect = system.createEffect(meshEmitters);
+			auto meshEffect = system.createEffect(meshEmitters,
+				ParticleEffectBounds{ { 0.0f, 0.0f, -5.0f }, { 2.0f, 2.0f, 2.0f } });
 			auto meshHandle = system.getEmitter(meshEffect, 0u);
 			renderSystem->setCameraFrame(glm::mat4(1.0f),
 				glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f), { 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
@@ -681,6 +719,16 @@ void main()
 			renderSystem->setViewport(0u, 0u, 32u, 32u);
 			GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
 			GL_CHECK(glClearDepth(1.0));
+			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+			renderSystem->setCameraFrame(glm::rotate(glm::mat4(1.0f), glm::radians(180.0f),
+				{ 0.0f, 1.0f, 0.0f }), particleProjection, { 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
+			system.renderMeshes();
+			std::array<uint8_t, 4> rejectedMeshPixel{};
+			GL_CHECK(glReadPixels(16, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rejectedMeshPixel.data()));
+			if (rejectedMeshPixel[0] != 0u || rejectedMeshPixel[1] != 0u || rejectedMeshPixel[2] != 0u)
+				return fail("a bounds-culled mesh-particle contribution reached the render target");
+			renderSystem->setCameraFrame(glm::mat4(1.0f), particleProjection,
+				{ 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
 			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 			system.renderMeshes();
 			std::array<uint8_t, 4> meshPixel{};

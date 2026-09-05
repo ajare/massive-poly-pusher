@@ -365,6 +365,8 @@ namespace mpp
 		// uniforms; a scene pass shades through material programs and cannot.
 		//
 		UniformBuffer* mCameraFrameBuffer{ nullptr };
+		glm::mat4 mCameraFrameView{ 1.0f };
+		glm::mat4 mCameraFrameProjection{ 1.0f };
 
 		//
 		// GPU particles. Created with the core resources; its GPU resources are

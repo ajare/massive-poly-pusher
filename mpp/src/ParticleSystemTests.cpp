@@ -120,16 +120,51 @@ namespace mpp
 		class TestParticleEffect final : public ParticleEffectSource
 		{
 			array<ParticleEmitterTemplate, 2> mTemplates;
+			optional<ParticleEffectBounds> mBounds;
 		public:
-			explicit TestParticleEffect(array<ParticleEmitterTemplate, 2> templates) : mTemplates(std::move(templates)) {}
+			explicit TestParticleEffect(array<ParticleEmitterTemplate, 2> templates,
+				optional<ParticleEffectBounds> bounds = nullopt)
+				: mTemplates(std::move(templates)), mBounds(std::move(bounds)) {}
 			span<ParticleEmitterTemplate const> getEmitterTemplates() const override { return mTemplates; }
+			optional<ParticleEffectBounds> getBounds() const override { return mBounds; }
 		};
 		ParticleSystem system(nullptr, nullptr);
+		ParticleEffectBounds unitBounds{ { 0.0f, 0.0f, 0.0f }, { 2.0f, 2.0f, 2.0f } };
+		auto const projection = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f);
+		auto const boundedTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -5.0f });
+		if (!particleEffectBoundsIntersectFrustum(unitBounds, boundedTransform, projection) ||
+			particleEffectBoundsIntersectFrustum(unitBounds, boundedTransform,
+				projection * glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), { 0.0f, 1.0f, 0.0f })))
+			return fail("particle effect bounds were not tested independently against distinct render views");
+		auto transformedBounds = transformParticleEffectBounds(
+			{ { 1.0f, 0.0f, 0.0f }, { 2.0f, 4.0f, 6.0f } },
+			glm::translate(glm::mat4(1.0f), { 3.0f, 4.0f, 5.0f }) *
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), { 0.0f, 0.0f, 1.0f }));
+		if (glm::distance(transformedBounds.center, glm::vec3(3.0f, 5.0f, 5.0f)) > 0.0001f ||
+			glm::distance(transformedBounds.size, glm::vec3(4.0f, 2.0f, 6.0f)) > 0.0001f)
+			return fail("rotated particle effect bounds were not transformed conservatively");
+
+		auto rawEffect = system.createEffect(lutTemplates);
+		if (system.mEffectSlots[rawEffect.index].bounds)
+			return fail("raw emitter-span creation unexpectedly acquired particle effect bounds");
+		system.destroyEffect(rawEffect);
+		auto boundedRawEffect = system.createEffect(lutTemplates, unitBounds,
+			glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -5.0f }));
+		if (!system.mEffectSlots[boundedRawEffect.index].bounds)
+			return fail("explicit bounds were discarded by raw emitter-span creation");
+		system.destroyEffect(boundedRawEffect);
+		TestParticleEffect boundedSource(lutTemplates, unitBounds);
+		auto boundedSourceEffect = system.createEffect(boundedSource);
+		if (!system.mEffectSlots[boundedSourceEffect.index].bounds)
+			return fail("programmatic ParticleEffectSource bounds did not reach a live particle effect");
+		system.destroyEffect(boundedSourceEffect);
 		{
 			Logger logger;
 			ResourceManager resources(nullptr, &logger);
 			ParticleEffectSpecification childSpecification;
+			childSpecification.version = 2u;
 			childSpecification.name = "Child";
+			childSpecification.bounds = ParticleEffectBounds{ { 2.0f, 0.0f, 0.0f }, { 2.0f, 2.0f, 2.0f } };
 			childSpecification.maximumParticleCount = 2u;
 			ParticleEffectSpecification::EmitterTemplate childFirst;
 			childFirst.name = "ChildFirst";
@@ -149,7 +184,9 @@ namespace mpp
 			resources.declareResource("Effects/Child", childStream);
 
 			ParticleEffectSpecification parentSpecification;
+			parentSpecification.version = 2u;
 			parentSpecification.name = "Parent";
+			parentSpecification.bounds = unitBounds;
 			parentSpecification.maximumParticleCount = 1u;
 			ParticleEffectSpecification::EmitterTemplate parentEmitter;
 			parentEmitter.name = "ParentEmitter";
@@ -170,6 +207,10 @@ namespace mpp
 			parentAsset->create();
 			auto parent = dynamic_pointer_cast<ParticleEffect>(parentAsset);
 			auto flattened = parent->getEmitterTemplates();
+			auto aggregateBounds = parent->getBounds();
+			if (!aggregateBounds || glm::distance(aggregateBounds->center, glm::vec3(1.0f, 1.5f, 2.0f)) > 0.0001f ||
+				glm::distance(aggregateBounds->size, glm::vec3(4.0f, 5.0f, 6.0f)) > 0.0001f)
+				return fail("transformed child particle effect bounds were not conservatively aggregated");
 			if (flattened.size() != 5u || flattened[1].localTransform[3][0] != 2.0f ||
 				flattened[1].localTransform[3][1] != 3.0f || flattened[3].localTransform[3][2] != 4.0f)
 				return fail("child particle effect transforms were not flattened relative to their parent");
@@ -188,6 +229,33 @@ namespace mpp
 			step(composedSystem, 20.0f);
 			if (composedSystem.isAlive(composedEffect))
 				return fail("child particle effect group did not retire with its descendants");
+
+			ParticleEffectSpecification unboundedRoot = parentSpecification;
+			unboundedRoot.name = "UnboundedRoot";
+			unboundedRoot.bounds.reset();
+			auto unboundedRootStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			unboundedRootStream->setSpecification(unboundedRoot);
+			auto unboundedRootAsset = resources.declareResource("Effects/UnboundedRoot", unboundedRootStream).first;
+			unboundedRootAsset->create();
+			if (dynamic_pointer_cast<ParticleEffect>(unboundedRootAsset)->getBounds())
+				return fail("a missing root bound did not make the aggregate particle effect unbounded");
+
+			ParticleEffectSpecification unboundedChild = childSpecification;
+			unboundedChild.name = "UnboundedChild";
+			unboundedChild.bounds.reset();
+			auto unboundedChildStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			unboundedChildStream->setSpecification(unboundedChild);
+			resources.declareResource("Effects/UnboundedChild", unboundedChildStream);
+			ParticleEffectSpecification incompletelyBoundedParent = parentSpecification;
+			incompletelyBoundedParent.name = "IncompletelyBoundedParent";
+			incompletelyBoundedParent.childEffects = { { "Effects/UnboundedChild" } };
+			auto incompletelyBoundedStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			incompletelyBoundedStream->setSpecification(incompletelyBoundedParent);
+			auto incompletelyBoundedAsset = resources.declareResource(
+				"Effects/IncompletelyBoundedParent", incompletelyBoundedStream).first;
+			incompletelyBoundedAsset->create();
+			if (dynamic_pointer_cast<ParticleEffect>(incompletelyBoundedAsset)->getBounds())
+				return fail("an unbounded child branch did not make the aggregate particle effect unbounded");
 
 			ParticleEffectSpecification cycleA, cycleB;
 			cycleA.name = "CycleA"; cycleA.childEffects.push_back({ "Effects/CycleB" });

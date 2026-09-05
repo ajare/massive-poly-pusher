@@ -6,6 +6,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -14,6 +15,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/ParticleData.h"
+#include "mpp/ParticleEffectBounds.h"
 #include "mpp/PbrLight.h"
 #include "mpp/Resource.h"
 
@@ -45,7 +47,12 @@ namespace mpp
 		uint32_t killedParticles{ 0 };
 		uint32_t droppedParticles{ 0 };
 		uint32_t renderedParticles{ 0 };
+		// GPU per-particle rejection; effect-level CPU bounds do not alter it.
 		uint32_t culledParticles{ 0 };
+		// View-level totals accumulated across distinct view-projection states
+		// sampled this frame.
+		uint32_t submittedEffects{ 0 };
+		uint32_t boundsCulledEffects{ 0 };
 		uint32_t activeEmitters{ 0 };
 		uint32_t capacity{ 0 };
 		float capacityUsage{ 0.0f };
@@ -125,6 +132,7 @@ namespace mpp
 	public:
 		virtual ~ParticleEffectSource() = default;
 		virtual std::span<ParticleEmitterTemplate const> getEmitterTemplates() const = 0;
+		virtual std::optional<ParticleEffectBounds> getBounds() const { return std::nullopt; }
 		// The first request performs the load-time CPU bake. The strong cache makes
 		// one LUT belong to this reusable particle effect asset.
 		std::shared_ptr<ParticleEffectCurveLut> getCurveLut() const;
@@ -220,6 +228,7 @@ namespace mpp
 			bool eventTargetPersistent{ false };
 			float lastSpawnSeconds{ 0.0f };
 			float maximumSpawnedLifetime{ 0.0f };
+			uint32_t effectIndex{ ParticleEffectHandle::InvalidIndex };
 		};
 		struct EffectSlot
 		{
@@ -227,6 +236,7 @@ namespace mpp
 			bool occupied{ false };
 			glm::mat4 transform{ 1.0f };
 			std::vector<ParticleEmitterHandle> emitters;
+			std::optional<ParticleEffectBounds> bounds;
 			ResourcePtr asset;
 			std::shared_ptr<ParticleEffectCurveLut> curveLut;
 		};
@@ -247,6 +257,12 @@ namespace mpp
 		bool mHasLastSimulationTime{ false };
 		std::chrono::steady_clock::time_point mLastSimulationTime{};
 		float mSimulationSeconds{ 0.0f };
+		mutable bool mViewBoundsValid{ false };
+		mutable uint64_t mViewBoundsFrame{ 0 };
+		mutable glm::mat4 mViewBoundsViewProjection{ 1.0f };
+		mutable std::vector<uint8_t> mViewEffectSubmissions;
+		std::vector<uint32_t> mVolumetricLightingEmitters;
+		std::vector<ParticleVolumetricLightingGpuData> mVisibleVolumetricLightingGpuData;
 
 		void ensurePoolAllocated();
 		void createNoiseTexture();
@@ -277,9 +293,12 @@ namespace mpp
 		void finishRenderTiming();
 		void disableWithWarning(std::string const& reason);
 		ParticleEmitterHandle allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform,
-			std::shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex);
+			std::shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex, uint32_t effectIndex);
 		ParticleEffectHandle createEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform,
-			std::shared_ptr<ParticleEffectCurveLut> curveLut);
+			std::optional<ParticleEffectBounds> bounds, std::shared_ptr<ParticleEffectCurveLut> curveLut);
+		void invalidateViewBounds();
+		void updateViewEffectSubmissions() const;
+		bool isEmitterSubmittedForCurrentView(uint32_t emitterIndex) const;
 		EmitterSlot* findEmitter(ParticleEmitterHandle handle);
 		EmitterSlot const* findEmitter(ParticleEmitterHandle handle) const;
 		EffectSlot* findEffect(ParticleEffectHandle handle);
@@ -326,6 +345,8 @@ namespace mpp
 		ParticleEffectHandle createEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		ParticleEffectHandle createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		ParticleEffectHandle createEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform = glm::mat4(1.0f));
+		ParticleEffectHandle createEffect(std::span<ParticleEmitterTemplate const> emitterTemplates,
+			ParticleEffectBounds const& bounds, glm::mat4 const& transform = glm::mat4(1.0f));
 		void destroyEffect(ParticleEffectHandle effect);
 		void setEffectTransform(ParticleEffectHandle effect, glm::mat4 const& transform);
 		// Visibility changes affect every existing particle in the live particle
@@ -335,6 +356,8 @@ namespace mpp
 		void spawnEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		void spawnEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		void spawnEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform = glm::mat4(1.0f));
+		void spawnEffect(std::span<ParticleEmitterTemplate const> emitterTemplates,
+			ParticleEffectBounds const& bounds, glm::mat4 const& transform = glm::mat4(1.0f));
 
 		ParticleEmitterHandle getEmitter(ParticleEffectHandle effect, size_t index) const;
 		void destroyEmitter(ParticleEmitterHandle emitter);
