@@ -54,11 +54,11 @@ Selects the model and effort from the ticket's difficulty label. The bigger
 model of the pair handles the harder tickets, and effort rises within each
 model:
 
-  difficulty:trivial            smaller model, medium effort
-  difficulty:small (or :low)    smaller model, high effort
-  difficulty:medium             larger model, medium effort
+  difficulty:trivial                  smaller model, medium effort
+  difficulty:small (or :low/:easy)    smaller model, high effort
+  difficulty:medium                   larger model, medium effort
   difficulty:large (or :high/:hard)
-                                larger model, high effort
+                                      larger model, high effort
 
 For pi the pair is GPT-5.6 Terra and Sol; for claude it is Sonnet and Opus.
 The script stops if an eligible ticket has no supported difficulty label or
@@ -262,13 +262,13 @@ function Get-AdaptiveModelAndEffort {
 
     $difficultyLabels = @($Labels | ForEach-Object {
         $name = ([string]$_.name).ToLowerInvariant().Trim()
-        if ($name -match '^difficulty:\s*(trivial|small|low|medium|large|high|hard)$') {
+        if ($name -match '^difficulty:\s*(trivial|small|low|easy|medium|large|high|hard)$') {
             $Matches[1]
         }
     } | Select-Object -Unique)
 
     if ($difficultyLabels.Count -eq 0) {
-        throw "Adaptive model and effort requires one of: difficulty:trivial, difficulty:small, difficulty:low, difficulty:medium, difficulty:large, difficulty:high, or difficulty:hard."
+        throw "Adaptive model and effort requires one of: difficulty:trivial, difficulty:easy, difficulty:small, difficulty:low, difficulty:medium, difficulty:large, difficulty:high, or difficulty:hard."
     }
     if ($difficultyLabels.Count -gt 1) {
         throw "Adaptive model and effort found conflicting difficulty labels: $($difficultyLabels -join ', ')."
@@ -280,7 +280,7 @@ function Get-AdaptiveModelAndEffort {
         "trivial" {
             return [pscustomobject]@{ Difficulty = "trivial"; Model = $models.Smaller; Effort = "medium" }
         }
-        { $_ -in @("small", "low") } {
+        { $_ -in @("small", "low", "easy") } {
             return [pscustomobject]@{ Difficulty = $_; Model = $models.Smaller; Effort = "medium" }
         }
         "medium" {
