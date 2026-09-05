@@ -56,6 +56,7 @@ namespace mpp::resource_parsers
 			case PbrPipelineResourceKind::Texture: return LegacyPipelineResourceKind::Texture;
 			case PbrPipelineResourceKind::Sampler: return LegacyPipelineResourceKind::Sampler;
 			case PbrPipelineResourceKind::PostEffectMaterial: return LegacyPipelineResourceKind::PostEffectMaterial;
+			case PbrPipelineResourceKind::ParticleEffect: return LegacyPipelineResourceKind::ParticleEffect;
 			default: return LegacyPipelineResourceKind::BasicMaterial;
 			}
 		}

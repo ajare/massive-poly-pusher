@@ -1,6 +1,6 @@
 # Particle effect authoring
 
-Particle effects are reusable assets stored as `*.particle.yaml`. They describe emitter templates only; live emitter handles and effect transforms are created by `ParticleSystem` and are never stored in the asset.
+Particle effects are reusable assets stored as `*.particle.yaml` or embedded as a pipeline `LocalResources/ParticleEffect` payload. They describe emitter templates only; live emitter handles and effect transforms are created by `ParticleSystem` and are never stored in the asset.
 
 ```yaml
 ParticleEffect:
@@ -162,6 +162,25 @@ Lighting is authored per emitter template and is disabled by default:
 `volumetricLighting` opts the same Emitter-sized sphere into the additive `MPP.ParticleVolumetricLighting` graph pass. The pass integrates inscattered radiance through the sphere, clips the path against optional `DEPTH`, and writes HDR colour plus an optional emissive/bloom output. `volumetricIntensity` scales this contribution independently of direct lighting; `colour`, `intensity`, and positive world-space `range` are shared. Generated graph pipelines include this pass. Authored graphs should use additive one/one blending, disable depth writes, and place it after opaque depth is available.
 
 Stopped, hidden, destroyed, and retired Emitters contribute neither proxy nor volumetric lighting. `ParticleParameter::EmissiveScale` scales both direct and volumetric intensity. Particle count never affects proxy count or the volumetric draw count.
+
+## Scene and package integration
+
+Pipeline workspaces may carry particle effect assets in `LocalResources` alongside textures and materials. Both PBR and legacy package export retain these resources, localize their referenced texture and child-particle-effect resources, and embed them in the resulting `.mpppackage`.
+
+A scene creates live particle effects by referencing those resource names:
+
+```yaml
+Scene:
+  ParticleEffects:
+    - id: CampfireSmoke
+      effect: Effects.Smoke
+      translation: 0 1 0
+      rotation: 0 0 0
+      scale: 1 1 1
+      visible: true
+```
+
+IDs are unique across models, lights, and particle effects. Transform values must be finite and scale components non-zero. PipelineEditor can create particle effect resources and scene instances, assign resources, and edit instance transforms and visibility. Emitter-template details remain editable in the serialized resource document.
 
 ## Particle events
 

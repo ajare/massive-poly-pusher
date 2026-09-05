@@ -532,6 +532,8 @@ namespace
 			return "Texture";
 		case PbrPipelineResourceKind::PostEffectMaterial:
 			return "Post Effect Material";
+		case PbrPipelineResourceKind::ParticleEffect:
+			return "Particle Effect";
 		default:
 			return "Sampler";
 		}
@@ -577,6 +579,21 @@ namespace
 			value.definition.addEntry("minFilter", "LINEAR");
 			value.definition.addEntry("magFilter", "LINEAR");
 			value.definition.addEntry("wrap", "CLAMP_TO_EDGE");
+		}
+		else if (kind == PbrPipelineResourceKind::ParticleEffect)
+		{
+			value.definition = mpp::data::StructuredData("ParticleEffect");
+			value.definition.addEntry("version", "1");
+			value.definition.addEntry("name", name);
+			value.definition.addEntry("maximumParticleCount", "1024");
+			mpp::data::StructuredData emitters("Emitters"), emitter("Emitter"), spawn("Spawn");
+			emitter.addEntry("name", "Emitter");
+			emitter.addEntry("maximumParticleCount", "1024");
+			spawn.addEntry("shape", "point");
+			spawn.addEntry("rate", "10");
+			emitter.addEntry("Spawn", spawn);
+			emitters.addEntry("Emitter", emitter);
+			value.definition.addEntry("Emitters", emitters);
 		}
 		else if (kind == PbrPipelineResourceKind::PostEffectMaterial)
 		{
@@ -822,6 +839,12 @@ namespace
 		auto diagnostics = pipeline.validate();
 		diagnostics.append(resource_parsers::validatePbrPipelineResourceDefinitions(pipeline));
 		diagnostics.append(scene.validate());
+		for (auto const& effect : scene.particleEffects)
+		{
+			bool resolved = std::any_of(pipeline.localResources.begin(), pipeline.localResources.end(), [&](auto const& resource) { return resource.name == effect.effect && resource.kind == PbrPipelineResourceKind::ParticleEffect; }) ||
+				std::any_of(pipeline.externalResources.begin(), pipeline.externalResources.end(), [&](auto const& resource) { return resource.libraryName + "::" + resource.resource.name == effect.effect && resource.resource.kind == PbrPipelineResourceKind::ParticleEffect; });
+			if (!resolved) diagnostics.error("MPP-SCENE-035", "Scene particle effect resource '" + effect.effect + "' is unavailable or has the wrong type.", { scene.sourcePath }, effect.id);
+		}
 		if (diagnostics.hasErrors())
 			throw std::runtime_error("Package export requires a valid pipeline and preview scene.\n" +
 			                         packageDiagnosticSummary(diagnostics));
@@ -865,6 +888,8 @@ namespace
 		};
 		for (auto& binding : pipeline.previewBindings)
 			replace(binding.materialResource);
+		for (auto& effect : scene.particleEffects)
+			replace(effect.effect);
 		replace(pipeline.environment.irradiance);
 		replace(pipeline.environment.prefilteredSpecular);
 		replace(pipeline.environment.brdfLut);
@@ -961,6 +986,12 @@ namespace
 			diagnostics.append(resource_parsers::validateLegacyPipelineResourceDefinitions(pipeline));
 			diagnostics.append(scene.validate());
 			diagnostics.append(conversionDiagnostics);
+			for (auto const& effect : scene.particleEffects)
+			{
+				bool resolved = std::any_of(pipeline.localResources.begin(), pipeline.localResources.end(), [&](auto const& resource) { return resource.name == effect.effect && resource.kind == LegacyPipelineResourceKind::ParticleEffect; }) ||
+					std::any_of(pipeline.externalResources.begin(), pipeline.externalResources.end(), [&](auto const& resource) { return resource.libraryName + "::" + resource.resource.name == effect.effect && resource.resource.kind == LegacyPipelineResourceKind::ParticleEffect; });
+				if (!resolved) diagnostics.error("MPP-SCENE-035", "Scene particle effect resource '" + effect.effect + "' is unavailable or has the wrong type.", { scene.sourcePath }, effect.id);
+			}
 			if (!sourceScene.environmentBinding.empty())
 				diagnostics.warning("MPP-LEGACY-EXPORT-001",
 				                    "Preview scene's environment binding '" + sourceScene.environmentBinding +
@@ -1022,6 +1053,8 @@ namespace
 			};
 			for (auto& binding : pipeline.previewBindings)
 				replace(binding.materialResource);
+			for (auto& effect : scene.particleEffects)
+				replace(effect.effect);
 			pipeline.externalResources.clear();
 			pipeline.resourceLibraries.clear();
 
@@ -1728,11 +1761,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					candidatePipelineObject->prepareOutputs(*previewDocument->graph, outputDestinations);
 				if (previewScene)
 				{
+					std::map<std::string, ResourcePtr> particleEffectBindings;
+					for (auto const& authored : previewScene->particleEffects)
+						if (auto resource = pipelineRuntime.getResolvedResource(authored.effect))
+							particleEffectBindings.emplace(authored.effect, std::move(resource));
 					if (!sceneRuntime.rebuild(*previewScene,
 					                          pipelineRuntime.getMaterialBindings(),
 					                          pipelineRuntime.getInstanceOverrides(),
 					                          previewDocument->environment.binding,
-					                          previewOptions.shadowDomain))
+					                          previewOptions.shadowDomain,
+					                          particleEffectBindings))
 					{
 						std::string message = "Preview scene rebuild failed.";
 						for (auto const& diagnostic : sceneRuntime.getDiagnostics().getDiagnostics())
@@ -2776,6 +2814,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 6;
 					if (ImGui::MenuItem("Post Effect Material", nullptr, false, openDocument != nullptr))
 						addKind = 11;
+					if (ImGui::MenuItem("Particle Effect", nullptr, false, openDocument != nullptr))
+						addKind = 12;
 					if (ImGui::MenuItem("Preview Binding", nullptr, false, openDocument != nullptr))
 						addKind = 7;
 					if (ImGui::MenuItem("Instance Override", nullptr, false, openDocument != nullptr))
@@ -2785,6 +2825,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 9;
 					if (ImGui::MenuItem("Directional Light", nullptr, false, openScene != nullptr))
 						addKind = 10;
+					if (ImGui::MenuItem("Particle Effect Instance", nullptr, false, openScene != nullptr))
+						addKind = 13;
 					ImGui::EndMenu();
 				}
 				if (ImGui::BeginMenu("Pipeline"))
@@ -3098,6 +3140,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						addKind = 6;
 					if (ImGui::MenuItem("Post Effect Material"))
 						addKind = 11;
+					if (ImGui::MenuItem("Particle Effect"))
+						addKind = 12;
 					ImGui::EndMenu();
 				}
 				if (ImGui::MenuItem("Preview Binding", nullptr, false, openDocument != nullptr))
@@ -3108,11 +3152,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					addKind = 9;
 				if (ImGui::MenuItem("Directional Light", nullptr, false, openScene != nullptr))
 					addKind = 10;
+				if (ImGui::MenuItem("Particle Effect Instance", nullptr, false, openScene != nullptr))
+					addKind = 13;
 				ImGui::EndPopup();
 			}
 			if (addKind >= 0)
 			{
-				if ((addKind <= 8 || addKind == 11) && openDocument)
+				if ((addKind <= 8 || addKind == 11 || addKind == 12) && openDocument)
 				{
 					auto before = clonePipeline(openDocument);
 					if (addKind == 0 && openDocument->graph)
@@ -3219,6 +3265,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						    makeLocalResource(PbrPipelineResourceKind::PostEffectMaterial, name));
 						selectedLocalResource = (int)openDocument->localResources.size() - 1;
 					}
+					else if (addKind == 12)
+					{
+						auto name = uniqueName("ParticleEffect", [&](auto const& value) { return std::any_of(openDocument->localResources.begin(), openDocument->localResources.end(), [&](auto const& item) { return item.name == value; }); });
+						openDocument->localResources.push_back(makeLocalResource(PbrPipelineResourceKind::ParticleEffect, name));
+						selectedLocalResource = (int)openDocument->localResources.size() - 1;
+					}
 					auto after = clonePipeline(openDocument);
 					pipelineCommands.execute(
 					    std::make_unique<PipelineSnapshotCommand>("Add Pipeline Item", &openDocument, before, after));
@@ -3226,7 +3278,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					lastEditScene = false;
 					documentChangedSincePreview = true;
 				}
-				else if (openScene && (addKind == 9 || addKind == 10))
+				else if (openScene && (addKind == 9 || addKind == 10 || addKind == 13))
 				{
 					auto before = std::make_shared<SceneDocument>(*openScene);
 					if (addKind == 9)
@@ -3249,7 +3301,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						openScene->models.push_back(value);
 						selectedModel = (int)openScene->models.size() - 1;
 					}
-					else
+					else if (addKind == 10)
 					{
 						SceneLightDocument value;
 						value.id = uniqueName("Light",
@@ -3261,6 +3313,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						                      });
 						openScene->lights.push_back(value);
 						selectedModel = -100 - (int)openScene->lights.size() + 1;
+					}
+					else
+					{
+						SceneParticleEffectDocument value;
+						value.id = uniqueName("ParticleEffect", [&](auto const& id) { return std::any_of(openScene->particleEffects.begin(), openScene->particleEffects.end(), [&](auto const& item) { return item.id == id; }); });
+						if (openDocument) for (auto const& resource : openDocument->localResources) if (resource.kind == PbrPipelineResourceKind::ParticleEffect) { value.effect = resource.name; break; }
+						openScene->particleEffects.push_back(value);
+						selectedModel = -10000 - (int)openScene->particleEffects.size() + 1;
 					}
 					auto after = std::make_shared<SceneDocument>(*openScene);
 					sceneCommands.execute(
@@ -3507,7 +3567,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				lastEditScene = true;
 				sceneDirty = scenePath.empty() || sceneCommands.dirty();
 			}
-			if (requestDuplicate && openScene && selectedModel <= -100)
+			if (requestDuplicate && openScene && selectedModel <= -100 && selectedModel > -10000)
 			{
 				auto index = (size_t)(-100 - selectedModel);
 				if (index < openScene->lights.size())
@@ -3531,6 +3591,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					sceneDirty = scenePath.empty() || sceneCommands.dirty();
 				}
 			}
+			if (requestDuplicate && openScene && selectedModel <= -10000)
+			{
+				auto index = (size_t)(-10000 - selectedModel);
+				if (index < openScene->particleEffects.size())
+				{
+					auto before = std::make_shared<SceneDocument>(*openScene); auto value = openScene->particleEffects[index]; auto base = value.id + ".Copy"; value.id = base; unsigned suffix = 2;
+					while (std::any_of(openScene->particleEffects.begin(), openScene->particleEffects.end(), [&](auto const& current) { return current.id == value.id; })) value.id = base + std::to_string(suffix++);
+					openScene->particleEffects.insert(openScene->particleEffects.begin() + index + 1, value); selectedModel = -10000 - (int)(index + 1);
+					auto after = std::make_shared<SceneDocument>(*openScene); documentChangedSincePreview = true; sceneCommands.execute(std::make_unique<SceneSnapshotCommand>("Duplicate Particle Effect", &openScene, before, after)); lastEditScene = true; sceneDirty = scenePath.empty() || sceneCommands.dirty();
+				}
+			}
 			if (requestDelete && openScene && selectedModel >= 0 && (size_t)selectedModel < openScene->models.size())
 			{
 				auto before = std::make_shared<SceneDocument>(*openScene);
@@ -3543,7 +3614,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				lastEditScene = true;
 				sceneDirty = scenePath.empty() || sceneCommands.dirty();
 			}
-			if (requestDelete && openScene && selectedModel <= -100)
+			if (requestDelete && openScene && selectedModel <= -100 && selectedModel > -10000)
 			{
 				auto index = (size_t)(-100 - selectedModel);
 				if (index < openScene->lights.size())
@@ -3557,6 +3628,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					    std::make_unique<SceneSnapshotCommand>("Delete Scene Light", &openScene, before, after));
 					lastEditScene = true;
 					sceneDirty = scenePath.empty() || sceneCommands.dirty();
+				}
+			}
+			if (requestDelete && openScene && selectedModel <= -10000)
+			{
+				auto index = (size_t)(-10000 - selectedModel);
+				if (index < openScene->particleEffects.size())
+				{
+					auto before = std::make_shared<SceneDocument>(*openScene); openScene->particleEffects.erase(openScene->particleEffects.begin() + index); selectedModel = -1;
+					auto after = std::make_shared<SceneDocument>(*openScene); documentChangedSincePreview = true; sceneCommands.execute(std::make_unique<SceneSnapshotCommand>("Delete Particle Effect", &openScene, before, after)); lastEditScene = true; sceneDirty = scenePath.empty() || sceneCommands.dirty();
 				}
 			}
 			if (requestNew && confirmDiscardWorkspace())
@@ -4148,6 +4228,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					for (size_t light = 0; light < openScene->lights.size(); ++light)
 						if (ImGui::Selectable(openScene->lights[light].id.c_str(), selectedModel == -100 - (int)light))
 							selectScene(-100 - (int)light);
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNodeEx("Particle Effects", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					for (size_t effect = 0; effect < openScene->particleEffects.size(); ++effect)
+						if (ImGui::Selectable(openScene->particleEffects[effect].id.c_str(), selectedModel == -10000 - (int)effect))
+							selectScene(-10000 - (int)effect);
 					ImGui::TreePop();
 				}
 				ImGui::TreePop();
@@ -5731,6 +5818,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						                                          : "unresolved");
 					}
 				}
+				else if (value.kind == PbrPipelineResourceKind::ParticleEffect)
+				{
+					text(definition, "name", "Asset name");
+					if (definition.hasEntry("Emitters")) ImGui::Text("Emitter templates: %zu", (size_t)std::distance(definition.getEntry("Emitters").begin(), definition.getEntry("Emitters").end()));
+					ImGui::TextDisabled("Edit emitter-template details in the serialized resource document.");
+				}
 				else
 				{
 					choice(definition, "positionType", "Position type", {"2D", "3D"});
@@ -6358,7 +6451,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 					sceneDirty = scenePath.empty() || sceneCommands.dirty();
 				}
 			}
-			else if (openScene && selectedModel <= -100)
+			else if (openScene && selectedModel <= -100 && selectedModel > -10000)
 			{
 				auto index = (size_t)(-100 - selectedModel);
 				if (index < openScene->lights.size())
@@ -6394,6 +6487,36 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 						    true);
 						lastEditScene = true;
 						sceneDirty = scenePath.empty() || sceneCommands.dirty();
+					}
+				}
+			}
+			else if (openScene && selectedModel <= -10000)
+			{
+				auto index = (size_t)(-10000 - selectedModel);
+				if (index < openScene->particleEffects.size())
+				{
+					auto before = std::make_shared<SceneDocument>(*openScene);
+					auto& value = openScene->particleEffects[index];
+					bool changed = false;
+					char id[256]{}; strncpy_s(id, value.id.c_str(), 255);
+					if (ImGui::InputText("Particle effect ID", id, sizeof(id))) { value.id = id; changed = true; }
+					auto preview = value.effect.empty() ? std::string("(none)") : value.effect;
+					if (ImGui::BeginCombo("Particle effect resource", preview.c_str()))
+					{
+						if (ImGui::Selectable("(none)", value.effect.empty())) { value.effect.clear(); changed = true; }
+						if (openDocument) for (auto const& resource : openDocument->localResources) if (resource.kind == PbrPipelineResourceKind::ParticleEffect)
+							if (ImGui::Selectable(resource.name.c_str(), value.effect == resource.name)) { value.effect = resource.name; changed = true; }
+						ImGui::EndCombo();
+					}
+					changed |= ImGui::InputFloat3("Translation", &value.translation.x);
+					changed |= ImGui::InputFloat3("Rotation (degrees)", &value.rotationDegrees.x);
+					changed |= ImGui::InputFloat3("Scale", &value.scale.x);
+					changed |= ImGui::Checkbox("Visible", &value.visible);
+					if (changed)
+					{
+						auto after = std::make_shared<SceneDocument>(*openScene); documentChangedSincePreview = true;
+						sceneCommands.execute(std::make_unique<SceneSnapshotCommand>("Edit Particle Effect", &openScene, before, after), true);
+						lastEditScene = true; sceneDirty = scenePath.empty() || sceneCommands.dirty();
 					}
 				}
 			}

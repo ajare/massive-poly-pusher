@@ -168,13 +168,21 @@ void PackageScene::setupImpl(mpp::RenderSystem* renderer, ProgramOptions const& 
 	auto packagePipeline=renderer->getOrCreateRenderPipeline("Package", renderOptions);
 	std::map<std::string,mpp::RenderTargetPtr> outputDestinations;for(auto const& output:outputs)for(uint32_t image=0;image<graphPtr->getImageCount();++image){auto info=graphPtr->getImageInfo({image,0});if(info.name!=output.image||!info.desc.external)continue;auto destination=renderOptions.graphImports.find(info.importName);if(destination!=renderOptions.graphImports.end())outputDestinations.emplace(output.name,destination->second);break;}if(outputDestinations.size()==outputs.size())packagePipeline->prepareOutputs(*graphPtr,outputDestinations);
 
+	std::map<std::string, mpp::ResourcePtr> particleEffectBindings;
+	for (auto const& authored : mDocument.particleEffects)
+	{
+		auto resource = legacy ? mLegacyPipelineRuntime->getResolvedResource(authored.effect)
+		                       : mPipelineRuntime->getResolvedResource(authored.effect);
+		if (resource) particleEffectBindings.emplace(authored.effect, std::move(resource));
+	}
 	mSceneRuntime = std::make_unique<mpp::SceneRuntime>(renderer, getResourceManager());
 	if (!mSceneRuntime->rebuild(
 		mDocument,
 		legacy ? mLegacyPipelineRuntime->getMaterialBindings() : mPipelineRuntime->getMaterialBindings(),
 		legacy ? mLegacyPipelineRuntime->getInstanceOverrides() : mPipelineRuntime->getInstanceOverrides(),
 		environmentBinding,
-		renderOptions.shadowDomain))
+		renderOptions.shadowDomain,
+		particleEffectBindings))
 	{
 		throw std::runtime_error("Package scene runtime preparation failed:\n" + diagnosticsSummary(mSceneRuntime->getDiagnostics()));
 	}

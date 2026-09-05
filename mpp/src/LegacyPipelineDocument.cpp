@@ -181,7 +181,7 @@ namespace mpp
 			if (library.empty() || !libraries.insert(library).second) diagnostics.error("MPP-LEGACY-PIPELINE-005", "Resource library paths must be non-empty and unique.", { sourcePath }, "resources");
 			else { auto path=std::filesystem::path(library);if(path.is_absolute())diagnostics.warning("MPP-LEGACY-PIPELINE-014","Absolute resource-library path is not portable.",{sourcePath},library);auto resolved=path.is_absolute()?path:std::filesystem::path(sourcePath).parent_path()/path;if(!std::filesystem::exists(resolved))diagnostics.error("MPP-LEGACY-PIPELINE-015","Resource library does not exist: "+resolved.string(),{sourcePath},library); }
 		}
-		auto kindName=[](LegacyPipelineResourceKind kind){switch(kind){case LegacyPipelineResourceKind::BasicMaterial:return "BasicMaterial";case LegacyPipelineResourceKind::Program:return "Program";case LegacyPipelineResourceKind::Texture:return "Texture";case LegacyPipelineResourceKind::Sampler:return "Sampler";default:return "PostEffectMaterial";}};
+		auto kindName=[](LegacyPipelineResourceKind kind){switch(kind){case LegacyPipelineResourceKind::BasicMaterial:return "BasicMaterial";case LegacyPipelineResourceKind::Program:return "Program";case LegacyPipelineResourceKind::Texture:return "Texture";case LegacyPipelineResourceKind::Sampler:return "Sampler";case LegacyPipelineResourceKind::PostEffectMaterial:return "PostEffectMaterial";default:return "ParticleEffect";}};
 		set<string> localNames;
 		for(auto const& resource:localResources)
 		{

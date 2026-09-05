@@ -1,6 +1,7 @@
 #include "mpp/resource-parsers/FileLegacyPipelineStream.h"
 #include "mpp/resource-parsers/FileBasicMaterialStream.h"
 #include "mpp/resource-parsers/FilePostEffectMaterialStream.h"
+#include "mpp/resource-parsers/FileParticleEffectStream.h"
 #include "mpp/resource-parsers/FileProgramStream.h"
 #include "mpp/resource-parsers/FileSamplerStream.h"
 #include "mpp/resource-parsers/FileTextureStream.h"
@@ -23,6 +24,7 @@ namespace mpp::resource_parsers
 			case LegacyPipelineResourceKind::Texture:stream=std::make_shared<FileTextureStream>(getResourceMgr(),filepath,resource.definition);break;
 			case LegacyPipelineResourceKind::Sampler:stream=std::make_shared<FileSamplerStream>(getResourceMgr(),filepath,resource.definition);break;
 			case LegacyPipelineResourceKind::PostEffectMaterial:stream=std::make_shared<FilePostEffectMaterialStream>(getResourceMgr(),filepath,resource.definition);break;
+			case LegacyPipelineResourceKind::ParticleEffect:stream=std::make_shared<FileParticleEffectStream>(getResourceMgr(),filepath,resource.definition);break;
 			}addChild(runtimeName,stream);
 		};
 		for(auto const& resource:getDocument()->localResources)addResource(resource,mFilepath,resource.name);

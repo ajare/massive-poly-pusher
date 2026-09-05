@@ -56,7 +56,10 @@ namespace mpp
 			auto resolve = [&](std::string const& name, ResourcePtr& destination)
 			{
 				if (name.empty()) return;
-				auto resource = getResourceManager()->getResource(name);
+				auto slash = getName().find_last_of('/');
+				auto qualified = slash == std::string::npos ? name : getName().substr(0, slash + 1) + name;
+				auto resource = getResourceManager()->getResource(qualified, true);
+				if (!resource) resource = getResourceManager()->getResource(name);
 				destination = resource;
 				acquireDependentResource(resource);
 			};
@@ -68,7 +71,10 @@ namespace mpp
 
 		for (auto const& authoredChild : specification.childEffects)
 		{
-			auto resource = getResourceManager()->getResource(authoredChild.effect);
+			auto slash = getName().find_last_of('/');
+			auto qualified = slash == std::string::npos ? authoredChild.effect : getName().substr(0, slash + 1) + authoredChild.effect;
+			auto resource = getResourceManager()->getResource(qualified, true);
+			if (!resource) resource = getResourceManager()->getResource(authoredChild.effect);
 			auto child = std::dynamic_pointer_cast<ParticleEffect>(resource);
 			if (!child)
 				throw std::invalid_argument("Particle effect child '" + authoredChild.effect + "' is not a ParticleEffect resource.");

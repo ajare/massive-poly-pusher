@@ -30,7 +30,7 @@ namespace mpp
 		UniformCollection values;
 	};
 
-	enum class PbrPipelineResourceKind { PbrMaterial, Program, Texture, Sampler, PostEffectMaterial };
+	enum class PbrPipelineResourceKind { PbrMaterial, Program, Texture, Sampler, PostEffectMaterial, ParticleEffect };
 
 	struct _MPPAPI PbrPipelineResourceDocument
 	{

@@ -31,7 +31,7 @@ Paths are resolved relative to the pipeline file. Relative paths are portable; a
 
 ## Resources
 
-`LocalResources` accepts concrete `PbrMaterial`, `Program`, `Texture`, and `Sampler` children. Each child requires one unique `name`. Abstract `Material` resources are not valid PipelineEditor authoring targets.
+`LocalResources` accepts concrete `PbrMaterial`, `Program`, `Texture`, `Sampler`, `PostEffectMaterial`, and `ParticleEffect` children. Each child requires one unique `name`. Abstract `Material` resources are not valid PipelineEditor authoring targets. `ParticleEffect` resources may be referenced by `Scene/ParticleEffects/ParticleEffect/effect`; package export preserves them for both PBR and converted legacy pipelines.
 
 A `ResourceLibrary` is a separate strict version-1 document:
 
