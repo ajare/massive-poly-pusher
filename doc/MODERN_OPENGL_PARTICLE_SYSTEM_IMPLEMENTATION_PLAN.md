@@ -177,7 +177,7 @@ frequency/strength/scroll), particle budget, live count, emission mode
 (continuous or burst), spawn rate or burst count, enabled flag, and the six
 runtime parameter multipliers.
 
-**`TemplateRenderData`** (96 B) — albedo texture handle, colour tint, alpha
+**`TemplateRenderData`** (96 B) — shared albedo-array layer and flags, colour tint, alpha
 multiplier, emissive intensity, soft-particle fade distance, atlas columns, rows,
 frame count, animation mode and rate, curve LUT row offset, billboard mode,
 blend class, culling thresholds, and the optional depth-sort mode.
@@ -483,8 +483,8 @@ particles.
 **Status:** done. `MPP.ParticleScene` and `MPP.ParticleWeightedOit` draw
 GPU-compacted, per-template ranges as attribute-less instanced quads through one
 `glMultiDrawArraysIndirect` per authored blend-class pass. Its shared expansion
-supports all billboard bases, template-owned bindless atlases and all initial
-flipbook modes.
+supports all billboard bases, template-owned authored atlases copied into one
+renderer-owned texture array, and all initial flipbook modes.
 The optional named `DEPTH` input enables soft fading and falls back to hard
 particles when omitted; particle draws always force depth writes off.
 
@@ -706,7 +706,8 @@ renderer or turning GPU particles into dynamic lights (ADR 0009).
 Child particle effect assets now flatten recursively on the CPU into one live
 group with independent template budgets, relative transforms, deterministic
 seed salts, cycle rejection, and longest-descendant lifetime semantics (ADR
-0010). Still deferred: user-defined emitter parameters (spec §5), particle
-effects in the package and scene-document pipeline, and a shared
-albedo atlas to remove the remaining
-per-template texture bind.
+0010). Particle effect assets are integrated into packages and scene documents.
+Distinct authored albedo/flipbook atlases are copied into a renderer-owned 2D
+texture array, so every billboard draw shares one albedo binding without
+requiring bindless-texture support. Still deferred: user-defined emitter
+parameters (spec §5).

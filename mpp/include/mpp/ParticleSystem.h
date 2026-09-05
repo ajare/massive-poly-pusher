@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
-#include <map>
 #include <memory>
 #include <span>
 #include <string>
@@ -98,8 +97,8 @@ namespace mpp
 		EmitterSimData simulation{};
 		TemplateRenderData appearance{};
 		ParticleEmitterLighting lighting{};
-		// The atlas resource belongs to the emitter template. ParticleSystem turns
-		// it into the bindless handle stored in appearance at upload time.
+		// The authored atlas resource belongs to the emitter template. ParticleSystem
+		// copies each distinct atlas into one layer of its shared albedo array.
 		ResourcePtr albedoTexture;
 		// A mesh model selects the dedicated mesh-particle draw path. Every mesh in
 		// the model is instanced; meshMaterial optionally overrides each embedded
@@ -198,8 +197,8 @@ namespace mpp
 			ResourcePtr material;
 		};
 		std::vector<MeshDrawRecord> mMeshDrawRecords;
-		std::vector<uint64_t> mTemplateTextureHandles;
-		std::map<uint64_t, uint32_t> mResidentTextureHandles;
+		std::vector<uint32_t> mAlbedoArraySourceIds;
+		uint32_t mAlbedoArrayTexture{ 0 };
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
 		std::vector<ParticleCollider> mColliders;
 		ParticleSignedDistanceFieldData mSignedDistanceFieldData;
@@ -254,8 +253,7 @@ namespace mpp
 		void buildSpawnCommands(float dt);
 		void retireCompletedEmitters();
 		void uploadFrameData();
-		void updateTemplateTextureHandles();
-		void releaseTemplateTextureHandle(uint32_t templateIndex);
+		void updateAlbedoTextureArray();
 		void dispatchStatisticsPrepare();
 		void dispatchEventPrepare(uint32_t mode, uint32_t sourceQueue = 0u);
 		void dispatchSpawnCommands();

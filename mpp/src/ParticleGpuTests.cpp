@@ -766,6 +766,63 @@ void main()
 			trails.setTrailPosition(graphTrail, { 0.5f, 0.0f, 0.0f });
 			trails.simulate(0.1f);
 
+			stage = "shared particle albedo texture array";
+			auto makeAlbedo = [&](char const* name, size_t width, size_t height,
+				std::array<uint8_t, 4> colour, TextureColourSpace colourSpace)
+			{
+				auto stream = std::make_shared<ProgrammaticTextureStream>(renderSystem->getResourceManager());
+				stream->setTarget(TextureTarget::Texture2D);
+				stream->setInternalFormat(TextureInternalType::UnsignedInteger, true, 8u, 4u);
+				stream->setColourSpace(colourSpace);
+				stream->setData([=](std::string const&)
+				{
+					auto* data = new uint8_t[width * height * 4u];
+					for (size_t texel = 0; texel < width * height; ++texel)
+						std::copy(colour.begin(), colour.end(), data + texel * 4u);
+					return TextureData(data, width, height, 32u, GL_RGBA, GL_UNSIGNED_BYTE);
+				});
+				auto resource = renderSystem->getResourceManager()->declareResource(name, stream).first;
+				resource->load();
+				return resource;
+			};
+			auto redAlbedo = makeAlbedo("__mpp_particle_test_red_albedo__", 2u, 2u,
+				{ 255u, 0u, 0u, 255u }, TextureColourSpace::Linear);
+			auto greenAlbedo = makeAlbedo("__mpp_particle_test_green_albedo__", 4u, 1u,
+				{ 0u, 255u, 0u, 255u }, TextureColourSpace::Srgb);
+			system.mTemplateTextures.push_back(redAlbedo);
+			system.mTemplateTextures.push_back(greenAlbedo);
+			system.mTemplateTextures.push_back(redAlbedo);
+			system.mTemplateRenderData.resize(system.mTemplateRenderData.size() + 3u);
+			system.updateAlbedoTextureArray();
+			auto const firstAdded = system.mTemplateRenderData.size() - 3u;
+			if (system.mTemplateRenderData[firstAdded].textureAndAtlas[0] == 0u ||
+				system.mTemplateRenderData[firstAdded].textureAndAtlas[0] != system.mTemplateRenderData[firstAdded + 2u].textureAndAtlas[0] ||
+				system.mTemplateRenderData[firstAdded].textureAndAtlas[0] == system.mTemplateRenderData[firstAdded + 1u].textureAndAtlas[0] ||
+				system.mTemplateRenderData[firstAdded].textureAndAtlas[1] != 1u ||
+				system.mTemplateRenderData[firstAdded + 1u].textureAndAtlas[1] != 3u)
+				return fail("shared albedo layers were not unique per texture or did not retain colour-space flags");
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, system.mAlbedoArrayTexture));
+			GLint albedoWidth = 0, albedoHeight = 0, albedoLayers = 0;
+			GL_CHECK(glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_WIDTH, &albedoWidth));
+			GL_CHECK(glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_HEIGHT, &albedoHeight));
+			GL_CHECK(glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_DEPTH, &albedoLayers));
+			std::vector<uint8_t> albedoTexels(size_t(albedoWidth) * albedoHeight * albedoLayers * 4u);
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, albedoTexels.data()));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, 0));
+			auto layerTexel = [&](uint32_t layer)
+			{
+				size_t const offset = size_t(layer) * albedoWidth * albedoHeight * 4u;
+				return std::array<uint8_t, 4>{ albedoTexels[offset], albedoTexels[offset + 1u],
+					albedoTexels[offset + 2u], albedoTexels[offset + 3u] };
+			};
+			if (albedoWidth != 4 || albedoHeight != 2 ||
+				layerTexel(system.mTemplateRenderData[firstAdded].textureAndAtlas[0]) != std::array<uint8_t, 4>{ 255u, 0u, 0u, 255u } ||
+				layerTexel(system.mTemplateRenderData[firstAdded + 1u].textureAndAtlas[0]) != std::array<uint8_t, 4>{ 0u, 255u, 0u, 255u })
+				return fail("authored albedo textures were not resampled into the shared array");
+			system.mTemplateTextures.resize(firstAdded);
+			system.mTemplateRenderData.resize(firstAdded);
+			system.updateAlbedoTextureArray();
+
 			stage = "std430 particle record stride";
 			auto* spawnProgram = static_cast<RawShaderProgram*>(system.mSpawnProgram.get());
 			auto const variable = glGetProgramResourceIndex(spawnProgram->getId(), GL_BUFFER_VARIABLE, "PARTICLES[0].positionAge");

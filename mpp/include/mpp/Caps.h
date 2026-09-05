@@ -65,9 +65,8 @@ namespace mpp
 		// numbers rather than assumed ones.
 		bool supportsCompute{ false };
 		bool supportsMultiDrawIndirect{ false };
-		// Bindless textures preserve one multi-draw per blend class while allowing
-		// every emitter template to own a different atlas. The particle renderer
-		// has a white-texture fallback when the extension is absent.
+		// Generic capability flag retained for clients that use bindless textures;
+		// the particle renderer itself uses a core texture-array path.
 		bool supportsBindlessTextures{ false };
 		uint32_t maxComputeWorkGroupCount[3]{};
 		uint32_t maxComputeWorkGroupSize[3]{};

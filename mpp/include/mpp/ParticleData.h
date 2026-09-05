@@ -436,9 +436,10 @@ namespace mpp
 	// compacting the render list; spawn and simulation never fetch it.
 	struct alignas(16) TemplateRenderData
 	{
-		// Bindless albedo handle low/high words, atlas columns, atlas rows. A
-		// zero handle is the declared white fallback on contexts without bindless
-		// textures and for appearances that intentionally omit an albedo texture.
+		// Shared albedo-array layer, flags, flipbook columns, and flipbook rows.
+		// Layer zero is the renderer-owned white fallback. Flag bit zero says the
+		// appearance has an authored texture; bit one requests sRGB decoding after
+		// the source texels have been copied into the array's linear RGBA8 storage.
 		std::array<uint32_t, 4> textureAndAtlas{ 0u, 0u, 1u, 1u };
 		// RGB tint and alpha multiplier.
 		std::array<float, 4> tintAndAlpha{ 1.0f, 1.0f, 1.0f, 1.0f };

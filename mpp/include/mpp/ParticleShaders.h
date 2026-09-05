@@ -1976,7 +1976,7 @@ out vec2 PARTICLE_UV;
 out vec2 PARTICLE_CORNER;
 out vec4 PARTICLE_TINT;
 out float PARTICLE_VIEW_DEPTH;
-flat out uvec2 PARTICLE_TEXTURE_HANDLE;
+flat out uvec2 PARTICLE_TEXTURE_LAYER_FLAGS;
 flat out float PARTICLE_SOFT_DISTANCE;
 flat out float PARTICLE_DISTORTION_STRENGTH;
 
@@ -2108,7 +2108,7 @@ void main()
     PARTICLE_TINT.rgb *= colourOverLife * appearance.appearance.x * emitter.parameterMultipliers1.y * scalarCurves1.y;
     PARTICLE_TINT.a *= scalarCurves0.y * emitter.parameterMultipliers1.x;
     PARTICLE_VIEW_DEPTH = -(VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).z;
-    PARTICLE_TEXTURE_HANDLE = appearance.textureAndAtlas.xy;
+    PARTICLE_TEXTURE_LAYER_FLAGS = appearance.textureAndAtlas.xy;
     PARTICLE_SOFT_DISTANCE = max(0.0, appearance.appearance.y);
     PARTICLE_DISTORTION_STRENGTH = appearance.culling.w;
     gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * vec4(worldPosition, 1.0);
@@ -2116,10 +2116,6 @@ void main()
 )MPP";
 
 	inline char const* ParticleDrawFragmentShader = R"MPP(#version 430
-
-#if MPP_PARTICLE_BINDLESS_TEXTURES
-#extension GL_ARB_bindless_texture : require
-#endif
 
 layout(std140, binding = 3) uniform CameraFrame
 {
@@ -2134,10 +2130,11 @@ in vec2 PARTICLE_UV;
 in vec2 PARTICLE_CORNER;
 in vec4 PARTICLE_TINT;
 in float PARTICLE_VIEW_DEPTH;
-flat in uvec2 PARTICLE_TEXTURE_HANDLE;
+flat in uvec2 PARTICLE_TEXTURE_LAYER_FLAGS;
 flat in float PARTICLE_SOFT_DISTANCE;
 flat in float PARTICLE_DISTORTION_STRENGTH;
 uniform sampler2D SCENE_DEPTH;
+uniform sampler2DArray PARTICLE_ALBEDO_ARRAY;
 uniform int HAS_SCENE_DEPTH;
 layout(location = 0) out vec4 FRAGMENT_COLOUR;
 layout(location = 1) out vec4 FRAGMENT_BLOOM;
@@ -2151,13 +2148,20 @@ float linearViewDepth(float depth)
         max(farPlane + nearPlane - ndc * (farPlane - nearPlane), 0.000001);
 }
 
+vec3 srgbToLinear(vec3 encoded)
+{
+    bvec3 usePower = greaterThan(encoded, vec3(0.04045));
+    vec3 low = encoded / 12.92;
+    vec3 high = pow((encoded + 0.055) / 1.055, vec3(2.4));
+    return mix(low, high, usePower);
+}
+
 void main()
 {
-    vec4 albedo = vec4(1.0);
-#if MPP_PARTICLE_BINDLESS_TEXTURES
-    if (any(notEqual(PARTICLE_TEXTURE_HANDLE, uvec2(0u))))
-        albedo = texture(sampler2D(PARTICLE_TEXTURE_HANDLE), PARTICLE_UV);
-#endif
+    bool hasAlbedo = (PARTICLE_TEXTURE_LAYER_FLAGS.y & 1u) != 0u;
+    vec4 albedo = hasAlbedo ?
+        texture(PARTICLE_ALBEDO_ARRAY, vec3(PARTICLE_UV, float(PARTICLE_TEXTURE_LAYER_FLAGS.x))) : vec4(1.0);
+    if ((PARTICLE_TEXTURE_LAYER_FLAGS.y & 2u) != 0u) albedo.rgb = srgbToLinear(albedo.rgb);
     float edge = length(PARTICLE_CORNER * 2.0 - 1.0);
     float coverage = 1.0 - smoothstep(0.75, 1.0, edge);
     float softFade = 1.0;
@@ -2175,8 +2179,8 @@ void main()
     // RG stores a normalized-screen UV offset. Authored textures use their RG
     // channels as a signed vector; an omitted texture gets a radial shockwave/
     // heat-haze fallback from the billboard centre. Alpha remains the mask.
-    vec2 direction = any(notEqual(PARTICLE_TEXTURE_HANDLE, uvec2(0u))) ?
-        albedo.rg * 2.0 - 1.0 : normalize(PARTICLE_CORNER * 2.0 - 1.0 + vec2(1.0e-6));
+    vec2 direction = hasAlbedo ? albedo.rg * 2.0 - 1.0 :
+        normalize(PARTICLE_CORNER * 2.0 - 1.0 + vec2(1.0e-6));
     FRAGMENT_COLOUR = vec4(direction * PARTICLE_DISTORTION_STRENGTH * colour.a, 0.0, 0.0);
     FRAGMENT_BLOOM = vec4(0.0);
 #elif MPP_PARTICLE_WEIGHTED_OIT

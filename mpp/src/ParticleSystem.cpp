@@ -239,9 +239,12 @@ namespace mpp
 		// other particle resources destroyed below.
 		mEventReadback.reset();
 		mStatistics.reset();
-		for (uint32_t index = 0; index < mTemplateTextureHandles.size(); ++index)
-			releaseTemplateTextureHandle(index);
 		mTemplateTextures.clear();
+		if (mAlbedoArrayTexture != 0)
+		{
+			glDeleteTextures(1, &mAlbedoArrayTexture);
+			mAlbedoArrayTexture = 0;
+		}
 		if (mNoiseTexture != 0)
 		{
 			glDeleteTextures(1, &mNoiseTexture);
@@ -372,12 +375,11 @@ namespace mpp
 			mMeshCommandProgram = createComputeProgram(MeshCommandProgramName, ParticleMeshCommandComputeShader);
 			createNoiseTexture();
 
-			auto createDrawProgram = [this, &caps](char const* name, bool weightedOit, bool distortion)
+			auto createDrawProgram = [this](char const* name, bool weightedOit, bool distortion)
 			{
 				auto stream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
 				stream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
 				stream->setSource(RawShaderStage::Fragment, ParticleDrawFragmentShader);
-				stream->setDefine("MPP_PARTICLE_BINDLESS_TEXTURES", caps.supportsBindlessTextures ? "1" : "0");
 				stream->setDefine("MPP_PARTICLE_WEIGHTED_OIT", weightedOit ? "1" : "0");
 				stream->setDefine("MPP_PARTICLE_DISTORTION", distortion ? "1" : "0");
 				auto program = mwResourceManager->declareResource(name, stream).first;
@@ -575,7 +577,6 @@ namespace mpp
 			mTemplateMeshModels.emplace_back();
 			mTemplateMeshMaterials.emplace_back();
 			mTemplateCurveLuts.emplace_back();
-			mTemplateTextureHandles.push_back(0u);
 		}
 
 		auto& slot = mEmitterSlots[index];
@@ -1012,7 +1013,6 @@ namespace mpp
 		mEventRulesDirty = true;
 		mEmitters[index].emissionState[1] = 0u;
 		mEmitters[index].emissionState[3] = index;
-		releaseTemplateTextureHandle(index);
 		mTemplateTextures[index].reset();
 		mTemplateMeshModels[index].reset();
 		mTemplateMeshMaterials[index].reset();
@@ -1093,49 +1093,113 @@ namespace mpp
 		}
 	}
 
-	void ParticleSystem::releaseTemplateTextureHandle(uint32_t templateIndex)
+	void ParticleSystem::updateAlbedoTextureArray()
 	{
-		if (templateIndex >= mTemplateTextureHandles.size()) return;
-		uint64_t const handle = mTemplateTextureHandles[templateIndex];
-		if (handle == 0u) return;
-		auto found = mResidentTextureHandles.find(handle);
-		if (found != mResidentTextureHandles.end())
-		{
-			if (--found->second == 0u)
-			{
-				if (mwRenderSystem && mwRenderSystem->getCaps().supportsBindlessTextures)
-					GL_CHECK(glMakeTextureHandleNonResidentARB(handle));
-				mResidentTextureHandles.erase(found);
-			}
-		}
-		mTemplateTextureHandles[templateIndex] = 0u;
-	}
-
-	void ParticleSystem::updateTemplateTextureHandles()
-	{
-		if (!mwRenderSystem->getCaps().supportsBindlessTextures) return;
+		vector<uint32_t> sourceIds(mTemplateTextures.size(), 0u);
+		vector<Texture*> uniqueTextures;
 		for (uint32_t index = 0; index < mTemplateTextures.size(); ++index)
 		{
 			auto const& resource = mTemplateTextures[index];
-			if (!resource) continue;
+			if (!resource)
+			{
+				mTemplateRenderData[index].textureAndAtlas[0] = 0u;
+				mTemplateRenderData[index].textureAndAtlas[1] = 0u;
+				continue;
+			}
 			resource->load();
 			auto* texture = dynamic_cast<Texture*>(resource.get());
 			if (!texture || texture->getTextureTarget() != GL_TEXTURE_2D)
 				THROW_MPP("A particle albedo atlas must be a 2D texture.", __LINE__, __FILE__, __func__);
-			uint64_t const handle = glGetTextureHandleARB(texture->getId());
-			if (handle == 0u)
-				THROW_MPP("Could not create a bindless handle for particle atlas '" + texture->getName() + "'.", __LINE__, __FILE__, __func__);
-			if (mTemplateTextureHandles[index] != handle)
+			sourceIds[index] = texture->getId();
+			auto found = find_if(uniqueTextures.begin(), uniqueTextures.end(), [texture](Texture const* candidate)
+				{ return candidate->getId() == texture->getId(); });
+			uint32_t layer;
+			if (found == uniqueTextures.end())
 			{
-				releaseTemplateTextureHandle(index);
-				auto [found, inserted] = mResidentTextureHandles.emplace(handle, 0u);
-				if (inserted) GL_CHECK(glMakeTextureHandleResidentARB(handle));
-				++found->second;
-				mTemplateTextureHandles[index] = handle;
+				uniqueTextures.push_back(texture);
+				layer = uint32_t(uniqueTextures.size());
 			}
-			mTemplateRenderData[index].textureAndAtlas[0] = uint32_t(handle & 0xffffffffu);
-			mTemplateRenderData[index].textureAndAtlas[1] = uint32_t(handle >> 32u);
+			else layer = uint32_t(distance(uniqueTextures.begin(), found)) + 1u;
+			bool const srgb = texture->getInternalFormat() == GL_SRGB8 || texture->getInternalFormat() == GL_SRGB8_ALPHA8;
+			mTemplateRenderData[index].textureAndAtlas[0] = layer;
+			mTemplateRenderData[index].textureAndAtlas[1] = 1u | (srgb ? 2u : 0u);
 		}
+		if (sourceIds == mAlbedoArraySourceIds && mAlbedoArrayTexture != 0u) return;
+
+		GLint maximumLayers = 0;
+		GL_CHECK(glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &maximumLayers));
+		if (uniqueTextures.size() + 1u > size_t(maximumLayers))
+			THROW_MPP("The particle albedo texture-array layer limit was exceeded.", __LINE__, __FILE__, __func__);
+
+		size_t width = 1u, height = 1u;
+		for (auto const* texture : uniqueTextures)
+		{
+			width = max(width, texture->getWidth());
+			height = max(height, texture->getHeight());
+		}
+		if (width > size_t(mwRenderSystem->getCaps().maxTextureSize) ||
+			height > size_t(mwRenderSystem->getCaps().maxTextureSize))
+			THROW_MPP("A particle albedo texture exceeds the shared array dimensions supported by the GPU.", __LINE__, __FILE__, __func__);
+
+		uint32_t mipLevels = 1u;
+		for (size_t dimension = max(width, height); dimension > 1u; dimension >>= 1u) ++mipLevels;
+		GLuint arrayTexture = 0u, readFramebuffer = 0u, drawFramebuffer = 0u;
+		GLint previousReadFramebuffer = 0, previousDrawFramebuffer = 0, previousArrayBinding = 0;
+		GLfloat previousClearColour[4]{};
+		GL_CHECK(glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &previousReadFramebuffer));
+		GL_CHECK(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousDrawFramebuffer));
+		GL_CHECK(glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &previousArrayBinding));
+		GL_CHECK(glGetFloatv(GL_COLOR_CLEAR_VALUE, previousClearColour));
+		GLboolean const framebufferSrgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+		GL_CHECK(glDisable(GL_FRAMEBUFFER_SRGB));
+
+		GL_CHECK(glGenTextures(1, &arrayTexture));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexture));
+		GL_CHECK(glTexStorage3D(GL_TEXTURE_2D_ARRAY, GLsizei(mipLevels), GL_RGBA8,
+			GLsizei(width), GLsizei(height), GLsizei(uniqueTextures.size() + 1u)));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+		GL_CHECK(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+		GL_CHECK(glObjectLabel(GL_TEXTURE, arrayTexture, -1, "Particle shared albedo array"));
+		GL_CHECK(glGenFramebuffers(1, &readFramebuffer));
+		GL_CHECK(glGenFramebuffers(1, &drawFramebuffer));
+		GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFramebuffer));
+		GL_CHECK(glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, arrayTexture, 0, 0));
+		GL_CHECK(glDrawBuffer(GL_COLOR_ATTACHMENT0));
+		GL_CHECK(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
+		GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+
+		for (size_t textureIndex = 0; textureIndex < uniqueTextures.size(); ++textureIndex)
+		{
+			auto const* texture = uniqueTextures[textureIndex];
+			GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebuffer));
+			GL_CHECK(glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+				GL_TEXTURE_2D, texture->getId(), 0));
+			GL_CHECK(glReadBuffer(GL_COLOR_ATTACHMENT0));
+			if (glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+				THROW_MPP("Particle albedo texture '" + texture->getName() + "' cannot be copied into the shared array.",
+					__LINE__, __FILE__, __func__);
+			GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFramebuffer));
+			GL_CHECK(glFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+				arrayTexture, 0, GLint(textureIndex + 1u)));
+			if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+				THROW_MPP("The particle albedo texture array is not framebuffer complete.", __LINE__, __FILE__, __func__);
+			GL_CHECK(glBlitFramebuffer(0, 0, GLsizei(texture->getWidth()), GLsizei(texture->getHeight()),
+				0, 0, GLsizei(width), GLsizei(height), GL_COLOR_BUFFER_BIT, GL_LINEAR));
+		}
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, arrayTexture));
+		GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D_ARRAY));
+		GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(previousReadFramebuffer)));
+		GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLuint(previousDrawFramebuffer)));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, GLuint(previousArrayBinding)));
+		GL_CHECK(glClearColor(previousClearColour[0], previousClearColour[1], previousClearColour[2], previousClearColour[3]));
+		if (framebufferSrgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));
+		GL_CHECK(glDeleteFramebuffers(1, &readFramebuffer));
+		GL_CHECK(glDeleteFramebuffers(1, &drawFramebuffer));
+		if (mAlbedoArrayTexture != 0u) GL_CHECK(glDeleteTextures(1, &mAlbedoArrayTexture));
+		mAlbedoArrayTexture = arrayTexture;
+		mAlbedoArraySourceIds = std::move(sourceIds);
 	}
 
 	void ParticleSystem::uploadFrameData()
@@ -1188,7 +1252,7 @@ namespace mpp
 		for (auto const& emitter : mEmitters)
 			if (emitter.emissionState[3] >= mTemplateRenderData.size())
 				THROW_MPP("A particle emitter references an invalid emitter-template index.", __LINE__, __FILE__, __func__);
-		updateTemplateTextureHandles();
+		updateAlbedoTextureArray();
 		rebuildMeshDrawCommands();
 
 		mVolumetricLightingGpuData.clear();
@@ -2079,8 +2143,11 @@ namespace mpp
 		program->use();
 		program->setUniform("SCENE_DEPTH", int32_t(0));
 		program->setUniform("PARTICLE_CURVE_LUT", int32_t(1));
+		program->setUniform("PARTICLE_ALBEDO_ARRAY", int32_t(2));
 		program->setUniform("HAS_SCENE_DEPTH", int32_t(sceneDepth ? 1 : 0));
 		if (sceneDepth) sceneDepth->bindDepth(0);
+		GL_CHECK(glActiveTexture(GL_TEXTURE2));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, mAlbedoArrayTexture));
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
 		mRenderIndices->bindStorage(FreeIndicesBinding);
@@ -2112,6 +2179,8 @@ namespace mpp
 		finishRenderTiming();
 		GL_CHECK(glBindVertexArray(0));
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE2));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, 0));
 		GL_CHECK(glActiveTexture(GL_TEXTURE1));
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 		if (sceneDepth)
@@ -2141,8 +2210,11 @@ namespace mpp
 		program->use();
 		program->setUniform("SCENE_DEPTH", int32_t(0));
 		program->setUniform("PARTICLE_CURVE_LUT", int32_t(1));
+		program->setUniform("PARTICLE_ALBEDO_ARRAY", int32_t(2));
 		program->setUniform("HAS_SCENE_DEPTH", int32_t(sceneDepth ? 1 : 0));
 		if (sceneDepth) sceneDepth->bindDepth(0);
+		GL_CHECK(glActiveTexture(GL_TEXTURE2));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, mAlbedoArrayTexture));
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
 		mRenderIndices->bindStorage(FreeIndicesBinding);
@@ -2165,6 +2237,8 @@ namespace mpp
 		finishRenderTiming();
 		GL_CHECK(glBindVertexArray(0));
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE2));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D_ARRAY, 0));
 		GL_CHECK(glActiveTexture(GL_TEXTURE1));
 		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 		if (sceneDepth)
