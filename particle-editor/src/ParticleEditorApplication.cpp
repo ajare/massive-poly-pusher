@@ -222,9 +222,17 @@ namespace particle_editor
 			{
 				auto* document = documents.active();
 				if (!document) return;
+				if (force) document->publishPreviewNow();
 				if (!force && installedDocument == document && installedRevision == document->previewRevision()) return;
 				std::string failure;
-				if (auto specification = document->previewSpecification()) preview.install(*specification, &failure);
+				if (auto specification = document->previewSpecification())
+				{
+					bool const canUpdateLive = !force && installedDocument == document &&
+						document->previewChange() == ParticlePreviewChange::Live;
+					if (canUpdateLive && !preview.updateLive(*specification, &failure))
+						preview.install(*specification, &failure);
+					else if (!canUpdateLive) preview.install(*specification, &failure);
+				}
 				else failure = "This document has no valid preview state.";
 				document->setPreviewFailure(failure);
 				if (document->previewPaused()) preview.pauseSimulation(); else preview.resumeSimulation();
@@ -650,6 +658,8 @@ namespace particle_editor
 					else requestClose(0u);
 				}
 
+				active = documents.active();
+				if (active) active->publishPreviewIfDue();
 				installActive();
 				active = documents.active();
 				SDL_SetWindowTitle(window.getWindow(), active ?

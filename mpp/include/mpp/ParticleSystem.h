@@ -378,6 +378,11 @@ namespace mpp
 		void destroyEmitter(ParticleEmitterHandle emitter);
 		void setEmitterTransform(ParticleEmitterHandle emitter, glm::mat4 const& transform);
 		void setEmitterParameter(ParticleEmitterHandle emitter, ParticleParameter parameter, float multiplier);
+		// Applies authored spawn and billboard values without replacing the live
+		// emitter. Runtime transform, parameter multipliers, visibility, curve rows,
+		// texture layers, mesh selection, and event routing remain independently owned.
+		void updateEmitterTemplateRuntime(ParticleEmitterHandle emitter, EmitterSimData const& simulation,
+			TemplateRenderData const& appearance);
 		// Analytical colliders are shared world data scanned by every emitter that
 		// enables the analytical collision source. Replacing the span is atomic from
 		// the next simulated frame's point of view.

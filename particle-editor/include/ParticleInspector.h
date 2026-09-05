@@ -6,8 +6,6 @@ namespace particle_editor
 
 	class ParticleInspector
 	{
-		int mSelectedEmitter{ 0 };
-
 	public:
 		void draw(ParticleDocument& document);
 	};

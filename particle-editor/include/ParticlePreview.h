@@ -34,6 +34,8 @@ namespace particle_editor
 		uint32_t mWidth{ 0 };
 		uint32_t mHeight{ 0 };
 		uint32_t mEffectGeneration{ 0 };
+		uint32_t mRebuildCount{ 0 };
+		uint32_t mLiveUpdateCount{ 0 };
 		bool mInitialised{ false };
 
 	public:
@@ -42,6 +44,7 @@ namespace particle_editor
 		void initialise(std::filesystem::path const& resourceRoot, uint32_t width, uint32_t height);
 		void shutdown() noexcept;
 		bool install(mpp::ParticleEffectSpecification const& specification, std::string* failure = nullptr);
+		bool updateLive(mpp::ParticleEffectSpecification const& specification, std::string* failure = nullptr);
 		void resize(uint32_t width, uint32_t height);
 		void pauseSimulation();
 		void resumeSimulation();
@@ -53,6 +56,8 @@ namespace particle_editor
 
 		mpp::ResourcePtr const& texture() const { return mPresentationResource; }
 		mpp::ParticleStats const& stats() const;
-		bool ready() const { return mInitialised && bool(mEffectResource); }
+		bool ready() const;
+		uint32_t rebuildCount() const { return mRebuildCount; }
+		uint32_t liveUpdateCount() const { return mLiveUpdateCount; }
 	};
 }

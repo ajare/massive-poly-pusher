@@ -943,6 +943,43 @@ namespace mpp
 		}
 	}
 
+	void ParticleSystem::updateEmitterTemplateRuntime(ParticleEmitterHandle handle,
+		EmitterSimData const& simulation, TemplateRenderData const& appearance)
+	{
+		auto* slot = findEmitter(handle);
+		if (!slot) return;
+		auto& currentSimulation = mEmitters[handle.index];
+		auto const transform = currentSimulation.transform;
+		auto const templateIndex = currentSimulation.emissionState[3];
+		auto const visibility = currentSimulation.emissionRateAndPadding[1];
+		auto const multipliers0 = currentSimulation.parameterMultipliers0;
+		auto const multipliers1 = currentSimulation.parameterMultipliers1;
+		auto const eventRange = currentSimulation.eventRange;
+		bool const resetBurst = currentSimulation.emissionState[0] != simulation.emissionState[0] ||
+			currentSimulation.emissionState[2] != simulation.emissionState[2];
+		currentSimulation = simulation;
+		currentSimulation.transform = transform;
+		currentSimulation.emissionState[3] = templateIndex;
+		currentSimulation.emissionRateAndPadding[1] = visibility;
+		currentSimulation.parameterMultipliers0 = multipliers0;
+		currentSimulation.parameterMultipliers1 = multipliers1;
+		currentSimulation.eventRange = eventRange;
+		if (resetBurst) slot->burstSubmitted = false;
+
+		auto& currentAppearance = mTemplateRenderData[handle.index];
+		auto const textureLayer = currentAppearance.textureAndAtlas[0];
+		auto const textureFlags = currentAppearance.textureAndAtlas[1];
+		auto const curveRow = currentAppearance.appearance[3];
+		auto const meshBounds = currentAppearance.culling[2];
+		auto const renderMode = currentAppearance.sorting[1];
+		currentAppearance = appearance;
+		currentAppearance.textureAndAtlas[0] = textureLayer;
+		currentAppearance.textureAndAtlas[1] = textureFlags;
+		currentAppearance.appearance[3] = curveRow;
+		currentAppearance.culling[2] = meshBounds;
+		currentAppearance.sorting[1] = renderMode;
+	}
+
 	void ParticleSystem::setColliders(span<ParticleCollider const> colliders)
 	{
 		if (colliders.size() > MaxColliderCount)
@@ -1331,9 +1368,6 @@ namespace mpp
 			THROW_MPP("Particle emitters require at least one emitter template.", __LINE__, __FILE__, __func__);
 		if (mColliders.size() > MaxColliderCount)
 			THROW_MPP("The particle analytical-collider capacity was exceeded.", __LINE__, __FILE__, __func__);
-		if (!is_sorted(mTemplateRenderData.begin(), mTemplateRenderData.end(), [](auto const& left, auto const& right)
-			{ return left.modes[3] < right.modes[3]; }))
-			THROW_MPP("Particle emitter templates must be ordered by blend class before upload.", __LINE__, __FILE__, __func__);
 		for (auto const& emitter : mEmitters)
 			if (emitter.emissionState[3] >= mTemplateRenderData.size())
 				THROW_MPP("A particle emitter references an invalid emitter-template index.", __LINE__, __FILE__, __func__);
@@ -2272,13 +2306,8 @@ namespace mpp
 		updateViewEffectSubmissions();
 
 		uint32_t const requestedClass = uint32_t(blendClass);
-		auto const first = lower_bound(mTemplateRenderData.begin(), mTemplateRenderData.end(), requestedClass,
-			[](TemplateRenderData const& appearance, uint32_t value) { return appearance.modes[3] < value; });
-		auto const last = upper_bound(first, mTemplateRenderData.end(), requestedClass,
-			[](uint32_t value, TemplateRenderData const& appearance) { return value < appearance.modes[3]; });
-		if (first == last) return;
-		size_t const firstCommand = size_t(first - mTemplateRenderData.begin());
-		size_t const commandCount = size_t(last - first);
+		if (none_of(mTemplateRenderData.begin(), mTemplateRenderData.end(), [requestedClass](auto const& appearance)
+			{ return appearance.modes[3] == requestedClass; })) return;
 
 		GpuDebugScope scope("Particles: Draw blend class " + to_string(requestedClass));
 		// The pass owns blend/cull/depth-test state, but depth writes are a particle
@@ -2305,15 +2334,14 @@ namespace mpp
 		mIndirectCommands->bindDrawIndirect();
 
 		GL_CHECK(glBindVertexArray(mVertexArray));
-		// A LUT is shared by every instance of one particle effect asset. Draw
-		// adjacent commands sharing it together; switching assets binds another
-		// texture, never allocates or copies rows at runtime.
-		size_t command = firstCommand;
-		size_t const commandEnd = firstCommand + commandCount;
+		// Authored hierarchy order is independent of blend class. Draw adjacent
+		// commands together only while class, LUT, and view submission agree.
+		size_t command = 0u;
 		beginRenderTiming();
-		while (command < commandEnd)
+		while (command < mTemplateRenderData.size())
 		{
-			if (!isEmitterSubmittedForCurrentView(uint32_t(command)))
+			if (mTemplateRenderData[command].modes[3] != requestedClass ||
+				!isEmitterSubmittedForCurrentView(uint32_t(command)))
 			{
 				++command;
 				continue;
@@ -2321,8 +2349,9 @@ namespace mpp
 			auto const& lut = mTemplateCurveLuts[command];
 			if (!lut) THROW_MPP("A particle emitter template has no baked curve LUT.", __LINE__, __FILE__, __func__);
 			size_t groupEnd = command + 1u;
-			while (groupEnd < commandEnd && mTemplateCurveLuts[groupEnd] == lut &&
-				isEmitterSubmittedForCurrentView(uint32_t(groupEnd))) ++groupEnd;
+			while (groupEnd < mTemplateRenderData.size() &&
+				mTemplateRenderData[groupEnd].modes[3] == requestedClass &&
+				mTemplateCurveLuts[groupEnd] == lut && isEmitterSubmittedForCurrentView(uint32_t(groupEnd))) ++groupEnd;
 			lut->bind(1u);
 			auto const commandOffset = reinterpret_cast<void const*>(command * sizeof(ParticleDrawArraysIndirectCommand));
 			GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset,

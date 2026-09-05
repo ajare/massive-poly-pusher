@@ -80,13 +80,40 @@ namespace mpp
 			auto const path = emitterPath(index);
 			auto const spawnPath = path + "/Spawn";
 
-			if (simulation.emissionRateAndPadding[0] < 0.0f ||
-				simulation.lifetimeSizeRanges[0] < 0.0f ||
+			auto finite = [](auto const& values)
+			{
+				return std::all_of(values.begin(), values.end(), [](float value) { return std::isfinite(value); });
+			};
+			auto ordered = [](auto const& minimum, auto const& maximum, size_t count)
+			{
+				for (size_t component = 0; component < count; ++component)
+					if (minimum[component] > maximum[component]) return false;
+				return true;
+			};
+			auto const shape = simulation.shapeSeedModulesBudget[0];
+			bool shapeParametersValid = finite(simulation.shapeParameters);
+			if (shape == uint32_t(ParticleSpawnShape::Box))
+				shapeParametersValid = shapeParametersValid && simulation.shapeParameters[0] >= 0.0f &&
+					simulation.shapeParameters[1] >= 0.0f && simulation.shapeParameters[2] >= 0.0f;
+			else if (shape >= uint32_t(ParticleSpawnShape::Sphere) && shape <= uint32_t(ParticleSpawnShape::Cone))
+				shapeParametersValid = shapeParametersValid && simulation.shapeParameters[0] >= 0.0f &&
+					(shape != uint32_t(ParticleSpawnShape::Cone) || simulation.shapeParameters[1] >= 0.0f);
+			if (shape > uint32_t(ParticleSpawnShape::Cone) || !shapeParametersValid)
+				error("MPP-PARTICLE-011", "Spawn shape and shape parameters must be finite and valid for the selected shape.", spawnPath);
+			if (simulation.emissionState[0] > 1u || simulation.emissionState[1] > 1u ||
+				!finite(simulation.emissionRateAndPadding) || simulation.emissionRateAndPadding[0] < 0.0f ||
+				!finite(simulation.initialVelocityMin) || !finite(simulation.initialVelocityMax) ||
+				!ordered(simulation.initialVelocityMin, simulation.initialVelocityMax, 3u) ||
+				!finite(simulation.colourMin) || !finite(simulation.colourMax) ||
+				!ordered(simulation.colourMin, simulation.colourMax, 4u) ||
+				!finite(simulation.lifetimeSizeRanges) || simulation.lifetimeSizeRanges[0] < 0.0f ||
 				simulation.lifetimeSizeRanges[1] < simulation.lifetimeSizeRanges[0] ||
 				simulation.lifetimeSizeRanges[2] < 0.0f ||
-				simulation.lifetimeSizeRanges[3] < simulation.lifetimeSizeRanges[2])
+				simulation.lifetimeSizeRanges[3] < simulation.lifetimeSizeRanges[2] ||
+				!finite(simulation.rotationRanges) || simulation.rotationRanges[1] < simulation.rotationRanges[0] ||
+				simulation.rotationRanges[3] < simulation.rotationRanges[2])
 			{
-				error("MPP-PARTICLE-011", "Spawn rates and ranges must be non-negative and ordered.", spawnPath);
+				error("MPP-PARTICLE-011", "Spawn modes and ranges must be finite, valid, and ordered.", spawnPath);
 			}
 
 			auto const modules = simulation.shapeSeedModulesBudget[2];
@@ -149,28 +176,27 @@ namespace mpp
 			{
 				error("MPP-PARTICLE-012", "Atlas dimensions must be positive and contain frameCount.", appearancePath);
 			}
-			if (appearance.culling[0] < 0.0f || appearance.culling[1] < 0.0f)
-				error("MPP-PARTICLE-011", "Particle culling distances and sizes must be non-negative.", appearancePath);
-			if (appearance.culling[3] < 0.0f)
-				error("MPP-PARTICLE-011", "Particle distortion strength must be non-negative.", appearancePath);
+			if (!finite(appearance.tintAndAlpha) || !finite(appearance.appearance) || !finite(appearance.culling) ||
+				appearance.tintAndAlpha[3] < 0.0f || appearance.appearance[0] < 0.0f ||
+				appearance.appearance[1] < 0.0f || appearance.appearance[2] < 0.0f ||
+				appearance.culling[0] < 0.0f || appearance.culling[1] < 0.0f || appearance.culling[3] < 0.0f)
+				error("MPP-PARTICLE-011", "Particle appearance values must be finite and non-negative where required.", appearancePath);
+			if (appearance.modes[2] > uint32_t(ParticleBillboardMode::VelocityStretched) ||
+				appearance.modes[3] > uint32_t(ParticleBlendClass::WeightedOit) ||
+				appearance.sorting[0] > uint32_t(ParticleSortMode::BackToFront))
+				error("MPP-PARTICLE-011", "Particle billboard, blend-class, and sorting values must be recognized.", appearancePath);
 		}
 
 		if (specification.emitterTemplates.empty() && specification.childEffects.empty())
 			error("MPP-PARTICLE-003", "Particle effect requires at least one emitter template or child particle effect.", "/ParticleEffect");
 
-		bool const hasSecondaryEvents = std::any_of(specification.emitterTemplates.begin(),
-			specification.emitterTemplates.end(), [](auto const& emitter)
-			{
-				return std::any_of(emitter.events.begin(), emitter.events.end(), [](auto const& event)
-					{ return event.action == ParticleEventAction::SecondaryParticleBurst; });
-			});
 		std::unordered_set<std::string> emitterNames;
 		for (size_t index = 0; index < specification.emitterTemplates.size(); ++index)
 		{
 			auto const& emitter = specification.emitterTemplates[index];
 			auto const path = emitterPath(index);
-			if (!emitterNames.emplace(emitter.name).second && hasSecondaryEvents)
-				error("MPP-PARTICLE-016", "Emitter template names must be unique when secondary particle events are authored.", path + "/name");
+			if (emitter.name.empty() || !emitterNames.emplace(emitter.name).second)
+				error("MPP-PARTICLE-016", "Emitter template names must be non-empty and unique.", path + "/name");
 			for (size_t eventIndex = 0; eventIndex < emitter.events.size(); ++eventIndex)
 			{
 				auto const& event = emitter.events[eventIndex];

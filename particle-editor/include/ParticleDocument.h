@@ -1,10 +1,12 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,22 +38,38 @@ namespace particle_editor
 		std::string diskYaml;
 	};
 
+	enum class ParticlePreviewChange
+	{
+		None,
+		Live,
+		Structural
+	};
+
 	class ParticleDocument
 	{
 		mpp::ParticleEffectSpecification mSpecification;
 		mpp::ParticleEffectSpecification mLastValidPreview;
+		std::optional<mpp::ParticleEffectSpecification> mPendingPreview;
 		mpp::DiagnosticBag mDiagnostics;
 		mpp::app::CommandStack mCommands;
 		mpp::app::DocumentFileRevision mFileRevision;
 		std::filesystem::path mPath;
+		std::chrono::steady_clock::time_point mPreviewDeadline{};
 		uint64_t mPreviewRevision{ 0 };
+		size_t mSelectedEmitter{ 0 };
+		ParticlePreviewChange mPendingPreviewChange{ ParticlePreviewChange::None };
+		ParticlePreviewChange mPublishedPreviewChange{ ParticlePreviewChange::None };
+		ParticlePreviewChange mAppliedCommandChange{ ParticlePreviewChange::Structural };
 		bool mHasValidPreview{ false };
 		bool mForcedDirty{ false };
 		bool mPreviewPaused{ false };
 		float mPreviewTimeScale{ 1.0f };
 		std::string mPreviewFailure;
 
-		void refreshDiagnostics(bool updatePreview = true);
+		void refreshDiagnostics(bool updatePreview = true,
+			ParticlePreviewChange change = ParticlePreviewChange::Structural);
+		void publishPreview(ParticlePreviewChange change);
+		static void maintainInvariants(mpp::ParticleEffectSpecification& specification);
 
 	public:
 		ParticleDocument();
@@ -68,10 +86,22 @@ namespace particle_editor
 		ParticleDocumentComparison compareWithDisk() const;
 
 		void executeEdit(std::string name,
-			std::function<void(mpp::ParticleEffectSpecification&)> const& edit, bool coalesce = false);
+			std::function<void(mpp::ParticleEffectSpecification&)> const& edit, bool coalesce = false,
+			ParticlePreviewChange change = ParticlePreviewChange::Structural);
 		void endContinuousEdit();
 		bool undo();
 		bool redo();
+
+		size_t addEmitterTemplate();
+		size_t duplicateEmitterTemplate(size_t index);
+		void renameEmitterTemplate(size_t index, std::string name, bool coalesce = false);
+		void moveEmitterTemplate(size_t from, size_t to);
+		void removeEmitterTemplate(size_t index);
+		void selectEmitterTemplate(size_t index);
+		bool hasSelectedEmitterTemplate() const;
+		size_t selectedEmitterTemplate() const;
+		static std::string uniqueEmitterTemplateName(mpp::ParticleEffectSpecification const& specification,
+			std::string requested, std::optional<size_t> ignoredIndex = std::nullopt);
 
 		mpp::ParticleEffectSpecification const& specification() const { return mSpecification; }
 		mpp::ParticleEffectSpecification const* previewSpecification() const
@@ -86,6 +116,11 @@ namespace particle_editor
 		std::string const* redoName() const { return mCommands.redoName(); }
 		size_t commandCount() const { return mCommands.size(); }
 		uint64_t previewRevision() const { return mPreviewRevision; }
+		ParticlePreviewChange previewChange() const { return mPublishedPreviewChange; }
+		bool publishPreviewIfDue(std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now());
+		bool publishPreviewNow();
+		bool previewUpdatePending() const { return mPendingPreview.has_value(); }
+		std::chrono::steady_clock::time_point previewDeadline() const { return mPreviewDeadline; }
 		bool previewPaused() const { return mPreviewPaused; }
 		float previewTimeScale() const { return mPreviewTimeScale; }
 		std::string const& previewFailure() const { return mPreviewFailure; }

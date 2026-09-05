@@ -134,6 +134,7 @@ namespace particle_editor
 				oldResource.reset();
 				mResources->deleteResourceTree(oldName);
 			}
+			++mRebuildCount;
 			if (failure) failure->clear();
 			return true;
 		}
@@ -150,6 +151,38 @@ namespace particle_editor
 			if (failure) *failure = error.what();
 			return false;
 		}
+	}
+
+	bool ParticlePreview::updateLive(mpp::ParticleEffectSpecification const& specification, std::string* failure)
+	{
+		if (!ready())
+		{
+			if (failure) *failure = "The live particle preview is not available.";
+			return false;
+		}
+		auto diagnostics = mpp::ParticleEffectValidator::validate(specification);
+		if (diagnostics.hasErrors())
+		{
+			if (failure) *failure = "The particle effect is invalid.";
+			return false;
+		}
+
+		auto& particles = mRenderSystem->getParticleSystem();
+		for (size_t index = 0; index < specification.emitterTemplates.size(); ++index)
+			if (!particles.getEmitter(mEffect, index))
+			{
+				if (failure) *failure = "The live emitter-template structure no longer matches the document.";
+				return false;
+			}
+		for (size_t index = 0; index < specification.emitterTemplates.size(); ++index)
+		{
+			auto const& emitter = specification.emitterTemplates[index].value;
+			particles.updateEmitterTemplateRuntime(particles.getEmitter(mEffect, index),
+				emitter.simulation, emitter.appearance);
+		}
+		++mLiveUpdateCount;
+		if (failure) failure->clear();
+		return true;
 	}
 
 	void ParticlePreview::resize(uint32_t width, uint32_t height)
@@ -202,6 +235,12 @@ namespace particle_editor
 	mpp::ParticleStats const& ParticlePreview::stats() const
 	{
 		return mRenderSystem->getParticleSystem().getStats();
+	}
+
+	bool ParticlePreview::ready() const
+	{
+		return mInitialised && bool(mEffectResource) &&
+			mRenderSystem->getParticleSystem().isAlive(mEffect);
 	}
 
 	void ParticlePreview::shutdown() noexcept

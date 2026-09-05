@@ -179,6 +179,28 @@ namespace mpp
 		auto rawEffect = system.createEffect(lutTemplates);
 		if (system.mEffectSlots[rawEffect.index].bounds)
 			return fail("raw emitter-span creation unexpectedly acquired particle effect bounds");
+		auto liveEmitter = system.getEmitter(rawEffect, 0u);
+		system.setEmitterTransform(liveEmitter, glm::translate(glm::mat4(1.0f), { 3.0f, 2.0f, 1.0f }));
+		system.setEmitterParameter(liveEmitter, ParticleParameter::AlphaScale, 0.25f);
+		system.mTemplateRenderData[liveEmitter.index].textureAndAtlas[0] = 7u;
+		system.mTemplateRenderData[liveEmitter.index].appearance[3] = 8.0f;
+		auto liveSimulation = lutTemplates[0].simulation;
+		liveSimulation.shapeSeedModulesBudget[0] = uint32_t(ParticleSpawnShape::Cone);
+		liveSimulation.emissionRateAndPadding[0] = 37.0f;
+		auto liveAppearance = lutTemplates[0].appearance;
+		liveAppearance.tintAndAlpha = { 0.2f, 0.3f, 0.4f, 0.5f };
+		liveAppearance.modes[2] = uint32_t(ParticleBillboardMode::VelocityAligned);
+		system.updateEmitterTemplateRuntime(liveEmitter, liveSimulation, liveAppearance);
+		if (system.getEmitter(rawEffect, 0u) != liveEmitter ||
+			system.mEmitters[liveEmitter.index].shapeSeedModulesBudget[0] != uint32_t(ParticleSpawnShape::Cone) ||
+			system.mEmitters[liveEmitter.index].emissionRateAndPadding[0] != 37.0f ||
+			system.mEmitters[liveEmitter.index].transform[12] != 3.0f ||
+			system.mEmitters[liveEmitter.index].parameterMultipliers1[0] != 0.25f ||
+			system.mTemplateRenderData[liveEmitter.index].tintAndAlpha != liveAppearance.tintAndAlpha ||
+			system.mTemplateRenderData[liveEmitter.index].modes[2] != uint32_t(ParticleBillboardMode::VelocityAligned) ||
+			system.mTemplateRenderData[liveEmitter.index].textureAndAtlas[0] != 7u ||
+			system.mTemplateRenderData[liveEmitter.index].appearance[3] != 8.0f)
+			return fail("safe emitter-template edits restarted the emitter or overwrote runtime-owned state");
 		system.destroyEffect(rawEffect);
 		auto boundedRawEffect = system.createEffect(lutTemplates, unitBounds,
 			glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -5.0f }));
