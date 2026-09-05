@@ -18,6 +18,14 @@ module set, one appearance, one blend class, one particle budget, its curves,
 and a transform relative to its particle effect.
 _Avoid_: Emitter definition, emitter config
 
+**Particle effect bounds**:
+An optional authored local-space bounding box, expressed as a center and size,
+that describes the spatial extent of a particle effect. It is transformed with
+each live instance of that particle effect. A particle effect containing child
+particle effects has conservative aggregate bounds only when every participating
+branch is bounded; otherwise it is unbounded.
+_Avoid_: Particle system bounds, emitter bounds
+
 **Emitter**:
 A live instance of one emitter template, addressed by a generational handle.
 Owns a transform and runtime parameter multipliers; the CPU controls it, the GPU
