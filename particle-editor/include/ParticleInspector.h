@@ -6,6 +6,7 @@
 namespace particle_editor
 {
 	class ParticleDocument;
+	class ParticleResourceLibrary;
 
 	class ParticleInspector
 	{
@@ -15,6 +16,6 @@ namespace particle_editor
 		size_t mEditedEmitter{ size_t(-1) };
 
 	public:
-		void draw(ParticleDocument& document);
+		void draw(ParticleDocument& document, ParticleResourceLibrary const& resources);
 	};
 }

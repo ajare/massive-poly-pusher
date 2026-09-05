@@ -1,0 +1,39 @@
+ResourceLibrary:
+  version: 1
+  name: ParticlePreview
+  Resources:
+    Texture:
+      name: Atlas
+      target: 2D
+      filename: ../demo-suite/res/atlas.png
+      colourSpace: SRGB
+      minFilter: LINEAR
+      magFilter: LINEAR
+      wrap: CLAMP_TO_EDGE
+    Model:
+      name: Cube
+      filename: ../demo-suite/res/cube/cube.mppmodel
+    PbrMaterial:
+      name: NeutralMesh
+      MeshSpecification:
+        primitive: triangles
+        indexed: true
+        storage: static
+        Buffer:
+          - data: position3
+            type: float32
+          - data: normal3
+            type: float32
+          - data: texcoord2
+            type: float16
+          - data: colour4
+            type: uint8
+            normalised: true
+          - data: tangent4
+            type: float32
+      Surface:
+        baseColourFactor: 0.72 0.76 0.82 1
+        metallicFactor: 0.05
+        roughnessFactor: 0.65
+        emissiveFactor: 0 0 0
+        alphaMode: OPAQUE

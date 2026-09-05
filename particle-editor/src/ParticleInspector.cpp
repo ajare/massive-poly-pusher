@@ -13,6 +13,7 @@
 #include <imgui/imgui.h>
 
 #include "ParticleDocument.h"
+#include "ParticleResourceLibrary.h"
 
 namespace particle_editor
 {
@@ -43,6 +44,49 @@ namespace particle_editor
 			bool const ended = ImGui::IsItemDeactivatedAfterEdit();
 			if (changed) apply(buffer.data());
 			if (ended) document.endContinuousEdit();
+			return changed;
+		}
+
+		bool resourceValue(ParticleDocument& document, ParticleResourceLibrary const& resources,
+			ParticleResourceKind kind, char const* label, std::string const& current,
+			std::function<void(std::string)> apply)
+		{
+			ImGui::PushID(label);
+			std::array<char, 512> buffer{};
+			std::copy_n(current.data(), std::min(current.size(), buffer.size() - 1u), buffer.data());
+			ImGui::SetNextItemWidth(std::max(80.0f, ImGui::GetContentRegionAvail().x - 34.0f));
+			bool changed = ImGui::InputText("##LogicalName", buffer.data(), buffer.size());
+			bool const ended = ImGui::IsItemDeactivatedAfterEdit();
+			if (changed) apply(buffer.data());
+			if (ended) document.endContinuousEdit();
+			ImGui::SameLine();
+			if (ImGui::BeginCombo("##AvailableResources", "...", ImGuiComboFlags_NoPreview))
+			{
+				if (ImGui::Selectable("<none>", current.empty()))
+				{
+					document.endContinuousEdit();
+					apply({});
+					document.endContinuousEdit();
+					changed = true;
+				}
+				for (auto const& name : resources.names(kind))
+					if (ImGui::Selectable(name.c_str(), current == name))
+					{
+						document.endContinuousEdit();
+						apply(name);
+						document.endContinuousEdit();
+						changed = true;
+					}
+				ImGui::EndCombo();
+			}
+			ImGui::SameLine();
+			ImGui::TextUnformatted(label);
+			if (!current.empty() && !resources.resolves(current, kind))
+			{
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f), "(unresolved or wrong type)");
+			}
+			ImGui::PopID();
 			return changed;
 		}
 
@@ -363,7 +407,7 @@ namespace particle_editor
 		}
 	}
 
-	void ParticleInspector::draw(ParticleDocument& document)
+	void ParticleInspector::draw(ParticleDocument& document, ParticleResourceLibrary const& resources)
 	{
 		if (!ImGui::Begin("Particle Effect"))
 		{
@@ -468,6 +512,7 @@ namespace particle_editor
 		auto const& authored = effect.emitterTemplates[emitterIndex];
 		auto const& simulation = authored.value.simulation;
 		auto const& appearance = authored.value.appearance;
+		auto const& lighting = authored.value.lighting;
 		if (textValue(document, "Emitter name", "Rename emitter template", authored.name,
 			[&](std::string name) { document.renameEmitterTemplate(emitterIndex, std::move(name), true); }))
 		{
@@ -831,15 +876,15 @@ namespace particle_editor
 
 		if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if (textValue(document, "Texture resource", "Change billboard texture", authored.albedoTexture,
-				[&](std::string texture)
+			if (resourceValue(document, resources, ParticleResourceKind::Texture, "Texture resource",
+				authored.albedoTexture, [&](std::string texture)
 				{
 					document.executeEdit("Change billboard texture", [emitterIndex, texture = std::move(texture)](auto& value)
 						{ value.emitterTemplates[emitterIndex].albedoTexture = texture; }, true,
 						ParticlePreviewChange::Structural);
 				}))
 			{ ImGui::End(); return; }
-			ImGui::TextDisabled("Use an MPP logical resource name; empty uses the white fallback.");
+			ImGui::TextDisabled("Choose an MPP logical name; empty uses the renderer-owned white fallback.");
 
 			std::array<float, 3> tint{ appearance.tintAndAlpha[0], appearance.tintAndAlpha[1], appearance.tintAndAlpha[2] };
 			if (editValue(document, "Change billboard tint", tint,
@@ -869,14 +914,70 @@ namespace particle_editor
 					{ value.emitterTemplates[emitterIndex].value.appearance.appearance[1] = edited; }))
 			{ ImGui::End(); return; }
 
+			std::array<uint32_t, 2> atlas{ appearance.textureAndAtlas[2], appearance.textureAndAtlas[3] };
+			if (editValue(document, "Change atlas dimensions", atlas,
+				[](auto& value) { return ImGui::InputScalarN("Atlas columns / rows", ImGuiDataType_U32, value.data(), 2); },
+				[emitterIndex](auto& value, auto const& edited)
+				{
+					value.emitterTemplates[emitterIndex].value.appearance.textureAndAtlas[2] = edited[0];
+					value.emitterTemplates[emitterIndex].value.appearance.textureAndAtlas[3] = edited[1];
+				}))
+			{ ImGui::End(); return; }
+			uint32_t frameCount = appearance.modes[0];
+			if (editValue(document, "Change atlas frame count", frameCount,
+				[](uint32_t& value) { return ImGui::InputScalar("Frame count", ImGuiDataType_U32, &value); },
+				[emitterIndex](auto& value, uint32_t edited)
+					{ value.emitterTemplates[emitterIndex].value.appearance.modes[0] = edited; }))
+			{ ImGui::End(); return; }
+			static constexpr char const* playbackModes[]{ "None", "Frame over life", "Fixed rate" };
+			int playback = int(appearance.modes[1] & mpp::ParticleTexturePlaybackMask);
+			if (ImGui::Combo("Playback", &playback, playbackModes, int(std::size(playbackModes))))
+			{
+				document.executeEdit("Change atlas playback", [emitterIndex, playback](auto& value)
+				{
+					auto& mode = value.emitterTemplates[emitterIndex].value.appearance.modes[1];
+					mode = (mode & mpp::ParticleTextureRandomStartBit) | uint32_t(playback);
+				}, false, ParticlePreviewChange::Live);
+				ImGui::End(); return;
+			}
+			bool randomStart = (appearance.modes[1] & mpp::ParticleTextureRandomStartBit) != 0u;
+			if (editValue(document, "Toggle random atlas start", randomStart,
+				[](bool& value) { return ImGui::Checkbox("Random start frame", &value); },
+				[emitterIndex](auto& value, bool edited)
+				{
+					auto& mode = value.emitterTemplates[emitterIndex].value.appearance.modes[1];
+					if (edited) mode |= mpp::ParticleTextureRandomStartBit;
+					else mode &= ~mpp::ParticleTextureRandomStartBit;
+				}, ParticlePreviewChange::Live, false))
+			{ ImGui::End(); return; }
+			float animationRate = appearance.appearance[2];
+			if (editValue(document, "Change atlas playback rate", animationRate,
+				[](float& value) { return ImGui::DragFloat("Playback rate", &value, 0.05f, 0.0f, 100000.0f, "%.3g frames / s"); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.appearance.appearance[2] = edited; }))
+			{ ImGui::End(); return; }
+
+			float maximumDistance = appearance.culling[0];
+			if (editValue(document, "Change maximum draw distance", maximumDistance,
+				[](float& value) { return ImGui::DragFloat("Maximum draw distance", &value, 0.1f, 0.0f, 1000000.0f); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.appearance.culling[0] = edited; }))
+			{ ImGui::End(); return; }
+			float projectedSize = appearance.culling[1];
+			if (editValue(document, "Change minimum projected size", projectedSize,
+				[](float& value) { return ImGui::DragFloat("Minimum projected diameter", &value, 0.05f, 0.0f, 100000.0f, "%.3g px"); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.appearance.culling[1] = edited; }))
+			{ ImGui::End(); return; }
+			ImGui::TextDisabled("A zero culling threshold disables that test.");
+
 			int billboard = int(appearance.modes[2]);
 			if (ImGui::Combo("Billboard", &billboard, billboards, int(std::size(billboards))))
 			{
 				document.executeEdit("Change billboard mode", [emitterIndex, billboard](auto& value)
 					{ value.emitterTemplates[emitterIndex].value.appearance.modes[2] = uint32_t(billboard); },
 					false, ParticlePreviewChange::Live);
-				ImGui::End();
-				return;
+				ImGui::End(); return;
 			}
 			int blend = int(appearance.modes[3]);
 			if (ImGui::Combo("Blend class", &blend, blends, int(std::size(blends))))
@@ -884,8 +985,7 @@ namespace particle_editor
 				document.executeEdit("Change blend class", [emitterIndex, blend](auto& value)
 					{ value.emitterTemplates[emitterIndex].value.appearance.modes[3] = uint32_t(blend); },
 					false, ParticlePreviewChange::Structural);
-				ImGui::End();
-				return;
+				ImGui::End(); return;
 			}
 			bool depthSort = appearance.sorting[0] == uint32_t(mpp::ParticleSortMode::BackToFront);
 			if (editValue(document, "Toggle depth sorting", depthSort,
@@ -898,6 +998,116 @@ namespace particle_editor
 			{ ImGui::End(); return; }
 			if (appearance.modes[3] != uint32_t(mpp::ParticleBlendClass::Alpha))
 				ImGui::TextDisabled("Depth sorting is applied only to the Alpha blend class.");
+
+			bool distortion = appearance.sorting[2] != 0u;
+			if (editValue(document, "Toggle particle distortion", distortion,
+				[](bool& value) { return ImGui::Checkbox("Distortion output", &value); },
+				[emitterIndex](auto& value, bool edited)
+					{ value.emitterTemplates[emitterIndex].value.appearance.sorting[2] = edited ? 1u : 0u; },
+				ParticlePreviewChange::Live, false))
+			{ ImGui::End(); return; }
+			float distortionStrength = appearance.culling[3];
+			if (editValue(document, "Change distortion strength", distortionStrength,
+				[](float& value) { return ImGui::DragFloat("Distortion strength", &value, 0.0005f, 0.0f, 10.0f, "%.5g UV"); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.appearance.culling[3] = edited; }))
+			{ ImGui::End(); return; }
+			ImGui::TextDisabled("Distortion is billboard-only; zero strength disables its graph contribution.");
+		}
+
+		if (ImGui::CollapsingHeader("Mesh"))
+		{
+			if (resourceValue(document, resources, ParticleResourceKind::Model, "Model resource",
+				authored.meshModel, [&](std::string model)
+				{
+					document.executeEdit("Change mesh-particle model", [emitterIndex, model = std::move(model)](auto& value)
+					{
+						auto& target = value.emitterTemplates[emitterIndex];
+						target.meshModel = model;
+						target.value.appearance.sorting[1] = uint32_t(model.empty() ?
+							mpp::ParticleRenderMode::Billboard : mpp::ParticleRenderMode::Mesh);
+						if (model.empty()) target.meshMaterial.clear();
+					}, true, ParticlePreviewChange::Structural);
+				}))
+			{ ImGui::End(); return; }
+			if (!authored.meshModel.empty())
+			{
+				if (resourceValue(document, resources, ParticleResourceKind::Material, "Material override",
+					authored.meshMaterial, [&](std::string material)
+					{
+						document.executeEdit("Change mesh-particle material", [emitterIndex, material = std::move(material)](auto& value)
+							{ value.emitterTemplates[emitterIndex].meshMaterial = material; }, true,
+							ParticlePreviewChange::Structural);
+					}))
+				{ ImGui::End(); return; }
+				ImGui::TextDisabled("Empty keeps each model mesh's embedded ordinary Material.");
+			}
+			else ImGui::TextDisabled("Select a Model to use the dedicated mesh-particle pass; empty renders a billboard.");
+		}
+
+		if (ImGui::CollapsingHeader("Lighting"))
+		{
+			auto const flags = lighting.flagsAndPadding[0];
+			auto toggleLighting = [&](mpp::ParticleLightingFlag flag, char const* label, char const* command)
+			{
+				bool enabled = (flags & uint32_t(flag)) != 0u;
+				if (!ImGui::Checkbox(label, &enabled)) return false;
+				document.executeEdit(command, [emitterIndex, flag, enabled](auto& value)
+				{
+					auto& edited = value.emitterTemplates[emitterIndex].value.lighting.flagsAndPadding[0];
+					if (enabled) edited |= uint32_t(flag); else edited &= ~uint32_t(flag);
+					if (flag == mpp::ParticleLightingFlag::ProxyLight && !enabled)
+						edited &= ~uint32_t(mpp::ParticleLightingFlag::PbrLightInjection);
+				}, false, ParticlePreviewChange::Structural);
+				return true;
+			};
+			if (toggleLighting(mpp::ParticleLightingFlag::ProxyLight, "Particle proxy light", "Toggle particle proxy light"))
+			{ ImGui::End(); return; }
+			bool const proxy = (flags & uint32_t(mpp::ParticleLightingFlag::ProxyLight)) != 0u;
+			ImGui::BeginDisabled(!proxy);
+			if (toggleLighting(mpp::ParticleLightingFlag::PbrLightInjection, "Inject into PBR lights", "Toggle PBR light injection"))
+			{ ImGui::EndDisabled(); ImGui::End(); return; }
+			ImGui::EndDisabled();
+			if (!proxy) ImGui::TextDisabled("PBR light injection requires a particle proxy light.");
+			if (toggleLighting(mpp::ParticleLightingFlag::VolumetricContribution,
+				"Volumetric contribution", "Toggle particle volumetric contribution"))
+			{ ImGui::End(); return; }
+
+			bool const anyLighting = flags != 0u;
+			ImGui::BeginDisabled(!anyLighting);
+			std::array<float, 3> colour{ lighting.colourAndIntensity[0], lighting.colourAndIntensity[1],
+				lighting.colourAndIntensity[2] };
+			if (editValue(document, "Change particle lighting colour", colour,
+				[](auto& value) { return ImGui::ColorEdit3("Radiance colour", value.data(), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR); },
+				[emitterIndex](auto& value, auto const& edited)
+				{
+					auto& target = value.emitterTemplates[emitterIndex].value.lighting.colourAndIntensity;
+					std::copy(edited.begin(), edited.end(), target.begin());
+				}, ParticlePreviewChange::Structural))
+			{ ImGui::EndDisabled(); ImGui::End(); return; }
+			float intensity = lighting.colourAndIntensity[3];
+			if (editValue(document, "Change particle lighting intensity", intensity,
+				[](float& value) { return ImGui::DragFloat("Direct intensity", &value, 0.05f, 0.0f, 1000000.0f); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.lighting.colourAndIntensity[3] = edited; },
+				ParticlePreviewChange::Structural))
+			{ ImGui::EndDisabled(); ImGui::End(); return; }
+			float range = lighting.rangeAndVolumetric[0];
+			if (editValue(document, "Change particle lighting range", range,
+				[](float& value) { return ImGui::DragFloat("Range", &value, 0.05f, 0.0001f, 1000000.0f, "%.4g", ImGuiSliderFlags_AlwaysClamp); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.lighting.rangeAndVolumetric[0] = edited; },
+				ParticlePreviewChange::Structural))
+			{ ImGui::EndDisabled(); ImGui::End(); return; }
+			float volumetricIntensity = lighting.rangeAndVolumetric[1];
+			if (editValue(document, "Change particle volumetric intensity", volumetricIntensity,
+				[](float& value) { return ImGui::DragFloat("Volumetric intensity", &value, 0.01f, 0.0f, 1000000.0f); },
+				[emitterIndex](auto& value, float edited)
+					{ value.emitterTemplates[emitterIndex].value.lighting.rangeAndVolumetric[1] = edited; },
+				ParticlePreviewChange::Structural))
+			{ ImGui::EndDisabled(); ImGui::End(); return; }
+			ImGui::EndDisabled();
+			ImGui::TextDisabled("Lighting is bounded to at most one proxy light and one volume per live Emitter.");
 		}
 
 		if (ImGui::CollapsingHeader("Curves", ImGuiTreeNodeFlags_DefaultOpen))

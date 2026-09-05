@@ -22,7 +22,6 @@
 #include <mpp/PbrMaterialSpecification.h>
 #include <mpp/PbrLight.h>
 #include <mpp/ProgrammaticBasicMaterialStream.h>
-#include <mpp/ProgrammaticParticleEffectStream.h>
 #include <mpp/ProgrammaticPbrMaterialStream.h>
 #include <mpp/ProgrammaticRenderTextureStream.h>
 #include <mpp/ProgrammaticTextureStream.h>
@@ -35,7 +34,10 @@
 #include <mpp/SceneModel3d.h>
 #include <mpp/Texture.h>
 #include <mpp/TextureData.h>
+#include <mpp/resource-parsers/FileParticleEffectStream.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
+#include <mpp/resource-parsers/FileStream.h>
+#include <mpp/resource-parsers/ParticleEffectSerializer.h>
 #include <mpp/mesh/MeshSpecification.h>
 #include <mpp/mesh/Vertex.h>
 
@@ -488,8 +490,18 @@ namespace particle_editor
 		mpp::ParticleEffectHandle candidateEffect;
 		try
 		{
-			auto stream = std::make_shared<mpp::ProgrammaticParticleEffectStream>(mResources);
-			stream->setSpecification(specification);
+			// Exercise the same canonical YAML -> file stream -> ParticleEffect resource
+			// path used by production applications. The in-memory StructuredData copy
+			// lets the temporary serialized file be removed immediately.
+			auto temporary = std::filesystem::temp_directory_path() /
+				(candidateName + ".particle.yaml");
+			mpp::resource_parsers::ParticleEffectSerializer::toFile(specification, temporary.string());
+			mpp::resource_parsers::FileStream serialized(temporary.string());
+			auto data = serialized.getStructuredData();
+			auto stream = std::make_shared<mpp::resource_parsers::FileParticleEffectStream>(
+				mResources, temporary.string(), data);
+			std::error_code ignored;
+			std::filesystem::remove(temporary, ignored);
 			candidate = mResources->declareResource(candidateName, stream).first;
 			candidate->load();
 			candidateEffect = mRenderSystem->getParticleSystem().createEffect(candidate);

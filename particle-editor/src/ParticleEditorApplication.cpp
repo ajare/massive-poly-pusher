@@ -36,6 +36,7 @@
 #include "ParticleInspector.h"
 #include "ParticlePreview.h"
 #include "ParticlePreviewPreferences.h"
+#include "ParticleResourceLibrary.h"
 
 namespace particle_editor
 {
@@ -53,10 +54,17 @@ namespace particle_editor
 			return value.substr(first, value.find_last_not_of(" \t\r\n") - first + 1);
 		}
 
-		std::filesystem::path resourceRoot(std::filesystem::path const& iniPath)
+		struct EditorConfiguration
+		{
+			std::filesystem::path resourceRoot;
+			std::filesystem::path resourceLibrary;
+		};
+
+		EditorConfiguration editorConfiguration(std::filesystem::path const& iniPath)
 		{
 			std::ifstream input(iniPath);
 			if (!input) throw std::runtime_error("Could not open Particle Editor configuration '" + iniPath.string() + "'.");
+			EditorConfiguration result;
 			std::string section;
 			for (std::string line; std::getline(input, line);)
 			{
@@ -68,18 +76,19 @@ namespace particle_editor
 					continue;
 				}
 				auto separator = line.find('=');
-				if (section == "Editor" && separator != std::string::npos &&
-					trim(line.substr(0, separator)) == "resourcesLocation")
-				{
-					auto path = std::filesystem::path(trim(line.substr(separator + 1)));
-					if (path.is_relative()) path = iniPath.parent_path() / path;
-					path = std::filesystem::weakly_canonical(path);
-					if (!std::filesystem::is_directory(path))
-						throw std::runtime_error("Configured Particle Editor resource directory does not exist: " + path.string());
-					return path;
-				}
+				if (section != "Editor" || separator == std::string::npos) continue;
+				auto key = trim(line.substr(0, separator));
+				auto value = std::filesystem::path(trim(line.substr(separator + 1)));
+				if (key == "resourcesLocation" || key == "resourceRoot") result.resourceRoot = std::move(value);
+				else if (key == "resourceLibrary") result.resourceLibrary = std::move(value);
 			}
-			throw std::runtime_error("particle-editor.ini does not define [Editor] resourcesLocation.");
+			if (result.resourceRoot.empty())
+				throw std::runtime_error("particle-editor.ini does not define [Editor] resourceRoot/resourcesLocation.");
+			if (result.resourceRoot.is_relative()) result.resourceRoot = iniPath.parent_path() / result.resourceRoot;
+			result.resourceRoot = std::filesystem::weakly_canonical(result.resourceRoot);
+			if (!std::filesystem::is_directory(result.resourceRoot))
+				throw std::runtime_error("Configured Particle Editor resource root does not exist: " + result.resourceRoot.string());
+			return result;
 		}
 
 		void showFatal(std::string const& message)
@@ -126,7 +135,7 @@ namespace particle_editor
 				std::string argument = argv[index];
 				if (argument == "--help" || argument == "-h")
 				{
-					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
+					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --resource-tests                   Run editor resource-library tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
 					return 0;
 				}
 				if (argument == "--document-tests")
@@ -151,6 +160,17 @@ namespace particle_editor
 					std::fprintf(stderr, "Particle Editor preview tests passed.\n");
 					return 0;
 				}
+				if (argument == "--resource-tests")
+				{
+					std::string failure;
+					if (!runParticleResourceLibraryTests(&failure))
+					{
+						std::fprintf(stderr, "Particle Editor resource tests failed: %s\n", failure.c_str());
+						return 1;
+					}
+					std::fprintf(stderr, "Particle Editor resource tests passed.\n");
+					return 0;
+				}
 				if (!argument.starts_with("--")) startupPath = argument;
 			}
 
@@ -163,7 +183,8 @@ namespace particle_editor
 			auto const* sdlBasePath = SDL_GetBasePath();
 			if (!sdlBasePath || !*sdlBasePath) throw std::runtime_error("SDL could not determine the Particle Editor executable directory.");
 			auto iniPath = std::filesystem::path(sdlBasePath) / "particle-editor.ini";
-			auto resourcesPath = resourceRoot(iniPath);
+			auto editorConfig = editorConfiguration(iniPath);
+			auto const& resourcesPath = editorConfig.resourceRoot;
 			auto options = mpp::app::loadRenderSystemOptions(iniPath);
 			char* preferenceRoot = SDL_GetPrefPath("ajare", "ParticleEditor");
 			if (!preferenceRoot) throw std::runtime_error("SDL could not determine the Particle Editor preferences directory.");
@@ -188,6 +209,12 @@ namespace particle_editor
 			resourceManager = std::make_unique<mpp::ResourceManager>(&renderSystem, &logger);
 			resourceManager->setImageLoadFunction(mpp::app::loadImageFile);
 			renderSystem.createCoreResources(resourceManager.get());
+			ParticleResourceLibrary particleResources(resourceManager.get());
+			if (editorConfig.resourceLibrary.empty())
+				startupFailure = "No [Editor] resourceLibrary is configured; particle resource selectors are empty.";
+			else if (!particleResources.reload(editorConfig.resourceRoot, editorConfig.resourceLibrary))
+				startupFailure = "The configured particle resource library has errors; see Diagnostics.";
+			diagnostics.setOperationFailure(startupFailure);
 
 			ImGuiBackendData backend{};
 			imGuiSetup(&renderSystem, resourceManager.get(), &backend, true);
@@ -570,13 +597,17 @@ namespace particle_editor
 				ImGui::End();
 
 				active = documents.active();
-				if (active) inspector.draw(*active);
+				if (active) inspector.draw(*active, particleResources);
 				else { ImGui::Begin("Particle Effect"); ImGui::TextDisabled("No particle effect is open."); ImGui::End(); }
 
 				active = documents.active();
 				if (active)
 				{
-					diagnostics.setDocumentDiagnostics(active->diagnostics());
+					auto combinedDiagnostics = active->diagnostics();
+					combinedDiagnostics.append(particleResources.diagnostics());
+					combinedDiagnostics.append(particleResources.referenceDiagnostics(
+						active->specification(), active->path().string()));
+					diagnostics.setDocumentDiagnostics(combinedDiagnostics);
 					auto previewFailure = active->previewFailure();
 					if (!preview.graphFailure().empty())
 					{
@@ -588,7 +619,7 @@ namespace particle_editor
 				}
 				else
 				{
-					diagnostics.setDocumentDiagnostics({});
+					diagnostics.setDocumentDiagnostics(particleResources.diagnostics());
 					diagnostics.setPreviewFailure(preview.graphFailure());
 					diagnostics.setPreviewWarnings(preview.inputWarnings());
 				}

@@ -196,6 +196,11 @@ namespace mpp
 			auto const lightingPath = path + "/Lighting";
 			auto const& lighting = emitter.lighting;
 			auto const lightingFlags = lighting.flagsAndPadding[0];
+			constexpr uint32_t knownLightingFlags = uint32_t(ParticleLightingFlag::ProxyLight) |
+				uint32_t(ParticleLightingFlag::PbrLightInjection) |
+				uint32_t(ParticleLightingFlag::VolumetricContribution);
+			if ((lightingFlags & ~knownLightingFlags) != 0u)
+				error("MPP-PARTICLE-018", "Particle lighting contains unrecognized flags.", lightingPath);
 			bool const proxy = (lightingFlags & uint32_t(ParticleLightingFlag::ProxyLight)) != 0u;
 			bool const injection = (lightingFlags & uint32_t(ParticleLightingFlag::PbrLightInjection)) != 0u;
 			bool const volumetric = (lightingFlags & uint32_t(ParticleLightingFlag::VolumetricContribution)) != 0u;
@@ -203,7 +208,8 @@ namespace mpp
 				error("MPP-PARTICLE-018", "Particle light injection requires proxyLight: true.", lightingPath + "/lightInjection");
 			if ((proxy || injection || volumetric) && lighting.rangeAndVolumetric[0] <= 0.0f)
 				error("MPP-PARTICLE-018", "Enabled particle lighting requires a positive range.", lightingPath + "/range");
-			if (lighting.colourAndIntensity[0] < 0.0f || lighting.colourAndIntensity[1] < 0.0f ||
+			if (!finite(lighting.colourAndIntensity) || !finite(lighting.rangeAndVolumetric) ||
+				lighting.colourAndIntensity[0] < 0.0f || lighting.colourAndIntensity[1] < 0.0f ||
 				lighting.colourAndIntensity[2] < 0.0f || lighting.colourAndIntensity[3] < 0.0f ||
 				lighting.rangeAndVolumetric[1] < 0.0f)
 			{
@@ -222,10 +228,17 @@ namespace mpp
 				appearance.appearance[1] < 0.0f || appearance.appearance[2] < 0.0f ||
 				appearance.culling[0] < 0.0f || appearance.culling[1] < 0.0f || appearance.culling[3] < 0.0f)
 				error("MPP-PARTICLE-011", "Particle appearance values must be finite and non-negative where required.", appearancePath);
-			if (appearance.modes[2] > uint32_t(ParticleBillboardMode::VelocityStretched) ||
+			auto const animationBits = appearance.modes[1];
+			auto const playback = animationBits & ParticleTexturePlaybackMask;
+			if (playback > uint32_t(ParticleTextureAnimation::FixedRate) ||
+				(animationBits & ~(ParticleTexturePlaybackMask | ParticleTextureRandomStartBit)) != 0u ||
+				appearance.modes[2] > uint32_t(ParticleBillboardMode::VelocityStretched) ||
 				appearance.modes[3] > uint32_t(ParticleBlendClass::WeightedOit) ||
-				appearance.sorting[0] > uint32_t(ParticleSortMode::BackToFront))
-				error("MPP-PARTICLE-011", "Particle billboard, blend-class, and sorting values must be recognized.", appearancePath);
+				appearance.sorting[0] > uint32_t(ParticleSortMode::BackToFront) ||
+				appearance.sorting[1] > uint32_t(ParticleRenderMode::Mesh) || appearance.sorting[2] > 1u)
+				error("MPP-PARTICLE-011", "Particle animation, billboard, blend-class, render, distortion, and sorting values must be recognized.", appearancePath);
+			if (authored.meshModel.empty() && !authored.meshMaterial.empty())
+				error("MPP-PARTICLE-011", "A mesh material override requires a mesh model.", path + "/Mesh/material");
 		}
 
 		if (specification.emitterTemplates.empty() && specification.childEffects.empty())

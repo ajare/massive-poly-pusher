@@ -570,7 +570,8 @@ add_executable(ParticleEditor
     particle-editor/src/ParticleEditorApplication.cpp
     particle-editor/src/ParticleInspector.cpp
     particle-editor/src/ParticlePreview.cpp
-    particle-editor/src/ParticlePreviewPreferences.cpp)
+    particle-editor/src/ParticlePreviewPreferences.cpp
+    particle-editor/src/ParticleResourceLibrary.cpp)
 target_include_directories(ParticleEditor PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/particle-editor/include")
 target_link_libraries(ParticleEditor PRIVATE

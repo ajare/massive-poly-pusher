@@ -769,13 +769,22 @@ namespace particle_editor
 				simulation.colourMax = { 0.6f, 0.7f, 0.8f, 0.9f };
 				simulation.lifetimeSizeRanges = { 0.5f, 4.0f, 0.05f, 1.5f };
 				simulation.rotationRanges = { -2.0f, 2.0f, -5.0f, 5.0f };
-				authored.albedoTexture = "Textures/Particles/Glow";
+				authored.albedoTexture = "MissingLibrary::Glow";
+				authored.meshModel = "MissingLibrary::Debris";
+				authored.meshMaterial = "MissingLibrary::DebrisOverride";
+				appearance.textureAndAtlas = { 0u, 0u, 4u, 2u };
 				appearance.tintAndAlpha = { 1.5f, 0.75f, 0.25f, 0.65f };
-				appearance.appearance[0] = 4.5f;
-				appearance.appearance[1] = 0.35f;
-				appearance.modes[2] = uint32_t(mpp::ParticleBillboardMode::VelocityStretched);
-				appearance.modes[3] = uint32_t(mpp::ParticleBlendClass::Alpha);
-				appearance.sorting[0] = uint32_t(mpp::ParticleSortMode::BackToFront);
+				appearance.appearance = { 4.5f, 0.35f, 12.0f, 0.0f };
+				appearance.modes = { 7u, uint32_t(mpp::ParticleTextureAnimation::FixedRate) |
+					mpp::ParticleTextureRandomStartBit, uint32_t(mpp::ParticleBillboardMode::VelocityStretched),
+					uint32_t(mpp::ParticleBlendClass::Alpha) };
+				appearance.culling = { 275.0f, 1.25f, 0.0f, 0.04f };
+				appearance.sorting = { uint32_t(mpp::ParticleSortMode::BackToFront),
+					uint32_t(mpp::ParticleRenderMode::Mesh), 1u, 0u };
+				authored.value.lighting.colourAndIntensity = { 1.0f, 0.3f, 0.1f, 9.0f };
+				authored.value.lighting.rangeAndVolumetric = { 4.0f, 0.2f, 0.0f, 0.0f };
+				authored.value.lighting.flagsAndPadding[0] = uint32_t(mpp::ParticleLightingFlag::ProxyLight |
+					mpp::ParticleLightingFlag::PbrLightInjection | mpp::ParticleLightingFlag::VolumetricContribution);
 			});
 			if (!properties.undo() || properties.specification().maximumParticleCount != 1024u ||
 				!properties.redo() || properties.specification().maximumParticleCount != 333u)
@@ -790,6 +799,7 @@ namespace particle_editor
 			auto const& propertyEmitter = restoredProperties.specification().emitterTemplates[0];
 			auto const& propertySimulation = propertyEmitter.value.simulation;
 			auto const& propertyAppearance = propertyEmitter.value.appearance;
+			auto const& propertyLighting = propertyEmitter.value.lighting;
 			if (propertySimulation.shapeSeedModulesBudget != std::array<uint32_t, 4>{ 6u, 987u, 0u, 333u } ||
 				propertySimulation.shapeParameters != std::array<float, 4>{ 1.25f, 2.5f, 0.0f, 0.0f } ||
 				propertySimulation.emissionState[0] != 1u || propertySimulation.emissionState[1] != 0u ||
@@ -798,13 +808,26 @@ namespace particle_editor
 				propertySimulation.colourMax != std::array<float, 4>{ 0.6f, 0.7f, 0.8f, 0.9f } ||
 				propertySimulation.lifetimeSizeRanges != std::array<float, 4>{ 0.5f, 4.0f, 0.05f, 1.5f } ||
 				propertySimulation.rotationRanges != std::array<float, 4>{ -2.0f, 2.0f, -5.0f, 5.0f } ||
-				propertyEmitter.albedoTexture != "Textures/Particles/Glow" ||
+				propertyEmitter.albedoTexture != "MissingLibrary::Glow" ||
+				propertyEmitter.meshModel != "MissingLibrary::Debris" ||
+				propertyEmitter.meshMaterial != "MissingLibrary::DebrisOverride" ||
+				propertyAppearance.textureAndAtlas[2] != 4u || propertyAppearance.textureAndAtlas[3] != 2u ||
 				propertyAppearance.tintAndAlpha != std::array<float, 4>{ 1.5f, 0.75f, 0.25f, 0.65f } ||
 				propertyAppearance.appearance[0] != 4.5f || propertyAppearance.appearance[1] != 0.35f ||
+				propertyAppearance.appearance[2] != 12.0f ||
+				propertyAppearance.modes[0] != 7u ||
+				propertyAppearance.modes[1] != (uint32_t(mpp::ParticleTextureAnimation::FixedRate) |
+					mpp::ParticleTextureRandomStartBit) ||
 				propertyAppearance.modes[2] != uint32_t(mpp::ParticleBillboardMode::VelocityStretched) ||
 				propertyAppearance.modes[3] != uint32_t(mpp::ParticleBlendClass::Alpha) ||
-				propertyAppearance.sorting[0] != uint32_t(mpp::ParticleSortMode::BackToFront))
-				return fail("spawn and core billboard appearance properties did not round-trip through canonical YAML");
+				propertyAppearance.culling != std::array<float, 4>{ 275.0f, 1.25f, 0.0f, 0.04f } ||
+				propertyAppearance.sorting != std::array<uint32_t, 4>{ uint32_t(mpp::ParticleSortMode::BackToFront),
+					uint32_t(mpp::ParticleRenderMode::Mesh), 1u, 0u } ||
+				propertyLighting.colourAndIntensity != std::array<float, 4>{ 1.0f, 0.3f, 0.1f, 9.0f } ||
+				propertyLighting.rangeAndVolumetric != std::array<float, 4>{ 4.0f, 0.2f, 0.0f, 0.0f } ||
+				propertyLighting.flagsAndPadding[0] != uint32_t(mpp::ParticleLightingFlag::ProxyLight |
+					mpp::ParticleLightingFlag::PbrLightInjection | mpp::ParticleLightingFlag::VolumetricContribution))
+				return fail("resource-backed appearance, mesh, and bounded lighting did not round-trip through canonical YAML");
 
 			ParticleDocument behaviours;
 			behaviours.executeEdit("Author all behaviour modules", [](auto& effect)
