@@ -120,10 +120,31 @@ Screen-space collision samples the last completed depth image supplied to an `MP
 
 Install one optional 3D signed-distance texture with `ParticleSystem::setSignedDistanceField`. Its transform maps world coordinates to `[0,1]^3`; red stores signed distance as `(red - isoValue) * distanceScale`. Sampling outside the texture domain does not collide. Use linear filtering and clamp-to-edge wrapping for stable gradients.
 
+## Particle lighting
+
+Lighting is authored per emitter template and is disabled by default:
+
+```yaml
+      Lighting:
+        proxyLight: true
+        lightInjection: true
+        volumetricLighting: true
+        colour: 1 0.35 0.08
+        intensity: 8
+        range: 3
+        volumetricIntensity: 0.2
+```
+
+`proxyLight` exposes one point-light representation for each live Emitter through `ParticleSystem::getProxyLights`; its position follows the Emitter transform. `lightInjection` opts that proxy into the renderer's PBR light array. Scene-authored lights have priority, and proxies fill only the remaining slots in the fixed eight-light budget in emitter-index order. It therefore never creates a dynamic light per Particle. `lightInjection` requires `proxyLight: true`.
+
+`volumetricLighting` opts the same Emitter-sized sphere into the additive `MPP.ParticleVolumetricLighting` graph pass. The pass integrates inscattered radiance through the sphere, clips the path against optional `DEPTH`, and writes HDR colour plus an optional emissive/bloom output. `volumetricIntensity` scales this contribution independently of direct lighting; `colour`, `intensity`, and positive world-space `range` are shared. Generated graph pipelines include this pass. Authored graphs should use additive one/one blending, disable depth writes, and place it after opaque depth is available.
+
+Stopped, hidden, destroyed, and retired Emitters contribute neither proxy nor volumetric lighting. `ParticleParameter::EmissiveScale` scales both direct and volumetric intensity. Particle count never affects proxy count or the volumetric draw count.
+
 ## Particle events
 
 An emitter template's optional `Events` list contains repeated `Event` records. `trigger` is `spawn`, `death`, `collision`, or `age`. Spawn fires only after successful GPU allocation, death covers both lifetime expiry and collision kill, collision fires on first contact rather than every frame of sustained contact, and age fires once when the particle crosses the required non-negative `age` in seconds. An age of zero fires with the successful spawn.
 
 Actions are `secondaryParticleBurst`, `decal`, `audio`, `light`, and `gameplayCallback`. A secondary particle burst requires `targetEmitter` (an emitter-template name in this particle effect) and a positive `count`. It allocates and initializes particles directly on the GPU at the event's world position; no particle count, event, or spawn command crosses the CPU. Configure a target used only by events with `Spawn.enabled: false`; its normal template budget still clamps all live particles. Destroying a target emitter invalidates inbound events immediately, including queued work, rather than allowing a reused emitter slot to receive them. Secondary-burst target graphs must be acyclic, and a same-frame spawn-triggered chain may be no deeper than eight stages. This is intra-effect event routing, not the child particle effect asset composition deferred to #38.
 
-The other actions carry an optional unsigned `payload` interpreted by application code. Callback records include event position and age, particle velocity and lifetime, a collision contact normal (zero for other triggers), and the generational source-emitter identity. Register handlers with `ParticleSystem::setEventCallback` for `Decal`, `Audio`, `Light`, or `GameplayCallback`. The first handler lazily enables a four-slot staging/fence ring; completed GPU event batches are polled with zero timeout after at least two frames, and a busy ring drops a readback sample instead of stalling rendering. Clearing the last handler removes all event readback. Callbacks run from the next `ParticleSystem::simulate` that finds a completed batch. A `Light` action is a notification for an application-owned proxy light, not per-particle volumetric injection (#37).
+The other actions carry an optional unsigned `payload` interpreted by application code. Callback records include event position and age, particle velocity and lifetime, a collision contact normal (zero for other triggers), and the generational source-emitter identity. Register handlers with `ParticleSystem::setEventCallback` for `Decal`, `Audio`, `Light`, or `GameplayCallback`. The first handler lazily enables a four-slot staging/fence ring; completed GPU event batches are polled with zero timeout after at least two frames, and a busy ring drops a readback sample instead of stalling rendering. Clearing the last handler removes all event readback. Callbacks run from the next `ParticleSystem::simulate` that finds a completed batch. A `Light` action remains a notification for application-owned transient work; authored emitter-level proxy lights and volumetric contributions use the `Lighting` block instead.

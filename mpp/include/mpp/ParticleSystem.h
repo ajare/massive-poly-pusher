@@ -15,6 +15,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/ParticleData.h"
+#include "mpp/PbrLight.h"
 #include "mpp/Resource.h"
 
 namespace mpp
@@ -82,6 +83,13 @@ namespace mpp
 		auto operator<=>(ParticleEffectHandle const&) const = default;
 	};
 
+	struct _MPPAPI ParticleProxyLight
+	{
+		ParticleEmitterHandle emitter;
+		PbrLight light;
+		bool injectedIntoPbr{ false };
+	};
+
 	// Runtime form of one authored emitter template. Asset implementations copy
 	// their authored values into this structure; ParticleSystem then owns each
 	// live emitter's mutable copy.
@@ -89,6 +97,7 @@ namespace mpp
 	{
 		EmitterSimData simulation{};
 		TemplateRenderData appearance{};
+		ParticleEmitterLighting lighting{};
 		// The atlas resource belongs to the emitter template. ParticleSystem turns
 		// it into the bindless handle stored in appearance at upload time.
 		ResourcePtr albedoTexture;
@@ -144,7 +153,7 @@ namespace mpp
 		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mEventPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
 		ResourcePtr mEventProcessProgram, mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
 		ResourcePtr mSortPrepareProgram, mSortKeyProgram, mRadixHistogramProgram, mRadixPrefixProgram, mRadixScatterProgram, mSortFinalizeProgram;
-		ResourcePtr mDrawProgram, mWeightedOitDrawProgram, mDistortionDrawProgram, mMeshCommandProgram;
+		ResourcePtr mDrawProgram, mWeightedOitDrawProgram, mDistortionDrawProgram, mVolumetricLightingDrawProgram, mMeshCommandProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
 		std::unique_ptr<ShaderStorageBuffer> mFreeIndices;
@@ -166,6 +175,7 @@ namespace mpp
 		std::unique_ptr<ShaderStorageBuffer> mMeshCommandTemplates;
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
+		std::unique_ptr<detail::PersistentMappedBuffer> mVolumetricLightingBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mColliderBuffer;
 		std::unique_ptr<detail::ParticleStatisticsState> mStatistics;
@@ -175,6 +185,8 @@ namespace mpp
 		std::vector<std::vector<ParticleEventRule>> mEmitterEventRules;
 		std::vector<ParticleGpuEventRule> mGpuEventRules;
 		std::vector<TemplateRenderData> mTemplateRenderData;
+		std::vector<ParticleEmitterLighting> mEmitterLighting;
+		std::vector<ParticleVolumetricLightingGpuData> mVolumetricLightingGpuData;
 		std::vector<ResourcePtr> mTemplateTextures;
 		std::vector<ResourcePtr> mTemplateMeshModels;
 		std::vector<ResourcePtr> mTemplateMeshMaterials;
@@ -278,6 +290,7 @@ namespace mpp
 		void reclaimEffect(uint32_t index);
 		bool hasOccupiedEmitters() const;
 		void validateEventRules(std::span<ParticleEmitterTemplate const> emitterTemplates) const;
+		void validateLighting(std::span<ParticleEmitterTemplate const> emitterTemplates) const;
 		friend _MPPAPI bool runParticleSystemCpuTests(std::string* failure);
 		friend _MPPAPI bool runParticleGpuTests(RenderSystem* renderSystem, std::string* failure);
 
@@ -305,6 +318,12 @@ namespace mpp
 		void setEventCallback(ParticleEventAction action, ParticleEventCallback callback);
 		void clearEventCallback(ParticleEventAction action);
 		bool hasEventCallback(ParticleEventAction action) const;
+
+		// Returns at most one dynamic-light proxy per opted-in live emitter. The
+		// renderer uses injectionOnly=true and its remaining fixed light capacity;
+		// callers may inspect all proxies without exposing individual particles.
+		std::vector<ParticleProxyLight> getProxyLights(size_t maximumCount = MaxEmitterCount,
+			bool injectionOnly = false) const;
 
 		ParticleEffectHandle createEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		ParticleEffectHandle createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
@@ -359,6 +378,10 @@ namespace mpp
 		// authored graph owns the additive RG distortion target and composite step.
 		void renderDistortion(RenderTexture* sceneDepth);
 		void renderDistortion(ResourcePtr const& sceneDepth);
+		// Draws one depth-aware additive proxy volume per opted-in emitter. This is
+		// a render-graph contribution, not a collection of per-particle lights.
+		void renderVolumetricLighting(RenderTexture* sceneDepth);
+		void renderVolumetricLighting(ResourcePtr const& sceneDepth);
 		// Dedicated real-mesh pass. Unlike billboard appearances this binds model
 		// vertex arrays and each template's Material, then issues GPU-authored
 		// indirect instanced draws without particle readback.

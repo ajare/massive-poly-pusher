@@ -161,6 +161,7 @@ namespace mpp
 		char const* SortFinalizeProgramName = "__mpp_particle_sort_finalize__";
 		char const* DrawProgramName = "__mpp_particle_draw__";
 		char const* WeightedOitDrawProgramName = "__mpp_particle_weighted_oit_draw__";
+		char const* VolumetricLightingDrawProgramName = "__mpp_particle_volumetric_lighting_draw__";
 		char const* MeshCommandProgramName = "__mpp_particle_mesh_commands__";
 
 		constexpr uint32_t ParticlePoolBinding = 0;
@@ -257,6 +258,7 @@ namespace mpp
 		mSignedDistanceFieldTexture.reset();
 		mColliderBuffer.reset();
 		mSpawnCommandBuffer.reset();
+		mVolumetricLightingBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
 		mMeshCommandTemplates.reset();
@@ -305,6 +307,7 @@ namespace mpp
 		releaseProgram(mDrawProgram);
 		releaseProgram(mWeightedOitDrawProgram);
 		releaseProgram(mDistortionDrawProgram);
+		releaseProgram(mVolumetricLightingDrawProgram);
 		releaseProgram(mMeshCommandProgram);
 	}
 
@@ -385,6 +388,13 @@ namespace mpp
 			mDrawProgram = createDrawProgram(DrawProgramName, false, false);
 			mWeightedOitDrawProgram = createDrawProgram(WeightedOitDrawProgramName, true, false);
 			mDistortionDrawProgram = createDrawProgram("__mpp_particle_distortion_draw__", false, true);
+			auto volumetricStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
+			volumetricStream->setSource(RawShaderStage::Vertex, ParticleVolumetricLightingVertexShader);
+			volumetricStream->setSource(RawShaderStage::Fragment, ParticleVolumetricLightingFragmentShader);
+			mVolumetricLightingDrawProgram = mwResourceManager->declareResource(
+				VolumetricLightingDrawProgramName, volumetricStream).first;
+			mVolumetricLightingDrawProgram->acquire(mwRenderSystem);
+			mVolumetricLightingDrawProgram->load();
 
 			GL_CHECK(glGenVertexArrays(1, &mVertexArray));
 			if (mVertexArray == 0)
@@ -460,13 +470,14 @@ namespace mpp
 		size_t const counterBytes = sizeof(ParticleCounterHeader) + size_t(MaxTemplateCount) * sizeof(uint32_t);
 		size_t const emitterBytes = size_t(MaxEmitterCount) * sizeof(EmitterSimData);
 		size_t const templateBytes = size_t(MaxTemplateCount) * sizeof(TemplateRenderData);
+		size_t const volumetricLightingBytes = size_t(MaxEmitterCount) * sizeof(ParticleVolumetricLightingGpuData);
 		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
 		size_t const colliderBytes = size_t(MaxColliderCount) * sizeof(ParticleCollider);
 		size_t const eventBytes = eventStorageBytes();
 		size_t const compactionScratchBytes = size_t(MaxTemplateCount) * 3u * sizeof(uint32_t);
 		size_t const indirectCommandBytes = size_t(MaxTemplateCount) * sizeof(ParticleDrawArraysIndirectCommand);
 		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes,
-			colliderBytes, eventBytes, compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
+			colliderBytes, eventBytes, compactionScratchBytes, indirectCommandBytes, volumetricLightingBytes, DispatchCommandBytes });
 		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
 		{
 			THROW_MPP("The configured particle buffers need a shader storage block of " + to_string(largestBlock) +
@@ -508,6 +519,9 @@ namespace mpp
 		mTemplateRenderBuffer = make_unique<detail::PersistentMappedBuffer>();
 		mTemplateRenderBuffer->create(GL_SHADER_STORAGE_BUFFER, templateBytes, max(1, storageAlignment), persistent,
 			mTemplateRenderData.data(), bytes(mTemplateRenderData), "Particle emitter template render data");
+		mVolumetricLightingBuffer = make_unique<detail::PersistentMappedBuffer>();
+		mVolumetricLightingBuffer->create(GL_SHADER_STORAGE_BUFFER, volumetricLightingBytes, max(1, storageAlignment), persistent,
+			mVolumetricLightingGpuData.data(), bytes(mVolumetricLightingGpuData), "Particle emitter volumetric lighting data");
 		mSpawnCommandBuffer = make_unique<detail::PersistentMappedBuffer>();
 		mSpawnCommandBuffer->create(GL_SHADER_STORAGE_BUFFER, commandBytes, max(1, storageAlignment), persistent,
 			mSpawnCommands.data(), bytes(mSpawnCommands), "Particle spawn commands");
@@ -556,6 +570,7 @@ namespace mpp
 			mEmitters.emplace_back();
 			mEmitterEventRules.emplace_back();
 			mTemplateRenderData.emplace_back();
+			mEmitterLighting.emplace_back();
 			mTemplateTextures.emplace_back();
 			mTemplateMeshModels.emplace_back();
 			mTemplateMeshMaterials.emplace_back();
@@ -582,6 +597,7 @@ namespace mpp
 		mEmitters[index].emissionState[3] = index;
 		setTransform(mEmitters[index], effectTransform * slot.localTransform);
 		mTemplateRenderData[index] = emitterTemplate.appearance;
+		mEmitterLighting[index] = emitterTemplate.lighting;
 		mTemplateRenderData[index].appearance[3] = float(curveLut->getRowOffset(emitterTemplateIndex));
 		mTemplateTextures[index] = emitterTemplate.albedoTexture;
 		mTemplateMeshModels[index] = emitterTemplate.meshModel;
@@ -611,6 +627,30 @@ namespace mpp
 		if (!handle || handle.index >= mEffectSlots.size()) return nullptr;
 		auto& slot = mEffectSlots[handle.index];
 		return slot.occupied && slot.generation == handle.generation ? &slot : nullptr;
+	}
+
+	void ParticleSystem::validateLighting(span<ParticleEmitterTemplate const> emitterTemplates) const
+	{
+		constexpr uint32_t knownFlags = uint32_t(ParticleLightingFlag::ProxyLight) |
+			uint32_t(ParticleLightingFlag::PbrLightInjection) |
+			uint32_t(ParticleLightingFlag::VolumetricContribution);
+		for (auto const& emitterTemplate : emitterTemplates)
+		{
+			auto const& lighting = emitterTemplate.lighting;
+			auto const flags = lighting.flagsAndPadding[0];
+			if ((flags & ~knownFlags) != 0u)
+				throw invalid_argument("ParticleSystem::createEffect received unknown particle lighting flags.");
+			if ((flags & uint32_t(ParticleLightingFlag::PbrLightInjection)) != 0u &&
+				(flags & uint32_t(ParticleLightingFlag::ProxyLight)) == 0u)
+				throw invalid_argument("Particle PBR light injection requires an emitter-level proxy light.");
+			if (!all_of(lighting.colourAndIntensity.begin(), lighting.colourAndIntensity.end(),
+				[](float value) { return isfinite(value) && value >= 0.0f; }) ||
+				!isfinite(lighting.rangeAndVolumetric[0]) || lighting.rangeAndVolumetric[0] < 0.0f ||
+				!isfinite(lighting.rangeAndVolumetric[1]) || lighting.rangeAndVolumetric[1] < 0.0f)
+				throw invalid_argument("Particle emitter lighting values must be finite and non-negative.");
+			if (flags != 0u && lighting.rangeAndVolumetric[0] <= 0.0f)
+				throw invalid_argument("Enabled particle emitter lighting requires a positive range.");
+		}
 	}
 
 	void ParticleSystem::validateEventRules(span<ParticleEmitterTemplate const> emitterTemplates) const
@@ -695,6 +735,7 @@ namespace mpp
 	{
 		if (emitterTemplates.empty()) return {};
 		validateEventRules(emitterTemplates);
+		validateLighting(emitterTemplates);
 		size_t eventRuleCount = 0u;
 		for (uint32_t index = 0; index < mEmitterSlots.size(); ++index)
 			if (mEmitterSlots[index].occupied) eventRuleCount += mEmitterEventRules[index].size();
@@ -977,6 +1018,7 @@ namespace mpp
 		mTemplateMeshMaterials[index].reset();
 		mTemplateCurveLuts[index].reset();
 		mTemplateRenderData[index] = {};
+		mEmitterLighting[index] = {};
 		mFreeEmitterIndices.push_back(index);
 	}
 
@@ -1149,8 +1191,32 @@ namespace mpp
 		updateTemplateTextureHandles();
 		rebuildMeshDrawCommands();
 
+		mVolumetricLightingGpuData.clear();
+		mVolumetricLightingGpuData.reserve(mEmitterSlots.size());
+		for (uint32_t index = 0; index < mEmitterSlots.size(); ++index)
+		{
+			if (!mEmitterSlots[index].occupied || mEmitterSlots[index].pendingDestroy) continue;
+			auto const& lighting = mEmitterLighting[index];
+			auto const& emitter = mEmitters[index];
+			bool const active = emitter.emissionState[1] != 0u &&
+				(uint32_t(emitter.emissionRateAndPadding[1]) & uint32_t(ParticleEffectVisibilityFlag::Visible)) != 0u;
+			if (!active || !particleHasLighting(lighting, ParticleLightingFlag::VolumetricContribution)) continue;
+			ParticleVolumetricLightingGpuData gpu;
+			gpu.positionAndRange = { emitter.transform[12], emitter.transform[13], emitter.transform[14],
+				lighting.rangeAndVolumetric[0] };
+			gpu.colourAndIntensity = lighting.colourAndIntensity;
+			gpu.colourAndIntensity[3] *= emitter.parameterMultipliers1[1];
+			gpu.volumetricAndPadding = lighting.rangeAndVolumetric;
+			gpu.flagsAndPadding = lighting.flagsAndPadding;
+			gpu.flagsAndPadding[0] |= 8u;
+			mVolumetricLightingGpuData.push_back(gpu);
+		}
+
 		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
 		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
+		if (!mVolumetricLightingGpuData.empty())
+			mVolumetricLightingBuffer->upload(mVolumetricLightingGpuData.data(), bytes(mVolumetricLightingGpuData),
+				0, bytes(mVolumetricLightingGpuData));
 		if (!mSpawnCommands.empty())
 			mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
 		if (!mColliders.empty())
@@ -1208,6 +1274,36 @@ namespace mpp
 	{
 		auto const index = uint32_t(action);
 		return index < mEventReadback->callbacks.size() && bool(mEventReadback->callbacks[index]);
+	}
+
+	vector<ParticleProxyLight> ParticleSystem::getProxyLights(size_t maximumCount, bool injectionOnly) const
+	{
+		vector<ParticleProxyLight> result;
+		result.reserve(min(maximumCount, mEmitterSlots.size()));
+		for (uint32_t index = 0; index < mEmitterSlots.size() && result.size() < maximumCount; ++index)
+		{
+			auto const& slot = mEmitterSlots[index];
+			if (!slot.occupied || slot.pendingDestroy || index >= mEmitterLighting.size()) continue;
+			auto const& emitter = mEmitters[index];
+			if (emitter.emissionState[1] == 0u ||
+				(uint32_t(emitter.emissionRateAndPadding[1]) & uint32_t(ParticleEffectVisibilityFlag::Visible)) == 0u) continue;
+			auto const& lighting = mEmitterLighting[index];
+			if (!particleHasLighting(lighting, ParticleLightingFlag::ProxyLight)) continue;
+			bool const injected = particleHasLighting(lighting, ParticleLightingFlag::PbrLightInjection);
+			if (injectionOnly && !injected) continue;
+
+			ParticleProxyLight proxy;
+			proxy.emitter = { index, slot.generation };
+			proxy.injectedIntoPbr = injected;
+			proxy.light.type = PbrLightType::Point;
+			proxy.light.colour = { lighting.colourAndIntensity[0], lighting.colourAndIntensity[1],
+				lighting.colourAndIntensity[2] };
+			proxy.light.intensity = lighting.colourAndIntensity[3] * emitter.parameterMultipliers1[1];
+			proxy.light.position = { emitter.transform[12], emitter.transform[13], emitter.transform[14] };
+			proxy.light.range = lighting.rangeAndVolumetric[0];
+			result.push_back(proxy);
+		}
+		return result;
 	}
 
 	void ParticleSystem::pollEventReadback()
@@ -2078,6 +2174,39 @@ namespace mpp
 		}
 		mEmitterBuffer->markUsed();
 		mTemplateRenderBuffer->markUsed();
+	}
+
+	void ParticleSystem::renderVolumetricLighting(ResourcePtr const& sceneDepthResource)
+	{
+		renderVolumetricLighting(dynamic_cast<RenderTexture*>(sceneDepthResource.get()));
+	}
+
+	void ParticleSystem::renderVolumetricLighting(RenderTexture* sceneDepth)
+	{
+		initialise();
+		if (!mAvailable || !mPoolAllocated || mVolumetricLightingGpuData.empty()) return;
+
+		GpuDebugScope scope("Particles: Draw emitter-level volumetric lighting");
+		mwRenderSystem->setDepthWriteState(false, true);
+		auto* program = static_cast<ParticleDrawProgram*>(mVolumetricLightingDrawProgram.get());
+		program->use();
+		program->setUniform("SCENE_DEPTH", int32_t(0));
+		program->setUniform("HAS_SCENE_DEPTH", int32_t(sceneDepth ? 1 : 0));
+		if (sceneDepth) sceneDepth->bindDepth(0);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0u, mVolumetricLightingBuffer->getBuffer(),
+			static_cast<GLintptr>(mVolumetricLightingBuffer->getActiveOffset()),
+			static_cast<GLsizeiptr>(bytes(mVolumetricLightingGpuData))));
+		GL_CHECK(glBindVertexArray(mVertexArray));
+		beginRenderTiming();
+		GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(mVolumetricLightingGpuData.size())));
+		finishRenderTiming();
+		GL_CHECK(glBindVertexArray(0));
+		if (sceneDepth)
+		{
+			GL_CHECK(glActiveTexture(GL_TEXTURE0));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		}
+		mVolumetricLightingBuffer->markUsed();
 	}
 
 	void ParticleSystem::bindMeshParticleMaterial(ResourcePtr const& materialResource, uint32_t templateIndex)

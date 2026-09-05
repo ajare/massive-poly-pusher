@@ -49,6 +49,27 @@ RenderGraph:
         depthTest: true
         depthWrite: true
         blend: false
+    - name: ParticleVolumetricLighting
+      type: scene
+      factory: MPP.ParticleVolumetricLighting
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Colours:
+        - image: Presentation
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: one
+        destinationColourBlend: one
+        sourceAlphaBlend: one
+        destinationAlphaBlend: one
+        multisample: false
     - name: ParticleWeightedOit
       type: scene
       factory: MPP.ParticleWeightedOit

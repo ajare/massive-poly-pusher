@@ -56,6 +56,16 @@ intensity, atlas animation, billboard mode, blend class. Deliberately not a
 Material: it owns no Program and is not a Resource.
 _Avoid_: Particle material
 
+**Particle proxy light**:
+A single point-light representation owned by an Emitter, independent of how many
+Particles that Emitter contains.
+_Avoid_: Particle light, per-particle light
+
+**Particle volumetric contribution**:
+Depth-aware inscattered radiance from one Emitter-sized proxy volume, separate
+from both its Particle appearance and its Particle proxy light.
+_Avoid_: Volumetric particle (the contribution is emitter-level)
+
 **Blend class**:
 The transparency strategy a particle appearance composites with — additive,
 alpha, or weighted blended OIT. Determines which render pass draws it.

@@ -356,6 +356,7 @@ namespace mpp
 		//
 		UniformBuffer* mLightsBuffer{ nullptr };
 		UniformBuffer* mPbrLightsBuffer{ nullptr };
+		std::vector<PbrLight> mPbrLights;
 		static constexpr size_t MaxPbrLights{ 8 };
 
 		//
@@ -415,6 +416,8 @@ namespace mpp
 		void createPbrLightsData();
 
 		void destroyPbrLightsData();
+
+		void uploadPbrLights();
 
 		void createCameraFrameData();
 
@@ -684,6 +687,10 @@ namespace mpp
 		void renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
 		void renderParticleDistortion(RenderTexture* sceneDepth = nullptr);
 		void renderParticleDistortion(ResourcePtr const& sceneDepth);
+		// Emitter-level, depth-aware additive inscattering. The matching graph pass
+		// writes HDR colour and, when present, the emissive/bloom attachment.
+		void renderParticleVolumetricLighting(RenderTexture* sceneDepth = nullptr);
+		void renderParticleVolumetricLighting(ResourcePtr const& sceneDepth);
 		// Real mesh particles use their own material/vertex-attribute pass.
 		void renderMeshParticles();
 		// The separate ribbon draw issued by MPP.TrailScene.

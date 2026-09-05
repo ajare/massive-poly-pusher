@@ -455,6 +455,17 @@ namespace mpp
 			}
 		};
 
+		class ParticleVolumetricLightingPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				frame.renderSystem->renderParticleVolumetricLighting(resourceInput(context, "DEPTH"));
+			}
+		};
+
 		class ParticleDistortionPass final : public RenderGraphScenePass
 		{
 		public:
@@ -711,6 +722,12 @@ namespace mpp
 		trailScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
 		trailScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
 		registry.registerScenePassFactory("MPP.TrailScene", [] { return std::make_unique<TrailScenePass>(); }, trailScene);
+
+		auto particleVolumetricLighting = metadata("Particle Volumetric Lighting", "Lighting", GraphPassType::Scene);
+		particleVolumetricLighting.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "UnoccludedParticleVolumes" });
+		particleVolumetricLighting.outputs.push_back({ "HDR Volumetric Lighting", false, true, colourFormats() });
+		particleVolumetricLighting.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleVolumetricLighting", [] { return std::make_unique<ParticleVolumetricLightingPass>(); }, particleVolumetricLighting);
 
 		auto particleDistortion = metadata("Particle Distortion", "Scene", GraphPassType::Scene);
 		particleDistortion.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });

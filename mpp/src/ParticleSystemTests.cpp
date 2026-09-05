@@ -212,6 +212,12 @@ namespace mpp
 
 		// Parent x local transform composition and per-emitter addressing.
 		array<ParticleEmitterTemplate, 2> transforms{ burst(1.0f), burst(1.0f) };
+		transforms[0].lighting.colourAndIntensity = { 1.0f, 0.25f, 0.1f, 4.0f };
+		transforms[0].lighting.rangeAndVolumetric = { 6.0f, 0.5f, 0.0f, 0.0f };
+		transforms[0].lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::ProxyLight |
+			ParticleLightingFlag::PbrLightInjection | ParticleLightingFlag::VolumetricContribution);
+		transforms[1].lighting.rangeAndVolumetric[0] = 3.0f;
+		transforms[1].lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::ProxyLight);
 		transforms[0].localTransform = glm::translate(glm::mat4(1.0f), { 2.0f, 0.0f, 0.0f });
 		transforms[1].localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 3.0f, 0.0f });
 		auto effect = system.createEffect(transforms, glm::translate(glm::mat4(1.0f), { 10.0f, 20.0f, 0.0f }));
@@ -221,10 +227,20 @@ namespace mpp
 		if (system.mEmitters[first.index].transform[12] != 12.0f || system.mEmitters[first.index].transform[13] != 20.0f ||
 			system.mEmitters[second.index].transform[12] != 10.0f || system.mEmitters[second.index].transform[13] != 23.0f)
 			return fail("effect parent and emitter-local transforms were not composed");
+		auto proxyLights = system.getProxyLights();
+		auto injectedLights = system.getProxyLights(ParticleSystem::MaxEmitterCount, true);
+		if (proxyLights.size() != 2u || injectedLights.size() != 1u ||
+			injectedLights[0].emitter != first || injectedLights[0].light.type != PbrLightType::Point ||
+			injectedLights[0].light.position != glm::vec3(12.0f, 20.0f, 0.0f) ||
+			injectedLights[0].light.range != 6.0f || injectedLights[0].light.intensity != 4.0f)
+			return fail("emitter-level proxy lights were not transformed, filtered, or bounded independently of particles");
+		system.setEmitterParameter(first, ParticleParameter::EmissiveScale, 0.5f);
+		if (system.getProxyLights(1u, true)[0].light.intensity != 2.0f)
+			return fail("emitter emissive scaling did not reach its proxy light");
 		system.setEffectVisible(effect, false);
 		if (system.mEmitters[first.index].emissionRateAndPadding[1] != 0.0f ||
-			system.mEmitters[second.index].emissionRateAndPadding[1] != 0.0f)
-			return fail("effect visibility did not reach every emitter");
+			system.mEmitters[second.index].emissionRateAndPadding[1] != 0.0f || !system.getProxyLights().empty())
+			return fail("effect visibility did not reach every emitter and proxy light");
 		system.setEffectVisibilityFlags(effect, uint32_t(ParticleEffectVisibilityFlag::Visible));
 		if (system.mEmitters[first.index].emissionRateAndPadding[1] != 1.0f ||
 			system.mEmitters[first.index].emissionState[1] == 0u)
@@ -237,6 +253,14 @@ namespace mpp
 		if (system.mEmitters[second.index].parameterMultipliers0[0] != 1.0f)
 			return fail("a per-emitter operation changed another emitter");
 		system.destroyEffect(effect);
+
+		auto invalidLighting = burst(1.0f);
+		invalidLighting.lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::PbrLightInjection);
+		bool rejectedUnboundedInjection = false;
+		try { array invalidTemplates{ invalidLighting }; (void)system.createEffect(invalidTemplates); }
+		catch (invalid_argument const&) { rejectedUnboundedInjection = true; }
+		if (!rejectedUnboundedInjection)
+			return fail("particle light injection without an emitter-level proxy was accepted");
 
 		// A reclaimed index must get a different generation, leaving stale handles inert.
 		array<ParticleEmitterTemplate, 1> one{ burst(0.0f) };

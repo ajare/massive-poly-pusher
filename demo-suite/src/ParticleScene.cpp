@@ -182,6 +182,10 @@ void ParticleScene::createDemoEffect()
 		uint32_t(mpp::ParticleCollisionResponse::Bounce), 0u, 0u };
 	cone.simulation.collisionParameters = { 0.55f, 0.15f, 0.4f, 0.1f };
 	cone.appearance.modes[2] = uint32_t(mpp::ParticleBillboardMode::VelocityStretched);
+	cone.lighting.colourAndIntensity = { 1.0f, 0.3f, 0.08f, 8.0f };
+	cone.lighting.rangeAndVolumetric = { 2.5f, 0.18f, 0.0f, 0.0f };
+	cone.lighting.flagsAndPadding[0] = uint32_t(mpp::ParticleLightingFlag::ProxyLight |
+		mpp::ParticleLightingFlag::PbrLightInjection | mpp::ParticleLightingFlag::VolumetricContribution);
 	specification.emitterTemplates.push_back({ "additive-cone", cone, {} });
 
 	auto disc = emitterTemplate(mpp::ParticleSpawnShape::Disc, mpp::ParticleBlendClass::Additive, { 0.0f, 0.02f, -2.0f }, 12000u);

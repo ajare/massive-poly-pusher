@@ -466,6 +466,13 @@ namespace mpp
 			trailMetadata->inputs.front().sampler != "DEPTH" || trailMetadata->inputs.front().fallbackId != "HardTrails" ||
 			trailMetadata->parameters.size() != 1)
 			return fail("trail scene metadata lost its separate draw contract or optional depth fallback");
+		auto const* volumetricLightingMetadata = registry.findMetadata("MPP.ParticleVolumetricLighting");
+		if (!volumetricLightingMetadata || volumetricLightingMetadata->inputs.size() != 1u ||
+			volumetricLightingMetadata->inputs[0].sampler != "DEPTH" || volumetricLightingMetadata->inputs[0].required ||
+			volumetricLightingMetadata->inputs[0].fallbackId != "UnoccludedParticleVolumes" ||
+			volumetricLightingMetadata->outputs.size() != 2u || !volumetricLightingMetadata->outputs[0].required ||
+			volumetricLightingMetadata->outputs[1].required)
+			return fail("particle volumetric-lighting metadata lost its optional depth and emissive-output contract");
 		auto const* distortionMetadata = registry.findMetadata("MPP.ParticleDistortion");
 		auto const* distortionCompositeMetadata = registry.findMetadata("MPP.ParticleDistortionComposite");
 		if (!distortionMetadata || distortionMetadata->inputs.size() != 1 || distortionMetadata->inputs.front().required ||

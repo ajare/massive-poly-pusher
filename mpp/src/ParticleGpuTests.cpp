@@ -413,6 +413,10 @@ namespace mpp
 			eventSourceTemplate.simulation.shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Collision);
 			eventSourceTemplate.simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::Analytical),
 				uint32_t(ParticleCollisionResponse::Stop), 0u, 0u };
+			eventSourceTemplate.lighting.colourAndIntensity = { 1.0f, 0.25f, 0.05f, 2.0f };
+			eventSourceTemplate.lighting.rangeAndVolumetric = { 2.0f, 0.5f, 0.0f, 0.0f };
+			eventSourceTemplate.lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::ProxyLight |
+				ParticleLightingFlag::PbrLightInjection | ParticleLightingFlag::VolumetricContribution);
 			eventSourceTemplate.events = {
 				{ ParticleEventTrigger::Spawn, ParticleEventAction::SecondaryParticleBurst, 1u, 7u, 0.0f, 10u },
 				{ ParticleEventTrigger::Spawn, ParticleEventAction::Audio, 0u, 1u, 0.0f, 11u },
@@ -450,6 +454,31 @@ namespace mpp
 			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
 			if (eventSourceCommand.instanceCount != 1u || eventTargetCommand.instanceCount != 7u)
 				return fail("spawn event did not create its secondary particle burst entirely on the GPU");
+			auto proxies = system.getProxyLights(ParticleSystem::MaxEmitterCount, true);
+			if (proxies.size() != 1u || proxies[0].emitter != eventSourceHandle ||
+				proxies[0].light.position != glm::vec3(0.0f, 1.0f, -5.0f))
+				return fail("a particle emitter did not remain exactly one transformed dynamic-light proxy");
+			RenderTextureOptions volumetricTargetOptions;
+			volumetricTargetOptions.numAttachments = 1u;
+			volumetricTargetOptions.colourInternalFormat = GL_RGBA16F;
+			auto volumetricTarget = renderSystem->createRenderTexture(
+				"ParticleGpuTest.VolumetricLighting", 32u, 32u, volumetricTargetOptions);
+			renderSystem->setCameraFrame(glm::mat4(1.0f),
+				glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f), { 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
+			renderSystem->pushRenderTarget(volumetricTarget);
+			renderSystem->setViewport(0u, 0u, 32u, 32u);
+			GL_CHECK(glDisable(GL_DEPTH_TEST));
+			GL_CHECK(glDisable(GL_CULL_FACE));
+			GL_CHECK(glDisable(GL_BLEND));
+			GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+			system.renderVolumetricLighting(static_cast<RenderTexture*>(nullptr));
+			std::array<float, 4> volumetricPixel{};
+			GL_CHECK(glReadPixels(16, 16, 1, 1, GL_RGBA, GL_FLOAT, volumetricPixel.data()));
+			renderSystem->popRenderTarget();
+			renderSystem->setDefaultState();
+			if (volumetricPixel[0] <= 0.5f || volumetricPixel[1] <= 0.1f || volumetricPixel[3] != 0.0f)
+				return fail("emitter-level volumetric lighting did not add HDR depth-aware radiance");
 			runFrame(system, 0.6f);
 			runFrame(system, 0.5f);
 			GL_CHECK(glFinish());

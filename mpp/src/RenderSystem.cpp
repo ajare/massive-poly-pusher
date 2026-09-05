@@ -3129,6 +3129,19 @@ namespace mpp
 		{
 			THROW_MPP("Too many PBR lights for the PBR light uniform buffer.", __LINE__, __FILE__, __func__);
 		}
+		mPbrLights = lights;
+		uploadPbrLights();
+	}
+
+	void RenderSystem::uploadPbrLights()
+	{
+		if (!mPbrLightsBuffer) return;
+		auto lights = mPbrLights;
+		if (mParticleSystem && lights.size() < MaxPbrLights)
+		{
+			auto proxies = mParticleSystem->getProxyLights(MaxPbrLights - lights.size(), true);
+			for (auto const& proxy : proxies) lights.push_back(proxy.light);
+		}
 
 		auto& data = mPbrLightsBuffer->getBufferData();
 		fill(data.begin() + 16, data.end(), 0);
@@ -3857,6 +3870,10 @@ namespace mpp
 		mParticleSimulationFrameSerial = mFrameSerial;
 		mParticleSimulationFrameValid = true;
 		mParticleSystem->simulate();
+		// Emitter transforms and enabled state may have changed since the scene
+		// supplied its base lights. Refresh the bounded proxy-light tail before the
+		// opaque PBR pass consumes the UBO.
+		uploadPbrLights();
 
 		// The raw compute program was bound outside the Program cache, which would
 		// otherwise skip rebinding whatever material program was last used.
@@ -3909,6 +3926,22 @@ namespace mpp
 	{
 		if (!mParticleSystem) return;
 		mParticleSystem->renderDistortion(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleVolumetricLighting(RenderTexture* sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderVolumetricLighting(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleVolumetricLighting(ResourcePtr const& sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderVolumetricLighting(sceneDepth);
 		GL_CHECK(glUseProgram(0));
 		mActiveProgram.reset();
 	}

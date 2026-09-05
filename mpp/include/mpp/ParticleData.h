@@ -196,6 +196,21 @@ namespace mpp
 		Visible = 1u << 0
 	};
 
+	// Lighting is deliberately emitter-scoped. Even when an emitter owns hundreds
+	// of thousands of particles, these flags produce at most one proxy light and
+	// one volumetric draw instance for that emitter.
+	enum class ParticleLightingFlag : uint32_t
+	{
+		ProxyLight = 1u << 0,
+		PbrLightInjection = 1u << 1,
+		VolumetricContribution = 1u << 2
+	};
+
+	constexpr ParticleLightingFlag operator |(ParticleLightingFlag left, ParticleLightingFlag right) noexcept
+	{
+		return ParticleLightingFlag(uint32_t(left) | uint32_t(right));
+	}
+
 	inline constexpr uint32_t ParticleTexturePlaybackMask = 0xffu;
 	inline constexpr uint32_t ParticleTextureRandomStartBit = uint32_t(ParticleTextureAnimation::RandomStart);
 	inline constexpr float MaximumParticleDeltaSeconds = 0.1f;
@@ -390,6 +405,33 @@ namespace mpp
 		std::array<float, 4> parameters{ 1.0f, 0.0f, 0.0f, 0.0f };
 	};
 
+	// Authored emitter-level lighting. Direct-light injection is bounded by the
+	// renderer's PBR light capacity, while the volumetric path draws one proxy
+	// volume per emitter rather than manufacturing one light per Particle.
+	struct alignas(16) ParticleEmitterLighting
+	{
+		// RGB radiance colour and direct-light intensity.
+		std::array<float, 4> colourAndIntensity{ 1.0f, 1.0f, 1.0f, 1.0f };
+		// World-space radius, volumetric intensity multiplier, then padding.
+		std::array<float, 4> rangeAndVolumetric{ 1.0f, 1.0f, 0.0f, 0.0f };
+		std::array<uint32_t, 4> flagsAndPadding{};
+	};
+
+	// CPU-built GPU record for the emitter-level volumetric draw. positionRange is
+	// refreshed from the live emitter transform; the authored fields remain intact.
+	struct alignas(16) ParticleVolumetricLightingGpuData
+	{
+		std::array<float, 4> positionAndRange{};
+		std::array<float, 4> colourAndIntensity{};
+		std::array<float, 4> volumetricAndPadding{};
+		std::array<uint32_t, 4> flagsAndPadding{};
+	};
+
+	constexpr bool particleHasLighting(ParticleEmitterLighting const& lighting, ParticleLightingFlag flag) noexcept
+	{
+		return (lighting.flagsAndPadding[0] & uint32_t(flag)) != 0u;
+	}
+
 	// Draw-only emitter-template data. Culling also reads this record while
 	// compacting the render list; spawn and simulation never fetch it.
 	struct alignas(16) TemplateRenderData
@@ -499,6 +541,8 @@ namespace mpp
 	static_assert(sizeof(EmitterSimData) == 464);
 	static_assert(sizeof(ParticleCollider) == 64);
 	static_assert(sizeof(ParticleSignedDistanceFieldData) == 80);
+	static_assert(sizeof(ParticleEmitterLighting) == 48);
+	static_assert(sizeof(ParticleVolumetricLightingGpuData) == 64);
 	static_assert(sizeof(TemplateRenderData) == 96);
 	static_assert(sizeof(ParticleSortRecord) == 8);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);

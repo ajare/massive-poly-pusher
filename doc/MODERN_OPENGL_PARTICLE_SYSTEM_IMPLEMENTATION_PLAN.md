@@ -695,6 +695,14 @@ when no callback is registered. Secondary-burst target graphs are acyclic and
 same-frame spawn cascades are bounded to eight stages; this is separate from
 child particle effect assets.
 
+Particle lighting is now bounded per emitter. An authored proxy can be inspected
+through the CPU API and optionally fills unused slots after scene-authored PBR
+lights; particle count never changes that light count. A separate pure
+`MPP.ParticleVolumetricLighting` draw adds depth-clipped spherical inscattering
+to HDR and the optional emissive attachment, one instance per emitter. This
+provides the spec §25/§32 contribution without inventing a general froxel-fog
+renderer or turning GPU particles into dynamic lights (ADR 0009).
+
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and
 scene-document pipeline, and a shared albedo atlas to remove the remaining

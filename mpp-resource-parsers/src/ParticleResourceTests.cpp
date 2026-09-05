@@ -73,6 +73,9 @@ namespace mpp::resource_parsers
 			if (blendClasses[index] != index) return fail("particle blend-class wire values changed");
 		if (uint32_t(ParticleSortMode::None) != 0u || uint32_t(ParticleSortMode::BackToFront) != 1u)
 			return fail("particle sort-mode wire values changed");
+		if (uint32_t(ParticleLightingFlag::ProxyLight | ParticleLightingFlag::PbrLightInjection |
+			ParticleLightingFlag::VolumetricContribution) != 0x7u)
+			return fail("particle lighting flags overlap or changed");
 		if (uint32_t(ParticleRenderMode::Billboard) != 0u || uint32_t(ParticleRenderMode::Mesh) != 1u)
 			return fail("particle render-mode wire values changed");
 		std::array<uint32_t, 4> const eventTriggers{
@@ -97,6 +100,9 @@ namespace mpp::resource_parsers
 			emitter.appearance.modes[0] != 1u || emitter.appearance.modes[2] != uint32_t(ParticleBillboardMode::CameraFacing) ||
 			emitter.appearance.modes[3] != uint32_t(ParticleBlendClass::Additive) ||
 			emitter.appearance.sorting[0] != uint32_t(ParticleSortMode::None) ||
+			emitter.lighting.flagsAndPadding[0] != 0u ||
+			emitter.lighting.colourAndIntensity != std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 1.0f } ||
+			emitter.lighting.rangeAndVolumetric != std::array<float, 4>{ 1.0f, 1.0f, 0.0f, 0.0f } ||
 			particleAppearanceWritesDistortion(emitter.appearance) ||
 			emitter.simulation.collisionConfiguration[0] != uint32_t(ParticleCollisionSource::Analytical) ||
 			emitter.simulation.collisionConfiguration[1] != uint32_t(ParticleCollisionResponse::Bounce) ||
@@ -145,6 +151,10 @@ namespace mpp::resource_parsers
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
 			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::Alpha) };
 		authored.value.appearance.sorting = { uint32_t(ParticleSortMode::BackToFront), uint32_t(ParticleRenderMode::Mesh), 1u, 0u };
+		authored.value.lighting.colourAndIntensity = { 1.0f, 0.4f, 0.1f, 12.0f };
+		authored.value.lighting.rangeAndVolumetric = { 8.0f, 0.35f, 0.0f, 0.0f };
+		authored.value.lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::ProxyLight |
+			ParticleLightingFlag::PbrLightInjection | ParticleLightingFlag::VolumetricContribution);
 		TemplateRenderData distortionAppearance;
 		distortionAppearance.sorting[2] = 1u;
 		distortionAppearance.culling[3] = 0.035f;
@@ -185,6 +195,9 @@ namespace mpp::resource_parsers
 			restored.emitterTemplates[0].value.appearance.modes != authored.value.appearance.modes ||
 			restored.emitterTemplates[0].value.appearance.culling != authored.value.appearance.culling ||
 			restored.emitterTemplates[0].value.appearance.sorting != authored.value.appearance.sorting ||
+			restored.emitterTemplates[0].value.lighting.colourAndIntensity != authored.value.lighting.colourAndIntensity ||
+			restored.emitterTemplates[0].value.lighting.rangeAndVolumetric != authored.value.lighting.rangeAndVolumetric ||
+			restored.emitterTemplates[0].value.lighting.flagsAndPadding != authored.value.lighting.flagsAndPadding ||
 			restored.emitterTemplates[0].value.localTransform[3][0] != 2.0f ||
 			restored.emitterTemplates[0].events.size() != 2u ||
 			restored.emitterTemplates[0].events[0].targetEmitter != "Sparks" ||

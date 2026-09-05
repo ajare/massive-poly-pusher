@@ -106,6 +106,7 @@ namespace mpp
 				if (info.enabled && (info.callbackFactory == "MPP.ParticleScene" ||
 					info.callbackFactory == "MPP.ParticleWeightedOit" ||
 					info.callbackFactory == "MPP.ParticleDistortion" ||
+					info.callbackFactory == "MPP.ParticleVolumetricLighting" ||
 					info.callbackFactory == "MPP.ParticleMeshScene")) return true;
 			}
 			return false;
@@ -866,6 +867,27 @@ namespace mpp
 			meshParticleRaster.cullMode = GraphCullMode::Back;
 			meshParticleRaster.blend = false;
 			graph.setPassRasterState(meshParticlePass, meshParticleRaster);
+
+			// Emitter-level proxy spheres add depth-aware inscattering to the HDR scene
+			// and emissive mask. Draw count is bounded by live emitters, never particles.
+			auto volumetricLightingPass = graph.addPass("ParticleVolumetricLighting", GraphPassType::Scene);
+			graph.setPassCallbackFactory(volumetricLightingPass, "MPP.ParticleVolumetricLighting");
+			graph.bindSampler(volumetricLightingPass, "DEPTH", sceneDepth);
+			presentationTexture = graph.writeColour(volumetricLightingPass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+			if (useMrtEmissiveMask)
+				bloomMask = graph.writeColour(volumetricLightingPass, bloomMask, GraphLoadOp::Load, GraphStoreOp::Store);
+			GraphRasterState volumetricLightingRaster;
+			volumetricLightingRaster.explicitState = true;
+			volumetricLightingRaster.depthTest = false;
+			volumetricLightingRaster.depthWrite = false;
+			volumetricLightingRaster.cullMode = GraphCullMode::None;
+			volumetricLightingRaster.blend = true;
+			volumetricLightingRaster.sourceColourBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.destinationColourBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.sourceAlphaBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			volumetricLightingRaster.multisample = false;
+			graph.setPassRasterState(volumetricLightingPass, volumetricLightingRaster);
 
 			// Weighted OIT is an authored accumulation pass plus an authored resolve.
 			// Optical depth is additive (-log(revealage)), so both accumulation targets

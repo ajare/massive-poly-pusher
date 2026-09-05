@@ -187,7 +187,7 @@ namespace mpp::resource_parsers
 			void parseEmitter(Data const& node, size_t index)
 			{
 				auto path = "/ParticleEffect/Emitters/Emitter[" + std::to_string(index) + "]";
-				fields(node, { "name", "maximumParticleCount", "transform", "Spawn", "Behaviours", "Curves", "Appearance", "Mesh", "Events" }, path);
+				fields(node, { "name", "maximumParticleCount", "transform", "Spawn", "Behaviours", "Curves", "Appearance", "Mesh", "Events", "Lighting" }, path);
 				ParticleEffectSpecification::EmitterTemplate authored;
 				authored.name = value(node, "name", path, true);
 				auto& emitter = authored.value; auto& sim = emitter.simulation; auto& appearance = emitter.appearance;
@@ -275,6 +275,32 @@ namespace mpp::resource_parsers
 					authored.meshModel = value(block, "model", meshPath, true);
 					authored.meshMaterial = value(block, "material", meshPath);
 					appearance.sorting[1] = uint32_t(ParticleRenderMode::Mesh);
+				}
+
+				if (node.hasEntry("Lighting"))
+				{
+					auto const& block = node.getEntry("Lighting"); auto lightingPath = path + "/Lighting";
+					fields(block, { "proxyLight", "lightInjection", "volumetricLighting", "volumetric", "colour", "intensity", "range", "volumetricIntensity" }, lightingPath);
+					auto& lighting = emitter.lighting;
+					auto colour = vector<3>(block, "colour", lightingPath, { 1.0f, 1.0f, 1.0f });
+					lighting.colourAndIntensity = { colour[0], colour[1], colour[2], number(block, "intensity", lightingPath, 1.0f) };
+					lighting.rangeAndVolumetric[0] = number(block, "range", lightingPath, 1.0f);
+					lighting.rangeAndVolumetric[1] = number(block, "volumetricIntensity", lightingPath, 1.0f);
+					bool const proxy = boolean(block, "proxyLight", lightingPath, false);
+					bool const injection = boolean(block, "lightInjection", lightingPath, false);
+					bool const volumetric = block.hasEntry("volumetricLighting") ?
+						boolean(block, "volumetricLighting", lightingPath, false) : boolean(block, "volumetric", lightingPath, false);
+					if (proxy) lighting.flagsAndPadding[0] |= uint32_t(ParticleLightingFlag::ProxyLight);
+					if (injection) lighting.flagsAndPadding[0] |= uint32_t(ParticleLightingFlag::PbrLightInjection);
+					if (volumetric) lighting.flagsAndPadding[0] |= uint32_t(ParticleLightingFlag::VolumetricContribution);
+					if (injection && !proxy)
+						error("MPP-PARTICLE-018", "Particle light injection requires proxyLight: true.", lightingPath + "/lightInjection");
+					if ((proxy || injection || volumetric) && lighting.rangeAndVolumetric[0] <= 0.0f)
+						error("MPP-PARTICLE-018", "Enabled particle lighting requires a positive range.", lightingPath + "/range");
+					if (lighting.colourAndIntensity[0] < 0.0f || lighting.colourAndIntensity[1] < 0.0f ||
+						lighting.colourAndIntensity[2] < 0.0f || lighting.colourAndIntensity[3] < 0.0f ||
+						lighting.rangeAndVolumetric[1] < 0.0f)
+						error("MPP-PARTICLE-018", "Particle lighting colour and intensities must be non-negative.", lightingPath);
 				}
 
 				if (node.hasEntry("Appearance"))
