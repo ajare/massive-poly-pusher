@@ -117,22 +117,63 @@ namespace mpp
 			}
 
 			auto const modules = simulation.shapeSeedModulesBudget[2];
+			constexpr uint32_t knownModules = uint32_t(ParticleBehaviourModule::Gravity) |
+				uint32_t(ParticleBehaviourModule::Drag) | uint32_t(ParticleBehaviourModule::Noise) |
+				uint32_t(ParticleBehaviourModule::Collision) | uint32_t(ParticleBehaviourModule::CurlNoise) |
+				uint32_t(ParticleBehaviourModule::Turbulence) | uint32_t(ParticleBehaviourModule::VectorField);
+			if ((modules & ~knownModules) != 0u)
+				error("MPP-PARTICLE-011", "Behaviour module mask contains unrecognized flags.", path + "/Behaviours");
+			if ((modules & uint32_t(ParticleBehaviourModule::Gravity)) != 0u &&
+				(!std::isfinite(simulation.gravityAndDrag[0]) || !std::isfinite(simulation.gravityAndDrag[1]) ||
+				 !std::isfinite(simulation.gravityAndDrag[2])))
+				error("MPP-PARTICLE-011", "Gravity acceleration must contain three finite values.", path + "/Behaviours/Gravity");
+			if ((modules & uint32_t(ParticleBehaviourModule::Drag)) != 0u &&
+				(!std::isfinite(simulation.gravityAndDrag[3]) || simulation.gravityAndDrag[3] < 0.0f))
+				error("MPP-PARTICLE-011", "Drag coefficient must be finite and non-negative.", path + "/Behaviours/Drag");
+
+			auto validateField = [&](ParticleBehaviourModule module, auto const& frequencyStrength,
+				auto const& scrollTimeScale, char const* name)
+			{
+				if ((modules & uint32_t(module)) != 0u && (!finite(frequencyStrength) || !finite(scrollTimeScale)))
+					error("MPP-PARTICLE-011", std::string(name) + " frequency, strength, scroll, and time scale must be finite.",
+						path + "/Behaviours/" + name);
+			};
+			validateField(ParticleBehaviourModule::Noise, simulation.noiseFrequencyStrength,
+				simulation.noiseScrollAndTimeScale, "Noise");
+			validateField(ParticleBehaviourModule::CurlNoise, simulation.curlNoiseFrequencyStrength,
+				simulation.curlNoiseScrollAndTimeScale, "CurlNoise");
+			validateField(ParticleBehaviourModule::Turbulence, simulation.turbulenceFrequencyStrength,
+				simulation.turbulenceScrollAndTimeScale, "Turbulence");
+			validateField(ParticleBehaviourModule::VectorField, simulation.vectorFieldFrequencyStrength,
+				simulation.vectorFieldScrollAndTimeScale, "VectorField");
+
 			if ((modules & uint32_t(ParticleBehaviourModule::Turbulence)) != 0u)
 			{
 				auto const& values = simulation.turbulenceOctavesLacunarityGain;
-				if (values[0] < 1.0f || values[0] > 8.0f || values[1] < 1.0f || values[2] < 0.0f || values[2] > 1.0f)
+				if (!finite(values) || values[0] < 1.0f || values[0] > 8.0f || std::floor(values[0]) != values[0] ||
+					values[1] < 1.0f || values[2] < 0.0f || values[2] > 1.0f)
 				{
-					error("MPP-PARTICLE-011", "Turbulence octaves must be in [1, 8], lacunarity at least 1, and gain in [0, 1].",
+					error("MPP-PARTICLE-011", "Turbulence octaves must be an integer in [1, 8], lacunarity at least 1, and gain in [0, 1].",
 						path + "/Behaviours/Turbulence");
 				}
 			}
 
 			if ((modules & uint32_t(ParticleBehaviourModule::Collision)) != 0u)
 			{
+				auto const sources = simulation.collisionConfiguration[0];
+				constexpr uint32_t knownSources = uint32_t(ParticleCollisionSource::ScreenSpace) |
+					uint32_t(ParticleCollisionSource::Analytical) | uint32_t(ParticleCollisionSource::SignedDistanceField);
+				if (sources == 0u || (sources & ~knownSources) != 0u)
+					error("MPP-PARTICLE-011", "Collision sources must select one or more recognized collision-source flags.",
+						path + "/Behaviours/Collision/sources");
+				if (simulation.collisionConfiguration[1] > uint32_t(ParticleCollisionResponse::SpawnSecondaryEffect))
+					error("MPP-PARTICLE-011", "Collision response must be bounce, slide, stop, kill, or spawnSecondaryEffect.",
+						path + "/Behaviours/Collision/response");
 				auto const& values = simulation.collisionParameters;
-				if (values[0] < 0.0f || values[1] < 0.0f || values[1] > 1.0f || values[2] < 0.0f || values[3] < 0.0f)
+				if (!finite(values) || values[0] < 0.0f || values[1] < 0.0f || values[1] > 1.0f ||
+					values[2] < 0.0f || values[3] < 0.0f)
 				{
-					error("MPP-PARTICLE-011", "Collision restitution, radius scale, and thickness must be non-negative; friction must be in [0, 1].",
+					error("MPP-PARTICLE-011", "Collision restitution, radius scale, and thickness must be finite and non-negative; friction must be in [0, 1].",
 						path + "/Behaviours/Collision");
 				}
 			}

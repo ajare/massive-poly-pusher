@@ -55,6 +55,10 @@ namespace particle_editor
 		StudioVolume mStudio;
 		std::optional<mpp::ParticleEffectBounds> mEffectBounds;
 		std::filesystem::path mPreferencesPath;
+		std::optional<mpp::ParticleEffectSpecification> mInstalledSpecification;
+		ParticlePreviewInputStatus mInputStatus;
+		std::vector<std::string> mInputWarnings;
+		std::array<bool, 2> mRetainedDepthAvailable{};
 		std::string mGraphFailure;
 		uint32_t mWidth{ 0 };
 		uint32_t mHeight{ 0 };
@@ -71,6 +75,8 @@ namespace particle_editor
 		void updateCamera();
 		void updateLight();
 		void setEffectBounds(std::optional<mpp::ParticleEffectBounds> bounds);
+		void applySimulationInputs();
+		void refreshInputWarnings();
 		bool ensureGraphInstalled(PreviewGraph graph, std::string* failure);
 
 	public:
@@ -109,6 +115,7 @@ namespace particle_editor
 		uint32_t liveUpdateCount() const { return mLiveUpdateCount; }
 		PreviewGraph activeGraph() const { return mActiveGraph; }
 		std::string const& graphFailure() const { return mGraphFailure; }
+		std::vector<std::string> const& inputWarnings() const { return mInputWarnings; }
 		ParticlePreviewPreferences& preferences() { return mPreferences; }
 		ParticlePreviewPreferences const& preferences() const { return mPreferences; }
 		StudioVolume const& studioVolume() const { return mStudio; }

@@ -52,6 +52,20 @@ namespace particle_editor
 			return true;
 		}
 
+		template<size_t N>
+		bool readArray(std::string text, std::array<float, N>& value)
+		{
+			std::replace(text.begin(), text.end(), ',', ' ');
+			std::istringstream input(text);
+			std::array<float, N> candidate{};
+			for (auto& item : candidate)
+				if (!(input >> item) || !std::isfinite(item)) return false;
+			input >> std::ws;
+			if (!input.eof()) return false;
+			value = candidate;
+			return true;
+		}
+
 		bool readBool(std::string const& text, bool& value)
 		{
 			if (text == "true" || text == "1") { value = true; return true; }
@@ -73,6 +87,13 @@ namespace particle_editor
 			value.lightColour = glm::max(value.lightColour, glm::vec3(0.0f));
 			value.lightIntensity = std::clamp(std::isfinite(value.lightIntensity) ? value.lightIntensity : 3.0f, 0.0f, 100000.0f);
 			value.lightAutoOrbitSpeed = std::clamp(std::isfinite(value.lightAutoOrbitSpeed) ? value.lightAutoOrbitSpeed : 0.35f, -20.0f, 20.0f);
+			if (!std::all_of(value.signedDistanceFieldTransform.begin(), value.signedDistanceFieldTransform.end(),
+				[](float component) { return std::isfinite(component); }))
+				value.signedDistanceFieldTransform = ParticlePreviewPreferences{}.signedDistanceFieldTransform;
+			value.signedDistanceFieldScale = std::isfinite(value.signedDistanceFieldScale) &&
+				value.signedDistanceFieldScale > 0.0f ? value.signedDistanceFieldScale : 1.0f;
+			value.signedDistanceFieldIsoValue = std::isfinite(value.signedDistanceFieldIsoValue) ?
+				value.signedDistanceFieldIsoValue : 0.0f;
 		}
 
 		bool nearlyEqual(float left, float right)
@@ -101,6 +122,64 @@ namespace particle_editor
 		if (cameraPosition.z < minimum.z) result |= StudioBack;
 		if (cameraPosition.z > maximum.z) result |= StudioFront;
 		return result;
+	}
+
+	std::vector<mpp::ParticleCollider> studioColliders(StudioVolume const& studio)
+	{
+		auto const minimum = studio.center - studio.size * 0.5f;
+		auto const maximum = studio.center + studio.size * 0.5f;
+		auto plane = [](glm::vec3 normal, float distance)
+		{
+			mpp::ParticleCollider collider;
+			collider.shapeAndPadding[0] = uint32_t(mpp::ParticleColliderShape::Plane);
+			collider.first = { normal.x, normal.y, normal.z, distance };
+			return collider;
+		};
+		// No ceiling is registered: this is a floor plus four walls, and is
+		// intentionally independent of camera-driven studio-face visibility.
+		return {
+			plane({ 0.0f, 1.0f, 0.0f }, minimum.y),
+			plane({ 1.0f, 0.0f, 0.0f }, minimum.x),
+			plane({ -1.0f, 0.0f, 0.0f }, -maximum.x),
+			plane({ 0.0f, 0.0f, 1.0f }, minimum.z),
+			plane({ 0.0f, 0.0f, -1.0f }, -maximum.z)
+		};
+	}
+
+	std::vector<std::string> particlePreviewInputWarnings(
+		mpp::ParticleEffectSpecification const& specification,
+		ParticlePreviewPreferences const& preferences, ParticlePreviewInputStatus const& status)
+	{
+		bool vectorField = false;
+		bool analytical = false;
+		bool signedDistanceField = false;
+		bool screenSpace = false;
+		for (auto const& authored : specification.emitterTemplates)
+		{
+			auto const& simulation = authored.value.simulation;
+			auto const modules = simulation.shapeSeedModulesBudget[2];
+			vectorField |= (modules & uint32_t(mpp::ParticleBehaviourModule::VectorField)) != 0u;
+			if ((modules & uint32_t(mpp::ParticleBehaviourModule::Collision)) == 0u) continue;
+			auto const sources = simulation.collisionConfiguration[0];
+			analytical |= (sources & uint32_t(mpp::ParticleCollisionSource::Analytical)) != 0u;
+			signedDistanceField |= (sources & uint32_t(mpp::ParticleCollisionSource::SignedDistanceField)) != 0u;
+			screenSpace |= (sources & uint32_t(mpp::ParticleCollisionSource::ScreenSpace)) != 0u;
+		}
+
+		std::vector<std::string> warnings;
+		if (vectorField && !status.vectorFieldAvailable)
+			warnings.push_back(preferences.vectorFieldResource.empty() ?
+				"Vector field is enabled, but no preview vector-field resource is selected." :
+				"Vector field is enabled, but preview resource '" + preferences.vectorFieldResource + "' is unavailable or is not a 3D texture.");
+		if (analytical && !preferences.studioCollisions)
+			warnings.push_back("Analytical collision is enabled, but preview studio collisions are disabled.");
+		if (signedDistanceField && !status.signedDistanceFieldAvailable)
+			warnings.push_back(preferences.signedDistanceFieldResource.empty() ?
+				"Signed-distance-field collision is enabled, but no preview SDF resource is selected." :
+				"Signed-distance-field collision is enabled, but preview resource '" + preferences.signedDistanceFieldResource + "' is unavailable, is not a 3D texture, or has invalid transform/scale/isovalue settings.");
+		if (screenSpace && !status.screenSpaceDepthAvailable)
+			warnings.push_back("Screen-space collision is awaiting retained depth from the active preview graph; it starts after that graph completes a frame.");
+		return warnings;
 	}
 
 	glm::vec3 previewLightPosition(ParticlePreviewPreferences const& preferences, StudioVolume const& studio)
@@ -142,6 +221,12 @@ namespace particle_editor
 			else if (key == "lightIntensity") readFloat(value, result.lightIntensity);
 			else if (key == "lightAutoOrbit") readBool(value, result.lightAutoOrbit);
 			else if (key == "lightAutoOrbitSpeed") readFloat(value, result.lightAutoOrbitSpeed);
+			else if (key == "vectorFieldResource") result.vectorFieldResource = value;
+			else if (key == "signedDistanceFieldResource") result.signedDistanceFieldResource = value;
+			else if (key == "signedDistanceFieldTransform") readArray(value, result.signedDistanceFieldTransform);
+			else if (key == "signedDistanceFieldScale") readFloat(value, result.signedDistanceFieldScale);
+			else if (key == "signedDistanceFieldIsoValue") readFloat(value, result.signedDistanceFieldIsoValue);
+			else if (key == "studioCollisions") readBool(value, result.studioCollisions);
 		}
 		sanitize(result);
 		return result;
@@ -174,7 +259,19 @@ namespace particle_editor
 				<< "lightColour=" << value.lightColour.x << ',' << value.lightColour.y << ',' << value.lightColour.z << '\n'
 				<< "lightIntensity=" << value.lightIntensity << '\n'
 				<< "lightAutoOrbit=" << (value.lightAutoOrbit ? "true" : "false") << '\n'
-				<< "lightAutoOrbitSpeed=" << value.lightAutoOrbitSpeed << '\n';
+				<< "lightAutoOrbitSpeed=" << value.lightAutoOrbitSpeed << '\n'
+				<< "vectorFieldResource=" << value.vectorFieldResource << '\n'
+				<< "signedDistanceFieldResource=" << value.signedDistanceFieldResource << '\n'
+				<< "signedDistanceFieldTransform=";
+			for (size_t index = 0; index < value.signedDistanceFieldTransform.size(); ++index)
+			{
+				if (index) output << ',';
+				output << value.signedDistanceFieldTransform[index];
+			}
+			output << '\n'
+				<< "signedDistanceFieldScale=" << value.signedDistanceFieldScale << '\n'
+				<< "signedDistanceFieldIsoValue=" << value.signedDistanceFieldIsoValue << '\n'
+				<< "studioCollisions=" << (value.studioCollisions ? "true" : "false") << '\n';
 			if (!output) throw std::runtime_error("Could not finish writing Particle Editor preview preferences.");
 		}
 		std::error_code error;
@@ -208,6 +305,14 @@ namespace particle_editor
 			if ((hidden & (StudioRight | StudioCeiling | StudioFront)) !=
 				(StudioRight | StudioCeiling | StudioFront) || (hidden & StudioFloor) != 0u)
 				return fail("camera-side studio faces are not dynamically identified");
+			auto collidersBeforeOrbit = studioColliders(bounded);
+			(void)obstructingStudioFaces(bounded, bounded.center - bounded.size);
+			auto collidersAfterOrbit = studioColliders(bounded);
+			if (collidersBeforeOrbit.size() != 5u || collidersAfterOrbit.size() != collidersBeforeOrbit.size())
+				return fail("studio collision did not register a stable floor and four walls");
+			for (size_t index = 0; index < collidersBeforeOrbit.size(); ++index)
+				if (collidersBeforeOrbit[index].first != collidersAfterOrbit[index].first)
+					return fail("camera-driven visual face hiding changed studio colliders");
 
 			auto root = std::filesystem::temp_directory_path() / "mpp-particle-preview-preferences-tests";
 			std::filesystem::remove_all(root);
@@ -235,6 +340,13 @@ namespace particle_editor
 			expected.lightIntensity = 7.0f;
 			expected.lightAutoOrbit = true;
 			expected.lightAutoOrbitSpeed = -0.7f;
+			expected.vectorFieldResource = "Fields/Wind";
+			expected.signedDistanceFieldResource = "Fields/RoomSdf";
+			expected.signedDistanceFieldTransform[12] = 0.25f;
+			expected.signedDistanceFieldTransform[13] = -0.5f;
+			expected.signedDistanceFieldScale = 2.5f;
+			expected.signedDistanceFieldIsoValue = 0.4f;
+			expected.studioCollisions = true;
 			saveParticlePreviewPreferences(path, expected);
 			auto actual = loadParticlePreviewPreferences(path);
 			std::ifstream particleAfterInput(particlePath, std::ios::binary);
@@ -246,8 +358,12 @@ namespace particle_editor
 			std::filesystem::remove_all(root);
 			if (particleYamlBefore.empty() || particleYamlAfter != particleYamlBefore ||
 				particleYamlAfter.find("cameraYaw") != std::string::npos ||
-				preferenceText.find("graph=legacy") == std::string::npos || preferenceText.find("lightIntensity=7") == std::string::npos)
-				return fail("preview choices entered particle YAML instead of remaining editor preferences");
+				particleYamlAfter.find("Fields/Wind") != std::string::npos ||
+				particleYamlAfter.find("studioCollisions") != std::string::npos ||
+				preferenceText.find("graph=legacy") == std::string::npos ||
+				preferenceText.find("vectorFieldResource=Fields/Wind") == std::string::npos ||
+				preferenceText.find("studioCollisions=true") == std::string::npos)
+				return fail("preview graph and collision inputs entered particle YAML instead of remaining editor preferences");
 			if (actual.graph != expected.graph || actual.cameraTarget != expected.cameraTarget ||
 				!nearlyEqual(actual.cameraYaw, expected.cameraYaw) || !nearlyEqual(actual.cameraPitch, expected.cameraPitch) ||
 				!nearlyEqual(actual.cameraDistance, expected.cameraDistance) || actual.studioPreset != expected.studioPreset ||
@@ -255,8 +371,38 @@ namespace particle_editor
 				!nearlyEqual(actual.lightAzimuth, expected.lightAzimuth) || !nearlyEqual(actual.lightElevation, expected.lightElevation) ||
 				!nearlyEqual(actual.lightDistance, expected.lightDistance) || actual.lightColour != expected.lightColour ||
 				!nearlyEqual(actual.lightIntensity, expected.lightIntensity) || actual.lightAutoOrbit != expected.lightAutoOrbit ||
-				!nearlyEqual(actual.lightAutoOrbitSpeed, expected.lightAutoOrbitSpeed))
-				return fail("editor-owned graph, camera, studio, material, and light preferences did not round-trip");
+				!nearlyEqual(actual.lightAutoOrbitSpeed, expected.lightAutoOrbitSpeed) ||
+				actual.vectorFieldResource != expected.vectorFieldResource ||
+				actual.signedDistanceFieldResource != expected.signedDistanceFieldResource ||
+				actual.signedDistanceFieldTransform != expected.signedDistanceFieldTransform ||
+				!nearlyEqual(actual.signedDistanceFieldScale, expected.signedDistanceFieldScale) ||
+				!nearlyEqual(actual.signedDistanceFieldIsoValue, expected.signedDistanceFieldIsoValue) ||
+				actual.studioCollisions != expected.studioCollisions)
+				return fail("editor-owned graph, studio, light, and collision-input preferences did not round-trip");
+
+			auto requiredInputs = ParticleDocument::makeStarterEffect();
+			auto& inputSimulation = requiredInputs.emitterTemplates[0].value.simulation;
+			inputSimulation.shapeSeedModulesBudget[2] = uint32_t(mpp::ParticleBehaviourModule::VectorField) |
+				uint32_t(mpp::ParticleBehaviourModule::Collision);
+			inputSimulation.collisionConfiguration[0] = uint32_t(mpp::ParticleCollisionSource::ScreenSpace) |
+				uint32_t(mpp::ParticleCollisionSource::Analytical) |
+				uint32_t(mpp::ParticleCollisionSource::SignedDistanceField);
+			ParticlePreviewPreferences missing;
+			auto warnings = particlePreviewInputWarnings(requiredInputs, missing, {});
+			if (warnings.size() != 4u || !warnings[0].starts_with("Vector field") ||
+				!warnings[1].starts_with("Analytical collision") ||
+				!warnings[2].starts_with("Signed-distance-field collision") ||
+				!warnings[3].starts_with("Screen-space collision"))
+				return fail("enabled modules did not clearly diagnose every missing preview-global input");
+			missing.vectorFieldResource = "Fields/Wind";
+			missing.signedDistanceFieldResource = "Fields/RoomSdf";
+			missing.studioCollisions = true;
+			ParticlePreviewInputStatus available{ true, true, true };
+			if (!particlePreviewInputWarnings(requiredInputs, missing, available).empty())
+				return fail("available preview-global inputs retained missing-input warnings");
+			inputSimulation.shapeSeedModulesBudget[2] = 0u;
+			if (!particlePreviewInputWarnings(requiredInputs, ParticlePreviewPreferences{}, {}).empty())
+				return fail("disabled behaviour modules still required preview-global inputs");
 			if (failure) failure->clear();
 			return true;
 		}

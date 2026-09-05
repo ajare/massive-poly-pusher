@@ -1,6 +1,7 @@
 #include "ParticleEditorApplication.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -583,8 +584,14 @@ namespace particle_editor
 						previewFailure += preview.graphFailure();
 					}
 					diagnostics.setPreviewFailure(previewFailure);
+					diagnostics.setPreviewWarnings(preview.inputWarnings());
 				}
-				else { diagnostics.setDocumentDiagnostics({}); diagnostics.setPreviewFailure(preview.graphFailure()); }
+				else
+				{
+					diagnostics.setDocumentDiagnostics({});
+					diagnostics.setPreviewFailure(preview.graphFailure());
+					diagnostics.setPreviewWarnings(preview.inputWarnings());
+				}
 				if (showDiagnostics) diagnostics.draw(&showDiagnostics);
 
 				ImGui::Begin("MPP Viewport");
@@ -648,7 +655,36 @@ namespace particle_editor
 					preferencesChanged |= ImGui::DragFloat("Intensity", &preferences.lightIntensity, 0.05f, 0.0f, 1000.0f, "%.2f");
 					ImGui::EndDisabled();
 				}
+				if (ImGui::CollapsingHeader("Behaviour preview inputs", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					auto resourceInput = [&](char const* label, std::string& resource)
+					{
+						std::array<char, 512> buffer{};
+						std::copy_n(resource.data(), std::min(resource.size(), buffer.size() - 1u), buffer.data());
+						if (!ImGui::InputText(label, buffer.data(), buffer.size())) return false;
+						resource = buffer.data();
+						return true;
+					};
+					preferencesChanged |= resourceInput("Vector-field resource", preferences.vectorFieldResource);
+					preferencesChanged |= resourceInput("Signed-distance-field resource", preferences.signedDistanceFieldResource);
+					ImGui::TextDisabled("Use declared MPP logical names for 3D textures; these selectors are never serialized.");
+					ImGui::SeparatorText("SDF world-to-texture transform (column-major)");
+					for (size_t column = 0; column < 4u; ++column)
+					{
+						ImGui::PushID(int(column));
+						preferencesChanged |= ImGui::InputFloat4("##SdfTransform", preferences.signedDistanceFieldTransform.data() + column * 4u, "%.5g");
+						ImGui::PopID();
+					}
+					preferencesChanged |= ImGui::DragFloat("SDF distance scale", &preferences.signedDistanceFieldScale,
+						0.01f, 0.0001f, 100000.0f, "%.5g", ImGuiSliderFlags_AlwaysClamp);
+					preferencesChanged |= ImGui::DragFloat("SDF isovalue", &preferences.signedDistanceFieldIsoValue, 0.001f);
+					preferencesChanged |= ImGui::Checkbox("Enable stable studio floor/wall collisions", &preferences.studioCollisions);
+					if (!preferences.studioCollisions)
+						ImGui::TextDisabled("Studio collisions are disabled by default and do not follow hidden visual faces.");
+				}
 				if (preferencesChanged) preview.applyPreferences();
+				for (auto const& warning : preview.inputWarnings())
+					ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.22f, 1.0f), "Warning: %s", warning.c_str());
 				ImGui::TextDisabled("MMB / Alt+left: orbit | Shift: pan | Ctrl: zoom | Wheel: zoom | drag the light gizmo");
 				auto available = ImGui::GetContentRegionAvail();
 				uint32_t viewportWidth = std::max(64u, uint32_t(std::max(0.0f, available.x)));

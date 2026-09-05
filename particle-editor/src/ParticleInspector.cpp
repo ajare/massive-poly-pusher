@@ -7,6 +7,7 @@
 #include <cmath>
 #include <functional>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <imgui/imgui.h>
@@ -58,6 +59,61 @@ namespace particle_editor
 			if (shape == uint32_t(mpp::ParticleSpawnShape::Cone) && parameters[1] == 0.0f)
 				parameters[1] = 1.0f;
 			return parameters;
+		}
+
+		std::array<float, 4>& fieldFrequencyStrength(mpp::EmitterSimData& simulation,
+			mpp::ParticleBehaviourModule module)
+		{
+			if (module == mpp::ParticleBehaviourModule::Noise) return simulation.noiseFrequencyStrength;
+			if (module == mpp::ParticleBehaviourModule::CurlNoise) return simulation.curlNoiseFrequencyStrength;
+			if (module == mpp::ParticleBehaviourModule::Turbulence) return simulation.turbulenceFrequencyStrength;
+			return simulation.vectorFieldFrequencyStrength;
+		}
+
+		std::array<float, 4>& fieldScrollTimeScale(mpp::EmitterSimData& simulation,
+			mpp::ParticleBehaviourModule module)
+		{
+			if (module == mpp::ParticleBehaviourModule::Noise) return simulation.noiseScrollAndTimeScale;
+			if (module == mpp::ParticleBehaviourModule::CurlNoise) return simulation.curlNoiseScrollAndTimeScale;
+			if (module == mpp::ParticleBehaviourModule::Turbulence) return simulation.turbulenceScrollAndTimeScale;
+			return simulation.vectorFieldScrollAndTimeScale;
+		}
+
+		bool drawFieldControls(ParticleDocument& document, size_t emitterIndex,
+			mpp::ParticleBehaviourModule module, char const* name,
+			std::array<float, 4> const& frequencyStrength, std::array<float, 4> const& scrollTimeScale)
+		{
+			ImGui::PushID(name);
+			std::array<float, 3> frequency{ frequencyStrength[0], frequencyStrength[1], frequencyStrength[2] };
+			if (editValue(document, "Change field frequency", frequency,
+				[](auto& value) { return ImGui::DragFloat3("Frequency", value.data(), 0.01f); },
+				[emitterIndex, module](auto& value, auto const& edited)
+				{
+					auto& target = fieldFrequencyStrength(value.emitterTemplates[emitterIndex].value.simulation, module);
+					std::copy(edited.begin(), edited.end(), target.begin());
+				})) { ImGui::PopID(); return true; }
+			float strength = frequencyStrength[3];
+			if (editValue(document, "Change field strength", strength,
+				[](float& value) { return ImGui::DragFloat("Strength", &value, 0.01f); },
+				[emitterIndex, module](auto& value, float edited)
+					{ fieldFrequencyStrength(value.emitterTemplates[emitterIndex].value.simulation, module)[3] = edited; }))
+			{ ImGui::PopID(); return true; }
+			std::array<float, 3> scroll{ scrollTimeScale[0], scrollTimeScale[1], scrollTimeScale[2] };
+			if (editValue(document, "Change field scroll", scroll,
+				[](auto& value) { return ImGui::DragFloat3("Scroll", value.data(), 0.01f); },
+				[emitterIndex, module](auto& value, auto const& edited)
+				{
+					auto& target = fieldScrollTimeScale(value.emitterTemplates[emitterIndex].value.simulation, module);
+					std::copy(edited.begin(), edited.end(), target.begin());
+				})) { ImGui::PopID(); return true; }
+			float timeScale = scrollTimeScale[3];
+			if (editValue(document, "Change field time scale", timeScale,
+				[](float& value) { return ImGui::DragFloat("Time scale", &value, 0.01f); },
+				[emitterIndex, module](auto& value, float edited)
+					{ fieldScrollTimeScale(value.emitterTemplates[emitterIndex].value.simulation, module)[3] = edited; }))
+			{ ImGui::PopID(); return true; }
+			ImGui::PopID();
+			return false;
 		}
 
 		float sampleCurve(mpp::ParticleCurve const& curve, float time)
@@ -612,6 +668,165 @@ namespace particle_editor
 					value.emitterTemplates[emitterIndex].value.simulation.rotationRanges[3] = edited[1];
 				}))
 			{ ImGui::End(); return; }
+		}
+
+		if (ImGui::CollapsingHeader("Behaviours", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			auto const modules = simulation.shapeSeedModulesBudget[2];
+			auto moduleSection = [&](mpp::ParticleBehaviourModule module, char const* name)
+			{
+				ImGui::PushID(name);
+				bool enabled = (modules & uint32_t(module)) != 0u;
+				bool changed = ImGui::Checkbox("##Enabled", &enabled);
+				ImGui::PopID();
+				ImGui::SameLine();
+				bool open = ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen);
+				return std::tuple{ enabled, changed, open };
+			};
+			auto setModule = [&](mpp::ParticleBehaviourModule module, bool enabled)
+			{
+				document.executeEdit(std::string(enabled ? "Enable " : "Disable ") +
+					(module == mpp::ParticleBehaviourModule::CurlNoise ? "curl noise" :
+					 module == mpp::ParticleBehaviourModule::VectorField ? "vector field" : "behaviour module"),
+					[emitterIndex, module, enabled](auto& value)
+					{
+						auto& mask = value.emitterTemplates[emitterIndex].value.simulation.shapeSeedModulesBudget[2];
+						if (enabled) mask |= uint32_t(module); else mask &= ~uint32_t(module);
+					}, false, ParticlePreviewChange::Live);
+			};
+
+			{
+				auto [enabled, toggled, open] = moduleSection(mpp::ParticleBehaviourModule::Gravity, "Gravity");
+				if (toggled) { if (open) ImGui::TreePop(); setModule(mpp::ParticleBehaviourModule::Gravity, enabled); ImGui::End(); return; }
+				if (open)
+				{
+					std::array<float, 3> acceleration{ simulation.gravityAndDrag[0], simulation.gravityAndDrag[1], simulation.gravityAndDrag[2] };
+					if (editValue(document, "Change gravity acceleration", acceleration,
+						[](auto& value) { return ImGui::DragFloat3("Acceleration", value.data(), 0.01f); },
+						[emitterIndex](auto& value, auto const& edited)
+						{
+							auto& target = value.emitterTemplates[emitterIndex].value.simulation.gravityAndDrag;
+							std::copy(edited.begin(), edited.end(), target.begin());
+						})) { ImGui::TreePop(); ImGui::End(); return; }
+					ImGui::TreePop();
+				}
+			}
+			{
+				auto [enabled, toggled, open] = moduleSection(mpp::ParticleBehaviourModule::Drag, "Drag");
+				if (toggled) { if (open) ImGui::TreePop(); setModule(mpp::ParticleBehaviourModule::Drag, enabled); ImGui::End(); return; }
+				if (open)
+				{
+					float coefficient = simulation.gravityAndDrag[3];
+					if (editValue(document, "Change drag coefficient", coefficient,
+						[](float& value) { return ImGui::DragFloat("Coefficient", &value, 0.01f, 0.0f, 100000.0f, "%.4g", ImGuiSliderFlags_AlwaysClamp); },
+						[emitterIndex](auto& value, float edited)
+							{ value.emitterTemplates[emitterIndex].value.simulation.gravityAndDrag[3] = edited; }))
+					{ ImGui::TreePop(); ImGui::End(); return; }
+					ImGui::TreePop();
+				}
+			}
+
+			for (auto const& field : std::array{
+				std::pair{ mpp::ParticleBehaviourModule::Noise, "Noise" },
+				std::pair{ mpp::ParticleBehaviourModule::CurlNoise, "Curl noise" },
+				std::pair{ mpp::ParticleBehaviourModule::Turbulence, "Turbulence" },
+				std::pair{ mpp::ParticleBehaviourModule::VectorField, "Vector field" } })
+			{
+				auto [enabled, toggled, open] = moduleSection(field.first, field.second);
+				if (toggled) { if (open) ImGui::TreePop(); setModule(field.first, enabled); ImGui::End(); return; }
+				if (open)
+				{
+					auto const& frequency = field.first == mpp::ParticleBehaviourModule::Noise ? simulation.noiseFrequencyStrength :
+						field.first == mpp::ParticleBehaviourModule::CurlNoise ? simulation.curlNoiseFrequencyStrength :
+						field.first == mpp::ParticleBehaviourModule::Turbulence ? simulation.turbulenceFrequencyStrength :
+						simulation.vectorFieldFrequencyStrength;
+					auto const& scroll = field.first == mpp::ParticleBehaviourModule::Noise ? simulation.noiseScrollAndTimeScale :
+						field.first == mpp::ParticleBehaviourModule::CurlNoise ? simulation.curlNoiseScrollAndTimeScale :
+						field.first == mpp::ParticleBehaviourModule::Turbulence ? simulation.turbulenceScrollAndTimeScale :
+						simulation.vectorFieldScrollAndTimeScale;
+					if (drawFieldControls(document, emitterIndex, field.first, field.second, frequency, scroll))
+					{ ImGui::TreePop(); ImGui::End(); return; }
+					if (field.first == mpp::ParticleBehaviourModule::Turbulence)
+					{
+						int octaves = int(simulation.turbulenceOctavesLacunarityGain[0]);
+						if (editValue(document, "Change turbulence octaves", octaves,
+							[](int& value) { return ImGui::SliderInt("Octaves", &value, 1, 8); },
+							[emitterIndex](auto& value, int edited)
+								{ value.emitterTemplates[emitterIndex].value.simulation.turbulenceOctavesLacunarityGain[0] = float(edited); }))
+						{ ImGui::TreePop(); ImGui::End(); return; }
+						float lacunarity = simulation.turbulenceOctavesLacunarityGain[1];
+						if (editValue(document, "Change turbulence lacunarity", lacunarity,
+							[](float& value) { return ImGui::DragFloat("Lacunarity", &value, 0.01f, 1.0f, 1000.0f, "%.4g", ImGuiSliderFlags_AlwaysClamp); },
+							[emitterIndex](auto& value, float edited)
+								{ value.emitterTemplates[emitterIndex].value.simulation.turbulenceOctavesLacunarityGain[1] = edited; }))
+						{ ImGui::TreePop(); ImGui::End(); return; }
+						float gain = simulation.turbulenceOctavesLacunarityGain[2];
+						if (editValue(document, "Change turbulence gain", gain,
+							[](float& value) { return ImGui::SliderFloat("Gain", &value, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); },
+							[emitterIndex](auto& value, float edited)
+								{ value.emitterTemplates[emitterIndex].value.simulation.turbulenceOctavesLacunarityGain[2] = edited; }))
+						{ ImGui::TreePop(); ImGui::End(); return; }
+					}
+					if (field.first == mpp::ParticleBehaviourModule::VectorField)
+						ImGui::TextDisabled("Uses the editor-only vector-field resource selected in the viewport.");
+					ImGui::TreePop();
+				}
+			}
+
+			{
+				auto [enabled, toggled, open] = moduleSection(mpp::ParticleBehaviourModule::Collision, "Collision");
+				if (toggled) { if (open) ImGui::TreePop(); setModule(mpp::ParticleBehaviourModule::Collision, enabled); ImGui::End(); return; }
+				if (open)
+				{
+					auto const sourceMask = simulation.collisionConfiguration[0];
+					for (auto const& source : std::array{
+						std::pair{ mpp::ParticleCollisionSource::ScreenSpace, "Screen space" },
+						std::pair{ mpp::ParticleCollisionSource::Analytical, "Analytical" },
+						std::pair{ mpp::ParticleCollisionSource::SignedDistanceField, "Signed distance field" } })
+					{
+						bool selected = (sourceMask & uint32_t(source.first)) != 0u;
+						bool const onlySource = selected && (sourceMask & ~uint32_t(source.first)) == 0u;
+						ImGui::BeginDisabled(onlySource);
+						bool sourceChanged = ImGui::Checkbox(source.second, &selected);
+						ImGui::EndDisabled();
+						if (source.first != mpp::ParticleCollisionSource::SignedDistanceField) ImGui::SameLine();
+						if (sourceChanged)
+						{
+							document.executeEdit("Change collision sources", [emitterIndex, source = source.first, selected](auto& value)
+							{
+								auto& mask = value.emitterTemplates[emitterIndex].value.simulation.collisionConfiguration[0];
+								if (selected) mask |= uint32_t(source); else mask &= ~uint32_t(source);
+							}, false, ParticlePreviewChange::Live);
+							ImGui::TreePop(); ImGui::End(); return;
+						}
+					}
+					static constexpr char const* responses[]{ "Bounce", "Slide", "Stop", "Kill", "Spawn secondary effect" };
+					int response = int(simulation.collisionConfiguration[1]);
+					if (ImGui::Combo("Response", &response, responses, int(std::size(responses))))
+					{
+						document.executeEdit("Change collision response", [emitterIndex, response](auto& value)
+							{ value.emitterTemplates[emitterIndex].value.simulation.collisionConfiguration[1] = uint32_t(response); },
+							false, ParticlePreviewChange::Live);
+						ImGui::TreePop(); ImGui::End(); return;
+					}
+					auto collisionValue = [&](size_t component, char const* label, float minimum, float maximum)
+					{
+						float value = simulation.collisionParameters[component];
+						return editValue(document, "Change collision parameter", value,
+							[label, minimum, maximum](float& edited)
+								{ return ImGui::DragFloat(label, &edited, 0.01f, minimum, maximum, "%.4g", ImGuiSliderFlags_AlwaysClamp); },
+							[emitterIndex, component](auto& effect, float edited)
+								{ effect.emitterTemplates[emitterIndex].value.simulation.collisionParameters[component] = edited; });
+					};
+					if (collisionValue(0u, "Restitution", 0.0f, 1000.0f) ||
+						collisionValue(1u, "Friction", 0.0f, 1.0f) ||
+						collisionValue(2u, "Radius scale", 0.0f, 1000.0f) ||
+						collisionValue(3u, "Screen-space thickness", 0.0f, 100000.0f))
+					{ ImGui::TreePop(); ImGui::End(); return; }
+					ImGui::TextDisabled("Collision inputs are preview-only settings in the viewport.");
+					ImGui::TreePop();
+				}
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen))

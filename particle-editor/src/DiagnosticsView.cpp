@@ -16,6 +16,11 @@ namespace particle_editor
 		mPreviewFailure = std::move(failure);
 	}
 
+	void DiagnosticsView::setPreviewWarnings(std::vector<std::string> warnings)
+	{
+		mPreviewWarnings = std::move(warnings);
+	}
+
 	void DiagnosticsView::setOperationFailure(std::string failure)
 	{
 		mOperationFailure = std::move(failure);
@@ -39,6 +44,7 @@ namespace particle_editor
 		for (auto const& diagnostic : mDocumentDiagnostics.getDiagnostics())
 			if (diagnostic.severity == mpp::DiagnosticSeverity::Error)
 				return "[" + diagnostic.code + "] " + diagnostic.message;
+		if (!mPreviewWarnings.empty()) return "Preview warning: " + mPreviewWarnings.front();
 		return "No errors";
 	}
 
@@ -53,6 +59,14 @@ namespace particle_editor
 			ImGui::TextWrapped("Operation: %s", mOperationFailure.c_str());
 		if (!mPreviewFailure.empty())
 			ImGui::TextWrapped("Preview: %s", mPreviewFailure.c_str());
+		for (auto const& warning : mPreviewWarnings)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.75f, 0.25f, 1.0f));
+			ImGui::TextUnformatted("[PREVIEW-INPUT] warning");
+			ImGui::PopStyleColor();
+			ImGui::TextWrapped("%s", warning.c_str());
+			ImGui::Separator();
+		}
 		for (auto const& diagnostic : mDocumentDiagnostics.getDiagnostics())
 		{
 			auto colour = diagnostic.severity == mpp::DiagnosticSeverity::Error ? ImVec4(1.0f, 0.35f, 0.3f, 1.0f) :
@@ -66,7 +80,7 @@ namespace particle_editor
 				ImGui::TextDisabled("%s", diagnostic.location.elementPath.c_str());
 			ImGui::Separator();
 		}
-		if (!hasErrors() && mDocumentDiagnostics.empty()) ImGui::TextDisabled("No diagnostics.");
+		if (!hasErrors() && mDocumentDiagnostics.empty() && mPreviewWarnings.empty()) ImGui::TextDisabled("No diagnostics.");
 		ImGui::End();
 	}
 }

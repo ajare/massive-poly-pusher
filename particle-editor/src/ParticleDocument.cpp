@@ -806,6 +806,70 @@ namespace particle_editor
 				propertyAppearance.sorting[0] != uint32_t(mpp::ParticleSortMode::BackToFront))
 				return fail("spawn and core billboard appearance properties did not round-trip through canonical YAML");
 
+			ParticleDocument behaviours;
+			behaviours.executeEdit("Author all behaviour modules", [](auto& effect)
+			{
+				auto& simulation = effect.emitterTemplates[0].value.simulation;
+				simulation.shapeSeedModulesBudget[2] = uint32_t(mpp::ParticleBehaviourModule::Gravity) |
+					uint32_t(mpp::ParticleBehaviourModule::Drag) | uint32_t(mpp::ParticleBehaviourModule::Noise) |
+					uint32_t(mpp::ParticleBehaviourModule::CurlNoise) | uint32_t(mpp::ParticleBehaviourModule::Turbulence) |
+					uint32_t(mpp::ParticleBehaviourModule::VectorField) | uint32_t(mpp::ParticleBehaviourModule::Collision);
+				simulation.gravityAndDrag = { 1.0f, -8.0f, 2.0f, 0.35f };
+				simulation.noiseFrequencyStrength = { 1.0f, 2.0f, 3.0f, 0.4f };
+				simulation.noiseScrollAndTimeScale = { 0.1f, 0.2f, 0.3f, 1.25f };
+				simulation.curlNoiseFrequencyStrength = { 2.0f, 3.0f, 4.0f, 0.8f };
+				simulation.curlNoiseScrollAndTimeScale = { 0.4f, 0.5f, 0.6f, 0.75f };
+				simulation.turbulenceFrequencyStrength = { 3.0f, 4.0f, 5.0f, 1.2f };
+				simulation.turbulenceScrollAndTimeScale = { 0.7f, 0.8f, 0.9f, 0.5f };
+				simulation.turbulenceOctavesLacunarityGain = { 6.0f, 2.5f, 0.3f, 0.0f };
+				simulation.vectorFieldFrequencyStrength = { 0.25f, 0.5f, 0.75f, 4.0f };
+				simulation.vectorFieldScrollAndTimeScale = { -0.1f, 0.0f, 0.1f, 2.0f };
+				simulation.collisionConfiguration = {
+					uint32_t(mpp::ParticleCollisionSource::ScreenSpace) |
+					uint32_t(mpp::ParticleCollisionSource::Analytical) |
+					uint32_t(mpp::ParticleCollisionSource::SignedDistanceField),
+					uint32_t(mpp::ParticleCollisionResponse::Slide), 0u, 0u };
+				simulation.collisionParameters = { 0.65f, 0.25f, 0.8f, 0.15f };
+			}, false, ParticlePreviewChange::Live);
+			if (behaviours.diagnostics().hasErrors() || !behaviours.publishPreviewNow() ||
+				behaviours.previewChange() != ParticlePreviewChange::Live)
+				return fail("authored behaviour modules did not reach the live-preview update seam");
+			auto behavioursPath = root / "behaviours.particle.yaml";
+			if (behaviours.save(behavioursPath) != ParticleSaveResult::Saved)
+				return fail("authored behaviour modules did not save");
+			ParticleDocument restoredBehaviours;
+			if (!restoredBehaviours.open(behavioursPath))
+				return fail("authored behaviour modules did not reopen through the production parser");
+			auto const& authoredBehaviours = behaviours.specification().emitterTemplates[0].value.simulation;
+			auto const& restoredBehaviourValues = restoredBehaviours.specification().emitterTemplates[0].value.simulation;
+			if (restoredBehaviourValues.shapeSeedModulesBudget[2] != authoredBehaviours.shapeSeedModulesBudget[2] ||
+				restoredBehaviourValues.gravityAndDrag != authoredBehaviours.gravityAndDrag ||
+				restoredBehaviourValues.noiseFrequencyStrength != authoredBehaviours.noiseFrequencyStrength ||
+				restoredBehaviourValues.curlNoiseFrequencyStrength != authoredBehaviours.curlNoiseFrequencyStrength ||
+				restoredBehaviourValues.turbulenceFrequencyStrength != authoredBehaviours.turbulenceFrequencyStrength ||
+				restoredBehaviourValues.turbulenceOctavesLacunarityGain != authoredBehaviours.turbulenceOctavesLacunarityGain ||
+				restoredBehaviourValues.vectorFieldFrequencyStrength != authoredBehaviours.vectorFieldFrequencyStrength ||
+				restoredBehaviourValues.collisionConfiguration != authoredBehaviours.collisionConfiguration ||
+				restoredBehaviourValues.collisionParameters != authoredBehaviours.collisionParameters)
+				return fail("behaviour modules did not round-trip through canonical YAML");
+			auto preservedVectorField = restoredBehaviourValues.vectorFieldFrequencyStrength;
+			restoredBehaviours.executeEdit("Disable vector field", [](auto& effect)
+				{ effect.emitterTemplates[0].value.simulation.shapeSeedModulesBudget[2] &=
+					~uint32_t(mpp::ParticleBehaviourModule::VectorField); }, false, ParticlePreviewChange::Live);
+			if (restoredBehaviours.specification().emitterTemplates[0].value.simulation.vectorFieldFrequencyStrength != preservedVectorField ||
+				!restoredBehaviours.undo() || !restoredBehaviours.redo())
+				return fail("disabling a behaviour module discarded settings or was not undoable");
+
+			auto invalidBehaviour = behaviours.specification();
+			auto& invalidSimulation = invalidBehaviour.emitterTemplates[0].value.simulation;
+			invalidSimulation.collisionConfiguration[0] = 0u;
+			invalidSimulation.collisionConfiguration[1] = 99u;
+			invalidSimulation.gravityAndDrag[3] = -1.0f;
+			invalidSimulation.turbulenceOctavesLacunarityGain[0] = 3.5f;
+			auto invalidBehaviourDiagnostics = mpp::ParticleEffectValidator::validate(invalidBehaviour);
+			if (invalidBehaviourDiagnostics.count(mpp::DiagnosticSeverity::Error) < 4u)
+				return fail("shared validation did not diagnose behaviour ranges, source masks, and collision responses");
+
 			ParticleDocument curves;
 			for (size_t slot = 0; slot < size_t(mpp::ParticleScalarCurve::Count); ++slot)
 			{

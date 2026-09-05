@@ -11,6 +11,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/vec4.hpp>
 
 #include <mpp/Camera.h>
@@ -32,6 +33,7 @@
 #include <mpp/ResourceManager.h>
 #include <mpp/Scene.h>
 #include <mpp/SceneModel3d.h>
+#include <mpp/Texture.h>
 #include <mpp/TextureData.h>
 #include <mpp/resource-parsers/FileRenderGraphStream.h>
 #include <mpp/mesh/MeshSpecification.h>
@@ -350,6 +352,56 @@ namespace particle_editor
 		mEffectBounds = std::move(bounds);
 		mStudio = studioVolumeForBounds(mEffectBounds);
 		updateStudioGeometry();
+		if (mInitialised) applySimulationInputs();
+	}
+
+	void ParticlePreview::applySimulationInputs()
+	{
+		if (!mInitialised) return;
+		auto& particles = mRenderSystem->getParticleSystem();
+		auto volumeTexture = [&](std::string const& name)
+		{
+			if (name.empty()) return mpp::ResourcePtr{};
+			auto resource = mResources->getResource(name, true);
+			if (!resource) return mpp::ResourcePtr{};
+			try { resource->load(); }
+			catch (...) { return mpp::ResourcePtr{}; }
+			auto texture = dynamic_cast<mpp::Texture*>(resource.get());
+			return texture && texture->getTextureTarget() == GL_TEXTURE_3D ? resource : mpp::ResourcePtr{};
+		};
+
+		auto vectorField = volumeTexture(mPreferences.vectorFieldResource);
+		mInputStatus.vectorFieldAvailable = bool(vectorField);
+		if (vectorField) particles.setVectorField(vectorField); else particles.clearVectorField();
+
+		auto signedDistanceField = volumeTexture(mPreferences.signedDistanceFieldResource);
+		bool const sdfSettingsValid = mPreferences.signedDistanceFieldScale > 0.0f &&
+			std::isfinite(mPreferences.signedDistanceFieldScale) &&
+			std::isfinite(mPreferences.signedDistanceFieldIsoValue) &&
+			std::all_of(mPreferences.signedDistanceFieldTransform.begin(), mPreferences.signedDistanceFieldTransform.end(),
+				[](float value) { return std::isfinite(value); });
+		mInputStatus.signedDistanceFieldAvailable = bool(signedDistanceField) && sdfSettingsValid;
+		if (mInputStatus.signedDistanceFieldAvailable)
+			particles.setSignedDistanceField(signedDistanceField,
+				glm::make_mat4(mPreferences.signedDistanceFieldTransform.data()),
+				mPreferences.signedDistanceFieldScale, mPreferences.signedDistanceFieldIsoValue);
+		else particles.clearSignedDistanceField();
+
+		if (mPreferences.studioCollisions)
+		{
+			auto colliders = studioColliders(mStudio);
+			particles.setColliders(colliders);
+		}
+		else particles.setColliders(std::span<mpp::ParticleCollider const>{});
+		mInputStatus.screenSpaceDepthAvailable = mRetainedDepthAvailable[graphIndex(mActiveGraph)];
+		refreshInputWarnings();
+	}
+
+	void ParticlePreview::refreshInputWarnings()
+	{
+		mInputWarnings = mInstalledSpecification ?
+			particlePreviewInputWarnings(*mInstalledSpecification, mPreferences, mInputStatus) :
+			std::vector<std::string>{};
 	}
 
 	bool ParticlePreview::ensureGraphInstalled(PreviewGraph graph, std::string* failure)
@@ -394,9 +446,15 @@ namespace particle_editor
 		mActiveGraph = graph;
 		mActivePipeline = pipelineName(graph);
 		mPreferences.graph = graph;
+		// Do not let the newly active graph simulate against depth retained by the
+		// previously active graph. Its own depth becomes available after one frame.
+		mRenderSystem->getParticleSystem().setScreenSpaceCollisionDepth({});
+		mRetainedDepthAvailable[graphIndex(graph)] = false;
+		mInputStatus.screenSpaceDepthAvailable = false;
 		applyStudioMaterials();
 		mCamera->markCut();
 		mGraphFailure.clear();
+		refreshInputWarnings();
 		mPreferencesDirty = true;
 		if (failure) failure->clear();
 		return true;
@@ -440,6 +498,7 @@ namespace particle_editor
 			auto oldEffect = mEffect;
 			mEffectResource = std::move(candidate);
 			mEffect = candidateEffect;
+			mInstalledSpecification = specification;
 			setEffectBounds(specification.bounds);
 			if (oldEffect && mRenderSystem->getParticleSystem().isAlive(oldEffect))
 				mRenderSystem->getParticleSystem().destroyEffect(oldEffect);
@@ -495,6 +554,7 @@ namespace particle_editor
 			particles.updateEmitterTemplateRuntime(particles.getEmitter(mEffect, index),
 				emitter.simulation, emitter.appearance);
 		}
+		mInstalledSpecification = specification;
 		setEffectBounds(specification.bounds);
 		++mLiveUpdateCount;
 		if (failure) failure->clear();
@@ -604,6 +664,7 @@ namespace particle_editor
 		updateCamera();
 		updateStudioVisibility();
 		updateLight();
+		applySimulationInputs();
 		mPreferencesDirty = true;
 	}
 
@@ -630,6 +691,9 @@ namespace particle_editor
 		{
 			updateStudioVisibility();
 			mRenderSystem->renderScene(mScene, mCamera, glm::vec2(0.0f), mActivePipeline);
+			mRetainedDepthAvailable[graphIndex(mActiveGraph)] = true;
+			mInputStatus.screenSpaceDepthAvailable = true;
+			refreshInputWarnings();
 		}
 	}
 
@@ -653,6 +717,10 @@ namespace particle_editor
 			auto& particles = mRenderSystem->getParticleSystem();
 			if (mEffect && particles.isAlive(mEffect)) particles.destroyEffect(mEffect);
 			particles.setStatisticsEnabled(false);
+			particles.clearVectorField();
+			particles.clearSignedDistanceField();
+			particles.setScreenSpaceCollisionDepth({});
+			particles.setColliders(std::span<mpp::ParticleCollider const>{});
 			mEffect = {};
 			if (mEffectResource)
 			{
@@ -684,6 +752,9 @@ namespace particle_editor
 		}
 		catch (...) {}
 		mInstalledGraphs = {};
+		mRetainedDepthAvailable = {};
+		mInstalledSpecification.reset();
+		mInputWarnings.clear();
 		mActivePipeline.clear();
 		mInitialised = false;
 	}
