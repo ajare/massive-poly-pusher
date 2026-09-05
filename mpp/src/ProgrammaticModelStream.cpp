@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 
 #include "mpp/Config.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/MppException.h"
+#include <cstring>
 
 using namespace std;
 

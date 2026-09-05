@@ -73,6 +73,17 @@ set(MPP_BUILD_OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/build")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/lib")
+# Explicit per-configuration directories keep single-config generators (Make
+# and Ninja) consistent with Visual Studio. The extra directory level is also
+# required by the checked-in ../../../resources paths beside the executables.
+foreach(MPP_OUTPUT_CONFIG Debug Release RelWithDebInfo MinSizeRel MemCheck)
+    string(TOUPPER "${MPP_OUTPUT_CONFIG}" MPP_OUTPUT_CONFIG_UPPER)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/bin/${MPP_OUTPUT_CONFIG}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/bin/${MPP_OUTPUT_CONFIG}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/lib/${MPP_OUTPUT_CONFIG}")
+endforeach()
+unset(MPP_OUTPUT_CONFIG)
+unset(MPP_OUTPUT_CONFIG_UPPER)
 
 find_package(OpenGL REQUIRED)
 
@@ -537,29 +548,30 @@ mpp_add_header_filters(ModelConvert "${CMAKE_CURRENT_SOURCE_DIR}/model-convert/i
 mpp_copy_runtime(ModelConvert assimp ${MPP_DRACO_RUNTIME} glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers MppMeshSpecificationParser)
 mpp_copy_asan_runtime(ModelConvert)
 
+set(MPP_PIPELINE_EDITOR_TYPE)
 if(WIN32)
-    add_executable(PipelineEditor WIN32
-        pipeline-editor/src/Main.cpp
-        pipeline-editor/src/ProcessFlowModel.cpp
-        pipeline-editor/src/ProcessFlowLayout.cpp
-        pipeline-editor/src/ProcessFlowView.cpp)
-    target_include_directories(PipelineEditor PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-    target_link_libraries(PipelineEditor PRIVATE
-        MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
-        Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
-    mpp_target_defaults(PipelineEditor)
-    mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
-    mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
-    mpp_copy_asan_runtime(PipelineEditor)
-    add_custom_command(TARGET PipelineEditor POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
-            "$<TARGET_FILE_DIR:PipelineEditor>/editor.ini"
-        VERBATIM)
-else()
-    message(STATUS "Skipping PipelineEditor: its RenderDoc/process integration is Windows-only")
+    list(APPEND MPP_PIPELINE_EDITOR_TYPE WIN32)
 endif()
+add_executable(PipelineEditor ${MPP_PIPELINE_EDITOR_TYPE}
+    pipeline-editor/src/Main.cpp
+    pipeline-editor/src/ProcessFlowModel.cpp
+    pipeline-editor/src/ProcessFlowLayout.cpp
+    pipeline-editor/src/ProcessFlowView.cpp)
+unset(MPP_PIPELINE_EDITOR_TYPE)
+target_include_directories(PipelineEditor PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
+target_link_libraries(PipelineEditor PRIVATE
+    MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
+    Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW)
+mpp_target_defaults(PipelineEditor)
+mpp_add_header_filters(PipelineEditor "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/include")
+mpp_copy_runtime(PipelineEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+mpp_copy_asan_runtime(PipelineEditor)
+add_custom_command(TARGET PipelineEditor POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
+        "$<TARGET_FILE_DIR:PipelineEditor>/editor.ini"
+    VERBATIM)
 
 # Particle Editor deliberately has no RenderDoc/process dependency and is built
 # on every platform supported by the shared SDL/OpenGL/ImGui application stack.
