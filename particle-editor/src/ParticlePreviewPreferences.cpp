@@ -227,6 +227,9 @@ namespace particle_editor
 			else if (key == "signedDistanceFieldScale") readFloat(value, result.signedDistanceFieldScale);
 			else if (key == "signedDistanceFieldIsoValue") readFloat(value, result.signedDistanceFieldIsoValue);
 			else if (key == "studioCollisions") readBool(value, result.studioCollisions);
+			else if (key == "showSpatialOverlays") readBool(value, result.showSpatialOverlays);
+			else if (key == "showBoundsOverlay") readBool(value, result.showBoundsOverlay);
+			else if (key == "boundsCullingEnabled") readBool(value, result.boundsCullingEnabled);
 		}
 		sanitize(result);
 		return result;
@@ -271,7 +274,10 @@ namespace particle_editor
 			output << '\n'
 				<< "signedDistanceFieldScale=" << value.signedDistanceFieldScale << '\n'
 				<< "signedDistanceFieldIsoValue=" << value.signedDistanceFieldIsoValue << '\n'
-				<< "studioCollisions=" << (value.studioCollisions ? "true" : "false") << '\n';
+				<< "studioCollisions=" << (value.studioCollisions ? "true" : "false") << '\n'
+				<< "showSpatialOverlays=" << (value.showSpatialOverlays ? "true" : "false") << '\n'
+				<< "showBoundsOverlay=" << (value.showBoundsOverlay ? "true" : "false") << '\n'
+				<< "boundsCullingEnabled=" << (value.boundsCullingEnabled ? "true" : "false") << '\n';
 			if (!output) throw std::runtime_error("Could not finish writing Particle Editor preview preferences.");
 		}
 		std::error_code error;
@@ -347,6 +353,9 @@ namespace particle_editor
 			expected.signedDistanceFieldScale = 2.5f;
 			expected.signedDistanceFieldIsoValue = 0.4f;
 			expected.studioCollisions = true;
+			expected.showSpatialOverlays = false;
+			expected.showBoundsOverlay = false;
+			expected.boundsCullingEnabled = false;
 			saveParticlePreviewPreferences(path, expected);
 			auto actual = loadParticlePreviewPreferences(path);
 			std::ifstream particleAfterInput(particlePath, std::ios::binary);
@@ -360,9 +369,13 @@ namespace particle_editor
 				particleYamlAfter.find("cameraYaw") != std::string::npos ||
 				particleYamlAfter.find("Fields/Wind") != std::string::npos ||
 				particleYamlAfter.find("studioCollisions") != std::string::npos ||
+				particleYamlAfter.find("showSpatialOverlays") != std::string::npos ||
+				particleYamlAfter.find("boundsCullingEnabled") != std::string::npos ||
 				preferenceText.find("graph=legacy") == std::string::npos ||
 				preferenceText.find("vectorFieldResource=Fields/Wind") == std::string::npos ||
-				preferenceText.find("studioCollisions=true") == std::string::npos)
+				preferenceText.find("studioCollisions=true") == std::string::npos ||
+				preferenceText.find("showSpatialOverlays=false") == std::string::npos ||
+				preferenceText.find("boundsCullingEnabled=false") == std::string::npos)
 				return fail("preview graph and collision inputs entered particle YAML instead of remaining editor preferences");
 			if (actual.graph != expected.graph || actual.cameraTarget != expected.cameraTarget ||
 				!nearlyEqual(actual.cameraYaw, expected.cameraYaw) || !nearlyEqual(actual.cameraPitch, expected.cameraPitch) ||
@@ -377,7 +390,10 @@ namespace particle_editor
 				actual.signedDistanceFieldTransform != expected.signedDistanceFieldTransform ||
 				!nearlyEqual(actual.signedDistanceFieldScale, expected.signedDistanceFieldScale) ||
 				!nearlyEqual(actual.signedDistanceFieldIsoValue, expected.signedDistanceFieldIsoValue) ||
-				actual.studioCollisions != expected.studioCollisions)
+				actual.studioCollisions != expected.studioCollisions ||
+				actual.showSpatialOverlays != expected.showSpatialOverlays ||
+				actual.showBoundsOverlay != expected.showBoundsOverlay ||
+				actual.boundsCullingEnabled != expected.boundsCullingEnabled)
 				return fail("editor-owned graph, studio, light, and collision-input preferences did not round-trip");
 
 			auto requiredInputs = ParticleDocument::makeStarterEffect();

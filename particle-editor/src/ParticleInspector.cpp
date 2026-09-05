@@ -471,6 +471,12 @@ namespace particle_editor
 		}
 
 		auto const& effect = document.specification();
+		auto openDiagnosticSection = [&](char const* section)
+		{
+			if (mDiagnosticFocusPath.find(std::string("/") + section) == std::string::npos) return;
+			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+			ImGui::SetScrollHereY(0.25f);
+		};
 		if (textValue(document, "Name", "Rename particle effect", effect.name,
 			[&](std::string name)
 			{
@@ -665,6 +671,7 @@ namespace particle_editor
 			ImGui::End();
 			return;
 		}
+		openDiagnosticSection("Transform");
 		if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) &&
 			drawTransformEditor(document, emitterTransform(authored)))
 		{
@@ -678,6 +685,7 @@ namespace particle_editor
 			"Velocity aligned", "Velocity stretched" };
 		static constexpr char const* blends[]{ "Additive", "Alpha", "Weighted OIT" };
 
+		openDiagnosticSection("Spawn");
 		if (ImGui::CollapsingHeader("Spawn", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			int shape = int(simulation.shapeSeedModulesBudget[0]);
@@ -867,6 +875,7 @@ namespace particle_editor
 			{ ImGui::End(); return; }
 		}
 
+		openDiagnosticSection("Behaviours");
 		if (ImGui::CollapsingHeader("Behaviours", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			auto const modules = simulation.shapeSeedModulesBudget[2];
@@ -1026,6 +1035,7 @@ namespace particle_editor
 			}
 		}
 
+		openDiagnosticSection("Appearance");
 		if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			if (resourceValue(document, resources, ParticleResourceKind::Texture, "Texture resource",
@@ -1167,6 +1177,7 @@ namespace particle_editor
 			ImGui::TextDisabled("Distortion is billboard-only; zero strength disables its graph contribution.");
 		}
 
+		openDiagnosticSection("Mesh");
 		if (ImGui::CollapsingHeader("Mesh"))
 		{
 			if (resourceValue(document, resources, ParticleResourceKind::Model, "Model resource",
@@ -1197,6 +1208,7 @@ namespace particle_editor
 			else ImGui::TextDisabled("Select a Model to use the dedicated mesh-particle pass; empty renders a billboard.");
 		}
 
+		openDiagnosticSection("Lighting");
 		if (ImGui::CollapsingHeader("Lighting"))
 		{
 			auto const flags = lighting.flagsAndPadding[0];
@@ -1262,6 +1274,7 @@ namespace particle_editor
 			ImGui::TextDisabled("Lighting is bounded to at most one proxy light and one volume per live Emitter.");
 		}
 
+		openDiagnosticSection("Events");
 		if (ImGui::CollapsingHeader("Particle events", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			static constexpr char const* triggers[]{ "Spawn", "Death", "First collision", "Threshold age" };
@@ -1345,6 +1358,7 @@ namespace particle_editor
 			if (ImGui::Button("Add particle event")) { document.addEventRule(emitterIndex); ImGui::End(); return; }
 		}
 
+		openDiagnosticSection("Curves");
 		if (ImGui::CollapsingHeader("Curves", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			static constexpr char const* curveNames[]{ "Size", "Alpha", "Velocity multiplier", "Drag",

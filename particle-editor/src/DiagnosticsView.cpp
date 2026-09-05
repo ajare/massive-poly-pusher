@@ -37,6 +37,11 @@ namespace particle_editor
 			(!mPreviewFailure.empty() ? 1u : 0u) + (!mOperationFailure.empty() ? 1u : 0u);
 	}
 
+	size_t DiagnosticsView::warningCount() const
+	{
+		return mDocumentDiagnostics.count(mpp::DiagnosticSeverity::Warning) + mPreviewWarnings.size();
+	}
+
 	std::string DiagnosticsView::statusText() const
 	{
 		if (!mOperationFailure.empty()) return mOperationFailure;
@@ -48,12 +53,13 @@ namespace particle_editor
 		return "No errors";
 	}
 
-	void DiagnosticsView::draw(bool* open)
+	std::optional<mpp::Diagnostic> DiagnosticsView::draw(bool* open)
 	{
+		std::optional<mpp::Diagnostic> activated;
 		if (!ImGui::Begin("Diagnostics", open))
 		{
 			ImGui::End();
-			return;
+			return activated;
 		}
 		if (!mOperationFailure.empty())
 			ImGui::TextWrapped("Operation: %s", mOperationFailure.c_str());
@@ -69,18 +75,22 @@ namespace particle_editor
 		}
 		for (auto const& diagnostic : mDocumentDiagnostics.getDiagnostics())
 		{
+			ImGui::PushID(&diagnostic);
 			auto colour = diagnostic.severity == mpp::DiagnosticSeverity::Error ? ImVec4(1.0f, 0.35f, 0.3f, 1.0f) :
 				diagnostic.severity == mpp::DiagnosticSeverity::Warning ? ImVec4(1.0f, 0.75f, 0.25f, 1.0f) :
 				ImVec4(0.65f, 0.8f, 1.0f, 1.0f);
 			ImGui::PushStyleColor(ImGuiCol_Text, colour);
-			ImGui::Text("[%s] %s", diagnostic.code.c_str(), mpp::diagnosticSeverityName(diagnostic.severity));
+			std::string heading = "[" + diagnostic.code + "] " + mpp::diagnosticSeverityName(diagnostic.severity);
+			if (ImGui::Selectable(heading.c_str(), false, ImGuiSelectableFlags_SpanAllColumns)) activated = diagnostic;
 			ImGui::PopStyleColor();
 			ImGui::TextWrapped("%s", diagnostic.message.c_str());
 			if (!diagnostic.location.elementPath.empty())
 				ImGui::TextDisabled("%s", diagnostic.location.elementPath.c_str());
 			ImGui::Separator();
+			ImGui::PopID();
 		}
 		if (!hasErrors() && mDocumentDiagnostics.empty() && mPreviewWarnings.empty()) ImGui::TextDisabled("No diagnostics.");
 		ImGui::End();
+		return activated;
 	}
 }

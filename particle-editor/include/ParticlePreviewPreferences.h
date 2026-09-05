@@ -74,6 +74,10 @@ namespace particle_editor
 		float signedDistanceFieldScale{ 1.0f };
 		float signedDistanceFieldIsoValue{ 0.0f };
 		bool studioCollisions{ false };
+		// Editor-only debug/display state. These values must never enter particle YAML.
+		bool showSpatialOverlays{ true };
+		bool showBoundsOverlay{ true };
+		bool boundsCullingEnabled{ true };
 	};
 
 	struct ParticlePreviewInputStatus

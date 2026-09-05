@@ -787,6 +787,8 @@ namespace particle_editor
 	void ParticlePreview::setBoundsCullingEnabled(bool enabled)
 	{
 		mBoundsCullingEnabled = enabled;
+		mPreferences.boundsCullingEnabled = enabled;
+		mPreferencesDirty = true;
 		if (ready()) mRenderSystem->getParticleSystem().setEffectBoundsCullingEnabled(mEffect, enabled);
 	}
 
@@ -874,6 +876,7 @@ namespace particle_editor
 		updateStudioVisibility();
 		updateLight();
 		applySimulationInputs();
+		setBoundsCullingEnabled(mPreferences.boundsCullingEnabled);
 		mPreferencesDirty = true;
 	}
 

@@ -391,8 +391,10 @@ void shutdown()
 #ifdef _WIN32
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	int argc = 0;
-	char** argv = nullptr;
+	// Preserve CLI automation modes in the GUI subsystem build. MSVC exposes
+	// the parsed process arguments through these CRT globals.
+	int argc = __argc;
+	char** argv = __argv;
 #else
 int main(int argc, char** argv)
 {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,7 +22,9 @@ namespace particle_editor
 		void setOperationFailure(std::string failure);
 		bool hasErrors() const;
 		size_t errorCount() const;
+		size_t warningCount() const;
 		std::string statusText() const;
-		void draw(bool* open);
+		// Returns the activated diagnostic so the application can navigate to it.
+		std::optional<mpp::Diagnostic> draw(bool* open);
 	};
 }

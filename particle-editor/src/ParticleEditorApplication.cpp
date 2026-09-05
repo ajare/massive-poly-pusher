@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -20,6 +21,7 @@
 #include <mpp/Logger.h>
 #include <mpp/RenderSystem.h>
 #include <mpp/ResourceManager.h>
+#include <mpp/ParticleSystemTests.h>
 #include <mpp/app/FileDialog.h>
 #include <mpp/app/ImGuiBackendData.h>
 #include <mpp/app/ImGuiDataProvider.h>
@@ -30,6 +32,7 @@
 #include <mpp/app/TimerSDL.h>
 #include <mpp/app/WindowSDL.h>
 #include <mpp/resource-parsers/ParticleEffectParser.h>
+#include <mpp/resource-parsers/ParticleResourceTests.h>
 
 #include "DiagnosticsView.h"
 #include "ParticleDocument.h"
@@ -97,6 +100,33 @@ namespace particle_editor
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Particle Editor Error", message.c_str(), nullptr);
 		}
 
+		std::vector<std::filesystem::path> loadRecentFiles(std::filesystem::path const& path)
+		{
+			std::vector<std::filesystem::path> result;
+			std::ifstream input(path);
+			for (std::string line; std::getline(input, line) && result.size() < 8u;)
+				if (!line.empty() && std::find(result.begin(), result.end(), line) == result.end()) result.emplace_back(line);
+			return result;
+		}
+
+		void saveRecentFiles(std::filesystem::path const& path, std::vector<std::filesystem::path> const& files)
+		{
+			std::filesystem::create_directories(path.parent_path());
+			std::ofstream output(path, std::ios::trunc);
+			for (auto const& file : files) output << file.string() << '\n';
+		}
+
+		std::optional<size_t> diagnosticObjectIndex(std::string const& path, char const* marker)
+		{
+			auto begin = path.find(marker);
+			if (begin == std::string::npos) return std::nullopt;
+			begin += std::char_traits<char>::length(marker);
+			auto end = path.find(']', begin);
+			if (end == std::string::npos) return std::nullopt;
+			try { return size_t(std::stoull(path.substr(begin, end - begin))); }
+			catch (...) { return std::nullopt; }
+		}
+
 		int validateParticleEffect(std::filesystem::path const& path)
 		{
 			auto result = mpp::resource_parsers::ParticleEffectParser::fromFile(path.string());
@@ -117,6 +147,9 @@ namespace particle_editor
 
 	int ParticleEditorApplication::run(int argc, char** argv)
 	{
+		bool unattended = false;
+		std::filesystem::path smokeWorkingPath;
+		std::filesystem::path smokePreferencesPath;
 		try
 		{
 			if (argc >= 2 && std::string(argv[1]) == "--validate")
@@ -130,12 +163,31 @@ namespace particle_editor
 			}
 
 			std::filesystem::path startupPath;
+			bool smokeTest = false;
 			for (int index = 1; index < argc; ++index)
 			{
 				std::string argument = argv[index];
 				if (argument == "--help" || argument == "-h")
 				{
-					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --control-tests                    Run preview simulation-control tests.\n  --resource-tests                   Run editor resource-library tests.\n  --spatial-tests                    Run transform and picking tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
+					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --smoke-test [effect.particle.yaml] Render the serialized sample in both graphs and test edit/undo/save/reload.\n  --core-particle-tests              Run production resource and CPU particle suites.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --control-tests                    Run preview simulation-control tests.\n  --resource-tests                   Run editor resource-library tests.\n  --spatial-tests                    Run transform and picking tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
+					return 0;
+				}
+				if (argument == "--smoke-test")
+				{
+					smokeTest = true;
+					unattended = true;
+					continue;
+				}
+				if (argument == "--core-particle-tests")
+				{
+					std::string failure;
+					if (!mpp::resource_parsers::runParticleResourceTests(&failure) ||
+						!mpp::runParticleSystemCpuTests(&failure))
+					{
+						std::fprintf(stderr, "Production particle tests failed: %s\n", failure.c_str());
+						return 1;
+					}
+					std::fprintf(stdout, "Production particle resource and CPU tests passed.\n");
 					return 0;
 				}
 				if (argument == "--document-tests")
@@ -207,16 +259,48 @@ namespace particle_editor
 			auto iniPath = std::filesystem::path(sdlBasePath) / "particle-editor.ini";
 			auto editorConfig = editorConfiguration(iniPath);
 			auto const& resourcesPath = editorConfig.resourceRoot;
+			if (smokeTest)
+			{
+				auto source = startupPath.empty() ? resourcesPath / "demo-suite" / "res" /
+					"SerializedParticleEffect.particle.yaml" : startupPath;
+				if (!std::filesystem::is_regular_file(source))
+					throw std::runtime_error("Particle Editor smoke sample does not exist: " + source.string());
+				auto const smokeId = std::chrono::steady_clock::now().time_since_epoch().count();
+				smokeWorkingPath = std::filesystem::temp_directory_path() /
+					("mpp-particle-editor-smoke-" + std::to_string(smokeId) + ".particle.yaml");
+				std::filesystem::copy_file(source, smokeWorkingPath,
+					std::filesystem::copy_options::overwrite_existing);
+				startupPath = smokeWorkingPath;
+			}
 			auto options = mpp::app::loadRenderSystemOptions(iniPath);
 			char* preferenceRoot = SDL_GetPrefPath("ajare", "ParticleEditor");
 			if (!preferenceRoot) throw std::runtime_error("SDL could not determine the Particle Editor preferences directory.");
-			auto previewPreferencesPath = std::filesystem::path(preferenceRoot) / "preview.ini";
+			auto preferenceDirectory = std::filesystem::path(preferenceRoot);
+			auto previewPreferencesPath = preferenceDirectory / "preview.ini";
+			if (smokeTest)
+			{
+				smokePreferencesPath = smokeWorkingPath;
+				smokePreferencesPath.replace_extension(".preview.ini");
+				previewPreferencesPath = smokePreferencesPath;
+			}
+			auto recentFilesPath = preferenceDirectory / "recent.txt";
 			SDL_free(preferenceRoot);
+			auto recentFiles = loadRecentFiles(recentFilesPath);
+			auto recordRecent = [&](std::filesystem::path path)
+			{
+				if (smokeTest || path.empty()) return;
+				path = std::filesystem::absolute(path).lexically_normal();
+				recentFiles.erase(std::remove(recentFiles.begin(), recentFiles.end(), path), recentFiles.end());
+				recentFiles.insert(recentFiles.begin(), std::move(path));
+				if (recentFiles.size() > 8u) recentFiles.resize(8u);
+				try { saveRecentFiles(recentFilesPath, recentFiles); } catch (...) {}
+			};
 
 			ParticleDocumentTabs documents(false);
 			std::string startupFailure;
 			if (!startupPath.empty() && !documents.open(startupPath))
 				startupFailure = "Could not open particle effect '" + startupPath.string() + "'.";
+			else if (!startupPath.empty()) recordRecent(startupPath);
 			if (documents.size() == 0u) documents.createNew();
 			DiagnosticsView diagnostics;
 			diagnostics.setOperationFailure(startupFailure);
@@ -237,6 +321,28 @@ namespace particle_editor
 			else if (!particleResources.reload(editorConfig.resourceRoot, editorConfig.resourceLibrary))
 				startupFailure = "The configured particle resource library has errors; see Diagnostics.";
 			diagnostics.setOperationFailure(startupFailure);
+			if (smokeTest)
+			{
+				auto* document = documents.active();
+				if (!document || document->diagnostics().hasErrors())
+					throw std::runtime_error("Smoke sample did not open as a valid particle effect.");
+				auto const originalName = document->specification().name;
+				document->executeEdit("Smoke representative edit", [](auto& effect) { effect.name += " (edited)"; },
+					false, ParticlePreviewChange::Live);
+				if (!document->dirty() || !document->undo() || document->specification().name != originalName)
+					throw std::runtime_error("Smoke edit/undo workflow did not restore the serialized sample.");
+				// The DemoSuite sample deliberately uses its own resource namespace. The
+				// smoke copy removes only that preview dependency; the source asset is untouched.
+				document->executeEdit("Adapt smoke preview resource", [&](auto& effect)
+				{
+					for (auto& emitter : effect.emitterTemplates)
+						if (!particleResources.resolves(emitter.albedoTexture, ParticleResourceKind::Texture))
+							emitter.albedoTexture.clear();
+				}, false, ParticlePreviewChange::Structural);
+				if (document->save() != ParticleSaveResult::Saved || !document->reload() || document->dirty() ||
+					document->diagnostics().hasErrors())
+					throw std::runtime_error("Smoke save/reload workflow failed.");
+			}
 
 			ImGuiBackendData backend{};
 			imGuiSetup(&renderSystem, resourceManager.get(), &backend, true);
@@ -248,6 +354,7 @@ namespace particle_editor
 			ParticlePreview preview(&renderSystem, resourceManager.get());
 			preview.setPreferencesPath(previewPreferencesPath);
 			preview.initialise(resourcesPath, 900, 650);
+			preview.setBoundsCullingEnabled(preview.preferences().boundsCullingEnabled);
 			auto previewTexture = provider->registerTexture(preview.texture());
 			ParticleDocument* installedDocument = nullptr;
 			uint64_t installedRevision = 0;
@@ -273,8 +380,8 @@ namespace particle_editor
 			std::optional<ParticleDocumentComparison> comparison;
 			bool openComparison = false;
 			bool lightGizmoDragging = false;
-			bool showSpatialOverlays = true;
-			bool showBoundsOverlay = true;
+			bool showSpatialOverlays = preview.preferences().showSpatialOverlays;
+			bool showBoundsOverlay = preview.preferences().showBoundsOverlay;
 			float boundsEstimateDuration = 3.0f;
 			float boundsEstimatePadding = 0.25f;
 			ParticleBoundsEstimate boundsEstimate;
@@ -289,6 +396,8 @@ namespace particle_editor
 			TimerSDL timer;
 			timer.reset();
 			float fps = 0.0f;
+			uint32_t smokePbrFrames = 0;
+			uint32_t smokeLegacyFrames = 0;
 
 			auto forgetInstalled = [&] { installedDocument = nullptr; installedRevision = 0; };
 			auto eraseDocument = [&](size_t index)
@@ -339,6 +448,12 @@ namespace particle_editor
 				preview.triggerManualBurst(selected, uint32_t(std::max(1, manualBurstCount)));
 			};
 			installActive(true);
+			if (smokeTest)
+			{
+				std::string failure;
+				if (!preview.selectGraph(PreviewGraph::Pbr, &failure) || !preview.ready())
+					throw std::runtime_error("PBR smoke preview could not start: " + failure);
+			}
 			if (!preview.graphFailure().empty()) showDiagnostics = true;
 
 			std::function<void(size_t, std::filesystem::path const&, bool, bool)> attemptSave;
@@ -351,6 +466,7 @@ namespace particle_editor
 					if (result == ParticleSaveResult::Saved)
 					{
 						diagnostics.setOperationFailure({});
+						recordRecent(path);
 						if (closesDocument) eraseDocument(index);
 					}
 					else if (result == ParticleSaveResult::InvalidConfirmationRequired)
@@ -428,7 +544,7 @@ namespace particle_editor
 								diagnostics.setOperationFailure("Could not open particle effect '" + *result->path + "'.");
 								showDiagnostics = true;
 							}
-							else diagnostics.setOperationFailure({});
+							else { diagnostics.setOperationFailure({}); recordRecent(*result->path); }
 						}
 						else if (dialogPurpose == DialogPurpose::Save)
 							attemptSave(dialogDocument, *result->path, dialogClosesDocument, false);
@@ -466,6 +582,16 @@ namespace particle_editor
 					{
 						requestNew |= ImGui::MenuItem("New", "Ctrl+N");
 						requestOpen |= ImGui::MenuItem("Open...", "Ctrl+O", false, !fileDialog.busy());
+						if (ImGui::BeginMenu("Open Recent", !recentFiles.empty()))
+						{
+							for (auto const& recent : recentFiles)
+								if (ImGui::MenuItem(recent.string().c_str()))
+								{
+									if (!documents.open(recent)) { diagnostics.setOperationFailure("Could not open recent particle effect '" + recent.string() + "'."); showDiagnostics = true; }
+									else recordRecent(recent);
+								}
+							ImGui::EndMenu();
+						}
 						requestSave |= ImGui::MenuItem("Save", "Ctrl+S", false, active != nullptr);
 						requestSaveAs |= ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, active && !fileDialog.busy());
 						if (ImGui::MenuItem("Close", "Ctrl+W", false, active != nullptr)) requestClose(documents.activeIndex());
@@ -483,6 +609,16 @@ namespace particle_editor
 					if (ImGui::BeginMenu("View"))
 					{
 						ImGui::MenuItem("Diagnostics", nullptr, &showDiagnostics);
+						if (ImGui::MenuItem("Spatial Overlays", nullptr, &showSpatialOverlays))
+						{
+							preview.preferences().showSpatialOverlays = showSpatialOverlays;
+							preview.applyPreferences();
+						}
+						if (ImGui::MenuItem("Particle Effect Bounds", nullptr, &showBoundsOverlay))
+						{
+							preview.preferences().showBoundsOverlay = showBoundsOverlay;
+							preview.applyPreferences();
+						}
 						if (ImGui::MenuItem("Reset Layout")) resetLayout = true;
 						ImGui::EndMenu();
 					}
@@ -584,11 +720,19 @@ namespace particle_editor
 						else beginSaveAs(documents.activeIndex(), false);
 					}
 					ImGui::SameLine();
-					if (ImGui::Button("Undo") && documents.active()) documents.active()->undo();
+					ImGui::BeginDisabled(!documents.active() || !documents.active()->canUndo());
+					if (ImGui::Button("Undo")) documents.active()->undo();
+					ImGui::EndDisabled(); ImGui::SameLine();
+					ImGui::BeginDisabled(!documents.active() || !documents.active()->canRedo());
+					if (ImGui::Button("Redo")) documents.active()->redo();
+					ImGui::EndDisabled(); ImGui::SameLine();
+					ImGui::BeginDisabled(!documents.active());
+					if (ImGui::Button("Add Emitter")) documents.active()->addEmitterTemplate();
 					ImGui::SameLine();
-					if (ImGui::Button("Redo") && documents.active()) documents.active()->redo();
+					if (ImGui::Button("Add Child")) documents.active()->addChildEffect();
 					ImGui::SameLine();
-					if (ImGui::Button("Restart Preview")) restartPreview();
+					if (ImGui::Button("Validate / Rebuild")) restartPreview();
+					ImGui::EndDisabled();
 					ImGui::SameLine();
 					if (ImGui::Button(preview.activeGraph() == PreviewGraph::Pbr ? "Graph: PBR" : "Graph: Legacy"))
 					{
@@ -598,6 +742,13 @@ namespace particle_editor
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("Frame Bounds")) preview.frameBounds();
+					ImGui::SameLine();
+					if (ImGui::Button(showBoundsOverlay ? "Hide Bounds" : "Show Bounds"))
+					{
+						showBoundsOverlay = !showBoundsOverlay;
+						preview.preferences().showBoundsOverlay = showBoundsOverlay;
+						preview.applyPreferences();
+					}
 					ImGui::SameLine();
 					if (ImGui::Button("Reset Camera")) preview.resetCamera();
 					active = documents.active();
@@ -644,9 +795,12 @@ namespace particle_editor
 						bool const failed = !active->previewFailure().empty() || !preview.graphFailure().empty();
 						auto const previewStatus = resolveParticlePreviewStatus(documentValid, preview.ready(),
 							active->previewPaused(), preview.stepping(), preview.rebuilding(), failed);
-						ImGui::Text("%s%s | preview %s | %s | %s graph | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
-							active->dirty() ? " *" : "", particlePreviewStatusText(previewStatus), diagnostics.statusText().c_str(),
-							preview.activeGraph() == PreviewGraph::Pbr ? "PBR" : "legacy", fps);
+						char status[2048];
+						std::snprintf(status, sizeof(status), "%s%s | preview %s | %zu errors / %zu warnings: %s | %s graph | %.1f FPS",
+							active->path().empty() ? "Unsaved" : active->path().string().c_str(), active->dirty() ? " *" : "",
+							particlePreviewStatusText(previewStatus), diagnostics.errorCount(), diagnostics.warningCount(),
+							diagnostics.statusText().c_str(), preview.activeGraph() == PreviewGraph::Pbr ? "PBR" : "legacy", fps);
+						if (ImGui::Selectable(status, false, ImGuiSelectableFlags_AllowOverlap)) showDiagnostics = true;
 						if (!preview.boundsCullingEnabled())
 						{
 							ImGui::SameLine();
@@ -657,9 +811,10 @@ namespace particle_editor
 					if (preview.stats().valid)
 					{
 						ImGui::SameLine();
-						ImGui::TextDisabled("| %u particles | effects %u submitted / %u bounds-culled | GPU %.2f ms",
+						ImGui::TextDisabled("| %u particles | effects %u submitted / %u bounds-culled | GPU sim %.2f / sort %.2f / render %.2f ms",
 							preview.stats().activeParticles, preview.stats().submittedEffects,
-							preview.stats().boundsCulledEffects, preview.stats().renderGpuMilliseconds);
+							preview.stats().boundsCulledEffects, preview.stats().simulationGpuMilliseconds,
+							preview.stats().sortingGpuMilliseconds, preview.stats().renderGpuMilliseconds);
 					}
 				}
 				ImGui::End();
@@ -738,7 +893,32 @@ namespace particle_editor
 					diagnostics.setPreviewFailure(preview.graphFailure());
 					diagnostics.setPreviewWarnings(preview.inputWarnings());
 				}
-				if (showDiagnostics) diagnostics.draw(&showDiagnostics);
+				if (showDiagnostics)
+					if (auto activated = diagnostics.draw(&showDiagnostics))
+					{
+						if (!activated->location.document.empty())
+						{
+							std::error_code ignored;
+							auto wanted = std::filesystem::weakly_canonical(activated->location.document, ignored);
+							for (size_t index = 0; index < documents.size(); ++index)
+							{
+								auto actual = std::filesystem::weakly_canonical(documents.at(index).path(), ignored);
+								if (!wanted.empty() && actual == wanted) { documents.activate(index); break; }
+							}
+						}
+						auto* target = documents.active();
+						if (target)
+						{
+							auto const& path = activated->location.elementPath;
+							if (auto index = diagnosticObjectIndex(path, "/Emitters/Emitter[");
+								index && *index < target->specification().emitterTemplates.size())
+								target->selectEmitterTemplate(*index);
+							else if (auto index = diagnosticObjectIndex(path, "/ChildEffects/ChildEffect[");
+								index && *index < target->specification().childEffects.size())
+								target->selectChildEffect(*index);
+							inspector.focusDiagnostic(path);
+						}
+					}
 
 				ImGui::Begin("MPP Viewport");
 				int selectedGraph = preview.activeGraph() == PreviewGraph::Pbr ? 0 : 1;
@@ -765,8 +945,18 @@ namespace particle_editor
 				ImGui::SameLine();
 				if (ImGui::Button("Reset")) preview.resetCamera();
 				ImGui::SameLine(); ImGui::TextUnformatted("Gizmo:"); ImGui::SameLine();
-				ImGui::SameLine(); ImGui::Checkbox("Overlays", &showSpatialOverlays);
-				ImGui::SameLine(); ImGui::Checkbox("Bounds", &showBoundsOverlay);
+				ImGui::SameLine();
+				if (ImGui::Checkbox("Overlays", &showSpatialOverlays))
+				{
+					preferences.showSpatialOverlays = showSpatialOverlays;
+					preview.applyPreferences();
+				}
+				ImGui::SameLine();
+				if (ImGui::Checkbox("Bounds", &showBoundsOverlay))
+				{
+					preferences.showBoundsOverlay = showBoundsOverlay;
+					preview.applyPreferences();
+				}
 				ImGui::SameLine();
 				bool boundsCulling = preview.boundsCullingEnabled();
 				if (ImGui::Checkbox("Bounds culling", &boundsCulling)) preview.setBoundsCullingEnabled(boundsCulling);
@@ -1120,6 +1310,24 @@ namespace particle_editor
 				uiRenderer.render(&renderSystem);
 				renderSystem.finishStatsCollection();
 				window.show();
+				if (smokeTest)
+				{
+					auto* smokeDocument = documents.active();
+					if (!smokeDocument || !smokeDocument->previewFailure().empty() ||
+						!preview.graphFailure().empty() || !preview.ready())
+						throw std::runtime_error("Particle Editor smoke preview failed while rendering.");
+					if (preview.activeGraph() == PreviewGraph::Pbr)
+					{
+						if (++smokePbrFrames >= 5u)
+						{
+							std::string failure;
+							if (!preview.selectGraph(PreviewGraph::Legacy, &failure))
+								throw std::runtime_error("Legacy smoke preview could not start: " + failure);
+						}
+					}
+					else if (++smokeLegacyFrames >= 5u)
+						running = false;
+				}
 			}
 
 			provider->unregisterTexture(previewTexture);
@@ -1130,11 +1338,21 @@ namespace particle_editor
 			if (resourceManager->getResource("__ImGui_Font__", true)) resourceManager->deleteResource("__ImGui_Font__");
 			renderSystem.removeRenderPipeline("ParticleEditor.UI");
 			renderSystem.destroyCoreResources();
+			if (!smokeWorkingPath.empty()) std::filesystem::remove(smokeWorkingPath);
+			if (!smokePreferencesPath.empty()) std::filesystem::remove(smokePreferencesPath);
+			if (smokeTest) std::fprintf(stdout, "Particle Editor smoke test passed (PBR + legacy, edit/undo/save/reload).\n");
 			return 0;
 		}
 		catch (std::exception const& error)
 		{
-			showFatal(error.what());
+			if (!smokeWorkingPath.empty())
+			{
+				std::error_code ignored;
+				std::filesystem::remove(smokeWorkingPath, ignored);
+				if (!smokePreferencesPath.empty()) std::filesystem::remove(smokePreferencesPath, ignored);
+			}
+			if (unattended) std::fprintf(stderr, "Particle Editor smoke test failed: %s\n", error.what());
+			else showFatal(error.what());
 			return 1;
 		}
 	}
