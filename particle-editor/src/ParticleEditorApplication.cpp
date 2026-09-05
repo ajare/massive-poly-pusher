@@ -6,6 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <optional>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -33,6 +34,7 @@
 #include "ParticleDocument.h"
 #include "ParticleInspector.h"
 #include "ParticlePreview.h"
+#include "ParticlePreviewPreferences.h"
 
 namespace particle_editor
 {
@@ -123,7 +125,7 @@ namespace particle_editor
 				std::string argument = argv[index];
 				if (argument == "--help" || argument == "-h")
 				{
-					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
+					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
 					return 0;
 				}
 				if (argument == "--document-tests")
@@ -135,6 +137,17 @@ namespace particle_editor
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor document tests passed.\n");
+					return 0;
+				}
+				if (argument == "--preview-tests")
+				{
+					std::string failure;
+					if (!runParticlePreviewPreferenceTests(&failure))
+					{
+						std::fprintf(stderr, "Particle Editor preview tests failed: %s\n", failure.c_str());
+						return 1;
+					}
+					std::fprintf(stderr, "Particle Editor preview tests passed.\n");
 					return 0;
 				}
 				if (!argument.starts_with("--")) startupPath = argument;
@@ -151,6 +164,10 @@ namespace particle_editor
 			auto iniPath = std::filesystem::path(sdlBasePath) / "particle-editor.ini";
 			auto resourcesPath = resourceRoot(iniPath);
 			auto options = mpp::app::loadRenderSystemOptions(iniPath);
+			char* preferenceRoot = SDL_GetPrefPath("ajare", "ParticleEditor");
+			if (!preferenceRoot) throw std::runtime_error("SDL could not determine the Particle Editor preferences directory.");
+			auto previewPreferencesPath = std::filesystem::path(preferenceRoot) / "preview.ini";
+			SDL_free(preferenceRoot);
 
 			ParticleDocumentTabs documents(false);
 			std::string startupFailure;
@@ -179,6 +196,7 @@ namespace particle_editor
 			renderSystem.getOrCreateRenderPipeline("ParticleEditor.UI");
 
 			ParticlePreview preview(&renderSystem, resourceManager.get());
+			preview.setPreferencesPath(previewPreferencesPath);
 			preview.initialise(resourcesPath, 900, 650);
 			auto previewTexture = provider->registerTexture(preview.texture());
 			ParticleDocument* installedDocument = nullptr;
@@ -204,6 +222,7 @@ namespace particle_editor
 			bool conflictSaveClosesDocument = false;
 			std::optional<ParticleDocumentComparison> comparison;
 			bool openComparison = false;
+			bool lightGizmoDragging = false;
 			InputManagerSDL input;
 			TimerSDL timer;
 			timer.reset();
@@ -241,6 +260,7 @@ namespace particle_editor
 				installedRevision = document->previewRevision();
 			};
 			installActive(true);
+			if (!preview.graphFailure().empty()) showDiagnostics = true;
 
 			std::function<void(size_t, std::filesystem::path const&, bool, bool)> attemptSave;
 			attemptSave = [&](size_t index, std::filesystem::path const& path, bool closesDocument, bool allowInvalid)
@@ -378,6 +398,19 @@ namespace particle_editor
 					if (ImGui::BeginMenu("Particle Effect"))
 					{
 						if (ImGui::MenuItem("Rebuild Preview", "F5", false, active != nullptr)) installActive(true);
+						if (ImGui::BeginMenu("Preview Graph"))
+						{
+							for (auto const graph : { PreviewGraph::Pbr, PreviewGraph::Legacy })
+							{
+								bool const selected = preview.activeGraph() == graph;
+								if (ImGui::MenuItem(graph == PreviewGraph::Pbr ? "PBR" : "Legacy", nullptr, selected) && !selected)
+								{
+									std::string failure;
+									if (!preview.selectGraph(graph, &failure)) showDiagnostics = true;
+								}
+							}
+							ImGui::EndMenu();
+						}
 						if (active)
 						{
 							if (active->previewPaused())
@@ -386,6 +419,11 @@ namespace particle_editor
 							}
 							else if (ImGui::MenuItem("Pause Simulation")) { active->setPreviewPaused(true); preview.pauseSimulation(); }
 							if (ImGui::MenuItem("Step Simulation", nullptr, false, preview.ready())) preview.stepSimulation();
+							ImGui::Separator();
+							if (ImGui::MenuItem("Focus Selection")) preview.focusSelection(active->specification(),
+								active->hasSelectedEmitterTemplate() ? std::optional<size_t>(active->selectedEmitterTemplate()) : std::nullopt);
+							if (ImGui::MenuItem("Frame Particle Effect Bounds")) preview.frameBounds();
+							if (ImGui::MenuItem("Reset Camera")) preview.resetCamera();
 						}
 						ImGui::EndMenu();
 					}
@@ -436,6 +474,17 @@ namespace particle_editor
 					if (ImGui::Button("Redo") && documents.active()) documents.active()->redo();
 					ImGui::SameLine();
 					if (ImGui::Button("Rebuild Preview")) installActive(true);
+					ImGui::SameLine();
+					if (ImGui::Button(preview.activeGraph() == PreviewGraph::Pbr ? "Graph: PBR" : "Graph: Legacy"))
+					{
+						std::string failure;
+						auto graph = preview.activeGraph() == PreviewGraph::Pbr ? PreviewGraph::Legacy : PreviewGraph::Pbr;
+						if (!preview.selectGraph(graph, &failure)) showDiagnostics = true;
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Frame Bounds")) preview.frameBounds();
+					ImGui::SameLine();
+					if (ImGui::Button("Reset Camera")) preview.resetCamera();
 					active = documents.active();
 					if (active)
 					{
@@ -465,8 +514,9 @@ namespace particle_editor
 				{
 					active = documents.active();
 					if (active)
-						ImGui::Text("%s%s | %s | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
-							active->dirty() ? " *" : "", diagnostics.statusText().c_str(), fps);
+						ImGui::Text("%s%s | %s | %s graph | %.1f FPS", active->path().empty() ? "Unsaved" : active->path().string().c_str(),
+							active->dirty() ? " *" : "", diagnostics.statusText().c_str(),
+							preview.activeGraph() == PreviewGraph::Pbr ? "PBR" : "legacy", fps);
 					else ImGui::TextDisabled("No particle effect is open | %.1f FPS", fps);
 					if (preview.stats().valid)
 					{
@@ -526,12 +576,80 @@ namespace particle_editor
 				if (active)
 				{
 					diagnostics.setDocumentDiagnostics(active->diagnostics());
-					diagnostics.setPreviewFailure(active->previewFailure());
+					auto previewFailure = active->previewFailure();
+					if (!preview.graphFailure().empty())
+					{
+						if (!previewFailure.empty()) previewFailure += " ";
+						previewFailure += preview.graphFailure();
+					}
+					diagnostics.setPreviewFailure(previewFailure);
 				}
-				else { diagnostics.setDocumentDiagnostics({}); diagnostics.setPreviewFailure({}); }
+				else { diagnostics.setDocumentDiagnostics({}); diagnostics.setPreviewFailure(preview.graphFailure()); }
 				if (showDiagnostics) diagnostics.draw(&showDiagnostics);
 
 				ImGui::Begin("MPP Viewport");
+				int selectedGraph = preview.activeGraph() == PreviewGraph::Pbr ? 0 : 1;
+				ImGui::SetNextItemWidth(110.0f);
+				if (ImGui::Combo("Graph", &selectedGraph, "PBR\0Legacy\0"))
+				{
+					std::string failure;
+					if (!preview.selectGraph(selectedGraph == 0 ? PreviewGraph::Pbr : PreviewGraph::Legacy, &failure))
+						showDiagnostics = true;
+				}
+				ImGui::SameLine();
+				auto& preferences = preview.preferences();
+				int studioPreset = int(preferences.studioPreset);
+				ImGui::SetNextItemWidth(120.0f);
+				bool preferencesChanged = ImGui::Combo("Studio", &studioPreset, "Neutral\0Dark\0Warm\0");
+				if (preferencesChanged) preferences.studioPreset = StudioPreset(studioPreset);
+				ImGui::SameLine();
+				preferencesChanged |= ImGui::Checkbox("Floor grid", &preferences.floorGrid);
+				ImGui::SameLine();
+				if (ImGui::Button("Focus Selection") && active)
+					preview.focusSelection(active->specification(), active->hasSelectedEmitterTemplate() ?
+						std::optional<size_t>(active->selectedEmitterTemplate()) : std::nullopt);
+				ImGui::SameLine();
+				if (ImGui::Button("Frame Bounds")) preview.frameBounds();
+				ImGui::SameLine();
+				if (ImGui::Button("Reset")) preview.resetCamera();
+
+				if (ImGui::CollapsingHeader("Studio light"))
+				{
+					preferencesChanged |= ImGui::Checkbox("Enabled##StudioLight", &preferences.lightEnabled);
+					ImGui::SameLine();
+					preferencesChanged |= ImGui::Checkbox("Automatic orbit", &preferences.lightAutoOrbit);
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(130.0f);
+					preferencesChanged |= ImGui::DragFloat("Orbit speed", &preferences.lightAutoOrbitSpeed, 0.01f, -5.0f, 5.0f, "%.2f rad/s");
+					ImGui::BeginDisabled(!preferences.lightEnabled);
+					float lightAzimuth = preferences.lightAzimuth * 57.2957795f;
+					float lightElevation = preferences.lightElevation * 57.2957795f;
+					ImGui::SetNextItemWidth(120.0f);
+					if (ImGui::SliderFloat("Azimuth", &lightAzimuth, -180.0f, 180.0f, "%.1f deg"))
+					{
+						preferences.lightAzimuth = lightAzimuth * 0.0174532925f;
+						preferencesChanged = true;
+					}
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(120.0f);
+					if (ImGui::SliderFloat("Elevation", &lightElevation, -85.0f, 85.0f, "%.1f deg"))
+					{
+						preferences.lightElevation = lightElevation * 0.0174532925f;
+						preferencesChanged = true;
+					}
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(115.0f);
+					preferencesChanged |= ImGui::DragFloat("Distance", &preferences.lightDistance, 0.05f, 0.05f, 1000.0f, "%.2f");
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(130.0f);
+					preferencesChanged |= ImGui::ColorEdit3("Colour", &preferences.lightColour.x, ImGuiColorEditFlags_NoInputs);
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(115.0f);
+					preferencesChanged |= ImGui::DragFloat("Intensity", &preferences.lightIntensity, 0.05f, 0.0f, 1000.0f, "%.2f");
+					ImGui::EndDisabled();
+				}
+				if (preferencesChanged) preview.applyPreferences();
+				ImGui::TextDisabled("MMB / Alt+left: orbit | Shift: pan | Ctrl: zoom | Wheel: zoom | drag the light gizmo");
 				auto available = ImGui::GetContentRegionAvail();
 				uint32_t viewportWidth = std::max(64u, uint32_t(std::max(0.0f, available.x)));
 				uint32_t viewportHeight = std::max(64u, uint32_t(std::max(0.0f, available.y)));
@@ -540,7 +658,35 @@ namespace particle_editor
 				{
 					if (active) active->setPreviewFailure("Preview resize failed: " + std::string(error.what()));
 				}
+				auto viewportOrigin = ImGui::GetCursorScreenPos();
 				ImGui::Image(previewTexture, ImVec2(float(viewportWidth), float(viewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
+				bool const viewportHovered = ImGui::IsItemHovered();
+				auto& io = ImGui::GetIO();
+				if (auto lightPosition = preview.lightViewportPosition())
+				{
+					ImVec2 marker(viewportOrigin.x + lightPosition->x, viewportOrigin.y + lightPosition->y);
+					ImGui::GetWindowDrawList()->AddCircleFilled(marker, 7.0f, IM_COL32(255, 220, 120, 255));
+					ImGui::GetWindowDrawList()->AddCircle(marker, 11.0f, IM_COL32(255, 255, 255, 220), 0, 2.0f);
+					float const dx = io.MousePos.x - marker.x;
+					float const dy = io.MousePos.y - marker.y;
+					if (viewportHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && dx * dx + dy * dy <= 196.0f)
+						lightGizmoDragging = true;
+				}
+				if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) lightGizmoDragging = false;
+				if (lightGizmoDragging)
+					preview.manipulateLight(io.MouseDelta.x * 0.01f, -io.MouseDelta.y * 0.01f);
+				else if (viewportHovered)
+				{
+					bool const middle = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+					bool const trackpad = io.KeyAlt && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+					if ((middle || trackpad) && io.KeyShift)
+						preview.panCamera(-io.MouseDelta.x, io.MouseDelta.y);
+					else if ((middle || trackpad) && io.KeyCtrl)
+						preview.zoomCamera(io.MouseDelta.y * 0.01f);
+					else if (middle || trackpad)
+						preview.orbitCamera(-io.MouseDelta.x * 0.008f, -io.MouseDelta.y * 0.008f);
+					if (io.MouseWheel != 0.0f) preview.zoomCamera(io.MouseWheel * std::log(0.85f));
+				}
 				ImGui::End();
 
 				for (size_t index = 0; index < documents.size(); ++index)
@@ -666,6 +812,7 @@ namespace particle_editor
 					(active->displayName() + (active->dirty() ? " * - Particle Editor" : " - Particle Editor")).c_str() : "Particle Editor");
 				ImGui::Render();
 				provider->setDrawData(ImGui::GetDrawData());
+				preview.update(delta);
 				renderSystem.startStatsCollection();
 				preview.render();
 				uiRenderer.render(&renderSystem);

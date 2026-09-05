@@ -39,12 +39,13 @@ Documentation:
 
 ## Particle Editor
 
-The cross-platform `ParticleEditor` target creates, opens, previews, and atomically saves canonical `*.particle.yaml` assets. Multiple tabs keep independent command histories, diagnostics, file revisions, dirty state, and last-valid preview state. Save and close warnings protect invalid, externally changed, and unsaved documents. The hierarchy provides undoable emitter-template add, duplicate, rename, reorder, and remove operations with unique names and a derived effect budget. The inspector authors core spawn shapes, emission and random ranges plus billboard texture, colour, emissive, fading, orientation, blending, and sorting. Valid changes reach the MPP preview after a short debounce; safe spawn and appearance changes update live particles while structural changes restart the preview, and invalid edits retain the last valid result. The editor starts with a deterministic bounded version-2 particle effect and renders the active document through MPP's PBR particle graph. Its dockable shell includes the document tabs, Particle Effect inspector, MPP viewport, toolbar, status bar, and diagnostics view. The deployed `particle-editor.ini` resolves the shared resource tree from `build/bin/<Configuration>`.
+The cross-platform `ParticleEditor` target creates, opens, previews, and atomically saves canonical `*.particle.yaml` assets. Multiple tabs keep independent command histories, diagnostics, file revisions, dirty state, and last-valid preview state. Save and close warnings protect invalid, externally changed, and unsaved documents. The hierarchy provides undoable emitter-template add, duplicate, rename, reorder, and remove operations with unique names and a derived effect budget. The inspector authors core spawn shapes, emission and random ranges plus billboard texture, colour, emissive, fading, orientation, blending, and sorting. Valid changes reach the MPP preview after a short debounce; safe spawn and appearance changes update live particles while structural changes restart the preview, and invalid edits retain the last valid result. The editor starts with a deterministic bounded version-2 particle effect and can switch its live simulation between PBR and legacy particle graphs. Both modes share a bounds-sized studio, paired material presets, floor grid, orbit camera, and optional manipulable orbit light. These preview choices are stored in the platform editor-preferences directory and never in particle YAML. Its dockable shell includes the document tabs, Particle Effect inspector, MPP viewport, toolbar, status bar, and diagnostics view. The deployed `particle-editor.ini` resolves the shared resource tree from `build/bin/<Configuration>`.
 
-Run its context-free document workflow tests or production particle-file validation without creating a window:
+Run its context-free document and preview-preference tests or production particle-file validation without creating a window:
 
 ```text
 ParticleEditor.exe --document-tests
+ParticleEditor.exe --preview-tests
 ParticleEditor.exe --validate path/to/effect.particle.yaml
 ```
 
