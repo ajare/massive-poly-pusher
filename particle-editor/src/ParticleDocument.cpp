@@ -4,6 +4,7 @@
 #include <array>
 #include <cctype>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -71,6 +72,19 @@ namespace particle_editor
 		ParticlePreviewChange combinePreviewChange(ParticlePreviewChange left, ParticlePreviewChange right)
 		{
 			return static_cast<ParticlePreviewChange>(std::max(uint32_t(left), uint32_t(right)));
+		}
+
+		float normalizedKeyTime(float time)
+		{
+			return std::isfinite(time) ? std::clamp(time, 0.0f, 1.0f) : 0.0f;
+		}
+
+		size_t scalarCurveIndex(mpp::ParticleScalarCurve curve)
+		{
+			auto const index = size_t(curve);
+			if (index >= size_t(mpp::ParticleScalarCurve::Count))
+				throw std::out_of_range("Particle scalar-curve index is out of range.");
+			return index;
 		}
 
 		class ReplaceSpecificationCommand final : public mpp::app::EditorCommand
@@ -419,6 +433,127 @@ namespace particle_editor
 		mSelectedEmitter = index;
 	}
 
+	size_t ParticleDocument::addScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+		float time, float value)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const curveIndex = scalarCurveIndex(curve);
+		time = normalizedKeyTime(time);
+		auto const& keys = mSpecification.emitterTemplates[emitterIndex].value.curves[curveIndex].keys;
+		auto insertion = std::upper_bound(keys.begin(), keys.end(), time,
+			[](float candidate, auto const& key) { return candidate < key.time; });
+		auto const keyIndex = size_t(insertion - keys.begin());
+		executeEdit("Add scalar curve key", [=](auto& effect)
+		{
+			auto& editedKeys = effect.emitterTemplates[emitterIndex].value.curves[curveIndex].keys;
+			editedKeys.insert(editedKeys.begin() + keyIndex, { time, value });
+		}, false, ParticlePreviewChange::Structural);
+		return keyIndex;
+	}
+
+	void ParticleDocument::editScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+		size_t keyIndex, float time, float value, bool continuous)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const curveIndex = scalarCurveIndex(curve);
+		auto const& keys = mSpecification.emitterTemplates[emitterIndex].value.curves[curveIndex].keys;
+		if (keyIndex >= keys.size()) throw std::out_of_range("Scalar-curve key index is out of range.");
+		time = normalizedKeyTime(time);
+		if (keyIndex > 0u) time = std::max(time, keys[keyIndex - 1u].time);
+		if (keyIndex + 1u < keys.size()) time = std::min(time, keys[keyIndex + 1u].time);
+		executeEdit("Edit scalar curve key", [=](auto& effect)
+		{
+			auto& key = effect.emitterTemplates[emitterIndex].value.curves[curveIndex].keys[keyIndex];
+			key = { time, value };
+		}, continuous, ParticlePreviewChange::Structural);
+	}
+
+	void ParticleDocument::removeScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+		size_t keyIndex)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const curveIndex = scalarCurveIndex(curve);
+		auto const& keys = mSpecification.emitterTemplates[emitterIndex].value.curves[curveIndex].keys;
+		if (keyIndex >= keys.size()) throw std::out_of_range("Scalar-curve key index is out of range.");
+		executeEdit("Remove scalar curve key", [=](auto& effect)
+		{
+			auto& editedKeys = effect.emitterTemplates[emitterIndex].value.curves[curveIndex].keys;
+			editedKeys.erase(editedKeys.begin() + keyIndex);
+		}, false, ParticlePreviewChange::Structural);
+	}
+
+	void ParticleDocument::setScalarCurveDefault(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+		float value, bool continuous)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const curveIndex = scalarCurveIndex(curve);
+		executeEdit("Edit scalar curve default", [=](auto& effect)
+			{ effect.emitterTemplates[emitterIndex].value.curves[curveIndex].defaultValue = value; },
+			continuous, ParticlePreviewChange::Structural);
+	}
+
+	size_t ParticleDocument::addColourGradientKey(size_t emitterIndex, float time,
+		std::array<float, 3> colour)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		time = normalizedKeyTime(time);
+		auto const& keys = mSpecification.emitterTemplates[emitterIndex].value.colourGradient.keys;
+		auto insertion = std::upper_bound(keys.begin(), keys.end(), time,
+			[](float candidate, auto const& key) { return candidate < key.time; });
+		auto const keyIndex = size_t(insertion - keys.begin());
+		executeEdit("Add colour gradient key", [=](auto& effect)
+		{
+			auto& editedKeys = effect.emitterTemplates[emitterIndex].value.colourGradient.keys;
+			editedKeys.insert(editedKeys.begin() + keyIndex, { time, colour });
+		}, false, ParticlePreviewChange::Structural);
+		return keyIndex;
+	}
+
+	void ParticleDocument::editColourGradientKey(size_t emitterIndex, size_t keyIndex, float time,
+		std::array<float, 3> colour, bool continuous)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const& keys = mSpecification.emitterTemplates[emitterIndex].value.colourGradient.keys;
+		if (keyIndex >= keys.size()) throw std::out_of_range("Colour-gradient key index is out of range.");
+		time = normalizedKeyTime(time);
+		if (keyIndex > 0u) time = std::max(time, keys[keyIndex - 1u].time);
+		if (keyIndex + 1u < keys.size()) time = std::min(time, keys[keyIndex + 1u].time);
+		executeEdit("Edit colour gradient key", [=](auto& effect)
+		{
+			auto& key = effect.emitterTemplates[emitterIndex].value.colourGradient.keys[keyIndex];
+			key = { time, colour };
+		}, continuous, ParticlePreviewChange::Structural);
+	}
+
+	void ParticleDocument::removeColourGradientKey(size_t emitterIndex, size_t keyIndex)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const& keys = mSpecification.emitterTemplates[emitterIndex].value.colourGradient.keys;
+		if (keyIndex >= keys.size()) throw std::out_of_range("Colour-gradient key index is out of range.");
+		executeEdit("Remove colour gradient key", [=](auto& effect)
+		{
+			auto& editedKeys = effect.emitterTemplates[emitterIndex].value.colourGradient.keys;
+			editedKeys.erase(editedKeys.begin() + keyIndex);
+		}, false, ParticlePreviewChange::Structural);
+	}
+
+	void ParticleDocument::setColourGradientDefault(size_t emitterIndex,
+		std::array<float, 3> colour, bool continuous)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		executeEdit("Edit colour gradient default", [=](auto& effect)
+			{ effect.emitterTemplates[emitterIndex].value.colourGradient.defaultColour = colour; },
+			continuous, ParticlePreviewChange::Structural);
+	}
+
 	bool ParticleDocument::hasSelectedEmitterTemplate() const
 	{
 		return mSelectedEmitter < mSpecification.emitterTemplates.size();
@@ -670,6 +805,84 @@ namespace particle_editor
 				propertyAppearance.modes[3] != uint32_t(mpp::ParticleBlendClass::Alpha) ||
 				propertyAppearance.sorting[0] != uint32_t(mpp::ParticleSortMode::BackToFront))
 				return fail("spawn and core billboard appearance properties did not round-trip through canonical YAML");
+
+			ParticleDocument curves;
+			for (size_t slot = 0; slot < size_t(mpp::ParticleScalarCurve::Count); ++slot)
+			{
+				auto curve = mpp::ParticleScalarCurve(slot);
+				curves.setScalarCurveDefault(0u, curve, float(slot) + 0.25f);
+				curves.addScalarCurveKey(0u, curve, 0.8f, float(slot) + 8.0f);
+				auto inserted = curves.addScalarCurveKey(0u, curve, 0.2f, float(slot) + 2.0f);
+				auto const& keys = curves.specification().emitterTemplates[0].value.curves[slot].keys;
+				if (inserted >= keys.size() || keys[inserted].time != 0.2f ||
+					!std::is_sorted(keys.begin(), keys.end(), [](auto const& left, auto const& right)
+						{ return left.time < right.time; }))
+					return fail("scalar-curve key insertion did not preserve normalized time ordering");
+			}
+			curves.editScalarCurveKey(0u, mpp::ParticleScalarCurve::VelocityMultiplier, 0u, 2.0f, 11.0f);
+			auto const& orderedKeys = curves.specification().emitterTemplates[0].value
+				.curves[size_t(mpp::ParticleScalarCurve::VelocityMultiplier)].keys;
+			if (orderedKeys.front().time < 0.0f || orderedKeys.front().time > orderedKeys[1].time)
+				return fail("scalar-curve numeric editing escaped its ordered [0,1] constraints");
+
+			auto dragKey = curves.addScalarCurveKey(0u, mpp::ParticleScalarCurve::Drag, 0.45f, 1.0f);
+			auto beforeDragCommands = curves.commandCount();
+			curves.editScalarCurveKey(0u, mpp::ParticleScalarCurve::Drag, dragKey, 0.50f, 2.0f, true);
+			curves.editScalarCurveKey(0u, mpp::ParticleScalarCurve::Drag, dragKey, 0.55f, 3.0f, true);
+			curves.editScalarCurveKey(0u, mpp::ParticleScalarCurve::Drag, dragKey, 0.60f, 4.0f, true);
+			curves.endContinuousEdit();
+			if (curves.commandCount() != beforeDragCommands + 1u || !curves.undo() ||
+				curves.specification().emitterTemplates[0].value.curves[size_t(mpp::ParticleScalarCurve::Drag)].keys[dragKey].value != 1.0f ||
+				!curves.redo() || curves.specification().emitterTemplates[0].value.curves[size_t(mpp::ParticleScalarCurve::Drag)].keys[dragKey].value != 4.0f)
+				return fail("a continuous scalar-curve key drag was not one undoable and redoable command");
+
+			curves.setColourGradientDefault(0u, { 0.1f, 0.2f, 0.3f });
+			auto lateColour = curves.addColourGradientKey(0u, 1.5f, { 0.8f, 0.7f, 0.6f });
+			auto earlyColour = curves.addColourGradientKey(0u, -0.5f, { 0.2f, 0.3f, 0.4f });
+			curves.editColourGradientKey(0u, earlyColour, 0.75f, { 0.4f, 0.5f, 0.6f });
+			{
+				auto const& colourKeys = curves.specification().emitterTemplates[0].value.colourGradient.keys;
+				if (lateColour != 0u || colourKeys.size() != 2u || colourKeys[0].time > colourKeys[1].time ||
+					colourKeys[0].time < 0.0f || colourKeys[1].time > 1.0f)
+					return fail("colour-gradient editing did not preserve ordered normalized key times");
+			}
+			auto beforeGradientDragCommands = curves.commandCount();
+			curves.editColourGradientKey(0u, 0u, 0.70f, { 0.5f, 0.6f, 0.7f }, true);
+			curves.editColourGradientKey(0u, 0u, 0.60f, { 0.6f, 0.7f, 0.8f }, true);
+			curves.editColourGradientKey(0u, 0u, 0.50f, { 0.7f, 0.8f, 0.9f }, true);
+			curves.endContinuousEdit();
+			if (curves.commandCount() != beforeGradientDragCommands + 1u || !curves.undo() ||
+				curves.specification().emitterTemplates[0].value.colourGradient.keys[0].time != 0.75f ||
+				!curves.redo() || curves.specification().emitterTemplates[0].value.colourGradient.keys[0].time != 0.50f)
+				return fail("a continuous colour-gradient key drag was not one undoable and redoable command");
+			curves.removeColourGradientKey(0u, 1u);
+			if (curves.specification().emitterTemplates[0].value.colourGradient.keys.size() != 1u ||
+				!curves.undo() || curves.specification().emitterTemplates[0].value.colourGradient.keys.size() != 2u)
+				return fail("colour-gradient key removal was not undoable");
+			if (!curves.previewUpdatePending() || !curves.publishPreviewNow() ||
+				curves.previewChange() != ParticlePreviewChange::Structural ||
+				curves.previewSpecification()->emitterTemplates[0].value.colourGradient.keys[0].time != 0.50f)
+				return fail("curve and gradient edits did not rebuild the preview with a freshly baked LUT");
+			auto curvesPath = root / "curves.particle.yaml";
+			if (curves.save(curvesPath) != ParticleSaveResult::Saved)
+				return fail("edited curves and colour gradient did not serialize");
+			ParticleDocument restoredCurves;
+			if (!restoredCurves.open(curvesPath)) return fail("edited curves and colour gradient did not reload");
+			for (size_t slot = 0; slot < size_t(mpp::ParticleScalarCurve::Count); ++slot)
+			{
+				auto const& before = curves.specification().emitterTemplates[0].value.curves[slot];
+				auto const& after = restoredCurves.specification().emitterTemplates[0].value.curves[slot];
+				if (before.defaultValue != after.defaultValue || before.keys.size() != after.keys.size())
+					return fail("scalar-curve data did not round-trip through canonical YAML");
+				for (size_t key = 0; key < before.keys.size(); ++key)
+					if (before.keys[key].time != after.keys[key].time || before.keys[key].value != after.keys[key].value)
+						return fail("scalar-curve keys did not round-trip through canonical YAML");
+			}
+			auto const& restoredGradient = restoredCurves.specification().emitterTemplates[0].value.colourGradient;
+			auto const& originalGradient = curves.specification().emitterTemplates[0].value.colourGradient;
+			if (restoredGradient.defaultColour != originalGradient.defaultColour ||
+				restoredGradient.keys.size() != 2u || restoredGradient.keys[0].colour != originalGradient.keys[0].colour)
+				return fail("colour-gradient data did not round-trip through canonical YAML");
 
 			auto selectedPath = root / "canonical.yaml";
 			auto path = root / "canonical.particle.yaml";

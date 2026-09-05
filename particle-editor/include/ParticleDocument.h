@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -98,6 +99,21 @@ namespace particle_editor
 		void moveEmitterTemplate(size_t from, size_t to);
 		void removeEmitterTemplate(size_t index);
 		void selectEmitterTemplate(size_t index);
+
+		size_t addScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+			float time, float value);
+		void editScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+			size_t keyIndex, float time, float value, bool continuous = false);
+		void removeScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve, size_t keyIndex);
+		void setScalarCurveDefault(size_t emitterIndex, mpp::ParticleScalarCurve curve,
+			float value, bool continuous = false);
+		size_t addColourGradientKey(size_t emitterIndex, float time, std::array<float, 3> colour);
+		void editColourGradientKey(size_t emitterIndex, size_t keyIndex, float time,
+			std::array<float, 3> colour, bool continuous = false);
+		void removeColourGradientKey(size_t emitterIndex, size_t keyIndex);
+		void setColourGradientDefault(size_t emitterIndex, std::array<float, 3> colour,
+			bool continuous = false);
+
 		bool hasSelectedEmitterTemplate() const;
 		size_t selectedEmitterTemplate() const;
 		static std::string uniqueEmitterTemplateName(mpp::ParticleEffectSpecification const& specification,

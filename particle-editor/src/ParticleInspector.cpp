@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <functional>
 #include <string>
 #include <utility>
@@ -57,6 +58,252 @@ namespace particle_editor
 			if (shape == uint32_t(mpp::ParticleSpawnShape::Cone) && parameters[1] == 0.0f)
 				parameters[1] = 1.0f;
 			return parameters;
+		}
+
+		float sampleCurve(mpp::ParticleCurve const& curve, float time)
+		{
+			if (curve.keys.empty()) return curve.defaultValue;
+			if (time <= curve.keys.front().time) return curve.keys.front().value;
+			if (time >= curve.keys.back().time) return curve.keys.back().value;
+			auto right = std::upper_bound(curve.keys.begin(), curve.keys.end(), time,
+				[](float value, auto const& key) { return value < key.time; });
+			auto const& left = *(right - 1);
+			float const span = right->time - left.time;
+			float const amount = span > 0.0f ? (time - left.time) / span : 1.0f;
+			return left.value + (right->value - left.value) * amount;
+		}
+
+		std::array<float, 3> sampleGradient(mpp::ParticleGradient const& gradient, float time)
+		{
+			if (gradient.keys.empty()) return gradient.defaultColour;
+			if (time <= gradient.keys.front().time) return gradient.keys.front().colour;
+			if (time >= gradient.keys.back().time) return gradient.keys.back().colour;
+			auto right = std::upper_bound(gradient.keys.begin(), gradient.keys.end(), time,
+				[](float value, auto const& key) { return value < key.time; });
+			auto const& left = *(right - 1);
+			float const span = right->time - left.time;
+			float const amount = span > 0.0f ? (time - left.time) / span : 1.0f;
+			std::array<float, 3> result;
+			for (size_t channel = 0; channel < result.size(); ++channel)
+				result[channel] = left.colour[channel] + (right->colour[channel] - left.colour[channel]) * amount;
+			return result;
+		}
+
+		bool drawScalarCurve(ParticleDocument& document, size_t emitterIndex,
+			mpp::ParticleScalarCurve curveSlot, std::optional<size_t>& selectedKey)
+		{
+			auto const curveIndex = size_t(curveSlot);
+			auto const& curve = document.specification().emitterTemplates[emitterIndex].value.curves[curveIndex];
+			if (selectedKey && *selectedKey >= curve.keys.size()) selectedKey.reset();
+
+			float minimum = curve.defaultValue;
+			float maximum = curve.defaultValue;
+			for (auto const& key : curve.keys)
+			{
+				if (!std::isfinite(key.value)) continue;
+				minimum = std::min(minimum, key.value);
+				maximum = std::max(maximum, key.value);
+			}
+			if (!std::isfinite(minimum) || !std::isfinite(maximum)) { minimum = 0.0f; maximum = 1.0f; }
+			if (maximum - minimum < 0.001f) { minimum -= 0.5f; maximum += 0.5f; }
+			else { float padding = (maximum - minimum) * 0.15f; minimum -= padding; maximum += padding; }
+
+			float const width = std::max(180.0f, ImGui::GetContentRegionAvail().x);
+			ImVec2 const origin = ImGui::GetCursorScreenPos();
+			ImVec2 const size(width, 180.0f);
+			ImGui::InvisibleButton("##ScalarCurveCanvas", size, ImGuiButtonFlags_MouseButtonLeft);
+			auto* draw = ImGui::GetWindowDrawList();
+			draw->AddRectFilled(origin, { origin.x + size.x, origin.y + size.y }, IM_COL32(24, 27, 32, 255));
+			for (int line = 0; line <= 4; ++line)
+			{
+				float x = origin.x + size.x * float(line) / 4.0f;
+				float y = origin.y + size.y * float(line) / 4.0f;
+				draw->AddLine({ x, origin.y }, { x, origin.y + size.y }, IM_COL32(65, 68, 74, 255));
+				draw->AddLine({ origin.x, y }, { origin.x + size.x, y }, IM_COL32(65, 68, 74, 255));
+			}
+			auto point = [&](float time, float value)
+			{
+				return ImVec2(origin.x + std::clamp(time, 0.0f, 1.0f) * size.x,
+					origin.y + (maximum - value) / (maximum - minimum) * size.y);
+			};
+			ImVec2 previous = point(0.0f, sampleCurve(curve, 0.0f));
+			for (auto const& key : curve.keys)
+			{
+				auto current = point(key.time, key.value);
+				draw->AddLine(previous, current, IM_COL32(100, 190, 255, 255), 2.0f);
+				previous = current;
+			}
+			draw->AddLine(previous, point(1.0f, sampleCurve(curve, 1.0f)), IM_COL32(100, 190, 255, 255), 2.0f);
+
+			auto const mouse = ImGui::GetIO().MousePos;
+			std::optional<size_t> hoveredKey;
+			float nearest = 64.0f;
+			for (size_t index = 0; index < curve.keys.size(); ++index)
+			{
+				auto position = point(curve.keys[index].time, curve.keys[index].value);
+				float dx = mouse.x - position.x, dy = mouse.y - position.y;
+				float distance = dx * dx + dy * dy;
+				if (distance <= nearest) { nearest = distance; hoveredKey = index; }
+				draw->AddCircleFilled(position, selectedKey == index ? 6.0f : 4.5f,
+					selectedKey == index ? IM_COL32(255, 205, 70, 255) : IM_COL32(220, 230, 240, 255));
+			}
+			bool const clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+			if (clicked && hoveredKey) { document.endContinuousEdit(); selectedKey = hoveredKey; }
+			else if (clicked && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				float time = std::clamp((mouse.x - origin.x) / size.x, 0.0f, 1.0f);
+				float value = maximum - (mouse.y - origin.y) / size.y * (maximum - minimum);
+				selectedKey = document.addScalarCurveKey(emitterIndex, curveSlot, time, value);
+				return true;
+			}
+			if (selectedKey && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+			{
+				float time = std::clamp((mouse.x - origin.x) / size.x, 0.0f, 1.0f);
+				float value = maximum - (mouse.y - origin.y) / size.y * (maximum - minimum);
+				document.editScalarCurveKey(emitterIndex, curveSlot, *selectedKey, time, value, true);
+				return true;
+			}
+			if (ImGui::IsItemDeactivated()) document.endContinuousEdit();
+
+			float defaultValue = curve.defaultValue;
+			bool changed = ImGui::InputFloat("Default value", &defaultValue, 0.0f, 0.0f, "%.6g");
+			bool ended = ImGui::IsItemDeactivatedAfterEdit();
+			if (changed) { document.setScalarCurveDefault(emitterIndex, curveSlot, defaultValue, true); return true; }
+			if (ended) document.endContinuousEdit();
+			if (ImGui::Button("Add key"))
+			{
+				selectedKey = document.addScalarCurveKey(emitterIndex, curveSlot, 0.5f, sampleCurve(curve, 0.5f));
+				return true;
+			}
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!selectedKey);
+			if (ImGui::Button("Remove selected key"))
+			{
+				document.removeScalarCurveKey(emitterIndex, curveSlot, *selectedKey);
+				selectedKey.reset();
+				ImGui::EndDisabled();
+				return true;
+			}
+			ImGui::EndDisabled();
+			if (selectedKey)
+			{
+				auto const& key = curve.keys[*selectedKey];
+				std::array<float, 2> numeric{ key.time, key.value };
+				changed = ImGui::InputFloat2("Selected time / value", numeric.data(), "%.6g");
+				ended = ImGui::IsItemDeactivatedAfterEdit();
+				if (changed)
+				{
+					document.editScalarCurveKey(emitterIndex, curveSlot, *selectedKey,
+						numeric[0], numeric[1], true);
+					return true;
+				}
+				if (ended) document.endContinuousEdit();
+			}
+			ImGui::TextDisabled("Double-click the graph to add a key; drag keys to edit time and value.");
+			return false;
+		}
+
+		bool drawColourGradient(ParticleDocument& document, size_t emitterIndex,
+			std::optional<size_t>& selectedKey)
+		{
+			auto const& gradient = document.specification().emitterTemplates[emitterIndex].value.colourGradient;
+			if (selectedKey && *selectedKey >= gradient.keys.size()) selectedKey.reset();
+			float const width = std::max(180.0f, ImGui::GetContentRegionAvail().x);
+			ImVec2 const origin = ImGui::GetCursorScreenPos();
+			ImVec2 const size(width, 56.0f);
+			ImGui::InvisibleButton("##ColourGradientCanvas", size, ImGuiButtonFlags_MouseButtonLeft);
+			auto* draw = ImGui::GetWindowDrawList();
+			for (int segment = 0; segment < 64; ++segment)
+			{
+				float leftTime = float(segment) / 64.0f;
+				float rightTime = float(segment + 1) / 64.0f;
+				auto left = sampleGradient(gradient, leftTime);
+				auto right = sampleGradient(gradient, rightTime);
+				draw->AddRectFilledMultiColor(
+					{ origin.x + leftTime * size.x, origin.y }, { origin.x + rightTime * size.x, origin.y + 38.0f },
+					ImGui::ColorConvertFloat4ToU32({ left[0], left[1], left[2], 1.0f }),
+					ImGui::ColorConvertFloat4ToU32({ right[0], right[1], right[2], 1.0f }),
+					ImGui::ColorConvertFloat4ToU32({ right[0], right[1], right[2], 1.0f }),
+					ImGui::ColorConvertFloat4ToU32({ left[0], left[1], left[2], 1.0f }));
+			}
+			draw->AddRect(origin, { origin.x + size.x, origin.y + 38.0f }, IM_COL32(210, 215, 220, 255));
+			auto const mouse = ImGui::GetIO().MousePos;
+			std::optional<size_t> hoveredKey;
+			float nearest = 81.0f;
+			for (size_t index = 0; index < gradient.keys.size(); ++index)
+			{
+				float x = origin.x + std::clamp(gradient.keys[index].time, 0.0f, 1.0f) * size.x;
+				ImVec2 position{ x, origin.y + 45.0f };
+				float dx = mouse.x - position.x, dy = mouse.y - position.y;
+				float distance = dx * dx + dy * dy;
+				if (distance <= nearest) { nearest = distance; hoveredKey = index; }
+				auto const& colour = gradient.keys[index].colour;
+				draw->AddCircleFilled(position, selectedKey == index ? 7.0f : 5.0f,
+					ImGui::ColorConvertFloat4ToU32({ colour[0], colour[1], colour[2], 1.0f }));
+				draw->AddCircle(position, selectedKey == index ? 7.0f : 5.0f,
+					selectedKey == index ? IM_COL32(255, 205, 70, 255) : IM_COL32(235, 235, 235, 255), 0, 2.0f);
+			}
+			bool const clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+			if (clicked && hoveredKey) { document.endContinuousEdit(); selectedKey = hoveredKey; }
+			else if (clicked && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+			{
+				float time = std::clamp((mouse.x - origin.x) / size.x, 0.0f, 1.0f);
+				selectedKey = document.addColourGradientKey(emitterIndex, time, sampleGradient(gradient, time));
+				return true;
+			}
+			if (selectedKey && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+			{
+				float time = std::clamp((mouse.x - origin.x) / size.x, 0.0f, 1.0f);
+				document.editColourGradientKey(emitterIndex, *selectedKey, time,
+					gradient.keys[*selectedKey].colour, true);
+				return true;
+			}
+			if (ImGui::IsItemDeactivated()) document.endContinuousEdit();
+
+			auto defaultColour = gradient.defaultColour;
+			bool changed = ImGui::ColorEdit3("Default colour", defaultColour.data(), ImGuiColorEditFlags_Float);
+			bool ended = ImGui::IsItemDeactivatedAfterEdit();
+			if (changed) { document.setColourGradientDefault(emitterIndex, defaultColour, true); return true; }
+			if (ended) document.endContinuousEdit();
+			if (ImGui::Button("Add colour key"))
+			{
+				selectedKey = document.addColourGradientKey(emitterIndex, 0.5f, sampleGradient(gradient, 0.5f));
+				return true;
+			}
+			ImGui::SameLine();
+			ImGui::BeginDisabled(!selectedKey);
+			if (ImGui::Button("Remove selected colour key"))
+			{
+				document.removeColourGradientKey(emitterIndex, *selectedKey);
+				selectedKey.reset();
+				ImGui::EndDisabled();
+				return true;
+			}
+			ImGui::EndDisabled();
+			if (selectedKey)
+			{
+				auto const& key = gradient.keys[*selectedKey];
+				float time = key.time;
+				changed = ImGui::InputFloat("Selected normalized time", &time, 0.0f, 0.0f, "%.6f");
+				ended = ImGui::IsItemDeactivatedAfterEdit();
+				if (changed)
+				{
+					document.editColourGradientKey(emitterIndex, *selectedKey, time, key.colour, true);
+					return true;
+				}
+				if (ended) document.endContinuousEdit();
+				auto colour = key.colour;
+				changed = ImGui::ColorEdit3("Selected colour", colour.data(), ImGuiColorEditFlags_Float);
+				ended = ImGui::IsItemDeactivatedAfterEdit();
+				if (changed)
+				{
+					document.editColourGradientKey(emitterIndex, *selectedKey, key.time, colour, true);
+					return true;
+				}
+				if (ended) document.endContinuousEdit();
+			}
+			ImGui::TextDisabled("Double-click the gradient to add a key; drag keys to edit normalized time.");
+			return false;
 		}
 	}
 
@@ -438,10 +685,29 @@ namespace particle_editor
 				ImGui::TextDisabled("Depth sorting is applied only to the Alpha blend class.");
 		}
 
-		if (ImGui::CollapsingHeader("Curves"))
+		if (ImGui::CollapsingHeader("Curves", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::Text("Size keys: %zu", authored.value.curves[size_t(mpp::ParticleScalarCurve::Size)].keys.size());
-			ImGui::Text("Alpha keys: %zu", authored.value.curves[size_t(mpp::ParticleScalarCurve::Alpha)].keys.size());
+			static constexpr char const* curveNames[]{ "Size", "Alpha", "Velocity multiplier", "Drag",
+				"Rotation speed", "Emissive intensity" };
+			if (mEditedEmitter != emitterIndex)
+			{
+				document.endContinuousEdit();
+				mEditedEmitter = emitterIndex;
+				mSelectedScalarKey.reset();
+				mSelectedGradientKey.reset();
+			}
+			int previousCurve = mSelectedScalarCurve;
+			if (ImGui::Combo("Scalar curve", &mSelectedScalarCurve, curveNames, int(std::size(curveNames))))
+			{
+				if (previousCurve != mSelectedScalarCurve) document.endContinuousEdit();
+				mSelectedScalarKey.reset();
+			}
+			if (drawScalarCurve(document, emitterIndex,
+				mpp::ParticleScalarCurve(mSelectedScalarCurve), mSelectedScalarKey))
+			{ ImGui::End(); return; }
+			ImGui::SeparatorText("Colour over life");
+			if (drawColourGradient(document, emitterIndex, mSelectedGradientKey))
+			{ ImGui::End(); return; }
 		}
 
 		if (!effect.childEffects.empty())
