@@ -75,6 +75,19 @@ namespace mpp::resource_parsers
 			return fail("particle sort-mode wire values changed");
 		if (uint32_t(ParticleRenderMode::Billboard) != 0u || uint32_t(ParticleRenderMode::Mesh) != 1u)
 			return fail("particle render-mode wire values changed");
+		std::array<uint32_t, 4> const eventTriggers{
+			uint32_t(ParticleEventTrigger::Spawn), uint32_t(ParticleEventTrigger::Death),
+			uint32_t(ParticleEventTrigger::Collision), uint32_t(ParticleEventTrigger::Age)
+		};
+		for (size_t index = 0; index < eventTriggers.size(); ++index)
+			if (eventTriggers[index] != index) return fail("particle event-trigger wire values changed");
+		std::array<uint32_t, 5> const eventActions{
+			uint32_t(ParticleEventAction::SecondaryParticleBurst), uint32_t(ParticleEventAction::Decal),
+			uint32_t(ParticleEventAction::Audio), uint32_t(ParticleEventAction::Light),
+			uint32_t(ParticleEventAction::GameplayCallback)
+		};
+		for (size_t index = 0; index < eventActions.size(); ++index)
+			if (eventActions[index] != index) return fail("particle event-action wire values changed");
 
 		ParticleEmitterTemplate emitter;
 		if (emitter.simulation.emissionState[1] != 1u ||
@@ -139,7 +152,15 @@ namespace mpp::resource_parsers
 			return fail("enabled billboard distortion appearance was not selected for distortion output");
 		authored.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
 		authored.value.colourGradient.keys = { { 0.0f, { 1.0f, 0.5f, 0.1f } }, { 1.0f, { 0.1f, 0.2f, 0.3f } } };
+		authored.events = {
+			{ ParticleEventTrigger::Death, ParticleEventAction::SecondaryParticleBurst, "Sparks", 3u, 0.0f, 7u },
+			{ ParticleEventTrigger::Age, ParticleEventAction::GameplayCallback, {}, 1u, 0.5f, 99u }
+		};
 		specification.emitterTemplates.push_back(authored);
+		ParticleEffectSpecification::EmitterTemplate secondary;
+		secondary.name = "Sparks";
+		secondary.value.simulation.emissionState = { 1u, 0u, 0u, 0u };
+		specification.emitterTemplates.push_back(secondary);
 
 		auto temporary = std::filesystem::temp_directory_path() / "mpp-particle-resource-round-trip.particle.yaml";
 		try { ParticleEffectSerializer::toFile(specification, temporary.string()); }
@@ -148,7 +169,7 @@ namespace mpp::resource_parsers
 		std::error_code ignored; std::filesystem::remove(temporary, ignored);
 		if (!parsed.succeeded()) return fail("serialized particle effect did not parse without diagnostics");
 		auto const& restored = parsed.specification;
-		if (restored.name != specification.name || restored.maximumParticleCount != 96 || restored.emitterTemplates.size() != 1 ||
+		if (restored.name != specification.name || restored.maximumParticleCount != 96 || restored.emitterTemplates.size() != 2 ||
 			restored.emitterTemplates[0].name != authored.name || restored.emitterTemplates[0].albedoTexture != authored.albedoTexture ||
 			restored.emitterTemplates[0].meshModel != authored.meshModel || restored.emitterTemplates[0].meshMaterial != authored.meshMaterial ||
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
@@ -165,6 +186,15 @@ namespace mpp::resource_parsers
 			restored.emitterTemplates[0].value.appearance.culling != authored.value.appearance.culling ||
 			restored.emitterTemplates[0].value.appearance.sorting != authored.value.appearance.sorting ||
 			restored.emitterTemplates[0].value.localTransform[3][0] != 2.0f ||
+			restored.emitterTemplates[0].events.size() != 2u ||
+			restored.emitterTemplates[0].events[0].targetEmitter != "Sparks" ||
+			restored.emitterTemplates[0].events[0].count != 3u ||
+			restored.emitterTemplates[0].events[1].trigger != ParticleEventTrigger::Age ||
+			restored.emitterTemplates[0].events[1].action != ParticleEventAction::GameplayCallback ||
+			restored.emitterTemplates[0].events[1].age != 0.5f ||
+			restored.emitterTemplates[0].events[1].payload != 99u ||
+			restored.emitterTemplates[0].value.events.size() != 2u ||
+			restored.emitterTemplates[0].value.events[0].targetEmitterTemplate != 1u ||
 			restored.emitterTemplates[0].value.curves[size_t(ParticleScalarCurve::Size)].keys.size() != 2 ||
 			restored.emitterTemplates[0].value.colourGradient.keys.size() != 2)
 			return fail("particle effect did not round-trip through *.particle.yaml");
@@ -175,7 +205,9 @@ namespace mpp::resource_parsers
 		programmatic.setSpecification(specification);
 		if (programmatic.getSpecification().maximumParticleCount != restored.maximumParticleCount ||
 			programmatic.getEmitterTemplates().size() != restored.emitterTemplates.size() ||
-			programmatic.getEmitterTemplates()[0].simulation.shapeSeedModulesBudget != restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget)
+			programmatic.getEmitterTemplates()[0].simulation.shapeSeedModulesBudget != restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget ||
+			programmatic.getEmitterTemplates()[0].events.size() != 2u ||
+			programmatic.getEmitterTemplates()[0].events[0].targetEmitterTemplate != 1u)
 			return fail("programmatic particle effect stream was not equivalent to parsed authoring");
 
 		// Ordered behaviour lists are intentionally outside the schema, and a bad

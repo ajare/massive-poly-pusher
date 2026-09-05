@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -27,6 +29,7 @@ namespace mpp
 	{
 		class PersistentMappedBuffer;
 		class ParticleStatisticsState;
+		class ParticleEventReadbackState;
 	}
 
 	// A completed, asynchronous snapshot. sourceFrame identifies the renderer
@@ -96,6 +99,7 @@ namespace mpp
 		ResourcePtr meshMaterial;
 		std::array<ParticleCurve, size_t(ParticleScalarCurve::Count)> curves{};
 		ParticleGradient colourGradient{};
+		std::vector<ParticleEventRule> events;
 		glm::mat4 localTransform{ 1.0f };
 	};
 
@@ -128,13 +132,17 @@ namespace mpp
 		static constexpr uint32_t MaxSpawnCommandCount = 4096;
 		static constexpr uint32_t MaxColliderCount = 1024;
 		static constexpr uint32_t MaxMeshDrawCount = 16384;
+		static constexpr uint32_t MaxEventRuleCount = 16384;
+		static constexpr uint32_t MaxGeneratedEventCount = 32768;
+		static constexpr uint32_t MaxExternalEventCount = 4096;
+		static constexpr uint32_t MaxSecondaryEventCascadeDepth = 8;
 
 	private:
 		RenderSystem* mwRenderSystem;
 		ResourceManager* mwResourceManager;
 
-		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
-		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
+		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mEventPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
+		ResourcePtr mEventProcessProgram, mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
 		ResourcePtr mSortPrepareProgram, mSortKeyProgram, mRadixHistogramProgram, mRadixPrefixProgram, mRadixScatterProgram, mSortFinalizeProgram;
 		ResourcePtr mDrawProgram, mWeightedOitDrawProgram, mDistortionDrawProgram, mMeshCommandProgram;
 
@@ -152,16 +160,20 @@ namespace mpp
 		std::unique_ptr<ShaderStorageBuffer> mSortRecordsB;
 		std::unique_ptr<ShaderStorageBuffer> mRadixHistogram;
 		std::unique_ptr<ShaderStorageBuffer> mSortDispatchCommand;
+		std::unique_ptr<ShaderStorageBuffer> mEventStorage;
+		std::unique_ptr<ShaderStorageBuffer> mEventDispatchCommand;
 		std::unique_ptr<ShaderStorageBuffer> mMeshIndirectCommands;
 		std::unique_ptr<ShaderStorageBuffer> mMeshCommandTemplates;
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mColliderBuffer;
-		std::unique_ptr<detail::PersistentMappedBuffer> mSignedDistanceFieldBuffer;
 		std::unique_ptr<detail::ParticleStatisticsState> mStatistics;
+		std::unique_ptr<detail::ParticleEventReadbackState> mEventReadback;
 
 		std::vector<EmitterSimData> mEmitters;
+		std::vector<std::vector<ParticleEventRule>> mEmitterEventRules;
+		std::vector<ParticleGpuEventRule> mGpuEventRules;
 		std::vector<TemplateRenderData> mTemplateRenderData;
 		std::vector<ResourcePtr> mTemplateTextures;
 		std::vector<ResourcePtr> mTemplateMeshModels;
@@ -190,8 +202,11 @@ namespace mpp
 			glm::mat4 localTransform{ 1.0f };
 			ParticleSpawnAccumulator spawnAccumulator;
 			uint32_t spawnCounter{ 0 };
+			uint32_t eventGeneration{ 0 };
 			bool burstSubmitted{ false };
 			bool hasSpawned{ false };
+			bool eventTarget{ false };
+			bool eventTargetPersistent{ false };
 			float lastSpawnSeconds{ 0.0f };
 			float maximumSpawnedLifetime{ 0.0f };
 		};
@@ -217,6 +232,7 @@ namespace mpp
 		bool mInitialised{ false };
 		bool mAvailable{ false };
 		bool mPoolAllocated{ false };
+		bool mEventRulesDirty{ true };
 		bool mHasLastSimulationTime{ false };
 		std::chrono::steady_clock::time_point mLastSimulationTime{};
 		float mSimulationSeconds{ 0.0f };
@@ -229,8 +245,12 @@ namespace mpp
 		void updateTemplateTextureHandles();
 		void releaseTemplateTextureHandle(uint32_t templateIndex);
 		void dispatchStatisticsPrepare();
+		void dispatchEventPrepare(uint32_t mode, uint32_t sourceQueue = 0u);
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
+		void dispatchParticleEvents();
+		void queueEventReadback();
+		void pollEventReadback();
 		void dispatchCompaction();
 		void rebuildMeshDrawCommands();
 		void dispatchMeshDrawCommands();
@@ -257,6 +277,7 @@ namespace mpp
 		void reclaimEmitter(uint32_t index);
 		void reclaimEffect(uint32_t index);
 		bool hasOccupiedEmitters() const;
+		void validateEventRules(std::span<ParticleEmitterTemplate const> emitterTemplates) const;
 		friend _MPPAPI bool runParticleSystemCpuTests(std::string* failure);
 		friend _MPPAPI bool runParticleGpuTests(RenderSystem* renderSystem, std::string* failure);
 
@@ -276,6 +297,14 @@ namespace mpp
 		void setStatisticsEnabled(bool enabled);
 		bool isStatisticsEnabled() const;
 		ParticleStats const& getStats() const;
+
+		using ParticleEventCallback = std::function<void(ParticleEvent const&)>;
+		// SecondaryParticleBurst is consumed on the GPU and cannot have a CPU
+		// callback. Other actions use a frame-lagged fence ring that is polled with
+		// zero timeout; callback delivery never waits for current GPU work.
+		void setEventCallback(ParticleEventAction action, ParticleEventCallback callback);
+		void clearEventCallback(ParticleEventAction action);
+		bool hasEventCallback(ParticleEventAction action) const;
 
 		ParticleEffectHandle createEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		ParticleEffectHandle createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));

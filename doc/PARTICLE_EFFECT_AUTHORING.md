@@ -53,6 +53,14 @@ ParticleEffect:
           friction: 0.1
           radiusScale: 0.5
           screenSpaceThickness: 0.2
+      Events:
+        - trigger: spawn
+          action: audio
+          payload: 100
+        - trigger: age
+          age: 0.5
+          action: gameplayCallback
+          payload: 42
       Curves:
         Size:
           default: 1
@@ -106,8 +114,16 @@ Supported blend classes are `additive`, `alpha`, and `weightedOit`. Conventional
 
 Noise, curl noise, turbulence, and vector fields share `frequency`, `strength`, `scroll`, and `timeScale` controls. Curl noise computes a divergence-free force from the built-in 3D noise texture. Turbulence folds and combines 1–8 noise octaves; `lacunarity` controls frequency growth and `gain` controls amplitude decay. `ParticleSystem::setVectorField` installs the arbitrary RGB 3D texture shared by vector-field behaviour modules. RGB values map from `[0,1]` to `[-1,1]`; clear it with `clearVectorField`. A missing field makes only the `VectorField` module inert.
 
-Collision `sources` is a comma-separated combination of `screenSpace`, `analytical`, and `signedDistanceField`; an omitted value defaults to `analytical`. Responses are `bounce`, `slide`, `stop`, `kill`, and `spawnSecondaryEffect`. Restitution is used by bounce, friction is clamped to `[0,1]`, `radiusScale` multiplies the particle's base size, and `screenSpaceThickness` limits how far behind sampled geometry a depth collision can be recovered. The spawn-secondary response sets `ParticleFlag::CollisionEvent` and `ParticleFlag::SpawnSecondaryEffect` on first contact; consuming that GPU event to create child work belongs to the secondary-effects feature.
+Collision `sources` is a comma-separated combination of `screenSpace`, `analytical`, and `signedDistanceField`; an omitted value defaults to `analytical`. Responses are `bounce`, `slide`, `stop`, `kill`, and `spawnSecondaryEffect`. Restitution is used by bounce, friction is clamped to `[0,1]`, `radiusScale` multiplies the particle's base size, and `screenSpaceThickness` limits how far behind sampled geometry a depth collision can be recovered. The spawn-secondary response stops the particle and retains the one-frame `ParticleFlag::CollisionEvent` and `ParticleFlag::SpawnSecondaryEffect` markers. An authored collision event rule selects what is created on first contact.
 
 Screen-space collision samples the last completed depth image supplied to an `MPP.ParticleScene` or `MPP.ParticleWeightedOit` pass, so the first rendered frame has no screen collision and subsequent simulation remains once-per-frame before graph execution. The pass's `DEPTH` input must therefore be a sampled, resolved depth texture. Analytical world colliders are supplied with `ParticleSystem::setColliders`; supported `ParticleColliderShape` values are plane, sphere, box, and capsule. A plane uses `first.xyz`/`first.w` as normal/distance, a sphere uses `first.xyz`/`first.w` as centre/radius, a box uses `first.xyz`, `second.xyz`, and `third.xyzw` as centre/half-extents/orientation quaternion, and a capsule uses `first.xyz`/`first.w` and `second.xyz` as endpoints/radius.
 
 Install one optional 3D signed-distance texture with `ParticleSystem::setSignedDistanceField`. Its transform maps world coordinates to `[0,1]^3`; red stores signed distance as `(red - isoValue) * distanceScale`. Sampling outside the texture domain does not collide. Use linear filtering and clamp-to-edge wrapping for stable gradients.
+
+## Particle events
+
+An emitter template's optional `Events` list contains repeated `Event` records. `trigger` is `spawn`, `death`, `collision`, or `age`. Spawn fires only after successful GPU allocation, death covers both lifetime expiry and collision kill, collision fires on first contact rather than every frame of sustained contact, and age fires once when the particle crosses the required non-negative `age` in seconds. An age of zero fires with the successful spawn.
+
+Actions are `secondaryParticleBurst`, `decal`, `audio`, `light`, and `gameplayCallback`. A secondary particle burst requires `targetEmitter` (an emitter-template name in this particle effect) and a positive `count`. It allocates and initializes particles directly on the GPU at the event's world position; no particle count, event, or spawn command crosses the CPU. Configure a target used only by events with `Spawn.enabled: false`; its normal template budget still clamps all live particles. Destroying a target emitter invalidates inbound events immediately, including queued work, rather than allowing a reused emitter slot to receive them. Secondary-burst target graphs must be acyclic, and a same-frame spawn-triggered chain may be no deeper than eight stages. This is intra-effect event routing, not the child particle effect asset composition deferred to #38.
+
+The other actions carry an optional unsigned `payload` interpreted by application code. Callback records include event position and age, particle velocity and lifetime, a collision contact normal (zero for other triggers), and the generational source-emitter identity. Register handlers with `ParticleSystem::setEventCallback` for `Decal`, `Audio`, `Light`, or `GameplayCallback`. The first handler lazily enables a four-slot staging/fence ring; completed GPU event batches are polled with zero timeout after at least two frames, and a busy ring drops a readback sample instead of stalling rendering. Clearing the last handler removes all event readback. Callbacks run from the next `ParticleSystem::simulate` that finds a completed batch. A `Light` action is a notification for an application-owned proxy light, not per-particle volumetric injection (#37).

@@ -66,6 +66,81 @@ namespace mpp
 		SpawnSecondaryEffect = 1u << 2
 	};
 
+	// Event trigger and action values are authored wire values. Secondary particle
+	// bursts remain GPU-owned; the other actions are optional typed notifications
+	// that cross through ParticleSystem's frame-lagged, non-blocking callback ring.
+	enum class ParticleEventTrigger : uint32_t
+	{
+		Spawn,
+		Death,
+		Collision,
+		Age
+	};
+
+	enum class ParticleEventAction : uint32_t
+	{
+		SecondaryParticleBurst,
+		Decal,
+		Audio,
+		Light,
+		GameplayCallback
+	};
+
+	struct ParticleEventRule
+	{
+		ParticleEventTrigger trigger{ ParticleEventTrigger::Spawn };
+		ParticleEventAction action{ ParticleEventAction::SecondaryParticleBurst };
+		// Index within the reusable particle effect asset. ParticleSystem remaps it
+		// to the target live emitter before uploading the rule.
+		uint32_t targetEmitterTemplate{ 0 };
+		uint32_t count{ 1 };
+		float age{ 0.0f };
+		uint32_t payload{ 0 };
+		// Runtime generation of the remapped target. Authored rules leave this at
+		// zero; ParticleSystem uses it to prevent a destroyed target slot from
+		// redirecting queued GPU work to an unrelated replacement emitter.
+		uint32_t targetEmitterGeneration{ 0 };
+	};
+
+	// CPU mirror of one externally consumable GPU event. The callback action and
+	// payload select application-owned decal, audio, light, or gameplay work.
+	struct alignas(16) ParticleEvent
+	{
+		std::array<float, 4> positionAge{};
+		std::array<float, 4> velocityLifetime{};
+		// World-space contact normal for collision events; xyz is zero otherwise.
+		// The GPU uses w internally to validate a secondary-burst target generation.
+		std::array<float, 4> normalAndPadding{};
+		// Trigger, action, source-emitter index, source-emitter generation.
+		std::array<uint32_t, 4> typeAndSource{};
+		// Authored payload, target emitter, burst count, deterministic event seed.
+		std::array<uint32_t, 4> payloadAndSecondary{};
+
+		ParticleEventTrigger getTrigger() const noexcept { return ParticleEventTrigger(typeAndSource[0]); }
+		ParticleEventAction getAction() const noexcept { return ParticleEventAction(typeAndSource[1]); }
+		uint32_t getSourceEmitterIndex() const noexcept { return typeAndSource[2]; }
+		uint32_t getSourceEmitterGeneration() const noexcept { return typeAndSource[3]; }
+		uint32_t getPayload() const noexcept { return payloadAndSecondary[0]; }
+	};
+
+	// GPU-only form of an event rule after target-emitter remapping. age is carried
+	// as float bits so the record remains two naturally aligned uvec4 values.
+	struct alignas(16) ParticleGpuEventRule
+	{
+		// Trigger, action, target live emitter, secondary burst count.
+		std::array<uint32_t, 4> configuration{};
+		// Age float bits, payload, target emitter generation, then padding.
+		std::array<uint32_t, 4> parameters{};
+	};
+
+	struct alignas(16) ParticleEventStorageHeader
+	{
+		uint32_t queueCountA{ 0 };
+		uint32_t queueCountB{ 0 };
+		uint32_t externalCount{ 0 };
+		uint32_t droppedCount{ 0 };
+	};
+
 	// Particle appearance enums are stored directly in TemplateRenderData::modes.
 	// Animation playback occupies the low byte; RandomStart is an independent bit
 	// so it can be combined with either playback mode.
@@ -283,6 +358,10 @@ namespace mpp
 		};
 		// Restitution, friction, particle-radius scale, and screen-space thickness.
 		std::array<float, 4> collisionParameters{ 0.5f, 0.0f, 1.0f, 0.1f };
+		// Offset/count in the flattened GPU event-rule table, stable event-source
+		// generation, and whether this emitter may receive secondary bursts.
+		// Filled by ParticleSystem each frame.
+		std::array<uint32_t, 4> eventRange{};
 	};
 
 	// A world-space analytical collider. Plane stores normal/distance in first;
@@ -414,7 +493,10 @@ namespace mpp
 	static_assert(offsetof(ParticleRecord, padding) == 60);
 	static_assert(sizeof(ParticleRecord) == 64, "The std430 particle array stride must be exactly 64 bytes.");
 	static_assert(clampParticleDeltaSeconds(3.0f) == MaximumParticleDeltaSeconds);
-	static_assert(sizeof(EmitterSimData) == 448);
+	static_assert(sizeof(ParticleEvent) == 80);
+	static_assert(sizeof(ParticleGpuEventRule) == 32);
+	static_assert(sizeof(ParticleEventStorageHeader) == 16);
+	static_assert(sizeof(EmitterSimData) == 464);
 	static_assert(sizeof(ParticleCollider) == 64);
 	static_assert(sizeof(ParticleSignedDistanceFieldData) == 80);
 	static_assert(sizeof(TemplateRenderData) == 96);

@@ -28,6 +28,18 @@ _Avoid_: Emitter instance, spawner
 A single simulated element, resident on the GPU for its whole lifetime. Never
 individually addressable from the CPU.
 
+**Particle event**:
+A GPU-generated notification from a Particle being spawned, dying, first
+colliding, or crossing an authored age. It selects one typed action and carries
+an authored payload.
+_Avoid_: Effect event, particle callback (only one possible consumer)
+
+**Secondary particle burst**:
+Particles created at a Particle event position from another emitter template in
+the same live particle effect. Generated and consumed on the GPU; not a child
+particle effect.
+_Avoid_: Secondary effect, child effect, event emitter
+
 **Spawn command**:
 A CPU-submitted request for an emitter to create a number of particles. The unit
 of CPU→GPU spawn communication; the CPU never creates particles directly.

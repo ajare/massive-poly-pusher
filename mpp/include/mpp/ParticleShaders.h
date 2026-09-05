@@ -83,6 +83,58 @@ void main()
 }
 )MPP";
 
+	// Resets event queues once per frame, then converts one selected queue count
+	// into an indirect dispatch while clearing its cascade destination. A final
+	// mode accounts for work beyond the validated cascade-depth bound.
+	inline char const* ParticleEventPrepareComputeShader = R"MPP(#version 430
+
+layout(local_size_x = 1) in;
+
+struct EventRule { uvec4 configuration; uvec4 parameters; };
+struct ParticleEventRecord { vec4 positionAge; vec4 velocityLifetime; vec4 normalAndPadding; uvec4 typeAndSource; uvec4 payloadAndSecondary; };
+layout(std430, binding = 6) restrict buffer ParticleEvents
+{
+    uvec4 EVENT_COUNTS;
+    EventRule EVENT_RULES[MPP_PARTICLE_MAX_EVENT_RULES];
+    ParticleEventRecord EVENT_QUEUE_A[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EVENT_QUEUE_B[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EXTERNAL_EVENTS[MPP_PARTICLE_MAX_EXTERNAL_EVENTS];
+};
+layout(std430, binding = 7) restrict writeonly buffer ParticleEventDispatchCommand
+{
+    uint DISPATCH_COMMAND[];
+};
+
+uniform uint MODE;
+uniform uint SOURCE_QUEUE;
+
+void main()
+{
+    if (MODE == 0u)
+    {
+        EVENT_COUNTS = uvec4(0u);
+        DISPATCH_COMMAND[0] = 0u;
+        DISPATCH_COMMAND[1] = 1u;
+        DISPATCH_COMMAND[2] = 1u;
+        return;
+    }
+
+    uint sourceCount = min(SOURCE_QUEUE == 0u ? EVENT_COUNTS.x : EVENT_COUNTS.y,
+        uint(MPP_PARTICLE_MAX_GENERATED_EVENTS));
+    if (MODE == 2u)
+    {
+        atomicAdd(EVENT_COUNTS.w, sourceCount);
+        if (SOURCE_QUEUE == 0u) EVENT_COUNTS.x = 0u; else EVENT_COUNTS.y = 0u;
+        return;
+    }
+
+    if (SOURCE_QUEUE == 0u) EVENT_COUNTS.y = 0u; else EVENT_COUNTS.x = 0u;
+    DISPATCH_COMMAND[0] = sourceCount;
+    DISPATCH_COMMAND[1] = 1u;
+    DISPATCH_COMMAND[2] = 1u;
+}
+)MPP";
+
 	// One work group consumes one spawn command. Each lane handles a strided
 	// subset of that command, so dispatch cost follows requested spawns rather
 	// than pool capacity. Allocation and budget reservations use CAS loops: an
@@ -132,6 +184,7 @@ struct EmitterSimData
     vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
+    uvec4 eventRange;
 };
 
 struct SpawnCommand
@@ -173,6 +226,16 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
 layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
 {
     EmitterSimData EMITTERS[];
+};
+struct EventRule { uvec4 configuration; uvec4 parameters; };
+struct ParticleEventRecord { vec4 positionAge; vec4 velocityLifetime; vec4 normalAndPadding; uvec4 typeAndSource; uvec4 payloadAndSecondary; };
+layout(std430, binding = 6) restrict buffer ParticleEvents
+{
+    uvec4 EVENT_COUNTS;
+    EventRule EVENT_RULES[MPP_PARTICLE_MAX_EVENT_RULES];
+    ParticleEventRecord EVENT_QUEUE_A[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EVENT_QUEUE_B[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EXTERNAL_EVENTS[MPP_PARTICLE_MAX_EXTERNAL_EVENTS];
 };
 layout(std430, binding = 7) restrict readonly buffer ParticleSpawnCommands
 {
@@ -282,6 +345,30 @@ void appendActiveIndex(uint particleIndex)
     }
 }
 
+void publishSpawnEvents(ParticleRecord particle, EmitterSimData emitter)
+{
+    for (uint ordinal = 0u; ordinal < emitter.eventRange.y; ++ordinal)
+    {
+        EventRule rule = EVENT_RULES[emitter.eventRange.x + ordinal];
+        if (rule.configuration.x != 0u &&
+            !(rule.configuration.x == 3u && uintBitsToFloat(rule.parameters.x) <= 0.0)) continue;
+        uint destination = atomicAdd(EVENT_COUNTS.x, 1u);
+        if (destination >= MPP_PARTICLE_MAX_GENERATED_EVENTS)
+        {
+            atomicAdd(EVENT_COUNTS.w, 1u);
+            continue;
+        }
+        ParticleEventRecord event;
+        event.positionAge = particle.positionAge;
+        event.velocityLifetime = particle.velocityLifetime;
+        event.normalAndPadding = vec4(0.0, 0.0, 0.0, uintBitsToFloat(rule.parameters.z));
+        event.typeAndSource = uvec4(rule.configuration.xy, particle.emitterIndex, emitter.eventRange.z);
+        event.payloadAndSecondary = uvec4(rule.parameters.y, rule.configuration.zw,
+            hashValue(particle.seed ^ ordinal));
+        EVENT_QUEUE_A[destination] = event;
+    }
+}
+
 void main()
 {
     SpawnCommand command = SPAWN_COMMANDS[SPAWN_COMMAND_OFFSET + gl_WorkGroupID.x];
@@ -353,6 +440,7 @@ void main()
         particle.padding = 0u;
         PARTICLES[particleIndex] = particle;
         appendActiveIndex(particleIndex);
+        publishSpawnEvents(particle, emitter);
     }
 }
 )MPP";
@@ -473,6 +561,7 @@ struct EmitterSimData
     vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
+    uvec4 eventRange;
 };
 
 layout(std430, binding = 0) restrict buffer ParticlePool
@@ -518,14 +607,15 @@ layout(std430, binding = 6) restrict readonly buffer ParticleColliders
 {
     ParticleCollider COLLIDERS[];
 };
-struct SignedDistanceFieldData
+struct EventRule { uvec4 configuration; uvec4 parameters; };
+struct ParticleEventRecord { vec4 positionAge; vec4 velocityLifetime; vec4 normalAndPadding; uvec4 typeAndSource; uvec4 payloadAndSecondary; };
+layout(std430, binding = 7) restrict buffer ParticleEvents
 {
-    mat4 worldToTexture;
-    vec4 parameters;
-};
-layout(std430, binding = 7) restrict readonly buffer ParticleSignedDistanceField
-{
-    SignedDistanceFieldData SIGNED_DISTANCE_FIELD;
+    uvec4 EVENT_COUNTS;
+    EventRule EVENT_RULES[MPP_PARTICLE_MAX_EVENT_RULES];
+    ParticleEventRecord EVENT_QUEUE_A[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EVENT_QUEUE_B[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EXTERNAL_EVENTS[MPP_PARTICLE_MAX_EXTERNAL_EVENTS];
 };
 layout(binding = 0) uniform sampler3D NOISE_TEXTURE;
 layout(binding = 1) uniform sampler2D COLLISION_DEPTH_TEXTURE;
@@ -540,6 +630,8 @@ uniform int HAS_SIGNED_DISTANCE_FIELD;
 uniform int HAS_VECTOR_FIELD;
 uniform float DELTA_SECONDS;
 uniform float SIMULATION_SECONDS;
+uniform mat4 SDF_WORLD_TO_TEXTURE;
+uniform vec4 SDF_PARAMETERS;
 
 void killParticle(uint particleIndex, uint emitterIndex)
 {
@@ -564,6 +656,44 @@ void appendSurvivor(uint particleIndex)
     {
         uint destination = atomicAdd(ACTIVE_COUNT_A, 1u);
         ACTIVE_INDICES_A[destination] = particleIndex;
+    }
+}
+
+uint hashValue(uint value)
+{
+    value ^= value >> 16u;
+    value *= 0x7feb352du;
+    value ^= value >> 15u;
+    value *= 0x846ca68bu;
+    value ^= value >> 16u;
+    return value;
+}
+
+void publishEvents(uint trigger, float previousAge, ParticleRecord particle, EmitterSimData emitter, vec3 eventNormal)
+{
+    for (uint ordinal = 0u; ordinal < emitter.eventRange.y; ++ordinal)
+    {
+        EventRule rule = EVENT_RULES[emitter.eventRange.x + ordinal];
+        if (rule.configuration.x != trigger) continue;
+        if (trigger == 3u)
+        {
+            float eventAge = uintBitsToFloat(rule.parameters.x);
+            if (!(previousAge < eventAge && particle.positionAge.w >= eventAge)) continue;
+        }
+        uint destination = atomicAdd(EVENT_COUNTS.x, 1u);
+        if (destination >= MPP_PARTICLE_MAX_GENERATED_EVENTS)
+        {
+            atomicAdd(EVENT_COUNTS.w, 1u);
+            continue;
+        }
+        ParticleEventRecord event;
+        event.positionAge = particle.positionAge;
+        event.velocityLifetime = particle.velocityLifetime;
+        event.normalAndPadding = vec4(eventNormal, uintBitsToFloat(rule.parameters.z));
+        event.typeAndSource = uvec4(rule.configuration.xy, particle.emitterIndex, emitter.eventRange.z);
+        event.payloadAndSecondary = uvec4(rule.parameters.y, rule.configuration.zw,
+            hashValue(particle.seed ^ ordinal ^ trigger));
+        EVENT_QUEUE_A[destination] = event;
     }
 }
 
@@ -680,10 +810,10 @@ bool analyticalContact(ParticleCollider collider, vec3 position, float radius,
 
 bool signedDistanceFieldContact(vec3 position, float radius, out vec3 normal, out float penetration)
 {
-    vec3 uv = (SIGNED_DISTANCE_FIELD.worldToTexture * vec4(position, 1.0)).xyz;
+    vec3 uv = (SDF_WORLD_TO_TEXTURE * vec4(position, 1.0)).xyz;
     if (any(lessThan(uv, vec3(0.0))) || any(greaterThan(uv, vec3(1.0)))) return false;
-    float scale = SIGNED_DISTANCE_FIELD.parameters.x;
-    float isoValue = SIGNED_DISTANCE_FIELD.parameters.y;
+    float scale = SDF_PARAMETERS.x;
+    float isoValue = SDF_PARAMETERS.y;
     float distanceToSurface = (textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, uv, 0.0).r - isoValue) * scale;
     if (distanceToSurface > radius) return false;
 
@@ -695,7 +825,7 @@ bool signedDistanceFieldContact(vec3 position, float radius, out vec3 normal, ou
         textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv - vec3(0.0, texel.y, 0.0), vec3(0.0), vec3(1.0)), 0.0).r;
     gradient.z = textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv + vec3(0.0, 0.0, texel.z), vec3(0.0), vec3(1.0)), 0.0).r -
         textureLod(SIGNED_DISTANCE_FIELD_TEXTURE, clamp(uv - vec3(0.0, 0.0, texel.z), vec3(0.0), vec3(1.0)), 0.0).r;
-    normal = safeNormal(transpose(mat3(SIGNED_DISTANCE_FIELD.worldToTexture)) * gradient, vec3(0.0, 1.0, 0.0));
+    normal = safeNormal(transpose(mat3(SDF_WORLD_TO_TEXTURE)) * gradient, vec3(0.0, 1.0, 0.0));
     penetration = radius - distanceToSurface;
     return true;
 }
@@ -781,14 +911,17 @@ void main()
         return;
     }
 
+    EmitterSimData emitter = EMITTERS[particle.emitterIndex];
+    float previousAge = particle.positionAge.w;
     particle.positionAge.w += DELTA_SECONDS;
+    publishEvents(3u, previousAge, particle, emitter, vec3(0.0));
     if (particle.positionAge.w >= particle.velocityLifetime.w)
     {
+        publishEvents(1u, previousAge, particle, emitter, vec3(0.0));
         killParticle(particleIndex, particle.emitterIndex);
         return;
     }
 
-    EmitterSimData emitter = EMITTERS[particle.emitterIndex];
     uint modules = emitter.shapeSeedModulesBudget.z;
     bool wasColliding = (particle.flags & PARTICLE_FLAG_COLLIDING) != 0u;
     particle.flags &= ~(PARTICLE_FLAG_COLLIDING | PARTICLE_FLAG_COLLISION_EVENT | PARTICLE_FLAG_SPAWN_SECONDARY);
@@ -847,20 +980,35 @@ void main()
         uint sources = emitter.collisionConfiguration.x;
         float radius = abs(particle.baseSize) * max(0.0, emitter.collisionParameters.z);
         vec3 normal;
+        vec3 collisionEventNormal = vec3(0.0);
         float penetration;
         bool killed = false;
+        bool recordedCollisionEvent = false;
         // Collision sources run in the staged order from spec section 32.
         if ((sources & COLLISION_SCREEN_SPACE) != 0u && HAS_COLLISION_DEPTH != 0 &&
             screenSpaceContact(particle.positionAge.xyz, previousPosition, radius,
                 emitter.collisionParameters.w, normal, penetration))
+        {
+            if (!wasColliding)
+            {
+                collisionEventNormal = normal;
+                recordedCollisionEvent = true;
+            }
             killed = applyCollisionResponse(particle, emitter, normal, penetration, wasColliding);
+        }
 
         if (!killed && (sources & COLLISION_ANALYTICAL) != 0u)
         {
             for (uint colliderIndex = 0u; colliderIndex < COLLIDER_COUNT; ++colliderIndex)
             {
-                if (analyticalContact(COLLIDERS[colliderIndex], particle.positionAge.xyz, radius, normal, penetration) &&
-                    applyCollisionResponse(particle, emitter, normal, penetration, wasColliding))
+                if (!analyticalContact(COLLIDERS[colliderIndex], particle.positionAge.xyz, radius, normal, penetration))
+                    continue;
+                if (!wasColliding && !recordedCollisionEvent)
+                {
+                    collisionEventNormal = normal;
+                    recordedCollisionEvent = true;
+                }
+                if (applyCollisionResponse(particle, emitter, normal, penetration, wasColliding))
                 {
                     killed = true;
                     break;
@@ -870,10 +1018,17 @@ void main()
 
         if (!killed && (sources & COLLISION_SDF) != 0u && HAS_SIGNED_DISTANCE_FIELD != 0 &&
             signedDistanceFieldContact(particle.positionAge.xyz, radius, normal, penetration))
+        {
+            if (!wasColliding && !recordedCollisionEvent)
+                collisionEventNormal = normal;
             killed = applyCollisionResponse(particle, emitter, normal, penetration, wasColliding);
+        }
 
+        if ((particle.flags & PARTICLE_FLAG_COLLISION_EVENT) != 0u)
+            publishEvents(2u, previousAge, particle, emitter, collisionEventNormal);
         if (killed)
         {
+            publishEvents(1u, previousAge, particle, emitter, vec3(0.0));
             killParticle(particleIndex, particle.emitterIndex);
             return;
         }
@@ -881,6 +1036,280 @@ void main()
 
     PARTICLES[particleIndex] = particle;
     appendSurvivor(particleIndex);
+}
+)MPP";
+
+	// Consumes one GPU event per work group. Secondary particle bursts allocate,
+	// initialise, and append particles directly to the current active list. Spawn
+	// rules on those particles feed the alternate queue for a bounded GPU cascade;
+	// typed external actions are copied to a separate GPU-resident output range.
+	inline char const* ParticleEventProcessComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+
+struct ParticleRecord
+{
+    vec4 positionAge;
+    vec4 velocityLifetime;
+    uint packedColour;
+    float baseSize;
+    float rotation;
+    float angularVelocity;
+    uint emitterIndex;
+    uint seed;
+    uint flags;
+    uint padding;
+};
+struct EmitterSimData
+{
+    mat4 transform;
+    vec4 shapeParameters;
+    vec4 initialVelocityMin;
+    vec4 initialVelocityMax;
+    vec4 colourMin;
+    vec4 colourMax;
+    vec4 lifetimeSizeRanges;
+    vec4 rotationRanges;
+    uvec4 shapeSeedModulesBudget;
+    uvec4 emissionState;
+    vec4 emissionRateAndPadding;
+    vec4 parameterMultipliers0;
+    vec4 parameterMultipliers1;
+    vec4 gravityAndDrag;
+    vec4 noiseFrequencyStrength;
+    vec4 noiseScrollAndTimeScale;
+    vec4 curlNoiseFrequencyStrength;
+    vec4 curlNoiseScrollAndTimeScale;
+    vec4 turbulenceFrequencyStrength;
+    vec4 turbulenceScrollAndTimeScale;
+    vec4 turbulenceOctavesLacunarityGain;
+    vec4 vectorFieldFrequencyStrength;
+    vec4 vectorFieldScrollAndTimeScale;
+    uvec4 collisionConfiguration;
+    vec4 collisionParameters;
+    uvec4 eventRange;
+};
+struct EventRule { uvec4 configuration; uvec4 parameters; };
+struct ParticleEventRecord { vec4 positionAge; vec4 velocityLifetime; vec4 normalAndPadding; uvec4 typeAndSource; uvec4 payloadAndSecondary; };
+
+layout(std430, binding = 0) restrict writeonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
+layout(std430, binding = 1) restrict buffer ParticleFreeIndices { uint FREE_INDICES[]; };
+layout(std430, binding = 2) restrict writeonly buffer ParticleActiveIndicesA { uint ACTIVE_INDICES_A[]; };
+layout(std430, binding = 3) restrict writeonly buffer ParticleActiveIndicesB { uint ACTIVE_INDICES_B[]; };
+layout(std430, binding = 4) restrict buffer ParticleCounters
+{
+    uint FREE_COUNT;
+    uint ACTIVE_COUNT_A;
+    uint ACTIVE_COUNT_B;
+    uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
+    uint LIVE_COUNTS[];
+};
+layout(std430, binding = 5) restrict readonly buffer ParticleEmitters { EmitterSimData EMITTERS[]; };
+layout(std430, binding = 6) restrict buffer ParticleEvents
+{
+    uvec4 EVENT_COUNTS;
+    EventRule EVENT_RULES[MPP_PARTICLE_MAX_EVENT_RULES];
+    ParticleEventRecord EVENT_QUEUE_A[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EVENT_QUEUE_B[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EXTERNAL_EVENTS[MPP_PARTICLE_MAX_EXTERNAL_EVENTS];
+};
+
+uniform uint ACTIVE_LIST_INDEX;
+uniform uint EMITTER_COUNT;
+uniform uint TEMPLATE_COUNT;
+uniform uint SOURCE_QUEUE;
+
+uint hashValue(uint value)
+{
+    value ^= value >> 16u;
+    value *= 0x7feb352du;
+    value ^= value >> 15u;
+    value *= 0x846ca68bu;
+    value ^= value >> 16u;
+    return value;
+}
+float randomScalar(inout uint state)
+{
+    state = hashValue(state + 0x9e3779b9u);
+    return float(state) * (1.0 / 4294967296.0);
+}
+vec3 randomUnitVector(inout uint state)
+{
+    float z = randomScalar(state) * 2.0 - 1.0;
+    float angle = randomScalar(state) * 6.28318530718;
+    float radius = sqrt(max(0.0, 1.0 - z * z));
+    return vec3(cos(angle) * radius, z, sin(angle) * radius);
+}
+vec3 sampleShape(uint shape, vec4 parameters, inout uint state)
+{
+    if (shape == 0u) return vec3(0.0);
+    if (shape == 1u) return parameters.xyz * (randomScalar(state) * 2.0 - 1.0);
+    if (shape == 2u) return parameters.xyz * vec3(randomScalar(state) * 2.0 - 1.0,
+        randomScalar(state) * 2.0 - 1.0, randomScalar(state) * 2.0 - 1.0);
+    if (shape == 3u) return randomUnitVector(state) * (parameters.x * pow(randomScalar(state), 1.0 / 3.0));
+    if (shape == 4u)
+    {
+        vec3 direction = randomUnitVector(state);
+        direction.y = abs(direction.y);
+        return direction * (parameters.x * pow(randomScalar(state), 1.0 / 3.0));
+    }
+    if (shape == 5u)
+    {
+        float angle = randomScalar(state) * 6.28318530718;
+        float radius = parameters.x * sqrt(randomScalar(state));
+        return vec3(cos(angle) * radius, 0.0, sin(angle) * radius);
+    }
+    float heightFraction = pow(randomScalar(state), 1.0 / 3.0);
+    float angle = randomScalar(state) * 6.28318530718;
+    float radius = parameters.x * heightFraction * sqrt(randomScalar(state));
+    return vec3(cos(angle) * radius, parameters.y * heightFraction, sin(angle) * radius);
+}
+bool reserveTemplateParticle(uint templateIndex, uint budget)
+{
+    uint observed = LIVE_COUNTS[templateIndex];
+    while (observed < budget)
+    {
+        uint previous = atomicCompSwap(LIVE_COUNTS[templateIndex], observed, observed + 1u);
+        if (previous == observed) return true;
+        observed = previous;
+    }
+    return false;
+}
+bool popFreeIndex(out uint particleIndex)
+{
+    uint observed = FREE_COUNT;
+    while (observed > 0u)
+    {
+        uint previous = atomicCompSwap(FREE_COUNT, observed, observed - 1u);
+        if (previous == observed)
+        {
+            particleIndex = FREE_INDICES[observed - 1u];
+            return true;
+        }
+        observed = previous;
+    }
+    return false;
+}
+void appendActiveIndex(uint particleIndex)
+{
+    if (ACTIVE_LIST_INDEX == 0u)
+    {
+        uint destination = atomicAdd(ACTIVE_COUNT_A, 1u);
+        ACTIVE_INDICES_A[destination] = particleIndex;
+    }
+    else
+    {
+        uint destination = atomicAdd(ACTIVE_COUNT_B, 1u);
+        ACTIVE_INDICES_B[destination] = particleIndex;
+    }
+}
+void appendCascadeEvent(ParticleEventRecord event)
+{
+    uint destination = SOURCE_QUEUE == 0u ? atomicAdd(EVENT_COUNTS.y, 1u) : atomicAdd(EVENT_COUNTS.x, 1u);
+    if (destination >= MPP_PARTICLE_MAX_GENERATED_EVENTS)
+    {
+        atomicAdd(EVENT_COUNTS.w, 1u);
+        return;
+    }
+    if (SOURCE_QUEUE == 0u) EVENT_QUEUE_B[destination] = event;
+    else EVENT_QUEUE_A[destination] = event;
+}
+void publishSpawnEvents(ParticleRecord particle, EmitterSimData emitter)
+{
+    for (uint ordinal = 0u; ordinal < emitter.eventRange.y; ++ordinal)
+    {
+        EventRule rule = EVENT_RULES[emitter.eventRange.x + ordinal];
+        if (rule.configuration.x != 0u &&
+            !(rule.configuration.x == 3u && uintBitsToFloat(rule.parameters.x) <= 0.0)) continue;
+        ParticleEventRecord event;
+        event.positionAge = particle.positionAge;
+        event.velocityLifetime = particle.velocityLifetime;
+        event.normalAndPadding = vec4(0.0, 0.0, 0.0, uintBitsToFloat(rule.parameters.z));
+        event.typeAndSource = uvec4(rule.configuration.xy, particle.emitterIndex, emitter.eventRange.z);
+        event.payloadAndSecondary = uvec4(rule.parameters.y, rule.configuration.zw,
+            hashValue(particle.seed ^ ordinal));
+        appendCascadeEvent(event);
+    }
+}
+void appendExternal(ParticleEventRecord event)
+{
+    uint destination = atomicAdd(EVENT_COUNTS.z, 1u);
+    if (destination < MPP_PARTICLE_MAX_EXTERNAL_EVENTS) EXTERNAL_EVENTS[destination] = event;
+    else atomicAdd(EVENT_COUNTS.w, 1u);
+}
+
+void main()
+{
+    uint eventIndex = gl_WorkGroupID.x;
+    ParticleEventRecord event = SOURCE_QUEUE == 0u ? EVENT_QUEUE_A[eventIndex] : EVENT_QUEUE_B[eventIndex];
+    if (event.typeAndSource.y != 0u)
+    {
+        if (gl_LocalInvocationID.x == 0u) appendExternal(event);
+        return;
+    }
+
+    uint targetEmitterIndex = event.payloadAndSecondary.y;
+    if (targetEmitterIndex >= EMITTER_COUNT)
+    {
+        if (gl_LocalInvocationID.x == 0u) atomicAdd(EVENT_COUNTS.w, event.payloadAndSecondary.z);
+        return;
+    }
+    EmitterSimData emitter = EMITTERS[targetEmitterIndex];
+    uint templateIndex = emitter.emissionState.w;
+    uint targetGeneration = floatBitsToUint(event.normalAndPadding.w);
+    if (templateIndex >= TEMPLATE_COUNT || emitter.eventRange.w == 0u || emitter.eventRange.z != targetGeneration)
+    {
+        if (gl_LocalInvocationID.x == 0u) atomicAdd(EVENT_COUNTS.w, event.payloadAndSecondary.z);
+        return;
+    }
+
+    for (uint ordinal = gl_LocalInvocationID.x; ordinal < event.payloadAndSecondary.z; ordinal += gl_WorkGroupSize.x)
+    {
+        if (!reserveTemplateParticle(templateIndex, emitter.shapeSeedModulesBudget.w))
+        {
+            atomicAdd(DROPPED_SPAWN_COUNT, 1u);
+            continue;
+        }
+        uint particleIndex;
+        if (!popFreeIndex(particleIndex))
+        {
+            atomicAdd(LIVE_COUNTS[templateIndex], 0xffffffffu);
+            atomicAdd(DROPPED_SPAWN_COUNT, 1u);
+            continue;
+        }
+
+        uint seed = hashValue(emitter.shapeSeedModulesBudget.y ^ event.payloadAndSecondary.w ^ ordinal ^ particleIndex);
+        uint randomState = seed;
+        vec3 localPosition = sampleShape(emitter.shapeSeedModulesBudget.x, emitter.shapeParameters, randomState);
+        vec3 velocityMix = vec3(randomScalar(randomState), randomScalar(randomState), randomScalar(randomState));
+        vec3 localVelocity = mix(emitter.initialVelocityMin.xyz, emitter.initialVelocityMax.xyz, velocityMix) * emitter.parameterMultipliers0.z;
+        float lifetime = mix(emitter.lifetimeSizeRanges.x, emitter.lifetimeSizeRanges.y, randomScalar(randomState)) * emitter.parameterMultipliers0.w;
+        float size = mix(emitter.lifetimeSizeRanges.z, emitter.lifetimeSizeRanges.w, randomScalar(randomState)) * emitter.parameterMultipliers0.y;
+        float rotation = mix(emitter.rotationRanges.x, emitter.rotationRanges.y, randomScalar(randomState));
+        float angularVelocity = mix(emitter.rotationRanges.z, emitter.rotationRanges.w, randomScalar(randomState));
+        vec4 colour = mix(emitter.colourMin, emitter.colourMax, vec4(randomScalar(randomState),
+            randomScalar(randomState), randomScalar(randomState), randomScalar(randomState)));
+        colour.a *= emitter.parameterMultipliers1.x;
+
+        ParticleRecord particle;
+        particle.positionAge = vec4(event.positionAge.xyz + mat3(emitter.transform) * localPosition, 0.0);
+        particle.velocityLifetime = vec4(mat3(emitter.transform) * localVelocity, lifetime);
+        particle.packedColour = packUnorm4x8(clamp(colour, 0.0, 1.0));
+        particle.baseSize = size;
+        particle.rotation = rotation;
+        particle.angularVelocity = angularVelocity;
+        particle.emitterIndex = targetEmitterIndex;
+        particle.seed = seed;
+        particle.flags = 0u;
+        particle.padding = 0u;
+        PARTICLES[particleIndex] = particle;
+        appendActiveIndex(particleIndex);
+        publishSpawnEvents(particle, emitter);
+    }
 }
 )MPP";
 
@@ -953,7 +1382,7 @@ layout(std140, binding = 3) uniform CameraFrame
 };
 
 struct ParticleRecord { vec4 positionAge; vec4 velocityLifetime; uint packedColour; float baseSize; float rotation; float angularVelocity; uint emitterIndex; uint seed; uint flags; uint padding; };
-struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; vec4 curlNoiseFrequencyStrength; vec4 curlNoiseScrollAndTimeScale; vec4 turbulenceFrequencyStrength; vec4 turbulenceScrollAndTimeScale; vec4 turbulenceOctavesLacunarityGain; vec4 vectorFieldFrequencyStrength; vec4 vectorFieldScrollAndTimeScale; uvec4 collisionConfiguration; vec4 collisionParameters; };
+struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; vec4 curlNoiseFrequencyStrength; vec4 curlNoiseScrollAndTimeScale; vec4 turbulenceFrequencyStrength; vec4 turbulenceScrollAndTimeScale; vec4 turbulenceOctavesLacunarityGain; vec4 vectorFieldFrequencyStrength; vec4 vectorFieldScrollAndTimeScale; uvec4 collisionConfiguration; vec4 collisionParameters; uvec4 eventRange; };
 struct TemplateRenderData { uvec4 textureAndAtlas; vec4 tintAndAlpha; vec4 appearance; uvec4 modes; vec4 culling; uvec4 sorting; };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
@@ -1142,6 +1571,7 @@ struct EmitterSimData
     vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
+    uvec4 eventRange;
 };
 
 struct TemplateRenderData
@@ -1525,6 +1955,7 @@ struct EmitterSimData
     vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
+    uvec4 eventRange;
 };
 
 struct TemplateRenderData

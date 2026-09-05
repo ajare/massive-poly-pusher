@@ -137,6 +137,62 @@ namespace mpp
 			uint32_t(ParticleFlag::SpawnSecondaryEffect) != 4u)
 			return fail("particle collision-state flag bits overlap or changed");
 
+		system.setEventCallback(ParticleEventAction::Audio, [](ParticleEvent const&) {});
+		if (!system.hasEventCallback(ParticleEventAction::Audio))
+			return fail("particle external event callback did not register");
+		system.clearEventCallback(ParticleEventAction::Audio);
+		if (system.hasEventCallback(ParticleEventAction::Audio))
+			return fail("particle external event callback did not clear");
+		bool rejectedGpuCallback = false;
+		try { system.setEventCallback(ParticleEventAction::SecondaryParticleBurst, [](ParticleEvent const&) {}); }
+		catch (invalid_argument const&) { rejectedGpuCallback = true; }
+		if (!rejectedGpuCallback) return fail("GPU secondary particle bursts accepted a CPU callback");
+
+		array<ParticleEmitterTemplate, 2> eventTemplates{ burst(1.0f), burst(2.0f) };
+		eventTemplates[0].events = {
+			{ ParticleEventTrigger::Death, ParticleEventAction::SecondaryParticleBurst, 1u, 4u, 0.0f, 7u },
+			{ ParticleEventTrigger::Age, ParticleEventAction::GameplayCallback, 0u, 1u, 0.5f, 99u }
+		};
+		auto eventEffect = system.createEffect(eventTemplates);
+		auto eventSource = system.getEmitter(eventEffect, 0u);
+		auto eventTarget = system.getEmitter(eventEffect, 1u);
+		if (system.mEmitterEventRules[eventSource.index].size() != 2u ||
+			system.mEmitterEventRules[eventSource.index][0].targetEmitterTemplate != eventTarget.index ||
+			system.mEmitterEventRules[eventSource.index][0].targetEmitterGeneration != eventTarget.generation ||
+			!system.mEmitterSlots[eventTarget.index].eventTarget)
+			return fail("particle event rules did not remap an asset target to its live emitter");
+		system.mEventRulesDirty = false;
+		system.destroyEmitter(eventTarget);
+		if (!system.mEventRulesDirty ||
+			system.mEmitterEventRules[eventSource.index][0].targetEmitterGeneration ==
+				system.mEmitterSlots[eventTarget.index].generation ||
+			system.mEmitterSlots[eventTarget.index].eventGeneration != eventTarget.generation)
+			return fail("destroying an event target did not invalidate queued work before slot reuse");
+		system.destroyEffect(eventEffect);
+		step(system, 20.0f);
+
+		auto continuousSource = burst(1.0f);
+		continuousSource.simulation.emissionState = { 0u, 1u, 0u, 0u };
+		continuousSource.events = { { ParticleEventTrigger::Spawn,
+			ParticleEventAction::SecondaryParticleBurst, 1u, 1u } };
+		auto dormantTarget = burst(1.0f);
+		dormantTarget.simulation.emissionState[1] = 0u;
+		array continuousEventTemplates{ continuousSource, dormantTarget };
+		auto continuousEventEffect = system.createEffect(continuousEventTemplates);
+		auto persistentTarget = system.getEmitter(continuousEventEffect, 1u);
+		step(system, 20.0f);
+		if (!system.isAlive(persistentTarget))
+			return fail("a live continuous event source retired its secondary target");
+		system.destroyEffect(continuousEventEffect);
+		step(system, 20.0f);
+
+		auto cyclic = burst(1.0f);
+		cyclic.events = { { ParticleEventTrigger::Spawn, ParticleEventAction::SecondaryParticleBurst, 0u, 1u } };
+		bool rejectedCycle = false;
+		try { array cycleTemplates{ cyclic }; (void)system.createEffect(cycleTemplates); }
+		catch (invalid_argument const&) { rejectedCycle = true; }
+		if (!rejectedCycle) return fail("cyclic secondary particle bursts were accepted");
+
 		weak_ptr<ParticleEffectCurveLut> assetLut;
 		ParticleEffectHandle curvedEffect;
 		{

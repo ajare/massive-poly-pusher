@@ -12,6 +12,17 @@ namespace mpp
 	// emitter handles or instance transforms; those belong to ParticleSystem.
 	struct _MPPAPI ParticleEffectSpecification
 	{
+		struct EventRule
+		{
+			ParticleEventTrigger trigger{ ParticleEventTrigger::Spawn };
+			ParticleEventAction action{ ParticleEventAction::SecondaryParticleBurst };
+			// Authored emitter-template name; required only for secondary bursts.
+			std::string targetEmitter;
+			uint32_t count{ 1 };
+			float age{ 0.0f };
+			uint32_t payload{ 0 };
+		};
+
 		struct EmitterTemplate
 		{
 			std::string name;
@@ -22,6 +33,7 @@ namespace mpp
 			// when empty, each model mesh keeps its embedded material.
 			std::string meshModel;
 			std::string meshMaterial;
+			std::vector<EventRule> events;
 		};
 
 		uint32_t version{ 1 };

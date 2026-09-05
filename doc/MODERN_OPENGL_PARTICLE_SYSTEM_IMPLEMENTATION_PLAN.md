@@ -685,6 +685,16 @@ attributes, fragment shader, uniforms, and textures; an opt-in vertex path build
 position/velocity-axis-rotation/uniform-scale model matrices from particle data.
 No particle count or transform is read back to the CPU.
 
+Particle events now originate in the spawn and simulation kernels for successful
+spawn, death, first collision, and authored age thresholds. Secondary particle
+bursts target an emitter template in the same live particle effect and remain in
+bounded GPU queues through allocation and compaction. Decal, audio, light, and
+gameplay actions expose typed payload callbacks through an optional four-slot,
+two-frame-minimum-lag fence ring that only polls signalled work and is absent
+when no callback is registered. Secondary-burst target graphs are acyclic and
+same-frame spawn cascades are bounded to eight stages; this is separate from
+child particle effect assets.
+
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and
 scene-document pipeline, and a shared albedo atlas to remove the remaining

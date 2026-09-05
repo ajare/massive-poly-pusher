@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cmath>
 #include <exception>
@@ -105,14 +106,49 @@ namespace mpp
 				currentSlot = -1;
 			}
 		};
+
+		class ParticleEventReadbackState
+		{
+		public:
+			static constexpr size_t RingSize = 4;
+			static constexpr uint64_t MinimumLag = 2;
+			struct Slot
+			{
+				GLuint buffer{ 0 };
+				GLsync fence{ nullptr };
+				uint64_t sequence{ 0 };
+				bool submitted{ false };
+			};
+
+			uint64_t sequence{ 0 };
+			std::array<Slot, RingSize> slots;
+			std::array<ParticleSystem::ParticleEventCallback, 5> callbacks;
+
+			~ParticleEventReadbackState() { release(); }
+			void release() noexcept
+			{
+				for (auto& slot : slots)
+				{
+					if (slot.fence) glDeleteSync(slot.fence);
+					if (slot.buffer) glDeleteBuffers(1, &slot.buffer);
+					slot = {};
+				}
+			}
+			bool enabled() const
+			{
+				return any_of(callbacks.begin() + 1, callbacks.end(), [](auto const& callback) { return bool(callback); });
+			}
+		};
 	}
 
 	namespace
 	{
 		char const* PoolInitialiseProgramName = "__mpp_particle_pool_initialise__";
+		char const* EventPrepareProgramName = "__mpp_particle_event_prepare__";
 		char const* SpawnProgramName = "__mpp_particle_spawn__";
 		char const* SimulationPrepareProgramName = "__mpp_particle_simulation_prepare__";
 		char const* SimulationProgramName = "__mpp_particle_simulation__";
+		char const* EventProcessProgramName = "__mpp_particle_event_process__";
 		char const* CompactionPrepareProgramName = "__mpp_particle_compaction_prepare__";
 		char const* CompactionCountProgramName = "__mpp_particle_compaction_count__";
 		char const* CompactionPrefixProgramName = "__mpp_particle_compaction_prefix__";
@@ -136,7 +172,8 @@ namespace mpp
 		// Bindings six and seven are stage-local aliases. Template data is draw-only;
 		// scratch, spawn, dispatch, collision, and indirect buffers are never read together.
 		constexpr uint32_t ColliderBinding = 6;
-		constexpr uint32_t SignedDistanceFieldBinding = 7;
+		constexpr uint32_t EventStorageBinding = 6;
+		constexpr uint32_t SimulationEventStorageBinding = 7;
 		constexpr uint32_t TemplateRenderBinding = 6;
 		constexpr uint32_t CompactionScratchBinding = 6;
 		constexpr uint32_t SpawnCommandBinding = 7;
@@ -146,6 +183,28 @@ namespace mpp
 		constexpr uint32_t RequiredStorageBindings = 8;
 		constexpr size_t DispatchCommandBytes = 3 * sizeof(uint32_t);
 		constexpr uint32_t NoiseTextureSize = 16;
+
+		constexpr size_t eventRulesOffset() { return sizeof(ParticleEventStorageHeader); }
+		constexpr size_t eventQueueAOffset()
+		{
+			return eventRulesOffset() + size_t(ParticleSystem::MaxEventRuleCount) * sizeof(ParticleGpuEventRule);
+		}
+		constexpr size_t eventQueueBOffset()
+		{
+			return eventQueueAOffset() + size_t(ParticleSystem::MaxGeneratedEventCount) * sizeof(ParticleEvent);
+		}
+		constexpr size_t externalEventsOffset()
+		{
+			return eventQueueBOffset() + size_t(ParticleSystem::MaxGeneratedEventCount) * sizeof(ParticleEvent);
+		}
+		constexpr size_t eventStorageBytes()
+		{
+			return externalEventsOffset() + size_t(ParticleSystem::MaxExternalEventCount) * sizeof(ParticleEvent);
+		}
+		constexpr size_t eventReadbackBytes()
+		{
+			return sizeof(ParticleEventStorageHeader) + size_t(ParticleSystem::MaxExternalEventCount) * sizeof(ParticleEvent);
+		}
 
 		template<typename T>
 		size_t bytes(vector<T> const& values)
@@ -169,6 +228,7 @@ namespace mpp
 		: mwRenderSystem(renderSystem)
 		, mwResourceManager(resourceManager)
 		, mStatistics(make_unique<detail::ParticleStatisticsState>())
+		, mEventReadback(make_unique<detail::ParticleEventReadbackState>())
 	{
 	}
 
@@ -176,6 +236,7 @@ namespace mpp
 	{
 		// Queries, fences and staging buffers require the GL context, just like the
 		// other particle resources destroyed below.
+		mEventReadback.reset();
 		mStatistics.reset();
 		for (uint32_t index = 0; index < mTemplateTextureHandles.size(); ++index)
 			releaseTemplateTextureHandle(index);
@@ -194,13 +255,14 @@ namespace mpp
 		mScreenSpaceCollisionDepth.reset();
 		mVectorFieldTexture.reset();
 		mSignedDistanceFieldTexture.reset();
-		mSignedDistanceFieldBuffer.reset();
 		mColliderBuffer.reset();
 		mSpawnCommandBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
 		mMeshCommandTemplates.reset();
 		mMeshIndirectCommands.reset();
+		mEventDispatchCommand.reset();
+		mEventStorage.reset();
 		mSortDispatchCommand.reset();
 		mRadixHistogram.reset();
 		mSortRecordsB.reset();
@@ -225,9 +287,11 @@ namespace mpp
 		};
 		releaseProgram(mPoolInitialiseProgram);
 		releaseProgram(mStatisticsPrepareProgram);
+		releaseProgram(mEventPrepareProgram);
 		releaseProgram(mSpawnProgram);
 		releaseProgram(mSimulationPrepareProgram);
 		releaseProgram(mSimulationProgram);
+		releaseProgram(mEventProcessProgram);
 		releaseProgram(mCompactionPrepareProgram);
 		releaseProgram(mCompactionCountProgram);
 		releaseProgram(mCompactionPrefixProgram);
@@ -283,6 +347,9 @@ namespace mpp
 				auto stream = make_shared<ComputeProgramStream>(mwResourceManager);
 				stream->setSource(RawShaderStage::Compute, source);
 				stream->setDefine("MPP_PARTICLE_WORK_GROUP_SIZE", to_string(mWorkGroupSize));
+				stream->setDefine("MPP_PARTICLE_MAX_EVENT_RULES", to_string(MaxEventRuleCount));
+				stream->setDefine("MPP_PARTICLE_MAX_GENERATED_EVENTS", to_string(MaxGeneratedEventCount));
+				stream->setDefine("MPP_PARTICLE_MAX_EXTERNAL_EVENTS", to_string(MaxExternalEventCount));
 				auto program = mwResourceManager->declareResource(name, stream).first;
 				program->acquire(mwRenderSystem);
 				program->load();
@@ -290,9 +357,11 @@ namespace mpp
 			};
 			mPoolInitialiseProgram = createComputeProgram(PoolInitialiseProgramName, ParticlePoolInitialiseComputeShader);
 			mStatisticsPrepareProgram = createComputeProgram("__mpp_particle_statistics_prepare__", ParticleStatisticsPrepareComputeShader);
+			mEventPrepareProgram = createComputeProgram(EventPrepareProgramName, ParticleEventPrepareComputeShader);
 			mSpawnProgram = createComputeProgram(SpawnProgramName, ParticleSpawnComputeShader);
 			mSimulationPrepareProgram = createComputeProgram(SimulationPrepareProgramName, ParticleSimulationPrepareComputeShader);
 			mSimulationProgram = createComputeProgram(SimulationProgramName, ParticleSimulationComputeShader);
+			mEventProcessProgram = createComputeProgram(EventProcessProgramName, ParticleEventProcessComputeShader);
 			mCompactionPrepareProgram = createComputeProgram(CompactionPrepareProgramName, ParticleCompactionPrepareComputeShader);
 			mCompactionCountProgram = createComputeProgram(CompactionCountProgramName, ParticleCompactionCountComputeShader);
 			mCompactionPrefixProgram = createComputeProgram(CompactionPrefixProgramName, ParticleCompactionPrefixComputeShader);
@@ -393,11 +462,11 @@ namespace mpp
 		size_t const templateBytes = size_t(MaxTemplateCount) * sizeof(TemplateRenderData);
 		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
 		size_t const colliderBytes = size_t(MaxColliderCount) * sizeof(ParticleCollider);
-		size_t const signedDistanceFieldBytes = sizeof(ParticleSignedDistanceFieldData);
+		size_t const eventBytes = eventStorageBytes();
 		size_t const compactionScratchBytes = size_t(MaxTemplateCount) * 3u * sizeof(uint32_t);
 		size_t const indirectCommandBytes = size_t(MaxTemplateCount) * sizeof(ParticleDrawArraysIndirectCommand);
 		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes,
-			colliderBytes, signedDistanceFieldBytes, compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
+			colliderBytes, eventBytes, compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
 		if (largestBlock > mwRenderSystem->getCaps().maxShaderStorageBlockSize)
 		{
 			THROW_MPP("The configured particle buffers need a shader storage block of " + to_string(largestBlock) +
@@ -425,6 +494,10 @@ namespace mpp
 		mSimulationDispatchCommand->create(DispatchCommandBytes, nullptr, "Particle simulation dispatch command");
 		mCompactionDispatchCommand = make_unique<ShaderStorageBuffer>();
 		mCompactionDispatchCommand->create(DispatchCommandBytes, nullptr, "Particle compaction dispatch command");
+		mEventStorage = make_unique<ShaderStorageBuffer>();
+		mEventStorage->create(eventBytes, nullptr, "Particle event rules, GPU queues, and external output");
+		mEventDispatchCommand = make_unique<ShaderStorageBuffer>();
+		mEventDispatchCommand->create(DispatchCommandBytes, nullptr, "Particle event dispatch command");
 
 		GLint storageAlignment = 1;
 		GL_CHECK(glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &storageAlignment));
@@ -441,9 +514,6 @@ namespace mpp
 		mColliderBuffer = make_unique<detail::PersistentMappedBuffer>();
 		mColliderBuffer->create(GL_SHADER_STORAGE_BUFFER, colliderBytes, max(1, storageAlignment), persistent,
 			mColliders.data(), bytes(mColliders), "Particle analytical colliders");
-		mSignedDistanceFieldBuffer = make_unique<detail::PersistentMappedBuffer>();
-		mSignedDistanceFieldBuffer->create(GL_SHADER_STORAGE_BUFFER, signedDistanceFieldBytes, max(1, storageAlignment), persistent,
-			&mSignedDistanceFieldData, sizeof(mSignedDistanceFieldData), "Particle signed distance field data");
 
 		mFreeIndices->bindStorage(FreeIndicesBinding);
 		mCounters->bindStorage(CountersBinding);
@@ -484,6 +554,7 @@ namespace mpp
 			index = uint32_t(mEmitterSlots.size());
 			mEmitterSlots.emplace_back();
 			mEmitters.emplace_back();
+			mEmitterEventRules.emplace_back();
 			mTemplateRenderData.emplace_back();
 			mTemplateTextures.emplace_back();
 			mTemplateMeshModels.emplace_back();
@@ -498,11 +569,16 @@ namespace mpp
 		slot.localTransform = emitterTemplate.localTransform;
 		slot.spawnAccumulator = {};
 		slot.spawnCounter = 0;
+		slot.eventGeneration = slot.generation;
 		slot.burstSubmitted = false;
 		slot.hasSpawned = false;
+		slot.eventTarget = false;
+		slot.eventTargetPersistent = false;
 		slot.lastSpawnSeconds = mSimulationSeconds;
 		slot.maximumSpawnedLifetime = 0.0f;
 		mEmitters[index] = emitterTemplate.simulation;
+		mEmitterEventRules[index] = emitterTemplate.events;
+		mEventRulesDirty = true;
 		mEmitters[index].emissionState[3] = index;
 		setTransform(mEmitters[index], effectTransform * slot.localTransform);
 		mTemplateRenderData[index] = emitterTemplate.appearance;
@@ -537,6 +613,64 @@ namespace mpp
 		return slot.occupied && slot.generation == handle.generation ? &slot : nullptr;
 	}
 
+	void ParticleSystem::validateEventRules(span<ParticleEmitterTemplate const> emitterTemplates) const
+	{
+		size_t totalRules = 0;
+		vector<vector<uint32_t>> secondaryEdges(emitterTemplates.size());
+		vector<vector<uint32_t>> spawnEdges(emitterTemplates.size());
+		for (uint32_t emitterIndex = 0; emitterIndex < emitterTemplates.size(); ++emitterIndex)
+		{
+			for (auto const& rule : emitterTemplates[emitterIndex].events)
+			{
+				++totalRules;
+				if (uint32_t(rule.trigger) > uint32_t(ParticleEventTrigger::Age) ||
+					uint32_t(rule.action) > uint32_t(ParticleEventAction::GameplayCallback))
+					throw invalid_argument("ParticleSystem::createEffect received an unknown particle event trigger or action.");
+				if (!isfinite(rule.age) || rule.age < 0.0f)
+					throw invalid_argument("ParticleSystem::createEffect requires finite, non-negative particle event ages.");
+				if (rule.action != ParticleEventAction::SecondaryParticleBurst) continue;
+				if (rule.targetEmitterTemplate >= emitterTemplates.size() || rule.count == 0u)
+					throw invalid_argument("ParticleSystem::createEffect received an invalid secondary particle burst target or count.");
+				secondaryEdges[emitterIndex].push_back(rule.targetEmitterTemplate);
+				if (rule.trigger == ParticleEventTrigger::Spawn)
+					spawnEdges[emitterIndex].push_back(rule.targetEmitterTemplate);
+			}
+		}
+		if (totalRules > MaxEventRuleCount)
+			throw invalid_argument("ParticleSystem::createEffect exceeds MaxEventRuleCount.");
+
+		vector<uint8_t> cycleState(emitterTemplates.size());
+		function<void(uint32_t)> rejectCycles = [&](uint32_t emitter)
+		{
+			if (cycleState[emitter] == 1u)
+				throw invalid_argument("ParticleSystem::createEffect does not allow cyclic secondary particle bursts.");
+			if (cycleState[emitter] == 2u) return;
+			cycleState[emitter] = 1u;
+			for (auto target : secondaryEdges[emitter]) rejectCycles(target);
+			cycleState[emitter] = 2u;
+		};
+		for (uint32_t emitter = 0; emitter < emitterTemplates.size(); ++emitter) rejectCycles(emitter);
+
+		vector<uint8_t> depthState(emitterTemplates.size());
+		vector<uint32_t> depth(emitterTemplates.size());
+		function<uint32_t(uint32_t)> visitDepth = [&](uint32_t emitter)
+		{
+			if (depthState[emitter] == 2u) return depth[emitter];
+			depthState[emitter] = 1u;
+			uint32_t maximum = 0u;
+			for (auto target : spawnEdges[emitter]) maximum = max(maximum, 1u + visitDepth(target));
+			depthState[emitter] = 2u;
+			return depth[emitter] = maximum;
+		};
+		for (uint32_t emitter = 0; emitter < emitterTemplates.size(); ++emitter)
+			(void)visitDepth(emitter);
+		for (auto const& emitterTemplate : emitterTemplates)
+			for (auto const& rule : emitterTemplate.events)
+				if (rule.action == ParticleEventAction::SecondaryParticleBurst &&
+					1u + depth[rule.targetEmitterTemplate] > MaxSecondaryEventCascadeDepth)
+					throw invalid_argument("ParticleSystem::createEffect exceeds MaxSecondaryEventCascadeDepth.");
+	}
+
 	ParticleEffectHandle ParticleSystem::createEffect(ResourcePtr const& asset, glm::mat4 const& transform)
 	{
 		auto const* source = asset ? dynamic_cast<ParticleEffectSource const*>(asset.get()) : nullptr;
@@ -560,6 +694,13 @@ namespace mpp
 		glm::mat4 const& transform, shared_ptr<ParticleEffectCurveLut> curveLut)
 	{
 		if (emitterTemplates.empty()) return {};
+		validateEventRules(emitterTemplates);
+		size_t eventRuleCount = 0u;
+		for (uint32_t index = 0; index < mEmitterSlots.size(); ++index)
+			if (mEmitterSlots[index].occupied) eventRuleCount += mEmitterEventRules[index].size();
+		for (auto const& emitterTemplate : emitterTemplates) eventRuleCount += emitterTemplate.events.size();
+		if (eventRuleCount > MaxEventRuleCount)
+			THROW_MPP("The particle event-rule capacity was exceeded.", __LINE__, __FILE__, __func__);
 		if (emitterTemplates.size() > MaxEmitterCount - getLiveEmitterCount())
 			THROW_MPP("The particle emitter capacity was exceeded.", __LINE__, __FILE__, __func__);
 
@@ -587,6 +728,43 @@ namespace mpp
 			for (size_t templateIndex = 0; templateIndex < emitterTemplates.size(); ++templateIndex)
 				effect.emitters.push_back(allocateEmitter(emitterTemplates[templateIndex], transform,
 					effect.curveLut, templateIndex));
+
+			float maximumLifetime = 0.0f;
+			for (auto const& emitterTemplate : emitterTemplates)
+				maximumLifetime = max(maximumLifetime, max(0.0f, emitterTemplate.simulation.lifetimeSizeRanges[1]) *
+					max(0.0f, emitterTemplate.simulation.parameterMultipliers0[3]));
+			float const eventRetention = maximumLifetime * float(MaxSecondaryEventCascadeDepth + 1u);
+			vector<bool> isEventTarget(emitterTemplates.size());
+			for (auto const& emitterTemplate : emitterTemplates)
+				for (auto const& rule : emitterTemplate.events)
+					if (rule.action == ParticleEventAction::SecondaryParticleBurst)
+						isEventTarget[rule.targetEmitterTemplate] = true;
+			bool hasPotentialContinuousRoot = false;
+			for (size_t index = 0; index < emitterTemplates.size(); ++index)
+			{
+				auto const& simulation = emitterTemplates[index].simulation;
+				if (simulation.emissionState[0] == 0u && (simulation.emissionState[1] != 0u || !isEventTarget[index]))
+				{
+					hasPotentialContinuousRoot = true;
+					break;
+				}
+			}
+			for (size_t source = 0; source < effect.emitters.size(); ++source)
+			{
+				auto sourceIndex = effect.emitters[source].index;
+				for (auto& rule : mEmitterEventRules[sourceIndex])
+				{
+					if (rule.action != ParticleEventAction::SecondaryParticleBurst) continue;
+					auto targetIndex = effect.emitters[rule.targetEmitterTemplate].index;
+					auto& targetSlot = mEmitterSlots[targetIndex];
+					rule.targetEmitterTemplate = targetIndex;
+					rule.targetEmitterGeneration = targetSlot.eventGeneration;
+					targetSlot.eventTarget = true;
+					targetSlot.eventTargetPersistent = hasPotentialContinuousRoot;
+					targetSlot.hasSpawned = true;
+					targetSlot.maximumSpawnedLifetime = max(targetSlot.maximumSpawnedLifetime, eventRetention);
+				}
+			}
 		}
 		catch (...)
 		{
@@ -663,6 +841,8 @@ namespace mpp
 		if (!slot.occupied || slot.pendingDestroy) return;
 		slot.pendingDestroy = true;
 		slot.generation = nextGeneration(slot.generation);
+		mEventRulesDirty = true;
+		if (slot.eventTarget) slot.lastSpawnSeconds = mSimulationSeconds;
 		mEmitters[index].emissionState[1] = 0u;
 		if (!slot.hasSpawned) reclaimEmitter(index);
 	}
@@ -787,6 +967,8 @@ namespace mpp
 		slot.pendingDestroy = false;
 		slot.generation = nextGeneration(slot.generation);
 		mEmitters[index] = {};
+		mEmitterEventRules[index].clear();
+		mEventRulesDirty = true;
 		mEmitters[index].emissionState[1] = 0u;
 		mEmitters[index].emissionState[3] = index;
 		releaseTemplateTextureHandle(index);
@@ -818,8 +1000,9 @@ namespace mpp
 			auto const& emitter = mEmitters[index];
 			auto& slot = mEmitterSlots[index];
 			if (!slot.occupied) continue;
-			bool const oneShotComplete = emitter.emissionState[0] != 0u &&
-				(slot.burstSubmitted || emitter.emissionState[1] == 0u);
+			bool const oneShotComplete = !slot.eventTargetPersistent &&
+				((emitter.emissionState[0] != 0u && (slot.burstSubmitted || emitter.emissionState[1] == 0u)) ||
+					(slot.eventTarget && emitter.emissionState[1] == 0u));
 			if (!(slot.pendingDestroy || oneShotComplete)) continue;
 			if (!slot.hasSpawned || mSimulationSeconds - slot.lastSpawnSeconds >= slot.maximumSpawnedLifetime)
 				reclaimEmitter(index);
@@ -915,6 +1098,41 @@ namespace mpp
 
 	void ParticleSystem::uploadFrameData()
 	{
+		if (mEventRulesDirty)
+		{
+			mGpuEventRules.clear();
+			for (uint32_t emitterIndex = 0; emitterIndex < mEmitters.size(); ++emitterIndex)
+			{
+				auto& range = mEmitters[emitterIndex].eventRange;
+				range = { uint32_t(mGpuEventRules.size()), 0u,
+					emitterIndex < mEmitterSlots.size() ? mEmitterSlots[emitterIndex].eventGeneration : 0u,
+					emitterIndex < mEmitterSlots.size() && mEmitterSlots[emitterIndex].occupied &&
+						!mEmitterSlots[emitterIndex].pendingDestroy ? 1u : 0u };
+				if (emitterIndex >= mEmitterSlots.size() || !mEmitterSlots[emitterIndex].occupied) continue;
+				auto const& rules = mEmitterEventRules[emitterIndex];
+				range[1] = uint32_t(rules.size());
+				for (auto const& rule : rules)
+				{
+					ParticleGpuEventRule gpuRule;
+					gpuRule.configuration = { uint32_t(rule.trigger), uint32_t(rule.action),
+						rule.targetEmitterTemplate, rule.count };
+					gpuRule.parameters = { bit_cast<uint32_t>(rule.age), rule.payload,
+						rule.targetEmitterGeneration, 0u };
+					mGpuEventRules.push_back(gpuRule);
+				}
+			}
+			if (mGpuEventRules.size() > MaxEventRuleCount)
+				THROW_MPP("The particle event-rule capacity was exceeded.", __LINE__, __FILE__, __func__);
+			if (!mGpuEventRules.empty())
+			{
+				GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, mEventStorage->getBuffer()));
+				GL_CHECK(glBufferSubData(GL_COPY_WRITE_BUFFER, GLintptr(eventRulesOffset()),
+					GLsizeiptr(bytes(mGpuEventRules)), mGpuEventRules.data()));
+				GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
+			}
+			mEventRulesDirty = false;
+		}
+
 		if (mEmitters.size() > MaxEmitterCount || mTemplateRenderData.size() > MaxTemplateCount ||
 			mSpawnCommands.size() > MaxSpawnCommandCount)
 			THROW_MPP("Particle emitter-template, emitter, or spawn-command capacity was exceeded.", __LINE__, __FILE__, __func__);
@@ -937,8 +1155,6 @@ namespace mpp
 			mSpawnCommandBuffer->upload(mSpawnCommands.data(), bytes(mSpawnCommands), 0, bytes(mSpawnCommands));
 		if (!mColliders.empty())
 			mColliderBuffer->upload(mColliders.data(), bytes(mColliders), 0, bytes(mColliders));
-		mSignedDistanceFieldBuffer->upload(&mSignedDistanceFieldData, sizeof(mSignedDistanceFieldData),
-			0, sizeof(mSignedDistanceFieldData));
 	}
 
 	void ParticleSystem::setStatisticsEnabled(bool enabled)
@@ -967,6 +1183,94 @@ namespace mpp
 	ParticleStats const& ParticleSystem::getStats() const
 	{
 		return mStatistics->stats;
+	}
+
+	void ParticleSystem::setEventCallback(ParticleEventAction action, ParticleEventCallback callback)
+	{
+		auto const index = uint32_t(action);
+		if (index >= mEventReadback->callbacks.size())
+			throw invalid_argument("ParticleSystem::setEventCallback received an unknown particle event action.");
+		if (action == ParticleEventAction::SecondaryParticleBurst)
+			throw invalid_argument("Secondary particle bursts are GPU-owned and cannot have a CPU particle event callback.");
+		mEventReadback->callbacks[index] = std::move(callback);
+		if (!mEventReadback->enabled()) mEventReadback->release();
+	}
+
+	void ParticleSystem::clearEventCallback(ParticleEventAction action)
+	{
+		auto const index = uint32_t(action);
+		if (index >= mEventReadback->callbacks.size()) return;
+		mEventReadback->callbacks[index] = {};
+		if (!mEventReadback->enabled()) mEventReadback->release();
+	}
+
+	bool ParticleSystem::hasEventCallback(ParticleEventAction action) const
+	{
+		auto const index = uint32_t(action);
+		return index < mEventReadback->callbacks.size() && bool(mEventReadback->callbacks[index]);
+	}
+
+	void ParticleSystem::pollEventReadback()
+	{
+		if (!mEventReadback->enabled()) return;
+		auto& state = *mEventReadback;
+		++state.sequence;
+		vector<ParticleEvent> readyEvents;
+		for (auto& slot : state.slots)
+		{
+			if (!slot.submitted || !slot.fence || state.sequence < slot.sequence + detail::ParticleEventReadbackState::MinimumLag)
+				continue;
+			auto const status = glClientWaitSync(slot.fence, 0, 0);
+			if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) continue;
+
+			ParticleEventStorageHeader header;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, slot.buffer));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sizeof(header), &header));
+			auto const count = min(header.externalCount, MaxExternalEventCount);
+			size_t const oldSize = readyEvents.size();
+			readyEvents.resize(oldSize + count);
+			if (count != 0u)
+				GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, sizeof(header), GLsizeiptr(size_t(count) * sizeof(ParticleEvent)),
+					readyEvents.data() + oldSize));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			glDeleteSync(slot.fence);
+			slot.fence = nullptr;
+			slot.submitted = false;
+		}
+
+		for (auto const& event : readyEvents)
+		{
+			auto const action = uint32_t(event.getAction());
+			if (action >= state.callbacks.size()) continue;
+			auto callback = state.callbacks[action];
+			if (callback) callback(event);
+		}
+	}
+
+	void ParticleSystem::queueEventReadback()
+	{
+		if (!mEventReadback->enabled() || !mEventStorage) return;
+		auto& state = *mEventReadback;
+		auto& slot = state.slots[size_t(state.sequence % state.slots.size())];
+		if (slot.submitted) return;
+		if (slot.buffer == 0u)
+		{
+			GL_CHECK(glGenBuffers(1, &slot.buffer));
+			GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, slot.buffer));
+			GL_CHECK(glBufferData(GL_COPY_WRITE_BUFFER, GLsizeiptr(eventReadbackBytes()), nullptr, GL_STREAM_READ));
+			GL_CHECK(glObjectLabel(GL_BUFFER, slot.buffer, -1, "Particle event asynchronous readback"));
+		}
+		GL_CHECK(glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT));
+		GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, mEventStorage->getBuffer()));
+		GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, slot.buffer));
+		GL_CHECK(glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(ParticleEventStorageHeader)));
+		GL_CHECK(glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, GLintptr(externalEventsOffset()),
+			sizeof(ParticleEventStorageHeader), GLsizeiptr(size_t(MaxExternalEventCount) * sizeof(ParticleEvent))));
+		GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+		GL_CHECK(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
+		slot.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		slot.sequence = state.sequence;
+		slot.submitted = slot.fence != nullptr;
 	}
 
 	void ParticleSystem::advanceStatisticsFrame()
@@ -1146,6 +1450,18 @@ namespace mpp
 		GL_CHECK(glQueryCounter(slot.renders.back().end, GL_TIMESTAMP));
 	}
 
+	void ParticleSystem::dispatchEventPrepare(uint32_t mode, uint32_t sourceQueue)
+	{
+		mEventStorage->bindStorage(EventStorageBinding);
+		mEventDispatchCommand->bindStorage(DispatchCommandBinding);
+		auto* program = static_cast<ComputeProgram*>(mEventPrepareProgram.get());
+		program->use();
+		program->setUniform("MODE", mode);
+		program->setUniform("SOURCE_QUEUE", sourceQueue);
+		program->dispatch(1u);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+	}
+
 	void ParticleSystem::dispatchSpawnCommands()
 	{
 		if (mSpawnCommands.empty()) return;
@@ -1155,6 +1471,7 @@ namespace mpp
 		mActiveIndicesA->bindStorage(ActiveIndicesABinding);
 		mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
 		mCounters->bindStorage(CountersBinding);
+		mEventStorage->bindStorage(EventStorageBinding);
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
 			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, SpawnCommandBinding, mSpawnCommandBuffer->getBuffer(),
@@ -1192,8 +1509,7 @@ namespace mpp
 		if (!mColliders.empty())
 			GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, ColliderBinding, mColliderBuffer->getBuffer(),
 				static_cast<GLintptr>(mColliderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mColliders))));
-		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, SignedDistanceFieldBinding, mSignedDistanceFieldBuffer->getBuffer(),
-			static_cast<GLintptr>(mSignedDistanceFieldBuffer->getActiveOffset()), sizeof(mSignedDistanceFieldData)));
+		mEventStorage->bindStorage(SimulationEventStorageBinding);
 
 		auto* collisionDepth = dynamic_cast<RenderTexture*>(mScreenSpaceCollisionDepth.get());
 		bool const hasCollisionDepth = collisionDepth && collisionDepth->getDepthTextureId() != 0u && !collisionDepth->isMultisampled();
@@ -1229,6 +1545,10 @@ namespace mpp
 		simulationProgram->setUniform("COLLISION_DEPTH_TEXTURE", int32_t(1));
 		simulationProgram->setUniform("SIGNED_DISTANCE_FIELD_TEXTURE", int32_t(2));
 		simulationProgram->setUniform("VECTOR_FIELD_TEXTURE", int32_t(3));
+		GL_CHECK(glUniformMatrix4fv(simulationProgram->getUniformLocation("SDF_WORLD_TO_TEXTURE"), 1, GL_FALSE,
+			mSignedDistanceFieldData.worldToTexture.data()));
+		GL_CHECK(glUniform4fv(simulationProgram->getUniformLocation("SDF_PARAMETERS"), 1,
+			mSignedDistanceFieldData.parameters.data()));
 		GL_CHECK(glActiveTexture(GL_TEXTURE0));
 		GL_CHECK(glBindSampler(0, 0));
 		GL_CHECK(glBindTexture(GL_TEXTURE_3D, mNoiseTexture));
@@ -1248,9 +1568,38 @@ namespace mpp
 		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 		if (!mColliders.empty()) mColliderBuffer->markUsed();
-		mSignedDistanceFieldBuffer->markUsed();
 
 		mActiveListIndex = 1u - mActiveListIndex;
+	}
+
+	void ParticleSystem::dispatchParticleEvents()
+	{
+		if (mGpuEventRules.empty()) return;
+		for (uint32_t cascade = 0u; cascade < MaxSecondaryEventCascadeDepth; ++cascade)
+		{
+			uint32_t const sourceQueue = cascade & 1u;
+			dispatchEventPrepare(1u, sourceQueue);
+			mParticlePool->bindStorage(ParticlePoolBinding);
+			mFreeIndices->bindStorage(FreeIndicesBinding);
+			mActiveIndicesA->bindStorage(ActiveIndicesABinding);
+			mActiveIndicesB->bindStorage(ActiveIndicesBBinding);
+			mCounters->bindStorage(CountersBinding);
+			GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+				static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+			mEventStorage->bindStorage(EventStorageBinding);
+			auto* program = static_cast<ComputeProgram*>(mEventProcessProgram.get());
+			program->use();
+			program->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
+			program->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
+			program->setUniform("TEMPLATE_COUNT", uint32_t(mTemplateRenderData.size()));
+			program->setUniform("SOURCE_QUEUE", sourceQueue);
+			mEventDispatchCommand->bindDispatchIndirect();
+			program->dispatchIndirect();
+			GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+			GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+		}
+		dispatchEventPrepare(2u, MaxSecondaryEventCascadeDepth & 1u);
+		queueEventReadback();
 	}
 
 	void ParticleSystem::dispatchCompaction()
@@ -1546,6 +1895,7 @@ namespace mpp
 
 		try
 		{
+			pollEventReadback();
 			advanceStatisticsFrame();
 			auto const now = chrono::steady_clock::now();
 			float dt = 0.0f;
@@ -1568,6 +1918,7 @@ namespace mpp
 			ensurePoolAllocated();
 			uploadFrameData();
 			dispatchStatisticsPrepare();
+			if (!mGpuEventRules.empty()) dispatchEventPrepare(0u);
 			beginStatisticsSample();
 			{
 				GpuDebugScope spawnScope("Particles: Spawn");
@@ -1576,6 +1927,10 @@ namespace mpp
 			{
 				GpuDebugScope simulationScope("Particles: Simulate");
 				dispatchSimulation(dt);
+			}
+			{
+				GpuDebugScope eventScope("Particles: Process secondary and external events");
+				dispatchParticleEvents();
 			}
 			{
 				GpuDebugScope compactionScope("Particles: Compact by emitter template");

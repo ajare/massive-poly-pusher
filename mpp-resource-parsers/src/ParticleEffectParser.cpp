@@ -158,10 +158,36 @@ namespace mpp::resource_parsers
 				}
 			}
 
+			ParticleEffectSpecification::EventRule parseEvent(Data const& node, std::string const& path)
+			{
+				fields(node, { "trigger", "action", "targetEmitter", "count", "age", "payload" }, path);
+				ParticleEffectSpecification::EventRule event;
+				event.trigger = enumeration(node, "trigger", path, ParticleEventTrigger::Spawn,
+					{ {"spawn",ParticleEventTrigger::Spawn},{"spawned",ParticleEventTrigger::Spawn},
+					  {"death",ParticleEventTrigger::Death},{"killed",ParticleEventTrigger::Death},
+					  {"collision",ParticleEventTrigger::Collision},{"colliding",ParticleEventTrigger::Collision},
+					  {"age",ParticleEventTrigger::Age} });
+				event.action = enumeration(node, "action", path, ParticleEventAction::SecondaryParticleBurst,
+					{ {"secondaryparticleburst",ParticleEventAction::SecondaryParticleBurst},
+					  {"secondaryburst",ParticleEventAction::SecondaryParticleBurst},
+					  {"decal",ParticleEventAction::Decal},{"audio",ParticleEventAction::Audio},
+					  {"light",ParticleEventAction::Light},{"gameplaycallback",ParticleEventAction::GameplayCallback} });
+				event.targetEmitter = value(node, "targetEmitter", path,
+					event.action == ParticleEventAction::SecondaryParticleBurst);
+				event.count = integer(node, "count", path, 1u);
+				event.age = number(node, "age", path, 0.0f, event.trigger == ParticleEventTrigger::Age);
+				event.payload = integer(node, "payload", path, 0u);
+				if (event.action == ParticleEventAction::SecondaryParticleBurst && event.count == 0u)
+					error("MPP-PARTICLE-015", "A secondary particle burst count must be greater than zero.", path + "/count");
+				if (event.age < 0.0f)
+					error("MPP-PARTICLE-015", "A particle age event must have a non-negative age.", path + "/age");
+				return event;
+			}
+
 			void parseEmitter(Data const& node, size_t index)
 			{
 				auto path = "/ParticleEffect/Emitters/Emitter[" + std::to_string(index) + "]";
-				fields(node, { "name", "maximumParticleCount", "transform", "Spawn", "Behaviours", "Curves", "Appearance", "Mesh" }, path);
+				fields(node, { "name", "maximumParticleCount", "transform", "Spawn", "Behaviours", "Curves", "Appearance", "Mesh", "Events" }, path);
 				ParticleEffectSpecification::EmitterTemplate authored;
 				authored.name = value(node, "name", path, true);
 				auto& emitter = authored.value; auto& sim = emitter.simulation; auto& appearance = emitter.appearance;
@@ -218,6 +244,21 @@ namespace mpp::resource_parsers
 					}
 				}
 
+				if (node.hasEntry("Events"))
+				{
+					size_t eventIndex = 0;
+					for (auto const& entry : node.getEntry("Events"))
+					{
+						auto eventPath = path + "/Events/Event[" + std::to_string(eventIndex++) + "]";
+						if (entry.first != "Event")
+						{
+							error("MPP-PARTICLE-002", "Events contains only Event entries.", eventPath);
+							continue;
+						}
+						authored.events.push_back(parseEvent(entry.second, eventPath));
+					}
+				}
+
 				if (node.hasEntry("Curves"))
 				{
 					auto const& curves=node.getEntry("Curves"); auto curvePath=path+"/Curves";
@@ -267,6 +308,37 @@ namespace mpp::resource_parsers
 				if(result.specification.version!=1)error("MPP-PARTICLE-013","Unsupported particle effect version; expected 1.","/ParticleEffect/version");
 				if(!data.hasEntry("Emitters"))error("MPP-PARTICLE-003","Particle effect requires an Emitters list.","/ParticleEffect");
 				else { size_t index=0;for(auto const& entry:data.getEntry("Emitters")){if(entry.first!="Emitter"){error("MPP-PARTICLE-002","Emitters contains only Emitter entries.","/ParticleEffect/Emitters");continue;}parseEmitter(entry.second,index++);} }
+
+				bool const hasSecondaryEvents = std::any_of(result.specification.emitterTemplates.begin(),
+					result.specification.emitterTemplates.end(), [](auto const& emitter)
+					{
+						return std::any_of(emitter.events.begin(), emitter.events.end(), [](auto const& event)
+							{ return event.action == ParticleEventAction::SecondaryParticleBurst; });
+					});
+				std::unordered_set<std::string> emitterNames;
+				for (size_t index = 0; index < result.specification.emitterTemplates.size(); ++index)
+				{
+					auto& emitter = result.specification.emitterTemplates[index];
+					auto emitterPath = "/ParticleEffect/Emitters/Emitter[" + std::to_string(index) + "]";
+					if (!emitterNames.emplace(emitter.name).second && hasSecondaryEvents)
+						error("MPP-PARTICLE-016", "Emitter template names must be unique when secondary particle events are authored.", emitterPath + "/name");
+					emitter.value.events.clear();
+					for (size_t eventIndex = 0; eventIndex < emitter.events.size(); ++eventIndex)
+					{
+						auto const& event = emitter.events[eventIndex];
+						ParticleEventRule rule{ event.trigger, event.action, 0u, event.count, event.age, event.payload };
+						if (event.action == ParticleEventAction::SecondaryParticleBurst)
+						{
+							auto found = std::find_if(result.specification.emitterTemplates.begin(), result.specification.emitterTemplates.end(),
+								[&](auto const& candidate) { return candidate.name == event.targetEmitter; });
+							if (found == result.specification.emitterTemplates.end())
+								error("MPP-PARTICLE-017", "Secondary particle event target emitter '" + event.targetEmitter + "' does not exist.",
+									emitterPath + "/Events/Event[" + std::to_string(eventIndex) + "]/targetEmitter");
+							else rule.targetEmitterTemplate = uint32_t(std::distance(result.specification.emitterTemplates.begin(), found));
+						}
+						emitter.value.events.push_back(rule);
+					}
+				}
 				uint64_t total=0;for(auto const& emitter:result.specification.emitterTemplates)total+=emitter.value.simulation.shapeSeedModulesBudget[3];
 				if(total>std::numeric_limits<uint32_t>::max()||total!=result.specification.maximumParticleCount)error("MPP-PARTICLE-014","maximumParticleCount must equal the sum of emitter-template budgets ("+std::to_string(total)+").","/ParticleEffect/maximumParticleCount");
 			}

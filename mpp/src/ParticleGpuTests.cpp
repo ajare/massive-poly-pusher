@@ -162,15 +162,18 @@ namespace mpp
 			};
 			auto runFrame = [&](ParticleSystem& system, float dt)
 			{
+				system.pollEventReadback();
 				system.advanceStatisticsFrame();
 				system.mSimulationSeconds += dt;
 				system.buildSpawnCommands(dt);
 				system.ensurePoolAllocated();
 				system.uploadFrameData();
 				system.dispatchStatisticsPrepare();
+				system.dispatchEventPrepare(0u);
 				system.beginStatisticsSample();
 				system.dispatchSpawnCommands();
 				system.dispatchSimulation(dt);
+				system.dispatchParticleEvents();
 				system.dispatchCompaction();
 				system.finishSimulationTiming();
 				system.dispatchDepthSorts();
@@ -400,6 +403,76 @@ namespace mpp
 				return fail("spawn-secondary collision response did not publish a one-frame GPU event flag");
 			runFrame(system, 10.0f);
 			system.setColliders({});
+
+			stage = "GPU secondary bursts and asynchronous typed events";
+			system.setColliders(collisionWorld);
+			auto eventSourceTemplate = burst(1u, 1u, 1.0f);
+			eventSourceTemplate.localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.0f, -5.0f });
+			eventSourceTemplate.simulation.initialVelocityMin = { 0.0f, -2.0f, 0.0f, 0.0f };
+			eventSourceTemplate.simulation.initialVelocityMax = eventSourceTemplate.simulation.initialVelocityMin;
+			eventSourceTemplate.simulation.shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Collision);
+			eventSourceTemplate.simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::Analytical),
+				uint32_t(ParticleCollisionResponse::Stop), 0u, 0u };
+			eventSourceTemplate.events = {
+				{ ParticleEventTrigger::Spawn, ParticleEventAction::SecondaryParticleBurst, 1u, 7u, 0.0f, 10u },
+				{ ParticleEventTrigger::Spawn, ParticleEventAction::Audio, 0u, 1u, 0.0f, 11u },
+				{ ParticleEventTrigger::Age, ParticleEventAction::Decal, 0u, 1u, 0.5f, 12u },
+				{ ParticleEventTrigger::Death, ParticleEventAction::GameplayCallback, 0u, 1u, 0.0f, 13u },
+				{ ParticleEventTrigger::Collision, ParticleEventAction::Light, 0u, 1u, 0.0f, 14u }
+			};
+			auto eventTargetTemplate = burst(0u, 7u, 2.0f);
+			eventTargetTemplate.simulation.emissionState[1] = 0u;
+			std::array eventTemplates{ eventSourceTemplate, eventTargetTemplate };
+			std::array<bool, 5> delivered{};
+			std::array<uint32_t, 5> const expectedPayloads{ 0u, 12u, 11u, 14u, 13u };
+			auto receiveEvent = [&](ParticleEvent const& event)
+			{
+				auto action = uint32_t(event.getAction());
+				if (action < delivered.size() && event.getPayload() == expectedPayloads[action] &&
+					(action != uint32_t(ParticleEventAction::Light) || event.normalAndPadding[1] > 0.9f))
+					delivered[action] = true;
+			};
+			system.setEventCallback(ParticleEventAction::Decal, receiveEvent);
+			system.setEventCallback(ParticleEventAction::Audio, receiveEvent);
+			system.setEventCallback(ParticleEventAction::Light, receiveEvent);
+			system.setEventCallback(ParticleEventAction::GameplayCallback, receiveEvent);
+			auto eventEffect = system.createEffect(eventTemplates);
+			auto eventSourceHandle = system.getEmitter(eventEffect, 0u);
+			auto eventTargetHandle = system.getEmitter(eventEffect, 1u);
+			runFrame(system, 0.0f);
+			GL_CHECK(glFinish());
+			ParticleDrawArraysIndirectCommand eventSourceCommand, eventTargetCommand;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(eventSourceHandle.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(eventSourceCommand), &eventSourceCommand));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(eventTargetHandle.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(eventTargetCommand), &eventTargetCommand));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (eventSourceCommand.instanceCount != 1u || eventTargetCommand.instanceCount != 7u)
+				return fail("spawn event did not create its secondary particle burst entirely on the GPU");
+			runFrame(system, 0.6f);
+			runFrame(system, 0.5f);
+			GL_CHECK(glFinish());
+			system.pollEventReadback();
+			system.pollEventReadback();
+			for (uint32_t action = 1u; action < delivered.size(); ++action)
+				if (!delivered[action]) return fail("spawn, age, collision, or death event did not reach its typed lagged callback");
+			system.clearEventCallback(ParticleEventAction::Decal);
+			system.clearEventCallback(ParticleEventAction::Audio);
+			system.clearEventCallback(ParticleEventAction::Light);
+			system.clearEventCallback(ParticleEventAction::GameplayCallback);
+			system.setColliders({});
+			runFrame(system, 100.0f);
+			// Later GPU stages append non-additive templates and require the global
+			// command table to remain blend-class ordered. Occupy every recycled
+			// additive slot before they do so this test does not perturb that contract.
+			while (!system.mFreeEmitterIndices.empty())
+			{
+				auto dormant = burst(0u, 0u, 0.0f);
+				dormant.simulation.emissionState = { 0u, 0u, 0u, 0u };
+				std::array dormantTemplates{ dormant };
+				(void)system.createEffect(dormantTemplates);
+			}
 
 			stage = "GPU signed distance field collision";
 			auto sdfStream = std::make_shared<ProgrammaticTextureStream>(renderSystem->getResourceManager());
