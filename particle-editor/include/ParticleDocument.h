@@ -17,6 +17,8 @@
 #include <mpp/app/CommandStack.h>
 #include <mpp/app/DocumentFile.h>
 
+#include "ParticleSpatialEditing.h"
+
 namespace particle_editor
 {
 	enum class ParticleSaveResult
@@ -65,6 +67,7 @@ namespace particle_editor
 		std::chrono::steady_clock::time_point mPreviewDeadline{};
 		uint64_t mPreviewRevision{ 0 };
 		size_t mSelectedEmitter{ 0 };
+		std::optional<size_t> mSelectedChildEffect;
 		ParticlePreviewChange mPendingPreviewChange{ ParticlePreviewChange::None };
 		ParticlePreviewChange mPublishedPreviewChange{ ParticlePreviewChange::None };
 		ParticlePreviewChange mAppliedCommandChange{ ParticlePreviewChange::Structural };
@@ -116,6 +119,11 @@ namespace particle_editor
 		size_t duplicateChildEffect(size_t index);
 		void moveChildEffect(size_t from, size_t to);
 		void removeChildEffect(size_t index);
+		void selectChildEffect(size_t index);
+		std::optional<SpatialTarget> selectedSpatialTarget() const;
+		void selectSpatialTarget(SpatialTarget target);
+		glm::mat4 selectedTransform() const;
+		void setSelectedTransform(glm::mat4 const& transform, bool continuous = false);
 
 		size_t addScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
 			float time, float value);
@@ -132,6 +140,8 @@ namespace particle_editor
 			bool continuous = false);
 
 		bool hasSelectedEmitterTemplate() const;
+		bool hasSelectedChildEffect() const { return mSelectedChildEffect && *mSelectedChildEffect < mSpecification.childEffects.size(); }
+		size_t selectedChildEffect() const;
 		size_t selectedEmitterTemplate() const;
 		static std::string uniqueEmitterTemplateName(mpp::ParticleEffectSpecification const& specification,
 			std::string requested, std::optional<size_t> ignoredIndex = std::nullopt);

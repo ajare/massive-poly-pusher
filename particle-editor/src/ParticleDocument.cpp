@@ -216,6 +216,7 @@ namespace particle_editor
 		mCommands.markSavePoint();
 		mPreviewRevision = 0u;
 		mSelectedEmitter = 0u;
+		mSelectedChildEffect.reset();
 		mPendingPreview.reset();
 		mPendingPreviewChange = ParticlePreviewChange::None;
 		mPublishedPreviewChange = ParticlePreviewChange::None;
@@ -245,6 +246,7 @@ namespace particle_editor
 		mCommands.markSavePoint();
 		mPreviewRevision = 0u;
 		mSelectedEmitter = 0u;
+		mSelectedChildEffect.reset();
 		mPendingPreview.reset();
 		mPendingPreviewChange = ParticlePreviewChange::None;
 		mPublishedPreviewChange = ParticlePreviewChange::None;
@@ -373,6 +375,7 @@ namespace particle_editor
 		executeEdit("Add emitter template", [emitter = std::move(emitter)](auto& effect) mutable
 			{ effect.emitterTemplates.push_back(std::move(emitter)); });
 		mSelectedEmitter = mSpecification.emitterTemplates.size() - 1u;
+		mSelectedChildEffect.reset();
 		return mSelectedEmitter;
 	}
 
@@ -385,6 +388,7 @@ namespace particle_editor
 		executeEdit("Duplicate emitter template", [index, emitter = std::move(emitter)](auto& effect) mutable
 			{ effect.emitterTemplates.insert(effect.emitterTemplates.begin() + index + 1u, std::move(emitter)); });
 		mSelectedEmitter = index + 1u;
+		mSelectedChildEffect.reset();
 		return mSelectedEmitter;
 	}
 
@@ -415,6 +419,7 @@ namespace particle_editor
 			effect.emitterTemplates.insert(effect.emitterTemplates.begin() + to, std::move(emitter));
 		});
 		mSelectedEmitter = to;
+		mSelectedChildEffect.reset();
 	}
 
 	std::vector<EmitterEventReference> ParticleDocument::emitterEventReferences(size_t index) const
@@ -498,7 +503,8 @@ namespace particle_editor
 	size_t ParticleDocument::addChildEffect()
 	{
 		executeEdit("Add child particle effect", [](auto& effect) { effect.childEffects.emplace_back(); });
-		return mSpecification.childEffects.size() - 1u;
+		mSelectedChildEffect = mSpecification.childEffects.size() - 1u;
+		return *mSelectedChildEffect;
 	}
 
 	size_t ParticleDocument::duplicateChildEffect(size_t index)
@@ -507,7 +513,8 @@ namespace particle_editor
 		auto child = mSpecification.childEffects[index];
 		executeEdit("Duplicate child particle effect", [index, child](auto& effect)
 			{ effect.childEffects.insert(effect.childEffects.begin() + index + 1u, child); });
-		return index + 1u;
+		mSelectedChildEffect = index + 1u;
+		return *mSelectedChildEffect;
 	}
 
 	void ParticleDocument::moveChildEffect(size_t from, size_t to)
@@ -519,6 +526,7 @@ namespace particle_editor
 			auto child = std::move(effect.childEffects[from]); effect.childEffects.erase(effect.childEffects.begin() + from);
 			effect.childEffects.insert(effect.childEffects.begin() + to, std::move(child));
 		});
+		mSelectedChildEffect = to;
 	}
 
 	void ParticleDocument::removeChildEffect(size_t index)
@@ -526,14 +534,57 @@ namespace particle_editor
 		if (index >= mSpecification.childEffects.size()) throw std::out_of_range("Child particle effect index is out of range.");
 		executeEdit("Remove child particle effect", [index](auto& effect)
 			{ effect.childEffects.erase(effect.childEffects.begin() + index); });
+		if (mSpecification.childEffects.empty()) mSelectedChildEffect.reset();
+		else if (mSelectedChildEffect) mSelectedChildEffect = std::min(*mSelectedChildEffect, mSpecification.childEffects.size() - 1u);
 	}
 
 	void ParticleDocument::selectEmitterTemplate(size_t index)
 	{
 		if (index >= mSpecification.emitterTemplates.size())
 			throw std::out_of_range("Emitter-template index is out of range.");
-		if (index != mSelectedEmitter) endContinuousEdit();
+		if (index != mSelectedEmitter || mSelectedChildEffect) endContinuousEdit();
 		mSelectedEmitter = index;
+		mSelectedChildEffect.reset();
+	}
+
+	void ParticleDocument::selectChildEffect(size_t index)
+	{
+		if (index >= mSpecification.childEffects.size()) throw std::out_of_range("Child particle effect index is out of range.");
+		if (!mSelectedChildEffect || *mSelectedChildEffect != index) endContinuousEdit();
+		mSelectedChildEffect = index;
+	}
+
+	std::optional<SpatialTarget> ParticleDocument::selectedSpatialTarget() const
+	{
+		if (hasSelectedChildEffect()) return SpatialTarget{ SpatialTargetKind::ChildEffect, *mSelectedChildEffect };
+		if (hasSelectedEmitterTemplate()) return SpatialTarget{ SpatialTargetKind::EmitterTemplate, mSelectedEmitter };
+		return std::nullopt;
+	}
+
+	void ParticleDocument::selectSpatialTarget(SpatialTarget target)
+	{
+		if (target.kind == SpatialTargetKind::EmitterTemplate) selectEmitterTemplate(target.index);
+		else selectChildEffect(target.index);
+	}
+
+	glm::mat4 ParticleDocument::selectedTransform() const
+	{
+		auto target = selectedSpatialTarget();
+		if (!target) throw std::logic_error("No spatial item is selected.");
+		return target->kind == SpatialTargetKind::EmitterTemplate ? emitterTransform(mSpecification.emitterTemplates[target->index]) :
+			mSpecification.childEffects[target->index].transform;
+	}
+
+	void ParticleDocument::setSelectedTransform(glm::mat4 const& transform, bool continuous)
+	{
+		auto target = selectedSpatialTarget();
+		if (!target) throw std::logic_error("No spatial item is selected.");
+		executeEdit(target->kind == SpatialTargetKind::EmitterTemplate ? "Transform emitter template" : "Transform child particle effect",
+			[target = *target, transform](auto& effect)
+			{
+				if (target.kind == SpatialTargetKind::EmitterTemplate) setEmitterTransform(effect.emitterTemplates[target.index], transform);
+				else effect.childEffects[target.index].transform = transform;
+			}, continuous, ParticlePreviewChange::Structural);
 	}
 
 	size_t ParticleDocument::addScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
@@ -659,7 +710,13 @@ namespace particle_editor
 
 	bool ParticleDocument::hasSelectedEmitterTemplate() const
 	{
-		return mSelectedEmitter < mSpecification.emitterTemplates.size();
+		return !mSelectedChildEffect && mSelectedEmitter < mSpecification.emitterTemplates.size();
+	}
+
+	size_t ParticleDocument::selectedChildEffect() const
+	{
+		if (!hasSelectedChildEffect()) throw std::logic_error("No child particle effect is selected.");
+		return *mSelectedChildEffect;
 	}
 
 	size_t ParticleDocument::selectedEmitterTemplate() const
@@ -804,6 +861,19 @@ namespace particle_editor
 			if (mpp::ParticleEffectValidator::validate(first).hasErrors() ||
 				mpp::ParticleEffectValidator::validate(second).hasErrors())
 				return fail("the starter particle effect is not production-valid");
+
+			ParticleDocument spatial;
+			auto originalTransform = spatial.selectedTransform();
+			auto movedTransform = glm::translate(originalTransform, glm::vec3(2.0f, 3.0f, 4.0f));
+			spatial.setSelectedTransform(movedTransform, true);
+			spatial.setSelectedTransform(glm::translate(originalTransform, glm::vec3(4.0f, 3.0f, 2.0f)), true);
+			spatial.endContinuousEdit();
+			if (spatial.commandCount() != 1u || !spatial.undo() || spatial.selectedTransform() != originalTransform ||
+				!spatial.redo() || spatial.selectedTransform()[3] != glm::vec4(4.0f, 3.0f, 2.0f, 1.0f))
+				return fail("viewport transform drag was not one undoable, redoable command");
+			auto childIndex = spatial.addChildEffect(); spatial.selectChildEffect(childIndex);
+			if (!spatial.hasSelectedChildEffect() || spatial.selectedSpatialTarget() != SpatialTarget{ SpatialTargetKind::ChildEffect, childIndex })
+				return fail("child particle effect could not become the spatial selection");
 
 			ParticleDocument hierarchy;
 			auto added = hierarchy.addEmitterTemplate();

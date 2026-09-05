@@ -16,6 +16,7 @@
 #include <mpp/Resource.h>
 
 #include "ParticlePreviewPreferences.h"
+#include "ParticleSpatialEditing.h"
 
 namespace mpp
 {
@@ -98,11 +99,14 @@ namespace particle_editor
 		void orbitCamera(float horizontal, float vertical);
 		void panCamera(float horizontal, float vertical);
 		void zoomCamera(float amount);
-		void focusSelection(mpp::ParticleEffectSpecification const& specification, std::optional<size_t> emitterIndex);
+		void focusSelection(mpp::ParticleEffectSpecification const& specification, std::optional<SpatialTarget> target);
 		void frameBounds();
 		void resetCamera();
 		void manipulateLight(float horizontal, float vertical);
 		std::optional<glm::vec2> lightViewportPosition() const;
+		std::vector<ViewportOverlay> viewportOverlays(mpp::ParticleEffectSpecification const& specification,
+			std::optional<SpatialTarget> selected = std::nullopt) const;
+		std::optional<glm::vec2> viewportPosition(glm::vec3 world) const;
 		void applyPreferences();
 		void savePreferences();
 		void update(float deltaSeconds);

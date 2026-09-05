@@ -618,16 +618,24 @@ namespace particle_editor
 	}
 
 	void ParticlePreview::focusSelection(mpp::ParticleEffectSpecification const& specification,
-		std::optional<size_t> emitterIndex)
+		std::optional<SpatialTarget> target)
 	{
-		if (emitterIndex && *emitterIndex < specification.emitterTemplates.size())
+		glm::vec3 position;
+		bool found = false;
+		if (target && target->kind == SpatialTargetKind::EmitterTemplate && target->index < specification.emitterTemplates.size())
 		{
-			auto const& transform = specification.emitterTemplates[*emitterIndex].value.simulation.transform;
-			mPreferences.cameraTarget = { transform[12], transform[13], transform[14] };
+			auto const transform = emitterTransform(specification.emitterTemplates[target->index]);
+			position = glm::vec3(transform[3]); found = true;
+		}
+		else if (target && target->kind == SpatialTargetKind::ChildEffect && target->index < specification.childEffects.size())
+		{
+			position = glm::vec3(specification.childEffects[target->index].transform[3]); found = true;
+		}
+		if (found)
+		{
+			mPreferences.cameraTarget = position;
 			mPreferences.cameraDistance = std::max(2.0f, glm::length(mStudio.size) * 0.22f);
-			updateCamera();
-			mPreferencesDirty = true;
-			return;
+			updateCamera(); mPreferencesDirty = true; return;
 		}
 		frameBounds();
 	}
@@ -656,6 +664,24 @@ namespace particle_editor
 		mPreferences.lightElevation = std::clamp(mPreferences.lightElevation + vertical, -1.5f, 1.5f);
 		updateLight();
 		mPreferencesDirty = true;
+	}
+
+	std::vector<ViewportOverlay> ParticlePreview::viewportOverlays(
+		mpp::ParticleEffectSpecification const& specification, std::optional<SpatialTarget> selected) const
+	{
+		if (!mCamera || mWidth == 0u || mHeight == 0u) return {};
+		return makeViewportOverlays(specification, mCamera->getProjectionTransform() * mCamera->getViewTransform(),
+			{ float(mWidth), float(mHeight) }, selected);
+	}
+
+	std::optional<glm::vec2> ParticlePreview::viewportPosition(glm::vec3 world) const
+	{
+		if (!mCamera || mWidth == 0u || mHeight == 0u) return std::nullopt;
+		auto clip = mCamera->getProjectionTransform() * mCamera->getViewTransform() * glm::vec4(world, 1.0f);
+		if (clip.w <= 0.0f) return std::nullopt;
+		auto ndc = glm::vec3(clip) / clip.w;
+		if (ndc.z < -1.0f || ndc.z > 1.0f) return std::nullopt;
+		return glm::vec2((ndc.x * 0.5f + 0.5f) * float(mWidth), (0.5f - ndc.y * 0.5f) * float(mHeight));
 	}
 
 	std::optional<glm::vec2> ParticlePreview::lightViewportPosition() const

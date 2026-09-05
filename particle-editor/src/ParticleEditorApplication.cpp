@@ -135,7 +135,7 @@ namespace particle_editor
 				std::string argument = argv[index];
 				if (argument == "--help" || argument == "-h")
 				{
-					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --resource-tests                   Run editor resource-library tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
+					std::printf("ParticleEditor options:\n  --help, -h                         Show this help.\n  --validate <effect.particle.yaml>  Validate with production diagnostics.\n  --document-tests                   Run document workflow tests.\n  --preview-tests                    Run editor preview preference tests.\n  --resource-tests                   Run editor resource-library tests.\n  --spatial-tests                    Run transform and picking tests.\n  [effect.particle.yaml]             Open a particle effect.\n");
 					return 0;
 				}
 				if (argument == "--document-tests")
@@ -169,6 +169,17 @@ namespace particle_editor
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor resource tests passed.\n");
+					return 0;
+				}
+				if (argument == "--spatial-tests")
+				{
+					std::string failure;
+					if (!runParticleSpatialEditingTests(&failure))
+					{
+						std::fprintf(stderr, "Particle Editor spatial tests failed: %s\n", failure.c_str());
+						return 1;
+					}
+					std::fprintf(stderr, "Particle Editor spatial tests passed.\n");
 					return 0;
 				}
 				if (!argument.starts_with("--")) startupPath = argument;
@@ -251,6 +262,11 @@ namespace particle_editor
 			std::optional<ParticleDocumentComparison> comparison;
 			bool openComparison = false;
 			bool lightGizmoDragging = false;
+			bool showSpatialOverlays = true;
+			int transformGizmoMode = 0; // translate, rotate, scale
+			int transformGizmoAxis = -1;
+			glm::mat4 transformGizmoStart{ 1.0f };
+			ImVec2 transformGizmoMouseStart{};
 			InputManagerSDL input;
 			TimerSDL timer;
 			timer.reset();
@@ -448,8 +464,8 @@ namespace particle_editor
 							else if (ImGui::MenuItem("Pause Simulation")) { active->setPreviewPaused(true); preview.pauseSimulation(); }
 							if (ImGui::MenuItem("Step Simulation", nullptr, false, preview.ready())) preview.stepSimulation();
 							ImGui::Separator();
-							if (ImGui::MenuItem("Focus Selection")) preview.focusSelection(active->specification(),
-								active->hasSelectedEmitterTemplate() ? std::optional<size_t>(active->selectedEmitterTemplate()) : std::nullopt);
+							if (ImGui::MenuItem("Focus Selection"))
+								preview.focusSelection(active->specification(), active->selectedSpatialTarget());
 							if (ImGui::MenuItem("Frame Particle Effect Bounds")) preview.frameBounds();
 							if (ImGui::MenuItem("Reset Camera")) preview.resetCamera();
 						}
@@ -651,12 +667,17 @@ namespace particle_editor
 				preferencesChanged |= ImGui::Checkbox("Floor grid", &preferences.floorGrid);
 				ImGui::SameLine();
 				if (ImGui::Button("Focus Selection") && active)
-					preview.focusSelection(active->specification(), active->hasSelectedEmitterTemplate() ?
-						std::optional<size_t>(active->selectedEmitterTemplate()) : std::nullopt);
+					preview.focusSelection(active->specification(), active->selectedSpatialTarget());
 				ImGui::SameLine();
 				if (ImGui::Button("Frame Bounds")) preview.frameBounds();
 				ImGui::SameLine();
 				if (ImGui::Button("Reset")) preview.resetCamera();
+				ImGui::SameLine(); ImGui::TextUnformatted("Gizmo:"); ImGui::SameLine();
+				ImGui::SameLine(); ImGui::Checkbox("Overlays", &showSpatialOverlays);
+				ImGui::SameLine();
+				if (ImGui::RadioButton("Move (W)", transformGizmoMode == 0)) transformGizmoMode = 0;
+				ImGui::SameLine(); if (ImGui::RadioButton("Rotate (E)", transformGizmoMode == 1)) transformGizmoMode = 1;
+				ImGui::SameLine(); if (ImGui::RadioButton("Scale (R)", transformGizmoMode == 2)) transformGizmoMode = 2;
 
 				if (ImGui::CollapsingHeader("Studio light"))
 				{
@@ -736,6 +757,66 @@ namespace particle_editor
 				ImGui::Image(previewTexture, ImVec2(float(viewportWidth), float(viewportHeight)), ImVec2(0, 1), ImVec2(1, 0));
 				bool const viewportHovered = ImGui::IsItemHovered();
 				auto& io = ImGui::GetIO();
+				if (viewportHovered && !io.WantTextInput)
+				{
+					if (ImGui::IsKeyPressed(ImGuiKey_W)) transformGizmoMode = 0;
+					if (ImGui::IsKeyPressed(ImGuiKey_E)) transformGizmoMode = 1;
+					if (ImGui::IsKeyPressed(ImGuiKey_R)) transformGizmoMode = 2;
+				}
+				auto overlays = active && showSpatialOverlays ? preview.viewportOverlays(active->specification(), active->selectedSpatialTarget()) : std::vector<ViewportOverlay>{};
+				auto* viewportDraw = ImGui::GetWindowDrawList();
+				for (auto const& overlay : overlays)
+					for (size_t point = 1; point < overlay.points.size(); ++point)
+						viewportDraw->AddLine({ viewportOrigin.x + overlay.points[point - 1u].x, viewportOrigin.y + overlay.points[point - 1u].y },
+							{ viewportOrigin.x + overlay.points[point].x, viewportOrigin.y + overlay.points[point].y },
+							overlay.selected ? IM_COL32(255, 205, 65, 255) : IM_COL32(90, 210, 255, 190), overlay.selected ? 2.5f : 1.5f);
+
+				std::optional<glm::vec2> gizmoCentre;
+				if (active && active->selectedSpatialTarget())
+				{
+					auto matrix = active->selectedTransform(); TransformComponents ignored;
+					if (decomposeTransform(matrix, ignored)) gizmoCentre = preview.viewportPosition(glm::vec3(matrix[3]));
+				}
+				static constexpr ImVec2 gizmoDirections[]{ { 42, 0 }, { 0, -42 }, { 30, 30 } };
+				static constexpr ImU32 gizmoColours[]{ IM_COL32(245,75,75,255), IM_COL32(80,230,100,255), IM_COL32(80,140,255,255) };
+				if (gizmoCentre)
+				{
+					ImVec2 centre{ viewportOrigin.x + gizmoCentre->x, viewportOrigin.y + gizmoCentre->y };
+					for (int axis=0;axis<3;++axis)
+					{
+						ImVec2 end{centre.x+gizmoDirections[axis].x,centre.y+gizmoDirections[axis].y};
+						viewportDraw->AddLine(centre,end,gizmoColours[axis],transformGizmoAxis==axis?4.0f:2.5f);
+						viewportDraw->AddCircleFilled(end,4.0f,gizmoColours[axis]);
+						float dx=io.MousePos.x-end.x,dy=io.MousePos.y-end.y;
+						if(viewportHovered&&transformGizmoAxis<0&&ImGui::IsMouseClicked(ImGuiMouseButton_Left)&&dx*dx+dy*dy<100.0f&&active)
+						{ transformGizmoAxis=axis;transformGizmoStart=active->selectedTransform();transformGizmoMouseStart=io.MousePos; }
+					}
+				}
+				if (transformGizmoAxis >= 0 && active)
+				{
+					if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) { transformGizmoAxis=-1; active->endContinuousEdit(); }
+					else
+					{
+						TransformComponents components;
+						if (decomposeTransform(transformGizmoStart, components))
+						{
+							float drag = (io.MousePos.x-transformGizmoMouseStart.x)*gizmoDirections[transformGizmoAxis].x/42.0f +
+								(io.MousePos.y-transformGizmoMouseStart.y)*gizmoDirections[transformGizmoAxis].y/42.0f;
+							if (std::abs(drag) > 0.001f)
+							{
+								if(transformGizmoMode==0) components.translation[transformGizmoAxis]+=drag*0.02f;
+								else if(transformGizmoMode==1) components.rotationDegrees[transformGizmoAxis]+=drag*0.75f;
+								else components.scale[transformGizmoAxis]=std::max(0.001f,components.scale[transformGizmoAxis]+drag*0.01f);
+								active->setSelectedTransform(composeTransform(components), true);
+							}
+						}
+					}
+				}
+				if (viewportHovered && transformGizmoAxis < 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && active)
+				{
+					auto localMouse = glm::vec2(io.MousePos.x - viewportOrigin.x, io.MousePos.y - viewportOrigin.y);
+					if (auto picked = pickViewportOverlay(overlays, localMouse)) active->selectSpatialTarget(*picked);
+				}
 				if (auto lightPosition = preview.lightViewportPosition())
 				{
 					ImVec2 marker(viewportOrigin.x + lightPosition->x, viewportOrigin.y + lightPosition->y);

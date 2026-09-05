@@ -90,6 +90,60 @@ namespace particle_editor
 			return changed;
 		}
 
+		bool drawTransformEditor(ParticleDocument& document, glm::mat4 const& matrix)
+		{
+			TransformComponents components;
+			bool const decomposable = decomposeTransform(matrix, components);
+			static bool advancedMatrixMode = false;
+			if (!decomposable)
+			{
+				ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f),
+					"This matrix contains shear, perspective, or a singular axis.");
+				ImGui::TextWrapped("It is preserved exactly. Use advanced matrix mode to edit it without silent TRS approximation.");
+				advancedMatrixMode = true;
+			}
+			else ImGui::Checkbox("Advanced matrix mode", &advancedMatrixMode);
+
+			if (advancedMatrixMode)
+			{
+				for (size_t column = 0; column < 4u; ++column)
+				{
+					std::array<float, 4> values{ matrix[int(column)][0], matrix[int(column)][1], matrix[int(column)][2], matrix[int(column)][3] };
+					ImGui::PushID(int(column));
+					bool const changed = ImGui::InputFloat4("##MatrixColumn", values.data(), "%.7g");
+					bool const ended = ImGui::IsItemDeactivatedAfterEdit();
+					ImGui::SameLine(); ImGui::Text("Column %zu", column + 1u); ImGui::PopID();
+					if (changed)
+					{
+						auto changedMatrix = matrix;
+						for (size_t row = 0; row < 4u; ++row) changedMatrix[int(column)][int(row)] = values[row];
+						document.setSelectedTransform(changedMatrix, true);
+						if (ended) document.endContinuousEdit();
+						return true;
+					}
+					if (ended) document.endContinuousEdit();
+				}
+				return false;
+			}
+
+			auto editComponents = [&](char const* label, glm::vec3& value, float speed)
+			{
+				auto edited = std::array<float, 3>{ value.x, value.y, value.z };
+				bool const changed = ImGui::DragFloat3(label, edited.data(), speed);
+				bool const ended = ImGui::IsItemDeactivatedAfterEdit();
+				if (changed)
+				{
+					value = { edited[0], edited[1], edited[2] };
+					document.setSelectedTransform(composeTransform(components), true);
+				}
+				if (ended) document.endContinuousEdit();
+				return changed;
+			};
+			if (editComponents("Translation", components.translation, 0.01f)) return true;
+			if (editComponents("Rotation (degrees)", components.rotationDegrees, 0.25f)) return true;
+			return editComponents("Scale", components.scale, 0.01f);
+		}
+
 		std::array<float, 4> usefulShapeParameters(uint32_t shape, std::array<float, 4> parameters)
 		{
 			if (shape == uint32_t(mpp::ParticleSpawnShape::Line) &&
@@ -537,8 +591,11 @@ namespace particle_editor
 		{
 			auto const& child = effect.childEffects[childIndex];
 			ImGui::PushID(int(childIndex));
-			bool childOpen = ImGui::TreeNodeEx("Child", ImGuiTreeNodeFlags_DefaultOpen, "%zu. %s",
+			auto childFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow;
+			if (document.hasSelectedChildEffect() && document.selectedChildEffect() == childIndex) childFlags |= ImGuiTreeNodeFlags_Selected;
+			bool childOpen = ImGui::TreeNodeEx("Child", childFlags, "%zu. %s",
 				childIndex + 1u, child.effect.empty() ? "<unresolved>" : child.effect.c_str());
+			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) document.selectChildEffect(childIndex);
 			if (childOpen)
 			{
 				if (resourceValue(document, resources, ParticleResourceKind::ParticleEffect, "ParticleEffect resource",
@@ -553,19 +610,9 @@ namespace particle_editor
 					ImGui::SameLine();
 					if (ImGui::Button("Open independently") && openDocument) openDocument(*path);
 				}
-				for (size_t column = 0; column < 4u; ++column)
-				{
-					std::array<float, 4> values{ child.transform[int(column)][0], child.transform[int(column)][1],
-						child.transform[int(column)][2], child.transform[int(column)][3] };
-					std::string label = "Transform column " + std::to_string(column + 1u);
-					if (editValue(document, "Change child particle effect transform", values,
-						[&](auto& edited) { return ImGui::InputFloat4(label.c_str(), edited.data(), "%.5g"); },
-						[=](auto& value, auto const& edited)
-						{
-							for (size_t row = 0; row < 4u; ++row) value.childEffects[childIndex].transform[int(column)][int(row)] = edited[row];
-						}, ParticlePreviewChange::Structural))
-					{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
-				}
+				if (document.hasSelectedChildEffect() && document.selectedChildEffect() == childIndex &&
+					drawTransformEditor(document, child.transform))
+				{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
 				uint32_t seed = child.seed;
 				if (editValue(document, "Change child particle effect seed salt", seed,
 					[](uint32_t& value) { return ImGui::InputScalar("Deterministic seed salt", ImGuiDataType_U32, &value); },
@@ -599,6 +646,12 @@ namespace particle_editor
 		auto const& lighting = authored.value.lighting;
 		if (textValue(document, "Emitter name", "Rename emitter template", authored.name,
 			[&](std::string name) { document.renameEmitterTemplate(emitterIndex, std::move(name), true); }))
+		{
+			ImGui::End();
+			return;
+		}
+		if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen) &&
+			drawTransformEditor(document, emitterTransform(authored)))
 		{
 			ImGui::End();
 			return;
