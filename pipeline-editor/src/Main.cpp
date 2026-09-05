@@ -31,7 +31,10 @@ extern "C" const char* __asan_default_options()
 #include <string>
 #include <string_view>
 #include <vector>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 #include <SDL3/SDL.h>
 #include <renderdoc/renderdoc_app.h>
 #include <glm/geometric.hpp>
@@ -91,6 +94,49 @@ extern "C" const char* __asan_default_options()
 
 using namespace mpp;
 using namespace pipeline_editor;
+
+#ifndef _WIN32
+// Keep the existing call sites platform-neutral while using SDL's native
+// message-box implementation outside Windows.
+constexpr unsigned MB_OK = 0;
+constexpr unsigned MB_YESNO = 1;
+constexpr unsigned MB_ICONERROR = 2;
+constexpr unsigned MB_ICONWARNING = 4;
+constexpr unsigned MB_ICONQUESTION = 8;
+constexpr int IDYES = 1;
+constexpr int IDNO = 0;
+
+template<size_t Size>
+int strncpy_s(char (&destination)[Size], char const* source, size_t count)
+{
+	count = std::min(count, Size - 1);
+	std::strncpy(destination, source, count);
+	destination[count] = '\0';
+	return 0;
+}
+
+int MessageBoxA(void*, char const* message, char const* title, unsigned flags)
+{
+	if ((flags & MB_YESNO) == 0)
+	{
+		auto kind = (flags & MB_ICONERROR) ? SDL_MESSAGEBOX_ERROR :
+		            (flags & MB_ICONWARNING) ? SDL_MESSAGEBOX_WARNING : SDL_MESSAGEBOX_INFORMATION;
+		SDL_ShowSimpleMessageBox(kind, title, message, nullptr);
+		return IDYES;
+	}
+	SDL_MessageBoxButtonData buttons[] = {
+	    {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, IDYES, "Yes"},
+	    {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, IDNO, "No"}};
+	SDL_MessageBoxData data{};
+	data.flags = (flags & MB_ICONWARNING) ? SDL_MESSAGEBOX_WARNING : SDL_MESSAGEBOX_INFORMATION;
+	data.title = title;
+	data.message = message;
+	data.numbuttons = 2;
+	data.buttons = buttons;
+	int selected = IDNO;
+	return SDL_ShowMessageBox(&data, &selected) ? selected : IDNO;
+}
+#endif
 
 namespace
 {
@@ -192,11 +238,10 @@ namespace
 
 	std::filesystem::path editorExecutableDirectory()
 	{
-		std::vector<wchar_t> filename(32768);
-		auto length = GetModuleFileNameW(nullptr, filename.data(), (DWORD)filename.size());
-		if (length == 0 || length == filename.size())
+		auto basePath = SDL_GetBasePath();
+		if (!basePath || !*basePath)
 			throw std::runtime_error("Could not determine the PipelineEditor executable directory.");
-		return std::filesystem::path(std::wstring(filename.data(), length)).parent_path();
+		return std::filesystem::path(basePath);
 	}
 
 	std::string trim(std::string value)
@@ -329,7 +374,7 @@ namespace
 
 	class RenderDocCapture
 	{
-		HMODULE mModule{nullptr};
+		SDL_SharedObject* mModule{nullptr};
 		RENDERDOC_API_1_1_1* mApi{nullptr};
 		uint32_t mCaptureCountBefore{0};
 		std::filesystem::path mRequestedCapture;
@@ -339,15 +384,21 @@ namespace
 		{
 			if (mApi)
 				return;
+#ifdef _WIN32
 			auto library = executable.parent_path() / "renderdoc.dll";
-			if (!std::filesystem::is_regular_file(library))
-			{
-				throw std::runtime_error("RenderDoc library was not found beside qrenderdoc.exe: " + library.string());
-			}
-			mModule = LoadLibraryW(library.c_str());
+#else
+			auto library = executable.parent_path() / "librenderdoc.so";
+#endif
+			mModule = SDL_LoadObject(library.string().c_str());
+#ifndef _WIN32
+			// Distribution packages generally install qrenderdoc in /usr/bin and
+			// librenderdoc.so in a system library directory.
 			if (!mModule)
-				throw std::runtime_error("Could not load RenderDoc library: " + library.string());
-			auto getApi = reinterpret_cast<pRENDERDOC_GetAPI>(GetProcAddress(mModule, "RENDERDOC_GetAPI"));
+				mModule = SDL_LoadObject("librenderdoc.so");
+#endif
+			if (!mModule)
+				throw std::runtime_error("Could not load RenderDoc library: " + library.string() + ": " + SDL_GetError());
+			auto getApi = reinterpret_cast<pRENDERDOC_GetAPI>(SDL_LoadFunction(mModule, "RENDERDOC_GetAPI"));
 			if (!getApi || getApi(eRENDERDOC_API_Version_1_1_1, reinterpret_cast<void**>(&mApi)) != 1 || !mApi)
 			{
 				throw std::runtime_error("Could not acquire the RenderDoc 1.1.1 API.");
@@ -398,7 +449,11 @@ namespace
 			auto now = std::chrono::system_clock::now();
 			auto time = std::chrono::system_clock::to_time_t(now);
 			std::tm local{};
+#ifdef _WIN32
 			localtime_s(&local, &time);
+#else
+			localtime_r(&time, &local);
+#endif
 			std::ostringstream name;
 			name << "PipelineEditor_" << std::put_time(&local, "%Y-%m-%d_%H-%M-%S");
 			mRequestedCapture = captureDirectory / (name.str() + ".rdc");
@@ -453,28 +508,13 @@ namespace
 
 	void launchRenderDoc(std::filesystem::path const& executable, std::filesystem::path const& capture)
 	{
-		std::wstring command = L"\"" + executable.wstring() + L"\" \"" + capture.wstring() + L"\"";
-		std::vector<wchar_t> writable(command.begin(), command.end());
-		writable.push_back(L'\0');
-		STARTUPINFOW startup{};
-		startup.cb = sizeof(startup);
-		PROCESS_INFORMATION process{};
-		auto workingDirectory = executable.parent_path().wstring();
-		if (!CreateProcessW(nullptr,
-		                    writable.data(),
-		                    nullptr,
-		                    nullptr,
-		                    FALSE,
-		                    0,
-		                    nullptr,
-		                    workingDirectory.c_str(),
-		                    &startup,
-		                    &process))
-		{
-			throw std::runtime_error("Could not launch RenderDoc for capture: " + capture.string());
-		}
-		CloseHandle(process.hThread);
-		CloseHandle(process.hProcess);
+		auto executableName = executable.string();
+		auto captureName = capture.string();
+		char const* arguments[] = {executableName.c_str(), captureName.c_str(), nullptr};
+		auto process = SDL_CreateProcess(arguments, false);
+		if (!process)
+			throw std::runtime_error("Could not launch RenderDoc for capture: " + capture.string() + ": " + SDL_GetError());
+		SDL_DestroyProcess(process);
 	}
 
 	mpp::data::StructuredData meshSpecification()
@@ -1202,7 +1242,13 @@ namespace
 	}
 } // namespace
 
+#ifdef _WIN32
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+#else
+#define __argc argc
+#define __argv argv
+int main(int argc, char** argv)
+#endif
 {
 	try
 	{
@@ -1560,6 +1606,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				scenePath.clear();
 			}
 		}
+#if defined(__linux__)
+		// The vendored GLEW build uses its GLX backend. SDL otherwise prefers
+		// Wayland when both Wayland and XWayland are available, producing a valid
+		// EGL context that GLEW cannot initialise ("No GLX display"). Respect an
+		// explicit user choice, but default the editor to SDL's X11 backend.
+		if (!SDL_getenv("SDL_VIDEODRIVER"))
+			SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+#endif
 		if (!SDL_Init(SDL_INIT_VIDEO))
 			throw std::runtime_error(SDL_GetError());
 		SdlLifetime sdlLifetime;

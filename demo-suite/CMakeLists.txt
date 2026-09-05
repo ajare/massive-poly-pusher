@@ -55,7 +55,15 @@ add_custom_command(TARGET DemoSuite POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${PROJECT_SOURCE_DIR}/resources/demo-suite/bin/Common/DemoSuite.cfg"
         "$<TARGET_FILE_DIR:DemoSuite>/DemoSuite.cfg"
+    VERBATIM)
+
+# Keep the default package synchronized even when only its Git LFS object
+# changes. A POST_BUILD command alone does not run when DemoSuite is already
+# up to date, leaving a previously copied LFS pointer in the output directory.
+add_custom_target(DemoSuitePackage ALL
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${PROJECT_SOURCE_DIR}/resources/demo-suite/packages/workspace.mpppackage"
         "$<TARGET_FILE_DIR:DemoSuite>/workspace.mpppackage"
+    DEPENDS "${PROJECT_SOURCE_DIR}/resources/demo-suite/packages/workspace.mpppackage"
     VERBATIM)
+add_dependencies(DemoSuitePackage DemoSuite)

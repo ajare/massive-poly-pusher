@@ -8,6 +8,34 @@ Run `git clone --recurse-submodules -j8 https://bitbucket.org/wtmrsh/massivepoly
 
 ## Building
 
+### CMake (Linux)
+
+Install CMake 3.22 or newer, a C++20-capable compiler, and the OpenGL development files. On Debian or Ubuntu, the minimum packages can be installed with:
+
+```sh
+sudo apt update
+sudo apt install build-essential cmake git-lfs libgl-dev
+```
+
+Clone with submodules, or initialize them in an existing checkout. The demo package and other large assets use Git LFS, so fetch those files before building:
+
+```sh
+git lfs install
+git submodule update --init --recursive
+git lfs pull
+```
+
+Configure and build a Release build from the repository root:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+Executables and shared libraries are written to `build/bin/Release`. The Linux build produces `DemoSuite`, `PipelineEditor`, `ModelConvert`, and `ProgramBuilder`. Run the editor with `./build/bin/Release/PipelineEditor`, the default packaged demo with `./build/bin/Release/DemoSuite`, or the standalone particle demo without a package with `./build/bin/Release/DemoSuite --particles`. PipelineEditor uses SDL for native messages, process launching, and dynamic RenderDoc loading on Linux; configure the `[RenderDoc]` executable as the path to `qrenderdoc` to enable captures.
+
+If DemoSuite reports `Package ZIP directory is missing`, the copied package is probably a Git LFS pointer rather than the package data. Run `git lfs pull`, then run `cmake --build build --parallel` again so CMake recopies the package into `build/bin/Release`.
+
 ### CMake (VS2026 x64)
 
 ```bat
