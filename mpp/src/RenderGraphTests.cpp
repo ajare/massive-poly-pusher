@@ -33,6 +33,7 @@ namespace mpp
 		auto const particleFragment = std::string(ParticleDrawFragmentShader);
 		auto const radixScatter = std::string(ParticleRadixScatterComputeShader);
 		auto const oitResolve = std::string(ParticleWeightedOitResolveFragmentShader);
+		auto const distortionComposite = std::string(ParticleDistortionCompositeFragmentShader);
 		if (particleVertex.find("particleHalfExtents") == std::string::npos ||
 			particleVertex.find("length(projectedVelocity)") == std::string::npos ||
 			particleVertex.find("expandParticleQuad") == std::string::npos ||
@@ -41,12 +42,15 @@ namespace mpp
 			particleVertex.find("ANIMATION_RANDOM_START") == std::string::npos ||
 			particleFragment.find("linearViewDepth(sceneDepth) - PARTICLE_VIEW_DEPTH") == std::string::npos ||
 			particleFragment.find("MPP_PARTICLE_WEIGHTED_OIT") == std::string::npos ||
+			particleFragment.find("MPP_PARTICLE_DISTORTION") == std::string::npos ||
+			particleFragment.find("PARTICLE_DISTORTION_STRENGTH") == std::string::npos ||
 			particleFragment.find("-log(max(1.0 - alpha") == std::string::npos ||
 			std::string(ParticleSortKeyComputeShader).find("descendingFloatKey") == std::string::npos ||
 			radixScatter.find("LOCAL_DIGITS[earlier] == digit") == std::string::npos ||
 			oitResolve.find("exp(-opticalDepth)") == std::string::npos ||
-			oitResolve.find("accumulation.rgb / max(accumulation.a") == std::string::npos)
-			return fail("particle shader lost billboard expansion, animation, soft depth, radix sorting, or weighted blended OIT");
+			oitResolve.find("accumulation.rgb / max(accumulation.a") == std::string::npos ||
+			distortionComposite.find("uv + offset") == std::string::npos)
+			return fail("particle shader lost billboard expansion, animation, soft depth, distortion, radix sorting, or weighted blended OIT");
 		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
@@ -462,6 +466,30 @@ namespace mpp
 			trailMetadata->inputs.front().sampler != "DEPTH" || trailMetadata->inputs.front().fallbackId != "HardTrails" ||
 			trailMetadata->parameters.size() != 1)
 			return fail("trail scene metadata lost its separate draw contract or optional depth fallback");
+		auto const* distortionMetadata = registry.findMetadata("MPP.ParticleDistortion");
+		auto const* distortionCompositeMetadata = registry.findMetadata("MPP.ParticleDistortionComposite");
+		if (!distortionMetadata || distortionMetadata->inputs.size() != 1 || distortionMetadata->inputs.front().required ||
+			distortionMetadata->outputs.size() != 1 ||
+			distortionMetadata->outputs.front().acceptedFormats != std::vector<GraphImageFormat>{ GraphImageFormat::Rg16f, GraphImageFormat::Rg32f } ||
+			!distortionCompositeMetadata || distortionCompositeMetadata->inputs.size() != 2 || distortionCompositeMetadata->outputs.size() != 1)
+			return fail("particle distortion draw/composite authoring metadata was not registered");
+		RenderGraph distortionGraph;
+		GraphImageDesc distortionSceneDesc = colour; distortionSceneDesc.external = true; distortionSceneDesc.transient = false;
+		auto distortionScene = distortionGraph.createImage("DistortionScene", distortionSceneDesc);
+		GraphImageDesc distortionDesc = colour; distortionDesc.format = GraphImageFormat::Rg16f;
+		auto distortionVectors = distortionGraph.createImage("DistortionVectors", distortionDesc);
+		auto distortionOutput = distortionGraph.createImage("DistortionOutput", colour);
+		auto distortionPass = distortionGraph.addPass("ParticleDistortion", GraphPassType::Scene);
+		distortionGraph.setPassCallbackFactory(distortionPass, "MPP.ParticleDistortion");
+		distortionVectors = distortionGraph.writeColour(distortionPass, distortionVectors, GraphLoadOp::Clear);
+		auto distortionCompositePass = distortionGraph.addPass("ParticleDistortionComposite", GraphPassType::Fullscreen);
+		distortionGraph.setPassCallbackFactory(distortionCompositePass, "MPP.ParticleDistortionComposite");
+		distortionGraph.bindSampler(distortionCompositePass, "SCENE", distortionScene);
+		distortionGraph.bindSampler(distortionCompositePass, "DISTORTION", distortionVectors);
+		distortionGraph.writeColour(distortionCompositePass, distortionOutput);
+		if (registry.validate(distortionGraph).hasErrors() || !distortionGraph.compile().valid)
+			return fail("valid particle distortion draw/composite graph was rejected");
+
 		auto const* oitMetadata = registry.findMetadata("MPP.ParticleWeightedOit");
 		auto const* oitResolveMetadata = registry.findMetadata("MPP.ParticleWeightedOitResolve");
 		if (!oitMetadata || oitMetadata->inputs.size() != 1 || oitMetadata->outputs.size() != 2 ||

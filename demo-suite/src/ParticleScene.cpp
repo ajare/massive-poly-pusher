@@ -188,7 +188,9 @@ void ParticleScene::createDemoEffect()
 	disc.simulation.shapeParameters[0] = 1.1f;
 	disc.simulation.emissionRateAndPadding[0] = 70.0f;
 	disc.appearance.tintAndAlpha = { 1.0f, 0.4f, 0.1f, 0.8f };
-	specification.emitterTemplates.push_back({ "additive-disc", disc, {} });
+	disc.appearance.sorting[2] = 1u;
+	disc.appearance.culling[3] = 0.012f;
+	specification.emitterTemplates.push_back({ "additive-disc-distortion", disc, {} });
 
 	auto mist = emitterTemplate(mpp::ParticleSpawnShape::Box, mpp::ParticleBlendClass::Alpha, { 0.0f, 0.12f, 0.0f }, 12000u);
 	mist.simulation.shapeParameters = { 1.8f, 0.18f, 1.8f, 0.0f };

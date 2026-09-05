@@ -240,6 +240,7 @@ namespace mpp
 		releaseProgram(mSortFinalizeProgram);
 		releaseProgram(mDrawProgram);
 		releaseProgram(mWeightedOitDrawProgram);
+		releaseProgram(mDistortionDrawProgram);
 		releaseProgram(mMeshCommandProgram);
 	}
 
@@ -299,20 +300,22 @@ namespace mpp
 			mMeshCommandProgram = createComputeProgram(MeshCommandProgramName, ParticleMeshCommandComputeShader);
 			createNoiseTexture();
 
-			auto createDrawProgram = [this, &caps](char const* name, bool weightedOit)
+			auto createDrawProgram = [this, &caps](char const* name, bool weightedOit, bool distortion)
 			{
 				auto stream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
 				stream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
 				stream->setSource(RawShaderStage::Fragment, ParticleDrawFragmentShader);
 				stream->setDefine("MPP_PARTICLE_BINDLESS_TEXTURES", caps.supportsBindlessTextures ? "1" : "0");
 				stream->setDefine("MPP_PARTICLE_WEIGHTED_OIT", weightedOit ? "1" : "0");
+				stream->setDefine("MPP_PARTICLE_DISTORTION", distortion ? "1" : "0");
 				auto program = mwResourceManager->declareResource(name, stream).first;
 				program->acquire(mwRenderSystem);
 				program->load();
 				return program;
 			};
-			mDrawProgram = createDrawProgram(DrawProgramName, false);
-			mWeightedOitDrawProgram = createDrawProgram(WeightedOitDrawProgramName, true);
+			mDrawProgram = createDrawProgram(DrawProgramName, false, false);
+			mWeightedOitDrawProgram = createDrawProgram(WeightedOitDrawProgramName, true, false);
+			mDistortionDrawProgram = createDrawProgram("__mpp_particle_distortion_draw__", false, true);
 
 			GL_CHECK(glGenVertexArrays(1, &mVertexArray));
 			if (mVertexArray == 0)
@@ -1654,6 +1657,59 @@ namespace mpp
 			GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset,
 				static_cast<GLsizei>(groupEnd - command), sizeof(ParticleDrawArraysIndirectCommand)));
 			command = groupEnd;
+		}
+		finishRenderTiming();
+		GL_CHECK(glBindVertexArray(0));
+		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE1));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		if (sceneDepth)
+		{
+			GL_CHECK(glActiveTexture(GL_TEXTURE0));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+		}
+		mEmitterBuffer->markUsed();
+		mTemplateRenderBuffer->markUsed();
+	}
+
+	void ParticleSystem::renderDistortion(ResourcePtr const& sceneDepthResource)
+	{
+		setScreenSpaceCollisionDepth(sceneDepthResource);
+		renderDistortion(dynamic_cast<RenderTexture*>(sceneDepthResource.get()));
+	}
+
+	void ParticleSystem::renderDistortion(RenderTexture* sceneDepth)
+	{
+		initialise();
+		if (!mAvailable || !mPoolAllocated ||
+			!any_of(mTemplateRenderData.begin(), mTemplateRenderData.end(), particleAppearanceWritesDistortion)) return;
+
+		GpuDebugScope scope("Particles: Draw distortion output");
+		mwRenderSystem->setDepthWriteState(false, true);
+		auto* program = static_cast<ParticleDrawProgram*>(mDistortionDrawProgram.get());
+		program->use();
+		program->setUniform("SCENE_DEPTH", int32_t(0));
+		program->setUniform("PARTICLE_CURVE_LUT", int32_t(1));
+		program->setUniform("HAS_SCENE_DEPTH", int32_t(sceneDepth ? 1 : 0));
+		if (sceneDepth) sceneDepth->bindDepth(0);
+
+		mParticlePool->bindStorage(ParticlePoolBinding);
+		mRenderIndices->bindStorage(FreeIndicesBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
+			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, TemplateRenderBinding, mTemplateRenderBuffer->getBuffer(),
+			static_cast<GLintptr>(mTemplateRenderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mTemplateRenderData))));
+		mIndirectCommands->bindDrawIndirect();
+		GL_CHECK(glBindVertexArray(mVertexArray));
+		beginRenderTiming();
+		for (size_t command = 0; command < mTemplateRenderData.size(); ++command)
+		{
+			if (!particleAppearanceWritesDistortion(mTemplateRenderData[command])) continue;
+			auto const& lut = mTemplateCurveLuts[command];
+			if (!lut) THROW_MPP("A distortion particle emitter template has no baked curve LUT.", __LINE__, __FILE__, __func__);
+			lut->bind(1u);
+			auto const commandOffset = reinterpret_cast<void const*>(command * sizeof(ParticleDrawArraysIndirectCommand));
+			GL_CHECK(glDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset));
 		}
 		finishRenderTiming();
 		GL_CHECK(glBindVertexArray(0));

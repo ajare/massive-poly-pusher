@@ -136,7 +136,7 @@ namespace mpp
 		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
 		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
 		ResourcePtr mSortPrepareProgram, mSortKeyProgram, mRadixHistogramProgram, mRadixPrefixProgram, mRadixScatterProgram, mSortFinalizeProgram;
-		ResourcePtr mDrawProgram, mWeightedOitDrawProgram, mMeshCommandProgram;
+		ResourcePtr mDrawProgram, mWeightedOitDrawProgram, mDistortionDrawProgram, mMeshCommandProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
 		std::unique_ptr<ShaderStorageBuffer> mFreeIndices;
@@ -326,6 +326,10 @@ namespace mpp
 		// A null scene depth selects hard-edged particles.
 		void render(ParticleBlendClass blendClass, RenderTexture* sceneDepth);
 		void render(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+		// Draws only billboard appearances that opt into distortion output. The
+		// authored graph owns the additive RG distortion target and composite step.
+		void renderDistortion(RenderTexture* sceneDepth);
+		void renderDistortion(ResourcePtr const& sceneDepth);
 		// Dedicated real-mesh pass. Unlike billboard appearances this binds model
 		// vertex arrays and each template's Material, then issues GPU-authored
 		// indirect instanced draws without particle readback.

@@ -105,6 +105,7 @@ namespace mpp
 				auto const info = graph.getPassInfo({ id });
 				if (info.enabled && (info.callbackFactory == "MPP.ParticleScene" ||
 					info.callbackFactory == "MPP.ParticleWeightedOit" ||
+					info.callbackFactory == "MPP.ParticleDistortion" ||
 					info.callbackFactory == "MPP.ParticleMeshScene")) return true;
 			}
 			return false;
@@ -942,6 +943,34 @@ namespace mpp
 				GraphBlendFactor::One, GraphBlendFactor::Zero);
 			addParticlePrimitivePass("ParticleAdditive", "MPP.ParticleScene", ParticleBlendClass::Additive,
 				GraphBlendFactor::One, GraphBlendFactor::Zero);
+
+			// Distortion is an orthogonal appearance output: opted-in billboards are
+			// drawn again into an additive signed RG field, then composited over the
+			// completed particle scene as the first image-space post effect.
+			auto distortion = graph.createImage("ParticleDistortion", makeColour(GraphImageFormat::Rg16f));
+			auto distortionPass = graph.addPass("ParticleDistortion", GraphPassType::Scene);
+			graph.setPassCallbackFactory(distortionPass, "MPP.ParticleDistortion");
+			graph.bindSampler(distortionPass, "DEPTH", sceneDepth);
+			distortion = graph.writeColour(distortionPass, distortion, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+			GraphRasterState distortionRaster;
+			distortionRaster.explicitState = true;
+			distortionRaster.depthTest = false;
+			distortionRaster.depthWrite = false;
+			distortionRaster.cullMode = GraphCullMode::None;
+			distortionRaster.blend = true;
+			distortionRaster.sourceColourBlend = GraphBlendFactor::One;
+			distortionRaster.destinationColourBlend = GraphBlendFactor::One;
+			distortionRaster.sourceAlphaBlend = GraphBlendFactor::One;
+			distortionRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			distortionRaster.multisample = false;
+			graph.setPassRasterState(distortionPass, distortionRaster);
+
+			auto distortionComposite = graph.addPass("ParticleDistortionComposite", GraphPassType::Fullscreen);
+			graph.setPassCallbackFactory(distortionComposite, "MPP.ParticleDistortionComposite");
+			graph.bindSampler(distortionComposite, "SCENE", presentationTexture);
+			graph.bindSampler(distortionComposite, "DISTORTION", distortion);
+			auto distortedScene = graph.createImage("ParticleDistortionComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			presentationTexture = graph.writeColour(distortionComposite, distortedScene, GraphLoadOp::DontCare, GraphStoreOp::Store);
 			shadedSceneTexture = presentationTexture;
 		}
 

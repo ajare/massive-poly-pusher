@@ -455,6 +455,27 @@ namespace mpp
 			}
 		};
 
+		class ParticleDistortionPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				frame.renderSystem->renderParticleDistortion(resourceInput(context, "DEPTH"));
+			}
+		};
+
+		class ParticleDistortionCompositePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				context.getFrame().renderSystem->renderParticleDistortionComposite(
+					input(context, "SCENE"), input(context, "DISTORTION"));
+			}
+		};
+
 		class ParticleWeightedOitPass final : public RenderGraphScenePass
 		{
 		public:
@@ -690,6 +711,17 @@ namespace mpp
 		trailScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
 		trailScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
 		registry.registerScenePassFactory("MPP.TrailScene", [] { return std::make_unique<TrailScenePass>(); }, trailScene);
+
+		auto particleDistortion = metadata("Particle Distortion", "Scene", GraphPassType::Scene);
+		particleDistortion.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });
+		particleDistortion.outputs.push_back({ "Distortion Vectors", false, true, { GraphImageFormat::Rg16f, GraphImageFormat::Rg32f } });
+		registry.registerScenePassFactory("MPP.ParticleDistortion", [] { return std::make_unique<ParticleDistortionPass>(); }, particleDistortion);
+
+		auto particleDistortionComposite = metadata("Particle Distortion Composite", "Post Effects", GraphPassType::Fullscreen);
+		particleDistortionComposite.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} });
+		particleDistortionComposite.inputs.push_back({ "Distortion Vectors", "DISTORTION", true, { GraphImageFormat::Rg16f, GraphImageFormat::Rg32f }, {} });
+		particleDistortionComposite.outputs.push_back({ "Distorted Scene", false, true, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleDistortionComposite", [] { return std::make_unique<ParticleDistortionCompositePass>(); }, particleDistortionComposite);
 
 		auto particleOit = metadata("Particle Weighted OIT", "Scene", GraphPassType::Scene);
 		particleOit.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });

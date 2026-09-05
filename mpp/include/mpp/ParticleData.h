@@ -325,18 +325,24 @@ namespace mpp
 		std::array<float, 4> appearance{ 1.0f, 0.0f, 0.0f, 0.0f };
 		// Frame count, animation mode, billboard mode, blend class.
 		std::array<uint32_t, 4> modes{ 1u, 0u, 0u, 0u };
-		// Maximum draw distance, minimum projected diameter in pixels, and the
-		// runtime mesh bounds radius. Zero disables authored distance/size tests.
+		// Maximum draw distance, minimum projected diameter in pixels, runtime mesh
+		// bounds radius, and distortion strength in normalized screen coordinates.
+		// Zero disables the corresponding authored test/output.
 		std::array<float, 4> culling{};
-		// Sort mode, render mode, then reserved words. Back-to-front sorting is
-		// honoured only by conventional alpha billboards; mesh particles have their
-		// own material-driven geometry pass.
+		// Sort mode, render mode, distortion-output enable, then a reserved word.
+		// Back-to-front sorting is honoured only by conventional alpha billboards;
+		// mesh particles have their own material-driven geometry pass.
 		std::array<uint32_t, 4> sorting{};
 	};
 
 	constexpr bool particleTemplateRendersMesh(TemplateRenderData const& appearance) noexcept
 	{
 		return appearance.sorting[1] == uint32_t(ParticleRenderMode::Mesh);
+	}
+
+	constexpr bool particleAppearanceWritesDistortion(TemplateRenderData const& appearance) noexcept
+	{
+		return !particleTemplateRendersMesh(appearance) && appearance.sorting[2] != 0u && appearance.culling[3] != 0.0f;
 	}
 
 	constexpr bool particleAppearanceRequiresDepthSort(TemplateRenderData const& appearance) noexcept

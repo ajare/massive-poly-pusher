@@ -84,6 +84,7 @@ namespace mpp::resource_parsers
 			emitter.appearance.modes[0] != 1u || emitter.appearance.modes[2] != uint32_t(ParticleBillboardMode::CameraFacing) ||
 			emitter.appearance.modes[3] != uint32_t(ParticleBlendClass::Additive) ||
 			emitter.appearance.sorting[0] != uint32_t(ParticleSortMode::None) ||
+			particleAppearanceWritesDistortion(emitter.appearance) ||
 			emitter.simulation.collisionConfiguration[0] != uint32_t(ParticleCollisionSource::Analytical) ||
 			emitter.simulation.collisionConfiguration[1] != uint32_t(ParticleCollisionResponse::Bounce) ||
 			emitter.simulation.collisionParameters != std::array<float, 4>{ 0.5f, 0.0f, 1.0f, 0.1f } ||
@@ -127,10 +128,15 @@ namespace mpp::resource_parsers
 		simulation.vectorFieldFrequencyStrength = { 0.2f, 0.3f, 0.4f, 5.0f };
 		simulation.vectorFieldScrollAndTimeScale = { 0.7f, 0.8f, 0.9f, 0.5f };
 		authored.value.appearance.textureAndAtlas = { 0u, 0u, 4u, 4u };
-		authored.value.appearance.culling = { 250.0f, 1.5f, 0.0f, 0.0f };
+		authored.value.appearance.culling = { 250.0f, 1.5f, 0.0f, 0.035f };
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
 			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::Alpha) };
-		authored.value.appearance.sorting = { uint32_t(ParticleSortMode::BackToFront), uint32_t(ParticleRenderMode::Mesh), 0u, 0u };
+		authored.value.appearance.sorting = { uint32_t(ParticleSortMode::BackToFront), uint32_t(ParticleRenderMode::Mesh), 1u, 0u };
+		TemplateRenderData distortionAppearance;
+		distortionAppearance.sorting[2] = 1u;
+		distortionAppearance.culling[3] = 0.035f;
+		if (!particleAppearanceWritesDistortion(distortionAppearance))
+			return fail("enabled billboard distortion appearance was not selected for distortion output");
 		authored.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
 		authored.value.colourGradient.keys = { { 0.0f, { 1.0f, 0.5f, 0.1f } }, { 1.0f, { 0.1f, 0.2f, 0.3f } } };
 		specification.emitterTemplates.push_back(authored);

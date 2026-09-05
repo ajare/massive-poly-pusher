@@ -264,7 +264,7 @@ namespace mpp
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
 		ResourcePtr mPbrBrdfIntegrationLut;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mParticleWeightedOitResolveProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mSsaoCombineModulatedProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mParticleWeightedOitResolveProgram, mParticleDistortionCompositeProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mSsaoCombineModulatedProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -682,6 +682,8 @@ namespace mpp
 		// MPP.ParticleScene or MPP.ParticleWeightedOit pass. Scene depth is optional.
 		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
 		void renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+		void renderParticleDistortion(RenderTexture* sceneDepth = nullptr);
+		void renderParticleDistortion(ResourcePtr const& sceneDepth);
 		// Real mesh particles use their own material/vertex-attribute pass.
 		void renderMeshParticles();
 		// The separate ribbon draw issued by MPP.TrailScene.
@@ -825,6 +827,7 @@ namespace mpp
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 		void renderGraphFullscreen(ResourcePtr program, std::vector<std::pair<std::string, Texture*>> const& samplers, UniformCollection const& parameters);
 		void renderParticleWeightedOitResolve(Texture* scene, Texture* accumulation, Texture* opticalDepth, Texture* bloom = nullptr);
+		void renderParticleDistortionComposite(Texture* scene, Texture* distortion);
 
 		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
 

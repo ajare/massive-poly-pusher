@@ -1549,6 +1549,7 @@ out vec4 PARTICLE_TINT;
 out float PARTICLE_VIEW_DEPTH;
 flat out uvec2 PARTICLE_TEXTURE_HANDLE;
 flat out float PARTICLE_SOFT_DISTANCE;
+flat out float PARTICLE_DISTORTION_STRENGTH;
 
 vec3 safeNormal(vec3 value, vec3 fallback)
 {
@@ -1680,6 +1681,7 @@ void main()
     PARTICLE_VIEW_DEPTH = -(VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).z;
     PARTICLE_TEXTURE_HANDLE = appearance.textureAndAtlas.xy;
     PARTICLE_SOFT_DISTANCE = max(0.0, appearance.appearance.y);
+    PARTICLE_DISTORTION_STRENGTH = appearance.culling.w;
     gl_Position = PROJECTION_MATRIX * VIEW_MATRIX * vec4(worldPosition, 1.0);
 }
 )MPP";
@@ -1705,6 +1707,7 @@ in vec4 PARTICLE_TINT;
 in float PARTICLE_VIEW_DEPTH;
 flat in uvec2 PARTICLE_TEXTURE_HANDLE;
 flat in float PARTICLE_SOFT_DISTANCE;
+flat in float PARTICLE_DISTORTION_STRENGTH;
 uniform sampler2D SCENE_DEPTH;
 uniform int HAS_SCENE_DEPTH;
 layout(location = 0) out vec4 FRAGMENT_COLOUR;
@@ -1739,7 +1742,15 @@ void main()
     }
     vec4 colour = PARTICLE_TINT * albedo;
     colour.a *= coverage * softFade;
-#if MPP_PARTICLE_WEIGHTED_OIT
+#if MPP_PARTICLE_DISTORTION
+    // RG stores a normalized-screen UV offset. Authored textures use their RG
+    // channels as a signed vector; an omitted texture gets a radial shockwave/
+    // heat-haze fallback from the billboard centre. Alpha remains the mask.
+    vec2 direction = any(notEqual(PARTICLE_TEXTURE_HANDLE, uvec2(0u))) ?
+        albedo.rg * 2.0 - 1.0 : normalize(PARTICLE_CORNER * 2.0 - 1.0 + vec2(1.0e-6));
+    FRAGMENT_COLOUR = vec4(direction * PARTICLE_DISTORTION_STRENGTH * colour.a, 0.0, 0.0);
+    FRAGMENT_BLOOM = vec4(0.0);
+#elif MPP_PARTICLE_WEIGHTED_OIT
     float alpha = clamp(colour.a, 0.0, 1.0);
     // McGuire/Bavoil weighted blended OIT: favour opaque, near fragments while
     // keeping every operation commutative. Revealage is stored as optical depth
@@ -1753,6 +1764,22 @@ void main()
     FRAGMENT_COLOUR = colour;
     FRAGMENT_BLOOM = vec4(colour.rgb, colour.a);
 #endif
+}
+)MPP";
+
+	inline char const* ParticleDistortionCompositeFragmentShader = R"MPP(
+@@Version
+
+@@Texture(sampler2D SCENE);
+@@Texture(sampler2D DISTORTION);
+
+void main()
+{
+    vec2 uv = @In(TEXCOORDS);
+    vec2 offset = texture(@Texture(DISTORTION), uv).rg;
+    // Clamp at the viewport edge rather than depending on an authored scene
+    // sampler's wrap mode, which may legitimately be repeat for another pass.
+    @Out(vec4 COLOUR) = texture(@Texture(SCENE), clamp(uv + offset, vec2(0.0), vec2(1.0)));
 }
 )MPP";
 

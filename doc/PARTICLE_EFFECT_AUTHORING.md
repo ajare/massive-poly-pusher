@@ -76,6 +76,8 @@ ParticleEffect:
         billboard: cameraFacing
         blendClass: alpha
         depthSort: true
+        distortion: true
+        distortionStrength: 0.02
         maximumDrawDistance: 250
         minimumProjectedSize: 1.5
 ```
@@ -95,6 +97,8 @@ An optional `Mesh` block selects real-geometry particles:
 Supported billboard values are `cameraFacing`, `screenAligned`, `cylindrical`, `axisLocked`, `velocityAligned`, and `velocityStretched`. `velocityStretched` keeps the particle's authored width while lengthening it along its camera-projected velocity; stationary particles retain a square fallback and particle rotation is ignored so the long axis remains velocity-aligned.
 
 Supported blend classes are `additive`, `alpha`, and `weightedOit`. Conventional alpha appearances can opt into exact GPU back-to-front sorting with `depthSort: true`; it defaults to `false`. Additive and `weightedOit` appearances never run the sorting path even if the flag is present. Use `weightedOit` for dense smoke, dust, steam, and atmospheric particles where stable order-independent compositing is preferable to exact sorting.
+
+`distortion: true` writes the billboard to the authored `MPP.ParticleDistortion` pass in addition to its ordinary blend-class pass. `distortionStrength` is the maximum normalized-screen UV offset and defaults to `0.02`; zero disables output. A texture's RG channels encode the signed offset direction (`[0,1]` maps to `[-1,1]`) and alpha masks it. An appearance without a texture uses an outward radial direction, which is convenient for shockwaves. Composite the additive `RG16F`/`RG32F` buffer with `MPP.ParticleDistortionComposite` before tone mapping (and normally before bloom).
 
 `maximumDrawDistance` is measured in world units and `minimumProjectedSize` is a particle diameter in pixels. Both default to zero, which disables that culling test. Frustum culling always applies. Live particle effects can also be hidden without stopping simulation through `ParticleSystem::setEffectVisible` or assigned visibility flags through `setEffectVisibilityFlags`.
 

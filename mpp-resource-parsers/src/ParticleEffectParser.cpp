@@ -239,7 +239,7 @@ namespace mpp::resource_parsers
 				if (node.hasEntry("Appearance"))
 				{
 					auto const& block=node.getEntry("Appearance"); auto appearancePath=path+"/Appearance";
-					fields(block,{"texture","tint","alpha","emissiveIntensity","softFadeDistance","maximumDrawDistance","minimumProjectedSize","atlasColumns","atlasRows","frameCount","animation","randomStart","animationRate","billboard","blendClass","depthSort"},appearancePath);
+					fields(block,{"texture","tint","alpha","emissiveIntensity","softFadeDistance","maximumDrawDistance","minimumProjectedSize","atlasColumns","atlasRows","frameCount","animation","randomStart","animationRate","billboard","blendClass","depthSort","distortion","distortionStrength"},appearancePath);
 					authored.albedoTexture=value(block,"texture",appearancePath); auto tint=vector<3>(block,"tint",appearancePath,{1,1,1});appearance.tintAndAlpha={tint[0],tint[1],tint[2],number(block,"alpha",appearancePath,1)};
 					appearance.appearance[0]=number(block,"emissiveIntensity",appearancePath,1);appearance.appearance[1]=number(block,"softFadeDistance",appearancePath,0);appearance.appearance[2]=number(block,"animationRate",appearancePath,0);
 					appearance.culling[0]=number(block,"maximumDrawDistance",appearancePath,0);appearance.culling[1]=number(block,"minimumProjectedSize",appearancePath,0);
@@ -248,8 +248,11 @@ namespace mpp::resource_parsers
 					appearance.modes[2]=uint32_t(enumeration(block,"billboard",appearancePath,ParticleBillboardMode::CameraFacing,{{"camerafacing",ParticleBillboardMode::CameraFacing},{"screenaligned",ParticleBillboardMode::ScreenAligned},{"cylindrical",ParticleBillboardMode::Cylindrical},{"axislocked",ParticleBillboardMode::AxisLocked},{"velocityaligned",ParticleBillboardMode::VelocityAligned},{"velocitystretched",ParticleBillboardMode::VelocityStretched}}));
 					appearance.modes[3]=uint32_t(enumeration(block,"blendClass",appearancePath,ParticleBlendClass::Additive,{{"additive",ParticleBlendClass::Additive},{"alpha",ParticleBlendClass::Alpha},{"weightedoit",ParticleBlendClass::WeightedOit}}));
 					appearance.sorting[0]=uint32_t(boolean(block,"depthSort",appearancePath,false)?ParticleSortMode::BackToFront:ParticleSortMode::None);
+					appearance.sorting[2]=boolean(block,"distortion",appearancePath,false)?1u:0u;
+					appearance.culling[3]=number(block,"distortionStrength",appearancePath,0.02f);
 					if(appearance.textureAndAtlas[2]==0||appearance.textureAndAtlas[3]==0||appearance.modes[0]==0||appearance.modes[0]>appearance.textureAndAtlas[2]*appearance.textureAndAtlas[3])error("MPP-PARTICLE-012","Atlas dimensions must be positive and contain frameCount.",appearancePath);
 					if(appearance.culling[0]<0||appearance.culling[1]<0)error("MPP-PARTICLE-011","Particle culling distances and sizes must be non-negative.",appearancePath);
+					if(appearance.culling[3]<0)error("MPP-PARTICLE-011","Particle distortion strength must be non-negative.",appearancePath);
 				}
 				result.specification.emitterTemplates.push_back(std::move(authored));
 			}

@@ -933,8 +933,10 @@ namespace mpp
 		addCoreResource(mBloomCombineProgram, true);
 		mParticleWeightedOitResolveProgram = createBloomProgram("__mpp_particle_weighted_oit_resolve__", ParticleWeightedOitResolveFragmentShader);
 		// Keep particle GPU work lazy: graphs without a particle pass never compile
-		// the resolve program.
+		// these composite programs.
 		addCoreResource(mParticleWeightedOitResolveProgram, false);
+		mParticleDistortionCompositeProgram = createBloomProgram("__mpp_particle_distortion_composite__", ParticleDistortionCompositeFragmentShader);
+		addCoreResource(mParticleDistortionCompositeProgram, false);
 		mSsaoRawProgram = createBloomProgram("__mpp_p2d_ssao_raw__", FragmentShaderSsaoRawTemplate);
 		addCoreResource(mSsaoRawProgram, true);
 		mGtaoRawProgram = createBloomProgram("__mpp_p2d_gtao_raw__", FragmentShaderGtaoRawTemplate);
@@ -3895,6 +3897,22 @@ namespace mpp
 		mActiveProgram.reset();
 	}
 
+	void RenderSystem::renderParticleDistortion(RenderTexture* sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderDistortion(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
+	void RenderSystem::renderParticleDistortion(ResourcePtr const& sceneDepth)
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderDistortion(sceneDepth);
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
 	void RenderSystem::renderMeshParticles()
 	{
 		if (!mParticleSystem) return;
@@ -4068,6 +4086,15 @@ namespace mpp
 		// from contributing to the result.
 		samplers.push_back({ "BLOOM", bloom ? bloom : scene });
 		renderGraphFullscreen(mParticleWeightedOitResolveProgram, samplers, parameters);
+	}
+
+	void RenderSystem::renderParticleDistortionComposite(Texture* scene, Texture* distortion)
+	{
+		if (!scene || !distortion)
+			THROW_MPP("Particle distortion composite requires scene and distortion textures.", __LINE__, __FILE__, __func__);
+		mParticleDistortionCompositeProgram->load();
+		renderGraphFullscreen(mParticleDistortionCompositeProgram,
+			{ { "SCENE", scene }, { "DISTORTION", distortion } }, {});
 	}
 
 	void RenderSystem::renderTextureDiagnostic(RenderTexture* source, RenderTargetPtr const& destination, TextureDiagnosticOptions const& options)

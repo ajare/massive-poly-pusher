@@ -24,6 +24,9 @@ RenderGraph:
     - name: SceneDepth
       format: DEPTH24
       usage: depthAttachment,sampled
+    - name: ParticleDistortion
+      format: RG16F
+      usage: colourAttachment,sampled
     - name: SceneColourResolved
       format: RGBA16F
       usage: colourAttachment,sampled
@@ -352,6 +355,40 @@ RenderGraph:
         sourceAlphaBlend: zero
         destinationAlphaBlend: one
         multisample: false
+    - name: ParticleDistortion
+      type: scene
+      factory: MPP.ParticleDistortion
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Colours:
+        - image: ParticleDistortion
+          load: clear
+          store: store
+          clear: 0 0 0 0
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: one
+        destinationColourBlend: one
+        sourceAlphaBlend: one
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleDistortionComposite
+      type: fullscreen
+      factory: MPP.ParticleDistortionComposite
+      Inputs:
+        - sampler: SCENE
+          image: SceneHdr
+        - sampler: DISTORTION
+          image: ParticleDistortion
+      Colours:
+        - image: SceneHdr
+          load: dontCare
+          store: store
     - name: BloomBlurHorizontal0
       type: fullscreen
       factory: MPP.FullscreenEffect
