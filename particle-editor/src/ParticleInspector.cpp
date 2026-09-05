@@ -407,7 +407,8 @@ namespace particle_editor
 		}
 	}
 
-	void ParticleInspector::draw(ParticleDocument& document, ParticleResourceLibrary const& resources)
+	void ParticleInspector::draw(ParticleDocument& document, ParticleResourceLibrary const& resources,
+		std::function<void(std::filesystem::path const&)> const& openDocument)
 	{
 		if (!ImGui::Begin("Particle Effect"))
 		{
@@ -438,6 +439,13 @@ namespace particle_editor
 				effect.bounds->size.z);
 		}
 		else ImGui::TextDisabled("Bounds: unbounded");
+		auto aggregate = resources.aggregateBounds(effect, document.path().string());
+		if (aggregate.bounds)
+			ImGui::Text("Recursive aggregate bounds: center %.2f, %.2f, %.2f; size %.2f, %.2f, %.2f",
+				aggregate.bounds->center.x, aggregate.bounds->center.y, aggregate.bounds->center.z,
+				aggregate.bounds->size.x, aggregate.bounds->size.y, aggregate.bounds->size.z);
+		else ImGui::TextColored(aggregate.complete ? ImVec4(0.75f, 0.75f, 0.75f, 1.0f) : ImVec4(1.0f, 0.65f, 0.2f, 1.0f),
+			"Recursive aggregate bounds: %s", aggregate.reason.c_str());
 
 		ImGui::SeparatorText("Emitter templates");
 		for (size_t index = 0; index < effect.emitterTemplates.size(); ++index)
@@ -494,16 +502,92 @@ namespace particle_editor
 		ImGui::SameLine();
 		if (ImGui::Button("Remove"))
 		{
-			document.removeEmitterTemplate(document.selectedEmitterTemplate());
-			ImGui::EndDisabled();
-			ImGui::End();
-			return;
+			auto index = document.selectedEmitterTemplate();
+			if (document.emitterEventReferences(index).empty())
+			{
+				document.removeEmitterTemplate(index);
+				ImGui::EndDisabled(); ImGui::End(); return;
+			}
+			mEmitterPendingRemoval = index;
+			ImGui::OpenPopup("Remove Referenced Emitter Template");
 		}
 		ImGui::EndDisabled();
+		if (ImGui::BeginPopupModal("Remove Referenced Emitter Template", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			if (mEmitterPendingRemoval && *mEmitterPendingRemoval < effect.emitterTemplates.size())
+			{
+				auto const references = document.emitterEventReferences(*mEmitterPendingRemoval);
+				ImGui::TextWrapped("'%s' is targeted by these particle event rules:", effect.emitterTemplates[*mEmitterPendingRemoval].name.c_str());
+				for (auto const& reference : references) ImGui::BulletText("%s, rule %zu", reference.emitterName.c_str(), reference.eventIndex + 1u);
+				ImGui::TextWrapped("Removing it will remove all listed rules as the same undoable action.");
+				if (ImGui::Button("Remove Emitter and Rules"))
+				{
+					document.removeEmitterTemplate(*mEmitterPendingRemoval, true); mEmitterPendingRemoval.reset();
+					ImGui::CloseCurrentPopup(); ImGui::EndPopup(); ImGui::End(); return;
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Cancel")) { mEmitterPendingRemoval.reset(); ImGui::CloseCurrentPopup(); }
+			}
+			else { mEmitterPendingRemoval.reset(); ImGui::CloseCurrentPopup(); }
+			ImGui::EndPopup();
+		}
+
+		ImGui::SeparatorText("Child particle effects");
+		for (size_t childIndex = 0; childIndex < effect.childEffects.size(); ++childIndex)
+		{
+			auto const& child = effect.childEffects[childIndex];
+			ImGui::PushID(int(childIndex));
+			bool childOpen = ImGui::TreeNodeEx("Child", ImGuiTreeNodeFlags_DefaultOpen, "%zu. %s",
+				childIndex + 1u, child.effect.empty() ? "<unresolved>" : child.effect.c_str());
+			if (childOpen)
+			{
+				if (resourceValue(document, resources, ParticleResourceKind::ParticleEffect, "ParticleEffect resource",
+					child.effect, [&](std::string name)
+					{
+						document.executeEdit("Change child particle effect", [=](auto& value)
+							{ value.childEffects[childIndex].effect = name; }, true, ParticlePreviewChange::Structural);
+					}))
+				{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				if (auto path = resources.particleEffectPath(child.effect))
+				{
+					ImGui::SameLine();
+					if (ImGui::Button("Open independently") && openDocument) openDocument(*path);
+				}
+				for (size_t column = 0; column < 4u; ++column)
+				{
+					std::array<float, 4> values{ child.transform[int(column)][0], child.transform[int(column)][1],
+						child.transform[int(column)][2], child.transform[int(column)][3] };
+					std::string label = "Transform column " + std::to_string(column + 1u);
+					if (editValue(document, "Change child particle effect transform", values,
+						[&](auto& edited) { return ImGui::InputFloat4(label.c_str(), edited.data(), "%.5g"); },
+						[=](auto& value, auto const& edited)
+						{
+							for (size_t row = 0; row < 4u; ++row) value.childEffects[childIndex].transform[int(column)][int(row)] = edited[row];
+						}, ParticlePreviewChange::Structural))
+					{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				}
+				uint32_t seed = child.seed;
+				if (editValue(document, "Change child particle effect seed salt", seed,
+					[](uint32_t& value) { return ImGui::InputScalar("Deterministic seed salt", ImGuiDataType_U32, &value); },
+					[=](auto& value, uint32_t edited) { value.childEffects[childIndex].seed = edited; },
+					ParticlePreviewChange::Structural))
+				{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				if (ImGui::Button("Duplicate")) { document.duplicateChildEffect(childIndex); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				ImGui::SameLine(); ImGui::BeginDisabled(childIndex == 0u);
+				if (ImGui::Button("Up")) { document.moveChildEffect(childIndex, childIndex - 1u); ImGui::EndDisabled(); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(childIndex + 1u == effect.childEffects.size());
+				if (ImGui::Button("Down")) { document.moveChildEffect(childIndex, childIndex + 1u); ImGui::EndDisabled(); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				ImGui::EndDisabled(); ImGui::SameLine();
+				if (ImGui::Button("Remove")) { document.removeChildEffect(childIndex); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		if (ImGui::Button("Add child particle effect")) { document.addChildEffect(); ImGui::End(); return; }
 
 		if (!document.hasSelectedEmitterTemplate())
 		{
-			ImGui::TextDisabled("Add an emitter template to edit its spawn and appearance properties.");
+			ImGui::TextDisabled("Add an emitter template to edit its spawn, events, and appearance properties.");
 			ImGui::End();
 			return;
 		}
@@ -1110,6 +1194,89 @@ namespace particle_editor
 			ImGui::TextDisabled("Lighting is bounded to at most one proxy light and one volume per live Emitter.");
 		}
 
+		if (ImGui::CollapsingHeader("Particle events", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			static constexpr char const* triggers[]{ "Spawn", "Death", "First collision", "Threshold age" };
+			static constexpr char const* actions[]{ "Secondary particle burst", "Decal", "Audio", "Light", "Gameplay callback" };
+			for (size_t eventIndex = 0; eventIndex < authored.events.size(); ++eventIndex)
+			{
+				auto const& event = authored.events[eventIndex];
+				ImGui::PushID(int(eventIndex));
+				bool open = ImGui::TreeNodeEx("Event", ImGuiTreeNodeFlags_DefaultOpen, "%zu. %s -> %s",
+					eventIndex + 1u, triggers[std::min<size_t>(uint32_t(event.trigger), std::size(triggers) - 1u)],
+					actions[std::min<size_t>(uint32_t(event.action), std::size(actions) - 1u)]);
+				if (open)
+				{
+					int trigger = int(event.trigger);
+					if (ImGui::Combo("Trigger", &trigger, triggers, int(std::size(triggers))))
+					{
+						document.executeEdit("Change particle event trigger", [=](auto& value)
+							{ value.emitterTemplates[emitterIndex].events[eventIndex].trigger = mpp::ParticleEventTrigger(trigger); });
+						ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return;
+					}
+					int action = int(event.action);
+					if (ImGui::Combo("Action", &action, actions, int(std::size(actions))))
+					{
+						document.executeEdit("Change particle event action", [=](auto& value)
+						{
+							auto& edited = value.emitterTemplates[emitterIndex].events[eventIndex];
+							edited.action = mpp::ParticleEventAction(action);
+							if (edited.action == mpp::ParticleEventAction::SecondaryParticleBurst && edited.targetEmitter.empty())
+								edited.targetEmitter = value.emitterTemplates.front().name;
+						});
+						ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return;
+					}
+					if (event.action == mpp::ParticleEventAction::SecondaryParticleBurst)
+					{
+						if (ImGui::BeginCombo("Target emitter", event.targetEmitter.c_str()))
+						{
+							for (auto const& candidate : effect.emitterTemplates)
+								if (ImGui::Selectable(candidate.name.c_str(), candidate.name == event.targetEmitter))
+								{
+									auto name = candidate.name;
+									document.executeEdit("Change particle event target", [=](auto& value)
+										{ value.emitterTemplates[emitterIndex].events[eventIndex].targetEmitter = name; });
+									ImGui::EndCombo(); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return;
+								}
+							ImGui::EndCombo();
+						}
+						uint32_t count = event.count;
+						if (editValue(document, "Change secondary particle burst count", count,
+							[](uint32_t& value) { return ImGui::InputScalar("Count", ImGuiDataType_U32, &value); },
+							[=](auto& value, uint32_t edited) { value.emitterTemplates[emitterIndex].events[eventIndex].count = edited; },
+							ParticlePreviewChange::Structural))
+						{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					}
+					if (event.trigger == mpp::ParticleEventTrigger::Age)
+					{
+						float age = event.age;
+						if (editValue(document, "Change particle event threshold age", age,
+							[](float& value) { return ImGui::DragFloat("Threshold age", &value, 0.01f, 0.0f, 100000.0f); },
+							[=](auto& value, float edited) { value.emitterTemplates[emitterIndex].events[eventIndex].age = edited; }))
+						{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					}
+					if (event.action != mpp::ParticleEventAction::SecondaryParticleBurst)
+					{
+						uint32_t payload = event.payload;
+						if (editValue(document, "Change particle event payload", payload,
+							[](uint32_t& value) { return ImGui::InputScalar("Payload", ImGuiDataType_U32, &value); },
+							[=](auto& value, uint32_t edited) { value.emitterTemplates[emitterIndex].events[eventIndex].payload = edited; }))
+						{ ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					}
+					if (ImGui::Button("Duplicate")) { document.duplicateEventRule(emitterIndex, eventIndex); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					ImGui::SameLine(); ImGui::BeginDisabled(eventIndex == 0u);
+					if (ImGui::Button("Up")) { document.moveEventRule(emitterIndex, eventIndex, eventIndex - 1u); ImGui::EndDisabled(); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(eventIndex + 1u == authored.events.size());
+					if (ImGui::Button("Down")) { document.moveEventRule(emitterIndex, eventIndex, eventIndex + 1u); ImGui::EndDisabled(); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					ImGui::EndDisabled(); ImGui::SameLine();
+					if (ImGui::Button("Remove")) { document.removeEventRule(emitterIndex, eventIndex); ImGui::TreePop(); ImGui::PopID(); ImGui::End(); return; }
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			if (ImGui::Button("Add particle event")) { document.addEventRule(emitterIndex); ImGui::End(); return; }
+		}
+
 		if (ImGui::CollapsingHeader("Curves", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			static constexpr char const* curveNames[]{ "Size", "Alpha", "Velocity multiplier", "Drag",
@@ -1135,12 +1302,6 @@ namespace particle_editor
 			{ ImGui::End(); return; }
 		}
 
-		if (!effect.childEffects.empty())
-		{
-			ImGui::SeparatorText("Child particle effects");
-			for (auto const& child : effect.childEffects)
-				ImGui::BulletText("%s (seed %u)", child.effect.c_str(), child.seed);
-		}
 		ImGui::End();
 	}
 }

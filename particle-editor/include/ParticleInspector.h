@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <filesystem>
+#include <functional>
 #include <optional>
 
 namespace particle_editor
@@ -14,8 +16,10 @@ namespace particle_editor
 		std::optional<size_t> mSelectedScalarKey;
 		std::optional<size_t> mSelectedGradientKey;
 		size_t mEditedEmitter{ size_t(-1) };
+		std::optional<size_t> mEmitterPendingRemoval;
 
 	public:
-		void draw(ParticleDocument& document, ParticleResourceLibrary const& resources);
+		void draw(ParticleDocument& document, ParticleResourceLibrary const& resources,
+			std::function<void(std::filesystem::path const&)> const& openDocument = {});
 	};
 }

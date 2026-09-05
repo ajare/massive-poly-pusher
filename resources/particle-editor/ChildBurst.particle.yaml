@@ -1,0 +1,48 @@
+ParticleEffect:
+  version: 2
+  name: Particle Editor child burst
+  maximumParticleCount: 128
+  Bounds:
+    center: 0 0.5 0
+    size: 2 2 2
+  Emitters:
+    - name: Burst
+      maximumParticleCount: 128
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1
+      Spawn:
+        shape: sphere
+        shapeParameters: 0.25 0 0 0
+        seed: 73
+        mode: burst
+        enabled: true
+        rate: 0
+        burstCount: 24
+        initialVelocityMin: -0.3 0.3 -0.3 0
+        initialVelocityMax: 0.3 1.2 0.3 0
+        colourMin: 1 0.2 0.05 0.8
+        colourMax: 1 0.8 0.2 1
+        lifetime: 0.4 1.2
+        size: 0.05 0.15
+        rotation: 0 6.283185
+        angularVelocity: -2 2
+      Behaviours:
+        Gravity:
+          acceleration: 0 -1.5 0
+      Appearance:
+        tint: 1 0.5 0.1
+        alpha: 1
+        emissiveIntensity: 2
+        softFadeDistance: 0.1
+        maximumDrawDistance: 0
+        minimumProjectedSize: 0
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: false
+        animationRate: 0
+        billboard: cameraFacing
+        blendClass: additive
+        depthSort: false
+        distortion: false
+        distortionStrength: 0

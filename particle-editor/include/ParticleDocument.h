@@ -39,6 +39,13 @@ namespace particle_editor
 		std::string diskYaml;
 	};
 
+	struct EmitterEventReference
+	{
+		size_t emitterIndex{};
+		size_t eventIndex{};
+		std::string emitterName;
+	};
+
 	enum class ParticlePreviewChange
 	{
 		None,
@@ -97,8 +104,18 @@ namespace particle_editor
 		size_t duplicateEmitterTemplate(size_t index);
 		void renameEmitterTemplate(size_t index, std::string name, bool coalesce = false);
 		void moveEmitterTemplate(size_t from, size_t to);
-		void removeEmitterTemplate(size_t index);
+		std::vector<EmitterEventReference> emitterEventReferences(size_t index) const;
+		bool removeEmitterTemplate(size_t index, bool removeReferencingRules = false);
 		void selectEmitterTemplate(size_t index);
+
+		size_t addEventRule(size_t emitterIndex);
+		size_t duplicateEventRule(size_t emitterIndex, size_t eventIndex);
+		void moveEventRule(size_t emitterIndex, size_t from, size_t to);
+		void removeEventRule(size_t emitterIndex, size_t eventIndex);
+		size_t addChildEffect();
+		size_t duplicateChildEffect(size_t index);
+		void moveChildEffect(size_t from, size_t to);
+		void removeChildEffect(size_t index);
 
 		size_t addScalarCurveKey(size_t emitterIndex, mpp::ParticleScalarCurve curve,
 			float time, float value);

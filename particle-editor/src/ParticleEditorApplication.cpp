@@ -597,7 +597,14 @@ namespace particle_editor
 				ImGui::End();
 
 				active = documents.active();
-				if (active) inspector.draw(*active, particleResources);
+				if (active) inspector.draw(*active, particleResources, [&](std::filesystem::path const& path)
+				{
+					if (!documents.open(path))
+					{
+						diagnostics.setOperationFailure("Could not open child particle effect '" + path.string() + "'.");
+						showDiagnostics = true;
+					}
+				});
 				else { ImGui::Begin("Particle Effect"); ImGui::TextDisabled("No particle effect is open."); ImGui::End(); }
 
 				active = documents.active();

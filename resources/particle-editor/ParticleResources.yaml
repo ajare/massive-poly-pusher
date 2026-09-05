@@ -13,6 +13,9 @@ ResourceLibrary:
     Model:
       name: Cube
       filename: ../demo-suite/res/cube/cube.mppmodel
+    ParticleEffect:
+      name: ChildBurst
+      filename: ChildBurst.particle.yaml
     PbrMaterial:
       name: NeutralMesh
       MeshSpecification:

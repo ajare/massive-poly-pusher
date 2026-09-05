@@ -12,6 +12,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <mpp/ParticleEffectValidator.h>
 #include <mpp/resource-parsers/ParticleEffectParser.h>
 #include <mpp/resource-parsers/ParticleEffectSerializer.h>
@@ -415,14 +417,115 @@ namespace particle_editor
 		mSelectedEmitter = to;
 	}
 
-	void ParticleDocument::removeEmitterTemplate(size_t index)
+	std::vector<EmitterEventReference> ParticleDocument::emitterEventReferences(size_t index) const
 	{
 		if (index >= mSpecification.emitterTemplates.size())
 			throw std::out_of_range("Emitter-template index is out of range.");
-		executeEdit("Remove emitter template", [index](auto& effect)
-			{ effect.emitterTemplates.erase(effect.emitterTemplates.begin() + index); });
+		std::vector<EmitterEventReference> result;
+		auto const& target = mSpecification.emitterTemplates[index].name;
+		for (size_t emitterIndex = 0; emitterIndex < mSpecification.emitterTemplates.size(); ++emitterIndex)
+		{
+			auto const& emitter = mSpecification.emitterTemplates[emitterIndex];
+			for (size_t eventIndex = 0; eventIndex < emitter.events.size(); ++eventIndex)
+				if (emitter.events[eventIndex].action == mpp::ParticleEventAction::SecondaryParticleBurst &&
+					emitter.events[eventIndex].targetEmitter == target)
+					result.push_back({ emitterIndex, eventIndex, emitter.name });
+		}
+		return result;
+	}
+
+	bool ParticleDocument::removeEmitterTemplate(size_t index, bool removeReferencingRules)
+	{
+		if (index >= mSpecification.emitterTemplates.size())
+			throw std::out_of_range("Emitter-template index is out of range.");
+		auto const references = emitterEventReferences(index);
+		if (!references.empty() && !removeReferencingRules) return false;
+		auto const target = mSpecification.emitterTemplates[index].name;
+		executeEdit(references.empty() ? "Remove emitter template" : "Remove emitter template and event rules",
+			[index, target](auto& effect)
+		{
+			for (auto& emitter : effect.emitterTemplates)
+				std::erase_if(emitter.events, [&](auto const& event)
+					{ return event.action == mpp::ParticleEventAction::SecondaryParticleBurst && event.targetEmitter == target; });
+			effect.emitterTemplates.erase(effect.emitterTemplates.begin() + index);
+		});
 		mSelectedEmitter = mSpecification.emitterTemplates.empty() ? 0u :
 			std::min(index, mSpecification.emitterTemplates.size() - 1u);
+		return true;
+	}
+
+	size_t ParticleDocument::addEventRule(size_t emitterIndex)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size()) throw std::out_of_range("Emitter-template index is out of range.");
+		mpp::ParticleEffectSpecification::EventRule event;
+		event.targetEmitter = mSpecification.emitterTemplates.front().name;
+		executeEdit("Add particle event", [emitterIndex, event](auto& effect)
+			{ effect.emitterTemplates[emitterIndex].events.push_back(event); });
+		return mSpecification.emitterTemplates[emitterIndex].events.size() - 1u;
+	}
+
+	size_t ParticleDocument::duplicateEventRule(size_t emitterIndex, size_t eventIndex)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size() || eventIndex >= mSpecification.emitterTemplates[emitterIndex].events.size())
+			throw std::out_of_range("Particle-event index is out of range.");
+		auto event = mSpecification.emitterTemplates[emitterIndex].events[eventIndex];
+		executeEdit("Duplicate particle event", [=](auto& effect)
+			{ effect.emitterTemplates[emitterIndex].events.insert(effect.emitterTemplates[emitterIndex].events.begin() + eventIndex + 1u, event); });
+		return eventIndex + 1u;
+	}
+
+	void ParticleDocument::moveEventRule(size_t emitterIndex, size_t from, size_t to)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size() || from >= mSpecification.emitterTemplates[emitterIndex].events.size() || to >= mSpecification.emitterTemplates[emitterIndex].events.size())
+			throw std::out_of_range("Particle-event index is out of range.");
+		if (from == to) return;
+		executeEdit("Reorder particle event", [=](auto& effect)
+		{
+			auto& events = effect.emitterTemplates[emitterIndex].events;
+			auto event = std::move(events[from]); events.erase(events.begin() + from);
+			events.insert(events.begin() + to, std::move(event));
+		});
+	}
+
+	void ParticleDocument::removeEventRule(size_t emitterIndex, size_t eventIndex)
+	{
+		if (emitterIndex >= mSpecification.emitterTemplates.size() || eventIndex >= mSpecification.emitterTemplates[emitterIndex].events.size())
+			throw std::out_of_range("Particle-event index is out of range.");
+		executeEdit("Remove particle event", [=](auto& effect)
+			{ effect.emitterTemplates[emitterIndex].events.erase(effect.emitterTemplates[emitterIndex].events.begin() + eventIndex); });
+	}
+
+	size_t ParticleDocument::addChildEffect()
+	{
+		executeEdit("Add child particle effect", [](auto& effect) { effect.childEffects.emplace_back(); });
+		return mSpecification.childEffects.size() - 1u;
+	}
+
+	size_t ParticleDocument::duplicateChildEffect(size_t index)
+	{
+		if (index >= mSpecification.childEffects.size()) throw std::out_of_range("Child particle effect index is out of range.");
+		auto child = mSpecification.childEffects[index];
+		executeEdit("Duplicate child particle effect", [index, child](auto& effect)
+			{ effect.childEffects.insert(effect.childEffects.begin() + index + 1u, child); });
+		return index + 1u;
+	}
+
+	void ParticleDocument::moveChildEffect(size_t from, size_t to)
+	{
+		if (from >= mSpecification.childEffects.size() || to >= mSpecification.childEffects.size()) throw std::out_of_range("Child particle effect index is out of range.");
+		if (from == to) return;
+		executeEdit("Reorder child particle effect", [=](auto& effect)
+		{
+			auto child = std::move(effect.childEffects[from]); effect.childEffects.erase(effect.childEffects.begin() + from);
+			effect.childEffects.insert(effect.childEffects.begin() + to, std::move(child));
+		});
+	}
+
+	void ParticleDocument::removeChildEffect(size_t index)
+	{
+		if (index >= mSpecification.childEffects.size()) throw std::out_of_range("Child particle effect index is out of range.");
+		executeEdit("Remove child particle effect", [index](auto& effect)
+			{ effect.childEffects.erase(effect.childEffects.begin() + index); });
 	}
 
 	void ParticleDocument::selectEmitterTemplate(size_t index)
@@ -717,6 +820,55 @@ namespace particle_editor
 				hierarchy.specification().emitterTemplates.size() != 2u)
 				return fail("emitter-template hierarchy removal was not undoable and redoable");
 
+			ParticleDocument composition;
+			auto targetEmitter = composition.addEmitterTemplate();
+			composition.renameEmitterTemplate(targetEmitter, "Burst Target");
+			for (uint32_t action = 0; action <= uint32_t(mpp::ParticleEventAction::GameplayCallback); ++action)
+			{
+				auto eventIndex = composition.addEventRule(0u);
+				composition.executeEdit("Author typed event", [=](auto& effect)
+				{
+					auto& event = effect.emitterTemplates[0].events[eventIndex];
+					event.trigger = mpp::ParticleEventTrigger(action % 4u);
+					event.action = mpp::ParticleEventAction(action);
+					event.targetEmitter = "Burst Target";
+					event.count = 3u + action;
+					event.age = 0.25f + float(action);
+					event.payload = 100u + action;
+				});
+			}
+			composition.moveEventRule(0u, 4u, 0u);
+			composition.duplicateEventRule(0u, 0u);
+			composition.removeEventRule(0u, 1u);
+			auto references = composition.emitterEventReferences(targetEmitter);
+			auto commandsBeforeRejectedRemoval = composition.commandCount();
+			if (references.size() != 1u || composition.removeEmitterTemplate(targetEmitter) ||
+				composition.commandCount() != commandsBeforeRejectedRemoval)
+				return fail("a referenced emitter template could be removed without explicit confirmation");
+			if (!composition.removeEmitterTemplate(targetEmitter, true) ||
+				composition.specification().emitterTemplates[0].events.size() != 4u || !composition.undo() ||
+				composition.specification().emitterTemplates.size() != 2u ||
+				composition.specification().emitterTemplates[0].events.size() != 5u || !composition.redo() ||
+				composition.specification().emitterTemplates.size() != 1u ||
+				composition.specification().emitterTemplates[0].events.size() != 4u)
+				return fail("confirmed emitter deletion did not remove and restore affected event rules atomically");
+
+			auto firstChild = composition.addChildEffect();
+			composition.executeEdit("Author child particle effect", [=](auto& effect)
+			{
+				auto& child = effect.childEffects[firstChild];
+				child.effect = "Library::Smoke"; child.seed = 81u;
+				child.transform = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 3.0f, 4.0f));
+			});
+			auto secondChild = composition.duplicateChildEffect(firstChild);
+			composition.executeEdit("Edit duplicate child", [=](auto& effect)
+				{ effect.childEffects[secondChild].effect = "Library::Sparks"; effect.childEffects[secondChild].seed = 82u; });
+			composition.moveChildEffect(secondChild, 0u);
+			composition.removeChildEffect(1u);
+			if (!composition.undo() || composition.specification().childEffects.size() != 2u || !composition.redo() ||
+				composition.specification().childEffects.size() != 1u || composition.specification().childEffects[0].effect != "Library::Sparks")
+				return fail("child particle effect add, duplicate, reorder, edit, and removal were not undoable");
+
 			ParticleDocument debounced;
 			auto const initialPreviewRevision = debounced.previewRevision();
 			debounced.executeEdit("Live tint", [](auto& effect)
@@ -748,6 +900,28 @@ namespace particle_editor
 				restoredHierarchy.specification().emitterTemplates[1].name != hierarchy.specification().emitterTemplates[1].name ||
 				restoredHierarchy.specification().maximumParticleCount != hierarchy.specification().maximumParticleCount)
 				return fail("the emitter-template hierarchy did not round-trip through canonical YAML");
+
+			auto compositionPath = root / "composition.particle.yaml";
+			if (composition.save(compositionPath) != ParticleSaveResult::Saved)
+				return fail("events and child particle effects did not serialize");
+			ParticleDocument restoredComposition;
+			if (!restoredComposition.open(compositionPath) || restoredComposition.specification().emitterTemplates.size() != 1u ||
+				restoredComposition.specification().emitterTemplates[0].events.size() != 4u ||
+				restoredComposition.specification().childEffects.size() != 1u ||
+				restoredComposition.specification().childEffects[0].effect != "Library::Sparks" ||
+				restoredComposition.specification().childEffects[0].seed != 82u)
+				return fail("events and child composition did not round-trip through the production parser");
+			for (size_t index = 0; index < restoredComposition.specification().emitterTemplates[0].events.size(); ++index)
+			{
+				auto const& before = composition.specification().emitterTemplates[0].events[index];
+				auto const& after = restoredComposition.specification().emitterTemplates[0].events[index];
+				if (before.trigger != after.trigger || before.action != after.action ||
+					(before.action == mpp::ParticleEventAction::SecondaryParticleBurst &&
+						(before.targetEmitter != after.targetEmitter || before.count != after.count)) ||
+					(before.trigger == mpp::ParticleEventTrigger::Age && before.age != after.age) ||
+					(before.action != mpp::ParticleEventAction::SecondaryParticleBurst && before.payload != after.payload))
+					return fail("typed particle event fields changed during production round-trip");
+			}
 
 			ParticleDocument properties;
 			for (uint32_t shape = uint32_t(mpp::ParticleSpawnShape::Point);
