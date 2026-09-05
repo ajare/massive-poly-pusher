@@ -56,6 +56,7 @@ namespace mpp::resource_parsers
 
 		ParticleEmitterTemplate emitter;
 		if (emitter.simulation.emissionState[1] != 1u ||
+			uint32_t(emitter.simulation.emissionRateAndPadding[1]) != uint32_t(ParticleEffectVisibilityFlag::Visible) ||
 			emitter.simulation.parameterMultipliers0 != std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 1.0f } ||
 			emitter.appearance.textureAndAtlas[2] != 1u || emitter.appearance.textureAndAtlas[3] != 1u ||
 			emitter.appearance.modes[0] != 1u || emitter.appearance.modes[2] != uint32_t(ParticleBillboardMode::CameraFacing) ||
@@ -84,6 +85,7 @@ namespace mpp::resource_parsers
 		simulation.emissionRateAndPadding[0] = 24.0f;
 		simulation.gravityAndDrag = { 0.0f, -9.81f, 0.0f, 0.2f };
 		authored.value.appearance.textureAndAtlas = { 0u, 0u, 4u, 4u };
+		authored.value.appearance.culling = { 250.0f, 1.5f, 0.0f, 0.0f };
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
 			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::WeightedOit) };
 		authored.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
@@ -101,6 +103,7 @@ namespace mpp::resource_parsers
 			restored.emitterTemplates[0].name != authored.name || restored.emitterTemplates[0].albedoTexture != authored.albedoTexture ||
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
 			restored.emitterTemplates[0].value.appearance.modes != authored.value.appearance.modes ||
+			restored.emitterTemplates[0].value.appearance.culling != authored.value.appearance.culling ||
 			restored.emitterTemplates[0].value.localTransform[3][0] != 2.0f ||
 			restored.emitterTemplates[0].value.curves[size_t(ParticleScalarCurve::Size)].keys.size() != 2 ||
 			restored.emitterTemplates[0].value.colourGradient.keys.size() != 2)

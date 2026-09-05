@@ -585,6 +585,7 @@ void main()
         TEMPLATE_COUNTS[templateIndex] = 0u;
         COMPACTION_VALUES[templateIndex] = 0u;
         COMPACTION_VALUES[TEMPLATE_CAPACITY + templateIndex] = 0u;
+        COMPACTION_VALUES[TEMPLATE_CAPACITY * 2u + templateIndex] = 0u;
     }
 
     if (templateIndex == 0u)
@@ -597,92 +598,85 @@ void main()
 }
 )MPP";
 
-	// Counts the globally interleaved survivor list by emitter template. These are
-	// the same counters used by spawn-budget reservations and later copied by the
-	// asynchronous statistics path.
+	// Counts every survivor for template budgets, and visible survivors for draw
+	// compaction. Visibility remains GPU-only and is evaluated again by scatter;
+	// no separate culling pass or CPU result is introduced.
 	inline char const* ParticleCompactionCountComputeShader = R"MPP(#version 430
 
 layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
-
-struct ParticleRecord
+layout(std140, binding = 3) uniform CameraFrame
 {
-    vec4 positionAge;
-    vec4 velocityLifetime;
-    uint packedColour;
-    float baseSize;
-    float rotation;
-    float angularVelocity;
-    uint emitterIndex;
-    uint seed;
-    uint flags;
-    uint padding;
+    mat4 VIEW_MATRIX;
+    mat4 PROJECTION_MATRIX;
+    mat4 INVERSE_PROJECTION_MATRIX;
+    vec4 VIEWPORT_SIZE;
+    vec4 NEAR_FAR_TIME;
 };
 
-struct EmitterSimData
-{
-    mat4 transform;
-    vec4 shapeParameters;
-    vec4 initialVelocityMin;
-    vec4 initialVelocityMax;
-    vec4 colourMin;
-    vec4 colourMax;
-    vec4 lifetimeSizeRanges;
-    vec4 rotationRanges;
-    uvec4 shapeSeedModulesBudget;
-    uvec4 emissionState;
-    vec4 emissionRateAndPadding;
-    vec4 parameterMultipliers0;
-    vec4 parameterMultipliers1;
-    vec4 gravityAndDrag;
-    vec4 noiseFrequencyStrength;
-    vec4 noiseScrollAndTimeScale;
-};
+struct ParticleRecord { vec4 positionAge; vec4 velocityLifetime; uint packedColour; float baseSize; float rotation; float angularVelocity; uint emitterIndex; uint seed; uint flags; uint padding; };
+struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; };
+struct TemplateRenderData { uvec4 textureAndAtlas; vec4 tintAndAlpha; vec4 appearance; uvec4 modes; vec4 culling; };
 
-layout(std430, binding = 0) restrict readonly buffer ParticlePool
-{
-    ParticleRecord PARTICLES[];
-};
-layout(std430, binding = 2) restrict readonly buffer ParticleActiveIndicesA
-{
-    uint ACTIVE_INDICES_A[];
-};
-layout(std430, binding = 3) restrict readonly buffer ParticleActiveIndicesB
-{
-    uint ACTIVE_INDICES_B[];
-};
-layout(std430, binding = 4) restrict buffer ParticleCounters
-{
-    uint FREE_COUNT;
-    uint ACTIVE_COUNT_A;
-    uint ACTIVE_COUNT_B;
-    uint DROPPED_SPAWN_COUNT;
-    uint SPAWNED_COUNT;
-    uint KILLED_COUNT;
-    uint RENDERED_COUNT;
-    uint CULLED_COUNT;
-    uint TEMPLATE_COUNTS[];
-};
-layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
-{
-    EmitterSimData EMITTERS[];
-};
+layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
+layout(std430, binding = 2) restrict readonly buffer ParticleActiveIndicesA { uint ACTIVE_INDICES_A[]; };
+layout(std430, binding = 3) restrict readonly buffer ParticleActiveIndicesB { uint ACTIVE_INDICES_B[]; };
+layout(std430, binding = 4) restrict buffer ParticleCounters { uint FREE_COUNT; uint ACTIVE_COUNT_A; uint ACTIVE_COUNT_B; uint DROPPED_SPAWN_COUNT; uint SPAWNED_COUNT; uint KILLED_COUNT; uint RENDERED_COUNT; uint CULLED_COUNT; uint TEMPLATE_COUNTS[]; };
+layout(std430, binding = 5) restrict readonly buffer ParticleEmitters { EmitterSimData EMITTERS[]; };
+layout(std430, binding = 6) restrict buffer ParticleCompactionScratch { uint COMPACTION_VALUES[]; };
+layout(std430, binding = 7) restrict readonly buffer ParticleTemplates { TemplateRenderData TEMPLATES[]; };
 
 uniform uint ACTIVE_LIST_INDEX;
 uniform uint EMITTER_COUNT;
 uniform uint TEMPLATE_COUNT;
+uniform uint TEMPLATE_CAPACITY;
+
+bool outsidePlane(vec4 plane, vec3 centre, float radius)
+{
+    return dot(plane, vec4(centre, 1.0)) < -radius * length(plane.xyz);
+}
+
+bool particleVisible(ParticleRecord particle, EmitterSimData emitter, TemplateRenderData appearance)
+{
+    const uint EFFECT_VISIBLE = 1u << 0u;
+    if ((uint(emitter.emissionRateAndPadding.y) & EFFECT_VISIBLE) == 0u) return false;
+
+    vec3 viewPosition = (VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).xyz;
+    float radius = abs(particle.baseSize);
+    if (appearance.modes.z == 5u) radius *= 1.0 + length(particle.velocityLifetime.xyz);
+    vec4 row0 = vec4(PROJECTION_MATRIX[0][0], PROJECTION_MATRIX[1][0], PROJECTION_MATRIX[2][0], PROJECTION_MATRIX[3][0]);
+    vec4 row1 = vec4(PROJECTION_MATRIX[0][1], PROJECTION_MATRIX[1][1], PROJECTION_MATRIX[2][1], PROJECTION_MATRIX[3][1]);
+    vec4 row2 = vec4(PROJECTION_MATRIX[0][2], PROJECTION_MATRIX[1][2], PROJECTION_MATRIX[2][2], PROJECTION_MATRIX[3][2]);
+    vec4 row3 = vec4(PROJECTION_MATRIX[0][3], PROJECTION_MATRIX[1][3], PROJECTION_MATRIX[2][3], PROJECTION_MATRIX[3][3]);
+    if (outsidePlane(row3 + row0, viewPosition, radius) || outsidePlane(row3 - row0, viewPosition, radius) ||
+        outsidePlane(row3 + row1, viewPosition, radius) || outsidePlane(row3 - row1, viewPosition, radius) ||
+        outsidePlane(row3 + row2, viewPosition, radius) || outsidePlane(row3 - row2, viewPosition, radius)) return false;
+
+    if (appearance.culling.x > 0.0 && length(viewPosition) - radius > appearance.culling.x) return false;
+    if (appearance.culling.y > 0.0)
+    {
+        vec4 clip = PROJECTION_MATRIX * vec4(viewPosition, 1.0);
+        float divisor = abs(PROJECTION_MATRIX[2][3]) > 0.5 ? max(abs(clip.w), 1.0e-6) : 1.0;
+        vec2 radiusPixels = radius * vec2(abs(PROJECTION_MATRIX[0][0]), abs(PROJECTION_MATRIX[1][1])) *
+            VIEWPORT_SIZE.xy * 0.5 / divisor;
+        if (2.0 * max(radiusPixels.x, radiusPixels.y) < appearance.culling.y) return false;
+    }
+    return true;
+}
 
 void main()
 {
     uint activeCount = ACTIVE_LIST_INDEX == 0u ? ACTIVE_COUNT_A : ACTIVE_COUNT_B;
     uint activeOrdinal = gl_GlobalInvocationID.x;
     if (activeOrdinal >= activeCount) return;
-
     uint particleIndex = ACTIVE_LIST_INDEX == 0u ? ACTIVE_INDICES_A[activeOrdinal] : ACTIVE_INDICES_B[activeOrdinal];
-    uint emitterIndex = PARTICLES[particleIndex].emitterIndex;
-    if (emitterIndex >= EMITTER_COUNT) return;
-    uint templateIndex = EMITTERS[emitterIndex].emissionState.w;
-    if (templateIndex < TEMPLATE_COUNT)
-        atomicAdd(TEMPLATE_COUNTS[templateIndex], 1u);
+    ParticleRecord particle = PARTICLES[particleIndex];
+    if (particle.emitterIndex >= EMITTER_COUNT) return;
+    EmitterSimData emitter = EMITTERS[particle.emitterIndex];
+    uint templateIndex = emitter.emissionState.w;
+    if (templateIndex >= TEMPLATE_COUNT) return;
+    atomicAdd(TEMPLATE_COUNTS[templateIndex], 1u);
+    if (particleVisible(particle, emitter, TEMPLATES[templateIndex]))
+        atomicAdd(COMPACTION_VALUES[TEMPLATE_CAPACITY * 2u + templateIndex], 1u);
 }
 )MPP";
 
@@ -706,7 +700,7 @@ layout(std430, binding = 4) restrict buffer ParticleCounters
     uint CULLED_COUNT;
     uint TEMPLATE_COUNTS[];
 };
-layout(std430, binding = 6) restrict writeonly buffer ParticleCompactionScratch
+layout(std430, binding = 6) restrict buffer ParticleCompactionScratch
 {
     uint COMPACTION_VALUES[];
 };
@@ -716,30 +710,33 @@ layout(std430, binding = 7) restrict writeonly buffer ParticleIndirectCommands
 };
 
 uniform uint TEMPLATE_COUNT;
+uniform uint TEMPLATE_CAPACITY;
 
 void main()
 {
-    uint offset = 0u;
+    uint activeOffset = 0u;
+    uint visibleOffset = 0u;
     for (uint templateIndex = 0u; templateIndex < TEMPLATE_COUNT; ++templateIndex)
     {
-        uint count = TEMPLATE_COUNTS[templateIndex];
-        COMPACTION_VALUES[templateIndex] = offset;
+        uint activeCount = TEMPLATE_COUNTS[templateIndex];
+        uint visibleCount = COMPACTION_VALUES[TEMPLATE_CAPACITY * 2u + templateIndex];
+        COMPACTION_VALUES[templateIndex] = visibleOffset;
         uint commandOffset = templateIndex * 4u;
         INDIRECT_COMMANDS[commandOffset] = 4u;
-        INDIRECT_COMMANDS[commandOffset + 1u] = count;
-        INDIRECT_COMMANDS[commandOffset + 2u] = offset * 4u;
+        INDIRECT_COMMANDS[commandOffset + 1u] = visibleCount;
+        INDIRECT_COMMANDS[commandOffset + 2u] = visibleOffset * 4u;
         INDIRECT_COMMANDS[commandOffset + 3u] = templateIndex;
-        offset += count;
+        activeOffset += activeCount;
+        visibleOffset += visibleCount;
     }
     // Statistics prepare stores the requested spawn count and starting active
-    // count in these fields. Resolve successful spawns and deaths from counters
-    // the hot kernels already maintain, avoiding diagnostic per-particle atomics.
+    // count in these fields. Visibility never affects lifetime or spawn budgets.
     uint spawned = SPAWNED_COUNT >= DROPPED_SPAWN_COUNT ? SPAWNED_COUNT - DROPPED_SPAWN_COUNT : 0u;
     uint startAndSpawned = KILLED_COUNT + spawned;
     SPAWNED_COUNT = spawned;
-    KILLED_COUNT = startAndSpawned >= offset ? startAndSpawned - offset : 0u;
-    RENDERED_COUNT = offset;
-    CULLED_COUNT = 0u;
+    KILLED_COUNT = startAndSpawned >= activeOffset ? startAndSpawned - activeOffset : 0u;
+    RENDERED_COUNT = visibleOffset;
+    CULLED_COUNT = activeOffset >= visibleOffset ? activeOffset - visibleOffset : 0u;
 }
 )MPP";
 
@@ -749,6 +746,14 @@ void main()
 	inline char const* ParticleCompactionScatterComputeShader = R"MPP(#version 430
 
 layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std140, binding = 3) uniform CameraFrame
+{
+    mat4 VIEW_MATRIX;
+    mat4 PROJECTION_MATRIX;
+    mat4 INVERSE_PROJECTION_MATRIX;
+    vec4 VIEWPORT_SIZE;
+    vec4 NEAR_FAR_TIME;
+};
 
 struct ParticleRecord
 {
@@ -782,6 +787,15 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+};
+
+struct TemplateRenderData
+{
+    uvec4 textureAndAtlas;
+    vec4 tintAndAlpha;
+    vec4 appearance;
+    uvec4 modes;
+    vec4 culling;
 };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool
@@ -820,11 +834,46 @@ layout(std430, binding = 6) restrict buffer ParticleCompactionScratch
 {
     uint COMPACTION_VALUES[];
 };
+layout(std430, binding = 7) restrict readonly buffer ParticleTemplates
+{
+    TemplateRenderData TEMPLATES[];
+};
 
 uniform uint ACTIVE_LIST_INDEX;
 uniform uint EMITTER_COUNT;
 uniform uint TEMPLATE_COUNT;
 uniform uint TEMPLATE_CAPACITY;
+
+bool outsidePlane(vec4 plane, vec3 centre, float radius)
+{
+    return dot(plane, vec4(centre, 1.0)) < -radius * length(plane.xyz);
+}
+
+bool particleVisible(ParticleRecord particle, EmitterSimData emitter, TemplateRenderData appearance)
+{
+    const uint EFFECT_VISIBLE = 1u << 0u;
+    if ((uint(emitter.emissionRateAndPadding.y) & EFFECT_VISIBLE) == 0u) return false;
+    vec3 viewPosition = (VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).xyz;
+    float radius = abs(particle.baseSize);
+    if (appearance.modes.z == 5u) radius *= 1.0 + length(particle.velocityLifetime.xyz);
+    vec4 row0 = vec4(PROJECTION_MATRIX[0][0], PROJECTION_MATRIX[1][0], PROJECTION_MATRIX[2][0], PROJECTION_MATRIX[3][0]);
+    vec4 row1 = vec4(PROJECTION_MATRIX[0][1], PROJECTION_MATRIX[1][1], PROJECTION_MATRIX[2][1], PROJECTION_MATRIX[3][1]);
+    vec4 row2 = vec4(PROJECTION_MATRIX[0][2], PROJECTION_MATRIX[1][2], PROJECTION_MATRIX[2][2], PROJECTION_MATRIX[3][2]);
+    vec4 row3 = vec4(PROJECTION_MATRIX[0][3], PROJECTION_MATRIX[1][3], PROJECTION_MATRIX[2][3], PROJECTION_MATRIX[3][3]);
+    if (outsidePlane(row3 + row0, viewPosition, radius) || outsidePlane(row3 - row0, viewPosition, radius) ||
+        outsidePlane(row3 + row1, viewPosition, radius) || outsidePlane(row3 - row1, viewPosition, radius) ||
+        outsidePlane(row3 + row2, viewPosition, radius) || outsidePlane(row3 - row2, viewPosition, radius)) return false;
+    if (appearance.culling.x > 0.0 && length(viewPosition) - radius > appearance.culling.x) return false;
+    if (appearance.culling.y > 0.0)
+    {
+        vec4 clip = PROJECTION_MATRIX * vec4(viewPosition, 1.0);
+        float divisor = abs(PROJECTION_MATRIX[2][3]) > 0.5 ? max(abs(clip.w), 1.0e-6) : 1.0;
+        vec2 radiusPixels = radius * vec2(abs(PROJECTION_MATRIX[0][0]), abs(PROJECTION_MATRIX[1][1])) *
+            VIEWPORT_SIZE.xy * 0.5 / divisor;
+        if (2.0 * max(radiusPixels.x, radiusPixels.y) < appearance.culling.y) return false;
+    }
+    return true;
+}
 
 void main()
 {
@@ -833,10 +882,11 @@ void main()
     if (activeOrdinal >= activeCount) return;
 
     uint particleIndex = ACTIVE_LIST_INDEX == 0u ? ACTIVE_INDICES_A[activeOrdinal] : ACTIVE_INDICES_B[activeOrdinal];
-    uint emitterIndex = PARTICLES[particleIndex].emitterIndex;
-    if (emitterIndex >= EMITTER_COUNT) return;
-    uint templateIndex = EMITTERS[emitterIndex].emissionState.w;
-    if (templateIndex >= TEMPLATE_COUNT) return;
+    ParticleRecord particle = PARTICLES[particleIndex];
+    if (particle.emitterIndex >= EMITTER_COUNT) return;
+    EmitterSimData emitter = EMITTERS[particle.emitterIndex];
+    uint templateIndex = emitter.emissionState.w;
+    if (templateIndex >= TEMPLATE_COUNT || !particleVisible(particle, emitter, TEMPLATES[templateIndex])) return;
 
     uint cursor = atomicAdd(COMPACTION_VALUES[TEMPLATE_CAPACITY + templateIndex], 1u);
     RENDER_INDICES[COMPACTION_VALUES[templateIndex] + cursor] = particleIndex;
@@ -907,6 +957,7 @@ struct TemplateRenderData
     vec4 tintAndAlpha;
     vec4 appearance;
     uvec4 modes;
+    vec4 culling;
 };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };

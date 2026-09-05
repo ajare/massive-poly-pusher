@@ -2176,7 +2176,8 @@ void main()
 						compactEmitters[index].emissionState[3] = emitterTemplates[index];
 					compactEmitters[1].shapeSeedModulesBudget[3] = 2u;
 					std::array<uint32_t, 12> compactCounters{ 8u, 8u, 0u, 0u, 0u, 0u, 0u, 0u, 99u, 99u, 99u, 99u };
-					std::array<uint32_t, 8> compactScratch{};
+					std::array<uint32_t, 12> compactScratch{};
+					std::array<TemplateRenderData, 4> compactTemplates{};
 					std::array<uint32_t, 8> renderIndices{};
 					std::array<ParticleDrawArraysIndirectCommand, 4> drawCommands{};
 					std::array<uint32_t, 3> compactDispatch{};
@@ -2211,6 +2212,7 @@ void main()
 					GLuint compactEmitterBuffer = createTestBuffer(5, compactEmitters);
 					GLuint compactScratchBuffer = createTestBuffer(6, compactScratch);
 					GLuint compactDispatchBuffer = createTestBuffer(7, compactDispatch);
+					GLuint compactTemplateBuffer = createTestBuffer(7, compactTemplates);
 
 					auto* compactPrepare = getCompute("__mpp_particle_compaction_prepare__");
 					auto* compactCount = getCompute("__mpp_particle_compaction_count__");
@@ -2223,6 +2225,7 @@ void main()
 					compactPrepare->setUniform("ACTIVE_LIST_INDEX", 0u);
 					compactPrepare->setUniform("TEMPLATE_COUNT", 4u);
 					compactPrepare->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, compactDispatchBuffer));
 					compactPrepare->dispatch(1u);
 					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 
@@ -2230,6 +2233,8 @@ void main()
 					compactCount->setUniform("ACTIVE_LIST_INDEX", 0u);
 					compactCount->setUniform("EMITTER_COUNT", 4u);
 					compactCount->setUniform("TEMPLATE_COUNT", 4u);
+					compactCount->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, compactTemplateBuffer));
 					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compactDispatchBuffer));
 					compactCount->dispatchIndirect();
 					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
@@ -2237,6 +2242,7 @@ void main()
 					GLuint drawCommandBuffer = createTestBuffer(7, drawCommands);
 					compactPrefix->use();
 					compactPrefix->setUniform("TEMPLATE_COUNT", 4u);
+					compactPrefix->setUniform("TEMPLATE_CAPACITY", 4u);
 					compactPrefix->dispatch(1u);
 					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 
@@ -2247,6 +2253,7 @@ void main()
 					compactScatter->setUniform("EMITTER_COUNT", 4u);
 					compactScatter->setUniform("TEMPLATE_COUNT", 4u);
 					compactScatter->setUniform("TEMPLATE_CAPACITY", 4u);
+					GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, compactTemplateBuffer));
 					GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, compactDispatchBuffer));
 					compactScatter->dispatchIndirect();
 					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));

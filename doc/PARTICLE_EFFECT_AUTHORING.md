@@ -50,6 +50,8 @@ ParticleEffect:
         randomStart: true
         billboard: cameraFacing
         blendClass: alpha
+        maximumDrawDistance: 250
+        minimumProjectedSize: 1.5
 ```
 
 Supported spawn shapes are `point`, `line`, `box`, `sphere`, `hemisphere`, `disc`, and `cone`. Curves may also contain `Alpha`, `VelocityMultiplier`, `Drag`, `RotationSpeed`, and `EmissiveIntensity` blocks.
@@ -57,5 +59,7 @@ Supported spawn shapes are `point`, `line`, `box`, `sphere`, `hemisphere`, `disc
 Supported billboard values are `cameraFacing`, `screenAligned`, `cylindrical`, `axisLocked`, `velocityAligned`, and `velocityStretched`. `velocityStretched` keeps the particle's authored width while lengthening it along its camera-projected velocity; stationary particles retain a square fallback and particle rotation is ignored so the long axis remains velocity-aligned.
 
 Supported blend classes are `additive`, `alpha`, and `weightedOit`. Use `weightedOit` for dense smoke, dust, steam, and atmospheric particles where stable order-independent compositing is preferable to exact sorting.
+
+`maximumDrawDistance` is measured in world units and `minimumProjectedSize` is a particle diameter in pixels. Both default to zero, which disables that culling test. Frustum culling always applies. Live particle effects can also be hidden without stopping simulation through `ParticleSystem::setEffectVisible` or assigned visibility flags through `setEffectVisibilityFlags`.
 
 `Gravity`, `Drag`, and `Noise` are named optional blocks, not a sequence. Their evaluation order is fixed by the engine and cannot be authored. `maximumParticleCount` at effect level must exactly equal the sum of all emitter-template values; enforcement at runtime remains per emitter template.

@@ -649,6 +649,13 @@ radix sorting, particle collision (screen-space, analytical, then SDF), curl
 noise and multi-octave turbulence, trails and ribbons, mesh particles, distortion
 particles, secondary GPU effects, and volumetric injection.
 
+GPU culling is now integrated into compaction rather than dispatched as another
+pass. The count stage retains active per-template totals for particle budgets and
+also counts visible particles; prefix generation writes visible indirect counts,
+and scatter repeats the camera-frustum, maximum-distance, projected-size and
+live particle-effect visibility predicate into the compact render list. Results
+remain GPU-resident except through the existing optional lagged statistics path.
+
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and
 scene-document pipeline, and a shared albedo atlas to remove the remaining

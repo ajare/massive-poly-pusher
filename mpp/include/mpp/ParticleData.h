@@ -59,6 +59,13 @@ namespace mpp
 		WeightedOit
 	};
 
+	// Runtime visibility flags belong to a live particle effect rather than its
+	// reusable asset. More view masks can be added without changing particle data.
+	enum class ParticleEffectVisibilityFlag : uint32_t
+	{
+		Visible = 1u << 0
+	};
+
 	inline constexpr uint32_t ParticleTexturePlaybackMask = 0xffu;
 	inline constexpr uint32_t ParticleTextureRandomStartBit = uint32_t(ParticleTextureAnimation::RandomStart);
 	inline constexpr float MaximumParticleDeltaSeconds = 0.1f;
@@ -192,8 +199,9 @@ namespace mpp
 		std::array<uint32_t, 4> shapeSeedModulesBudget{};
 		// Emission mode (continuous/burst), enabled, burst count, emitter-template index.
 		std::array<uint32_t, 4> emissionState{ 0u, 1u, 0u, 0u };
-		// Authored continuous spawn rate in particles/second, then padding.
-		std::array<float, 4> emissionRateAndPadding{};
+		// Authored continuous spawn rate in particles/second, effect visibility
+		// flags (stored as an exactly representable integer), then padding.
+		std::array<float, 4> emissionRateAndPadding{ 0.0f, float(uint32_t(ParticleEffectVisibilityFlag::Visible)), 0.0f, 0.0f };
 		// Spawn-rate, size, speed, and lifetime multipliers.
 		std::array<float, 4> parameterMultipliers0{ 1.0f, 1.0f, 1.0f, 1.0f };
 		// Alpha and emissive multipliers, then padding.
@@ -204,8 +212,8 @@ namespace mpp
 		std::array<float, 4> noiseScrollAndTimeScale{};
 	};
 
-	// Draw-only emitter-template data. This remains a compact 64-byte std430
-	// record and is not fetched by the spawn or simulation kernels.
+	// Draw-only emitter-template data. Culling also reads this record while
+	// compacting the render list; spawn and simulation never fetch it.
 	struct alignas(16) TemplateRenderData
 	{
 		// Bindless albedo handle low/high words, atlas columns, atlas rows. A
@@ -218,6 +226,9 @@ namespace mpp
 		std::array<float, 4> appearance{ 1.0f, 0.0f, 0.0f, 0.0f };
 		// Frame count, animation mode, billboard mode, blend class.
 		std::array<uint32_t, 4> modes{ 1u, 0u, 0u, 0u };
+		// Maximum draw distance and minimum projected diameter in pixels. Zero
+		// disables the corresponding test.
+		std::array<float, 4> culling{};
 	};
 
 	// One CPU-to-GPU spawn command. spawnCounter is the first logical spawn
@@ -266,7 +277,7 @@ namespace mpp
 	static_assert(sizeof(ParticleRecord) == 64, "The std430 particle array stride must be exactly 64 bytes.");
 	static_assert(clampParticleDeltaSeconds(3.0f) == MaximumParticleDeltaSeconds);
 	static_assert(sizeof(EmitterSimData) == 304);
-	static_assert(sizeof(TemplateRenderData) == 64);
+	static_assert(sizeof(TemplateRenderData) == 80);
 	static_assert(sizeof(ParticleSpawnCommand) == 16);
 	static_assert(sizeof(ParticleCounterHeader) == 32);
 	static_assert(sizeof(ParticleDrawArraysIndirectCommand) == 16);

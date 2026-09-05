@@ -119,6 +119,7 @@ namespace mpp
 		constexpr uint32_t SpawnCommandBinding = 7;
 		constexpr uint32_t DispatchCommandBinding = 7;
 		constexpr uint32_t IndirectCommandBinding = 7;
+		constexpr uint32_t CullingTemplateBinding = 7;
 		constexpr uint32_t RequiredStorageBindings = 8;
 		constexpr size_t DispatchCommandBytes = 3 * sizeof(uint32_t);
 		constexpr uint32_t NoiseTextureSize = 16;
@@ -346,7 +347,7 @@ namespace mpp
 		size_t const emitterBytes = size_t(MaxEmitterCount) * sizeof(EmitterSimData);
 		size_t const templateBytes = size_t(MaxTemplateCount) * sizeof(TemplateRenderData);
 		size_t const commandBytes = size_t(MaxSpawnCommandCount) * sizeof(ParticleSpawnCommand);
-		size_t const compactionScratchBytes = size_t(MaxTemplateCount) * 2u * sizeof(uint32_t);
+		size_t const compactionScratchBytes = size_t(MaxTemplateCount) * 3u * sizeof(uint32_t);
 		size_t const indirectCommandBytes = size_t(MaxTemplateCount) * sizeof(ParticleDrawArraysIndirectCommand);
 		size_t const largestBlock = max({ poolBytes, indexBytes, counterBytes, emitterBytes, templateBytes, commandBytes,
 			compactionScratchBytes, indirectCommandBytes, DispatchCommandBytes });
@@ -370,7 +371,7 @@ namespace mpp
 		mCounters = make_unique<ShaderStorageBuffer>();
 		mCounters->create(counterBytes, nullptr, "Particle counters and template live counts");
 		mCompactionScratch = make_unique<ShaderStorageBuffer>();
-		mCompactionScratch->create(compactionScratchBytes, nullptr, "Particle template offsets and scatter cursors");
+		mCompactionScratch->create(compactionScratchBytes, nullptr, "Particle visible counts, offsets, and scatter cursors");
 		mIndirectCommands = make_unique<ShaderStorageBuffer>();
 		mIndirectCommands->create(indirectCommandBytes, nullptr, "Particle indirect draw commands by template");
 		mSimulationDispatchCommand = make_unique<ShaderStorageBuffer>();
@@ -557,6 +558,19 @@ namespace mpp
 			auto const* slot = findEmitter(emitter);
 			if (slot) setTransform(mEmitters[emitter.index], transform * slot->localTransform);
 		}
+	}
+
+	void ParticleSystem::setEffectVisibilityFlags(ParticleEffectHandle handle, uint32_t flags)
+	{
+		auto* effect = findEffect(handle);
+		if (!effect) return;
+		for (auto emitter : effect->emitters)
+			if (findEmitter(emitter)) mEmitters[emitter.index].emissionRateAndPadding[1] = float(flags);
+	}
+
+	void ParticleSystem::setEffectVisible(ParticleEffectHandle handle, bool visible)
+	{
+		setEffectVisibilityFlags(handle, visible ? uint32_t(ParticleEffectVisibilityFlag::Visible) : 0u);
 	}
 
 	void ParticleSystem::spawnEffect(ResourcePtr const& asset, glm::mat4 const& transform)
@@ -1068,11 +1082,15 @@ namespace mpp
 		mCounters->bindStorage(CountersBinding);
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
 			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
+		mCompactionScratch->bindStorage(CompactionScratchBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, CullingTemplateBinding, mTemplateRenderBuffer->getBuffer(),
+			static_cast<GLintptr>(mTemplateRenderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mTemplateRenderData))));
 		auto* countProgram = static_cast<ComputeProgram*>(mCompactionCountProgram.get());
 		countProgram->use();
 		countProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);
 		countProgram->setUniform("EMITTER_COUNT", uint32_t(mEmitters.size()));
 		countProgram->setUniform("TEMPLATE_COUNT", templateCount);
+		countProgram->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
 		mCompactionDispatchCommand->bindDispatchIndirect();
 		countProgram->dispatchIndirect();
 		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
@@ -1084,6 +1102,7 @@ namespace mpp
 		auto* prefixProgram = static_cast<ComputeProgram*>(mCompactionPrefixProgram.get());
 		prefixProgram->use();
 		prefixProgram->setUniform("TEMPLATE_COUNT", templateCount);
+		prefixProgram->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
 		prefixProgram->dispatch(1u);
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 
@@ -1095,6 +1114,8 @@ namespace mpp
 		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mEmitterBuffer->getBuffer(),
 			static_cast<GLintptr>(mEmitterBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mEmitters))));
 		mCompactionScratch->bindStorage(CompactionScratchBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, CullingTemplateBinding, mTemplateRenderBuffer->getBuffer(),
+			static_cast<GLintptr>(mTemplateRenderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mTemplateRenderData))));
 		auto* scatterProgram = static_cast<ComputeProgram*>(mCompactionScatterProgram.get());
 		scatterProgram->use();
 		scatterProgram->setUniform("ACTIVE_LIST_INDEX", mActiveListIndex);

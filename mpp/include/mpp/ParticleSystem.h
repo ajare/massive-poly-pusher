@@ -242,6 +242,10 @@ namespace mpp
 		ParticleEffectHandle createEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform = glm::mat4(1.0f));
 		void destroyEffect(ParticleEffectHandle effect);
 		void setEffectTransform(ParticleEffectHandle effect, glm::mat4 const& transform);
+		// Visibility changes affect every existing particle in the live particle
+		// effect on the next GPU compaction, without stopping its emitters.
+		void setEffectVisibilityFlags(ParticleEffectHandle effect, uint32_t flags);
+		void setEffectVisible(ParticleEffectHandle effect, bool visible);
 		void spawnEffect(ResourcePtr const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		void spawnEffect(ParticleEffectSource const& asset, glm::mat4 const& transform = glm::mat4(1.0f));
 		void spawnEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform = glm::mat4(1.0f));

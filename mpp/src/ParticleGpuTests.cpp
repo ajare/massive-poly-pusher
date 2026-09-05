@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "mpp/GLErrorCheck.h"
 #include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleData.h"
@@ -95,6 +97,15 @@ namespace mpp
 		uint32_t activeCount(CounterSnapshot const& snapshot)
 		{
 			return snapshot.activeListIndex == 0u ? snapshot.counters.activeCountA : snapshot.counters.activeCountB;
+		}
+
+		ParticleEmitterTemplate cullingBurst(glm::vec3 position, float size = 1.0f)
+		{
+			auto emitter = burst(1u, 1u, 10.0f);
+			emitter.localTransform = glm::translate(glm::mat4(1.0f), position);
+			emitter.simulation.lifetimeSizeRanges[2] = size;
+			emitter.simulation.lifetimeSizeRanges[3] = size;
+			return emitter;
 		}
 	}
 
@@ -227,6 +238,35 @@ namespace mpp
 					std::to_string(snapshots[3].activeListIndex) + "/" + std::to_string(snapshots[3].counters.activeCountA) + "/" +
 					std::to_string(snapshots[3].counters.activeCountB) + ", frame two " + std::to_string(snapshots[4].activeListIndex) + "/" +
 					std::to_string(snapshots[4].counters.activeCountA) + "/" + std::to_string(snapshots[4].counters.activeCountB) + ")");
+
+			stage = "GPU visibility compaction";
+			renderSystem->setCameraFrame(glm::mat4(1.0f),
+				glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 100.0f),
+				{ 800.0f, 600.0f }, 0.1f, 100.0f, 0.0f);
+			auto visible = cullingBurst({ 0.0f, 0.0f, -5.0f });
+			auto outsideFrustum = cullingBurst({ 100.0f, 0.0f, -5.0f });
+			auto beyondDistance = cullingBurst({ 0.0f, 0.0f, -50.0f });
+			beyondDistance.appearance.culling[0] = 10.0f;
+			auto belowProjectedSize = cullingBurst({ 0.0f, 0.0f, -20.0f }, 0.001f);
+			belowProjectedSize.appearance.culling[1] = 2.0f;
+			auto hidden = cullingBurst({ 0.0f, 0.0f, -5.0f });
+			std::array<ParticleEmitterTemplate, 1> oneVisible{ visible }, oneFrustum{ outsideFrustum },
+				oneDistance{ beyondDistance }, oneProjected{ belowProjectedSize }, oneHidden{ hidden };
+			system.createEffect(oneVisible);
+			system.createEffect(oneFrustum);
+			system.createEffect(oneDistance);
+			system.createEffect(oneProjected);
+			auto hiddenEffect = system.createEffect(oneHidden);
+			system.setEffectVisible(hiddenEffect, false);
+			runFrame(system, 0.0f);
+			auto cullingSnapshotIndex = readback.enqueue(system.mCounters->getBuffer(), system.mActiveListIndex);
+			GL_CHECK(glFinish());
+			CounterSnapshot cullingSnapshot;
+			if (!readback.read(cullingSnapshotIndex, cullingSnapshot)) return fail("GPU culling snapshot was not ready");
+			if (activeCount(cullingSnapshot) != 5u || cullingSnapshot.counters.renderedCount != 1u ||
+				cullingSnapshot.counters.culledCount != 4u)
+				return fail("frustum, distance, projected-size, or effect visibility culling did not compact five survivors to one draw");
+			runFrame(system, 10.0f);
 
 			stage = "std430 particle record stride";
 			auto* spawnProgram = static_cast<RawShaderProgram*>(system.mSpawnProgram.get());

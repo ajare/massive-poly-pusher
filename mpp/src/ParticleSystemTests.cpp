@@ -98,6 +98,14 @@ namespace mpp
 		if (system.mEmitters[first.index].transform[12] != 12.0f || system.mEmitters[first.index].transform[13] != 20.0f ||
 			system.mEmitters[second.index].transform[12] != 10.0f || system.mEmitters[second.index].transform[13] != 23.0f)
 			return fail("effect parent and emitter-local transforms were not composed");
+		system.setEffectVisible(effect, false);
+		if (system.mEmitters[first.index].emissionRateAndPadding[1] != 0.0f ||
+			system.mEmitters[second.index].emissionRateAndPadding[1] != 0.0f)
+			return fail("effect visibility did not reach every emitter");
+		system.setEffectVisibilityFlags(effect, uint32_t(ParticleEffectVisibilityFlag::Visible));
+		if (system.mEmitters[first.index].emissionRateAndPadding[1] != 1.0f ||
+			system.mEmitters[first.index].emissionState[1] == 0u)
+			return fail("effect visibility flags changed emitter simulation state");
 		system.setEmitterParameter(first, ParticleParameter::SpawnRate, 2.5f);
 		system.stopEmitter(first);
 		system.startEmitter(first);
