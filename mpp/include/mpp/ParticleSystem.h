@@ -22,6 +22,7 @@ namespace mpp
 	class ShaderStorageBuffer;
 	class RenderTexture;
 	class ParticleEffectCurveLut;
+	class Mesh;
 	namespace detail
 	{
 		class PersistentMappedBuffer;
@@ -88,6 +89,11 @@ namespace mpp
 		// The atlas resource belongs to the emitter template. ParticleSystem turns
 		// it into the bindless handle stored in appearance at upload time.
 		ResourcePtr albedoTexture;
+		// A mesh model selects the dedicated mesh-particle draw path. Every mesh in
+		// the model is instanced; meshMaterial optionally overrides each embedded
+		// mesh material while retaining that material's exact shader and textures.
+		ResourcePtr meshModel;
+		ResourcePtr meshMaterial;
 		std::array<ParticleCurve, size_t(ParticleScalarCurve::Count)> curves{};
 		ParticleGradient colourGradient{};
 		glm::mat4 localTransform{ 1.0f };
@@ -121,6 +127,7 @@ namespace mpp
 		static constexpr uint32_t MaxTemplateCount = 4096;
 		static constexpr uint32_t MaxSpawnCommandCount = 4096;
 		static constexpr uint32_t MaxColliderCount = 1024;
+		static constexpr uint32_t MaxMeshDrawCount = 16384;
 
 	private:
 		RenderSystem* mwRenderSystem;
@@ -129,7 +136,7 @@ namespace mpp
 		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
 		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
 		ResourcePtr mSortPrepareProgram, mSortKeyProgram, mRadixHistogramProgram, mRadixPrefixProgram, mRadixScatterProgram, mSortFinalizeProgram;
-		ResourcePtr mDrawProgram, mWeightedOitDrawProgram;
+		ResourcePtr mDrawProgram, mWeightedOitDrawProgram, mMeshCommandProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
 		std::unique_ptr<ShaderStorageBuffer> mFreeIndices;
@@ -145,6 +152,8 @@ namespace mpp
 		std::unique_ptr<ShaderStorageBuffer> mSortRecordsB;
 		std::unique_ptr<ShaderStorageBuffer> mRadixHistogram;
 		std::unique_ptr<ShaderStorageBuffer> mSortDispatchCommand;
+		std::unique_ptr<ShaderStorageBuffer> mMeshIndirectCommands;
+		std::unique_ptr<ShaderStorageBuffer> mMeshCommandTemplates;
 		std::unique_ptr<detail::PersistentMappedBuffer> mEmitterBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mTemplateRenderBuffer;
 		std::unique_ptr<detail::PersistentMappedBuffer> mSpawnCommandBuffer;
@@ -155,7 +164,16 @@ namespace mpp
 		std::vector<EmitterSimData> mEmitters;
 		std::vector<TemplateRenderData> mTemplateRenderData;
 		std::vector<ResourcePtr> mTemplateTextures;
+		std::vector<ResourcePtr> mTemplateMeshModels;
+		std::vector<ResourcePtr> mTemplateMeshMaterials;
 		std::vector<std::shared_ptr<ParticleEffectCurveLut>> mTemplateCurveLuts;
+		struct MeshDrawRecord
+		{
+			uint32_t templateIndex{ 0 };
+			Mesh const* mesh{ nullptr };
+			ResourcePtr material;
+		};
+		std::vector<MeshDrawRecord> mMeshDrawRecords;
 		std::vector<uint64_t> mTemplateTextureHandles;
 		std::map<uint64_t, uint32_t> mResidentTextureHandles;
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
@@ -214,6 +232,9 @@ namespace mpp
 		void dispatchSpawnCommands();
 		void dispatchSimulation(float dt);
 		void dispatchCompaction();
+		void rebuildMeshDrawCommands();
+		void dispatchMeshDrawCommands();
+		void bindMeshParticleMaterial(ResourcePtr const& material, uint32_t templateIndex);
 		void ensureSortBuffersAllocated();
 		void dispatchDepthSorts();
 		void advanceStatisticsFrame();
@@ -305,5 +326,9 @@ namespace mpp
 		// A null scene depth selects hard-edged particles.
 		void render(ParticleBlendClass blendClass, RenderTexture* sceneDepth);
 		void render(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+		// Dedicated real-mesh pass. Unlike billboard appearances this binds model
+		// vertex arrays and each template's Material, then issues GPU-authored
+		// indirect instanced draws without particle readback.
+		void renderMeshes();
 	};
 }

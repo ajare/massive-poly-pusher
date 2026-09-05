@@ -410,6 +410,36 @@ namespace mpp
 			}
 		};
 
+		// Real mesh particles bind vertex arrays and Material resources, so they are
+		// intentionally not an appearance variant of the attribute-less billboard pass.
+		class ParticleMeshScenePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+
+				// Mesh particles use ordinary materials, so named graph inputs must be
+				// exposed through the same authoritative sampler overrides as other
+				// material-driven scene passes. This covers shadows and permits authored
+				// materials to consume additional pass-local images.
+				auto const restore = frame.renderSystem->getActivePipelineSamplerOverrides();
+				auto overrides = restore;
+				for (auto const& binding : context.getPass().samplerBindings)
+					if (auto resource = std::dynamic_pointer_cast<Resource>(context.getImage(binding.image)))
+						overrides[binding.sampler] = resource;
+				frame.renderSystem->setActivePipelineSamplerOverrides(overrides);
+				try { frame.renderSystem->renderMeshParticles(); }
+				catch (...)
+				{
+					frame.renderSystem->setActivePipelineSamplerOverrides(restore);
+					throw;
+				}
+				frame.renderSystem->setActivePipelineSamplerOverrides(restore);
+			}
+		};
+
 		class TrailScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -644,6 +674,15 @@ namespace mpp
 		particleScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
 		particleScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
 		registry.registerScenePassFactory("MPP.ParticleScene", [] { return std::make_unique<ParticleScenePass>(); }, particleScene);
+
+		auto particleMeshScene = metadata("Mesh Particles", "Scene", GraphPassType::Scene);
+		particleMeshScene.inputs.push_back({ "Shadow", "SHADOW_MAP", false, depthFormats(), "NeutralShadow" });
+		particleMeshScene.outputs.push_back({ "HDR Colour", false, true, colourFormats() });
+		particleMeshScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
+		particleMeshScene.outputs.push_back({ "Depth", true, true, depthFormats() });
+		particleMeshScene.materialSlots.push_back("ParticleMeshMaterials");
+		particleMeshScene.allowAdditionalInputs = true;
+		registry.registerScenePassFactory("MPP.ParticleMeshScene", [] { return std::make_unique<ParticleMeshScenePass>(); }, particleMeshScene);
 
 		auto trailScene = metadata("Trails", "Scene", GraphPassType::Scene);
 		trailScene.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardTrails" });

@@ -172,6 +172,29 @@ RenderGraph:
         explicit: true
         depthTest: false
         depthWrite: false
+    - name: ParticleMeshes
+      type: scene
+      factory: MPP.ParticleMeshScene
+      Inputs:
+        - sampler: SHADOW_MAP
+          image: ShadowDepth
+      Colours:
+        - image: SceneHdr
+          load: load
+          store: store
+        - image: BloomMaskHdr
+          load: load
+          store: store
+      Depth:
+        image: SceneDepth
+        load: load
+        store: store
+      Raster:
+        explicit: true
+        cull: back
+        depthTest: true
+        depthWrite: true
+        blend: false
     - name: ParticleWeightedOit
       type: scene
       factory: MPP.ParticleWeightedOit

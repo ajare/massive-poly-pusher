@@ -682,6 +682,8 @@ namespace mpp
 		// MPP.ParticleScene or MPP.ParticleWeightedOit pass. Scene depth is optional.
 		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
 		void renderParticles(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);
+		// Real mesh particles use their own material/vertex-attribute pass.
+		void renderMeshParticles();
 		// The separate ribbon draw issued by MPP.TrailScene.
 		void renderTrails(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
 		void renderTrails(ParticleBlendClass blendClass, ResourcePtr const& sceneDepth);

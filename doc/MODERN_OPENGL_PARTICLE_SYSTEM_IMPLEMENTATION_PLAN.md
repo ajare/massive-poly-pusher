@@ -677,6 +677,14 @@ indirect `MPP.TrailScene` draws. They share only the once-per-frame scheduling
 rule and blend-class graph placement with particles; they do not consume the
 particle pool or its commands.
 
+Mesh particles now reuse the particle pool, simulation, visibility compaction,
+and compact render ranges, while `MPP.ParticleMeshScene` supplies the deliberately
+separate real-geometry pass. One GPU-authored indirect instance count is emitted
+per model mesh. Generated 3D material programs retain their original vertex
+attributes, fragment shader, uniforms, and textures; an opt-in vertex path builds
+position/velocity-axis-rotation/uniform-scale model matrices from particle data.
+No particle count or transform is read back to the CPU.
+
 Also deferred by design decisions recorded above: child effects (spec §29),
 user-defined emitter parameters (spec §5), particle effects in the package and
 scene-document pipeline, and a shared albedo atlas to remove the remaining

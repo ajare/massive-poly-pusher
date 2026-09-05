@@ -451,6 +451,12 @@ namespace mpp
 		if (!particleMetadata || particleMetadata->inputs.size() != 1 || particleMetadata->inputs.front().required ||
 			particleMetadata->inputs.front().sampler != "DEPTH" || particleMetadata->inputs.front().fallbackId != "HardParticles")
 			return fail("particle scene metadata lost its optional named depth fallback");
+		auto const* meshParticleMetadata = registry.findMetadata("MPP.ParticleMeshScene");
+		if (!meshParticleMetadata || meshParticleMetadata->inputs.size() != 1u ||
+			meshParticleMetadata->inputs[0].sampler != "SHADOW_MAP" || meshParticleMetadata->inputs[0].required ||
+			!meshParticleMetadata->allowAdditionalInputs || meshParticleMetadata->outputs.size() != 3u ||
+			!meshParticleMetadata->outputs[2].depth || meshParticleMetadata->materialSlots.size() != 1u)
+			return fail("mesh particle scene metadata lost its dedicated material/geometry pass contract");
 		auto const* trailMetadata = registry.findMetadata("MPP.TrailScene");
 		if (!trailMetadata || trailMetadata->inputs.size() != 1 || trailMetadata->inputs.front().required ||
 			trailMetadata->inputs.front().sampler != "DEPTH" || trailMetadata->inputs.front().fallbackId != "HardTrails" ||

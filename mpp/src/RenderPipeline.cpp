@@ -104,7 +104,8 @@ namespace mpp
 			{
 				auto const info = graph.getPassInfo({ id });
 				if (info.enabled && (info.callbackFactory == "MPP.ParticleScene" ||
-					info.callbackFactory == "MPP.ParticleWeightedOit")) return true;
+					info.callbackFactory == "MPP.ParticleWeightedOit" ||
+					info.callbackFactory == "MPP.ParticleMeshScene")) return true;
 			}
 			return false;
 		}
@@ -848,6 +849,23 @@ namespace mpp
 
 		if (mOptions.generatedParticles && mOptions.graphPasses.particles)
 		{
+			// Real meshes are depth-tested material geometry and therefore run in a
+			// separate pass before transparent billboard/ribbon composition.
+			auto meshParticlePass = graph.addPass("ParticleMeshes", GraphPassType::Scene);
+			graph.setPassCallbackFactory(meshParticlePass, "MPP.ParticleMeshScene");
+			if (shadowDepthOutput.isValid()) graph.bindSampler(meshParticlePass, "SHADOW_MAP", shadowDepthOutput);
+			presentationTexture = graph.writeColour(meshParticlePass, presentationTexture, GraphLoadOp::Load, GraphStoreOp::Store);
+			if (useMrtEmissiveMask)
+				bloomMask = graph.writeColour(meshParticlePass, bloomMask, GraphLoadOp::Load, GraphStoreOp::Store);
+			sceneDepth = graph.writeDepth(meshParticlePass, sceneDepth, GraphLoadOp::Load, GraphStoreOp::Store);
+			GraphRasterState meshParticleRaster;
+			meshParticleRaster.explicitState = true;
+			meshParticleRaster.depthTest = true;
+			meshParticleRaster.depthWrite = true;
+			meshParticleRaster.cullMode = GraphCullMode::Back;
+			meshParticleRaster.blend = false;
+			graph.setPassRasterState(meshParticlePass, meshParticleRaster);
+
 			// Weighted OIT is an authored accumulation pass plus an authored resolve.
 			// Optical depth is additive (-log(revealage)), so both accumulation targets
 			// share one ordinary GraphRasterState and remain order-independent.

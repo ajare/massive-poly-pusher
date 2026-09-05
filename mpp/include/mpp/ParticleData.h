@@ -105,6 +105,15 @@ namespace mpp
 		BackToFront
 	};
 
+	// Mesh particles share simulation and compaction with billboards, but are
+	// selected by a dedicated geometry pass.  The wire value lives in the second
+	// sorting word, which was reserved in version-one particle assets.
+	enum class ParticleRenderMode : uint32_t
+	{
+		Billboard,
+		Mesh
+	};
+
 	// Runtime visibility flags belong to a live particle effect rather than its
 	// reusable asset. More view masks can be added without changing particle data.
 	enum class ParticleEffectVisibilityFlag : uint32_t
@@ -316,18 +325,24 @@ namespace mpp
 		std::array<float, 4> appearance{ 1.0f, 0.0f, 0.0f, 0.0f };
 		// Frame count, animation mode, billboard mode, blend class.
 		std::array<uint32_t, 4> modes{ 1u, 0u, 0u, 0u };
-		// Maximum draw distance and minimum projected diameter in pixels. Zero
-		// disables the corresponding test.
+		// Maximum draw distance, minimum projected diameter in pixels, and the
+		// runtime mesh bounds radius. Zero disables authored distance/size tests.
 		std::array<float, 4> culling{};
-		// Sort mode followed by reserved words. Back-to-front sorting is honoured
-		// only for the conventional alpha blend class; additive and weighted OIT
-		// appearances never enter the sorting path.
+		// Sort mode, render mode, then reserved words. Back-to-front sorting is
+		// honoured only by conventional alpha billboards; mesh particles have their
+		// own material-driven geometry pass.
 		std::array<uint32_t, 4> sorting{};
 	};
 
+	constexpr bool particleTemplateRendersMesh(TemplateRenderData const& appearance) noexcept
+	{
+		return appearance.sorting[1] == uint32_t(ParticleRenderMode::Mesh);
+	}
+
 	constexpr bool particleAppearanceRequiresDepthSort(TemplateRenderData const& appearance) noexcept
 	{
-		return appearance.modes[3] == uint32_t(ParticleBlendClass::Alpha) &&
+		return !particleTemplateRendersMesh(appearance) &&
+			appearance.modes[3] == uint32_t(ParticleBlendClass::Alpha) &&
 			appearance.sorting[0] == uint32_t(ParticleSortMode::BackToFront);
 	}
 
@@ -374,6 +389,17 @@ namespace mpp
 		uint32_t baseInstance{ 0 };
 	};
 
+	// Five words are accepted by glDrawElementsIndirect. Non-indexed mesh draws
+	// use the first four words through glDrawArraysIndirect and leave padding zero.
+	struct ParticleMeshDrawIndirectCommand
+	{
+		uint32_t count{ 0 };
+		uint32_t instanceCount{ 0 };
+		uint32_t first{ 0 };
+		uint32_t baseVertexOrInstance{ 0 };
+		uint32_t baseInstanceOrPadding{ 0 };
+	};
+
 	static_assert(std::is_standard_layout_v<ParticleRecord>);
 	static_assert(offsetof(ParticleRecord, positionAge) == 0);
 	static_assert(offsetof(ParticleRecord, velocityLifetime) == 16);
@@ -390,4 +416,5 @@ namespace mpp
 	static_assert(sizeof(ParticleSpawnCommand) == 16);
 	static_assert(sizeof(ParticleCounterHeader) == 32);
 	static_assert(sizeof(ParticleDrawArraysIndirectCommand) == 16);
+	static_assert(sizeof(ParticleMeshDrawIndirectCommand) == 20);
 }

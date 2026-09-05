@@ -10,11 +10,17 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "mpp/BoxModelStream.h"
+#include "mpp/DefaultShaders.h"
 #include "mpp/GLErrorCheck.h"
+#include "mpp/Model.h"
 #include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleData.h"
 #include "mpp/ParticleGpuTests.h"
 #include "mpp/ParticleSystem.h"
+#include "mpp/Program.h"
+#include "mpp/ProgrammaticBasicMaterialStream.h"
+#include "mpp/ProgrammaticProgramStream.h"
 #include "mpp/ProgrammaticTextureStream.h"
 #include "mpp/RawShaderProgram.h"
 #include "mpp/RenderSystem.h"
@@ -501,6 +507,87 @@ namespace mpp
 			}
 			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
 			runFrame(system, 10.0f);
+
+			stage = "GPU real-mesh particle instancing";
+			mesh::MeshSpecification meshSpecification(mesh::Primitive::Type::Triangles);
+			auto meshLayout = meshSpecification.createVertexBufferAttributeLayout(false);
+			meshLayout->createAttribute(mesh::Vertex::Component::Position3, mesh::Vertex::DataType::Float, false);
+			meshLayout->createAttribute(mesh::Vertex::Component::Normal3, mesh::Vertex::DataType::Float, false);
+			meshLayout->createAttribute(mesh::Vertex::Component::TexCoord2, mesh::Vertex::DataType::Float, false);
+			meshLayout->createAttribute(mesh::Vertex::Component::Colour4, mesh::Vertex::DataType::Float, false);
+			auto meshParser = std::make_shared<program::Parser>();
+			meshParser->setMeshSpecification(meshSpecification);
+			meshParser->setVertexSource(VertexShader3dTemplate);
+			meshParser->setFragmentSource(R"(
+@@Version
+@@Uniform(vec4 MESH_PARTICLE_TEST_COLOUR);
+void main()
+{
+    @Out(vec4 COLOUR) = @Uniform(MESH_PARTICLE_TEST_COLOUR);
+}
+)");
+			auto meshProgramStream = std::make_shared<ProgrammaticProgramStream>(renderSystem->getResourceManager());
+			meshProgramStream->setParser(meshParser);
+			auto meshProgram = renderSystem->getResourceManager()->declareResource("ParticleGpuTest.MeshProgram", meshProgramStream).first;
+			meshProgram->load();
+			auto* generatedMeshProgram = dynamic_cast<Program*>(meshProgram.get());
+			if (!generatedMeshProgram || generatedMeshProgram->getUniformId("MPP_PARTICLE_MESH_ENABLED") < 0 ||
+				generatedMeshProgram->getUniformId("MPP_PARTICLE_MESH_TEMPLATE") < 0)
+				return fail("3D material program did not expose the opt-in mesh-particle instance path");
+			auto meshMaterialStream = std::make_shared<ProgrammaticBasicMaterialStream>(renderSystem->getResourceManager());
+			meshMaterialStream->setProgram(meshProgram->getName());
+			meshMaterialStream->setUniform("MESH_PARTICLE_TEST_COLOUR", glm::vec4(0.2f, 0.9f, 0.3f, 1.0f));
+			auto meshMaterial = renderSystem->getResourceManager()->declareResource("ParticleGpuTest.MeshMaterial", meshMaterialStream).first;
+			meshMaterial->load();
+			auto meshModelStream = std::make_shared<BoxModelStream>(renderSystem->getResourceManager(), meshSpecification,
+				meshMaterial->getName(), 1.0f, 1.0f, 1.0f);
+			auto meshModel = renderSystem->getResourceManager()->declareResource("ParticleGpuTest.MeshModel", meshModelStream).first;
+			meshModel->load();
+
+			auto meshEmitter = burst(3u, 3u, 100.0f);
+			meshEmitter.meshModel = meshModel;
+			meshEmitter.meshMaterial = meshMaterial;
+			meshEmitter.localTransform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, -5.0f });
+			meshEmitter.simulation.lifetimeSizeRanges[2] = 0.5f;
+			meshEmitter.simulation.lifetimeSizeRanges[3] = 0.5f;
+			meshEmitter.simulation.rotationRanges = { 0.5f, 0.5f, 0.25f, 0.25f };
+			std::array meshEmitters{ meshEmitter };
+			auto meshEffect = system.createEffect(meshEmitters);
+			auto meshHandle = system.getEmitter(meshEffect, 0u);
+			renderSystem->setCameraFrame(glm::mat4(1.0f),
+				glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f), { 32.0f, 32.0f }, 0.1f, 100.0f, 0.0f);
+			runFrame(system, 0.0f);
+			GL_CHECK(glFinish());
+			if (system.mMeshDrawRecords.size() != 1u || !system.mMeshIndirectCommands)
+				return fail("mesh particle model did not produce one dedicated real-mesh command");
+			ParticleMeshDrawIndirectCommand meshCommand;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mMeshIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sizeof(meshCommand), &meshCommand));
+			ParticleDrawArraysIndirectCommand billboardCommand;
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mIndirectCommands->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER,
+				GLintptr(meshHandle.index * sizeof(ParticleDrawArraysIndirectCommand)), sizeof(billboardCommand), &billboardCommand));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (meshCommand.count == 0u || meshCommand.instanceCount != 3u || billboardCommand.instanceCount != 0u)
+				return fail("mesh particle instances did not stay GPU-authored and exclusive to the mesh pass");
+
+			RenderTextureOptions meshTargetOptions;
+			meshTargetOptions.numAttachments = 1u;
+			meshTargetOptions.depthAttachment = RenderTextureDepthAttachment::DepthRenderbuffer;
+			auto meshTarget = renderSystem->createRenderTexture("ParticleGpuTest.MeshTarget", 32u, 32u, meshTargetOptions);
+			renderSystem->pushRenderTarget(meshTarget);
+			renderSystem->setViewport(0u, 0u, 32u, 32u);
+			GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+			GL_CHECK(glClearDepth(1.0));
+			GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+			system.renderMeshes();
+			std::array<uint8_t, 4> meshPixel{};
+			GL_CHECK(glReadPixels(16, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, meshPixel.data()));
+			renderSystem->popRenderTarget();
+			if (meshPixel[1] < 128u || meshPixel[0] > 128u)
+				return fail("mesh particle material did not shade GPU-instanced real geometry (pixel " +
+					std::to_string(meshPixel[0]) + "," + std::to_string(meshPixel[1]) + "," +
+					std::to_string(meshPixel[2]) + "," + std::to_string(meshPixel[3]) + ")");
 
 			stage = "GPU trail position history and ribbon commands";
 			auto& trails = renderSystem->getTrailSystem();

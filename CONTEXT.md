@@ -49,6 +49,11 @@ The transparency strategy a particle appearance composites with — additive,
 alpha, or weighted blended OIT. Determines which render pass draws it.
 _Avoid_: Blend mode (that is the engine-wide `BlendMode` enum)
 
+**Mesh particle**:
+A Particle rendered as an instance of real mesh geometry with an ordinary
+Material. Shares the particle simulation and compacted ranges, but is drawn by
+the dedicated mesh-particle pass rather than any billboard appearance pass.
+
 **Trail**:
 A live visual primitive that records the path of a moving source over time.
 Independent of particles and individually controlled by the CPU.

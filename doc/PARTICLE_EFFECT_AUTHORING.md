@@ -82,6 +82,16 @@ ParticleEffect:
 
 Supported spawn shapes are `point`, `line`, `box`, `sphere`, `hemisphere`, `disc`, and `cone`. Curves may also contain `Alpha`, `VelocityMultiplier`, `Drag`, `RotationSpeed`, and `EmissiveIntensity` blocks.
 
+An optional `Mesh` block selects real-geometry particles:
+
+```yaml
+      Mesh:
+        model: Models/Rock
+        material: Materials/Rock # optional; embedded mesh materials are the default
+```
+
+`model` names a `Model` resource and every mesh in that model is rendered with GPU instancing; optional `material` overrides each mesh's embedded `Material`. The particle's world position, scalar rotation, uniform spawn/size scale, and velocity are consumed directly by the material's 3D vertex program. Rotation is around the velocity direction (local Y while stationary), which gives moving rocks, casings, debris, fragments, and leaves a stable tumbling axis. Mesh particles use `MPP.ParticleMeshScene`, depth testing, and ordinary material shading; they never enter a billboard blend-class draw. Material programs must use the standard `@MMatrix` and `@MCPMatrix` 3D transform contract.
+
 Supported billboard values are `cameraFacing`, `screenAligned`, `cylindrical`, `axisLocked`, `velocityAligned`, and `velocityStretched`. `velocityStretched` keeps the particle's authored width while lengthening it along its camera-projected velocity; stationary particles retain a square fallback and particle rotation is ignored so the long axis remains velocity-aligned.
 
 Supported blend classes are `additive`, `alpha`, and `weightedOit`. Conventional alpha appearances can opt into exact GPU back-to-front sorting with `depthSort: true`; it defaults to `false`. Additive and `weightedOit` appearances never run the sorting path even if the flag is present. Use `weightedOit` for dense smoke, dust, steam, and atmospheric particles where stable order-independent compositing is preferable to exact sorting.

@@ -1936,7 +1936,7 @@ void main()
 				auto plainPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestParticlesOffPipeline", withoutParticles);
 				plainPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				for (auto const& stats : plainPipeline->getLastGraphExecutionStats())
-					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" ||
+					if (stats.name == "ParticleMeshes" || stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" ||
 						stats.name == "ParticleWeightedOit" || stats.name == "ParticleWeightedOitResolve" ||
 						stats.name == "TrailAlpha" || stats.name == "TrailAdditive")
 						return fail("default-off generated graph inserted a particle primitive pass");
@@ -1950,10 +1950,15 @@ void main()
 				generatedPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				size_t executedParticlePasses = 0;
 				size_t executedTrailPasses = 0;
+				bool executedMeshParticlePass = false;
 				bool executedOitResolve = false;
 				for (auto const& stats : generatedPipeline->getLastGraphExecutionStats())
 				{
-					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" || stats.name == "ParticleWeightedOit")
+					if (stats.name == "ParticleMeshes")
+					{
+						executedMeshParticlePass = stats.colourOutputCount == 1u && stats.depthOutputCount == 1u;
+					}
+					else if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" || stats.name == "ParticleWeightedOit")
 					{
 						++executedParticlePasses;
 						// Soft particles sample live depth but never attach or write it.
@@ -1969,8 +1974,8 @@ void main()
 					}
 					else if (stats.name == "ParticleWeightedOitResolve") executedOitResolve = stats.colourOutputCount == 1;
 				}
-				if (executedParticlePasses != 3 || executedTrailPasses != 2 || !executedOitResolve)
-					return fail("generated particle primitives did not insert particle, trail, and OIT passes");
+				if (!executedMeshParticlePass || executedParticlePasses != 3 || executedTrailPasses != 2 || !executedOitResolve)
+					return fail("generated particle primitives did not insert mesh, billboard, trail, and OIT passes");
 				bool const particlesAvailable = renderSystem->particlesAvailable();
 				std::vector<uint8_t> poolAfterGeneratedDraw;
 				if (particlesAvailable)

@@ -161,7 +161,7 @@ namespace mpp::resource_parsers
 			void parseEmitter(Data const& node, size_t index)
 			{
 				auto path = "/ParticleEffect/Emitters/Emitter[" + std::to_string(index) + "]";
-				fields(node, { "name", "maximumParticleCount", "transform", "Spawn", "Behaviours", "Curves", "Appearance" }, path);
+				fields(node, { "name", "maximumParticleCount", "transform", "Spawn", "Behaviours", "Curves", "Appearance", "Mesh" }, path);
 				ParticleEffectSpecification::EmitterTemplate authored;
 				authored.name = value(node, "name", path, true);
 				auto& emitter = authored.value; auto& sim = emitter.simulation; auto& appearance = emitter.appearance;
@@ -225,6 +225,15 @@ namespace mpp::resource_parsers
 					std::array<std::pair<char const*,ParticleScalarCurve>,6> names{{{"Size",ParticleScalarCurve::Size},{"Alpha",ParticleScalarCurve::Alpha},{"VelocityMultiplier",ParticleScalarCurve::VelocityMultiplier},{"Drag",ParticleScalarCurve::Drag},{"RotationSpeed",ParticleScalarCurve::RotationSpeed},{"EmissiveIntensity",ParticleScalarCurve::EmissiveIntensity}}};
 					for(auto const& named:names)if(curves.hasEntry(named.first))parseCurve(curves.getEntry(named.first),emitter.curves[size_t(named.second)],curvePath+"/"+named.first);
 					if(curves.hasEntry("Colour"))parseGradient(curves.getEntry("Colour"),emitter.colourGradient,curvePath+"/Colour");
+				}
+
+				if (node.hasEntry("Mesh"))
+				{
+					auto const& block = node.getEntry("Mesh"); auto meshPath = path + "/Mesh";
+					fields(block, { "model", "material" }, meshPath);
+					authored.meshModel = value(block, "model", meshPath, true);
+					authored.meshMaterial = value(block, "material", meshPath);
+					appearance.sorting[1] = uint32_t(ParticleRenderMode::Mesh);
 				}
 
 				if (node.hasEntry("Appearance"))

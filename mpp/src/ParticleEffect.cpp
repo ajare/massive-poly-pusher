@@ -20,10 +20,16 @@ namespace mpp
 		auto const& authored = stream->getSpecification().emitterTemplates;
 		for (size_t index = 0; index < authored.size(); ++index)
 		{
-			if (authored[index].albedoTexture.empty()) continue;
-			auto texture = getResourceManager()->getResource(authored[index].albedoTexture);
-			mEmitterTemplates[index].albedoTexture = texture;
-			acquireDependentResource(texture);
+			auto resolve = [&](std::string const& name, ResourcePtr& destination)
+			{
+				if (name.empty()) return;
+				auto resource = getResourceManager()->getResource(name);
+				destination = resource;
+				acquireDependentResource(resource);
+			};
+			resolve(authored[index].albedoTexture, mEmitterTemplates[index].albedoTexture);
+			resolve(authored[index].meshModel, mEmitterTemplates[index].meshModel);
+			resolve(authored[index].meshMaterial, mEmitterTemplates[index].meshMaterial);
 		}
 		invalidateCurveLut();
 	}

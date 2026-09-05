@@ -3895,6 +3895,14 @@ namespace mpp
 		mActiveProgram.reset();
 	}
 
+	void RenderSystem::renderMeshParticles()
+	{
+		if (!mParticleSystem) return;
+		mParticleSystem->renderMeshes();
+		GL_CHECK(glUseProgram(0));
+		mActiveProgram.reset();
+	}
+
 	void RenderSystem::renderTrails(ParticleBlendClass blendClass, RenderTexture* sceneDepth)
 	{
 		if (!mTrailSystem) return;

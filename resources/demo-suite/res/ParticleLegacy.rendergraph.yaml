@@ -29,6 +29,23 @@ RenderGraph:
         load: clear
         store: store
         clear: 1
+    - name: ParticleMeshes
+      type: scene
+      factory: MPP.ParticleMeshScene
+      Colours:
+        - image: Presentation
+          load: load
+          store: store
+      Depth:
+        image: SceneDepth
+        load: load
+        store: store
+      Raster:
+        explicit: true
+        cull: back
+        depthTest: true
+        depthWrite: true
+        blend: false
     - name: ParticleWeightedOit
       type: scene
       factory: MPP.ParticleWeightedOit

@@ -18,6 +18,10 @@ namespace mpp
 			ParticleEmitterTemplate value;
 			// Optional ResourceManager name for the appearance's albedo/flipbook.
 			std::string albedoTexture;
+			// A model selects mesh-particle rendering. material is an optional override;
+			// when empty, each model mesh keeps its embedded material.
+			std::string meshModel;
+			std::string meshMaterial;
 		};
 
 		uint32_t version{ 1 };

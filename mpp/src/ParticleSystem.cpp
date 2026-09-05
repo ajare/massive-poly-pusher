@@ -10,16 +10,22 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
+#include <glm/common.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "mpp/ComputeProgram.h"
 #include "mpp/GLErrorCheck.h"
 #include "mpp/GpuDebugScope.h"
 #include "mpp/MppException.h"
+#include "mpp/Material.h"
+#include "mpp/Mesh.h"
+#include "mpp/Model.h"
 #include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleDrawProgram.h"
 #include "mpp/ParticleShaders.h"
 #include "mpp/ParticleSystem.h"
+#include "mpp/Program.h"
 #include "mpp/RawShaderStream.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/RenderTexture.h"
@@ -119,6 +125,7 @@ namespace mpp
 		char const* SortFinalizeProgramName = "__mpp_particle_sort_finalize__";
 		char const* DrawProgramName = "__mpp_particle_draw__";
 		char const* WeightedOitDrawProgramName = "__mpp_particle_weighted_oit_draw__";
+		char const* MeshCommandProgramName = "__mpp_particle_mesh_commands__";
 
 		constexpr uint32_t ParticlePoolBinding = 0;
 		constexpr uint32_t FreeIndicesBinding = 1;
@@ -192,6 +199,8 @@ namespace mpp
 		mSpawnCommandBuffer.reset();
 		mTemplateRenderBuffer.reset();
 		mEmitterBuffer.reset();
+		mMeshCommandTemplates.reset();
+		mMeshIndirectCommands.reset();
 		mSortDispatchCommand.reset();
 		mRadixHistogram.reset();
 		mSortRecordsB.reset();
@@ -231,6 +240,7 @@ namespace mpp
 		releaseProgram(mSortFinalizeProgram);
 		releaseProgram(mDrawProgram);
 		releaseProgram(mWeightedOitDrawProgram);
+		releaseProgram(mMeshCommandProgram);
 	}
 
 	void ParticleSystem::disableWithWarning(string const& reason)
@@ -286,6 +296,7 @@ namespace mpp
 			mCompactionCountProgram = createComputeProgram(CompactionCountProgramName, ParticleCompactionCountComputeShader);
 			mCompactionPrefixProgram = createComputeProgram(CompactionPrefixProgramName, ParticleCompactionPrefixComputeShader);
 			mCompactionScatterProgram = createComputeProgram(CompactionScatterProgramName, ParticleCompactionScatterComputeShader);
+			mMeshCommandProgram = createComputeProgram(MeshCommandProgramName, ParticleMeshCommandComputeShader);
 			createNoiseTexture();
 
 			auto createDrawProgram = [this, &caps](char const* name, bool weightedOit)
@@ -472,6 +483,8 @@ namespace mpp
 			mEmitters.emplace_back();
 			mTemplateRenderData.emplace_back();
 			mTemplateTextures.emplace_back();
+			mTemplateMeshModels.emplace_back();
+			mTemplateMeshMaterials.emplace_back();
 			mTemplateCurveLuts.emplace_back();
 			mTemplateTextureHandles.push_back(0u);
 		}
@@ -492,6 +505,10 @@ namespace mpp
 		mTemplateRenderData[index] = emitterTemplate.appearance;
 		mTemplateRenderData[index].appearance[3] = float(curveLut->getRowOffset(emitterTemplateIndex));
 		mTemplateTextures[index] = emitterTemplate.albedoTexture;
+		mTemplateMeshModels[index] = emitterTemplate.meshModel;
+		mTemplateMeshMaterials[index] = emitterTemplate.meshMaterial;
+		mTemplateRenderData[index].sorting[1] = emitterTemplate.meshModel ?
+			uint32_t(ParticleRenderMode::Mesh) : uint32_t(ParticleRenderMode::Billboard);
 		mTemplateCurveLuts[index] = curveLut;
 		return { index, slot.generation };
 	}
@@ -771,6 +788,8 @@ namespace mpp
 		mEmitters[index].emissionState[3] = index;
 		releaseTemplateTextureHandle(index);
 		mTemplateTextures[index].reset();
+		mTemplateMeshModels[index].reset();
+		mTemplateMeshMaterials[index].reset();
 		mTemplateCurveLuts[index].reset();
 		mTemplateRenderData[index] = {};
 		mFreeEmitterIndices.push_back(index);
@@ -907,6 +926,7 @@ namespace mpp
 			if (emitter.emissionState[3] >= mTemplateRenderData.size())
 				THROW_MPP("A particle emitter references an invalid emitter-template index.", __LINE__, __FILE__, __func__);
 		updateTemplateTextureHandles();
+		rebuildMeshDrawCommands();
 
 		mEmitterBuffer->upload(mEmitters.data(), bytes(mEmitters), 0, bytes(mEmitters));
 		mTemplateRenderBuffer->upload(mTemplateRenderData.data(), bytes(mTemplateRenderData), 0, bytes(mTemplateRenderData));
@@ -1267,6 +1287,8 @@ namespace mpp
 
 		mCounters->bindStorage(CountersBinding);
 		mCompactionScratch->bindStorage(CompactionScratchBinding);
+		GL_CHECK(glBindBufferRange(GL_SHADER_STORAGE_BUFFER, EmitterBinding, mTemplateRenderBuffer->getBuffer(),
+			static_cast<GLintptr>(mTemplateRenderBuffer->getActiveOffset()), static_cast<GLsizeiptr>(bytes(mTemplateRenderData))));
 		mIndirectCommands->bindStorage(IndirectCommandBinding);
 		auto* prefixProgram = static_cast<ComputeProgram*>(mCompactionPrefixProgram.get());
 		prefixProgram->use();
@@ -1274,6 +1296,7 @@ namespace mpp
 		prefixProgram->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
 		prefixProgram->dispatch(1u);
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
+		dispatchMeshDrawCommands();
 
 		mParticlePool->bindStorage(ParticlePoolBinding);
 		mRenderIndices->bindStorage(FreeIndicesBinding);
@@ -1297,6 +1320,98 @@ namespace mpp
 		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 
 		mEmitterBuffer->markUsed();
+		mTemplateRenderBuffer->markUsed();
+	}
+
+	void ParticleSystem::rebuildMeshDrawCommands()
+	{
+		mMeshDrawRecords.clear();
+		vector<ParticleMeshDrawIndirectCommand> commands;
+		vector<uint32_t> commandTemplates;
+		for (uint32_t templateIndex = 0u; templateIndex < mTemplateMeshModels.size(); ++templateIndex)
+		{
+			auto const& modelResource = mTemplateMeshModels[templateIndex];
+			if (!modelResource) continue;
+			modelResource->load();
+			auto const* model = dynamic_cast<Model const*>(modelResource.get());
+			if (!model)
+				THROW_MPP("A mesh particle model must be a Model resource.", __LINE__, __FILE__, __func__);
+
+			float boundsRadius = 1.0f;
+			if (model->hasBounds())
+			{
+				glm::vec3 minimum, maximum;
+				model->getBounds(minimum, maximum);
+				// The farthest AABB corner may combine components from opposite
+				// endpoints, so neither endpoint length is a conservative radius.
+				auto const farthestCorner = glm::max(glm::abs(minimum), glm::abs(maximum));
+				boundsRadius = max(0.000001f, glm::length(farthestCorner));
+			}
+			mTemplateRenderData[templateIndex].culling[2] = boundsRadius;
+
+			for (int meshIndex = 0; meshIndex < model->getNumMeshes(); ++meshIndex)
+			{
+				if (mMeshDrawRecords.size() >= MaxMeshDrawCount)
+					THROW_MPP("The mesh-particle draw capacity was exceeded.", __LINE__, __FILE__, __func__);
+				auto const* mesh = model->getMesh(meshIndex);
+				auto material = mTemplateMeshMaterials[templateIndex] ?
+					mTemplateMeshMaterials[templateIndex] : mesh->getMaterial();
+				if (!dynamic_cast<Material*>(material.get()))
+					THROW_MPP("A mesh particle requires a Material resource.", __LINE__, __FILE__, __func__);
+				material->load();
+				auto* program = dynamic_cast<Program*>(static_cast<Material*>(material.get())->getProgram().get());
+				if (!program || program->getUniformId("MPP_PARTICLE_MESH_ENABLED") < 0 ||
+					program->getUniformId("MPP_PARTICLE_MESH_TEMPLATE") < 0)
+					THROW_MPP("A mesh-particle material must use a 3D program with model and model-camera-projection matrices.", __LINE__, __FILE__, __func__);
+
+				size_t const vertexOrIndexCount = mesh->mPrimitiveCount * size_t(mesh->mPrimitiveSize);
+				if (vertexOrIndexCount > numeric_limits<uint32_t>::max())
+					THROW_MPP("A mesh-particle mesh has too many vertices or indices for indirect drawing.", __LINE__, __FILE__, __func__);
+				ParticleMeshDrawIndirectCommand command;
+				command.count = uint32_t(vertexOrIndexCount);
+				if (mesh->mIsIndexed)
+				{
+					size_t const indexBytes = mesh->mIndexWidth / 8u;
+					size_t const firstIndex = indexBytes == 0u ? 0u : mesh->getActiveIndexOffset() / indexBytes;
+					if (firstIndex > numeric_limits<uint32_t>::max())
+						THROW_MPP("A mesh-particle index offset exceeds the indirect command range.", __LINE__, __FILE__, __func__);
+					command.first = uint32_t(firstIndex);
+				}
+				commands.push_back(command);
+				commandTemplates.push_back(templateIndex);
+				mMeshDrawRecords.push_back({ templateIndex, mesh, std::move(material) });
+			}
+		}
+
+		if (commands.empty()) return;
+		if (!mMeshIndirectCommands)
+		{
+			mMeshIndirectCommands = make_unique<ShaderStorageBuffer>();
+			mMeshIndirectCommands->create(size_t(MaxMeshDrawCount) * sizeof(ParticleMeshDrawIndirectCommand), nullptr,
+				"Particle real-mesh indirect draw commands");
+			mMeshCommandTemplates = make_unique<ShaderStorageBuffer>();
+			mMeshCommandTemplates->create(size_t(MaxMeshDrawCount) * sizeof(uint32_t), nullptr,
+				"Particle mesh draw to emitter-template mapping");
+		}
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, mMeshIndirectCommands->getBuffer()));
+		GL_CHECK(glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, GLsizeiptr(commands.size() * sizeof(commands.front())), commands.data()));
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, mMeshCommandTemplates->getBuffer()));
+		GL_CHECK(glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, GLsizeiptr(commandTemplates.size() * sizeof(commandTemplates.front())), commandTemplates.data()));
+		GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+	}
+
+	void ParticleSystem::dispatchMeshDrawCommands()
+	{
+		if (mMeshDrawRecords.empty()) return;
+		mCompactionScratch->bindStorage(0u);
+		mMeshCommandTemplates->bindStorage(1u);
+		mMeshIndirectCommands->bindStorage(2u);
+		auto* program = static_cast<ComputeProgram*>(mMeshCommandProgram.get());
+		program->use();
+		program->setUniform("MESH_DRAW_COUNT", uint32_t(mMeshDrawRecords.size()));
+		program->setUniform("TEMPLATE_CAPACITY", MaxTemplateCount);
+		program->dispatch((uint32_t(mMeshDrawRecords.size()) + mWorkGroupSize - 1u) / mWorkGroupSize);
+		GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
 	}
 
 	void ParticleSystem::ensureSortBuffersAllocated()
@@ -1552,5 +1667,108 @@ namespace mpp
 		}
 		mEmitterBuffer->markUsed();
 		mTemplateRenderBuffer->markUsed();
+	}
+
+	void ParticleSystem::bindMeshParticleMaterial(ResourcePtr const& materialResource, uint32_t templateIndex)
+	{
+		auto* material = dynamic_cast<Material*>(materialResource.get());
+		if (!material) THROW_MPP("A mesh particle requires a Material resource.", __LINE__, __FILE__, __func__);
+		materialResource->load();
+		auto programResource = material->getProgram();
+		auto* program = dynamic_cast<Program*>(programResource.get());
+		if (!program) THROW_MPP("A mesh-particle material requires a generated Program.", __LINE__, __FILE__, __func__);
+		program->bind();
+		material->setUniforms();
+		mwRenderSystem->mActivePipelineUniformOverrides.bindUniforms(programResource);
+
+		if (auto location = program->getViewPosId(); location >= 0)
+		{
+			auto const inverseView = glm::inverse(mwRenderSystem->m3dCameraMatrix);
+			glm::vec3 const position(inverseView[3]);
+			GL_CHECK(glUniform3fv(location, 1, glm::value_ptr(position)));
+		}
+		if (auto location = program->getUniformId("GAMMA"); location >= 0)
+			GL_CHECK(glUniform1f(location, mwRenderSystem->mGamma));
+		GL_CHECK(glUniform1i(program->getUniformId("MPP_PARTICLE_MESH_ENABLED"), 1));
+		GL_CHECK(glUniform1ui(program->getUniformId("MPP_PARTICLE_MESH_TEMPLATE"), templateIndex));
+
+		auto const textureCount = uint32_t(material->getNumTextures());
+		if (textureCount > mwRenderSystem->getCaps().maxFragmentTextureUnits)
+			THROW_MPP("A mesh-particle material requires more fragment texture units than supported by this renderer.", __LINE__, __FILE__, __func__);
+		Texture const* prefilteredSpecular = nullptr;
+		Texture const* resolvedSceneColour = nullptr;
+		for (uint32_t textureIndex = 0u; textureIndex < textureCount; ++textureIndex)
+		{
+			auto textureResource = material->getTexture(int(textureIndex));
+			auto const& sampler = program->getSamplerName(int(textureIndex));
+			auto* activeShadow = dynamic_cast<RenderTexture*>(mwRenderSystem->mActiveShadowDepthTarget.get());
+			bool const activePointShadow = activeShadow && activeShadow->getAttachmentTextureTarget() == GL_TEXTURE_CUBE_MAP;
+			if (activeShadow && ((sampler == "SHADOW_MAP" && !activePointShadow) ||
+				(sampler == "POINT_SHADOW_MAP" && activePointShadow)))
+			{
+				activeShadow->bindDepth(textureIndex);
+				continue;
+			}
+			auto override = mwRenderSystem->mActivePipelineSamplerOverrides.find(sampler);
+			if (override != mwRenderSystem->mActivePipelineSamplerOverrides.end() && override->second)
+				textureResource = override->second;
+			auto* depthTarget = dynamic_cast<RenderTexture*>(textureResource.get());
+			if (depthTarget && depthTarget->getNumColourAttachments() == 0u && depthTarget->getDepthTextureId() != 0u)
+				depthTarget->bindDepth(textureIndex);
+			else
+			{
+				auto* texture = dynamic_cast<Texture*>(textureResource.get());
+				if (!texture) THROW_MPP("A mesh-particle material sampler is not a Texture resource.", __LINE__, __FILE__, __func__);
+				texture->bind(textureIndex);
+				if (sampler == "PBR_PREFILTERED_SPECULAR_MAP") prefilteredSpecular = texture;
+				if (sampler == "PBR_SCENE_COLOUR_RESOLVED") resolvedSceneColour = texture;
+			}
+		}
+		if (prefilteredSpecular)
+			if (auto location = program->getUniformId("PBR_PREFILTERED_MAX_LOD"); location >= 0)
+				GL_CHECK(glUniform1f(location, float(max(1u, prefilteredSpecular->getMipLevels()) - 1u)));
+		if (resolvedSceneColour)
+			if (auto location = program->getUniformId("PBR_SCENE_COLOUR_MAX_LOD"); location >= 0)
+				GL_CHECK(glUniform1f(location, float(max(1u, resolvedSceneColour->getMipLevels()) - 1u)));
+	}
+
+	void ParticleSystem::renderMeshes()
+	{
+		initialise();
+		if (!mAvailable || !mPoolAllocated || mMeshDrawRecords.empty()) return;
+		GpuDebugScope scope("Particles: Draw instanced real meshes");
+		mParticlePool->bindStorage(ParticlePoolBinding);
+		mRenderIndices->bindStorage(FreeIndicesBinding);
+		mCompactionScratch->bindStorage(7u);
+		mMeshIndirectCommands->bindDrawIndirect();
+		beginRenderTiming();
+		for (size_t drawIndex = 0u; drawIndex < mMeshDrawRecords.size(); ++drawIndex)
+		{
+			auto const& draw = mMeshDrawRecords[drawIndex];
+			auto* material = static_cast<Material*>(draw.material.get());
+			bindMeshParticleMaterial(draw.material, draw.templateIndex);
+			bool const transparent = material->isTransparent();
+			mwRenderSystem->setDepthTestState(true, true);
+			mwRenderSystem->setDepthWriteState(!transparent, true);
+			mwRenderSystem->setCullState(material->isDoubleSided() ? GraphCullMode::None : GraphCullMode::Back, true);
+			mwRenderSystem->setBlendState(transparent, true);
+			if (transparent)
+				mwRenderSystem->setBlendFunctionState(GraphBlendFactor::SourceAlpha, GraphBlendFactor::OneMinusSourceAlpha,
+					GraphBlendFactor::One, GraphBlendFactor::OneMinusSourceAlpha, true);
+
+			draw.mesh->bind(true);
+			auto const offset = reinterpret_cast<void const*>(drawIndex * sizeof(ParticleMeshDrawIndirectCommand));
+			if (draw.mesh->mIsIndexed)
+			{
+				GLenum const indexType = draw.mesh->mIndexWidth == 16u ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+				GL_CHECK(glDrawElementsIndirect(draw.mesh->mPrimitiveRenderType, indexType, offset));
+			}
+			else GL_CHECK(glDrawArraysIndirect(draw.mesh->mPrimitiveRenderType, offset));
+			draw.mesh->bind(false);
+			auto* program = static_cast<Program*>(material->getProgram().get());
+			GL_CHECK(glUniform1i(program->getUniformId("MPP_PARTICLE_MESH_ENABLED"), 0));
+		}
+		finishRenderTiming();
+		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
 	}
 }

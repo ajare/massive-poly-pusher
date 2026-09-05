@@ -73,6 +73,8 @@ namespace mpp::resource_parsers
 			if (blendClasses[index] != index) return fail("particle blend-class wire values changed");
 		if (uint32_t(ParticleSortMode::None) != 0u || uint32_t(ParticleSortMode::BackToFront) != 1u)
 			return fail("particle sort-mode wire values changed");
+		if (uint32_t(ParticleRenderMode::Billboard) != 0u || uint32_t(ParticleRenderMode::Mesh) != 1u)
+			return fail("particle render-mode wire values changed");
 
 		ParticleEmitterTemplate emitter;
 		if (emitter.simulation.emissionState[1] != 1u ||
@@ -102,6 +104,8 @@ namespace mpp::resource_parsers
 		ParticleEffectSpecification::EmitterTemplate authored;
 		authored.name = "Smoke";
 		authored.albedoTexture = "Textures/Smoke";
+		authored.meshModel = "Models/Rock";
+		authored.meshMaterial = "Materials/Rock";
 		authored.value.localTransform[3][0] = 2.0f;
 		auto& simulation = authored.value.simulation;
 		simulation.shapeSeedModulesBudget = { uint32_t(ParticleSpawnShape::Cone), 77u,
@@ -126,7 +130,7 @@ namespace mpp::resource_parsers
 		authored.value.appearance.culling = { 250.0f, 1.5f, 0.0f, 0.0f };
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
 			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::Alpha) };
-		authored.value.appearance.sorting[0] = uint32_t(ParticleSortMode::BackToFront);
+		authored.value.appearance.sorting = { uint32_t(ParticleSortMode::BackToFront), uint32_t(ParticleRenderMode::Mesh), 0u, 0u };
 		authored.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
 		authored.value.colourGradient.keys = { { 0.0f, { 1.0f, 0.5f, 0.1f } }, { 1.0f, { 0.1f, 0.2f, 0.3f } } };
 		specification.emitterTemplates.push_back(authored);
@@ -140,6 +144,7 @@ namespace mpp::resource_parsers
 		auto const& restored = parsed.specification;
 		if (restored.name != specification.name || restored.maximumParticleCount != 96 || restored.emitterTemplates.size() != 1 ||
 			restored.emitterTemplates[0].name != authored.name || restored.emitterTemplates[0].albedoTexture != authored.albedoTexture ||
+			restored.emitterTemplates[0].meshModel != authored.meshModel || restored.emitterTemplates[0].meshMaterial != authored.meshMaterial ||
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
 			restored.emitterTemplates[0].value.simulation.collisionConfiguration != simulation.collisionConfiguration ||
 			restored.emitterTemplates[0].value.simulation.collisionParameters != simulation.collisionParameters ||

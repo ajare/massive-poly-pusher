@@ -980,8 +980,8 @@ bool particleVisible(ParticleRecord particle, EmitterSimData emitter, TemplateRe
     if ((uint(emitter.emissionRateAndPadding.y) & EFFECT_VISIBLE) == 0u) return false;
 
     vec3 viewPosition = (VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).xyz;
-    float radius = abs(particle.baseSize);
-    if (appearance.modes.z == 5u) radius *= 1.0 + length(particle.velocityLifetime.xyz);
+    float radius = abs(particle.baseSize) * max(appearance.culling.z, 1.0);
+    if (appearance.sorting.y == 0u && appearance.modes.z == 5u) radius *= 1.0 + length(particle.velocityLifetime.xyz);
     vec4 row0 = vec4(PROJECTION_MATRIX[0][0], PROJECTION_MATRIX[1][0], PROJECTION_MATRIX[2][0], PROJECTION_MATRIX[3][0]);
     vec4 row1 = vec4(PROJECTION_MATRIX[0][1], PROJECTION_MATRIX[1][1], PROJECTION_MATRIX[2][1], PROJECTION_MATRIX[3][1]);
     vec4 row2 = vec4(PROJECTION_MATRIX[0][2], PROJECTION_MATRIX[1][2], PROJECTION_MATRIX[2][2], PROJECTION_MATRIX[3][2]);
@@ -1043,6 +1043,10 @@ layout(std430, binding = 6) restrict buffer ParticleCompactionScratch
 {
     uint COMPACTION_VALUES[];
 };
+layout(std430, binding = 5) restrict readonly buffer ParticleTemplates
+{
+    uvec4 TEXTURE_AND_ATLAS[];
+};
 layout(std430, binding = 7) restrict writeonly buffer ParticleIndirectCommands
 {
     uint INDIRECT_COMMANDS[];
@@ -1062,7 +1066,10 @@ void main()
         COMPACTION_VALUES[templateIndex] = visibleOffset;
         uint commandOffset = templateIndex * 4u;
         INDIRECT_COMMANDS[commandOffset] = 4u;
-        INDIRECT_COMMANDS[commandOffset + 1u] = visibleCount;
+        // sorting.y is the render mode in the sixth vec4 of each template.
+        // Real meshes consume the range through their dedicated command buffer.
+        uint renderMode = TEXTURE_AND_ATLAS[templateIndex * 6u + 5u].y;
+        INDIRECT_COMMANDS[commandOffset + 1u] = renderMode == 0u ? visibleCount : 0u;
         INDIRECT_COMMANDS[commandOffset + 2u] = visibleOffset * 4u;
         INDIRECT_COMMANDS[commandOffset + 3u] = templateIndex;
         activeOffset += activeCount;
@@ -1203,8 +1210,8 @@ bool particleVisible(ParticleRecord particle, EmitterSimData emitter, TemplateRe
     const uint EFFECT_VISIBLE = 1u << 0u;
     if ((uint(emitter.emissionRateAndPadding.y) & EFFECT_VISIBLE) == 0u) return false;
     vec3 viewPosition = (VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).xyz;
-    float radius = abs(particle.baseSize);
-    if (appearance.modes.z == 5u) radius *= 1.0 + length(particle.velocityLifetime.xyz);
+    float radius = abs(particle.baseSize) * max(appearance.culling.z, 1.0);
+    if (appearance.sorting.y == 0u && appearance.modes.z == 5u) radius *= 1.0 + length(particle.velocityLifetime.xyz);
     vec4 row0 = vec4(PROJECTION_MATRIX[0][0], PROJECTION_MATRIX[1][0], PROJECTION_MATRIX[2][0], PROJECTION_MATRIX[3][0]);
     vec4 row1 = vec4(PROJECTION_MATRIX[0][1], PROJECTION_MATRIX[1][1], PROJECTION_MATRIX[2][1], PROJECTION_MATRIX[3][1]);
     vec4 row2 = vec4(PROJECTION_MATRIX[0][2], PROJECTION_MATRIX[1][2], PROJECTION_MATRIX[2][2], PROJECTION_MATRIX[3][2]);
@@ -1239,6 +1246,36 @@ void main()
 
     uint cursor = atomicAdd(COMPACTION_VALUES[TEMPLATE_CAPACITY + templateIndex], 1u);
     RENDER_INDICES[COMPACTION_VALUES[templateIndex] + cursor] = particleIndex;
+}
+)MPP";
+
+	// Copies each mesh template's GPU-visible count into one command per real mesh.
+	// Geometry count/index metadata is CPU-authored only when model resources are
+	// resolved; this kernel authors the per-frame GPU-owned instance counts.
+	inline char const* ParticleMeshCommandComputeShader = R"MPP(#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleCompactionScratch
+{
+    uint COMPACTION_VALUES[];
+};
+layout(std430, binding = 1) restrict readonly buffer ParticleMeshCommandTemplates
+{
+    uint MESH_TEMPLATE_INDICES[];
+};
+layout(std430, binding = 2) restrict buffer ParticleMeshCommands
+{
+    uint MESH_COMMANDS[];
+};
+uniform uint MESH_DRAW_COUNT;
+uniform uint TEMPLATE_CAPACITY;
+
+void main()
+{
+    uint drawIndex = gl_GlobalInvocationID.x;
+    if (drawIndex >= MESH_DRAW_COUNT) return;
+    uint templateIndex = MESH_TEMPLATE_INDICES[drawIndex];
+    MESH_COMMANDS[drawIndex * 5u + 1u] = COMPACTION_VALUES[TEMPLATE_CAPACITY * 2u + templateIndex];
 }
 )MPP";
 
