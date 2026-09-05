@@ -4,9 +4,14 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "mpp/Logger.h"
 #include "mpp/ParticleCurveLut.h"
+#include "mpp/ParticleEffect.h"
+#include "mpp/ParticleEffectSpecification.h"
 #include "mpp/ParticleSystem.h"
 #include "mpp/ParticleSystemTests.h"
+#include "mpp/ProgrammaticParticleEffectStream.h"
+#include "mpp/ResourceManager.h"
 #include "mpp/TrailSystem.h"
 
 using namespace std;
@@ -120,6 +125,83 @@ namespace mpp
 			span<ParticleEmitterTemplate const> getEmitterTemplates() const override { return mTemplates; }
 		};
 		ParticleSystem system(nullptr, nullptr);
+		{
+			Logger logger;
+			ResourceManager resources(nullptr, &logger);
+			ParticleEffectSpecification childSpecification;
+			childSpecification.name = "Child";
+			childSpecification.maximumParticleCount = 2u;
+			ParticleEffectSpecification::EmitterTemplate childFirst;
+			childFirst.name = "ChildFirst";
+			childFirst.value = burst(0.25f);
+			childFirst.value.simulation.shapeSeedModulesBudget[3] = 1u;
+			childFirst.value.localTransform = glm::translate(glm::mat4(1.0f), { 2.0f, 0.0f, 0.0f });
+			childFirst.value.simulation.shapeSeedModulesBudget[1] = 7u;
+			childFirst.events = { { ParticleEventTrigger::Death,
+				ParticleEventAction::SecondaryParticleBurst, "ChildSecond", 1u } };
+			ParticleEffectSpecification::EmitterTemplate childSecond;
+			childSecond.name = "ChildSecond";
+			childSecond.value = burst(2.0f);
+			childSecond.value.simulation.shapeSeedModulesBudget[3] = 1u;
+			childSpecification.emitterTemplates = { childFirst, childSecond };
+			auto childStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			childStream->setSpecification(childSpecification);
+			resources.declareResource("Effects/Child", childStream);
+
+			ParticleEffectSpecification parentSpecification;
+			parentSpecification.name = "Parent";
+			parentSpecification.maximumParticleCount = 1u;
+			ParticleEffectSpecification::EmitterTemplate parentEmitter;
+			parentEmitter.name = "ParentEmitter";
+			parentEmitter.value = burst(0.1f);
+			parentEmitter.value.simulation.shapeSeedModulesBudget[3] = 1u;
+			parentSpecification.emitterTemplates.push_back(parentEmitter);
+			ParticleEffectSpecification::ChildEffect firstChild;
+			firstChild.effect = "Effects/Child";
+			firstChild.transform = glm::translate(glm::mat4(1.0f), { 0.0f, 3.0f, 0.0f });
+			firstChild.seed = 11u;
+			auto secondChild = firstChild;
+			secondChild.transform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.0f, 4.0f });
+			secondChild.seed = 12u;
+			parentSpecification.childEffects = { firstChild, secondChild };
+			auto parentStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			parentStream->setSpecification(parentSpecification);
+			auto parentAsset = resources.declareResource("Effects/Parent", parentStream).first;
+			parentAsset->create();
+			auto parent = dynamic_pointer_cast<ParticleEffect>(parentAsset);
+			auto flattened = parent->getEmitterTemplates();
+			if (flattened.size() != 5u || flattened[1].localTransform[3][0] != 2.0f ||
+				flattened[1].localTransform[3][1] != 3.0f || flattened[3].localTransform[3][2] != 4.0f)
+				return fail("child particle effect transforms were not flattened relative to their parent");
+			if (flattened[1].simulation.shapeSeedModulesBudget[1] == flattened[3].simulation.shapeSeedModulesBudget[1] ||
+				flattened[1].events[0].targetEmitterTemplate != 2u || flattened[3].events[0].targetEmitterTemplate != 4u)
+				return fail("child seeds or intra-child event targets were not derived independently");
+			ParticleSystem composedSystem(nullptr, nullptr);
+			auto composedEffect = composedSystem.createEffect(parentAsset);
+			if (!composedEffect || !composedSystem.getEmitter(composedEffect, 4u))
+				return fail("flattened child particle effects did not create one live group");
+			step(composedSystem, 0.01f);
+			step(composedSystem, 0.5f);
+			if (!composedSystem.isAlive(composedEffect) || !composedSystem.getEmitter(composedEffect, 2u) ||
+				composedSystem.getEmitter(composedEffect, 0u))
+				return fail("child particle effect group did not live as long as its longest descendant");
+			step(composedSystem, 20.0f);
+			if (composedSystem.isAlive(composedEffect))
+				return fail("child particle effect group did not retire with its descendants");
+
+			ParticleEffectSpecification cycleA, cycleB;
+			cycleA.name = "CycleA"; cycleA.childEffects.push_back({ "Effects/CycleB" });
+			cycleB.name = "CycleB"; cycleB.childEffects.push_back({ "Effects/CycleA" });
+			auto cycleAStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			auto cycleBStream = make_shared<ProgrammaticParticleEffectStream>(&resources);
+			cycleAStream->setSpecification(cycleA); cycleBStream->setSpecification(cycleB);
+			auto cycleAAsset = resources.declareResource("Effects/CycleA", cycleAStream).first;
+			resources.declareResource("Effects/CycleB", cycleBStream);
+			bool rejectedChildCycle = false;
+			try { cycleAAsset->create(); }
+			catch (invalid_argument const&) { rejectedChildCycle = true; }
+			if (!rejectedChildCycle) return fail("cyclic child particle effects were accepted");
+		}
 		ParticleCollider plane;
 		plane.shapeAndPadding[0] = uint32_t(ParticleColliderShape::Plane);
 		plane.first = { 0.0f, 1.0f, 0.0f, 0.0f };

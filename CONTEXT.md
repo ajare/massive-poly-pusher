@@ -28,6 +28,12 @@ _Avoid_: Emitter instance, spawner
 A single simulated element, resident on the GPU for its whole lifetime. Never
 individually addressable from the CPU.
 
+**Child particle effect**:
+A particle effect asset referenced by another particle effect with a relative
+transform and deterministic seed salt. Its emitter templates join the same live
+particle effect while retaining their own particle budgets.
+_Avoid_: Secondary effect, nested emitter
+
 **Particle event**:
 A GPU-generated notification from a Particle being spawned, dying, first
 colliding, or crossing an authored age. It selects one typed action and carries

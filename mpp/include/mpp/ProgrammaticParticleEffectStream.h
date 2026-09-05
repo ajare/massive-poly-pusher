@@ -14,5 +14,6 @@ namespace mpp
 		void setName(std::string name);
 		void setMaximumParticleCount(uint32_t count);
 		void addEmitterTemplate(ParticleEffectSpecification::EmitterTemplate const& emitterTemplate);
+		void addChildEffect(ParticleEffectSpecification::ChildEffect const& childEffect);
 	};
 }

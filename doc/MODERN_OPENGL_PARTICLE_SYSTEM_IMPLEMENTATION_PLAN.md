@@ -703,7 +703,10 @@ to HDR and the optional emissive attachment, one instance per emitter. This
 provides the spec §25/§32 contribution without inventing a general froxel-fog
 renderer or turning GPU particles into dynamic lights (ADR 0009).
 
-Also deferred by design decisions recorded above: child effects (spec §29),
-user-defined emitter parameters (spec §5), particle effects in the package and
-scene-document pipeline, and a shared albedo atlas to remove the remaining
+Child particle effect assets now flatten recursively on the CPU into one live
+group with independent template budgets, relative transforms, deterministic
+seed salts, cycle rejection, and longest-descendant lifetime semantics (ADR
+0010). Still deferred: user-defined emitter parameters (spec §5), particle
+effects in the package and scene-document pipeline, and a shared
+albedo atlas to remove the remaining
 per-template texture bind.

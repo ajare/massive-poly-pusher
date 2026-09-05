@@ -62,6 +62,16 @@ namespace mpp::resource_parsers
 			}
 			auto block=node->createChild("Appearance");if(!authored.albedoTexture.empty())block->createChild("texture")->setValue(authored.albedoTexture);block->createChild("tint")->setValue(values(std::array<float,3>{appearance.tintAndAlpha[0],appearance.tintAndAlpha[1],appearance.tintAndAlpha[2]}));block->createChild("alpha")->setValue(appearance.tintAndAlpha[3]);block->createChild("emissiveIntensity")->setValue(appearance.appearance[0]);block->createChild("softFadeDistance")->setValue(appearance.appearance[1]);block->createChild("maximumDrawDistance")->setValue(appearance.culling[0]);block->createChild("minimumProjectedSize")->setValue(appearance.culling[1]);block->createChild("atlasColumns")->setValue(appearance.textureAndAtlas[2]);block->createChild("atlasRows")->setValue(appearance.textureAndAtlas[3]);block->createChild("frameCount")->setValue(appearance.modes[0]);auto playback=appearance.modes[1]&ParticleTexturePlaybackMask;block->createChild("animation")->setValue(playback==uint32_t(ParticleTextureAnimation::FrameOverLife)?"frameOverLife":playback==uint32_t(ParticleTextureAnimation::FixedRate)?"fixedRate":"none");block->createChild("randomStart")->setValue((appearance.modes[1]&ParticleTextureRandomStartBit)!=0);block->createChild("animationRate")->setValue(appearance.appearance[2]);block->createChild("billboard")->setValue(billboard(appearance.modes[2]));block->createChild("blendClass")->setValue(blendClass(appearance.modes[3]));block->createChild("depthSort")->setValue(appearance.sorting[0]==uint32_t(ParticleSortMode::BackToFront));block->createChild("distortion")->setValue(appearance.sorting[2]!=0u);block->createChild("distortionStrength")->setValue(appearance.culling[3]);
 		}
+		if(!specification.childEffects.empty())
+		{
+			auto children=root.createChild("ChildEffects");
+			for(auto const& child:specification.childEffects)
+			{
+				auto node=children->createChild("ChildEffect");node->createChild("effect")->setValue(child.effect);
+				std::array<float,16> transform{};for(int column=0;column<4;++column)for(int row=0;row<4;++row)transform[size_t(column*4+row)]=child.transform[column][row];
+				node->createChild("transform")->setValue(values(transform));node->createChild("seed")->setValue(child.seed);
+			}
+		}
 		detail::writeDocument(root.toStructuredData(),filepath);
 	}
 }

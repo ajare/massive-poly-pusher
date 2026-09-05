@@ -1,4 +1,8 @@
+#include <algorithm>
+#include <cstdint>
+#include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include "mpp/ParticleEffect.h"
 #include "mpp/ParticleEffectStream.h"
@@ -7,6 +11,34 @@
 
 namespace mpp
 {
+	namespace
+	{
+		thread_local std::vector<ParticleEffect const*> creatingEffects;
+
+		struct CreationGuard
+		{
+			explicit CreationGuard(ParticleEffect const* effect)
+			{
+				if (std::find(creatingEffects.begin(), creatingEffects.end(), effect) != creatingEffects.end())
+					throw std::invalid_argument("Particle effect child references must be acyclic.");
+				creatingEffects.push_back(effect);
+			}
+			~CreationGuard() { creatingEffects.pop_back(); }
+		};
+
+		uint32_t deriveSeed(uint32_t seed, uint32_t salt)
+		{
+			// A stable 32-bit avalanche keeps nested composition deterministic without
+			// coupling random streams to child list order.
+			uint32_t value = seed ^ (salt + 0x9e3779b9u + (seed << 6u) + (seed >> 2u));
+			value ^= value >> 16u;
+			value *= 0x7feb352du;
+			value ^= value >> 15u;
+			value *= 0x846ca68bu;
+			return value ^ (value >> 16u);
+		}
+	}
+
 	ParticleEffect::ParticleEffect(std::string const& name, RenderSystem* renderSystem, ResourceManager* resourceManager, ResourceStreamPtr stream)
 		: Resource(name, "ParticleEffect", renderSystem, resourceManager, std::move(stream))
 	{
@@ -14,11 +46,12 @@ namespace mpp
 
 	void ParticleEffect::createImpl()
 	{
+		CreationGuard guard(this);
 		auto stream = dynamic_cast<ParticleEffectStream*>(getResourceStream().get());
 		if (!stream) THROW_MPP("ParticleEffect resource requires a ParticleEffectStream.", __LINE__, __FILE__, __func__);
 		mEmitterTemplates.assign(stream->getEmitterTemplates().begin(), stream->getEmitterTemplates().end());
-		auto const& authored = stream->getSpecification().emitterTemplates;
-		for (size_t index = 0; index < authored.size(); ++index)
+		auto const& specification = stream->getSpecification();
+		for (size_t index = 0; index < specification.emitterTemplates.size(); ++index)
 		{
 			auto resolve = [&](std::string const& name, ResourcePtr& destination)
 			{
@@ -27,9 +60,34 @@ namespace mpp
 				destination = resource;
 				acquireDependentResource(resource);
 			};
-			resolve(authored[index].albedoTexture, mEmitterTemplates[index].albedoTexture);
-			resolve(authored[index].meshModel, mEmitterTemplates[index].meshModel);
-			resolve(authored[index].meshMaterial, mEmitterTemplates[index].meshMaterial);
+			auto const& authored = specification.emitterTemplates[index];
+			resolve(authored.albedoTexture, mEmitterTemplates[index].albedoTexture);
+			resolve(authored.meshModel, mEmitterTemplates[index].meshModel);
+			resolve(authored.meshMaterial, mEmitterTemplates[index].meshMaterial);
+		}
+
+		for (auto const& authoredChild : specification.childEffects)
+		{
+			auto resource = getResourceManager()->getResource(authoredChild.effect);
+			auto child = std::dynamic_pointer_cast<ParticleEffect>(resource);
+			if (!child)
+				throw std::invalid_argument("Particle effect child '" + authoredChild.effect + "' is not a ParticleEffect resource.");
+			if (std::find(creatingEffects.begin(), creatingEffects.end(), child.get()) != creatingEffects.end())
+				throw std::invalid_argument("Particle effect child references must be acyclic.");
+			if (!child->isCreated()) child->create();
+			acquireDependentResource(resource);
+
+			auto const firstChildTemplate = uint32_t(mEmitterTemplates.size());
+			for (auto childTemplate : child->getEmitterTemplates())
+			{
+				childTemplate.localTransform = authoredChild.transform * childTemplate.localTransform;
+				childTemplate.simulation.shapeSeedModulesBudget[1] =
+					deriveSeed(childTemplate.simulation.shapeSeedModulesBudget[1], authoredChild.seed);
+				for (auto& event : childTemplate.events)
+					if (event.action == ParticleEventAction::SecondaryParticleBurst)
+						event.targetEmitterTemplate += firstChildTemplate;
+				mEmitterTemplates.push_back(std::move(childTemplate));
+			}
 		}
 		invalidateCurveLut();
 	}

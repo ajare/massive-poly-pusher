@@ -171,6 +171,11 @@ namespace mpp::resource_parsers
 		secondary.name = "Sparks";
 		secondary.value.simulation.emissionState = { 1u, 0u, 0u, 0u };
 		specification.emitterTemplates.push_back(secondary);
+		ParticleEffectSpecification::ChildEffect child;
+		child.effect = "Effects/Embers";
+		child.transform[3][1] = 5.0f;
+		child.seed = 1234u;
+		specification.childEffects.push_back(child);
 
 		auto temporary = std::filesystem::temp_directory_path() / "mpp-particle-resource-round-trip.particle.yaml";
 		try { ParticleEffectSerializer::toFile(specification, temporary.string()); }
@@ -209,7 +214,9 @@ namespace mpp::resource_parsers
 			restored.emitterTemplates[0].value.events.size() != 2u ||
 			restored.emitterTemplates[0].value.events[0].targetEmitterTemplate != 1u ||
 			restored.emitterTemplates[0].value.curves[size_t(ParticleScalarCurve::Size)].keys.size() != 2 ||
-			restored.emitterTemplates[0].value.colourGradient.keys.size() != 2)
+			restored.emitterTemplates[0].value.colourGradient.keys.size() != 2 ||
+			restored.childEffects.size() != 1u || restored.childEffects[0].effect != "Effects/Embers" ||
+			restored.childEffects[0].transform[3][1] != 5.0f || restored.childEffects[0].seed != 1234u)
 			return fail("particle effect did not round-trip through *.particle.yaml");
 
 		// The C++ stream consumes the same plain specification without creating a
@@ -220,8 +227,18 @@ namespace mpp::resource_parsers
 			programmatic.getEmitterTemplates().size() != restored.emitterTemplates.size() ||
 			programmatic.getEmitterTemplates()[0].simulation.shapeSeedModulesBudget != restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget ||
 			programmatic.getEmitterTemplates()[0].events.size() != 2u ||
-			programmatic.getEmitterTemplates()[0].events[0].targetEmitterTemplate != 1u)
+			programmatic.getEmitterTemplates()[0].events[0].targetEmitterTemplate != 1u ||
+			programmatic.getSpecification().childEffects.size() != 1u)
 			return fail("programmatic particle effect stream was not equivalent to parsed authoring");
+
+		mpp::data::StructuredData childOnly("ParticleEffect");
+		childOnly.addEntry("name", "ChildOnly"); childOnly.addEntry("maximumParticleCount", "0");
+		mpp::data::StructuredData children("ChildEffects"), childNode("ChildEffect");
+		childNode.addEntry("effect", "Effects/Leaf"); children.addEntry("ChildEffect", childNode);
+		childOnly.addEntry("ChildEffects", children);
+		auto childOnlyResult = ParticleEffectParser::fromData(childOnly, "child-only.particle.yaml");
+		if (!childOnlyResult.succeeded() || childOnlyResult.specification.childEffects.size() != 1u)
+			return fail("child-only particle effect did not parse");
 
 		// Ordered behaviour lists are intentionally outside the schema, and a bad
 		// effect-level budget is an authoring diagnostic. Neither case may throw.

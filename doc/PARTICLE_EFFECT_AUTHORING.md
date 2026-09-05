@@ -90,6 +90,28 @@ ParticleEffect:
         minimumProjectedSize: 1.5
 ```
 
+## Child particle effects
+
+A particle effect can compose reusable particle effect assets:
+
+```yaml
+ParticleEffect:
+  version: 1
+  name: Explosion
+  maximumParticleCount: 0 # direct emitter templates only
+  ChildEffects:
+    - effect: Effects/Flash
+      transform: 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1
+      seed: 10
+    - effect: Effects/Debris
+      transform: 1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1
+      seed: 20
+```
+
+`effect` is the ResourceManager name of another `ParticleEffect`. `transform` is optional and relative to the parent; nested transforms compose from parent to child. `seed` is an optional deterministic salt mixed into every descendant emitter seed. Reusing the same child and salt intentionally reproduces its random streams, while distinct salts make copies independent. Child references must be acyclic.
+
+Composition is resolved entirely on the CPU into one live particle effect. Parent transform, visibility, and destruction affect every descendant, and the group remains alive until its longest-lived emitter retires. Child assets keep independent per-template budgets: each asset's `maximumParticleCount` equals only the sum of its directly authored emitter-template budgets, so a child-only composition uses zero. Secondary particle bursts remain within the copied child branch.
+
 Supported spawn shapes are `point`, `line`, `box`, `sphere`, `hemisphere`, `disc`, and `cone`. Curves may also contain `Alpha`, `VelocityMultiplier`, `Drag`, `RotationSpeed`, and `EmissiveIntensity` blocks.
 
 An optional `Mesh` block selects real-geometry particles:

@@ -36,9 +36,22 @@ namespace mpp
 			std::vector<EventRule> events;
 		};
 
+		struct ChildEffect
+		{
+			// ResourceManager name of another ParticleEffect asset.
+			std::string effect;
+			glm::mat4 transform{ 1.0f };
+			// Salt mixed into every descendant emitter seed. Equal salts intentionally
+			// reproduce equal random streams; use distinct salts for independent copies.
+			uint32_t seed{ 0 };
+		};
+
 		uint32_t version{ 1 };
 		std::string name;
+		// Covers this asset's emitter templates only. Child assets retain and enforce
+		// their own independently-authored per-template budgets.
 		uint32_t maximumParticleCount{ 0 };
 		std::vector<EmitterTemplate> emitterTemplates;
+		std::vector<ChildEffect> childEffects;
 	};
 }

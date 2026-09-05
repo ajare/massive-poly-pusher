@@ -184,6 +184,21 @@ namespace mpp::resource_parsers
 				return event;
 			}
 
+			void parseChildEffect(Data const& node, size_t index)
+			{
+				auto path = "/ParticleEffect/ChildEffects/ChildEffect[" + std::to_string(index) + "]";
+				fields(node, { "effect", "transform", "seed" }, path);
+				ParticleEffectSpecification::ChildEffect child;
+				child.effect = value(node, "effect", path, true);
+				std::array<float, 16> identity{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+				auto transform = vector<16>(node, "transform", path, identity);
+				for (int column = 0; column < 4; ++column)
+					for (int row = 0; row < 4; ++row)
+						child.transform[column][row] = transform[size_t(column * 4 + row)];
+				child.seed = integer(node, "seed", path, 0u);
+				result.specification.childEffects.push_back(std::move(child));
+			}
+
 			void parseEmitter(Data const& node, size_t index)
 			{
 				auto path = "/ParticleEffect/Emitters/Emitter[" + std::to_string(index) + "]";
@@ -327,13 +342,15 @@ namespace mpp::resource_parsers
 			void parse(Data const& data)
 			{
 				if (data.getName() != "ParticleEffect") { error("MPP-PARTICLE-001", "Expected ParticleEffect document root.", "/"); return; }
-				fields(data,{"version","name","maximumParticleCount","Emitters"},"/ParticleEffect");
+				fields(data,{"version","name","maximumParticleCount","Emitters","ChildEffects"},"/ParticleEffect");
 				result.specification.version=integer(data,"version","/ParticleEffect",1);
 				result.specification.name=value(data,"name","/ParticleEffect",true);
 				result.specification.maximumParticleCount=integer(data,"maximumParticleCount","/ParticleEffect",0,true);
 				if(result.specification.version!=1)error("MPP-PARTICLE-013","Unsupported particle effect version; expected 1.","/ParticleEffect/version");
-				if(!data.hasEntry("Emitters"))error("MPP-PARTICLE-003","Particle effect requires an Emitters list.","/ParticleEffect");
-				else { size_t index=0;for(auto const& entry:data.getEntry("Emitters")){if(entry.first!="Emitter"){error("MPP-PARTICLE-002","Emitters contains only Emitter entries.","/ParticleEffect/Emitters");continue;}parseEmitter(entry.second,index++);} }
+				if(data.hasEntry("Emitters")) { size_t index=0;for(auto const& entry:data.getEntry("Emitters")){if(entry.first!="Emitter"){error("MPP-PARTICLE-002","Emitters contains only Emitter entries.","/ParticleEffect/Emitters");continue;}parseEmitter(entry.second,index++);} }
+				if(data.hasEntry("ChildEffects")) { size_t index=0;for(auto const& entry:data.getEntry("ChildEffects")){if(entry.first!="ChildEffect"){error("MPP-PARTICLE-002","ChildEffects contains only ChildEffect entries.","/ParticleEffect/ChildEffects");continue;}parseChildEffect(entry.second,index++);} }
+				if(result.specification.emitterTemplates.empty() && result.specification.childEffects.empty())
+					error("MPP-PARTICLE-003","Particle effect requires at least one emitter template or child particle effect.","/ParticleEffect");
 
 				bool const hasSecondaryEvents = std::any_of(result.specification.emitterTemplates.begin(),
 					result.specification.emitterTemplates.end(), [](auto const& emitter)

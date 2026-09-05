@@ -23,4 +23,9 @@ namespace mpp
 		mSpecification.emitterTemplates.push_back(emitterTemplate);
 		rebuildEmitterTemplates();
 	}
+
+	void ProgrammaticParticleEffectStream::addChildEffect(ParticleEffectSpecification::ChildEffect const& childEffect)
+	{
+		mSpecification.childEffects.push_back(childEffect);
+	}
 }
