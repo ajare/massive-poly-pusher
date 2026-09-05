@@ -14,6 +14,7 @@
 #include "mpp/GLErrorCheck.h"
 #include "mpp/GpuDebugScope.h"
 #include "mpp/MppException.h"
+#include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleDrawProgram.h"
 #include "mpp/ParticleShaders.h"
 #include "mpp/ParticleSystem.h"
@@ -324,7 +325,19 @@ namespace mpp
 		mPoolAllocated = true;
 	}
 
-	ParticleEmitterHandle ParticleSystem::allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform)
+	void ParticleEffectSource::invalidateCurveLut() const
+	{
+		mCurveLut.reset();
+	}
+
+	shared_ptr<ParticleEffectCurveLut> ParticleEffectSource::getCurveLut() const
+	{
+		if (!mCurveLut) mCurveLut = ParticleEffectCurveLut::bake(getEmitterTemplates());
+		return mCurveLut;
+	}
+
+	ParticleEmitterHandle ParticleSystem::allocateEmitter(ParticleEmitterTemplate const& emitterTemplate,
+		glm::mat4 const& effectTransform, shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex)
 	{
 		uint32_t index;
 		if (!mFreeEmitterIndices.empty())
@@ -341,6 +354,7 @@ namespace mpp
 			mEmitters.emplace_back();
 			mTemplateRenderData.emplace_back();
 			mTemplateTextures.emplace_back();
+			mTemplateCurveLuts.emplace_back();
 			mTemplateTextureHandles.push_back(0u);
 		}
 
@@ -358,7 +372,9 @@ namespace mpp
 		mEmitters[index].emissionState[3] = index;
 		setTransform(mEmitters[index], effectTransform * slot.localTransform);
 		mTemplateRenderData[index] = emitterTemplate.appearance;
+		mTemplateRenderData[index].appearance[3] = float(curveLut->getRowOffset(emitterTemplateIndex));
 		mTemplateTextures[index] = emitterTemplate.albedoTexture;
+		mTemplateCurveLuts[index] = curveLut;
 		return { index, slot.generation };
 	}
 
@@ -387,15 +403,23 @@ namespace mpp
 	{
 		auto const* source = asset ? dynamic_cast<ParticleEffectSource const*>(asset.get()) : nullptr;
 		if (!source) throw invalid_argument("ParticleSystem::createEffect requires a particle effect asset.");
-		return createEffect(*source, transform);
+		auto handle = createEffect(source->getEmitterTemplates(), transform, source->getCurveLut());
+		if (auto* effect = findEffect(handle)) effect->asset = asset;
+		return handle;
 	}
 
 	ParticleEffectHandle ParticleSystem::createEffect(ParticleEffectSource const& asset, glm::mat4 const& transform)
 	{
-		return createEffect(asset.getEmitterTemplates(), transform);
+		return createEffect(asset.getEmitterTemplates(), transform, asset.getCurveLut());
 	}
 
 	ParticleEffectHandle ParticleSystem::createEffect(span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform)
+	{
+		return createEffect(emitterTemplates, transform, ParticleEffectCurveLut::bake(emitterTemplates));
+	}
+
+	ParticleEffectHandle ParticleSystem::createEffect(span<ParticleEmitterTemplate const> emitterTemplates,
+		glm::mat4 const& transform, shared_ptr<ParticleEffectCurveLut> curveLut)
 	{
 		if (emitterTemplates.empty()) return {};
 		if (emitterTemplates.size() > MaxEmitterCount - getLiveEmitterCount())
@@ -417,16 +441,20 @@ namespace mpp
 		effect.transform = transform;
 		effect.emitters.clear();
 		effect.emitters.reserve(emitterTemplates.size());
+		effect.asset.reset();
+		effect.curveLut = std::move(curveLut);
 
 		try
 		{
-			for (auto const& emitterTemplate : emitterTemplates)
-				effect.emitters.push_back(allocateEmitter(emitterTemplate, transform));
+			for (size_t templateIndex = 0; templateIndex < emitterTemplates.size(); ++templateIndex)
+				effect.emitters.push_back(allocateEmitter(emitterTemplates[templateIndex], transform,
+					effect.curveLut, templateIndex));
 		}
 		catch (...)
 		{
 			for (auto emitter : effect.emitters) reclaimEmitter(emitter.index);
 			effect.occupied = false;
+			effect.curveLut.reset();
 			mFreeEffectIndices.push_back(effectIndex);
 			throw;
 		}
@@ -563,6 +591,7 @@ namespace mpp
 		mEmitters[index].emissionState[3] = index;
 		releaseTemplateTextureHandle(index);
 		mTemplateTextures[index].reset();
+		mTemplateCurveLuts[index].reset();
 		mTemplateRenderData[index] = {};
 		mFreeEmitterIndices.push_back(index);
 	}
@@ -575,6 +604,8 @@ namespace mpp
 		effect.occupied = false;
 		effect.generation = nextGeneration(effect.generation);
 		effect.emitters.clear();
+		effect.asset.reset();
+		effect.curveLut.reset();
 		mFreeEffectIndices.push_back(index);
 	}
 
@@ -897,6 +928,7 @@ namespace mpp
 		auto* program = static_cast<ParticleDrawProgram*>(mDrawProgram.get());
 		program->use();
 		program->setUniform("SCENE_DEPTH", int32_t(0));
+		program->setUniform("PARTICLE_CURVE_LUT", int32_t(1));
 		program->setUniform("HAS_SCENE_DEPTH", int32_t(sceneDepth ? 1 : 0));
 		if (sceneDepth) sceneDepth->bindDepth(0);
 
@@ -909,11 +941,27 @@ namespace mpp
 		mIndirectCommands->bindDrawIndirect();
 
 		GL_CHECK(glBindVertexArray(mVertexArray));
-		auto const commandOffset = reinterpret_cast<void const*>(firstCommand * sizeof(ParticleDrawArraysIndirectCommand));
-		GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset,
-			static_cast<GLsizei>(commandCount), sizeof(ParticleDrawArraysIndirectCommand)));
+		// A LUT is shared by every instance of one particle effect asset. Draw
+		// adjacent commands sharing it together; switching assets binds another
+		// texture, never allocates or copies rows at runtime.
+		size_t command = firstCommand;
+		size_t const commandEnd = firstCommand + commandCount;
+		while (command < commandEnd)
+		{
+			auto const& lut = mTemplateCurveLuts[command];
+			if (!lut) THROW_MPP("A particle emitter template has no baked curve LUT.", __LINE__, __FILE__, __func__);
+			size_t groupEnd = command + 1u;
+			while (groupEnd < commandEnd && mTemplateCurveLuts[groupEnd] == lut) ++groupEnd;
+			lut->bind(1u);
+			auto const commandOffset = reinterpret_cast<void const*>(command * sizeof(ParticleDrawArraysIndirectCommand));
+			GL_CHECK(glMultiDrawArraysIndirect(GL_TRIANGLE_STRIP, commandOffset,
+				static_cast<GLsizei>(groupEnd - command), sizeof(ParticleDrawArraysIndirectCommand)));
+			command = groupEnd;
+		}
 		GL_CHECK(glBindVertexArray(0));
 		GL_CHECK(glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE1));
+		GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 		if (sceneDepth)
 		{
 			GL_CHECK(glActiveTexture(GL_TEXTURE0));

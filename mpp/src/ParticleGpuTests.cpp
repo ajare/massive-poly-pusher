@@ -2,11 +2,13 @@
 
 #include <array>
 #include <cstdint>
+#include <cmath>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "mpp/GLErrorCheck.h"
+#include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleData.h"
 #include "mpp/ParticleGpuTests.h"
 #include "mpp/ParticleSystem.h"
@@ -108,6 +110,26 @@ namespace mpp
 		std::string stage = "particle system initialization";
 		try
 		{
+			stage = "RGBA16F particle effect curve LUT";
+			ParticleEmitterTemplate hdrTemplate;
+			hdrTemplate.curves[size_t(ParticleScalarCurve::EmissiveIntensity)].keys = {
+				{ 0.0f, 1.0f }, { 1.0f, 8.5f }
+			};
+			std::array hdrTemplates{ hdrTemplate };
+			auto hdrLut = ParticleEffectCurveLut::bake(hdrTemplates);
+			hdrLut->bind(1u);
+			GLint internalFormat = 0;
+			GL_CHECK(glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat));
+			if (internalFormat != GL_RGBA16F) return fail("particle effect LUT was not allocated as RGBA16F");
+			std::vector<float> lutReadback(size_t(hdrLut->getWidth()) * hdrLut->getHeight() * 4u);
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, lutReadback.data()));
+			size_t const emissiveEndpoint =
+				(size_t(ParticleEffectCurveLut::SampleCount) + ParticleEffectCurveLut::SampleCount - 1u) * 4u + 1u;
+			if (std::abs(lutReadback[emissiveEndpoint] - 8.5f) > 0.01f)
+				return fail("emissive intensity above one did not survive the RGBA16F bake and upload");
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+			hdrLut->unload();
+
 			LaggedCounterReadback readback;
 			struct PendingSnapshot { size_t index; std::string name; };
 			std::vector<PendingSnapshot> pending;

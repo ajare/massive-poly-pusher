@@ -243,7 +243,10 @@ Scalar curves pack four per row across RGBA; gradients take a row's RGB. At
 §31 needs size-over-life and colour-over-life. §9's full set (alpha, velocity
 multiplier, drag, rotation speed, emissive intensity) is authoring, not code.
 
-**Status:** not started.
+**Status:** done. Particle effect sources cache one CPU-baked LUT, emitter-template
+rows are assigned by asset order, and the draw path binds the owning LUT while
+sampling size, alpha, colour and emissive intensity over normalized lifetime.
+The GPU suite verifies the uploaded internal format and HDR readback.
 
 **Acceptance:** an emissive curve authored above 1.0 survives the bake and drives
 bloom.

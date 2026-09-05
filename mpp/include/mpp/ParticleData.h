@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <vector>
 
 namespace mpp
 {
@@ -59,6 +60,44 @@ namespace mpp
 	inline constexpr uint32_t ParticleTexturePlaybackMask = 0xffu;
 	inline constexpr uint32_t ParticleTextureRandomStartBit = uint32_t(ParticleTextureAnimation::RandomStart);
 	inline constexpr float MaximumParticleDeltaSeconds = 0.1f;
+
+	// Scalar slots are packed generically four channels per LUT row. Keep the
+	// authored semantics here so adding a slot only changes this assignment; the
+	// baker itself is independent of the number and meaning of curves.
+	enum class ParticleScalarCurve : uint32_t
+	{
+		Size,
+		Alpha,
+		VelocityMultiplier,
+		Drag,
+		RotationSpeed,
+		EmissiveIntensity,
+		Count
+	};
+
+	struct ParticleCurveKey
+	{
+		float time{ 0.0f };
+		float value{ 1.0f };
+	};
+
+	struct ParticleCurve
+	{
+		float defaultValue{ 1.0f };
+		std::vector<ParticleCurveKey> keys;
+	};
+
+	struct ParticleGradientKey
+	{
+		float time{ 0.0f };
+		std::array<float, 3> colour{ 1.0f, 1.0f, 1.0f };
+	};
+
+	struct ParticleGradient
+	{
+		std::array<float, 3> defaultColour{ 1.0f, 1.0f, 1.0f };
+		std::vector<ParticleGradientKey> keys;
+	};
 
 	constexpr float clampParticleDeltaSeconds(float seconds) noexcept
 	{

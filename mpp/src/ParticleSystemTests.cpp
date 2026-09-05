@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "mpp/ParticleCurveLut.h"
 #include "mpp/ParticleSystem.h"
 #include "mpp/ParticleSystemTests.h"
 
@@ -34,6 +35,25 @@ namespace mpp
 			return value;
 		};
 
+		ParticleEmitterTemplate curved;
+		curved.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.5f }, { 1.0f, 2.0f } };
+		curved.curves[size_t(ParticleScalarCurve::EmissiveIntensity)].keys = { { 0.0f, 1.0f }, { 1.0f, 6.0f } };
+		curved.colourGradient.keys = { { 0.0f, { 1.0f, 0.0f, 0.0f } }, { 1.0f, { 0.0f, 0.5f, 3.0f } } };
+		array<ParticleEmitterTemplate, 2> lutTemplates{ curved, ParticleEmitterTemplate{} };
+		auto lut = ParticleEffectCurveLut::bake(lutTemplates);
+		if (!lut || lut->getWidth() != ParticleEffectCurveLut::SampleCount ||
+			lut->getHeight() != ParticleEffectCurveLut::RowsPerTemplate * lutTemplates.size())
+			return fail("particle effect LUT dimensions did not partition rows by emitter template");
+		if (lut->getRowOffset(0) != 0u || lut->getRowOffset(1) != ParticleEffectCurveLut::RowsPerTemplate)
+			return fail("particle effect LUT row offsets were allocated at runtime instead of baked by template order");
+		auto const& texels = lut->getFloatTexels();
+		auto sample = [&](uint32_t x, uint32_t row, uint32_t channel)
+			{ return texels[(size_t(row) * ParticleEffectCurveLut::SampleCount + x) * 4u + channel]; };
+		if (abs(sample(ParticleEffectCurveLut::SampleCount - 1u, 0u, 0u) - 2.0f) > 0.0001f ||
+			abs(sample(ParticleEffectCurveLut::SampleCount - 1u, 1u, 1u) - 6.0f) > 0.0001f ||
+			abs(sample(ParticleEffectCurveLut::SampleCount - 1u, 2u, 2u) - 3.0f) > 0.0001f)
+			return fail("size, emissive, or HDR colour values did not survive the particle effect LUT bake");
+
 		auto const randomOverLife = uint32_t(ParticleTextureAnimation::FrameOverLife | ParticleTextureAnimation::RandomStart);
 		auto const randomFixedRate = uint32_t(ParticleTextureAnimation::FixedRate | ParticleTextureAnimation::RandomStart);
 		if (particleFlipbookFrame(8u, uint32_t(ParticleTextureAnimation::FrameOverLife), 0.5f, 2.0f, 0.0f, 0u) != 2u ||
@@ -42,7 +62,30 @@ namespace mpp
 			particleFlipbookFrame(8u, randomFixedRate, 1.25f, 2.0f, 4.0f, 11u) != 0u)
 			return fail("flipbook playback or combinable random start selected the wrong frame");
 
+		class TestParticleEffect final : public ParticleEffectSource
+		{
+			array<ParticleEmitterTemplate, 2> mTemplates;
+		public:
+			explicit TestParticleEffect(array<ParticleEmitterTemplate, 2> templates) : mTemplates(std::move(templates)) {}
+			span<ParticleEmitterTemplate const> getEmitterTemplates() const override { return mTemplates; }
+		};
 		ParticleSystem system(nullptr, nullptr);
+		weak_ptr<ParticleEffectCurveLut> assetLut;
+		ParticleEffectHandle curvedEffect;
+		{
+			TestParticleEffect source(lutTemplates);
+			if (source.getCurveLut() != source.getCurveLut())
+				return fail("a particle effect asset baked more than one LUT");
+			assetLut = source.getCurveLut();
+			curvedEffect = system.createEffect(source);
+		}
+		if (assetLut.expired()) return fail("curve LUT died while its particle effect instance was alive");
+		auto curvedEmitter = system.getEmitter(curvedEffect, 1);
+		if (system.mTemplateRenderData[curvedEmitter.index].appearance[3] !=
+			float(ParticleEffectCurveLut::RowsPerTemplate))
+			return fail("baked LUT row offset did not reach TemplateRenderData");
+		system.destroyEffect(curvedEffect);
+		if (!assetLut.expired()) return fail("curve LUT outlived both its asset and particle effect instance");
 
 		// Parent x local transform composition and per-emitter addressing.
 		array<ParticleEmitterTemplate, 2> transforms{ burst(1.0f), burst(1.0f) };

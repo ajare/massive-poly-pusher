@@ -835,6 +835,7 @@ layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleReco
 layout(std430, binding = 1) restrict readonly buffer ParticleRenderIndices { uint RENDER_INDICES[]; };
 layout(std430, binding = 5) restrict readonly buffer ParticleEmitters { EmitterSimData EMITTERS[]; };
 layout(std430, binding = 6) restrict readonly buffer ParticleTemplates { TemplateRenderData TEMPLATES[]; };
+uniform sampler2D PARTICLE_CURVE_LUT;
 
 out vec2 PARTICLE_UV;
 out vec2 PARTICLE_CORNER;
@@ -847,6 +848,13 @@ vec3 safeNormal(vec3 value, vec3 fallback)
 {
     float magnitudeSquared = dot(value, value);
     return magnitudeSquared > 1e-10 ? value * inversesqrt(magnitudeSquared) : fallback;
+}
+
+vec4 sampleCurveRow(float normalizedLife, float row)
+{
+    vec2 dimensions = vec2(textureSize(PARTICLE_CURVE_LUT, 0));
+    vec2 texel = vec2(clamp(normalizedLife, 0.0, 1.0) * (dimensions.x - 1.0) + 0.5, row + 0.5);
+    return texture(PARTICLE_CURVE_LUT, texel / dimensions);
 }
 
 void billboardBasis(ParticleRecord particle, EmitterSimData emitter, uint mode,
@@ -924,12 +932,19 @@ void main()
     vec3 screenUp = safeNormal(inverseViewRotation[1], vec3(0.0, 1.0, 0.0));
     vec3 viewForward = safeNormal(-inverseViewRotation[2], vec3(0.0, 0.0, -1.0));
     vec3 cameraPosition = inverseViewRotation * -VIEW_MATRIX[3].xyz;
+    float normalizedLife = particle.velocityLifetime.w > 0.0 ?
+        clamp(particle.positionAge.w / particle.velocityLifetime.w, 0.0, 1.0) : 0.0;
+    float rowOffset = appearance.appearance.w;
+    vec4 scalarCurves0 = sampleCurveRow(normalizedLife, rowOffset);
+    vec4 scalarCurves1 = sampleCurveRow(normalizedLife, rowOffset + 1.0);
+    vec3 colourOverLife = sampleCurveRow(normalizedLife, rowOffset + 2.0).rgb;
+
     vec3 right;
     vec3 up;
     billboardBasis(particle, emitter, appearance.modes.z, cameraPosition,
         screenRight, screenUp, viewForward, right, up);
     vec3 worldPosition = expandParticleQuad(particle.positionAge.xyz, right, up,
-        corner, particle.baseSize, particle.rotation);
+        corner, particle.baseSize * scalarCurves0.x, particle.rotation);
 
     uint columns = max(1u, appearance.textureAndAtlas.z);
     uint rows = max(1u, appearance.textureAndAtlas.w);
@@ -938,7 +953,8 @@ void main()
     PARTICLE_UV = (atlasCell + corner) / vec2(float(columns), float(rows));
     PARTICLE_CORNER = corner;
     PARTICLE_TINT = unpackUnorm4x8(particle.packedColour) * appearance.tintAndAlpha;
-    PARTICLE_TINT.rgb *= appearance.appearance.x * emitter.parameterMultipliers1.y;
+    PARTICLE_TINT.rgb *= colourOverLife * appearance.appearance.x * emitter.parameterMultipliers1.y * scalarCurves1.y;
+    PARTICLE_TINT.a *= scalarCurves0.y * emitter.parameterMultipliers1.x;
     PARTICLE_VIEW_DEPTH = -(VIEW_MATRIX * vec4(particle.positionAge.xyz, 1.0)).z;
     PARTICLE_TEXTURE_HANDLE = appearance.textureAndAtlas.xy;
     PARTICLE_SOFT_DISTANCE = max(0.0, appearance.appearance.y);

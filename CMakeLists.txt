@@ -314,6 +314,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/ModelStream.cpp
     mpp/src/MppException.cpp
     mpp/src/MppModelStream.cpp
+    mpp/src/ParticleCurveLut.cpp
     mpp/src/ParticleDrawProgram.cpp
     mpp/src/ParticleGpuTests.cpp
     mpp/src/ParticleSystem.cpp

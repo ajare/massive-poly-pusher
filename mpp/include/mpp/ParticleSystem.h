@@ -21,6 +21,7 @@ namespace mpp
 	class ResourceManager;
 	class ShaderStorageBuffer;
 	class RenderTexture;
+	class ParticleEffectCurveLut;
 	namespace detail { class PersistentMappedBuffer; }
 
 	enum class ParticleParameter : uint32_t
@@ -61,6 +62,8 @@ namespace mpp
 		// The atlas resource belongs to the emitter template. ParticleSystem turns
 		// it into the bindless handle stored in appearance at upload time.
 		ResourcePtr albedoTexture;
+		std::array<ParticleCurve, size_t(ParticleScalarCurve::Count)> curves{};
+		ParticleGradient colourGradient{};
 		glm::mat4 localTransform{ 1.0f };
 	};
 
@@ -69,9 +72,18 @@ namespace mpp
 	// programmatic effects without taking ownership of parsing or authoring.
 	class _MPPAPI ParticleEffectSource
 	{
+		mutable std::shared_ptr<ParticleEffectCurveLut> mCurveLut;
+
+	protected:
+		// Asset streams call this if authored templates are replaced before reload.
+		void invalidateCurveLut() const;
+
 	public:
 		virtual ~ParticleEffectSource() = default;
 		virtual std::span<ParticleEmitterTemplate const> getEmitterTemplates() const = 0;
+		// The first request performs the load-time CPU bake. The strong cache makes
+		// one LUT belong to this reusable particle effect asset.
+		std::shared_ptr<ParticleEffectCurveLut> getCurveLut() const;
 	};
 
 	// The GPU-driven particle system. The CPU owns effects, generational emitter
@@ -108,6 +120,7 @@ namespace mpp
 		std::vector<EmitterSimData> mEmitters;
 		std::vector<TemplateRenderData> mTemplateRenderData;
 		std::vector<ResourcePtr> mTemplateTextures;
+		std::vector<std::shared_ptr<ParticleEffectCurveLut>> mTemplateCurveLuts;
 		std::vector<uint64_t> mTemplateTextureHandles;
 		std::map<uint64_t, uint32_t> mResidentTextureHandles;
 		std::vector<ParticleSpawnCommand> mSpawnCommands;
@@ -130,6 +143,8 @@ namespace mpp
 			bool occupied{ false };
 			glm::mat4 transform{ 1.0f };
 			std::vector<ParticleEmitterHandle> emitters;
+			ResourcePtr asset;
+			std::shared_ptr<ParticleEffectCurveLut> curveLut;
 		};
 		std::vector<EmitterSlot> mEmitterSlots;
 		std::vector<uint32_t> mFreeEmitterIndices;
@@ -159,7 +174,10 @@ namespace mpp
 		void dispatchSimulation(float dt);
 		void dispatchCompaction();
 		void disableWithWarning(std::string const& reason);
-		ParticleEmitterHandle allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform);
+		ParticleEmitterHandle allocateEmitter(ParticleEmitterTemplate const& emitterTemplate, glm::mat4 const& effectTransform,
+			std::shared_ptr<ParticleEffectCurveLut> const& curveLut, size_t emitterTemplateIndex);
+		ParticleEffectHandle createEffect(std::span<ParticleEmitterTemplate const> emitterTemplates, glm::mat4 const& transform,
+			std::shared_ptr<ParticleEffectCurveLut> curveLut);
 		EmitterSlot* findEmitter(ParticleEmitterHandle handle);
 		EmitterSlot const* findEmitter(ParticleEmitterHandle handle) const;
 		EffectSlot* findEffect(ParticleEffectHandle handle);
