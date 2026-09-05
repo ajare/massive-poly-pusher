@@ -126,7 +126,7 @@ namespace mpp
 
 		ResourcePtr mPoolInitialiseProgram, mStatisticsPrepareProgram, mSpawnProgram, mSimulationPrepareProgram, mSimulationProgram;
 		ResourcePtr mCompactionPrepareProgram, mCompactionCountProgram, mCompactionPrefixProgram, mCompactionScatterProgram;
-		ResourcePtr mDrawProgram;
+		ResourcePtr mDrawProgram, mWeightedOitDrawProgram;
 
 		std::unique_ptr<ShaderStorageBuffer> mParticlePool;
 		std::unique_ptr<ShaderStorageBuffer> mFreeIndices;

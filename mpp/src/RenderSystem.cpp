@@ -27,6 +27,7 @@
 
 #include "mpp/Config.h"
 #include "mpp/ParticleSystem.h"
+#include "mpp/ParticleShaders.h"
 #include "mpp/RenderSystem.h"
 #include "mpp/Camera.h"
 #include "mpp/ResourceManager.h"
@@ -927,6 +928,10 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
+		mParticleWeightedOitResolveProgram = createBloomProgram("__mpp_particle_weighted_oit_resolve__", ParticleWeightedOitResolveFragmentShader);
+		// Keep particle GPU work lazy: graphs without a particle pass never compile
+		// the resolve program.
+		addCoreResource(mParticleWeightedOitResolveProgram, false);
 		mSsaoRawProgram = createBloomProgram("__mpp_p2d_ssao_raw__", FragmentShaderSsaoRawTemplate);
 		addCoreResource(mSsaoRawProgram, true);
 		mGtaoRawProgram = createBloomProgram("__mpp_p2d_gtao_raw__", FragmentShaderGtaoRawTemplate);
@@ -3987,6 +3992,23 @@ namespace mpp
 		setBlendState(false);
 		mRenderInfo.batchCount++;
 		mRenderInfo.fullscreenQuads++;
+	}
+
+	void RenderSystem::renderParticleWeightedOitResolve(Texture* scene, Texture* accumulation, Texture* opticalDepth, Texture* bloom)
+	{
+		if (!scene || !accumulation || !opticalDepth)
+			THROW_MPP("Weighted blended OIT resolve requires scene, accumulation, and optical-depth textures.", __LINE__, __FILE__, __func__);
+		mParticleWeightedOitResolveProgram->load();
+		UniformCollection parameters;
+		parameters.setUniform("HAS_BLOOM", int32_t(bloom ? 1 : 0));
+		std::vector<std::pair<std::string, Texture*>> samplers{
+			{ "SCENE", scene }, { "ACCUMULATION", accumulation }, { "OPTICAL_DEPTH", opticalDepth }
+		};
+		// Every declared sampler has a fixed program unit. Bind a harmless valid
+		// texture when the optional MRT bloom input is absent; HAS_BLOOM prevents it
+		// from contributing to the result.
+		samplers.push_back({ "BLOOM", bloom ? bloom : scene });
+		renderGraphFullscreen(mParticleWeightedOitResolveProgram, samplers, parameters);
 	}
 
 	void RenderSystem::renderTextureDiagnostic(RenderTexture* source, RenderTargetPtr const& destination, TextureDiagnosticOptions const& options)

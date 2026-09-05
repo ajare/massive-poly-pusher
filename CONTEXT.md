@@ -45,8 +45,8 @@ Material: it owns no Program and is not a Resource.
 _Avoid_: Particle material
 
 **Blend class**:
-The transparency mode a particle appearance composites with — additive or alpha.
-Determines which render pass draws it.
+The transparency strategy a particle appearance composites with — additive,
+alpha, or weighted blended OIT. Determines which render pass draws it.
 _Avoid_: Blend mode (that is the engine-wide `BlendMode` enum)
 
 ### Rendering

@@ -398,6 +398,31 @@ namespace mpp
 			}
 		};
 
+		class ParticleWeightedOitPass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto const& frame = context.getFrame();
+				if (frame.pipelineOptions && !frame.pipelineOptions->graphPasses.particles) return;
+				auto* depth = dynamic_cast<RenderTexture*>(input(context, "DEPTH"));
+				frame.renderSystem->renderParticles(ParticleBlendClass::WeightedOit, depth);
+			}
+		};
+
+		class ParticleWeightedOitResolvePass final : public RenderGraphScenePass
+		{
+		public:
+			void execute(RenderGraphExecutionContext const& context) override
+			{
+				auto* scene = input(context, "SCENE");
+				auto* accumulation = input(context, "ACCUMULATION");
+				auto* opticalDepth = input(context, "OPTICAL_DEPTH");
+				auto* bloom = input(context, "BLOOM");
+				context.getFrame().renderSystem->renderParticleWeightedOitResolve(scene, accumulation, opticalDepth, bloom);
+			}
+		};
+
 		class WaterScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -592,6 +617,21 @@ namespace mpp
 		particleScene.outputs.push_back({ "Emissive MRT", false, false, colourFormats() });
 		particleScene.parameters.push_back({ "BLEND_MODE", program::GLSLType::Int, 1, 1, true, true, 0.0, 1.0, "additive=0, alpha=1" });
 		registry.registerScenePassFactory("MPP.ParticleScene", [] { return std::make_unique<ParticleScenePass>(); }, particleScene);
+
+		auto particleOit = metadata("Particle Weighted OIT", "Scene", GraphPassType::Scene);
+		particleOit.inputs.push_back({ "Scene Depth", "DEPTH", false, depthFormats(), "HardParticles" });
+		particleOit.outputs.push_back({ "Weighted Accumulation", false, true, { GraphImageFormat::Rgba16f, GraphImageFormat::Rgba32f } });
+		particleOit.outputs.push_back({ "Optical Depth", false, true, { GraphImageFormat::R16f, GraphImageFormat::R32f } });
+		registry.registerScenePassFactory("MPP.ParticleWeightedOit", [] { return std::make_unique<ParticleWeightedOitPass>(); }, particleOit);
+
+		auto particleOitResolve = metadata("Particle Weighted OIT Resolve", "Scene", GraphPassType::Fullscreen);
+		particleOitResolve.inputs.push_back({ "Scene", "SCENE", true, colourFormats(), {} });
+		particleOitResolve.inputs.push_back({ "Weighted Accumulation", "ACCUMULATION", true, { GraphImageFormat::Rgba16f, GraphImageFormat::Rgba32f }, {} });
+		particleOitResolve.inputs.push_back({ "Optical Depth", "OPTICAL_DEPTH", true, { GraphImageFormat::R16f, GraphImageFormat::R32f }, {} });
+		particleOitResolve.inputs.push_back({ "Emissive MRT", "BLOOM", false, colourFormats(), {} });
+		particleOitResolve.outputs.push_back({ "Composited Scene", false, true, colourFormats() });
+		particleOitResolve.outputs.push_back({ "Composited Emissive MRT", false, false, colourFormats() });
+		registry.registerScenePassFactory("MPP.ParticleWeightedOitResolve", [] { return std::make_unique<ParticleWeightedOitResolvePass>(); }, particleOitResolve);
 
 		auto customFullscreen = metadata("Custom Fullscreen", "Custom", GraphPassType::Fullscreen);
 		customFullscreen.acceptsProgram = true;

@@ -179,7 +179,7 @@ void ParticleScene::createDemoEffect()
 	flipbook.simulation.emissionRateAndPadding[0] = 35.0f;
 	flipbook.appearance.textureAndAtlas = { 0u, 0u, 2u, 2u };
 	flipbook.appearance.appearance[2] = 6.0f;
-	flipbook.appearance.modes = { 4u, uint32_t(mpp::ParticleTextureAnimation::FixedRate), uint32_t(mpp::ParticleBillboardMode::CameraFacing), uint32_t(mpp::ParticleBlendClass::Alpha) };
+	flipbook.appearance.modes = { 4u, uint32_t(mpp::ParticleTextureAnimation::FixedRate), uint32_t(mpp::ParticleBillboardMode::CameraFacing), uint32_t(mpp::ParticleBlendClass::WeightedOit) };
 	specification.emitterTemplates.push_back({ "alpha-flipbook-sphere", flipbook, atlas->getName() });
 
 	auto effectStream = std::make_shared<mpp::ProgrammaticParticleEffectStream>(getResourceManager());
@@ -200,7 +200,7 @@ void ParticleScene::enableStressMode()
 	{
 		uint32_t const budget = index + 1u == emitters.size() ? capacity - assigned : capacity / uint32_t(emitters.size());
 		assigned += budget;
-		emitters[index] = emitterTemplate(mpp::ParticleSpawnShape::Point, mpp::ParticleBlendClass::Alpha,
+		emitters[index] = emitterTemplate(mpp::ParticleSpawnShape::Point, mpp::ParticleBlendClass::WeightedOit,
 			{ (float(index) - 1.0f) * 2.0f, 0.1f, -1.0f }, budget);
 		emitters[index].simulation.emissionState = { 1u, 1u, capacity, 0u };
 		emitters[index].simulation.lifetimeSizeRanges = { 30.0f, 30.0f, 0.025f, 0.045f };

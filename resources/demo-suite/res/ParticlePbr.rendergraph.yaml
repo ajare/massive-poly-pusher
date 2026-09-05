@@ -2,13 +2,19 @@ RenderGraph:
   Images:
     - name: Presentation
       format: RGBA8
-      usage: colourAttachment,presentation
+      usage: colourAttachment,sampled,presentation
       import: screen
       external: true
       transient: false
     - name: SceneDepth
       format: DEPTH24
       usage: depthAttachment,sampled
+    - name: ParticleOitAccumulation
+      format: RGBA16F
+      usage: colourAttachment,sampled
+    - name: ParticleOitOpticalDepth
+      format: R16F
+      usage: colourAttachment,sampled
   Passes:
     - name: PbrScene
       type: scene
@@ -23,6 +29,46 @@ RenderGraph:
         load: clear
         store: store
         clear: 1
+    - name: ParticleWeightedOit
+      type: scene
+      factory: MPP.ParticleWeightedOit
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Colours:
+        - image: ParticleOitAccumulation
+          load: clear
+          store: store
+          clear: 0 0 0 0
+        - image: ParticleOitOpticalDepth
+          load: clear
+          store: store
+          clear: 0 0 0 0
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: one
+        destinationColourBlend: one
+        sourceAlphaBlend: one
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleWeightedOitResolve
+      type: fullscreen
+      factory: MPP.ParticleWeightedOitResolve
+      Inputs:
+        - sampler: SCENE
+          image: Presentation
+        - sampler: ACCUMULATION
+          image: ParticleOitAccumulation
+        - sampler: OPTICAL_DEPTH
+          image: ParticleOitOpticalDepth
+      Colours:
+        - image: Presentation
+          load: dontCare
+          store: store
     - name: ParticleAlpha
       type: scene
       factory: MPP.ParticleScene

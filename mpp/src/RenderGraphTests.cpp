@@ -30,14 +30,20 @@ namespace mpp
 		auto const particleVertex = std::string(ParticleDrawVertexShader);
 		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED", "BILLBOARD_VELOCITY_STRETCHED" })
 			if (particleVertex.find(mode) == std::string::npos) return fail("particle shader lost a required billboard mode");
+		auto const particleFragment = std::string(ParticleDrawFragmentShader);
+		auto const oitResolve = std::string(ParticleWeightedOitResolveFragmentShader);
 		if (particleVertex.find("particleHalfExtents") == std::string::npos ||
 			particleVertex.find("length(projectedVelocity)") == std::string::npos ||
 			particleVertex.find("expandParticleQuad") == std::string::npos ||
 			particleVertex.find("ANIMATION_FRAME_OVER_LIFE") == std::string::npos ||
 			particleVertex.find("ANIMATION_FIXED_RATE") == std::string::npos ||
 			particleVertex.find("ANIMATION_RANDOM_START") == std::string::npos ||
-			std::string(ParticleDrawFragmentShader).find("linearViewDepth(sceneDepth) - PARTICLE_VIEW_DEPTH") == std::string::npos)
-			return fail("particle shader lost shared quad expansion, flipbook playback, or soft-depth fading");
+			particleFragment.find("linearViewDepth(sceneDepth) - PARTICLE_VIEW_DEPTH") == std::string::npos ||
+			particleFragment.find("MPP_PARTICLE_WEIGHTED_OIT") == std::string::npos ||
+			particleFragment.find("-log(max(1.0 - alpha") == std::string::npos ||
+			oitResolve.find("exp(-opticalDepth)") == std::string::npos ||
+			oitResolve.find("accumulation.rgb / max(accumulation.a") == std::string::npos)
+			return fail("particle shader lost billboard expansion, animation, soft depth, or weighted blended OIT");
 		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
 		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
 		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
@@ -442,6 +448,34 @@ namespace mpp
 		if (!particleMetadata || particleMetadata->inputs.size() != 1 || particleMetadata->inputs.front().required ||
 			particleMetadata->inputs.front().sampler != "DEPTH" || particleMetadata->inputs.front().fallbackId != "HardParticles")
 			return fail("particle scene metadata lost its optional named depth fallback");
+		auto const* oitMetadata = registry.findMetadata("MPP.ParticleWeightedOit");
+		auto const* oitResolveMetadata = registry.findMetadata("MPP.ParticleWeightedOitResolve");
+		if (!oitMetadata || oitMetadata->inputs.size() != 1 || oitMetadata->outputs.size() != 2 ||
+			oitMetadata->outputs[0].acceptedFormats != std::vector<GraphImageFormat>{ GraphImageFormat::Rgba16f, GraphImageFormat::Rgba32f } ||
+			oitMetadata->outputs[1].acceptedFormats != std::vector<GraphImageFormat>{ GraphImageFormat::R16f, GraphImageFormat::R32f } ||
+			!oitResolveMetadata || oitResolveMetadata->inputs.size() != 4 || oitResolveMetadata->outputs.size() != 2)
+			return fail("weighted blended OIT accumulation/resolve authoring metadata was not registered");
+		RenderGraph oitGraph;
+		GraphImageDesc oitSceneDesc = colour; oitSceneDesc.external = true; oitSceneDesc.transient = false;
+		auto oitScene = oitGraph.createImage("OitScene", oitSceneDesc);
+		GraphImageDesc accumulationDesc = colour; accumulationDesc.format = GraphImageFormat::Rgba16f;
+		GraphImageDesc opticalDepthDesc = colour; opticalDepthDesc.format = GraphImageFormat::R16f;
+		auto oitAccumulation = oitGraph.createImage("OitAccumulation", accumulationDesc);
+		auto oitOpticalDepth = oitGraph.createImage("OitOpticalDepth", opticalDepthDesc);
+		auto oitComposite = oitGraph.createImage("OitComposite", colour);
+		auto oitPass = oitGraph.addPass("ParticleWeightedOit", GraphPassType::Scene);
+		oitGraph.setPassCallbackFactory(oitPass, "MPP.ParticleWeightedOit");
+		oitAccumulation = oitGraph.writeColour(oitPass, oitAccumulation, GraphLoadOp::Clear);
+		oitOpticalDepth = oitGraph.writeColour(oitPass, oitOpticalDepth, GraphLoadOp::Clear);
+		auto oitResolvePass = oitGraph.addPass("ParticleWeightedOitResolve", GraphPassType::Fullscreen);
+		oitGraph.setPassCallbackFactory(oitResolvePass, "MPP.ParticleWeightedOitResolve");
+		oitGraph.bindSampler(oitResolvePass, "SCENE", oitScene);
+		oitGraph.bindSampler(oitResolvePass, "ACCUMULATION", oitAccumulation);
+		oitGraph.bindSampler(oitResolvePass, "OPTICAL_DEPTH", oitOpticalDepth);
+		oitGraph.writeColour(oitResolvePass, oitComposite);
+		if (registry.validate(oitGraph).hasErrors() || !oitGraph.compile().valid)
+			return fail("valid weighted blended OIT accumulation/resolve graph was rejected");
+
 		RenderGraph particleGraph;
 		auto particleColour = particleGraph.createImage("ParticleColour", colour);
 		auto particlePass = particleGraph.addPass("ParticleAlpha", GraphPassType::Scene);

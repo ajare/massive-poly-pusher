@@ -104,7 +104,8 @@ namespace mpp
 			for (uint32_t id = 0; id < graph.getPassCount(); ++id)
 			{
 				auto const info = graph.getPassInfo({ id });
-				if (info.enabled && info.callbackFactory == "MPP.ParticleScene") return true;
+				if (info.enabled && (info.callbackFactory == "MPP.ParticleScene" ||
+					info.callbackFactory == "MPP.ParticleWeightedOit")) return true;
 			}
 			return false;
 		}
@@ -837,9 +838,45 @@ namespace mpp
 
 		if (mOptions.generatedParticles && mOptions.graphPasses.particles)
 		{
-			// Each blend class is an authored graph pass with its own complete raster
-			// state. The callback only uses BLEND_MODE to select the matching contiguous
-			// indirect-command span; compositing remains entirely graph-authored.
+			// Weighted OIT is an authored accumulation pass plus an authored resolve.
+			// Optical depth is additive (-log(revealage)), so both accumulation targets
+			// share one ordinary GraphRasterState and remain order-independent.
+			auto oitAccumulation = graph.createImage("ParticleOitAccumulation", makeColour(GraphImageFormat::Rgba16f));
+			auto oitOpticalDepth = graph.createImage("ParticleOitOpticalDepth", makeColour(GraphImageFormat::R16f));
+			auto oitPass = graph.addPass("ParticleWeightedOit", GraphPassType::Scene);
+			graph.setPassCallbackFactory(oitPass, "MPP.ParticleWeightedOit");
+			graph.bindSampler(oitPass, "DEPTH", sceneDepth);
+			oitAccumulation = graph.writeColour(oitPass, oitAccumulation, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+			oitOpticalDepth = graph.writeColour(oitPass, oitOpticalDepth, GraphLoadOp::Clear, GraphStoreOp::Store, glm::vec4(0.0f));
+			GraphRasterState oitRaster;
+			oitRaster.explicitState = true;
+			oitRaster.depthTest = false;
+			oitRaster.depthWrite = false;
+			oitRaster.cullMode = GraphCullMode::None;
+			oitRaster.blend = true;
+			oitRaster.sourceColourBlend = GraphBlendFactor::One;
+			oitRaster.destinationColourBlend = GraphBlendFactor::One;
+			oitRaster.sourceAlphaBlend = GraphBlendFactor::One;
+			oitRaster.destinationAlphaBlend = GraphBlendFactor::One;
+			oitRaster.multisample = false;
+			graph.setPassRasterState(oitPass, oitRaster);
+
+			auto oitResolve = graph.addPass("ParticleWeightedOitResolve", GraphPassType::Fullscreen);
+			graph.setPassCallbackFactory(oitResolve, "MPP.ParticleWeightedOitResolve");
+			graph.bindSampler(oitResolve, "SCENE", presentationTexture);
+			graph.bindSampler(oitResolve, "ACCUMULATION", oitAccumulation);
+			graph.bindSampler(oitResolve, "OPTICAL_DEPTH", oitOpticalDepth);
+			if (useMrtEmissiveMask) graph.bindSampler(oitResolve, "BLOOM", bloomMask);
+			auto oitComposite = graph.createImage("ParticleOitComposite", makeColour(pbr ? GraphImageFormat::Rgba16f : GraphImageFormat::Rgba8));
+			presentationTexture = graph.writeColour(oitResolve, oitComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			if (useMrtEmissiveMask)
+			{
+				auto oitBloomComposite = graph.createImage("ParticleOitBloomComposite", makeColour(GraphImageFormat::Rgba16f));
+				bloomMask = graph.writeColour(oitResolve, oitBloomComposite, GraphLoadOp::DontCare, GraphStoreOp::Store);
+			}
+
+			// Conventional classes remain separate authored passes with complete raster
+			// state. BLEND_MODE only selects their matching indirect-command span.
 			auto addParticlePass = [&](std::string const& name, ParticleBlendClass blendClass,
 				GraphBlendFactor destinationColour, GraphBlendFactor sourceAlpha)
 			{

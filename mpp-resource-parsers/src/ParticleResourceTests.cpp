@@ -47,6 +47,12 @@ namespace mpp::resource_parsers
 		};
 		for (size_t index = 0; index < billboards.size(); ++index)
 			if (billboards[index] != index) return fail("particle billboard-mode wire values changed");
+		std::array<uint32_t, 3> const blendClasses{
+			uint32_t(ParticleBlendClass::Additive), uint32_t(ParticleBlendClass::Alpha),
+			uint32_t(ParticleBlendClass::WeightedOit)
+		};
+		for (size_t index = 0; index < blendClasses.size(); ++index)
+			if (blendClasses[index] != index) return fail("particle blend-class wire values changed");
 
 		ParticleEmitterTemplate emitter;
 		if (emitter.simulation.emissionState[1] != 1u ||
@@ -79,7 +85,7 @@ namespace mpp::resource_parsers
 		simulation.gravityAndDrag = { 0.0f, -9.81f, 0.0f, 0.2f };
 		authored.value.appearance.textureAndAtlas = { 0u, 0u, 4u, 4u };
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
-			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::Alpha) };
+			uint32_t(ParticleBillboardMode::VelocityStretched), uint32_t(ParticleBlendClass::WeightedOit) };
 		authored.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.25f }, { 1.0f, 2.0f } };
 		authored.value.colourGradient.keys = { { 0.0f, { 1.0f, 0.5f, 0.1f } }, { 1.0f, { 0.1f, 0.2f, 0.3f } } };
 		specification.emitterTemplates.push_back(authored);

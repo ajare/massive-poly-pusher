@@ -449,9 +449,17 @@ appearance works unchanged in both the PBR and legacy graphs.
 
 One authored pass instance **per blend class**, each with its own graph-authored
 `GraphRasterState`, selected by a `BLEND_MODE` pass parameter. Premultiplied
-alpha, and later weighted-blended OIT, then become new authored passes rather
-than new branches in a widening C++ switch, and pass ordering relative to water
-or distortion becomes an authoring decision rather than a hardcoded one.
+alpha and other conventional classes become authored `MPP.ParticleScene`
+instances rather than branches in a widening C++ switch, and pass ordering
+relative to water or distortion becomes an authoring decision rather than a
+hardcoded one.
+
+Weighted blended OIT follows that same rule with the dedicated authored
+`MPP.ParticleWeightedOit` pass and `MPP.ParticleWeightedOitResolve`. The draw
+writes weighted colour/alpha and additive optical depth to RGBA16F/R16F targets;
+using `-log(revealage)` makes both attachments use the same one/one raster blend
+while preserving the usual order-independent revealage product. The resolve
+composites those targets over scene colour and, when present, the emissive MRT.
 
 Depth state is **not** the author's choice: the pass forces depth writes off,
 because transparent geometry must not write depth and because the soft-particle
@@ -472,10 +480,11 @@ to that input. Omitting the input entirely yields hard-edged particles rather
 than a failed frame, which is what lets a graph without a depth image still run
 particles.
 
-**Status:** done. `MPP.ParticleScene` draws GPU-compacted, per-template ranges
-as attribute-less instanced quads through one `glMultiDrawArraysIndirect` per
-authored blend-class pass. Its shared expansion supports all five initial
-billboard bases, template-owned bindless atlases and all initial flipbook modes.
+**Status:** done. `MPP.ParticleScene` and `MPP.ParticleWeightedOit` draw
+GPU-compacted, per-template ranges as attribute-less instanced quads through one
+`glMultiDrawArraysIndirect` per authored blend-class pass. Its shared expansion
+supports all billboard bases, template-owned bindless atlases and all initial
+flipbook modes.
 The optional named `DEPTH` input enables soft fading and falls back to hard
 particles when omitted; particle draws always force depth writes off.
 

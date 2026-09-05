@@ -93,8 +93,9 @@ namespace mpp
 				diagnostics.error("MPP-PASS-003", "Pass '" + pass.name + "' specifies a program that its factory does not accept.", {}, pass.name);
 			if (!metadata->supportsRasterState && pass.rasterState.explicitState)
 				diagnostics.error("MPP-PASS-004", "Pass '" + pass.name + "' specifies unsupported raster state.", {}, pass.name);
-			if (pass.callbackFactory == "MPP.ParticleScene" && pass.rasterState.explicitState && pass.rasterState.depthWrite)
-				diagnostics.warning("MPP-PASS-014", "Particle pass '" + pass.name + "' requests depth writes, but MPP.ParticleScene always forces them off.", {}, pass.name);
+			if ((pass.callbackFactory == "MPP.ParticleScene" || pass.callbackFactory == "MPP.ParticleWeightedOit") &&
+				pass.rasterState.explicitState && pass.rasterState.depthWrite)
+				diagnostics.warning("MPP-PASS-014", "Particle pass '" + pass.name + "' requests depth writes, but particle draws always force them off.", {}, pass.name);
 
 			size_t requiredInputs = 0;
 			for (auto const& input : metadata->inputs) if (input.required) ++requiredInputs;

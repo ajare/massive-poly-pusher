@@ -55,7 +55,8 @@ namespace mpp
 	enum class ParticleBlendClass : uint32_t
 	{
 		Additive,
-		Alpha
+		Alpha,
+		WeightedOit
 	};
 
 	inline constexpr uint32_t ParticleTexturePlaybackMask = 0xffu;

@@ -1902,9 +1902,9 @@ void main()
 				particleScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 1.0f));
 				auto particleCamera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 6.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
 
-				// One template per billboard mode plus an alpha-class template exercises
-				// both authored command spans. The burst is submitted by the first graph.
-				std::array<ParticleEmitterTemplate, 7> particleTemplates{};
+				// One template per billboard mode plus alpha and weighted-OIT templates
+				// exercises every authored command span. The burst is submitted by the first graph.
+				std::array<ParticleEmitterTemplate, 8> particleTemplates{};
 				for (uint32_t index = 0; index < particleTemplates.size(); ++index)
 				{
 					auto& emitter = particleTemplates[index];
@@ -1912,11 +1912,11 @@ void main()
 					emitter.simulation.shapeSeedModulesBudget[3] = 1u;
 					emitter.simulation.lifetimeSizeRanges = { 10.0f, 10.0f, 0.35f, 0.35f };
 					emitter.simulation.initialVelocityMin = emitter.simulation.initialVelocityMax = { 0.0f, 1.0f, 0.0f, 0.0f };
-					emitter.localTransform = glm::translate(glm::mat4(1.0f), { (float(index) - 3.0f) * 0.55f, 0.0f, 0.0f });
+					emitter.localTransform = glm::translate(glm::mat4(1.0f), { (float(index) - 3.5f) * 0.5f, 0.0f, 0.0f });
 					emitter.appearance.appearance[1] = 1.0f;
 					emitter.appearance.modes[2] = std::min(index, uint32_t(ParticleBillboardMode::VelocityStretched));
-					emitter.appearance.modes[3] = index == particleTemplates.size() - 1u
-						? uint32_t(ParticleBlendClass::Alpha) : uint32_t(ParticleBlendClass::Additive);
+					emitter.appearance.modes[3] = index < 6u ? uint32_t(ParticleBlendClass::Additive) :
+						(index == 6u ? uint32_t(ParticleBlendClass::Alpha) : uint32_t(ParticleBlendClass::WeightedOit));
 				}
 				auto particleEffect = renderSystem->getParticleSystem().createEffect(particleTemplates);
 
@@ -1925,7 +1925,8 @@ void main()
 				auto drewParticles = [](std::vector<GraphImageCapture> const& captures)
 				{
 					for (auto const& capture : captures)
-						if ((capture.passName == "ParticleAlpha" || capture.passName == "ParticleAdditive" || capture.passName == "Particles") && !capture.depth)
+						if ((capture.passName == "ParticleAlpha" || capture.passName == "ParticleAdditive" ||
+							capture.passName == "ParticleWeightedOit" || capture.passName == "Particles") && !capture.depth)
 							for (auto value : capture.pixels) if (value) return true;
 					return false;
 				};
@@ -1935,7 +1936,8 @@ void main()
 				auto plainPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestParticlesOffPipeline", withoutParticles);
 				plainPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				for (auto const& stats : plainPipeline->getLastGraphExecutionStats())
-					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive")
+					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" ||
+						stats.name == "ParticleWeightedOit" || stats.name == "ParticleWeightedOitResolve")
 						return fail("default-off generated graph inserted a particle pass");
 				renderSystem->removeRenderPipeline("GpuTestParticlesOffPipeline");
 
@@ -1946,15 +1948,21 @@ void main()
 				generatedPipeline->requestGraphImageCapture();
 				generatedPipeline->render(particleScene, particleCamera, glm::vec2(0.0f));
 				size_t executedParticlePasses = 0;
+				bool executedOitResolve = false;
 				for (auto const& stats : generatedPipeline->getLastGraphExecutionStats())
-					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive")
+				{
+					if (stats.name == "ParticleAlpha" || stats.name == "ParticleAdditive" || stats.name == "ParticleWeightedOit")
 					{
 						++executedParticlePasses;
 						// Soft particles sample live depth but never attach or write it.
-						if (stats.colourOutputCount != 1 || stats.depthOutputCount != 0)
-							return fail("a generated blend-class particle pass did not draw into exactly one colour output with no depth attachment");
+						size_t const expectedOutputs = stats.name == "ParticleWeightedOit" ? 2u : 1u;
+						if (stats.colourOutputCount != expectedOutputs || stats.depthOutputCount != 0)
+							return fail("a generated blend-class particle pass has the wrong colour/depth attachment contract");
 					}
-				if (executedParticlePasses != 2) return fail("generated particles did not insert one authored pass per blend class");
+					else if (stats.name == "ParticleWeightedOitResolve") executedOitResolve = stats.colourOutputCount == 1;
+				}
+				if (executedParticlePasses != 3 || !executedOitResolve)
+					return fail("generated particles did not insert one authored pass per blend class plus the OIT resolve");
 				bool const particlesAvailable = renderSystem->particlesAvailable();
 				std::vector<uint8_t> poolAfterGeneratedDraw;
 				if (particlesAvailable)
@@ -1984,7 +1992,7 @@ void main()
 					GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, GLuint(poolBuffer)));
 					GLint poolBytes = 0;
 					GL_CHECK(glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &poolBytes));
-					size_t const snapshotBytes = 7u * 24u * sizeof(ParticleRecord);
+					size_t const snapshotBytes = 8u * 24u * sizeof(ParticleRecord);
 					if (size_t(poolBytes) < snapshotBytes) return fail("particle pool is smaller than the bootstrap allocation");
 					poolAfterGeneratedDraw.resize(snapshotBytes);
 					GL_CHECK(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, poolBytes - GLint(snapshotBytes), snapshotBytes, poolAfterGeneratedDraw.data()));

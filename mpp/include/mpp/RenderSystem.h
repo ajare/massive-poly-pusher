@@ -260,7 +260,7 @@ namespace mpp
 		// Fullscreen effects
 		ResourcePtr mFullscreenQuad, mFullscreenProgram, mToneMapProgram, mTextureDiagnosticProgram;
 		ResourcePtr mPbrBrdfIntegrationLut;
-		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mSsaoCombineModulatedProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
+		ResourcePtr mBloomExtractProgram, mBloomBlurProgram, mBloomCombineProgram, mParticleWeightedOitResolveProgram, mSsaoRawProgram, mGtaoRawProgram, mSsaoBlurProgram, mSsaoCombineProgram, mSsaoCombineModulatedProgram, mEnvironmentDebugCubeProgram, mSsaaLanczosProgram, mTaaProgram, mFxaaProgram, mEquirectangularToCubemapProgram, mDiffuseIrradianceProgram, mPrefilteredSpecularProgram, mPbrBrdfIntegrationProgram;
 
 		// Text rendering
 		ResourcePtr mTextMesh, mColouredTextMesh;
@@ -668,8 +668,8 @@ namespace mpp
 		// pass may execute several times per frame and must never call this.
 		void simulateParticles();
 
-		// The particle draw, issued from inside one blend-class-specific
-		// MPP.ParticleScene pass. Scene depth is optional.
+		// The particle draw, issued from inside an authored blend-class-specific
+		// MPP.ParticleScene or MPP.ParticleWeightedOit pass. Scene depth is optional.
 		void renderParticles(ParticleBlendClass blendClass, RenderTexture* sceneDepth = nullptr);
 
 		bool particlesAvailable();
@@ -808,6 +808,7 @@ namespace mpp
 		// 
 		void renderFullscreenQuad(Texture* texture, BlendMode srcBlend, BlendMode dstBlend, std::shared_ptr<UniformCollection> = nullptr);
 		void renderGraphFullscreen(ResourcePtr program, std::vector<std::pair<std::string, Texture*>> const& samplers, UniformCollection const& parameters);
+		void renderParticleWeightedOitResolve(Texture* scene, Texture* accumulation, Texture* opticalDepth, Texture* bloom = nullptr);
 
 		void renderToneMappedFullscreenQuad(Texture* texture, float exposure, bool useAcesToneMap);
 

@@ -104,6 +104,7 @@ namespace mpp
 		char const* CompactionPrefixProgramName = "__mpp_particle_compaction_prefix__";
 		char const* CompactionScatterProgramName = "__mpp_particle_compaction_scatter__";
 		char const* DrawProgramName = "__mpp_particle_draw__";
+		char const* WeightedOitDrawProgramName = "__mpp_particle_weighted_oit_draw__";
 
 		constexpr uint32_t ParticlePoolBinding = 0;
 		constexpr uint32_t FreeIndicesBinding = 1;
@@ -197,6 +198,7 @@ namespace mpp
 		releaseProgram(mCompactionPrefixProgram);
 		releaseProgram(mCompactionScatterProgram);
 		releaseProgram(mDrawProgram);
+		releaseProgram(mWeightedOitDrawProgram);
 	}
 
 	void ParticleSystem::disableWithWarning(string const& reason)
@@ -254,13 +256,20 @@ namespace mpp
 			mCompactionScatterProgram = createComputeProgram(CompactionScatterProgramName, ParticleCompactionScatterComputeShader);
 			createNoiseTexture();
 
-			auto drawStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
-			drawStream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
-			drawStream->setSource(RawShaderStage::Fragment, ParticleDrawFragmentShader);
-			drawStream->setDefine("MPP_PARTICLE_BINDLESS_TEXTURES", caps.supportsBindlessTextures ? "1" : "0");
-			mDrawProgram = mwResourceManager->declareResource(DrawProgramName, drawStream).first;
-			mDrawProgram->acquire(mwRenderSystem);
-			mDrawProgram->load();
+			auto createDrawProgram = [this, &caps](char const* name, bool weightedOit)
+			{
+				auto stream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
+				stream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
+				stream->setSource(RawShaderStage::Fragment, ParticleDrawFragmentShader);
+				stream->setDefine("MPP_PARTICLE_BINDLESS_TEXTURES", caps.supportsBindlessTextures ? "1" : "0");
+				stream->setDefine("MPP_PARTICLE_WEIGHTED_OIT", weightedOit ? "1" : "0");
+				auto program = mwResourceManager->declareResource(name, stream).first;
+				program->acquire(mwRenderSystem);
+				program->load();
+				return program;
+			};
+			mDrawProgram = createDrawProgram(DrawProgramName, false);
+			mWeightedOitDrawProgram = createDrawProgram(WeightedOitDrawProgramName, true);
 
 			GL_CHECK(glGenVertexArrays(1, &mVertexArray));
 			if (mVertexArray == 0)
@@ -1171,7 +1180,8 @@ namespace mpp
 		// invariant. Force the GL state through RenderSystem so its cache remains
 		// coherent when the graph scope restores authored state.
 		mwRenderSystem->setDepthWriteState(false, true);
-		auto* program = static_cast<ParticleDrawProgram*>(mDrawProgram.get());
+		auto const& drawResource = blendClass == ParticleBlendClass::WeightedOit ? mWeightedOitDrawProgram : mDrawProgram;
+		auto* program = static_cast<ParticleDrawProgram*>(drawResource.get());
 		program->use();
 		program->setUniform("SCENE_DEPTH", int32_t(0));
 		program->setUniform("PARTICLE_CURVE_LUT", int32_t(1));

@@ -98,6 +98,12 @@ RenderGraph:
       import: screen
       external: true
       transient: false
+    - name: ParticleOitAccumulation
+      format: RGBA16F
+      usage: colourAttachment,sampled
+    - name: ParticleOitOpticalDepth
+      format: R16F
+      usage: colourAttachment,sampled
   Passes:
     - name: ShadowDepth
       type: scene
@@ -166,6 +172,51 @@ RenderGraph:
         explicit: true
         depthTest: false
         depthWrite: false
+    - name: ParticleWeightedOit
+      type: scene
+      factory: MPP.ParticleWeightedOit
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Colours:
+        - image: ParticleOitAccumulation
+          load: clear
+          store: store
+          clear: 0 0 0 0
+        - image: ParticleOitOpticalDepth
+          load: clear
+          store: store
+          clear: 0 0 0 0
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: one
+        destinationColourBlend: one
+        sourceAlphaBlend: one
+        destinationAlphaBlend: one
+        multisample: false
+    - name: ParticleWeightedOitResolve
+      type: fullscreen
+      factory: MPP.ParticleWeightedOitResolve
+      Inputs:
+        - sampler: SCENE
+          image: SceneHdr
+        - sampler: ACCUMULATION
+          image: ParticleOitAccumulation
+        - sampler: OPTICAL_DEPTH
+          image: ParticleOitOpticalDepth
+        - sampler: BLOOM
+          image: BloomMaskHdr
+      Colours:
+        - image: SceneHdr
+          load: dontCare
+          store: store
+        - image: BloomMaskHdr
+          load: dontCare
+          store: store
     - name: ParticleAlpha
       type: scene
       factory: MPP.ParticleScene

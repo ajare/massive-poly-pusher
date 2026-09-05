@@ -1111,8 +1111,55 @@ void main()
     }
     vec4 colour = PARTICLE_TINT * albedo;
     colour.a *= coverage * softFade;
+#if MPP_PARTICLE_WEIGHTED_OIT
+    float alpha = clamp(colour.a, 0.0, 1.0);
+    // McGuire/Bavoil weighted blended OIT: favour opaque, near fragments while
+    // keeping every operation commutative. Revealage is stored as optical depth
+    // so both attachments can use the same authored additive blend state.
+    float alphaWeight = pow(min(1.0, alpha * 10.0) + 0.01, 3.0);
+    float depthWeight = pow(1.0 - gl_FragCoord.z * 0.9, 3.0);
+    float weight = clamp(alphaWeight * 1.0e3 * depthWeight, 1.0e-2, 3.0e3);
+    FRAGMENT_COLOUR = vec4(colour.rgb * alpha, alpha) * weight;
+    FRAGMENT_BLOOM = vec4(-log(max(1.0 - alpha, 1.0e-5)), 0.0, 0.0, 0.0);
+#else
     FRAGMENT_COLOUR = colour;
     FRAGMENT_BLOOM = vec4(colour.rgb, colour.a);
+#endif
+}
+)MPP";
+
+	// Composite the weighted average over the scene. The second accumulation
+	// texture contains summed optical depth, whose exponential is mathematically
+	// the same order-independent revealage product used by the two-blend-function
+	// formulation, without requiring per-attachment blend state.
+	inline char const* ParticleWeightedOitResolveFragmentShader = R"MPP(
+@@Version
+
+@@Uniform(int HAS_BLOOM);
+@@Texture(sampler2D SCENE);
+@@Texture(sampler2D ACCUMULATION);
+@@Texture(sampler2D OPTICAL_DEPTH);
+@@Texture(sampler2D BLOOM);
+
+void main()
+{
+    vec2 uv = @In(TEXCOORDS);
+    vec4 scene = texture(@Texture(SCENE), uv);
+    vec4 accumulation = texture(@Texture(ACCUMULATION), uv);
+    float opticalDepth = max(texture(@Texture(OPTICAL_DEPTH), uv).r, 0.0);
+    float transmittance = exp(-opticalDepth);
+    float opacity = 1.0 - transmittance;
+    vec3 weightedColour = accumulation.rgb / max(accumulation.a, 1.0e-5);
+    vec3 particleColour = accumulation.a > 1.0e-5 ? weightedColour : vec3(0.0);
+
+    @Out(vec4 COLOUR) = vec4(
+        particleColour * opacity + scene.rgb * transmittance,
+        opacity + scene.a * transmittance);
+
+    vec4 bloom = @Uniform(HAS_BLOOM) != 0 ? texture(@Texture(BLOOM), uv) : vec4(0.0);
+    @Out(vec4 BLOOM_MASK) = vec4(
+        particleColour * opacity + bloom.rgb * transmittance,
+        opacity + bloom.a * transmittance);
 }
 )MPP";
 }
