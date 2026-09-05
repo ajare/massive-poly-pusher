@@ -41,6 +41,38 @@ namespace mpp
 			return value;
 		};
 
+		ParticleSystem timeControls(nullptr, nullptr);
+		auto defaultDelta = timeControls.resolveSimulationDelta(0.02f);
+		if (timeControls.isSimulationPaused() || timeControls.getSimulationTimeScale() != 1.0f ||
+			!defaultDelta || *defaultDelta != 0.02f)
+			return fail("particle simulation did not default to unscaled real time");
+		timeControls.pauseSimulation();
+		if (!timeControls.isSimulationPaused() || timeControls.resolveSimulationDelta(0.02f))
+			return fail("paused particle simulation still produced a delta");
+		timeControls.requestSimulationStep(0.025f);
+		auto requestedStep = timeControls.resolveSimulationDelta(1.0f);
+		if (!requestedStep || *requestedStep != 0.025f || !timeControls.isSimulationPaused() ||
+			timeControls.resolveSimulationDelta(0.02f))
+			return fail("a particle simulation step was not consumed exactly once while remaining paused");
+		timeControls.resumeSimulation();
+		timeControls.setSimulationTimeScale(0.5f);
+		auto halfSpeed = timeControls.resolveSimulationDelta(0.08f);
+		timeControls.setSimulationTimeScale(2.0f);
+		auto doubleSpeed = timeControls.resolveSimulationDelta(0.03f);
+		if (timeControls.isSimulationPaused() || !halfSpeed || std::abs(*halfSpeed - 0.04f) > 0.000001f ||
+			!doubleSpeed || std::abs(*doubleSpeed - 0.06f) > 0.000001f)
+			return fail("particle simulation time scale did not predictably scale real deltas");
+		timeControls.setSimulationTimeScale(0.0f);
+		if (timeControls.resolveSimulationDelta(0.02f))
+			return fail("zero particle simulation time scale still produced a delta");
+		bool rejectedScale = false, rejectedStep = false;
+		try { timeControls.setSimulationTimeScale(-1.0f); }
+		catch (invalid_argument const&) { rejectedScale = true; }
+		try { timeControls.requestSimulationStep(MaximumParticleDeltaSeconds + 0.01f); }
+		catch (invalid_argument const&) { rejectedStep = true; }
+		if (!rejectedScale || !rejectedStep)
+			return fail("invalid particle simulation time controls were accepted");
+
 		ParticleEmitterTemplate curved;
 		curved.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.0f, 0.5f }, { 1.0f, 2.0f } };
 		curved.curves[size_t(ParticleScalarCurve::EmissiveIntensity)].keys = { { 0.0f, 1.0f }, { 1.0f, 6.0f } };

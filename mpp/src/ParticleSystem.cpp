@@ -2144,6 +2144,54 @@ namespace mpp
 		finishSortTiming();
 	}
 
+	void ParticleSystem::resetSimulationClock()
+	{
+		mLastSimulationTime = chrono::steady_clock::now();
+		mHasLastSimulationTime = true;
+	}
+
+	optional<float> ParticleSystem::resolveSimulationDelta(float realDeltaSeconds)
+	{
+		if (mPendingSimulationStep)
+		{
+			float const step = *mPendingSimulationStep;
+			mPendingSimulationStep.reset();
+			return step;
+		}
+		if (mSimulationPaused || mSimulationTimeScale == 0.0f) return nullopt;
+		return clampParticleDeltaSeconds(realDeltaSeconds * mSimulationTimeScale);
+	}
+
+	void ParticleSystem::pauseSimulation()
+	{
+		mSimulationPaused = true;
+		resetSimulationClock();
+	}
+
+	void ParticleSystem::resumeSimulation()
+	{
+		mSimulationPaused = false;
+		mPendingSimulationStep.reset();
+		resetSimulationClock();
+	}
+
+	void ParticleSystem::setSimulationTimeScale(float scale)
+	{
+		if (!isfinite(scale) || scale < 0.0f)
+			throw invalid_argument("Particle simulation time scale must be finite and non-negative.");
+		mSimulationTimeScale = scale;
+		resetSimulationClock();
+	}
+
+	void ParticleSystem::requestSimulationStep(float deltaSeconds)
+	{
+		if (!isfinite(deltaSeconds) || deltaSeconds <= 0.0f || deltaSeconds > MaximumParticleDeltaSeconds)
+			throw invalid_argument("Particle simulation step must be finite, positive, and no greater than MaximumParticleDeltaSeconds.");
+		mSimulationPaused = true;
+		mPendingSimulationStep = deltaSeconds;
+		resetSimulationClock();
+	}
+
 	void ParticleSystem::simulate()
 	{
 		initialise();
@@ -2153,11 +2201,14 @@ namespace mpp
 			pollEventReadback();
 			advanceStatisticsFrame();
 			auto const now = chrono::steady_clock::now();
-			float dt = 0.0f;
+			float realDeltaSeconds = 0.0f;
 			if (mHasLastSimulationTime)
-				dt = clampParticleDeltaSeconds(chrono::duration<float>(now - mLastSimulationTime).count());
+				realDeltaSeconds = chrono::duration<float>(now - mLastSimulationTime).count();
 			mLastSimulationTime = now;
 			mHasLastSimulationTime = true;
+			auto const resolvedDelta = resolveSimulationDelta(realDeltaSeconds);
+			if (!resolvedDelta) return;
+			float const dt = *resolvedDelta;
 			mSimulationSeconds += dt;
 
 			if (!hasOccupiedEmitters()) return;

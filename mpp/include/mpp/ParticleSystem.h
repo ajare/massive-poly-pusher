@@ -257,6 +257,9 @@ namespace mpp
 		bool mHasLastSimulationTime{ false };
 		std::chrono::steady_clock::time_point mLastSimulationTime{};
 		float mSimulationSeconds{ 0.0f };
+		float mSimulationTimeScale{ 1.0f };
+		std::optional<float> mPendingSimulationStep;
+		bool mSimulationPaused{ false };
 		mutable bool mViewBoundsValid{ false };
 		mutable uint64_t mViewBoundsFrame{ 0 };
 		mutable glm::mat4 mViewBoundsViewProjection{ 1.0f };
@@ -266,6 +269,8 @@ namespace mpp
 
 		void ensurePoolAllocated();
 		void createNoiseTexture();
+		std::optional<float> resolveSimulationDelta(float realDeltaSeconds);
+		void resetSimulationClock();
 		void buildSpawnCommands(float dt);
 		void retireCompletedEmitters();
 		void uploadFrameData();
@@ -321,6 +326,16 @@ namespace mpp
 		bool isAvailable() const { return mAvailable; }
 		bool isPoolAllocated() const { return mPoolAllocated; }
 		uint32_t getPoolCapacity() const { return mPoolCapacity; }
+
+		// Runtime-only controls for the shared once-per-rendered-frame simulation.
+		// A requested step supplies simulation seconds directly (independent of
+		// wall time and time scale), consumes one future frame, and stays paused.
+		void pauseSimulation();
+		void resumeSimulation();
+		bool isSimulationPaused() const { return mSimulationPaused; }
+		void setSimulationTimeScale(float scale);
+		float getSimulationTimeScale() const { return mSimulationTimeScale; }
+		void requestSimulationStep(float deltaSeconds = 1.0f / 60.0f);
 
 		// Disabled by default. Enabling lazily allocates the readback/query ring;
 		// disabling immediately removes all particle-path polling and retrieval.

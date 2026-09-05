@@ -192,6 +192,30 @@ namespace mpp
 			if (system.hasOccupiedEmitters() || system.mPoolAllocated)
 				return fail("particle GPU tests require a fresh particle pool");
 
+			stage = "particle simulation time controls and frame guard";
+			system.pauseSimulation();
+			float const controlStart = system.mSimulationSeconds;
+			system.requestSimulationStep(0.025f);
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			if (std::abs(system.mSimulationSeconds - (controlStart + 0.025f)) > 0.000001f ||
+				!system.isSimulationPaused())
+				return fail("deterministic particle step did not advance once and remain paused");
+			system.requestSimulationStep(0.05f);
+			renderSystem->simulateParticles();
+			if (std::abs(system.mSimulationSeconds - (controlStart + 0.025f)) > 0.000001f)
+				return fail("particle simulation dispatched twice in one rendered frame");
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			if (std::abs(system.mSimulationSeconds - (controlStart + 0.075f)) > 0.000001f)
+				return fail("a frame-guarded particle step was not retained for the next rendered frame");
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			if (std::abs(system.mSimulationSeconds - (controlStart + 0.075f)) > 0.000001f)
+				return fail("paused particle simulation advanced without a requested step");
+			system.setSimulationTimeScale(1.0f);
+			system.resumeSimulation();
+
 			system.setStatisticsEnabled(true);
 
 			stage = "spawn and expiry counters";
@@ -252,6 +276,46 @@ namespace mpp
 					std::to_string(snapshots[3].activeListIndex) + "/" + std::to_string(snapshots[3].counters.activeCountA) + "/" +
 					std::to_string(snapshots[3].counters.activeCountB) + ", frame two " + std::to_string(snapshots[4].activeListIndex) + "/" +
 					std::to_string(snapshots[4].counters.activeCountA) + "/" + std::to_string(snapshots[4].counters.activeCountB) + ")");
+
+			stage = "paused GPU age and emission";
+			system.pauseSimulation();
+			std::array pausedEmitter{ burst(1u, 1u, 0.05f) };
+			system.createEffect(pausedEmitter);
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			auto pausedBeforeStepIndex = readback.enqueue(system.mCounters->getBuffer(), system.mActiveListIndex);
+			GL_CHECK(glFinish());
+			CounterSnapshot pausedBeforeStep;
+			if (!readback.read(pausedBeforeStepIndex, pausedBeforeStep) || activeCount(pausedBeforeStep) != 0u)
+				return fail("paused particle simulation emitted a burst");
+			system.requestSimulationStep(0.025f);
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			auto steppedIndex = readback.enqueue(system.mCounters->getBuffer(), system.mActiveListIndex);
+			GL_CHECK(glFinish());
+			CounterSnapshot stepped;
+			if (!readback.read(steppedIndex, stepped) || activeCount(stepped) != 1u)
+				return fail("a deterministic particle step did not emit on the GPU");
+			uint32_t particleIndex = 0u;
+			auto* activeIndices = system.mActiveListIndex == 0u ? system.mActiveIndicesA.get() : system.mActiveIndicesB.get();
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, activeIndices->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, 0, sizeof(particleIndex), &particleIndex));
+			ParticleRecord steppedParticle{};
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, system.mParticlePool->getBuffer()));
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(particleIndex * sizeof(ParticleRecord)),
+				sizeof(steppedParticle), &steppedParticle));
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			ParticleRecord pausedParticle{};
+			GL_CHECK(glGetBufferSubData(GL_COPY_READ_BUFFER, GLintptr(particleIndex * sizeof(ParticleRecord)),
+				sizeof(pausedParticle), &pausedParticle));
+			GL_CHECK(glBindBuffer(GL_COPY_READ_BUFFER, 0));
+			if (pausedParticle.positionAge[3] != steppedParticle.positionAge[3])
+				return fail("paused particle simulation advanced GPU particle age");
+			system.requestSimulationStep(0.05f);
+			renderSystem->startStatsCollection();
+			renderSystem->simulateParticles();
+			system.resumeSimulation();
 
 			stage = "GPU visibility compaction";
 			renderSystem->setCameraFrame(glm::mat4(1.0f),
@@ -882,6 +946,10 @@ void main()
 				return fail("particle record std430 array stride was " + std::to_string(stride) + " bytes instead of 64");
 
 			GL_CHECK(glUseProgram(0));
+			// The suite exercised RenderSystem's frame guard directly, while most of
+			// its remaining frames used explicit test deltas. Leave the next suite at
+			// a fresh renderer frame boundary so its first graph owns one simulation.
+			renderSystem->startStatsCollection();
 			return true;
 		}
 		catch (std::exception const& error)

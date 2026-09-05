@@ -561,4 +561,28 @@ else()
     message(STATUS "Skipping PipelineEditor: its RenderDoc/process integration is Windows-only")
 endif()
 
+# Particle Editor deliberately has no RenderDoc/process dependency and is built
+# on every platform supported by the shared SDL/OpenGL/ImGui application stack.
+add_executable(ParticleEditor
+    particle-editor/src/DiagnosticsView.cpp
+    particle-editor/src/Main.cpp
+    particle-editor/src/ParticleDocument.cpp
+    particle-editor/src/ParticleEditorApplication.cpp
+    particle-editor/src/ParticleInspector.cpp
+    particle-editor/src/ParticlePreview.cpp)
+target_include_directories(ParticleEditor PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/particle-editor/include")
+target_link_libraries(ParticleEditor PRIVATE
+    MppAppSupport MppResourceParsers MassivePolyPusher MppMesh MppProgram
+    Utils ImGui SDL3::SDL3 OpenGL::GL GLEW::GLEW ${CMAKE_DL_LIBS})
+mpp_target_defaults(ParticleEditor)
+mpp_add_header_filters(ParticleEditor "${CMAKE_CURRENT_SOURCE_DIR}/particle-editor/include")
+mpp_copy_runtime(ParticleEditor SDL3-shared glew Utils MppData MassivePolyPusher MppMesh MppProgram MppResourceParsers)
+mpp_copy_asan_runtime(ParticleEditor)
+add_custom_command(TARGET ParticleEditor POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/particle-editor/particle-editor.ini"
+        "$<TARGET_FILE_DIR:ParticleEditor>/particle-editor.ini"
+    VERBATIM)
+
 add_subdirectory(demo-suite)

@@ -37,6 +37,16 @@ Documentation:
 - [Diagnostics catalogue](doc/PIPELINE_EDITOR_DIAGNOSTICS.md)
 - [CLI validation and smoke tests](doc/PIPELINE_EDITOR_CLI.md)
 
+## Particle Editor
+
+The cross-platform `ParticleEditor` target creates, opens, previews, and saves canonical `*.particle.yaml` assets. It starts with a deterministic bounded version-2 particle effect and renders the active document through MPP's PBR particle graph. Its dockable shell includes the Particle Effect inspector, MPP viewport, toolbar, status bar, and diagnostics view. The deployed `particle-editor.ini` resolves the shared resource tree from `build/bin/<Configuration>`.
+
+Run its context-free document contract tests without creating a window:
+
+```text
+ParticleEditor.exe --document-tests
+```
+
 ## Pipeline packages
 
 PipelineEditor can export the current valid pipeline and preview scene, including unsaved edits, through **File > Export Package...**. The resulting self-contained `.mpppackage` is a standard ZIP archive containing `manifest.xml`, `pipeline.xml`, `scene.xml`, localized external resources, and referenced assets.
