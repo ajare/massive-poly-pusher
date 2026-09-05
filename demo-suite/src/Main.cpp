@@ -266,8 +266,15 @@ bool startup(int argc, char** argv)
 		mpp::app::readPackageManifest(gPackageDirectory / "manifest.xml");
 	}
 
-	gOptions = parseProgramOptions("DemoSuite.cfg");
-	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableDirectory() / "demosuite.ini");
+	auto const executableRoot = executableDirectory();
+	auto const configurationPath = executableRoot / "DemoSuite.cfg";
+	gOptions = parseProgramOptions(configurationPath.string());
+	auto resourceRoot = std::filesystem::path(gOptions.resourceLocation);
+	if (resourceRoot.is_relative()) resourceRoot = configurationPath.parent_path() / resourceRoot;
+	resourceRoot = std::filesystem::weakly_canonical(resourceRoot);
+	if (!std::filesystem::is_directory(resourceRoot))
+		throw runtime_error("Configured DemoSuite resource directory does not exist: " + resourceRoot.string());
+	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableRoot / "demosuite.ini");
 	gLogger = new ::Logger();
 	if (!gLogger->initialise("DemoSuite.log"))
 		throw runtime_error("Could not create logger!");
@@ -313,7 +320,7 @@ bool startup(int argc, char** argv)
 	gTimer = new TimerSDL();
 
 	if (gParticles && !gParticleTests)
-		gScenes.push_back(new ParticleScene(gResourceManager, executableDirectory() / "res"));
+		gScenes.push_back(new ParticleScene(gResourceManager, resourceRoot / "demo-suite" / "res"));
 	else if (!gParticleTests)
 		gScenes.push_back(new PackageScene(gResourceManager,gPackageDirectory));
 

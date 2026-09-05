@@ -65,9 +65,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_DEBUG_POSTFIX d)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+# Keep all generated binaries and libraries in the repository's root build
+# directory. This remains stable even if a developer uses a nested CMake
+# binary directory, and makes the checked-in ../../../resources paths resolve
+# directly to the source resource tree for every multi-config build.
+set(MPP_BUILD_OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/build")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/lib")
 
 find_package(OpenGL REQUIRED)
 

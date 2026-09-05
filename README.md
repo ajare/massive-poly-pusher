@@ -11,17 +11,17 @@ Run `git clone --recurse-submodules -j8 https://bitbucket.org/wtmrsh/massivepoly
 ### CMake (VS2026 x64)
 
 ```bat
-cmake -S . -B build\cmake -G "Visual Studio 18 2026" -A x64
-cmake --build build\cmake --config Release --parallel
+cmake -S . -B build -G "Visual Studio 18 2026" -A x64
+cmake --build build --config Release --parallel
 ```
 
-The CMake build includes all projects from `build/vs2026/MassivePolyPusher.sln`, builds SDL from `ext/sdl`, Assimp from `ext/assimp`, GLEW from `ext/glew`, and Utils from `ext/utils`, and places executables and runtime DLLs under `build/cmake/bin/<Configuration>`. Because the GLEW Git repository omits generated headers and `glew.c`, the first configure downloads the hash-verified official source archive matching the pinned submodule release. DemoSuite reads content directly from the repository-level `resources/demo-suite` and `resources/shared` directories; resource assets are not copied into the CMake output directory.
+The CMake build includes all engine, tool, and application targets, builds SDL from `ext/sdl`, Assimp from `ext/assimp`, GLEW from `ext/glew`, and Utils from `ext/utils`, and places executables and runtime DLLs under `build/bin/<Configuration>`. Because the GLEW Git repository omits generated headers and `glew.c`, the first configure downloads the hash-verified official source archive matching the pinned submodule release. DemoSuite and PipelineEditor resolve their checked-in `../../../resources` settings directly to the repository-level `resources` directory; resource assets are not copied or symlinked into the build tree.
 
 ### Existing Visual Studio projects
 
 The checked-in Visual Studio projects predate the source-built dependency integration. Use the CMake-generated VS2026 solution for builds that include the SDL, Assimp, GLEW, and Utils submodules.
 
-`PipelineEditor` is a separate executable under `pipeline-editor\build\vs2026\bin\x64\<Configuration>`. Its post-build deployment copies `editor.ini`, which references the repository-level `resources` directory beside the root `build` directory.
+The CMake-built `PipelineEditor` executable is under `build\bin\<Configuration>`. Its post-build deployment copies `editor.ini`, whose relative path resolves directly to the repository-level `resources` directory beside `build`.
 
 PipelineEditor reads MassivePolyPusher defaults from the `[mpp]` section of `editor.ini`; DemoSuite reads the same section from `demosuite.ini` beside its executable. See [`doc/ANTI_ALIASING_CONFIGURATION.md`](doc/ANTI_ALIASING_CONFIGURATION.md) for configuration, named-output authoring, ordering, constraints, errors, and package behavior. Supported settings are `msaa=off|2x|4x|8x`, `ssaa=off|2x|4x|8x`, Boolean `taa`/`fxaa`, and `particlePoolCapacity=262144..1048576`. Anti-aliasing defaults to off and particle capacity defaults to 262,144. Invalid keys, values, or GPU-incompatible startup dimensions/sample counts fail startup instead of silently falling back. These settings establish typed global defaults. PBR pipelines now declare explicit named outputs with inheritable per-output anti-aliasing overrides; legacy render-graph `<samples>` fields are rejected with a migration diagnostic. Screen and offscreen graph outputs now pass through a shared transactional renderer-owned output chain, with immutable physical plans and retained prior generations on allocation/resize failure. MSAA now uses renderer-private multisample raster attachments with automatic colour/depth resolves before sampled reads and output processing. SSAA uses total-sample √2/2/√8 raster scaling for viewport-relative graph resources followed by separable alpha-preserving Lanczos downsampling to the logical screen/offscreen output. TAA runs at supersampled resolution using shared eight-sample Halton camera jitter, resolved-depth reprojection, depth rejection, 3×3 neighbourhood clamping, and transactional per-output colour/depth histories before SSAA downsampling. A fixed high-quality LDR FXAA pass runs last at logical output resolution, with contrast thresholds, directional edge search, subpixel refinement, and centre-alpha preservation. FXAA may vary per named output.
 
