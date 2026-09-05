@@ -52,6 +52,7 @@ extern "C" const char* __asan_default_options()
 #include "Camera.h"
 #include "Scene.h"
 #include "PackageScene.h"
+#include "ParticleScene.h"
 
 // Platform
 #include "mpp/app/WindowSDL.h"
@@ -130,6 +131,7 @@ void showCommandLineHelp(char const* text)
 
 bool gPackageSmokeTest{false};
 bool gParticleTests{false};
+bool gParticles{false};
 std::filesystem::path gPackageDirectory;
 bool gStartupComplete{false};
 
@@ -230,6 +232,11 @@ bool startup(int argc, char** argv)
 			gParticleTests = true;
 			continue;
 		}
+		if (arguments[index] == "--particles")
+		{
+			gParticles = true;
+			continue;
+		}
 		if (arguments[index] == "--package")
 		{
 			if (++index >= arguments.size()) throw runtime_error("--package requires a .mpppackage path.");
@@ -246,11 +253,12 @@ bool startup(int argc, char** argv)
 			"  --package <file.mpppackage>             Load the packaged scene and pipeline.\r\n"
 			"                                           Defaults to workspace.mpppackage next to the executable.\r\n"
 			"  --package-smoke-test                    With --package, render 30 frames then exit.\r\n"
+			"  --particles                              Run the standalone particle demo (no package required).\r\n"
 			"  --particle-tests                         Run particle and render graph GPU tests, then exit.\r\n");
 		return false;
 	}
 
-	if (!gParticleTests)
+	if (!gParticleTests && !gParticles)
 	{
 		if (packagePath.empty()) packagePath = executableDirectory() / "workspace.mpppackage";
 		gPackageDirectory = mpp::app::createUniqueTemporaryDirectory("MDS");
@@ -304,7 +312,10 @@ bool startup(int argc, char** argv)
 	gInputMgr = new InputManagerSDL();
 	gTimer = new TimerSDL();
 
-	if (!gParticleTests) gScenes.push_back(new PackageScene(gResourceManager,gPackageDirectory));
+	if (gParticles && !gParticleTests)
+		gScenes.push_back(new ParticleScene(gResourceManager, executableDirectory() / "res"));
+	else if (!gParticleTests)
+		gScenes.push_back(new PackageScene(gResourceManager,gPackageDirectory));
 
 	for (auto scene: gScenes)
 	{
@@ -456,7 +467,7 @@ int main(int argc, char** argv)
 				running = false;
 			}
 
-			gScenes[0]->handleInput(gInputMgr);
+			if (!gScenes.empty()) gScenes[0]->handleInput(gInputMgr);
 
 			if (gInputMgr->keyReleased(Key_F2))
 			{
@@ -529,10 +540,14 @@ int main(int argc, char** argv)
 				}
 			}
 
-			// Present the completed package scene before drawing UI. Keeping text
+			// Present the completed offscreen scene before drawing UI. Keeping text
 			// out of the fullscreen presentation copy prevents its nearest-filtered
 			// font atlas from being resampled by that pass.
-			static_cast<PackageScene*>(gScenes[0])->present(gRenderSystem);
+			if (!gScenes.empty())
+			{
+				if (auto* packageScene = dynamic_cast<PackageScene*>(gScenes[0])) packageScene->present(gRenderSystem);
+				else if (auto* particleScene = dynamic_cast<ParticleScene*>(gScenes[0])) particleScene->present(gRenderSystem);
+			}
 			gRenderSystem->renderToScreen();
 
 			// Finish the 3D statistics and render all 2D overlays directly to the
@@ -544,7 +559,12 @@ int main(int argc, char** argv)
 			lines.push_back("F2: toggle wireframe");
 			lines.push_back("T/Y: light angle");
 			lines.push_back("G/B: light height");
-			lines.push_back("Package camera: Alt+left orbit, Shift+Alt+left pan, Ctrl+Alt+left dolly");
+			if (!gScenes.empty())
+			{
+				auto sceneLines = gScenes[0]->getOverlayLines();
+				lines.insert(lines.end(), sceneLines.begin(), sceneLines.end());
+			}
+			if (!gParticles) lines.push_back("Package camera: Alt+left orbit, Shift+Alt+left pan, Ctrl+Alt+left dolly");
 
 			gRenderSystem->renderText(lines, 8, 0, Colour::White);
 

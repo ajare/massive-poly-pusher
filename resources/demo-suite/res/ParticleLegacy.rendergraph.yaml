@@ -1,0 +1,75 @@
+RenderGraph:
+  Images:
+    - name: Presentation
+      format: RGBA8
+      usage: colourAttachment,presentation
+      import: screen
+      external: true
+      transient: false
+    - name: SceneDepth
+      format: DEPTH24
+      usage: depthAttachment,sampled
+  Passes:
+    - name: LegacyScene
+      type: scene
+      factory: MPP.LegacyScene
+      Colours:
+        - image: Presentation
+          load: clear
+          store: store
+          clear: 0.025 0.035 0.055 1
+      Depth:
+        image: SceneDepth
+        load: clear
+        store: store
+        clear: 1
+    - name: ParticleAlpha
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 1
+      Colours:
+        - image: Presentation
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: oneMinusSourceAlpha
+        sourceAlphaBlend: one
+        destinationAlphaBlend: oneMinusSourceAlpha
+        multisample: false
+    - name: ParticleAdditive
+      type: scene
+      factory: MPP.ParticleScene
+      Inputs:
+        - sampler: DEPTH
+          image: SceneDepth
+      Parameters:
+        Int:
+          name: BLEND_MODE
+          value: 0
+      Colours:
+        - image: Presentation
+          load: load
+          store: store
+      Raster:
+        explicit: true
+        cull: none
+        depthTest: false
+        depthWrite: false
+        blend: true
+        sourceColourBlend: sourceAlpha
+        destinationColourBlend: one
+        sourceAlphaBlend: zero
+        destinationAlphaBlend: one
+        multisample: false

@@ -5,6 +5,7 @@ add_executable(DemoSuite
     src/Main.cpp
     src/ProgramOptions.cpp
     src/PackageScene.cpp
+    src/ParticleScene.cpp
     src/Scene.cpp)
 
 if(WIN32)
@@ -57,4 +58,11 @@ add_custom_command(TARGET DemoSuite POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${PROJECT_SOURCE_DIR}/resources/demo-suite/packages/workspace.mpppackage"
         "$<TARGET_FILE_DIR:DemoSuite>/workspace.mpppackage"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "$<TARGET_FILE_DIR:DemoSuite>/res"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${PROJECT_SOURCE_DIR}/resources/demo-suite/res/ParticlePbr.rendergraph.yaml"
+        "${PROJECT_SOURCE_DIR}/resources/demo-suite/res/ParticleLegacy.rendergraph.yaml"
+        "${PROJECT_SOURCE_DIR}/resources/demo-suite/res/atlas.png"
+        "$<TARGET_FILE_DIR:DemoSuite>/res"
     VERBATIM)
