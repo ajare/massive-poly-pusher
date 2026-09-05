@@ -1,6 +1,8 @@
 #include "ParticleDocument.h"
 
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <fstream>
 #include <iterator>
@@ -21,6 +23,25 @@ namespace particle_editor
 			std::ifstream input(path, std::ios::binary);
 			if (!input) throw std::runtime_error("Could not read '" + path.string() + "'.");
 			return { std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+		}
+
+		std::filesystem::path canonicalParticleEffectPath(std::filesystem::path path)
+		{
+			auto filename = path.filename().string();
+			std::transform(filename.begin(), filename.end(), filename.begin(), [](unsigned char value)
+				{ return static_cast<char>(std::tolower(value)); });
+			if (filename.ends_with(".particle.yaml")) return path;
+			if (filename.ends_with(".particle.yml"))
+			{
+				path.replace_extension(".yaml");
+				return path;
+			}
+			auto extension = path.extension().string();
+			std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char value)
+				{ return static_cast<char>(std::tolower(value)); });
+			if (extension == ".yaml" || extension == ".yml") path.replace_extension();
+			path += ".particle.yaml";
+			return path;
 		}
 	}
 
@@ -102,7 +123,7 @@ namespace particle_editor
 		if (path.empty()) throw std::invalid_argument("Particle effect save path is empty.");
 		mSpecification.version = 2u;
 		refreshDiagnostics();
-		auto normalised = mpp::app::normaliseDocumentPath(path);
+		auto normalised = mpp::app::normaliseDocumentPath(canonicalParticleEffectPath(path));
 		mpp::resource_parsers::ParticleEffectSerializer::toFile(mSpecification, normalised.string());
 		mPath = std::move(normalised);
 		mDirty = false;
@@ -156,10 +177,15 @@ namespace particle_editor
 				return fail("the starter particle effect is not production-valid");
 
 			auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
-			auto path = std::filesystem::temp_directory_path() /
-				("mpp-particle-editor-" + std::to_string(nonce) + ".particle.yaml");
+			auto selectedPath = std::filesystem::temp_directory_path() /
+				("mpp-particle-editor-" + std::to_string(nonce) + ".yaml");
+			auto path = selectedPath;
+			path.replace_extension();
+			path += ".particle.yaml";
 			ParticleDocument document;
-			document.save(path);
+			document.save(selectedPath);
+			if (document.path() != mpp::app::normaliseDocumentPath(path))
+				return fail("the editor document did not enforce the canonical .particle.yaml suffix");
 			auto canonical = readText(path);
 			if (canonical.find("version: 2") == std::string::npos ||
 				canonical.find("Bounds:") == std::string::npos || canonical.find("seed: 17") == std::string::npos)
@@ -171,6 +197,10 @@ namespace particle_editor
 			if (!restored.open(path) || restored.specification().version != 2u ||
 				restored.specification().emitterTemplates.front().value.simulation.shapeSeedModulesBudget[1] != 17u)
 				return fail("the editor document did not open its production-serialized particle effect");
+			auto restoredPath = restored.path();
+			if (restored.open(path.string() + ".missing") || restored.path() != restoredPath ||
+				restored.specification().name != "Untitled Particle Effect" || !restored.diagnostics().hasErrors())
+				return fail("a failed production parse replaced the active editor document");
 			std::error_code ignored;
 			std::filesystem::remove(path, ignored);
 			return true;

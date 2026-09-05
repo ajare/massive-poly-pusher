@@ -1,7 +1,6 @@
 #include "ParticleEditorApplication.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -76,20 +75,6 @@ namespace particle_editor
 				}
 			}
 			throw std::runtime_error("particle-editor.ini does not define [Editor] resourcesLocation.");
-		}
-
-		std::filesystem::path particlePath(std::filesystem::path path)
-		{
-			auto filename = path.filename().string();
-			auto lower = filename;
-			std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char value)
-				{ return static_cast<char>(std::tolower(value)); });
-			if (!lower.ends_with(".particle.yaml"))
-			{
-				if (path.extension() == ".yaml" || path.extension() == ".yml") path.replace_extension();
-				path += ".particle.yaml";
-			}
-			return path;
 		}
 
 		void showFatal(std::string const& message)
@@ -174,7 +159,9 @@ namespace particle_editor
 			enum class DialogPurpose { None, Open, Save };
 			DialogPurpose dialogPurpose = DialogPurpose::None;
 			bool showDiagnostics = false;
-			bool resetLayout = true;
+			// Preserve a saved ImGui docking arrangement. An absent or unsplit
+			// dockspace still receives the default left/right editor layout below.
+			bool resetLayout = false;
 			bool showAbout = false;
 			bool running = true;
 			InputManagerSDL input;
@@ -193,7 +180,7 @@ namespace particle_editor
 			{
 				try
 				{
-					document.save(particlePath(path));
+					document.save(path);
 					diagnostics.setOperationFailure({});
 					diagnostics.setDocumentDiagnostics(document.diagnostics());
 				}
