@@ -123,6 +123,13 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    vec4 curlNoiseFrequencyStrength;
+    vec4 curlNoiseScrollAndTimeScale;
+    vec4 turbulenceFrequencyStrength;
+    vec4 turbulenceScrollAndTimeScale;
+    vec4 turbulenceOctavesLacunarityGain;
+    vec4 vectorFieldFrequencyStrength;
+    vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
 };
@@ -401,6 +408,9 @@ const uint PARTICLE_MODULE_GRAVITY = 1u << 0u;
 const uint PARTICLE_MODULE_DRAG = 1u << 1u;
 const uint PARTICLE_MODULE_NOISE = 1u << 2u;
 const uint PARTICLE_MODULE_COLLISION = 1u << 3u;
+const uint PARTICLE_MODULE_CURL_NOISE = 1u << 4u;
+const uint PARTICLE_MODULE_TURBULENCE = 1u << 5u;
+const uint PARTICLE_MODULE_VECTOR_FIELD = 1u << 6u;
 const uint COLLISION_SCREEN_SPACE = 1u << 0u;
 const uint COLLISION_ANALYTICAL = 1u << 1u;
 const uint COLLISION_SDF = 1u << 2u;
@@ -454,6 +464,13 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    vec4 curlNoiseFrequencyStrength;
+    vec4 curlNoiseScrollAndTimeScale;
+    vec4 turbulenceFrequencyStrength;
+    vec4 turbulenceScrollAndTimeScale;
+    vec4 turbulenceOctavesLacunarityGain;
+    vec4 vectorFieldFrequencyStrength;
+    vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
 };
@@ -513,12 +530,14 @@ layout(std430, binding = 7) restrict readonly buffer ParticleSignedDistanceField
 layout(binding = 0) uniform sampler3D NOISE_TEXTURE;
 layout(binding = 1) uniform sampler2D COLLISION_DEPTH_TEXTURE;
 layout(binding = 2) uniform sampler3D SIGNED_DISTANCE_FIELD_TEXTURE;
+layout(binding = 3) uniform sampler3D VECTOR_FIELD_TEXTURE;
 uniform uint ACTIVE_LIST_INDEX;
 uniform uint EMITTER_COUNT;
 uniform uint TEMPLATE_COUNT;
 uniform uint COLLIDER_COUNT;
 uniform int HAS_COLLISION_DEPTH;
 uniform int HAS_SIGNED_DISTANCE_FIELD;
+uniform int HAS_VECTOR_FIELD;
 uniform float DELTA_SECONDS;
 uniform float SIMULATION_SECONDS;
 
@@ -681,6 +700,41 @@ bool signedDistanceFieldContact(vec3 position, float radius, out vec3 normal, ou
     return true;
 }
 
+vec3 centredNoise(vec3 position)
+{
+    return textureLod(NOISE_TEXTURE, position, 0.0).xyz * 2.0 - 1.0;
+}
+
+vec3 sampleCurlNoise(vec3 position, vec3 frequency)
+{
+    vec3 stepSize = 1.0 / vec3(textureSize(NOISE_TEXTURE, 0));
+    vec3 dx = (centredNoise(position + vec3(stepSize.x, 0.0, 0.0)) -
+        centredNoise(position - vec3(stepSize.x, 0.0, 0.0))) * (0.5 / stepSize.x) * frequency.x;
+    vec3 dy = (centredNoise(position + vec3(0.0, stepSize.y, 0.0)) -
+        centredNoise(position - vec3(0.0, stepSize.y, 0.0))) * (0.5 / stepSize.y) * frequency.y;
+    vec3 dz = (centredNoise(position + vec3(0.0, 0.0, stepSize.z)) -
+        centredNoise(position - vec3(0.0, 0.0, stepSize.z))) * (0.5 / stepSize.z) * frequency.z;
+    return vec3(dy.z - dz.y, dz.x - dx.z, dx.y - dy.x);
+}
+
+vec3 sampleTurbulence(vec3 position, int octaveCount, float lacunarity, float gain)
+{
+    vec3 total = vec3(0.0);
+    float amplitude = 1.0;
+    float amplitudeSum = 0.0;
+    for (int octave = 0; octave < 8; ++octave)
+    {
+        if (octave >= octaveCount) break;
+        // Absolute, zero-centred octave noise gives the characteristic folded
+        // ridges of turbulence while retaining a vector force in all channels.
+        total += (abs(centredNoise(position)) * 2.0 - 1.0) * amplitude;
+        amplitudeSum += amplitude;
+        position *= lacunarity;
+        amplitude *= gain;
+    }
+    return amplitudeSum > 0.0 ? total / amplitudeSum : vec3(0.0);
+}
+
 bool applyCollisionResponse(inout ParticleRecord particle, EmitterSimData emitter,
     vec3 normal, float penetration, bool wasColliding)
 {
@@ -748,8 +802,37 @@ void main()
     {
         vec3 samplePosition = particle.positionAge.xyz * emitter.noiseFrequencyStrength.xyz;
         samplePosition += emitter.noiseScrollAndTimeScale.xyz * (SIMULATION_SECONDS * emitter.noiseScrollAndTimeScale.w);
-        vec3 noiseForce = textureLod(NOISE_TEXTURE, samplePosition, 0.0).xyz * 2.0 - 1.0;
-        velocity += noiseForce * (emitter.noiseFrequencyStrength.w * DELTA_SECONDS);
+        velocity += centredNoise(samplePosition) * (emitter.noiseFrequencyStrength.w * DELTA_SECONDS);
+    }
+
+    if ((modules & PARTICLE_MODULE_CURL_NOISE) != 0u)
+    {
+        vec3 samplePosition = particle.positionAge.xyz * emitter.curlNoiseFrequencyStrength.xyz;
+        samplePosition += emitter.curlNoiseScrollAndTimeScale.xyz *
+            (SIMULATION_SECONDS * emitter.curlNoiseScrollAndTimeScale.w);
+        velocity += sampleCurlNoise(samplePosition, emitter.curlNoiseFrequencyStrength.xyz) *
+            (emitter.curlNoiseFrequencyStrength.w * DELTA_SECONDS);
+    }
+
+    if ((modules & PARTICLE_MODULE_TURBULENCE) != 0u)
+    {
+        vec3 samplePosition = particle.positionAge.xyz * emitter.turbulenceFrequencyStrength.xyz;
+        samplePosition += emitter.turbulenceScrollAndTimeScale.xyz *
+            (SIMULATION_SECONDS * emitter.turbulenceScrollAndTimeScale.w);
+        int octaves = clamp(int(emitter.turbulenceOctavesLacunarityGain.x), 1, 8);
+        float lacunarity = max(emitter.turbulenceOctavesLacunarityGain.y, 1.0);
+        float gain = clamp(emitter.turbulenceOctavesLacunarityGain.z, 0.0, 1.0);
+        velocity += sampleTurbulence(samplePosition, octaves, lacunarity, gain) *
+            (emitter.turbulenceFrequencyStrength.w * DELTA_SECONDS);
+    }
+
+    if ((modules & PARTICLE_MODULE_VECTOR_FIELD) != 0u && HAS_VECTOR_FIELD != 0)
+    {
+        vec3 samplePosition = particle.positionAge.xyz * emitter.vectorFieldFrequencyStrength.xyz;
+        samplePosition += emitter.vectorFieldScrollAndTimeScale.xyz *
+            (SIMULATION_SECONDS * emitter.vectorFieldScrollAndTimeScale.w);
+        vec3 field = textureLod(VECTOR_FIELD_TEXTURE, samplePosition, 0.0).xyz * 2.0 - 1.0;
+        velocity += field * (emitter.vectorFieldFrequencyStrength.w * DELTA_SECONDS);
     }
 
     if ((modules & PARTICLE_MODULE_DRAG) != 0u)
@@ -870,7 +953,7 @@ layout(std140, binding = 3) uniform CameraFrame
 };
 
 struct ParticleRecord { vec4 positionAge; vec4 velocityLifetime; uint packedColour; float baseSize; float rotation; float angularVelocity; uint emitterIndex; uint seed; uint flags; uint padding; };
-struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; uvec4 collisionConfiguration; vec4 collisionParameters; };
+struct EmitterSimData { mat4 transform; vec4 shapeParameters; vec4 initialVelocityMin; vec4 initialVelocityMax; vec4 colourMin; vec4 colourMax; vec4 lifetimeSizeRanges; vec4 rotationRanges; uvec4 shapeSeedModulesBudget; uvec4 emissionState; vec4 emissionRateAndPadding; vec4 parameterMultipliers0; vec4 parameterMultipliers1; vec4 gravityAndDrag; vec4 noiseFrequencyStrength; vec4 noiseScrollAndTimeScale; vec4 curlNoiseFrequencyStrength; vec4 curlNoiseScrollAndTimeScale; vec4 turbulenceFrequencyStrength; vec4 turbulenceScrollAndTimeScale; vec4 turbulenceOctavesLacunarityGain; vec4 vectorFieldFrequencyStrength; vec4 vectorFieldScrollAndTimeScale; uvec4 collisionConfiguration; vec4 collisionParameters; };
 struct TemplateRenderData { uvec4 textureAndAtlas; vec4 tintAndAlpha; vec4 appearance; uvec4 modes; vec4 culling; uvec4 sorting; };
 
 layout(std430, binding = 0) restrict readonly buffer ParticlePool { ParticleRecord PARTICLES[]; };
@@ -1043,6 +1126,13 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    vec4 curlNoiseFrequencyStrength;
+    vec4 curlNoiseScrollAndTimeScale;
+    vec4 turbulenceFrequencyStrength;
+    vec4 turbulenceScrollAndTimeScale;
+    vec4 turbulenceOctavesLacunarityGain;
+    vec4 vectorFieldFrequencyStrength;
+    vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
 };
@@ -1389,6 +1479,13 @@ struct EmitterSimData
     vec4 gravityAndDrag;
     vec4 noiseFrequencyStrength;
     vec4 noiseScrollAndTimeScale;
+    vec4 curlNoiseFrequencyStrength;
+    vec4 curlNoiseScrollAndTimeScale;
+    vec4 turbulenceFrequencyStrength;
+    vec4 turbulenceScrollAndTimeScale;
+    vec4 turbulenceOctavesLacunarityGain;
+    vec4 vectorFieldFrequencyStrength;
+    vec4 vectorFieldScrollAndTimeScale;
     uvec4 collisionConfiguration;
     vec4 collisionParameters;
 };

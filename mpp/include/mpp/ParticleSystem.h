@@ -162,6 +162,7 @@ namespace mpp
 		std::vector<ParticleCollider> mColliders;
 		ParticleSignedDistanceFieldData mSignedDistanceFieldData;
 		ResourcePtr mSignedDistanceFieldTexture;
+		ResourcePtr mVectorFieldTexture;
 		ResourcePtr mScreenSpaceCollisionDepth;
 		struct EmitterSlot
 		{
@@ -282,6 +283,10 @@ namespace mpp
 		void setSignedDistanceField(ResourcePtr texture, glm::mat4 const& worldToTexture = glm::mat4(1.0f),
 			float distanceScale = 1.0f, float isoValue = 0.0f);
 		void clearSignedDistanceField();
+		// One arbitrary RGB 3D vector field may be shared by emitters. Texture values
+		// are decoded from [0,1] to [-1,1]; each emitter authors its own mapping and strength.
+		void setVectorField(ResourcePtr texture);
+		void clearVectorField();
 		// Graph particle passes retain the last main scene-depth resource. Simulation
 		// samples that previous completed frame, preserving ADR 0005's once-per-frame
 		// pre-graph dispatch.

@@ -28,6 +28,24 @@ ParticleEffect:
           strength: 0.5
           scroll: 0 0.2 0
           timeScale: 1
+        CurlNoise:
+          frequency: 0.5 0.5 0.5
+          strength: 1.5
+          scroll: 0 0.1 0
+          timeScale: 1
+        Turbulence:
+          frequency: 1 1 1
+          strength: 0.75
+          scroll: 0 0.2 0
+          timeScale: 1
+          octaves: 4
+          lacunarity: 2
+          gain: 0.5
+        VectorField:
+          frequency: 1 1 1
+          strength: 2
+          scroll: 0 0 0
+          timeScale: 1
         Collision:
           sources: screenSpace,analytical,signedDistanceField
           response: bounce
@@ -70,7 +88,9 @@ Supported blend classes are `additive`, `alpha`, and `weightedOit`. Conventional
 
 `maximumDrawDistance` is measured in world units and `minimumProjectedSize` is a particle diameter in pixels. Both default to zero, which disables that culling test. Frustum culling always applies. Live particle effects can also be hidden without stopping simulation through `ParticleSystem::setEffectVisible` or assigned visibility flags through `setEffectVisibilityFlags`.
 
-`Gravity`, `Drag`, `Noise`, and `Collision` are named optional blocks, not a sequence. Their evaluation order is fixed by the engine and cannot be authored. `maximumParticleCount` at effect level must exactly equal the sum of all emitter-template values; enforcement at runtime remains per emitter template.
+`Gravity`, `Drag`, `Noise`, `CurlNoise`, `Turbulence`, `VectorField`, and `Collision` are named optional blocks, not a sequence. Their evaluation order is fixed by the engine and cannot be authored. `maximumParticleCount` at effect level must exactly equal the sum of all emitter-template values; enforcement at runtime remains per emitter template.
+
+Noise, curl noise, turbulence, and vector fields share `frequency`, `strength`, `scroll`, and `timeScale` controls. Curl noise computes a divergence-free force from the built-in 3D noise texture. Turbulence folds and combines 1–8 noise octaves; `lacunarity` controls frequency growth and `gain` controls amplitude decay. `ParticleSystem::setVectorField` installs the arbitrary RGB 3D texture shared by vector-field behaviour modules. RGB values map from `[0,1]` to `[-1,1]`; clear it with `clearVectorField`. A missing field makes only the `VectorField` module inert.
 
 Collision `sources` is a comma-separated combination of `screenSpace`, `analytical`, and `signedDistanceField`; an omitted value defaults to `analytical`. Responses are `bounce`, `slide`, `stop`, `kill`, and `spawnSecondaryEffect`. Restitution is used by bounce, friction is clamped to `[0,1]`, `radiusScale` multiplies the particle's base size, and `screenSpaceThickness` limits how far behind sampled geometry a depth collision can be recovered. The spawn-secondary response sets `ParticleFlag::CollisionEvent` and `ParticleFlag::SpawnSecondaryEffect` on first contact; consuming that GPU event to create child work belongs to the secondary-effects feature.
 

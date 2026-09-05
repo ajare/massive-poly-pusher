@@ -185,6 +185,7 @@ namespace mpp
 		}
 
 		mScreenSpaceCollisionDepth.reset();
+		mVectorFieldTexture.reset();
 		mSignedDistanceFieldTexture.reset();
 		mSignedDistanceFieldBuffer.reset();
 		mColliderBuffer.reset();
@@ -706,6 +707,16 @@ namespace mpp
 		mSignedDistanceFieldData = {};
 	}
 
+	void ParticleSystem::setVectorField(ResourcePtr texture)
+	{
+		mVectorFieldTexture = std::move(texture);
+	}
+
+	void ParticleSystem::clearVectorField()
+	{
+		mVectorFieldTexture.reset();
+	}
+
 	void ParticleSystem::setScreenSpaceCollisionDepth(ResourcePtr sceneDepth)
 	{
 		if (sceneDepth && !dynamic_cast<RenderTexture*>(sceneDepth.get()))
@@ -1163,6 +1174,14 @@ namespace mpp
 
 		auto* collisionDepth = dynamic_cast<RenderTexture*>(mScreenSpaceCollisionDepth.get());
 		bool const hasCollisionDepth = collisionDepth && collisionDepth->getDepthTextureId() != 0u && !collisionDepth->isMultisampled();
+		Texture* vectorField = nullptr;
+		if (mVectorFieldTexture)
+		{
+			mVectorFieldTexture->load();
+			vectorField = dynamic_cast<Texture*>(mVectorFieldTexture.get());
+			if (!vectorField || vectorField->getTextureTarget() != GL_TEXTURE_3D)
+				THROW_MPP("A particle vector field must be a 3D texture.", __LINE__, __FILE__, __func__);
+		}
 		Texture* signedDistanceField = nullptr;
 		if (mSignedDistanceFieldTexture)
 		{
@@ -1180,19 +1199,24 @@ namespace mpp
 		simulationProgram->setUniform("COLLIDER_COUNT", uint32_t(mColliders.size()));
 		simulationProgram->setUniform("HAS_COLLISION_DEPTH", int32_t(hasCollisionDepth ? 1 : 0));
 		simulationProgram->setUniform("HAS_SIGNED_DISTANCE_FIELD", int32_t(signedDistanceField ? 1 : 0));
+		simulationProgram->setUniform("HAS_VECTOR_FIELD", int32_t(vectorField ? 1 : 0));
 		simulationProgram->setUniform("DELTA_SECONDS", dt);
 		simulationProgram->setUniform("SIMULATION_SECONDS", mSimulationSeconds);
 		simulationProgram->setUniform("NOISE_TEXTURE", int32_t(0));
 		simulationProgram->setUniform("COLLISION_DEPTH_TEXTURE", int32_t(1));
 		simulationProgram->setUniform("SIGNED_DISTANCE_FIELD_TEXTURE", int32_t(2));
+		simulationProgram->setUniform("VECTOR_FIELD_TEXTURE", int32_t(3));
 		GL_CHECK(glActiveTexture(GL_TEXTURE0));
 		GL_CHECK(glBindSampler(0, 0));
 		GL_CHECK(glBindTexture(GL_TEXTURE_3D, mNoiseTexture));
 		if (hasCollisionDepth) collisionDepth->bindDepth(1u);
 		if (signedDistanceField) signedDistanceField->bind(2u);
+		if (vectorField) vectorField->bind(3u);
 		mSimulationDispatchCommand->bindDispatchIndirect();
 		simulationProgram->dispatchIndirect();
 		GL_CHECK(glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0));
+		GL_CHECK(glActiveTexture(GL_TEXTURE3));
+		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
 		GL_CHECK(glActiveTexture(GL_TEXTURE2));
 		GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
 		GL_CHECK(glActiveTexture(GL_TEXTURE1));

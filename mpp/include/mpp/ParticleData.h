@@ -24,7 +24,10 @@ namespace mpp
 		Gravity = 1u << 0,
 		Drag = 1u << 1,
 		Noise = 1u << 2,
-		Collision = 1u << 3
+		Collision = 1u << 3,
+		CurlNoise = 1u << 4,
+		Turbulence = 1u << 5,
+		VectorField = 1u << 6
 	};
 
 	enum class ParticleCollisionSource : uint32_t
@@ -253,6 +256,17 @@ namespace mpp
 		std::array<float, 4> gravityAndDrag{};
 		std::array<float, 4> noiseFrequencyStrength{};
 		std::array<float, 4> noiseScrollAndTimeScale{};
+		// Curl noise has the same spatial controls as basic noise. Turbulence adds
+		// octave count, lacunarity and gain in the first three channels of its final slot.
+		std::array<float, 4> curlNoiseFrequencyStrength{};
+		std::array<float, 4> curlNoiseScrollAndTimeScale{};
+		std::array<float, 4> turbulenceFrequencyStrength{};
+		std::array<float, 4> turbulenceScrollAndTimeScale{};
+		std::array<float, 4> turbulenceOctavesLacunarityGain{ 1.0f, 2.0f, 0.5f, 0.0f };
+		// The vector-field texture is shared world data; these controls map world
+		// position into its texture domain and scale its decoded [-1, 1] vectors.
+		std::array<float, 4> vectorFieldFrequencyStrength{};
+		std::array<float, 4> vectorFieldScrollAndTimeScale{};
 		// Collision source mask, response, then reserved words. Collision remains a
 		// runtime-branched behaviour module, like gravity, drag, and noise.
 		std::array<uint32_t, 4> collisionConfiguration{
@@ -368,7 +382,7 @@ namespace mpp
 	static_assert(offsetof(ParticleRecord, padding) == 60);
 	static_assert(sizeof(ParticleRecord) == 64, "The std430 particle array stride must be exactly 64 bytes.");
 	static_assert(clampParticleDeltaSeconds(3.0f) == MaximumParticleDeltaSeconds);
-	static_assert(sizeof(EmitterSimData) == 336);
+	static_assert(sizeof(EmitterSimData) == 448);
 	static_assert(sizeof(ParticleCollider) == 64);
 	static_assert(sizeof(ParticleSignedDistanceFieldData) == 80);
 	static_assert(sizeof(TemplateRenderData) == 96);

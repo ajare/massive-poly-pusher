@@ -37,8 +37,9 @@ namespace mpp::resource_parsers
 
 		auto const modules = uint32_t(ParticleBehaviourModule::Gravity) |
 			uint32_t(ParticleBehaviourModule::Drag) | uint32_t(ParticleBehaviourModule::Noise) |
-			uint32_t(ParticleBehaviourModule::Collision);
-		if (modules != 0xfu) return fail("particle behaviour-module flags overlap or changed");
+			uint32_t(ParticleBehaviourModule::Collision) | uint32_t(ParticleBehaviourModule::CurlNoise) |
+			uint32_t(ParticleBehaviourModule::Turbulence) | uint32_t(ParticleBehaviourModule::VectorField);
+		if (modules != 0x7fu) return fail("particle behaviour-module flags overlap or changed");
 		if (uint32_t(ParticleCollisionSource::ScreenSpace | ParticleCollisionSource::Analytical |
 			ParticleCollisionSource::SignedDistanceField) != 0x7u)
 			return fail("particle collision-source flags overlap or changed");
@@ -83,7 +84,8 @@ namespace mpp::resource_parsers
 			emitter.appearance.sorting[0] != uint32_t(ParticleSortMode::None) ||
 			emitter.simulation.collisionConfiguration[0] != uint32_t(ParticleCollisionSource::Analytical) ||
 			emitter.simulation.collisionConfiguration[1] != uint32_t(ParticleCollisionResponse::Bounce) ||
-			emitter.simulation.collisionParameters != std::array<float, 4>{ 0.5f, 0.0f, 1.0f, 0.1f })
+			emitter.simulation.collisionParameters != std::array<float, 4>{ 0.5f, 0.0f, 1.0f, 0.1f } ||
+			emitter.simulation.turbulenceOctavesLacunarityGain != std::array<float, 4>{ 1.0f, 2.0f, 0.5f, 0.0f })
 			return fail("particle emitter-template resource defaults changed");
 
 		// Resource construction must copy templates. A reusable particle effect
@@ -104,7 +106,8 @@ namespace mpp::resource_parsers
 		auto& simulation = authored.value.simulation;
 		simulation.shapeSeedModulesBudget = { uint32_t(ParticleSpawnShape::Cone), 77u,
 			uint32_t(ParticleBehaviourModule::Gravity) | uint32_t(ParticleBehaviourModule::Drag) |
-			uint32_t(ParticleBehaviourModule::Collision), 96u };
+			uint32_t(ParticleBehaviourModule::Collision) | uint32_t(ParticleBehaviourModule::CurlNoise) |
+			uint32_t(ParticleBehaviourModule::Turbulence) | uint32_t(ParticleBehaviourModule::VectorField), 96u };
 		simulation.collisionConfiguration = { uint32_t(ParticleCollisionSource::ScreenSpace) |
 			uint32_t(ParticleCollisionSource::Analytical) | uint32_t(ParticleCollisionSource::SignedDistanceField),
 			uint32_t(ParticleCollisionResponse::SpawnSecondaryEffect), 0u, 0u };
@@ -112,6 +115,13 @@ namespace mpp::resource_parsers
 		simulation.shapeParameters = { 1.0f, 2.0f, 0.5f, 0.0f };
 		simulation.emissionRateAndPadding[0] = 24.0f;
 		simulation.gravityAndDrag = { 0.0f, -9.81f, 0.0f, 0.2f };
+		simulation.curlNoiseFrequencyStrength = { 0.5f, 0.75f, 1.0f, 2.0f };
+		simulation.curlNoiseScrollAndTimeScale = { 0.1f, 0.2f, 0.3f, 1.5f };
+		simulation.turbulenceFrequencyStrength = { 1.0f, 2.0f, 3.0f, 4.0f };
+		simulation.turbulenceScrollAndTimeScale = { 0.4f, 0.5f, 0.6f, 0.75f };
+		simulation.turbulenceOctavesLacunarityGain = { 4.0f, 2.25f, 0.4f, 0.0f };
+		simulation.vectorFieldFrequencyStrength = { 0.2f, 0.3f, 0.4f, 5.0f };
+		simulation.vectorFieldScrollAndTimeScale = { 0.7f, 0.8f, 0.9f, 0.5f };
 		authored.value.appearance.textureAndAtlas = { 0u, 0u, 4u, 4u };
 		authored.value.appearance.culling = { 250.0f, 1.5f, 0.0f, 0.0f };
 		authored.value.appearance.modes = { 16u, uint32_t(ParticleTextureAnimation::FrameOverLife) | ParticleTextureRandomStartBit,
@@ -133,6 +143,13 @@ namespace mpp::resource_parsers
 			restored.emitterTemplates[0].value.simulation.shapeSeedModulesBudget != simulation.shapeSeedModulesBudget ||
 			restored.emitterTemplates[0].value.simulation.collisionConfiguration != simulation.collisionConfiguration ||
 			restored.emitterTemplates[0].value.simulation.collisionParameters != simulation.collisionParameters ||
+			restored.emitterTemplates[0].value.simulation.curlNoiseFrequencyStrength != simulation.curlNoiseFrequencyStrength ||
+			restored.emitterTemplates[0].value.simulation.curlNoiseScrollAndTimeScale != simulation.curlNoiseScrollAndTimeScale ||
+			restored.emitterTemplates[0].value.simulation.turbulenceFrequencyStrength != simulation.turbulenceFrequencyStrength ||
+			restored.emitterTemplates[0].value.simulation.turbulenceScrollAndTimeScale != simulation.turbulenceScrollAndTimeScale ||
+			restored.emitterTemplates[0].value.simulation.turbulenceOctavesLacunarityGain != simulation.turbulenceOctavesLacunarityGain ||
+			restored.emitterTemplates[0].value.simulation.vectorFieldFrequencyStrength != simulation.vectorFieldFrequencyStrength ||
+			restored.emitterTemplates[0].value.simulation.vectorFieldScrollAndTimeScale != simulation.vectorFieldScrollAndTimeScale ||
 			restored.emitterTemplates[0].value.appearance.modes != authored.value.appearance.modes ||
 			restored.emitterTemplates[0].value.appearance.culling != authored.value.appearance.culling ||
 			restored.emitterTemplates[0].value.appearance.sorting != authored.value.appearance.sorting ||

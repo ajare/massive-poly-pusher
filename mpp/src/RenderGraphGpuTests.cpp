@@ -2064,26 +2064,34 @@ void main()
 					// Exercise the linked kernel against a tiny known pool. This isolates
 					// every module bit and both survivor/death paths from bootstrap random
 					// values while still executing the production GLSL on the driver.
-					std::array<ParticleRecord, 5> particles{};
+					std::array<ParticleRecord, 8> particles{};
 					for (uint32_t index = 0; index < particles.size(); ++index)
 					{
-						particles[index].velocityLifetime = { index == 3u ? 0.0f : 2.0f, 0.0f, 0.0f, 10.0f };
-						particles[index].emitterIndex = std::min(index, 3u);
+						particles[index].velocityLifetime = { (index == 3u || index >= 4u) ? 0.0f : 2.0f, 0.0f, 0.0f, 10.0f };
+						particles[index].emitterIndex = std::min(index, 6u);
 						particles[index].angularVelocity = 3.0f;
 					}
-					particles[4].emitterIndex = 0u;
-					particles[4].positionAge[3] = 0.95f;
-					particles[4].velocityLifetime[3] = 1.0f;
-					std::array<EmitterSimData, 4> emitters{};
+					particles[4].positionAge = { 0.5f, 0.5f, 0.5f, 0.0f };
+					particles[7].emitterIndex = 0u;
+					particles[7].positionAge[3] = 0.95f;
+					particles[7].velocityLifetime[3] = 1.0f;
+					std::array<EmitterSimData, 7> emitters{};
 					emitters[1].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Gravity);
 					emitters[1].gravityAndDrag = { 0.0f, -10.0f, 0.0f, 0.0f };
 					emitters[2].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Drag);
 					emitters[2].gravityAndDrag[3] = 5.0f;
 					emitters[3].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Noise);
 					emitters[3].noiseFrequencyStrength = { 0.0f, 0.0f, 0.0f, 2.0f };
-					std::array<uint32_t, 5> freeIndices{};
-					std::array<uint32_t, 5> activeA{ 0u, 1u, 2u, 3u, 4u }, activeB{};
-					std::array<uint32_t, 12> counters{ 0u, 5u, 0u, 0u, 0u, 0u, 0u, 0u, 2u, 1u, 1u, 1u };
+					emitters[4].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::CurlNoise);
+					emitters[4].curlNoiseFrequencyStrength = { 1.0f, 1.0f, 1.0f, 1.0f };
+					emitters[5].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::Turbulence);
+					emitters[5].turbulenceFrequencyStrength = { 1.0f, 1.0f, 1.0f, 2.0f };
+					emitters[5].turbulenceOctavesLacunarityGain = { 3.0f, 2.0f, 0.5f, 0.0f };
+					emitters[6].shapeSeedModulesBudget[2] = uint32_t(ParticleBehaviourModule::VectorField);
+					emitters[6].vectorFieldFrequencyStrength = { 1.0f, 1.0f, 1.0f, 2.0f };
+					std::array<uint32_t, 8> freeIndices{};
+					std::array<uint32_t, 8> activeA{ 0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u }, activeB{};
+					std::array<uint32_t, 15> counters{ 0u, 8u, 0u, 0u, 0u, 0u, 0u, 0u, 2u, 1u, 1u, 1u, 1u, 1u, 1u };
 					std::array<GLuint, 6> buffers{};
 					auto bindTestBuffer = [&](uint32_t binding, auto const& values)
 					{
@@ -2101,25 +2109,47 @@ void main()
 					bindTestBuffer(4, counters);
 					bindTestBuffer(5, emitters);
 
-					GLuint noiseTexture = 0;
-					std::array<uint8_t, 4> noiseTexel{ 255u, 128u, 128u, 255u };
+					GLuint noiseTexture = 0, vectorFieldTexture = 0;
+					std::array<float, 4u * 4u * 4u * 4u> noiseTexels{};
+					for (uint32_t z = 0; z < 4u; ++z) for (uint32_t y = 0; y < 4u; ++y) for (uint32_t x = 0; x < 4u; ++x)
+					{
+						auto const texel = size_t((z * 16u + y * 4u + x) * 4u);
+						noiseTexels[texel] = 1.0f;
+						noiseTexels[texel + 1u] = 0.5f;
+						noiseTexels[texel + 2u] = (float(y) + 0.5f) / 4.0f;
+						noiseTexels[texel + 3u] = 1.0f;
+					}
 					GL_CHECK(glGenTextures(1, &noiseTexture));
 					GL_CHECK(glActiveTexture(GL_TEXTURE0));
 					GL_CHECK(glBindTexture(GL_TEXTURE_3D, noiseTexture));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT));
+					GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA32F, 4, 4, 4, 0, GL_RGBA, GL_FLOAT, noiseTexels.data()));
+					std::array<float, 4> vectorFieldTexel{ 0.5f, 1.0f, 0.5f, 1.0f };
+					GL_CHECK(glGenTextures(1, &vectorFieldTexture));
+					GL_CHECK(glActiveTexture(GL_TEXTURE3));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, vectorFieldTexture));
 					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
 					GL_CHECK(glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-					GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 1, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, noiseTexel.data()));
+					GL_CHECK(glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA32F, 1, 1, 1, 0, GL_RGBA, GL_FLOAT, vectorFieldTexel.data()));
 
 					auto simulationResource = renderSystem->getResourceManager()->getResource("__mpp_particle_simulation__", true);
 					auto* simulation = dynamic_cast<ComputeProgram*>(simulationResource.get());
 					if (!simulation) return fail("particle simulation resource is not a compute program");
 					simulation->use();
 					simulation->setUniform("ACTIVE_LIST_INDEX", 0u);
-					simulation->setUniform("EMITTER_COUNT", 4u);
-					simulation->setUniform("TEMPLATE_COUNT", 4u);
+					simulation->setUniform("EMITTER_COUNT", 7u);
+					simulation->setUniform("TEMPLATE_COUNT", 7u);
 					simulation->setUniform("DELTA_SECONDS", 0.1f);
 					simulation->setUniform("SIMULATION_SECONDS", 0.0f);
 					simulation->setUniform("NOISE_TEXTURE", int32_t(0));
+					simulation->setUniform("VECTOR_FIELD_TEXTURE", int32_t(3));
+					simulation->setUniform("HAS_VECTOR_FIELD", int32_t(1));
+					simulation->setUniform("HAS_COLLISION_DEPTH", int32_t(0));
+					simulation->setUniform("HAS_SIGNED_DISTANCE_FIELD", int32_t(0));
 					simulation->dispatch(1u);
 					GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
 
@@ -2142,19 +2172,29 @@ void main()
 						simulationFailure = "drag module did not integrate independently";
 					else if (!(particles[3].velocityLifetime[0] > 0.19f) || !(particles[3].positionAge[0] > 0.019f))
 						simulationFailure = "3D-texture noise module did not integrate independently";
+					else if (!(particles[4].velocityLifetime[0] > 0.19f) || !(particles[4].positionAge[0] > 0.519f))
+						simulationFailure = "curl-noise module did not integrate independently";
+					else if (!(particles[5].velocityLifetime[0] > 0.19f) || !(particles[5].positionAge[0] > 0.019f))
+						simulationFailure = "multi-octave turbulence module did not integrate independently";
+					else if (!(particles[6].velocityLifetime[1] > 0.19f) || !(particles[6].positionAge[1] > 0.019f))
+						simulationFailure = "arbitrary vector-field module did not integrate independently";
 					else if (!near(particles[0].rotation, 0.3f) || !near(particles[0].positionAge[3], 0.1f))
 						simulationFailure = "base age or angular-velocity integration failed";
-					else if (counters[0] != 1u || counters[2] != 4u || counters[8] != 1u || freeIndices[0] != 4u)
+					else if (counters[0] != 1u || counters[2] != 7u || counters[8] != 1u || freeIndices[0] != 7u)
 						simulationFailure = "survivor active-list append or dead-particle reclamation failed";
 					else
 					{
 						auto survivors = activeB;
-						std::sort(survivors.begin(), survivors.begin() + 4);
-						if (survivors[0] != 0u || survivors[1] != 1u || survivors[2] != 2u || survivors[3] != 3u)
-							simulationFailure = "survivors were not written to the opposite active list";
+						std::sort(survivors.begin(), survivors.begin() + 7);
+						for (uint32_t index = 0; index < 7u; ++index)
+							if (survivors[index] != index) simulationFailure = "survivors were not written to the opposite active list";
 					}
 
 					GL_CHECK(glUseProgram(0));
+					GL_CHECK(glActiveTexture(GL_TEXTURE3));
+					GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
+					GL_CHECK(glDeleteTextures(1, &vectorFieldTexture));
+					GL_CHECK(glActiveTexture(GL_TEXTURE0));
 					GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
 					GL_CHECK(glDeleteTextures(1, &noiseTexture));
 					GL_CHECK(glDeleteBuffers(GLsizei(buffers.size()), buffers.data()));
