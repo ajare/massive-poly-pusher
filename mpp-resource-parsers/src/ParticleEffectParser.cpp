@@ -3,13 +3,13 @@
 #include <charconv>
 #include <cmath>
 #include <cctype>
-#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
 
 #include "mpp/data/StructuredData.h"
 #include "mpp/resource-parsers/ParticleEffectParser.h"
+#include "mpp/ParticleEffectValidator.h"
 #include "StructuredDataAdapter.h"
 
 namespace mpp::resource_parsers
@@ -131,14 +131,12 @@ namespace mpp::resource_parsers
 				fields(node, { "default", "Keys" }, path);
 				curve.defaultValue = number(node, "default", path, curve.defaultValue);
 				if (!node.hasEntry("Keys")) return;
-				float previous = -1.0f;
 				for (auto const& entry : node.getEntry("Keys"))
 				{
 					if (entry.first != "Key") { error("MPP-PARTICLE-002", "Curves contain only Key entries.", path + "/Keys"); continue; }
 					fields(entry.second, { "time", "value" }, path + "/Keys/Key");
 					ParticleCurveKey key{ number(entry.second, "time", path + "/Keys/Key", 0.0f, true), number(entry.second, "value", path + "/Keys/Key", 1.0f, true) };
-					if (key.time < 0.0f || key.time > 1.0f || key.time < previous) error("MPP-PARTICLE-010", "Curve key times must be ordered in [0, 1].", path + "/Keys/Key/time");
-					previous = key.time; curve.keys.push_back(key);
+					curve.keys.push_back(key);
 				}
 			}
 
@@ -147,14 +145,12 @@ namespace mpp::resource_parsers
 				fields(node, { "default", "Keys" }, path);
 				gradient.defaultColour = vector<3>(node, "default", path, gradient.defaultColour);
 				if (!node.hasEntry("Keys")) return;
-				float previous = -1.0f;
 				for (auto const& entry : node.getEntry("Keys"))
 				{
 					if (entry.first != "Key") { error("MPP-PARTICLE-002", "A colour gradient contains only Key entries.", path + "/Keys"); continue; }
 					fields(entry.second, { "time", "colour" }, path + "/Keys/Key");
 					ParticleGradientKey key{ number(entry.second, "time", path + "/Keys/Key", 0.0f, true), vector<3>(entry.second, "colour", path + "/Keys/Key", { 1, 1, 1 }, true) };
-					if (key.time < 0.0f || key.time > 1.0f || key.time < previous) error("MPP-PARTICLE-010", "Gradient key times must be ordered in [0, 1].", path + "/Keys/Key/time");
-					previous = key.time; gradient.keys.push_back(key);
+					gradient.keys.push_back(key);
 				}
 			}
 
@@ -177,10 +173,6 @@ namespace mpp::resource_parsers
 				event.count = integer(node, "count", path, 1u);
 				event.age = number(node, "age", path, 0.0f, event.trigger == ParticleEventTrigger::Age);
 				event.payload = integer(node, "payload", path, 0u);
-				if (event.action == ParticleEventAction::SecondaryParticleBurst && event.count == 0u)
-					error("MPP-PARTICLE-015", "A secondary particle burst count must be greater than zero.", path + "/count");
-				if (event.age < 0.0f)
-					error("MPP-PARTICLE-015", "A particle age event must have a non-negative age.", path + "/age");
 				return event;
 			}
 
@@ -230,7 +222,6 @@ namespace mpp::resource_parsers
 					auto lifetime = vector<2>(spawn, "lifetime", spawnPath, { 1, 1 }); auto size = vector<2>(spawn, "size", spawnPath, { 1, 1 });
 					auto rotation = vector<2>(spawn, "rotation", spawnPath, { 0, 0 }); auto angular = vector<2>(spawn, "angularVelocity", spawnPath, { 0, 0 });
 					sim.lifetimeSizeRanges = { lifetime[0], lifetime[1], size[0], size[1] }; sim.rotationRanges = { rotation[0], rotation[1], angular[0], angular[1] };
-					if (sim.emissionRateAndPadding[0] < 0 || lifetime[0] < 0 || lifetime[1] < lifetime[0] || size[0] < 0 || size[1] < size[0]) error("MPP-PARTICLE-011", "Spawn rates and ranges must be non-negative and ordered.", spawnPath);
 				}
 
 				if (node.hasEntry("Behaviours"))
@@ -241,7 +232,7 @@ namespace mpp::resource_parsers
 					if (behaviours.hasEntry("Drag")) { auto const& block=behaviours.getEntry("Drag"); fields(block,{"coefficient"},behaviourPath+"/Drag"); sim.gravityAndDrag[3]=number(block,"coefficient",behaviourPath+"/Drag",0,true);sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Drag); }
 					if (behaviours.hasEntry("Noise")) { auto const& block=behaviours.getEntry("Noise");fields(block,{"frequency","strength","scroll","timeScale"},behaviourPath+"/Noise");auto frequency=vector<3>(block,"frequency",behaviourPath+"/Noise",{1,1,1});auto scroll=vector<3>(block,"scroll",behaviourPath+"/Noise",{0,0,0});sim.noiseFrequencyStrength={frequency[0],frequency[1],frequency[2],number(block,"strength",behaviourPath+"/Noise",0,true)};sim.noiseScrollAndTimeScale={scroll[0],scroll[1],scroll[2],number(block,"timeScale",behaviourPath+"/Noise",1)};sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Noise); }
 					if (behaviours.hasEntry("CurlNoise")) { auto const& block=behaviours.getEntry("CurlNoise");auto blockPath=behaviourPath+"/CurlNoise";fields(block,{"frequency","strength","scroll","timeScale"},blockPath);auto frequency=vector<3>(block,"frequency",blockPath,{1,1,1});auto scroll=vector<3>(block,"scroll",blockPath,{0,0,0});sim.curlNoiseFrequencyStrength={frequency[0],frequency[1],frequency[2],number(block,"strength",blockPath,0,true)};sim.curlNoiseScrollAndTimeScale={scroll[0],scroll[1],scroll[2],number(block,"timeScale",blockPath,1)};sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::CurlNoise); }
-					if (behaviours.hasEntry("Turbulence")) { auto const& block=behaviours.getEntry("Turbulence");auto blockPath=behaviourPath+"/Turbulence";fields(block,{"frequency","strength","scroll","timeScale","octaves","lacunarity","gain"},blockPath);auto frequency=vector<3>(block,"frequency",blockPath,{1,1,1});auto scroll=vector<3>(block,"scroll",blockPath,{0,0,0});auto strength=number(block,"strength",blockPath,0,true);auto octaves=integer(block,"octaves",blockPath,1);auto lacunarity=number(block,"lacunarity",blockPath,2);auto gain=number(block,"gain",blockPath,0.5f);sim.turbulenceFrequencyStrength={frequency[0],frequency[1],frequency[2],strength};sim.turbulenceScrollAndTimeScale={scroll[0],scroll[1],scroll[2],number(block,"timeScale",blockPath,1)};sim.turbulenceOctavesLacunarityGain={float(octaves),lacunarity,gain,0};if(octaves<1||octaves>8||lacunarity<1||gain<0||gain>1)error("MPP-PARTICLE-011","Turbulence octaves must be in [1, 8], lacunarity at least 1, and gain in [0, 1].",blockPath);sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Turbulence); }
+					if (behaviours.hasEntry("Turbulence")) { auto const& block=behaviours.getEntry("Turbulence");auto blockPath=behaviourPath+"/Turbulence";fields(block,{"frequency","strength","scroll","timeScale","octaves","lacunarity","gain"},blockPath);auto frequency=vector<3>(block,"frequency",blockPath,{1,1,1});auto scroll=vector<3>(block,"scroll",blockPath,{0,0,0});auto strength=number(block,"strength",blockPath,0,true);auto octaves=integer(block,"octaves",blockPath,1);auto lacunarity=number(block,"lacunarity",blockPath,2);auto gain=number(block,"gain",blockPath,0.5f);sim.turbulenceFrequencyStrength={frequency[0],frequency[1],frequency[2],strength};sim.turbulenceScrollAndTimeScale={scroll[0],scroll[1],scroll[2],number(block,"timeScale",blockPath,1)};sim.turbulenceOctavesLacunarityGain={float(octaves),lacunarity,gain,0};sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::Turbulence); }
 					if (behaviours.hasEntry("VectorField")) { auto const& block=behaviours.getEntry("VectorField");auto blockPath=behaviourPath+"/VectorField";fields(block,{"frequency","strength","scroll","timeScale"},blockPath);auto frequency=vector<3>(block,"frequency",blockPath,{1,1,1});auto scroll=vector<3>(block,"scroll",blockPath,{0,0,0});sim.vectorFieldFrequencyStrength={frequency[0],frequency[1],frequency[2],number(block,"strength",blockPath,0,true)};sim.vectorFieldScrollAndTimeScale={scroll[0],scroll[1],scroll[2],number(block,"timeScale",blockPath,1)};sim.shapeSeedModulesBudget[2]|=uint32_t(ParticleBehaviourModule::VectorField); }
 					if (behaviours.hasEntry("Collision"))
 					{
@@ -252,9 +243,6 @@ namespace mpp::resource_parsers
 							{ {"bounce",ParticleCollisionResponse::Bounce},{"slide",ParticleCollisionResponse::Slide},{"stop",ParticleCollisionResponse::Stop},{"kill",ParticleCollisionResponse::Kill},{"spawnsecondaryeffect",ParticleCollisionResponse::SpawnSecondaryEffect} }));
 						sim.collisionParameters = { number(block,"restitution",collisionPath,0.5f), number(block,"friction",collisionPath,0.0f),
 							number(block,"radiusScale",collisionPath,1.0f), number(block,"screenSpaceThickness",collisionPath,0.1f) };
-						if (sim.collisionParameters[0] < 0.0f || sim.collisionParameters[1] < 0.0f || sim.collisionParameters[1] > 1.0f ||
-							sim.collisionParameters[2] < 0.0f || sim.collisionParameters[3] < 0.0f)
-							error("MPP-PARTICLE-011", "Collision restitution, radius scale, and thickness must be non-negative; friction must be in [0, 1].", collisionPath);
 						sim.shapeSeedModulesBudget[2] |= uint32_t(ParticleBehaviourModule::Collision);
 					}
 				}
@@ -308,14 +296,6 @@ namespace mpp::resource_parsers
 					if (proxy) lighting.flagsAndPadding[0] |= uint32_t(ParticleLightingFlag::ProxyLight);
 					if (injection) lighting.flagsAndPadding[0] |= uint32_t(ParticleLightingFlag::PbrLightInjection);
 					if (volumetric) lighting.flagsAndPadding[0] |= uint32_t(ParticleLightingFlag::VolumetricContribution);
-					if (injection && !proxy)
-						error("MPP-PARTICLE-018", "Particle light injection requires proxyLight: true.", lightingPath + "/lightInjection");
-					if ((proxy || injection || volumetric) && lighting.rangeAndVolumetric[0] <= 0.0f)
-						error("MPP-PARTICLE-018", "Enabled particle lighting requires a positive range.", lightingPath + "/range");
-					if (lighting.colourAndIntensity[0] < 0.0f || lighting.colourAndIntensity[1] < 0.0f ||
-						lighting.colourAndIntensity[2] < 0.0f || lighting.colourAndIntensity[3] < 0.0f ||
-						lighting.rangeAndVolumetric[1] < 0.0f)
-						error("MPP-PARTICLE-018", "Particle lighting colour and intensities must be non-negative.", lightingPath);
 				}
 
 				if (node.hasEntry("Appearance"))
@@ -332,9 +312,6 @@ namespace mpp::resource_parsers
 					appearance.sorting[0]=uint32_t(boolean(block,"depthSort",appearancePath,false)?ParticleSortMode::BackToFront:ParticleSortMode::None);
 					appearance.sorting[2]=boolean(block,"distortion",appearancePath,false)?1u:0u;
 					appearance.culling[3]=number(block,"distortionStrength",appearancePath,0.02f);
-					if(appearance.textureAndAtlas[2]==0||appearance.textureAndAtlas[3]==0||appearance.modes[0]==0||appearance.modes[0]>appearance.textureAndAtlas[2]*appearance.textureAndAtlas[3])error("MPP-PARTICLE-012","Atlas dimensions must be positive and contain frameCount.",appearancePath);
-					if(appearance.culling[0]<0||appearance.culling[1]<0)error("MPP-PARTICLE-011","Particle culling distances and sizes must be non-negative.",appearancePath);
-					if(appearance.culling[3]<0)error("MPP-PARTICLE-011","Particle distortion strength must be non-negative.",appearancePath);
 				}
 				result.specification.emitterTemplates.push_back(std::move(authored));
 			}
@@ -346,44 +323,26 @@ namespace mpp::resource_parsers
 				result.specification.version=integer(data,"version","/ParticleEffect",1);
 				result.specification.name=value(data,"name","/ParticleEffect",true);
 				result.specification.maximumParticleCount=integer(data,"maximumParticleCount","/ParticleEffect",0,true);
-				if(result.specification.version!=1)error("MPP-PARTICLE-013","Unsupported particle effect version; expected 1.","/ParticleEffect/version");
 				if(data.hasEntry("Emitters")) { size_t index=0;for(auto const& entry:data.getEntry("Emitters")){if(entry.first!="Emitter"){error("MPP-PARTICLE-002","Emitters contains only Emitter entries.","/ParticleEffect/Emitters");continue;}parseEmitter(entry.second,index++);} }
 				if(data.hasEntry("ChildEffects")) { size_t index=0;for(auto const& entry:data.getEntry("ChildEffects")){if(entry.first!="ChildEffect"){error("MPP-PARTICLE-002","ChildEffects contains only ChildEffect entries.","/ParticleEffect/ChildEffects");continue;}parseChildEffect(entry.second,index++);} }
-				if(result.specification.emitterTemplates.empty() && result.specification.childEffects.empty())
-					error("MPP-PARTICLE-003","Particle effect requires at least one emitter template or child particle effect.","/ParticleEffect");
+				result.diagnostics.append(ParticleEffectValidator::validate(result.specification, source));
 
-				bool const hasSecondaryEvents = std::any_of(result.specification.emitterTemplates.begin(),
-					result.specification.emitterTemplates.end(), [](auto const& emitter)
-					{
-						return std::any_of(emitter.events.begin(), emitter.events.end(), [](auto const& event)
-							{ return event.action == ParticleEventAction::SecondaryParticleBurst; });
-					});
-				std::unordered_set<std::string> emitterNames;
-				for (size_t index = 0; index < result.specification.emitterTemplates.size(); ++index)
+				for (auto& emitter : result.specification.emitterTemplates)
 				{
-					auto& emitter = result.specification.emitterTemplates[index];
-					auto emitterPath = "/ParticleEffect/Emitters/Emitter[" + std::to_string(index) + "]";
-					if (!emitterNames.emplace(emitter.name).second && hasSecondaryEvents)
-						error("MPP-PARTICLE-016", "Emitter template names must be unique when secondary particle events are authored.", emitterPath + "/name");
 					emitter.value.events.clear();
-					for (size_t eventIndex = 0; eventIndex < emitter.events.size(); ++eventIndex)
+					for (auto const& event : emitter.events)
 					{
-						auto const& event = emitter.events[eventIndex];
 						ParticleEventRule rule{ event.trigger, event.action, 0u, event.count, event.age, event.payload };
 						if (event.action == ParticleEventAction::SecondaryParticleBurst)
 						{
 							auto found = std::find_if(result.specification.emitterTemplates.begin(), result.specification.emitterTemplates.end(),
 								[&](auto const& candidate) { return candidate.name == event.targetEmitter; });
-							if (found == result.specification.emitterTemplates.end())
-								error("MPP-PARTICLE-017", "Secondary particle event target emitter '" + event.targetEmitter + "' does not exist.",
-									emitterPath + "/Events/Event[" + std::to_string(eventIndex) + "]/targetEmitter");
-							else rule.targetEmitterTemplate = uint32_t(std::distance(result.specification.emitterTemplates.begin(), found));
+							if (found != result.specification.emitterTemplates.end())
+								rule.targetEmitterTemplate = uint32_t(std::distance(result.specification.emitterTemplates.begin(), found));
 						}
 						emitter.value.events.push_back(rule);
 					}
 				}
-				uint64_t total=0;for(auto const& emitter:result.specification.emitterTemplates)total+=emitter.value.simulation.shapeSeedModulesBudget[3];
-				if(total>std::numeric_limits<uint32_t>::max()||total!=result.specification.maximumParticleCount)error("MPP-PARTICLE-014","maximumParticleCount must equal the sum of emitter-template budgets ("+std::to_string(total)+").","/ParticleEffect/maximumParticleCount");
 			}
 		};
 	}

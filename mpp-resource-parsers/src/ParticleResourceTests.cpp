@@ -7,6 +7,7 @@
 #include "mpp/data/StructuredData.h"
 #include "mpp/ParticleData.h"
 #include "mpp/ParticleEffectSpecification.h"
+#include "mpp/ParticleEffectValidator.h"
 #include "mpp/ProgrammaticParticleEffectStream.h"
 #include "mpp/resource-parsers/FileParticleEffectStream.h"
 #include "mpp/resource-parsers/ParticleEffectParser.h"
@@ -20,6 +21,28 @@ namespace mpp::resource_parsers
 		auto fail = [failure](std::string const& message)
 		{
 			if (failure) *failure = message;
+			return false;
+		};
+		auto diagnosticsMatch = [](DiagnosticBag const& left, DiagnosticBag const& right)
+		{
+			auto const& leftValues = left.getDiagnostics();
+			auto const& rightValues = right.getDiagnostics();
+			if (leftValues.size() != rightValues.size()) return false;
+			for (size_t index = 0; index < leftValues.size(); ++index)
+			{
+				auto const& leftValue = leftValues[index];
+				auto const& rightValue = rightValues[index];
+				if (leftValue.code != rightValue.code || leftValue.severity != rightValue.severity ||
+					leftValue.message != rightValue.message || leftValue.location.document != rightValue.location.document ||
+					leftValue.location.elementPath != rightValue.location.elementPath || leftValue.objectId != rightValue.objectId)
+					return false;
+			}
+			return true;
+		};
+		auto hasDiagnostic = [](DiagnosticBag const& diagnostics, std::string const& code, std::string const& path)
+		{
+			for (auto const& diagnostic : diagnostics.getDiagnostics())
+				if (diagnostic.code == code && diagnostic.location.elementPath == path) return true;
 			return false;
 		};
 
@@ -177,6 +200,11 @@ namespace mpp::resource_parsers
 		child.seed = 1234u;
 		specification.childEffects.push_back(child);
 
+		// Semantic validation is available directly on authored in-memory data. It
+		// does not require serialization, a ResourceManager, or a GL context.
+		if (ParticleEffectValidator::validate(specification, "in-memory.particle.yaml").hasErrors())
+			return fail("valid in-memory particle effect failed semantic validation");
+
 		auto temporary = std::filesystem::temp_directory_path() / "mpp-particle-resource-round-trip.particle.yaml";
 		try { ParticleEffectSerializer::toFile(specification, temporary.string()); }
 		catch (std::exception const& error) { return fail("could not write particle effect round trip: " + std::string(error.what())); }
@@ -260,6 +288,55 @@ namespace mpp::resource_parsers
 			if (!unreadableStream.getDiagnostics().hasErrors()) return fail("unreadable particle document did not produce diagnostics");
 		}
 		catch (...) { return fail("malformed particle file stream threw instead of returning diagnostics"); }
+
+		// The parser and file-backed resource stream must expose exactly the shared
+		// validator's semantic codes and document/object locations.
+		auto semanticallyInvalid = specification;
+		semanticallyInvalid.maximumParticleCount = 95u;
+		auto& invalidEmitter = semanticallyInvalid.emitterTemplates[0];
+		invalidEmitter.value.simulation.emissionRateAndPadding[0] = -1.0f;
+		invalidEmitter.value.curves[size_t(ParticleScalarCurve::Size)].keys = { { 0.75f, 1.0f }, { 0.25f, 2.0f } };
+		invalidEmitter.value.appearance.modes[0] = 17u;
+		invalidEmitter.value.lighting.flagsAndPadding[0] = uint32_t(ParticleLightingFlag::PbrLightInjection);
+		invalidEmitter.value.lighting.rangeAndVolumetric[0] = 0.0f;
+		invalidEmitter.value.lighting.colourAndIntensity[0] = -1.0f;
+		invalidEmitter.events[0].targetEmitter = "Missing";
+		invalidEmitter.events[0].count = 0u;
+
+		auto invalidTemporary = std::filesystem::temp_directory_path() / "mpp-particle-resource-invalid.particle.yaml";
+		auto directDiagnostics = ParticleEffectValidator::validate(semanticallyInvalid, invalidTemporary.string());
+		if (!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-011", "/ParticleEffect/Emitters/Emitter[0]/Spawn") ||
+			!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-015", "/ParticleEffect/Emitters/Emitter[0]/Events/Event[0]/count") ||
+			!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-010", "/ParticleEffect/Emitters/Emitter[0]/Curves/Size/Keys/Key/time") ||
+			!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-018", "/ParticleEffect/Emitters/Emitter[0]/Lighting/lightInjection") ||
+			!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-012", "/ParticleEffect/Emitters/Emitter[0]/Appearance") ||
+			!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-017", "/ParticleEffect/Emitters/Emitter[0]/Events/Event[0]/targetEmitter") ||
+			!hasDiagnostic(directDiagnostics, "MPP-PARTICLE-014", "/ParticleEffect/maximumParticleCount"))
+			return fail("direct particle semantic validation did not report the expected diagnostics");
+		try { ParticleEffectSerializer::toFile(semanticallyInvalid, invalidTemporary.string()); }
+		catch (std::exception const& error) { return fail("could not write invalid particle effect fixture: " + std::string(error.what())); }
+		auto invalidParsed = ParticleEffectParser::fromFile(invalidTemporary.string());
+		if (!directDiagnostics.hasErrors() || !diagnosticsMatch(directDiagnostics, invalidParsed.diagnostics))
+		{
+			std::filesystem::remove(invalidTemporary, ignored);
+			return fail("particle parser diagnostics differed from direct semantic validation");
+		}
+		try
+		{
+			FileParticleEffectStream invalidStream(nullptr, invalidTemporary.string());
+			invalidStream.load();
+			if (!diagnosticsMatch(directDiagnostics, invalidStream.getDiagnostics()))
+			{
+				std::filesystem::remove(invalidTemporary, ignored);
+				return fail("file particle stream diagnostics differed from direct semantic validation");
+			}
+		}
+		catch (...)
+		{
+			std::filesystem::remove(invalidTemporary, ignored);
+			return fail("semantically invalid particle file stream threw instead of returning diagnostics");
+		}
+		std::filesystem::remove(invalidTemporary, ignored);
 
 		return true;
 	}
