@@ -425,7 +425,6 @@ void main()
         float angularVelocity = mix(emitter.rotationRanges.z, emitter.rotationRanges.w, randomScalar(randomState));
         vec4 colour = mix(emitter.colourMin, emitter.colourMax, vec4(
             randomScalar(randomState), randomScalar(randomState), randomScalar(randomState), randomScalar(randomState)));
-        colour.a *= emitter.parameterMultipliers1.x;
 
         ParticleRecord particle;
         particle.positionAge = vec4((emitter.transform * vec4(localPosition, 1.0)).xyz, 0.0);
@@ -1293,7 +1292,6 @@ void main()
         float angularVelocity = mix(emitter.rotationRanges.z, emitter.rotationRanges.w, randomScalar(randomState));
         vec4 colour = mix(emitter.colourMin, emitter.colourMax, vec4(randomScalar(randomState),
             randomScalar(randomState), randomScalar(randomState), randomScalar(randomState)));
-        colour.a *= emitter.parameterMultipliers1.x;
 
         ParticleRecord particle;
         particle.positionAge = vec4(event.positionAge.xyz + mat3(emitter.transform) * localPosition, 0.0);

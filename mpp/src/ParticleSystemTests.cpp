@@ -327,12 +327,25 @@ namespace mpp
 		if (system.mEmitters[first.index].emissionRateAndPadding[1] != 1.0f ||
 			system.mEmitters[first.index].emissionState[1] == 0u)
 			return fail("effect visibility flags changed emitter simulation state");
+		// The runtime parameter surface is deliberately closed. Each value is a
+		// multiplier on authored data and belongs solely to the addressed Emitter.
 		system.setEmitterParameter(first, ParticleParameter::SpawnRate, 2.5f);
+		system.setEmitterParameter(first, ParticleParameter::SizeScale, 3.5f);
+		system.setEmitterParameter(first, ParticleParameter::SpeedScale, 4.5f);
+		system.setEmitterParameter(first, ParticleParameter::LifetimeScale, 5.5f);
+		system.setEmitterParameter(first, ParticleParameter::AlphaScale, 6.5f);
+		system.setEmitterParameter(first, ParticleParameter::EmissiveScale, 7.5f);
 		system.stopEmitter(first);
 		system.startEmitter(first);
-		if (system.mEmitters[first.index].parameterMultipliers0[0] != 2.5f)
-			return fail("start/stop changed the spawn-rate multiplier");
-		if (system.mEmitters[second.index].parameterMultipliers0[0] != 1.0f)
+		if (system.mEmitters[first.index].parameterMultipliers0 != array<float, 4>{ 2.5f, 3.5f, 4.5f, 5.5f } ||
+			system.mEmitters[first.index].parameterMultipliers1[0] != 6.5f ||
+			system.mEmitters[first.index].parameterMultipliers1[1] != 7.5f)
+			return fail("runtime particle parameter multipliers were not mapped to their authored values");
+		system.setEmitterParameter(first, ParticleParameter::AlphaScale, -1.0f);
+		if (system.mEmitters[first.index].parameterMultipliers1[0] != 0.0f)
+			return fail("a negative runtime particle parameter multiplier was not clamped");
+		if (system.mEmitters[second.index].parameterMultipliers0[0] != 1.0f ||
+			system.mEmitters[second.index].parameterMultipliers1 != array<float, 4>{ 1.0f, 1.0f, 0.0f, 0.0f })
 			return fail("a per-emitter operation changed another emitter");
 		system.destroyEffect(effect);
 
