@@ -18,6 +18,7 @@ extern "C" const char* __asan_default_options()
 
 #include "utils/FileSystem.h"
 
+#include "mpp/Logger.h"
 #include "mpp/mesh/MeshSpecification.h"
 #include "mpp/mesh/MppMeshException.h"
 
@@ -59,19 +60,23 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 		if (arg == "-v" || arg == "--vertex")
 		{
-			pArgs.vertexSource = argv[++i];
+			if (++i >= argc) throw runtime_error(arg + " requires a vertex-source path.");
+			pArgs.vertexSource = argv[i];
 		}
 		else if (arg == "-g" || arg == "--geometry")
 		{
-			pArgs.geometrySource = argv[++i];
+			if (++i >= argc) throw runtime_error(arg + " requires a geometry-source path.");
+			pArgs.geometrySource = argv[i];
 		}
 		else if (arg == "-f" || arg == "--fragment")
 		{
-			pArgs.fragmentSource = argv[++i];
+			if (++i >= argc) throw runtime_error(arg + " requires a fragment-source path.");
+			pArgs.fragmentSource = argv[i];
 		}
 		else if (arg == "-m" || arg == "--meshspec")
 		{
-			pArgs.meshSpec = argv[++i];
+			if (++i >= argc) throw runtime_error(arg + " requires a mesh-specification path.");
+			pArgs.meshSpec = argv[i];
 		}
 		else
 		{
@@ -97,17 +102,24 @@ ProgramArgs parseArguments(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-	// Parse arguments
-	if (argc < 3)
+	mpp::Logger logger;
+	if (!logger.initialise("ProgramBuilder.log", mpp::Logger::Level::Debug))
 	{
-		printHelp();
+		cerr << "ProgramBuilder fatal error: could not create ProgramBuilder.log.\n";
 		return 1;
 	}
 
-	ProgramArgs pArgs = parseArguments(argc, argv);
-
 	try
 	{
+		if (argc < 3)
+		{
+			printHelp();
+			logger.error("ProgramBuilder error: insufficient command-line arguments.");
+			return 1;
+		}
+
+		ProgramArgs pArgs = parseArguments(argc, argv);
+
 		// Load in files
 		ifstream vsFile, gsFile, fsFile;
 		string vsContent, gsContent, fsContent;
@@ -140,12 +152,14 @@ int main(int argc, char** argv)
 		for (auto const& warning: warnings)
 		{
 			cout << "Warning: " << warning << "\n";
+			logger.warn("ProgramBuilder warning: " + warning);
 		}
 
 		auto const& errors = sourceParser.getErrors();
 		for (auto const& error : errors)
 		{
 			cout << "Error: " << error << "\n";
+			logger.error("ProgramBuilder parser error: " + error);
 		}
 
 		if (!errors.empty())
@@ -155,21 +169,38 @@ int main(int argc, char** argv)
 	}
 	catch (mpp::program::MppProgramException const& e)
 	{
-		cout << "\n" << e.what() << "\n";
-		cout << " - thrown by " + e.getFunction() << "\n";
-		cout << " - thrown at " + e.getFile() + ":" + to_string(e.getLine()) << "\n";
+		auto message = "ProgramBuilder error: " + std::string(e.what());
+		cerr << message << "\n";
+		cerr << " - thrown by " + e.getFunction() << "\n";
+		cerr << " - thrown at " + e.getFile() + ":" + to_string(e.getLine()) << "\n";
+		logger.error(message);
+		logger.error(" - thrown by " + e.getFunction());
+		logger.error(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
 		return 1;
 	}
 	catch (mpp::mesh::MppMeshException const& e)
 	{
-		cout << "\n" << e.what() << "\n";
-		cout << " - thrown by " + e.getFunction() << "\n";
-		cout << " - thrown at " + e.getFile() + ":" + to_string(e.getLine()) << "\n";
+		auto message = "ProgramBuilder error: " + std::string(e.what());
+		cerr << message << "\n";
+		cerr << " - thrown by " + e.getFunction() << "\n";
+		cerr << " - thrown at " + e.getFile() + ":" + to_string(e.getLine()) << "\n";
+		logger.error(message);
+		logger.error(" - thrown by " + e.getFunction());
+		logger.error(" - thrown at " + e.getFile() + ":" + to_string(e.getLine()));
 		return 1;
 	}
 	catch (exception const& e)
 	{
-		cout << "\n" << e.what() << "\n";
+		auto message = "ProgramBuilder error: " + std::string(e.what());
+		cerr << message << "\n";
+		logger.error(message);
+		return 1;
+	}
+	catch (...)
+	{
+		constexpr char message[] = "ProgramBuilder error: unknown exception";
+		cerr << message << "\n";
+		logger.error(message);
 		return 1;
 	}
 

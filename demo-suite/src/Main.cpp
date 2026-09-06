@@ -103,11 +103,10 @@ RenderOptions gRenderOptions;
 
 void showFatalError(char const* text)
 {
-	fprintf(stderr,"DemoSuite fatal error: %s\n",text);
+	auto message = "DemoSuite fatal error: " + string(text);
+	if (gLogger) gLogger->message("[ERROR] " + message);
+	fprintf(stderr, "%s\n", message.c_str());
 	fflush(stderr);
-#ifdef _WIN32
-	if (!GetConsoleWindow()) MessageBoxA(nullptr,text,"DemoSuite Error",MB_OK|MB_ICONERROR);
-#endif
 }
 
 void showCommandLineHelp(char const* text)
@@ -277,10 +276,6 @@ bool startup(int argc, char** argv)
 		throw runtime_error("Configured DemoSuite resource directory does not exist: " + resourceRoot.string());
 	gResourceRoot = resourceRoot;
 	auto renderSystemOptions = mpp::app::loadRenderSystemOptions(executableRoot / "demosuite.ini");
-	gLogger = new ::Logger();
-	if (!gLogger->initialise("DemoSuite.log"))
-		throw runtime_error("Could not create logger!");
-
 	gMppLogger = new mpp::Logger();
 	if (!gMppLogger->initialise("mpp.log", mpp::Logger::Level::Debug))
 	{
@@ -400,23 +395,40 @@ int main(int argc, char** argv)
 {
 #endif
 	int exitCode{ 0 };
+	gLogger = new ::Logger();
+	if (!gLogger->initialise("DemoSuite.log"))
+	{
+		fprintf(stderr, "DemoSuite fatal error: could not create DemoSuite.log.\n");
+		delete gLogger;
+		gLogger = nullptr;
+		return 1;
+	}
 
 	try
 	{
-		if(!startup(argc, argv))return 0;
+		if (!startup(argc, argv))
+		{
+			delete gLogger;
+			gLogger = nullptr;
+			return 0;
+		}
 
 		if (gParticleTests)
 		{
 			std::string suiteFailure;
 			if (!mpp::runParticleGpuTests(gRenderSystem, &suiteFailure))
 			{
-				fprintf(stderr, "DemoSuite particle GPU tests failed: %s\n", suiteFailure.c_str());
+				auto message = "DemoSuite particle GPU tests failed: " + suiteFailure;
+				gLogger->message("[ERROR] " + message);
+				fprintf(stderr, "%s\n", message.c_str());
 				fflush(stderr);
 				exitCode = 1;
 			}
 			else if (!mpp::runRenderGraphGpuTests(gRenderSystem, &suiteFailure))
 			{
-				fprintf(stderr, "DemoSuite render graph GPU tests failed: %s\n", suiteFailure.c_str());
+				auto message = "DemoSuite render graph GPU tests failed: " + suiteFailure;
+				gLogger->message("[ERROR] " + message);
+				fprintf(stderr, "%s\n", message.c_str());
 				fflush(stderr);
 				exitCode = 1;
 			}
@@ -444,7 +456,9 @@ int main(int argc, char** argv)
 				}
 				if (!serializedSmokePassed)
 				{
-					fprintf(stderr, "DemoSuite particle GPU tests failed: %s\n", suiteFailure.c_str());
+					auto message = "DemoSuite particle GPU tests failed: " + suiteFailure;
+					gLogger->message("[ERROR] " + message);
+					fprintf(stderr, "%s\n", message.c_str());
 					fflush(stderr);
 					exitCode = 1;
 				}
@@ -626,11 +640,22 @@ int main(int argc, char** argv)
 	}
 	catch (exception const& e)
 	{
-		if(gLogger)gLogger->message(e.what());
 		showFatalError(e.what());
 		exitCode = 1;
 	}
+	catch (...)
+	{
+		showFatalError("unknown exception");
+		exitCode = 1;
+	}
 
-	if(gStartupComplete)shutdown();else if(!gPackageDirectory.empty())std::filesystem::remove_all(gPackageDirectory);
+	if (gStartupComplete)
+		shutdown();
+	else
+	{
+		if (!gPackageDirectory.empty()) std::filesystem::remove_all(gPackageDirectory);
+		delete gLogger;
+		gLogger = nullptr;
+	}
 	return exitCode;
 }

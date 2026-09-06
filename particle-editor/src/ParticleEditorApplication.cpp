@@ -94,10 +94,10 @@ namespace particle_editor
 			return result;
 		}
 
-		void showFatal(std::string const& message)
+		void reportApplicationError(mpp::Logger& logger, std::string const& message)
 		{
-			std::fprintf(stderr, "Particle Editor fatal error: %s\n", message.c_str());
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Particle Editor Error", message.c_str(), nullptr);
+			logger.error(message);
+			std::fprintf(stderr, "%s\n", message.c_str());
 		}
 
 		std::vector<std::filesystem::path> loadRecentFiles(std::filesystem::path const& path)
@@ -127,7 +127,7 @@ namespace particle_editor
 			catch (...) { return std::nullopt; }
 		}
 
-		int validateParticleEffect(std::filesystem::path const& path)
+		int validateParticleEffect(std::filesystem::path const& path, mpp::Logger& logger)
 		{
 			auto result = mpp::resource_parsers::ParticleEffectParser::fromFile(path.string());
 			for (auto const& diagnostic : result.diagnostics.getDiagnostics())
@@ -136,8 +136,12 @@ namespace particle_editor
 				auto source = location.document.empty() ? path.string() : location.document;
 				if (location.line) source += ":" + std::to_string(location.line);
 				if (location.column) source += ":" + std::to_string(location.column);
-				std::fprintf(stderr, "%s: %s %s: %s\n", source.c_str(),
-					mpp::diagnosticSeverityName(diagnostic.severity), diagnostic.code.c_str(), diagnostic.message.c_str());
+				auto message = source + ": " + mpp::diagnosticSeverityName(diagnostic.severity) + " " +
+				               diagnostic.code + ": " + diagnostic.message;
+				std::fprintf(stderr, "%s\n", message.c_str());
+				if (diagnostic.severity == mpp::DiagnosticSeverity::Error) logger.error(message);
+				else if (diagnostic.severity == mpp::DiagnosticSeverity::Warning) logger.warn(message);
+				else logger.info(message);
 			}
 			if (result.diagnostics.hasErrors()) return 1;
 			std::fprintf(stdout, "%s: valid particle effect\n", path.string().c_str());
@@ -147,6 +151,13 @@ namespace particle_editor
 
 	int ParticleEditorApplication::run(int argc, char** argv)
 	{
+		mpp::Logger logger;
+		if (!logger.initialise("ParticleEditor.log", mpp::Logger::Level::Debug))
+		{
+			std::fprintf(stderr, "Particle Editor fatal error: could not create ParticleEditor.log.\n");
+			return 1;
+		}
+
 		bool unattended = false;
 		std::filesystem::path smokeWorkingPath;
 		std::filesystem::path smokePreferencesPath;
@@ -156,10 +167,10 @@ namespace particle_editor
 			{
 				if (argc != 3)
 				{
-					std::fprintf(stderr, "usage: ParticleEditor --validate <effect.particle.yaml>\n");
+					reportApplicationError(logger, "usage: ParticleEditor --validate <effect.particle.yaml>");
 					return 2;
 				}
-				return validateParticleEffect(argv[2]);
+				return validateParticleEffect(argv[2], logger);
 			}
 
 			std::filesystem::path startupPath;
@@ -184,7 +195,7 @@ namespace particle_editor
 					if (!mpp::resource_parsers::runParticleResourceTests(&failure) ||
 						!mpp::runParticleSystemCpuTests(&failure))
 					{
-						std::fprintf(stderr, "Production particle tests failed: %s\n", failure.c_str());
+						reportApplicationError(logger, "Production particle tests failed: " + failure);
 						return 1;
 					}
 					std::fprintf(stdout, "Production particle resource and CPU tests passed.\n");
@@ -195,7 +206,7 @@ namespace particle_editor
 					std::string failure;
 					if (!runParticleDocumentTests(&failure))
 					{
-						std::fprintf(stderr, "Particle Editor document tests failed: %s\n", failure.c_str());
+						reportApplicationError(logger, "Particle Editor document tests failed: " + failure);
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor document tests passed.\n");
@@ -206,7 +217,7 @@ namespace particle_editor
 					std::string failure;
 					if (!runParticlePreviewPreferenceTests(&failure))
 					{
-						std::fprintf(stderr, "Particle Editor preview tests failed: %s\n", failure.c_str());
+						reportApplicationError(logger, "Particle Editor preview tests failed: " + failure);
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor preview tests passed.\n");
@@ -217,7 +228,7 @@ namespace particle_editor
 					std::string failure;
 					if (!runParticlePreviewControlTests(&failure))
 					{
-						std::fprintf(stderr, "Particle Editor control tests failed: %s\n", failure.c_str());
+						reportApplicationError(logger, "Particle Editor control tests failed: " + failure);
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor control tests passed.\n");
@@ -228,7 +239,7 @@ namespace particle_editor
 					std::string failure;
 					if (!runParticleResourceLibraryTests(&failure))
 					{
-						std::fprintf(stderr, "Particle Editor resource tests failed: %s\n", failure.c_str());
+						reportApplicationError(logger, "Particle Editor resource tests failed: " + failure);
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor resource tests passed.\n");
@@ -239,7 +250,7 @@ namespace particle_editor
 					std::string failure;
 					if (!runParticleSpatialEditingTests(&failure))
 					{
-						std::fprintf(stderr, "Particle Editor spatial tests failed: %s\n", failure.c_str());
+						reportApplicationError(logger, "Particle Editor spatial tests failed: " + failure);
 						return 1;
 					}
 					std::fprintf(stderr, "Particle Editor spatial tests passed.\n");
@@ -307,9 +318,6 @@ namespace particle_editor
 
 			WindowSDL window("Particle Editor");
 			window.create(1280, 800, false, true);
-			mpp::Logger logger;
-			if (!logger.initialise("ParticleEditor.log", mpp::Logger::Level::Debug))
-				throw std::runtime_error("Could not create Particle Editor log.");
 			std::unique_ptr<mpp::ResourceManager> resourceManager;
 			mpp::RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger, options);
 			resourceManager = std::make_unique<mpp::ResourceManager>(&renderSystem, &logger);
@@ -1351,8 +1359,14 @@ namespace particle_editor
 				std::filesystem::remove(smokeWorkingPath, ignored);
 				if (!smokePreferencesPath.empty()) std::filesystem::remove(smokePreferencesPath, ignored);
 			}
-			if (unattended) std::fprintf(stderr, "Particle Editor smoke test failed: %s\n", error.what());
-			else showFatal(error.what());
+			auto prefix = unattended ? "Particle Editor smoke test failed: " : "Particle Editor fatal error: ";
+			reportApplicationError(logger, prefix + std::string(error.what()));
+			return 1;
+		}
+		catch (...)
+		{
+			reportApplicationError(logger, unattended ? "Particle Editor smoke test failed: unknown exception"
+			                                          : "Particle Editor fatal error: unknown exception");
 			return 1;
 		}
 	}

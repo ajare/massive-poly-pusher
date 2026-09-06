@@ -140,6 +140,12 @@ int MessageBoxA(void*, char const* message, char const* title, unsigned flags)
 
 namespace
 {
+	void reportApplicationError(Logger& logger, std::string const& message)
+	{
+		logger.error(message);
+		std::fprintf(stderr, "%s\n", message.c_str());
+	}
+
 	std::shared_ptr<PbrPipelineDocument> clonePipeline(std::shared_ptr<PbrPipelineDocument> const& value)
 	{
 		if (!value)
@@ -1250,6 +1256,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 int main(int argc, char** argv)
 #endif
 {
+	Logger logger;
+	if (!logger.initialise("PipelineEditor.log", Logger::Level::Debug))
+	{
+		std::fprintf(stderr, "PipelineEditor fatal error: could not create PipelineEditor.log.\n");
+		return 1;
+	}
+
 	try
 	{
 		bool warningsAsErrors = false;
@@ -1270,7 +1283,8 @@ int main(int argc, char** argv)
 		{
 			if (__argc != 4)
 			{
-				fprintf(stderr, "usage: PipelineEditor --export-package <pipeline.yaml> <package.mpppackage>\n");
+				reportApplicationError(
+				    logger, "usage: PipelineEditor --export-package <pipeline.yaml> <package.mpppackage>");
 				return 2;
 			}
 			try
@@ -1287,7 +1301,7 @@ int main(int argc, char** argv)
 			}
 			catch (std::exception const& error)
 			{
-				fprintf(stderr, "MPP-PACKAGE-EXPORT-001: %s\n", error.what());
+				reportApplicationError(logger, "MPP-PACKAGE-EXPORT-001: " + std::string(error.what()));
 				return 1;
 			}
 		}
@@ -1295,7 +1309,8 @@ int main(int argc, char** argv)
 		{
 			if (__argc != 4)
 			{
-				fprintf(stderr, "usage: PipelineEditor --export-legacy-package <pipeline.yaml> <package.mpppackage>\n");
+				reportApplicationError(
+				    logger, "usage: PipelineEditor --export-legacy-package <pipeline.yaml> <package.mpppackage>");
 				return 2;
 			}
 			try
@@ -1312,7 +1327,7 @@ int main(int argc, char** argv)
 			}
 			catch (std::exception const& error)
 			{
-				fprintf(stderr, "MPP-LEGACY-PACKAGE-EXPORT-001: %s\n", error.what());
+				reportApplicationError(logger, "MPP-LEGACY-PACKAGE-EXPORT-001: " + std::string(error.what()));
 				return 1;
 			}
 		}
@@ -1326,7 +1341,8 @@ int main(int argc, char** argv)
 			}
 			if (__argc <= pathIndex)
 			{
-				fprintf(stderr, "usage: PipelineEditor --validate [--warnings-as-errors] <pipeline.yaml>\n");
+				reportApplicationError(
+				    logger, "usage: PipelineEditor --validate [--warnings-as-errors] <pipeline.yaml>");
 				return 2;
 			}
 			try
@@ -1337,27 +1353,32 @@ int main(int argc, char** argv)
 				std::string suiteFailure;
 				if (!mpp::runRenderGraphTopologyTests(&suiteFailure))
 				{
-					fprintf(stderr, "MPP-PIPELINE-CLI-002: render graph topology tests failed: %s\n", suiteFailure.c_str());
+					reportApplicationError(
+					    logger, "MPP-PIPELINE-CLI-002: render graph topology tests failed: " + suiteFailure);
 					return 1;
 				}
 				if (!resource_parsers::runRenderGraphResourceTests(&suiteFailure))
 				{
-					fprintf(stderr, "MPP-PIPELINE-CLI-003: render graph resource tests failed: %s\n", suiteFailure.c_str());
+					reportApplicationError(
+					    logger, "MPP-PIPELINE-CLI-003: render graph resource tests failed: " + suiteFailure);
 					return 1;
 				}
 				if (!resource_parsers::runParticleResourceTests(&suiteFailure))
 				{
-					fprintf(stderr, "MPP-PIPELINE-CLI-007: particle resource tests failed: %s\n", suiteFailure.c_str());
+					reportApplicationError(
+					    logger, "MPP-PIPELINE-CLI-007: particle resource tests failed: " + suiteFailure);
 					return 1;
 				}
 				if (!mpp::runPbrMaterialSpecializationTests(&suiteFailure))
 				{
-					fprintf(stderr, "MPP-PIPELINE-CLI-004: PBR material specialization tests failed: %s\n", suiteFailure.c_str());
+					reportApplicationError(
+					    logger, "MPP-PIPELINE-CLI-004: PBR material specialization tests failed: " + suiteFailure);
 					return 1;
 				}
 				if (!mpp::runParticleSystemCpuTests(&suiteFailure))
 				{
-					fprintf(stderr, "MPP-PIPELINE-CLI-006: particle system CPU tests failed: %s\n", suiteFailure.c_str());
+					reportApplicationError(
+					    logger, "MPP-PIPELINE-CLI-006: particle system CPU tests failed: " + suiteFailure);
 					return 1;
 				}
 				auto document = resource_parsers::PbrPipelineDocumentLoader::fromFile(__argv[pathIndex]);
@@ -1384,12 +1405,22 @@ int main(int argc, char** argv)
 						                  "previewScene");
 				}
 				for (auto const& value : diagnostics.getDiagnostics())
-					fprintf(stderr, "%s: %s\n", value.code.c_str(), value.message.c_str());
+				{
+					auto message = value.code + ": " + value.message;
+					fprintf(stderr, "%s\n", message.c_str());
+					if (value.severity == DiagnosticSeverity::Error ||
+					    (warningsAsErrors && value.severity == DiagnosticSeverity::Warning))
+						logger.error(message);
+					else if (value.severity == DiagnosticSeverity::Warning)
+						logger.warn(message);
+					else
+						logger.info(message);
+				}
 				return diagnostics.hasErrors(warningsAsErrors) ? 1 : 0;
 			}
 			catch (std::exception const& error)
 			{
-				fprintf(stderr, "MPP-PIPELINE-CLI-002: %s\n", error.what());
+				reportApplicationError(logger, "MPP-PIPELINE-CLI-002: " + std::string(error.what()));
 				return 1;
 			}
 		}
@@ -1619,9 +1650,6 @@ int main(int argc, char** argv)
 		SdlLifetime sdlLifetime;
 		WindowSDL window("PBR Pipeline Editor");
 		window.create(windowWidth, windowHeight, false, true);
-		Logger logger;
-		if (!logger.initialise("PipelineEditor.log", Logger::Level::Debug))
-			throw std::runtime_error("Could not create editor log.");
 		RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger, renderSystemOptions);
 		ResourceManager resources(&renderSystem, &logger);
 		resources.setImageLoadFunction(mpp::app::loadImageFile);
@@ -1637,7 +1665,8 @@ int main(int argc, char** argv)
 			std::string suiteFailure;
 			if (!mpp::runRenderGraphGpuTests(&renderSystem, &suiteFailure))
 			{
-				fprintf(stderr, "MPP-PIPELINE-CLI-005: render graph GPU tests failed: %s\n", suiteFailure.c_str());
+				reportApplicationError(
+				    logger, "MPP-PIPELINE-CLI-005: render graph GPU tests failed: " + suiteFailure);
 				return 1;
 			}
 			fprintf(stderr, "Render graph GPU tests passed.\n");
@@ -7352,8 +7381,12 @@ int main(int argc, char** argv)
 	}
 	catch (std::exception const& error)
 	{
-		fprintf(stderr, "PipelineEditor fatal error: %s\n", error.what());
-		MessageBoxA(nullptr, error.what(), "PipelineEditor Error", MB_ICONERROR);
+		reportApplicationError(logger, "PipelineEditor fatal error: " + std::string(error.what()));
+		return 1;
+	}
+	catch (...)
+	{
+		reportApplicationError(logger, "PipelineEditor fatal error: unknown exception");
 		return 1;
 	}
 }

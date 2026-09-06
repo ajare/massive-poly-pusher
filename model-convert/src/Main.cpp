@@ -87,6 +87,7 @@ extern "C" const char* __asan_default_options()
 
 #include "utils/FileSystem.h"
 
+#include <mpp/Logger.h>
 #include <mpp/ResourceStreamSerializer.h>
 #include <mpp/BasicMaterialStream.h>
 #include <mpp/ModelSerializer.h>
@@ -284,9 +285,17 @@ void debug(string const& inFile, string const& outFile)
  */
 int main(int argc, char** argv)
 {
+	mpp::Logger logger;
+	if (!logger.initialise("ModelConvert.log", mpp::Logger::Level::Debug))
+	{
+		cerr << "ModelConvert fatal error: could not create ModelConvert.log." << endl;
+		return 1;
+	}
+
 	if (argc < 3)
 	{
 		printHelp();
+		logger.error("ModelConvert error: insufficient command-line arguments.");
 		return 1;
 	}
 
@@ -307,9 +316,19 @@ int main(int argc, char** argv)
 			throw runtime_error("Nothing to do!");
 		}
 	}
-	catch (exception& e)
+	catch (exception const& e)
 	{
-		cout << e.what() << endl;
+		auto message = "ModelConvert error: " + std::string(e.what());
+		cerr << message << endl;
+		logger.error(message);
+		return 1;
+	}
+	catch (...)
+	{
+		constexpr char message[] = "ModelConvert error: unknown exception";
+		cerr << message << endl;
+		logger.error(message);
+		return 1;
 	}
 
 	return 0;
