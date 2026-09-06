@@ -1,14 +1,34 @@
 cmake_minimum_required(VERSION 3.22)
 project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX)
 
-# MemCheck is a Debug variant instrumented with MSVC AddressSanitizer. The
-# Visual Studio generator already seeded CMAKE_CONFIGURATION_TYPES from the
-# project() call above, so it has to be re-forced into the cache on every
-# configure for the extra configuration to take effect.
+# Shipping uses CMake's maximum-speed Release compiler and linker flags.
+# Defining every standard per-configuration flag also makes the configuration
+# work with single-config generators such as Ninja.
+foreach(MPP_SHIPPING_LANGUAGE C CXX)
+    set(CMAKE_${MPP_SHIPPING_LANGUAGE}_FLAGS_SHIPPING
+        "${CMAKE_${MPP_SHIPPING_LANGUAGE}_FLAGS_RELEASE}"
+        CACHE STRING "Flags used by the ${MPP_SHIPPING_LANGUAGE} compiler for Shipping builds" FORCE)
+    mark_as_advanced(CMAKE_${MPP_SHIPPING_LANGUAGE}_FLAGS_SHIPPING)
+endforeach()
+foreach(MPP_SHIPPING_LINKER EXE SHARED MODULE)
+    set(CMAKE_${MPP_SHIPPING_LINKER}_LINKER_FLAGS_SHIPPING
+        "${CMAKE_${MPP_SHIPPING_LINKER}_LINKER_FLAGS_RELEASE}"
+        CACHE STRING "Flags used by the ${MPP_SHIPPING_LINKER} linker for Shipping builds" FORCE)
+    mark_as_advanced(CMAKE_${MPP_SHIPPING_LINKER}_LINKER_FLAGS_SHIPPING)
+endforeach()
+unset(MPP_SHIPPING_LANGUAGE)
+unset(MPP_SHIPPING_LINKER)
+set(CMAKE_MAP_IMPORTED_CONFIG_SHIPPING Release)
+
+# Visual Studio seeds CMAKE_CONFIGURATION_TYPES during project(), so custom
+# configurations have to be added back to the cache on every configure.
 if(CMAKE_CONFIGURATION_TYPES)
-    if(NOT "MemCheck" IN_LIST CMAKE_CONFIGURATION_TYPES)
-        list(APPEND CMAKE_CONFIGURATION_TYPES MemCheck)
-    endif()
+    foreach(MPP_EXTRA_CONFIG Shipping MemCheck)
+        if(NOT "${MPP_EXTRA_CONFIG}" IN_LIST CMAKE_CONFIGURATION_TYPES)
+            list(APPEND CMAKE_CONFIGURATION_TYPES "${MPP_EXTRA_CONFIG}")
+        endif()
+    endforeach()
+    unset(MPP_EXTRA_CONFIG)
     set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "Semicolon separated list of supported configuration types" FORCE)
 
     # Base MemCheck compiler flags mirror Debug for every target, including
@@ -43,12 +63,6 @@ if(CMAKE_CONFIGURATION_TYPES)
     unset(MPP_MEMCHECK_SHARED_LINKER_FLAGS)
     unset(MPP_MEMCHECK_MODULE_LINKER_FLAGS)
 
-    # CMake's default CMAKE_MSVC_RUNTIME_LIBRARY only selects the debug CRT
-    # for a config literally named "Debug"; without this, MemCheck still
-    # defines _DEBUG (above) but links the release CRT, which fails with
-    # unresolved _CrtDbgReport/_calloc_dbg symbols.
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<OR:$<CONFIG:Debug>,$<CONFIG:MemCheck>>:Debug>DLL")
-
     # The MSVC ASan runtime isn't on PATH by default, so MemCheck executables
     # fail to start outside a Visual Studio developer command prompt unless
     # its DLL (and matching PDB, for symbolised reports) travel alongside
@@ -59,6 +73,17 @@ if(CMAKE_CONFIGURATION_TYPES)
     if(NOT EXISTS "${MPP_ASAN_DLL}")
         message(WARNING "Could not find the MSVC ASan runtime DLL at ${MPP_ASAN_DLL}; MemCheck executables may fail to start.")
     endif()
+endif()
+
+# Keep the developer configurations on the DLL CRT, including the Debug CRT
+# needed by MemCheck, while making Shipping self-contained with the static
+# release CRT. This is set before any dependency targets are created so SDL,
+# GLEW, Assimp, and the project targets all agree on the runtime library.
+set(MPP_MSVC_RUNTIME_LIBRARY
+    "MultiThreaded$<$<OR:$<CONFIG:Debug>,$<CONFIG:MemCheck>>:Debug>$<$<NOT:$<CONFIG:Shipping>>:DLL>")
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "${MPP_MSVC_RUNTIME_LIBRARY}" CACHE STRING
+        "MSVC runtime library used by MassivePolyPusher and its dependencies" FORCE)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -76,7 +101,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/lib")
 # Explicit per-configuration directories keep single-config generators (Make
 # and Ninja) consistent with Visual Studio. The extra directory level is also
 # required by the checked-in ../../../resources paths beside the executables.
-foreach(MPP_OUTPUT_CONFIG Debug Release RelWithDebInfo MinSizeRel MemCheck)
+foreach(MPP_OUTPUT_CONFIG Debug Release RelWithDebInfo MinSizeRel Shipping MemCheck)
     string(TOUPPER "${MPP_OUTPUT_CONFIG}" MPP_OUTPUT_CONFIG_UPPER)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/bin/${MPP_OUTPUT_CONFIG}")
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${MPP_OUTPUT_CONFIG_UPPER} "${MPP_BUILD_OUTPUT_ROOT}/bin/${MPP_OUTPUT_CONFIG}")
@@ -232,6 +257,15 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/CMakeLists.txt")
     message(FATAL_ERROR "Utils submodule is missing; run: git submodule update --init --recursive")
 endif()
 add_subdirectory(ext/utils EXCLUDE_FROM_ALL)
+# Utils supports MemCheck in standalone builds and consequently sets its own
+# DLL-CRT default. Restore the parent selection and correct the two targets it
+# created so Shipping consistently uses the static CRT across DLL boundaries.
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "${MPP_MSVC_RUNTIME_LIBRARY}" CACHE STRING
+        "MSVC runtime library used by MassivePolyPusher and its dependencies" FORCE)
+    set_property(TARGET Utils yaml-cpp PROPERTY
+        MSVC_RUNTIME_LIBRARY "${MPP_MSVC_RUNTIME_LIBRARY}")
+endif()
 target_include_directories(Utils
     BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/include"
     PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext/utils/include>")

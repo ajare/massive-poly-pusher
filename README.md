@@ -43,6 +43,14 @@ cmake -S . -B build -G "Visual Studio 18 2026" -A x64
 cmake --build build --config Release --parallel
 ```
 
+For distributable Windows binaries, build the `Shipping` configuration instead:
+
+```bat
+cmake --build build --config Shipping --parallel
+```
+
+`Shipping` uses the maximum-speed `Release` optimisation settings and links the MSVC CRT statically so the Visual C++ Redistributable is not required. Its output is written to `build/bin/Shipping`.
+
 The CMake build includes all engine, tool, and application targets, builds SDL from `ext/sdl`, Assimp from `ext/assimp`, GLEW from `ext/glew`, and Utils from `ext/utils`, and places executables and runtime DLLs under `build/bin/<Configuration>`. Because the GLEW Git repository omits generated headers and `glew.c`, the first configure downloads the hash-verified official source archive matching the pinned submodule release. DemoSuite and PipelineEditor resolve their checked-in `../../../resources` settings directly to the repository-level `resources` directory; resource assets are not copied or symlinked into the build tree.
 
 ### Existing Visual Studio projects
