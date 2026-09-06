@@ -5,7 +5,13 @@
 
 A real-time particle system for a modern OpenGL game engine.
 
-The system should be designed around GPU simulation and GPU-driven rendering, with the CPU responsible primarily for:
+**Implementation status:** the initial scope (§31) and every follow-up formerly
+listed in §32 are implemented. The remaining items labelled as extensions in
+this document are design possibilities, not committed work items. The one
+explicitly deferred feature is user-defined emitter parameters; the runtime
+instead exposes a fixed set of authored-value multipliers.
+
+The system is designed around GPU simulation and GPU-driven rendering, with the CPU responsible primarily for:
 
 - Creating and destroying particle emitters
 - Updating emitter transforms and parameters
@@ -129,7 +135,7 @@ Initial supported emitter shapes:
 - Disc
 - Cone
 
-Later extensions:
+Potential extensions not currently planned:
 
 - Mesh surface
 - Mesh volume
@@ -414,10 +420,13 @@ Initial collision support:
 - Box
 - Capsule
 
-Later collision modes:
+Implemented collision modes:
 
 - Screen-space depth collision
 - Signed distance field collision
+
+Potential extensions not currently planned:
+
 - Voxel collision
 - Mesh or BVH collision
 
@@ -443,7 +452,7 @@ Recommended initial implementation:
 - Scroll velocity
 - Time scale
 
-Later extension:
+Implemented extensions:
 
 - Curl noise
 - Multi-octave turbulence
@@ -505,7 +514,7 @@ Useful for:
 
 ## 23. Mesh Particles
 
-Future support should allow particles to render arbitrary meshes.
+Particles can render arbitrary meshes through GPU instancing.
 
 Mesh particles should support:
 
@@ -707,9 +716,10 @@ The first production-ready version should include:
 
 ---
 
-## 32. Recommended Later Features
+## 32. Completed Follow-up Features
 
-After the base system is stable, add approximately in this order:
+The following features, originally recommended for post-initial delivery, are
+implemented:
 
 1. Velocity-stretched billboards
 2. Weighted blended OIT

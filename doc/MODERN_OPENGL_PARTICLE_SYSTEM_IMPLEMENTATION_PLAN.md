@@ -32,7 +32,8 @@ Spec §31, plus two deliberate additions reasoned through during design:
   makes quad *expansion* mode-dependent, which is a structural difference rather
   than an enum case — and §32 independently ranks it as the first follow-up.
 
-Everything else in §32 is out of scope and filed as follow-up issues.
+The remaining §32 features were delivered as follow-up milestones and are
+recorded in §17 below.
 
 Alpha-blended appearances may now opt into GPU back-to-front radix sorting.
 The initial unsorted path remains the default so appearances that do not need
@@ -217,7 +218,11 @@ of template budgets. The **enforced** budget is per template, because a template
 is one appearance, one blend class and one draw, which is what a single spawn
 dispatch can clamp.
 
-**Status:** not started.
+**Status:** done. `ParticleEffectSpecification`, resource and programmatic
+streams, canonical `*.particle.yaml` parsing and serialization, and
+context-free validation are implemented. Particle effects also support version-2
+bounds, child-particle-effect flattening, events, mesh particles, lighting, and
+package/scene integration; see `doc/PARTICLE_EFFECT_AUTHORING.md`.
 
 **Acceptance:** an effect round-trips through the parser; malformed documents
 produce diagnostics rather than throwing; parser tests run without a GL context.
@@ -349,11 +354,10 @@ out of step with the `dt` the simulation actually used. Per-emitter remainders
 carry across frames so low-rate emitters stay smooth instead of quantising to one
 particle per frame.
 
-**Status:** once-per-rendered-frame scheduling, clamped wall-time delta,
+**Status:** done. Once-per-rendered-frame scheduling, clamped wall-time delta,
 fractional continuous-spawn accumulation, CPU-buffer upload, spawn, simulation,
-barriers and active-list swapping are done. Emitter retirement/transform
-composition belongs to the CPU API milestone (§7); render-list compaction and
-indirect command generation remain in §10.
+barriers, active-list swapping, emitter retirement/transform composition,
+visibility compaction, and indirect command generation are implemented.
 
 **Acceptance:** particle speed is unchanged when planar reflections are enabled;
 a 3-second stall does not destroy live effects.
@@ -379,14 +383,14 @@ Pool exhaustion is graceful per §33: the spawn kernel clamps to what the free
 list can supply and to the emitter's template budget, incrementing a dropped-spawn
 counter rather than failing.
 
-**Status:** spawn and simulation done. The spawn kernel samples all seven
-shapes, derives deterministic per-particle seeds, and reserves both emitter
-budget and free-list entries with atomic CAS loops. The single simulation kernel
-integrates age, position, velocity and rotation, branches at runtime for gravity,
-linear drag and scrolling 3D-texture noise, compacts survivors into the opposite
-active list and returns dead slots to the free list. Both kernels dispatch over
-GPU-owned work rather than pool capacity. Curve-LUT baking and sampling remains
-the independently scheduled §6 milestone (#19).
+**Status:** done. The spawn kernel samples all seven shapes, derives
+deterministic per-particle seeds, and reserves both emitter budget and free-list
+entries with atomic CAS loops. The single simulation kernel integrates age,
+position, velocity and rotation, branches at runtime for gravity, linear drag,
+scrolling 3D-texture noise, curl noise, turbulence, vector fields, and
+collision, compacts survivors into the opposite active list, and returns dead
+slots to the free list. Both kernels dispatch over GPU-owned work rather than
+pool capacity. Curve-LUT baking and sampling is implemented in §6.
 
 **Acceptance:** determinism holds for a fixed seed and fixed frame sequence;
 over-spawning clamps and reports rather than corrupting the free list.
@@ -567,15 +571,13 @@ GPU suite and returns a non-zero exit code on failure.
 
 ## 14. DemoSuite demo
 
-A standalone `ParticleScene : ::Scene` selected by a new `--particles` flag,
-sitting alongside the package path rather than inside it. DemoSuite currently
-requires `--package` and hard-casts `gScenes[0]` to `PackageScene*` for
-`present`; both need guarding.
+A standalone `ParticleScene : ::Scene` selected by `--particles` sits alongside
+the package path. DemoSuite accepts this mode without package extraction and
+presents it without assuming `gScenes[0]` is a `PackageScene*`.
 
 `PackageScene` is driven by a `SceneDocument` from a package plus two pipeline
-runtimes, so adding particles there would route effect assets, emitters and graph
-passes through the package manifest and both pipeline runtimes before anything
-rendered at all. Package integration is a follow-up, not a prerequisite.
+runtimes. Particle effect assets and scene instances are integrated through the
+package manifest and both graph-driven pipeline runtimes.
 
 The demo ships two render graph YAMLs, PBR and legacy, and **toggles between them
 at runtime** on a keypress — a restart-based toggle makes "works in both
@@ -598,12 +600,10 @@ Contents:
   budgets stop one emitter starving the others — the three behaviours most likely
   to be quietly wrong, and the interactive counterpart to the GPU tests.
 
-**Status:** the vertical slice has landed. `ComputeProgram`,
-`ShaderStorageBuffer`, `Caps` probing, a trivial kernel and an attribute-less
-indirect draw render end-to-end through `MPP.ParticleScene` under
-`GraphLegacyForward` and `XmlGraphPbrForward`, covered by a
-`runRenderGraphGpuTests` stage. The `--particle-tests` harness is its own
-milestone.
+**Status:** done. The standalone `--particles` demo provides the PBR/legacy
+graph toggle, soft-particle intersections, multiple spawn shapes and blend
+classes, flipbooks, a statistics overlay, and pool-capacity stress mode.
+`--particle-tests` runs the particle GPU suite and the render-graph GPU suite.
 
 **Acceptance:** particles are visually identical across the runtime pipeline
 toggle; stress mode reaches capacity without a crash or a frame-time cliff.
@@ -641,13 +641,14 @@ demo, each adding assertions to a harness that already exists.
 - Pool exhaustion clamps and reports; the free list stays consistent.
 - `--particle-tests` passes, including the revived graph GPU suite.
 
-## 17. Follow-up
+## 17. Follow-up delivery
 
-Filed as separate issues, approximately in spec §32's recommended order:
-velocity-stretched billboards, weighted blended OIT, GPU frustum culling, GPU
-radix sorting, particle collision (screen-space, analytical, then SDF), curl
-noise and multi-octave turbulence, trails and ribbons, mesh particles, distortion
-particles, secondary GPU effects, and volumetric injection.
+The following post-initial milestones were delivered, approximately in spec
+§32's recommended order: velocity-stretched billboards, weighted blended OIT,
+GPU frustum culling, GPU radix sorting, particle collision (screen-space,
+analytical, then SDF), curl noise and multi-octave turbulence, trails and
+ribbons, mesh particles, distortion particles, secondary GPU effects, and
+volumetric injection.
 
 GPU culling is now integrated into compaction rather than dispatched as another
 pass. The count stage retains active per-template totals for particle budgets and
