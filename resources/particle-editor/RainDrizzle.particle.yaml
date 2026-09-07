@@ -1,0 +1,68 @@
+ParticleEffect:
+  version: 2
+  name: Light rain drizzle
+  maximumParticleCount: 1536
+  Bounds:
+    center: 0 3 0
+    size: 14 9 14
+  Emitters:
+    - name: Drizzle
+      maximumParticleCount: 1536
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 0 6 0 1
+      Spawn:
+        shape: box
+        shapeParameters: 5.5 0.15 5.5 0
+        seed: 8101
+        mode: continuous
+        enabled: true
+        rate: 135
+        burstCount: 0
+        initialVelocityMin: -0.18 -4.8 -0.12 0
+        initialVelocityMax: 0.18 -3.2 0.12 0
+        colourMin: 0.62 0.72 0.82 0.35
+        colourMax: 0.9 0.95 1 0.7
+        lifetime: 2.2 3.2
+        size: 0.014 0.026
+        rotation: 0 0
+        angularVelocity: 0 0
+      Behaviours:
+        Gravity:
+          acceleration: 0 -2.2 0
+        Drag:
+          coefficient: 0.025
+        Noise:
+          frequency: 0.16 0.08 0.16
+          strength: 0.12
+          scroll: 0.08 0 0.03
+          timeScale: 0.7
+      Curves:
+        Alpha:
+          default: 1
+          Keys:
+            - { time: 0, value: 0 }
+            - { time: 0.04, value: 0.8 }
+            - { time: 0.9, value: 0.8 }
+            - { time: 1, value: 0 }
+        Colour:
+          default: 0.72 0.82 0.92
+          Keys:
+            - { time: 0, colour: 0.82 0.9 1 }
+            - { time: 1, colour: 0.58 0.68 0.8 }
+      Appearance:
+        tint: 1 1 1
+        alpha: 0.62
+        emissiveIntensity: 0
+        softFadeDistance: 0.08
+        maximumDrawDistance: 120
+        minimumProjectedSize: 0.45
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: false
+        animationRate: 0
+        billboard: velocityStretched
+        blendClass: weightedOit
+        depthSort: false
+        distortion: false
+        distortionStrength: 0

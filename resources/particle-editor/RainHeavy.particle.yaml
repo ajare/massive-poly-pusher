@@ -1,0 +1,68 @@
+ParticleEffect:
+  version: 2
+  name: Heavy rain
+  maximumParticleCount: 4096
+  Bounds:
+    center: 0 4 0
+    size: 22 14 22
+  Emitters:
+    - name: Downpour
+      maximumParticleCount: 4096
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 0 10 0 1
+      Spawn:
+        shape: box
+        shapeParameters: 8.5 0.25 8.5 0
+        seed: 8102
+        mode: continuous
+        enabled: true
+        rate: 620
+        burstCount: 0
+        initialVelocityMin: -0.4 -15.5 -0.3 0
+        initialVelocityMax: 0.4 -10.5 0.3 0
+        colourMin: 0.58 0.68 0.78 0.42
+        colourMax: 0.9 0.96 1 0.82
+        lifetime: 1.1 1.8
+        size: 0.012 0.026
+        rotation: 0 0
+        angularVelocity: 0 0
+      Behaviours:
+        Gravity:
+          acceleration: 0 -5.5 0
+        Drag:
+          coefficient: 0.018
+        Noise:
+          frequency: 0.11 0.06 0.11
+          strength: 0.28
+          scroll: 0.16 0 0.05
+          timeScale: 1
+      Curves:
+        Alpha:
+          default: 1
+          Keys:
+            - { time: 0, value: 0 }
+            - { time: 0.025, value: 1 }
+            - { time: 0.94, value: 0.9 }
+            - { time: 1, value: 0 }
+        Colour:
+          default: 0.68 0.78 0.9
+          Keys:
+            - { time: 0, colour: 0.88 0.94 1 }
+            - { time: 1, colour: 0.55 0.66 0.8 }
+      Appearance:
+        tint: 1 1 1
+        alpha: 0.78
+        emissiveIntensity: 0
+        softFadeDistance: 0.06
+        maximumDrawDistance: 180
+        minimumProjectedSize: 0.4
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: false
+        animationRate: 0
+        billboard: velocityStretched
+        blendClass: weightedOit
+        depthSort: false
+        distortion: false
+        distortionStrength: 0

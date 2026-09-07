@@ -1,0 +1,78 @@
+ParticleEffect:
+  version: 2
+  name: Steam pressure burst
+  maximumParticleCount: 512
+  Bounds:
+    center: 0 2 0
+    size: 8 6 8
+  Emitters:
+    - name: Pressure release
+      maximumParticleCount: 512
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1
+      Spawn:
+        shape: hemisphere
+        shapeParameters: 0.32 0 0 0
+        seed: 6102
+        mode: burst
+        enabled: true
+        rate: 0
+        burstCount: 220
+        initialVelocityMin: -1.8 1.4 -1.8 0
+        initialVelocityMax: 1.8 4.6 1.8 0
+        colourMin: 0.78 0.83 0.88 0.35
+        colourMax: 1 1 1 0.75
+        lifetime: 0.8 2
+        size: 0.16 0.42
+        rotation: 0 6.283185
+        angularVelocity: -2 2
+      Behaviours:
+        Gravity:
+          acceleration: 0 -0.35 0
+        Drag:
+          coefficient: 0.58
+        Turbulence:
+          frequency: 1.2 0.9 1.2
+          strength: 0.5
+          scroll: 0.08 0.16 0.04
+          timeScale: 1
+          octaves: 3
+          lacunarity: 2
+          gain: 0.52
+      Curves:
+        Size:
+          default: 1
+          Keys:
+            - { time: 0, value: 0.18 }
+            - { time: 0.2, value: 1 }
+            - { time: 1, value: 3.2 }
+        Alpha:
+          default: 1
+          Keys:
+            - { time: 0, value: 0 }
+            - { time: 0.06, value: 1 }
+            - { time: 0.4, value: 0.62 }
+            - { time: 1, value: 0 }
+        Colour:
+          default: 0.9 0.94 0.98
+          Keys:
+            - { time: 0, colour: 0.7 0.78 0.86 }
+            - { time: 0.25, colour: 0.92 0.96 1 }
+            - { time: 1, colour: 1 1 1 }
+      Appearance:
+        tint: 1 1 1
+        alpha: 0.72
+        emissiveIntensity: 0
+        softFadeDistance: 0.45
+        maximumDrawDistance: 160
+        minimumProjectedSize: 0.8
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: true
+        animationRate: 0
+        billboard: cameraFacing
+        blendClass: weightedOit
+        depthSort: false
+        distortion: true
+        distortionStrength: 0.0025
