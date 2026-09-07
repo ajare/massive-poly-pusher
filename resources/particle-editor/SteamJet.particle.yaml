@@ -1,0 +1,78 @@
+ParticleEffect:
+  version: 2
+  name: High-pressure steam jet
+  maximumParticleCount: 768
+  Bounds:
+    center: 3 0 0
+    size: 8 5 5
+  Emitters:
+    - name: Side jet
+      maximumParticleCount: 768
+      transform: 0 -1 0 0 1 0 0 0 0 0 1 0 0 0 0 1
+      Spawn:
+        shape: disc
+        shapeParameters: 0.11 0 0 0
+        seed: 6101
+        mode: continuous
+        enabled: true
+        rate: 125
+        burstCount: 0
+        initialVelocityMin: -0.08 4.2 -0.08 0
+        initialVelocityMax: 0.08 7.2 0.08 0
+        colourMin: 0.82 0.87 0.92 0.35
+        colourMax: 1 1 1 0.72
+        lifetime: 0.55 1.35
+        size: 0.07 0.17
+        rotation: 0 6.283185
+        angularVelocity: -1.5 1.5
+      Behaviours:
+        Drag:
+          coefficient: 0.3
+        Noise:
+          frequency: 2.2 1.3 2.2
+          strength: 0.42
+          scroll: 0.45 0 0.08
+          timeScale: 1.3
+        CurlNoise:
+          frequency: 1.15 0.8 1.15
+          strength: 0.3
+          scroll: 0.22 0 0
+          timeScale: 1.1
+      Curves:
+        Size:
+          default: 1
+          Keys:
+            - { time: 0, value: 0.25 }
+            - { time: 0.18, value: 0.8 }
+            - { time: 1, value: 2.8 }
+        Alpha:
+          default: 1
+          Keys:
+            - { time: 0, value: 0 }
+            - { time: 0.08, value: 1 }
+            - { time: 0.5, value: 0.55 }
+            - { time: 1, value: 0 }
+        Colour:
+          default: 0.92 0.96 1
+          Keys:
+            - { time: 0, colour: 0.68 0.76 0.84 }
+            - { time: 0.3, colour: 0.92 0.96 1 }
+            - { time: 1, colour: 1 1 1 }
+      Appearance:
+        tint: 1 1 1
+        alpha: 0.68
+        emissiveIntensity: 0
+        softFadeDistance: 0.22
+        maximumDrawDistance: 140
+        minimumProjectedSize: 0.7
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: true
+        animationRate: 0
+        billboard: velocityStretched
+        blendClass: weightedOit
+        depthSort: false
+        distortion: true
+        distortionStrength: 0.003

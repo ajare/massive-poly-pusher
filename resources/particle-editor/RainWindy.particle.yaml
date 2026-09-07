@@ -1,0 +1,76 @@
+ParticleEffect:
+  version: 2
+  name: Wind-driven storm rain
+  maximumParticleCount: 4096
+  Bounds:
+    center: 2 4 0
+    size: 28 16 24
+  Emitters:
+    - name: Slanting rain
+      maximumParticleCount: 4096
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 -3 10 0 1
+      Spawn:
+        shape: box
+        shapeParameters: 9 0.3 9 0
+        seed: 8103
+        mode: continuous
+        enabled: true
+        rate: 560
+        burstCount: 0
+        initialVelocityMin: 4.5 -15 -1 0
+        initialVelocityMax: 7.5 -10 1 0
+        colourMin: 0.52 0.62 0.75 0.38
+        colourMax: 0.86 0.93 1 0.8
+        lifetime: 1.25 2
+        size: 0.012 0.028
+        rotation: 0 0
+        angularVelocity: 0 0
+      Behaviours:
+        Gravity:
+          acceleration: 0 -4.5 0
+        Drag:
+          coefficient: 0.02
+        Noise:
+          frequency: 0.09 0.055 0.09
+          strength: 0.65
+          scroll: 0.3 0 0.08
+          timeScale: 1.2
+        Turbulence:
+          frequency: 0.2 0.12 0.2
+          strength: 0.22
+          scroll: 0.18 0 0.04
+          timeScale: 0.9
+          octaves: 2
+          lacunarity: 2
+          gain: 0.5
+      Curves:
+        Alpha:
+          default: 1
+          Keys:
+            - { time: 0, value: 0 }
+            - { time: 0.03, value: 1 }
+            - { time: 0.93, value: 0.85 }
+            - { time: 1, value: 0 }
+        Colour:
+          default: 0.62 0.73 0.87
+          Keys:
+            - { time: 0, colour: 0.82 0.9 1 }
+            - { time: 1, colour: 0.48 0.59 0.74 }
+      Appearance:
+        tint: 1 1 1
+        alpha: 0.76
+        emissiveIntensity: 0
+        softFadeDistance: 0.07
+        maximumDrawDistance: 200
+        minimumProjectedSize: 0.4
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: false
+        animationRate: 0
+        billboard: velocityStretched
+        blendClass: weightedOit
+        depthSort: false
+        distortion: false
+        distortionStrength: 0

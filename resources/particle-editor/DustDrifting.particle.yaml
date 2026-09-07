@@ -1,0 +1,78 @@
+ParticleEffect:
+  version: 2
+  name: Drifting ambient dust
+  maximumParticleCount: 1024
+  Bounds:
+    center: 0 1 0
+    size: 16 5 16
+  Emitters:
+    - name: Windblown dust
+      maximumParticleCount: 1024
+      transform: 1 0 0 0 0 1 0 0 0 0 1 0 0 0.5 0 1
+      Spawn:
+        shape: box
+        shapeParameters: 4 0.35 4 0
+        seed: 9102
+        mode: continuous
+        enabled: true
+        rate: 34
+        burstCount: 0
+        initialVelocityMin: 0.12 0.015 -0.1 0
+        initialVelocityMax: 0.48 0.16 0.14 0
+        colourMin: 0.74 0.66 0.52 0.22
+        colourMax: 1 0.94 0.78 0.48
+        lifetime: 5 10
+        size: 0.35 0.9
+        rotation: 0 6.283185
+        angularVelocity: -0.22 0.22
+      Behaviours:
+        Drag:
+          coefficient: 0.028
+        Noise:
+          frequency: 0.2 0.4 0.2
+          strength: 0.07
+          scroll: 0.06 0 0.02
+          timeScale: 0.45
+        CurlNoise:
+          frequency: 0.16 0.3 0.16
+          strength: 0.12
+          scroll: 0.035 0 0.012
+          timeScale: 0.42
+      Curves:
+        Size:
+          default: 1
+          Keys:
+            - { time: 0, value: 0.55 }
+            - { time: 0.3, value: 1 }
+            - { time: 1, value: 1.5 }
+        Alpha:
+          default: 1
+          Keys:
+            - { time: 0, value: 0 }
+            - { time: 0.2, value: 0.46 }
+            - { time: 0.75, value: 0.38 }
+            - { time: 1, value: 0 }
+        Colour:
+          default: 0.63 0.54 0.41
+          Keys:
+            - { time: 0, colour: 0.54 0.44 0.31 }
+            - { time: 0.5, colour: 0.66 0.57 0.44 }
+            - { time: 1, colour: 0.78 0.71 0.61 }
+      Appearance:
+        tint: 1 1 1
+        alpha: 0.42
+        emissiveIntensity: 0
+        softFadeDistance: 1
+        maximumDrawDistance: 180
+        minimumProjectedSize: 1.25
+        atlasColumns: 1
+        atlasRows: 1
+        frameCount: 1
+        animation: none
+        randomStart: true
+        animationRate: 0
+        billboard: screenAligned
+        blendClass: weightedOit
+        depthSort: false
+        distortion: false
+        distortionStrength: 0
