@@ -12,7 +12,7 @@ Options:
   --with-lfs           Download this repository's Git LFS files.
   --config CONFIG      CMake build configuration (default: Release).
   --build-dir DIR      Build directory, relative to the repository root unless
-                       absolute (default: build).
+                       absolute (default: build-linux).
   -h, --help           Show this help.
 
 Environment:
@@ -30,7 +30,7 @@ fail() {
 
 WITH_LFS=false
 CONFIG=Release
-BUILD_DIR=build
+BUILD_DIR=build-linux
 
 while (($#)); do
     case "$1" in

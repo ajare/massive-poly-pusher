@@ -3,18 +3,18 @@ setlocal EnableExtensions DisableDelayedExpansion
 
 set "WITH_LFS=false"
 set "CONFIG=Release"
-set "BUILD_DIR=build"
+set "BUILD_DIR=build-windows"
 
 :parse_args
 if "%~1"=="" goto args_done
-if /i "%~1"=="--with-lfs" (
+if /i "%~1"=="/with-lfs" (
     set "WITH_LFS=true"
     shift
     goto parse_args
 )
-if /i "%~1"=="--config" (
+if /i "%~1"=="/config" (
     if "%~2"=="" (
-        set "ERROR_MESSAGE=--config requires a value"
+        set "ERROR_MESSAGE=/config requires a value"
         goto fatal
     )
     set "CONFIG=%~2"
@@ -22,9 +22,9 @@ if /i "%~1"=="--config" (
     shift
     goto parse_args
 )
-if /i "%~1"=="--build-dir" (
+if /i "%~1"=="/build-dir" (
     if "%~2"=="" (
-        set "ERROR_MESSAGE=--build-dir requires a value"
+        set "ERROR_MESSAGE=/build-dir requires a value"
         goto fatal
     )
     set "BUILD_DIR=%~2"
@@ -32,9 +32,9 @@ if /i "%~1"=="--build-dir" (
     shift
     goto parse_args
 )
-if /i "%~1"=="-h" goto usage_success
-if /i "%~1"=="--help" goto usage_success
-set "ERROR_MESSAGE=unknown option: %~1 (run with --help for usage)"
+if /i "%~1"=="/?" goto usage_success
+if /i "%~1"=="/help" goto usage_success
+set "ERROR_MESSAGE=unknown option: %~1 (run with /? for usage)"
 goto fatal
 
 :args_done
@@ -183,7 +183,7 @@ call :usage
 exit /b 0
 
 :missing_lfs
-set "ERROR_MESSAGE=--with-lfs requires Git LFS, but 'git lfs' is not installed. Install it with: winget install GitHub.GitLFS"
+set "ERROR_MESSAGE=/with-lfs requires Git LFS, but 'git lfs' is not installed. Install it with: winget install GitHub.GitLFS"
 goto fatal
 
 :usage
@@ -192,11 +192,11 @@ echo.
 echo Configure and build MassivePolyPusher and its dependencies from scratch.
 echo.
 echo Options:
-echo   --with-lfs          Download this repository's Git LFS files.
-echo   --config CONFIG     CMake build configuration ^(default: Release^).
-echo   --build-dir DIR     Build directory, relative to the repository root unless
-echo                       absolute ^(default: build^).
-echo   -h, --help          Show this help.
+echo   /with-lfs          Download this repository's Git LFS files.
+echo   /config CONFIG     CMake build configuration ^(default: Release^).
+echo   /build-dir DIR     Build directory, relative to the repository root unless
+echo                      absolute ^(default: build-windows^).
+echo(  /?, /help          Show this help.
 echo.
 echo Environment:
 echo   CC, CXX               Select the C and C++ compilers during configuration.
