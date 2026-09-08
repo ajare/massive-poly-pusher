@@ -144,18 +144,10 @@ set "CHECK_DIR=%CHECK_PARENT%"
 goto check_repository_parent
 
 :repository_parent_checked
-rem CMake deliberately places final artifacts under source\build even when its
-rem binary tree is elsewhere, so both locations are build output.
-set "OUTPUT_DIR=%ROOT_DIR%\build"
 echo Removing previous build output...
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 if exist "%BUILD_DIR%" (
     set "ERROR_MESSAGE=could not remove build directory: %BUILD_DIR%"
-    goto fatal
-)
-if /i not "%OUTPUT_DIR%"=="%BUILD_DIR%" if exist "%OUTPUT_DIR%" rmdir /s /q "%OUTPUT_DIR%"
-if exist "%OUTPUT_DIR%" (
-    set "ERROR_MESSAGE=could not remove output directory: %OUTPUT_DIR%"
     goto fatal
 )
 
@@ -174,7 +166,7 @@ if errorlevel 1 (
 )
 
 echo Build completed successfully.
-echo Binaries: %ROOT_DIR%\build\bin\%CONFIG%
+echo Binaries: %BUILD_DIR%\bin\%CONFIG%
 popd
 exit /b 0
 

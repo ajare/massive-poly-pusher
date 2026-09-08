@@ -90,11 +90,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_DEBUG_POSTFIX d)
-# Keep all generated binaries and libraries in the repository's root build
-# directory. This remains stable even if a developer uses a nested CMake
-# binary directory, and makes the checked-in ../../../resources paths resolve
-# directly to the source resource tree for every multi-config build.
-set(MPP_BUILD_OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/build")
+# Keep all generated binaries and libraries in the selected CMake build tree.
+# A parent project may set this cache path explicitly when it drives MPP as an
+# external project; by default it is the directory passed to CMake with -B.
+set(MPP_BUILD_OUTPUT_ROOT "${CMAKE_BINARY_DIR}" CACHE PATH
+    "Root directory for MassivePolyPusher build artifacts")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MPP_BUILD_OUTPUT_ROOT}/lib")
