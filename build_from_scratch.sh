@@ -112,14 +112,8 @@ case "$ROOT_DIR/" in
     "$BUILD_DIR/"*) fail "refusing to remove a directory containing this checkout: $BUILD_DIR" ;;
 esac
 
-# CMake deliberately places final artifacts under source/build even when its
-# binary tree is elsewhere, so both locations are build output.
-OUTPUT_DIR="$ROOT_DIR/build"
 printf 'Removing previous build output...\n'
 rm -rf -- "$BUILD_DIR"
-if [[ "$OUTPUT_DIR" != "$BUILD_DIR" ]]; then
-    rm -rf -- "$OUTPUT_DIR"
-fi
 
 printf 'Configuring %s build in %s...\n' "$CONFIG" "$BUILD_DIR"
 cmake -S "$ROOT_DIR" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE="$CONFIG"
@@ -128,4 +122,4 @@ printf 'Building MassivePolyPusher and dependencies...\n'
 cmake --build "$BUILD_DIR" --config "$CONFIG" --parallel
 
 printf 'Build completed successfully.\n'
-printf 'Binaries: %s/bin/%s\n' "$ROOT_DIR/build" "$CONFIG"
+printf 'Binaries: %s/bin/%s\n' "$BUILD_DIR" "$CONFIG"
