@@ -16,6 +16,14 @@
 
 namespace mpp
 {
+	// One placed instance of a model resource inside a Scene. It acquires the
+	// model resource, so its lifetime is bounded by the Scene it belongs to: a
+	// SceneModel3d must be destroyed, or removed from its Scene and released by
+	// every other owner, before the Batch that declared the model. A pipeline
+	// borrows scene models for the duration of one frame and releases them when
+	// that frame's graph execution ends, so a SceneModel3d must not be destroyed
+	// while the frame that drew it is still executing either. Batch::~Batch
+	// reports any outstanding holder by name.
 	class _MPPAPI alignas(16) SceneModel3d : public ResourceWrangler
 	{
 		ResourcePtr mModel;

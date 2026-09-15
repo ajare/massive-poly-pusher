@@ -13,7 +13,10 @@ namespace mpp
 {
 
 	SceneModel3d::SceneModel3d(ResourcePtr model)
-		: ResourceWrangler("SceneModel3d")
+		// Identifying the wrapped model turns a leaked-reference report such as
+		// "held by: 'SceneModel3d'" into one that names which instance is the
+		// last holder, which is the whole point of the diagnostic.
+		: ResourceWrangler(model ? "SceneModel3d(" + model->getName() + ")" : std::string("SceneModel3d"))
 		, mModel(model)
 	{
 		mModel->acquire(this);

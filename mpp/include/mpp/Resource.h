@@ -117,4 +117,11 @@ namespace mpp
 	};
 
 	typedef std::shared_ptr<Resource> ResourcePtr;
+
+	// Human-readable description of why a resource is still alive: its
+	// outstanding reference count and the wranglers still holding it, e.g.
+	// "1 outstanding reference, held by: 'SceneModel3d(ModelName)'".
+	// Shared by Batch's destruction diagnostic and ResourceManager's
+	// redeclaration error so both name the same holders.
+	_MPPAPI std::string describeOutstandingResourceReferences(Resource const& resource);
 }

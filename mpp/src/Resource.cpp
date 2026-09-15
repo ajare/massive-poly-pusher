@@ -375,4 +375,26 @@ namespace mpp
 		mDependentResources.clear();
 	}
 
+	string describeOutstandingResourceReferences(Resource const& resource)
+	{
+		int const refCount = resource.getRefCount();
+
+		string description = format("{} outstanding reference{}", refCount, refCount == 1 ? "" : "s");
+
+		auto const& holders = resource.getDependingResources();
+		if (!holders.empty())
+		{
+			description += ", held by:";
+
+			for (auto const* holder : holders)
+			{
+				description += " '";
+				description += holder ? holder->getWranglerName() : string("<unknown>");
+				description += "'";
+			}
+		}
+
+		return description;
+	}
+
 }

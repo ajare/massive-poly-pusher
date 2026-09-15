@@ -385,8 +385,16 @@ namespace mpp
 		// Check name doen't exist
 		if (mResources.find(name) != mResources.end() || mResourceAliases.find(name) != mResourceAliases.end())
 		{
+			// Redeclaring a live name is normally the second symptom of a
+			// resource that was never deleted: name who still holds it so the
+			// error points at the leak rather than only at this redeclaration.
+			auto const existing = getResource(name, true);
+			auto const detail = existing
+				? std::format(" It is still registered with {}.", describeOutstandingResourceReferences(*existing))
+				: std::string();
+
 			THROW_MPP(
-				std::format("Resource '{}' already exists.", name),
+				std::format("Resource '{}' already exists.{} A resource name can only be reused once its previous owner has deleted it; a name that survives its owner is reported when the owning Batch is destroyed.", name, detail),
 				__LINE__, __FILE__, __func__);
 		}
 

@@ -1,9 +1,11 @@
 #include <cmath>
+#include <format>
 
 #include "mpp/Batch.h"
 #include "mpp/ProgrammaticBasicMaterialStream.h"
 #include "mpp/ProgrammaticModelStream.h"
 #include "mpp/ResourceManager.h"
+#include "mpp/StaticLogger.h"
 
 using namespace std;
 
@@ -43,16 +45,12 @@ namespace mpp
 	{
 		destroy();
 
-		// Remove resources
-		if (mModel && !mModel->getRefCount())
-		{
-			mResourceMgr->deleteResource(mModel->getName());
-		}
-
-		if (mMaterial && !mMaterial->getRefCount())
-		{
-			mResourceMgr->deleteResource(mMaterial->getName());
-		}
+		// Remove the Model and Material this batch declared. A resource that is
+		// still held by another wrangler cannot be deleted without destroying
+		// something still in use, so deleteDeclaredResource reports the holders
+		// instead of skipping the delete silently.
+		deleteDeclaredResource(mModel, "Model");
+		deleteDeclaredResource(mMaterial, "Material");
 	}
 
 	string const& Batch::getName() const
@@ -215,8 +213,43 @@ namespace mpp
 
 	void Batch::destroy()
 	{
-		mModel->release(this);
-		mMaterial->release(this);
+		if (mModel) mModel->release(this);
+		if (mMaterial) mMaterial->release(this);
+	}
+
+	void Batch::deleteDeclaredResource(ResourcePtr const& resource, string const& role)
+	{
+		if (!resource)
+		{
+			return;
+		}
+
+		if (!resource->getRefCount())
+		{
+			mResourceMgr->deleteResource(resource->getName());
+			return;
+		}
+
+		// The resource is still in use, so its name registration stays. Say so
+		// loudly: the alternative is a stranded resource whose name the next
+		// Batch of the same name cannot redeclare.
+		auto const message = format(
+			"Batch '{}' destroyed while its {} '{}' is still referenced ({}). "
+			"The name remains registered, so a later resource of the same name will fail to declare; "
+			"every user of this Batch's resources, normally the SceneModel3d that wraps its Model, must be destroyed before the Batch.",
+			getName(), role, resource->getName(), describeOutstandingResourceReferences(*resource));
+
+		// This runs from a destructor, which must not throw, and the static log
+		// opens a file. A failure there must not suppress the report below.
+		try
+		{
+			static_log_message(MPP_RESOURCE_LOGFILE, message);
+		}
+		catch (...)
+		{
+		}
+
+		mResourceMgr->errorMessage(message);
 	}
 
 	void Batch::startUpdate(size_t minimumCount, size_t vertexCount)

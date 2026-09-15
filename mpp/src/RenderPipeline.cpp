@@ -1082,6 +1082,21 @@ namespace mpp
 		if (shadowDepth.isValid()) mGraphTargets->bindImported(shadowDepth, shadowTarget);
 
 		mGraphExecutor->clearPassCallbacks();
+		// The callbacks registered below capture this frame's models and scene by
+		// value -- `shadowModels` and `models` are vector<SceneModel3dPtr>, and the
+		// scene pass also captures the ScenePtr. They are stored in the executor,
+		// which is a member of this pipeline and outlives the frame. Left there,
+		// they keep the last rendered SceneModel3d (and its Batch's Model
+		// resource) alive until the next render or until the pipeline itself is
+		// destroyed -- so a Batch destroyed first sees a non-zero reference count
+		// and cannot delete its Model. Releasing them as soon as the frame's graph
+		// has executed bounds a scene model's lifetime by the frame rather than by
+		// the pipeline. The guard covers every exit from here, including throws.
+		struct PassCallbackReset
+		{
+			RenderGraphExecutor* executor{ nullptr };
+			~PassCallbackReset() { if (executor) executor->clearPassCallbacks(); }
+		} passCallbackReset{ mGraphExecutor.get() };
 		if (shadowDepth.isValid())
 		{
 			bool const pointShadow = mRenderSystem->getShadowDomainOptions(mOptions.shadowDomain).light.type == ShadowLightType::Point;

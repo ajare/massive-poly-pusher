@@ -272,6 +272,16 @@ namespace mpp
 		std::string resourceRoot;
 	};
 
+	// A pipeline owns no Scene and, once a frame has finished, holds no
+	// shared_ptr to any SceneModel3d: per frame it borrows the scene's models,
+	// and the graph pass callbacks that carry them are released when that
+	// frame's graph execution ends rather than being left in the executor until
+	// the next render. That release is what bounds a scene model's lifetime by
+	// the frame; without it the pipeline keeps the last rendered SceneModel3d
+	// alive, its Batch cannot delete the Model resource it declared, and the
+	// name is stranded. A SceneModel3d must still not be destroyed while the
+	// frame that drew it is executing. Batch::~Batch reports any outstanding
+	// holder if the order is broken.
 	class _MPPAPI RenderPipeline
 	{
 		std::string mName;

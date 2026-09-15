@@ -135,9 +135,13 @@ namespace mpp
 			mTexture->release(this);
 		}
 
-		if (mTextureRenderer && mTexture && !mTexture->getRefCount())
+		// Only a texture this batch created through its texture renderer is its
+		// own to delete; otherwise the caller supplied it. A texture still held
+		// by another wrangler is reported with the same diagnostic Batch uses for
+		// its Model and Material.
+		if (mTextureRenderer)
 		{
-			mResourceMgr->deleteResource(mTexture->getName());
+			deleteDeclaredResource(mTexture, "texture");
 		}
 	}
 

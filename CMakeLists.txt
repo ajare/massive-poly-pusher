@@ -412,6 +412,7 @@ add_library(MassivePolyPusher SHARED
     mpp/src/RenderTexture.cpp
     mpp/src/RenderTextureStream.cpp
     mpp/src/Resource.cpp
+    mpp/src/ResourceLifetimeTests.cpp
     mpp/src/ResourceManager.cpp
     mpp/src/ResourceStream.cpp
     mpp/src/ResourceStreamSerializer.cpp

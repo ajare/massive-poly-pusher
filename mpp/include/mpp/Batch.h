@@ -64,6 +64,18 @@ namespace mpp
 
 	protected:
 
+		// Removes the name registration of a resource this Batch declared, but only
+		// once no other wrangler holds it. A non-zero reference count means a user
+		// of this Batch's resource -- normally the SceneModel3d that wraps the
+		// Model, itself kept alive by a RenderPipeline that has not released the
+		// frame that drew it -- outlived the Batch. Deleting then would destroy a
+		// resource that is still in use, so the registration is deliberately left
+		// in place and the outstanding holders are reported at the point of the
+		// mistake. Without that report the resource is silently stranded and the
+		// next object that declares the same name fails one teardown later, far
+		// from the cause. See docs/adr/0012-scene-model-lifetime-is-bounded-by-the-frame.md.
+		void deleteDeclaredResource(ResourcePtr const& resource, std::string const& role);
+
 		BatchVertexAttribute getColourAttribute() const;
 
 		virtual std::shared_ptr<ModelStream> createModelStream();
@@ -104,6 +116,10 @@ namespace mpp
 			RenderSystem* renderSystem,
 			ResourceManager* resourceMgr);
 
+		// Destroys the Model and Material this Batch declared. Any wrangler still
+		// holding them (a SceneModel3d wrapping the Model, above all) must be
+		// destroyed first; this destructor reports the outstanding holders rather
+		// than stranding the resources silently.
 		virtual ~Batch();
 
 		std::string const& getName() const;
