@@ -36,6 +36,8 @@
 #include "mpp/DefaultShaders.h"
 #include "mpp/Program.h"
 #include "mpp/Texture.h"
+#include "mpp/TriangleBatch.h"
+#include "mpp/ResourceLifetimeTests.h"
 #include "mpp/UniformBuffer.h"
 #include "mpp/VertexBuffer.h"
 #include "mpp/ResourceManager.h"
@@ -739,6 +741,194 @@ void main()
 			diagnosticDepthInspect.mode = RenderSystem::TextureDiagnosticMode::Depth;
 			renderSystem->renderTextureDiagnostic(static_cast<RenderTexture*>(diagnosticDepthTargets.get(diagnosticDepthImage).get()), diagnosticDepthOutput, diagnosticDepthInspect);
 			if (!nearColour(readFirstPixel(diagnosticDepthOutput), { 255, 255, 255, 255 })) return fail("depth diagnostic visualization failed");
+
+			stage = "resource lifetime diagnostics";
+			std::string lifetimeFailure;
+			if (!runResourceLifetimeTests(&lifetimeFailure)) return fail(lifetimeFailure);
+
+			stage = "generated pipeline frame ownership and same-name TriangleBatch reuse";
+			{
+				auto* resources = renderSystem->getResourceManager();
+				RenderPipelineOptions lifetimeOptions;
+				lifetimeOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				lifetimeOptions.ambientOcclusion.method = AmbientOcclusionMethod::Gtao;
+				lifetimeOptions.ambientOcclusion.gtao.normalSource = GTAONormalSource::Depth;
+				lifetimeOptions.outputs = { { "Viewport", "Presentation" } };
+				auto& aa = lifetimeOptions.outputs.front().antiAliasing;
+				aa.msaa = AntiAliasingSamples::Off;
+				aa.ssaa = AntiAliasingSamples::Off;
+				aa.taa = false;
+				aa.fxaa = false;
+				auto pipeline = renderSystem->getOrCreateRenderPipeline("GpuTestFrameLifetime", lifetimeOptions);
+				auto scene = renderSystem->createScene("Default");
+				scene->setViewport(0, 0, 64, 64);
+				scene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 1.0f));
+				auto camera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				auto counts = [&]
+				{
+					std::array<uint32_t, 4> result{};
+					resources->getResourceCounts(result[0], result[1], result[2], result[3]);
+					return result;
+				};
+				TriangleBatchOptions batchOptions{};
+				batchOptions.dimension = TriangleBatchOptions::Dimension::P3D;
+				batchOptions.positionType = mesh::Vertex::DataType::Float;
+				batchOptions.texcoordAttrib = { mesh::Vertex::DataType::Float, false };
+				batchOptions.colourAttrib = { mesh::Vertex::DataType::None, false };
+				batchOptions.useDiffuse = false;
+				auto const beforeUncreated = counts();
+				{
+					TriangleBatch uncreated("GpuTestFrameLifetime.Uncreated", batchOptions, 0, {}, 1, renderSystem, resources);
+				}
+				if (counts() != beforeUncreated) return fail("destroying a never-created TriangleBatch changed resources");
+				std::array<uint32_t, 4> baseline{};
+				for (uint32_t cycle = 0; cycle < 8; ++cycle)
+				{
+					std::array<std::unique_ptr<TriangleBatch>, 2> batches;
+					std::array<ResourcePtr, 2> models;
+					std::array<SceneModel3dPtr, 2> objects;
+					std::array<std::weak_ptr<SceneModel3d>, 2> probes;
+					for (size_t index = 0; index < models.size(); ++index)
+					{
+						auto name = "GpuTestFrameLifetime.Batch" + std::to_string(index);
+						batches[index] = std::make_unique<TriangleBatch>(name, batchOptions, 0, ResourcePtr{}, 1, renderSystem, resources);
+						batches[index]->create();
+						batches[index]->startUpdate(1, 3);
+						auto const& position = batches[index]->getAttributeData(0, "POSITION");
+						auto const& normal = batches[index]->getAttributeData(0, "NORMAL");
+						auto const& texcoords = batches[index]->getAttributeData(0, "TEXCOORDS");
+						if (!position.first || !normal.first || !texcoords.first)
+							return fail("TriangleBatch lifetime fixture is missing its dynamic vertex attributes");
+						std::array<glm::vec3, 3> const positions{ glm::vec3(-0.4f, -0.5f, 0.0f), glm::vec3(0.4f, -0.5f, 0.0f), glm::vec3(0.0f, 0.5f, 0.0f) };
+						for (size_t vertex = 0; vertex < positions.size(); ++vertex)
+						{
+							auto p = reinterpret_cast<float*>(position.first + vertex * position.second);
+							auto n = reinterpret_cast<float*>(normal.first + vertex * normal.second);
+							auto uv = reinterpret_cast<float*>(texcoords.first + vertex * texcoords.second);
+							p[0] = positions[vertex].x; p[1] = positions[vertex].y; p[2] = positions[vertex].z;
+							n[0] = 0.0f; n[1] = 0.0f; n[2] = 1.0f;
+							uv[0] = 0.0f; uv[1] = 0.0f;
+						}
+						batches[index]->finishUpdate(1, 3, true);
+						models[index] = batches[index]->getModel();
+						objects[index] = scene->add3dModel(models[index]);
+						objects[index]->translate({ index == 0 ? -0.6f : 0.6f, 0.0f, 0.0f });
+						probes[index] = objects[index];
+					}
+					if (cycle == 0)
+					{
+						bool duplicateRejected = false;
+						try { resources->declareResource(models[0]->getName(), models[0]->getResourceStream()); }
+						catch (MppException const&) { duplicateRejected = true; }
+						if (!duplicateRejected || resources->getResource(models[0]->getName()) != models[0])
+							return fail("duplicate model declaration replaced a live TriangleBatch resource");
+					}
+					pipeline->render(scene, camera, glm::vec2(0.0f));
+					bool renderedScene = false, renderedGtao = false;
+					for (auto const& stats : pipeline->getLastGraphExecutionStats())
+					{
+						renderedScene |= stats.name == "LegacyScene" && stats.primitivesSubmitted > 0;
+						renderedGtao |= stats.name == "GTAO";
+					}
+					if (!renderedScene || !renderedGtao) return fail("frame-lifetime fixture did not render geometry through GTAO");
+					for (size_t index = 0; index < models.size(); ++index)
+					{
+						scene->remove3dModel(objects[index]);
+						objects[index].reset();
+						// Deliberately check before another render or pipeline removal:
+						// next-frame callback replacement used to hide this retention.
+						if (!probes[index].expired()) return fail("cached generated pipeline retained a removed SceneModel3d after render returned");
+						if (models[index]->getRefCount() != 1 || models[index]->getDependingObjectCount() != 1)
+							return fail("removed SceneModel3d did not leave the TriangleBatch as sole Model acquirer");
+						auto const name = models[index]->getName();
+						auto const materialName = batches[index]->getMaterial()->getName();
+						batches[index].reset();
+						if (models[index]->getRefCount() != 0 || models[index]->getDependingObjectCount() != 0)
+							return fail("TriangleBatch destructor did not release its Model resource");
+						models[index].reset();
+						if (resources->getResource(name, true) || resources->getResource(materialName, true) ||
+							!resources->getResourceNamesWithPrefix(name + "/").empty())
+							return fail("TriangleBatch destructor left its model or generated material registered");
+					}
+					// The first real draw warms lazy depth/AO/output resources.
+					if (cycle == 0) baseline = counts();
+					else if (counts() != baseline) return fail("repeated model teardown did not restore warmed resource counts");
+				}
+				std::weak_ptr<Scene> sceneProbe = scene;
+				std::weak_ptr<Camera> cameraProbe = camera;
+				scene.reset();
+				camera.reset();
+				if (!sceneProbe.expired() || !cameraProbe.expired())
+					return fail("generated scene or GTAO callbacks retained frame scene/camera ownership");
+				if (renderSystem->getOrCreateRenderPipeline("GpuTestFrameLifetime", lifetimeOptions) != pipeline)
+					return fail("frame-lifetime test did not keep its cached pipeline alive");
+				renderSystem->removeRenderPipeline("GpuTestFrameLifetime");
+			}
+
+			stage = "generated point-shadow callback model ownership";
+			{
+				ShadowOptions shadow;
+				shadow.enabled = true;
+				shadow.light.type = ShadowLightType::Point;
+				shadow.light.range = 10.0f;
+				shadow.nearPlane = 0.1f;
+				shadow.resolution = 16;
+				renderSystem->configureShadowDomain("GpuTestFrameLifetimeShadow", shadow);
+				RenderPipelineOptions options;
+				options.mode = RenderPipelineMode::GraphLegacyForward;
+				options.shadowDomain = "GpuTestFrameLifetimeShadow";
+				auto pipeline = renderSystem->getOrCreateRenderPipeline("GpuTestFrameLifetimeShadow", options);
+				auto scene = std::make_shared<CameraCulledShadowTestScene>(renderSystem);
+				scene->setViewport(0, 0, 32, 32);
+				auto camera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				auto object = scene->add3dModel(measuredModelResource);
+				std::weak_ptr<SceneModel3d> probe = object;
+				pipeline->render(scene, camera, glm::vec2(0.0f));
+				if (renderSystem->getShadowDomainDepthTarget(options.shadowDomain))
+				{
+					auto const diagnostics = renderSystem->getShadowDomainDiagnostics(options.shadowDomain);
+					if (diagnostics.selectedModelCount != 1 || diagnostics.facePassCount != 6)
+						return fail("shadow ownership fixture did not render its off-camera caster on all six faces");
+				}
+				scene->remove3dModel(object);
+				object.reset();
+				if (!probe.expired()) return fail("point-shadow callbacks retained an off-camera SceneModel3d after render returned");
+				renderSystem->removeRenderPipeline("GpuTestFrameLifetimeShadow");
+			}
+
+			stage = "generated pipeline callback ownership on exception";
+			{
+				class ThrowingScenePass final : public RenderPass
+				{
+				public:
+					explicit ThrowingScenePass(RenderSystem* system) : RenderPass(system) {}
+					void render(std::vector<SceneModel3dPtr> const&, CameraPtr) override
+					{
+						throw MppException("GpuTestFrameLifetime injected scene failure");
+					}
+				};
+				RenderPipelineOptions options;
+				options.mode = RenderPipelineMode::GraphLegacyForward;
+				// Fail before anything is queued in the renderer's mesh pools.
+				options.depthPrepass = false;
+				auto pipeline = renderSystem->getOrCreateRenderPipeline("GpuTestFrameLifetimeFailure", options);
+				pipeline->addRenderPass(std::make_shared<ThrowingScenePass>(renderSystem));
+				auto scene = renderSystem->createScene("Default");
+				scene->setViewport(0, 0, 32, 32);
+				auto camera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				auto object = scene->add3dModel(measuredModelResource);
+				std::weak_ptr<SceneModel3d> probe = object;
+				bool injectedFailure = false;
+				try { pipeline->render(scene, camera, glm::vec2(0.0f)); }
+				catch (std::exception const& error) { injectedFailure = std::string(error.what()).find("GpuTestFrameLifetime injected scene failure") != std::string::npos; }
+				if (!injectedFailure) return fail("frame-lifetime fixture did not reach its injected scene failure");
+				scene->remove3dModel(object);
+				object.reset();
+				if (!probe.expired()) return fail("failed generated graph retained a removed SceneModel3d");
+				// Empty-scene execution skips the throwing pass and verifies reuse.
+				pipeline->render(scene, camera, glm::vec2(0.0f));
+				renderSystem->removeRenderPipeline("GpuTestFrameLifetimeFailure");
+			}
 
 			stage = "SSAO depth-only tracer bullet";
 			{

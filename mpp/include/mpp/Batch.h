@@ -67,9 +67,9 @@ namespace mpp
 		// Removes the name registration of a resource this Batch declared, but only
 		// once no other wrangler holds it. A non-zero reference count means a user
 		// of this Batch's resource -- normally the SceneModel3d that wraps the
-		// Model, itself kept alive by a RenderPipeline that has not released the
-		// frame that drew it -- outlived the Batch. Deleting then would destroy a
-		// resource that is still in use, so the registration is deliberately left
+		// Model -- outlived the Batch. Finish rendering and release those users
+		// before destroying the Batch; the pipeline may stay cached. Deleting a
+		// resource still in use is unsafe, so the registration is deliberately left
 		// in place and the outstanding holders are reported at the point of the
 		// mistake. Without that report the resource is silently stranded and the
 		// next object that declares the same name fails one teardown later, far
