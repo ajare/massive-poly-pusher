@@ -635,3 +635,8 @@ add_custom_command(TARGET ParticleEditor POST_BUILD
     VERBATIM)
 
 add_subdirectory(demo-suite)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tools/tests/serializer-lifetime)
+endif()

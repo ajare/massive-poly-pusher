@@ -22,6 +22,9 @@ namespace mpp
 
 			Serializer();
 
+			// FileStream owns derived serializers through SerializerPtr.
+			virtual ~Serializer() = default;
+
 			virtual void loadFromFile(std::string const& filepath) = 0;
 
 			mpp::data::StructuredData const& getData() const;
