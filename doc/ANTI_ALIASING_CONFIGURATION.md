@@ -47,6 +47,8 @@ A PBR pipeline declares one or more named outputs. Omitted settings inherit the 
 
 Output values accept `inherit` in addition to the corresponding global values. An explicit `off` or `false` overrides an enabled global default. In PipelineEditor, the toolbar's **Global AA** combos initially resolve inherited values from `editor.ini`, omit `Inherit`, and write a concrete selection to all named presentation outputs. To retain or author inheritance per output, select a presentation image under **Pipeline Hierarchy > Images** and use its Inspector combos. A change immediately regenerates the preview and participates in undo/redo. Outputs in one pipeline must resolve to identical MSAA, SSAA, and TAA settings because they share rasterization, dimensions, and jitter, so the editor propagates those three selections to all outputs. FXAA may vary per output.
 
+After a successful graph execution, clients can retrieve the completed target with `RenderPipeline::getOutputRenderTarget(name)`. The lookup resolves the declared image's latest produced version on every execution, so graph topology changes and target reallocations do not change the client contract. An undeclared name, or a declared output queried before it has completed an execution, throws explicitly.
+
 Legacy graph-image `<samples>` elements and public render-texture sample settings are rejected. Move multisampling to the named output's `<AntiAliasing>` block.
 
 ## Technique requirements

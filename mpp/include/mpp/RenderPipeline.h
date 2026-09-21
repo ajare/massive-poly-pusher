@@ -291,6 +291,10 @@ namespace mpp
 		std::unique_ptr<RenderOutputProcessor> mOutputProcessor;
 		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
 		RenderGraphPassFactoryRegistry mGraphPassFactories;
+		// Published only after graph execution and output processing complete.
+		// Replaced every successful frame so allocation changes cannot leave a
+		// declared output pointing at an earlier graph target.
+		std::map<std::string, RenderTargetPtr> mNamedOutputTargets;
 		bool mWarnedMissingPbrEnvironment{ false };
 		uint32_t mTaaSequenceIndex{ 0 };
 		bool mTaaCameraValid{ false };
@@ -376,6 +380,10 @@ namespace mpp
 		void setShadowDomain(std::string const& shadowDomain);
 
 		RenderTargetPtr getOutputRenderTarget();
+		// Returns the current completed target for a declared pipeline output.
+		// Unknown names and outputs unavailable before successful graph execution
+		// are errors rather than null or positional graph-image fallbacks.
+		RenderTargetPtr getOutputRenderTarget(std::string const& outputName) const;
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
 		void requestGraphImageCapture();
 		std::vector<GraphImageCapture> takeGraphImageCaptures();

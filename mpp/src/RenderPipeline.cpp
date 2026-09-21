@@ -362,6 +362,20 @@ namespace mpp
 		return mPasses.back()->getRenderTarget();
 	}
 
+	RenderTargetPtr RenderPipeline::getOutputRenderTarget(string const& outputName) const
+	{
+		auto const declared = find_if(mOptions.outputs.begin(), mOptions.outputs.end(), [&](auto const& output)
+		{
+			return output.name == outputName;
+		});
+		if (declared == mOptions.outputs.end())
+			THROW_MPP("Render pipeline '" + mName + "' has no declared output named '" + outputName + "'.", __LINE__, __FILE__, __func__);
+		auto const target = mNamedOutputTargets.find(outputName);
+		if (target == mNamedOutputTargets.end() || !target->second)
+			THROW_MPP("Render pipeline output '" + outputName + "' is unavailable before successful graph execution.", __LINE__, __FILE__, __func__);
+		return target->second;
+	}
+
 	RenderTargetPtr RenderPipeline::getGraphImageRenderTarget(GraphImageHandle image) const
 	{
 		return mGraphTargets?mGraphTargets->get(image):nullptr;
@@ -535,6 +549,7 @@ namespace mpp
 				mGraphExecutor->execute(*templateResource, *mGraphTargets, mRenderSystem->getCaps());
 				mGraphExecutor->setFrameContext(nullptr);
 				for(auto const& output:preparedOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
+				map<string,RenderTargetPtr> completedOutputs;for(auto const& output:preparedOutputs)completedOutputs.emplace(output.name,output.destination);mNamedOutputTargets=std::move(completedOutputs);
 				publishFlowSnapshot();
 			}
 			catch(...){mGraphExecutor->setFrameContext(nullptr);discardFlowSnapshot();throw;}
@@ -1205,6 +1220,7 @@ namespace mpp
 			mGraphExecutor->execute(graph, *mGraphTargets, mRenderSystem->getCaps());
 			mGraphExecutor->setFrameContext(nullptr);
 			for(auto const& output:dynamicOutputs){auto depth=output.depth.isValid()?mGraphTargets->get(output.depth):output.destination;mOutputProcessor->present(output.name,output.destination,output.external?output.source:mGraphTargets->get(output.image),depth,taaFrame?&*taaFrame:nullptr);}
+			map<string,RenderTargetPtr> completedOutputs;for(auto const& output:dynamicOutputs)completedOutputs.emplace(output.name,output.destination);mNamedOutputTargets=std::move(completedOutputs);
 			publishFlowSnapshot();
 		}
 		catch (std::exception const& error)

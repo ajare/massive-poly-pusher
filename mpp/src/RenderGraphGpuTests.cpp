@@ -820,6 +820,11 @@ void main()
 				waterDepthOptions.waterReflections.technique = WaterReflectionTechnique::ScreenSpace;
 				waterDepthOptions.outputs = { { "Water", "WaterComposite" } };
 				auto waterDepthPipeline = renderSystem->getOrCreateRenderPipeline("GpuTestGeneratedWaterDepthPipeline", waterDepthOptions);
+				bool rejectedUnavailableOutput = false;
+				try { waterDepthPipeline->getOutputRenderTarget("Water"); }
+				catch (std::exception const&) { rejectedUnavailableOutput = true; }
+				if (!rejectedUnavailableOutput)
+					return fail("named pipeline output was available before graph execution");
 				waterDepthPipeline->requestGraphImageCapture();
 				waterDepthPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
 				bool storedWaterDepth = false, boundWaterDepth = false;
@@ -834,8 +839,15 @@ void main()
 				// Verify that the copy covers the offscreen target instead of inheriting
 				// the 3D camera and window-sized quad transform.
 				auto waterComposite = waterDepthPipeline->getGraphImageRenderTarget({ 3, 1 });
-				if (!waterComposite || !nearColour(readFirstPixel(waterComposite), { 204, 204, 204, 255 }))
-					return fail("generated water composite did not preserve the full opaque scene");
+				auto namedWater = waterDepthPipeline->getOutputRenderTarget("Water");
+				if (!waterComposite || namedWater != waterComposite ||
+					!nearColour(readFirstPixel(namedWater), { 204, 204, 204, 255 }))
+					return fail("named pipeline output did not follow the final generated water image version");
+				bool rejectedUnknownOutput = false;
+				try { waterDepthPipeline->getOutputRenderTarget("Missing"); }
+				catch (std::exception const&) { rejectedUnknownOutput = true; }
+				if (!rejectedUnknownOutput)
+					return fail("unknown named pipeline output did not fail explicitly");
 				auto captures = waterDepthPipeline->takeGraphImageCaptures();
 				auto capturedPass = [&](char const* name, bool depth)
 				{
@@ -853,6 +865,14 @@ void main()
 						return fail("Screen-space capture contained a Planar output");
 				if (!waterDepthPipeline->takeGraphImageCaptures().empty())
 					return fail("taking graph image captures did not consume them");
+				gateScene->setViewport(0, 0, 73, 41);
+				waterDepthPipeline->render(gateScene, gateCamera, glm::vec2(0.0f));
+				auto resizedNamedWater = waterDepthPipeline->getOutputRenderTarget("Water");
+				if (resizedNamedWater == namedWater || resizedNamedWater->getWidth() != 73 ||
+					resizedNamedWater->getHeight() != 41 ||
+					resizedNamedWater != waterDepthPipeline->getGraphImageRenderTarget({ 3, 1 }))
+					return fail("named pipeline output did not follow graph target reallocation");
+				gateScene->setViewport(0, 0, 64, 64);
 				renderSystem->removeRenderPipeline("GpuTestGeneratedWaterDepthPipeline");
 
 				RenderPipelineOptions waterOptions;
