@@ -259,21 +259,6 @@ namespace mpp
 			return false;
 		}
 
-		class PlanarReflectionCamera final : public Camera
-		{
-			glm::mat4 mProjection;
-		public:
-			PlanarReflectionCamera(Camera& source, PlanarReflectionPlaneDescriptor const& plane, float aspectRatio)
-				: Camera(source.getPosition(), 0.0f, 0.0f, 0.0f, source.getFov(), aspectRatio)
-			{
-				auto const reflected = buildPlanarReflectionView(source, plane, aspectRatio);
-				setClipDistances(source.getNearClipDistance(), source.getFarClipDistance());
-				setLookAt(reflected.position, reflected.position + reflected.direction, reflected.up);
-				mProjection = reflected.projection;
-			}
-			glm::mat4 getProjectionTransform() const override { return mProjection; }
-		};
-
 		class PlanarReflectionScenePass final : public RenderGraphScenePass
 		{
 		public:
@@ -290,8 +275,11 @@ namespace mpp
 				plane.elevation = parameter(context, "ELEVATION", 0.0f);
 				plane.viewerSide = integerParameter(context, "VIEWER_SIDE", 0) == 0
 					? ReflectionPlaneSide::Above : ReflectionPlaneSide::Below;
-				auto reflectedCamera = std::make_shared<PlanarReflectionCamera>(*frame.camera, plane,
+				auto const reflected = buildPlanarReflectionView(*frame.camera, plane,
 					(float)target->getWidth() / (float)target->getHeight());
+				auto reflectedCamera = std::make_shared<VirtualCamera>(
+					reflected.view, reflected.projection,
+					frame.camera->getNearClipDistance(), frame.camera->getFarClipDistance());
 				auto reflectedModels = selectModels(frame.scene->get3dModelsInView(reflectedCamera), false);
 				reflectedModels.erase(std::remove_if(reflectedModels.begin(), reflectedModels.end(),
 					usesTransparentMaterial), reflectedModels.end());

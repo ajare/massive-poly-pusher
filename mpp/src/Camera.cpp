@@ -1,3 +1,5 @@
+#include <cmath>
+
 #pragma warning(push)
 #pragma warning(disable : 4201)
 #include <glm/gtc/matrix_transform.hpp>
@@ -135,5 +137,34 @@ namespace mpp
 	mat4 Camera::getProjectionTransform() const
 	{
 		auto projection=perspective(radians(mFov),mAspectRatio,mNear,mFar);projection[2][0]+=mProjectionJitterNdc.x;projection[2][1]+=mProjectionJitterNdc.y;return projection;
+	}
+
+	VirtualCamera::VirtualCamera(mat4 const& view, mat4 const& projection,
+		float nearDistance, float farDistance)
+		: Camera(vec3(0.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f)
+		, mView(view)
+		, mProjection(projection)
+	{
+		if (!std::isfinite(nearDistance) || !std::isfinite(farDistance) ||
+			!(nearDistance > 0.0f) || !(farDistance > nearDistance))
+			THROW_MPP("A virtual camera requires finite, ordered positive clip distances.", __LINE__, __FILE__, __func__);
+		if (abs(determinant(view)) < 0.000001f)
+			THROW_MPP("A virtual camera view transform must be invertible.", __LINE__, __FILE__, __func__);
+		auto const worldFromView = inverse(view);
+		auto const position = vec3(worldFromView[3]) / worldFromView[3].w;
+		auto const direction = normalize(-vec3(worldFromView[2]));
+		auto const up = normalize(vec3(worldFromView[1]));
+		setLookAt(position, position + direction, up);
+		setClipDistances(nearDistance, farDistance);
+	}
+
+	mat4 VirtualCamera::getViewTransform()
+	{
+		return mView;
+	}
+
+	mat4 VirtualCamera::getProjectionTransform() const
+	{
+		return mProjection;
 	}
 }

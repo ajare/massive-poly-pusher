@@ -20,11 +20,43 @@
 #include "mpp/Material.h"
 #include "mpp/ParticleData.h"
 #include "mpp/Program.h"
+#include "mpp/UniformBuffer.h"
 
 using namespace std;
 
 namespace mpp
 {
+	VirtualCameraTransforms buildObliquelyClippedVirtualCamera(
+		glm::mat4 const& view, glm::mat4 const& projection,
+		glm::vec4 const& worldClipPlane, float seamBias)
+	{
+		auto const normalLength = glm::length(glm::vec3(worldClipPlane));
+		if (!(normalLength > 0.000001f) || !std::isfinite(normalLength) ||
+			!std::isfinite(seamBias) || seamBias < 0.0f)
+			THROW_MPP("An auxiliary world clip plane requires a finite non-zero normal and non-negative seam bias.", __LINE__, __FILE__, __func__);
+		if (std::abs(glm::determinant(view)) < 0.000001f ||
+			std::abs(glm::determinant(projection)) < 0.000001f)
+			THROW_MPP("Auxiliary view and projection transforms must be invertible.", __LINE__, __FILE__, __func__);
+
+		VirtualCameraTransforms result{ view, projection };
+		// Normalize first: seamBias is always measured in world units. Adding it to
+		// w expands the retained positive half-space into the rejected side.
+		auto worldClip = worldClipPlane / normalLength;
+		worldClip.w += seamBias;
+		auto cameraClip = glm::transpose(glm::inverse(view)) * worldClip;
+		auto nonZeroSign = [](float value) { return value < 0.0f ? -1.0f : 1.0f; };
+		auto corner = glm::inverse(projection) * glm::vec4(
+			nonZeroSign(cameraClip.x), nonZeroSign(cameraClip.y), 1.0f, 1.0f);
+		float const denominator = glm::dot(cameraClip, corner);
+		if (std::abs(denominator) < 0.000001f || !std::isfinite(denominator))
+			THROW_MPP("An auxiliary world clip plane is degenerate for the virtual camera.", __LINE__, __FILE__, __func__);
+		auto const scaledClip = cameraClip * (2.0f / denominator);
+		// Replace projection row 2 with C - row 3 (OpenGL's -w near plane).
+		for (int column = 0; column < 4; ++column)
+			result.projection[column][2] = scaledClip[column] - result.projection[column][3];
+		return result;
+	}
+
 	PlanarReflectionView buildPlanarReflectionView(
 		Camera& camera, PlanarReflectionPlaneDescriptor const& plane,
 		float aspectRatio)
@@ -32,7 +64,6 @@ namespace mpp
 		if (aspectRatio <= 0.0f)
 			THROW_MPP("A Planar reflection camera requires a positive aspect ratio.", __LINE__, __FILE__, __func__);
 
-		constexpr float clipBias = 0.05f;
 		auto mirror = [elevation = plane.elevation](glm::vec3 value, bool position)
 		{
 			value.y = position ? 2.0f * elevation - value.y : -value.y;
@@ -44,26 +75,15 @@ namespace mpp
 		result.direction = glm::normalize(mirror(camera.getDirection(), false));
 		result.up = glm::normalize(mirror(camera.getUp(), false));
 		result.view = glm::lookAt(result.position, result.position + result.direction, result.up);
-		result.projection = glm::perspective(glm::radians(camera.getFov()), aspectRatio,
+		auto const baseProjection = glm::perspective(glm::radians(camera.getFov()), aspectRatio,
 			camera.getNearClipDistance(), camera.getFarClipDistance());
-
-		// Positive distance is the real viewer's side. Move the clipping plane
-		// 0.05 units through the surface into the rejected side so tiny numerical
-		// disagreements at the interface cannot open a seam.
-		glm::vec4 worldClip = plane.viewerSide == ReflectionPlaneSide::Above
-			? glm::vec4(0.0f, 1.0f, 0.0f, -plane.elevation + clipBias)
-			: glm::vec4(0.0f, -1.0f, 0.0f, plane.elevation + clipBias);
-		auto cameraClip = glm::transpose(glm::inverse(result.view)) * worldClip;
-		auto nonZeroSign = [](float value) { return value < 0.0f ? -1.0f : 1.0f; };
-		auto corner = glm::inverse(result.projection) * glm::vec4(
-			nonZeroSign(cameraClip.x), nonZeroSign(cameraClip.y), 1.0f, 1.0f);
-		float const denominator = glm::dot(cameraClip, corner);
-		if (std::abs(denominator) < 0.000001f)
-			THROW_MPP("A Planar reflection clip plane is degenerate for the reflected camera.", __LINE__, __FILE__, __func__);
-		auto scaledClip = cameraClip * (2.0f / denominator);
-		// Replace projection row 2 with C - row 3 (OpenGL's -w near plane).
-		for (int column = 0; column < 4; ++column)
-			result.projection[column][2] = scaledClip[column] - result.projection[column][3];
+		// Positive distance is the real viewer's side. The shared helper applies
+		// the renderer-wide 0.05-world-unit seam expansion.
+		auto const worldClip = plane.viewerSide == ReflectionPlaneSide::Above
+			? glm::vec4(0.0f, 1.0f, 0.0f, -plane.elevation)
+			: glm::vec4(0.0f, -1.0f, 0.0f, plane.elevation);
+		result.projection = buildObliquelyClippedVirtualCamera(
+			result.view, baseProjection, worldClip).projection;
 		return result;
 	}
 
@@ -379,6 +399,231 @@ namespace mpp
 	RenderTargetPtr RenderPipeline::getGraphImageRenderTarget(GraphImageHandle image) const
 	{
 		return mGraphTargets?mGraphTargets->get(image):nullptr;
+	}
+
+	AuxiliarySceneOutputs RenderPipeline::renderAuxiliaryScene(
+		ScenePtr scene, CameraPtr hostCamera, AuxiliarySceneView const& view)
+	{
+		if (!scene || !hostCamera)
+			THROW_MPP("An auxiliary scene requires a scene and host camera.", __LINE__, __FILE__, __func__);
+		if (view.slot.empty())
+			THROW_MPP("An auxiliary scene slot must not be empty.", __LINE__, __FILE__, __func__);
+
+		auto& slot = mAuxiliarySlots[view.slot];
+		auto const targetName = mName + ".Auxiliary." + view.slot;
+		slot.diagnostics = {
+			targetName,
+			targetName + ".ColourHDR",
+			targetName + ".Depth",
+			view.width,
+			view.height,
+			false,
+			{}
+		};
+		slot.completed = false;
+
+		auto fail = [&](string const& reason)
+		{
+			slot.diagnostics.failureReason = reason.empty() ? "unknown auxiliary render failure" : reason;
+			mRenderSystem->warnMessage("Auxiliary pass '" + slot.diagnostics.passName +
+				"' failed (colour='" + slot.diagnostics.colourOutputName + "', depth='" +
+				slot.diagnostics.depthOutputName + "', " + to_string(view.width) + "x" +
+				to_string(view.height) + "): " + slot.diagnostics.failureReason);
+		};
+
+		// Everything a nested scene draw can change is captured before target
+		// allocation or visibility evaluation. Restoration deliberately uses the
+		// raw UBO bytes so pass-scoped light/camera data is exact, not reconstructed.
+		auto const savedTarget = mRenderSystem->mRenderTarget;
+		auto const savedViewportX = mRenderSystem->mViewportX;
+		auto const savedViewportY = mRenderSystem->mViewportY;
+		auto const savedViewportWidth = mRenderSystem->mViewportWidth;
+		auto const savedViewportHeight = mRenderSystem->mViewportHeight;
+		auto const savedRaster = mRenderSystem->captureRasterState(1);
+		auto const savedCameraMatrix = mRenderSystem->m3dCameraMatrix;
+		auto const savedProjectionMatrix = mRenderSystem->m3dProjectionMatrix;
+		auto const savedModelMatrix = mRenderSystem->m3dModelMatrix;
+		auto const savedMcpMatrix = mRenderSystem->m3dModelCameraProjectionMatrix;
+		auto const savedProjectionType = mRenderSystem->mProjectionType;
+		auto const savedPbrLights = mRenderSystem->mPbrLights;
+		auto const savedEnvironment = mRenderSystem->mActivePbrEnvironment;
+		auto const savedSamplerOverrides = mRenderSystem->mActivePipelineSamplerOverrides;
+		auto const savedUniformOverrides = mRenderSystem->mActivePipelineUniformOverrides;
+		auto const savedShadowTarget = mRenderSystem->mActiveShadowDepthTarget;
+		auto const savedExpectedOutputs = mRenderSystem->mExpectedGraphColourOutputs;
+		auto const savedCameraFrameView = mRenderSystem->mCameraFrameView;
+		auto const savedCameraFrameProjection = mRenderSystem->mCameraFrameProjection;
+		auto const savedCameraFrameData = mRenderSystem->mCameraFrameBuffer
+			? mRenderSystem->mCameraFrameBuffer->getBufferData() : vector<int8_t>{};
+		auto const savedLegacyLightData = mRenderSystem->mLightsBuffer
+			? mRenderSystem->mLightsBuffer->getBufferData() : vector<int8_t>{};
+		auto const savedPbrLightData = mRenderSystem->mPbrLightsBuffer
+			? mRenderSystem->mPbrLightsBuffer->getBufferData() : vector<int8_t>{};
+		bool restored = false;
+		auto restore = [&]
+		{
+			if (restored) return;
+			// A draw failure may make flushing fail again. State restoration must not
+			// stop there: discard that secondary exception and restore every scoped
+			// renderer value before propagating the original failure.
+			try { mRenderSystem->flushVertexBuffers(); } catch (...) {}
+			mRenderSystem->mActivePbrEnvironment = savedEnvironment;
+			mRenderSystem->mActivePipelineSamplerOverrides = savedSamplerOverrides;
+			mRenderSystem->mActivePipelineUniformOverrides = savedUniformOverrides;
+			mRenderSystem->mActiveShadowDepthTarget = savedShadowTarget;
+			mRenderSystem->mExpectedGraphColourOutputs = savedExpectedOutputs;
+			mRenderSystem->mPbrLights = savedPbrLights;
+			mRenderSystem->mCameraFrameView = savedCameraFrameView;
+			mRenderSystem->mCameraFrameProjection = savedCameraFrameProjection;
+			if (mRenderSystem->mCameraFrameBuffer && !savedCameraFrameData.empty())
+			{
+				mRenderSystem->mCameraFrameBuffer->getBufferData() = savedCameraFrameData;
+				mRenderSystem->mCameraFrameBuffer->mapBufferData();
+			}
+			if (mRenderSystem->mLightsBuffer && !savedLegacyLightData.empty())
+			{
+				mRenderSystem->mLightsBuffer->getBufferData() = savedLegacyLightData;
+				mRenderSystem->mLightsBuffer->mapBufferData();
+			}
+			if (mRenderSystem->mPbrLightsBuffer && !savedPbrLightData.empty())
+			{
+				mRenderSystem->mPbrLightsBuffer->getBufferData() = savedPbrLightData;
+				mRenderSystem->mPbrLightsBuffer->mapBufferData();
+			}
+			mRenderSystem->m3dCameraMatrix = savedCameraMatrix;
+			mRenderSystem->m3dProjectionMatrix = savedProjectionMatrix;
+			mRenderSystem->m3dModelMatrix = savedModelMatrix;
+			mRenderSystem->m3dModelCameraProjectionMatrix = savedMcpMatrix;
+			mRenderSystem->mProjectionType = savedProjectionType;
+			if (savedTarget && mRenderSystem->mRenderTarget != savedTarget)
+				mRenderSystem->setRenderTarget(savedTarget);
+			mRenderSystem->setViewport(savedViewportX, savedViewportY,
+				savedViewportWidth, savedViewportHeight);
+			mRenderSystem->applyRasterState(savedRaster, 1,
+				savedViewportWidth, savedViewportHeight);
+			restored = true;
+		};
+		struct RestoreGuard
+		{
+			function<void()> restore;
+			~RestoreGuard() { try { restore(); } catch (...) {} }
+		} restoreGuard{ restore };
+
+		try
+		{
+			if (view.width == 0 || view.height == 0)
+				THROW_MPP("Auxiliary output dimensions must be non-zero.", __LINE__, __FILE__, __func__);
+			if (view.width > (uint32_t)mRenderSystem->getCaps().maxTextureSize ||
+				view.height > (uint32_t)mRenderSystem->getCaps().maxTextureSize)
+				THROW_MPP("Auxiliary output dimensions exceed the GPU maximum texture size.", __LINE__, __FILE__, __func__);
+			auto const clipped = buildObliquelyClippedVirtualCamera(
+				view.view, view.projection, view.worldClipPlane, view.seamBias);
+			auto virtualCamera = make_shared<VirtualCamera>(clipped.view, clipped.projection,
+				view.nearDistance, view.farDistance);
+
+			if (!slot.target || slot.target->getWidth() != view.width || slot.target->getHeight() != view.height)
+			{
+				RenderTextureOptions options;
+				options.numAttachments = 1;
+				options.colourType = TextureInternalType::Float;
+				options.colourNormalised = false;
+				options.colourBitSize = 16;
+				options.depthAttachment = RenderTextureDepthAttachment::DepthTexture;
+				options.params.minFilter = GL_LINEAR;
+				options.params.magFilter = GL_LINEAR;
+				options.params.wrap = GL_CLAMP_TO_EDGE;
+				slot.target = mRenderSystem->createRenderTexture(
+					targetName, view.width, view.height, options);
+			}
+
+			mRenderSystem->setRenderTarget(slot.target);
+			mRenderSystem->setViewport(0, 0, view.width, view.height);
+			mRenderSystem->m3dCameraMatrix = clipped.view;
+			mRenderSystem->m3dProjectionMatrix = clipped.projection;
+			mRenderSystem->resetTransform();
+			mRenderSystem->setCameraFrame(clipped.view, clipped.projection,
+				glm::vec2((float)view.width, (float)view.height), view.nearDistance,
+				view.farDistance, mRenderSystem->getElapsedSeconds());
+			if (scene->ownsPbrLights()) mRenderSystem->setPbrLights(scene->getPbrLights());
+
+			UniformCollection uniforms;
+			uniforms.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
+			mRenderSystem->setActivePipelineUniformOverrides(uniforms);
+			map<string, ResourcePtr> samplers;
+			bool const pbr = mOptions.mode == RenderPipelineMode::PbrForward ||
+				mOptions.mode == RenderPipelineMode::GraphPbrForward ||
+				mOptions.mode == RenderPipelineMode::XmlGraphPbrForward;
+			if (pbr)
+			{
+				mRenderSystem->setActivePbrEnvironment(mOptions.environment);
+				auto const cubeFallback = mRenderSystem->getResourceManager()->getResource("__mpp_tex_pbr_ibl_cube__");
+				auto const brdfFallback = mRenderSystem->getResourceManager()->getResource("__mpp_tex_pbr_brdf_lut__");
+				samplers["PBR_IRRADIANCE_MAP"] = mOptions.environment && mOptions.environment->irradianceMap ? mOptions.environment->irradianceMap : cubeFallback;
+				samplers["PBR_PREFILTERED_SPECULAR_MAP"] = mOptions.environment && mOptions.environment->prefilteredSpecularMap ? mOptions.environment->prefilteredSpecularMap : cubeFallback;
+				samplers["PBR_BRDF_LUT"] = mOptions.environment && mOptions.environment->brdfIntegrationLut ? mOptions.environment->brdfIntegrationLut : brdfFallback;
+			}
+			mRenderSystem->setActivePipelineSamplerOverrides(samplers);
+			mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
+			mRenderSystem->setExpectedGraphColourOutputs(1);
+
+			GraphRasterState raster;
+			raster.explicitState = true;
+			raster.frontFace = view.reverseWinding ? GraphFrontFace::Clockwise : GraphFrontFace::CounterClockwise;
+			raster.cullMode = GraphCullMode::None;
+			raster.depthTest = true;
+			raster.depthWrite = true;
+			raster.depthCompare = GraphCompareOp::Less;
+			raster.blend = false;
+			raster.multisample = false;
+			mRenderSystem->applyRasterState(raster, 1, view.width, view.height);
+			mRenderSystem->clearScreen(scene->getClearColour());
+
+			// Visibility is deliberately evaluated after every pass-scoped state change:
+			// a throwing application Scene exercises the same restoration path as a draw.
+			auto const models = scene->get3dModelsInView(virtualCamera);
+			if (scene->show3dModels() && !models.empty())
+			{
+				if (mOptions.depthPrepass)
+					mRenderSystem->renderDepthPrepass(models, virtualCamera, 1);
+				mPasses.back()->render(models, virtualCamera);
+				mRenderSystem->flushVertexBuffers();
+			}
+
+			restore();
+			slot.completed = true;
+			slot.diagnostics.succeeded = true;
+			return { slot.target, slot.target,
+				slot.diagnostics.colourOutputName, slot.diagnostics.depthOutputName };
+		}
+		catch (std::exception const& error)
+		{
+			fail(error.what());
+			try { restore(); } catch (...) {}
+			throw;
+		}
+		catch (...)
+		{
+			fail("unknown auxiliary render failure");
+			try { restore(); } catch (...) {}
+			throw;
+		}
+	}
+
+	AuxiliarySceneOutputs RenderPipeline::getAuxiliarySceneOutputs(string const& slotName) const
+	{
+		auto const found = mAuxiliarySlots.find(slotName);
+		if (found == mAuxiliarySlots.end() || !found->second.completed || !found->second.target)
+			THROW_MPP("Auxiliary scene slot '" + slotName + "' has no successfully completed outputs.", __LINE__, __FILE__, __func__);
+		return { found->second.target, found->second.target,
+			found->second.diagnostics.colourOutputName, found->second.diagnostics.depthOutputName };
+	}
+
+	AuxiliarySceneDiagnostics const& RenderPipeline::getAuxiliarySceneDiagnostics(string const& slotName) const
+	{
+		auto const found = mAuxiliarySlots.find(slotName);
+		if (found == mAuxiliarySlots.end())
+			THROW_MPP("Render pipeline '" + mName + "' has no auxiliary scene slot named '" + slotName + "'.", __LINE__, __FILE__, __func__);
+		return found->second.diagnostics;
 	}
 
 	void RenderPipeline::requestGraphImageCapture()

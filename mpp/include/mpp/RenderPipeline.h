@@ -9,6 +9,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4201)
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #pragma warning(pop)
 
@@ -209,9 +210,66 @@ namespace mpp
 		glm::mat4 projection{ 1.0f };
 	};
 
+	// The renderer-wide seam allowance for oblique world-plane clipping. The
+	// retained half-space is expanded 0.05 world units into the rejected side so
+	// tiny raster/projection disagreements cannot open a visible border seam.
+	inline constexpr float AuxiliaryViewClipSeamBias = 0.05f;
+
+	struct _MPPAPI VirtualCameraTransforms
+	{
+		glm::mat4 view{ 1.0f };
+		glm::mat4 projection{ 1.0f };
+	};
+
+	// `worldClipPlane` uses dot(normal, worldPosition) + w >= 0 for the retained
+	// side. Its normal is normalized before the world-unit seam bias is applied,
+	// so horizontal and arbitrary vertical planes share exactly the same maths.
+	_MPPAPI VirtualCameraTransforms buildObliquelyClippedVirtualCamera(
+		glm::mat4 const& view, glm::mat4 const& projection,
+		glm::vec4 const& worldClipPlane,
+		float seamBias = AuxiliaryViewClipSeamBias);
+
 	_MPPAPI PlanarReflectionView buildPlanarReflectionView(
 		Camera& camera, PlanarReflectionPlaneDescriptor const& plane,
 		float aspectRatio);
+
+	// One application-described virtual-camera render. `view` and `projection`
+	// are consumed exactly before oblique clipping modifies only the projection's
+	// near plane. `slot` is a deterministic application key and output name stem.
+	struct _MPPAPI AuxiliarySceneView
+	{
+		std::string slot{ "Auxiliary0" };
+		glm::mat4 view{ 1.0f };
+		glm::mat4 projection{ 1.0f };
+		glm::vec4 worldClipPlane{ 0.0f, 1.0f, 0.0f, 0.0f };
+		uint32_t width{ 1 };
+		uint32_t height{ 1 };
+		float nearDistance{ 0.1f };
+		float farDistance{ 1000.0f };
+		float seamBias{ AuxiliaryViewClipSeamBias };
+		// Reflection matrices reverse handedness; rigid portal/camera transforms do not.
+		bool reverseWinding{ false };
+	};
+
+	struct _MPPAPI AuxiliarySceneOutputs
+	{
+		// Colour and depth are two inspectable attachments on the same target.
+		RenderTargetPtr colour;
+		RenderTargetPtr depth;
+		std::string colourName;
+		std::string depthName;
+	};
+
+	struct _MPPAPI AuxiliarySceneDiagnostics
+	{
+		std::string passName;
+		std::string colourOutputName;
+		std::string depthOutputName;
+		uint32_t width{ 0 };
+		uint32_t height{ 0 };
+		bool succeeded{ false };
+		std::string failureReason;
+	};
 
 	struct _MPPAPI WaterReflectionOptions
 	{
@@ -295,6 +353,13 @@ namespace mpp
 		// Replaced every successful frame so allocation changes cannot leave a
 		// declared output pointing at an earlier graph target.
 		std::map<std::string, RenderTargetPtr> mNamedOutputTargets;
+		struct AuxiliarySlot
+		{
+			RenderTargetPtr target;
+			AuxiliarySceneDiagnostics diagnostics;
+			bool completed{ false };
+		};
+		std::map<std::string, AuxiliarySlot> mAuxiliarySlots;
 		bool mWarnedMissingPbrEnvironment{ false };
 		uint32_t mTaaSequenceIndex{ 0 };
 		bool mTaaCameraValid{ false };
@@ -385,6 +450,10 @@ namespace mpp
 		// are errors rather than null or positional graph-image fallbacks.
 		RenderTargetPtr getOutputRenderTarget(std::string const& outputName) const;
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
+		AuxiliarySceneOutputs renderAuxiliaryScene(ScenePtr scene, CameraPtr hostCamera,
+			AuxiliarySceneView const& view);
+		AuxiliarySceneOutputs getAuxiliarySceneOutputs(std::string const& slot) const;
+		AuxiliarySceneDiagnostics const& getAuxiliarySceneDiagnostics(std::string const& slot) const;
 		void requestGraphImageCapture();
 		std::vector<GraphImageCapture> takeGraphImageCaptures();
 		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;

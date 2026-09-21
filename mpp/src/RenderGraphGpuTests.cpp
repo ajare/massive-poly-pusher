@@ -6,6 +6,7 @@
 #include <chrono>
 #include <memory>
 #include <limits>
+#include <stdexcept>
 #include <filesystem>
 #include <fstream>
 #include <type_traits>
@@ -66,6 +67,17 @@ namespace mpp
 			auto texture=dynamic_cast<RenderTexture*>(target.get());if(!texture||!texture->getDepthTextureId())return -1.0f;std::vector<float> values(texture->getWidth()*texture->getHeight());GL_CHECK(glBindTexture(GL_TEXTURE_2D,texture->getDepthTextureId()));GL_CHECK(glGetTexImage(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,GL_FLOAT,values.data()));GL_CHECK(glBindTexture(GL_TEXTURE_2D,0));return values.empty()?-1.0f:values.front();
 		}
 
+		float minimumDepth(RenderTargetPtr const& target)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get());
+			if (!texture || !texture->getDepthTextureId()) return -1.0f;
+			std::vector<float> values(texture->getWidth() * texture->getHeight());
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->getDepthTextureId()));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, values.data()));
+			GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+			return values.empty() ? -1.0f : *std::min_element(values.begin(), values.end());
+		}
+
 		float readFirstCubeDepth(RenderTargetPtr const& target, uint32_t face)
 		{
 			auto texture = dynamic_cast<RenderTexture*>(target.get()); if (!texture || face >= 6) return -1.0f;
@@ -116,6 +128,16 @@ namespace mpp
 		public:
 			using Scene::Scene;
 			std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr) override { return {}; }
+		};
+
+		class ThrowingAuxiliaryTestScene : public Scene
+		{
+		public:
+			using Scene::Scene;
+			std::vector<SceneModel3dPtr> get3dModelsInView(CameraPtr) override
+			{
+				throw std::runtime_error("injected auxiliary visibility failure");
+			}
 		};
 
 		uint8_t maximumRed(RenderTargetPtr const& target)
@@ -1172,6 +1194,148 @@ void main()
 					readPixels(lowPlaneTarget) == readPixels(highPlaneTarget))
 					return fail("different Planar elevations produced indistinguishable reflected results");
 				renderSystem->removeRenderPipeline("GpuTestMultiElevationPlanarPipeline");
+
+				// Exercise the public auxiliary render-scene seam rather than its draw
+				// internals. The exact matrix view clips against a vertical plane, publishes
+				// HDR colour plus sampled depth at the declared odd resolution, and leaves
+				// the host renderer/camera untouched.
+				auto auxiliaryScene = renderSystem->createScene("Default");
+				auto rejectedAuxiliaryScene = renderSystem->createScene("Default");
+				auxiliaryScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 0.0f));
+				rejectedAuxiliaryScene->setClearColour(Colour(0.0f, 0.0f, 0.0f, 0.0f));
+				auto addAuxiliaryFixture = [&](ScenePtr const& targetScene, glm::vec3 const& position, glm::vec4 const& colour)
+				{
+					auto model = targetScene->add3dModel(planarModel);
+					model->translate(position);
+					auto uniforms = std::make_shared<UniformCollection>();
+					uniforms->setUniform("GPU_TEST_COLOUR", colour);
+					model->getParams()->setModelUniforms(uniforms);
+					model->getParams()->setModelFlags(ModelRenderParams::Flag_Visible |
+						ModelRenderParams::Flag_CastShadows | ModelRenderParams::Flag_CullBackFaces);
+					model->getParams()->setModelBlend(false);
+				};
+				addAuxiliaryFixture(auxiliaryScene, glm::vec3(1.1f, 0.0f, 0.0f), glm::vec4(0, 0, 1, 1));
+				addAuxiliaryFixture(rejectedAuxiliaryScene, glm::vec3(-1.1f, 0.0f, 0.0f), glm::vec4(0, 1, 0, 1));
+				auto auxiliaryHostCamera = std::make_shared<Camera>(
+					glm::vec3(0.0f, 0.0f, 6.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.0f);
+				auxiliaryHostCamera->setProjectionJitter(glm::vec2(0.013f, -0.021f));
+				auto const hostViewBefore = auxiliaryHostCamera->getViewTransform();
+				auto const hostProjectionBefore = auxiliaryHostCamera->getProjectionTransform();
+				auto const hostRevisionBefore = auxiliaryHostCamera->getRevision();
+				auto const hostJitterBefore = auxiliaryHostCamera->getProjectionJitter();
+
+				RenderPipelineOptions auxiliaryOptions;
+				auxiliaryOptions.mode = RenderPipelineMode::GraphLegacyForward;
+				auto auxiliaryPipeline = renderSystem->getOrCreateRenderPipeline(
+					"GpuTestAuxiliaryPipeline", auxiliaryOptions);
+				auto sentinelTarget = renderSystem->createRenderTexture(
+					"GpuTestAuxiliarySentinel", 13, 11, RenderTextureOptions{});
+				renderSystem->setRenderTarget(sentinelTarget);
+				renderSystem->setViewport(1, 2, 7, 5);
+				GraphRasterState sentinelRaster;
+				sentinelRaster.explicitState = true;
+				sentinelRaster.depthTest = false;
+				sentinelRaster.depthWrite = false;
+				sentinelRaster.cullMode = GraphCullMode::Front;
+				sentinelRaster.frontFace = GraphFrontFace::Clockwise;
+				sentinelRaster.blend = true;
+				sentinelRaster.scissor = true;
+				sentinelRaster.scissorRectangle = { 1, 2, 7, 5 };
+				renderSystem->applyRasterState(sentinelRaster, 1, 7, 5);
+				auto const expectedSentinelRaster = renderSystem->captureRasterState(1);
+				renderSystem->setAmbientColour(Colour(0.17f, 0.23f, 0.31f, 1.0f));
+				renderSystem->setLightCount(1);
+				renderSystem->setPbrLights({ PbrLight{} });
+				auto const sentinelFrameView = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 3.0f, 4.0f));
+				auto const sentinelFrameProjection = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f));
+				renderSystem->setCameraFrame(sentinelFrameView, sentinelFrameProjection,
+					glm::vec2(7.0f, 5.0f), 0.2f, 321.0f, 7.0f);
+				auto const sentinelCameraFrame = renderSystem->mCameraFrameBuffer->getBufferData();
+				auto const sentinelLegacyLights = renderSystem->mLightsBuffer->getBufferData();
+				auto const sentinelPbrLights = renderSystem->mPbrLightsBuffer->getBufferData();
+
+				AuxiliarySceneView auxiliaryView;
+				auxiliaryView.slot = "PortalCandidate0";
+				auxiliaryView.width = 47;
+				auxiliaryView.height = 31;
+				auxiliaryView.nearDistance = 0.1f;
+				auxiliaryView.farDistance = 100.0f;
+				auxiliaryView.view = glm::lookAt(glm::vec3(4.0f, 0.0f, 6.0f),
+					glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				auxiliaryView.projection = glm::perspective(
+					glm::radians(60.0f), 47.0f / 31.0f, 0.1f, 100.0f);
+				auxiliaryView.worldClipPlane = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+				auto auxiliaryOutputs = renderSystem->renderAuxiliaryScene(
+					auxiliaryScene, auxiliaryHostCamera, auxiliaryPipeline->getName(), auxiliaryView);
+				auto auxiliaryTexture = dynamic_cast<RenderTexture*>(auxiliaryOutputs.colour.get());
+				auto auxiliaryPixels = readPixels(auxiliaryOutputs.colour);
+				bool foundFullVirtualCameraColour = false;
+				for (size_t pixel = 0; pixel + 3 < auxiliaryPixels.size(); pixel += 4)
+					foundFullVirtualCameraColour |= std::max({ auxiliaryPixels[pixel],
+						auxiliaryPixels[pixel + 1], auxiliaryPixels[pixel + 2] }) > 180;
+				auto rejectedView = auxiliaryView;
+				rejectedView.slot = "RejectedOnly";
+				auto rejectedOutputs = renderSystem->renderAuxiliaryScene(
+					rejectedAuxiliaryScene, auxiliaryHostCamera, auxiliaryPipeline->getName(), rejectedView);
+				auto const& auxiliaryDiagnostics = renderSystem->getAuxiliarySceneDiagnostics(
+					auxiliaryPipeline->getName(), auxiliaryView.slot);
+				if (!auxiliaryTexture || auxiliaryOutputs.depth != auxiliaryOutputs.colour ||
+					auxiliaryTexture->getWidth() != 47 || auxiliaryTexture->getHeight() != 31 ||
+					auxiliaryTexture->getBitsPerPixel() < 64 || !auxiliaryTexture->getDepthTextureId() ||
+					minimumDepth(auxiliaryOutputs.depth) < 0.0f || minimumDepth(auxiliaryOutputs.depth) >= 1.0f ||
+					!foundFullVirtualCameraColour || containsVisiblePixel(rejectedOutputs.colour) ||
+					!auxiliaryDiagnostics.succeeded || !auxiliaryDiagnostics.failureReason.empty() ||
+					auxiliaryDiagnostics.passName.find("PortalCandidate0") == std::string::npos ||
+					auxiliaryDiagnostics.colourOutputName != auxiliaryOutputs.colourName ||
+					auxiliaryDiagnostics.depthOutputName != auxiliaryOutputs.depthName ||
+					auxiliaryDiagnostics.width != 47 || auxiliaryDiagnostics.height != 31)
+					return fail("public auxiliary scene lost its named HDR/depth outputs, dimensions, vertical clipping, virtual-camera marker, or diagnostics");
+				if (auxiliaryPipeline->getAuxiliarySceneOutputs(auxiliaryView.slot).colour != auxiliaryOutputs.colour)
+					return fail("completed auxiliary outputs were not inspectable by deterministic slot");
+
+				auto rendererStateRestored = [&]
+				{
+					return renderSystem->mRenderTarget == sentinelTarget &&
+						renderSystem->mViewportX == 1 && renderSystem->mViewportY == 2 &&
+						renderSystem->mViewportWidth == 7 && renderSystem->mViewportHeight == 5 &&
+						renderSystem->captureRasterState(1) == expectedSentinelRaster &&
+						renderSystem->mCameraFrameView == sentinelFrameView &&
+						renderSystem->mCameraFrameProjection == sentinelFrameProjection &&
+						renderSystem->mCameraFrameBuffer->getBufferData() == sentinelCameraFrame &&
+						renderSystem->mLightsBuffer->getBufferData() == sentinelLegacyLights &&
+						renderSystem->mPbrLightsBuffer->getBufferData() == sentinelPbrLights;
+				};
+				if (!rendererStateRestored() ||
+					auxiliaryHostCamera->getRevision() != hostRevisionBefore ||
+					auxiliaryHostCamera->getProjectionJitter() != hostJitterBefore ||
+					auxiliaryHostCamera->getViewTransform() != hostViewBefore ||
+					auxiliaryHostCamera->getProjectionTransform() != hostProjectionBefore)
+					return fail("successful auxiliary execution did not restore renderer and host-camera state");
+
+				auto throwingScene = std::make_shared<ThrowingAuxiliaryTestScene>(renderSystem);
+				auto failingView = auxiliaryView;
+				failingView.slot = "InjectedFailure";
+				bool auxiliaryFailureThrown = false;
+				try
+				{
+					renderSystem->renderAuxiliaryScene(
+						throwingScene, auxiliaryHostCamera, auxiliaryPipeline->getName(), failingView);
+				}
+				catch (std::exception const&) { auxiliaryFailureThrown = true; }
+				auto const& failedAuxiliaryDiagnostics = renderSystem->getAuxiliarySceneDiagnostics(
+					auxiliaryPipeline->getName(), failingView.slot);
+				if (!auxiliaryFailureThrown || failedAuxiliaryDiagnostics.succeeded ||
+					failedAuxiliaryDiagnostics.failureReason.find("injected auxiliary visibility failure") == std::string::npos ||
+					failedAuxiliaryDiagnostics.colourOutputName.find("InjectedFailure") == std::string::npos ||
+					!rendererStateRestored() ||
+					auxiliaryHostCamera->getRevision() != hostRevisionBefore ||
+					auxiliaryHostCamera->getProjectionJitter() != hostJitterBefore ||
+					auxiliaryHostCamera->getViewTransform() != hostViewBefore ||
+					auxiliaryHostCamera->getProjectionTransform() != hostProjectionBefore)
+					return fail("failed auxiliary execution lost its reason or contaminated camera-frame, lights, raster, target, viewport, or host Camera state");
+				renderSystem->renderToScreen();
+				renderSystem->resetViewport();
+				renderSystem->removeRenderPipeline("GpuTestAuxiliaryPipeline");
 
 				gateOptions.method = AmbientOcclusionMethod::Gtao;
 				pipeline->setAmbientOcclusionOptions(gateOptions);

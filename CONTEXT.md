@@ -105,6 +105,18 @@ _Avoid_: Trail (the history and its live control, rather than its rendered form)
 
 ### Rendering
 
+**Auxiliary view**:
+One application-described scene render into named HDR colour and depth outputs at an explicit resolution, using exact virtual-camera view/projection transforms and one oblique World clip plane. Its deterministic slot identifies reusable outputs and diagnostics; execution is nested and restores the primary renderer and host Camera state.
+_Avoid_: Portal view (Portals are only one consumer), reflection pass (mirrors are only one consumer), secondary Camera (the host Camera is not mutated)
+
+**Oblique World clip plane**:
+A World-space plane whose positive half-space an Auxiliary view retains by replacing the virtual projection's near plane. Its normal is normalized and the retained side expands 0.05 World units into the rejected side to hide border seams; horizontal and vertical planes use the same contract.
+_Avoid_: frustum plane (it is application-supplied), portal plane (not Portal-specific), clip distance (the clipping is in the projection)
+
+**Virtual camera**:
+A matrix-backed render view that returns application-supplied view and projection transforms exactly. Position, direction, and up are derived only for scene visibility and sorting; it never changes the host Camera.
+_Avoid_: Camera clone (no host Camera state is copied or mutated), Portal camera (not Portal-specific)
+
 **Post effect**:
 An image-space effect applied to a completed scene target. The unqualified word
 "effect" always means this, never a particle effect.

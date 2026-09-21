@@ -11,6 +11,7 @@
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat4x4.hpp>
 #pragma warning(pop)
 
 namespace mpp
@@ -70,6 +71,21 @@ namespace mpp
 		virtual glm::mat4 getViewTransform();
 
 		virtual glm::mat4 getProjectionTransform() const;
+	};
+
+	// Matrix-backed camera for application-described views. The supplied matrices
+	// are returned byte-for-byte; position/direction/up are derived from `view`
+	// only for visibility queries and draw sorting. No host Camera is mutated.
+	class _MPPAPI VirtualCamera final : public Camera
+	{
+		glm::mat4 mView{ 1.0f };
+		glm::mat4 mProjection{ 1.0f };
+
+	public:
+		VirtualCamera(glm::mat4 const& view, glm::mat4 const& projection,
+			float nearDistance, float farDistance);
+		glm::mat4 getViewTransform() override;
+		glm::mat4 getProjectionTransform() const override;
 	};
 
 	typedef std::shared_ptr<Camera> CameraPtr;

@@ -5407,6 +5407,23 @@ namespace mpp
 		pipeline->render(scene, camera, offset2d);
 	}
 
+	AuxiliarySceneOutputs RenderSystem::renderAuxiliaryScene(
+		ScenePtr scene, CameraPtr hostCamera, string const& pipelineName,
+		AuxiliarySceneView const& view)
+	{
+		return getRenderPipeline(pipelineName)->renderAuxiliaryScene(
+			std::move(scene), std::move(hostCamera), view);
+	}
+
+	AuxiliarySceneDiagnostics const& RenderSystem::getAuxiliarySceneDiagnostics(
+		string const& pipelineName, string const& slot) const
+	{
+		auto const found = mPipelines.find(pipelineName);
+		if (found == mPipelines.end())
+			THROW_MPP("RenderPipeline '" + pipelineName + "' not found.", __LINE__, __FILE__, __func__);
+		return found->second->getAuxiliarySceneDiagnostics(slot);
+	}
+
 	RenderPipelinePtr RenderSystem::getOrCreateRenderPipeline(string const& name)
 	{
 		return getOrCreateRenderPipeline(name, {});
