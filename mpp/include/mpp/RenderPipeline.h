@@ -17,6 +17,7 @@
 #include "mpp/AmbientOcclusion.h"
 #include "mpp/RenderPass.h"
 #include "mpp/Scene.h"
+#include "mpp/UniformCollection.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderPipelineOutput.h"
@@ -249,6 +250,11 @@ namespace mpp
 		float seamBias{ AuxiliaryViewClipSeamBias };
 		// Reflection matrices reverse handedness; rigid portal/camera transforms do not.
 		bool reverseWinding{ false };
+		// Application uniforms attached only while this auxiliary scene pass is
+		// executing. They override material/model values and are restored together
+		// with the renderer's other pass-scoped state, including on failure.
+		// MPP_VIRTUAL_CAMERA is reserved and supplied by the renderer.
+		UniformCollection uniformOverrides;
 	};
 
 	struct _MPPAPI AuxiliarySceneOutputs

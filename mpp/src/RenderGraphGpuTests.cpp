@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <chrono>
+#include <cstring>
 #include <memory>
 #include <limits>
 #include <stdexcept>
@@ -1078,12 +1079,16 @@ void main()
 				planarParser->setFragmentSource(R"(
 @@Version
 @@Uniform(vec4 GPU_TEST_COLOUR);
+@@Uniform(float GPU_TEST_PASS_MODE);
 @@Uniform(int MPP_VIRTUAL_CAMERA);
 void main()
 {
     bool virtualCamera = @Uniform(MPP_VIRTUAL_CAMERA) == 1;
     float validity = virtualCamera ? 1.0 : 0.25;
-    @Out(vec4 COLOUR) = vec4(@Uniform(GPU_TEST_COLOUR).rgb * validity, 1.0);
+    vec3 colour = mix(
+        @Uniform(GPU_TEST_COLOUR).rgb * validity,
+        vec3(validity, 0.0, 0.0), @Uniform(GPU_TEST_PASS_MODE));
+    @Out(vec4 COLOUR) = vec4(colour, 1.0);
 }
 )");
 				auto planarProgramStream = std::make_shared<ProgrammaticProgramStream>(renderSystem->getResourceManager());
@@ -1094,6 +1099,7 @@ void main()
 				auto planarMaterialStream = std::make_shared<ProgrammaticBasicMaterialStream>(renderSystem->getResourceManager());
 				planarMaterialStream->setProgram(planarProgram->getName());
 				planarMaterialStream->setUniform("GPU_TEST_COLOUR", glm::vec4(1.0f));
+				planarMaterialStream->setUniform("GPU_TEST_PASS_MODE", 0.0f);
 				auto planarMaterial = renderSystem->getResourceManager()->declareResource(
 					"GpuTestPlanar.Material", planarMaterialStream).first;
 				planarMaterial->load();
@@ -1254,8 +1260,14 @@ void main()
 				auto const sentinelLegacyLights = renderSystem->mLightsBuffer->getBufferData();
 				auto const sentinelPbrLights = renderSystem->mPbrLightsBuffer->getBufferData();
 
+				UniformCollection sentinelPassUniforms;
+				sentinelPassUniforms.setUniform("GPU_TEST_PASS_MODE", 0.75f);
+				renderSystem->setActivePipelineUniformOverrides(sentinelPassUniforms);
+
 				AuxiliarySceneView auxiliaryView;
 				auxiliaryView.slot = "PortalCandidate0";
+				auxiliaryView.uniformOverrides.setUniform(
+					"GPU_TEST_PASS_MODE", 1.0f);
 				auxiliaryView.width = 47;
 				auxiliaryView.height = 31;
 				auxiliaryView.nearDistance = 0.1f;
@@ -1268,11 +1280,11 @@ void main()
 				auto auxiliaryOutputs = renderSystem->renderAuxiliaryScene(
 					auxiliaryScene, auxiliaryHostCamera, auxiliaryPipeline->getName(), auxiliaryView);
 				auto auxiliaryTexture = dynamic_cast<RenderTexture*>(auxiliaryOutputs.colour.get());
-				auto auxiliaryPixels = readPixels(auxiliaryOutputs.colour);
+				auto const auxiliaryPixels = readPixels(auxiliaryOutputs.colour);
 				bool foundFullVirtualCameraColour = false;
 				for (size_t pixel = 0; pixel + 3 < auxiliaryPixels.size(); pixel += 4)
-					foundFullVirtualCameraColour |= std::max({ auxiliaryPixels[pixel],
-						auxiliaryPixels[pixel + 1], auxiliaryPixels[pixel + 2] }) > 180;
+					foundFullVirtualCameraColour |= auxiliaryPixels[pixel] > 180 &&
+						auxiliaryPixels[pixel + 1] < 40 && auxiliaryPixels[pixel + 2] < 40;
 				auto rejectedView = auxiliaryView;
 				rejectedView.slot = "RejectedOnly";
 				auto rejectedOutputs = renderSystem->renderAuxiliaryScene(
@@ -1289,10 +1301,20 @@ void main()
 					auxiliaryDiagnostics.colourOutputName != auxiliaryOutputs.colourName ||
 					auxiliaryDiagnostics.depthOutputName != auxiliaryOutputs.depthName ||
 					auxiliaryDiagnostics.width != 47 || auxiliaryDiagnostics.height != 31)
-					return fail("public auxiliary scene lost its named HDR/depth outputs, dimensions, vertical clipping, virtual-camera marker, or diagnostics");
+					return fail("public auxiliary scene lost its named HDR/depth outputs, dimensions, vertical clipping, virtual-camera marker/pass override, or diagnostics");
 				if (auxiliaryPipeline->getAuxiliarySceneOutputs(auxiliaryView.slot).colour != auxiliaryOutputs.colour)
 					return fail("completed auxiliary outputs were not inspectable by deterministic slot");
 
+				auto passUniformsRestored = [&]
+				{
+					auto const& uniforms = renderSystem
+						->getActivePipelineUniformOverrides().getUniformData();
+					auto found = uniforms.find("GPU_TEST_PASS_MODE");
+					float const sentinel = 0.75f;
+					return uniforms.size() == 1 && found != uniforms.end() &&
+						found->second.size == sizeof(float) &&
+						std::memcmp(found->second.data, &sentinel, sizeof(sentinel)) == 0;
+				};
 				auto rendererStateRestored = [&]
 				{
 					return renderSystem->mRenderTarget == sentinelTarget &&
@@ -1303,7 +1325,8 @@ void main()
 						renderSystem->mCameraFrameProjection == sentinelFrameProjection &&
 						renderSystem->mCameraFrameBuffer->getBufferData() == sentinelCameraFrame &&
 						renderSystem->mLightsBuffer->getBufferData() == sentinelLegacyLights &&
-						renderSystem->mPbrLightsBuffer->getBufferData() == sentinelPbrLights;
+						renderSystem->mPbrLightsBuffer->getBufferData() == sentinelPbrLights &&
+						passUniformsRestored();
 				};
 				if (!rendererStateRestored() ||
 					auxiliaryHostCamera->getRevision() != hostRevisionBefore ||
@@ -1333,6 +1356,7 @@ void main()
 					auxiliaryHostCamera->getViewTransform() != hostViewBefore ||
 					auxiliaryHostCamera->getProjectionTransform() != hostProjectionBefore)
 					return fail("failed auxiliary execution lost its reason or contaminated camera-frame, lights, raster, target, viewport, or host Camera state");
+				renderSystem->setActivePipelineUniformOverrides({});
 				renderSystem->renderToScreen();
 				renderSystem->resetViewport();
 				renderSystem->removeRenderPipeline("GpuTestAuxiliaryPipeline");

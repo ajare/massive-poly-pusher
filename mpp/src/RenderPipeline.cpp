@@ -546,7 +546,9 @@ namespace mpp
 				view.farDistance, mRenderSystem->getElapsedSeconds());
 			if (scene->ownsPbrLights()) mRenderSystem->setPbrLights(scene->getPbrLights());
 
-			UniformCollection uniforms;
+			if (view.uniformOverrides.getUniformData().contains("MPP_VIRTUAL_CAMERA"))
+				THROW_MPP("MPP_VIRTUAL_CAMERA is reserved by auxiliary scene execution.", __LINE__, __FILE__, __func__);
+			UniformCollection uniforms = view.uniformOverrides;
 			uniforms.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
 			mRenderSystem->setActivePipelineUniformOverrides(uniforms);
 			map<string, ResourcePtr> samplers;
