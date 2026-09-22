@@ -579,6 +579,10 @@ namespace mpp
 			raster.depthCompare = GraphCompareOp::Less;
 			raster.blend = false;
 			raster.multisample = false;
+			// clearScreen temporarily enables scissoring. Even though drawing is
+			// unscissored, its clear rectangle must cover the auxiliary target;
+			// the default empty rectangle leaves depth uninitialized (often zero).
+			raster.scissorRectangle = { 0, 0, view.width, view.height };
 			mRenderSystem->applyRasterState(raster, 1, view.width, view.height);
 			mRenderSystem->clearScreen(scene->getClearColour());
 
