@@ -3271,13 +3271,26 @@ namespace mpp
 				a.position == b.position && a.range == b.range && a.lightIndex == b.lightIndex;
 		}
 
+		bool pointShadowCasterClipEqual(PointShadowCasterClip const& a,
+			PointShadowCasterClip const& b)
+		{
+			return a.enabled == b.enabled &&
+				a.retainedWorldPlane == b.retainedWorldPlane &&
+				a.openingCentre == b.openingCentre &&
+				a.openingTangent == b.openingTangent &&
+				a.openingBitangent == b.openingBitangent &&
+				a.openingHalfSize == b.openingHalfSize &&
+				a.planeTolerance == b.planeTolerance;
+		}
+
 		bool shadowOptionsEqual(ShadowOptions const& a, ShadowOptions const& b)
 		{
 			return a.enabled == b.enabled && shadowLightEqual(a.light, b.light) && a.resolution == b.resolution &&
 				a.orthoHalfWidth == b.orthoHalfWidth && a.nearPlane == b.nearPlane && a.farPlane == b.farPlane &&
 				a.constantBias == b.constantBias && a.normalBias == b.normalBias &&
 				a.filterRadiusTexels == b.filterRadiusTexels && a.filterMode == b.filterMode &&
-				a.fadeStartNormalized == b.fadeStartNormalized;
+				a.fadeStartNormalized == b.fadeStartNormalized &&
+				pointShadowCasterClipEqual(a.pointCasterClip, b.pointCasterClip);
 		}
 
 		uint64_t shadowPointer(void const* value)
@@ -3340,6 +3353,23 @@ namespace mpp
 		}
 		if (options.enabled)
 		{
+			auto const& clip = options.pointCasterClip;
+			auto finite3 = [](glm::vec3 const& value)
+			{
+				return isfinite(value.x) && isfinite(value.y) && isfinite(value.z);
+			};
+			bool const invalidClip = clip.enabled &&
+				(options.light.type != ShadowLightType::Point ||
+				 !finite3(glm::vec3(clip.retainedWorldPlane)) ||
+				 !isfinite(clip.retainedWorldPlane.w) ||
+				 glm::dot(glm::vec3(clip.retainedWorldPlane), glm::vec3(clip.retainedWorldPlane)) < 0.000001f ||
+				 !finite3(clip.openingCentre) || !finite3(clip.openingTangent) ||
+				 !finite3(clip.openingBitangent) ||
+				 glm::dot(clip.openingTangent, clip.openingTangent) < 0.000001f ||
+				 glm::dot(clip.openingBitangent, clip.openingBitangent) < 0.000001f ||
+				 !isfinite(clip.openingHalfSize.x) || !isfinite(clip.openingHalfSize.y) ||
+				 clip.openingHalfSize.x <= 0.0f || clip.openingHalfSize.y <= 0.0f ||
+				 !isfinite(clip.planeTolerance) || clip.planeTolerance < 0.0f);
 			if ((options.light.type != ShadowLightType::Directional && options.light.type != ShadowLightType::Point) ||
 				options.resolution == 0 || options.orthoHalfWidth <= 0.0f || options.nearPlane < 0.0f ||
 				options.farPlane <= options.nearPlane || options.constantBias < 0.0f || options.normalBias < 0.0f ||
@@ -3347,7 +3377,7 @@ namespace mpp
 				!isfinite(options.nearPlane) || !isfinite(options.farPlane) ||
 				!isfinite(options.constantBias) || !isfinite(options.normalBias) || !isfinite(options.filterRadiusTexels) ||
 				!isfinite(options.fadeStartNormalized) || options.fadeStartNormalized < 0.0f || options.fadeStartNormalized > 1.0f ||
-				(options.filterMode != ShadowFilterMode::Hard && options.filterMode != ShadowFilterMode::Pcf3x3) ||
+				(options.filterMode != ShadowFilterMode::Hard && options.filterMode != ShadowFilterMode::Pcf3x3) || invalidClip ||
 				(options.light.type == ShadowLightType::Directional &&
 				 (!isfinite(options.light.direction.x) || !isfinite(options.light.direction.y) || !isfinite(options.light.direction.z) ||
 				  glm::dot(options.light.direction, options.light.direction) < 0.000001f)) ||
@@ -3533,6 +3563,24 @@ namespace mpp
 			                              "Depth test: enabled", "Depth write: enabled", "Blend: disabled",
 			                              point ? "Cull face: disabled (two-sided caster)" : "Cull face: front",
 			                              "Polygon offset: enabled" });
+		auto bindPointCasterClip = [&](Program* program)
+		{
+			if (!point) return;
+			auto const& clip = domain.options.pointCasterClip;
+			GL_CHECK(glUniform1i(program->getUniformId("POINT_SHADOW_CASTER_CLIP_ENABLED"), clip.enabled ? 1 : 0));
+			if (!clip.enabled) return;
+			float const planeScale = glm::length(glm::vec3(clip.retainedWorldPlane));
+			auto plane = glm::vec4(
+				glm::vec3(clip.retainedWorldPlane) / planeScale,
+				clip.retainedWorldPlane.w / planeScale);
+			GL_CHECK(glUniform4fv(program->getUniformId("POINT_SHADOW_RETAINED_PLANE"), 1, glm::value_ptr(plane)));
+			auto centreTolerance = glm::vec4(clip.openingCentre, clip.planeTolerance);
+			GL_CHECK(glUniform4fv(program->getUniformId("POINT_SHADOW_OPENING_CENTRE_TOLERANCE"), 1, glm::value_ptr(centreTolerance)));
+			auto tangentWidth = glm::vec4(glm::normalize(clip.openingTangent), clip.openingHalfSize.x);
+			GL_CHECK(glUniform4fv(program->getUniformId("POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH"), 1, glm::value_ptr(tangentWidth)));
+			auto bitangentHeight = glm::vec4(glm::normalize(clip.openingBitangent), clip.openingHalfSize.y);
+			GL_CHECK(glUniform4fv(program->getUniformId("POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT"), 1, glm::value_ptr(bitangentHeight)));
+		};
 		for (auto const& sceneModel : models)
 		{
 			auto params = sceneModel->getParams();
@@ -3563,6 +3611,7 @@ namespace mpp
 					: shadowProgramResource;
 				auto shadowProgram = static_cast<Program*>(activeShadowProgramResource.get());
 				setUsedProgram(activeShadowProgramResource);
+				bindPointCasterClip(shadowProgram);
 				if (isRenderFlowCaptureActive())
 					recordRenderFlowStateChanges({ "Program: " + shadowProgram->getName() });
 				if (alphaMasked)
@@ -5401,10 +5450,12 @@ namespace mpp
 		return it->second(this);
 	}
 
-	void RenderSystem::renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, string const& pipelineName)
+	void RenderSystem::renderScene(ScenePtr scene, CameraPtr camera,
+		glm::vec2 const& offset2d, string const& pipelineName,
+		ScenePassOverrides const& overrides)
 	{
 		auto pipeline = getRenderPipeline(pipelineName);
-		pipeline->render(scene, camera, offset2d);
+		pipeline->render(scene, camera, offset2d, overrides);
 	}
 
 	AuxiliarySceneOutputs RenderSystem::renderAuxiliaryScene(

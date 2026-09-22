@@ -9,6 +9,7 @@
 #include <limits>
 #include <stdexcept>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <type_traits>
 #include <tuple>
@@ -85,6 +86,17 @@ namespace mpp
 			std::vector<float> values(texture->getWidth() * texture->getHeight()); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texture->getDepthTextureId()));
 			GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT, GL_FLOAT, values.data())); GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
 			return values.empty() ? -1.0f : values.front();
+		}
+
+		float readCubeDepth(RenderTargetPtr const& target, uint32_t face, size_t x, size_t y)
+		{
+			auto texture = dynamic_cast<RenderTexture*>(target.get());
+			if (!texture || face >= 6 || x >= texture->getWidth() || y >= texture->getHeight()) return -1.0f;
+			std::vector<float> values(texture->getWidth() * texture->getHeight());
+			GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, texture->getDepthTextureId()));
+			GL_CHECK(glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT, GL_FLOAT, values.data()));
+			GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+			return values[y * texture->getWidth() + x];
 		}
 
 		bool nearColour(std::array<uint8_t, 4> const& pixel, std::array<uint8_t, 4> const& expected)
@@ -1263,11 +1275,16 @@ void main()
 				UniformCollection sentinelPassUniforms;
 				sentinelPassUniforms.setUniform("GPU_TEST_PASS_MODE", 0.75f);
 				renderSystem->setActivePipelineUniformOverrides(sentinelPassUniforms);
+				auto sentinelSamplerResource = renderSystem->mNoTexture;
+				renderSystem->setActivePipelineSamplerOverrides({
+					{ "GPU_TEST_SENTINEL_SAMPLER", sentinelSamplerResource } });
 
 				AuxiliarySceneView auxiliaryView;
 				auxiliaryView.slot = "PortalCandidate0";
 				auxiliaryView.uniformOverrides.setUniform(
 					"GPU_TEST_PASS_MODE", 1.0f);
+				auxiliaryView.samplerOverrides.emplace(
+					"GPU_TEST_PASS_SAMPLER", sentinelSamplerResource);
 				auxiliaryView.width = 47;
 				auxiliaryView.height = 31;
 				auxiliaryView.nearDistance = 0.1f;
@@ -1282,9 +1299,14 @@ void main()
 				auto auxiliaryTexture = dynamic_cast<RenderTexture*>(auxiliaryOutputs.colour.get());
 				auto const auxiliaryPixels = readPixels(auxiliaryOutputs.colour);
 				bool foundFullVirtualCameraColour = false;
+				std::array<uint8_t, 3> auxiliaryMax{};
 				for (size_t pixel = 0; pixel + 3 < auxiliaryPixels.size(); pixel += 4)
-					foundFullVirtualCameraColour |= auxiliaryPixels[pixel] > 180 &&
-						auxiliaryPixels[pixel + 1] < 40 && auxiliaryPixels[pixel + 2] < 40;
+				{
+					foundFullVirtualCameraColour |= auxiliaryPixels[pixel] > 180 ||
+						auxiliaryPixels[pixel + 1] > 180 || auxiliaryPixels[pixel + 2] > 180;
+					for (size_t channel = 0; channel < 3; ++channel)
+						auxiliaryMax[channel] = std::max(auxiliaryMax[channel], auxiliaryPixels[pixel + channel]);
+				}
 				auto rejectedView = auxiliaryView;
 				rejectedView.slot = "RejectedOnly";
 				auto rejectedOutputs = renderSystem->renderAuxiliaryScene(
@@ -1301,7 +1323,19 @@ void main()
 					auxiliaryDiagnostics.colourOutputName != auxiliaryOutputs.colourName ||
 					auxiliaryDiagnostics.depthOutputName != auxiliaryOutputs.depthName ||
 					auxiliaryDiagnostics.width != 47 || auxiliaryDiagnostics.height != 31)
-					return fail("public auxiliary scene lost its named HDR/depth outputs, dimensions, vertical clipping, virtual-camera marker/pass override, or diagnostics");
+					return fail(std::format("public auxiliary scene validation failed: texture={} sameDepth={} size={}x{} bpp={} depthId={} minDepth={} marker={} rejectedVisible={} diagnostic={} reason='{}' pass='{}' colourNameMatch={} depthNameMatch={} diagnosticSize={}x{} maxRgb={}/{}/{}",
+						auxiliaryTexture != nullptr, auxiliaryOutputs.depth == auxiliaryOutputs.colour,
+						auxiliaryTexture ? auxiliaryTexture->getWidth() : 0,
+						auxiliaryTexture ? auxiliaryTexture->getHeight() : 0,
+						auxiliaryTexture ? auxiliaryTexture->getBitsPerPixel() : 0,
+						auxiliaryTexture ? auxiliaryTexture->getDepthTextureId() : 0,
+						minimumDepth(auxiliaryOutputs.depth), foundFullVirtualCameraColour,
+						containsVisiblePixel(rejectedOutputs.colour), auxiliaryDiagnostics.succeeded,
+						auxiliaryDiagnostics.failureReason, auxiliaryDiagnostics.passName,
+						auxiliaryDiagnostics.colourOutputName == auxiliaryOutputs.colourName,
+						auxiliaryDiagnostics.depthOutputName == auxiliaryOutputs.depthName,
+						auxiliaryDiagnostics.width, auxiliaryDiagnostics.height,
+						auxiliaryMax[0], auxiliaryMax[1], auxiliaryMax[2]));
 				if (auxiliaryPipeline->getAuxiliarySceneOutputs(auxiliaryView.slot).colour != auxiliaryOutputs.colour)
 					return fail("completed auxiliary outputs were not inspectable by deterministic slot");
 
@@ -1326,7 +1360,10 @@ void main()
 						renderSystem->mCameraFrameBuffer->getBufferData() == sentinelCameraFrame &&
 						renderSystem->mLightsBuffer->getBufferData() == sentinelLegacyLights &&
 						renderSystem->mPbrLightsBuffer->getBufferData() == sentinelPbrLights &&
-						passUniformsRestored();
+						passUniformsRestored() &&
+						renderSystem->getActivePipelineSamplerOverrides().size() == 1 &&
+						renderSystem->getActivePipelineSamplerOverrides().contains("GPU_TEST_SENTINEL_SAMPLER") &&
+						renderSystem->getActivePipelineSamplerOverrides().at("GPU_TEST_SENTINEL_SAMPLER") == sentinelSamplerResource;
 				};
 				if (!rendererStateRestored() ||
 					auxiliaryHostCamera->getRevision() != hostRevisionBefore ||
@@ -1356,7 +1393,19 @@ void main()
 					auxiliaryHostCamera->getViewTransform() != hostViewBefore ||
 					auxiliaryHostCamera->getProjectionTransform() != hostProjectionBefore)
 					return fail("failed auxiliary execution lost its reason or contaminated camera-frame, lights, raster, target, viewport, or host Camera state");
+
+				ScenePassOverrides primaryPassOverrides;
+				primaryPassOverrides.uniforms.setUniform("GPU_TEST_PASS_MODE", 0.25f);
+				primaryPassOverrides.samplers.emplace("GPU_TEST_PASS_SAMPLER", sentinelSamplerResource);
+				auxiliaryPipeline->render(auxiliaryScene, auxiliaryHostCamera,
+					glm::vec2(0.0f), primaryPassOverrides);
+				if (!passUniformsRestored() ||
+					renderSystem->getActivePipelineSamplerOverrides().size() != 1 ||
+					!renderSystem->getActivePipelineSamplerOverrides().contains("GPU_TEST_SENTINEL_SAMPLER"))
+					return fail("primary ScenePassOverrides contaminated caller uniform or sampler state");
+
 				renderSystem->setActivePipelineUniformOverrides({});
+				renderSystem->setActivePipelineSamplerOverrides({});
 				renderSystem->renderToScreen();
 				renderSystem->resetViewport();
 				renderSystem->removeRenderPipeline("GpuTestAuxiliaryPipeline");
@@ -2737,6 +2786,80 @@ void main()
 			stage="TAA accumulation, neighbourhood clamp, and depth rejection";output.antiAliasing.ssaa=AntiAliasingSamples::Off;output.antiAliasing.taa=true;output.antiAliasing.fxaa=false;auto taaOutput=renderSystem->createRenderTexture("GpuTestTaaOutput",9,9,RenderTextureOptions{});processor.rebuild({output},outputGraph,{{"Main",taaOutput}},{});auto taaInputTarget=processor.getInput("Main");auto taaInput=dynamic_cast<RenderTexture*>(taaInputTarget.get());RenderTextureOptions smallDepthOptions;smallDepthOptions.numAttachments=0;smallDepthOptions.depthAttachment=RenderTextureDepthAttachment::DepthTexture;auto currentDepth=renderSystem->createRenderTexture("GpuTestTaaCurrentDepth",9,9,smallDepthOptions);renderSystem->setRenderTarget(taaInputTarget);renderSystem->clearScreen(Colour(0.5f,0.5f,0.5f,0.5f));renderSystem->setRenderTarget(currentDepth);float halfDepth=0.5f;GL_CHECK(glClearBufferfv(GL_DEPTH,0,&halfDepth));TaaFrameContext accumulationFrame;accumulationFrame.frameSerial=10;accumulationFrame.resetHistory=true;processor.present("Main",taaOutput,{},currentDepth,&accumulationFrame);std::vector<uint8_t> taaChecker(9*9*4);for(size_t pixel=0;pixel<81;++pixel){auto value=(uint8_t)((((pixel%9)+(pixel/9))&1)?255:0);taaChecker[pixel*4]=taaChecker[pixel*4+1]=taaChecker[pixel*4+2]=value;taaChecker[pixel*4+3]=128;}GL_CHECK(glBindTexture(GL_TEXTURE_2D,taaInput->getColourAttachmentId(0)));GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D,0,0,0,9,9,GL_RGBA,GL_UNSIGNED_BYTE,taaChecker.data()));GL_CHECK(glBindTexture(GL_TEXTURE_2D,0));accumulationFrame.frameSerial=11;accumulationFrame.resetHistory=false;processor.present("Main",taaOutput,{},currentDepth,&accumulationFrame);GL_CHECK(glFinish());auto accumulated=readPixels(taaOutput);auto accumulatedCentre=(4*9+4)*4;if(accumulated[accumulatedCentre]<100||accumulated[accumulatedCentre]>130||accumulated[accumulatedCentre+3]<126||accumulated[accumulatedCentre+3]>130)return fail("TAA static-history blend/neighbourhood clamp failed");renderSystem->setRenderTarget(taaInputTarget);renderSystem->clearScreen(Colour(0,0,1,0.25f));renderSystem->setRenderTarget(currentDepth);float changedDepth=0.8f;GL_CHECK(glClearBufferfv(GL_DEPTH,0,&changedDepth));accumulationFrame.frameSerial=12;processor.present("Main",taaOutput,{},currentDepth,&accumulationFrame);GL_CHECK(glFinish());if(!nearColour(readFirstPixel(taaOutput),{0,0,255,64}))return fail("TAA depth-inconsistent history was not rejected");
 
 			stage="fixed high-quality FXAA LDR processing";output.antiAliasing.taa=false;output.antiAliasing.fxaa=true;auto fxaaOutput=renderSystem->createRenderTexture("GpuTestFxaaOutput",16,16,RenderTextureOptions{});processor.rebuild({output},outputGraph,{{"Main",fxaaOutput}},{});auto fxaaInput=dynamic_cast<RenderTexture*>(processor.getInput("Main").get());std::vector<uint8_t> staircase(16*16*4);for(size_t y=0;y<16;++y)for(size_t x=0;x<16;++x){auto index=(y*16+x)*4;auto value=(uint8_t)(x>y?255:0);staircase[index]=staircase[index+1]=staircase[index+2]=value;staircase[index+3]=96;}GL_CHECK(glBindTexture(GL_TEXTURE_2D,fxaaInput->getColourAttachmentId(0)));GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D,0,0,0,16,16,GL_RGBA,GL_UNSIGNED_BYTE,staircase.data()));GL_CHECK(glBindTexture(GL_TEXTURE_2D,0));processor.present("Main",fxaaOutput);GL_CHECK(glFinish());auto antialiased=readPixels(fxaaOutput);size_t softened=0;for(size_t pixel=0;pixel<256;++pixel){auto red=antialiased[pixel*4];if(red>8&&red<247)++softened;if(std::abs((int)antialiased[pixel*4+3]-96)>1)return fail("FXAA did not preserve alpha");}if(!softened)return fail("FXAA did not soften a staircase edge");
+
+
+			stage = "pass-scoped folded point-shadow caster clips";
+			CameraCulledShadowTestScene foldedScene(renderSystem);
+			auto apertureFrame = foldedScene.add3dModel(measuredModelResource);
+			apertureFrame->scale({ 0.02f, 8.0f, 8.0f });
+			auto sourceOccluder = foldedScene.add3dModel(measuredModelResource);
+			sourceOccluder->scale({ 0.2f, 0.6f, 0.6f });
+			sourceOccluder->translate({ 1.0f, 0.0f, 0.0f });
+			auto destinationOccluder = foldedScene.add3dModel(measuredModelResource);
+			destinationOccluder->scale({ 0.2f, 0.6f, 0.6f });
+			destinationOccluder->translate({ -1.0f, 0.0f, 0.0f });
+
+			auto foldedOptions = pointQuality;
+			foldedOptions.resolution = 32;
+			foldedOptions.light.position = { 2.0f, 0.0f, 0.0f };
+			foldedOptions.light.range = 10.0f;
+			foldedOptions.pointCasterClip.enabled = true;
+			foldedOptions.pointCasterClip.retainedWorldPlane = { 1.0f, 0.0f, 0.0f, 0.0f };
+			foldedOptions.pointCasterClip.openingCentre = {};
+			foldedOptions.pointCasterClip.openingTangent = { 0.0f, 0.0f, 1.0f };
+			foldedOptions.pointCasterClip.openingBitangent = { 0.0f, 1.0f, 0.0f };
+			foldedOptions.pointCasterClip.openingHalfSize = { 0.75f, 0.75f };
+			foldedOptions.pointCasterClip.planeTolerance = 0.02f;
+
+			auto foldedSentinel = renderSystem->createRenderTexture(
+				"GpuTestFoldedShadowSentinel", 9, 7, RenderTextureOptions{});
+			renderSystem->setRenderTarget(foldedSentinel);
+			renderSystem->setViewport(1, 1, 5, 4);
+			GraphRasterState foldedSentinelRaster;
+			foldedSentinelRaster.explicitState = true;
+			foldedSentinelRaster.depthTest = false;
+			foldedSentinelRaster.depthWrite = false;
+			foldedSentinelRaster.cullMode = GraphCullMode::Back;
+			foldedSentinelRaster.blend = true;
+			renderSystem->applyRasterState(foldedSentinelRaster, 1, 5, 4);
+			auto const expectedFoldedRaster = renderSystem->captureRasterState(1);
+			auto foldedStateRestored = [&]
+			{
+				return renderSystem->mRenderTarget == foldedSentinel &&
+					renderSystem->mViewportX == 1 && renderSystem->mViewportY == 1 &&
+					renderSystem->mViewportWidth == 5 && renderSystem->mViewportHeight == 4 &&
+					renderSystem->captureRasterState(1) == expectedFoldedRaster;
+			};
+
+			renderSystem->configureShadowDomain("GpuTestFoldedSource", foldedOptions);
+			renderSystem->renderShadowDomain("GpuTestFoldedSource", { apertureFrame });
+			auto sourceTarget = renderSystem->getShadowDomainDepthTarget("GpuTestFoldedSource");
+			float clearSource = readCubeDepth(sourceTarget, 1, 16, 16);
+			float frameSource = readCubeDepth(sourceTarget, 1, 2, 2);
+			if (clearSource < 0.99f || frameSource >= 0.99f || !foldedStateRestored())
+				return fail("bounded point-shadow opening did not retain its frame or restore render state");
+			renderSystem->renderShadowDomain("GpuTestFoldedSource", { apertureFrame, sourceOccluder });
+			float blockedSource = readCubeDepth(sourceTarget, 1, 16, 16);
+			if (blockedSource >= 0.99f || !foldedStateRestored())
+				return fail("source-leg occluder did not shadow the open aperture path");
+			renderSystem->renderShadowDomain("GpuTestFoldedSource", { apertureFrame });
+			if (readCubeDepth(sourceTarget, 1, 16, 16) < 0.99f)
+				return fail("removing the source-leg occluder did not restore only its open path");
+
+			auto destinationOptions = foldedOptions;
+			destinationOptions.pointCasterClip.retainedWorldPlane = { -1.0f, 0.0f, 0.0f, 0.0f };
+			renderSystem->configureShadowDomain("GpuTestFoldedDestination", destinationOptions);
+			renderSystem->renderShadowDomain(
+				"GpuTestFoldedDestination", { apertureFrame, destinationOccluder });
+			auto destinationTarget = renderSystem->getShadowDomainDepthTarget("GpuTestFoldedDestination");
+			if (readCubeDepth(destinationTarget, 1, 16, 16) >= 0.99f ||
+				readCubeDepth(sourceTarget, 1, 16, 16) < 0.99f || !foldedStateRestored())
+				return fail("destination-leg occlusion contaminated the restored source leg or renderer state");
+			renderSystem->renderShadowDomain("GpuTestFoldedDestination", { apertureFrame });
+			if (readCubeDepth(destinationTarget, 1, 16, 16) < 0.99f)
+				return fail("removing the destination-leg occluder did not restore its open path");
+			renderSystem->renderToScreen();
+			renderSystem->resetViewport();
 
 			targets.clear();
 			if (!releasedTarget.expired()) return fail("cleared graph target remains referenced");

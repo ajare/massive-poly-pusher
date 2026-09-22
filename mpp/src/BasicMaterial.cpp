@@ -164,10 +164,12 @@ namespace mpp
 			string textureName;
 			if (it == materialTextures.end())
 			{
-				if (samplerName == "SHADOW_MAP" || samplerName == "POINT_SHADOW_MAP")
+				if (samplerName == "SHADOW_MAP" || samplerName == "POINT_SHADOW_MAP" ||
+					samplerName.rfind("PASS_POINT_SHADOW_MAP_", 0) == 0)
 				{
-					// Shadow domains replace this binding during an opted-in scene flush.
-					// The normal no-texture fallback keeps non-shadow pipelines valid.
+					// Shadow domains and explicit ScenePassOverrides replace these bindings
+					// during an opted-in scene flush. The normal no-texture fallback keeps
+					// materials valid when that pass-scoped state is absent.
 					textureName = "__mpp_tex_none__";
 				}
 				// A BasicMaterial stays generic, but a custom basic shader may opt into

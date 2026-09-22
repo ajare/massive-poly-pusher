@@ -564,6 +564,8 @@ namespace mpp
 				samplers["PBR_PREFILTERED_SPECULAR_MAP"] = mOptions.environment && mOptions.environment->prefilteredSpecularMap ? mOptions.environment->prefilteredSpecularMap : cubeFallback;
 				samplers["PBR_BRDF_LUT"] = mOptions.environment && mOptions.environment->brdfIntegrationLut ? mOptions.environment->brdfIntegrationLut : brdfFallback;
 			}
+			for (auto const& [name, resource] : view.samplerOverrides)
+				samplers[name] = resource;
 			mRenderSystem->setActivePipelineSamplerOverrides(samplers);
 			mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
 			mRenderSystem->setExpectedGraphColourOutputs(1);
@@ -1494,7 +1496,8 @@ namespace mpp
 		}
 	}
 
-	void RenderPipeline::render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d)
+	void RenderPipeline::render(ScenePtr scene, CameraPtr camera,
+		glm::vec2 const& offset2d, ScenePassOverrides const& overrides)
 	{
 		GpuDebugScope pipelineScope("RenderPipeline: " + mName + " [" + pipelineModeName(mOptions.mode) + "]");
 		// Set viewport
@@ -1540,7 +1543,24 @@ namespace mpp
 		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
 
 		map<string, ResourcePtr> pipelineSamplerOverrides;
-		UniformCollection pipelineUniformOverrides;
+		if (overrides.uniforms.getUniformData().contains("MPP_VIRTUAL_CAMERA"))
+			THROW_MPP("MPP_VIRTUAL_CAMERA is reserved by scene execution.", __LINE__, __FILE__, __func__);
+		auto const savedSamplerOverrides = mRenderSystem->mActivePipelineSamplerOverrides;
+		auto const savedUniformOverrides = mRenderSystem->mActivePipelineUniformOverrides;
+		bool passOverridesRestored = false;
+		auto restorePassOverrides = [&]
+		{
+			if (passOverridesRestored) return;
+			mRenderSystem->mActivePipelineSamplerOverrides = savedSamplerOverrides;
+			mRenderSystem->mActivePipelineUniformOverrides = savedUniformOverrides;
+			passOverridesRestored = true;
+		};
+		struct PassOverrideRestoreGuard
+		{
+			function<void()> restore;
+			~PassOverrideRestoreGuard() { try { restore(); } catch (...) {} }
+		} passOverrideRestoreGuard{ restorePassOverrides };
+		UniformCollection pipelineUniformOverrides = overrides.uniforms;
 		pipelineUniformOverrides.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 0 });
 		mRenderSystem->setActivePipelineUniformOverrides(pipelineUniformOverrides);
 		if (mOptions.mode == RenderPipelineMode::PbrForward || graphPbr)
@@ -1557,6 +1577,8 @@ namespace mpp
 				mWarnedMissingPbrEnvironment = true;
 			}
 		}
+		for (auto const& [name, resource] : overrides.samplers)
+			pipelineSamplerOverrides[name] = resource;
 		mRenderSystem->setActivePipelineSamplerOverrides(pipelineSamplerOverrides);
 		if (graphForward)
 		{
@@ -1586,8 +1608,7 @@ namespace mpp
 				}
 			}
 		}
-		mRenderSystem->setActivePipelineSamplerOverrides({});
-		mRenderSystem->setActivePipelineUniformOverrides({});
+		restorePassOverrides();
 		mRenderSystem->setActiveShadowDomain("");
 		if (mOptions.mode == RenderPipelineMode::PbrForward || graphPbr)
 		{

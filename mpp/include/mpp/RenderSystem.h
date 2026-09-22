@@ -779,7 +779,8 @@ namespace mpp
 
 		ScenePtr createScene(std::string const& type);
 
-		void renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d, std::string const& pipelineName);
+		void renderScene(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d,
+			std::string const& pipelineName, ScenePassOverrides const& overrides = {});
 
 		// Renders one exact-matrix virtual view without executing or mutating the
 		// host Camera. The pipeline owns stable HDR-colour/depth attachments keyed by

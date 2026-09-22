@@ -105,6 +105,23 @@ namespace mpp
 		Pcf3x3
 	};
 
+	// Optional World-space filtering for a point-shadow caster pass. Geometry in
+	// the negative half-space is discarded. Geometry on the plane remains a
+	// caster except inside the declared rectangular opening. This is generic
+	// folded-view state: applications may use it for portals, mirrors, or any
+	// other pass whose point-shadow visibility crosses a bounded plane opening.
+	struct _MPPAPI PointShadowCasterClip
+	{
+		bool enabled{ false };
+		// dot(xyz, worldPosition) + w >= 0 is retained.
+		glm::vec4 retainedWorldPlane{ 0.0f, 1.0f, 0.0f, 0.0f };
+		glm::vec3 openingCentre{ 0.0f };
+		glm::vec3 openingTangent{ 1.0f, 0.0f, 0.0f };
+		glm::vec3 openingBitangent{ 0.0f, 1.0f, 0.0f };
+		glm::vec2 openingHalfSize{ 0.0f };
+		float planeTolerance{ 0.01f };
+	};
+
 	struct _MPPAPI ShadowOptions
 	{
 		bool enabled{ false };
@@ -120,6 +137,7 @@ namespace mpp
 		// Fraction of the point-light range where visibility starts fading to
 		// fully unshadowed. Directional domains ignore this value.
 		float fadeStartNormalized{ 0.9f };
+		PointShadowCasterClip pointCasterClip;
 	};
 
 	enum class ShadowInvalidationReason
@@ -234,6 +252,15 @@ namespace mpp
 		Camera& camera, PlanarReflectionPlaneDescriptor const& plane,
 		float aspectRatio);
 
+	// Application values attached only while one scene colour pass executes.
+	// Sampler names are resolved by the receiving material program; a depth-only
+	// RenderTexture binds its depth image, including a comparison cubemap.
+	struct _MPPAPI ScenePassOverrides
+	{
+		UniformCollection uniforms;
+		std::map<std::string, ResourcePtr> samplers;
+	};
+
 	// One application-described virtual-camera render. `view` and `projection`
 	// are consumed exactly before oblique clipping modifies only the projection's
 	// near plane. `slot` is a deterministic application key and output name stem.
@@ -255,6 +282,10 @@ namespace mpp
 		// with the renderer's other pass-scoped state, including on failure.
 		// MPP_VIRTUAL_CAMERA is reserved and supplied by the renderer.
 		UniformCollection uniformOverrides;
+		// Generic pass-owned resources, merged after pipeline environment maps.
+		// They are restored with the uniforms, target, shadow domain, and raster
+		// state on both successful and failed auxiliary execution.
+		std::map<std::string, ResourcePtr> samplerOverrides;
 	};
 
 	struct _MPPAPI AuxiliarySceneOutputs
@@ -481,7 +512,8 @@ namespace mpp
 
 		void addRenderPass(RenderPassPtr pass);
 
-		virtual void render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d);
+		virtual void render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d,
+			ScenePassOverrides const& overrides = {});
 
 	};
 
