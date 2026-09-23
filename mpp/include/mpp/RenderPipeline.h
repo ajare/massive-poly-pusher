@@ -9,6 +9,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4201)
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #pragma warning(pop)
 
@@ -16,6 +17,7 @@
 #include "mpp/AmbientOcclusion.h"
 #include "mpp/RenderPass.h"
 #include "mpp/Scene.h"
+#include "mpp/UniformCollection.h"
 #include "mpp/RenderGraphPassFactoryRegistry.h"
 #include "mpp/RenderGraphExecutor.h"
 #include "mpp/RenderPipelineOutput.h"
@@ -103,6 +105,23 @@ namespace mpp
 		Pcf3x3
 	};
 
+	// Optional World-space filtering for a point-shadow caster pass. Geometry in
+	// the negative half-space is discarded. Geometry on the plane remains a
+	// caster except inside the declared rectangular opening. This is generic
+	// folded-view state: applications may use it for portals, mirrors, or any
+	// other pass whose point-shadow visibility crosses a bounded plane opening.
+	struct _MPPAPI PointShadowCasterClip
+	{
+		bool enabled{ false };
+		// dot(xyz, worldPosition) + w >= 0 is retained.
+		glm::vec4 retainedWorldPlane{ 0.0f, 1.0f, 0.0f, 0.0f };
+		glm::vec3 openingCentre{ 0.0f };
+		glm::vec3 openingTangent{ 1.0f, 0.0f, 0.0f };
+		glm::vec3 openingBitangent{ 0.0f, 1.0f, 0.0f };
+		glm::vec2 openingHalfSize{ 0.0f };
+		float planeTolerance{ 0.01f };
+	};
+
 	struct _MPPAPI ShadowOptions
 	{
 		bool enabled{ false };
@@ -118,6 +137,7 @@ namespace mpp
 		// Fraction of the point-light range where visibility starts fading to
 		// fully unshadowed. Directional domains ignore this value.
 		float fadeStartNormalized{ 0.9f };
+		PointShadowCasterClip pointCasterClip;
 	};
 
 	enum class ShadowInvalidationReason
@@ -209,9 +229,84 @@ namespace mpp
 		glm::mat4 projection{ 1.0f };
 	};
 
+	// The renderer-wide seam allowance for oblique world-plane clipping. The
+	// retained half-space is expanded 0.05 world units into the rejected side so
+	// tiny raster/projection disagreements cannot open a visible border seam.
+	inline constexpr float AuxiliaryViewClipSeamBias = 0.05f;
+
+	struct _MPPAPI VirtualCameraTransforms
+	{
+		glm::mat4 view{ 1.0f };
+		glm::mat4 projection{ 1.0f };
+	};
+
+	// `worldClipPlane` uses dot(normal, worldPosition) + w >= 0 for the retained
+	// side. Its normal is normalized before the world-unit seam bias is applied,
+	// so horizontal and arbitrary vertical planes share exactly the same maths.
+	_MPPAPI VirtualCameraTransforms buildObliquelyClippedVirtualCamera(
+		glm::mat4 const& view, glm::mat4 const& projection,
+		glm::vec4 const& worldClipPlane,
+		float seamBias = AuxiliaryViewClipSeamBias);
+
 	_MPPAPI PlanarReflectionView buildPlanarReflectionView(
 		Camera& camera, PlanarReflectionPlaneDescriptor const& plane,
 		float aspectRatio);
+
+	// Application values attached only while one scene colour pass executes.
+	// Sampler names are resolved by the receiving material program; a depth-only
+	// RenderTexture binds its depth image, including a comparison cubemap.
+	struct _MPPAPI ScenePassOverrides
+	{
+		UniformCollection uniforms;
+		std::map<std::string, ResourcePtr> samplers;
+	};
+
+	// One application-described virtual-camera render. `view` and `projection`
+	// are consumed exactly before oblique clipping modifies only the projection's
+	// near plane. `slot` is a deterministic application key and output name stem.
+	struct _MPPAPI AuxiliarySceneView
+	{
+		std::string slot{ "Auxiliary0" };
+		glm::mat4 view{ 1.0f };
+		glm::mat4 projection{ 1.0f };
+		glm::vec4 worldClipPlane{ 0.0f, 1.0f, 0.0f, 0.0f };
+		uint32_t width{ 1 };
+		uint32_t height{ 1 };
+		float nearDistance{ 0.1f };
+		float farDistance{ 1000.0f };
+		float seamBias{ AuxiliaryViewClipSeamBias };
+		// Reflection matrices reverse handedness; rigid portal/camera transforms do not.
+		bool reverseWinding{ false };
+		// Application uniforms attached only while this auxiliary scene pass is
+		// executing. They override material/model values and are restored together
+		// with the renderer's other pass-scoped state, including on failure.
+		// MPP_VIRTUAL_CAMERA is reserved and supplied by the renderer.
+		UniformCollection uniformOverrides;
+		// Generic pass-owned resources, merged after pipeline environment maps.
+		// They are restored with the uniforms, target, shadow domain, and raster
+		// state on both successful and failed auxiliary execution.
+		std::map<std::string, ResourcePtr> samplerOverrides;
+	};
+
+	struct _MPPAPI AuxiliarySceneOutputs
+	{
+		// Colour and depth are two inspectable attachments on the same target.
+		RenderTargetPtr colour;
+		RenderTargetPtr depth;
+		std::string colourName;
+		std::string depthName;
+	};
+
+	struct _MPPAPI AuxiliarySceneDiagnostics
+	{
+		std::string passName;
+		std::string colourOutputName;
+		std::string depthOutputName;
+		uint32_t width{ 0 };
+		uint32_t height{ 0 };
+		bool succeeded{ false };
+		std::string failureReason;
+	};
 
 	struct _MPPAPI WaterReflectionOptions
 	{
@@ -291,6 +386,17 @@ namespace mpp
 		std::unique_ptr<RenderOutputProcessor> mOutputProcessor;
 		std::unique_ptr<class RenderGraphExecutor> mGraphExecutor;
 		RenderGraphPassFactoryRegistry mGraphPassFactories;
+		// Published only after graph execution and output processing complete.
+		// Replaced every successful frame so allocation changes cannot leave a
+		// declared output pointing at an earlier graph target.
+		std::map<std::string, RenderTargetPtr> mNamedOutputTargets;
+		struct AuxiliarySlot
+		{
+			RenderTargetPtr target;
+			AuxiliarySceneDiagnostics diagnostics;
+			bool completed{ false };
+		};
+		std::map<std::string, AuxiliarySlot> mAuxiliarySlots;
 		bool mWarnedMissingPbrEnvironment{ false };
 		uint32_t mTaaSequenceIndex{ 0 };
 		bool mTaaCameraValid{ false };
@@ -376,7 +482,15 @@ namespace mpp
 		void setShadowDomain(std::string const& shadowDomain);
 
 		RenderTargetPtr getOutputRenderTarget();
+		// Returns the current completed target for a declared pipeline output.
+		// Unknown names and outputs unavailable before successful graph execution
+		// are errors rather than null or positional graph-image fallbacks.
+		RenderTargetPtr getOutputRenderTarget(std::string const& outputName) const;
 		RenderTargetPtr getGraphImageRenderTarget(GraphImageHandle image) const;
+		AuxiliarySceneOutputs renderAuxiliaryScene(ScenePtr scene, CameraPtr hostCamera,
+			AuxiliarySceneView const& view);
+		AuxiliarySceneOutputs getAuxiliarySceneOutputs(std::string const& slot) const;
+		AuxiliarySceneDiagnostics const& getAuxiliarySceneDiagnostics(std::string const& slot) const;
 		void requestGraphImageCapture();
 		std::vector<GraphImageCapture> takeGraphImageCaptures();
 		std::vector<GraphPassExecutionStats> const& getLastGraphExecutionStats() const;
@@ -398,7 +512,8 @@ namespace mpp
 
 		void addRenderPass(RenderPassPtr pass);
 
-		virtual void render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d);
+		virtual void render(ScenePtr scene, CameraPtr camera, glm::vec2 const& offset2d,
+			ScenePassOverrides const& overrides = {});
 
 	};
 

@@ -1650,6 +1650,9 @@ int main(int argc, char** argv)
 		SdlLifetime sdlLifetime;
 		WindowSDL window("PBR Pipeline Editor");
 		window.create(windowWidth, windowHeight, false, true);
+		// The registered GPU suite is unattended: it needs a real GL context but
+		// must never present an interactive window or wait for input.
+		if (gpuTests) SDL_HideWindow(window.getWindow());
 		RenderSystem renderSystem(window.getWidth(), window.getHeight(), &logger, renderSystemOptions);
 		ResourceManager resources(&renderSystem, &logger);
 		resources.setImageLoadFunction(mpp::app::loadImageFile);

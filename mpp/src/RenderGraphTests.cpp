@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "mpp/Caps.h"
 #include "mpp/RenderGraph.h"
 #include "mpp/RenderGraphBuiltInPasses.h"
@@ -112,6 +114,13 @@ namespace mpp
 		{
 			return glm::length(left - right) < 0.0001f;
 		};
+		auto nearMatrix = [](glm::mat4 const& left, glm::mat4 const& right)
+		{
+			for (int column = 0; column < 4; ++column)
+				for (int row = 0; row < 4; ++row)
+					if (std::abs(left[column][row] - right[column][row]) >= 0.0001f) return false;
+			return true;
+		};
 		Camera reflectionSource(glm::vec3(2.0f, 6.0f, 4.0f), 0.0f, 0.0f, 0.0f, 60.0f, 1.5f);
 		reflectionSource.setLookAt(reflectionSource.getPosition(), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		auto const sourceDirection = reflectionSource.getDirection();
@@ -147,6 +156,40 @@ namespace mpp
 			insideBelowClip(glm::vec3(0.0f, 1.06f, 0.0f)) ||
 			insideBelowClip(glm::vec3(0.0f, 2.0f, 0.0f)))
 			return fail("viewer-below Planar clipping did not retain below-plane geometry with a 0.05-unit bias");
+
+		// The public generic seam accepts exact matrices and any world plane. A
+		// vertical x=0 plane retains x>=0 and applies the same normalized 0.05-unit
+		// expansion even when the caller scales the plane equation.
+		auto const verticalView = glm::lookAt(glm::vec3(4.0f, 0.0f, 6.0f),
+			glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		auto const verticalProjection = glm::perspective(glm::radians(60.0f), 1.5f, 0.1f, 100.0f);
+		auto const vertical = buildObliquelyClippedVirtualCamera(
+			verticalView, verticalProjection, glm::vec4(1.0f, 0.0f, 0.0f, 0.0f));
+		auto const scaledVertical = buildObliquelyClippedVirtualCamera(
+			verticalView, verticalProjection, glm::vec4(7.0f, 0.0f, 0.0f, 0.0f));
+		auto insideVerticalClip = [&](glm::vec3 const& point)
+		{
+			auto const clip = vertical.projection * vertical.view * glm::vec4(point, 1.0f);
+			return clip.w > 0.0f && clip.z >= -clip.w && clip.z <= clip.w;
+		};
+		if (!nearMatrix(vertical.view, verticalView) ||
+			!nearMatrix(vertical.projection, scaledVertical.projection) ||
+			!insideVerticalClip(glm::vec3(1.0f, 0.0f, 0.0f)) ||
+			!insideVerticalClip(glm::vec3(-0.04f, 0.0f, 0.0f)) ||
+			insideVerticalClip(glm::vec3(-0.06f, 0.0f, 0.0f)) ||
+			insideVerticalClip(glm::vec3(-1.0f, 0.0f, 0.0f)))
+			return fail("generic vertical oblique clipping lost exact matrices, normalized plane scale, or the documented 0.05-unit seam bias");
+		VirtualCamera exactCamera(verticalView, verticalProjection, 0.1f, 100.0f);
+		if (!nearMatrix(exactCamera.getViewTransform(), verticalView) ||
+			!nearMatrix(exactCamera.getProjectionTransform(), verticalProjection))
+			return fail("matrix-backed virtual camera did not preserve exact application transforms");
+		auto const sharedPlanarProjection = buildObliquelyClippedVirtualCamera(
+			reflected.view,
+			glm::perspective(glm::radians(reflectionSource.getFov()), 1.5f,
+				reflectionSource.getNearClipDistance(), reflectionSource.getFarClipDistance()),
+			glm::vec4(0.0f, 1.0f, 0.0f, -1.0f)).projection;
+		if (!nearMatrix(reflected.projection, sharedPlanarProjection))
+			return fail("Planar reflection no longer uses the generic virtual-camera oblique-clipping machinery");
 
 		ShadowOptions pointDefaults;
 		if (pointDefaults.nearPlane != 0.25f || pointDefaults.light.range != 192.0f ||

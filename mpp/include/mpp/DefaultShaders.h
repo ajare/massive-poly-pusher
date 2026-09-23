@@ -293,8 +293,34 @@ layout(std140, binding = 2) uniform ShadowFrame
     vec4 SHADOW_TYPE_AND_LIGHT_INDEX;
 };
 
+@@Uniform(int POINT_SHADOW_CASTER_CLIP_ENABLED);
+@@Uniform(vec4 POINT_SHADOW_RETAINED_PLANE);
+@@Uniform(vec4 POINT_SHADOW_OPENING_CENTRE_TOLERANCE);
+@@Uniform(vec4 POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH);
+@@Uniform(vec4 POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT);
+
+void applyPointShadowCasterClip(vec3 worldPosition)
+{
+    if (@Uniform(POINT_SHADOW_CASTER_CLIP_ENABLED) == 0) return;
+    vec4 plane = @Uniform(POINT_SHADOW_RETAINED_PLANE);
+    float planeDistance = dot(plane.xyz, worldPosition) + plane.w;
+    float tolerance = @Uniform(POINT_SHADOW_OPENING_CENTRE_TOLERANCE).w;
+    if (planeDistance < -tolerance) discard;
+    vec3 openingOffset = worldPosition -
+        @Uniform(POINT_SHADOW_OPENING_CENTRE_TOLERANCE).xyz;
+    if (abs(planeDistance) <= tolerance &&
+        abs(dot(openingOffset,
+            @Uniform(POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH).xyz)) <=
+            @Uniform(POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH).w &&
+        abs(dot(openingOffset,
+            @Uniform(POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT).xyz)) <=
+            @Uniform(POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT).w)
+        discard;
+}
+
 void main()
 {
+    applyPointShadowCasterClip(@In(SHADOW_WORLD_POSITION));
     gl_FragDepth = length(@In(SHADOW_WORLD_POSITION) - POINT_POSITION_AND_RANGE.xyz) / POINT_POSITION_AND_RANGE.w;
 }
 )";
@@ -328,9 +354,35 @@ layout(std140, binding = 2) uniform ShadowFrame
     vec4 SHADOW_TYPE_AND_LIGHT_INDEX;
 };
 
+@@Uniform(int POINT_SHADOW_CASTER_CLIP_ENABLED);
+@@Uniform(vec4 POINT_SHADOW_RETAINED_PLANE);
+@@Uniform(vec4 POINT_SHADOW_OPENING_CENTRE_TOLERANCE);
+@@Uniform(vec4 POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH);
+@@Uniform(vec4 POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT);
+
+void applyPointShadowCasterClip(vec3 worldPosition)
+{
+    if (@Uniform(POINT_SHADOW_CASTER_CLIP_ENABLED) == 0) return;
+    vec4 plane = @Uniform(POINT_SHADOW_RETAINED_PLANE);
+    float planeDistance = dot(plane.xyz, worldPosition) + plane.w;
+    float tolerance = @Uniform(POINT_SHADOW_OPENING_CENTRE_TOLERANCE).w;
+    if (planeDistance < -tolerance) discard;
+    vec3 openingOffset = worldPosition -
+        @Uniform(POINT_SHADOW_OPENING_CENTRE_TOLERANCE).xyz;
+    if (abs(planeDistance) <= tolerance &&
+        abs(dot(openingOffset,
+            @Uniform(POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH).xyz)) <=
+            @Uniform(POINT_SHADOW_OPENING_TANGENT_HALF_WIDTH).w &&
+        abs(dot(openingOffset,
+            @Uniform(POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT).xyz)) <=
+            @Uniform(POINT_SHADOW_OPENING_BITANGENT_HALF_HEIGHT).w)
+        discard;
+}
+
 void main()
 {
     if (texture(@Texture(SHADOW_ALPHA_MAP), @In(SHADOW_TEXCOORDS)).a * @Uniform(SHADOW_ALPHA_FACTOR) < @Uniform(SHADOW_ALPHA_CUTOFF)) discard;
+    applyPointShadowCasterClip(@In(SHADOW_WORLD_POSITION));
     gl_FragDepth = length(@In(SHADOW_WORLD_POSITION) - POINT_POSITION_AND_RANGE.xyz) / POINT_POSITION_AND_RANGE.w;
 }
 )";

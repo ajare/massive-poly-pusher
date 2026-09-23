@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 project(MassivePolyPusher VERSION 0.1 LANGUAGES C CXX)
 
+include(CTest)
+
 # Shipping uses CMake's maximum-speed Release compiler and linker flags.
 # Defining every standard per-configuration flag also makes the configuration
 # work with single-config generators such as Ninja.
@@ -606,6 +608,16 @@ add_custom_command(TARGET PipelineEditor POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/pipeline-editor/editor.ini"
         "$<TARGET_FILE_DIR:PipelineEditor>/editor.ini"
     VERBATIM)
+
+if(BUILD_TESTING)
+    add_test(NAME mpp_render_graph_cpu
+        COMMAND PipelineEditor --validate
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/shared/pbr/templates/Minimal.pipeline.yaml")
+    add_test(NAME mpp_render_graph_gpu
+        COMMAND PipelineEditor --gpu-tests)
+    set_tests_properties(mpp_render_graph_cpu mpp_render_graph_gpu PROPERTIES
+        TIMEOUT 300)
+endif()
 
 # Particle Editor deliberately has no RenderDoc/process dependency and is built
 # on every platform supported by the shared SDL/OpenGL/ImGui application stack.
