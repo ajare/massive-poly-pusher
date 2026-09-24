@@ -2275,6 +2275,7 @@ namespace mpp
 
 		mClipStack.push(cr);
 		setScissorRectangleState({ static_cast<uint32_t>(cr.x), static_cast<uint32_t>(cr.y), static_cast<uint32_t>(cr.width), static_cast<uint32_t>(cr.height) });
+		setScissorState(true);
 	}
 
 	/*
@@ -2289,13 +2290,15 @@ namespace mpp
 		mClipStack.pop();
 		if (mClipStack.empty())
 		{
-			// Set to target size.
+			// Set to target size and restore the ordinary unclipped state.
 			setScissorRectangleState({ 0, 0, static_cast<uint32_t>(mRenderTarget->getWidth()), static_cast<uint32_t>(mRenderTarget->getHeight()) });
+			setScissorState(false);
 		}
 		else
 		{
 			ClipRectangle const& cr = mClipStack.top();
 			setScissorRectangleState({ static_cast<uint32_t>(cr.x), static_cast<uint32_t>(cr.y), static_cast<uint32_t>(cr.width), static_cast<uint32_t>(cr.height) });
+			setScissorState(true);
 		}
 	}
 
@@ -2523,7 +2526,9 @@ namespace mpp
 
 		setDepthTestState(false);
 		setCullState(GraphCullMode::None);
-		setScissorState(false);
+		// Preserve an explicit clip pushed by the caller. Text rendering invokes
+		// this setup internally and must not silently disable its active scissor.
+		setScissorState(!mClipStack.empty());
 		setFillModeState(GraphFillMode::Fill);
 		setAllColourMasksState({});
 		if (mTextAsPoints)
@@ -4547,7 +4552,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = (int)(mWindowHeight - y - 16);
+		y = static_cast<int>(mRenderTarget->getHeight()) - y - 16;
 		
 		int offset = 0;
 		int count = buildTextVertexBuffer(vertexBuffer, text, offset, x, y);
@@ -4572,7 +4577,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = (int)(mWindowHeight - y - 16); 
+		y = static_cast<int>(mRenderTarget->getHeight()) - y - 16;
 		int count = 0, offset = 0;
 		for (uint32_t i = 0; i < text.size(); ++i)
 		{
@@ -4599,7 +4604,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = (int)(mWindowHeight - y - 16);
+		y = static_cast<int>(mRenderTarget->getHeight()) - y - 16;
 
 		int offset = 0;
 		int count = buildColouredTextVertexBuffer(vertexBuffer, text, offset, x, y);
@@ -4619,7 +4624,7 @@ namespace mpp
 		Mesh* textMesh = textModel->getMesh(0);
 		VertexBuffer* vertexBuffer = textMesh->getVertexBuffer(0);
 
-		y = (int)(mWindowHeight - y - 16);
+		y = static_cast<int>(mRenderTarget->getHeight()) - y - 16;
 		int count = 0, offset = 0;
 		for (uint32_t i = 0; i < text.size(); ++i)
 		{
