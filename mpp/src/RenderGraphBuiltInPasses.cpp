@@ -289,6 +289,7 @@ namespace mpp
 				if (reflectionUniforms.getUniformData().contains("MPP_VIRTUAL_CAMERA"))
 					reflectionUniforms.updateUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
 				else reflectionUniforms.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
+				reflectionUniforms.setUniform("MPP_PLANAR_REFLECTION_CAMERA", int32_t{ 1 });
 				frame.renderSystem->setActivePipelineUniformOverrides(reflectionUniforms);
 				frame.renderSystem->setCameraFrame(reflectedCamera->getViewTransform(), reflectedCamera->getProjectionTransform(),
 					glm::vec2((float)target->getWidth(), (float)target->getHeight()),

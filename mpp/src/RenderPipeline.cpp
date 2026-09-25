@@ -546,10 +546,12 @@ namespace mpp
 				view.farDistance, mRenderSystem->getElapsedSeconds());
 			if (scene->ownsPbrLights()) mRenderSystem->setPbrLights(scene->getPbrLights());
 
-			if (view.uniformOverrides.getUniformData().contains("MPP_VIRTUAL_CAMERA"))
-				THROW_MPP("MPP_VIRTUAL_CAMERA is reserved by auxiliary scene execution.", __LINE__, __FILE__, __func__);
+			if (view.uniformOverrides.getUniformData().contains("MPP_VIRTUAL_CAMERA") ||
+				view.uniformOverrides.getUniformData().contains("MPP_PLANAR_REFLECTION_CAMERA"))
+				THROW_MPP("MPP virtual-camera uniforms are reserved by auxiliary scene execution.", __LINE__, __FILE__, __func__);
 			UniformCollection uniforms = view.uniformOverrides;
 			uniforms.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 1 });
+			uniforms.setUniform("MPP_PLANAR_REFLECTION_CAMERA", int32_t{ 0 });
 			mRenderSystem->setActivePipelineUniformOverrides(uniforms);
 			map<string, ResourcePtr> samplers;
 			bool const pbr = mOptions.mode == RenderPipelineMode::PbrForward ||
@@ -1557,8 +1559,9 @@ namespace mpp
 		mRenderSystem->setActiveShadowDomain(mOptions.shadowDomain);
 
 		map<string, ResourcePtr> pipelineSamplerOverrides;
-		if (overrides.uniforms.getUniformData().contains("MPP_VIRTUAL_CAMERA"))
-			THROW_MPP("MPP_VIRTUAL_CAMERA is reserved by scene execution.", __LINE__, __FILE__, __func__);
+		if (overrides.uniforms.getUniformData().contains("MPP_VIRTUAL_CAMERA") ||
+			overrides.uniforms.getUniformData().contains("MPP_PLANAR_REFLECTION_CAMERA"))
+			THROW_MPP("MPP virtual-camera uniforms are reserved by scene execution.", __LINE__, __FILE__, __func__);
 		auto const savedSamplerOverrides = mRenderSystem->mActivePipelineSamplerOverrides;
 		auto const savedUniformOverrides = mRenderSystem->mActivePipelineUniformOverrides;
 		bool passOverridesRestored = false;
@@ -1576,6 +1579,7 @@ namespace mpp
 		} passOverrideRestoreGuard{ restorePassOverrides };
 		UniformCollection pipelineUniformOverrides = overrides.uniforms;
 		pipelineUniformOverrides.setUniform("MPP_VIRTUAL_CAMERA", int32_t{ 0 });
+		pipelineUniformOverrides.setUniform("MPP_PLANAR_REFLECTION_CAMERA", int32_t{ 0 });
 		mRenderSystem->setActivePipelineUniformOverrides(pipelineUniformOverrides);
 		if (mOptions.mode == RenderPipelineMode::PbrForward || graphPbr)
 		{
