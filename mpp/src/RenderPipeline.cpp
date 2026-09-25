@@ -986,7 +986,8 @@ namespace mpp
 				reflectionDepth = graph.writeDepth(reflectionPass, reflectionDepth, GraphLoadOp::Clear, GraphStoreOp::DontCare);
 				GraphRasterState reflectionRaster;
 				reflectionRaster.explicitState = true;
-				reflectionRaster.frontFace = GraphFrontFace::Clockwise;
+				reflectionRaster.frontFace = glm::determinant(glm::mat3(camera->getViewTransform())) < 0.0f
+					? GraphFrontFace::CounterClockwise : GraphFrontFace::Clockwise;
 				// Individual scene meshes enable back-face culling as required; starting
 				// disabled is what preserves deliberately two-sided materials/models.
 				reflectionRaster.cullMode = GraphCullMode::None;
@@ -1001,6 +1002,14 @@ namespace mpp
 		}
 
 		auto scenePass = graph.addPass(pbr ? "PbrScene" : "LegacyScene", GraphPassType::Scene);
+		// Primary cameras can retain reflection parity after a mirror traversal.
+		// Match auxiliary views rather than assuming every root camera is proper.
+		GraphRasterState sceneRaster;
+		sceneRaster.explicitState = true;
+		sceneRaster.cullMode = GraphCullMode::None;
+		sceneRaster.frontFace = glm::determinant(glm::mat3(camera->getViewTransform())) < 0.0f
+			? GraphFrontFace::Clockwise : GraphFrontFace::CounterClockwise;
+		graph.setPassRasterState(scenePass, sceneRaster);
 		if (mOptions.generatedWater) graph.setPassCallbackFactory(scenePass, pbr ? "MPP.PbrScene" : "MPP.LegacyScene");
 		if (shadowDepthOutput.isValid()) graph.readSampled(scenePass, shadowDepthOutput);
 		sceneHdr = graph.writeColour(scenePass, sceneHdr, GraphLoadOp::Clear, GraphStoreOp::Store,
@@ -1133,6 +1142,7 @@ namespace mpp
 			meshParticleRaster.depthTest = true;
 			meshParticleRaster.depthWrite = true;
 			meshParticleRaster.cullMode = GraphCullMode::Back;
+			meshParticleRaster.frontFace = sceneRaster.frontFace;
 			meshParticleRaster.blend = false;
 			graph.setPassRasterState(meshParticlePass, meshParticleRaster);
 
