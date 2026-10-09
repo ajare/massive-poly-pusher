@@ -26,6 +26,7 @@
 #include "utils/StringUtils.h"
 
 #include "mpp/Config.h"
+#include "mpp/BuiltInShaderResources.h"
 #include "mpp/ParticleSystem.h"
 #include "mpp/ParticleShaders.h"
 #include "mpp/TrailSystem.h"
@@ -360,6 +361,10 @@ namespace mpp
 	 */
 	void RenderSystem::initialise()
 	{
+		// Shader text lives outside C++ so it is not subject to compiler literal
+		// length limits. Load it before any core or lazy particle program can use it.
+		initialiseBuiltInShaderResources();
+
 		glewExperimental = GL_TRUE; // for GL 3.2 and up.
 		GLenum err = glewInit();
 		if (err != GLEW_OK)
@@ -931,11 +936,11 @@ namespace mpp
 		addCoreResource(mBloomBlurProgram, true);
 		mBloomCombineProgram = createBloomProgram("__mpp_p2d_bloom_combine__", FragmentShaderBloomCombineTemplate);
 		addCoreResource(mBloomCombineProgram, true);
-		mParticleWeightedOitResolveProgram = createBloomProgram("__mpp_particle_weighted_oit_resolve__", ParticleWeightedOitResolveFragmentShader);
+		mParticleWeightedOitResolveProgram = createBloomProgram("__mpp_particle_weighted_oit_resolve__", particleShaderSource(ParticleShader::WeightedOitResolveFragment));
 		// Keep particle GPU work lazy: graphs without a particle pass never compile
 		// these composite programs.
 		addCoreResource(mParticleWeightedOitResolveProgram, false);
-		mParticleDistortionCompositeProgram = createBloomProgram("__mpp_particle_distortion_composite__", ParticleDistortionCompositeFragmentShader);
+		mParticleDistortionCompositeProgram = createBloomProgram("__mpp_particle_distortion_composite__", particleShaderSource(ParticleShader::DistortionCompositeFragment));
 		addCoreResource(mParticleDistortionCompositeProgram, false);
 		mSsaoRawProgram = createBloomProgram("__mpp_p2d_ssao_raw__", FragmentShaderSsaoRawTemplate);
 		addCoreResource(mSsaoRawProgram, true);

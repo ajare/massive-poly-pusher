@@ -1,0 +1,303 @@
+#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+
+struct ParticleRecord
+{
+    vec4 positionAge;
+    vec4 velocityLifetime;
+    uint packedColour;
+    float baseSize;
+    float rotation;
+    float angularVelocity;
+    uint emitterIndex;
+    uint seed;
+    uint flags;
+    uint padding;
+};
+
+struct EmitterSimData
+{
+    mat4 transform;
+    vec4 shapeParameters;
+    vec4 initialVelocityMin;
+    vec4 initialVelocityMax;
+    vec4 colourMin;
+    vec4 colourMax;
+    vec4 lifetimeSizeRanges;
+    vec4 rotationRanges;
+    uvec4 shapeSeedModulesBudget;
+    uvec4 emissionState;
+    vec4 emissionRateAndPadding;
+    vec4 parameterMultipliers0;
+    vec4 parameterMultipliers1;
+    vec4 gravityAndDrag;
+    vec4 noiseFrequencyStrength;
+    vec4 noiseScrollAndTimeScale;
+    vec4 curlNoiseFrequencyStrength;
+    vec4 curlNoiseScrollAndTimeScale;
+    vec4 turbulenceFrequencyStrength;
+    vec4 turbulenceScrollAndTimeScale;
+    vec4 turbulenceOctavesLacunarityGain;
+    vec4 vectorFieldFrequencyStrength;
+    vec4 vectorFieldScrollAndTimeScale;
+    uvec4 collisionConfiguration;
+    vec4 collisionParameters;
+    uvec4 eventRange;
+};
+
+struct SpawnCommand
+{
+    uint emitterIndex;
+    uint count;
+    uint randomSeed;
+    uint spawnCounter;
+};
+
+layout(std430, binding = 0) restrict writeonly buffer ParticlePool
+{
+    ParticleRecord PARTICLES[];
+};
+layout(std430, binding = 1) restrict buffer ParticleFreeIndices
+{
+    uint FREE_INDICES[];
+};
+layout(std430, binding = 2) restrict writeonly buffer ParticleActiveIndicesA
+{
+    uint ACTIVE_INDICES_A[];
+};
+layout(std430, binding = 3) restrict writeonly buffer ParticleActiveIndicesB
+{
+    uint ACTIVE_INDICES_B[];
+};
+layout(std430, binding = 4) restrict buffer ParticleCounters
+{
+    uint FREE_COUNT;
+    uint ACTIVE_COUNT_A;
+    uint ACTIVE_COUNT_B;
+    uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
+    uint LIVE_COUNTS[];
+};
+layout(std430, binding = 5) restrict readonly buffer ParticleEmitters
+{
+    EmitterSimData EMITTERS[];
+};
+struct EventRule { uvec4 configuration; uvec4 parameters; };
+struct ParticleEventRecord { vec4 positionAge; vec4 velocityLifetime; vec4 normalAndPadding; uvec4 typeAndSource; uvec4 payloadAndSecondary; };
+layout(std430, binding = 6) restrict buffer ParticleEvents
+{
+    uvec4 EVENT_COUNTS;
+    EventRule EVENT_RULES[MPP_PARTICLE_MAX_EVENT_RULES];
+    ParticleEventRecord EVENT_QUEUE_A[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EVENT_QUEUE_B[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EXTERNAL_EVENTS[MPP_PARTICLE_MAX_EXTERNAL_EVENTS];
+};
+layout(std430, binding = 7) restrict readonly buffer ParticleSpawnCommands
+{
+    SpawnCommand SPAWN_COMMANDS[];
+};
+uniform uint EMITTER_COUNT;
+uniform uint TEMPLATE_COUNT;
+uniform uint SPAWN_COMMAND_OFFSET;
+uniform uint ACTIVE_LIST_INDEX;
+
+uint hashValue(uint value)
+{
+    value ^= value >> 16u;
+    value *= 0x7feb352du;
+    value ^= value >> 15u;
+    value *= 0x846ca68bu;
+    value ^= value >> 16u;
+    return value;
+}
+
+float randomScalar(inout uint state)
+{
+    state = hashValue(state + 0x9e3779b9u);
+    return float(state) * (1.0 / 4294967296.0);
+}
+
+vec3 randomUnitVector(inout uint state)
+{
+    float z = randomScalar(state) * 2.0 - 1.0;
+    float angle = randomScalar(state) * 6.28318530718;
+    float radius = sqrt(max(0.0, 1.0 - z * z));
+    return vec3(cos(angle) * radius, z, sin(angle) * radius);
+}
+
+vec3 sampleShape(uint shape, vec4 parameters, inout uint state)
+{
+    if (shape == 0u) // point
+        return vec3(0.0);
+    if (shape == 1u) // line, centred on the emitter
+        return parameters.xyz * (randomScalar(state) * 2.0 - 1.0);
+    if (shape == 2u) // box volume
+        return parameters.xyz * vec3(
+            randomScalar(state) * 2.0 - 1.0,
+            randomScalar(state) * 2.0 - 1.0,
+            randomScalar(state) * 2.0 - 1.0);
+    if (shape == 3u) // sphere volume
+        return randomUnitVector(state) * (parameters.x * pow(randomScalar(state), 1.0 / 3.0));
+    if (shape == 4u) // hemisphere volume, local +Y
+    {
+        vec3 direction = randomUnitVector(state);
+        direction.y = abs(direction.y);
+        return direction * (parameters.x * pow(randomScalar(state), 1.0 / 3.0));
+    }
+    if (shape == 5u) // disc area, local XZ
+    {
+        float angle = randomScalar(state) * 6.28318530718;
+        float radius = parameters.x * sqrt(randomScalar(state));
+        return vec3(cos(angle) * radius, 0.0, sin(angle) * radius);
+    }
+    // Cone volume, apex at the origin and axis along local +Y.
+    float heightFraction = pow(randomScalar(state), 1.0 / 3.0);
+    float angle = randomScalar(state) * 6.28318530718;
+    float radius = parameters.x * heightFraction * sqrt(randomScalar(state));
+    return vec3(cos(angle) * radius, parameters.y * heightFraction, sin(angle) * radius);
+}
+
+bool reserveTemplateParticle(uint templateIndex, uint budget)
+{
+    uint observed = LIVE_COUNTS[templateIndex];
+    while (observed < budget)
+    {
+        uint previous = atomicCompSwap(LIVE_COUNTS[templateIndex], observed, observed + 1u);
+        if (previous == observed) return true;
+        observed = previous;
+    }
+    return false;
+}
+
+bool popFreeIndex(out uint particleIndex)
+{
+    uint observed = FREE_COUNT;
+    while (observed > 0u)
+    {
+        uint previous = atomicCompSwap(FREE_COUNT, observed, observed - 1u);
+        if (previous == observed)
+        {
+            particleIndex = FREE_INDICES[observed - 1u];
+            return true;
+        }
+        observed = previous;
+    }
+    return false;
+}
+
+void appendActiveIndex(uint particleIndex)
+{
+    uint destination;
+    if (ACTIVE_LIST_INDEX == 0u)
+    {
+        destination = atomicAdd(ACTIVE_COUNT_A, 1u);
+        ACTIVE_INDICES_A[destination] = particleIndex;
+    }
+    else
+    {
+        destination = atomicAdd(ACTIVE_COUNT_B, 1u);
+        ACTIVE_INDICES_B[destination] = particleIndex;
+    }
+}
+
+void publishSpawnEvents(ParticleRecord particle, EmitterSimData emitter)
+{
+    for (uint ordinal = 0u; ordinal < emitter.eventRange.y; ++ordinal)
+    {
+        EventRule rule = EVENT_RULES[emitter.eventRange.x + ordinal];
+        if (rule.configuration.x != 0u &&
+            !(rule.configuration.x == 3u && uintBitsToFloat(rule.parameters.x) <= 0.0)) continue;
+        uint destination = atomicAdd(EVENT_COUNTS.x, 1u);
+        if (destination >= MPP_PARTICLE_MAX_GENERATED_EVENTS)
+        {
+            atomicAdd(EVENT_COUNTS.w, 1u);
+            continue;
+        }
+        ParticleEventRecord event;
+        event.positionAge = particle.positionAge;
+        event.velocityLifetime = particle.velocityLifetime;
+        event.normalAndPadding = vec4(0.0, 0.0, 0.0, uintBitsToFloat(rule.parameters.z));
+        event.typeAndSource = uvec4(rule.configuration.xy, particle.emitterIndex, emitter.eventRange.z);
+        event.payloadAndSecondary = uvec4(rule.parameters.y, rule.configuration.zw,
+            hashValue(particle.seed ^ ordinal));
+        EVENT_QUEUE_A[destination] = event;
+    }
+}
+
+void main()
+{
+    SpawnCommand command = SPAWN_COMMANDS[SPAWN_COMMAND_OFFSET + gl_WorkGroupID.x];
+    if (command.emitterIndex >= EMITTER_COUNT)
+    {
+        for (uint ordinal = gl_LocalInvocationID.x; ordinal < command.count; ordinal += gl_WorkGroupSize.x)
+            atomicAdd(DROPPED_SPAWN_COUNT, 1u);
+        return;
+    }
+
+    EmitterSimData emitter = EMITTERS[command.emitterIndex];
+    if (emitter.emissionState.y == 0u) return;
+
+    uint templateIndex = emitter.emissionState.w;
+    if (templateIndex >= TEMPLATE_COUNT)
+    {
+        for (uint ordinal = gl_LocalInvocationID.x; ordinal < command.count; ordinal += gl_WorkGroupSize.x)
+            atomicAdd(DROPPED_SPAWN_COUNT, 1u);
+        return;
+    }
+
+    uint budget = emitter.shapeSeedModulesBudget.w;
+    for (uint ordinal = gl_LocalInvocationID.x; ordinal < command.count; ordinal += gl_WorkGroupSize.x)
+    {
+        if (!reserveTemplateParticle(templateIndex, budget))
+        {
+            atomicAdd(DROPPED_SPAWN_COUNT, 1u);
+            continue;
+        }
+
+        uint particleIndex;
+        if (!popFreeIndex(particleIndex))
+        {
+            atomicAdd(LIVE_COUNTS[templateIndex], 0xffffffffu);
+            atomicAdd(DROPPED_SPAWN_COUNT, 1u);
+            continue;
+        }
+
+        uint seed = hashValue(emitter.shapeSeedModulesBudget.y ^ command.randomSeed);
+        seed = hashValue(seed ^ particleIndex);
+        seed = hashValue(seed ^ (command.spawnCounter + ordinal));
+        uint randomState = seed;
+
+        vec3 localPosition = sampleShape(emitter.shapeSeedModulesBudget.x, emitter.shapeParameters, randomState);
+        vec3 velocityMix = vec3(randomScalar(randomState), randomScalar(randomState), randomScalar(randomState));
+        vec3 localVelocity = mix(emitter.initialVelocityMin.xyz, emitter.initialVelocityMax.xyz, velocityMix);
+        localVelocity *= emitter.parameterMultipliers0.z;
+
+        float lifetime = mix(emitter.lifetimeSizeRanges.x, emitter.lifetimeSizeRanges.y, randomScalar(randomState));
+        lifetime *= emitter.parameterMultipliers0.w;
+        float size = mix(emitter.lifetimeSizeRanges.z, emitter.lifetimeSizeRanges.w, randomScalar(randomState));
+        size *= emitter.parameterMultipliers0.y;
+        float rotation = mix(emitter.rotationRanges.x, emitter.rotationRanges.y, randomScalar(randomState));
+        float angularVelocity = mix(emitter.rotationRanges.z, emitter.rotationRanges.w, randomScalar(randomState));
+        vec4 colour = mix(emitter.colourMin, emitter.colourMax, vec4(
+            randomScalar(randomState), randomScalar(randomState), randomScalar(randomState), randomScalar(randomState)));
+
+        ParticleRecord particle;
+        particle.positionAge = vec4((emitter.transform * vec4(localPosition, 1.0)).xyz, 0.0);
+        particle.velocityLifetime = vec4(mat3(emitter.transform) * localVelocity, lifetime);
+        particle.packedColour = packUnorm4x8(clamp(colour, 0.0, 1.0));
+        particle.baseSize = size;
+        particle.rotation = rotation;
+        particle.angularVelocity = angularVelocity;
+        particle.emitterIndex = command.emitterIndex;
+        particle.seed = seed;
+        particle.flags = 0u;
+        particle.padding = 0u;
+        PARTICLES[particleIndex] = particle;
+        appendActiveIndex(particleIndex);
+        publishSpawnEvents(particle, emitter);
+    }
+}

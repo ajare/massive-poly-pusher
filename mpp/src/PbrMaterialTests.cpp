@@ -83,7 +83,7 @@ namespace mpp
 		// resolution, so the IBL fetch must scale roughness by the renderer-supplied
 		// PBR_PREFILTERED_MAX_LOD rather than by an assumed constant. A literal
 		// multiplier silently mismatches every chain that is not five levels deep.
-		std::string const fragment = BuiltInPbrFragmentShader;
+		std::string const fragment = pbrShaderSource(PbrShader::BuiltInFragment);
 		if (fragment.find("@@Uniform(float PBR_PREFILTERED_MAX_LOD)") == std::string::npos)
 			return fail("built-in PBR shader does not declare PBR_PREFILTERED_MAX_LOD");
 		auto const specularFetch = fragment.find("textureLod(@Texture(PBR_PREFILTERED_SPECULAR_MAP)");

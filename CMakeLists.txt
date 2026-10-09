@@ -323,12 +323,18 @@ target_link_libraries(MppProgram
 mpp_target_defaults(MppProgram)
 mpp_add_header_filters(MppProgram "${CMAKE_CURRENT_SOURCE_DIR}/mpp-program/include")
 
+file(GLOB MPP_BUILT_IN_SHADER_RESOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/mpp/shaders/*")
+set_source_files_properties(${MPP_BUILT_IN_SHADER_RESOURCES} PROPERTIES HEADER_FILE_ONLY TRUE)
+
 add_library(MassivePolyPusher SHARED
+    ${MPP_BUILT_IN_SHADER_RESOURCES}
     mpp/src/Batch.cpp
     mpp/src/BatchDataProvider.cpp
     mpp/src/BoxModelStream.cpp
     mpp/src/BufferDataProvider.cpp
     mpp/src/BufferRenderer.cpp
+    mpp/src/BuiltInShaderResources.cpp
     mpp/src/Camera.cpp
     mpp/src/ComputeProgram.cpp
     mpp/src/CircleBatch.cpp
@@ -449,12 +455,20 @@ add_library(MassivePolyPusher SHARED
 target_include_directories(MassivePolyPusher PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
 target_compile_definitions(MassivePolyPusher PRIVATE
     MPP_DLL_EXPORT _ENABLE_EXTENDED_ALIGNED_STORAGE
+    MPP_BUILT_IN_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/mpp/shaders"
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:MemCheck>>:MPP_DEBUG_BUILD>)
 target_link_libraries(MassivePolyPusher
     PUBLIC MppData MppMesh MppProgram mpp_vendor_headers
     PRIVATE Utils OpenGL::GL GLEW::GLEW)
 mpp_target_defaults(MassivePolyPusher)
 mpp_add_header_filters(MassivePolyPusher "${CMAKE_CURRENT_SOURCE_DIR}/mpp/include")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/resources/mpp/shaders"
+    PREFIX "Resource Files\\Shaders" FILES ${MPP_BUILT_IN_SHADER_RESOURCES})
+add_custom_command(TARGET MassivePolyPusher POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/mpp/shaders"
+        "$<TARGET_FILE_DIR:MassivePolyPusher>/mpp-shaders"
+    VERBATIM)
 
 add_library(MppResourceParsers SHARED
     mpp-resource-parsers/src/FileBasicMaterialStream.cpp

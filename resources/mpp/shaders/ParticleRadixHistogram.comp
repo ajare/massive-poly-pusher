@@ -1,0 +1,28 @@
+#version 430
+
+layout(local_size_x = MPP_PARTICLE_WORK_GROUP_SIZE) in;
+layout(std430, binding = 0) restrict readonly buffer ParticleSortRecords { uvec2 SORT_RECORDS[]; };
+layout(std430, binding = 1) restrict readonly buffer ParticleIndirectCommands { uint INDIRECT_COMMANDS[]; };
+layout(std430, binding = 2) restrict writeonly buffer ParticleRadixHistogram { uint GROUP_BUCKETS[]; };
+uniform uint TEMPLATE_INDEX;
+uniform uint RADIX_SHIFT;
+shared uint LOCAL_BUCKETS[16];
+
+void main()
+{
+    for (uint bucket = gl_LocalInvocationID.x; bucket < 16u; bucket += gl_WorkGroupSize.x)
+        LOCAL_BUCKETS[bucket] = 0u;
+    barrier();
+    uint command = TEMPLATE_INDEX * 4u;
+    uint count = INDIRECT_COMMANDS[command + 1u];
+    uint localOrdinal = gl_GlobalInvocationID.x;
+    if (localOrdinal < count)
+    {
+        uint rangeOffset = INDIRECT_COMMANDS[command + 2u] / 4u;
+        uint digit = (SORT_RECORDS[rangeOffset + localOrdinal].x >> RADIX_SHIFT) & 15u;
+        atomicAdd(LOCAL_BUCKETS[digit], 1u);
+    }
+    barrier();
+    for (uint bucket = gl_LocalInvocationID.x; bucket < 16u; bucket += gl_WorkGroupSize.x)
+        GROUP_BUCKETS[gl_WorkGroupID.x * 16u + bucket] = LOCAL_BUCKETS[bucket];
+}

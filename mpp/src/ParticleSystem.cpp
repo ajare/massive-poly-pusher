@@ -353,7 +353,7 @@ namespace mpp
 					to_string(caps.maxShaderStorageBufferBindings) + ".", __LINE__, __FILE__, __func__);
 			}
 
-			auto createComputeProgram = [this](char const* name, char const* source)
+			auto createComputeProgram = [this](char const* name, string const& source)
 			{
 				auto stream = make_shared<ComputeProgramStream>(mwResourceManager);
 				stream->setSource(RawShaderStage::Compute, source);
@@ -366,25 +366,25 @@ namespace mpp
 				program->load();
 				return program;
 			};
-			mPoolInitialiseProgram = createComputeProgram(PoolInitialiseProgramName, ParticlePoolInitialiseComputeShader);
-			mStatisticsPrepareProgram = createComputeProgram("__mpp_particle_statistics_prepare__", ParticleStatisticsPrepareComputeShader);
-			mEventPrepareProgram = createComputeProgram(EventPrepareProgramName, ParticleEventPrepareComputeShader);
-			mSpawnProgram = createComputeProgram(SpawnProgramName, ParticleSpawnComputeShader);
-			mSimulationPrepareProgram = createComputeProgram(SimulationPrepareProgramName, ParticleSimulationPrepareComputeShader);
-			mSimulationProgram = createComputeProgram(SimulationProgramName, ParticleSimulationComputeShader);
-			mEventProcessProgram = createComputeProgram(EventProcessProgramName, ParticleEventProcessComputeShader);
-			mCompactionPrepareProgram = createComputeProgram(CompactionPrepareProgramName, ParticleCompactionPrepareComputeShader);
-			mCompactionCountProgram = createComputeProgram(CompactionCountProgramName, ParticleCompactionCountComputeShader);
-			mCompactionPrefixProgram = createComputeProgram(CompactionPrefixProgramName, ParticleCompactionPrefixComputeShader);
-			mCompactionScatterProgram = createComputeProgram(CompactionScatterProgramName, ParticleCompactionScatterComputeShader);
-			mMeshCommandProgram = createComputeProgram(MeshCommandProgramName, ParticleMeshCommandComputeShader);
+			mPoolInitialiseProgram = createComputeProgram(PoolInitialiseProgramName, particleShaderSource(ParticleShader::PoolInitialiseCompute));
+			mStatisticsPrepareProgram = createComputeProgram("__mpp_particle_statistics_prepare__", particleShaderSource(ParticleShader::StatisticsPrepareCompute));
+			mEventPrepareProgram = createComputeProgram(EventPrepareProgramName, particleShaderSource(ParticleShader::EventPrepareCompute));
+			mSpawnProgram = createComputeProgram(SpawnProgramName, particleShaderSource(ParticleShader::SpawnCompute));
+			mSimulationPrepareProgram = createComputeProgram(SimulationPrepareProgramName, particleShaderSource(ParticleShader::SimulationPrepareCompute));
+			mSimulationProgram = createComputeProgram(SimulationProgramName, particleShaderSource(ParticleShader::SimulationCompute));
+			mEventProcessProgram = createComputeProgram(EventProcessProgramName, particleShaderSource(ParticleShader::EventProcessCompute));
+			mCompactionPrepareProgram = createComputeProgram(CompactionPrepareProgramName, particleShaderSource(ParticleShader::CompactionPrepareCompute));
+			mCompactionCountProgram = createComputeProgram(CompactionCountProgramName, particleShaderSource(ParticleShader::CompactionCountCompute));
+			mCompactionPrefixProgram = createComputeProgram(CompactionPrefixProgramName, particleShaderSource(ParticleShader::CompactionPrefixCompute));
+			mCompactionScatterProgram = createComputeProgram(CompactionScatterProgramName, particleShaderSource(ParticleShader::CompactionScatterCompute));
+			mMeshCommandProgram = createComputeProgram(MeshCommandProgramName, particleShaderSource(ParticleShader::MeshCommandCompute));
 			createNoiseTexture();
 
 			auto createDrawProgram = [this](char const* name, bool weightedOit, bool distortion)
 			{
 				auto stream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
-				stream->setSource(RawShaderStage::Vertex, ParticleDrawVertexShader);
-				stream->setSource(RawShaderStage::Fragment, ParticleDrawFragmentShader);
+				stream->setSource(RawShaderStage::Vertex, particleShaderSource(ParticleShader::DrawVertex));
+				stream->setSource(RawShaderStage::Fragment, particleShaderSource(ParticleShader::DrawFragment));
 				stream->setDefine("MPP_PARTICLE_WEIGHTED_OIT", weightedOit ? "1" : "0");
 				stream->setDefine("MPP_PARTICLE_DISTORTION", distortion ? "1" : "0");
 				auto program = mwResourceManager->declareResource(name, stream).first;
@@ -396,8 +396,8 @@ namespace mpp
 			mWeightedOitDrawProgram = createDrawProgram(WeightedOitDrawProgramName, true, false);
 			mDistortionDrawProgram = createDrawProgram("__mpp_particle_distortion_draw__", false, true);
 			auto volumetricStream = make_shared<ParticleDrawProgramStream>(mwResourceManager);
-			volumetricStream->setSource(RawShaderStage::Vertex, ParticleVolumetricLightingVertexShader);
-			volumetricStream->setSource(RawShaderStage::Fragment, ParticleVolumetricLightingFragmentShader);
+			volumetricStream->setSource(RawShaderStage::Vertex, particleShaderSource(ParticleShader::VolumetricLightingVertex));
+			volumetricStream->setSource(RawShaderStage::Fragment, particleShaderSource(ParticleShader::VolumetricLightingFragment));
 			mVolumetricLightingDrawProgram = mwResourceManager->declareResource(
 				VolumetricLightingDrawProgramName, volumetricStream).first;
 			mVolumetricLightingDrawProgram->acquire(mwRenderSystem);
@@ -2175,7 +2175,7 @@ namespace mpp
 	void ParticleSystem::ensureSortBuffersAllocated()
 	{
 		if (mSortRecordsA) return;
-		auto createComputeProgram = [this](char const* name, char const* source)
+		auto createComputeProgram = [this](char const* name, string const& source)
 		{
 			auto stream = make_shared<ComputeProgramStream>(mwResourceManager);
 			stream->setSource(RawShaderStage::Compute, source);
@@ -2185,12 +2185,12 @@ namespace mpp
 			program->load();
 			return program;
 		};
-		mSortPrepareProgram = createComputeProgram(SortPrepareProgramName, ParticleSortPrepareComputeShader);
-		mSortKeyProgram = createComputeProgram(SortKeyProgramName, ParticleSortKeyComputeShader);
-		mRadixHistogramProgram = createComputeProgram(RadixHistogramProgramName, ParticleRadixHistogramComputeShader);
-		mRadixPrefixProgram = createComputeProgram(RadixPrefixProgramName, ParticleRadixPrefixComputeShader);
-		mRadixScatterProgram = createComputeProgram(RadixScatterProgramName, ParticleRadixScatterComputeShader);
-		mSortFinalizeProgram = createComputeProgram(SortFinalizeProgramName, ParticleSortFinalizeComputeShader);
+		mSortPrepareProgram = createComputeProgram(SortPrepareProgramName, particleShaderSource(ParticleShader::SortPrepareCompute));
+		mSortKeyProgram = createComputeProgram(SortKeyProgramName, particleShaderSource(ParticleShader::SortKeyCompute));
+		mRadixHistogramProgram = createComputeProgram(RadixHistogramProgramName, particleShaderSource(ParticleShader::RadixHistogramCompute));
+		mRadixPrefixProgram = createComputeProgram(RadixPrefixProgramName, particleShaderSource(ParticleShader::RadixPrefixCompute));
+		mRadixScatterProgram = createComputeProgram(RadixScatterProgramName, particleShaderSource(ParticleShader::RadixScatterCompute));
+		mSortFinalizeProgram = createComputeProgram(SortFinalizeProgramName, particleShaderSource(ParticleShader::SortFinalizeCompute));
 
 		size_t const recordBytes = size_t(mPoolCapacity) * sizeof(ParticleSortRecord);
 		size_t const groupCount = (size_t(mPoolCapacity) + mWorkGroupSize - 1u) / mWorkGroupSize;

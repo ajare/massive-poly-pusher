@@ -29,13 +29,14 @@ namespace mpp
 				shader.find("encodeOctahedralNormal") != std::string::npos && shader.find("mat3(VIEW_MATRIX)") != std::string::npos;
 		};
 		if (!validatesBuiltInNormalContract(FragmentShader3dTemplate)) return fail("built-in legacy shader lost the location-2 view-space octahedral shading-normal contract");
-		auto const particleVertex = std::string(ParticleDrawVertexShader);
+		auto const& pbrFragment = pbrShaderSource(PbrShader::BuiltInFragment);
+		auto const particleVertex = std::string(particleShaderSource(ParticleShader::DrawVertex));
 		for (auto const* mode : { "BILLBOARD_CAMERA_FACING", "BILLBOARD_SCREEN_ALIGNED", "BILLBOARD_CYLINDRICAL", "BILLBOARD_AXIS_LOCKED", "BILLBOARD_VELOCITY_ALIGNED", "BILLBOARD_VELOCITY_STRETCHED" })
 			if (particleVertex.find(mode) == std::string::npos) return fail("particle shader lost a required billboard mode");
-		auto const particleFragment = std::string(ParticleDrawFragmentShader);
-		auto const radixScatter = std::string(ParticleRadixScatterComputeShader);
-		auto const oitResolve = std::string(ParticleWeightedOitResolveFragmentShader);
-		auto const distortionComposite = std::string(ParticleDistortionCompositeFragmentShader);
+		auto const particleFragment = std::string(particleShaderSource(ParticleShader::DrawFragment));
+		auto const radixScatter = std::string(particleShaderSource(ParticleShader::RadixScatterCompute));
+		auto const oitResolve = std::string(particleShaderSource(ParticleShader::WeightedOitResolveFragment));
+		auto const distortionComposite = std::string(particleShaderSource(ParticleShader::DistortionCompositeFragment));
 		if (particleVertex.find("particleHalfExtents") == std::string::npos ||
 			particleVertex.find("length(projectedVelocity)") == std::string::npos ||
 			particleVertex.find("expandParticleQuad") == std::string::npos ||
@@ -47,15 +48,15 @@ namespace mpp
 			particleFragment.find("MPP_PARTICLE_DISTORTION") == std::string::npos ||
 			particleFragment.find("PARTICLE_DISTORTION_STRENGTH") == std::string::npos ||
 			particleFragment.find("-log(max(1.0 - alpha") == std::string::npos ||
-			std::string(ParticleSortKeyComputeShader).find("descendingFloatKey") == std::string::npos ||
+			std::string(particleShaderSource(ParticleShader::SortKeyCompute)).find("descendingFloatKey") == std::string::npos ||
 			radixScatter.find("LOCAL_DIGITS[earlier] == digit") == std::string::npos ||
 			oitResolve.find("exp(-opticalDepth)") == std::string::npos ||
 			oitResolve.find("accumulation.rgb / max(accumulation.a") == std::string::npos ||
 			distortionComposite.find("uv + offset") == std::string::npos)
 			return fail("particle shader lost billboard expansion, animation, soft depth, distortion, radix sorting, or weighted blended OIT");
-		if (!validatesBuiltInNormalContract(BuiltInPbrFragmentShader)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
-		auto pbrFinalNormal = std::string(BuiltInPbrFragmentShader).find("@Out(vec2 SHADING_NORMAL)");
-		if (pbrFinalNormal < std::string(BuiltInPbrFragmentShader).find("PBR_WATER_DISTORTION_STRENGTH", std::string(BuiltInPbrFragmentShader).find("void main()")))
+		if (!validatesBuiltInNormalContract(pbrFragment)) return fail("built-in PBR shader lost the location-2 view-space octahedral shading-normal contract");
+		auto pbrFinalNormal = pbrFragment.find("@Out(vec2 SHADING_NORMAL)");
+		if (pbrFinalNormal < pbrFragment.find("PBR_WATER_DISTORTION_STRENGTH", pbrFragment.find("void main()")))
 			return fail("built-in PBR shader writes MRT normals before material normal processing");
 		auto validatesPointShadowContract = [](std::string const& shader)
 		{
@@ -64,7 +65,7 @@ namespace mpp
 				shader.find("SHADOW_TYPE_AND_LIGHT_INDEX.y") != std::string::npos &&
 				shader.find("pointShadowVisibility") != std::string::npos;
 		};
-		if (!validatesPointShadowContract(FragmentShader3dTemplate) || !validatesPointShadowContract(BuiltInPbrFragmentShader))
+		if (!validatesPointShadowContract(FragmentShader3dTemplate) || !validatesPointShadowContract(pbrFragment))
 			return fail("built-in receiver lost directional/point shadow sampling or explicit light association");
 		if (VertexShaderPointShadowDepthTemplate.find("SHADOW_WORLD_POSITION") == std::string::npos ||
 			FragmentShaderPointShadowDepthTemplate.find("gl_FragDepth = length") == std::string::npos)
@@ -85,7 +86,7 @@ namespace mpp
 				shader.find("BIAS_AND_ENABLED.w") != std::string::npos &&
 				shader.find("mix(visibility, 1.0, fade)") != std::string::npos;
 		};
-		if (!validatesFilteredPointShadow(FragmentShader3dTemplate) || !validatesFilteredPointShadow(BuiltInPbrFragmentShader))
+		if (!validatesFilteredPointShadow(FragmentShader3dTemplate) || !validatesFilteredPointShadow(pbrFragment))
 			return fail("built-in point receivers lost tangent-space 3x3 PCF or range fade");
 		RenderPipelineOptions pipelineDefaults;
 		if (!pipelineDefaults.depthPrepass)

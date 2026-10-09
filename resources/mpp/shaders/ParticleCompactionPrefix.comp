@@ -1,0 +1,61 @@
+#version 430
+
+layout(local_size_x = 1) in;
+
+layout(std430, binding = 4) restrict buffer ParticleCounters
+{
+    uint FREE_COUNT;
+    uint ACTIVE_COUNT_A;
+    uint ACTIVE_COUNT_B;
+    uint DROPPED_SPAWN_COUNT;
+    uint SPAWNED_COUNT;
+    uint KILLED_COUNT;
+    uint RENDERED_COUNT;
+    uint CULLED_COUNT;
+    uint TEMPLATE_COUNTS[];
+};
+layout(std430, binding = 6) restrict buffer ParticleCompactionScratch
+{
+    uint COMPACTION_VALUES[];
+};
+layout(std430, binding = 5) restrict readonly buffer ParticleTemplates
+{
+    uvec4 TEXTURE_AND_ATLAS[];
+};
+layout(std430, binding = 7) restrict writeonly buffer ParticleIndirectCommands
+{
+    uint INDIRECT_COMMANDS[];
+};
+
+uniform uint TEMPLATE_COUNT;
+uniform uint TEMPLATE_CAPACITY;
+
+void main()
+{
+    uint activeOffset = 0u;
+    uint visibleOffset = 0u;
+    for (uint templateIndex = 0u; templateIndex < TEMPLATE_COUNT; ++templateIndex)
+    {
+        uint activeCount = TEMPLATE_COUNTS[templateIndex];
+        uint visibleCount = COMPACTION_VALUES[TEMPLATE_CAPACITY * 2u + templateIndex];
+        COMPACTION_VALUES[templateIndex] = visibleOffset;
+        uint commandOffset = templateIndex * 4u;
+        INDIRECT_COMMANDS[commandOffset] = 4u;
+        // sorting.y is the render mode in the sixth vec4 of each template.
+        // Real meshes consume the range through their dedicated command buffer.
+        uint renderMode = TEXTURE_AND_ATLAS[templateIndex * 6u + 5u].y;
+        INDIRECT_COMMANDS[commandOffset + 1u] = renderMode == 0u ? visibleCount : 0u;
+        INDIRECT_COMMANDS[commandOffset + 2u] = visibleOffset * 4u;
+        INDIRECT_COMMANDS[commandOffset + 3u] = templateIndex;
+        activeOffset += activeCount;
+        visibleOffset += visibleCount;
+    }
+    // Statistics prepare stores the requested spawn count and starting active
+    // count in these fields. Visibility never affects lifetime or spawn budgets.
+    uint spawned = SPAWNED_COUNT >= DROPPED_SPAWN_COUNT ? SPAWNED_COUNT - DROPPED_SPAWN_COUNT : 0u;
+    uint startAndSpawned = KILLED_COUNT + spawned;
+    SPAWNED_COUNT = spawned;
+    KILLED_COUNT = startAndSpawned >= activeOffset ? startAndSpawned - activeOffset : 0u;
+    RENDERED_COUNT = visibleOffset;
+    CULLED_COUNT = activeOffset >= visibleOffset ? activeOffset - visibleOffset : 0u;
+}

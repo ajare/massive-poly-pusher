@@ -1,0 +1,47 @@
+#version 430
+
+layout(local_size_x = 1) in;
+
+struct EventRule { uvec4 configuration; uvec4 parameters; };
+struct ParticleEventRecord { vec4 positionAge; vec4 velocityLifetime; vec4 normalAndPadding; uvec4 typeAndSource; uvec4 payloadAndSecondary; };
+layout(std430, binding = 6) restrict buffer ParticleEvents
+{
+    uvec4 EVENT_COUNTS;
+    EventRule EVENT_RULES[MPP_PARTICLE_MAX_EVENT_RULES];
+    ParticleEventRecord EVENT_QUEUE_A[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EVENT_QUEUE_B[MPP_PARTICLE_MAX_GENERATED_EVENTS];
+    ParticleEventRecord EXTERNAL_EVENTS[MPP_PARTICLE_MAX_EXTERNAL_EVENTS];
+};
+layout(std430, binding = 7) restrict writeonly buffer ParticleEventDispatchCommand
+{
+    uint DISPATCH_COMMAND[];
+};
+
+uniform uint MODE;
+uniform uint SOURCE_QUEUE;
+
+void main()
+{
+    if (MODE == 0u)
+    {
+        EVENT_COUNTS = uvec4(0u);
+        DISPATCH_COMMAND[0] = 0u;
+        DISPATCH_COMMAND[1] = 1u;
+        DISPATCH_COMMAND[2] = 1u;
+        return;
+    }
+
+    uint sourceCount = min(SOURCE_QUEUE == 0u ? EVENT_COUNTS.x : EVENT_COUNTS.y,
+        uint(MPP_PARTICLE_MAX_GENERATED_EVENTS));
+    if (MODE == 2u)
+    {
+        atomicAdd(EVENT_COUNTS.w, sourceCount);
+        if (SOURCE_QUEUE == 0u) EVENT_COUNTS.x = 0u; else EVENT_COUNTS.y = 0u;
+        return;
+    }
+
+    if (SOURCE_QUEUE == 0u) EVENT_COUNTS.y = 0u; else EVENT_COUNTS.x = 0u;
+    DISPATCH_COMMAND[0] = sourceCount;
+    DISPATCH_COMMAND[1] = 1u;
+    DISPATCH_COMMAND[2] = 1u;
+}

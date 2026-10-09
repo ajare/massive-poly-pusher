@@ -158,8 +158,8 @@ namespace mpp
 			}
 
 			// An omitted program selects the engine-owned metallic-roughness shader.
-			if (progOpts.vertexShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) vertexShaderSrc = BuiltInPbrVertexShader;
-			if (progOpts.fragmentShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) fragmentShaderSrc = BuiltInPbrFragmentShader;
+			if (progOpts.vertexShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) vertexShaderSrc = pbrShaderSource(PbrShader::BuiltInVertex);
+			if (progOpts.fragmentShader.type == PbrMaterialSpecification::ProgramOptions::Shader::Type::Default) fragmentShaderSrc = pbrShaderSource(PbrShader::BuiltInFragment);
 			if (!hasPbrFeature(mFeatures, PbrMaterialFeature::LegacyFullContract))
 				fragmentShaderSrc = injectPbrSpecializationDefines(fragmentShaderSrc, mFeatures);
 
