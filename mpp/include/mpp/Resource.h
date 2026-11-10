@@ -111,6 +111,24 @@ namespace mpp
 
 		void unload();
 
+		// Re-reads the resource from its source and rebuilds it to the state it
+		// is already in, without disturbing anything that holds it.
+		//
+		// The wrangler count is deliberately not consulted. That count exists to
+		// stop a resource being torn down while something still uses it, and a
+		// refresh is not a teardown - it returns the resource to the state it
+		// would have been in had it just been read, which is a thing a shared
+		// resource can safely have done to it.
+		//
+		// The position is preserved rather than pushed forward: a resource that
+		// was created and loaded comes back created and loaded, one that was only
+		// created comes back only created, and one that was neither just gets a
+		// fresh stream for whatever creates it later. Forcing a load would be
+		// wrong twice over - it would move the resource to a state its holders
+		// did not ask for, and it would try to upload to a render system that
+		// may not exist.
+		void refresh();
+
 		void acquire(ResourceWrangler* acquirer);
 
 		void release(ResourceWrangler* releaser);

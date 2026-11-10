@@ -315,6 +315,62 @@ namespace mpp
 		}
 	}
 
+	// See the declaration for what this is for. The short version: the same
+	// unload/destroy/create/load cycle destroy() and create() already run, with
+	// the ref-count guards stepped around and the dependent set left intact.
+	void Resource::refresh()
+	{
+		bool const wasLoaded = isLoaded();
+		bool const wasCreated = isCreated();
+
+		if (wasLoaded)
+		{
+			unload();
+		}
+
+		// destroy() would call releaseDependentResources() here, and that is
+		// the one thing a refresh must not do. A release cascades: a dependent
+		// whose count reaches zero releases its own dependents in turn, and any
+		// of them that nothing else happens to hold is destroyed - taking with
+		// it relationships the rest of the graph is still using. So this drops
+		// the created state directly and leaves the dependents acquired.
+		// createImpl() re-acquires them through acquireDependentResource(),
+		// which is a set insert, so re-acquiring one that was never dropped
+		// costs nothing.
+		if (wasCreated)
+		{
+			destroyImpl();
+
+			if (mResourceStream)
+			{
+				mResourceStream->destroyChildResources(getName());
+			}
+
+			mCreated = false;
+			++mLifecycleRevision;
+		}
+
+		// The stream has to be forced rather than asked. load() is guarded by
+		// mLoaded, so a stream that is still loaded hands back what it already
+		// had instead of reading again - which would make the whole exercise a
+		// no-op on exactly the resources this exists for.
+		if (mResourceStream)
+		{
+			mResourceStream->unload();
+			mResourceStream->load();
+		}
+
+		if (wasCreated)
+		{
+			create();
+		}
+
+		if (wasLoaded)
+		{
+			load();
+		}
+	}
+
 	void Resource::acquire(ResourceWrangler* acquirer)
 	{
 		auto it = mDependingResources.insert(acquirer);
