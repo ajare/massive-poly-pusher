@@ -215,8 +215,21 @@ namespace mpp
 
 	void Batch::destroy()
 	{
-		mModel->release(this);
-		mMaterial->release(this);
+		// create() sets the material before the model, so a create that throws
+		// part-way through leaves one of the two null. ~Batch() already treats
+		// both as optional - it guards each before deleting it by name - so
+		// destroy() has to as well. Without the guard a failed create turns
+		// into a null dereference on the way out, which is fatal in a
+		// destructor, instead of the exception the caller could still report.
+		if (mModel)
+		{
+			mModel->release(this);
+		}
+
+		if (mMaterial)
+		{
+			mMaterial->release(this);
+		}
 	}
 
 	void Batch::startUpdate(size_t minimumCount, size_t vertexCount)
